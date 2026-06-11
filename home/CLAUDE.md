@@ -34,6 +34,7 @@ Once we have agreed on a spec or plan, proceed autonomously to completion: imple
 - Parallel by default: decompose independent work across subagents in one message; relay their conclusions, not their file dumps.
 - Lock the contract first: fix shared schemas/signatures and assign non-overlapping files before fanning out.
 - Orchestrator stays lean: do not redo agents' work — integrate and verify once at the end.
+- Honor spec model tiers: sections marked sonnet/opus in a plan doc are dispatched to the matching implementer agent, never implemented inline. The main thread implements only fable-tier (or untiered) sections.
 
 ## Defaults
 - C# and T-SQL unless told otherwise; PowerShell for scripting.

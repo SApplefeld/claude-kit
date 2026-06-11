@@ -69,7 +69,7 @@ function main() {
     const context = [
         `${reason} This project has in-progress plan doc(s):`,
         ...lines,
-        'Before doing ANY work: read the plan doc(s) in full, including all Chapters — they are the authoritative record of completed sections, decisions, and the commit model in effect. Resume from the Next entry of the latest Chapter. Follow the executing-work skill.'
+        'Before doing ANY work: read the plan doc(s) in full, including all Chapters — they are the authoritative record of completed sections, decisions, and the commit model in effect. Resume from the Next entry of the latest Chapter. Follow the executing-work skill. Honor each section\'s Model tier: sections tiered sonnet/opus are DISPATCHED to the matching implementer agent, never implemented inline in the main thread.'
     ].join('\n');
 
     process.stdout.write(JSON.stringify({
