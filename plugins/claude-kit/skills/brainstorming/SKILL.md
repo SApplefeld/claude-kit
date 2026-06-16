@@ -17,15 +17,17 @@ Explore the problem space WITH Scott in conversation, then capture the agreement
 
 4. **Present options with tradeoffs** when a real decision exists. State a recommendation and the reason. Disagree openly with Scott's framing when warranted — he wants the arguments, not agreement. The answer is usually somewhere in the middle.
 
-5. **Plan sketch before full spec.** Present a short sketch first: goal, approach, the sections of work. Cheap to redirect here; expensive after the full write-up. Iterate on the sketch until agreed.
+5. **Offer the design council at a hard fork.** When the decision in step 4 is genuinely material and hard to reverse — an architecture choice, a schema or data-model decision, build-vs-buy, a migration direction, anything expensive to undo — offer (don't auto-run) the `design-council` skill before settling it 1:1. Name the cost ("three lenses, up to three rounds") so Scott authorizes the spend; if he declines, stay in the 1:1 conversation. The council returns a converged recommendation or a cleanly-stated unresolved fork — it informs Scott's call, never replaces it or the conversation with him. Scott can also invoke it directly at any time. This is offered, not default.
 
-6. **Write the spec** to `docs/plans/<project>_spec_v1.md` (increment the version if the name exists; never overwrite a prior version).
+6. **Plan sketch before full spec.** Present a short sketch first: goal, approach, the sections of work. Cheap to redirect here; expensive after the full write-up. Iterate on the sketch until agreed.
 
-7. **Agree on the commit model** and record it in the spec header:
+7. **Write the spec** to `docs/plans/<project>_spec_v1.md` (increment the version if the name exists; never overwrite a prior version).
+
+8. **Agree on the commit model** and record it in the spec header:
    - **Review-Only** — Scott reviews all changed code before anything is committed. Common for smaller changesets in big existing projects.
    - **Commit-and-Push** — commit and push to origin as sections complete. Common for greenfield projects where Claude authors most of the work.
 
-8. **Assign a model tier to each Section of Work.** Implementation cost scales with the model; quality is protected by spec precision plus strong-model review, not by using the strongest model for every keystroke. Assign per section:
+9. **Assign a model tier to each Section of Work.** Implementation cost scales with the model; quality is protected by spec precision plus strong-model review, not by using the strongest model for every keystroke. Assign per section:
    - **sonnet** — mechanical or well-bounded: a clear contract, an existing sibling pattern to mimic, single-responsibility scope, low integration risk. New procs/services following an established shape, mappings, DTOs, tests, CRUD surfaces.
    - **opus** — moderate complexity: multi-file coordination, nuanced refactors, performance-sensitive logic, mild ambiguity within a clear design.
    - **fable** (main thread, no dispatch) — novel design, security-sensitive surfaces, cross-cutting architecture, or any section where the spec itself may evolve during implementation.

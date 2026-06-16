@@ -14,6 +14,7 @@ claude-kit/                          (repo = the marketplace)
                                      commit counts as a new version)
       skills/
         brainstorming/               Design conversation → spec in docs/plans/ + commit model
+        design-council/              Offered at a hard fork: blind lens positions → facilitated convergence → recommendation or fork
         executing-work/              Autonomous section loop: implement, verify, review, Chapter
         finishing-work/              QA, security, docs curation, final review, close-out
         cold/                        Neutral evidence-first lens for non-code, high-stakes decisions
@@ -25,6 +26,8 @@ claude-kit/                          (repo = the marketplace)
         qa-verifier.md               Build, tests, acceptance criteria with evidence
         security-reviewer.md         OWASP + SOC 2 review tuned to the procedure-only model
         docs-curator.md              Updates docs/, returns Drift Report
+        council-member.md            Read-only lens on the design council (one per lens)
+        design-facilitator.md        Neutral convergence judge for the design council
       hooks/
         hooks.json                   Hook registrations
         session-start.js             Re-injects in-progress plans on startup/resume/compaction
@@ -63,7 +66,7 @@ Updating: commit and push here, then `/plugin update claude-kit` on each machine
 
 ## THE WORKFLOW
 
-Brainstorming produces a spec in `docs/plans/<project>_spec_v1.md` with a recorded commit model (Review-Only or Commit-and-Push). Executing-work runs the spec section by section — implement, verify, adversarial review (plus security review on sensitive surfaces), update the plan, append a Chapter, commit per the model. Finishing-work closes the effort: qa-verifier, security-reviewer, final adversarial-reviewer pass, docs-curator with Drift Report, plan closed, changes presented or pushed per the model.
+Brainstorming produces a spec in `docs/plans/<project>_spec_v1.md` with a recorded commit model (Review-Only or Commit-and-Push). At a hard, hard-to-reverse design fork it can offer a read-only design council (`design-council`) that pressure-tests the candidate approaches through blind, independent lens positions and facilitator-run convergence rounds, returning a recommendation or a clean fork for Scott — offered, never automatic. Executing-work runs the spec section by section — implement, verify, adversarial review (plus security review on sensitive surfaces), update the plan, append a Chapter, commit per the model. Finishing-work closes the effort: qa-verifier, security-reviewer, final adversarial-reviewer pass, docs-curator with Drift Report, plan closed, changes presented or pushed per the model.
 
 Compaction recovery is deterministic: the SessionStart hook fires on startup, resume, and after every compaction, finds in-progress plans, and instructs the session to re-read them — Chapters included — before any work proceeds.
 
