@@ -1,6 +1,6 @@
 ---
 name: sql-style
-description: Scott Applefeld's T-SQL house style. Use whenever writing or modifying ANY SQL — stored procedures, tables, functions, indexes, install/deployment scripts, or ad-hoc queries. Signature traits — shell-then-ALTER deployment, banner-comment headers, leading commas, tab-aligned columns, leading semicolons, usp_AuditError CATCH blocks. Trigger on any SQL work even when style isn't named.
+description: "Scott Applefeld's T-SQL house style. Use whenever writing or modifying ANY SQL: stored procedures, tables, functions, indexes, install or deployment scripts, or ad-hoc queries. Signature traits: shell-then-ALTER deployment, banner-comment headers, leading commas, tab-aligned columns, leading semicolons, audit-logging CATCH blocks that do not re-throw. Trigger on any SQL work even when style is not named."
 ---
 
 # T-SQL Style
@@ -15,16 +15,22 @@ Scott's personal SQL style. Internalize the philosophy, then consult [references
 4. **Section banners over inline narration.** `/********** TITLE **********/` banners divide every procedure into named phases.
 5. **Find a sibling and mimic it.** When in doubt, find an existing procedure/table solving a similar shape and copy its layout exactly. In greenfield repos, use the exemplar below and the full templates in the reference.
 
+## Precedence
+
+A repo's mechanically-enforced contract wins first: a committed formatter config, an `.editorconfig`, or a CI lint gate overrides this style, nothing softer does. Absent that, this style is the default authority. Philosophy point 5 (mimic a sibling) is for staying consistent inside a body of code already written in this style; a messy legacy sibling in a foreign repo is not a reason to drop the style.
+
 ## Exemplar (the deployment idiom and body skeleton)
+
+The schema and the audit-logging proc below are placeholders (`<schema>`, `<schema_owner>`, `usp_LogError`). The pattern is what transfers: substitute the project's own schema and error-logging proc. `WITH EXECUTE AS` applies only where the project uses owner-impersonation; drop it where it does not.
 
 ```sql
 -- CREATE A SHELL PROCEDURE IF NONE EXISTS.
-;IF OBJECT_ID('ELEOS.usp_DoSomething') IS NULL
-  EXEC ('CREATE PROCEDURE ELEOS.usp_DoSomething AS RETURN 0;')
+;IF OBJECT_ID('<schema>.usp_DoSomething') IS NULL
+  EXEC ('CREATE PROCEDURE <schema>.usp_DoSomething AS RETURN 0;')
 GO
 
 -- ALTER THE UPDATED PROCEDURE DEFINITION.
-;ALTER PROCEDURE ELEOS.usp_DoSomething
+;ALTER PROCEDURE <schema>.usp_DoSomething
 (
     /*********************************************************************************************
      PARAMETER NAME		DATATYPE		    DEFAULT
@@ -32,10 +38,10 @@ GO
      @p_OrderNumber     INT                 = NULL
     ,@p_DriverCode      VARCHAR(50)         = NULL
 )
-WITH EXECUTE AS 'ELEOS'
+WITH EXECUTE AS '<schema_owner>'
 AS
 BEGIN	-- PROCEDURE
-    /* Banner header: SCRIPT / AUTHOR / DATE / VERSION / NOTES — see reference §6. */
+    /* Banner header: SCRIPT / AUTHOR / DATE / VERSION / NOTES - see reference §6. */
 
     /********************************************************************************************
         SET PROCESSING VARIABLES TO INCREASE SPEED AND DATA ACCESS.
@@ -46,13 +52,13 @@ BEGIN	-- PROCEDURE
     ;BEGIN TRY
         /* Describe what this block does. */
         ;SELECT  [SomeColumn] = T.[SomeColumn]
-        FROM    ELEOS.SomeTable T
+        FROM    <schema>.SomeTable T
         WHERE   T.[OrderNumber] = @p_OrderNumber
     END TRY
     BEGIN CATCH
         /* Audit and Report Error. */
-        ;IF ( OBJECT_ID('ELEOS.usp_AuditError') IS NOT NULL )
-            EXECUTE ELEOS.usp_AuditError @p_ErrorData = @p_OrderNumber
+        ;IF ( OBJECT_ID('<schema>.usp_LogError') IS NOT NULL )
+            EXECUTE <schema>.usp_LogError @p_ErrorData = @p_OrderNumber
     END CATCH
 END
 GO
@@ -60,22 +66,22 @@ GO
 
 ## Antipatterns (common AI habits that violate the style)
 
-- ❌ `CREATE OR ALTER PROCEDURE` — shell-then-ALTER, always (it preserves GRANTs)
-- ❌ Trailing commas in any list — leading commas, always
-- ❌ Lowercase keywords — UPPERCASE always
-- ❌ Unbracketed columns — `[ColumnName]` always
-- ❌ `RAISERROR` for routine errors — `EXECUTE ELEOS.usp_AuditError @p_ErrorData = ...` in CATCH, guarded by OBJECT_ID check
-- ❌ Dynamic SQL built by string concatenation — inside a `WITH EXECUTE AS` procedure this is a privilege-escalation vector, not a style issue; where dynamic SQL is truly unavoidable, `sp_executesql` with typed parameters and a justifying comment
-- ❌ Skipping `;SET NOCOUNT ON` + `;SET TRANSACTION ISOLATION LEVEL` — both required, paired, at the top
-- ❌ Verbose multi-paragraph header comments — banner blocks with SCRIPT/AUTHOR/DATE/VERSION/NOTES only
-- ❌ `GETDATE()` for audit timestamps — `SYSDATETIMEOFFSET()`
-- ❌ Right-hand aliases (`expr AS Alias`) in SELECT — left-hand form: `[Alias] = expression`
+- ❌ `CREATE OR ALTER PROCEDURE` - shell-then-ALTER, always (it preserves GRANTs)
+- ❌ Trailing commas in any list - leading commas, always
+- ❌ Lowercase keywords - UPPERCASE always
+- ❌ Unbracketed columns - `[ColumnName]` always
+- ❌ `RAISERROR` for routine errors - `EXECUTE <schema>.usp_LogError @p_ErrorData = ...` in CATCH, guarded by OBJECT_ID check
+- ❌ Dynamic SQL built by string concatenation - inside a `WITH EXECUTE AS` procedure this is a privilege-escalation vector, not a style issue; where dynamic SQL is truly unavoidable, `sp_executesql` with typed parameters and a justifying comment
+- ❌ Skipping `;SET NOCOUNT ON` + `;SET TRANSACTION ISOLATION LEVEL` - both required, paired, at the top
+- ❌ Verbose multi-paragraph header comments - banner blocks with SCRIPT/AUTHOR/DATE/VERSION/NOTES only
+- ❌ `GETDATE()` for audit timestamps - `SYSDATETIMEOFFSET()`
+- ❌ Right-hand aliases (`expr AS Alias`) in SELECT - left-hand form: `[Alias] = expression`
 - ❌ `SELECT *` in result sets returned to callers
 
 ## Checklist before declaring SQL work complete
 
 - [ ] Procs: shell-then-ALTER; functions: drop-and-recreate; tables/indexes: IF NOT EXISTS guards
-- [ ] `WITH EXECUTE AS 'ELEOS'` on procs and functions where the codebase uses impersonation
+- [ ] `WITH EXECUTE AS '<schema_owner>'` on procs and functions where the codebase uses impersonation
 - [ ] Banner header: SCRIPT / AUTHOR / DATE (ordinal English) / VERSION / NOTES; new versions ADD a note line, never rewrite history
 - [ ] `BEGIN	-- PROCEDURE` with tab + trailing label after `AS`
 - [ ] `;SET NOCOUNT ON` paired with isolation level (`READ UNCOMMITTED` for Get*, `READ COMMITTED` for writes)
@@ -84,5 +90,5 @@ GO
 - [ ] Section banners divide logic into phases; `/* Sub-Section. */` comments end with a period; group labels do not
 - [ ] Tables: `/* Group Name */` column groups, audit fields (CreatedDt/UpdatedDt, SYSDATETIMEOFFSET defaults) at the bottom, `PK_<Table>` last
 - [ ] Indexes: `IX_<Table>_<Cols>`, own IF NOT EXISTS block, in the table's file
-- [ ] TRY/CATCH wraps main logic; CATCH audits via usp_AuditError and does not re-throw
+- [ ] TRY/CATCH wraps main logic; CATCH audits via the project's error-logging proc and does not re-throw
 - [ ] File ends with `GO`

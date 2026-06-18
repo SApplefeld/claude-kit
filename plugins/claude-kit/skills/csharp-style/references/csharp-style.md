@@ -1,6 +1,6 @@
-# C# Style — ASR.Eleos.Documents
+# C# Style (modeled on ASR.Eleos.Documents)
 
-This is the detailed pattern reference for writing C# in Scott's style. The canonical examples come from `D:\source\repos\EleosCore\ASR.Eleos\ASR.Eleos.Documents`. When in doubt, open a sibling file in that library and follow its layout exactly.
+This is the detailed pattern reference for writing C# in Scott's style. The canonical examples are modeled on `D:\source\repos\EleosCore\ASR.Eleos\ASR.Eleos.Documents`. The patterns are what transfer: substitute the project's own namespaces and type names rather than copying `ASR.Eleos` literally into another codebase. Inside an ASR.Eleos repo, open a sibling file in that library and follow its layout exactly.
 
 ## Table of contents
 
@@ -36,15 +36,15 @@ Every C# file in this library follows the same shape:
 
 2. **Single blank line.**
 
-3. **Namespace declaration** — file-scoped with semicolon for new files:
+3. **Namespace declaration** - file-scoped with semicolon for new files:
    ```csharp
    namespace ASR.Eleos.Documents;
    ```
-   Older files (e.g. `Assembly/RegisterServices.cs`) use block-scoped — **leave existing block-scoped files alone**, but write *new* files with file-scoped.
+   Older files (e.g. `Assembly/RegisterServices.cs`) use block-scoped - **leave existing block-scoped files alone**, but write *new* files with file-scoped.
 
 4. **No file-level header comments.** No copyright, no author block, no license. Files begin with `using`.
 
-**Example** — `Services/Build/FormService.cs:1-13`:
+**Example** - `Services/Build/FormService.cs:1-13`:
 ```csharp
 using System;
 using System.Linq;
@@ -65,11 +65,11 @@ public class FormService : IFormService
 
 Classes are organized into `#region` blocks in this canonical order:
 
-1. `#region Constants` — `private const string` declarations (omit if none)
-2. `#region Variables` — private fields, grouped by purpose with `// Group.` labels
-3. `#region Constructor` — single constructor, parameters one-per-line
-4. **One or more public method-group regions** — named for what they do (e.g. `#region Form Processing`, `#region Document Processing`)
-5. `#region Private Methods` — at the bottom, may contain nested regions for sub-themes (`#region Form Handling`, `#region Field Handling`)
+1. `#region Constants` - `private const string` declarations (omit if none)
+2. `#region Variables` - private fields, grouped by purpose with `// Group.` labels
+3. `#region Constructor` - single constructor, parameters one-per-line
+4. **One or more public method-group regions** - named for what they do (e.g. `#region Form Processing`, `#region Document Processing`)
+5. `#region Private Methods` - at the bottom, may contain nested regions for sub-themes (`#region Form Handling`, `#region Field Handling`)
 
 Each `#region` is closed with a matching `#endregion`. **Never leave a region open.**
 
@@ -136,18 +136,18 @@ public class FormService : IFormService
 
 - Private fields use `_camelCase` with a leading underscore: `_formService`, `_mapperService`, `_documentSettings`.
 - `readonly` for all injected dependencies.
-- `private const` for compile-time constants — name in `camelCase` for local scoped strings (e.g. `downloadUrlSuffix`) or `SCREAMING_SNAKE_CASE` for cross-cutting markers (e.g. `EMAIL_SENT`).
+- `private const` for compile-time constants - name in `camelCase` for local scoped strings (e.g. `downloadUrlSuffix`) or `SCREAMING_SNAKE_CASE` for cross-cutting markers (e.g. `EMAIL_SENT`).
 - Static computed comparison properties use **PascalCase**: `IgnoreCase`, `IgnoreCaseComparer`.
 
 Inside `#region Variables`, fields are grouped with single-line `// Group.` label comments and a blank line between groups. Common groups:
 
-- `// Values.` — static comparers, computed defaults
-- `// Mapper.` — AutoMapper instance
-- `// Services.` — injected service dependencies
-- `// Settings.` — `IOptionsMonitor<T>` for configuration
-- `// State.` — mutable state if any (rare)
+- `// Values.` - static comparers, computed defaults
+- `// Mapper.` - AutoMapper instance
+- `// Services.` - injected service dependencies
+- `// Settings.` - `IOptionsMonitor<T>` for configuration
+- `// State.` - mutable state if any (rare)
 
-**Example** — `Services/Build/FormService.cs:20-31`:
+**Example** - `Services/Build/FormService.cs:20-31`:
 ```csharp
 #region Variables
 // Values.
@@ -166,13 +166,13 @@ private readonly IHtmlService _htmlService;
 ## 4. Constructor pattern
 
 - Single primary constructor only (no overloads, no static factories).
-- Parameters on their own lines when there are 2+ — indented 8 spaces from the class brace.
+- Parameters on their own lines when there are 2+ - indented 8 spaces from the class brace.
 - Closing `)` on its own line, indented 4 spaces (level of the constructor signature).
 - Body opens with a section-comment block describing what gets assigned, then assigns directly.
-- **No `ArgumentNullException` checks** — the DI container is trusted to provide non-null dependencies.
+- **No `ArgumentNullException` checks** - the DI container is trusted to provide non-null dependencies.
 - AutoMapper instances are constructed inline in the constructor under a `// Save Mapper.` comment.
 
-**Example** — `Services/Build/FormService.cs:33-50`:
+**Example** - `Services/Build/FormService.cs:33-50`:
 ```csharp
 public FormService(
         IEleosApiService eleosService,
@@ -202,7 +202,7 @@ public FormService(
 - Return types use nullable annotations (`Task<FilledForm?>`) when nulls are valid.
 - No method-level attributes except where required (e.g. MediatR handler signature).
 
-**Example** — `Services/Build/FormService.cs:54-57`:
+**Example** - `Services/Build/FormService.cs:54-57`:
 ```csharp
 public async Task<FilledForm?> ProcessFormAsync(
     FilledDocument document,
@@ -218,14 +218,14 @@ Conventions:
 - Comment text uses Title Case ("Validate Parameters." not "validate parameters.")
 - **Always end with a period.**
 - One blank line *before* the comment is preferred between sections.
-- Comments are not narrative — they're labels. Avoid "Now we...", "Here we...", "This will..."
+- Comments are not narrative - they're labels. Avoid "Now we...", "Here we...", "This will..."
 
 Common section comments:
-- `// Validate Parameters.` — guard clauses at the top
-- `// Return Value.` — declaring the return-value variable
-- `// Declare Variables.` — pre-declaring locals used across try blocks
-- `// Get X.` / `// Extract X.` / `// Build X.` / `// Apply X.` — major operations
-- `// Return the Processed Result.` — at the bottom
+- `// Validate Parameters.` - guard clauses at the top
+- `// Return Value.` - declaring the return-value variable
+- `// Declare Variables.` - pre-declaring locals used across try blocks
+- `// Get X.` / `// Extract X.` / `// Build X.` / `// Apply X.` - major operations
+- `// Return the Processed Result.` - at the bottom
 
 **Other body conventions:**
 - **Early returns** for null/invalid input: `if (document == null) return default;`
@@ -236,7 +236,7 @@ Common section comments:
 - LINQ method chains, not query syntax
 - String interpolation `$"..."` over `string.Format` or concatenation
 
-**Example** — `Services/Build/FormService.cs:54-118`:
+**Example** - `Services/Build/FormService.cs:54-118`:
 ```csharp
 public async Task<FilledForm?> ProcessFormAsync(
     FilledDocument document,
@@ -295,7 +295,7 @@ Notice how the comments alone tell the story of the method. That's the goal.
 - Synchronous helpers that return `Task<T>` for interface uniformity use `Task.FromResult(...)` rather than converting to a sync signature.
 - Synchronous helpers returning `Task` use `Task.CompletedTask`.
 - `ConfigureAwait(false)` appears in **background services** (`Services/Background/*`) but not in regular services. Match the surrounding file.
-- All `Task` / `Task<T>` returns — **no `ValueTask`** in this codebase.
+- All `Task` / `Task<T>` returns - **no `ValueTask`** in this codebase.
 
 ## 8. Logging
 
@@ -316,7 +316,7 @@ Notice how the comments alone tell the story of the method. That's the goal.
 - `try { ... } catch (Exception ex) { Log.Error(...); }` is the dominant shape. The catch logs and the method returns `default`.
 - Background services add a `finally` for delay/sleep loops: see `Services/Background/DocumentProcessingService.cs:51-70`.
 - `throw;` (re-throw) is used sparingly when the exception must propagate; `throw ex;` is never used.
-- Custom exception types are not used in this library — only generic `Exception`.
+- Custom exception types are not used in this library - only generic `Exception`.
 
 ## 10. Null handling
 
@@ -325,7 +325,7 @@ Notice how the comments alone tell the story of the method. That's the goal.
 - `_ = values.TryGetValue("Key", out var value);` to suppress unused return.
 - `??=` for late-init defaults.
 - `??` chains for fallback values.
-- The null-forgiving operator `!` is **not used** — code relies on null-conditional and null-coalescing instead.
+- The null-forgiving operator `!` is **not used** - code relies on null-conditional and null-coalescing instead.
 
 ## 11. DI / RegisterServices
 
@@ -337,8 +337,8 @@ builder.RegisterType<DocumentService>()
        .PreserveExistingDefaults();
 ```
 
-- `.AsImplementedInterfaces()` — interfaces are inferred from the implementation
-- `.PreserveExistingDefaults()` — respects any prior registration
+- `.AsImplementedInterfaces()` - interfaces are inferred from the implementation
+- `.PreserveExistingDefaults()` - respects any prior registration
 
 Registrations are grouped by domain with **uppercase** label comments:
 
@@ -361,7 +361,7 @@ builder.RegisterType<DocumentOutputService>()
 
 (The `.` after some labels is inconsistent in existing code; both `// HANDLERS` and `// BACKGROUND.` appear. Match the surrounding file.)
 
-`RegisterServices.cs` is a **block-scoped namespace** file — leave it that way when editing.
+`RegisterServices.cs` is a **block-scoped namespace** file - leave it that way when editing.
 
 For settings, services inject `IOptionsMonitor<TSettings>` (not `IOptions<T>`) and read `.CurrentValue` at use time.
 
@@ -376,12 +376,12 @@ For settings, services inject `IOptionsMonitor<TSettings>` (not `IOptions<T>`) a
 | `Repository` (Legacy only) | Older data-access objects | `DocumentBatchRepository` |
 
 **Method verb prefixes:**
-- `Get*` — read or fetch (`GetFilledDocumentAsync`, `GetVisibleFields`)
-- `Process*` — orchestrate a pipeline (`ProcessDocumentAsync`, `ProcessFormAsync`)
-- `Create*` — build a new value (`CreateFilledFormAsync`, `CreateArchiveForDocumentAsync`)
-- `Extract*` — pull data from a structure (`ExtractFieldsAsync`)
-- `Build*` — construct a complex output
-- `Save*` / `Set*` — write or assign
+- `Get*` - read or fetch (`GetFilledDocumentAsync`, `GetVisibleFields`)
+- `Process*` - orchestrate a pipeline (`ProcessDocumentAsync`, `ProcessFormAsync`)
+- `Create*` - build a new value (`CreateFilledFormAsync`, `CreateArchiveForDocumentAsync`)
+- `Extract*` - pull data from a structure (`ExtractFieldsAsync`)
+- `Build*` - construct a complex output
+- `Save*` / `Set*` - write or assign
 
 **Interfaces:** `I` prefix matching the implementation: `IDocumentService` ↔ `DocumentService`.
 
@@ -419,10 +419,10 @@ await _mediator.Publish(
 ## 14. Models, DTOs, settings
 
 Models live under `Models/` and are organized by purpose:
-- `Models/Database/` — DB-shaped data
-- `Models/Documents/` — domain documents and forms
-- `Models/Email/` — email shapes
-- `Models/Settings/` — settings classes for `IOptionsMonitor<T>`
+- `Models/Database/` - DB-shaped data
+- `Models/Documents/` - domain documents and forms
+- `Models/Email/` - email shapes
+- `Models/Settings/` - settings classes for `IOptionsMonitor<T>`
 
 Settings classes are plain DTOs with `{ get; set; }` auto-properties. They do **not** use records.
 
@@ -519,4 +519,4 @@ builder.RegisterType<WidgetService>()
        .PreserveExistingDefaults();
 ```
 
-And declare its interface in `Interfaces/IWidgetService.cs` — with no XML doc comments, just the interface body.
+And declare its interface in `Interfaces/IWidgetService.cs` - with no XML doc comments, just the interface body.

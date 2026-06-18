@@ -29,4 +29,12 @@ fi
 # Install.
 cp "$SOURCE" "$TARGET"
 echo "Installed $SOURCE -> $TARGET"
+
+# Record the kaizen signpost: where this machine's kit clone lives, so kaizen
+# capture can find it from any project. Machine-local, never committed.
+SIGNPOST="$TARGET_DIR/claude-kit.local.json"
+MACHINE=$(hostname 2>/dev/null || echo unknown)
+printf '{\n  "kitRepoPath": "%s",\n  "machine": "%s"\n}\n' "$SCRIPT_DIR" "$MACHINE" > "$SIGNPOST"
+echo "Recorded kaizen signpost at $SIGNPOST"
+
 echo "Next: /plugin marketplace add <your-github-username>/claude-kit ; /plugin install claude-kit@applefeld (user scope)"

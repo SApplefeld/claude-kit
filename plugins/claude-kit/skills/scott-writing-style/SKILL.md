@@ -3,7 +3,7 @@ name: scott-writing-style
 description: "Guide to writing in the style of Scott Applefeld. Use whenever asked for a document, draft, or other written output that will be sent by Scott Applefeld or intended to mimic his style."
 ---
 
-# Scott's Writing Structure — Outline Skill
+# Scott's Writing Structure - Outline Skill
 
 Rules reverse-engineered from five samples: *How We Secured TMWSuite*, *What Are the Benefits (Cost Savings)*, *What Is the Integration (Architecture + Endpoints)*, *RE: KNX Proposal*, *RE: Heniff Weekly Review (2025-01-13)*.
 
@@ -30,7 +30,7 @@ After the opener, deliver **context/definition before verdict**. The second move
 
 Do **not** state the verdict or recommendation second. Verdicts land at the end of a section or the end of the piece, after the reasoning.
 
-## 3. BODY — NUMBER OF SECTIONS
+## 3. BODY - NUMBER OF SECTIONS
 
 - Default: **4 to 6 top-level sections**.
   - TMWSuite: 6. Cost Savings: 5 numbered + 1 unnumbered features section. Integration: 4 major components + sub-sections. KNX email: 4 (Goal, Approach, Cost, Timeframe). Heniff review: 4 (Significant Issues, Status Updates, In Progress, Requested).
@@ -60,25 +60,25 @@ Use these. They are the signature moves.
 
 **Opening-sentence thesis per section.** Every section's first sentence states the point of the section in plain language. The rest of the section supports it.
 
-**"However" pivots.** Build the case, then pivot with `However,` or `By comparison,` or `Comparatively,`. This appears in every sample. It's the core rhetorical move — set up the reasonable-sounding status quo, then pivot to the reason it isn't sufficient.
+**"However" pivots.** Build the case, then pivot with `However,` or `By comparison,` or `Comparatively,`. This appears in every sample. It's the core rhetorical move - set up the reasonable-sounding status quo, then pivot to the reason it isn't sufficient.
 
 **Numbered lists for enumerated mechanics.** When listing steps, components, or ranked items, use numbered lists with lettered sub-items (1 → a → i). Used in TMWSuite, Cost Savings, KNX, Integration.
 
-**Bulleted lists for catalogs and field definitions.** When listing non-ranked items (fields, data points, options), use bullets. Each bullet is typically **bold term + em-dash or line break + explanation**.
+**Bulleted lists for catalogs and field definitions.** When listing non-ranked items (fields, data points, options), use bullets. Each bullet is typically **bold term + colon or line break + explanation**.
 
 **Italics for emphasis on a single word.** Pattern: `"any user"`, `"every table"`, `"all"`, `"nothing"`, `"Triggers"`, `"less than 0.25%"`, `"per year"`. One italicized word per sentence, max. Used to stress magnitude, universality, or a key technical term.
 
 **Bold numerics for anchoring quantitative claims.** In the cost savings doc especially: `**$1,080,000**`, `**1% reduction**`, `**\$9.00 per driver per month**`, `**11%**`. Bold the number and its unit together.
 
-**Concrete numbers over adjectives.** Every claim of impact is backed by a number — `40%`, `$109 per tractor per day`, `20-25 minutes`, `5 seconds`, `less than 0.25%`. Never write "significantly faster" without following it with the actual figure.
+**Concrete numbers over adjectives.** Every claim of impact is backed by a number - `40%`, `$109 per tractor per day`, `20-25 minutes`, `5 seconds`, `less than 0.25%`. Never write "significantly faster" without following it with the actual figure.
 
 **Short summary paragraph at the end of each section.** 1–2 sentences restating the conclusion. Then move on.
 
-**Concrete examples after abstract explanation.** `"The classic simple example for this 'Stops'. Let's say I want to update a Stop…"` — named example, walks through it, resolves it.
+**Concrete examples after abstract explanation.** `"The classic simple example for this 'Stops'. Let's say I want to update a Stop…"` - named example, walks through it, resolves it.
 
 **Prose paragraphs, not wall-of-bullets.** Even in technical docs, the *reasoning* lives in prose. Bullets are reserved for catalogs and field lists, not for decomposing arguments.
 
-**Em-dashes used sparingly.** They appear, but not as a stylistic crutch. Roughly 0–2 per section.
+**No em dashes.** Per the kit's global style rule, do not use em dashes in Scott's documents; use commas, periods, parentheses, or colons. (The original samples used them sparingly; the kit no longer does, because em dashes now read as an AI-writing tell.)
 
 **Parenthetical asides for caveats.** `"(as some of our customers have…)"`, `"(not every customer does)"`, `"(Dwell, Pre/Post Trip, Driving)"`. Use parentheses for scope-limiting caveats rather than a new sentence.
 
@@ -100,7 +100,7 @@ Use these. They are the signature moves.
 Conspicuously absent across all five samples:
 
 - **No question-form headers.** Ever.
-- **No rhetorical questions in the body prose.** The single exception is the self-answer device `"The answer to solve this? Impersonation."` — used maybe once per document, never more.
+- **No rhetorical questions in the body prose.** The single exception is the self-answer device `"The answer to solve this? Impersonation."` - used maybe once per document, never more.
 - **No emoji.** Zero.
 - **No motivational language.** No "unlock", "leverage", "empower", "transform", "revolutionize", "game-changer", "world-class", "cutting-edge".
 - **No marketing hype adjectives unsupported by numbers.** "Significant" appears, but always followed by the figure that justifies it.
@@ -121,7 +121,7 @@ Conspicuously absent across all five samples:
 
 Flagged honestly:
 
-1. **Header case**: Technical PDFs use ALL CAPS (`INTEGRATION DESIGN`). Benefit and integration docs use Title Case (`Improving Retention`, `Architecture Diagram`). The KNX email uses ALL CAPS (`GOAL`, `APPROACH`). No strict rule — pick based on formality: ALL CAPS for internal/technical and for proposal-style enumerations, Title Case for longer Title Case reports.
+1. **Header case**: Technical PDFs use ALL CAPS (`INTEGRATION DESIGN`). Benefit and integration docs use Title Case (`Improving Retention`, `Architecture Diagram`). The KNX email uses ALL CAPS (`GOAL`, `APPROACH`). No strict rule - pick based on formality: ALL CAPS for internal/technical and for proposal-style enumerations, Title Case for longer Title Case reports.
 
 2. **Opener formality**: Three of five (the PDFs) open cold with the thesis. The two emails open with a one-line thank-you first. Rule: emails get the courtesy line, documents don't.
 
@@ -133,6 +133,6 @@ Flagged honestly:
 
 1. Every section opens with a one-sentence thesis, then supports it.
 2. Every impact claim is anchored to a specific number.
-3. `However,` / `By comparison,` is the core pivot — set up, then pivot.
+3. `However,` / `By comparison,` is the core pivot - set up, then pivot.
 4. Close with an `END RESULT`-style net-state paragraph, not a call to action.
 5. No questions as headers, no emoji, no hype adjectives, no opening anecdote.

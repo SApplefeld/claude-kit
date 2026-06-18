@@ -27,4 +27,14 @@ if (Test-Path $target) {
 # Install.
 Copy-Item $source $target -Force
 Write-Host "Installed $source -> $target"
+
+# Record the kaizen signpost: where this machine's kit clone lives, so kaizen
+# capture can find it from any project. Machine-local, never committed.
+# Write UTF-8 without BOM so Node/JSON readers do not choke on a leading BOM.
+$signpost = Join-Path $targetDir "claude-kit.local.json"
+$data = [ordered]@{ kitRepoPath = $PSScriptRoot; machine = $env:COMPUTERNAME }
+$json = $data | ConvertTo-Json
+[System.IO.File]::WriteAllText($signpost, $json, (New-Object System.Text.UTF8Encoding($false)))
+Write-Host "Recorded kaizen signpost at $signpost"
+
 Write-Host "Next: /plugin marketplace add <your-github-username>/claude-kit ; /plugin install claude-kit@applefeld (user scope)"

@@ -1,6 +1,6 @@
-# SQL Style — ASR.Eleos.Database.Deployment
+# SQL Style (modeled on ASR.Eleos.Database.Deployment)
 
-This is the detailed pattern reference for writing SQL in Scott's style. The canonical examples come from `D:\source\repos\EleosCore\ASR.Eleos\ASR.Eleos.Database.Deployment`. When in doubt, open a sibling file in that library and follow its layout exactly.
+This is the detailed pattern reference for writing SQL in Scott's style. The canonical examples are modeled on `D:\source\repos\EleosCore\ASR.Eleos\ASR.Eleos.Database.Deployment`. The patterns are what transfer: the `ELEOS` schema, the `usp_AuditError` logger, and `WITH EXECUTE AS 'ELEOS'` are this codebase's own names, so substitute the project's schema and proc names rather than copying them literally. Inside an ASR.Eleos repo, open a sibling file in that library and follow its layout exactly.
 
 ## Table of contents
 
@@ -34,14 +34,14 @@ The library uses numeric prefixes to enforce execution order during deployment:
 
 | Folder | Contents | Why this number |
 | --- | --- | --- |
-| `0-Client` | Client-specific configuration, customization, and report jobs | Runs first — sets up environment-specific values |
+| `0-Client` | Client-specific configuration, customization, and report jobs | Runs first - sets up environment-specific values |
 | `3-Tables` | `CREATE TABLE` scripts with primary-key and index DDL | DDL must exist before procedures reference it |
 | `4-Functions` | `udf_*` user-defined functions | Functions are dependencies of procedures |
-| `5-Procedures` | `usp_*` stored procedures | Main business logic — runs after dependencies exist |
+| `5-Procedures` | `usp_*` stored procedures | Main business logic - runs after dependencies exist |
 | `9-System` | System / TMS-specific procedures | Runs last; depends on full schema being present |
 | `Database` | Bootstrap install scripts (TMWSuite, LoadMaster, TL2000) | One-time database creation scripts |
 
-Folder gaps (1, 2, 6, 7, 8) are reserved for potential future categories — leave them open.
+Folder gaps (1, 2, 6, 7, 8) are reserved for potential future categories - leave them open.
 
 **File naming:** Each file is named `<schema>.<object>.sql`:
 - `ELEOS.usp_GetBackgroundMessages.sql`
@@ -52,7 +52,7 @@ Variant procedures use suffixes: `_Default`, `_Maintenance`, `_Trailers`, `_TMS`
 
 ## 2. Procedure deployment idiom
 
-**Always shell-then-ALTER.** Never `CREATE OR ALTER PROCEDURE` — even though SQL Server supports it. The reason is that the shell-then-ALTER pattern preserves existing GRANTs and permissions across deployments.
+**Always shell-then-ALTER.** Never `CREATE OR ALTER PROCEDURE` - even though SQL Server supports it. The reason is that the shell-then-ALTER pattern preserves existing GRANTs and permissions across deployments.
 
 The exact pattern:
 
@@ -75,7 +75,7 @@ GO
 
 Key details:
 - The shell `EXEC` line is indented 2 spaces (not a tab).
-- `WITH EXECUTE AS 'ELEOS'` always appears before `AS`. This is the delegated security model — every proc runs as the schema owner.
+- `WITH EXECUTE AS 'ELEOS'` always appears before `AS`. This is the delegated security model - every proc runs as the schema owner.
 - `BEGIN	-- PROCEDURE` has a tab between `BEGIN` and the trailing inline label comment. This is a signature pattern of Scott's style.
 - The file ends with `GO` after the `END`.
 
@@ -106,7 +106,7 @@ For scalar functions, the `RETURN` is on its own line followed by the expression
 
 ## 4. Table deployment idiom
 
-Tables use a **defensive existence check on `sys.schemas` joined to `sys.tables`** — not just `OBJECT_ID`. This is more readable in the diff and protects against name collisions across schemas.
+Tables use a **defensive existence check on `sys.schemas` joined to `sys.tables`** - not just `OBJECT_ID`. This is more readable in the diff and protects against name collisions across schemas.
 
 ```sql
 /*********************************************************************************
@@ -160,7 +160,7 @@ Key details:
 - `/* Group Name */` block comments group related columns (Request Fields, Response Fields, Tracking Fields, Error Fields, Audit Fields).
 - A blank line between groups.
 - **Audit fields** (`CreatedDt`, `UpdatedDt`) always go at the bottom, defaulted to `SYSDATETIMEOFFSET()` (not `GETDATE()`).
-- Default constraints are inline `DEFAULT(...)` — not separately named.
+- Default constraints are inline `DEFAULT(...)` - not separately named.
 - Computed columns use `AS ( expression ) PERSISTED`.
 - The PK is the last entry, named `PK_<TableName>`, formatted with name on its own line and `PRIMARY KEY CLUSTERED ( [Col] )` indented underneath.
 
@@ -189,7 +189,7 @@ GO
 
 ## 6. The procedure header banner
 
-Inside `BEGIN -- PROCEDURE`, every procedure has a metadata banner. The banner is critical — it documents the purpose, author, version, and history. Skipping it is not an option.
+Inside `BEGIN -- PROCEDURE`, every procedure has a metadata banner. The banner is critical - it documents the purpose, author, version, and history. Skipping it is not an option.
 
 The exact format:
 
@@ -209,17 +209,17 @@ The exact format:
 ```
 
 Banner conventions:
-- Top and bottom rows are 92 asterisks (or close — the count is by eye, not strict).
+- Top and bottom rows are 92 asterisks (or close - the count is by eye, not strict).
 - Two adjacent asterisk lines bookend the SCRIPT/AUTHOR/DATE/VERSION block.
 - One asterisk line separates the metadata from the NOTES section.
 - DATE uses the **ordinal English format** ("February 16th, 2025", not "2025-02-16").
 - Each NOTES entry leads with `vN.N - MM/DD/YYYY - AUTHOR NAME - COMPANY` then the body indented underneath.
 - AUTHOR can be `Scott Applefeld` or `Scott Applefeld / ASR Solutions`.
-- When you bump the version, **add** a new note line above the previous — do not rewrite history.
+- When you bump the version, **add** a new note line above the previous - do not rewrite history.
 
 ## 7. Parameter declarations
 
-After the procedure name, parameters are declared inside parentheses (procedures only — older procs sometimes omit the parentheses). The first row inside is a comment row showing the column headings:
+After the procedure name, parameters are declared inside parentheses (procedures only - older procs sometimes omit the parentheses). The first row inside is a comment row showing the column headings:
 
 ```sql
 ;ALTER PROCEDURE ELEOS.usp_AuditApiCall
@@ -248,7 +248,7 @@ Conventions:
 - Table-valued parameters use `READONLY`: `@p_FormData ELEOS.FormFieldType READONLY`.
 - The closing `)` and the `WITH EXECUTE AS 'ELEOS'` are at the procedure-signature column.
 
-For procedures that have no parameter wrapper (older style — see `usp_GetBackgroundMessages`), parameters appear directly after the procedure name with the same comment row, no parentheses, no `(`/`)`. Either style is acceptable; **match the surrounding files**.
+For procedures that have no parameter wrapper (older style - see `usp_GetBackgroundMessages`), parameters appear directly after the procedure name with the same comment row, no parentheses, no `(`/`)`. Either style is acceptable; **match the surrounding files**.
 
 ## 8. SET statements
 
@@ -267,9 +267,9 @@ Every procedure body opens with two paired SET statements, inside their own bann
   - `READ UNCOMMITTED` for read-heavy procs (the default for `Get*` procedures)
   - `READ COMMITTED` for write/transactional procs (the default for `Save*`, `Process*`, audit procs)
 - Both statements lead with a semicolon.
-- They are wrapped in a section banner naming what they're for (the wording varies — "SET PROCESSING VARIABLES TO INCREASE SPEED AND DATA ACCESS." or "SET PROCESSING VARIABLES TO SUPPRESS OUTPUT.").
+- They are wrapped in a section banner naming what they're for (the wording varies - "SET PROCESSING VARIABLES TO INCREASE SPEED AND DATA ACCESS." or "SET PROCESSING VARIABLES TO SUPPRESS OUTPUT.").
 
-`SET XACT_ABORT` is **not used** in this codebase — error handling is via TRY/CATCH instead.
+`SET XACT_ABORT` is **not used** in this codebase - error handling is via TRY/CATCH instead.
 
 ## 9. Variable declarations
 
@@ -289,7 +289,7 @@ Conventions:
 - One `;DECLARE` keyword introduces the block; subsequent variables continue with leading comma.
 - Tab-align name → type → default.
 - `@True BIT = 1` and `@False BIT = 0` are declared at the top of nearly every procedure that has any conditional logic. Use them in place of literal `1`/`0` for readability.
-- Variable names use plain `@PascalCase` — no `@v_` or `@local_` prefix conventions.
+- Variable names use plain `@PascalCase` - no `@v_` or `@local_` prefix conventions.
 - `@p_` is reserved for parameters; never use `@p_` for local variables.
 - When a procedure has many conceptually distinct variable groups, use multiple `;DECLARE` blocks with separate banners.
 
@@ -325,7 +325,7 @@ For sub-sections inside a banner (smaller groupings), use a single-line `/* Sub-
 
 ## 11. TRY/CATCH and error logging
 
-Every non-trivial procedure wraps its main logic in a `BEGIN TRY` / `BEGIN CATCH` block. The CATCH calls `usp_AuditError` to log the failure but does **not** re-throw — it absorbs the error so the caller doesn't fail.
+Every non-trivial procedure wraps its main logic in a `BEGIN TRY` / `BEGIN CATCH` block. The CATCH calls `usp_AuditError` to log the failure but does **not** re-throw - it absorbs the error so the caller doesn't fail.
 
 ```sql
     /********************************************************************************************
@@ -359,8 +359,8 @@ Every non-trivial procedure wraps its main logic in a `BEGIN TRY` / `BEGIN CATCH
 
 Key details:
 - `;BEGIN TRY` and `END TRY` and `BEGIN CATCH` and `END CATCH` keywords on their own lines.
-- The `IF (OBJECT_ID('ELEOS.usp_AuditError') IS NOT NULL)` guard is defensive — protects against deployments where the error logger isn't yet present.
-- `END ELSE BEGIN` on a single line is a Scott signature pattern — note the spacing (one space on each side of `ELSE`).
+- The `IF (OBJECT_ID('ELEOS.usp_AuditError') IS NOT NULL)` guard is defensive - protects against deployments where the error logger isn't yet present.
+- `END ELSE BEGIN` on a single line is a Scott signature pattern - note the spacing (one space on each side of `ELSE`).
 - `THROW` may be used inside nested CATCHes when the error genuinely needs to propagate, but is rare.
 
 ## 12. Leading commas and tab alignment
@@ -384,7 +384,7 @@ The pattern: **first item has a leading space; subsequent items have a leading c
         ,[ThreadHandle]         = RTRIM(H.[ThreadHandle])
 ```
 
-Tab characters do the alignment — not spaces. Inside this codebase one tab equals 4 columns of width.
+Tab characters do the alignment - not spaces. Inside this codebase one tab equals 4 columns of width.
 
 For SQL Server bracket syntax, **always wrap column names in `[...]`** even when not necessary. This is for visual consistency.
 
@@ -396,7 +396,7 @@ For SQL Server bracket syntax, **always wrap column names in `[...]`** even when
   SELECT   [DriverId]     = D.[Id]
           ,[FullName]     = CONCAT(D.[First], ' ', D.[Last])
   ```
-- Tables in FROM/JOIN are aliased with a short identifier — no `AS`:
+- Tables in FROM/JOIN are aliased with a short identifier - no `AS`:
   ```sql
   FROM ELEOS.DocumentHistory H
        LEFT JOIN ELEOS.DocumentFields F
@@ -466,7 +466,7 @@ WHERE   C.[ApiCallId] = @p_ApiCallId
 
 ## 15. String, date, and null functions
 
-- **CONCAT** preferred over `+` for string concatenation — it's null-safe.
+- **CONCAT** preferred over `+` for string concatenation - it's null-safe.
 - **COALESCE** preferred over `ISNULL` for value defaulting (especially when there are 3+ fallbacks).
 - **`IS NULL`** for existence checks in WHERE clauses.
 - **TRY_PARSE / TRY_CONVERT** for safe casts (return NULL on failure).
@@ -493,7 +493,7 @@ WHERE   C.[ApiCallId] = @p_ApiCallId
 | `-- Comment.` | Inline comments and labels above blocks; **end with period** |
 | `-- TITLE.` | Top-of-file pre-banner comments (e.g. `-- CREATE A SHELL PROCEDURE IF NONE EXISTS.`) |
 
-The convention: **comments that are sentences end with a period; comments that are labels/titles do not.** Pay attention — the table column groups (`/* Request Fields */`) are titles and do not end in a period; the procedure inline comments (`/* Validate Upsert Operation. */`) are sentence-style instructions and do.
+The convention: **comments that are sentences end with a period; comments that are labels/titles do not.** Pay attention - the table column groups (`/* Request Fields */`) are titles and do not end in a period; the procedure inline comments (`/* Validate Upsert Operation. */`) are sentence-style instructions and do.
 
 ## 18. Naming conventions
 
@@ -514,11 +514,11 @@ The convention: **comments that are sentences end with a period; comments that a
 | CTE | `cte<PascalCase>` | `cteStopSequences` |
 
 **Procedure suffix conventions:**
-- `_Default` — default variant (e.g. `usp_GetDocumentXML_Default`)
-- `_Maintenance`, `_Trailers` — domain-specific variants
-- `_TMS` — TMS-specific entry point (lives in `9-System/`)
-- `_Debug` — debugging counterpart of a procedure
-- `_Custom_<Vendor>` — client/vendor-specific custom processing
+- `_Default` - default variant (e.g. `usp_GetDocumentXML_Default`)
+- `_Maintenance`, `_Trailers` - domain-specific variants
+- `_TMS` - TMS-specific entry point (lives in `9-System/`)
+- `_Debug` - debugging counterpart of a procedure
+- `_Custom_<Vendor>` - client/vendor-specific custom processing
 
 ## 19. Full procedure template
 

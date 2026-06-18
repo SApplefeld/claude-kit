@@ -35,7 +35,7 @@ function tryFormat(filePath) {
             });
             if (result.status === 0) return true;
         } catch {
-            // Candidate unavailable — try the next.
+            // Candidate unavailable - try the next.
         }
     }
     return false;
