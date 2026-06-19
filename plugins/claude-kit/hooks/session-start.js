@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// SessionStart hook: compaction/startup recovery, plus a kit-repo kaizen nudge.
+// SessionStart hook: compaction/startup recovery, plus a kit-repo kaizen nudge
+// and a docs-library hygiene nudge.
 // Scans docs/plans/ for in-progress plan docs and injects an instruction to
 // re-read them (including Chapters) before any work proceeds. Fires on
 // startup, resume, and (critically) after compaction.
@@ -78,8 +79,9 @@ function main() {
     const source = payload.source || 'startup';
     const plansDir = path.join(cwd, 'docs', 'plans');
 
-    // Find In-Progress Plan Docs.
+    // Find In-Progress Plan Docs, and count Complete-but-unarchived ones.
     const activePlans = [];
+    let completedUnarchived = 0;
     try {
         // Cap the scan so a pathological repo cannot turn session start into
         // thousands of file opens.
@@ -101,6 +103,10 @@ function main() {
                         file: file.replace(/[^\x20-\x7E]/g, '').slice(0, 120),
                         model: model ? model[1] : 'unknown'
                     });
+                } else if (/status:\s*complete/i.test(head)) {
+                    // A Complete plan should have moved to docs/archive/. One still
+                    // in plans/ is a missed close-out step: count it for a soft nudge.
+                    completedUnarchived++;
                 }
             } catch {
                 // Unreadable file: skip it.
@@ -119,7 +125,7 @@ function main() {
     }
 
     // Emit Additional Context.
-    if (activePlans.length === 0 && kaizenCount === 0) return;
+    if (activePlans.length === 0 && kaizenCount === 0 && completedUnarchived === 0) return;
 
     const blocks = [];
 
@@ -135,6 +141,10 @@ function main() {
             ...lines,
             'Before doing ANY work: read the plan doc(s) in full, including all Chapters, the authoritative record of completed sections, decisions, and the commit model in effect. Resume from the Next entry of the latest Chapter and follow the executing-work skill, driving the remaining sections to completion. Honor each section\'s Model tier: sonnet/opus sections are dispatched to the matching implementer agent, fable runs in the main thread.'
         ].join('\n'));
+    }
+
+    if (completedUnarchived > 0) {
+        blocks.push(`${completedUnarchived} plan doc(s) in docs/plans/ are marked Status: Complete but still sit there unarchived. At the next close-out, run the curating-docs skill to move them into docs/archive/, prune the backlog, and refresh the index. Reminder, not a blocker.`);
     }
 
     if (kaizenCount > 0) {

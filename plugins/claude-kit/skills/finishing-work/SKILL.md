@@ -19,7 +19,7 @@ When per-section reviews already cleared parts of the changeset, tell the finish
 
 4. **Documentation curation.** Dispatch the `docs-curator` agent with the spec path. It updates the project's docs/ from the as-built code and returns a Drift Report. **Present every drift item to Scott for adjudication; never silently reconcile.** Drift is signal: either the docs were wrong, the spec was wrong, or the implementation diverged from his mental model. He decides which.
 
-5. **Close the plan doc.** Set `Status: Complete`, append a final Chapter summarizing the effort, the review outcomes, and the drift adjudications.
+5. **Close and archive the plan doc.** Set `Status: Complete` and append a final Chapter summarizing the effort, the review outcomes, and the drift adjudications. Then invoke the `curating-docs` skill to finish the lifecycle: `git mv` the plan from `docs/plans/` into `docs/archive/` (history preserved, Chapters intact), act on any cross-reference gaps the docs-curator flagged, prune `docs/backlog.md` of items this effort completed into the quarter's archive snapshot, and refresh the `docs/README.md` index. A plan is not closed until it has left `docs/plans/`.
 
 6. **Apply the commit model:**
    - **Review-Only:** present a consolidated walkthrough, every changed file, what changed and why, organized by section, with a diff summary (the staged changes are the review surface). Then stop; Scott reviews before anything is committed.
