@@ -21,6 +21,7 @@ The `curating-docs` skill owns the mechanics: it archives a plan when it complet
 ## Active plans
 
 - `plans/claude-kit_docs-lifecycle_spec_v1.md` - the docs library lifecycle effort that created this structure. In Progress, pending review.
+- `plans/claude-kit_docs-write-guard_spec_v1.md` - deterministic PreToolUse guard plus Stop-scan backstop that enforces the docs/-is-curated invariant. In Progress, pending review.
 
 ## Archive
 

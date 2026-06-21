@@ -71,6 +71,9 @@ Acceptance: no kit instruction tells a subagent to write a report into `docs/`; 
 
 None outstanding. The three design forks (separate index vs combined backlog, enforcement strength, retrofit) were decided with Scott on 2026-06-19: separate index and backlog, quiet SessionStart nudge, retrofit folded into curating-docs.
 
+## Related
+This effort's report hygiene is enforced mechanically by `claude-kit_docs-write-guard_spec_v1.md`, a deterministic PreToolUse guard plus a Stop-scan backstop.
+
 ## Chapters
 
 ### Chapter 1 - 2026-06-19
