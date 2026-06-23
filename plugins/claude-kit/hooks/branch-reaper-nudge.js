@@ -1,17 +1,25 @@
 #!/usr/bin/env node
-// SessionStart hook: branch-hygiene nudge.
+// SessionStart hook: branch-hygiene auto-reap trigger.
 //
-// Counts local branches that look reapable (verified merged into the integration
-// branch: origin/develop, else origin/main, else origin/master) and reminds Scott
-// to run the branch-hygiene skill. Read-only and fail-open: it never deletes
-// anything, uses only cached refs (no network fetch), times out fast, and any
-// error exits 0 with no output. Kept separate from session-start.js so the
-// resume-critical hook is untouched.
+// At session start, refresh the merge state and, if any local branches have
+// merged into the integration branch (origin/develop, else origin/main/master),
+// emit an instruction to run the branch-hygiene skill now, so the workspace is
+// cleaned before the next branch is picked. The hook NEVER deletes anything: it
+// detects and hands off to the tested skill, which removes only verified-merged
+// branches and their clean worktrees and reports the rest.
+//
+// Fail-open and non-blocking: a bounded fetch with auth prompts disabled and a
+// short timeout, skipped when the repo was fetched recently; any error exits 0
+// with no output. Kept separate from session-start.js so the resume hook is
+// untouched.
 
 'use strict';
 
 const fs = require('fs');
+const path = require('path');
 const { execSync } = require('child_process');
+
+const FETCH_SKIP_MS = 10 * 60 * 1000; // skip the fetch if fetched within 10 minutes
 
 function readStdin() {
     try { return fs.readFileSync(0, 'utf8'); } catch { return ''; }
@@ -30,10 +38,30 @@ function refExists(cwd, ref) {
     try { git(cwd, `rev-parse --verify --quiet ${ref}`); return true; } catch { return false; }
 }
 
+// Refresh remote-tracking refs, unless fetched recently. Bounded, auth-safe, and
+// fail-open: a failure or timeout just leaves the cached refs in place.
+function maybeFetch(cwd) {
+    try {
+        const fh = git(cwd, 'rev-parse --git-path FETCH_HEAD').trim();
+        const full = path.isAbsolute(fh) ? fh : path.join(cwd, fh);
+        if ((Date.now() - fs.statSync(full).mtimeMs) < FETCH_SKIP_MS) return; // recent: skip
+    } catch { /* no FETCH_HEAD yet: fall through and fetch */ }
+    try {
+        execSync('git fetch --prune', {
+            cwd,
+            timeout: 6000,
+            stdio: ['ignore', 'ignore', 'ignore'],
+            env: Object.assign({}, process.env, { GIT_TERMINAL_PROMPT: '0' })
+        });
+    } catch { /* offline, slow, or no remote: proceed on cached refs */ }
+}
+
 function main() {
     let p = {};
     try { p = JSON.parse(readStdin() || '{}'); } catch { return; }
     const cwd = p.cwd || process.cwd();
+
+    maybeFetch(cwd);
 
     // Integration ref: develop preferred, then main, then master.
     let integ = null;
@@ -53,14 +81,14 @@ function main() {
             .filter(Boolean)
             .filter((b) => !protectedNames.has(b))
             .length;
-    } catch { return; } // cannot compute: stay silent
+    } catch { return; }
 
     if (count === 0) return;
 
     process.stdout.write(JSON.stringify({
         hookSpecificOutput: {
             hookEventName: 'SessionStart',
-            additionalContext: `Branch hygiene: ${count} local branch(es) are merged into ${integ} and look reapable (along with any worktrees on them). Run the branch-hygiene skill to sweep the verified-merged ones; it leaves anything unmerged or dirty for you. Reminder, not a blocker.`
+            additionalContext: `Branch hygiene: ${count} local branch(es) merged into ${integ} are reapable. Before starting this session's work, run the branch-hygiene skill to sweep them and their worktrees. It removes only verified-merged branches and clean worktrees under .claude/worktrees/, protects the current branch, and reports anything unmerged or dirty with restore commands. Refs were just refreshed, so the skill's own fetch is a fast no-op.`
         }
     }));
 }

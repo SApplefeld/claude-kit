@@ -72,7 +72,7 @@ For each Section of Work, in order:
 
 7. **Apply the commit model** recorded in the spec header:
    - **Review-Only:** stage the section's changes (`git add`); never commit. Accumulate a running changed-files summary in the Chapter for the final walkthrough. `git diff --staged` is Scott's review surface.
-   - **Branch-and-PR:** commit the section to the feature branch with a descriptive message. The PR happens in finishing-work.
+   - **Branch-and-PR:** commit the section's code together with its Chapter (the plan doc update from step 6) to the feature branch, so the record rides with the change into the eventual merge. The PR happens in finishing-work. Pushing here is not merging: nothing is final until that merge.
    - **Commit-and-Push:** commit the section and push to origin. (If concurrency put you on a worktree branch, the merge to main and teardown happen in finishing-work, not here.)
 
 Then continue to the next section. Do not stop here.

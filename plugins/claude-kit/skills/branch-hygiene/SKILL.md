@@ -21,7 +21,7 @@ Protected, never touched no matter what: `develop`, `main`, `master`, the curren
 4. For each merged branch, record its tip SHA first (`git rev-parse <name>`), so the report can offer the restore command. If it has a worktree under `.claude/worktrees/` and that tree is clean (`git -C <path> status --porcelain` is empty), `git worktree remove <path>` without `--force`. Then `git branch -D <name>` (safe here, because it is verified merged into the integration ref).
 5. Report in two parts:
    - **Reaped:** each branch and worktree removed, with `restore: git branch <name> <sha>`.
-   - **Left for you, with the reason:** a branch whose upstream is gone but is not merged into the integration ref (possibly squash-merged elsewhere or abandoned, your call); any unmerged branch; any dirty worktree; any reapable-looking worktree outside `.claude/worktrees/`. List them, do not delete them.
+   - **Left for you, with the reason:** a branch whose upstream is gone but is not merged into the integration ref (possibly squash-merged elsewhere or abandoned, your call); a branch that is ahead of the integration ref and whose PR has already merged (likely stranded post-merge commits: `git log origin/<integration>..origin/<branch>` shows them; recover via a new doc PR before deleting); any unmerged branch; any dirty worktree; any reapable-looking worktree outside `.claude/worktrees/`. List them, do not delete them.
 
 ## Hard rules
 

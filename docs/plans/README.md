@@ -11,7 +11,4 @@ This folder holds active plans only: specs that are open or in progress. A plan 
 
 ## Current
 
-- `claude-kit_docs-lifecycle_spec_v1.md` - docs library lifecycle. Status: In Progress.
-- `claude-kit_docs-write-guard_spec_v1.md` - deterministic docs/ write guard. Status: In Progress.
-- `claude-kit_pr-docs-gate_spec_v1.md` - docs committed before the PR, with a benign-drift fast-path. Status: In Progress.
-- `claude-kit_branch-hygiene_spec_v1.md` - reaper skill plus SessionStart nudge for merged branches and worktrees. Status: In Progress.
+None at present. Completed plans are in `../archive/`.
