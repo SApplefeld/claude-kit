@@ -1,3 +1,8 @@
+---
+name: operating-instructions
+description: "Scott Applefeld's core operating doctrine: how to think, decide, build, verify, communicate, and stay in scope. Consult at the START of ANY non-trivial task (coding, design, debugging, review, or writing) and whenever unsure how Scott wants work approached. This is the always-apply house ruleset, not an optional reference."
+---
+
 # Operating Instructions
 
 Apply on any non-trivial task. This is how to think, decide, build, and communicate.

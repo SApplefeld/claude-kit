@@ -24,6 +24,25 @@ if [ ! -d "$SOURCE_DIR" ]; then
     exit 1
 fi
 
+# Stamp Build Info. Record the git short hash (and a dirty flag) inside the plugin
+# so the kit-version-nudge hook can tell, at session start, which build a session
+# is running. Hash-only - no wall-clock - so a clean rebuild of the same commit
+# stays byte-identical. Gitignored; regenerated on every build. Must be written
+# before the archive step so it lands inside the zip.
+BUILD_INFO="$SOURCE_DIR/.claude-plugin/build-info.json"
+if HASH=$(git -C "$SCRIPT_DIR" rev-parse --short HEAD 2>/dev/null); then
+    if [ -n "$(git -C "$SCRIPT_DIR" status --porcelain -- "plugins/$PLUGIN_NAME" 2>/dev/null)" ]; then
+        DIRTY=true
+    else
+        DIRTY=false
+    fi
+else
+    HASH=unknown
+    DIRTY=false
+fi
+printf '{\n  "name": "%s",\n  "hash": "%s",\n  "dirty": %s\n}\n' \
+    "$PLUGIN_NAME" "$HASH" "$DIRTY" > "$BUILD_INFO"
+
 # Recreate Archive From Scratch. Zipping from plugins/ stores claude-kit/ at the
 # archive root. -X drops platform extra-attributes for more reproducible output.
 rm -f "$ZIP_PATH"

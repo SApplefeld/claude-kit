@@ -1,14 +1,18 @@
-# Install home/CLAUDE.md as the user-level CLAUDE.md, backing up any existing file.
-# Run from the repo root: .\setup.ps1
+# Dev-clone setup for the claude-kit repo: record the kaizen signpost and wire git
+# hooks. Run from the repo root: .\setup.ps1
+#
+# The operating doctrine ships via the plugin now (the operating-instructions
+# skill), so setup no longer installs a user-level CLAUDE.md. On Claude Code the
+# doctrine-refresh hook maintains ~/.claude/claude-kit-doctrine.md and your
+# ~/.claude/CLAUDE.md imports it with one line (see the Next hints).
 
 # Resolve Paths.
-$source = Join-Path $PSScriptRoot "home\CLAUDE.md"
 $targetDir = Join-Path $env:USERPROFILE ".claude"
-$target = Join-Path $targetDir "CLAUDE.md"
+$pluginMarker = Join-Path $PSScriptRoot "plugins\claude-kit\.claude-plugin\plugin.json"
 
-# Validate Source.
-if (-not (Test-Path $source)) {
-    Write-Error "home\CLAUDE.md not found next to setup.ps1. Run from the repo root."
+# Validate this is the kit repo (so the signpost's kitRepoPath is meaningful).
+if (-not (Test-Path -LiteralPath $pluginMarker)) {
+    Write-Error "Not the claude-kit repo root (plugins\claude-kit\.claude-plugin\plugin.json missing). Run from the repo root."
     exit 1
 }
 
@@ -17,20 +21,9 @@ if (-not (Test-Path $targetDir)) {
     New-Item -ItemType Directory -Path $targetDir | Out-Null
 }
 
-# Back Up Existing File.
-if (Test-Path $target) {
-    $backup = "$target.bak.$(Get-Date -Format 'yyyyMMdd-HHmmss')"
-    Copy-Item $target $backup
-    Write-Host "Existing CLAUDE.md backed up to $backup"
-}
-
-# Install.
-Copy-Item $source $target -Force
-Write-Host "Installed $source -> $target"
-
 # Record the kaizen signpost: where this machine's kit clone lives, so kaizen
-# capture can find it from any project. Machine-local, never committed.
-# Write UTF-8 without BOM so Node/JSON readers do not choke on a leading BOM.
+# capture (the kaizen skill) can find the clone from any project. Machine-local,
+# never committed. Write UTF-8 without BOM so Node/JSON readers do not choke.
 $signpost = Join-Path $targetDir "claude-kit.local.json"
 $data = [ordered]@{ kitRepoPath = $PSScriptRoot; machine = $env:COMPUTERNAME }
 $json = $data | ConvertTo-Json
@@ -47,4 +40,7 @@ else {
     Write-Warning "git not found; skipped hook wiring. Run later: git config core.hooksPath .githooks"
 }
 
-Write-Host "Next: /plugin marketplace add <your-github-username>/claude-kit ; /plugin install claude-kit@applefeld (user scope)"
+Write-Host "Next:"
+Write-Host "  1. Install the plugin:  /plugin marketplace add <your-github-username>/claude-kit ; /plugin install claude-kit@applefeld"
+Write-Host "  2. (Claude Code, once per machine) add to ~/.claude/CLAUDE.md so the doctrine loads always-on:  @claude-kit-doctrine.md"
+Write-Host "  3. (Cowork/Chat, once per account) add to your account preferences:  Before any non-trivial task, consult the operating-instructions skill."

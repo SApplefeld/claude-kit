@@ -20,7 +20,7 @@ The `curating-docs` skill owns the mechanics: it archives a plan when it complet
 
 ## Active plans
 
-None at present. The docs and git hygiene effort series (docs-lifecycle, docs-write-guard, pr-docs-gate, branch-hygiene, merge-strand-guard) is complete and archived under `archive/`.
+- `plans/claude-kit_doctrine-delivery_spec_v1.md` (In Progress) - single-sources the operating doctrine as a plugin skill and delivers it per surface (Code always-on via import + refresh hook; Cowork/Chat via the skill + an account pointer). Extends the git-hygiene series; see its `## Related` link to the archived `merge-strand-guard` spec, whose push guard and stranded-commit work ship in the same changeset.
 
 ## Archive
 

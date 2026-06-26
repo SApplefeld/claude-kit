@@ -13,6 +13,7 @@ claude-kit/                          (repo = the marketplace)
       .claude-plugin/plugin.json     Plugin manifest (no version field - every
                                      commit counts as a new version)
       skills/
+        operating-instructions/      Always-apply operating doctrine; canonical single source, delivered per surface
         brainstorming/               Design conversation, spec in docs/plans/, scope-check, commit model
         executing-work/              Autonomous section loop with the completion contract: implement, verify, review, Chapter
         finishing-work/              QA, security, docs curation, final review, close-out, integration per commit model
@@ -37,10 +38,9 @@ claude-kit/                          (repo = the marketplace)
         session-start.js             Re-injects in-progress plans on startup/resume/compaction
         format-on-edit.js            CSharpier on edited .cs files (silent when not installed)
   kaizen/                            Kit self-improvement inbox (per-machine notes-*.md + briefs/)
-  home/CLAUDE.md                     Versioned user-level CLAUDE.md (installed by setup script)
   home/CLAUDE-FOR-FABLE.md           Leaner user-level CLAUDE.md variant for the Fable model
   settings/settings.recommended.json Permission rules + acceptEdits starting point
-  setup.ps1 / setup.sh               Per-machine CLAUDE.md install + kaizen signpost (~/.claude/claude-kit.local.json) + git hook wiring
+  setup.ps1 / setup.sh               Dev-clone setup: kaizen signpost (~/.claude/claude-kit.local.json) + git hook wiring
   build.ps1 / build.sh               Package plugins/claude-kit -> plugins/claude-kit.zip (claude-kit/ at archive root) for manual upload
   .githooks/pre-commit               Rebuilds the zip on commit when plugin sources change (wired via core.hooksPath)
 ```
@@ -64,13 +64,17 @@ The catalog at `.claude-plugin/marketplace.json` points to the plugin with `"sou
    ```
    Default scope is user, so every project picks it up. If the marketplace was added before a structure fix, refresh it first: `/plugin marketplace update applefeld` (or remove and re-add).
 
-4. Install the user-level CLAUDE.md (plugins cannot ship memory files):
+4. Wire the dev clone (kaizen signpost + git hooks; this no longer installs a user CLAUDE.md):
    - Windows: `.\setup.ps1`
    - WSL/macOS/Linux: `./setup.sh`
 
 5. Merge `settings/settings.recommended.json` into `~/.claude/settings.json` (review the allow-list first - it includes `git push` for the Commit-and-Push model; remove it if you want pushes gated).
 
-Updating: commit and push here, then `/plugin update claude-kit` on each machine. Because `plugin.json` omits `version`, every commit is a new version - no version bumping required. For private-repo background auto-updates, set `GITHUB_TOKEN` in your environment.
+6. Operating doctrine (single-sourced as the `operating-instructions` skill, which rides plugin auto-update):
+   - Claude Code (once per machine): add `@claude-kit-doctrine.md` to `~/.claude/CLAUDE.md`. The `doctrine-refresh` hook rewrites that imported file from the installed skill each session, so the doctrine loads always-on and stays current; the hook offers to add the line if it is missing.
+   - Cowork / Chat (once per account): add to your account personal preferences: `Before any non-trivial task, consult the operating-instructions skill.` Plugins cannot write account preferences and Cowork/Chat do not read `~/.claude`, so this one line is the only manual step there.
+
+Updating: commit and push here, then `/plugin update claude-kit` on each machine. Because `plugin.json` omits `version`, every commit is a new version - no version bumping required. For private-repo background auto-updates, set `GITHUB_TOKEN` in your environment. The doctrine updates with the plugin too - no setup re-run needed: Code picks it up via the import + `doctrine-refresh` hook, Cowork/Chat via the skill.
 
 ### Installing where GitHub isn't reachable (zip upload)
 
@@ -97,15 +101,5 @@ Quality is protected by three things, none of which is the implementer's model: 
 - Specs and plans: `docs/plans/` in each project, named `<project>_<content-type>_v1.md`, versions increment, never overwrite.
 - Chapters are appended to the plan doc, not kept in a separate file. The plan doc is the single source of truth for intent and state.
 - Durable learnings go to Claude Code auto memory (curate with `/memory`), not into plan docs or CLAUDE.md.
-- Project CLAUDE.md files carry only project-specific facts (build commands, architecture pointers); global rules live in `home/CLAUDE.md` only.
-- Each project documents its access architecture and accepted risks in `docs/security-model.md` (for example, a procedure-only or impersonation model: the roles, schema, impersonation mechanism, and any accepted-risk rationale). The security-reviewer agent reads it first, verifies the code upholds it, and re-checks accepted-risk preconditions instead of re-flagging them, which is also the document auditors ask for.
-
-## NOTES AND KNOWN TRADEOFFS
-
-- Plugin skills are namespaced: explicit invocation is `/claude-kit:brainstorming`. Automatic (model-invoked) triggering is unaffected.
-- The format-on-edit hook rewrites .cs files on disk after Claude edits them. If a subsequent edit fails to match file contents, that is the formatter's doing - Claude re-reads and retries. Remove the PostToolUse block from `hooks/hooks.json` if this annoys more than it helps.
-- Plugins are copied to a cache at install (`~/.claude/plugins/cache`); the plugin cannot reference files outside `plugins/claude-kit/`. That is why `home/` and `settings/` live outside the plugin - they are machine-setup assets, not plugin components.
-- Plugin-shipped agents cannot declare their own hooks, MCP servers, or permissionMode (Claude Code security restriction). None of these agents need them.
-- `settings.recommended.json` reflects the settings schema as of June 2026; verify key names against current docs if something is ignored: https://code.claude.com/docs/en/settings
-
-END RESULT: clone, install, and every project on every machine has the same rules, the same workflow, the same reviewers, and the same recovery behavior - maintained in one place.
+- Project CLAUDE.md files carry only project-specific facts (build commands, architecture pointers); global rules live in the operating-instructions skill (delivered always-on in Code via the `~/.claude/CLAUDE.md` import of `@claude-kit-doctrine.md`, and available as a skill in Cowork/Chat).
+- Each project documents its access architecture and accepted risks in `docs/security-model.md` (for example, a procedure-only or impersonation model: the roles, schema, impersonation mechanism, and any accepted-risk rationale). The security-reviewer agent reads it first, verifies the code upholds it, and re-checks accepted-risk preconditions instead of re-flagging them, w

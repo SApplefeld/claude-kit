@@ -1,37 +1,30 @@
 #!/usr/bin/env sh
-# Install home/CLAUDE.md as the user-level CLAUDE.md, backing up any existing file.
-# Run from the repo root: ./setup.sh
+# Dev-clone setup for the claude-kit repo: record the kaizen signpost and wire git
+# hooks. Run from the repo root: ./setup.sh
+#
+# The operating doctrine ships via the plugin now (the operating-instructions
+# skill), so setup no longer installs a user-level CLAUDE.md. On Claude Code the
+# doctrine-refresh hook maintains ~/.claude/claude-kit-doctrine.md and your
+# ~/.claude/CLAUDE.md imports it with one line (see the Next hints).
 
 set -e
 
 # Resolve Paths.
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-SOURCE="$SCRIPT_DIR/home/CLAUDE.md"
 TARGET_DIR="$HOME/.claude"
-TARGET="$TARGET_DIR/CLAUDE.md"
 
-# Validate Source.
-if [ ! -f "$SOURCE" ]; then
-    echo "home/CLAUDE.md not found next to setup.sh. Run from the repo root." >&2
+# Validate this is the kit repo (so the signpost's kitRepoPath is meaningful).
+if [ ! -f "$SCRIPT_DIR/plugins/claude-kit/.claude-plugin/plugin.json" ]; then
+    echo "Not the claude-kit repo root (plugins/claude-kit/.claude-plugin/plugin.json missing). Run from the repo root." >&2
     exit 1
 fi
 
 # Ensure Target Directory.
 mkdir -p "$TARGET_DIR"
 
-# Back Up Existing File.
-if [ -f "$TARGET" ]; then
-    BACKUP="$TARGET.bak.$(date +%Y%m%d-%H%M%S)"
-    cp "$TARGET" "$BACKUP"
-    echo "Existing CLAUDE.md backed up to $BACKUP"
-fi
-
-# Install.
-cp "$SOURCE" "$TARGET"
-echo "Installed $SOURCE -> $TARGET"
-
 # Record the kaizen signpost: where this machine's kit clone lives, so kaizen
-# capture can find it from any project. Machine-local, never committed.
+# capture (the kaizen skill) can find the clone from any project. Machine-local,
+# never committed.
 SIGNPOST="$TARGET_DIR/claude-kit.local.json"
 MACHINE=$(hostname 2>/dev/null || echo unknown)
 printf '{\n  "kitRepoPath": "%s",\n  "machine": "%s"\n}\n' "$SCRIPT_DIR" "$MACHINE" > "$SIGNPOST"
@@ -48,4 +41,7 @@ else
     echo "git not found; skipped hook wiring. Run later: git config core.hooksPath .githooks" >&2
 fi
 
-echo "Next: /plugin marketplace add <your-github-username>/claude-kit ; /plugin install claude-kit@applefeld (user scope)"
+echo "Next:"
+echo "  1. Install the plugin:  /plugin marketplace add <your-github-username>/claude-kit ; /plugin install claude-kit@applefeld"
+echo "  2. (Claude Code, once per machine) add to ~/.claude/CLAUDE.md so the doctrine loads always-on:  @claude-kit-doctrine.md"
+echo "  3. (Cowork/Chat, once per account) add to your account preferences:  Before any non-trivial task, consult the operating-instructions skill."

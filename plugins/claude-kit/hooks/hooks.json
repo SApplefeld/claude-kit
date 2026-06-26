@@ -18,6 +18,24 @@
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/branch-reaper-nudge.js\""
           }
         ]
+      },
+      {
+        "matcher": "startup|resume|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/kit-version-nudge.js\""
+          }
+        ]
+      },
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/doctrine-refresh.js\""
+          }
+        ]
       }
     ],
     "PreToolUse": [

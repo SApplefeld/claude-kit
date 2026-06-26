@@ -33,6 +33,30 @@ if (-not (Test-Path -LiteralPath $sourceDir)) {
     throw "Plugin source not found: $sourceDir"
 }
 
+# Stamp Build Info. Record the git short hash (and a dirty flag) inside the plugin
+# so the kit-version-nudge hook can tell which build a session is running. Hash-only
+# (no wall-clock) keeps a clean rebuild of the same commit byte-identical. Written
+# via WriteAllText (UTF-8, NO BOM) because a BOM would break the hook's JSON.parse.
+# Gitignored; regenerated every build, before the file collection below so it is
+# packaged.
+$buildInfoPath = Join-Path $sourceDir '.claude-plugin\build-info.json'
+$gitHash = 'unknown'
+$isDirty = $false
+try {
+    $h = (& git -C $PSScriptRoot rev-parse --short HEAD 2>$null)
+    if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($h)) {
+        $gitHash = ($h | Select-Object -First 1).Trim()
+        $status  = (& git -C $PSScriptRoot status --porcelain -- "plugins/$pluginName" 2>$null)
+        $isDirty = -not [string]::IsNullOrWhiteSpace(($status -join "`n"))
+    }
+} catch {
+    # No git on PATH, or git errored: fall back to the unknown/clean stamp.
+    $gitHash = 'unknown'
+    $isDirty = $false
+}
+$buildInfo = [ordered]@{ name = $pluginName; hash = $gitHash; dirty = $isDirty }
+[System.IO.File]::WriteAllText($buildInfoPath, ($buildInfo | ConvertTo-Json))
+
 # Load Compression Types.
 Add-Type -AssemblyName System.IO.Compression | Out-Null
 
