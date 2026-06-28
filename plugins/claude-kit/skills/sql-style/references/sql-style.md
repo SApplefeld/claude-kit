@@ -75,7 +75,7 @@ GO
 
 Key details:
 - The shell `EXEC` line is indented 2 spaces (not a tab).
-- `WITH EXECUTE AS 'ELEOS'` always appears before `AS`. This is the delegated security model - every proc runs as the schema owner.
+- `WITH EXECUTE AS 'ELEOS'` appears before `AS` only where the project uses owner-impersonation (as the ELEOS codebase does, for a vendor-driven security constraint); there the delegated security model runs every proc and scalar or multi-statement function as the schema owner. Drop the clause entirely where the codebase does not impersonate. It is invalid on inline table-valued functions (`RETURNS TABLE ... AS RETURN`), which run under ownership chaining - never put it there.
 - `BEGIN	-- PROCEDURE` has a tab between `BEGIN` and the trailing inline label comment. This is a signature pattern of Scott's style.
 - The file ends with `GO` after the `END`.
 
@@ -93,7 +93,6 @@ GO
     -- ... parameters ...
 )
 RETURNS TABLE
-WITH EXECUTE AS 'ELEOS'
 AS
 RETURN
 (
@@ -650,7 +649,6 @@ GO
     @p_Param1   INT
 )
 RETURNS TABLE
-WITH EXECUTE AS 'ELEOS'
 AS
 RETURN
 (

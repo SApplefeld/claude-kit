@@ -82,7 +82,7 @@ GO
 ## Checklist before declaring SQL work complete
 
 - [ ] Procs: shell-then-ALTER; functions: drop-and-recreate; tables/indexes: IF NOT EXISTS guards
-- [ ] `WITH EXECUTE AS '<schema_owner>'` on procs and functions where the codebase uses impersonation
+- [ ] `WITH EXECUTE AS '<schema_owner>'` on procs and scalar/multi-statement functions where the codebase uses impersonation (never on inline TVFs; dropped entirely where the codebase does not impersonate)
 - [ ] Banner header: SCRIPT / AUTHOR / DATE (ordinal English) / VERSION / NOTES; new versions ADD a note line, never rewrite history
 - [ ] `BEGIN	-- PROCEDURE` with tab + trailing label after `AS`
 - [ ] `;SET NOCOUNT ON` paired with isolation level (`READ UNCOMMITTED` for Get*, `READ COMMITTED` for writes)
