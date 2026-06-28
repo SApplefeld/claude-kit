@@ -1,6 +1,6 @@
 # Doctrine Delivery and Cross-Surface Sync
 
-Status: In Progress
+Status: Complete
 Commit Model: Review-Only
 Created: 2026-06-26
 
@@ -85,4 +85,14 @@ Decisions / notes:
 - `home/CLAUDE-FOR-FABLE.md` is a separate artifact, left untouched; it has the same delivery question if Scott wants it solved later.
 
 Remaining (Scott): review + commit; rebuild/reinstall (or push + `/plugin update`) so the skill/hook go live; one-time per machine add the import line in Code (or accept the hook's offer); one-time per account add the pointer to Cowork/Chat preferences. Inferred-not-confirmed: that Claude.ai Chat auto-loads plugin skills (confirmed in Cowork this session).
+
+### Chapter 2 - close-out (2026-06-28)
+
+Status flipped to Complete and the plan archived. The effort shipped: all five sections were reviewed and committed as `c800e05` ("Operation Instructions") on 2026-06-26, alongside the PR-check hooks. Chapter 1's "left entirely uncommitted for Scott's review" was the hand-off state and is superseded by that commit.
+
+Confirmed at close (git evidence): `operating-instructions/SKILL.md` and `doctrine-refresh.js` are tracked and committed in `c800e05`; `home/CLAUDE.md` is gone from the tree; the working tree is clean at these artifacts; the doctrine is in daily use.
+
+Open questions settled: the `@import` resolution question is answered empirically by daily use (the doctrine loads, so the relative import resolves); Cowork skill auto-load was confirmed in-session; Chat auto-load stays a passive observation, not plan work.
+
+Operational rollout (continues per machine, not plan work): the one-line `@claude-kit-doctrine.md` import is added per machine in Code (the `doctrine-refresh` hook offers it automatically when absent), and the account pointer is pasted per Cowork/Chat account.
 
