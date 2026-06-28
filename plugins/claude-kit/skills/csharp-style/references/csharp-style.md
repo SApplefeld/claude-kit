@@ -169,7 +169,7 @@ private readonly IHtmlService _htmlService;
 - Parameters on their own lines when there are 2+ - indented 8 spaces from the class brace.
 - Closing `)` on its own line, indented 4 spaces (level of the constructor signature).
 - Body opens with a section-comment block describing what gets assigned, then assigns directly.
-- **No `ArgumentNullException` checks** - the DI container is trusted to provide non-null dependencies.
+- `ArgumentNullException` guards on injected dependencies are optional: the DI container is trusted to provide them, so the guards are not required, though they are fine to add.
 - AutoMapper instances are constructed inline in the constructor under a `// Save Mapper.` comment.
 
 **Example** - `Services/Build/FormService.cs:33-50`:
@@ -195,7 +195,6 @@ public FormService(
 
 ## 5. Method declarations
 
-- **No XML doc comments** (`/// <summary>`). Public methods are self-documenting via name plus a section comment block inside the body.
 - Async methods always end in `Async`.
 - `CancellationToken` is always the **last** parameter.
 - Multi-parameter methods break each parameter onto its own line (4-space indent), closing `)` on its own line at the method-signature indent.
@@ -299,8 +298,8 @@ Notice how the comments alone tell the story of the method. That's the goal.
 
 ## 8. Logging
 
-- Logger is the **static `Log` from Serilog**, used directly. No `ILogger<T>` is injected.
-- `using Serilog;` appears in the using list.
+- Logging is `ILogger<T>` injection (the preferred pattern for new code) or the static `Log` from Serilog used directly. Existing code leans on static `Log`, so match the surrounding file; the conventions below apply to both.
+- `using Serilog;` appears in the using list when the static `Log` is used.
 - Standard pattern in catch blocks:
   ```csharp
   catch (Exception ex)
@@ -519,4 +518,4 @@ builder.RegisterType<WidgetService>()
        .PreserveExistingDefaults();
 ```
 
-And declare its interface in `Interfaces/IWidgetService.cs` - with no XML doc comments, just the interface body.
+And declare its interface in `Interfaces/IWidgetService.cs`.

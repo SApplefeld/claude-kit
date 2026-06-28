@@ -1,6 +1,6 @@
 ---
 name: csharp-style
-description: "My C# house style. Use whenever writing or modifying ANY C# code: new services, handlers, helpers, MediatR notifications, models, DI registration, or refactoring existing C#. Signature traits: #region organization, section comments ending in periods, static Serilog logger, grouped fields with label comments. Trigger on any C# work even when style is not named."
+description: "My C# house style. Use whenever writing or modifying ANY C# code: new services, handlers, helpers, MediatR notifications, models, DI registration, or refactoring existing C#. Signature traits: #region organization, section comments ending in periods, grouped fields with label comments. Trigger on any C# work even when style is not named."
 ---
 
 # C# Style
@@ -9,7 +9,7 @@ My personal C# style. Internalize the philosophy, then consult [references/cshar
 
 ## Core philosophy
 
-1. **Comments are visual structure.** Short `// Title.` comments above blocks act as section headers - they mark where one thing ends and another begins. **Every section comment ends with a period.** Comments are labels, not narration: "Validate Parameters." not "Now we check the inputs".
+1. **Comments are visual structure.** Short `// Title.` comments above blocks act as section headers - they mark where one thing ends and another begins. **Every section comment ends with a period.** Comments are labels, not narration: "Validate Parameters." not "Now we check the inputs". These section labels are for in-method structure; XML `/// <summary>` docs on public members are a separate, complementary tool - good when written well, and worth skipping when they would only restate the signature.
 2. **Group related items; separate groups with whitespace and a label.** A Variables region holds `// Values.`, `// Mapper.`, `// Services.` groups with blank lines between.
 3. **Idempotent by default.** DI registration uses `.AsImplementedInterfaces().PreserveExistingDefaults()`. Code never breaks on re-execution.
 4. **Section banners over inline narration.** `#region Title` / `#endregion` organize every class.
@@ -56,16 +56,13 @@ The comments alone tell the story of the method. That is the goal.
 
 ## Antipatterns (common AI habits that violate the style)
 
-- ❌ XML doc comments (`/// <summary>`) - inline `// Comment.` instead
 - ❌ Block-scoped namespaces in *new* files - file-scoped (`namespace X;`) for new code; leave existing block-scoped files alone
-- ❌ `ILogger<T>` injection - static `Log` from Serilog
 - ❌ Apologetic/explanatory comments ("This handles the case where...") - comments are imperative section labels
 - ❌ Change-narrative comments ("Updated to...", "Now we...", "per the new spec") - the doctrine's current-state rule applies: a comment states what the code does now, never the session, the change, or the prior version
 - ❌ Section comments without a terminating period - `// Save Services` is wrong; `// Save Services.` is correct
 - ❌ `Task<T>` methods without the `Async` suffix
 - ❌ `CancellationToken` anywhere but last in the parameter list
 - ❌ Removing `#region` blocks because "modern style" dislikes them - they are core to this organization
-- ❌ `ArgumentNullException` guards on injected dependencies - the DI container is trusted
 - ❌ The null-forgiving operator `!` - use null-conditional and null-coalescing instead
 - ❌ Inline SQL text in application code - data access goes through stored procedures (`CommandType.StoredProcedure`); the connection's principal is EXECUTE-only by design, so inline SQL is an architecture violation, not a shortcut
 
@@ -78,6 +75,6 @@ The comments alone tell the story of the method. That is the goal.
 - [ ] Early returns with `default` (not `null`); `is null` / `is not null`; `??=` for late-init
 - [ ] Async suffix on all `Task` methods; `CancellationToken` last and passed down the chain
 - [ ] `using` lines: System.* first, then project namespaces, then third-party - no blank lines between groups; no file-header comments
-- [ ] Logging via static `Log.Error(ex, "Message.")`; log messages end with a period
+- [ ] Logging via `ILogger<T>` (the preferred pattern) or the static Serilog `Log` (common in existing code); messages end with a period, e.g. `logger.LogError(ex, "Message.")` or `Log.Error(ex, "Message.")`
 - [ ] DI registration in `Assembly/RegisterServices.cs`: `.AsImplementedInterfaces().PreserveExistingDefaults()`, grouped by domain label
-- [ ] Class declares its interface inline: `public class FooService : IFooService`; interface in `Interfaces/IFooService.cs` with no XML docs
+- [ ] Class declares its interface inline: `public class FooService : IFooService`; interface in `Interfaces/IFooService.cs`. XML `/// <summary>` docs on public members are welcome when they earn their keep (well-written, not boilerplate)
