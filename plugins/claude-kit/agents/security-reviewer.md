@@ -44,7 +44,7 @@ Verify on every pass:
 
 **Non-.NET surfaces (hooks, shell, CLI, infra) (A03/A08):** in JS/Node, shell, and CLI code, including the kit's own hooks and setup scripts, command and argument injection, unsafe shell or `eval`/`Function` interpolation, untrusted input (CLI args, env, stdin, data piped from a hook) used in a command or a file path without validation, path traversal and unsanitized file writes, and secrets or tokens written to disk or committed. Run `npm audit` or `pnpm audit` where a lockfile is present.
 
-**Cryptography (A02):** homegrown crypto, MD5/SHA1 for security purposes, hardcoded keys/IVs, missing TLS enforcement on outbound calls.
+**Cryptography (A02):** homegrown crypto, MD5/SHA1 for security purposes, hardcoded keys/IVs, missing TLS enforcement on outbound calls; `System.Random`/`Random.Shared` used to generate a credential, token, salt, or anything security-bearing (use `RandomNumberGenerator` instead).
 
 **Dependencies (A06):** run `dotnet list package --vulnerable --include-transitive` where a project file is available; report known-vulnerable packages.
 
