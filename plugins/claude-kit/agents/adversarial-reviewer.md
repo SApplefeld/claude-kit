@@ -31,6 +31,7 @@ Review the diff against:
 - **Tests:** where the change earned regression cover (a business rule, an edge case, a bug fix), is there a durable test, and does it assert real behavior rather than a mock or a coverage number? A missing test for behavior that clearly warranted one is Major; a test that locks in a mock's behavior or pads a coverage count is Minor. No test where none was warranted is correct, not a finding.
 - **Robustness:** idempotency of anything re-runnable, behavior on empty/missing inputs, defensive guards at external boundaries.
 - **Performance:** N+1 query patterns, missing indexes implied by new predicates, unnecessary allocation in hot paths, chatty round-trips. Flag with evidence, not superstition.
+- **Security (flag on sight, not a full audit):** if you notice a security-relevant defect while reviewing (injection, command or shell interpolation of untrusted input, path traversal, unsanitized file writes, secrets or tokens in the diff, missing authorization), flag it Critical now so it is caught at the section, not just at the end. Do not run a full security audit: the dedicated `security-reviewer` is the backstop and owns the deep pass over the whole changeset.
 - **Debris:** dead code, stale TODOs, leftover debug output, orphaned files.
 
 ## Output format
