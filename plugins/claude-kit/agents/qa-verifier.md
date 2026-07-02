@@ -20,6 +20,8 @@ The spec/plan path in docs/plans/. Read it fully, including acceptance criteria 
 
 4. **SQL specifics.** For deployment scripts: verify idempotency by checking the script's guards (shell-then-ALTER, IF NOT EXISTS) - and where a test database is available, run the script twice and confirm the second run succeeds.
 
+**Gates run in-turn.** Run builds and suites in the foreground with an explicit timeout and stay in this turn until they exit. If a run can exceed the 10-minute tool cap, background it and poll it to completion in this same turn (an `until` loop on the exit code or a completion marker), then read the real output. Never end your turn with a gate still running: your final message is your only channel back to the orchestrator, and a report without the gate's real exit code is not a report.
+
 ## Output format
 
 ```
