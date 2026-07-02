@@ -40,6 +40,8 @@ Explore the problem space WITH me in conversation, then capture the agreement as
 
    A section only earns a cheap tier if its spec is precise enough that an implementer with no conversation context can build it from the section text alone; the same test one level up separates fable from fable (inline). Write to that standard or assign a higher tier. Tier assignments are planning-time recommendations; executing-work may upgrade a tier after a failed attempt, never downgrade mid-effort.
 
+   A `fable` tier is also spend authorization: Fable bills per call to API credits, so name the expected Fable surface (fable-tier sections; the finishing reviews run at Fable by default) in the spec's `Fable Spend` header line at approval time. A `none (cost hold)` entry keeps the whole effort at the session model, with any tier downgrade flagged in the Chapter rather than applied silently.
+
 ## Spec format
 
 ```markdown
@@ -47,6 +49,7 @@ Explore the problem space WITH me in conversation, then capture the agreement as
 
 Status: In Progress
 Commit Model: Review-Only | Branch-and-PR | Commit-and-Push
+Fable Spend: <expected Fable surface, e.g. "S2, finishing reviews"> | none (cost hold)
 Created: YYYY-MM-DD
 
 ## Goal
