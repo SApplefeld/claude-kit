@@ -20,9 +20,7 @@ The `curating-docs` skill owns the mechanics: it archives a plan when it complet
 
 ## Active plans
 
-- [`plans/claude-kit_fable-metering_spec_v1.md`](plans/claude-kit_fable-metering_spec_v1.md) - two-mode session doctrine for per-call Fable billing (Fable-led design, Opus-led execution with default Fable oversight), opus pins for qa-verifier/docs-curator, cheap recon default, sibling-breadth brief line, Sonnet experiment protocol.
-
-Completed plans are in `archive/` (most recent: `claude-kit_anti-deferral_spec_v1.md`, the anti-deferral doctrine - act on found work, hand off the rest).
+None active at present. Completed plans are in `archive/` (most recent: `claude-kit_fable-metering_spec_v1.md`, the two-mode session doctrine for per-call Fable billing - Fable-led design, Opus-led execution with default Fable oversight).
 
 ## Archive
 

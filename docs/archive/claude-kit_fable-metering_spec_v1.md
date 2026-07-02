@@ -1,6 +1,6 @@
 # Fable Metering: Two-Mode Sessions and Deliberate Fable Spend
 
-Status: In Progress
+Status: Complete
 Commit Model: Commit-and-Push
 Fable Spend: n/a (Fable-led design session; effort predates July 7 metering)
 Created: 2026-07-02
@@ -48,7 +48,7 @@ Model: fable (inline) - doctrine prose evolving in contact with the existing tex
 The core change, five files:
 - **Doctrine mirror pair** (`home/claude-kit-doctrine.md`, `plugins/claude-kit/skills/operating-instructions/SKILL.md`): new bullet in "Orchestrating fan-out work," after the "Implementation defaults to dispatch" bullet, covering: session model = mode; Fable-led for design/adjudication/finishing of high-stakes efforts; Opus-led execution reaches Fable only by explicit override at the judgment moments (fable-tier sections per spec authorization, twice-failed escalation, finishing adversarial + security reviews by default); explicit cost-hold opt-out with downgrade-with-flag semantics.
 - **brainstorming SKILL.md**: spec-format header gains the `Fable Spend:` line; step 11 gains one sentence making a `fable` tier assignment double as spend authorization named in that header line.
-- **executing-work SKILL.md**: step-1 dispatch bullet notes the `fable` model override when the session model is lower; tier-escalation bullet: after two failed reviews at the assigned tier, a Fable-led session takes the section into the main thread (unchanged), while a lower-model session first re-dispatches once to `implementer-fable` with the `fable` override and takes it into the main thread only if that also fails; under a recorded cost hold the escalation stays at the session model and the stall is raised to me.
+- **executing-work SKILL.md**: step-1 dispatch bullet notes the `fable` model override (the model parameter on the Agent dispatch) when the session model is lower, locates the standing authorization in the approved spec's tier assignment (the `Fable Spend` header is the visibility surface, not the authorization locus), and defines the legacy default (a spec predating the header is still authorized by its tiers; the header is added on first touch); tier-escalation bullet: after two failed reviews at the assigned tier, a Fable-led session takes the section into the main thread (unchanged); a lower-model session re-dispatches a below-fable section once to `implementer-fable` with the `fable` override and takes it into the main thread only if that also fails, while a fable-tier section that failed twice has exhausted its tier and raises the stall rather than downgrading; under a recorded cost hold the escalation stays at the session model and the stall is raised to me.
 - **finishing-work SKILL.md**: steps 2 and 3 dispatch with the `fable` model override by default when the session model is lower, honoring a recorded cost hold.
 - **session-start.js** resume instruction (~line 146): one clause so a resumed Opus-led session knows fable-tier dispatches carry the override under the spec's authorization.
 Acceptance: both doctrine mirrors identical; each skill states the behavior above without contradicting the tier contract from b510edc; `node --check` passes on session-start.js.
@@ -120,4 +120,16 @@ Implemented By: main session (fable (inline))
 Decisions / Surprises: extended the existing 2026-06-30 note in place (one note, no duplicate), adding the transcript-verified n=1 evidence, the two-section sonnet experiment protocol, and the verified-anchors/self-surfacing-failure-mode criterion for the eventual tier rewording.
 Review Findings: covered by the finishing pass.
 Next: finishing-work
+Commit Model: Commit-and-Push
+
+### Chapter 6 (close-out) - 2026-07-02
+Completed: finishing pass over the whole effort.
+Implemented By: main session; qa-verifier and docs-curator dispatched with opus overrides (dogfooding S1's pins, since the installed plugin predates them), reviewers at session model.
+QA: PASS on every gate and all five sections' criteria (hook syntax, mirror byte-identity, em-dash sweep, per-section content, clean tree at 6c925f9).
+Security review: CLEAR, 2 Minors. (1) Resume-clause authorization wording hardened, then subsumed by the adversarial locus fix below. (2) The pre-commit-rebuilt plugin zip's build-info stamp inherently reads one commit behind with dirty:true; predates this effort, not fixed here, proposed as a kaizen note.
+Adversarial review: APPROVED_WITH_CONCERNS, 4 Major / 3 Minor, all addressed. Majors: (1) escalation hole closed - a fable-tier section that fails twice in a below-fable session raises the stall instead of downgrading; (2) authorization locus unified - the approved spec's tier assignment authorizes, the Fable Spend header is the visibility surface, and a legacy spec without the header stays authorized by its tiers (header added on first touch); (3) the b510edc "inherits the session model" framing reconciled with the override contract at four sites (doctrine mirrors, brainstorming step 11, implementer-fable description, README MODEL TIERING); (4) the override mechanism is now named in executing-work: the model parameter on the Agent dispatch, confirmed working by three overridden dispatches in the delivering session. Minors: doctrine cost-hold sentence now covers the escalation moment; the Fable Spend template gained the n/a (Fable-led session) form; the previously uncommitted README/hook edits are recorded here and land in this close-out commit.
+Docs curation: Drift Report was deviation-only. D1: root README MODEL TIERING had gone stale against the as-built tier contract; the curator rewrote it (verified faithful to the doctrine bullet, em-dash clean by two independent counts). D2 (finishing-work shared paragraph) and D3 (S2-S4 consolidated commit) were already recorded in Chapter 3. No mistakes; nothing blocked.
+Decisions / Surprises: review fixes touched two files beyond the spec's original file list (implementer-fable.md, README.md), required by the reconciliation Major; spec S3 text updated to the corrected semantics. The spec itself carried the escalation hole the review found - the fresh-eyes finishing pass catching the spec author's own gap is the mode design working as intended.
+Review Findings: all Criticals n/a, all Majors fixed, both security Minors adjudicated (one fixed, one justified to kaizen).
+Delivered: commits 99d876c, 9f7f4b9, 00c340e, 6c925f9 plus this close-out commit on main.
 Commit Model: Commit-and-Push

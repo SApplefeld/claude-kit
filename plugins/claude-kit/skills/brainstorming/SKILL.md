@@ -35,7 +35,7 @@ Explore the problem space WITH me in conversation, then capture the agreement as
 11. **Assign a model tier to each Section of Work.** Implementation cost scales with the model; quality is protected by spec precision plus strong-model review, not by using the strongest model for every keystroke. Tier picks the model; briefability picks the locus (dispatch versus main thread). Assign per section:
    - **sonnet:** mechanical or well-bounded: a clear contract, an existing sibling pattern to mimic, single-responsibility scope, low integration risk. New procs/services following an established shape, mappings, DTOs, tests, CRUD surfaces.
    - **opus:** moderate complexity: multi-file coordination, nuanced refactors, performance-sensitive logic, mild ambiguity within a clear design.
-   - **fable:** needs the strongest model: novel logic, security-sensitive surfaces, cross-cutting architecture, subtle correctness. Dispatches to `implementer-fable` (which inherits the session model) like any other tier.
+   - **fable:** needs the strongest model: novel logic, security-sensitive surfaces, cross-cutting architecture, subtle correctness. Dispatches to `implementer-fable` (which inherits the session model, or takes the explicit `fable` override from a below-fable session) like any other tier.
    - **fable (inline)** (main thread, no dispatch): a fable-tier section that cannot be briefed: the spec itself is likely to evolve in contact with the code, or the section is so small the brief would cost more than the work. Inline is the deliberate exception and the escalation ceiling, never the comfortable default: the main thread is the most expensive place to write code.
 
    A section only earns a cheap tier if its spec is precise enough that an implementer with no conversation context can build it from the section text alone; the same test one level up separates fable from fable (inline). Write to that standard or assign a higher tier. Tier assignments are planning-time recommendations; executing-work may upgrade a tier after a failed attempt, never downgrade mid-effort.
@@ -49,7 +49,7 @@ Explore the problem space WITH me in conversation, then capture the agreement as
 
 Status: In Progress
 Commit Model: Review-Only | Branch-and-PR | Commit-and-Push
-Fable Spend: <expected Fable surface, e.g. "S2, finishing reviews"> | none (cost hold)
+Fable Spend: <expected Fable surface, e.g. "S2, finishing reviews"> | n/a (Fable-led session) | none (cost hold)
 Created: YYYY-MM-DD
 
 ## Goal

@@ -11,6 +11,4 @@ This folder holds active plans only: specs that are open or in progress. A plan 
 
 ## Current
 
-- `claude-kit_fable-metering_spec_v1.md` - In Progress. Two-mode session doctrine for per-call Fable billing, agent model pins, cheap recon default, brief-template and kaizen updates.
-
-Completed plans are in `../archive/`.
+None at present. Completed plans are in `../archive/`.
