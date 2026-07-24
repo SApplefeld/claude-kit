@@ -236,7 +236,7 @@ Common section comments:
 - `??=` for default assignment: `filledDocument ??= new();`
 - `var` when the type is obvious from the right-hand side
 - LINQ method chains, not query syntax
-- **Collection expressions and spreads** over the older constructions: `[.. source.Where(...)]` over `.ToArray()`, `[item]` over `new[] { item }`, `[.. existing, item]` over `Append`/`Concat` + `ToArray`. The spread is also the safer habit: an `Append` whose result is discarded silently drops the element, and the spread form cannot be misused that way.
+- **Collection expressions and spreads** over the older constructions: `[.. source.Where(...)]` over `.ToArray()`, `[item]` over `new[] { item }`, `[.. existing, item]` over `Append`/`Concat` + `ToArray`.
 - **Named-type object initializers keep explicit constructor parens**: `new FilledForm() { Title = docType }`, not `new FilledForm { Title = docType }`. Target-typed `new()` and `??= new();` are unchanged and still preferred where the type is inferable.
 - String interpolation `$"..."` over `string.Format` or concatenation
 
