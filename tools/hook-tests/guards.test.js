@@ -348,7 +348,7 @@ describe('merged-pr-push-guard (deny path)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// pr-docs-guard (smoke pins; not modified by this section)
+// pr-docs-guard
 // ---------------------------------------------------------------------------
 
 describe('pr-docs-guard (smoke)', () => {
@@ -376,6 +376,101 @@ describe('pr-docs-guard (smoke)', () => {
                 tool_name: 'Bash', tool_input: { command: 'gh pr create --fill' }, cwd: repo
             }, { cwd: repo });
             assert.strictEqual(r.code, 0, r.stderr);
+        } finally {
+            rmrf(repo);
+        }
+    });
+});
+
+// Multi-checkout awareness: the docs check follows a cd/pushd/Set-Location
+// ahead of the PR create, and dirt at a checkout that cannot originate a PR
+// (default branch, detached HEAD) never denies.
+describe('pr-docs-guard (multi-checkout)', () => {
+    // Main tree with dirty docs/ plus a clean linked worktree on `feature`.
+    // Returns { main, wt, wtParent }; caller cleans up both temp roots.
+    function makeWorktreeFixture() {
+        const main = mkTmp('prd-wt-main-');
+        const wtParent = mkTmp('prd-wt-dir-');
+        const wt = path.join(wtParent, 'wt');
+        initGitRepo(main, 'https://github.com/example/repo.git');
+        fs.mkdirSync(path.join(main, 'docs'));
+        fs.writeFileSync(path.join(main, 'docs', 'plan.md'), 'uncommitted\n');
+        execSync('git worktree add -q -b feature "' + wt + '"', { cwd: main, stdio: 'ignore' });
+        return { main, wt, wtParent };
+    }
+
+    test('cd into clean worktree ahead of pr create -> allow despite dirty main tree', () => {
+        const { main, wt, wtParent } = makeWorktreeFixture();
+        try {
+            for (const command of [
+                'cd "' + wt + '" && gh pr create --fill',
+                "Set-Location '" + wt + "'; gh pr create --fill"
+            ]) {
+                const r = runGuard(PR_DOCS_GUARD, {
+                    tool_name: 'Bash', tool_input: { command }, cwd: main
+                }, { cwd: main });
+                assert.strictEqual(r.code, 0, command + '\n' + r.stderr);
+            }
+        } finally {
+            rmrf(main);
+            rmrf(wtParent);
+        }
+    });
+
+    test('cd still checks the target: dirty worktree docs -> deny', () => {
+        const { main, wt, wtParent } = makeWorktreeFixture();
+        try {
+            fs.mkdirSync(path.join(wt, 'docs'));
+            fs.writeFileSync(path.join(wt, 'docs', 'plan.md'), 'uncommitted\n');
+            const r = runGuard(PR_DOCS_GUARD, {
+                tool_name: 'Bash', tool_input: { command: 'cd "' + wt + '" && gh pr create --fill' }, cwd: main
+            }, { cwd: main });
+            assert.strictEqual(r.code, 2, r.stderr);
+        } finally {
+            rmrf(main);
+            rmrf(wtParent);
+        }
+    });
+
+    test('cd to an unresolvable target -> allow (effective directory unknowable)', () => {
+        const repo = mkTmp('prd-cd-bad-');
+        try {
+            initGitRepo(repo, 'https://github.com/example/repo.git');
+            fs.mkdirSync(path.join(repo, 'docs'));
+            fs.writeFileSync(path.join(repo, 'docs', 'plan.md'), 'uncommitted\n');
+            for (const command of [
+                'cd "$WORKTREE" && gh pr create --fill',
+                'cd ' + path.join(repo, 'no-such-dir') + ' && gh pr create --fill'
+            ]) {
+                const r = runGuard(PR_DOCS_GUARD, {
+                    tool_name: 'Bash', tool_input: { command }, cwd: repo
+                }, { cwd: repo });
+                assert.strictEqual(r.code, 0, command + '\n' + r.stderr);
+            }
+        } finally {
+            rmrf(repo);
+        }
+    });
+
+    test('dirty docs/ parked on the default branch -> allow; on a feature branch -> deny', () => {
+        const repo = mkTmp('prd-default-');
+        try {
+            initGitRepo(repo, 'https://github.com/example/repo.git');
+            const opts = { cwd: repo, stdio: 'ignore' };
+            const branch = execSync('git rev-parse --abbrev-ref HEAD', {
+                cwd: repo, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore']
+            }).trim();
+            execSync('git symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/' + branch, opts);
+            fs.mkdirSync(path.join(repo, 'docs'));
+            fs.writeFileSync(path.join(repo, 'docs', 'plan.md'), 'uncommitted\n');
+
+            const payload = { tool_name: 'Bash', tool_input: { command: 'gh pr create --fill' }, cwd: repo };
+            const onDefault = runGuard(PR_DOCS_GUARD, payload, { cwd: repo });
+            assert.strictEqual(onDefault.code, 0, onDefault.stderr);
+
+            execSync('git checkout -q -b feature', opts);
+            const onFeature = runGuard(PR_DOCS_GUARD, payload, { cwd: repo });
+            assert.strictEqual(onFeature.code, 2, onFeature.stderr);
         } finally {
             rmrf(repo);
         }

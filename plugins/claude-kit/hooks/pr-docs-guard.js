@@ -15,13 +15,26 @@
 // Distinct from docs-write-guard.js: that scopes to
 // non-curator subagents writing docs/; this applies to anyone opening the PR.
 //
+// Multi-checkout awareness: the docs check runs where the PR create actually
+// runs, not blindly at the payload cwd. A cd/pushd/Set-Location ahead of the
+// PR create in the command moves the check to that directory (a target that
+// cannot be resolved allows: the effective directory is then unknowable). And
+// dirty docs at a checkout parked on the repo's default branch, or on a
+// detached HEAD, never deny: no PR can originate from such a checkout (gh
+// rejects default-onto-default and detached HEAD has no branch to PR), so the
+// dirt there is another checkout's in-flight work, not this PR's docs.
+// Residual hole (fail-open posture): a payload cwd that points at the wrong
+// checkout which is dirty AND parked on a non-default branch still denies.
+//
 // SAFETY: fails OPEN. Any error (no cwd, git missing, not a repo, timeout, parse
 // failure) exits 0 (allow). It exits 2 (deny) only when it positively confirms a
-// PR-creation command with uncommitted docs/ changes.
+// PR-creation command with uncommitted docs/ changes attributable to the
+// checkout the PR is created from.
 
 'use strict';
 
 const fs = require('fs');
+const path = require('path');
 const { execSync } = require('child_process');
 
 function readStdin() {
@@ -48,17 +61,74 @@ function commitsBefore(cmd, end) {
     return m !== null && m.index < end;
 }
 
+// The quoted-or-bare target of the last cd/pushd/Set-Location that appears
+// before position `end` in the command string, or null when the command never
+// switches directory ahead of the PR create. Match-index discipline mirrors
+// commitsBefore: a "cd" inside the PR title or body sits after the pr-create
+// match and cannot reach here.
+function lastPathSwitchBefore(cmd, end) {
+    const re = /(?:^|[\s;&|(])(?:cd|pushd|Set-Location)\s+("[^"]*"|'[^']*'|[^\s;&|)]+)/gi;
+    const c = String(cmd || '');
+    let target = null;
+    let m;
+    while ((m = re.exec(c)) !== null) {
+        if (m.index >= end) break;
+        target = m[1];
+    }
+    return target;
+}
+
+// Directory the PR create actually runs in: the last path switch ahead of it,
+// resolved against the payload cwd, else the payload cwd itself. Returns null
+// when a switch exists but its target is not a resolvable directory (a shell
+// variable, a typo) - the effective directory is then unknowable, so the
+// caller allows.
+function effectiveDir(cmd, prAt, cwd) {
+    const target = lastPathSwitchBefore(cmd, prAt);
+    if (target === null) return cwd;
+    const bare = target.replace(/^["']|["']$/g, '');
+    if (!bare || bare.startsWith('-')) return null;
+    try {
+        const resolved = path.resolve(cwd, bare);
+        return fs.statSync(resolved).isDirectory() ? resolved : null;
+    } catch {
+        return null;
+    }
+}
+
+function git(cmd, cwd) {
+    return execSync(cmd, {
+        cwd,
+        timeout: 5000,
+        stdio: ['ignore', 'pipe', 'ignore'],
+        encoding: 'utf8'
+    });
+}
+
 // True if docs/ has uncommitted or untracked changes vs HEAD; null if we cannot
 // tell (git failed, not a repo), which the caller treats as allow (fail open).
 function docsDirty(cwd) {
     try {
-        const out = execSync('git status --porcelain -- docs', {
-            cwd,
-            timeout: 5000,
-            stdio: ['ignore', 'pipe', 'ignore'],
-            encoding: 'utf8'
-        });
-        return out.trim().length > 0;
+        return git('git status --porcelain -- docs', cwd).trim().length > 0;
+    } catch {
+        return null;
+    }
+}
+
+// Branch checked out at cwd; null on detached HEAD or when git cannot tell.
+function currentBranch(cwd) {
+    try {
+        return git('git symbolic-ref --quiet --short HEAD', cwd).trim() || null;
+    } catch {
+        return null;
+    }
+}
+
+// The repo's configured default branch (origin/HEAD); null when unconfigured.
+function defaultBranch(cwd) {
+    try {
+        const head = git('git symbolic-ref --quiet refs/remotes/origin/HEAD', cwd).trim();
+        return head.replace(/^refs\/remotes\/origin\//, '') || null;
     } catch {
         return null;
     }
@@ -76,8 +146,18 @@ function main() {
     if (commitsBefore(cmd, prAt)) return; // chain commits before the PR create: allow
 
     const cwd = p.cwd || process.cwd();
-    const dirty = docsDirty(cwd);
+    const dir = effectiveDir(cmd, prAt, cwd);
+    if (dir === null) return; // command switches to an unresolvable directory: allow
+    const dirty = docsDirty(dir);
     if (dirty !== true) return; // clean, or could not determine: allow
+
+    // Dirty docs at a checkout that cannot originate a PR are another
+    // checkout's in-flight work, not this PR's docs. Detached HEAD has no
+    // branch to PR; gh rejects a PR of the default branch onto itself.
+    const branch = currentBranch(dir);
+    if (branch === null) return; // detached HEAD: allow
+    const def = defaultBranch(dir);
+    if (def !== null && branch === def) return; // parked on the default branch: allow
 
     process.stderr.write(
         `Blocked: docs/ has uncommitted changes, so this PR would ship without them. The documentation ` +
