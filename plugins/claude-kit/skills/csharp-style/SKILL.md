@@ -9,7 +9,7 @@ My personal C# style. Internalize the philosophy, then consult [references/cshar
 
 ## Core philosophy
 
-1. **Comments are visual structure.** Short `// Title.` comments above blocks act as section headers - they mark where one thing ends and another begins. **Every section comment ends with a period.** Comments are labels, not narration: "Validate Parameters." not "Now we check the inputs". These section labels are for in-method structure; XML `/// <summary>` docs on public members are a separate, complementary tool - good when written well, and worth skipping when they would only restate the signature.
+1. **Comments are visual structure.** Short `// Title.` comments above blocks act as section headers - they mark where one thing ends and another begins. **Every section comment ends with a period.** A comment is a short, imperative, direct statement of what the next block is intended to do - a reading aid for someone scanning the method: "Validate Parameters." not "Now we check the inputs". The test is intent, not vocabulary: `// Abort if we don't have a Valid VIN, make no changes.` is in-voice. A comment never explains history, decision-making, alternatives weighed, or issues encountered; a WHY comment is rare and exceptional. These section labels are for in-method structure; XML `/// <summary>` docs on public members are a separate, complementary tool - good when written well, and worth skipping when they would only restate the signature.
 2. **Group related items; separate groups with whitespace and a label.** A Variables region holds `// Values.`, `// Mapper.`, `// Services.` groups with blank lines between.
 3. **Idempotent by default.** DI registration uses `.AsImplementedInterfaces().PreserveExistingDefaults()`. Code never breaks on re-execution.
 4. **Section banners over inline narration.** `#region Title` / `#endregion` organize every class.
@@ -56,7 +56,7 @@ The comments alone tell the story of the method. That is the goal.
 
 ## Antipatterns (common AI habits that violate the style)
 
-- ❌ Block-scoped namespaces in *new* files - file-scoped (`namespace X;`) for new code; leave existing block-scoped files alone
+- ❌ Block-scoped namespaces in *new* files - when a new file declares a namespace at all, it is file-scoped (`namespace X;`); leave existing block-scoped files alone. Many files declare none: namespaces are coarse and minimal (plugin assemblies use the global namespace, one root namespace per project where warranted), and folders never map to sub-namespaces
 - ❌ Apologetic/explanatory comments ("This handles the case where...") - comments are imperative section labels
 - ❌ Change-narrative comments ("Updated to...", "Now we...", "per the new spec") - the doctrine's current-state rule applies: a comment states what the code does now, never the session, the change, or the prior version
 - ❌ Section comments without a terminating period - `// Save Services` is wrong; `// Save Services.` is correct
@@ -73,6 +73,7 @@ The comments alone tell the story of the method. That is the goal.
 - [ ] Constructor parameters one per line (8-space indent) when 2+, closing `)` on its own line, body starts `// Save Services.`
 - [ ] Section comments inside methods use `// Title.` with terminating period; blank line before each
 - [ ] Early returns with `default` (not `null`); `is null` / `is not null`; `??=` for late-init
+- [ ] Collection expressions and spreads over older constructions: `[.. source.Where(...)]` not `.ToArray()`, `[item]` not `new[] { item }`, `[.. existing, item]` not `Append`/`Concat` + `ToArray`
 - [ ] Async suffix on all `Task` methods; `CancellationToken` last and passed down the chain
 - [ ] `using` lines: System.* first, then project namespaces, then third-party - no blank lines between groups; no file-header comments
 - [ ] Logging via `ILogger<T>` (the preferred pattern) or the static Serilog `Log` (common in existing code); messages end with a period, e.g. `logger.LogError(ex, "Message.")` or `Log.Error(ex, "Message.")`

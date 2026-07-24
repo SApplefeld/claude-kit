@@ -315,7 +315,7 @@ Banner format:
 
 Banner-internal title is uppercase, ends with no period (banners are titles, not sentences). The banner asterisk lines are 92 characters wide. There is one leading space + tab indent inside the banner before the title.
 
-For sub-sections inside a banner (smaller groupings), use a single-line `/* Sub-Section Title. */` block comment with a terminating period:
+For sub-sections inside a banner (smaller groupings), use a single-line `/* Sub-Section Title. */` block comment with a terminating period - a short imperative statement of what the next block does (see §17 for the comment voice):
 
 ```sql
         /* Make Table to Track the Messages to Resend. */
@@ -493,6 +493,8 @@ WHERE   C.[ApiCallId] = @p_ApiCallId
 | `-- TITLE.` | Top-of-file pre-banner comments (e.g. `-- CREATE A SHELL PROCEDURE IF NONE EXISTS.`) |
 
 The convention: **comments that are sentences end with a period; comments that are labels/titles do not.** Pay attention - the table column groups (`/* Request Fields */`) are titles and do not end in a period; the procedure inline comments (`/* Validate Upsert Operation. */`) are sentence-style instructions and do.
+
+Sentence-style comments (`/* Sub-Section Title. */` blocks and inline `-- Comment.` lines) are short, imperative statements of what the next block does - a reading aid for someone scanning the procedure. They never carry history, decision narrative, rationale essays, or issues encountered along the way; a WHY comment is rare and exceptional, not the norm. Banners and group labels are titles, not sentences, and are unaffected.
 
 ## 18. Naming conventions
 

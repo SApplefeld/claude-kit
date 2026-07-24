@@ -36,13 +36,15 @@ Every C# file in this library follows the same shape:
 
 2. **Single blank line.**
 
-3. **Namespace declaration** - file-scoped with semicolon for new files:
+3. **Namespace declaration** - coarse and minimal. Prefer the simplest namespace shape possible: plugin assemblies use the global namespace (no namespace declaration at all). Where a namespace is warranted, it aligns to a plugin or a large functional chunk of a library - typically one root namespace per project. Folders organize files; they never generate sub-namespaces (no `Acme.Documents.Services` or `Acme.Documents.Models` mirroring the folder tree). When a new file does declare a namespace, it is file-scoped with semicolon:
    ```csharp
    namespace Acme.Documents;
    ```
    Older files (e.g. `Assembly/RegisterServices.cs`) use block-scoped - **leave existing block-scoped files alone**, but write *new* files with file-scoped.
 
 4. **No file-level header comments.** No copyright, no author block, no license. Files begin with `using`.
+
+**Interfaces always live in an `Interfaces/` folder** (`Interfaces/IFormService.cs`), never co-located with their implementations in `Services/` or elsewhere.
 
 **Example** - `Services/Build/FormService.cs:1-13`:
 ```csharp
@@ -217,7 +219,8 @@ Conventions:
 - Comment text uses Title Case ("Validate Parameters." not "validate parameters.")
 - **Always end with a period.**
 - One blank line *before* the comment is preferred between sections.
-- Comments are not narrative - they're labels. Avoid "Now we...", "Here we...", "This will..."
+- Comments are short, imperative, direct statements of what the next block is intended to do - a reading aid for someone scanning the method. The test is intent, not vocabulary: `// Abort if we don't have a Valid VIN, make no changes.` is in-voice (the incidental "we" is fine). Avoid "Now we...", "Here we...", "This will..."
+- A comment never explains history, decision-making, alternatives weighed, or issues encountered along the way. A WHY comment is rare and exceptional, not the norm.
 
 Common section comments:
 - `// Validate Parameters.` - guard clauses at the top
@@ -233,6 +236,8 @@ Common section comments:
 - `??=` for default assignment: `filledDocument ??= new();`
 - `var` when the type is obvious from the right-hand side
 - LINQ method chains, not query syntax
+- **Collection expressions and spreads** over the older constructions: `[.. source.Where(...)]` over `.ToArray()`, `[item]` over `new[] { item }`, `[.. existing, item]` over `Append`/`Concat` + `ToArray`. The spread is also the safer habit: an `Append` whose result is discarded silently drops the element, and the spread form cannot be misused that way.
+- **Named-type object initializers keep explicit constructor parens**: `new FilledForm() { Title = docType }`, not `new FilledForm { Title = docType }`. Target-typed `new()` and `??= new();` are unchanged and still preferred where the type is inferable.
 - String interpolation `$"..."` over `string.Format` or concatenation
 
 **Example** - `Services/Build/FormService.cs:54-118`:
