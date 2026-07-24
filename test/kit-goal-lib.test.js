@@ -60,10 +60,9 @@ test('armGoal success writes goal-state.json with the exact schema', () => {
         assert.strictEqual(state.plan, 'docs/plans/foo.md');
         assert.strictEqual(state.boundSession, null, 'a freshly armed goal is unbound');
         assert.ok(!state.plan.includes('\\'), 'plan path must be forward-slash');
-        assert.ok(state.condition.includes('docs/plans/foo.md'));
-        assert.ok(state.condition.includes('(a)'));
-        assert.ok(state.condition.includes('(b)'));
-        assert.ok(state.condition.includes('(c)'));
+        // The stored condition is whatever composeCondition produces, so the
+        // clause text is pinned in one place (its own test) rather than twice.
+        assert.strictEqual(state.condition, composeCondition('docs/plans/foo.md'));
         assert.ok(!Number.isNaN(Date.parse(state.armedAt)), 'armedAt should be a valid ISO timestamp');
     } finally {
         rmRepo(repo);
@@ -261,12 +260,20 @@ test('planHead classifies a header behind a UTF-8 BOM (PowerShell Set-Content wr
     }
 });
 
-test('composeCondition embeds the plan path and clauses (a), (b), (c)', () => {
-    const cond = composeCondition('docs/plans/example.md');
-    assert.ok(cond.includes('docs/plans/example.md'));
-    assert.ok(cond.includes('(a)'));
-    assert.ok(cond.includes('(b)'));
-    assert.ok(cond.includes('(c)'));
+// Pins the canonical condition text exactly. composeCondition is the single
+// source of that text and nothing parses it, so the only thing keeping it
+// honest is this literal: a clause the Stop hook does not actually enforce
+// would otherwise reach goal-state.json, and a human reading it would be
+// promised a release that never comes. An exact compare is free here because
+// the function is pure and deterministic, and it catches a reworded or
+// re-added clause that an absence check on '(c)' would sail past.
+test('composeCondition embeds the plan path and exactly clauses (a) and (b)', () => {
+    assert.strictEqual(
+        composeCondition('docs/plans/example.md'),
+        'Work docs/plans/example.md to completion using executing-work. Met when '
+        + '(a) every section is complete and closed out, or (b) you are BLOCKED on '
+        + 'a decision only Scott can make and have said so.'
+    );
 });
 
 test('armGoal re-arms idempotently over an existing goal state', () => {
@@ -378,9 +385,9 @@ test('bindSession rejects an oversized session id and never throws', () => {
     try {
         writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
         armGoal(repo, 'docs/plans/foo.md');
-        // Clause (c) feeds this the first line of a relay file; a corrupt or
-        // hostile file could pad that line to kilobytes, which must not deaden
-        // the leash until re-arm.
+        // A session id padded to kilobytes (whatever produced it) must be
+        // refused outright rather than written into the state file, which would
+        // deaden the leash until re-arm.
         const result = bindSession(repo, 'x'.repeat(129));
         assert.strictEqual(result.ok, false);
         assert.strictEqual(bindSession(repo, 'x'.repeat(128)).ok, true, 'exactly the cap is still accepted');

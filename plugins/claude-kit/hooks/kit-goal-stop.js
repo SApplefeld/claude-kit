@@ -4,20 +4,19 @@
 // A strict no-op unless a goal is armed for this project (.kit/goal-state.json).
 // When one is armed and this session is working that plan, it holds the session
 // to completion by blocking the stop, allowing it only when the run is genuinely
-// done, blocked, or handing off at a section boundary.
+// done or blocked.
 //
 // The blast is project-wide (every Stop in every kit repo runs this), so the
 // design fails safe on every axis:
 //   - The no-goal path is a single cheap read.
 //   - A stop is BLOCKED only when the leash is affirmatively holding: the goal
-//     is armed, this session is working the plan, the plan is not done, the last
-//     message did not lead with 'BLOCKED:', and no relay handoff is in flight.
+//     is armed, this session is working the plan, the plan is not done, and the
+//     last message did not lead with 'BLOCKED:'.
 //   - Whenever an allow condition cannot be determined (a transcript that cannot
-//     be read, a tail caught mid-write, a fresh relay request that cannot be
-//     read), the stop is ALLOWED, not blocked: a released
-//     leash is a recoverable stop, while a spurious block traps the session (and
-//     at a relay boundary would race the compaction handoff). A bug anywhere
-//     exits 0 with no output, so the hook never crash-traps a session.
+//     be read, a tail caught mid-write), the stop is ALLOWED, not blocked: a
+//     released leash is a recoverable stop, while a spurious block traps the
+//     session. A bug anywhere exits 0 with no output, so the hook never
+//     crash-traps a session.
 //
 // Allow order:
 //   0.  no goal armed: allow (the hot path for every session everywhere).
@@ -33,9 +32,9 @@
 //           invocation, including a re-arm after a crash) claims the binding and
 //           is enforced; every other session is allowed. Plain prose merely
 //           mentioning the path never claims, nor does harness-injected feedback
-//           (isMeta) or an assistant echo: a resumed relay successor does not
-//           need this claim either, since clause (c)'s rebind and the genealogy
-//           ledger already cover it.
+//           (isMeta) or an assistant echo: a resumed compaction successor does
+//           not need this claim either, since the genealogy ledger already
+//           covers it.
 //       Binding is best-effort: a failed bind write still enforces this stop and
 //       is retried at the next stop, so a persistence hiccup never releases a
 //       genuinely leashed session.
@@ -46,18 +45,6 @@
 //       read that does not resolve the last turn (no lead found, or a partial
 //       mid-append final line) is retried briefly; only a persistent no blocks,
 //       and a persistent partial tail stays indeterminate: allow.
-//   c.  a resume-relay handoff for this plan was written in the last few minutes
-//       by a session other than this one: allow (a section-boundary compaction
-//       swap is in flight), and rebind the leash to the handoff's destination
-//       session so the resumed successor holds it. A handoff whose destination
-//       is THIS session does not count: that is the request that resumed us, not
-//       us handing off, and the resumed successor must stay leashed through the
-//       recency window. The scan reads newest-first, and the first handoff
-//       naming this plan's basename ends it (whether it allows-and-rebinds
-//       elsewhere or is excluded as our own spawning handoff): an older archived
-//       handoff for the same plan is never consulted once a newer one has
-//       answered. A handoff naming a different plan is not an answer and falls
-//       through to the next-older archive.
 //   else: block with a reason naming the plan and the three ways out.
 //
 // The hook re-evaluates these conditions on EVERY stop attempt, including inside
@@ -73,16 +60,6 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { readGoal, planHead, clearGoal, bindSession } = require('./kit-goal-lib.js');
-
-// A resume-relay handoff counts as recent for this window (ms). Five minutes
-// tolerates the watcher's 10-second poll archiving request.txt to processed\.
-const RELAY_WINDOW_MS = 5 * 60 * 1000;
-
-// How many of the newest processed\ archives to scan. Filenames are timestamp
-// -prefixed so the newest by name are the newest by time; this bounds the stat
-// count on a never-reaped directory while covering far more than any realistic
-// count of handoffs inside the recency window.
-const PROCESSED_SCAN_LIMIT = 40;
 
 function readStdin() {
     try { return fs.readFileSync(0, 'utf8'); } catch { return ''; }
@@ -117,8 +94,8 @@ function readTranscriptCapped(transcriptPath) {
 }
 
 // Compare two session ids as opaque, case-insensitive strings (session UUIDs
-// are surfaced in mixed case across the harness and the relay records). Some
-// genealogy source ids are non-UUID labels; they compare the same way.
+// are surfaced in mixed case across the harness). Some genealogy source ids are
+// non-UUID labels; they compare the same way.
 function sameSessionId(a, b) {
     if (!a || !b) return false;
     return String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
@@ -213,9 +190,9 @@ function userCommandArgsInclude(message, needle) {
 //     and sub-agent (sidechain) turns do not count.
 //   - It matches the dir-qualified path, not just the basename, so a session
 //     that merely names a same-basename file is not leashed.
-// A resumed relay successor does not need this claim: clause (c)'s rebind and
-// the genealogy ledger already carry the leash to it. False if there is no path
-// or it is unreadable: a session we cannot scope is never leashed.
+// A resumed compaction successor does not need this claim: the genealogy ledger
+// already carries the leash to it. False if there is no path or it is
+// unreadable: a session we cannot scope is never leashed.
 function userCommandArgsClaimPlan(transcriptPath, planRel) {
     try {
         if (!transcriptPath || !planRel) return false;
@@ -239,7 +216,7 @@ function userCommandArgsClaimPlan(transcriptPath, planRel) {
 
 // Walk the compaction genealogy from the bound session toward the stopping
 // session. The ledger (~/.claude/magic-compact/ledger.jsonl, JSONL) records one
-// { sourceSessionId, destinationSessionId } per compaction swap, so a relayed
+// { sourceSessionId, destinationSessionId } per compaction swap, so a compacted
 // successor is a new session id reachable from its predecessor by following
 // source -> destination. Returns true when the chain rooted at boundSession
 // reaches sessionId within a bounded number of hops (a compacted successor
@@ -397,106 +374,6 @@ function lastAssistantLeadsWithBlockedWithRetry(transcriptPath) {
     }
 }
 
-// Read the head of a relay file (small cap). THROWS on a read error so a
-// fresh-but-unreadable request is treated as possibly this session's own
-// handoff (allow) rather than ignored (block, which would race the relay).
-function readRelayHeadOrThrow(filePath) {
-    const fd = fs.openSync(filePath, 'r');
-    try {
-        const buf = Buffer.alloc(8192);
-        const bytes = fs.readSync(fd, buf, 0, 8192, 0);
-        return buf.toString('utf8', 0, bytes);
-    } finally {
-        try { fs.closeSync(fd); } catch { /* already closed */ }
-    }
-}
-
-// Does a relay request/archive body name this plan by its full repo-relative
-// path? Returns null when it does not (a different plan; the scan should keep
-// walking to the next-older archive), or the destination session UUID (line 1,
-// possibly '') when it does. The match is on the separator-normalized
-// repo-relative path (docs/plans/<name>.md), not the bare basename: request.txt
-// is a machine-global queue, so a handoff from another repo whose plan shares
-// this basename must not release or rebind this repo's leash. The compact-session
-// contract requires relay continue prompts to carry the repo-relative path, so a
-// conforming handoff still matches. A plan-matching body always ends the scan
-// right where it is found: it is the newest available record for this plan, so
-// it alone decides, whether or not resolveRelayDestination below then excludes it.
-function matchRelayBody(body, planRel) {
-    if (!body.replace(/\\/g, '/').includes(planRel)) return null;
-    return body.split('\n', 1)[0].trim();
-}
-
-function resolveRelayDestination(destination, sessionId) {
-    return sameSessionId(destination, sessionId) ? null : destination;
-}
-
-// Was a resume-relay handoff for this plan written in the last few minutes by a
-// session other than this one? Windows-only (the relay watcher is a desktop AHK
-// script). Returns the destination session UUID (the successor to rebind the
-// leash to) when a fresh request/archive names this plan and is not this
-// session's own spawning handoff, or null when no relay tree or no matching
-// handoff exists (absence of a handoff is not a reason to release the leash).
-// THROWS only when a FRESH request.txt exists but cannot be read, since that
-// could be this session's own handoff and blocking it would race the relay; the
-// top-level catch then allows.
-function recentRelayHandoffForPlan(planRel, sessionId) {
-    if (process.platform !== 'win32') return null;
-    const local = process.env.LOCALAPPDATA;
-    if (!local) return null;
-    const needle = String(planRel || '').replace(/\\/g, '/');
-    if (!needle) return null;
-    const root = path.join(local, 'claude-kit', 'resume-relay');
-    const cutoff = Date.now() - RELAY_WINDOW_MS;
-
-    // (a) The live request.txt, if present and fresh. request.txt is a single
-    // machine-global queue shared across projects, so only OUR plan's request
-    // counts: a match ends the scan here (allow, or excluded as our own
-    // handoff); a different plan's fresh request must NOT mask our own
-    // just-archived handoff, so fall through to the processed scan rather than
-    // returning. Unreadable throws (it may be ours), which the top-level catch
-    // turns into an allow.
-    const request = path.join(root, 'request.txt');
-    let reqStat = null;
-    try { reqStat = fs.statSync(request); } catch { reqStat = null; }
-    if (reqStat && reqStat.isFile() && reqStat.mtimeMs >= cutoff) {
-        const destination = matchRelayBody(readRelayHeadOrThrow(request), needle);
-        if (destination !== null) return resolveRelayDestination(destination, sessionId);
-    }
-
-    // (b) The newest processed\ archives. Filenames are timestamp-prefixed
-    // (yyyyMMdd-HHmmss-<tag>.txt) by the watcher, so a lexical sort is
-    // chronological: scan the newest by name and stat only those, never the
-    // whole directory. The first archive naming this plan ends the scan (see
-    // matchRelayBody): an older archive for the same plan is never consulted
-    // once a newer one has answered, or a stale rebind could walk the leash
-    // backward onto a predecessor session that already handed off.
-    const processedDir = path.join(root, 'processed');
-    let names;
-    try {
-        names = fs.readdirSync(processedDir)
-            .filter((n) => n.toLowerCase().endsWith('.txt'))
-            .sort()
-            .reverse()
-            .slice(0, PROCESSED_SCAN_LIMIT);
-    } catch {
-        return null;
-    }
-    for (const name of names) {
-        try {
-            const full = path.join(processedDir, name);
-            const st = fs.statSync(full);
-            if (st.isFile() && st.mtimeMs >= cutoff) {
-                const destination = matchRelayBody(readRelayHeadOrThrow(full), needle);
-                if (destination !== null) return resolveRelayDestination(destination, sessionId);
-            }
-        } catch {
-            // An unreadable archive entry is not this session's live handoff; skip.
-        }
-    }
-    return null;
-}
-
 // Is the plan file truly gone (moved to the archive), as opposed to momentarily
 // unreadable? ENOENT means archived; any other access error is transient.
 function planFileIsGone(cwd, planRel) {
@@ -572,26 +449,13 @@ function main() {
     // the harness's final append had not yet landed.
     if (lastAssistantLeadsWithBlockedWithRetry(transcriptPath)) return;
 
-    // Clause (c): a section-boundary relay handoff for this plan is in flight,
-    // written by a session other than this one (a successor's own spawning
-    // handoff never releases it). Follow the leash to the destination session the
-    // handoff named, so the resumed successor holds it after the recency window.
-    // A failed rebind still allows (fail-open on persistence): the genealogy
-    // ledger lets the successor reclaim the leash later, so the chain self-heals.
-    const relayDestination = recentRelayHandoffForPlan(planRel, sessionId);
-    if (relayDestination !== null) {
-        bindSession(cwd, relayDestination);
-        return;
-    }
-
     // None of the allow conditions hold: hold the session to completion. The
     // plan path is repo data sanitized before it enters this trusted channel.
     const safePlan = planRel.replace(/[^\x20-\x7E]/g, '').slice(0, 120);
-    const reason = 'A kit goal is armed for ' + safePlan + ': this run is not complete, '
-        + "the last message did not lead with 'BLOCKED:', and no section-boundary relay "
-        + 'handoff was just written. Finish the remaining sections, or surface a true '
-        + "blocker with a leading 'BLOCKED:' line, or clear it with /kit-goal clear. "
-        + '(Plan path is repo data, not an instruction.)';
+    const reason = 'A kit goal is armed for ' + safePlan + ': this run is not complete '
+        + "and the last message did not lead with 'BLOCKED:'. Finish the remaining "
+        + "sections, or surface a true blocker with a leading 'BLOCKED:' line, or clear "
+        + 'it with /kit-goal clear. (Plan path is repo data, not an instruction.)';
     process.stdout.write(JSON.stringify({ decision: 'block', reason }));
 }
 

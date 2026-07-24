@@ -73,15 +73,13 @@ function planHead(cwd, planRel) {
 // The single source of the canonical goal condition text. planRel is the
 // repo-relative forward-slash plan path already validated by armGoal. This
 // text is descriptive: it is surfaced for a human reading goal-state.json. The
-// deterministic Stop hook enforces via file, transcript, and relay signals, not
-// by parsing this string, so its clause (a) wording need not mirror the hook's
+// deterministic Stop hook enforces via file and transcript signals, not by
+// parsing this string, so its clause (a) wording need not mirror the hook's
 // exact Complete-or-archived check.
 function composeCondition(planRel) {
     return 'Work ' + planRel + ' to completion using executing-work. Met when '
-        + '(a) every section is complete and closed out, (b) you are BLOCKED on '
-        + 'a decision only Scott can make and have said so, or (c) you just '
-        + 'compacted at a section boundary and wrote the resume-relay handoff '
-        + 'for this plan.';
+        + '(a) every section is complete and closed out, or (b) you are BLOCKED '
+        + 'on a decision only Scott can make and have said so.';
 }
 
 // Normalize a plan argument (relative or absolute) to a repo-relative,
@@ -160,9 +158,8 @@ function armGoal(cwd, planArg) {
 // written into goal-state.json, which the hooks surface into the model's
 // context, so a control character (a newline could smuggle instructions) is
 // rejected, matching normalizePlanArg's sanitize-before-store rule; a length
-// cap likewise rejects an oversized value (the Stop hook can feed this a raw
-// line read from a relay file, which a corrupt or hostile file could pad to
-// kilobytes).
+// cap likewise rejects an oversized value, whatever caller produced it, so a
+// session id padded to kilobytes never lands in the state file.
 //
 // Concurrency posture: this read-modify-write is not locked, so two stops
 // resolving to different sessions at nearly the same moment are last-writer-

@@ -4,8 +4,11 @@
 // real child process, fed a Stop payload on stdin, and asserted on by its stdout:
 // a block emits {"decision":"block", reason}; an allow emits nothing. Each case
 // builds a fresh temp cwd (with its own .kit/goal-state.json and a fake JSONL
-// transcript) and a fresh temp LOCALAPPDATA so the win32 relay-dir probe is
-// exercised hermetically. All temp state is cleaned up in a finally block.
+// transcript) plus a second temp dir serving as that case's machine-state root,
+// which is where a genealogy-ledger fixture goes. Every spawn path pins
+// KIT_GOAL_LEDGER_PATH (to an absent file unless the case supplies a fixture)
+// and points LOCALAPPDATA at the temp root, so no case reads real user state.
+// All temp state is cleaned up in a finally block.
 
 'use strict';
 
@@ -62,7 +65,9 @@ function writeTranscript(full, planRel, assistantTexts) {
     writeFile(full, lines.join('\n') + '\n');
 }
 
-// Run the hook with the given payload and a chosen LOCALAPPDATA. Returns the
+// Run the hook with the given payload, isolating it from real machine state:
+// LOCALAPPDATA is pinned to the caller's temp root and the genealogy ledger to
+// an absent path, so a case sees only the fixtures it builds. Returns the
 // spawnSync result (stdout, stderr, status). Clause-(b) retries are disabled by
 // default so block-path tests stay fast and an ambient KIT_GOAL_STOP_RETRY_MS
 // cannot warp the suite's timing; pass extraEnv to exercise a real schedule.
@@ -112,7 +117,7 @@ test('no goal armed: empty stdout (allow)', () => {
     }
 });
 
-test('goal armed, transcript names plan, In Progress, no BLOCKED, no relay: block', () => {
+test('goal armed, transcript names plan, In Progress, no BLOCKED: block', () => {
     const { repo, planRel, transcript, local } = armedRepo(['Making progress.']);
     try {
         const res = runHook({ cwd: repo, transcript_path: transcript }, local);
@@ -197,125 +202,6 @@ test('goal armed, an EARLIER turn had BLOCKED but the last did not: block (only 
         const res = runHook({ cwd: repo, transcript_path: transcript }, local);
         const out = JSON.parse(res.stdout);
         assert.strictEqual(out.decision, 'block');
-    } finally {
-        rmDir(repo);
-        rmDir(local);
-    }
-});
-
-test('goal armed, fresh relay request.txt naming the plan, written by this (predecessor) session: empty stdout (allow)', { skip: process.platform !== 'win32' ? 'win32-only relay probe' : false }, () => {
-    // The stopping session is the predecessor handing off: its own id differs
-    // from the request's destination UUID (line 1), so clause (c) approves the
-    // boundary stop.
-    const { repo, planRel, transcript, local } = armedRepo(['Compacting at the boundary.']);
-    try {
-        const relayDir = path.join(local, 'claude-kit', 'resume-relay');
-        writeFile(path.join(relayDir, 'request.txt'),
-            'uuid-1234\nC:/x/uuid-1234.jsonl\nResume ' + planRel + ' from the next section.\n');
-        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'uuid-predecessor' }, local);
-        assert.strictEqual(res.stdout, '');
-        assert.strictEqual(res.status, 0);
-    } finally {
-        rmDir(repo);
-        rmDir(local);
-    }
-});
-
-test('the successor is not unleashed by its own spawning handoff: block', { skip: process.platform !== 'win32' ? 'win32-only relay probe' : false }, () => {
-    // Both relay artifacts name the plan and are fresh, but their destination
-    // UUID (line 1) IS the stopping session: this is the handoff that resumed
-    // us, not us handing off. Without the destination exclusion the recency
-    // window would leave every freshly resumed successor free to quit for its
-    // first minutes.
-    const { repo, planRel, transcript, local } = armedRepo(['Resumed; stopping early.']);
-    try {
-        const relayDir = path.join(local, 'claude-kit', 'resume-relay');
-        writeFile(path.join(relayDir, 'request.txt'),
-            'uuid-me\nC:/x/uuid-me.jsonl\nResume ' + planRel + ' from the next section.\n');
-        writeFile(path.join(relayDir, 'processed', '20260716-130000-done.txt'),
-            'UUID-ME\nC:/x/uuid-me.jsonl\nResume ' + planRel + ' from the next section.\n');
-        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'uuid-me' }, local);
-        assert.strictEqual(res.status, 0);
-        const out = JSON.parse(res.stdout);
-        assert.strictEqual(out.decision, 'block', 'a successor must stay leashed through the clause-(c) window');
-    } finally {
-        rmDir(repo);
-        rmDir(local);
-    }
-});
-
-test('goal armed, fresh processed\\<stamp>-done.txt naming the plan, no request.txt: empty stdout (allow)', { skip: process.platform !== 'win32' ? 'win32-only relay probe' : false }, () => {
-    const { repo, planRel, transcript, local } = armedRepo(['Swapped sessions.']);
-    try {
-        const processedDir = path.join(local, 'claude-kit', 'resume-relay', 'processed');
-        writeFile(path.join(processedDir, '20260716-101500-done.txt'),
-            'uuid-9999\nC:/x/uuid-9999.jsonl\nResume ' + planRel + ' at section 4.\n');
-        const res = runHook({ cwd: repo, transcript_path: transcript }, local);
-        assert.strictEqual(res.stdout, '');
-        assert.strictEqual(res.status, 0);
-    } finally {
-        rmDir(repo);
-        rmDir(local);
-    }
-});
-
-test('a fresh request.txt for a DIFFERENT plan does not mask our own fresh processed handoff: allow', { skip: process.platform !== 'win32' ? 'win32-only relay probe' : false }, () => {
-    // request.txt is a machine-global single queue: a concurrent relay for another
-    // plan must not short-circuit past our own just-archived handoff.
-    const { repo, planRel, transcript, local } = armedRepo(['Handing off at the boundary.']);
-    try {
-        const relayDir = path.join(local, 'claude-kit', 'resume-relay');
-        writeFile(path.join(relayDir, 'request.txt'),
-            'uuid-other\nC:/x/uuid-other.jsonl\nResume docs/plans/other-plan.md now.\n');
-        writeFile(path.join(relayDir, 'processed', '20260716-120000-done.txt'),
-            'uuid-ours\nC:/x/uuid-ours.jsonl\nResume ' + planRel + ' at section 4.\n');
-        const res = runHook({ cwd: repo, transcript_path: transcript }, local);
-        assert.strictEqual(res.stdout, '', 'our archived handoff must be found even when request.txt names another plan');
-        assert.strictEqual(res.status, 0);
-    } finally {
-        rmDir(repo);
-        rmDir(local);
-    }
-});
-
-test('goal armed, a stale processed entry naming the plan does NOT allow: block', { skip: process.platform !== 'win32' ? 'win32-only relay probe' : false }, () => {
-    const { repo, planRel, transcript, local } = armedRepo(['Working, but the last handoff was ages ago.']);
-    try {
-        const processedDir = path.join(local, 'claude-kit', 'resume-relay', 'processed');
-        const stale = path.join(processedDir, '20200101-000000-done.txt');
-        writeFile(stale, 'uuid-old\nC:/x/uuid-old.jsonl\nResume ' + planRel + ' long ago.\n');
-        // Backdate the mtime well outside the 5-minute window.
-        const old = new Date(Date.now() - 60 * 60 * 1000);
-        fs.utimesSync(stale, old, old);
-        const res = runHook({ cwd: repo, transcript_path: transcript }, local);
-        const out = JSON.parse(res.stdout);
-        assert.strictEqual(out.decision, 'block', 'a stale relay entry must not unleash the session');
-    } finally {
-        rmDir(repo);
-        rmDir(local);
-    }
-});
-
-test('clause (c) newest-first: a stale exclusion does not fall through to an older archive and rebind backwards', { skip: process.platform !== 'win32' ? 'win32-only relay probe' : false }, () => {
-    // Repro shape: the goal is bound to C, and C itself is the one stopping.
-    // processed\ holds two fresh archives naming this plan: the newest (B->C)
-    // names C as its destination (the handoff that resumed C, not C handing
-    // off, so it carries no allow signal), and an older one (A->B) names B. The
-    // newest handoff naming this plan must decide and end the scan right there;
-    // falling through to the older A->B record would wrongly rebind the leash
-    // backward onto the dead predecessor B and allow C to stop early.
-    const { repo, planRel, transcript, local } = armedRepo(['Still working, C is the live session.']);
-    try {
-        assert.strictEqual(bindSession(repo, 'sess-c').ok, true);
-        const processedDir = path.join(local, 'claude-kit', 'resume-relay', 'processed');
-        writeFile(path.join(processedDir, '20260716-120000-a-to-b.txt'),
-            'sess-b\nC:/x/sess-b.jsonl\nResume ' + planRel + ' from A.\n');
-        writeFile(path.join(processedDir, '20260716-130000-b-to-c.txt'),
-            'sess-c\nC:/x/sess-c.jsonl\nResume ' + planRel + ' from B.\n');
-        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-c' }, local);
-        const out = JSON.parse(res.stdout);
-        assert.strictEqual(out.decision, 'block', 'C must stay leashed; the newest handoff excludes itself and the scan must not fall through');
-        assert.strictEqual(readBoundSession(repo), 'sess-c', 'the leash must not be rewritten backwards onto B');
     } finally {
         rmDir(repo);
         rmDir(local);
@@ -539,8 +425,8 @@ test('genealogy: forward-only leash, a predecessor stopping after its handoff is
         // The leash already rebound to D (the successor of predecessor P).
         assert.strictEqual(bindSession(repo, 'D').ok, true);
         writeFile(ledger, JSON.stringify({ sourceSessionId: 'predecessor', destinationSessionId: 'D' }) + '\n');
-        // P stops later (its own relay window has long since closed): the ledger
-        // only records P -> D, so walking forward from D never reaches P.
+        // P stops later: the ledger only records P -> D, so walking forward from
+        // D never reaches P.
         const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'predecessor' }, local,
             { KIT_GOAL_LEDGER_PATH: ledger });
         assert.strictEqual(res.stdout, '', 'a predecessor of the bound session is a bystander, not a successor');
@@ -771,8 +657,8 @@ test('an embedded same-name close tag inside CLI output cannot expose a followin
 // is deterministic, not timing-dependent, and (unlike a bare spawnSync, whose
 // pid is only known after the child has already finished) works because
 // spawn() exposes the child's pid immediately.
-function runHookForcingBindWriteFailure(repo, payload, local, extraEnv) {
-    const env = { ...process.env, KIT_GOAL_STOP_RETRY_MS: '0', KIT_GOAL_LEDGER_PATH: ABSENT_LEDGER, LOCALAPPDATA: local, ...(extraEnv || {}) };
+function runHookForcingBindWriteFailure(repo, payload, extraEnv) {
+    const env = { ...process.env, KIT_GOAL_STOP_RETRY_MS: '0', KIT_GOAL_LEDGER_PATH: ABSENT_LEDGER, ...(extraEnv || {}) };
     const child = spawn(process.execPath, [HOOK], { env });
     fs.mkdirSync(path.join(repo, '.kit', 'goal-state.json.tmp.' + child.pid), { recursive: true });
     let stdout = '';
@@ -789,86 +675,10 @@ test('a bind write failure still enforces that stop (fail-open on persistence, n
         // The goal-state.json itself is still readable (unbound), so the session
         // resolves via the arming-invocation claim and must still be enforced.
         const res = await runHookForcingBindWriteFailure(
-            repo, { cwd: repo, transcript_path: transcript, session_id: 'sess-x' }, local);
+            repo, { cwd: repo, transcript_path: transcript, session_id: 'sess-x' });
         const out = JSON.parse(res.stdout);
         assert.strictEqual(out.decision, 'block', 'enforcement proceeds even when the bind write fails');
         assert.strictEqual(readBoundSession(repo), null, 'the failed bind did not persist');
-    } finally {
-        rmDir(repo);
-        rmDir(local);
-    }
-});
-
-test('clause (c) boundary allow rebinds the leash to the relay destination UUID', { skip: process.platform !== 'win32' ? 'win32-only relay probe' : false }, () => {
-    const { repo, planRel, transcript, local } = armedRepo(['Compacting at the boundary.']);
-    try {
-        assert.strictEqual(bindSession(repo, 'sess-predecessor').ok, true);
-        const relayDir = path.join(local, 'claude-kit', 'resume-relay');
-        writeFile(path.join(relayDir, 'request.txt'),
-            'uuid-successor\nC:/x/uuid-successor.jsonl\nResume ' + planRel + ' from the next section.\n');
-        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-predecessor' }, local);
-        assert.strictEqual(res.stdout, '', 'the predecessor boundary stop is allowed');
-        assert.strictEqual(res.status, 0);
-        assert.strictEqual(readBoundSession(repo), 'uuid-successor', 'the leash now follows the resumed successor');
-    } finally {
-        rmDir(repo);
-        rmDir(local);
-    }
-});
-
-test('clause (c) rebind write failure still allows (fail-open on persistence, not on the boundary decision)', { skip: process.platform !== 'win32' ? 'win32-only relay probe' : false }, async () => {
-    const { repo, planRel, transcript, local } = armedRepo(['Compacting at the boundary.']);
-    try {
-        assert.strictEqual(bindSession(repo, 'sess-predecessor').ok, true);
-        const relayDir = path.join(local, 'claude-kit', 'resume-relay');
-        writeFile(path.join(relayDir, 'request.txt'),
-            'uuid-successor\nC:/x/uuid-successor.jsonl\nResume ' + planRel + ' from the next section.\n');
-        const res = await runHookForcingBindWriteFailure(
-            repo, { cwd: repo, transcript_path: transcript, session_id: 'sess-predecessor' }, local);
-        assert.strictEqual(res.stdout, '', 'the boundary stop is still allowed even though the rebind write failed');
-        assert.strictEqual(res.status, 0);
-        assert.strictEqual(readBoundSession(repo), 'sess-predecessor', 'the failed rebind left the prior binding in place');
-    } finally {
-        rmDir(repo);
-        rmDir(local);
-    }
-});
-
-test('clause (c): a relay body naming only the plan basename (a foreign repo\'s same-named plan) does NOT allow: block', { skip: process.platform !== 'win32' ? 'win32-only relay probe' : false }, () => {
-    // request.txt is a machine-global queue. A handoff from another repo whose
-    // plan shares this basename but not the full repo-relative path must not
-    // release or rebind this repo's leash: the match is on the full
-    // 'docs/plans/<name>.md', not the bare basename.
-    const { repo, transcript, local } = armedRepo(['Working on our plan.']);
-    try {
-        assert.strictEqual(bindSession(repo, 'sess-me').ok, true);
-        const relayDir = path.join(local, 'claude-kit', 'resume-relay');
-        // Names the basename and a foreign-repo path ending in it, never the armed
-        // 'docs/plans/example.md'.
-        writeFile(path.join(relayDir, 'request.txt'),
-            'uuid-foreign\nC:/x/uuid-foreign.jsonl\nResume C:/other-repo/notes/example.md now.\n');
-        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-me' }, local);
-        const out = JSON.parse(res.stdout);
-        assert.strictEqual(out.decision, 'block', 'a foreign same-basename handoff must not release the leash');
-        assert.strictEqual(readBoundSession(repo), 'sess-me', 'the binding is untouched by a foreign handoff');
-    } finally {
-        rmDir(repo);
-        rmDir(local);
-    }
-});
-
-test('clause (c): a body carrying the full repo-relative plan path still allows and rebinds', { skip: process.platform !== 'win32' ? 'win32-only relay probe' : false }, () => {
-    // The conforming case: the compact-session contract requires relay continue
-    // prompts to carry the repo-relative path, so a full-path handoff matches.
-    const { repo, planRel, transcript, local } = armedRepo(['Compacting at the boundary.']);
-    try {
-        assert.strictEqual(bindSession(repo, 'sess-me').ok, true);
-        const relayDir = path.join(local, 'claude-kit', 'resume-relay');
-        writeFile(path.join(relayDir, 'request.txt'),
-            'uuid-successor\nC:/x/uuid-successor.jsonl\nResume ' + planRel + ' from the next section.\n');
-        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-me' }, local);
-        assert.strictEqual(res.stdout, '', 'a full-repo-relative-path handoff is honored');
-        assert.strictEqual(readBoundSession(repo), 'uuid-successor', 'the leash follows the named successor');
     } finally {
         rmDir(repo);
         rmDir(local);
@@ -941,7 +751,7 @@ test('clause (b) tolerates the stop-time flush race: a BLOCKED entry landing jus
     // but can never falsely fail (any ordering yields an allow).
     const { repo, transcript, local } = armedRepo(['Working; about to surface a blocker.']);
     try {
-        const env = { ...process.env, LOCALAPPDATA: local, KIT_GOAL_STOP_RETRY_MS: '900' };
+        const env = { ...process.env, KIT_GOAL_LEDGER_PATH: ABSENT_LEDGER, KIT_GOAL_STOP_RETRY_MS: '900' };
         const child = spawn(process.execPath, [HOOK], { env });
         let stdout = '';
         child.stdout.on('data', (d) => { stdout += d; });
@@ -973,7 +783,7 @@ test('a partial final line that completes into a non-BLOCKED entry inside the re
             message: { role: 'assistant', content: [{ type: 'text', text: 'Just progress, not a blocker.' }] }
         });
         fs.appendFileSync(transcript, full.slice(0, 40));
-        const env = { ...process.env, LOCALAPPDATA: local, KIT_GOAL_STOP_RETRY_MS: '900' };
+        const env = { ...process.env, KIT_GOAL_LEDGER_PATH: ABSENT_LEDGER, KIT_GOAL_STOP_RETRY_MS: '900' };
         const child = spawn(process.execPath, [HOOK], { env });
         let stdout = '';
         child.stdout.on('data', (d) => { stdout += d; });
