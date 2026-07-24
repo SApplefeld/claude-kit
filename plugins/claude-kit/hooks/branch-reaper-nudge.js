@@ -80,6 +80,15 @@ function main() {
     // The permanent integration branches are never reaped and never "stranded".
     const integrationNames = new Set(['develop', 'main', 'master']);
 
+    // The repo's configured default branch (origin/HEAD) joins the protected
+    // set, so a non-standard default name (trunk, release) is never counted
+    // reapable or stranded. Unset origin/HEAD leaves the literal names.
+    try {
+        const head = git(cwd, 'symbolic-ref --quiet refs/remotes/origin/HEAD').trim();
+        const name = head.replace(/^refs\/remotes\/origin\//, '');
+        if (name) integrationNames.add(name);
+    } catch { /* origin/HEAD unset: fall through */ }
+
     // The current branch is reaping-protected (you are on it), but is still
     // surfaced when stranded - being parked on a stranded branch is exactly when
     // the warning matters most.

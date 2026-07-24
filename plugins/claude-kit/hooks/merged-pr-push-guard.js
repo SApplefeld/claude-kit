@@ -69,6 +69,16 @@ function targetBranch(cmd, cwd) {
     return branch || null;
 }
 
+// The repo's configured default branch (origin/HEAD), or null when unset. This
+// joins the integration-branch exemption so a repo whose default carries a
+// non-standard name (trunk, release) is treated like develop/main/master.
+function defaultBranch(cwd) {
+    try {
+        const head = sh('git symbolic-ref --quiet refs/remotes/origin/HEAD', cwd, 3000).trim();
+        return head.replace(/^refs\/remotes\/origin\//, '') || null;
+    } catch { return null; }
+}
+
 // MERGED | OPEN | UNKNOWN, by asking the host. UNKNOWN on any failure (fail-open).
 function prState(branch, cwd) {
     // The branch is parsed from the model's own push command and interpolated into
@@ -108,6 +118,8 @@ function main() {
     const branch = targetBranch(input.command, cwd);
     if (!branch) return;                                   // not a guarded push
     if (/^(develop|main|master)$/i.test(branch)) return;   // integration branches
+    const def = defaultBranch(cwd);
+    if (def && branch.toLowerCase() === def.toLowerCase()) return; // configured default branch
 
     if (prState(branch, cwd) !== 'MERGED') return;         // open / unknown: allow
 
