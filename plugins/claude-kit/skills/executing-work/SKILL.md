@@ -88,7 +88,12 @@ For each Section of Work, in order:
        implementation that passes its own gate
      - Workaround bar: a workaround needing a paragraph to justify means fix the
        code or escalate
-     - Style-skill file paths (agents inherit no skills)
+     - Style-skill file paths (agents inherit no skills), in the stable
+       marketplace-clone form
+       `~/.claude/plugins/marketplaces/applefeld/plugins/claude-kit/skills/<name>/SKILL.md`
+       (plus its references/ file when one exists) - never a per-version
+       `plugins/cache/.../<hash>/` path, which stops existing at the next
+       kit update
      - Build + test commands
      - [haiku only] The exact sibling to clone and the self-surfacing gate command;
        if either cannot be named, dispatch at sonnet
