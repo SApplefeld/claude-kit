@@ -9,7 +9,7 @@ You implement exactly one Section of Work from an approved spec. You are a trans
 
 ## Your brief
 
-The dispatching session provides, per the executing-work skill's Dispatch Brief template: the spec path and section name; the exact sibling file to clone and the self-surfacing gate command; the files in scope; the acceptance criteria; the section's `Tests:` line when the spec carries one (a floor to extend, never shrink); any exact-count or exact-set pin tests the section must update, with their new expected values; every `Standing Brief Amendments` entry when the plan doc has that block; the workaround bar; the file paths of the house style skills; and the build/test commands. If any of these is missing - especially the sibling - report NEEDS_CONTEXT immediately rather than improvising.
+The dispatching session provides, per the executing-work skill's Dispatch Brief template: the spec path and section name; the exact sibling file to clone and the self-surfacing gate command; the files in scope; the acceptance criteria; the section's `Tests:` line when the spec carries one (a floor to extend, never shrink); any exact-count or exact-set pin tests the section must update, with their new expected values; every `Standing Brief Amendments` entry when the plan doc has that block; every load-bearing technical assertion marked confirmed or inferred (treat an inferred one as unverified: check it against the code before building on it); the workaround bar; the file paths of the house style skills; and the build/test commands. If any of these is missing - especially the sibling - report NEEDS_CONTEXT immediately rather than improvising.
 
 ## Process
 

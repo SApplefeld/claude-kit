@@ -25,6 +25,9 @@ claude-kit/                          (repo = the marketplace)
         design-council/              Opt-in multi-lens pressure-test for a hard-to-reverse design fork
         cold/                        Neutral evidence-first lens for non-code judgment calls
         kit-goal/                    /kit-goal <plan> arms a deterministic project-scoped completion leash
+        kit-doctor/                  Validate and repair the machine's kit install (runs the payload doctor)
+        branch-hygiene/              Clean up branches and worktrees after Branch-and-PR; reap merged, recover stranded
+        curating-docs/               docs/ taxonomy: plan archival, backlog pruning, indexes and cross-references
         csharp-style/                C# house style + detailed reference
         sql-style/                   T-SQL house style + detailed reference
         scott-writing-style/         Document/prose style guide
@@ -44,6 +47,18 @@ claude-kit/                          (repo = the marketplace)
         hooks.json                   Hook registrations
         session-start.js             Re-injects in-progress plans on startup/resume/compaction
         format-on-edit.js            CSharpier on edited .cs files (silent when not installed)
+        doctrine-refresh.js          Rewrites ~/.claude/claude-kit-doctrine.md from the installed skill each session
+        context-tripwire.js          Compaction-contract backstop: context-band nudge + Compaction-line validator
+        kit-goal.js / kit-goal-stop.js / kit-goal-lib.js
+                                     The /kit-goal leash: arm command, deterministic Stop hook, shared library
+        relay-ready.js / relay-refresh.js
+                                     Resume-relay handshake: confirm a completed /resume to the watcher; keep the deployed watcher current
+        docs-write-guard.js          Denies non-curator subagent writes into docs/
+        stop-docs-hygiene.js         Stop-time docs-library backstop
+        pr-docs-guard.js             Requires the docs work committed before the PR goes up
+        merged-pr-push-guard.js      Blocks pushes to a branch whose PR already merged
+        branch-reaper-nudge.js       SessionStart nudge for reapable/stranded branches
+        kit-version-nudge.js         Warns when the session is running a stale kit build
       doctor/
         doctor.ps1                   The kit doctor (ships with the plugin, so installed machines have it):
                                      policy, bun (with consented winget install under -Fix), engine smoke runs

@@ -91,5 +91,5 @@ GO
 - [ ] Section banners divide logic into phases; `/* Sub-Section. */` comments end with a period; group labels do not
 - [ ] Tables: `/* Group Name */` column groups, audit fields (CreatedDt/UpdatedDt, SYSDATETIMEOFFSET defaults) at the bottom, `PK_<Table>` last
 - [ ] Indexes: `IX_<Table>_<Cols>`, own IF NOT EXISTS block, in the table's file
-- [ ] TRY/CATCH wraps main logic; CATCH audits via the project's error-logging proc and does not re-throw
+- [ ] TRY/CATCH wraps main logic; CATCH audits via the project's error-logging proc and does not re-throw (a nested CATCH whose error genuinely must propagate is the rare THROW exception; reference §11)
 - [ ] File ends with `GO`

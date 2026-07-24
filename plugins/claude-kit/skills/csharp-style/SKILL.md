@@ -75,7 +75,7 @@ The comments alone tell the story of the method. That is the goal.
 - [ ] Early returns with `default` (not `null`); `is null` / `is not null`; `??=` for late-init
 - [ ] Collection expressions and spreads over older constructions: `[.. source.Where(...)]` not `.ToArray()`, `[item]` not `new[] { item }`, `[.. existing, item]` not `Append`/`Concat` + `ToArray`
 - [ ] Async suffix on all `Task` methods; `CancellationToken` last and passed down the chain
-- [ ] `using` lines: System.* first, then project namespaces, then third-party - no blank lines between groups; no file-header comments
+- [ ] `using` lines: System.* first; project and third-party namespaces follow, third-party placed where convenient (reference §1) - no blank lines between groups; no file-header comments
 - [ ] Logging via `ILogger<T>` (the preferred pattern) or the static Serilog `Log` (common in existing code); messages end with a period, e.g. `logger.LogError(ex, "Message.")` or `Log.Error(ex, "Message.")`
 - [ ] DI registration in `Assembly/RegisterServices.cs`: `.AsImplementedInterfaces().PreserveExistingDefaults()`, grouped by domain label
 - [ ] Class declares its interface inline: `public class FooService : IFooService`; interface in `Interfaces/IFooService.cs`. XML `/// <summary>` docs on public members are welcome when they earn their keep (well-written, not boilerplate)
