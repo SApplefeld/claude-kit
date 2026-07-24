@@ -10,6 +10,7 @@ const data = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 
 const PRICE = {
   'claude-fable-5':   { in: 11.5, cr: 1.15, cw: 14.375, out: 57.5 },
+  'claude-opus-5':    { in: 5,    cr: 0.5,  cw: 6.25,   out: 25 },
   'claude-opus-4-8':  { in: 5,    cr: 0.5,  cw: 6.25,   out: 25 },
   'claude-sonnet-5':  { in: 3,    cr: 0.3,  cw: 3.75,   out: 15 },
   'claude-haiku-4-5': { in: 1,    cr: 0.1,  cw: 1.25,   out: 5 },
