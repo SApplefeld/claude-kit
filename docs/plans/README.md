@@ -11,6 +11,6 @@ This folder holds active plans only: specs that are open or in progress. A plan 
 
 ## Current
 
-None currently active.
+- `claude-kit_compaction-unwind_spec_v1.md` - remove the compaction/resume automation (resume relay, context tripwire, chain mode, kit-goal clause (c)); manual compact-session and the kit-goal leash stay.
 
 Completed plans are in `../archive/` (most recent: `claude-kit_external-engine-standdown_spec_v1.md`).
