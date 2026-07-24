@@ -11,7 +11,6 @@
 
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 const { readGoal } = require('./kit-goal-lib.js');
 
 // Read Hook Input from stdin.
@@ -65,57 +64,6 @@ function countPendingKaizen(cwd) {
     }
 
     return count;
-}
-
-// Count resume-relay requests that failed in the last 24h on this machine.
-// A relaying session cannot observe its own outcome, so a stalled unattended
-// run is otherwise invisible; this surfaces it the next time any kit session
-// starts. Machine-global (%LOCALAPPDATA%), Windows-only, self-limiting to a
-// recent window so it never nags over an old un-reaped graveyard. Any failure
-// returns null (silent). A [doctor-dryrun] entry is a probe corpse, not a
-// stalled session: the doctor's own teardown reaps its request by GUID on a
-// clean run, but a teardown race (the watcher's own 3rd-attempt archive
-// landing after the doctor's reap already enumerated the directory) or a
-// hard-killed doctor process can leave one behind, and it would otherwise
-// name a session that never existed on every future run until reaped by hand.
-function countRecentRelayFailures() {
-    if (process.platform !== 'win32') return null;
-    const base = process.env.LOCALAPPDATA;
-    if (!base) return null;
-    const failedDir = path.join(base, 'claude-kit', 'resume-relay', 'failed');
-    try {
-        const cutoff = Date.now() - 24 * 60 * 60 * 1000;
-        const entries = fs.readdirSync(failedDir, { withFileTypes: true })
-            .filter((d) => d.isFile())
-            .slice(0, 200);
-        let count = 0;
-        let newest = null;
-        let newestMtime = 0;
-        for (const e of entries) {
-            try {
-                const fullPath = path.join(failedDir, e.name);
-                const st = fs.statSync(fullPath);
-                if (st.mtimeMs < cutoff) continue;
-                let content = '';
-                try { content = fs.readFileSync(fullPath, 'utf8'); } catch { /* unreadable: still count it, cannot check the marker */ }
-                if (content.includes('[doctor-dryrun]')) continue;
-                count++;
-                if (st.mtimeMs > newestMtime) {
-                    newestMtime = st.mtimeMs;
-                    // Filename is watcher-generated, but sanitize before it
-                    // enters the trusted context channel, as with plan names.
-                    newest = e.name.replace(/[^\x20-\x7E]/g, '').slice(0, 120);
-                }
-            } catch {
-                // Unreadable entry: skip it.
-            }
-        }
-        if (count === 0) return null;
-        return { count, newest };
-    } catch {
-        // No failed dir (relay never armed or never failed): nothing to surface.
-        return null;
-    }
 }
 
 function main() {
@@ -189,14 +137,6 @@ function main() {
         // Never let the kaizen check break recovery or the session.
     }
 
-    // Relay-failure surfacing is additive and must never affect plan recovery.
-    let relayFailures = null;
-    try {
-        relayFailures = countRecentRelayFailures();
-    } catch {
-        // Never let the relay check break recovery or the session.
-    }
-
     // Armed-goal surfacing is additive and must never affect plan recovery.
     // When a kit goal is armed for this project, a Stop hook holds the session
     // to completion; surface it so no session is surprised by that hold.
@@ -211,7 +151,7 @@ function main() {
     }
 
     // Emit Additional Context.
-    if (activePlans.length === 0 && kaizenCount === 0 && completedUnarchived === 0 && !relayFailures && !goalArmed) return;
+    if (activePlans.length === 0 && kaizenCount === 0 && completedUnarchived === 0 && !goalArmed) return;
 
     const blocks = [];
 
@@ -237,12 +177,8 @@ function main() {
         blocks.push(`This is the claude-kit repo and the kaizen inbox has ${kaizenCount} pending item(s). At a natural stopping point, consider running a kaizen pass (see the kaizen skill). Reminder, not a blocker.`);
     }
 
-    if (relayFailures) {
-        blocks.push(`${relayFailures.count} resume-relay request(s) failed in the last 24h on this machine (newest: ${relayFailures.newest}). An unattended run may have compacted but never auto-resumed. Check %LOCALAPPDATA%\\claude-kit\\resume-relay\\failed\\ (each file names the stalled session on its first line) and resume it with 'claude --resume <session-id>' in its repo, or run the kit-doctor skill. Reminder, not a blocker.`);
-    }
-
     if (goalArmed) {
-        blocks.push(`A kit goal is armed for ${goalArmed} in this project. If you are working that plan, a Stop hook holds the session to completion, allowing a stop only on plan Complete, a leading 'BLOCKED:', or a section-boundary relay handoff. Reminder, not a blocker.`);
+        blocks.push(`A kit goal is armed for ${goalArmed} in this project. If you are working that plan, a Stop hook holds the session to completion, allowing a stop only on plan Complete or a leading 'BLOCKED:'. Reminder, not a blocker.`);
     }
 
     process.stdout.write(JSON.stringify({
