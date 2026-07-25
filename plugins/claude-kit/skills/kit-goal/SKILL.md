@@ -5,7 +5,7 @@ description: "Arm or clear a project-scoped completion leash for a plan run. Use
 
 # Kit Goal
 
-`/kit-goal docs/plans/<plan>.md` arms a plan run in one line: it writes a project-scoped goal state file, and a deterministic kit Stop hook holds the session to completion. Unlike native `/goal`, whose state is bound to the session transcript and lost the moment a compaction mints a new session id, this leash lives in the project (`.kit/goal-state.json`), so it is still armed after a compaction mints a new session id, and a successor the compaction engine recorded in its ledger inherits it with no re-arm step.
+`/kit-goal docs/plans/<plan>.md` arms a plan run in one line: it writes a project-scoped goal state file, and a deterministic kit Stop hook holds the session to completion. Unlike native `/goal`, whose state is bound to the session transcript and lost the moment a compaction mints a new session id, this leash lives in the project (`.kit/goal-state.json`), so the arming outlives any session swap, and a successor the compaction engine recorded in its ledger inherits it with no re-arm step.
 
 This is the one-line arming the executing-work loop expects for a plan run. Native `/goal` remains for goals that are not plan-based.
 
