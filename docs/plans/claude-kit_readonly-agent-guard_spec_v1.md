@@ -64,13 +64,13 @@ Edits to `plugins/claude-kit/skills/executing-work/SKILL.md` only. Two additions
 Acceptance criteria: both rules present at the named anchor points; the review-round rule states the capture-compare-restore sequence and the suspect-findings consequence; the probe rule states the stop-first ordering and the restoration verification; no other step of the skill is reworded.
 
 ### 3. Doctrine line and agent alignment
-Model: sonnet
+Model: sonnet, except the `docs/architecture.md` entry, which is inline (the docs-write-guard denies a subagent any write under `docs/`, so that one edit is the main thread's)
 
 Exact edits, no judgment calls:
 
 - `home/claude-kit-doctrine.md`, "Make the test earn its green" bullet: append the sentence "A tree-mutating probe (the red/green edit itself) is exclusive: never run one while any agent is reading the tree - finish or stop the agents first, then restore and verify the tree before dispatching the next."
 - Each of the five strict-class agent files (`plugins/claude-kit/agents/adversarial-reviewer.md`, `blind-reviewer.md`, `security-reviewer.md`, `council-member.md`, `design-facilitator.md`): in the paragraph already stating the read-only constraint, append the sentence "A kit hook enforces this mechanically: write-shaped shell commands are denied. A denial is the guard working - report the need in your final message instead of routing around it."
-- `plugins/claude-kit/agents/qa-verifier.md`: in the opening role paragraph, append the sentence "A kit hook denies git-state mutations and in-repo file edits mechanically; running builds and suites is unaffected."
+- `plugins/claude-kit/agents/qa-verifier.md`: in the opening role paragraph, append the sentence "A kit hook mechanically denies git-state mutations, deletes and writes outside the build-output directories, and formatter or package-install runs; building and running the suites is unaffected."
 - `docs/architecture.md`: add the new hook to the hooks inventory, one entry in the established format.
 
 Acceptance criteria: the doctrine sentence and all six agent sentences present verbatim; the architecture entry matches the sibling entries' format; no other content changed.
@@ -96,4 +96,47 @@ None. The implementer's only latitude is finalizing the git deny list within Sec
 
 ## Chapters
 
-(Appended by executing-work as sections complete.)
+### Chapter 1 - 2026-07-24
+Completed: 1. The readonly-agent-guard hook
+Implemented By: implementer-opus (three rounds: build, review-fix, security-fix), plus two orchestrator edits (the gate-class write allowance and its pin test)
+Metrics: 3 review rounds (adversarial + blind, then security, the third round's fixes verified by orchestrator probe rather than a fourth dispatch); 0 NEEDS_CONTEXT; 0 escalations; advisor opus (consulted once, at approach lock)
+Decisions / Surprises:
+- The git deny list was settled up front rather than left to the implementer's latitude. Unconditional: `add`, `am`, `apply`, `bisect`, `checkout`, `checkout-index`, `cherry-pick`, `clean`, `clone`, `commit`, `filter-branch`, `gc`, `init`, `merge`, `mergetool`, `mv`, `prune`, `pull`, `push`, `read-tree`, `rebase`, `reset`, `restore`, `revert`, `rm`, `sparse-checkout`, `stash`, `switch`, `update-index`, `update-ref`. Subverb-gated: `branch`, `tag`, `worktree`, `submodule`, `bisect`. Deliberately allowed: `fetch`, `remote`, `config`, and every read. `symbolic-ref` is deliberately absent from the deny list because `pr-docs-guard.js:121` runs it as a read in production. Deliberate over-blocks, documented in the code: `git stash list`, `git clean -nd`, `git apply --check`.
+- Subcommand matching is whole-token, never `\b`. `git merge-base main HEAD` is a read a reviewer runs constantly, and a `\b` alternation on `merge` matches it because `-` is a non-word character.
+- The guard was simultaneously too loose and too tight from one root cause. It pattern-matched operators without tracking quote state, so `rm -rf .` was allowed (the repo root classified as "outside the repo", `path.relative` returning `''`) while `rg "=> handler" src` was denied. The fix classifies redirect and operand targets instead of matching operators, and masks quoted spans before finding positions.
+- Deliberate deviations from the spec's literal gate-class text (spec line 49 lists only git mutations and redirects), all toward the Approach's stated invariant at line 22: destructive file operations (`rm`, `mv`, `Remove-Item`, `Move-Item`, `Rename-Item`, and the `find`/`xargs` bulk forms) now apply to qa-verifier as well, sparing a fixed build-output directory list (`bin`, `obj`, `TestResults`, `node_modules`, `.vs`, `.kit`); formatters deny for both classes; `npm install|add|update` deny for both classes while `npm ci` stays allowed for the gate class, because `ci` installs from the lockfile without rewriting a tracked file. Non-destructive creation (`cp`, `touch`, `chmod`, `New-Item`, `Copy-Item`) remains strict-class-only, since copying a fixture into place is plausible gate setup, is visible in `git status`, and is caught by Section 2's backstop. Reversal cost is low: each is one list membership.
+- The build-output directory list is a policy assumption, stated as such in the code header rather than as a guarantee. A repo that tracks content under those directories gets no protection there. `dist` and `coverage` were dropped from the list for exactly that reason; `bin` was kept because this kit's default stack is C#/.NET, where `rm -rf bin obj` is the canonical clean and `bin/` is essentially never tracked.
+- The hook is inert in the session that wrote it. The plugin loads from a cache snapshot (`~/.claude/plugins/cache/applefeld/claude-kit/<hash>/`), which is an independent copy rather than a link to the repo, so the guard goes live only after a kit update. The tests plus direct payload runs are the whole behavioral proof for this effort.
+- Spec correction: Section 3's `Model:` line now records that the `docs/architecture.md` entry is inline. The docs-write-guard denies any non-curator subagent a write under `docs/`, so dispatching that edit would have died mid-section.
+- Process miss worth naming: a gate run against the tree while the implementer was still writing produced a phantom red and two phantom probe mismatches, all of which cleared on a settled tree. A 90-second mtime-stability window was too short to conclude an agent was done. This is the same failure class Section 2's rules exist to prevent, encountered while implementing them.
+Review Findings:
+- Round 1 (adversarial + blind), 2 Criticals, both independently reproduced by the orchestrator before dispatch and both fixed: the repo root and its ancestors classified as outside the tree, so `rm -rf .`, `rm -rf ..`, and `Remove-Item -Recurse -Force .` all passed; and `mv`/`Move-Item` checked only their destination, so `mv src/tracked.cs .kit/keep.cs` deleted a tracked file, with a test pinning that as correct. Majors fixed: quote-blindness (denying routine greps while allowing `sh -c "git commit"`), `sed -i` operands lost to separator truncation, `find -delete` and `xargs rm`, missing `Clear-Content`/`Rename-Item`, and `Remove-Item` with a bare positional name. Minors fixed: `tee` multi-operand, five missing git subcommands, `gh` mutations, `~` misclassified as in-repo, `npm --prefix . install`, and a missing payload `cwd` silently substituting the process cwd.
+- Round 2 (security), 0 Criticals, 4 Majors. `gh -R owner/name pr merge 1` was the one that mattered most, and not because of the regex: merging a PR leaves the worktree byte-identical, so Section 2's `git status --porcelain` backstop structurally cannot see it, making it the only bypass with no compensating control and an irreversible outward action. Also fixed: containment judged against the payload `cwd` rather than the git root (so `rm ../README.md` from a subdirectory passed), missing PowerShell aliases and the `Get-ChildItem | Remove-Item` pipeline, the gate-class writable-set assumptions, backslash-escape handling in quote masking, pathed and `.exe`-suffixed invocations, `claude -p`, here-strings, `-EncodedCommand`, `>|`, and over-blocks on `git submodule status` / `git bisect log` / `--help`.
+- Majors accepted with reasons recorded rather than fixed: quadratic scan time on very long commands (measured 8.1s at 80KB; the agent authors the string that would block its own tool call, so there is no cross-principal denial of service, and the security review confirmed no catastrophic backtracking anywhere). Minors noted: an unreachable `xargs git` branch kept as an enumerated list member, and a residual false hit where an operand's final path element is exactly a governed command name.
+- The security review's recommendation for a written access model across all four PreToolUse guards is out of scope here and is filed in `docs/backlog.md`.
+Next: 2. executing-work: tree-state check and probe serialization
+Commit Model: Commit-and-Push
+
+### Chapter 2 - 2026-07-24
+Completed: 2. executing-work: tree-state check and probe serialization
+Implemented By: implementer-opus
+Metrics: 0 review rounds (prose-only section, covered by the finishing pass); 0 NEEDS_CONTEXT; 0 escalations; advisor opus
+Decisions / Surprises:
+- The review-round rule is placed ahead of step 3's trivial-section exemption, so the exemption cannot scope the hard rule.
+- The probe rule names the pre-probe capture as an explicit beat of the ordering. The spec said to "verify restoration (`git status --porcelain` matches the pre-probe capture)" without ever enumerating the capture itself, which would leave an executing agent nothing to compare against.
+- Both rules were dogfooded during this effort before they were committed. The review round bracketing showed no tree delta, confirming the reviewers were read-only in practice and not just by declaration, and the one tree-mutating probe run in the main thread (breaking the gate-class write allowance to confirm its test goes red) was run with no agents in flight, then restored and verified byte-identical.
+Review Findings: none dispatched; the whole-changeset reviews in the finishing pass cover this file.
+Next: 3. Doctrine line and agent alignment
+Commit Model: Commit-and-Push
+
+### Chapter 3 - 2026-07-24
+Completed: 3. Doctrine line and agent alignment
+Implemented By: implementer-sonnet (the doctrine sentence and the six agent sentences), main session (the `docs/architecture.md` entry, which the docs-write-guard reserves to a non-subagent)
+Metrics: 0 review rounds (verbatim sentence insertion, verified by the orchestrator against the literal text); 0 NEEDS_CONTEXT; 0 escalations; advisor opus
+Decisions / Surprises:
+- Spec correction: the qa-verifier sentence the spec originally dictated ("denies git-state mutations and in-repo file edits") had become inaccurate once the gate class also denied formatters and package installs, so the spec text was updated to match as-built before dispatch rather than shipping a sentence that misdescribes the hook.
+- Each of the five judgment-agent files had exactly one paragraph making the read-only claim, so no placement judgment was needed.
+- The frontmatter `tools:` lists are now pinned by test. The spec's Out of Scope justifies shipping no Write/Edit/MultiEdit guard on the grounds that those tools are not granted, and nothing enforced that; a change to any of the six frontmatter blocks now fails red instead of silently voiding the justification.
+Review Findings: none dispatched. Orchestrator verification: seven files, one paragraph each, every sentence present character for character, no frontmatter line altered, and zero em dashes anywhere in the changeset.
+Next: finishing-work
+Commit Model: Commit-and-Push

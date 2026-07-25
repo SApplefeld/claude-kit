@@ -19,7 +19,7 @@ That split is the thing to hold onto when changing anything here. Prose surfaces
 `plugins/claude-kit/hooks/hooks.json` is the wiring, and every hook is a Node script invoked with the plugin root. The events in use:
 
 - **SessionStart** runs `session-start.js` (resume surfacing and unarchived-plan flagging), `branch-reaper-nudge.js`, `kit-version-nudge.js`, and `doctrine-refresh.js`. Matchers differ per hook: the doctrine refresh also fires on `clear`, and `branch-reaper-nudge.js` skips the `compact` entry. `session-start.js` firing on `compact` is what makes a compacted session re-read its plan doc, so it is the recovery path the kit relies on.
-- **PreToolUse** runs `docs-write-guard.js` on write-shaped tools, and `pr-docs-guard.js` and `merged-pr-push-guard.js` on shell tools.
+- **PreToolUse** runs `docs-write-guard.js` on write-shaped tools, and `pr-docs-guard.js`, `merged-pr-push-guard.js`, and `readonly-agent-guard.js` on shell tools. The last of those keys on the calling agent's type to keep the repo tree under review read-only for the judgment agents, denying git state mutations and writes into the tree while leaving reads, builds, and test runs untouched.
 - **PostToolUse** runs `format-on-edit.js` after edits.
 - **Stop** runs `stop-docs-hygiene.js` and `kit-goal-stop.js`, the deterministic leash that holds a `/kit-goal` run to completion across a compaction session swap.
 
