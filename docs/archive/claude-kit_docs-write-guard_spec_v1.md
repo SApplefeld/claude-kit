@@ -46,6 +46,8 @@ Acceptance: every fixture behaves as specified and both hooks exit 0 on bad inpu
 ## Related
 Complements `claude-kit_docs-lifecycle_spec_v1.md`. That effort made `docs/` a curated library, added the `.kit/` scratch convention and `.gitignore`, and shipped the `executing-work` routing wording. This guard enforces that invariant mechanically.
 
+Extended by `claude-kit_readonly-agent-guard_spec_v1.md` (see `../plans/` or this archive), which applies the same hook pattern to the judgment agents' read-only contract.
+
 ## Chapters
 
 ### Chapter 1 - 2026-06-19
