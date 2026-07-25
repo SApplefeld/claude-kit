@@ -1204,11 +1204,10 @@ describe("buildCompactedRows over a segmented plan", () => {
   });
 
   test("a resume prompt makes a compacted session compactable again", async () => {
-    // The property both target workflows rely on: the relay types a continue
-    // prompt and chain mode pipes one through -p, and either delivers the
-    // human user row that opens a fresh turn past the prefix. That turn is
-    // the only compactable one, so the segment-granular keep applies and its
-    // head is summarized.
+    // The property the manual workflow relies on: the typed resume, or any
+    // fresh directive after it, delivers the human user row that opens a fresh
+    // turn past the prefix. That turn is the only compactable one, so the
+    // segment-granular keep applies and its head is summarized.
     const reread = await compactAndReread(
       newSessionId(),
       singleOversizedTurnRows(),

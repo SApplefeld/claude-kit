@@ -1,6 +1,6 @@
 # claude-kit
 
-Scott Applefeld's personal Claude Code marketplace. One repo that every project picks up: workflow skills (brainstorm, execute, finish) with a drive-to-completion contract and per-section model down-selection, discipline skills (systematic debugging, responding to review, skill authoring, kaizen self-improvement, a multi-lens design council, and cold judgment calls), fresh-context review agents, C# and T-SQL house-style guides, a hardened compaction-recovery hook, and deliberate low-loss session compaction with a headless continuation chain, packaged as the `claude-kit` plugin in the `applefeld` marketplace.
+Scott Applefeld's personal Claude Code marketplace. One repo that every project picks up: workflow skills (brainstorm, execute, finish) with a drive-to-completion contract and per-section model down-selection, discipline skills (systematic debugging, responding to review, skill authoring, kaizen self-improvement, a multi-lens design council, and cold judgment calls), fresh-context review agents, C# and T-SQL house-style guides, a hardened compaction-recovery hook, and deliberate low-loss session compaction, packaged as the `claude-kit` plugin in the `applefeld` marketplace.
 
 ## STRUCTURE
 
@@ -17,7 +17,7 @@ claude-kit/                          (repo = the marketplace)
         brainstorming/               Design conversation, spec in docs/plans/, scope-check, commit model
         executing-work/              Autonomous section loop with the completion contract: implement, verify, review, Chapter
         finishing-work/              QA, security, docs curation, final review, close-out, integration per commit model
-        compact-session/             Low-loss compaction at section boundaries + the headless continuation chain (bundles the vendored engine)
+        compact-session/             Low-loss manual compaction at section boundaries (bundles the vendored engine)
         systematic-debugging/        Root-cause discipline before any fix
         responding-to-review/        How to weigh and answer review findings; no performative agreement
         writing-skills/              Authoring and testing the kit's own behavior-shaping skills
@@ -48,11 +48,8 @@ claude-kit/                          (repo = the marketplace)
         session-start.js             Re-injects in-progress plans on startup/resume/compaction
         format-on-edit.js            CSharpier on edited .cs files (silent when not installed)
         doctrine-refresh.js          Rewrites ~/.claude/claude-kit-doctrine.md from the installed skill each session
-        context-tripwire.js          Compaction-contract backstop: context-band nudge + Compaction-line validator
         kit-goal.js / kit-goal-stop.js / kit-goal-lib.js
                                      The /kit-goal leash: arm command, deterministic Stop hook, shared library
-        relay-ready.js / relay-refresh.js
-                                     Resume-relay handshake: confirm a completed /resume to the watcher; keep the deployed watcher current
         docs-write-guard.js          Denies non-curator subagent writes into docs/
         stop-docs-hygiene.js         Stop-time docs-library backstop
         pr-docs-guard.js             Requires the docs work committed before the PR goes up
@@ -64,7 +61,9 @@ claude-kit/                          (repo = the marketplace)
                                      policy, bun (with consented winget install under -Fix), engine smoke runs
                                      including the compaction --check layer, claude CLI shape and login probe,
                                      ANTHROPIC_API_KEY hazard, doctrine import + freshness, signpost, hooks,
-                                     relay state + AutoHotkey. Flags: -Fix, -Yes (unattended installs), -NoProbe.
+                                     and any leftover resume-relay state a machine still carries. Flags: -Fix,
+                                     -Yes (pre-answers prompts), -RemoveLegacyRelay (the one destructive
+                                     action), -NoProbe.
         doctor.cmd                   Execution-policy-proof wrapper (a fresh Windows box blocks .ps1 by default)
   kaizen/                            Kit self-improvement inbox (per-machine notes-*.md + briefs/)
   settings/settings.recommended.json Permission rules + acceptEdits starting point
@@ -103,7 +102,7 @@ The catalog at `.claude-plugin/marketplace.json` points to the plugin with `"sou
    - Claude Code (once per machine): add `@claude-kit-doctrine.md` to `~/.claude/CLAUDE.md`. The `doctrine-refresh` hook rewrites that imported file from the installed skill each session, so the doctrine loads always-on and stays current; the hook offers to add the line if it is missing.
    - Cowork / Chat (once per account): add to your account personal preferences: `Before any non-trivial task, consult the operating-instructions skill.` Plugins cannot write account preferences and Cowork/Chat do not read `~/.claude`, so this one line is the only manual step there.
 
-7. Verify the machine (Windows): run the doctor. On a clone, `.\doctor.cmd` from the repo root; on an install-only machine, `/claude-kit:kit-doctor` in any session (the doctor ships inside the plugin payload), or the payload path directly: `<plugin cache>\doctor\doctor.cmd`. One pass covers execution policy, bun resolution, real smoke runs of the compaction engine including its `--check` threshold layer, the `claude` CLI shape and a live login probe (the summarizer needs `claude /login` once per machine; `-NoProbe` skips the probe), the `ANTHROPIC_API_KEY` hazard, the doctrine import and content freshness, the kaizen signpost, git hooks, and the resume relay's state including AutoHotkey v2. `-Fix` applies the safe durable repairs and offers a consented bun install via winget (`-Yes` pre-answers for unattended runs). Arming the resume relay stays a deliberate separate step (`plugins/claude-kit/skills/compact-session/relay/arm-resume-relay.ps1`); the doctor reports its state but never arms it.
+7. Verify the machine (Windows): run the doctor. On a clone, `.\doctor.cmd` from the repo root; on an install-only machine, `/claude-kit:kit-doctor` in any session (the doctor ships inside the plugin payload), or the payload path directly: `<plugin cache>\doctor\doctor.cmd`. One pass covers execution policy, bun resolution, real smoke runs of the compaction engine including its `--check` threshold layer, the `claude` CLI shape and a live login probe (the summarizer needs `claude /login` once per machine; `-NoProbe` skips the probe), the `ANTHROPIC_API_KEY` hazard, the doctrine import and content freshness, the kaizen signpost, git hooks, and any leftover resume-relay state the machine still carries. `-Fix` applies the safe durable repairs and offers a consented bun install via winget (`-Yes` pre-answers prompts for unattended runs). Removing the leftover relay state is the doctor's one destructive action and needs its own switch, `-Fix -RemoveLegacyRelay`, which surfaces every stalled-session resume pointer before it deletes anything and leaves AutoHotkey installed.
 
 Updating. Commit and push here first. The plugin's version is the git commit SHA (`plugin.json` omits `version`), so every commit is a new version with no version bumping. How you pull that update differs by surface, and the surfaces are SEPARATE installs:
 
@@ -126,7 +125,7 @@ Brainstorming produces a spec in `docs/plans/<project>_spec_v1.md` with a record
 
 Compaction recovery is deterministic: the SessionStart hook fires on startup, resume, and after every compaction, finds in-progress plans, and instructs the session to re-read them - Chapters included - before any work proceeds.
 
-`/kit-goal docs/plans/<plan>.md` arms a project-scoped completion leash for a run in one line, enforced by a deterministic Stop hook (no LLM evaluator) whose state lives in `.kit/` and so survives a compaction or session swap - unlike native `/goal`, which is session-scoped and starts a compacted successor goalless. The hook allows a stop only when the plan is Complete or archived, the last message is `BLOCKED:`, or a resume-relay handoff for that plan just fired; otherwise it blocks with a reason naming the plan. Clear an armed goal with `/kit-goal clear`.
+`/kit-goal docs/plans/<plan>.md` arms a project-scoped completion leash for a run in one line, enforced by a deterministic Stop hook (no LLM evaluator) whose state lives in `.kit/` and so outlives a session swap - unlike native `/goal`, which is session-scoped and starts a compacted successor goalless. The hook allows a stop only when the plan is Complete or archived, or the last message leads with `BLOCKED:`; otherwise it blocks with a reason naming the plan. Clear an armed goal with `/kit-goal clear`.
 
 ## MODEL TIERING
 

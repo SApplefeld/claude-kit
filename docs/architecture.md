@@ -18,14 +18,14 @@ That split is the thing to hold onto when changing anything here. Prose surfaces
 
 `plugins/claude-kit/hooks/hooks.json` is the wiring, and every hook is a Node script invoked with the plugin root. The events in use:
 
-- **SessionStart** runs `session-start.js` (resume surfacing and unarchived-plan flagging), `branch-reaper-nudge.js`, `kit-version-nudge.js`, `doctrine-refresh.js`, `relay-refresh.js`, and `relay-ready.js`. Matchers differ per hook: the doctrine refresh also fires on `clear`, the branch and relay hooks skip the `compact` entry, and `relay-ready.js` fires on `resume` alone (it stamps `ready\<session id>` in the relay directory, the confirmation that releases the watcher's continue prompt).
+- **SessionStart** runs `session-start.js` (resume surfacing and unarchived-plan flagging), `branch-reaper-nudge.js`, `kit-version-nudge.js`, and `doctrine-refresh.js`. Matchers differ per hook: the doctrine refresh also fires on `clear`, and `branch-reaper-nudge.js` skips the `compact` entry. `session-start.js` firing on `compact` is what makes a compacted session re-read its plan doc, so it is the recovery path the kit relies on.
 - **PreToolUse** runs `docs-write-guard.js` on write-shaped tools, and `pr-docs-guard.js` and `merged-pr-push-guard.js` on shell tools.
-- **PostToolUse** runs `format-on-edit.js` after edits, and `context-tripwire.js` on write-shaped, shell, and agent-dispatch tools: the compaction contract's advisory backstop. When a kit goal is armed it injects a once-per-100K-band reminder as main-chain context crosses 200K; in any session it flags a Chapter Compaction line written to markdown without its literal evidence.
-- **Stop** runs `stop-docs-hygiene.js` and `kit-goal-stop.js`, the deterministic leash that holds a `/kit-goal` run to completion across compaction and relay session swaps.
+- **PostToolUse** runs `format-on-edit.js` after edits.
+- **Stop** runs `stop-docs-hygiene.js` and `kit-goal-stop.js`, the deterministic leash that holds a `/kit-goal` run to completion across a compaction session swap.
 
 ## Compaction engine
 
-The engine is the kit's one substantial program: it reads a session transcript, writes a new session whose transcript keeps human messages verbatim and replaces bounded slices of assistant work with summaries, and leaves the source untouched. It is the mechanism behind the compact-session skill's three modes (interactive, relay, chain) and behind the `/kit-goal` workflow's ability to shed context at section boundaries.
+The engine is the kit's one substantial program: it reads a session transcript, writes a new session whose transcript keeps human messages verbatim and replaces bounded slices of assistant work with summaries, and leaves the source untouched. It is the mechanism behind the compact-session skill's single manual mode, where a compaction is requested or offered at a turn's end and the swap is performed by a typed `/resume`.
 
 `docs/compaction-engine.md` is the full mechanism document: the plan model, turn segmentation and the `--keep N` fallback, the summarizer contract, the emitted transcript's single-chain guarantee, failure paths, and tuning knobs.
 
@@ -33,6 +33,5 @@ The engine is the kit's one substantial program: it reads a session transcript, 
 
 - **The `claude` CLI** is spawned headlessly by the engine to summarize, pinned to a model, with hooks disabled and all tools denied. `claude` must resolve to a native executable rather than an npm `.cmd` shim, because the prompt carries transcript-derived text on argv.
 - **Bun** runs the engine and its tests. **Node** runs the hooks.
-- **AutoHotkey** drives the resume relay (`skills/compact-session/relay/`), which types a `/resume` into the session's own terminal window so an unattended interactive run continues across a compaction.
 - **git and the GitHub CLI** are what the branch-hygiene, PR-docs, and merged-PR-push guards observe and act on.
 - **The local filesystem under `~/.claude/`** is shared state: `projects/<sanitized-cwd>/<session-id>.jsonl` for transcripts, `magic-compact/` for the omission caches, the ledger, and parse-failure debug output.
