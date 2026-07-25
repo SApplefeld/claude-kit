@@ -54,6 +54,7 @@ claude-kit/                          (repo = the marketplace)
         stop-docs-hygiene.js         Stop-time docs-library backstop
         pr-docs-guard.js             Requires the docs work committed before the PR goes up
         merged-pr-push-guard.js      Blocks pushes to a branch whose PR already merged
+        readonly-agent-guard.js      Keeps the judgment agents from mutating the tree they review
         branch-reaper-nudge.js       SessionStart nudge for reapable/stranded branches
         kit-version-nudge.js         Warns when the session is running a stale kit build
       doctor/

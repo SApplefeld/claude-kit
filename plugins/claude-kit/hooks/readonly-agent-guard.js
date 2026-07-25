@@ -721,10 +721,17 @@ function formatterRun(cmd, masked) {
 
 // A base64 -EncodedCommand payload hides what it runs, and a governed agent has
 // no legitimate use for one, so the flag itself is the verdict for both classes.
-// Decoding it would add a parser for no gain.
+// Decoding it would add a parser for no gain. The check is scoped to a PowerShell
+// invocation because the abbreviations collide: -ec is also how bash bundles
+// -e -c, and `bash -ec 'git diff | head'` is an ordinary read.
 function encodedCommand(cmd, masked) {
-    const encoded = tokens(masked).some(a => /^-{1,2}(?:ec|enc|encodedcommand)$/i.test(a));
-    return encoded ? 'an encoded command (-EncodedCommand)' : null;
+    for (const hit of commandPositions(masked, ['pwsh', 'powershell'])) {
+        const toks = tokens(segment(cmd, masked, hit.at));
+        if (toks.some(a => /^-{1,2}(?:ec|enc|encodedcommand)$/i.test(a))) {
+            return 'an encoded command (-EncodedCommand)';
+        }
+    }
+    return null;
 }
 
 // Nested executors: a shell or agent that runs command text handed to it as an

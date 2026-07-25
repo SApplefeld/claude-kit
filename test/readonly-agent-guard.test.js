@@ -722,6 +722,18 @@ test('the denial names the agent and the correct moves', () => {
     assert.match(r.stderr, /orchestrator/);
 });
 
+test('the encoded-command flag is a PowerShell spelling, not bash flag bundling', () => {
+    // -ec is how bash bundles -e -c, so the check is scoped to a PowerShell
+    // invocation. A bundled bash payload is still judged on what it runs.
+    allowAll(STRICT, ["bash -ec 'git diff | head'", "sh -ec 'rg foo src'", 'bash -e -c "git log"']);
+    denyAll(STRICT, [
+        ['pwsh -EncodedCommand aGk=', /an encoded command/],
+        ['powershell -enc aGk=', /an encoded command/],
+        ['pwsh -ec aGk=', /an encoded command/],
+        ["bash -ec 'git commit -m x'", NESTED],
+    ]);
+});
+
 test('a newline ends a command, so the next line is not an operand of this one', () => {
     // Without the line break in the segment cut, the gate class's canonical clean
     // reads "dotnet" as an operand of rm, and a strict agent tidying its own
