@@ -7,27 +7,32 @@
 # Verifies core setup (execution policy, doctrine import and freshness, kaizen
 # signpost, git hooks on a clone), the compact-session prerequisites (bun, the
 # engine including its --check layer, the claude CLI shape and login, the
-# ANTHROPIC_API_KEY hazard), and the optional resume relay including the
-# AutoHotkey v2 dependency.
+# ANTHROPIC_API_KEY hazard), and leftover resume-relay state on a machine that
+# once armed it.
 #
 #   .\doctor.ps1              Check only; prints PASS/WARN/FAIL with remediations.
 #   .\doctor.ps1 -Fix         Also applies the safe durable repairs (execution
 #                             policy, bun PATH wiring, signpost + git hooks on a
-#                             clone), offers consented installs (bun via
-#                             winget), and repairs an armed resume relay
-#                             (consent-gated re-arm or watcher refresh, deferred
-#                             while a request is pending).
-#   .\doctor.ps1 -Fix -Yes    Answers yes to every install prompt (unattended).
-#   .\doctor.ps1 -NoProbe     Skips the two state-writing probes: the CLI login
-#                             probe (spends a model call, needs the network) and
-#                             the resume-relay round-trip (writes a synthetic
-#                             marker-protected request through the live watcher).
+#                             clone) and offers consented installs (bun via
+#                             winget). It deletes nothing.
+#   .\doctor.ps1 -Fix -Yes    Pre-answers the consent prompts of the actions the
+#                             other flags already requested, for unattended runs.
+#                             It authorizes nothing by itself.
+#   .\doctor.ps1 -Fix -RemoveLegacyRelay
+#                             Also removes leftover resume-relay state (watcher
+#                             process, Startup shortcut, then the state
+#                             directory), after printing the resume records that
+#                             directory holds. Naming this switch is the
+#                             authorization for that deletion; -Fix alone never
+#                             deletes it.
+#   .\doctor.ps1 -NoProbe     Skips the CLI login probe, the one check that
+#                             spends a model call and needs the network.
 #
 # If scripts are blocked entirely, use the wrapper beside this file:
-#   doctor.cmd [-Fix] [-Yes] [-NoProbe]
+#   doctor.cmd [-Fix] [-Yes] [-RemoveLegacyRelay] [-NoProbe]
 # Exit code: 0 when nothing FAILs (warnings allowed), 1 otherwise.
 
-param([switch]$Fix, [switch]$Yes, [switch]$NoProbe)
+param([switch]$Fix, [switch]$Yes, [switch]$RemoveLegacyRelay, [switch]$NoProbe)
 
 # Windows PowerShell 5.1 inherits PSModulePath from whatever parent launched it.
 # A pwsh 7+ parent (the Claude Code harness, a pwsh terminal) puts its own
@@ -57,9 +62,10 @@ function Report {
     if ($Status -eq "WARN") { $script:warnCount++ }
 }
 
-# Consent gate for anything that installs software. Only ever true under -Fix;
-# -Yes pre-answers for unattended runs; a non-interactive host that cannot
-# prompt declines rather than stalling.
+# Consent gate for an action that changes this machine: installing software, or
+# removing state. Only ever true under -Fix; -Yes pre-answers for unattended runs
+# (it consents to what the flags already asked for, it never asks for more); a
+# non-interactive host that cannot prompt declines rather than stalling.
 function Get-Consent {
     param([string]$Question)
     if (-not $Fix) { return $false }
@@ -67,15 +73,36 @@ function Get-Consent {
     try {
         $answer = Read-Host "$Question [y/N]"
         if ([string]::IsNullOrWhiteSpace($answer)) {
-            Write-Host "        (no answer; declining the install. A redirected stdin cannot answer prompts; use -Fix -Yes to consent unattended.)"
+            Write-Host "        (no answer; declining. A redirected stdin cannot answer prompts; add -Yes to consent unattended.)"
             return $false
         }
         return $answer -match '^[Yy]'
     }
     catch {
-        Write-Host "        (non-interactive host; skipping the prompt. Use -Fix -Yes to consent unattended.)"
+        Write-Host "        (non-interactive host; skipping the prompt. Add -Yes to consent unattended.)"
         return $false
     }
+}
+
+function Get-SanitizedLine {
+    param([string]$Value, [int]$MaxLength = 120)
+    # Strings this script did not author (a plan path from goal-state.json, a
+    # record written by something outside the kit) are stripped to printable
+    # ASCII and length-bounded before reaching this trusted output channel, so a
+    # hostile file cannot smuggle escape sequences past a reader's eyes or emit
+    # unbounded output. It does not make the text safe to obey: bounded
+    # printable ASCII still carries a sentence, so treat what it returns as data.
+    # Matches kit-goal.js's own sanitize() convention, with the cap per channel
+    # because a truncated string is only acceptable where nothing compares it.
+    # Truncation is always visible: a silently cut line would let two different
+    # values print identically, and the triage rule below asks a reader to
+    # compare continue prompts for equality.
+    $clean = [string]$Value -replace '[^\x20-\x7E]', ''
+    if ($clean.Length -gt $MaxLength) {
+        $dropped = $clean.Length - $MaxLength
+        $clean = $clean.Substring(0, $MaxLength) + "... [+" + $dropped + " more chars]"
+    }
+    return $clean
 }
 
 # --- Locate the payload and, when present, the surrounding repo clone. Dev-only
@@ -88,7 +115,6 @@ if (-not (Test-Path (Join-Path $pluginRoot ".claude-plugin\plugin.json"))) {
 }
 $claudeDir = Join-Path $env:USERPROFILE ".claude"
 $engineDir = Join-Path $pluginRoot "skills\compact-session\engine"
-$relaySourceDir = Join-Path $pluginRoot "skills\compact-session\relay"
 
 # A payload anywhere under ~/.claude is always an installed cache, never the
 # dev clone: /plugin marketplace add clones the whole repo (with .git) under
@@ -109,8 +135,8 @@ else {
 Write-Host ""
 
 # --- Execution policy. A Restricted or AllSigned effective policy blocks every
-# --- .ps1 in the kit (the doctor itself without the .cmd wrapper, the relay
-# --- arm script). RemoteSigned is sufficient; Unrestricted is broader than the
+# --- .ps1 in the kit (the doctor itself, whenever it is launched without the
+# --- .cmd wrapper). RemoteSigned is sufficient; Unrestricted is broader than the
 # --- kit needs. The Process scope is excluded from the computation: doctor.cmd
 # --- launches with -ExecutionPolicy Bypass, and including it would make the
 # --- check report Bypass on a machine where a plain .ps1 is still blocked.
@@ -133,7 +159,7 @@ if (-not $effectivePolicy -and $policyProbeError) {
     # (they launch with -ExecutionPolicy Bypass); plain .ps1 launches may not.
     Report "WARN" "Execution policy" @(
         "Could not query the policy: $policyProbeError",
-        "doctor.cmd and the relay arm path still run (Bypass at launch); a plain .ps1 launch is unverified on this machine."
+        "doctor.cmd still runs (Bypass at launch); a plain .ps1 launch is unverified on this machine."
     )
 }
 elseif (-not $effectivePolicy) {
@@ -306,7 +332,7 @@ else {
 # --- through cmd.exe's parser, an injection surface.
 $claudeCmd = Get-Command claude -ErrorAction SilentlyContinue
 if ($null -eq $claudeCmd) {
-    Report "FAIL" "claude CLI" @("'claude' does not resolve on PATH; the summarizer spawn and headless workers need it.")
+    Report "FAIL" "claude CLI" @("'claude' does not resolve on PATH; the compaction summarizer spawn needs it.")
 }
 elseif ($claudeCmd.Source -match "\.(cmd|bat)$") {
     Report "WARN" "claude CLI" @(
@@ -319,9 +345,9 @@ else {
     Report "PASS" "claude CLI" @("$($claudeCmd.Source)")
 }
 
-# --- CLI login probe. The compaction summarizer and chain-mode workers need
-# --- the CLI's own login (claude /login); the Desktop app authenticates through
-# --- its host and leaves the CLI logged out, and a credentials file on disk is
+# --- CLI login probe. The compaction summarizer needs the CLI's own login
+# --- (claude /login); the Desktop app authenticates through its host and
+# --- leaves the CLI logged out, and a credentials file on disk is
 # --- not evidence (observed 2026-07-10: file present, CLI not logged in), so
 # --- the only honest check is a live probe. Runs with ANTHROPIC_API_KEY
 # --- scrubbed (the summarizer's auth path), from a scratch cwd whose session
@@ -352,11 +378,11 @@ else {
             $probeOutput = @($probeResult.Output)
             $probeText = $probeOutput -join "`n"
             if ($probeExit -eq 0) {
-                Report "PASS" "claude CLI login" @("Headless spawn authenticated (summarizer and chain-mode workers can run here).")
+                Report "PASS" "claude CLI login" @("Headless spawn authenticated (the compaction summarizer can run here).")
             }
             elseif ($probeText -match "Not logged in") {
                 Report "WARN" "claude CLI login" @(
-                    "The CLI is not logged in, so the compaction summarizer and headless workers cannot run on this machine.",
+                    "The CLI is not logged in, so the compaction summarizer cannot run on this machine.",
                     "(Interactive Desktop/CLI sessions are unaffected.) Fix, one time, in any terminal:  claude /login"
                 )
             }
@@ -390,23 +416,38 @@ else {
     }
 }
 
-# --- ANTHROPIC_API_KEY. The engine scrubs it from the summarizer spawn, but a
-# --- durable (User/Machine) value reaches every session and every headless
-# --- 'claude -p' spawned by hand, flipping auth off the subscription login.
+# --- ANTHROPIC_API_KEY. A durable (User/Machine) value reaches every Claude Code
+# --- session on this machine, flipping auth off the subscription login and onto
+# --- API billing. The compaction engine scrubs it from its own summarizer spawn,
+# --- so that one path is covered; nothing else is.
 $apiKeyScopes = @()
 if ($env:ANTHROPIC_API_KEY) { $apiKeyScopes += "process" }
 if ([Environment]::GetEnvironmentVariable("ANTHROPIC_API_KEY", "User")) { $apiKeyScopes += "User" }
 if ([Environment]::GetEnvironmentVariable("ANTHROPIC_API_KEY", "Machine")) { $apiKeyScopes += "Machine" }
 if ($apiKeyScopes.Count -eq 0) {
-    Report "PASS" "ANTHROPIC_API_KEY" @("Not set; headless claude spawns authenticate via the claude.ai login.")
+    Report "PASS" "ANTHROPIC_API_KEY" @("Not set; sessions and the summarizer spawn authenticate via the claude.ai login.")
 }
 else {
-    Report "WARN" "ANTHROPIC_API_KEY" @(
-        ("Set at scope: " + ($apiKeyScopes -join ", ") + "."),
-        "The compaction engine scrubs it from its summarizer spawn, but hand-spawned headless workers",
-        "('claude -p ...') inherit it and switch to API-key auth. Spawn those with the key scrubbed",
-        "(Bash: env -u ANTHROPIC_API_KEY claude -p ...), or unset the durable value if it is not needed."
-    )
+    # Only a User or Machine value reaches sessions this shell did not start; a
+    # process-scope value came from whatever launched this shell and dies with it.
+    $apiKeyDurable = @($apiKeyScopes | Where-Object { $_ -ne "process" })
+    $apiKeyDetail = @(("Set at scope: " + ($apiKeyScopes -join ", ") + "."))
+    if ($apiKeyDurable.Count -gt 0) {
+        $apiKeyDetail += @(
+            "Every session started on this machine inherits it and switches to API-key auth. The compaction",
+            "engine scrubs it from its own summarizer spawn, so that path is unaffected. Unset the durable",
+            "value if it is not needed, or scrub it per command (Bash: env -u ANTHROPIC_API_KEY claude ...)."
+        )
+    }
+    else {
+        $apiKeyDetail += @(
+            "Process scope only: this shell and its children switch to API-key auth, and sessions started",
+            "elsewhere on this machine keep the claude.ai login. The compaction engine scrubs it from its own",
+            "summarizer spawn. Whatever launched this shell exported it; scrub it per command if a session",
+            "started from here should not use API-key auth (Bash: env -u ANTHROPIC_API_KEY claude ...)."
+        )
+    }
+    Report "WARN" "ANTHROPIC_API_KEY" $apiKeyDetail
 }
 
 # --- Doctrine import and freshness. The always-on doctrine loads via a one-line
@@ -530,443 +571,311 @@ else {
     }
 }
 
-# --- Resume relay (optional). Splits the relay's health into two separable
-# --- facts instead of one conflated line:
-# ---   "Resume relay" is the durable watcher plane (armed, watcher process
-# ---     alive, deployed copy current, dryrun.on absent, Startup shortcut
-# ---     present, AutoHotkey found) and never depends on a probe result.
-# ---   "Relay attended path" round-trips a synthetic dry-run request targeted
-# ---     at this doctor run's own terminal window (line 4, ahk_id), the same
-# ---     way every boundary compaction self-targets. Targeting is per-request
-# ---     only: the watcher has no fallback plane, so this one probe covers the
-# ---     only path a request can take. A leftover window.txt from an older arm
-# ---     is inert and is deleted by the arm script on the next deploy.
-# --- -NoProbe skips the round-trip and reports structural facts only. First-
-# --- time arming and the AHK install stay a deliberate act via the arm
-# --- script: under -Fix the doctor re-arms or refreshes only after an explicit
-# --- consent prompt, and never while a real request is pending (arming
-# --- restarts the watcher, which drops its in-flight request memory). An
-# --- armed relay also self-refreshes at session start when stale and idle
-# --- (the relay-refresh hook).
-$relayDir = Join-Path $env:LOCALAPPDATA "claude-kit\resume-relay"
-$armScript = Join-Path $relaySourceDir "arm-resume-relay.ps1"
-$ahkPaths = @(
-    (Join-Path $env:ProgramFiles "AutoHotkey\v2\AutoHotkey64.exe"),
-    (Join-Path $env:LOCALAPPDATA "Programs\AutoHotkey\v2\AutoHotkey64.exe")
-)
-$ahkPath = $null
-foreach ($candidate in $ahkPaths) {
-    if (Test-Path -LiteralPath $candidate) { $ahkPath = $candidate; break }
+# --- Legacy resume relay. The resume relay is no longer part of the kit, but a
+# --- machine that once armed it keeps three leftovers nothing here owns any
+# --- more: a state directory under %LOCALAPPDATA%, a Startup shortcut, and a
+# --- resident AutoHotkey watcher process. This check names them and surfaces the
+# --- resume records the state directory holds, on every run, because reading
+# --- them changes nothing and they are the only reason a leftover directory
+# --- matters. Removing them is destructive and separately authorized: it takes
+# --- -Fix plus -RemoveLegacyRelay plus consent at the prompt. AutoHotkey itself
+# --- is left installed; only the kit's own watcher process and state go.
+$legacyRelayDir = Join-Path $env:LOCALAPPDATA "claude-kit\resume-relay"
+$legacyShortcut = Join-Path ([Environment]::GetFolderPath("Startup")) "claude-resume-relay.lnk"
+$legacyRelayDirExists = Test-Path -LiteralPath $legacyRelayDir
+$legacyShortcutExists = Test-Path -LiteralPath $legacyShortcut
+$legacyRemovalArmed = $Fix -and $RemoveLegacyRelay
+
+# Get-Process exposes no command line, so only CIM can tell this watcher apart
+# from any other AutoHotkey script the machine runs; the match is anchored on the
+# relay directory path so an unrelated AutoHotkey script is never a kill target.
+# Every match counts: one surviving watcher re-creates the state directory. The
+# query is re-run immediately before any Stop-Process, which is what keeps a
+# recycled PID safe, since a reused PID cannot carry that command line. A
+# locked-down host can refuse the query: that leaves the process fact
+# undetermined and is reported as such, never as a clean result.
+function Get-LegacyRelayWatcher {
+    param([string]$RelayDir)
+    return @(Get-CimInstance Win32_Process -Filter "Name='AutoHotkey64.exe'" -ErrorAction Stop |
+        Where-Object {
+            $_.CommandLine -and
+            $_.CommandLine.IndexOf($RelayDir, [System.StringComparison]::OrdinalIgnoreCase) -ge 0 -and
+            $_.CommandLine.IndexOf("resume-relay.ahk", [System.StringComparison]::OrdinalIgnoreCase) -ge 0
+        })
 }
 
-# GetConsoleWindow (used inside capture-window.ps1) returns a real HWND even
-# for a hidden console: a scheduled task, a process launched with
-# -WindowStyle Hidden, or some ConPTY hosts. AHK's WinGetList never matches a
-# hidden window, so an ahk_id naming one would burn the full 30s attended
-# probe and false-WARN. IsWindowVisible tells the two apart before the
-# attended-path request is written.
-Add-Type @'
-using System;
-using System.Runtime.InteropServices;
-public static class RelayWinVisibility {
-    [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hWnd);
-}
-'@
-
-# Reads relay.log's tail for the watcher's own account of a probe timeout, so
-# a WARN names the real cause instead of reporting bare silence. Only a line
-# timestamped at or after the probe's own start can be attributed to it; a
-# malformed or out-of-window line is skipped, never thrown.
-function Get-RelayFailureReason {
-    param([string]$LogFile, [datetime]$Since)
-    $tail = @()
-    try { $tail = @(Get-Content -LiteralPath $LogFile -Tail 100 -ErrorAction Stop) } catch {}
-    $lastReason = $null
-    foreach ($line in $tail) {
-        if ($line -notmatch '^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| (.*)$') { continue }
-        # Capture the outer match's groups into named locals before the inner
-        # -match below runs: -match overwrites the shared $matches variable, so
-        # reading $matches[2] again after that point would silently pick up the
-        # inner match's groups instead of the outer line-split.
-        $stampText = $matches[1]
-        $msg = $matches[2]
-        $stamp = New-Object DateTime
-        $parsed = [DateTime]::TryParseExact($stampText, "yyyy-MM-dd HH:mm:ss", [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::None, [ref]$stamp)
-        if (-not $parsed -or $stamp -lt $Since) { continue }
-        if ($msg -match '^attempt \d+/\d+ failed: (.*)$') { $lastReason = $matches[1] }
+# The first three lines of a relay record are its resume pointer: the session id,
+# its transcript path, and the continue prompt the session was waiting for.
+# Records are written by something outside the kit, so every line is sanitized.
+# The cap is generous because the triage rule compares continue prompts for
+# equality and a transcript path is already near 100 characters: a bound tight
+# enough to cut either one turns the comparison the reader is asked to make into
+# a guess.
+$legacyRecordCap = 400
+function Get-LegacyRecordHead {
+    param([string]$Text)
+    $head = @()
+    foreach ($line in (@($Text -split "`n") | Select-Object -First 3)) {
+        $head += ("    " + (Get-SanitizedLine $line.TrimEnd() $legacyRecordCap))
     }
-    if ($null -ne $lastReason) { return $lastReason }
-    return "the watcher never logged an attempt for the probe within 30s (poll may not have fired; check the process and $LogFile)"
+    return $head
 }
 
-# Writes a marker-protected dry-run request atomically (CreateNew never
-# clobbers a real request that lands first), waits up to 30s for the
-# watcher's own dry-run log line naming this GUID, then tears down everything
-# the probe created: its own request (content-checked so a real request that
-# just landed is never deleted), its temp transcript, and its own archive
-# entries in processed\ and failed\ (matched by GUID, never a real request
-# nearby). dryrun.on is never touched; the in-request marker is the whole
-# containment, so no ambient flag lifetime has to outlive an unsynchronized
-# watcher poll (the flag-based protocol lost that race on 2026-07-15 and typed
-# a probe into a live session). Returns Outcome ("pass", "fail", or
-# "collision") and, when not "pass", a Reason for the WARN detail.
-function Invoke-RelayDryrunProbe {
-    param(
-        [string]$RelayDir,
-        [string]$RequestFile,
-        [string]$LogFile,
-        [string]$ProbeGuid,
-        [string]$TempTranscript,
-        [string]$RequestBody
-    )
-    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
-    # relay.log stamps whole seconds; Get-Date carries sub-second precision, so
-    # comparing a raw timestamp against the log would filter out an attempt
-    # logged in this probe's own starting second (its whole-second stamp reads
-    # earlier than a sub-second $probeStart). Floor to the second instead.
-    $probeStartRaw = Get-Date
-    $probeStart = New-Object DateTime -ArgumentList $probeStartRaw.Year, $probeStartRaw.Month, $probeStartRaw.Day, $probeStartRaw.Hour, $probeStartRaw.Minute, $probeStartRaw.Second
-    $outcome = "fail"
-    $reason = $null
-    try {
-        [System.IO.File]::WriteAllText($TempTranscript, "", $utf8NoBom)
+$legacyWatchers = @()
+$legacyProbeNote = $null
+# The @() wrapper is load-bearing: a one-element return unrolls to a scalar on
+# assignment, and a scalar CIM instance has no Count, so every count test below
+# would silently read empty with exactly one watcher running.
+try { $legacyWatchers = @(Get-LegacyRelayWatcher -RelayDir $legacyRelayDir) }
+catch {
+    $legacyProbeNote = "Could not query running processes (" + (Get-SanitizedLine $_.Exception.Message) + "), so a resident watcher process is undetermined; look for AutoHotkey64.exe running resume-relay.ahk by hand."
+}
 
-        # Atomic create-if-absent: if a real request landed between the
-        # caller's earlier check and now, CreateNew throws and the probe
-        # skips rather than overwriting it.
-        $fs = $null
-        $collision = $false
+# Newest first, with both the scan and the display bounded so a never-reaped
+# graveyard cannot make this slow or bury the rest of the report. Every record
+# read is accounted for in the output, because the whole directory goes when a
+# removal runs and an unread record is a pointer nobody will ever see again.
+$legacyScanCap = 200
+$legacyShowCap = 5
+$legacyRecordLines = @()
+$legacyReadErrors = @()
+if ($legacyRelayDirExists) {
+    # failed\ prints every real record it can read: those are the resume pointers,
+    # a removal takes all of them, and a pointer that was never displayed is gone
+    # with no way back. processed\ is bounded because it is corroborating context,
+    # newest-first, and the entry that decides a triage is the newest one.
+    foreach ($class in @(
+        @{ Dir = "failed"; Label = "failed\, requests the relay never resumed (newest first):"; Show = $legacyScanCap },
+        @{ Dir = "processed"; Label = "processed\, requests that did resume (newest first):"; Show = $legacyShowCap }
+    )) {
+        $classDir = Join-Path $legacyRelayDir $class.Dir
+        if (-not (Test-Path -LiteralPath $classDir)) { continue }
+        $classFiles = @()
         try {
-            $fs = [System.IO.File]::Open($RequestFile, [System.IO.FileMode]::CreateNew, [System.IO.FileAccess]::Write, [System.IO.FileShare]::Read)
-            $bytes = $utf8NoBom.GetBytes($RequestBody)
-            $fs.Write($bytes, 0, $bytes.Length)
+            $classFiles = @(Get-ChildItem -LiteralPath $classDir -File -Filter "*.txt" -ErrorAction Stop |
+                Sort-Object LastWriteTime -Descending)
         }
-        catch [System.IO.IOException] {
-            $collision = $true
+        catch {
+            $legacyReadErrors += ("could not list " + $classDir + ": " + (Get-SanitizedLine $_.Exception.Message))
+            continue
         }
-        finally {
-            if ($null -ne $fs) { $fs.Dispose() }
+        if ($classFiles.Count -eq 0) { continue }
+        $classLines = @()
+        $classScanned = 0
+        $classShown = 0
+        $classDryrun = 0
+        $classUnreadable = 0
+        foreach ($entry in $classFiles) {
+            if ($classShown -ge $class.Show -or $classScanned -ge $legacyScanCap) { break }
+            $classScanned++
+            $entryText = $null
+            try { $entryText = [System.IO.File]::ReadAllText($entry.FullName) }
+            catch {
+                $classUnreadable++
+                $legacyReadErrors += ("could not read " + (Get-SanitizedLine $entry.Name) + " in " + $classDir + ": " + (Get-SanitizedLine $_.Exception.Message))
+                continue
+            }
+            # A record carrying the dry-run marker is an old probe corpse, not a
+            # real request. Filtered before the display cap applies, so a run of
+            # probes cannot crowd a real stall out of the output.
+            if ($entryText.Contains("[doctor-dryrun]")) { $classDryrun++; continue }
+            $classShown++
+            $classLines += ("  " + (Get-SanitizedLine $entry.Name) + "  (" + $entry.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss") + ")")
+            $classLines += (Get-LegacyRecordHead -Text $entryText)
         }
+        $classNote = ("  " + $classFiles.Count + " record(s) in " + $class.Dir + "\: " + $classShown + " printed")
+        if ($classDryrun -gt 0) { $classNote += (", " + $classDryrun + " skipped as dry-run probes") }
+        if ($classUnreadable -gt 0) { $classNote += (", " + $classUnreadable + " unreadable") }
+        $classUnread = $classFiles.Count - $classScanned
+        if ($classUnread -gt 0) { $classNote += (", " + $classUnread + " neither read nor printed") }
+        $classNote += ". A removal deletes all of them, printed or not."
+        $legacyRecordLines += $class.Label
+        $legacyRecordLines += $classLines
+        $legacyRecordLines += $classNote
+    }
 
-        if ($collision) {
-            $outcome = "collision"
-            $reason = "a real request landed during the probe; skipped so it is not clobbered."
+    # A request.txt at the relay root was never archived either way, so it is the
+    # one record that may still be waiting rather than resolved.
+    $legacyRequest = Join-Path $legacyRelayDir "request.txt"
+    if (Test-Path -LiteralPath $legacyRequest) {
+        $legacyRequestText = $null
+        try { $legacyRequestText = [System.IO.File]::ReadAllText($legacyRequest) }
+        catch { $legacyReadErrors += ("could not read " + $legacyRequest + ": " + (Get-SanitizedLine $_.Exception.Message)) }
+        if ($null -ne $legacyRequestText) {
+            $legacyRecordLines += "request.txt at the relay root, pending (never archived to failed\ or processed\):"
+            $legacyRecordLines += (Get-LegacyRecordHead -Text $legacyRequestText)
         }
-        else {
-            # Watcher polls every 10s; allow up to 30s for its dry-run log
-            # line naming this GUID.
-            $marker = "DRYRUN: would resume " + [regex]::Escape($ProbeGuid)
-            $deadline = (Get-Date).AddSeconds(30)
-            $seen = $false
-            while ((Get-Date) -lt $deadline -and -not $seen) {
-                Start-Sleep -Seconds 2
-                $logText = ""
-                try { $logText = Get-Content $LogFile -Raw -ErrorAction SilentlyContinue } catch {}
-                if ($null -ne $logText -and $logText -match $marker) { $seen = $true }
-            }
-            if ($seen) {
-                $outcome = "pass"
-            }
-            else {
-                $outcome = "fail"
-                $reason = Get-RelayFailureReason -LogFile $LogFile -Since $probeStart
-            }
+    }
+
+    # relay.log is the only chronology of which requests ran and how they ended.
+    $legacyLog = Join-Path $legacyRelayDir "relay.log"
+    if (Test-Path -LiteralPath $legacyLog) {
+        $legacyLogTail = $null
+        try { $legacyLogTail = @(Get-Content -LiteralPath $legacyLog -Tail 10 -ErrorAction Stop) }
+        catch { $legacyReadErrors += ("could not read " + $legacyLog + ": " + (Get-SanitizedLine $_.Exception.Message)) }
+        if ($null -ne $legacyLogTail -and $legacyLogTail.Count -gt 0) {
+            $legacyRecordLines += ("relay.log, last " + $legacyLogTail.Count + " line(s), the only chronology of what ran:")
+            foreach ($logLine in $legacyLogTail) { $legacyRecordLines += ("  " + (Get-SanitizedLine $logLine $legacyRecordCap)) }
+        }
+    }
+
+    # The removal is recursive over the whole directory, so name whatever else
+    # lives there. Anything not surfaced above goes too, and a reader weighing the
+    # cost should not have to guess what "the state directory" contains.
+    try {
+        $legacyOther = @(Get-ChildItem -LiteralPath $legacyRelayDir -ErrorAction Stop |
+            Where-Object { $_.Name -notin @("failed", "processed", "relay.log", "request.txt") } |
+            ForEach-Object { Get-SanitizedLine $_.Name })
+        if ($legacyOther.Count -gt 0) {
+            $legacyRecordLines += ("Also under the directory, and taken by a removal: " + ($legacyOther -join ", ") + ".")
         }
     }
     catch {
-        $outcome = "fail"
-        $reason = "probe errored: $($_.Exception.Message)"
+        $legacyReadErrors += ("could not list " + $legacyRelayDir + ": " + (Get-SanitizedLine $_.Exception.Message))
     }
-    finally {
-        Remove-Item $TempTranscript -Force -ErrorAction SilentlyContinue
-        if (Test-Path $RequestFile) {
-            $curRequest = ""
-            try { $curRequest = [System.IO.File]::ReadAllText($RequestFile) } catch {}
-            if ($curRequest -eq $RequestBody) { Remove-Item $RequestFile -Force -ErrorAction SilentlyContinue }
-        }
-        # Remove only this probe's own archive entries (content carries the
-        # probe GUID); any other archived request belongs to the user.
-        foreach ($sub in @("processed", "failed")) {
-            $subDir = Join-Path $RelayDir $sub
-            if (Test-Path $subDir) {
-                Get-ChildItem -Path $subDir -File -ErrorAction SilentlyContinue | ForEach-Object {
-                    $archived = ""
-                    try { $archived = [System.IO.File]::ReadAllText($_.FullName) } catch {}
-                    if ($archived -match [regex]::Escape($ProbeGuid)) { Remove-Item $_.FullName -Force -ErrorAction SilentlyContinue }
-                }
-            }
-        }
+
+    if ($legacyRecordLines.Count -gt 0) {
+        $legacyRecordLines += "Triage rule: a failed\ record is a real stall only when no newer processed\ record carries the"
+        $legacyRecordLines += "same continue prompt. When one does, that later request resumed the same work and the failed\"
+        $legacyRecordLines += "record is superseded, so resuming it would fork a live session. Check pushed commits and the"
+        $legacyRecordLines += "plan doc's Chapters too. Resume only what is genuinely stalled:  claude --resume <session-id>"
+        $legacyRecordLines += "in its own repo."
     }
-    return @{ Outcome = $outcome; Reason = $reason }
 }
 
-if (-not (Test-Path $relayDir)) {
-    $ahkNote = "AutoHotkey v2 not installed (the arm script installs it via winget)."
-    if ($null -ne $ahkPath) { $ahkNote = "AutoHotkey v2 present at $ahkPath." }
-    Report "INFO" "Resume relay" @("Not armed (optional; interactive compaction works without it). $ahkNote", "Arm: $armScript")
-    Report "INFO" "Relay attended path" @("skipped: relay not armed (see Resume relay above)")
+$legacyFindings = @()
+if ($legacyRelayDirExists) { $legacyFindings += "state directory $legacyRelayDir" }
+if ($legacyShortcutExists) { $legacyFindings += "Startup shortcut $legacyShortcut" }
+foreach ($watcher in $legacyWatchers) {
+    $legacyFindings += ("watcher process AutoHotkey64.exe (PID " + $watcher.ProcessId + "), command line: " + (Get-SanitizedLine $watcher.CommandLine $legacyRecordCap))
+}
+
+if ($legacyFindings.Count -eq 0 -and $null -ne $legacyProbeNote) {
+    # Two of the three conditions are clean and the third was never determined,
+    # so this is not the clean state and must not read as one.
+    Report "WARN" "Legacy resume relay" @(
+        "No state directory and no Startup shortcut, and a resident watcher process could not be checked.",
+        $legacyProbeNote
+    )
+}
+elseif ($legacyFindings.Count -eq 0) {
+    # The steady state on every machine, so it stays quiet.
+    Report "PASS" "Legacy resume relay"
 }
 else {
-    $watcherCopy = Join-Path $relayDir "resume-relay.ahk"
-    $shortcut = Join-Path ([Environment]::GetFolderPath("Startup")) "claude-resume-relay.lnk"
-    $windowFile = Join-Path $relayDir "window.txt"
-    $requestFile = Join-Path $relayDir "request.txt"
-    $dryrunFlag = Join-Path $relayDir "dryrun.on"
-    $logFile = Join-Path $relayDir "relay.log"
-
-    # Structural gaps that do not themselves block a probe. Any present keeps
-    # the "Resume relay" line at WARN even when every other fact is healthy.
-    $structuralIssues = @()
-    if ($null -eq $ahkPath) { $structuralIssues += "AutoHotkey v2 not found at either known install path; re-run $armScript (it installs AHK via winget)" }
-    if (-not (Test-Path $shortcut)) { $structuralIssues += "Startup shortcut missing (re-run $armScript)" }
-    # Stale watcher: a kit update refreshes this plugin's watcher but not the
-    # deployed copy the running process was started from, so the machine keeps
-    # running old code with no signal. A hash mismatch is that gap. Under -Fix
-    # the doctor repairs it (consent-gated) via the arm script's refresh mode,
-    # skipping while a request is pending (a restart could interrupt typing or
-    # drop the watcher's typed-request memory); the relay-refresh SessionStart
-    # hook heals the same gap silently whenever the relay is idle.
-    $sourceWatcher = Join-Path $relaySourceDir "resume-relay.ahk"
-    $watcherStale = $false
-    if ((Test-Path $watcherCopy) -and (Test-Path $sourceWatcher)) {
-        try {
-            $watcherStale = ((Get-FileHash -LiteralPath $watcherCopy -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath $sourceWatcher -Algorithm SHA256).Hash)
-        } catch {}
+    $legacyDetail = @(
+        ("Leftovers found: " + ($legacyFindings -join "; ") + "."),
+        "The resume relay is no longer part of the kit, so nothing here owns or maintains them."
+    )
+    if ($null -ne $legacyProbeNote) { $legacyDetail += $legacyProbeNote }
+    if ($legacyRecordLines.Count -gt 0) {
+        $legacyDetail += "The state directory holds these resume records:"
+        $legacyDetail += $legacyRecordLines
     }
-    $refreshNote = $null
-    if ($watcherStale -and $Fix -and -not (Test-Path $requestFile)) {
-        if (Get-Consent "The deployed relay watcher is stale (a kit update since the last arm). Refresh and restart it now?") {
-            $refreshExit = -1
-            try {
-                & powershell -NoProfile -ExecutionPolicy Bypass -File $armScript -RefreshOnly *> $null
-                $refreshExit = $LASTEXITCODE
-            } catch {}
-            $rehashFailed = $false
-            try {
-                $watcherStale = ((Get-FileHash -LiteralPath $watcherCopy -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath $sourceWatcher -Algorithm SHA256).Hash)
-            } catch { $rehashFailed = $true }
-            if (-not $watcherStale -and -not $rehashFailed) {
-                $refreshNote = "deployed watcher was stale; refreshed and restarted from this plugin's payload."
-            }
-            elseif ($refreshExit -eq 2) {
-                $refreshNote = "refresh ran but deferred: a request arrived while it was running; re-run once the relay is idle."
-            }
-            elseif ($refreshExit -eq 3) {
-                $refreshNote = "refresh declined: the relay is not armed for refresh (Startup shortcut or AutoHotkey missing); re-arm with $armScript."
-            }
-            elseif ($rehashFailed) {
-                $refreshNote = "refresh exit code $refreshExit, but the post-refresh hash re-check failed; the stale WARN below is unverified."
-            }
-        }
+    foreach ($readError in $legacyReadErrors) { $legacyDetail += ("Read error: " + $readError) }
+
+    if (-not $legacyRemovalArmed) {
+        Report "WARN" "Legacy resume relay" ($legacyDetail + @(
+            "Removal is not armed, so this run deletes nothing.",
+            "To remove them, from an interactive terminal:  doctor -Fix -RemoveLegacyRelay",
+            "(one consent prompt; AutoHotkey itself stays installed)."
+        ))
     }
-    # $watcherStale can still change below: the watcher-start-fix invokes the
-    # plain (non -RefreshOnly) arm script, which always copies the current
-    # payload watcher over the deployed copy as a side effect. Appending its
-    # structuralIssues entry is deferred past that repair so a just-applied
-    # refresh is not reported stale.
+    else {
+        # The survey lands under this check's own heading before the consent
+        # prompt, so whoever answers the prompt has already read the records.
+        # INFO carries no counter, so the outcome line below owns the verdict.
+        Report "INFO" "Legacy resume relay" ($legacyDetail + @(
+            $(if ($Yes) { "Removal is armed (-Fix -RemoveLegacyRelay) and -Yes pre-answers the consent, so the records above are the only warning: removing now." }
+              else { "Removal is armed (-Fix -RemoveLegacyRelay); the prompt below is the last gate." })
+        ))
 
-    $watcherCopyExists = Test-Path $watcherCopy
-    # A leftover window.txt from an older arm is inert (the watcher targets
-    # per-request only, with no fallback plane) and is deleted by the arm
-    # script on the next deploy; its presence earns one informational line.
-    $obsoleteWindowFile = Test-Path $windowFile
-    $dryrunPresent = Test-Path $dryrunFlag
-    $requestPending = Test-Path $requestFile
-    $pendingSessionId = ""
-    if ($requestPending) {
-        try { $pendingSessionId = (((Get-Content $requestFile -Raw -ErrorAction SilentlyContinue) -split "`n")[0]).Trim() } catch {}
-    }
-
-    # Re-hashes $watcherStale after an accepted re-arm: arm-resume-relay.ps1
-    # always copies the current payload watcher over the deployed copy (not
-    # just under -RefreshOnly), so the fact computed before a repair is stale
-    # the moment the repair succeeds.
-    function Update-RelayFactsAfterRearm {
-        param([string]$WatcherCopy, [string]$SourceWatcher)
-        $result = @{ WatcherStale = $false }
-        if ((Test-Path $WatcherCopy) -and (Test-Path $SourceWatcher)) {
-            try {
-                $result.WatcherStale = ((Get-FileHash -LiteralPath $WatcherCopy -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath $SourceWatcher -Algorithm SHA256).Hash)
-            } catch {}
-        }
-        return $result
-    }
-
-    $watcherRunning = $false
-    $markerCompatible = $false
-    if ($watcherCopyExists) {
-        # Re-arming restarts the watcher, so never do it while a real request
-        # is pending (a mid-typing kill loses the watcher's handled-request
-        # memory). Consent-gated like every other install/repair action, and
-        # skipped entirely under -NoProbe (structural detection only, matching
-        # today's -NoProbe behavior).
-
-        $watcherProcess = Get-CimInstance Win32_Process -Filter "Name='AutoHotkey64.exe'" -ErrorAction SilentlyContinue |
-            Where-Object { $_.CommandLine -like "*resume-relay.ahk*" } |
-            Select-Object -First 1
-        if ($null -ne $watcherProcess) {
-            $watcherRunning = $true
-        }
-
-        if (-not $NoProbe -and -not $watcherRunning -and $Fix -and -not $requestPending) {
-            if (Get-Consent "The resume relay watcher is not running. Start it now (re-arm)?") {
-                try { & powershell -NoProfile -ExecutionPolicy Bypass -File $armScript } catch {}
-                Start-Sleep -Seconds 2
-                $rearmFacts = Update-RelayFactsAfterRearm -WatcherCopy $watcherCopy -SourceWatcher $sourceWatcher
-                $watcherStale = $rearmFacts.WatcherStale
-                $obsoleteWindowFile = Test-Path $windowFile
-                $watcherRunning = $false
-                $watcherProcess = Get-CimInstance Win32_Process -Filter "Name='AutoHotkey64.exe'" -ErrorAction SilentlyContinue |
-                    Where-Object { $_.CommandLine -like "*resume-relay.ahk*" } |
-                    Select-Object -First 1
-                if ($null -ne $watcherProcess) {
-                    $watcherRunning = $true
+        $legacyConsentTargets = @()
+        if ($legacyWatchers.Count -eq 1) { $legacyConsentTargets += "the watcher process (PID $($legacyWatchers[0].ProcessId))" }
+        elseif ($legacyWatchers.Count -gt 1) { $legacyConsentTargets += "$($legacyWatchers.Count) watcher processes" }
+        if ($legacyShortcutExists) { $legacyConsentTargets += "the Startup shortcut" }
+        if ($legacyRelayDirExists) { $legacyConsentTargets += "the state directory and every record in it, printed or not" }
+        if (Get-Consent ("Remove " + ($legacyConsentTargets -join ", ") + "?")) {
+            # Watcher first, then the shortcut, then the directory: a running
+            # watcher would otherwise write state back under a directory being
+            # removed. That order is an invariant, so a watcher still running, or
+            # one whose state could not be determined, blocks both deletes.
+            $legacyRemoved = @()
+            $legacyRemoveErrors = @()
+            $legacyWatcherBlocked = $false
+            $legacyLiveWatchers = @()
+            try { $legacyLiveWatchers = @(Get-LegacyRelayWatcher -RelayDir $legacyRelayDir) }
+            catch {
+                $legacyWatcherBlocked = $true
+                $legacyRemoveErrors += ("could not re-check for a running watcher (" + (Get-SanitizedLine $_.Exception.Message) + "), so whether one would write state back is unknown")
+            }
+            foreach ($watcher in $legacyLiveWatchers) {
+                try {
+                    Stop-Process -Id $watcher.ProcessId -Force -ErrorAction Stop
+                    $legacyRemoved += "Stopped watcher process PID $($watcher.ProcessId); AutoHotkey itself is left installed."
+                }
+                catch {
+                    if (Get-Process -Id $watcher.ProcessId -ErrorAction SilentlyContinue) {
+                        $legacyWatcherBlocked = $true
+                        $legacyRemoveErrors += ("could not stop PID " + $watcher.ProcessId + ": " + (Get-SanitizedLine $_.Exception.Message))
+                    }
+                    else {
+                        $legacyRemoved += "Watcher process PID $($watcher.ProcessId) had already exited."
+                    }
                 }
             }
-        }
-
-        # Compatibility gate: the deployed watcher must understand the
-        # [doctor-dryrun] marker, or a probe request would be typed for real.
-        # Read after any repair above so a just-refreshed copy is current.
-        $deployedText = ""
-        try { $deployedText = [System.IO.File]::ReadAllText($watcherCopy) } catch {}
-        $markerCompatible = $deployedText.Contains("[doctor-dryrun]")
-    }
-    if ($watcherStale) {
-        $structuralIssues += "deployed watcher differs from this plugin's resume-relay.ahk (a kit update since the last arm leaves the old watcher running); run doctor -Fix, or $armScript, to refresh it (an armed relay also self-refreshes at session start when idle)"
-    }
-
-    # --- "Resume relay": the durable watcher plane. Never depends on a probe.
-    if (-not $watcherCopyExists) {
-        $line1Status = "WARN"
-        $line1Detail = @("watcher copy missing (re-run $armScript)")
-    }
-    else {
-        $issues = @()
-        if ($dryrunPresent) { $issues += "dryrun.on present ($dryrunFlag); real resume requests are archived as dry-runs and never typed, so the relay is a silent no-op until it is removed." }
-        if (-not $watcherRunning) { $issues += "watcher process not running (re-run $armScript or log off/on)" }
-        if (-not $markerCompatible) { $issues += "deployed watcher predates the [doctor-dryrun] marker; the attended-path check below cannot safely probe it. Re-run $armScript to update (an armed relay also self-refreshes at session start when idle)." }
-
-        # A leftover window.txt is informational, never a fault: the fallback
-        # plane it configured no longer exists, so the file is ignored and the
-        # arm script deletes it on the next deploy.
-        $windowNote = $null
-        if ($obsoleteWindowFile) {
-            $windowNote = "window.txt present but obsolete (targeting is per-request only; the fallback plane was removed); the file is ignored and is deleted at the next arm or refresh."
-        }
-
-        if ($issues.Count -eq 0) {
-            $line1Status = "PASS"
-            $passNote = "Armed: watcher running, deployed copy current, dryrun.on absent."
-            if ($NoProbe) { $passNote += " Round-trip probe skipped by -NoProbe." }
-            $line1Detail = @($passNote)
-        }
-        else {
-            $line1Status = "WARN"
-            $line1Detail = $issues
-        }
-        if ($windowNote) { $line1Detail = $line1Detail + @($windowNote) }
-        if ($requestPending) {
-            $line1Detail = $line1Detail + @("a request is currently pending (session '$pendingSessionId'); normal mid-resume state, not itself a fault.")
-        }
-    }
-    if ($structuralIssues.Count -gt 0) {
-        if ($line1Status -eq "PASS") { $line1Status = "WARN" }
-        $line1Detail = $line1Detail + $structuralIssues
-    }
-    if ($refreshNote) { $line1Detail = @($refreshNote) + $line1Detail }
-    Report $line1Status "Resume relay" $line1Detail
-
-    # --- "Relay attended path": the round-trip probe. A marker-protected
-    # --- dry-run (never typed) targeting this doctor run's own window (line 4),
-    # --- the same per-request path every real request takes; there is no other
-    # --- targeting plane to probe.
-    $blockReason = $null
-    if (-not $watcherCopyExists) { $blockReason = "watcher copy missing" }
-    elseif ($dryrunPresent) { $blockReason = "dryrun.on present" }
-    elseif ($requestPending) { $blockReason = "a request is already pending" }
-    elseif (-not $watcherRunning) { $blockReason = "watcher process not running" }
-    elseif (-not $markerCompatible) { $blockReason = "deployed watcher predates the [doctor-dryrun] marker" }
-
-    if ($NoProbe) {
-        Report "INFO" "Relay attended path" @("skipped (-NoProbe)")
-    }
-    elseif ($blockReason) {
-        Report "INFO" "Relay attended path" @("skipped: $blockReason (see Resume relay above)")
-    }
-    else {
-        $captureScript = Join-Path $relaySourceDir "capture-window.ps1"
-        $captureRaw = $null
-        try { $captureRaw = & powershell -NoProfile -ExecutionPolicy Bypass -File $captureScript 2>$null } catch {}
-        $ahkIdLine = ""
-        if ($null -ne $captureRaw) {
-            $first = @($captureRaw)[0]
-            if ($null -ne $first) { $ahkIdLine = "$first".Trim() }
-        }
-        # capture-window.ps1's sole output shape is "ahk_id <hwnd>"; anything
-        # else (a stray warning line, truncated output) is treated as no
-        # capture rather than risked as a malformed target.
-        if ($ahkIdLine -notmatch '^ahk_id \d+$') { $ahkIdLine = "" }
-
-        # GetConsoleWindow can return a real HWND for a hidden console (a
-        # scheduled task, -WindowStyle Hidden, some ConPTY hosts); AHK's
-        # WinGetList never matches a hidden window, so check visibility
-        # before trusting the capture as a usable target.
-        $hostWindowVisible = $false
-        if ($ahkIdLine -ne "") {
-            $hwndValue = [Int64]0
-            if ([Int64]::TryParse(($ahkIdLine -replace '^ahk_id ', ''), [ref]$hwndValue)) {
-                try { $hostWindowVisible = [RelayWinVisibility]::IsWindowVisible([IntPtr]$hwndValue) } catch {}
+            if ($legacyWatchers.Count -gt 0 -and $legacyLiveWatchers.Count -eq 0 -and -not $legacyWatcherBlocked) {
+                $legacyRemoved += "The watcher process is no longer running; it exited on its own."
             }
-        }
-
-        if ($ahkIdLine -eq "" -or -not $hostWindowVisible) {
-            Report "INFO" "Relay attended path" @("no visible host console window (headless or hidden-console run); attended-path probe not possible here. Attended sessions self-target per request; this does not indicate a fault.")
-        }
-        else {
-            $probeGuid2 = [guid]::NewGuid().ToString()
-            $tempTranscript2 = Join-Path $env:TEMP ($probeGuid2 + ".jsonl")
-            $requestBody2 = $probeGuid2 + "`n" + $tempTranscript2 + "`n" + "[doctor-dryrun] doctor attended-path probe" + "`n" + $ahkIdLine
-            $probeResult2 = Invoke-RelayDryrunProbe -RelayDir $relayDir -RequestFile $requestFile -LogFile $logFile -ProbeGuid $probeGuid2 -TempTranscript $tempTranscript2 -RequestBody $requestBody2
-            if ($probeResult2.Outcome -eq "pass") {
-                Report "PASS" "Relay attended path" @("attended-path round-trip verified (dryrun targeted this session's own window). Every boundary request self-targets the same way; there is no fallback plane.")
+            if ($legacyShortcutExists) {
+                if ($legacyWatcherBlocked) {
+                    $legacyRemoveErrors += ("left " + $legacyShortcut + " in place: the watcher above is the blocker, and the removal order starts with it")
+                }
+                else {
+                    try {
+                        Remove-Item -LiteralPath $legacyShortcut -Force -ErrorAction Stop
+                        $legacyRemoved += "Deleted $legacyShortcut."
+                    }
+                    catch { $legacyRemoveErrors += ("could not delete " + $legacyShortcut + ": " + (Get-SanitizedLine $_.Exception.Message)) }
+                }
             }
-            elseif ($probeResult2.Outcome -eq "collision") {
-                # A real request landing mid-probe is a healthy relay in active
-                # use, not a fault; report it the same way the pre-probe
-                # pending gate does, never as a failed round-trip.
-                Report "INFO" "Relay attended path" @("a request is already pending; skipped so a real resume is not clobbered.")
+            if ($legacyRelayDirExists) {
+                if ($legacyWatcherBlocked) {
+                    $legacyRemoveErrors += ("left " + $legacyRelayDir + " in place: a watcher still running, or one whose state is unknown, would write records back into it")
+                }
+                elseif ($legacyReadErrors.Count -gt 0) {
+                    $legacyRemoveErrors += ("left " + $legacyRelayDir + " in place: part of it could not be read (see above), so deleting it would destroy records nobody has seen")
+                }
+                else {
+                    # A just-exited watcher's handle on its own script file can
+                    # outlive it by a beat and block the delete; retry briefly
+                    # rather than leaving the state behind.
+                    $legacyDirError = $null
+                    foreach ($attempt in 1..3) {
+                        try { Remove-Item -LiteralPath $legacyRelayDir -Recurse -Force -ErrorAction Stop }
+                        catch { $legacyDirError = (Get-SanitizedLine $_.Exception.Message) }
+                        if (-not (Test-Path -LiteralPath $legacyRelayDir)) { $legacyDirError = $null; break }
+                        if ($attempt -lt 3) { Start-Sleep -Milliseconds 500 }
+                    }
+                    if ($null -ne $legacyDirError) { $legacyRemoveErrors += ("could not delete " + $legacyRelayDir + ": " + $legacyDirError) }
+                    elseif (Test-Path -LiteralPath $legacyRelayDir) { $legacyRemoveErrors += ("could not delete " + $legacyRelayDir + "; it is still present after three attempts") }
+                    else { $legacyRemoved += "Deleted $legacyRelayDir and everything under it." }
+                }
+            }
+            if ($legacyRemoveErrors.Count -eq 0) {
+                Report "FIXED" "Legacy resume relay" $legacyRemoved
             }
             else {
-                Report "WARN" "Relay attended path" @($probeResult2.Reason)
+                Report "WARN" "Legacy resume relay" ($legacyRemoved + $legacyRemoveErrors + @(
+                    "Clear the blocker above and re-run doctor -Fix -RemoveLegacyRelay, or remove what is left by hand."
+                ))
             }
         }
-    }
-
-    # Failed relay requests: unattended runs that never auto-resumed. The
-    # requesting session cannot observe its own relay outcome, so surfacing the
-    # graveyard here (and in the SessionStart hook) is how a silent stall
-    # becomes visible. Read-only, so it runs even under -NoProbe; the probe's
-    # teardown has already reaped its own entries by GUID, but a teardown
-    # race (the watcher's own 3rd-attempt archive landing after a probe's own
-    # reap already enumerated the directory) or a hard-killed doctor process
-    # can still leave a [doctor-dryrun] entry behind, so any entry still
-    # carrying the marker is excluded rather than counted as a real stall.
-    $failedDir = Join-Path $relayDir "failed"
-    if (Test-Path $failedDir) {
-        $failedEntries = @(Get-ChildItem -Path $failedDir -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Where-Object {
-            $entryContent = ""
-            try { $entryContent = [System.IO.File]::ReadAllText($_.FullName) } catch {}
-            -not $entryContent.Contains("[doctor-dryrun]")
-        })
-        if ($failedEntries.Count -gt 0) {
-            $newest = $failedEntries[0]
-            $newestId = ""
-            try { $newestId = (((Get-Content $newest.FullName -Raw -ErrorAction SilentlyContinue) -split "`n")[0]).Trim() } catch {}
-            Report "WARN" "Resume relay failures" @(
-                "$($failedEntries.Count) failed request(s) in $failedDir; each is an unattended run that never auto-resumed.",
-                "Newest: session '$newestId' at $($newest.LastWriteTime).",
-                "Resume a stalled run manually: claude --resume <session-id>  in its repo. Reap $failedDir once handled."
+        else {
+            Report "WARN" "Legacy resume relay" @(
+                "Left in place: no consent given at the prompt, so nothing was deleted.",
+                "The prompt needs an interactive terminal; a run whose stdin is redirected declines every time.",
+                "Unattended, once the records above have been read:  doctor -Fix -RemoveLegacyRelay -Yes"
             )
         }
     }
@@ -979,16 +888,6 @@ else {
 # --- went Complete or was archived without an intervening Stop event to
 # --- trigger the hook's own auto-clear), which would leash every session in
 # --- that repo against a plan nobody is finishing.
-function Get-SanitizedRepoString {
-    param([string]$Value)
-    # Repo-controlled strings (a plan path from goal-state.json) are stripped
-    # to printable ASCII and length-capped before reaching this trusted output
-    # channel, matching kit-goal.js's own sanitize() convention.
-    $clean = [string]$Value -replace '[^\x20-\x7E]', ''
-    if ($clean.Length -gt 120) { $clean = $clean.Substring(0, 120) }
-    return $clean
-}
-
 $kitGoalStopHook = Join-Path $pluginRoot "hooks\kit-goal-stop.js"
 $hooksJsonPath = Join-Path $pluginRoot "hooks\hooks.json"
 $hookFileExists = Test-Path -LiteralPath $kitGoalStopHook
@@ -1065,7 +964,7 @@ if ($isClone) {
             # Mirrors kit-goal-lib.js's planHead: an anchored, line-start Status
             # match so body prose containing "in progress" or "complete" cannot
             # misclassify the plan.
-            $planSafe = Get-SanitizedRepoString $goalState.plan
+            $planSafe = Get-SanitizedLine $goalState.plan
             $planRaw = [string]$goalState.plan
             if ($planRaw -match '(^|[\\/])\.\.([\\/]|$)') {
                 # armGoal never writes a traversing path, so a plan containing a
