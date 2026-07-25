@@ -41,12 +41,13 @@ New `plugins/claude-kit/hooks/readonly-agent-guard.js`, registered in `plugins/c
 Policy map:
 
 - Strict class (`adversarial-reviewer`, `blind-reviewer`, `security-reviewer`, `council-member`, `design-facilitator`), deny:
-  - git mutating subcommands: `add`, `commit`, `checkout`, `switch`, `restore`, `reset`, `stash`, `clean`, `rm`, `mv`, `merge`, `rebase`, `cherry-pick`, `revert`, `apply`, `am`, `push`, `pull`. The implementer finalizes the exact list within this intent (a mutation of repo or remote state is denied; a pure read like `diff`, `log`, `show`, `grep`, `status`, `blame`, `branch --list` is allowed), escalating only if a command is genuinely both.
+  - git mutating subcommands, matched as whole tokens so a read sharing a prefix with a mutation (`merge-base`, `ls-files`) stays allowed: `add`, `am`, `apply`, `bisect`, `checkout`, `checkout-index`, `cherry-pick`, `clean`, `clone`, `commit`, `filter-branch`, `gc`, `init`, `merge`, `mergetool`, `mv`, `prune`, `pull`, `push`, `read-tree`, `rebase`, `reset`, `restore`, `revert`, `rm`, `sparse-checkout`, `stash`, `switch`, `update-index`, `update-ref`; plus `branch`, `tag`, `worktree`, `submodule`, and `bisect` in their mutating forms only. Deliberately allowed: `fetch`, `remote`, `config`, `symbolic-ref` (a read `pr-docs-guard.js` runs in production), any invocation carrying `--help`, and every other read.
   - Redirects, `tee`, heredoc-into-file, and `sed -i` whose target is an in-repo path outside `.kit/`. A relative path is an in-repo path (the subagent's cwd is the repo); an absolute path outside the payload's `cwd` and any `.kit/` path are allowed (scratch reports are legitimate).
-  - File-mutation commands (`rm`, `mv`, `cp`, `touch`, `chmod`) with an in-repo operand outside `.kit/`.
+  - File-mutation commands with an in-repo operand outside `.kit/`, split by whether they destroy content: destructive (`rm`, `rmdir`, `mv`, `truncate`, and the `find -delete` / `xargs rm` bulk idioms) and creating (`cp`, `touch`, `chmod`). Both apply to the strict class; only the destructive half reaches the gate-runner.
   - Package-manager mutations (`npm|pnpm|yarn` `install|add|update|ci`) and formatters (`dotnet format`, `prettier` with `-w`/`--write`).
-  - PowerShell equivalents: the docs-write-guard cmdlet heuristic generalized to in-repo targets (`Out-File`, `Set-Content`, `Add-Content`, `Tee-Object`), plus `Remove-Item`, `Move-Item`, `Copy-Item`, `New-Item` with in-repo targets, and the same git subcommand list.
-- Gate-runner class (`qa-verifier`), deny: the git mutating subcommands, and redirect/`tee`/`sed -i` into in-repo paths outside `.kit/`. Everything else allowed.
+  - Outward repo-state mutations via the GitHub CLI: `gh pr` with `merge|close|edit|comment|review|ready`, `gh release` with `create|delete|edit`, and `gh api` with a non-GET method. These are denied because the tree-state backstop structurally cannot see them: merging a PR leaves the worktree byte-identical.
+  - PowerShell equivalents: the docs-write-guard cmdlet heuristic generalized to in-repo targets (`Out-File`, `Set-Content`, `Add-Content`, `Clear-Content`, `Tee-Object`), plus `Remove-Item`, `Move-Item`, `Rename-Item`, `Copy-Item`, `New-Item` with in-repo targets, their standard aliases, the `Get-ChildItem | Remove-Item` pipeline, and the same git subcommand list.
+- Gate-runner class (`qa-verifier`), deny: the git mutating subcommands and the `gh` mutations; writes and destructive file operations whose target is in-repo and outside a fixed build-output list (`.kit`, `bin`, `obj`, `TestResults`, `node_modules`, `.vs`); formatters; and package-manager `install|add|update`. Allowed: `npm ci` (it installs from the lockfile without rewriting a tracked file), the creating commands (`cp`, `touch`, `chmod`, `New-Item`), and builds and suites, which are its job. The build-output list is a policy assumption, not a guarantee: a repo that tracks content under those directories gets no protection there.
 - Any other agent type, no agent type, or unparseable payload: allow.
 
 Acceptance criteria: a strict-class agent's `git checkout`, `git commit`, `sed -i` on a repo file, and `echo x > src/file` are denied while its `git diff`, `git log -p`, `rg`, `node --test test/x.test.js`, and `echo x > .kit/report.md` are allowed; qa-verifier's `dotnet build`, `dotnet test`, and `npm test` are allowed while its `git commit` and redirect into a repo file are denied; a namespaced id (`claude-kit:blind-reviewer`) resolves to its class; an implementer, the bare `claude` type, an absent `agent_type`, and malformed JSON all allow. Tests run green via `node --test test/readonly-agent-guard.test.js` (name the file explicitly; a bare directory run misfires on Node 24).
@@ -87,7 +88,7 @@ Acceptance criteria: the doctrine sentence and all six agent sentences present v
 
 ## Open Questions
 
-None. The implementer's only latitude is finalizing the git deny list within Section 1's stated intent.
+None. The git deny list, the only latitude Section 1 left open, is settled above and in Chapter 1.
 
 ## Related
 
