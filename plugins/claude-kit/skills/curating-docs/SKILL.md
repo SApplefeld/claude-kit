@@ -26,9 +26,10 @@ Run this as part of close-out, in order:
 
 1. Confirm `Status: Complete` (or abandoned) and that a final Chapter is written. If it is not actually done, stop; this is not the step.
 2. Move the file. `git mv docs/plans/<file> docs/archive/<file>` when the repo is git-tracked, so history is preserved; a plain move otherwise. The Chapters travel with the file untouched.
-3. Cross-reference. If the plan built on or superseded another, ensure both link each other (a `## Related` section), and mark a superseded plan in its header. Act on any cross-ref gap `docs-curator` flagged.
-4. Prune the backlog (see below).
-5. Refresh the index. `docs/README.md` drops the plan from its active list; the archive is reflected.
+3. Repoint the plan's own relative links, before or right after the move. A plan written in `plans/` reaches a sibling archived plan as `../archive/<file>`, and that path is wrong the moment the plan is itself in `archive/`, where the sibling is just `<file>`. Grep the moved file for `../archive/` and fix every hit; a plan that cites its predecessors is the normal case, so this is not an edge case.
+4. Cross-reference. If the plan built on or superseded another, ensure both link each other (a `## Related` section), and mark a superseded plan in its header. Act on any cross-ref gap `docs-curator` flagged. The pointers run one way when the other plan is already archived: `docs/archive/` is append-only, so the moving plan gets the `## Related` section and the archived one is left alone.
+5. Prune the backlog (see below).
+6. Refresh the index. `docs/README.md` and `docs/plans/README.md` both drop the plan from their active list, and both reflect the archive, including a "most recent" pointer if either carries one.
 
 This is the rule that died last time, so it is stated as a prohibition with the excuses that defeat it:
 
