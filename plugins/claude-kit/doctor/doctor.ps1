@@ -892,7 +892,7 @@ else {
     }
 }
 
-# --- Kit goal continuity. Fork A's deterministic Stop-hook leash needs
+# --- Kit goal continuity. The deterministic Stop-hook leash needs
 # --- kit-goal-stop.js present and wired into hooks.json's Stop array, or the
 # --- leash silently never fires; the lib it depends on must load cleanly
 # --- under node; and a clone can be left holding a stale armed goal (the plan
@@ -928,7 +928,7 @@ else {
         elseif ($hooksJsonError) { $gaps += "hooks.json unparseable: $hooksJsonError" }
         else { $gaps += "hooks.json's Stop array does not reference kit-goal-stop.js" }
     }
-    Report "FAIL" "Kit goal hook" ($gaps + @("The kit-native goal leash (fork A) cannot enforce a run without this wiring."))
+    Report "FAIL" "Kit goal hook" ($gaps + @("The kit-native goal leash cannot enforce a run without this wiring."))
 }
 
 # Load-check the enforcing hook itself, not just its dependency: kit-goal-stop.js
