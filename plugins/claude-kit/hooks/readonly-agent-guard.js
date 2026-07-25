@@ -7,12 +7,13 @@
 //   GitHub state changes, writes into the tree, file mutations (delete, move,
 //   copy, create, chmod), package installs, and formatters are all denied.
 //   Gate-runner (qa-verifier): it builds and runs the suites, so inside a fixed
-//   list of build-output directories (bin, obj, TestResults, node_modules, .vs)
-//   it may write and delete freely. Everywhere else in the repo it may not write,
-//   delete, move, or rename, and git state, GitHub state, package installs that
-//   rewrite a lockfile, and formatters are denied to it as well. That directory
-//   list is a policy assumption, not a fact the guard checks: a repo that tracks
-//   content under one of those names gets no protection there.
+//   list of build-output directories (bin, obj, TestResults, node_modules, .vs),
+//   matched at any depth, it may write and delete freely. Everywhere else in the
+//   repo it may not write, delete, move, rename, or overwrite an existing file,
+//   and git state, GitHub state, package installs that rewrite a lockfile, and
+//   formatters are denied to it as well. That directory list is a policy
+//   assumption, not a fact the guard checks: a repo that tracks content under one
+//   of those names gets no protection there.
 //   Every other agent type, and the main session, is untouched.
 // The invariant is the state under review, and .kit/ (gitignored) is scratch
 // space both classes may write.
@@ -29,8 +30,9 @@
 // operand text is read from the original. So a verb or a > inside a quoted
 // argument is invisible (rg "the git commit flow" docs/ is a read), while
 // echo x > "src/file" is still a write. A nested executor (sh -c, bash -c,
-// pwsh -Command, eval, claude -p, a here-string) has its payload analyzed
-// recursively within a depth bound, so quoting is not a way around the guard.
+// pwsh -Command, cmd /c, eval, iex, claude -p, a here-string) has its payload
+// analyzed recursively within a depth bound, so quoting is not a way around the
+// guard.
 // Containment is judged against the git root above the payload cwd, and relative
 // operands resolve against any cd or Set-Location the command performs first, so
 // neither a subdirectory cwd nor a directory switch moves a repo path out of
@@ -71,23 +73,28 @@ function agentClass(t) {
 
 // A copy of the command with every character inside a single- or double-quoted
 // span replaced by NUL, preserving length so indexes stay usable against the
-// original. Backslash escapes are honored: at the top level and inside a
-// double-quoted span, a backslash before " \ $ or ` escapes that character, so an
-// escaped quote neither opens nor closes a span (bash's own rule, and the reason
-// sh -c "sh -c \"...\"" is read as one span rather than flipping quote parity for
-// the rest of the line). Single-quoted spans are literal. An unterminated quote
-// masks to the end of the string. Quoted text matches no pattern, which is what
-// makes a governed verb or a redirect operator inside an argument invisible.
+// original. Backslash escapes follow bash's two context rules, which differ: at
+// the top level a backslash escapes ANY following character, so \" and \' are
+// literal quotes that neither open nor close a span (a rule that must include
+// the single quote, or echo \' opens a phantom span that blanks the rest of the
+// command while bash runs it); inside a double-quoted span a backslash escapes
+// only " \ $ or `, so a Windows separator ("src\file") stays a literal
+// backslash rather than swallowing the next character. The double-quote rule is
+// the reason sh -c "sh -c \"...\"" is read as one span rather than flipping
+// quote parity for the rest of the line. Single-quoted spans are literal. An
+// unterminated quote masks to the end of the string. Quoted text matches no
+// pattern, which is what makes a governed verb or a redirect operator inside an
+// argument invisible.
 function maskQuoted(cmd) {
     const chars = cmd.split('');
-    const escapes = /["\\$`]/;
+    const dqEscapes = /["\\$`]/;
     for (let i = 0; i < chars.length; i++) {
-        if (chars[i] === '\\' && i + 1 < chars.length && escapes.test(chars[i + 1])) { i++; continue; }
+        if (chars[i] === '\\' && i + 1 < chars.length) { i++; continue; }
         const q = chars[i];
         if (q !== '"' && q !== "'") continue;
         let j = i + 1;
         while (j < chars.length && chars[j] !== q) {
-            if (q === '"' && chars[j] === '\\' && j + 1 < chars.length && escapes.test(chars[j + 1])) {
+            if (q === '"' && chars[j] === '\\' && j + 1 < chars.length && dqEscapes.test(chars[j + 1])) {
                 chars[j] = '\x00';
                 j++;
             }
@@ -99,12 +106,14 @@ function maskQuoted(cmd) {
     return chars.join('');
 }
 
-// One command out of a chain or pipeline: the original text from `from` up to the
-// next unquoted shell separator or redirect. The cut is found in the masked copy,
-// so a separator inside a quoted argument (sed -i 's/a/b/;s/c/d/' src/x) does not
-// truncate the operand list.
+// One command out of a chain, pipeline, or multi-line script: the original text
+// from `from` up to the next unquoted shell separator, redirect, or line break.
+// The cut is found in the masked copy, so a separator inside a quoted argument
+// (sed -i 's/a/b/;s/c/d/' src/x) does not truncate the operand list. A newline
+// ends a command as surely as a semicolon; without it the next line's command
+// name reads as an operand of this one.
 function segment(cmd, masked, from) {
-    const cut = masked.slice(from).search(/[;|&<>)]/);
+    const cut = masked.slice(from).search(/[;|&<>)\r\n]/);
     return cut < 0 ? cmd.slice(from) : cmd.slice(from, from + cut);
 }
 
@@ -183,43 +192,76 @@ function lastPathSwitchBefore(cmd, masked, end) {
     return target;
 }
 
-// The directory a mutation at `at` would run in: the last directory switch ahead
-// of it, resolved against the payload cwd, else the cwd itself. Null when a switch
-// target does not resolve to a real directory, which makes the effective directory
-// unknowable, so the caller allows.
-function effectiveDir(cmd, masked, at, cwd) {
+// The candidate directories a mutation at `at` could run in. With no directory
+// switch ahead of it, the payload cwd. A switch to a literal target that
+// resolves to a real directory moves the base there. A literal target that does
+// not resolve (the directory does not exist yet, or names a file) yields two
+// candidates, because a failed literal cd cannot move the shell out of the
+// tree, only deeper into it or nowhere at all: the target as it would resolve
+// (an earlier command in the chain may create it, mkdir -p tmp && cd tmp) and
+// the cwd itself (with ; a failed cd leaves the shell exactly where it was). A
+// target routed through a variable or a backtick is unknowable before the shell
+// runs, so no candidate is returned and the caller allows.
+function effectiveDirs(cmd, masked, at, cwd) {
     const target = lastPathSwitchBefore(cmd, masked, at);
-    if (target === null) return cwd;
+    if (target === null) return [cwd];
     const bare = unquote(target);
-    if (!bare || bare.startsWith('-') || /[$%`]/.test(bare)) return null;
+    if (!bare || bare.startsWith('-') || /[$%`]/.test(bare)) return [];
+    let resolved;
+    try { resolved = path.resolve(cwd, bare); } catch { return []; }
     try {
-        const resolved = path.resolve(cwd, bare);
-        return fs.statSync(resolved).isDirectory() ? resolved : null;
-    } catch {
-        return null;
-    }
+        if (fs.statSync(resolved).isDirectory()) return [resolved];
+    } catch { /* not a directory today: judge both candidates below */ }
+    return [resolved, cwd];
+}
+
+// A target path resolved against `base`, with the alternate spellings of an
+// absolute path normalized first: a \\?\ extended-length prefix on a drive path
+// is stripped, and on a Windows host the Git-Bash form /<drive>/<rest> becomes
+// <drive>:/<rest> (it is what pwd prints inside the Bash tool, so it names
+// in-tree files with no evasive intent). Null for everything that cannot be
+// resolved before the shell runs, which is the fail-open direction: a
+// descriptor dup (2>&1), a path built through a shell or environment variable,
+// a home-relative path, the null device.
+function resolveTarget(raw, base) {
+    let s = String(raw || '').trim().replace(/^["']|["']$/g, '');
+    if (!s) return null;
+    if (s.startsWith('&')) return null;                       // a descriptor, not a path
+    if (/^\\\\\?\\[A-Za-z]:/.test(s)) s = s.slice(4);         // extended-length prefix
+    if (path.sep === '\\' && /^\/[A-Za-z]\//.test(s)) s = `${s[1]}:${s.slice(2)}`;
+    if (/[$%`]/.test(s) || s.startsWith('~')) return null;    // unresolvable before the shell runs
+    if (/^(?:\/dev\/null|nul)$/i.test(s)) return null;        // the null device
+    try { return path.resolve(base, s); } catch { return null; }
 }
 
 // True when a target path lands in the tree under review: inside `root` and
 // outside the class's writable directories, or an ancestor of `root`, since
 // deleting an ancestor takes the tree with it. Relative operands resolve against
 // `base`, the directory the command runs in. False for everything the guard
-// cannot positively place in the tree, which is the fail-open direction: a
-// descriptor dup (2>&1), a path built through a shell or environment variable, a
-// home-relative path, the null device, and any sibling or unrelated absolute path.
+// cannot positively place in the tree.
 function inTreeTarget(raw, base, root, writable) {
-    const s = String(raw || '').trim().replace(/^["']|["']$/g, '');
-    if (!s) return false;
-    if (s.startsWith('&')) return false;                      // a descriptor, not a path
-    if (/[$%`]/.test(s) || s.startsWith('~')) return false;   // unresolvable before the shell runs
-    if (/^(?:\/dev\/null|nul)$/i.test(s)) return false;       // the null device
-    let resolved;
-    try { resolved = path.resolve(base, s); } catch { return false; }
+    const resolved = resolveTarget(raw, base);
+    if (resolved === null) return false;
     const outward = p => path.isAbsolute(p) || /^\.\.(?:[\\/]|$)/.test(p);
     const rel = path.relative(root, resolved);
     if (rel === '') return true;                              // the repo root itself
-    if (!outward(rel)) return !writable.includes(rel.split(/[\\/]/)[0].toLowerCase());
+    // A writable directory counts at any depth, not only at the repo root: .kit/
+    // is gitignored wherever it sits, and a solution's build output lives at
+    // src/<project>/obj as readily as at obj.
+    if (!outward(rel)) {
+        return !rel.split(/[\\/]/).some(part => writable.includes(part.toLowerCase()));
+    }
     return !outward(path.relative(resolved, root));           // an ancestor of the repo
+}
+
+// True when a target resolves to something that already exists on disk. The
+// overwrite rule for the creating commands hangs on this: creating a new file
+// is visible in git status, overwriting an existing one destroys its content. A
+// stat failure reads as not-there, the fail-open direction.
+function targetExists(raw, base) {
+    const resolved = resolveTarget(raw, base);
+    if (resolved === null) return false;
+    try { return fs.existsSync(resolved); } catch { return false; }
 }
 
 // git subcommands that always change repo, index, worktree, or remote state.
@@ -251,13 +293,20 @@ const GIT_VALUE_FLAGS = /^(?:-C|-c|--git-dir|--work-tree|--namespace|--exec-path
 // git --no-pager checkout). Reads stay allowed, including the ones that share a
 // prefix with a mutation (merge-base, ls-files), the read subverbs of the
 // subcommands that do both (git submodule status, git bisect log, git branch
-// --list), and any invocation asking for help. fetch, remote, and config are
+// --list), and an invocation asking for help. fetch, remote, and config are
 // deliberately absent: they touch no tracked file in the tree under review, and
 // resolving a base ref (git fetch origin, git config --get) is review work.
+// True when a git branch or tag invocation names a ref to create: it carries a
+// bare operand and none of its own read flags, which are the ones that turn an
+// operand into a filter (git branch --contains abc) rather than a new name.
+function refCreation(rest, readLong, readShort) {
+    if (rest.some(a => readLong.test(a) || readShort.test(a))) return false;
+    return rest.some(a => !a.startsWith('-'));
+}
+
 function gitMutation(cmd, masked) {
     for (const hit of commandPositions(masked, ['git'])) {
         const toks = tokens(segment(cmd, masked, hit.at));
-        if (toks.some(a => a === '--help' || a === '-h')) continue;   // documentation, not action
         let i = 0;
         while (i < toks.length && toks[i].startsWith('-')) {
             i += GIT_VALUE_FLAGS.test(toks[i]) ? 2 : 1;
@@ -265,13 +314,32 @@ function gitMutation(cmd, masked) {
         const sub = (toks[i] || '').toLowerCase();
         if (!sub) continue;
         const rest = toks.slice(i + 1);
+        // A help flag is documentation only in the position git itself reads it,
+        // immediately after the subcommand. Anywhere later it can be an option's
+        // value and the command still acts (git stash push -m "-h" stashes,
+        // git clean -fd -e -h deletes with -h as the exclude pattern).
+        if (rest[0] === '--help' || rest[0] === '-h') continue;
         if (GIT_MUTATIONS.has(sub)) return `a git state change (git ${sub})`;
-        // Subcommands that read in their bare form and mutate under a flag.
-        if (sub === 'branch' && rest.some(a => /^-[dDmMcCf]$/.test(a) || /^--(?:delete|move|copy|force|set-upstream-to|unset-upstream)/.test(a))) {
-            return 'a git branch mutation';
+        // Subcommands that read in their bare form and mutate either under a flag
+        // or by naming a ref to create. Creating a ref is a repo-state change that
+        // leaves the worktree byte-identical, so the tree-state check cannot see
+        // it; a read flag (--list, --contains, --points-at, --merged, --sort) keeps
+        // an operand a filter rather than a new name.
+        if (sub === 'branch') {
+            if (rest.some(a => /^-[dDmMcCf]$/.test(a) || /^--(?:delete|move|copy|force|set-upstream-to|unset-upstream)/.test(a))) {
+                return 'a git branch mutation';
+            }
+            if (refCreation(rest, /^--(?:list|contains|no-contains|points-at|merged|no-merged|sort|format|all|remotes|verbose)/, /^-[alrvq]+$/)) {
+                return 'a git branch creation';
+            }
         }
-        if (sub === 'tag' && rest.some(a => /^-[dasmf]$/.test(a) || /^--(?:delete|annotate|sign|force)/.test(a))) {
-            return 'a git tag mutation';
+        if (sub === 'tag') {
+            if (rest.some(a => /^-[dasmufF]$/.test(a) || /^--(?:delete|annotate|sign|local-user|force|file)/.test(a))) {
+                return 'a git tag mutation';
+            }
+            if (refCreation(rest, /^--(?:list|contains|no-contains|points-at|merged|no-merged|sort|format)/, /^-[lnq]+$/)) {
+                return 'a git tag creation';
+            }
         }
         // Subcommands that mutate under a subverb, which is their first bare
         // operand: git worktree list, git submodule status, and git bisect log
@@ -279,7 +347,7 @@ function gitMutation(cmd, masked) {
         const subverb = (rest.filter(a => !a.startsWith('-'))[0] || '').toLowerCase();
         if (sub === 'worktree' && /^(?:add|remove|move|prune)$/.test(subverb)) return 'a git worktree mutation';
         if (sub === 'submodule' && /^(?:add|update|deinit|sync|set-url|absorbgitdirs)$/.test(subverb)) return 'a git submodule mutation';
-        if (sub === 'bisect' && /^(?:start|good|bad|skip|reset|run|replay)$/.test(subverb)) return 'a git bisect mutation';
+        if (sub === 'bisect' && /^(?:start|good|bad|new|old|skip|reset|run|replay)$/.test(subverb)) return 'a git bisect mutation';
     }
     return null;
 }
@@ -289,11 +357,14 @@ function gitMutation(cmd, masked) {
 const GH_VALUE_FLAGS = /^(?:-R|--repo|--json|--jq|--template|--hostname)$/;
 
 // A description of a GitHub state mutation in the command, or null. Merging,
-// closing, or commenting on the pull request under review changes the state the
-// review is about, reaches outside the machine, and leaves the worktree
-// byte-identical, so the tree-state check around a review round cannot see it.
-// Reads stay allowed: gh pr view, gh pr diff, gh run list, and a GET through
-// gh api.
+// closing, or commenting on the pull request under review, mutating the
+// repository or an issue, dispatching a workflow, or writing a secret or
+// variable changes the state the review is about, reaches outside the machine,
+// and leaves the worktree byte-identical, so the tree-state check around a
+// review round cannot see it. Reads stay allowed: gh pr view, gh pr diff,
+// gh run list, and a GET through gh api. gh api's own default method is GET
+// normally and POST once any parameter flag adds a field, so a field or body
+// flag with no explicit method is a write.
 function ghMutation(cmd, masked) {
     for (const hit of commandPositions(masked, ['gh'])) {
         const toks = tokens(segment(cmd, masked, hit.at));
@@ -310,13 +381,28 @@ function ghMutation(cmd, masked) {
         if (group === 'release' && /^(?:create|delete|edit)$/.test(verb)) {
             return `a release mutation (gh release ${verb})`;
         }
+        if (group === 'repo' && /^(?:delete|edit|rename|archive)$/.test(verb)) {
+            return `a repository mutation (gh repo ${verb})`;
+        }
+        if (group === 'workflow' && /^(?:run|enable|disable)$/.test(verb)) {
+            return `a workflow mutation (gh workflow ${verb})`;
+        }
+        if ((group === 'secret' || group === 'variable') && /^(?:set|delete)$/.test(verb)) {
+            return `a ${group} mutation (gh ${group} ${verb})`;
+        }
+        if (group === 'issue' && /^(?:close|edit|comment|delete)$/.test(verb)) {
+            return `an issue mutation (gh issue ${verb})`;
+        }
         if (group === 'api') {
             let method = null;
+            let sendsBody = false;
             for (let i = 0; i < toks.length; i++) {
                 const m = /^(?:-X|--method)=?(.*)$/.exec(toks[i]);
                 if (m) method = m[1] || toks[i + 1] || null;
+                if (/^(?:-f|-F|--field|--raw-field|--input)(?:=|$)/.test(toks[i])) sendsBody = true;
             }
             if (method && !/^get$/i.test(method)) return `a write API call (gh api ${method.toUpperCase()})`;
+            if (!method && sendsBody) return 'a write API call (gh api with fields defaults to POST)';
         }
     }
     return null;
@@ -364,9 +450,13 @@ function writeTargets(cmd, masked) {
 }
 
 // Shell commands that destroy or displace what they name (rm deletes, mv removes
-// its source, truncate empties), and the ones that only create or adjust (cp
-// writes a new file, touch and chmod leave content in place). The split is the
-// class boundary: a gate-runner may create, and neither class may destroy.
+// its source, truncate empties), and the ones that only create or adjust (touch
+// and chmod leave content in place). The split is the class boundary: a
+// gate-runner may create, and neither class may destroy. cp and the copy/new
+// cmdlets sit on both sides of it: aimed at a path that does not exist they
+// create, aimed at one that does (or forced) they overwrite and destroy its
+// content, so the gate-runner is denied only their overwriting form
+// (overwriteTargets below) while the strict class is denied both forms.
 const DESTRUCTIVE_CMDS = ['rm', 'rmdir', 'mv', 'truncate'];
 const CREATING_CMDS = ['cp', 'touch', 'chmod'];
 
@@ -441,6 +531,20 @@ function cmdletPaths(name, named, positional) {
 // be judged: truncate's size, and the reference file it reads to get one.
 const SHELL_VALUE_FLAGS = { truncate: /^(?:-s|--size|-r|--reference)$/ };
 
+// The destination of a cp invocation: the value of -t/--target-directory when it
+// carries one, else the last bare operand. Only the destination is written, so
+// copying a repo file out into scratch is not a mutation of the tree.
+function cpDestination(toks) {
+    for (let i = 0; i < toks.length; i++) {
+        const m = /^(?:-t|--target-directory)(?:=(.+))?$/.exec(toks[i]);
+        if (!m) continue;
+        if (m[1]) return m[1];
+        return i + 1 < toks.length ? toks[i + 1] : null;
+    }
+    const bare = toks.filter(a => !a.startsWith('-'));
+    return bare.length ? bare[bare.length - 1] : null;
+}
+
 // Every {name, target, at} the named shell commands and cmdlets in a command
 // would change. Operand rules: rm, rmdir, mv, truncate, touch, and the write
 // cmdlets change each operand they name (mv deletes its source, so its source
@@ -456,7 +560,10 @@ function mutationTargets(cmd, masked, shellNames, cmdletNames) {
             if (toks[i].startsWith('-')) { if (valueFlags.test(toks[i])) i++; continue; }
             operands.push(toks[i]);
         }
-        if (hit.name === 'cp') operands = operands.slice(-1);
+        if (hit.name === 'cp') {
+            const dest = cpDestination(toks);
+            operands = dest === null ? [] : [dest];
+        }
         if (hit.name === 'chmod') operands = operands.slice(1);
         for (const target of operands) out.push({ name: hit.name, target, at: hit.at });
     }
@@ -464,6 +571,30 @@ function mutationTargets(cmd, masked, shellNames, cmdletNames) {
         const { named, positional } = cmdletOperands(tokens(segment(cmd, masked, hit.at)));
         for (const target of cmdletPaths(hit.name, named, positional)) {
             out.push({ name: hit.name, target, at: hit.at });
+        }
+    }
+    return out;
+}
+
+// Every {name, target, at, force} the creating commands would write, for the
+// caller's overwrite check: cp overwrites an existing destination by default
+// (unless -n/--no-clobber promises not to), and Copy-Item or New-Item under
+// -Force overwrites or truncates whatever sits at the target. `force` carries
+// the flag so a forced invocation is judged destructive without a stat.
+function overwriteTargets(cmd, masked) {
+    const out = [];
+    for (const hit of commandPositions(masked, ['cp'])) {
+        const toks = tokens(segment(cmd, masked, hit.at));
+        if (toks.some(a => a === '-n' || a === '--no-clobber')) continue;
+        const dest = cpDestination(toks);
+        if (dest !== null) out.push({ name: 'cp', target: dest, at: hit.at, force: false });
+    }
+    for (const hit of commandPositions(masked, PS_CREATING)) {
+        const toks = tokens(segment(cmd, masked, hit.at));
+        const force = toks.some(a => /^-Force$/i.test(a));
+        const { named, positional } = cmdletOperands(toks);
+        for (const target of cmdletPaths(hit.name, named, positional)) {
+            out.push({ name: hit.name, target, at: hit.at, force });
         }
     }
     return out;
@@ -525,30 +656,65 @@ function firstVerb(cmd, masked, at, valueFlags) {
     return '';
 }
 
-// A description of a package-manager mutation, or null. install, add, and update
-// rewrite a tracked lockfile, so both classes are denied them. npm ci installs
-// from the lockfile without rewriting it, which makes it the gate-runner's
-// legitimate way to prepare a suite run. Running the gate is untouched either way:
-// npm test and npm run build pass.
+// A description of a package-manager mutation, or null. Installing and updating
+// rewrite a tracked lockfile, so both classes are denied them under every verb
+// alias npm accepts (npm i, npm up); yarn 1 and pnpm install when run with no
+// verb at all, so a bare invocation counts too unless it only asks for the
+// version or help. npm ci installs from the lockfile without rewriting it,
+// which makes it the gate-runner's legitimate way to prepare a suite run.
+// Running the gate is untouched either way: npm test and npm run build pass.
 function packageMutation(cmd, masked, strict) {
     for (const hit of commandPositions(masked, ['npm', 'pnpm', 'yarn'])) {
         const verb = firstVerb(cmd, masked, hit.at, PKG_VALUE_FLAGS);
-        if (/^(?:install|add|update)$/.test(verb)) return `a package-manager mutation (${hit.name} ${verb})`;
+        if (/^(?:i|in|ins|inst|install|add|up|upgrade|update)$/.test(verb)) {
+            return `a package-manager mutation (${hit.name} ${verb})`;
+        }
         if (verb === 'ci' && strict) return `a package-manager mutation (${hit.name} ci)`;
+        if (!verb && /^(?:pnpm|yarn)$/.test(hit.name)) {
+            const toks = tokens(segment(cmd, masked, hit.at));
+            if (!toks.some(a => /^(?:--version|-v|--help|-h)$/i.test(a))) {
+                return `a package-manager mutation (a bare ${hit.name} installs)`;
+            }
+        }
+    }
+    // The .NET equivalents: add and remove rewrite a tracked project file, and new
+    // scaffolds files into the tree. dotnet build, test, restore, and run pass.
+    for (const hit of commandPositions(masked, ['dotnet'])) {
+        const verb = firstVerb(cmd, masked, hit.at, /^$/);
+        if (/^(?:add|remove|new)$/.test(verb)) return `a package-manager mutation (dotnet ${verb})`;
     }
     return null;
 }
 
 // A description of a formatter run, or null. A formatter rewrites every tracked
 // source file it touches and is no part of running a gate, so both classes are
-// denied it. dotnet build, dotnet test, and a check-only prettier pass.
+// denied it: dotnet format in its writing form, prettier with -w/--write, and a
+// package script that formats (run format, run fmt, a script named *:fix, or a
+// run carrying --fix). Check-only invocations write nothing and are legitimate
+// gate steps, so they pass: dotnet build, dotnet test, dotnet format with
+// --verify-no-changes or --check, prettier --check, and npm run lint.
 function formatterRun(cmd, masked) {
     for (const hit of commandPositions(masked, ['dotnet'])) {
-        if (firstVerb(cmd, masked, hit.at, /^$/) === 'format') return 'a formatter run (dotnet format)';
+        if (firstVerb(cmd, masked, hit.at, /^$/) !== 'format') continue;
+        const toks = tokens(segment(cmd, masked, hit.at));
+        if (toks.includes('--verify-no-changes') || toks.includes('--check')) continue;
+        return 'a formatter run (dotnet format)';
     }
     if (commandPositions(masked, ['dotnet-format']).length) return 'a formatter run (dotnet-format)';
     for (const hit of commandPositions(masked, ['prettier'])) {
         if (tokens(segment(cmd, masked, hit.at)).some(a => a === '-w' || a === '--write')) return 'a formatter run (prettier --write)';
+    }
+    for (const hit of commandPositions(masked, ['npm', 'pnpm', 'yarn'])) {
+        const toks = tokens(segment(cmd, masked, hit.at));
+        let i = 0;
+        while (i < toks.length && toks[i].startsWith('-')) {
+            i += PKG_VALUE_FLAGS.test(toks[i]) ? 2 : 1;
+        }
+        if ((toks[i] || '').toLowerCase() !== 'run') continue;
+        const script = (toks[i + 1] || '').toLowerCase();
+        if (script === 'format' || script === 'fmt' || script.endsWith(':fix') || toks.includes('--fix')) {
+            return `a formatter run (${hit.name} run ${script})`;
+        }
     }
     return null;
 }
@@ -562,9 +728,12 @@ function encodedCommand(cmd, masked) {
 }
 
 // Nested executors: a shell or agent that runs command text handed to it as an
-// argument. Their flags carry the payload (-c, -lc, -Command, eval's operands,
-// claude's -p) and so does a here-string (bash <<< "...").
-const NESTED_EXECUTORS = ['sh', 'bash', 'zsh', 'dash', 'pwsh', 'powershell', 'eval', 'claude'];
+// argument. Their flags carry the payload (-c, -lc, -Command, cmd's /c or /k,
+// eval's and iex's operands, claude's -p) and so does a here-string
+// (bash <<< "..."). cmd and iex matter on a PowerShell-primary host: quoting the
+// payload (cmd /c "git commit -m x") is the natural spelling, and without the
+// recursion it would mask the verb out of command position entirely.
+const NESTED_EXECUTORS = ['sh', 'bash', 'zsh', 'dash', 'pwsh', 'powershell', 'cmd', 'eval', 'iex', 'invoke-expression', 'claude'];
 const NESTED_FLAGS = /^-{1,2}(?:[a-z]*c|command|cmd|p|print)$/i;
 
 // The command text a nested executor would run. The caller analyzes each payload
@@ -579,8 +748,17 @@ function nestedPayloads(cmd, masked) {
             if (t) out.push(unquote(t[1]));
         }
         const toks = tokens(segment(cmd, masked, hit.at));
-        if (hit.name === 'eval') {
+        if (hit.name === 'eval' || hit.name === 'iex' || hit.name === 'invoke-expression') {
             out.push(...toks.filter(a => !a.startsWith('-')));
+            continue;
+        }
+        if (hit.name === 'cmd') {
+            // The payload follows /c or /k; //c is the Git-Bash spelling that
+            // keeps MSYS path mangling off the switch, and it reaches cmd as /c.
+            for (let i = 0; i < toks.length; i++) {
+                if (!/^\/{1,2}[ck]$/i.test(toks[i])) continue;
+                if (toks[i + 1]) out.push(toks[i + 1]);
+            }
             continue;
         }
         for (let i = 0; i < toks.length; i++) {
@@ -601,11 +779,16 @@ function nestedPayloads(cmd, masked) {
 // tree-state check executing-work runs around a review round: a writer the
 // heuristics do not name (dd of=, install -m, ln -sf, a python or node one-liner,
 // an editor), a path assembled from a variable or split by quoting inside a token
-// ("git" commit, g'i't commit, git${IFS}commit), a bulk idiom other than find,
-// xargs, and a PowerShell pipeline, and a nested executor deeper than the
-// recursion bound. In the other direction the residual false hit is a governed
-// verb in genuine command position whose effect is not what it looks like (a
-// mutating verb inside a heredoc body). Analysis is regex-per-heuristic over the
+// ("git" commit, g'i't commit, git${IFS}commit), an in-tree path spelled as an
+// 8.3 short name (SAPPLE~1) or a UNC share (\\localhost\d\...), both of which
+// need filesystem round-trips to normalize for a shape that takes deliberate
+// evasion to produce, a bulk idiom other than find, xargs, and a PowerShell
+// pipeline, a nested executor deeper than the recursion bound, and a git
+// subcommand that writes files as a side effect of a read (git format-patch,
+// git archive), which leaves a tracked-file delta the backstop does see. In the
+// other direction the residual false hit is a governed verb in genuine command
+// position whose effect is not what it looks like (a mutating verb inside a
+// heredoc body). Analysis is regex-per-heuristic over the
 // whole string, so cost grows with the square of command length (a 80 KB command
 // takes seconds); the agent authoring that string is the only party it delays.
 function denyReason(cmd, cwd, strict, depth) {
@@ -626,22 +809,35 @@ function denyReason(cmd, cwd, strict, depth) {
         // reviewed state. The strict class writes only .kit/.
         const writable = strict ? KIT_ONLY : GATE_OUTPUT_DIRS;
         for (const w of writeTargets(cmd, masked)) {
-            const base = effectiveDir(cmd, masked, w.at, cwd);
-            if (base && inTreeTarget(w.target, base, root, writable)) {
-                return `a write into the tree under review (${w.target})`;
+            for (const base of effectiveDirs(cmd, masked, w.at, cwd)) {
+                if (inTreeTarget(w.target, base, root, writable)) {
+                    return `a write into the tree under review (${w.target})`;
+                }
             }
         }
         // Destroying content is denied to both classes. Creating a file is a
         // gate-runner's normal operation, visible in git status and caught by the
         // tree-state backstop, so the creating commands are the strict class's
-        // alone.
+        // alone, except in their overwriting form, which destroys content and is
+        // denied to the gate-runner below.
         const groups = [{ shell: DESTRUCTIVE_CMDS, cmdlets: PS_WRITE.concat(PS_DESTRUCTIVE), writable }];
         if (strict) groups.push({ shell: CREATING_CMDS, cmdlets: PS_CREATING, writable: KIT_ONLY });
         for (const g of groups) {
             for (const hit of mutationTargets(cmd, masked, g.shell, g.cmdlets)) {
-                const base = effectiveDir(cmd, masked, hit.at, cwd);
-                if (base && inTreeTarget(hit.target, base, root, g.writable)) {
-                    return `a path mutation in the tree under review (${hit.name} ${hit.target})`;
+                for (const base of effectiveDirs(cmd, masked, hit.at, cwd)) {
+                    if (inTreeTarget(hit.target, base, root, g.writable)) {
+                        return `a path mutation in the tree under review (${hit.name} ${hit.target})`;
+                    }
+                }
+            }
+        }
+        if (!strict) {
+            for (const hit of overwriteTargets(cmd, masked)) {
+                for (const base of effectiveDirs(cmd, masked, hit.at, cwd)) {
+                    if (inTreeTarget(hit.target, base, root, writable)
+                        && (hit.force || targetExists(hit.target, base))) {
+                        return `a path mutation in the tree under review (${hit.name} ${hit.target})`;
+                    }
                 }
             }
         }

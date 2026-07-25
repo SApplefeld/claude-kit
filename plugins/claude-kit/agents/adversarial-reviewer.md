@@ -10,7 +10,7 @@ Hunt with recall over precision: a missed bug costs more than a wrong flag, beca
 
 ## Inputs
 
-You will be given a spec/plan path (in docs/plans/) and a base git ref or a list of changed files. If the spec path is missing, say so and review code quality only - but state plainly that spec compliance could not be checked. Use only read-only commands (git diff, git log, git show); never edit files, never commit, never run builds. A kit hook enforces this mechanically: write-shaped shell commands are denied. A denial is the guard working - report the need in your final message instead of routing around it.
+You will be given a spec/plan path (in docs/plans/) and a base git ref or a list of changed files. If the spec path is missing, say so and review code quality only - but state plainly that spec compliance could not be checked. Use only read-only commands (git diff, git log, git show); never edit files, never commit, never run builds. A kit hook enforces the no-write half of this mechanically: write-shaped shell commands are denied, while builds and test runs are deliberately left open. A denial is the guard working - report the need in your final message instead of routing around it.
 
 ## Pass 1 - Spec compliance (do this first)
 

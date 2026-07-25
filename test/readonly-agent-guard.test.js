@@ -136,6 +136,18 @@ test('a git invocation asking for help is a read', () => {
     allowAll(STRICT, ['git gc --help', 'git commit -h', 'git checkout --help', 'git push --help']);
 });
 
+test('a help flag counts only immediately after the subcommand', () => {
+    // Anywhere later the token can be an option's value and the command still
+    // acts: git stash push -m "-h" stashes, git clean -fd -e -h deletes with -h
+    // consumed as the exclude pattern, git commit -am "--help" commits.
+    allowAll(STRICT, ['git stash --help', 'git clean --help']);
+    denyAll(STRICT, [
+        ['git stash push -m "-h"', GIT],
+        ['git clean -fd -e -h', GIT],
+        ['git commit -am "--help"', GIT],
+    ]);
+});
+
 test('strict class: git reads are allowed', () => {
     allowAll(STRICT, ['diff', 'diff --stat HEAD~1', 'log -p', 'show HEAD', 'status --porcelain',
         'grep -n foo', 'blame src/x', 'rev-parse HEAD', 'rev-list --count HEAD', 'ls-files',
@@ -191,6 +203,24 @@ test('a nested shell is judged on what it runs', () => {
     }
     allowAll(STRICT, ['sh -c "git diff"', 'bash -c "node --test test/x.test.js"',
         'bash scripts/verify.sh', 'sh -c "echo x > .kit/report.md"']);
+});
+
+test('cmd and iex are nested executors whose quoted payload is analyzed', () => {
+    // Quoting the payload is the natural spelling for both (cmd /c "..."), and
+    // the mask hides a quoted verb from command position, so only the recursion
+    // sees it. The unquoted form keeps the verb in command position and is
+    // caught by the outer scan, so both spellings deny.
+    denyAll(STRICT, [
+        ['cmd /c "git commit -m x"', NESTED],
+        ['cmd /c git commit -m x', GIT],
+        ['cmd.exe /c "rm README.md"', NESTED],
+        ['cmd //c "git commit -m x"', NESTED],
+        ['cmd /k "git push origin main"', NESTED],
+        ["iex 'git commit -m x'", NESTED],
+        ['iex "git push origin main"', NESTED],
+        ["Invoke-Expression 'Remove-Item README.md'", NESTED],
+    ]);
+    allowAll(STRICT, ['cmd /c "git diff"', 'iex "git diff"']);
 });
 
 test('strict class: writes into the tree are denied', () => {
@@ -292,6 +322,19 @@ test('a lockfile-rewriting install is denied to both classes; npm ci is the gate
     assertAllowed(GATE, 'npm ci');
 });
 
+test('package-manager verb aliases and bare installs carry the same policy', () => {
+    for (const agent of [STRICT, GATE]) {
+        // npm i is the most common spelling of install; yarn 1 and pnpm install
+        // when run with no verb at all.
+        for (const cmd of ['npm i', 'npm i lodash', 'npm in x', 'npm ins x', 'npm inst x',
+            'npm up', 'npm upgrade', 'pnpm i', 'pnpm up', 'yarn add x', 'yarn up x',
+            'yarn', 'pnpm', 'yarn --frozen-lockfile']) {
+            assertDenied(agent, cmd, /a package-manager mutation/);
+        }
+        allowAll(agent, ['yarn --version', 'pnpm -v', 'npm view lodash', 'npm ls']);
+    }
+});
+
 test('formatters are denied for both classes', () => {
     for (const agent of [STRICT, GATE]) {
         for (const cmd of ['dotnet format', 'dotnet format --severity warn', 'prettier -w src',
@@ -299,6 +342,20 @@ test('formatters are denied for both classes', () => {
             assertDenied(agent, cmd, /a formatter run/);
         }
         allowAll(agent, ['dotnet build', 'dotnet test', 'prettier --check .']);
+    }
+});
+
+test('formatter package scripts are denied; check-only formatter passes are not', () => {
+    for (const agent of [STRICT, GATE]) {
+        for (const cmd of ['npm run format', 'npm run fmt', 'npm run lint:fix',
+            'npm run lint -- --fix', 'pnpm run format', 'yarn run fmt']) {
+            assertDenied(agent, cmd, /a formatter run/);
+        }
+        // A lint that only checks stays open, and so does a check-only
+        // dotnet format: both are legitimate gate steps that write nothing.
+        allowAll(agent, ['npm run lint', 'npm run format:check',
+            'dotnet format --verify-no-changes', 'dotnet format --check',
+            'dotnet format --verify-no-changes --severity warn']);
     }
 });
 
@@ -333,6 +390,44 @@ test('a gh flag value does not shift the command group out of view', () => {
         ]);
         allowAll(agent, ['gh -R owner/name pr view 1', 'gh --repo owner/name pr diff 1',
             'gh pr list --json number,title', 'gh -R owner/name api -XGET /repos/x/y']);
+    }
+});
+
+test('gh api with a field flag and no explicit method is a write (POST is its default)', () => {
+    for (const agent of [STRICT, GATE]) {
+        denyAll(agent, [
+            ['gh api repos/o/r/issues/1/comments -f body=hi', /a write API call/],
+            ['gh api repos/o/r -F key=1', /a write API call/],
+            ['gh api repos/o/r --field key=1', /a write API call/],
+            ['gh api repos/o/r --raw-field key=1', /a write API call/],
+            ['gh api repos/o/r --input body.json', /a write API call/],
+        ]);
+        allowAll(agent, ['gh api repos/o/r', 'gh api -X GET repos/o/r -f q=1',
+            'gh api --method GET repos/o/r --field per_page=100']);
+    }
+});
+
+test('outward gh verbs beyond pr and release are denied for both classes', () => {
+    for (const agent of [STRICT, GATE]) {
+        denyAll(agent, [
+            ['gh repo delete o/r --yes', /a repository mutation \(gh repo delete\)/],
+            ['gh repo edit o/r --visibility private', /a repository mutation/],
+            ['gh repo rename newname', /a repository mutation/],
+            ['gh repo archive o/r', /a repository mutation/],
+            ['gh workflow run ci.yml', /a workflow mutation \(gh workflow run\)/],
+            ['gh workflow enable ci.yml', /a workflow mutation/],
+            ['gh workflow disable ci.yml', /a workflow mutation/],
+            ['gh secret set TOKEN', /a secret mutation \(gh secret set\)/],
+            ['gh secret delete TOKEN', /a secret mutation/],
+            ['gh variable set NAME', /a variable mutation/],
+            ['gh variable delete NAME', /a variable mutation/],
+            ['gh issue close 1', /an issue mutation \(gh issue close\)/],
+            ['gh issue edit 1 --title x', /an issue mutation/],
+            ['gh issue comment 1 --body x', /an issue mutation/],
+            ['gh issue delete 1', /an issue mutation/],
+        ]);
+        allowAll(agent, ['gh repo view o/r', 'gh workflow list', 'gh workflow view ci.yml',
+            'gh secret list', 'gh variable list', 'gh issue list', 'gh issue view 1']);
     }
 });
 
@@ -410,6 +505,21 @@ test('the build-output allowance is the gate-runner class alone', () => {
     ]);
 });
 
+test('the gate-runner may create but not overwrite', () => {
+    // cp overwrites an existing destination by default, and -Force truncates
+    // whatever the target holds, so the creating allowance stops where content
+    // would be destroyed. README.md exists at the repo root.
+    assertDeniedAt(REPO, GATE, 'cp .kit/x.md README.md', PATHMUT);
+    assertDeniedAt(REPO, GATE, 'Copy-Item .kit/a.txt README.md', PATHMUT);
+    assertDenied(GATE, 'New-Item -Path README.md -Force -ItemType File', PATHMUT);
+    assertDenied(GATE, 'Copy-Item -Path .kit/a.txt -Destination src/b.txt -Force', PATHMUT);
+    // A new file, a no-clobber copy, and scratch stay the gate-runner's.
+    assertAllowedAt(REPO, GATE, 'cp .kit/x.md .kit/y.md');
+    assertAllowedAt(REPO, GATE, 'cp -n .kit/x.md README.md');
+    assertAllowedAt(REPO, GATE, 'cp .kit/x.md no-such-file-here.md');
+    assertAllowedAt(REPO, GATE, 'New-Item -Path no-such-file-here.json -ItemType File');
+});
+
 test('gate-runner: destroying tracked content and changing git state are denied', () => {
     denyAll(GATE, [
         ['git commit -m x', GIT],
@@ -443,16 +553,41 @@ test('containment is judged against the git root, not the payload cwd', () => {
     assertAllowedAt(REPO_SUBDIR, STRICT, 'git diff -- ../plugins');
 });
 
+// Drive-letter spellings exist only where paths carry a drive letter.
+test('alternate absolute spellings of an in-tree path are the same path', { skip: !/^[A-Za-z]:\\/.test(REPO) }, () => {
+    // The Git-Bash form /<drive>/<rest> is what pwd prints inside the Bash
+    // tool, so it names in-tree files with no evasive intent; the \\?\ prefix
+    // is the extended-length spelling of the same drive path.
+    const gitBash = `/${REPO[0].toLowerCase()}${REPO.slice(2).replace(/\\/g, '/')}/README.md`;
+    assertDeniedAt(REPO, STRICT, `rm ${gitBash}`, PATHMUT);
+    assertDeniedAt(REPO, STRICT, `Remove-Item \\\\?\\${path.join(REPO, 'README.md')}`, PATHMUT);
+    // An 8.3 short name and a UNC share spelling of an in-tree path are
+    // accepted misses: placing them needs filesystem round-trips.
+    assertAllowedAt(REPO, STRICT, `rm \\\\localhost\\${REPO[0].toLowerCase()}\\README.md`);
+});
+
 test('a directory switch inside the command moves the base for relative operands', () => {
     assertDeniedAt(REPO, STRICT, 'cd test && rm ../README.md', PATHMUT);
     assertDeniedAt(REPO, STRICT, 'cd .kit && rm ../README.md', PATHMUT);
     assertDeniedAt(REPO, STRICT, 'cd test && echo x > ../README.md', WRITE);
     assertDeniedAt(REPO, STRICT, 'pushd test; rm ../README.md', PATHMUT);
-    // .kit/ is writable from anywhere, and an unresolvable switch target makes the
-    // effective directory unknowable, which allows.
+    // .kit/ is writable from anywhere, and a switch target routed through a
+    // variable is unknowable before the shell runs, which allows.
     assertAllowedAt(REPO, STRICT, 'cd test && echo x > ../.kit/report.md');
-    assertAllowedAt(REPO, STRICT, 'cd no-such-directory && rm ../README.md');
     assertAllowedAt(REPO, STRICT, 'cd $TARGET && rm ../README.md');
+});
+
+test('a literal switch target that does not resolve still gets the path check', () => {
+    // A failed literal cd cannot move the shell out of the tree: with ; the
+    // shell does not move at all, and with && an earlier command in the chain
+    // may create the directory before the switch runs, so both candidate bases
+    // are judged instead of skipping the containment check. Only a target the
+    // guard genuinely cannot know (cd $TARGET above) skips it.
+    assertDeniedAt(REPO, STRICT, 'mkdir -p tmp && cd tmp && rm ../README.md', PATHMUT);
+    assertDeniedAt(REPO, STRICT, 'cd nosuchdir; rm README.md', PATHMUT);
+    assertDeniedAt(REPO, STRICT, 'cd nosuchdir; echo x > README.md', WRITE);
+    assertDeniedAt(REPO, STRICT, 'cd no-such-directory && rm ../README.md', PATHMUT);
+    assertDeniedAt(REPO, GATE, 'cd bin; rm -rf ../plugins', PATHMUT);
 });
 
 test('a governed command keeps its identity when pathed, suffixed, or escaped', () => {
@@ -477,6 +612,20 @@ test('escaped quotes do not hide a mutation', () => {
         ['echo \\" ; git commit -m x', GIT],
         ['echo \\"quoted\\" && rm src/x', PATHMUT],
     ]);
+});
+
+test('a top-level backslash escapes any character, the single quote included', () => {
+    // Bash reads a top-level \' as a literal quote; a masker that only honors
+    // " \ $ ` there opens a phantom span that blanks the rest of the command
+    // while the shell runs it.
+    denyAll(STRICT, [
+        [String.raw`echo \' ; git commit -m x`, GIT],
+        [String.raw`echo \' && rm -rf plugins`, PATHMUT],
+        [String.raw`echo \' ; rm -rf .`, PATHMUT],
+    ]);
+    // Inside a double-quoted span only " \ $ ` are escapable, so a Windows
+    // separator survives the quoting and the operand still classifies in-tree.
+    assertDenied(STRICT, String.raw`Set-Content -Path "src\file" -Value x`, PATHMUT);
 });
 
 test('a nested executor beyond a shell is judged the same way', () => {
@@ -537,8 +686,16 @@ test('a payload with no command fails open', () => {
 
 test('a payload with no cwd keeps the path-independent heuristics only', () => {
     const noCwd = command => runGuard({ tool_name: 'Bash', agent_type: STRICT, tool_input: { command } });
-    for (const command of ['git commit -m x', 'gh pr merge 1', 'dotnet format', 'npm install']) {
-        assert.strictEqual(noCwd(command).status, 2, `expected deny without a cwd: ${command}`);
+    const reasons = [
+        ['git commit -m x', GIT],
+        ['gh pr merge 1', /a pull-request mutation \(gh pr merge\)/],
+        ['dotnet format', /a formatter run/],
+        ['npm install', /a package-manager mutation/],
+    ];
+    for (const [command, reason] of reasons) {
+        const r = noCwd(command);
+        assert.strictEqual(r.status, 2, `expected deny without a cwd: ${command}`);
+        assert.match(r.stderr, reason, `wrong reason without a cwd: ${command}`);
     }
     for (const command of ['echo x > src/file', 'rm -rf src']) {
         const r = noCwd(command);
@@ -563,6 +720,73 @@ test('the denial names the agent and the correct moves', () => {
     assert.match(r.stderr, /final message/);
     assert.match(r.stderr, /\.kit\//);
     assert.match(r.stderr, /orchestrator/);
+});
+
+test('a newline ends a command, so the next line is not an operand of this one', () => {
+    // Without the line break in the segment cut, the gate class's canonical clean
+    // reads "dotnet" as an operand of rm, and a strict agent tidying its own
+    // scratch reads "rg" the same way. Both are routine, so the over-block would
+    // land on day one.
+    allowAll(GATE, ['rm -rf obj\ndotnet build', 'rm -rf bin\r\ndotnet test']);
+    allowAll(STRICT, ['rm .kit/tmp.md\nrg pattern plugins/', 'cat src/a\nls src']);
+    // A mutation on any line is still caught.
+    denyAll(STRICT, [
+        ['git log\ngit checkout main', GIT],
+        ['rg foo src\nrm src/x.cs', PATHMUT],
+    ]);
+});
+
+test('naming a ref to create is a mutation, filtering on one is a read', () => {
+    denyAll(STRICT, [
+        ['git branch scratch-branch', /a git branch creation/],
+        ['git branch feature/x main', /a git branch creation/],
+        ['git tag v9.9.9', /a git tag creation/],
+        ['git tag -u KEYID v1', /a git tag mutation/],
+    ]);
+    allowAll(STRICT, ['git branch', 'git branch --list', 'git branch -a', 'git branch -r',
+        'git branch -v', 'git branch --contains abc', 'git branch --merged main',
+        'git branch --points-at HEAD', 'git branch --sort=-committerdate',
+        'git tag', 'git tag -l', 'git tag --list "v*"', 'git tag --contains abc',
+        'git tag --points-at HEAD', 'git tag --sort=-creatordate']);
+});
+
+test('the modern bisect aliases mutate like the ones they replace', () => {
+    denyAll(STRICT, [
+        ['git bisect new', /a git bisect mutation/],
+        ['git bisect old', /a git bisect mutation/],
+    ]);
+    allowAll(STRICT, ['git bisect log', 'git bisect view', 'git bisect terms']);
+});
+
+test('the dotnet project mutators are package mutations for both classes', () => {
+    for (const agent of [STRICT, GATE]) {
+        denyAll(agent, [
+            ['dotnet add package Newtonsoft.Json', /a package-manager mutation \(dotnet add\)/],
+            ['dotnet remove package Foo', /a package-manager mutation \(dotnet remove\)/],
+            ['dotnet new classlib -o src/Foo', /a package-manager mutation \(dotnet new\)/],
+        ]);
+        allowAll(agent, ['dotnet build', 'dotnet test', 'dotnet restore', 'dotnet --version']);
+    }
+});
+
+test('a writable directory counts at any depth, not only at the repo root', () => {
+    // .kit/ is gitignored wherever it sits, and a solution's build output lives at
+    // src/<project>/obj as readily as at obj.
+    assertAllowedAt(REPO_SUBDIR, STRICT, 'echo x > .kit/notes.md');
+    allowAll(STRICT, ['echo x > src/Foo/.kit/notes.md']);
+    allowAll(GATE, ['rm -rf src/Foo/obj', 'rm -rf src/Foo/bin', 'echo x > src/Foo/obj/build.log']);
+    // The allowance is still scoped to those names.
+    denyAll(GATE, [['rm -rf src/Foo/Models', PATHMUT]]);
+    denyAll(STRICT, [['rm -rf src/Foo/obj', PATHMUT]]);
+});
+
+test('cp reads its destination from -t when the invocation carries one', () => {
+    allowAll(STRICT, ['cp -t .kit src/a.cs', 'cp --target-directory=.kit src/a.cs',
+        'cp src/a.cs .kit/a.cs']);
+    denyAll(STRICT, [
+        ['cp -t src/Models .kit/a.cs', PATHMUT],
+        ['cp --target-directory=src .kit/a.cs', PATHMUT],
+    ]);
 });
 
 test('the governed agents are granted no file-writing tool', () => {

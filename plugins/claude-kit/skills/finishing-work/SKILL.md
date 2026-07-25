@@ -11,6 +11,8 @@ When per-section reviews already cleared parts of the changeset, tell the finish
 
 In a session running below fable, dispatch the security review (step 2) and the final adversarial review (step 3) with the explicit `fable` model override by default: the fresh-eyes strong-model verdict over the whole changeset is the oversight that makes plan-covered implementation safe. Only the literal `Fable Spend: none (cost hold)` holds these two reviews at the session model. Any other value, including one that restricts the implementation surface (some sections only, or escalation ceilings only), leaves the finishing-review fable default fully in force.
 
+**Bracket steps 1 through 3 with the tree-state check.** Capture `git status --porcelain` before dispatching each of those rounds and compare when the round returns, before acting on any finding. A delta is the same incident executing-work's review rule names, with the same consequences: restore the tree, record the delta and the agent that produced it in the final Chapter, treat that agent's findings as suspect pending a re-review against the restored tree, and jot a kaizen note, since a delta means either a write-shaped command got past the guard or an allowance the guard grants is wider than the invariant. The check backstops every write that leaves a tracked-file delta; a write to a gitignored path or outside the git root, a mutate-read-restore inside one round, and an outward `gh` mutation leave no delta and rest on the guard alone.
+
 ## Steps
 
 1. **QA verification.** Dispatch the `qa-verifier` agent with the spec path: full build, full test suite, and every acceptance criterion checked with evidence. Any FAIL: fix and re-run before proceeding. Do not rationalize a failing criterion as "close enough".
