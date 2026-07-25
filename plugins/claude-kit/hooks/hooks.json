@@ -65,6 +65,15 @@
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/merged-pr-push-guard.js\""
           }
         ]
+      },
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/readonly-agent-guard.js\""
+          }
+        ]
       }
     ],
     "PostToolUse": [
