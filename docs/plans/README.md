@@ -11,7 +11,6 @@ This folder holds active plans only: specs that are open or in progress. A plan 
 
 ## Current
 
-- `claude-kit_compaction-unwind_spec_v1.md` - remove the compaction/resume automation (resume relay, context tripwire, chain mode, kit-goal clause (c)); manual compact-session and the kit-goal leash stay.
-- `claude-kit_readonly-agent-guard_spec_v1.md` - mechanical read-only enforcement for the judgment agents (per-class PreToolUse Bash guard), a review-round tree-state check, and mutation-probe serialization.
+None currently active.
 
-Completed plans are in `../archive/` (most recent: `claude-kit_external-engine-standdown_spec_v1.md`).
+Completed plans are in `../archive/` (most recent: `claude-kit_compaction-unwind_spec_v1.md`).

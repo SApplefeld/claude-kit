@@ -126,7 +126,7 @@ Brainstorming produces a spec in `docs/plans/<project>_spec_v1.md` with a record
 
 Compaction recovery is deterministic: the SessionStart hook fires on startup, resume, and after every compaction, finds in-progress plans, and instructs the session to re-read them - Chapters included - before any work proceeds.
 
-`/kit-goal docs/plans/<plan>.md` arms a project-scoped completion leash for a run in one line, enforced by a deterministic Stop hook (no LLM evaluator) whose state lives in `.kit/` and so outlives a session swap - unlike native `/goal`, which is session-scoped and starts a compacted successor goalless. The hook allows a stop only when the plan is Complete or archived, or the last message leads with `BLOCKED:`; otherwise it blocks with a reason naming the plan. Clear an armed goal with `/kit-goal clear`.
+`/kit-goal docs/plans/<plan>.md` arms a project-scoped completion leash for a run in one line, enforced by a deterministic Stop hook (no LLM evaluator) whose state lives in `.kit/` and so outlives a session swap, unlike native `/goal`, whose state is bound to the transcript. The hook still enforces on session identity, so a swap carries the leash only where the compaction ledger records the successor, which is a manual compact-session compaction; re-arming is the one-line recovery anywhere else. The hook allows a stop only when the plan is Complete or archived, or the last message leads with `BLOCKED:`; otherwise it blocks with a reason naming the plan. Clear an armed goal with `/kit-goal clear`.
 
 ## MODEL TIERING
 

@@ -1,6 +1,6 @@
 # claude-kit: Compaction Automation Unwind
 
-Status: In Progress
+Status: Complete
 Commit Model: Commit-and-Push
 Fable Spend: spec authorship only (Opus-led execution; no fable-tier sections)
 Created: 2026-07-24
@@ -145,6 +145,15 @@ The general lesson for the section-5 check: `failed\` alone is not the triage su
 5. On this machine: no `resume-relay` directory, no Startup shortcut, no watcher process; `doctor -NoProbe` reports the legacy check PASS-silent.
 6. A fresh read of compact-session and executing-work describes a coherent world: manual compaction only, no step referencing a deleted mechanism.
 
+## Related
+
+Supersedes the resume-relay and tripwire line entirely, removing what each one built. The pointers run one way: an archived plan is a record of what shipped when it shipped and is never edited to mention a later effort.
+
+- `claude-kit_resume-relay_spec_v1.md`, and the four plans that hardened it: `claude-kit_relay-auto-refresh_spec_v1.md`, `claude-kit_relay-reresolution_spec_v1.md`, `claude-kit_relay-fallback-removal_spec_v1.md`, `claude-kit_relay-resume-confirmation_spec_v1.md`. The relay, its watcher, its request contract, and its arming scripts are gone; the doctor's Legacy resume relay check exists only to clear what a machine still carries.
+- `claude-kit_compaction-tripwire_spec_v1.md`. The PostToolUse tripwire hook is deleted, and with it the only code reader of `KIT_EXTERNAL_ENGINE`, which now survives as skill-facing prose.
+- Narrows `claude-kit_goal-continuity_spec_v1.md`: the `/kit-goal` leash and its session-identity binding stay, minus the relay-handoff allow clause. The genealogy rebind that plan built is what still carries a leash across a manual compaction swap.
+- Narrows `claude-kit_external-engine-standdown_spec_v1.md`: the stand-down contract survives, but as prose only. Its `Run Mode` framing is gone, and the marker no longer gates any code.
+
 ## Chapters
 
 ### Chapter 1 - 2026-07-24
@@ -219,4 +228,29 @@ Done in this Chapter: the memory updates. `relay-frozen-attended-only.md` and `r
 What is needed to unblock: Scott's call on whether to disarm now, and if so whether to let the ai-os run finish first. The action itself is ready and rehearsed: `doctor -Fix -RemoveLegacyRelay` from **the repo clone**, never the installed cache, which has no such switch and would silently run as a plain `-Fix`.
 Reap without resuming: all three ai-os session ids and their triage are recorded in this spec's section 7, and the doctor's own read-only output now prints them with the triage rule, so the record survives the deletion either way.
 Next: 7 remainder (machine disarm), then the finishing-work pass
+Commit Model: Commit-and-Push
+
+### Chapter 8 - 2026-07-25 (close-out)
+Completed: 7 remainder (machine disarm), and the finishing pass
+Implemented By: main session (inline)
+Metrics: 1 review round at the whole-effort level (QA, then security and adversarial at fable, then docs curation); 0 NEEDS_CONTEXT; 0 escalations; advisor opus
+Gate: 147 pass / 0 fail across the seven `test/*.test.js` files, real exit 0, and `bun test tools/engine-tests/` at 79 pass / 0 fail. This effort's six files total exactly **85**, per file: branch-reaper-nudge 4, docs-write-guard 9, kit-goal-lib 24, kit-goal-stop 37, merged-pr-push-guard 4, stop-docs-hygiene 7. That is the spec's predicted post-unwind number, and kit-goal-stop at 37 is the recorded pre-unwind 47 minus section 2's ten clause-(c) tests, so acceptance 1's delta is attributed rather than merely totalled. The remaining 62 belong to the readonly-agent-guard effort, which shipped a seventh test file after this one's range.
+
+**The blocker resolved itself, and the disarm was already done.** Chapter 7 blocked on whether to disarm while an ai-os session held an armed leash whose stored condition still carried clause (c). Both halves of that hazard are gone. This machine (SCOTT-DESKTOP) carries no `resume-relay` directory, no `claude-resume-relay.lnk` Startup shortcut, and no `AutoHotkey64.exe` process, and the repo clone's `doctor -NoProbe` reports `[PASS] Legacy resume relay` with no detail, which is acceptance 5. The ai-os goal state has moved on to a different plan, and its stored condition now reads two clauses, (a) and (b), with no clause (c), which is direct evidence that the post-unwind kit is what is installed there. So the dangerous intermediate state Chapter 7 described (watcher killed, directory left, a boundary landing in the window) never had to be traversed by this effort at all.
+
+**The three ai-os session ids stay recorded here**, because the relay records that held them are now deleted and this doc is the only surviving copy: `e0b0ff10` (18:13, Chapter 3, already overtaken), `3d0a271f` (20:09, attempt 3/3 failed), and `8d80b375-819b-4e61-90bf-4698dff51f17` (20:44, resumed successfully with the identical Chapter-4 continue prompt, superseding `3d0a271f` 35 minutes later). Nothing was resumed, which was the instruction: resuming a superseded record would have forked a live effort.
+
+Review outcomes:
+- **QA verification: PASS**, all six acceptance criteria checked independently with evidence. It also cross-checked the gate delta per file rather than in aggregate. One over-report to note, since a Chapter is where a reader learns how much to trust an agent: it claimed `MEMORY.md` carried four index lines with two memory files unindexed. The file carries six, all resolving. Confirmed by reading it; no action taken.
+- **Security review (fable): CLEAR**, two Minors, both fixed. The recursive delete of the relay state directory now deletes a reparse point as the link itself, because Windows PowerShell's `-Recurse` follows a junction into its target and would reach outside the directory. The printed resume records carry the data-not-instructions label their sibling hooks already use, since the record text is transcript-derived and lands in an agent's context. The review independently verified the claim Chapter 3 made when it let the headless-spawn rules die: `compact.ts:198` does delete `ANTHROPIC_API_KEY`, the model is pinned, hooks are disabled, and the tool deny list covers Bash, Write, Edit, WebFetch, WebSearch, and Agent.
+- **Adversarial review (fable): APPROVED_WITH_CONCERNS**, two Majors and three Minors, all prose or spec text, all fixed. Every deferral the per-section blind reviews raised ("a deleted producer still has shipping consumers") was confirmed landed. The Majors: `kit-goal/SKILL.md`'s frontmatter still promised to hold a run "across compaction", broader than its own body and than executing-work, which is the exact overclaim Chapter 4 forbade, and it sat on the most visible surface the kit has, the skill catalog line; and acceptance 2's grep-A exemption enumerated individual lines that had gone stale against three real doc sites, which is the same defect class the Standing Brief Amendments block exists to catch, found a third time. Grep A and grep C's exemptions are now stated as classes rather than line lists. Minor: `kit-doctor/SKILL.md` described the check as printing "the newest few" `failed\` records when it prints every readable one, deliberately, because those are the resume pointers a removal destroys.
+- **Docs curation: 5 drift items**, one tagged `mistake` and reclassified by me. That item was `README.md`'s leash paragraph implying by contrast that a compacted successor is not goalless, the third surface Chapter 4's identical-breadth instruction never reached. It is a doc overclaim rather than a code defect, so it did not block; it is narrowed to match the other two. The other four were the `compaction-engine.md` pointer promising "the two resume modes", the ledger bullet not naming its second reader (`kit-goal-stop.js`, which post-unwind is the only route carrying a leash across a swap), `architecture.md`'s Stop bullet carrying the unnarrowed leash claim, and `architecture.md` naming `home/CLAUDE.md` as the doctrine when that file is an import stub.
+
+Decisions / Surprises:
+- **A defect in a sibling effort surfaced through this plan's acceptance 4, and it was the more serious of the two findings this close-out produced.** The doctrine is duplicated, and this plan's ground rules say every doctrine edit lands in both copies with the offset diff proving it. The readonly-agent-guard effort appended a probe-exclusivity sentence to `home/claude-kit-doctrine.md` only, so acceptance 4 failed on its first run here. The repair is one line, but the reason it matters is structural: `doctrine-refresh.js` reads `skills/operating-instructions/SKILL.md` and writes its body to `~/.claude/claude-kit-doctrine.md` every session, so the **skill** is the single source and `home/claude-kit-doctrine.md` is only the packaged copy. Editing the packaged copy alone meant the rule reached no session at all. Confirmed by grep: the sentence is absent from `~/.claude/claude-kit-doctrine.md` and from both plugin cache snapshots, and present only in the repo. It takes effect on the next kit update. `architecture.md`'s `home/` bullet now states this invariant so the next editor cannot repeat it.
+- Cross-references were added as a one-way `## Related` section. Six archived plans are superseded and two narrowed, and `docs/archive/` is append-only, so the pointers only run forward.
+- Bonus, unrelated to either effort and reversible in one line: `doctor.ps1` no longer labels the goal leash "fork A", a prior plan's internal design-fork name that had reached a user-facing FAIL message. Undo by restoring that phrase at its two sites.
+- The doctor now reports a `Doctrine import` WARN on this machine. It is a true positive with no action available in the repo: the repo's skill carries the probe sentence and the installed plugin cache predates it, so the two legitimately differ until the next kit update, at which point `doctrine-refresh.js` syncs them.
+Review Findings: all Majors and Minors from both finishing reviews fixed; the one `mistake`-tagged drift item adjudicated as a doc overclaim and narrowed; no finding left unaddressed.
+Next: none, the effort is complete.
 Commit Model: Commit-and-Push
