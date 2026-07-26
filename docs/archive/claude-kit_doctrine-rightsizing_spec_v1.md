@@ -1,6 +1,6 @@
 # Doctrine Rightsizing for the Claude 5 Baseline
 
-Status: In Progress
+Status: Complete
 Commit Model: Commit-and-Push (kit repo). Section 5 runs Branch-and-PR to `develop` in D:\personal\Neuro-Evolution-Operations (branch-protected; Scott approves the PR).
 Fable Spend: S1 audit and adjudication in-session (n/a, Fable-led session); implementers at opus/sonnet; finishing reviews at session model.
 Created: 2026-07-25
@@ -127,6 +127,8 @@ All doctrine edits apply to `plugins/claude-kit/skills/operating-instructions/SK
 - **Orchestration mechanics live in the skills; load them before dispatching.** Implementation defaults to dispatch - the main thread is the most expensive place to write code - and the brainstorming skill (tier bands, Fable spend, who executes) and executing-work skill (dispatch briefs, scouts, gates, reviews) own the mechanics. Before fanning out scouts, implementers, or reviewers outside a skill-driven run, or deciding which session model executes what, load executing-work.
 ```
 
+(Superseded by the Chapter 4 review fix: the shipped pointer reads "load the one that owns the moment" and assigns the which-session-model-executes decision to brainstorming.)
+
 **E14 (lesson-not-incident).** In the Kaizen capture bullet, after the sentence `The \`kaizen\` skill owns the bar and the mechanics.` insert: `Capture any lesson - kaizen note, memory entry, doctrine line - one level more general than the incident that taught it: state the lesson, not the incident.`
 
 ### Orchestration coverage map (S3 input)
@@ -163,8 +165,8 @@ Disposition of the eight removed doctrine bullets:
 
 ## Related
 
-- `../archive/claude-kit_fable-metering_spec_v1.md` wrote the "Orchestrating fan-out work" doctrine content this plan relocates into the owning skills.
-- `../archive/claude-kit_doctrine-delivery_spec_v1.md` built the doctrine delivery mechanism this plan works within (skill as single source, hand-mirrored `home/` copy, doctrine-refresh hook, doctor freshness check).
+- `claude-kit_fable-metering_spec_v1.md` wrote the "Orchestrating fan-out work" doctrine content this plan relocates into the owning skills.
+- `claude-kit_doctrine-delivery_spec_v1.md` built the doctrine delivery mechanism this plan works within (skill as single source, hand-mirrored `home/` copy, doctrine-refresh hook, doctor freshness check).
 
 ## Chapters
 
@@ -203,3 +205,21 @@ Decisions / Surprises: csharp-style lessons landed as Antipatterns bullets; kaiz
 Review Findings: 4 Major, 7 Minor raw. Fixed (9): the E13 pointer's self-contradicting routing (who-executes now explicitly brainstorming's); the lost resting-context lever (restored into brainstorming's session-mode paragraph); the forward-standing-directives-verbatim rationale (subagent-context sentence landed in executing-work's Delegating section); the dangling "unproven product" Before-you-send line (generalized to project honesty gates); the kaizen bullet's scope reading-order (lesson-not-incident sentence moved after the kit-friction scope sentences); preserve-error-and-delete-semantics added to the dispatch brief template as its own line; the keep-.gitignore-covering-.kit/ rule restored into executing-work; the H4 habit line given a self-justifying parenthetical; the prefer-rich-references prescription added as prose above brainstorming's spec template. Justified, not fixed (2): the privacy-constraint narrowing is approved verdict A working as intended (identity rules are product-specific and relocate to the Neuro repo in S5; a blanket global identity ban would forbid legitimate self-identification on Scott's own professional surfaces; "a promise made on a public surface must be honored in code" survives unconditionally), and the dropped metering measurements (2.3x, 150k, 11%) are journal-layer evidence whose record is the archived fable-metering plan, per the state-vs-journey rule. Post-fix gates: sync diff empty, zero em dashes, 178/178 tests (baseline 178/178).
 Next: 5. Neuro-Evolution-Operations CLAUDE.md + PR
 Commit Model: Commit-and-Push
+
+### Chapter 5 - 2026-07-26
+Completed: 5. Neuro-Evolution-Operations CLAUDE.md + PR
+Implemented By: main session (routing override from the spec's opus tier: subagents neither commit nor open PRs, and the file content was authored in S1, leaving only git/PR mechanics)
+Metrics: review rounds 0 (single new file of S1-authored content; per-section pair waived as trivial, finishing pass covers it); NEEDS_CONTEXT 0; escalations 0; advisor opus
+Decisions / Surprises: The repo has no gh CLI; the PR was created via the GitHub REST API using the git credential store's token (nothing new stored, token not displayed). Branch docs/project-claude-md off develop, commit 656b53e7, exactly one new file; the repo's untracked concurrent work (src/NeuroEvolutionOperations.AdminPortal/Properties/) was left alone. PR: https://github.com/SApplefeld/Neuro-Evolution-Operations/pull/240, awaiting Scott's approval (branch-protected develop).
+Review Findings: none (see Metrics)
+Next: finishing-work
+Commit Model: Branch-and-PR (this section, per spec header); kit repo remains Commit-and-Push
+
+### Chapter 6 - 2026-07-26 (close-out)
+Completed: 6. Finishing
+Implemented By: main session (orchestration); qa-verifier, adversarial-reviewer, docs-curator dispatched
+Metrics: review rounds 1 (final whole-changeset adversarial); NEEDS_CONTEXT 0; escalations 0; advisor opus
+Decisions / Surprises: QA PASS on every criterion (178/178 tests at baseline). Security review waived on the file-type predicate: the full changeset (git diff --name-only ad06d07..HEAD plus the Neuro branch) is markdown only, and the rebuilt plugins/claude-kit.zip is gitignored and outside the changeset. QA's one open item adjudicated: the csharp-style bullets were adapted to the Antipatterns register per the S4 brief's "phrased in the skill's register" instruction; accepted, recorded here. Final adversarial APPROVED_WITH_CONCERNS: 1 Major fixed (README.md scout-banding citation repointed from the removed doctrine section to executing-work), 3 Minors fixed (README.md Fable-billing line corrected to plan-covered-allotment-then-API, a pre-existing falsehood surfaced by the sweep; brainstorming's duplicated mockup sentence trimmed from the template References line; the spec's E13 block given a supersession marker). Docs-curator Drift Report: zero mistakes, two deviations accepted (README CONVENTIONS now routes project-only rules to project CLAUDE.md files, the verdict A convention made explicit; csharp-style:61 and sql-style:77 cite "the doctrine's current-state rule" whose standalone bullet merged into the documents bullet - citations still resolve semantically, left as-is). Curator added architecture.md's "Always-on boundary" section. Tree-state brackets around QA and the final review: unchanged both times.
+Review Findings: all Criticals none; all Majors fixed; Minors fixed or justified above.
+Next: none - effort complete. Neuro PR #240 (https://github.com/SApplefeld/Neuro-Evolution-Operations/pull/240) awaits Scott's approval; a requested change there reopens as a new round.
+Commit Model: Commit-and-Push (delivered in this changeset)
