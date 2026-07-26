@@ -931,6 +931,42 @@ else {
     Report "FAIL" "Kit goal hook" ($gaps + @("The kit-native goal leash cannot enforce a run without this wiring."))
 }
 
+# --- Hook canary. The SessionStart-hook canary probes the plugin cache to catch
+# --- broken hooks at session start; it needs hook-canary.js present and wired
+# --- into hooks.json's SessionStart array, or the cache breaks silently and every
+# --- session runs without the canary guard.
+$hookCanaryHook = Join-Path $pluginRoot "hooks\hook-canary.js"
+$canaryHooksJsonPath = Join-Path $pluginRoot "hooks\hooks.json"
+$canaryHookFileExists = Test-Path -LiteralPath $hookCanaryHook
+$canaryWired = $false
+$canaryHooksJsonError = $null
+if (Test-Path -LiteralPath $canaryHooksJsonPath) {
+    try {
+        $canaryHooksJsonData = Get-Content $canaryHooksJsonPath -Raw | ConvertFrom-Json
+        foreach ($entry in @($canaryHooksJsonData.hooks.SessionStart)) {
+            foreach ($h in @($entry.hooks)) {
+                if ($h.command -match "hook-canary\.js") { $canaryWired = $true }
+            }
+        }
+    }
+    catch {
+        $canaryHooksJsonError = $_.Exception.Message
+    }
+}
+if ($canaryHookFileExists -and $canaryWired) {
+    Report "PASS" "Hook canary" @("hook-canary.js present and wired in hooks.json's SessionStart array.")
+}
+else {
+    $gaps = @()
+    if (-not $canaryHookFileExists) { $gaps += "hook-canary.js not found at $hookCanaryHook" }
+    if (-not $canaryWired) {
+        if (-not (Test-Path -LiteralPath $canaryHooksJsonPath)) { $gaps += "hooks.json not found at $canaryHooksJsonPath" }
+        elseif ($canaryHooksJsonError) { $gaps += "hooks.json unparseable: $canaryHooksJsonError" }
+        else { $gaps += "hooks.json's SessionStart array does not reference hook-canary.js" }
+    }
+    Report "FAIL" "Hook canary" ($gaps + @("The cache canary probe cannot run without this wiring."))
+}
+
 # Load-check the enforcing hook itself, not just its dependency: kit-goal-stop.js
 # require()s kit-goal-lib.js, so one probe covers both, and a syntax error or bad
 # require in the hook is caught here rather than silently failing at the next

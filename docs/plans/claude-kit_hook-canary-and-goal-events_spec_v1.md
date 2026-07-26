@@ -113,3 +113,13 @@ Gate: full suite 176/176 pass (Chapter 1 baseline 163/163, +13 event tests acros
 Next: 3. Doctor wiring check for the canary
 Commit Model: Commit-and-Push
 
+### Chapter 3 - 2026-07-25
+Completed: 3. Doctor wiring check for the canary
+Implemented By: implementer-haiku; no escalations
+Metrics: 0 review rounds (trivial transcription section, per-section pair skipped; finishing-work covers the changeset); NEEDS_CONTEXT 0; escalations 0; advisor opus
+Decisions / Surprises: none. The clone landed faithful on the first attempt: sibling structure, all three failure branches (missing file, missing hooks.json, unparseable hooks.json), and collision-free canary-prefixed variables.
+Review Findings: none (skipped per the trivial-section rule); controller verified by reading the full diff and running the doctor: both "Kit goal hook" and "Hook canary" report PASS.
+Gate: doctor run on this machine shows [PASS] Hook canary with the sibling check unaffected; no JS touched, so the 176/176 suite state carries over from Chapter 2.
+Next: finishing-work
+Commit Model: Commit-and-Push
+
