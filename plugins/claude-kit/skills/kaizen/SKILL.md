@@ -33,6 +33,8 @@ Capture happens while you are working in some other project, so the kit clone is
 - a project-specific gotcha (that goes to auto memory, not here)
 - a one-off mistake of your own that is not about the kit
 
+**State the lesson, not the incident.** Capture every note one level more general than the incident that taught it: the incident is the evidence, the lesson is the note. One burn should teach you "hot," not "that stove."
+
 Zero notes in a session is the normal, healthy case. A note you have to talk yourself into is noise; leave it out.
 
 ## The pass (the reflect half)

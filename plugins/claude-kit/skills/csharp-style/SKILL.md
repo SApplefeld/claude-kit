@@ -65,6 +65,8 @@ The comments alone tell the story of the method. That is the goal.
 - ❌ Removing `#region` blocks because "modern style" dislikes them - they are core to this organization
 - ❌ The null-forgiving operator `!` - use null-conditional and null-coalescing instead
 - ❌ Inline SQL text in application code - data access goes through stored procedures (`CommandType.StoredProcedure`); the connection's principal is EXECUTE-only by design, so inline SQL is an architecture violation, not a shortcut
+- ❌ Resolving configuration options once at startup instead of lazily at request time - an eager startup read bakes in defaults and silently bypasses test overrides
+- ❌ Ordering middleware by convenience rather than cost - cheap rejection (rate limiting) belongs before expensive work (authentication)
 
 ## Checklist before declaring C# work complete
 
