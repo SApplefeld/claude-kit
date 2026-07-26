@@ -71,7 +71,7 @@ sessions (and post-compaction recovery) understand intent, not just steps.
 Model: haiku | sonnet | opus | fable | fable (inline)
 What gets built. Acceptance criteria as verifiable statements. Files in scope.
 Tests: <optional> the behaviors this section must lock and the risk driving each, e.g. "at minimum, lock both guard directions; a silent bypass is the expensive failure."
-References: <optional> the runnable check, rubric, mockup, or reference implementation the acceptance leans on, by path. For UI or visual work, name a mockup or reference implementation rather than describing it.
+References: <optional> the runnable check, rubric, mockup, or reference implementation the acceptance leans on, by path.
 ### 2. ...
 
 ## Out of Scope

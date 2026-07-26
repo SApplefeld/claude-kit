@@ -7,12 +7,20 @@ That split is the thing to hold onto when changing anything here. Prose surfaces
 ## Repo layout
 
 - **`plugins/claude-kit/`** is the installable payload, and the only zone an installed plugin loads. It holds `skills/` (18 skills, each a `SKILL.md` plus optional `references/`), `agents/` (reviewers, implementers by model tier, the QA verifier, the docs curator, the design facilitator, the council member), `hooks/` (Node scripts plus `hooks.json`), and `doctor/` (the Windows first-run and repair tool; its one destructive action, clearing a machine's leftover resume-relay state, needs the separate `-RemoveLegacyRelay` switch on top of `-Fix`).
-- **`home/`** holds the two files that land in the user's home directory rather than loading from the plugin: `CLAUDE.md`, an import stub that pulls the doctrine in and carries any machine-local pointers, and `claude-kit-doctrine.md`, the doctrine body itself. The doctrine's single source is the `operating-instructions` skill: `doctrine-refresh.js` strips that skill's frontmatter and writes the body to `~/.claude/claude-kit-doctrine.md` each session, so the copy here must stay byte-identical to the skill's body or a session loads doctrine the repo does not show.
+- **`home/`** holds the two files that land in the user's home directory rather than loading from the plugin: `CLAUDE.md`, an import stub that pulls the doctrine in and carries any machine-local pointers, and `claude-kit-doctrine.md`, the doctrine body itself. The doctrine's single source is the `operating-instructions` skill: `doctrine-refresh.js` strips that skill's frontmatter and writes the body to `~/.claude/claude-kit-doctrine.md` each session, so the copy here must stay byte-identical to the skill's body or a session loads doctrine the repo does not show. What earns a place in that body is a separate question, answered by the always-on boundary below.
 - **`docs/`** is the working library: about-the-solution documents at the root, active plans in `plans/`, finished history in `archive/`. It is not part of the payload.
 - **`kaizen/`** is the kit's self-improvement inbox, one note per piece of observed kit friction.
 - **`settings/settings.recommended.json`** is the recommended user settings shape.
 - **`tools/`** holds repo-side utilities that do not ship: `engine-tests/` (the compaction engine's Bun suite) and `transcript-study/` (the corpus analysis behind the compaction thresholds).
 - **`build.ps1`, `build.sh`, `.claude-plugin/marketplace.json`** package and publish the plugin.
+
+## Always-on boundary
+
+The doctrine is the only prose the model carries into every task, so what lives in it is an architectural decision rather than an editorial one. It holds the rules that are general (true in any repo, not just the one that taught them), earned (the harness's own system prompt and tool descriptions do not already guarantee them), and needed before any skill has been loaded. Everything else lives in the skill that owns the moment the rule applies, and the doctrine points at it.
+
+Orchestration mechanics are the largest thing that boundary keeps out. `brainstorming` owns the model tier bands, the `Fable Spend` authorization, and which session model executes an approved spec; `executing-work` owns dispatch briefs, scout banding and the scout return contract, the serialize-what-cannot-be-shared rule, the controller's gate, and the review roster. The doctrine's "Orchestrating fan-out work" section is one pointer bullet naming those two skills, which buys always-on context back at the cost of a load: fanning out scouts, implementers, or reviewers outside a skill-driven run depends on that pointer actually triggering the skill load, an accepted risk rather than a guarantee.
+
+Project-specific rules are kept out the same way. A product's honesty and privacy gates, its identity and framing constraints, and its test-suite naming live in that project's own `CLAUDE.md`, next to the gate tests that enforce them. The doctrine keeps only the general form: nothing untrue ships, and where a project defines honesty or privacy gates, a violation is a defect to sweep the whole tree for. The same rule sends .NET lessons to `csharp-style` and the capture bar to `kaizen` rather than into the always-on text.
 
 ## Hooks
 
