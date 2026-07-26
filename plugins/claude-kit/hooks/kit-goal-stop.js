@@ -59,7 +59,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { readGoal, planHead, clearGoal, bindSession } = require('./kit-goal-lib.js');
+const { readGoal, planHead, clearGoal, bindSession, emitGoalEvent } = require('./kit-goal-lib.js');
 
 function readStdin() {
     try { return fs.readFileSync(0, 'utf8'); } catch { return ''; }
@@ -429,7 +429,18 @@ function main() {
     // Clause (a): the plan is done or archived.
     const head = planHead(cwd, planRel);
     if (head.exists && head.status === 'complete') {
-        try { clearGoal(cwd); } catch { /* clearing is best-effort */ }
+        // The event reports a release, so it waits on the clear actually
+        // succeeding: a clear that fails (or throws) leaves the leash armed, and
+        // a leash still armed has not been released to report. This is also what
+        // keeps a persistently failing clear from re-emitting on every later stop.
+        let released = false;
+        try { released = clearGoal(cwd).ok; } catch { /* clearing is best-effort */ }
+        if (released) {
+            emitGoalEvent({
+                event: 'goal-complete', project: cwd, plan: planRel,
+                session: sessionId, detail: 'plan-complete'
+            });
+        }
         return;
     }
     if (!head.exists) {
@@ -438,7 +449,15 @@ function main() {
         // allow) from a transient read error (allow this stop, but keep the leash
         // armed so a hiccup does not permanently disarm the run).
         if (planFileIsGone(cwd, planRel)) {
-            try { clearGoal(cwd); } catch { /* clearing is best-effort */ }
+            // Emitting waits on the clear succeeding, as in the Complete branch.
+            let released = false;
+            try { released = clearGoal(cwd).ok; } catch { /* clearing is best-effort */ }
+            if (released) {
+                emitGoalEvent({
+                    event: 'goal-complete', project: cwd, plan: planRel,
+                    session: sessionId, detail: 'plan-archived'
+                });
+            }
         }
         return;
     }
@@ -447,7 +466,13 @@ function main() {
     // that cannot determine the last turn throws, which the top-level catch
     // turns into an allow; a read that finds no lead is retried briefly in case
     // the harness's final append had not yet landed.
-    if (lastAssistantLeadsWithBlockedWithRetry(transcriptPath)) return;
+    if (lastAssistantLeadsWithBlockedWithRetry(transcriptPath)) {
+        // Every blocked stop emits, so a session that stops blocked repeatedly
+        // produces one event per stop: the hook stays stateless and dedup is the
+        // event consumer's policy.
+        emitGoalEvent({ event: 'goal-blocked', project: cwd, plan: planRel, session: sessionId });
+        return;
+    }
 
     // None of the allow conditions hold: hold the session to completion. The
     // plan path is repo data sanitized before it enters this trusted channel.

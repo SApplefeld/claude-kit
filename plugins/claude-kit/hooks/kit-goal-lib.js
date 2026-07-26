@@ -4,8 +4,11 @@
 // gitignored) that survives a session swap because it lives in the repo, not
 // in any one session's transcript. This module is the single owner of the
 // canonical condition text (composeCondition) and the read/write/clear
-// operations on that file. Consumed by kit-goal.js (the CLI), the /kit-goal
-// skill, and the Stop hook that enforces the armed goal.
+// operations on that file, and of the machine-readable event stream
+// (emitGoalEvent), which carries the releases the Stop hook itself observes; a
+// manual clear through the CLI releases the leash without an event, since the
+// user is already there for it. Consumed by kit-goal.js (the CLI), the
+// /kit-goal skill, and the Stop hook that enforces the armed goal.
 //
 // Node core modules only, CommonJS, zero dependencies. Every exported
 // function that touches the filesystem or parses data is wrapped so it never
@@ -17,6 +20,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
 // Path to the goal-state file for a given repo root.
 function goalPath(cwd) {
@@ -213,4 +217,71 @@ function clearGoal(cwd) {
     }
 }
 
-module.exports = { goalPath, readGoal, armGoal, bindSession, clearGoal, composeCondition, planHead };
+// Normalize one event field to printable ASCII, capped at max characters; an
+// absent value stays absent. Field values cross into a consumer that treats the
+// stream as kit-authored, so their content is normalized to a short printable
+// form at this boundary rather than trusted downstream, matching the hook's
+// sanitize-before-trust rule for the plan path it prints in a block reason.
+function eventField(value, max) {
+    if (value === undefined || value === null) return value;
+    return String(value).replace(/[^\x20-\x7E]/g, '').slice(0, max);
+}
+
+// Append one goal release event to the kit event stream, the well-known file an
+// outside watcher reads to turn a release into a notification. One JSON object
+// per line, { ts, event, project, plan, session, detail }: ts is ISO 8601,
+// project the absolute project path, plan the repo-relative plan path, session
+// the session id or null, and detail is present only on a goal-complete, naming
+// which release it was. JSON encoding escapes any newline inside a value, so an
+// event is always exactly one line. The sink is ~/.claude/kit-events.jsonl;
+// KIT_EVENTS_PATH overrides it and is read at call time, so a test or a probe
+// redirects the stream per process.
+//
+// project, plan, and session carry caller data (a project path, repo data, a
+// harness-supplied session id), so each is normalized to printable ASCII and
+// capped: 120 characters for plan and session, 260 for project (a Windows
+// absolute path bound). event and detail are the caller's own literals and are
+// recorded as given.
+//
+// A sink that exists and is not a regular file is left untouched and nothing is
+// written: opening a FIFO blocks, which no try/catch can rescue, the same guard
+// the Stop hook applies to a transcript path. An absent sink is the ordinary
+// case: its directory is created and the append starts the file.
+//
+// Rotation is best-effort, sized for the single writer this normally has: a sink
+// already larger than 1 MB is renamed to <sink>.old, replacing any previous
+// .old, and the append starts a fresh file. The stat, rename, and append are not
+// atomic across processes, and a rename that keeps failing degrades to a sink
+// that grows without bound rather than to lost events.
+//
+// Emitting is observability, never a decision input. The whole body is wrapped
+// and nothing is returned, so an unwritable sink or a full disk can neither
+// throw into a caller's control flow nor give it something to branch on: a
+// missing event is the accepted cost of a hook whose verdict cannot shift.
+function emitGoalEvent(details) {
+    try {
+        const d = details || {};
+        const sink = process.env.KIT_EVENTS_PATH
+            || path.join(os.homedir(), '.claude', 'kit-events.jsonl');
+        const record = {
+            ts: new Date().toISOString(),
+            event: d.event,
+            project: eventField(d.project, 260),
+            plan: eventField(d.plan, 120),
+            session: eventField(d.session, 120) || null
+        };
+        if (d.detail) record.detail = d.detail;
+        let st = null;
+        try { st = fs.statSync(sink); } catch { /* no sink yet: the append creates it */ }
+        if (st) {
+            if (!st.isFile()) return;
+            if (st.size > 1024 * 1024) {
+                try { fs.renameSync(sink, sink + '.old'); } catch { /* cannot rotate: append to the sink as it is */ }
+            }
+        }
+        fs.mkdirSync(path.dirname(sink), { recursive: true });
+        fs.appendFileSync(sink, JSON.stringify(record) + '\n', 'utf8');
+    } catch { /* the event stream is best-effort; a failed emit changes nothing */ }
+}
+
+module.exports = { goalPath, readGoal, armGoal, bindSession, clearGoal, composeCondition, planHead, emitGoalEvent };

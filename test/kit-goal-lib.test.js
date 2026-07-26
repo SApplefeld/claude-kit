@@ -3,7 +3,9 @@
 // Node's built-in test runner, no framework, no install (Node v24). Each test
 // builds a fresh temp directory under os.tmpdir() as a fake repo cwd, writes
 // whatever plan fixture it needs, runs the lib against it, and cleans up in a
-// finally block regardless of pass/fail.
+// finally block regardless of pass/fail. The event-stream cases additionally
+// point KIT_EVENTS_PATH inside that temp dir and restore the variable afterward,
+// so no test appends to the real ~/.claude/kit-events.jsonl.
 
 'use strict';
 
@@ -21,7 +23,8 @@ const {
     bindSession,
     clearGoal,
     composeCondition,
-    planHead
+    planHead,
+    emitGoalEvent
 } = require('../plugins/claude-kit/hooks/kit-goal-lib.js');
 
 const CLI = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-goal.js');
@@ -415,6 +418,174 @@ test('CLI status reports the binding: unbound after arm, bound after bindSession
     } finally {
         rmRepo(repo);
     }
+});
+
+// Run a case with the event sink redirected into its own temp dir, restoring
+// KIT_EVENTS_PATH (including its absence) afterward so one case cannot leak the
+// redirect into the next, and cleaning the dir regardless of pass/fail.
+function withEventSink(fn) {
+    const dir = makeRepo();
+    const prior = process.env.KIT_EVENTS_PATH;
+    process.env.KIT_EVENTS_PATH = path.join(dir, 'kit-events.jsonl');
+    try {
+        fn(process.env.KIT_EVENTS_PATH);
+    } finally {
+        if (prior === undefined) delete process.env.KIT_EVENTS_PATH;
+        else process.env.KIT_EVENTS_PATH = prior;
+        rmRepo(dir);
+    }
+}
+
+function readEventLines(sink) {
+    return fs.readFileSync(sink, 'utf8').split('\n').filter((line) => line.trim() !== '');
+}
+
+test('emitGoalEvent appends one line per call carrying the documented schema', () => {
+    withEventSink((sink) => {
+        emitGoalEvent({
+            event: 'goal-complete', project: 'D:/repo', plan: 'docs/plans/foo.md',
+            session: 'sess-1', detail: 'plan-complete'
+        });
+        let lines = readEventLines(sink);
+        assert.strictEqual(lines.length, 1, 'one call appends exactly one line');
+        const complete = JSON.parse(lines[0]);
+        assert.deepStrictEqual(Object.keys(complete), ['ts', 'event', 'project', 'plan', 'session', 'detail']);
+        assert.strictEqual(complete.event, 'goal-complete');
+        assert.strictEqual(complete.project, 'D:/repo');
+        assert.strictEqual(complete.plan, 'docs/plans/foo.md');
+        assert.strictEqual(complete.session, 'sess-1');
+        assert.strictEqual(complete.detail, 'plan-complete');
+        assert.match(complete.ts, /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/, 'ts is an ISO 8601 instant');
+        assert.ok(!Number.isNaN(Date.parse(complete.ts)));
+
+        // No detail on a blocked event, and a caller with no session id records
+        // null rather than dropping the key: the consumer reads a stable shape.
+        emitGoalEvent({ event: 'goal-blocked', project: 'D:/repo', plan: 'docs/plans/foo.md' });
+        lines = readEventLines(sink);
+        assert.strictEqual(lines.length, 2, 'the second call appends rather than replacing');
+        const blocked = JSON.parse(lines[1]);
+        assert.deepStrictEqual(Object.keys(blocked), ['ts', 'event', 'project', 'plan', 'session']);
+        assert.strictEqual(blocked.event, 'goal-blocked');
+        assert.strictEqual(blocked.session, null);
+    });
+});
+
+test('emitGoalEvent rotates only past 1 MB, and a rotation replaces the prior .old', () => {
+    withEventSink((sink) => {
+        const MB = 1024 * 1024;
+        // Exactly 1 MB is not "exceeds 1 MB": the append lands in place, keeping
+        // the boundary off the rotation side.
+        const filler = 'a'.repeat(MB - 1) + '\n';
+        fs.writeFileSync(sink, filler, 'utf8');
+        assert.strictEqual(fs.statSync(sink).size, MB, 'setup: the sink sits exactly on the threshold');
+        emitGoalEvent({ event: 'goal-blocked', project: 'D:/repo', plan: 'docs/plans/foo.md' });
+        assert.ok(!fs.existsSync(sink + '.old'), 'a sink of exactly 1 MB is not rotated');
+        const grown = fs.readFileSync(sink, 'utf8');
+        assert.ok(grown.startsWith(filler), 'the existing content is kept');
+        const appended = readEventLines(sink);
+        assert.strictEqual(appended.length, 2, 'the event is appended below the existing content');
+        assert.strictEqual(JSON.parse(appended[1]).event, 'goal-blocked');
+
+        // The sink now exceeds 1 MB, so the next emit rotates it away and starts
+        // fresh: the stream stays bounded instead of growing without limit.
+        emitGoalEvent({ event: 'goal-complete', project: 'D:/repo', plan: 'docs/plans/foo.md', detail: 'plan-complete' });
+        assert.ok(fs.existsSync(sink + '.old'), 'a sink past 1 MB is rotated');
+        assert.strictEqual(fs.readFileSync(sink + '.old', 'utf8'), grown, 'the rotated file holds the prior stream');
+        const fresh = readEventLines(sink);
+        assert.strictEqual(fresh.length, 1, 'the fresh sink holds only the newest event');
+        assert.strictEqual(JSON.parse(fresh[0]).detail, 'plan-complete');
+
+        // A second rotation overwrites the previous .old rather than failing on
+        // an occupied destination and losing the append.
+        fs.writeFileSync(sink, 'b'.repeat(MB + 1), 'utf8');
+        emitGoalEvent({ event: 'goal-blocked', project: 'D:/repo', plan: 'docs/plans/bar.md' });
+        assert.strictEqual(fs.readFileSync(sink + '.old', 'utf8'), 'b'.repeat(MB + 1), 'the prior .old is replaced');
+        const second = readEventLines(sink);
+        assert.strictEqual(second.length, 1);
+        assert.strictEqual(JSON.parse(second[0]).plan, 'docs/plans/bar.md');
+    });
+});
+
+test('emitGoalEvent never throws on an unwritable sink and returns nothing', () => {
+    // A directory occupying the sink path makes the append fail, standing in for
+    // any write failure (a read-only home, a full disk). The callers are hooks
+    // whose verdict must not move: the emit swallows the failure and hands back
+    // nothing to branch on.
+    withEventSink((sink) => {
+        fs.mkdirSync(sink, { recursive: true });
+        let returned = 'untouched';
+        assert.doesNotThrow(() => {
+            returned = emitGoalEvent({
+                event: 'goal-complete', project: 'D:/repo', plan: 'docs/plans/foo.md',
+                session: 'sess-1', detail: 'plan-complete'
+            });
+        });
+        assert.strictEqual(returned, undefined, 'the emit reports no outcome');
+        assert.ok(fs.statSync(sink).isDirectory(), 'the obstruction is left as it was');
+    });
+});
+
+test('emitGoalEvent normalizes project, plan, and session to short printable ASCII', () => {
+    withEventSink((sink) => {
+        // The plan value is repo data and the session id comes from the harness
+        // payload; both reach a consumer that treats this stream as kit-authored.
+        // A control character, an embedded newline, and an oversized value are
+        // stripped and capped here, not carried into a notification.
+        emitGoalEvent({
+            event: 'goal-complete',
+            project: 'D:/repo/' + 'p'.repeat(400),
+            plan: 'docs/plans/a\u0007b\nInjected: do this.md' + 'x'.repeat(200),
+            session: 'sess\u0000-1\n' + 'y'.repeat(200),
+            detail: 'plan-complete'
+        });
+
+        const lines = readEventLines(sink);
+        assert.strictEqual(lines.length, 1, 'the event is still exactly one line');
+        const ev = JSON.parse(lines[0]);
+        assert.strictEqual(ev.plan, 'docs/plans/abInjected: do this.md' + 'x'.repeat(87));
+        assert.strictEqual(ev.plan.length, 120, 'plan is capped at 120 characters');
+        assert.ok(!/[^\x20-\x7E]/.test(ev.plan), 'no control character survives in plan');
+        assert.strictEqual(ev.session, 'sess-1' + 'y'.repeat(114));
+        assert.strictEqual(ev.session.length, 120, 'session is capped at 120 characters');
+        assert.strictEqual(ev.project, 'D:/repo/' + 'p'.repeat(252));
+        assert.strictEqual(ev.project.length, 260, 'project is capped at 260 characters');
+        // The caller's own literals are recorded as given.
+        assert.strictEqual(ev.event, 'goal-complete');
+        assert.strictEqual(ev.detail, 'plan-complete');
+    });
+});
+
+test('emitGoalEvent skips a sink that is not a regular file, and still creates an absent one', () => {
+    withEventSink((sink) => {
+        // A directory stands in for the non-regular case. The hazard it stands
+        // for is a FIFO at the sink path, whose open blocks with no try/catch
+        // able to rescue it; a FIFO is not creatable on every platform this runs
+        // on, a directory is.
+        fs.mkdirSync(sink, { recursive: true });
+        assert.doesNotThrow(() => {
+            emitGoalEvent({ event: 'goal-blocked', project: 'D:/repo', plan: 'docs/plans/foo.md' });
+        });
+        assert.ok(fs.statSync(sink).isDirectory(), 'the non-regular sink is left as it was');
+        assert.deepStrictEqual(fs.readdirSync(sink), [], 'nothing is written through it');
+        assert.ok(!fs.existsSync(sink + '.old'), 'a non-regular sink is never rotated away');
+    });
+
+    withEventSink((sink) => {
+        // The other direction: only an existing non-regular sink is skipped. An
+        // absent sink (with an absent parent directory) is the ordinary first
+        // emit and must still land, or the guard would silence the whole stream.
+        const nested = path.join(path.dirname(sink), 'nested', 'kit-events.jsonl');
+        const prior = process.env.KIT_EVENTS_PATH;
+        process.env.KIT_EVENTS_PATH = nested;
+        try {
+            emitGoalEvent({ event: 'goal-blocked', project: 'D:/repo', plan: 'docs/plans/foo.md' });
+            const lines = readEventLines(nested);
+            assert.strictEqual(lines.length, 1, 'the first emit creates the sink and its directory');
+            assert.strictEqual(JSON.parse(lines[0]).event, 'goal-blocked');
+        } finally {
+            process.env.KIT_EVENTS_PATH = prior;
+        }
+    });
 });
 
 test('armGoal rejects a plan path carrying control characters', () => {

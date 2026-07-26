@@ -6,9 +6,11 @@
 // builds a fresh temp cwd (with its own .kit/goal-state.json and a fake JSONL
 // transcript) plus a second temp dir serving as that case's machine-state root,
 // which is where a genealogy-ledger fixture goes. Every spawn path pins
-// KIT_GOAL_LEDGER_PATH (to an absent file unless the case supplies a fixture)
-// and points LOCALAPPDATA at the temp root, so no case reads real user state.
-// All temp state is cleaned up in a finally block.
+// KIT_GOAL_LEDGER_PATH (to an absent file unless the case supplies a fixture),
+// points LOCALAPPDATA at the temp root, and pins KIT_EVENTS_PATH inside that
+// same temp root, so no case reads real user state and no release a case fires
+// appends to the real ~/.claude/kit-events.jsonl. All temp state is cleaned up
+// in a finally block.
 
 'use strict';
 
@@ -26,6 +28,27 @@ const { armGoal, bindSession } = require('../plugins/claude-kit/hooks/kit-goal-l
 // unless a test explicitly points KIT_GOAL_LEDGER_PATH at its own fixture. This
 // keeps the suite hermetic: no test reads the real user's compaction ledger.
 const ABSENT_LEDGER = path.join(os.tmpdir(), 'kit-goal-stop-absent-ledger', 'ledger.jsonl');
+
+// The goal-event sink for a case, always inside a temp root that case cleans up,
+// never the real ~/.claude/kit-events.jsonl that a release fired by any spawn
+// would append to. Every spawn supplies its own root, so no sink is shared
+// across cases and none outlives the case that wrote it; a missing root is a
+// fixture error rather than a silent fall back to a shared path.
+function eventsPath(root) {
+    if (root === undefined) throw new Error('eventsPath requires a temp root');
+    return path.join(root, 'kit-goal-stop-events.jsonl');
+}
+
+// The events a case's spawns emitted, newest last; an empty list when nothing
+// was written.
+function readEvents(root) {
+    const sink = eventsPath(root);
+    if (!fs.existsSync(sink)) return [];
+    return fs.readFileSync(sink, 'utf8')
+        .split('\n')
+        .filter((line) => line.trim() !== '')
+        .map((line) => JSON.parse(line));
+}
 
 function makeDir(prefix) {
     return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
@@ -66,13 +89,20 @@ function writeTranscript(full, planRel, assistantTexts) {
 }
 
 // Run the hook with the given payload, isolating it from real machine state:
-// LOCALAPPDATA is pinned to the caller's temp root and the genealogy ledger to
-// an absent path, so a case sees only the fixtures it builds. Returns the
+// LOCALAPPDATA and the goal-event sink are pinned to the caller's temp root and
+// the genealogy ledger to an absent path, so a case sees only the fixtures it
+// builds and writes only inside them. Returns the
 // spawnSync result (stdout, stderr, status). Clause-(b) retries are disabled by
 // default so block-path tests stay fast and an ambient KIT_GOAL_STOP_RETRY_MS
 // cannot warp the suite's timing; pass extraEnv to exercise a real schedule.
 function runHook(payload, localAppData, extraEnv) {
-    const env = { ...process.env, KIT_GOAL_STOP_RETRY_MS: '0', KIT_GOAL_LEDGER_PATH: ABSENT_LEDGER, ...(extraEnv || {}) };
+    const env = {
+        ...process.env,
+        KIT_GOAL_STOP_RETRY_MS: '0',
+        KIT_GOAL_LEDGER_PATH: ABSENT_LEDGER,
+        KIT_EVENTS_PATH: eventsPath(localAppData),
+        ...(extraEnv || {})
+    };
     if (localAppData !== undefined) env.LOCALAPPDATA = localAppData;
     return spawnSync(process.execPath, [HOOK], {
         input: JSON.stringify(payload),
@@ -658,7 +688,13 @@ test('an embedded same-name close tag inside CLI output cannot expose a followin
 // pid is only known after the child has already finished) works because
 // spawn() exposes the child's pid immediately.
 function runHookForcingBindWriteFailure(repo, payload, extraEnv) {
-    const env = { ...process.env, KIT_GOAL_STOP_RETRY_MS: '0', KIT_GOAL_LEDGER_PATH: ABSENT_LEDGER, ...(extraEnv || {}) };
+    const env = {
+        ...process.env,
+        KIT_GOAL_STOP_RETRY_MS: '0',
+        KIT_GOAL_LEDGER_PATH: ABSENT_LEDGER,
+        KIT_EVENTS_PATH: eventsPath(repo),
+        ...(extraEnv || {})
+    };
     const child = spawn(process.execPath, [HOOK], { env });
     fs.mkdirSync(path.join(repo, '.kit', 'goal-state.json.tmp.' + child.pid), { recursive: true });
     let stdout = '';
@@ -751,7 +787,12 @@ test('clause (b) tolerates the stop-time flush race: a BLOCKED entry landing jus
     // but can never falsely fail (any ordering yields an allow).
     const { repo, transcript, local } = armedRepo(['Working; about to surface a blocker.']);
     try {
-        const env = { ...process.env, KIT_GOAL_LEDGER_PATH: ABSENT_LEDGER, KIT_GOAL_STOP_RETRY_MS: '900' };
+        const env = {
+            ...process.env,
+            KIT_GOAL_LEDGER_PATH: ABSENT_LEDGER,
+            KIT_GOAL_STOP_RETRY_MS: '900',
+            KIT_EVENTS_PATH: eventsPath(local)
+        };
         const child = spawn(process.execPath, [HOOK], { env });
         let stdout = '';
         child.stdout.on('data', (d) => { stdout += d; });
@@ -783,7 +824,12 @@ test('a partial final line that completes into a non-BLOCKED entry inside the re
             message: { role: 'assistant', content: [{ type: 'text', text: 'Just progress, not a blocker.' }] }
         });
         fs.appendFileSync(transcript, full.slice(0, 40));
-        const env = { ...process.env, KIT_GOAL_LEDGER_PATH: ABSENT_LEDGER, KIT_GOAL_STOP_RETRY_MS: '900' };
+        const env = {
+            ...process.env,
+            KIT_GOAL_LEDGER_PATH: ABSENT_LEDGER,
+            KIT_GOAL_STOP_RETRY_MS: '900',
+            KIT_EVENTS_PATH: eventsPath(local)
+        };
         const child = spawn(process.execPath, [HOOK], { env });
         let stdout = '';
         child.stdout.on('data', (d) => { stdout += d; });
@@ -823,9 +869,18 @@ test('KIT_GOAL_STOP_RETRY_MS parsing fails open and never throws: 0, garbage, an
 });
 
 test('malformed stdin: empty stdout, exit 0 (never throws)', () => {
-    const res = spawnSync(process.execPath, [HOOK], { input: 'not json', encoding: 'utf8' });
-    assert.strictEqual(res.stdout, '');
-    assert.strictEqual(res.status, 0);
+    // This payload never resolves a project, so it cannot reach an emit; the
+    // sink is still pinned into a temp root of this case's own, so the spawn
+    // has no path to the real event stream at all.
+    const local = makeDir('kit-goal-stop-local-');
+    try {
+        const env = { ...process.env, KIT_EVENTS_PATH: eventsPath(local) };
+        const res = spawnSync(process.execPath, [HOOK], { input: 'not json', env, encoding: 'utf8' });
+        assert.strictEqual(res.stdout, '');
+        assert.strictEqual(res.status, 0);
+    } finally {
+        rmDir(local);
+    }
 });
 
 test('goal armed but transcript path absent: empty stdout (cannot scope, so allow)', () => {
@@ -834,6 +889,190 @@ test('goal armed but transcript path absent: empty stdout (cannot scope, so allo
         const res = runHook({ cwd: repo }, local);
         assert.strictEqual(res.stdout, '');
         assert.strictEqual(res.status, 0);
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('release event: a Complete plan emits exactly one goal-complete/plan-complete line with the full schema', () => {
+    const { repo, planRel, transcript, local } = armedRepo(['Done all sections.'], 'Status: Complete');
+    try {
+        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-releaser' }, local);
+        assert.strictEqual(res.stdout, '');
+        const events = readEvents(local);
+        assert.strictEqual(events.length, 1, 'a release emits exactly one event');
+        const ev = events[0];
+        assert.deepStrictEqual(Object.keys(ev), ['ts', 'event', 'project', 'plan', 'session', 'detail']);
+        assert.strictEqual(ev.event, 'goal-complete');
+        assert.strictEqual(ev.project, repo, 'project is the absolute project path from the payload');
+        assert.strictEqual(ev.plan, planRel, 'plan is the repo-relative plan path');
+        assert.strictEqual(ev.session, 'sess-releaser');
+        assert.strictEqual(ev.detail, 'plan-complete');
+        assert.ok(!Number.isNaN(Date.parse(ev.ts)));
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('release event: an archived plan (file gone) emits goal-complete with detail plan-archived', () => {
+    const { repo, planRel, transcript, local } = armedRepo(['Still going.']);
+    try {
+        fs.rmSync(path.join(repo, planRel));
+        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-archiver' }, local);
+        assert.strictEqual(res.stdout, '');
+        const events = readEvents(local);
+        assert.strictEqual(events.length, 1);
+        assert.strictEqual(events[0].event, 'goal-complete');
+        assert.strictEqual(events[0].detail, 'plan-archived', 'the archived release is distinguishable from a Complete one');
+        assert.strictEqual(events[0].plan, planRel);
+        assert.strictEqual(events[0].session, 'sess-archiver');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('release event: a BLOCKED lead emits goal-blocked and carries no detail', () => {
+    const { repo, planRel, transcript, local } = armedRepo([
+        'Investigating the failure.',
+        'BLOCKED: this needs a decision only Scott can make.'
+    ]);
+    try {
+        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-blocked' }, local);
+        assert.strictEqual(res.stdout, '');
+        const events = readEvents(local);
+        assert.strictEqual(events.length, 1);
+        assert.deepStrictEqual(Object.keys(events[0]), ['ts', 'event', 'project', 'plan', 'session']);
+        assert.strictEqual(events[0].event, 'goal-blocked');
+        assert.strictEqual(events[0].plan, planRel);
+        assert.strictEqual(events[0].session, 'sess-blocked');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('bystander allows emit nothing (another session holds the leash; an unbound prose mention)', () => {
+    // The expensive failure this pins: an emit placed before the scoping gate
+    // would turn every stop in every kit repo into an event, so the watcher sees
+    // a stream of releases that never happened.
+    const { repo, planRel, transcript, local } = armedRepo(['Working on docs/plans/example.md.']);
+    try {
+        assert.strictEqual(bindSession(repo, 'sess-owner').ok, true);
+        let res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-bystander' }, local);
+        assert.strictEqual(res.stdout, '', 'setup: the bystander is allowed, not leashed');
+        assert.deepStrictEqual(readEvents(local), [], 'an other-session bystander emits nothing');
+
+        const { repo: repo2, local: local2 } = armedRepo(['unused']);
+        try {
+            const tx = path.join(repo2, 'prose-mention.jsonl');
+            writeFile(tx, JSON.stringify({
+                type: 'user',
+                message: { role: 'user', content: 'Please work ' + planRel + ' to completion.' }
+            }) + '\n');
+            res = runHook({ cwd: repo2, transcript_path: tx, session_id: 'sess-prose' }, local2);
+            assert.strictEqual(res.stdout, '', 'setup: the prose mention does not claim the unbound goal');
+            assert.deepStrictEqual(readEvents(local2), [], 'an unbound-goal bystander emits nothing');
+        } finally {
+            rmDir(repo2);
+            rmDir(local2);
+        }
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('the enforcement block emits nothing: only a release is an event', () => {
+    const { repo, transcript, local } = armedRepo(['Making progress.']);
+    try {
+        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-held' }, local);
+        assert.strictEqual(JSON.parse(res.stdout).decision, 'block', 'setup: the leash is holding');
+        assert.deepStrictEqual(readEvents(local), [], 'a held stop is not a release');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('an unwritable event sink leaves the release decision, output, and auto-clear unchanged', () => {
+    // A directory occupying the sink path makes the emit fail. The emit is
+    // observability hung off the release, never part of it: the stop still
+    // allows, prints nothing, exits 0, and the goal is still cleared.
+    const { repo, transcript, local } = armedRepo(['Done all sections.'], 'Status: Complete');
+    try {
+        const sink = path.join(local, 'unwritable-sink');
+        fs.mkdirSync(sink, { recursive: true });
+        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-releaser' }, local,
+            { KIT_EVENTS_PATH: sink });
+        assert.strictEqual(res.stdout, '', 'a failed emit does not alter the allow');
+        assert.strictEqual(res.status, 0);
+        assert.ok(!fs.existsSync(path.join(repo, '.kit', 'goal-state.json')),
+            'the goal is still auto-cleared when the emit fails');
+        assert.ok(fs.statSync(sink).isDirectory(), 'the obstruction is left as it was');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+// Make the goal-state delete fail inside the spawned hook: a preload module
+// patches fs.unlinkSync to refuse that one path, standing in for a delete the OS
+// declines (a permission or a lock), which no portable fixture can stage here.
+// Returns the NODE_OPTIONS value that loads it. Node parses NODE_OPTIONS with
+// backslash as an escape character, so the preload path is passed forward-
+// slashed; a backslashed path fails to resolve and the child dies before the
+// hook runs.
+function unlinkRefusingPreload(dir) {
+    const shim = path.join(dir, 'refuse-unlink.js');
+    writeFile(shim, [
+        "'use strict';",
+        "const fs = require('fs');",
+        'const realUnlinkSync = fs.unlinkSync;',
+        'fs.unlinkSync = function (target) {',
+        "    if (String(target).endsWith('goal-state.json')) {",
+        "        const err = new Error('EPERM: the fixture refuses this delete');",
+        "        err.code = 'EPERM';",
+        '        throw err;',
+        '    }',
+        '    return realUnlinkSync.apply(fs, arguments);',
+        '};'
+    ].join('\n') + '\n');
+    return '--require "' + shim.replace(/\\/g, '/') + '"';
+}
+
+test('a Complete plan whose clear fails emits nothing: the stop still allows, but no release is reported', () => {
+    // A goal that could not be cleared is still armed, so it was not released.
+    // Emitting anyway would report a release that did not happen, and would do
+    // it again at every later stop for as long as the delete keeps failing.
+    const { repo, transcript, local } = armedRepo(['Done all sections.'], 'Status: Complete');
+    try {
+        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-releaser' }, local,
+            { NODE_OPTIONS: unlinkRefusingPreload(local) });
+        assert.strictEqual(res.status, 0, 'exit 0: a nonzero exit would mean the preload itself failed to load');
+        assert.strictEqual(res.stdout, '', 'the stop is still allowed');
+        assert.ok(fs.existsSync(path.join(repo, '.kit', 'goal-state.json')),
+            'the clear genuinely failed, so the leash is still armed');
+        assert.deepStrictEqual(readEvents(local), [], 'a release that did not happen is not reported');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('an archived plan whose clear fails emits nothing (the same gate on the other goal-complete)', () => {
+    const { repo, planRel, transcript, local } = armedRepo(['Still going.']);
+    try {
+        fs.rmSync(path.join(repo, planRel));
+        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-archiver' }, local,
+            { NODE_OPTIONS: unlinkRefusingPreload(local) });
+        assert.strictEqual(res.status, 0, 'exit 0: a nonzero exit would mean the preload itself failed to load');
+        assert.strictEqual(res.stdout, '', 'the stop is still allowed');
+        assert.ok(fs.existsSync(path.join(repo, '.kit', 'goal-state.json')),
+            'the clear genuinely failed, so the leash is still armed');
+        assert.deepStrictEqual(readEvents(local), [], 'a release that did not happen is not reported');
     } finally {
         rmDir(repo);
         rmDir(local);
