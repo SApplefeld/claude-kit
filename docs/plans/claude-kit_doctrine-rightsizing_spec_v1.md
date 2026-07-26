@@ -159,7 +159,7 @@ Disposition of the eight removed doctrine bullets:
 
 **csharp-style:** (1) Resolve configuration options lazily at request time; an eager startup read bakes in defaults and silently bypasses test overrides. (2) Order middleware by cost: cheap rejection before expensive work (rate limiting before authentication).
 
-**kaizen skill:** State the lesson, not the incident. Capture every note one level more general than the incident that taught it: the incident is the evidence, the lesson is the note. A hot stove teaches "watch out for hot metal," not "this one stove is hot." A note phrased at incident level produces a narrow rule that fires once; the generalized lesson applies everywhere the pattern recurs.
+**kaizen skill:** State the lesson, not the incident. Capture every note one level more general than the incident that taught it: the incident is the evidence, the lesson is the note. One burn should teach you "hot," not "that stove." (Phrasing decided 2026-07-26. A scoping companion against over-generalization - "generalize to the cause, not the scene" - was considered and deferred to the backlog until the over-generalization failure is actually observed, per writing-skills' observed-failure bar.)
 
 ## Related
 
@@ -168,4 +168,38 @@ Disposition of the eight removed doctrine bullets:
 
 ## Chapters
 
-(Appended by executing-work as sections complete.)
+### Chapter 1 - 2026-07-26
+Completed: 1. Rightsizing design (baseline audit, orchestration coverage map, final edit texts)
+Implemented By: main session (fable inline, per spec)
+Metrics: review rounds 0; NEEDS_CONTEXT 0; escalations 0; advisor opus
+Decisions / Surprises: All baseline-trim verdicts (H1-H7) approved as recommended. The hook-canary test references doctrine-refresh.js only as a hook filename, so no test pins doctrine content. Scott supplied a tighter kaizen phrasing mid-flight ("One burn should teach you 'hot,' not 'that stove.'"), adopted; a scoping companion against over-generalization (Twain's cat) was considered and deferred to the backlog under writing-skills' observed-failure bar. Baseline captured: 178 tests, 0 failing.
+Review Findings: n/a (design section)
+Next: 2. Doctrine edits
+Commit Model: Commit-and-Push (landed as 261f6c2)
+
+### Chapter 2 - 2026-07-26
+Completed: 2. Doctrine edits
+Implemented By: implementer-sonnet
+Metrics: review rounds 1 (consolidated across S2-S4); NEEDS_CONTEXT 0; escalations 0; advisor opus
+Decisions / Surprises: All 14 edits applied. One anchor mismatch flagged and accepted: E5's OLD used ASCII "..." where the file carries the Unicode ellipsis; the implementer preserved the file's glyph. Doctrine body dropped 6,341 -> 4,705 words (-26%), two surfaces byte-identical (frontmatter aside).
+Review Findings: see Chapter 4 (one consolidated round covered S2-S4).
+Next: 3. executing-work + brainstorming updates
+Commit Model: Commit-and-Push
+
+### Chapter 3 - 2026-07-26
+Completed: 3. executing-work + brainstorming updates
+Implemented By: implementer-opus (DONE_WITH_CONCERNS, both concerns accepted)
+Metrics: review rounds 1 (consolidated); NEEDS_CONTEXT 0; escalations 0; advisor opus
+Decisions / Surprises: Two placement deviations accepted as improvements: the findings-expectation line landed in step 4 (the point of triage) rather than steps 2-3, and Block 5 shipped as a structural References: slot in the spec template rather than prose (writing-skills' omitted-element form), with the prose preference restored by the review round's fix below. The dangling "doctrine's scout return contract" citation was repointed. executing-work 4,223 -> 4,544 words; brainstorming 1,604 -> 1,735 (before review fixes).
+Review Findings: see Chapter 4.
+Next: 4. csharp-style and kaizen skill additions
+Commit Model: Commit-and-Push
+
+### Chapter 4 - 2026-07-26
+Completed: 4. csharp-style and kaizen skill additions, plus the consolidated S2-S4 review round
+Implemented By: implementer-sonnet (additions); main session (review fixes)
+Metrics: review rounds 1 (adversarial APPROVED_WITH_CONCERNS + blind CHANGES_REQUIRED, consolidated across S2-S4 as one deliberate round since all three sections landed together as prose edits from one locked edit list); NEEDS_CONTEXT 0; escalations 0; advisor opus
+Decisions / Surprises: csharp-style lessons landed as Antipatterns bullets; kaizen rule landed in Capturing with Scott's final phrasing. Tree-state bracket around the review round: unchanged.
+Review Findings: 4 Major, 7 Minor raw. Fixed (9): the E13 pointer's self-contradicting routing (who-executes now explicitly brainstorming's); the lost resting-context lever (restored into brainstorming's session-mode paragraph); the forward-standing-directives-verbatim rationale (subagent-context sentence landed in executing-work's Delegating section); the dangling "unproven product" Before-you-send line (generalized to project honesty gates); the kaizen bullet's scope reading-order (lesson-not-incident sentence moved after the kit-friction scope sentences); preserve-error-and-delete-semantics added to the dispatch brief template as its own line; the keep-.gitignore-covering-.kit/ rule restored into executing-work; the H4 habit line given a self-justifying parenthetical; the prefer-rich-references prescription added as prose above brainstorming's spec template. Justified, not fixed (2): the privacy-constraint narrowing is approved verdict A working as intended (identity rules are product-specific and relocate to the Neuro repo in S5; a blanket global identity ban would forbid legitimate self-identification on Scott's own professional surfaces; "a promise made on a public surface must be honored in code" survives unconditionally), and the dropped metering measurements (2.3x, 150k, 11%) are journal-layer evidence whose record is the archived fable-metering plan, per the state-vs-journey rule. Post-fix gates: sync diff empty, zero em dashes, 178/178 tests (baseline 178/178).
+Next: 5. Neuro-Evolution-Operations CLAUDE.md + PR
+Commit Model: Commit-and-Push
