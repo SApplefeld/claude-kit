@@ -13,4 +13,4 @@ This folder holds active plans only: specs that are open or in progress. A plan 
 
 None currently active.
 
-Completed plans are in `../archive/` (most recent: `claude-kit_hook-canary-and-goal-events_spec_v1.md`).
+Completed plans are in `../archive/` (most recent: `claude-kit_doctrine-rightsizing_spec_v1.md`).
