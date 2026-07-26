@@ -11,6 +11,6 @@ This folder holds active plans only: specs that are open or in progress. A plan 
 
 ## Current
 
-None currently active.
+- `claude-kit_hook-canary-and-goal-events_spec_v1.md` - hook canary at session start plus goal-release events for the AI OS notification layer.
 
 Completed plans are in `../archive/` (most recent: `claude-kit_compaction-unwind_spec_v1.md`).
