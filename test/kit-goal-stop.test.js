@@ -1079,6 +1079,45 @@ test('an archived plan whose clear fails emits nothing (the same gate on the oth
     }
 });
 
+// Make the goal-state file look already gone to the spawned hook: a preload
+// patches fs.existsSync to answer false for that one path, which is what a stop
+// sees when a concurrent stop removed the file a moment earlier. No portable
+// fixture can time the real race. The NODE_OPTIONS shape matches
+// unlinkRefusingPreload's: forward-slashed, because Node reads a backslash in
+// NODE_OPTIONS as an escape character.
+function alreadyClearedPreload(dir) {
+    const shim = path.join(dir, 'already-cleared.js');
+    writeFile(shim, [
+        "'use strict';",
+        "const fs = require('fs');",
+        'const realExistsSync = fs.existsSync;',
+        'fs.existsSync = function (target) {',
+        "    if (String(target).endsWith('goal-state.json')) return false;",
+        '    return realExistsSync.apply(fs, arguments);',
+        '};'
+    ].join('\n') + '\n');
+    return '--require "' + shim.replace(/\\/g, '/') + '"';
+}
+
+test('a Complete plan whose goal another stop already cleared emits nothing (the release is exactly-once)', () => {
+    // The emit belongs to the stop that actually removed the goal state. A racer
+    // whose clear finds nothing left to remove has released nothing, and the stop
+    // that did remove it has already reported the release, so a second report
+    // would double-count one release.
+    const { repo, transcript, local } = armedRepo(['Done all sections.'], 'Status: Complete');
+    try {
+        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-racer' }, local,
+            { NODE_OPTIONS: alreadyClearedPreload(local) });
+        assert.strictEqual(res.status, 0, 'exit 0: a nonzero exit would mean the preload itself failed to load');
+        assert.strictEqual(res.stdout, '', 'the stop is still allowed');
+        assert.deepStrictEqual(readEvents(local), [],
+            'only the stop that removed the goal reports the release');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
 test('bound goal, Stop payload missing session_id entirely: empty stdout (the documented fail-open release)', () => {
     // Pins the shape loudly: if the harness ever stops sending session_id, a
     // bound goal must not silently start enforcing (or silently stop enforcing)

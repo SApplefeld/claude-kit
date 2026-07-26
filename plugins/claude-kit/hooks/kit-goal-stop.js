@@ -429,12 +429,15 @@ function main() {
     // Clause (a): the plan is done or archived.
     const head = planHead(cwd, planRel);
     if (head.exists && head.status === 'complete') {
-        // The event reports a release, so it waits on the clear actually
-        // succeeding: a clear that fails (or throws) leaves the leash armed, and
-        // a leash still armed has not been released to report. This is also what
-        // keeps a persistently failing clear from re-emitting on every later stop.
+        // The event reports a release, so it belongs to the stop that actually
+        // removed the goal state. A clear that fails (or throws) leaves the leash
+        // armed, which is no release to report and is what keeps a persistently
+        // failing clear from re-emitting on every later stop; a clear that finds
+        // the file already gone means a concurrent stop removed it and has
+        // reported that release itself, so this one stays silent and the release
+        // is emitted exactly once.
         let released = false;
-        try { released = clearGoal(cwd).ok; } catch { /* clearing is best-effort */ }
+        try { released = clearGoal(cwd).cleared; } catch { /* clearing is best-effort */ }
         if (released) {
             emitGoalEvent({
                 event: 'goal-complete', project: cwd, plan: planRel,
@@ -449,9 +452,10 @@ function main() {
         // allow) from a transient read error (allow this stop, but keep the leash
         // armed so a hiccup does not permanently disarm the run).
         if (planFileIsGone(cwd, planRel)) {
-            // Emitting waits on the clear succeeding, as in the Complete branch.
+            // Emitting belongs to the stop whose clear removed the goal state, as
+            // in the Complete branch.
             let released = false;
-            try { released = clearGoal(cwd).ok; } catch { /* clearing is best-effort */ }
+            try { released = clearGoal(cwd).cleared; } catch { /* clearing is best-effort */ }
             if (released) {
                 emitGoalEvent({
                     event: 'goal-complete', project: cwd, plan: planRel,

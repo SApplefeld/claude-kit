@@ -1,6 +1,6 @@
 # Hook Canary and Goal Release Events
 
-Status: In Progress
+Status: Complete
 Commit Model: Commit-and-Push
 Fable Spend: n/a (Fable-led session)
 Created: 2026-07-25
@@ -32,7 +32,7 @@ Probes run serially via `spawnSync` with a per-child timeout (5s) so a hung prob
 
 A new `emitGoalEvent` helper in `kit-goal-lib.js` appends one JSON line to `~/.claude/kit-events.jsonl`. Schema per line: `{ts, event, project, plan, session, detail}` where `ts` is ISO 8601, `project` is the absolute cwd, `plan` is the repo-relative plan path, `session` is the session id or null, `detail` present only on `goal-complete`. Field content is normalized to short printable ASCII at the boundary (`plan` and `session` capped at 120, `project` at 260): the values originate in repo-territory data (`.kit/goal-state.json`), and the consumer treats the stream as kit-authored. The helper never throws, skips a sink that exists but is not a regular file (the FIFO-hang guard the hook's transcript reads also apply), and its failure never alters the stop decision. Rotation is best-effort and single-writer-typical: past 1 MB the file is renamed to `kit-events.jsonl.old` (replacing any prior `.old`); a persistently failing rename degrades to unbounded growth, never data loss.
 
-The `goal-complete` emits are gated on the goal-state clear actually succeeding, so a persistently failing clear re-arms the next stop without re-reporting a release that did not happen. `goal-blocked` can re-emit on repeated blocked stops; the hook stays stateless by design and dedup is the consumer's transport policy. Two release paths deliberately emit nothing: the harness's own consecutive-block-cap override (the hook never sees it) and a manual `/kit-goal clear` (the user is present; the CLI does not call the emitter).
+The `goal-complete` emits are gated on the clear having removed the goal state (`cleared`, not merely `ok`), which makes the emit exactly-once: a persistently failing clear re-arms the next stop without re-reporting, a concurrent racer that finds the state already gone stays silent because the winner emitted, and a stop trailing a manual `/kit-goal clear` stays silent because manual clears are deliberately event-free. `goal-blocked` can re-emit on repeated blocked stops; the hook stays stateless by design and dedup is the consumer's transport policy. Two release paths deliberately emit nothing: the harness's own consecutive-block-cap override (the hook never sees it) and a manual `/kit-goal clear` (the user is present; the CLI does not call the emitter).
 
 The consumer contract, for the AI OS side: the canonical sink is `~/.claude/kit-events.jsonl` and a consumer must not itself honor an ambient `KIT_EVENTS_PATH` (that env var is a producer-side redirect used by tests and the canary's isolation pin); field values are sanitized display data, not commands; `project` is an absolute local path that typically embeds the OS username, a PII call the consumer makes before forwarding anywhere external; and `goal-blocked` dedup is load-bearing against notification spam.
 
@@ -88,8 +88,8 @@ None. Sink location (`~/.claude/kit-events.jsonl`) and commit model (Commit-and-
 
 ## Related
 
-- Builds on `../archive/claude-kit_goal-continuity_spec_v1.md`: the `/kit-goal` leash whose three release points the events half instruments.
-- Builds on `../archive/claude-kit_readonly-agent-guard_spec_v1.md` and `../archive/claude-kit_docs-write-guard_spec_v1.md`: the guards whose deterministic deny paths the canary probes.
+- Builds on `claude-kit_goal-continuity_spec_v1.md`: the `/kit-goal` leash whose three release points the events half instruments.
+- Builds on `claude-kit_readonly-agent-guard_spec_v1.md` and `claude-kit_docs-write-guard_spec_v1.md`: the guards whose deterministic deny paths the canary probes.
 
 ## Chapters
 
@@ -121,5 +121,15 @@ Decisions / Surprises: none. The clone landed faithful on the first attempt: sib
 Review Findings: none (skipped per the trivial-section rule); controller verified by reading the full diff and running the doctor: both "Kit goal hook" and "Hook canary" report PASS.
 Gate: doctor run on this machine shows [PASS] Hook canary with the sibling check unaffected; no JS touched, so the 176/176 suite state carries over from Chapter 2.
 Next: finishing-work
+Commit Model: Commit-and-Push
+
+### Chapter 4 (final) - 2026-07-25
+Completed: finishing pass; effort closed
+Implemented By: main session (orchestration); implementer-opus (finishing hardening batch); qa-verifier, security-reviewer, adversarial-reviewer, docs-curator dispatched
+Metrics: 1 finishing review round; NEEDS_CONTEXT 0; escalations 0; advisor opus
+Decisions / Surprises: QA verified every acceptance criterion by execution, including an empirical FAIL-direction check of the doctor's canary block against a fixture cache and a run against the live installed (pre-effort) cache, correctly silent since a stale-but-coherent cache reads healthy by design. The finishing reviews returned seven Minors, none blocking. Fixed in the hardening batch, red/green proven: the goal-complete emit gate moved from clearGoal().ok to .cleared, making the emit exactly-once (this REVERSES Chapter 2's recorded ".ok not .cleared" rationale, which was wrong on the lib's own terms: an already-gone clear is either a lost race, where the winner emitted, or the trail of a manual /kit-goal clear, which is deliberately event-free; both want silence); the canary warning gained a 10-line cap with an "and N more" overflow line (each line was already 200-char bounded, the count was the open dimension); event and detail now pass through eventField(40) so the whole record is sanitized display data; and both doctor Get-Content hooks.json reads gained -LiteralPath (the sibling block's flag is the one adjacent bonus in this effort, undone by removing the flag). Noted, not fixed: the canary's probe-set wiring check tests presence anywhere in hooks.json, not the specific event array (the doctor covers the array; tighten only if a real corruption mode appears); three per-channel sanitizer variants exist (canary warning, event fields, block reason), each correct for its channel, single-source only if a fourth appears; rotation stays non-atomic across concurrent emitters by documented best-effort posture. Docs curation updated architecture.md (canary subsection, goal-release events section with the consumer contract) with a deviation-only Drift Report: D1 was Chapter 2's stale .ok rationale, corrected here rather than by editing the append-only Chapter, and the curator's pending-marker was removed with this entry.
+Review Findings: security CLEAR, adversarial APPROVED_WITH_CONCERNS, qa PASS, drift deviation-only; all fixable Minors fixed and re-verified, the rest recorded above with reasons.
+Gate: full suite 178/178 pass (Chapter 3 carried 176/176; +2 hardening tests; 0 regressions), run by the controller after the batch; doctor shows [PASS] Hook canary and [PASS] Kit goal hook, controller-run; real ~/.claude/kit-events.jsonl confirmed absent after all runs. Delivered in this changeset: commits afc7790..HEAD on main, the finishing batch and this close-out landing as the final commit.
+Next: none; archived
 Commit Model: Commit-and-Push
 

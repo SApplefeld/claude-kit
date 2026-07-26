@@ -237,11 +237,12 @@ function eventField(value, max) {
 // KIT_EVENTS_PATH overrides it and is read at call time, so a test or a probe
 // redirects the stream per process.
 //
-// project, plan, and session carry caller data (a project path, repo data, a
-// harness-supplied session id), so each is normalized to printable ASCII and
-// capped: 120 characters for plan and session, 260 for project (a Windows
-// absolute path bound). event and detail are the caller's own literals and are
-// recorded as given.
+// Every field is sanitized display data: each is normalized to printable ASCII
+// and capped, at 40 characters for event and detail, 120 for plan and session,
+// and 260 for project (a Windows absolute path bound). The values carry caller
+// data (a project path, repo data, a harness-supplied session id), and the
+// contract holds at this boundary for the whole record, so no caller can widen
+// what reaches the consumer.
 //
 // A sink that exists and is not a regular file is left untouched and nothing is
 // written: opening a FIFO blocks, which no try/catch can rescue, the same guard
@@ -265,12 +266,14 @@ function emitGoalEvent(details) {
             || path.join(os.homedir(), '.claude', 'kit-events.jsonl');
         const record = {
             ts: new Date().toISOString(),
-            event: d.event,
+            event: eventField(d.event, 40),
             project: eventField(d.project, 260),
             plan: eventField(d.plan, 120),
             session: eventField(d.session, 120) || null
         };
-        if (d.detail) record.detail = d.detail;
+        // The key is present exactly when the caller supplied a detail, judged on
+        // the value it passed rather than on what survives normalization.
+        if (d.detail) record.detail = eventField(d.detail, 40);
         let st = null;
         try { st = fs.statSync(sink); } catch { /* no sink yet: the append creates it */ }
         if (st) {

@@ -525,18 +525,20 @@ test('emitGoalEvent never throws on an unwritable sink and returns nothing', () 
     });
 });
 
-test('emitGoalEvent normalizes project, plan, and session to short printable ASCII', () => {
+test('emitGoalEvent normalizes every field to short printable ASCII', () => {
     withEventSink((sink) => {
         // The plan value is repo data and the session id comes from the harness
         // payload; both reach a consumer that treats this stream as kit-authored.
         // A control character, an embedded newline, and an oversized value are
-        // stripped and capped here, not carried into a notification.
+        // stripped and capped here, not carried into a notification. event and
+        // detail cross the same boundary, so the record is sanitized display data
+        // whole rather than field by field.
         emitGoalEvent({
-            event: 'goal-complete',
+            event: 'goal-\u0007complete\n' + 'e'.repeat(100),
             project: 'D:/repo/' + 'p'.repeat(400),
             plan: 'docs/plans/a\u0007b\nInjected: do this.md' + 'x'.repeat(200),
             session: 'sess\u0000-1\n' + 'y'.repeat(200),
-            detail: 'plan-complete'
+            detail: 'plan-\u0000complete\n' + 'd'.repeat(100)
         });
 
         const lines = readEventLines(sink);
@@ -549,9 +551,12 @@ test('emitGoalEvent normalizes project, plan, and session to short printable ASC
         assert.strictEqual(ev.session.length, 120, 'session is capped at 120 characters');
         assert.strictEqual(ev.project, 'D:/repo/' + 'p'.repeat(252));
         assert.strictEqual(ev.project.length, 260, 'project is capped at 260 characters');
-        // The caller's own literals are recorded as given.
-        assert.strictEqual(ev.event, 'goal-complete');
-        assert.strictEqual(ev.detail, 'plan-complete');
+        assert.ok(ev.event.startsWith('goal-complete'), 'event keeps its printable characters');
+        assert.strictEqual(ev.event.length, 40, 'event is capped at 40 characters');
+        assert.ok(!/[^\x20-\x7E]/.test(ev.event), 'no control character survives in event');
+        assert.ok(ev.detail.startsWith('plan-complete'), 'detail keeps its printable characters');
+        assert.strictEqual(ev.detail.length, 40, 'detail is capped at 40 characters');
+        assert.ok(!/[^\x20-\x7E]/.test(ev.detail), 'no control character survives in detail');
     });
 });
 

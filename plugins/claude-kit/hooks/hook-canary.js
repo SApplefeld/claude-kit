@@ -44,6 +44,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const PROBE_TIMEOUT_MS = 5000;   // per child, so a hung hook cannot delay session start
+const MAX_REPORT_LINES = 10;     // per warning, so a wiring naming many broken hooks stays bounded
 
 function readStdin() {
     try { return fs.readFileSync(0, 'utf8'); } catch { return ''; }
@@ -315,10 +316,16 @@ function goalStopProbe(root, failures) {
     }
 }
 
-// The one loud path: name every failed probe and where to go next.
+// The one loud path: name the failed probes and where to go next. The listing is
+// capped and the remainder counted, because the number of probes a damaged
+// hooks.json can name is bounded only by that file: this text goes into the
+// session's context, and the first lines already carry the diagnosis.
 function report(root, failures) {
-    const lines = failures.map((f) => '  - ' + sanitize(f.hook) + ', ' + f.label
+    const lines = failures.slice(0, MAX_REPORT_LINES).map((f) => '  - ' + sanitize(f.hook) + ', ' + f.label
         + ': expected ' + f.expected + ', got ' + f.got);
+    if (failures.length > MAX_REPORT_LINES) {
+        lines.push('  ... and ' + (failures.length - MAX_REPORT_LINES) + ' more failed probes');
+    }
     process.stdout.write(JSON.stringify({
         hookSpecificOutput: {
             hookEventName: 'SessionStart',

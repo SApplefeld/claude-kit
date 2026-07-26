@@ -305,6 +305,38 @@ test('a hooks.json that no longer wires a probed guard names that guard', () => 
     }
 });
 
+test('a wiring naming many broken hooks is reported under a line cap, not as an unbounded blob', () => {
+    // The warning is written into the model's context, so its length cannot be
+    // left to however many commands a damaged hooks.json happens to name. The
+    // real hooks stay wired and healthy here, so every failure comes from the
+    // added commands and the count is the fixture's alone.
+    const cache = makeCache();
+    try {
+        const wiringPath = path.join(cache, 'hooks', 'hooks.json');
+        const wiring = JSON.parse(fs.readFileSync(wiringPath, 'utf8'));
+        for (let i = 0; i < 25; i++) {
+            wiring.hooks.PreToolUse.push({
+                matcher: 'Bash',
+                hooks: [{
+                    type: 'command',
+                    command: 'node "${CLAUDE_PLUGIN_ROOT}/hooks/absent-probe-' + i + '.js"'
+                }]
+            });
+        }
+        fs.writeFileSync(wiringPath, JSON.stringify(wiring, null, 2), 'utf8');
+        const res = runCanary(cache);
+        assert.strictEqual(res.status, 0, 'the canary always exits 0');
+        const text = warning(res);
+        assert.ok(text, '25 missing hook files must not be silent');
+        assert.strictEqual(failureLines(text).length, 10,
+            'the per-probe lines are capped at 10');
+        assert.match(text, /and \d+ more/, 'the lines beyond the cap are counted, not dropped');
+        assert.match(text, /Tell Scott now/, 'the cap trims the probe lines, not the guidance');
+    } finally {
+        rmDir(cache);
+    }
+});
+
 test('the canary probes the cache it is pointed at, leaving no fixture behind', () => {
     // The kit-goal-stop probe builds a goal fixture under the OS temp dir; it
     // must clean up after itself rather than accumulating one per session start.

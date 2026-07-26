@@ -906,7 +906,7 @@ $hookWired = $false
 $hooksJsonError = $null
 if (Test-Path -LiteralPath $hooksJsonPath) {
     try {
-        $hooksJsonData = Get-Content $hooksJsonPath -Raw | ConvertFrom-Json
+        $hooksJsonData = Get-Content -LiteralPath $hooksJsonPath -Raw | ConvertFrom-Json
         foreach ($entry in @($hooksJsonData.hooks.Stop)) {
             foreach ($h in @($entry.hooks)) {
                 if ($h.command -match "kit-goal-stop\.js") { $hookWired = $true }
@@ -942,7 +942,7 @@ $canaryWired = $false
 $canaryHooksJsonError = $null
 if (Test-Path -LiteralPath $canaryHooksJsonPath) {
     try {
-        $canaryHooksJsonData = Get-Content $canaryHooksJsonPath -Raw | ConvertFrom-Json
+        $canaryHooksJsonData = Get-Content -LiteralPath $canaryHooksJsonPath -Raw | ConvertFrom-Json
         foreach ($entry in @($canaryHooksJsonData.hooks.SessionStart)) {
             foreach ($h in @($entry.hooks)) {
                 if ($h.command -match "hook-canary\.js") { $canaryWired = $true }
