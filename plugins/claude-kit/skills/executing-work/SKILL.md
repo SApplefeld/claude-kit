@@ -86,6 +86,11 @@ For each Section of Work, in order:
      - Pin tests + new expected values, when the section changes a counted
        cross-cutting set
      - Standing Brief Amendments: every entry from the plan doc's block, when one exists
+     - Workspace constraints the agent cannot see from the tree, when any are
+       in effect: state a sibling session, the leash, or the environment owns
+       (a shared stash, another session's worktree files, a process holding
+       binaries) and the operations that state puts off-limits (a bare
+       `git stash`, a reset or checkout reaching beyond its own files)
      - Every load-bearing technical assertion you make marked confirmed or
        inferred: a confirmed one names its evidence (file:line, the command you
        ran), an inferred one says so and says to verify it before relying on it.
