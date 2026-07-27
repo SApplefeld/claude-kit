@@ -54,7 +54,13 @@ function makeGhShim() {
 
 function runHook(cwd, command, shimDir) {
     const env = Object.assign({}, process.env);
-    if (shimDir) env.PATH = shimDir + path.delimiter + env.PATH;
+    if (shimDir) {
+        // Prepend under the parent's real key casing: on Windows the copied key
+        // is usually "Path", so assigning env.PATH creates a second variable
+        // holding "<shim>;undefined" and the child loses the original PATH.
+        const pathKey = Object.keys(env).find((k) => k.toUpperCase() === 'PATH') || 'PATH';
+        env[pathKey] = shimDir + path.delimiter + env[pathKey];
+    }
     return spawnSync(process.execPath, [HOOK], {
         input: JSON.stringify({ cwd, tool_input: { command } }),
         encoding: 'utf8',
