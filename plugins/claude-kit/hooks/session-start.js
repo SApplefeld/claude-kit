@@ -34,7 +34,9 @@ function countPendingKaizen(cwd) {
     let count = 0;
 
     try {
-        // Per-machine note files: kaizen/notes-<machine>.md. Count non-empty lines.
+        // Per-machine note files: kaizen/notes-<machine>.md. Count non-empty
+        // lines, excluding markdown headers: each file opens with a
+        // "# Kaizen inbox: <machine>" line that is structure, not a note.
         const noteFiles = fs.readdirSync(inbox)
             .filter((f) => /^notes-.*\.md$/i.test(f))
             .slice(0, 50);
@@ -45,7 +47,9 @@ function countPendingKaizen(cwd) {
                 const buf = Buffer.alloc(65536);
                 const bytes = fs.readSync(fd, buf, 0, 65536, 0);
                 fs.closeSync(fd);
-                count += buf.toString('utf8', 0, bytes).split('\n').filter((l) => l.trim().length > 0).length;
+                count += buf.toString('utf8', 0, bytes).split('\n')
+                    .map((l) => l.trim())
+                    .filter((l) => l.length > 0 && !l.startsWith('#')).length;
             } catch {
                 // Unreadable note file: skip it.
             }
