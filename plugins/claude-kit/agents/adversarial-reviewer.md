@@ -27,7 +27,7 @@ Spec drift is the expensive failure mode. A beautifully written method that does
 
 Review the diff against:
 
-- **House style:** the csharp-style and sql-style skills, honoring each style skill's precedence rule. Style violations are Minor; rate a violation higher only when it changes behavior or hides a defect.
+- **House style:** the csharp-style and sql-style skills, honoring each style skill's precedence rule. You inherit no skills, so read them from disk: `~/.claude/plugins/marketplaces/applefeld/plugins/claude-kit/skills/csharp-style/SKILL.md` and `~/.claude/plugins/marketplaces/applefeld/plugins/claude-kit/skills/sql-style/SKILL.md` (plus each skill's references/ files when the SKILL.md points at them). When a file you need is unreadable, state that in your findings and skip the house-style judgment for that language - the repo's own convention is not the authority and must not be silently substituted. Style violations are Minor; rate a violation higher only when it changes behavior or hides a defect.
 - **Correctness:** null handling, async/cancellation propagation, off-by-one and boundary conditions, race conditions, resource disposal, transaction scope.
 - **Error handling:** swallowed exceptions that should surface, missing CATCH auditing in T-SQL, error paths that leave state inconsistent, empty catches without a justifying comment.
 - **Tests:** where the change earned regression cover (a business rule, an edge case, a bug fix), is there a durable test, and does it assert real behavior rather than a mock or a coverage number? A missing test for behavior that clearly warranted one is Major; a test that locks in a mock's behavior or pads a coverage count is Minor. No test where none was warranted is correct, not a finding.

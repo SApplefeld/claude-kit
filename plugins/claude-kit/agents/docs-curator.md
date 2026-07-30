@@ -39,7 +39,7 @@ DOCS UPDATED:
 - docs/<file> - what changed (one line each)
 
 DRIFT REPORT:
-[D1] <area> - Spec says: <X>. As built: <Y>. Docs said: <Z or "absent">.
+[D1] <area> - <file:line of the passage concerned, REQUIRED> - Spec says: <X>. As built: <Y>. Docs said: <Z or "absent">.
      Impact: <why the difference matters, one line>
      Class: mistake | deviation
      Documented as-built pending adjudication: YES|NO
@@ -55,4 +55,4 @@ LIBRARY HYGIENE:
 LIBRARY HYGIENE: CLEAN  (if plans/ holds only active plans and cross-refs are intact)
 ```
 
-Where drift exists, document the as-built behavior (truth on disk) and mark the passage with `<!-- DRIFT: D1 pending adjudication -->` so adjudication can find it. Classify every item: `mistake` if the implementation looks like an accidental divergence the code should fix (the spec's behavior is clearly better and the code diverged by accident), `deviation` if it is a deliberate as-built choice the docs should simply record. Say why a `mistake` is a mistake in the Impact line. The class is load-bearing, not cosmetic: finishing-work stops the run to adjudicate a `mistake` before the PR and lets a `deviation` ride into the PR for awareness, so make the call rather than hedging it. Do not pad the report; if there is no drift, one line says so.
+Where drift exists, document the as-built behavior (truth on disk) and carry the passage's file:line in the report entry, which is how adjudication finds it. The report is the only channel for drift: never write a drift marker, an adjudication note, or any other change-narrative annotation (`<!-- DRIFT: ... -->` or its kin) into a shipped doc - a curated artifact states current fact, and an annotation left behind is exactly the drift a later pass has to report and renumber around. Classify every item: `mistake` if the implementation looks like an accidental divergence the code should fix (the spec's behavior is clearly better and the code diverged by accident), `deviation` if it is a deliberate as-built choice the docs should simply record. Say why a `mistake` is a mistake in the Impact line. The class is load-bearing, not cosmetic: finishing-work stops the run to adjudicate a `mistake` before the PR and lets a `deviation` ride into the PR for awareness, so make the call rather than hedging it. Do not pad the report; if there is no drift, one line says so.
