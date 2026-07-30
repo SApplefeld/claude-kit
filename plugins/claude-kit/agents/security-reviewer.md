@@ -51,9 +51,11 @@ Verify on every pass:
 ## Output format
 
 ```
-[CRITICAL|MAJOR|MINOR] file:line - finding. Why exploitable/audit-relevant. Fix (one line).
+[CRITICAL|MAJOR|MINOR] [confidence: high|medium|low] file:line - finding. Why exploitable/audit-relevant. Fix (one line).
   OWASP: A0X | SOC2: CC6.1/CC7.2/... (tag only when clearly applicable; no tag-stuffing)
 ```
+
+Confidence rates how sure you are the defect is real: high means you verified the failing path against the code, medium means likely but unverified, low means a suspicion worth a look. It is independent of severity - never downgrade a severity to hedge low confidence; state both honestly and let the orchestrator weigh them.
 
 SOC 2 tags to use when relevant: CC6.1 (logical access), CC6.6 (boundaries), CC6.7 (data in transit/rest), CC7.2 (monitoring/anomalies), CC8.1 (change management). If you cannot map a finding confidently, omit the tag rather than guess.
 
