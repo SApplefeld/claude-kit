@@ -39,8 +39,10 @@ For a diff whose content is prose or configuration rather than executable code, 
 Severity-ranked findings, most severe first. No praise padding, no summary of what the code does, no restating the diff. Each finding:
 
 ```
-[CRITICAL|MAJOR|MINOR] file:line - what is wrong, the concrete failure mode, suggested fix (one line).
+[CRITICAL|MAJOR|MINOR] [confidence: high|medium|low] file:line - what is wrong, the concrete failure mode, suggested fix (one line).
 ```
+
+Confidence rates how sure you are the defect is real: high means you verified the failing path against the code, medium means likely but unverified, low means a suspicion worth a look. It is independent of severity - never downgrade a severity to hedge low confidence; state both honestly and let the orchestrator weigh them.
 
 - **Critical** - wrong behavior on a reachable path, data loss or corruption risk, crash, resource leak, race. Blocks the section.
 - **Major** - likely bug, or correctness that survives only by accident (a workaround holding back a failure mode it does not name). Fix or justify.
