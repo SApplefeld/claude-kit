@@ -9,7 +9,7 @@ Explore the problem space WITH me in conversation, then capture the agreement as
 
 ## Process
 
-1. **Understand before proposing.** Read the relevant code first (use the built-in Explore subagent for broad reconnaissance so the main context stays lean). Never design against guessed signatures or imagined architecture.
+1. **Understand before proposing.** Open with `memq recall`, which returns the whole memory store as one bounded digest; the memory-system skill owns what it contains and how to act on it. Read it against the problem at hand and pull what bears on it. This runs before the code reading, because it is what tells you which prior attempt or hard-won gotcha the code reading should be looking for, and because a record you would never have thought to search for only surfaces when the digest lists everything. Then read the relevant code (use the built-in Explore subagent for broad reconnaissance so the main context stays lean). Never design against guessed signatures or imagined architecture. When a recalled record changes the design, stamp it in that turn with `memq touch <name> --applied`.
 
 2. **Scope check.** Before drilling into questions, gauge the size of the request. If it spans multiple independent subsystems (its own data, its own lifecycle, useful on its own), it is too big for one spec: name the pieces, how they relate, and the order to build them, then split into sub-project specs. Brainstorm the first through this process; each sub-project gets its own spec and its own execute and finish cycle. Decomposing first beats refining the details of something that should have been three specs.
 

@@ -11,6 +11,6 @@ This folder holds active plans only: specs that are open or in progress. A plan 
 
 ## Current
 
-- `claude-kit_memory-recall-and-reinforcement_spec_v1.md` - In Progress. `memq recall` (complete budgeted digest, model-scored), frequency-extended decay with the `pinned` override, usage-fold evidence preservation, archive scoreability. Builds on `../archive/claude-kit_memory-extension_spec_v1.md`.
+No active plans.
 
-Completed plans are in `../archive/` (most recent: `claude-kit_memory-extension_spec_v1.md`).
+Completed plans are in `../archive/` (most recent: `claude-kit_memory-recall-and-reinforcement_spec_v1.md`, which added `memq recall`, frequency-extended decay with the `pinned` override, the usage fold that preserves distinct-day evidence, and a scoreable, fetchable archive).

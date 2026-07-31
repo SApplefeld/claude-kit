@@ -24,14 +24,15 @@ The store lives at `~/.claude/projects/<sanitized-cwd>/memory/` (project tier) a
 
 **Type tier.** Authored by *any* project on the machine that declares `Project-Type: <type>`, and read into the context of *every* project declaring that type. This is a machine-wide shared read-and-write surface. A claim that no store-controlled content reaches a session's trusted context is false by design for this tier.
 
-Two paths carry type-tier content into a model's context, and they are not equally guarded:
+Three paths carry type-tier content into a model's context, and they are not equally guarded:
 
 | Path | Guard |
 |---|---|
 | SessionStart index emission (`memory-session.js`) | Each line reduced to bounded printable ASCII, line count and line length capped, two-space indented so a line cannot forge an unindented block, framed as data rather than instructions |
 | `memq get <name>` body | Length-capped, and for the type tier fenced the same way: provenance and a data-not-instructions line on stdout, every body line two-space indented so column zero stays the tool's own voice. Not charset-sanitized, because a body is a document where newlines and punctuation are legitimate content |
+| `memq recall` digest | Every field reduced to bounded printable ASCII with the double quote barred, so no record can forge a line, a coverage claim, or a truncation remainder; total output capped by the line budget; the type-derived records framed as data rather than instructions |
 
-Both hops now carry the same fence, and the fence rather than the charset is the control on the body. Project-tier output is unfenced and unchanged: the project that wrote it is the project reading it.
+All three hops carry the fence, and the fence rather than the charset is the control on a body. The exposure that distinguishes them is frequency rather than guard: the index emission and the digest are automatic, the digest at every effort start, while a `get` is a deliberate fetch of a named record. Project-tier output is unfenced: the project that wrote it is the project reading it.
 
 ## Storage properties
 
@@ -88,5 +89,6 @@ The shared tier has no owner and no cross-project coordination beyond the lock:
 
 - The "data, not instructions" framing on emitted index lines is a mitigation, not a guarantee.
 - `memq`'s argument validation protects the *store's shape*. It does not protect the user's secrets.
-- `decay-prune` is auditable, not reversible: it prints everything it removed and leaves one generation of backup.
+- `decay-prune` is auditable, and reversible only in the weak sense that archiving is demotion rather than deletion: it prints everything it removed, leaves one generation of backup, and a retired memory keeps its description in the archive's own index and still answers `memq get` by name. The rollup is the irreversible half, discarding expired entries' prose for a tally.
+- Retention is bounded but not fixed. A memory's decay thresholds extend by 30 idle days for each distinct calendar day it was applied, capped at 365, so the most extended memory becomes an archive candidate at 425 idle days. A `pinned:` frontmatter field exempts a memory from candidacy entirely and makes the prune refuse it by name. The exemption is set only by editing the memory file and is revoked by deleting the line; a `decay-scan` that finds any pin counts the whole population and lists the first ten with a counted remainder, so the exempt population cannot grow unobserved. Because archived content is still served by name and by the recall digest, retiring a memory does not remove anything the storage properties above describe: a credential written into a memory persists after archiving exactly as it persisted before.
 - Nothing here defends against an actor who already has write access to `~/.claude`. Such an actor can already execute code through hooks and settings.
