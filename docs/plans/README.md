@@ -11,6 +11,6 @@ This folder holds active plans only: specs that are open or in progress. A plan 
 
 ## Current
 
-No active plans.
+- `claude-kit_compact-session-removal_spec_v1.md` (In Progress) - remove compact-session and its engine-only machinery; native-compaction recovery stays.
 
 Completed plans are in `../archive/` (most recent: `claude-kit_backlog-sweep_spec_v1.md`, which set the agent effort dials and reviewer tier rule, added the canary's build-stamp integrity probe, fixed the exit-after-stdout hook class, and folded the guard access model into `security-model.md`).
