@@ -1,8 +1,8 @@
 # Kit Architecture
 
-The kit is a Claude Code plugin plus the repo material that maintains it. Almost all of it is prose: skills the model loads on demand, agent definitions, and a doctrine file that ships to the user's home directory. The exceptions are the pieces with real runtime behavior, and there are three: the Node hooks wired to session and tool events, the `memq` CLI over the memory store, and the compaction engine, a Bun program that rewrites session transcripts.
+The kit is a Claude Code plugin plus the repo material that maintains it. Almost all of it is prose: skills the model loads on demand, agent definitions, and a doctrine file that ships to the user's home directory. The exceptions are the pieces with real runtime behavior, and there are two: the Node hooks wired to session and tool events, and the `memq` CLI over the memory store.
 
-That split is the thing to hold onto when changing anything here. Prose surfaces are behavior-shaping text with no test but the writing-skills RED/GREEN check; the hooks, the CLI, and the engine are code with a real gate under `test/` and `tools/engine-tests/`.
+That split is the thing to hold onto when changing anything here. Prose surfaces are behavior-shaping text with no test but the writing-skills RED/GREEN check; the hooks and the CLI are code with a real gate under `test/`.
 
 ## Repo layout
 
@@ -11,7 +11,7 @@ That split is the thing to hold onto when changing anything here. Prose surfaces
 - **`docs/`** is the working library: about-the-solution documents at the root, active plans in `plans/`, finished history in `archive/`. It is not part of the payload.
 - **`kaizen/`** is the kit's self-improvement inbox, one note per piece of observed kit friction.
 - **`settings/settings.recommended.json`** is the recommended user settings shape.
-- **`tools/`** holds repo-side utilities that do not ship: `engine-tests/` (the compaction engine's Bun suite) and `transcript-study/` (the corpus analysis behind the compaction thresholds).
+- **`tools/`** holds repo-side utilities that do not ship: `transcript-study/`, the session-corpus analysis scripts.
 - **`build.ps1`, `build.sh`, `.claude-plugin/marketplace.json`** package and publish the plugin. Both builders stamp `plugins/claude-kit/.claude-plugin/build-info.json` before collecting files, so the stamp ships inside the zip: the git short hash and a dirty flag `kit-version-nudge.js` reads, plus a `hooks` map of `<filename>: <sha256>` over every file in the packaged `hooks/` directory, which the canary compares the executing cache against. The stamp carries no wall clock, so a clean rebuild of the same commit stays byte-identical, and it is gitignored, so the copy in a working tree is only as fresh as the last local build. `build.sh` fails the build rather than stamping when it cannot produce a 64-character hash for a hook, because a partial manifest would make every install read as tampered.
 
 ## Always-on boundary
