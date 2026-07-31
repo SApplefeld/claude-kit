@@ -168,7 +168,7 @@ function armGoal(cwd, planArg) {
 // Concurrency posture: this read-modify-write is not locked, so two stops
 // resolving to different sessions at nearly the same moment are last-writer-
 // wins; the loser simply reads the winner's binding at its own next stop and
-// allows (a bystander, or a successor that reclaims via the genealogy ledger).
+// allows as a bystander.
 // A clear that lands between this function's read and its write can be
 // resurrected by this write, recoverable by clearing again. Enforcement never
 // depends on this write succeeding: a failed bind still leashes the current

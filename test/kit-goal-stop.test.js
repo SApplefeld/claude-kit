@@ -4,13 +4,12 @@
 // real child process, fed a Stop payload on stdin, and asserted on by its stdout:
 // a block emits {"decision":"block", reason}; an allow emits nothing. Each case
 // builds a fresh temp cwd (with its own .kit/goal-state.json and a fake JSONL
-// transcript) plus a second temp dir serving as that case's machine-state root,
-// which is where a genealogy-ledger fixture goes. Every spawn path pins
-// KIT_GOAL_LEDGER_PATH (to an absent file unless the case supplies a fixture),
-// points LOCALAPPDATA at the temp root, and pins KIT_EVENTS_PATH inside that
-// same temp root, so no case reads real user state and no release a case fires
-// appends to the real ~/.claude/kit-events.jsonl. All temp state is cleaned up
-// in a finally block.
+// transcript) plus a second temp dir holding that case's event sink: pinning
+// KIT_EVENTS_PATH inside it is the isolation, so no release a case fires
+// appends to the real ~/.claude/kit-events.jsonl. Every spawn also points
+// LOCALAPPDATA at the temp root as belt-and-suspenders (the hook reads no
+// LOCALAPPDATA path today; the pin costs nothing and guards a future one).
+// All temp state is cleaned up in a finally block.
 
 'use strict';
 
@@ -23,11 +22,6 @@ const os = require('os');
 
 const HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-goal-stop.js');
 const { armGoal, bindSession } = require('../plugins/claude-kit/hooks/kit-goal-lib.js');
-
-// A ledger path that does not exist, so the genealogy walk sees an empty chain
-// unless a test explicitly points KIT_GOAL_LEDGER_PATH at its own fixture. This
-// keeps the suite hermetic: no test reads the real user's compaction ledger.
-const ABSENT_LEDGER = path.join(os.tmpdir(), 'kit-goal-stop-absent-ledger', 'ledger.jsonl');
 
 // The goal-event sink for a case, always inside a temp root that case cleans up,
 // never the real ~/.claude/kit-events.jsonl that a release fired by any spawn
@@ -89,17 +83,15 @@ function writeTranscript(full, planRel, assistantTexts) {
 }
 
 // Run the hook with the given payload, isolating it from real machine state:
-// LOCALAPPDATA and the goal-event sink are pinned to the caller's temp root and
-// the genealogy ledger to an absent path, so a case sees only the fixtures it
-// builds and writes only inside them. Returns the
-// spawnSync result (stdout, stderr, status). Clause-(b) retries are disabled by
-// default so block-path tests stay fast and an ambient KIT_GOAL_STOP_RETRY_MS
+// LOCALAPPDATA and the goal-event sink are pinned to the caller's temp root, so
+// a case sees only the fixtures it builds and writes only inside them. Returns
+// the spawnSync result (stdout, stderr, status). Clause-(b) retries are disabled
+// by default so block-path tests stay fast and an ambient KIT_GOAL_STOP_RETRY_MS
 // cannot warp the suite's timing; pass extraEnv to exercise a real schedule.
 function runHook(payload, localAppData, extraEnv) {
     const env = {
         ...process.env,
         KIT_GOAL_STOP_RETRY_MS: '0',
-        KIT_GOAL_LEDGER_PATH: ABSENT_LEDGER,
         KIT_EVENTS_PATH: eventsPath(localAppData),
         ...(extraEnv || {})
     };
@@ -332,12 +324,15 @@ test('unbound goal, a plain prose mention of the plan does NOT claim: allow, sti
     }
 });
 
-test('bound to another session: a plan-naming bystander is not leashed (no ledger link): allow', () => {
+test('bound to another session: a plan-naming bystander is not leashed: allow', () => {
+    // The transcript carries the arming invocation, so this also pins the order:
+    // an existing binding gates before the command-args claim, and a session that
+    // is not the bound one is allowed even when its text would otherwise claim.
     const { repo, transcript, local } = armedRepo(['Working hard, mentioning docs/plans/example.md often.']);
     try {
         assert.strictEqual(bindSession(repo, 'sess-owner').ok, true);
         const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-bystander' }, local);
-        assert.strictEqual(res.stdout, '', 'only the bound session (or its successor) is leashed');
+        assert.strictEqual(res.stdout, '', 'only the bound session is leashed');
         assert.strictEqual(res.status, 0);
         assert.strictEqual(readBoundSession(repo), 'sess-owner', 'the bystander does not steal the binding');
     } finally {
@@ -361,121 +356,6 @@ test('bound to this session (case-insensitive): a non-BLOCKED turn still blocks 
         assert.strictEqual(res.status, 0);
         const out = JSON.parse(res.stdout);
         assert.strictEqual(out.decision, 'block', 'the case-differing bound session is still enforced');
-    } finally {
-        rmDir(repo);
-        rmDir(local);
-    }
-});
-
-test('genealogy: a one-hop ledger successor of the bound session inherits the leash and is enforced (rebind)', () => {
-    const { repo, transcript, local } = armedRepo(['Making progress.']);
-    const ledger = path.join(local, 'ledger.jsonl');
-    try {
-        assert.strictEqual(bindSession(repo, 'bound-src').ok, true);
-        writeFile(ledger, JSON.stringify({ sourceSessionId: 'bound-src', destinationSessionId: 'me-successor' }) + '\n');
-        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'me-successor' }, local,
-            { KIT_GOAL_LEDGER_PATH: ledger });
-        const out = JSON.parse(res.stdout);
-        assert.strictEqual(out.decision, 'block', 'the genealogical successor is leashed and enforced');
-        assert.strictEqual(readBoundSession(repo), 'me-successor', 'the leash is rebound to the successor');
-    } finally {
-        rmDir(repo);
-        rmDir(local);
-    }
-});
-
-test('genealogy: a two-hop chain (bound -> A -> me), case-insensitive, inherits the leash (rebind)', () => {
-    const { repo, transcript, local } = armedRepo(['Making progress.']);
-    const ledger = path.join(local, 'ledger.jsonl');
-    try {
-        assert.strictEqual(bindSession(repo, 'bound-src').ok, true);
-        writeFile(ledger, [
-            JSON.stringify({ sourceSessionId: 'bound-src', destinationSessionId: 'mid-session' }),
-            JSON.stringify({ sourceSessionId: 'mid-session', destinationSessionId: 'me-successor' })
-        ].join('\n') + '\n');
-        // The stopping session matches the chain tail only case-insensitively.
-        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'ME-SUCCESSOR' }, local,
-            { KIT_GOAL_LEDGER_PATH: ledger });
-        const out = JSON.parse(res.stdout);
-        assert.strictEqual(out.decision, 'block', 'a multi-hop successor is leashed and enforced');
-        assert.strictEqual(readBoundSession(repo), 'ME-SUCCESSOR', 'the leash is rebound to the successor');
-    } finally {
-        rmDir(repo);
-        rmDir(local);
-    }
-});
-
-test('genealogy: a cyclic ledger including a self-edge terminates without hanging and does not claim an unrelated target', () => {
-    const { repo, transcript, local } = armedRepo(['Making progress.']);
-    const ledger = path.join(local, 'ledger.jsonl');
-    try {
-        assert.strictEqual(bindSession(repo, 'root').ok, true);
-        // A self-edge (source === destination) plus a back-edge forming a cycle;
-        // the visited-set guard must stop the walk rather than loop forever.
-        writeFile(ledger, [
-            JSON.stringify({ sourceSessionId: 'root', destinationSessionId: 'root' }),
-            JSON.stringify({ sourceSessionId: 'root', destinationSessionId: 'loop-a' }),
-            JSON.stringify({ sourceSessionId: 'loop-a', destinationSessionId: 'root' })
-        ].join('\n') + '\n');
-        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'stranger' }, local,
-            { KIT_GOAL_LEDGER_PATH: ledger });
-        assert.strictEqual(res.stdout, '', 'a cycle must not hang the walk or claim an unreachable session');
-        assert.strictEqual(res.status, 0);
-    } finally {
-        rmDir(repo);
-        rmDir(local);
-    }
-});
-
-test('genealogy: a corrupt ledger line is skipped and a later valid line still resolves the chain', () => {
-    const { repo, transcript, local } = armedRepo(['Making progress.']);
-    const ledger = path.join(local, 'ledger.jsonl');
-    try {
-        assert.strictEqual(bindSession(repo, 'bound-src').ok, true);
-        writeFile(ledger, [
-            'not valid json at all',
-            JSON.stringify({ sourceSessionId: 'bound-src' }), // missing destinationSessionId
-            JSON.stringify({ sourceSessionId: 'bound-src', destinationSessionId: 'me-successor' })
-        ].join('\n') + '\n');
-        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'me-successor' }, local,
-            { KIT_GOAL_LEDGER_PATH: ledger });
-        const out = JSON.parse(res.stdout);
-        assert.strictEqual(out.decision, 'block', 'the valid edge after the corrupt lines still resolves the chain');
-        assert.strictEqual(readBoundSession(repo), 'me-successor');
-    } finally {
-        rmDir(repo);
-        rmDir(local);
-    }
-});
-
-test('genealogy: forward-only leash, a predecessor stopping after its handoff is a bystander (the chain does not walk backward)', () => {
-    const { repo, transcript, local } = armedRepo(['Making progress.']);
-    const ledger = path.join(local, 'ledger.jsonl');
-    try {
-        // The leash already rebound to D (the successor of predecessor P).
-        assert.strictEqual(bindSession(repo, 'D').ok, true);
-        writeFile(ledger, JSON.stringify({ sourceSessionId: 'predecessor', destinationSessionId: 'D' }) + '\n');
-        // P stops later: the ledger only records P -> D, so walking forward from
-        // D never reaches P.
-        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'predecessor' }, local,
-            { KIT_GOAL_LEDGER_PATH: ledger });
-        assert.strictEqual(res.stdout, '', 'a predecessor of the bound session is a bystander, not a successor');
-        assert.strictEqual(res.status, 0);
-        assert.strictEqual(readBoundSession(repo), 'D', 'the leash stays with D; it is never handed back to P');
-    } finally {
-        rmDir(repo);
-        rmDir(local);
-    }
-});
-
-test('bound to another session, absent ledger: no genealogy claim, so allow', () => {
-    const { repo, transcript, local } = armedRepo(['Making progress.']);
-    try {
-        assert.strictEqual(bindSession(repo, 'owner-sess').ok, true);
-        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'stranger-sess' }, local,
-            { KIT_GOAL_LEDGER_PATH: path.join(local, 'no-such-ledger.jsonl') });
-        assert.strictEqual(res.stdout, '', 'an absent ledger is an empty chain: a non-bound session is not leashed');
-        assert.strictEqual(res.status, 0);
     } finally {
         rmDir(repo);
         rmDir(local);
@@ -691,7 +571,6 @@ function runHookForcingBindWriteFailure(repo, payload, extraEnv) {
     const env = {
         ...process.env,
         KIT_GOAL_STOP_RETRY_MS: '0',
-        KIT_GOAL_LEDGER_PATH: ABSENT_LEDGER,
         KIT_EVENTS_PATH: eventsPath(repo),
         ...(extraEnv || {})
     };
@@ -789,7 +668,6 @@ test('clause (b) tolerates the stop-time flush race: a BLOCKED entry landing jus
     try {
         const env = {
             ...process.env,
-            KIT_GOAL_LEDGER_PATH: ABSENT_LEDGER,
             KIT_GOAL_STOP_RETRY_MS: '900',
             KIT_EVENTS_PATH: eventsPath(local)
         };
@@ -826,7 +704,6 @@ test('a partial final line that completes into a non-BLOCKED entry inside the re
         fs.appendFileSync(transcript, full.slice(0, 40));
         const env = {
             ...process.env,
-            KIT_GOAL_LEDGER_PATH: ABSENT_LEDGER,
             KIT_GOAL_STOP_RETRY_MS: '900',
             KIT_EVENTS_PATH: eventsPath(local)
         };
@@ -1121,8 +998,8 @@ test('a Complete plan whose goal another stop already cleared emits nothing (the
 test('bound goal, Stop payload missing session_id entirely: empty stdout (the documented fail-open release)', () => {
     // Pins the shape loudly: if the harness ever stops sending session_id, a
     // bound goal must not silently start enforcing (or silently stop enforcing)
-    // by accident. sameSessionId and ledgerChainReaches both treat a missing id
-    // as "no match", so this resolves as a bystander and allows.
+    // by accident. sameSessionId treats a missing id as "no match", so this
+    // resolves as a bystander and allows.
     const { repo, transcript, local } = armedRepo(['Making progress.']);
     try {
         assert.strictEqual(bindSession(repo, 'sess-owner').ok, true);

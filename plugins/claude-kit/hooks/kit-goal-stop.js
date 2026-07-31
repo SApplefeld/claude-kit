@@ -21,20 +21,19 @@
 // Allow order:
 //   0.  no goal armed: allow (the hot path for every session everywhere).
 //   0b. scoping by session identity. The goal binds to exactly one session:
-//         - Bound to THIS session: leashed, proceed to enforcement.
-//         - Bound to another session: allow, UNLESS the compaction genealogy
-//           ledger shows this session is a (multi-hop) successor of the bound
-//           session, in which case the leash follows the swap (rebind) and this
-//           session is enforced. A session that merely mentions the plan but is
-//           not the bound session or its successor is never leashed.
+//         - Bound to THIS session: leashed, proceed to enforcement. Compaction
+//           preserves the session id, so a run the harness compacts mid-flight
+//           keeps matching its binding and stays leashed.
+//         - Bound to another session: allow. A session that merely mentions the
+//           plan is never leashed, and a run that somehow resumes under a new
+//           session id is recovered by re-arming (/kit-goal), which resets the
+//           binding for the new session to claim.
 //         - Unbound: the first session whose genuine user-typed text carries the
 //           plan path inside a <command-args> span (the /kit-goal arming
 //           invocation, including a re-arm after a crash) claims the binding and
 //           is enforced; every other session is allowed. Plain prose merely
 //           mentioning the path never claims, nor does harness-injected feedback
-//           (isMeta) or an assistant echo: a resumed compaction successor does
-//           not need this claim either, since the genealogy ledger already
-//           covers it.
+//           (isMeta) or an assistant echo.
 //       Binding is best-effort: a failed bind write still enforces this stop and
 //       is retried at the next stop, so a persistence hiccup never releases a
 //       genuinely leashed session.
@@ -58,7 +57,6 @@
 
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 const { readGoal, planHead, clearGoal, bindSession, emitGoalEvent } = require('./kit-goal-lib.js');
 
 function readStdin() {
@@ -94,8 +92,7 @@ function readTranscriptCapped(transcriptPath) {
 }
 
 // Compare two session ids as opaque, case-insensitive strings (session UUIDs
-// are surfaced in mixed case across the harness). Some genealogy source ids are
-// non-UUID labels; they compare the same way.
+// are surfaced in mixed case across the harness).
 function sameSessionId(a, b) {
     if (!a || !b) return false;
     return String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
@@ -190,9 +187,8 @@ function userCommandArgsInclude(message, needle) {
 //     and sub-agent (sidechain) turns do not count.
 //   - It matches the dir-qualified path, not just the basename, so a session
 //     that merely names a same-basename file is not leashed.
-// A resumed compaction successor does not need this claim: the genealogy ledger
-// already carries the leash to it. False if there is no path or it is
-// unreadable: a session we cannot scope is never leashed.
+// False if there is no path or it is unreadable: a session we cannot scope is
+// never leashed.
 function userCommandArgsClaimPlan(transcriptPath, planRel) {
     try {
         if (!transcriptPath || !planRel) return false;
@@ -212,54 +208,6 @@ function userCommandArgsClaimPlan(transcriptPath, planRel) {
     } catch {
         return false;
     }
-}
-
-// Walk the compaction genealogy from the bound session toward the stopping
-// session. The ledger (~/.claude/magic-compact/ledger.jsonl, JSONL) records one
-// { sourceSessionId, destinationSessionId } per compaction swap, so a compacted
-// successor is a new session id reachable from its predecessor by following
-// source -> destination. Returns true when the chain rooted at boundSession
-// reaches sessionId within a bounded number of hops (a compacted successor
-// legitimately inherits the leash), false otherwise. An absent or unreadable
-// ledger is an empty chain (false). Session ids compare case-insensitively as
-// opaque strings; non-UUID source labels compare the same way. The hop cap plus
-// a visited-set cycle guard bound the walk on a large or self-referential
-// ledger. KIT_GOAL_LEDGER_PATH overrides the path for tests.
-function ledgerChainReaches(boundSession, sessionId) {
-    if (!boundSession || !sessionId) return false;
-    const target = String(sessionId).trim().toLowerCase();
-    const ledgerPath = process.env.KIT_GOAL_LEDGER_PATH
-        || path.join(os.homedir(), '.claude', 'magic-compact', 'ledger.jsonl');
-    let content;
-    try { content = fs.readFileSync(ledgerPath, 'utf8'); } catch { return false; }
-    const edges = new Map();
-    for (const line of content.split('\n')) {
-        const t = line.trim();
-        if (!t) continue;
-        let entry;
-        try { entry = JSON.parse(t); } catch { continue; }
-        if (!entry || typeof entry.sourceSessionId !== 'string'
-            || typeof entry.destinationSessionId !== 'string') continue;
-        const src = entry.sourceSessionId.trim().toLowerCase();
-        const dst = entry.destinationSessionId.trim().toLowerCase();
-        if (!edges.has(src)) edges.set(src, []);
-        edges.get(src).push(dst);
-    }
-    const HOP_CAP = 20;
-    const start = String(boundSession).trim().toLowerCase();
-    const seen = new Set([start]);
-    let frontier = [start];
-    for (let hop = 0; hop < HOP_CAP && frontier.length; hop++) {
-        const next = [];
-        for (const node of frontier) {
-            for (const d of (edges.get(node) || [])) {
-                if (d === target) return true;
-                if (!seen.has(d)) { seen.add(d); next.push(d); }
-            }
-        }
-        frontier = next;
-    }
-    return false;
 }
 
 // Does the last main-thread assistant turn's text lead with 'BLOCKED:'? Returns
@@ -409,15 +357,10 @@ function main() {
     // proceeds to the enforcement clauses; every other outcome allows.
     const bound = goal.boundSession;
     if (bound) {
-        if (sameSessionId(bound, sessionId)) {
-            // This session holds the leash.
-        } else if (ledgerChainReaches(bound, sessionId)) {
-            // A compacted successor of the bound session inherits the leash.
-            bindSession(cwd, sessionId);
-        } else {
-            // Some other session: never leashed by mentioning the plan.
-            return;
-        }
+        // Only the bound session itself is leashed: compaction preserves the
+        // session id, so the id that claimed the goal is the id that stops.
+        // Some other session is never leashed by mentioning the plan.
+        if (!sameSessionId(bound, sessionId)) return;
     } else if (userCommandArgsClaimPlan(transcriptPath, planRel)) {
         // Unbound: the first session whose genuine user text carries the plan
         // path as a command argument (the arming invocation) claims the binding.

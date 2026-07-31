@@ -71,3 +71,12 @@ Decisions / Surprises: doctor.ps1 lost the Bun block, engine smoke runs, claude 
 Review Findings: none at section level; the finishing reviews cover this changeset.
 Next: 2. kit-goal-stop ledger-route surgery (its report pending at chapter time), then 4. Close-out
 Commit Model: Commit-and-Push
+
+### Chapter 2 - 2026-07-31
+Completed: 2. kit-goal-stop ledger-route surgery
+Implemented By: implementer-opus
+Metrics: 1 review round (adversarial APPROVED; blind APPROVED_WITH_CONCERNS); NEEDS_CONTEXT 0; escalations 0; advisor opus (not consulted)
+Decisions / Surprises: The implementer ran a mutation probe as the removal's red/green (bound-gate inverted, three bystander tests went red, revert verified by grep) and named all six removed ledger tests with the suite delta exactly matching (359/0 to 353/0). Two ledger residues sat outside its file fence (a stale kit-goal-lib.js comment, the canary probe's now-no-op KIT_GOAL_LEDGER_PATH pin); the orchestrator applied both and re-ran the suite. Blind's one Major was DECLINED with rationale: the dead-binding case it names (a goal bound to a dead session suppresses goal-complete until re-arm or clear) is pre-existing behavior the old ledger route never covered for non-engine successors, and it is surfaced, not silent (session-start names the armed goal every session; the doctor WARNs on armed-but-Complete); the event-gap consequence is recorded on the AI OS release-coverage backlog item, where the fix (a bystander stop running the Complete check read-only, clear-plus-emit) waits on the consumer actually needing guaranteed completion events. Adversarial's one Minor fixed: the test-file isolation comment now names the KIT_EVENTS_PATH sink as the isolation and the LOCALAPPDATA pin as belt-and-suspenders. The adversarial reviewer independently re-hashed the edited hooks against the build stamp (match) and re-ran the suite (353/0).
+Review Findings: adversarial 1 Minor fixed; blind 1 Major declined with recorded rationale; no Criticals.
+Next: 4. Close-out (finishing-work)
+Commit Model: Commit-and-Push

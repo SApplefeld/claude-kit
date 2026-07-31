@@ -283,14 +283,13 @@ function goalStopProbe(root, failures) {
         let fx;
         try { fx = makeGoalFixture(dir); } catch { return; }
         const file = path.join(root, 'hooks', 'kit-goal-stop.js');
-        // The re-read schedule is disabled (the fixture transcript is complete),
-        // the genealogy ledger is pinned at an absent path, and the goal event
-        // sink points inside the fixture, so the probe reads none of the real
-        // machine's session state and any event a probed release emits lands in
-        // the throwaway dir instead of the real event stream.
+        // The re-read schedule is disabled (the fixture transcript is complete)
+        // and the goal event sink points inside the fixture, so the probe reads
+        // none of the real machine's session state and any event a probed
+        // release emits lands in the throwaway dir instead of the real event
+        // stream.
         const env = Object.assign({}, process.env, {
             KIT_GOAL_STOP_RETRY_MS: '0',
-            KIT_GOAL_LEDGER_PATH: path.join(dir, 'absent-ledger.jsonl'),
             KIT_EVENTS_PATH: path.join(dir, 'probe-events.jsonl')
         });
         const held = runHook(file, {
