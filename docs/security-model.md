@@ -89,7 +89,7 @@ Four PreToolUse guards mechanically enforce the agent access model. Each is the 
 
 - The gate-runner's build-directory list is a policy assumption the guard does not check: a repo that tracks real content under one of those names gets no protection there.
 - Agent identity comes from the hook payload's subagent-type field; a call the guard cannot positively attribute to a governed agent is allowed.
-- `docs-write-guard` covers the Write/Edit tools exactly and shell writes heuristically; an exotic write (python, `sed -i`, `Copy-Item`, a variable-assembled path) is out of its reach and is caught, if at all, by the Stop-scan backstop.
+- `docs-write-guard` covers the Write/Edit tools exactly and shell writes heuristically; an exotic write (python, `sed -i`, `Copy-Item`, a variable-assembled path) is out of its reach and is caught, if at all, by the Stop-scan backstop. Its `docs/` match carries no containment against the session's repo, so a governed subagent is denied a write to any path holding a `docs/` segment anywhere on the filesystem - an over-reach in the false-deny direction, with the containment fix tracked in the backlog.
 - `pr-docs-guard` carries a residual false-deny: a payload cwd resolving to a different checkout that is both dirty and parked on a non-default branch still denies.
 
 **Compensating controls, and the gap each cannot see:**

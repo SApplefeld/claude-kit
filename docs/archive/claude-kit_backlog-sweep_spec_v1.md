@@ -1,6 +1,6 @@
 # Backlog sweep: effort dials, reviewer tiering, guard detection, doc closes
 
-Status: In Progress
+Status: Complete
 Commit model: Commit-and-Push
 Fable Spend: session is Fable-led; tier assignments below authorize dispatch spend
 
@@ -14,6 +14,10 @@ Decisions recorded from that conversation, all decided 2026-07-31:
 - **Reviewer model tier rule.** Per-section reviewers ride one tier above the section's writer tier (haiku -> sonnet, sonnet -> opus, opus -> fable, fable -> fable), passed as the model override on each reviewer dispatch; the finishing adversarial review always runs fable. Today the reviewers inherit the session model, so on a Fable-led session this is a cost cut for below-opus sections, and on a below-fable session the fable overrides are Fable spend under the existing header semantics (`none (cost hold)` caps at the session model). The finishing gate is deliberately never stepped down.
 - **Guard integrity detection over prevention.** For the writable-guard-executables exposure (plugin cache is user-writable; a governed agent with Bash can disarm all four PreToolUse guards silently, confirmed reachable), the decision is detection: the build stamps a hash manifest of the hooks, and the canary compares the executing cache against it at session start, warning loudly on drift. Prevention was rejected because the same-principal actor is out of scope by docs/security-model.md's own analysis; the threat is a model misstep or rationalization, not an attack, and detection converts a permanent silent disarm into a bounded loud one. Honest limit, to be stated in the docs: the manifest lives in the same writable cache, so a deliberate two-file rewrite evades it; that actor was already out of scope.
 - **Kit-goal leash across native compaction: field-confirmed holding.** Scott observed an armed kit-goal carry through an overnight session that native-auto-compacted, continue pursuing the goal, and end with the proper blocked/completion messaging next morning. That is the probe the backlog item was waiting for; retired to the Q3 snapshot on that evidence.
+
+## Related
+
+- `claude-kit_hook-canary-and-goal-events_spec_v1.md`: built the canary this plan extended with the integrity probe and the build-stamped hash manifest. (Pointer runs one way; that plan is archived and immutable.)
 
 ## Sections of Work
 
@@ -87,4 +91,13 @@ Metrics: 0 review rounds (probe evidence verified by direct fixture inspection);
 Decisions / Surprises: Both texts GREEN, no wording change needed. Stop-block reason: 2/2 probes ran the full curating-docs close path. Session-start nudge: 2/2 clean GREEN, and one rep refused to archive because the fixture's plan claimed work its code did not contain - a fixture-authoring error that accidentally demonstrated the drift rule working; the rep was replaced with an honest fixture rather than counted. Doctrine-contamination caveat recorded: probes inherit the global doctrine, which is production-faithful for these hooks. Probe design surfaced two ride-alongs: docs-write-guard has no repo containment on its docs/ match (new backlog item; probes ran as the ungoverned catch-all type to dodge the false deny), and the probes were run before section 2's REAL_ROOT self-diagnosing fix landed, so no stamp-staleness interaction arose.
 Review Findings: none; the deliverable is the recorded probe evidence in the Q3 snapshot entry.
 Next: 5. Close-out (finishing-work)
+Commit Model: Commit-and-Push
+
+### Chapter 5 - 2026-07-31
+Completed: 5. Close-out (finishing-work)
+Implemented By: main session
+Metrics: finishing round: qa-verifier PASS (359/0 suite, every section 1-4 criterion evidenced, all 17 manifest hashes independently recomputed against the shipped files); security-reviewer CLEAR; adversarial CHANGES_REQUIRED with 1 Major, fixed in fc014cf; docs-curator drift report 1 deviation, reconciled below; NEEDS_CONTEXT 0; escalations 0; advisor opus (not consulted)
+Decisions / Surprises: The finishing adversarial Major was the security model overstating the gate-runner class: readonly-agent-guard deliberately allows qa-verifier to create nonexistent files in-tree (qa-verifier.md said so; the model said "nowhere else in the tree") - corrected same turn, in the overstating-protection direction the section's own acceptance bar exists to catch. Security's accepted-risk observation, now on the record: the integrity probe's ENOENT narrowing leaves a present-but-unreadable manifest file silent; the load probe compensates for every wired hook, and the one uncompensated entry (the kit-goal CLI) surfaces at first /kit-goal use. Curator drift D1 (deviation): the model's docs-write-guard bullet omitted the no-containment over-reach; one sentence added at close-out, with the containment fix remaining the filed backlog item. Cross-ref gap H2 closed with the Related section. Machine state noted for Scott: this desktop has no memq PATH shim (~/.claude/.local/bin is absent; memq ran via the plugin script; doctor -Fix installs the wrappers). Memory decay pass ran due-by-absent-stamp: no candidates, stamp touched. Everything in the plugin payload (dials, hook fixes, canary probe) reaches live sessions at the next kit update, since sessions load a cache snapshot.
+Review Findings: finishing round: 1 Major fixed, 1 security observation accepted, 1 drift deviation reconciled in-doc. No Critical findings anywhere in the effort.
+Next: none - effort complete
 Commit Model: Commit-and-Push
