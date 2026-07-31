@@ -61,3 +61,30 @@ Decisions / Surprises: The review's Major held on verification: the new reviewer
 Review Findings: 1 Major addressed (brainstorming enumeration), 2 Minors fixed (escalation clause, pair wording), 1 Minor noted without action (worktree eol).
 Next: 2. Guard integrity detection
 Commit Model: Commit-and-Push
+
+### Chapter 2 - 2026-07-31
+Completed: 2. Guard integrity detection
+Implemented By: implementer-opus (one mid-run API death, resumed via SendMessage with context intact; no escalation)
+Metrics: 2 review rounds (round one: adversarial CHANGES_REQUIRED + blind APPROVED_WITH_CONCERNS + security CLEAR; round two: fix verification by orchestrator gate run); NEEDS_CONTEXT 0; escalations 0; advisor opus (consulted once by the implementer on the stamp-coupling hazard)
+Decisions / Surprises: The manifest covers hooks.json alongside hooks/*.js (rewiring is an equal disarm path; orchestrator refinement of the spec's "hooks/*.js"). The REAL_ROOT test-to-stamp coupling was kept deliberately and made self-diagnosing rather than removed - three independent sources (implementer, blind, adversarial) converged on the false-red channel, and the fix preserves the coupling's upside (it catches hooks edited after the last build). Accepted implementer deviation: the integrity probe's dedupe suppresses its line for any hook another probe already flagged, not just load-check failures, because the behavior failure is the more actionable diagnosis. Declined with reason: a stamp-read size cap (the actor who can plant a huge stamp already owns the cache). Deleting build-info.json alone silences detection - cheaper than the two-file rewrite the doc first described; security-model.md states it accurately now. build.sh's stamp block is verified by transcription across all three hasher branches plus the refuse-to-stamp path, but has never run end to end on a POSIX box: that smoke is a backlog item riding the doctor.sh Linux-sibling work. Latent, noted, unfixed: the .js glob case-sensitivity divergence between the two build scripts.
+Review Findings: 2 Majors fixed (spec's self-tamper test was missing; stamp-coupling reds were undiagnosed), 5 Minors fixed (build.sh empty-hash refusal, probe dedupe, ENOENT narrowing, malformed-manifest test, stampCache file filter), 1 Minor declined (size cap), 2 Minors noted (case-sensitivity, coverage extension to scripts/ and doctor/ which is now a backlog item). Security: CLEAR with a live hostile-manifest probe.
+Next: 3. Guard access model into the security model doc
+Commit Model: Commit-and-Push
+
+### Chapter 3 - 2026-07-31
+Completed: 3. Guard access model into the security model doc
+Implemented By: main session
+Metrics: 0 review rounds at section level (prose folded into the finishing pass's full-changeset review); NEEDS_CONTEXT 0; escalations 0; advisor opus (not consulted)
+Decisions / Surprises: security-model.md gained "The guard hooks": the four guards and their invariants, the two-class agent policy, the deny-only-on-positive-confirmation posture with per-guard accepted risks, and the compensating controls each paired with the gap it cannot see. The honest-limits text was corrected mid-effort on the section 2 adversarial reviewer's carry-in: deleting the stamp alone silences detection, and the manifest's coverage boundary (hooks only; scripts/ and doctor/ outside it) is stated. Both source backlog items retired to the Q3 snapshot.
+Review Findings: none at section level; the finishing review covers this prose.
+Next: 4. RED/GREEN the backstop wording
+Commit Model: Commit-and-Push
+
+### Chapter 4 - 2026-07-31
+Completed: 4. RED/GREEN the backstop wording
+Implemented By: main session (five sonnet probe agents against scratch fixtures)
+Metrics: 0 review rounds (probe evidence verified by direct fixture inspection); NEEDS_CONTEXT 0; escalations 0; advisor opus (not consulted)
+Decisions / Surprises: Both texts GREEN, no wording change needed. Stop-block reason: 2/2 probes ran the full curating-docs close path. Session-start nudge: 2/2 clean GREEN, and one rep refused to archive because the fixture's plan claimed work its code did not contain - a fixture-authoring error that accidentally demonstrated the drift rule working; the rep was replaced with an honest fixture rather than counted. Doctrine-contamination caveat recorded: probes inherit the global doctrine, which is production-faithful for these hooks. Probe design surfaced two ride-alongs: docs-write-guard has no repo containment on its docs/ match (new backlog item; probes ran as the ungoverned catch-all type to dodge the false deny), and the probes were run before section 2's REAL_ROOT self-diagnosing fix landed, so no stamp-staleness interaction arose.
+Review Findings: none; the deliverable is the recorded probe evidence in the Q3 snapshot entry.
+Next: 5. Close-out (finishing-work)
+Commit Model: Commit-and-Push

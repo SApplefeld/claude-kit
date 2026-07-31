@@ -76,6 +76,29 @@ Every kit hook swallows errors and exits 0 silently, by design: a hook bug must 
 
 **Absence of a nudge, a stamp, or a warning is not evidence of health.** A hook that cannot run, cannot resolve its dependencies, or cannot write produces exactly the same observable output as one with nothing to say. The hook canary exists because of this, and it probes cache consistency rather than correctness.
 
+## The guard hooks
+
+Four PreToolUse guards mechanically enforce the agent access model. Each is the teeth under a skill's routing wording, and none is a security boundary: by the Principals section, every agent runs as the one machine principal, so the guards defend the work against well-intentioned-but-wrong agent behavior (a reviewer "fixing" the code under review, an implementer writing reports into the curated docs tree, a push stranding records off a merged branch), not against an attacker.
+
+- **`readonly-agent-guard`** holds the state under review immutable, by agent class. Strict agents (adversarial-reviewer, blind-reviewer, security-reviewer, council-member, design-facilitator) get a read-only repo tree: writes, file mutations, git and GitHub state changes, package installs, and formatters are denied. The gate-runner (qa-verifier) builds and runs suites, so it may write and delete freely inside a fixed list of build-output directory names (bin, obj, TestResults, node_modules, .vs) and nowhere else in the tree. Every other agent type and the main session are untouched, and `.kit/` (gitignored) is scratch both classes may write. Command text is judged against a quote-masked copy with nested executors descended recursively within a depth bound, and containment against the git root above the payload cwd.
+- **`docs-write-guard`** keeps non-curator subagents out of `docs/`: only a main session and the docs-curator agent curate the library; reviewer and implementer reports belong in `.kit/`, with the plan's Chapter as the durable record.
+- **`pr-docs-guard`** blocks creating a PR while `docs/` carries uncommitted changes attributable to the checkout the PR is created from, so documentation ships in the same PR as the code. A command that chains its own `git commit` ahead of the PR create is allowed, and a checkout parked on the default branch or a detached HEAD never denies.
+- **`merged-pr-push-guard`** blocks a push to a branch whose PR the host reports MERGED, the stranded-commit trap. Its shell calls are fixed literals with the one variable (the branch) allowlisted before interpolation; that discipline is load-bearing against command injection.
+
+**Every guard fails open and denies only on positive confirmation.** A parse error, an unidentifiable agent, an unresolvable path, a missing CLI, or a host timeout allows. The accepted risks that follow, per guard:
+
+- The gate-runner's build-directory list is a policy assumption the guard does not check: a repo that tracks real content under one of those names gets no protection there.
+- Agent identity comes from the hook payload's subagent-type field; a call the guard cannot positively attribute to a governed agent is allowed.
+- `docs-write-guard` covers the Write/Edit tools exactly and shell writes heuristically; an exotic write (python, `sed -i`, `Copy-Item`, a variable-assembled path) is out of its reach and is caught, if at all, by the Stop-scan backstop.
+- `pr-docs-guard` carries a residual false-deny: a payload cwd resolving to a different checkout that is both dirty and parked on a non-default branch still denies.
+
+**Compensating controls, and the gap each cannot see:**
+
+- The reviewers' and council agents' frontmatter grants no Write or Edit tools, so the guard only has to police shell commands. Gap: nothing frontmatter can do about what Bash reaches.
+- The executing-work skill brackets every review round with a `git status --porcelain` capture and comparison, so a write that slips past the guard surfaces as a tree delta and is treated as an incident. Gap: the comparison sees the worktree only; a `gh` or `az` host-state mutation leaves the tree byte-identical and is invisible to it.
+- The Stop-scan backstop (`stop-docs-hygiene`) catches scratch that reached `docs/` by any route, including the exotic writes the write-guard cannot parse.
+- The build stamps a SHA-256 manifest of every shipped hook file (`hooks.json` included, since rewiring is an equal disarm path to editing a guard) into `.claude-plugin/build-info.json`, and the canary verifies the executing plugin cache against it at session start, warning loudly on drift. This exists because the guards execute from the user-writable plugin cache: a governed agent holding Bash can overwrite a guard there, outside any git root where no tree comparison looks, disarming all four with no signal, and that write is confirmed reachable. The manifest converts a permanent silent disarm into a bounded loud one. Its limits: it is detection, not prevention, and it speaks at the next session start, not in the moment; and the manifest lives in the same writable cache as the payload it attests, so deleting the stamp file alone silences the check (the canary treats an absent manifest as an older build), and rewriting stamp and payload together defeats it outright. The actor who does either deliberately holds write access the Principals section already places outside every control in this document; the threat the detection is sized for is a model misstep or a rationalized edit, and one naive overwrite is exactly what it catches. Coverage is the shipped hook files; the cache's other executed payload (`scripts/`, `doctor/`) is outside the manifest today.
+
 ## Type-tier governance limits
 
 The shared tier has no owner and no cross-project coordination beyond the lock:
