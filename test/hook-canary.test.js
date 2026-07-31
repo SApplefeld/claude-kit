@@ -17,6 +17,7 @@ const { spawnSync } = require('node:child_process');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const crypto = require('crypto');
 
 const CANARY = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'hook-canary.js');
 const REAL_ROOT = path.join(__dirname, '..', 'plugins', 'claude-kit');
@@ -25,6 +26,8 @@ const REAL_HOOKS = path.join(REAL_ROOT, 'hooks');
 // A throwaway plugin cache: the whole hooks directory, copied. The copy is
 // recursive and complete (not just the files hooks.json wires) because
 // kit-goal-stop.js requires kit-goal-lib.js, which no command string names.
+// Only hooks/ is copied, so a cache carries no build stamp and the integrity
+// probe has nothing to check until a test stamps one with stampCache().
 function makeCache() {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hook-canary-cache-'));
     fs.cpSync(REAL_HOOKS, path.join(dir, 'hooks'), { recursive: true });
@@ -37,6 +40,33 @@ function rmDir(dir) {
 
 function hookFile(cache, name) {
     return path.join(cache, 'hooks', name);
+}
+
+function sha256(file) {
+    return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+}
+
+// Give a cache the build stamp build.ps1 / build.sh write: the git hash plus a
+// hooks map of <filename>: <sha256>, computed here from the cache's own files so
+// a test can tamper with exactly one of them and leave the rest matching. The
+// extra entries argument adds names the build stamped but the cache does not
+// hold. Passing a stamp with no hooks map models a build that predates the map.
+function stampCache(cache, options) {
+    const opts = options || {};
+    const hooks = opts.hooks === null ? null : {};
+    if (hooks) {
+        // Files only: the build hashes files, and a subdirectory under hooks/
+        // would otherwise make the harness itself throw.
+        for (const entry of fs.readdirSync(path.join(cache, 'hooks'), { withFileTypes: true })) {
+            if (entry.isFile()) hooks[entry.name] = sha256(hookFile(cache, entry.name));
+        }
+        Object.assign(hooks, opts.extra || {});
+    }
+    const stamp = { name: 'claude-kit', hash: 'testbld', dirty: false };
+    if (hooks) stamp.hooks = hooks;
+    fs.mkdirSync(path.join(cache, '.claude-plugin'), { recursive: true });
+    fs.writeFileSync(path.join(cache, '.claude-plugin', 'build-info.json'),
+        JSON.stringify(stamp, null, 2), 'utf8');
 }
 
 function runCanary(root) {
@@ -56,6 +86,22 @@ function warning(res) {
 // The per-probe failure lines inside a warning.
 function failureLines(text) {
     return text.split('\n').filter((l) => l.startsWith('  - '));
+}
+
+// Assert the canary said nothing. A warning made up entirely of integrity checks
+// against the repo's own plugin directory means the gitignored build stamp is
+// older than the hooks beside it, which is a stale stamp rather than a broken
+// cache, so it is called out as its own thing: rebuilding is the fix, and every
+// other failure the canary can see still lands on the assertion below.
+function assertSilent(res, message) {
+    if (res.stdout) {
+        const lines = failureLines(warning(res));
+        assert.ok(!(lines.length && lines.every((l) => l.includes('integrity check'))),
+            'the build stamp under plugins/claude-kit/.claude-plugin/ is stale: hooks were edited after '
+            + 'the last build, so run ./build.ps1 and re-run this suite. Integrity lines:\n'
+            + lines.join('\n'));
+    }
+    assert.strictEqual(res.stdout, '', message);
 }
 
 // Assert the warning names exactly the expected failures and nothing else: the
@@ -79,7 +125,7 @@ function assertOnlyFlagged(text, flagged) {
 test('the real installed hooks are healthy: exit 0, no output', () => {
     const res = runCanary(REAL_ROOT);
     assert.strictEqual(res.status, 0);
-    assert.strictEqual(res.stdout, '', 'a healthy cache is silent');
+    assertSilent(res, 'a healthy cache is silent');
     assert.strictEqual(res.stderr, '');
 });
 
@@ -351,10 +397,128 @@ test('the canary probes the cache it is pointed at, leaving no fixture behind', 
             env: { ...process.env, CLAUDE_PLUGIN_ROOT: REAL_ROOT, TMPDIR: temp, TEMP: temp, TMP: temp }
         });
         assert.strictEqual(res.status, 0);
-        assert.strictEqual(res.stdout, '', 'the real cache is healthy, so the goal probe ran and passed');
+        assertSilent(res, 'the real cache is healthy, so the goal probe ran and passed');
         assert.deepStrictEqual(fs.readdirSync(temp), [],
             'the goal-probe fixture is removed after the probe');
     } finally {
         rmDir(temp);
+    }
+});
+
+test('a hook edited in the cache is reported against the build manifest, even though it still works', () => {
+    // The edit is a trailing comment: the guard still parses and still answers
+    // both of its behavior probes correctly, so the hash comparison is the only
+    // thing in the canary that can see it. That is the case the manifest exists
+    // for - an in-place edit that leaves the guard looking healthy.
+    const cache = makeCache();
+    try {
+        stampCache(cache);
+        fs.appendFileSync(hookFile(cache, 'docs-write-guard.js'), '// edited after the build\n', 'utf8');
+        const res = runCanary(cache);
+        assert.strictEqual(res.status, 0, 'the canary always exits 0');
+        const text = warning(res);
+        assert.ok(text, 'a hook that is not the built payload must not be silent');
+        assertOnlyFlagged(text, [{ hook: 'docs-write-guard.js', probe: 'integrity check' }]);
+        assert.match(text, /cannot be trusted/);
+    } finally {
+        rmDir(cache);
+    }
+});
+
+test('a cache whose hooks all match the build manifest stays silent', () => {
+    const cache = makeCache();
+    try {
+        stampCache(cache);
+        const res = runCanary(cache);
+        assert.strictEqual(res.status, 0);
+        assert.strictEqual(res.stdout, '', 'matching hashes are health, not a report');
+    } finally {
+        rmDir(cache);
+    }
+});
+
+test('the canary catches an edit to its own file in the cache', () => {
+    // The manifest covers hook-canary.js like any other hook, so a cache whose
+    // canary was edited is reported by the canary the session actually runs.
+    // Accepted limit: an edit to both the cache's canary and its build stamp is
+    // invisible, since the stamp is as writable as the file it describes. The
+    // edit here is to the cache's copy; the canary under test is the repo's.
+    const cache = makeCache();
+    try {
+        stampCache(cache);
+        fs.appendFileSync(hookFile(cache, 'hook-canary.js'), '// edited after the build\n', 'utf8');
+        const res = runCanary(cache);
+        assert.strictEqual(res.status, 0);
+        const text = warning(res);
+        assert.ok(text, 'a canary that is not the built payload must not be silent about itself');
+        assertOnlyFlagged(text, [{ hook: 'hook-canary.js', probe: 'integrity check' }]);
+    } finally {
+        rmDir(cache);
+    }
+});
+
+test('a manifest entry naming no plain hooks/ file, or holding no hash, is skipped', () => {
+    // A traversal key and a non-string hash describe nothing this canary can
+    // check. Reading either as a verdict would be an invented failure, so both
+    // are skipped and the rest of the manifest is still compared.
+    const cache = makeCache();
+    try {
+        stampCache(cache, { extra: { '../plugin.json': 'a'.repeat(64), 'kit-goal.js': 7 } });
+        const res = runCanary(cache);
+        assert.strictEqual(res.status, 0);
+        assert.strictEqual(res.stdout, '', 'an entry the canary cannot act on is not a failure');
+    } finally {
+        rmDir(cache);
+    }
+});
+
+test('a build stamp with no hooks map stays silent even over an edited hook', () => {
+    // An older build stamped no hashes, so there is nothing to compare against
+    // and the canary has no basis to call the cache tampered. Silence there is
+    // the fail-open rule: never a false alarm. The no-stamp-at-all case rides on
+    // every unstamped cache in this file, since makeCache() writes no stamp.
+    const cache = makeCache();
+    try {
+        stampCache(cache, { hooks: null });
+        fs.appendFileSync(hookFile(cache, 'docs-write-guard.js'), '// edited after the build\n', 'utf8');
+        const res = runCanary(cache);
+        assert.strictEqual(res.status, 0);
+        assert.strictEqual(res.stdout, '', 'a build that stamped no hashes cannot be checked');
+    } finally {
+        rmDir(cache);
+    }
+});
+
+test('a hook the build stamped but the cache does not hold is reported', () => {
+    const cache = makeCache();
+    try {
+        stampCache(cache, { extra: { 'retired-guard.js': 'a'.repeat(64) } });
+        const res = runCanary(cache);
+        assert.strictEqual(res.status, 0);
+        const text = warning(res);
+        assert.ok(text, 'a packaged hook missing from the cache must not be silent');
+        assertOnlyFlagged(text, [{ hook: 'retired-guard.js', probe: 'integrity check' }]);
+        assert.match(text, /no file at/);
+    } finally {
+        rmDir(cache);
+    }
+});
+
+test('an edited hooks.json is reported against the manifest even when it still wires every hook', () => {
+    // Rewiring a guard out disarms it exactly as editing the guard does, so the
+    // wiring file is hashed alongside the scripts. Here the edit is whitespace:
+    // the wiring still parses and still names every probed hook, so the wiring
+    // and behavior probes all pass and the integrity check is the only signal.
+    const cache = makeCache();
+    try {
+        stampCache(cache);
+        fs.appendFileSync(path.join(cache, 'hooks', 'hooks.json'), '\n', 'utf8');
+        const res = runCanary(cache);
+        assert.strictEqual(res.status, 0);
+        const text = warning(res);
+        assert.ok(text, 'wiring that is not the built payload must not be silent');
+        assertOnlyFlagged(text, [{ hook: 'hooks.json', probe: 'integrity check' }]);
+    } finally {
+        rmDir(cache);
     }
 });

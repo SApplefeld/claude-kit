@@ -8,7 +8,8 @@
 // (CLAUDE_PLUGIN_ROOT) at every startup and resume, and speaks only when
 // something about it is positively broken.
 //
-// Two probe classes, all children spawned serially with a bounded timeout:
+// Three probe classes. The first two spawn children, serially and each under a
+// bounded timeout; the third only reads files:
 //   - Load checks for every hook wired in hooks.json: the file is present in
 //     the cache and `node --check` parses it. Enumerating hooks.json means a
 //     hook added later is covered without touching this file. `node --check`
@@ -19,6 +20,12 @@
 //     known allow, so a guard that answers everything the same way cannot read
 //     as healthy), for the hooks whose verdict is deterministic from a
 //     fabricated payload with no repo, git, or network state.
+//   - An integrity check of the cache against the hash manifest the build
+//     stamps into .claude-plugin/build-info.json: a hook whose bytes are not the
+//     ones that were packaged is reported even when it parses and answers every
+//     probe above correctly. The plugin cache is writable by the same principal
+//     a session runs as, and a hook edited in place enforces whatever it now
+//     says, which nothing else here can see.
 //
 // Coverage limits, accepted: merged-pr-push-guard.js and pr-docs-guard.js get a
 // load check plus a benign-payload plumbing probe only, because their deny
@@ -26,7 +33,9 @@
 // a dirty checkout on a non-default branch), so their behavior coverage lives
 // in the repo test suite. And this measures a cache's internal consistency, not
 // its freshness against the repo: a stale but coherent cache reads healthy
-// (kit-version-nudge.js is what watches for drift).
+// (kit-version-nudge.js is what watches for drift). The integrity check inherits
+// the limit of a manifest that ships inside the cache it describes: an edit to a
+// hook and to the manifest together is undetectable from here.
 //
 // SAFETY: always exits 0, and the loud/silent boundary is deliberate. Anything
 // positively observed about the cache being broken (a failed probe, a missing
@@ -38,6 +47,7 @@
 
 'use strict';
 
+const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -316,6 +326,69 @@ function goalStopProbe(root, failures) {
     }
 }
 
+// The <filename>: <sha256> map the build stamped for the hooks directory, or
+// null when the stamp is absent, unreadable, or carries no map. Null is the
+// silent case: a build that hashed nothing gives this check no basis to speak,
+// and a cache it cannot describe is never called tampered. A leading UTF-8 BOM
+// is tolerated, matching the sibling file reads.
+function hookManifest(root) {
+    try {
+        const stamp = JSON.parse(fs.readFileSync(
+            path.join(root, '.claude-plugin', 'build-info.json'), 'utf8').replace(/^\uFEFF/, ''));
+        if (!isObject(stamp) || !isObject(stamp.hooks)) return null;
+        return stamp.hooks;
+    } catch {
+        return null;
+    }
+}
+
+// Each manifest entry re-hashed from the cache and compared. hooks.json is in
+// the manifest alongside the scripts because rewiring a guard out of the wiring
+// disarms it exactly as editing the guard does. Raw bytes are hashed, so the
+// comparison is against the packaged file itself and not a decoded reading of
+// it. An entry whose hash is not a string, or whose name is anything but a plain
+// filename directly under hooks/, is skipped: those describe no file this canary
+// can check, and inventing a failure from them would be the false alarm the
+// canary must never raise. A file another probe already reported is skipped too,
+// so one broken file stays one line and the report's cap keeps its budget for
+// distinct failures. Only an absent file is a failure here; any other read error
+// (a lock, a scanner holding the file open) says nothing about its contents and
+// stays silent.
+function integrityProbe(root, failures) {
+    const manifest = hookManifest(root);
+    if (!manifest) return;
+    const reported = new Set(failures.map((f) => f.hook));
+    for (const name of Object.keys(manifest)) {
+        const want = manifest[name];
+        if (typeof want !== 'string' || !/^\w[\w.-]*$/.test(name)) continue;
+        if (reported.has(name)) continue;
+        const file = path.join(root, 'hooks', name);
+        let got;
+        try {
+            got = crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+        } catch (err) {
+            if (err && err.code === 'ENOENT') {
+                failures.push({
+                    hook: name,
+                    label: 'integrity check',
+                    expected: 'the hook file this build packaged, present in the cache',
+                    got: 'no file at ' + sanitize(file) + ', so part of the build is missing here'
+                });
+            }
+            continue;
+        }
+        if (got.toLowerCase() !== want.toLowerCase()) {
+            failures.push({
+                hook: name,
+                label: 'integrity check',
+                expected: 'the bytes the build hashed into .claude-plugin/build-info.json',
+                got: 'different bytes on disk - the installed file is not the one the build packaged, '
+                    + 'so its enforcement or output cannot be trusted; reinstall or update the kit'
+            });
+        }
+    }
+}
+
 // The one loud path: name the failed probes and where to go next. The listing is
 // capped and the remainder counted, because the number of probes a damaged
 // hooks.json can name is bounded only by that file: this text goes into the
@@ -396,6 +469,11 @@ function main() {
     }
 
     if (loadable.has('kit-goal-stop.js')) goalStopProbe(root, failures);
+
+    // Last, so that a cache whose files are wholesale different (a partial or
+    // interrupted install) cannot fill the report's line cap ahead of a guard
+    // that is present, parses, and is positively answering wrong.
+    integrityProbe(root, failures);
 
     if (failures.length) report(root, failures);
 }

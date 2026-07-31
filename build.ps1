@@ -34,11 +34,14 @@ if (-not (Test-Path -LiteralPath $sourceDir)) {
 }
 
 # Stamp Build Info. Record the git short hash (and a dirty flag) inside the plugin
-# so the kit-version-nudge hook can tell which build a session is running. Hash-only
-# (no wall-clock) keeps a clean rebuild of the same commit byte-identical. Written
-# via WriteAllText (UTF-8, NO BOM) because a BOM would break the hook's JSON.parse.
-# Gitignored; regenerated every build, before the file collection below so it is
-# packaged.
+# so the kit-version-nudge hook can tell which build a session is running, plus a
+# SHA-256 of every hook file packaged, which hook-canary.js compares the executing
+# plugin cache against so a hook edited in place after install is not silent.
+# hooks.json is hashed with the scripts because rewiring a guard out disarms it the
+# same way editing it does. Hash-only (no wall-clock) keeps a clean rebuild of the
+# same commit byte-identical. Written via WriteAllText (UTF-8, NO BOM) because a BOM
+# would break the hooks' JSON.parse. Gitignored; regenerated every build, before the
+# file collection below so it is packaged.
 $buildInfoPath = Join-Path $sourceDir '.claude-plugin\build-info.json'
 $gitHash = 'unknown'
 $isDirty = $false
@@ -54,8 +57,18 @@ try {
     $gitHash = 'unknown'
     $isDirty = $false
 }
-$buildInfo = [ordered]@{ name = $pluginName; hash = $gitHash; dirty = $isDirty }
-[System.IO.File]::WriteAllText($buildInfoPath, ($buildInfo | ConvertTo-Json))
+# Lowercase hex, matching what the POSIX hashers in build.sh emit and what the
+# canary computes; the map is keyed by filename alone because every hook ships in
+# the one hooks/ directory.
+$hookHashes = [ordered]@{}
+Get-ChildItem -LiteralPath (Join-Path $sourceDir 'hooks') -File |
+    Where-Object { $_.Extension -eq '.js' -or $_.Name -eq 'hooks.json' } |
+    Sort-Object -Property Name |
+    ForEach-Object {
+        $hookHashes[$_.Name] = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+    }
+$buildInfo = [ordered]@{ name = $pluginName; hash = $gitHash; dirty = $isDirty; hooks = $hookHashes }
+[System.IO.File]::WriteAllText($buildInfoPath, ($buildInfo | ConvertTo-Json -Depth 5))
 
 # Load Compression Types.
 Add-Type -AssemblyName System.IO.Compression | Out-Null
