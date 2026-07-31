@@ -57,6 +57,9 @@ claude-kit/                          (repo = the marketplace)
         readonly-agent-guard.js      Keeps the judgment agents from mutating the tree they review
         branch-reaper-nudge.js       SessionStart nudge for reapable/stranded branches
         kit-version-nudge.js         Warns when the session is running a stale kit build
+        hook-canary.js               SessionStart probe that the installed kit hooks are alive
+        memory-usage-stamp.js        Stamps reads of memory files to the store's usage sidecar
+        memory-session.js            SessionStart decay nudge and project-type memory index
       doctor/
         doctor.ps1                   The kit doctor (ships with the plugin, so installed machines have it):
                                      policy, bun (with consented winget install under -Fix), engine smoke runs
@@ -147,7 +150,7 @@ Quality is protected by three things, none of which is the implementer's model: 
 ## NOTES AND KNOWN TRADEOFFS
 
 - Plugin skills are namespaced: explicit invocation is `/claude-kit:brainstorming`. Automatic (model-invoked) triggering is unaffected.
-- The format-on-edit hook rewrites .cs files on disk after Claude edits them. If a subsequent edit fails to match file contents, that is the formatter's doing - Claude re-reads and retries. Remove the PostToolUse block from `hooks/hooks.json` if this annoys more than it helps.
+- The format-on-edit hook rewrites .cs files on disk after Claude edits them. If a subsequent edit fails to match file contents, that is the formatter's doing - Claude re-reads and retries. Remove the PostToolUse block naming `format-on-edit.js` from `hooks/hooks.json` if this annoys more than it helps; there are two PostToolUse blocks, and the other one stamps memory reads.
 - Plugins are copied to a cache at install (`~/.claude/plugins/cache`); the plugin cannot reference files outside `plugins/claude-kit/`. That is why `home/` and `settings/` live outside the plugin - they are machine-setup assets, not plugin components.
 - Plugin-shipped agents cannot declare their own hooks, MCP servers, or permissionMode (Claude Code security restriction). None of these agents need them.
 - `settings.recommended.json` reflects the settings schema as of June 2026; verify key names against current docs if something is ignored: https://code.claude.com/docs/en/settings

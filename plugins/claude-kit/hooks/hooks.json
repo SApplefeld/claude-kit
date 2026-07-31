@@ -45,6 +45,15 @@
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/hook-canary.js\""
           }
         ]
+      },
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/memory-session.js\""
+          }
+        ]
       }
     ],
     "PreToolUse": [
@@ -92,6 +101,15 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/format-on-edit.js\""
+          }
+        ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/memory-usage-stamp.js\""
           }
         ]
       }

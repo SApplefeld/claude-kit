@@ -12,9 +12,10 @@
 #
 #   .\doctor.ps1              Check only; prints PASS/WARN/FAIL with remediations.
 #   .\doctor.ps1 -Fix         Also applies the safe durable repairs (execution
-#                             policy, bun PATH wiring, signpost + git hooks on a
-#                             clone) and offers consented installs (bun via
-#                             winget). It deletes nothing.
+#                             policy, bun PATH wiring, the memq shim into
+#                             ~\.claude\bin, signpost + git hooks on a clone)
+#                             and offers consented installs (bun via winget).
+#                             It deletes nothing.
 #   .\doctor.ps1 -Fix -Yes    Pre-answers the consent prompts of the actions the
 #                             other flags already requested, for unattended runs.
 #                             It authorizes nothing by itself.
@@ -115,6 +116,67 @@ if (-not (Test-Path (Join-Path $pluginRoot ".claude-plugin\plugin.json"))) {
 }
 $claudeDir = Join-Path $env:USERPROFILE ".claude"
 $engineDir = Join-Path $pluginRoot "skills\compact-session\engine"
+
+# Shim install, integrity, and PATH-membership helpers, beside this script.
+# Dot-sourced here rather than at the check, because Add-ToUserPath below and
+# the bun check both use the PATH predicate it defines.
+. (Join-Path $PSScriptRoot "install-memq-shim.ps1")
+
+# Append a directory to the durable user PATH, and to this process's PATH so
+# the current run sees it too. Every kit PATH repair goes through this one
+# function.
+#
+# The registry value is read and written raw. [Environment]::GetEnvironment-
+# Variable expands a REG_EXPAND_SZ Path, and SetEnvironmentVariable under
+# Windows PowerShell writes back as REG_SZ, so a read-modify-write through
+# that API permanently flattens entries such as %USERPROFILE%\bin into
+# today's values. Reading with DoNotExpandEnvironmentNames and writing with
+# the value's own kind keeps them intact. Membership is the exact per-entry
+# compare from Test-UserPathContains, so a directory is never judged present
+# because another entry contains its name as a substring, and the separator is
+# added only between entries, so an empty Path never gains a leading ';' (an
+# empty PATH entry means the current directory, which is a resolution hazard).
+# Returns $true when the durable value now lists the directory. A failure is
+# reported by the caller rather than thrown: a PATH edit that cannot be made
+# is one finding, never a reason to abandon the rest of the health check.
+function Add-ToUserPath {
+    param([Parameter(Mandatory = $true)][string]$Directory)
+    $durable = $false
+    $key = $null
+    try {
+        $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey("Environment", $true)
+        if ($null -ne $key) {
+            $raw = ""
+            $existing = $key.GetValue("Path", "", [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)
+            if ($null -ne $existing) { $raw = [string]$existing }
+            # Keep the value's own kind; a Path that does not exist yet is
+            # created as ExpandString, which is what Windows itself uses.
+            $kind = [Microsoft.Win32.RegistryValueKind]::ExpandString
+            try {
+                $existingKind = $key.GetValueKind("Path")
+                if ($existingKind -eq [Microsoft.Win32.RegistryValueKind]::String -or
+                    $existingKind -eq [Microsoft.Win32.RegistryValueKind]::ExpandString) {
+                    $kind = $existingKind
+                }
+            }
+            catch { <# no existing value: the ExpandString default stands #> }
+            if (Test-UserPathContains -RawPath $raw -Directory $Directory) { $durable = $true }
+            else {
+                $trimmed = $raw.TrimEnd(";")
+                $updated = if ($trimmed -eq "") { $Directory } else { $trimmed + ";" + $Directory }
+                $key.SetValue("Path", $updated, $kind)
+                $durable = $true
+            }
+        }
+    }
+    catch { $durable = $false }
+    finally { if ($null -ne $key) { $key.Close() } }
+    # This process too, so the rest of the run sees the directory.
+    if (-not (Test-UserPathContains -RawPath $env:Path -Directory $Directory)) {
+        $env:Path = if ($env:Path.TrimEnd(";") -eq "") { $Directory } else { $env:Path.TrimEnd(";") + ";" + $Directory }
+    }
+    return $durable
+}
 
 # A payload anywhere under ~/.claude is always an installed cache, never the
 # dev clone: /plugin marketplace add clones the whole repo (with .git) under
@@ -223,18 +285,6 @@ function Resolve-Bun {
     return $null
 }
 
-function Add-BunToUserPath {
-    param([string]$BunPath)
-    $bunDir = Split-Path $BunPath -Parent
-    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
-    if ($null -eq $userPath) { $userPath = "" }
-    if ($userPath -notlike "*$bunDir*") {
-        [Environment]::SetEnvironmentVariable("Path", ($userPath.TrimEnd(";") + ";" + $bunDir), "User")
-    }
-    $env:Path = $env:Path.TrimEnd(";") + ";" + $bunDir
-    return $bunDir
-}
-
 $bun = Resolve-Bun
 if ($null -eq $bun) {
     if ((Get-Command winget -ErrorAction SilentlyContinue) -and (Get-Consent "Bun is not installed. Install it now via winget (Oven-sh.Bun)?")) {
@@ -242,8 +292,14 @@ if ($null -eq $bun) {
         $wingetExit = $LASTEXITCODE
         $bun = Resolve-Bun
         if ($null -ne $bun) {
-            if (-not $bun.OnPath) { Add-BunToUserPath -BunPath $bun.Path | Out-Null; $bun = @{ Path = $bun.Path; OnPath = $true } }
-            Report "FIXED" "Bun" @("Installed via winget: $($bun.Path) (PATH wired durably).")
+            $bunPathWired = $true
+            if (-not $bun.OnPath) {
+                $bunPathWired = Add-ToUserPath -Directory (Split-Path $bun.Path -Parent)
+                $bun = @{ Path = $bun.Path; OnPath = $true }
+            }
+            Report "FIXED" "Bun" @("Installed via winget: $($bun.Path)" +
+                $(if ($bunPathWired) { " (PATH wired durably)." }
+                  else { " (this session's PATH updated, but the durable user PATH could not be written)." }))
         }
         elseif ($wingetExit -ne 0) {
             Report "FAIL" "Bun" @("winget install exited $wingetExit (cancelled or failed); bun remains missing.")
@@ -271,8 +327,16 @@ elseif ($bun.OnPath) {
 }
 else {
     if ($Fix) {
-        $bunDir = Add-BunToUserPath -BunPath $bun.Path
-        Report "FIXED" "Bun" @("Found off PATH at $($bun.Path); appended $bunDir to the user PATH (new shells pick it up; this session updated too).")
+        $bunDir = Split-Path $bun.Path -Parent
+        if (Add-ToUserPath -Directory $bunDir) {
+            Report "FIXED" "Bun" @("Found off PATH at $($bun.Path); appended $bunDir to the user PATH (new shells pick it up; this session updated too).")
+        }
+        else {
+            Report "WARN" "Bun" @(
+                "Found off PATH at $($bun.Path); this session's PATH was updated, but the durable user PATH could not be written.",
+                "Add $bunDir to your user PATH by hand, or new shells will not resolve 'bun'."
+            )
+        }
     }
     else {
         Report "WARN" "Bun" @(
@@ -993,6 +1057,122 @@ else {
     }
     else {
         Report "FAIL" "Kit goal hook loads" @("require('kit-goal-stop.js') failed (exit $LASTEXITCODE):", ($hookOutput | Select-Object -First 3))
+    }
+}
+
+# --- memq shim. The kit memory store's CLI (memq) ships inside the plugin
+# --- payload, and the payload's cache path changes with every release, so
+# --- nothing durable may point at it. The shim installed at ~\.claude\bin
+# --- re-resolves the installed payload at each invocation, which is what lets
+# --- a kit update land without touching the shim; only a first install or a
+# --- moved ~\.claude needs -Fix. install-memq-shim.ps1 (dot-sourced near the
+# --- top of this script) owns the file layout, the integrity comparison, and
+# --- the name-resolution reading, so the repo test suite exercises the same
+# --- functions against redirected directories.
+# ---
+# --- Under -Fix the install always runs when anything is missing OR differs
+# --- from this payload's copy: the copy is idempotent, and a check that
+# --- prints "re-run with -Fix" while -Fix cannot reach the repair is a
+# --- promise the code does not keep. Integrity is a content comparison
+# --- (hash for the resolver, exact text for the wrappers), because a smoke
+# --- run only proves that something ran, and anything that took the shim's
+# --- place would pass it.
+if ($null -eq $nodeCmd) {
+    Report "INFO" "memq shim" @("Skipped (node unresolved; the hook check above already FAILs on that, and the shim runs under node).")
+}
+else {
+    $memqShim = Get-MemqShimStatus -PluginRoot $pluginRoot -ClaudeDir $claudeDir -NodeExe $nodeCmd.Source
+    $memqBinDir = $memqShim.BinDir
+    $memqFixNotes = @()
+    $memqReported = $false
+
+    if ($Fix -and ($memqShim.Missing.Count -gt 0 -or $memqShim.Stale.Count -gt 0)) {
+        $memqInstall = Install-MemqShim -PluginRoot $pluginRoot -ClaudeDir $claudeDir
+        if (-not $memqInstall.Ok) {
+            Report "FAIL" "memq shim" $memqInstall.Notes
+            $memqReported = $true
+        }
+        else {
+            $memqFixNotes += $memqInstall.Notes
+            # Re-read after writing: the report describes the state on disk
+            # now, never the state that prompted the repair.
+            $memqShim = Get-MemqShimStatus -PluginRoot $pluginRoot -ClaudeDir $claudeDir -NodeExe $nodeCmd.Source
+        }
+    }
+
+    if (-not $memqReported) {
+        $memqGaps = @()
+        if ($memqShim.Missing.Count -gt 0) {
+            $memqGaps += ("Missing at ${memqBinDir}: " + ($memqShim.Missing -join ", ") + ".")
+        }
+        if ($memqShim.Stale.Count -gt 0) {
+            $memqGaps += ("Differs from this payload's copy at ${memqBinDir}: " + ($memqShim.Stale -join ", ") + ".")
+        }
+
+        if ($memqGaps.Count -gt 0) {
+            Report "FAIL" "memq shim" ($memqGaps + @(
+                "The memory-system skill's memq commands cannot be trusted to run this payload's memq.",
+                "Fix: re-run doctor with -Fix (reinstalls the shim files and wires PATH)."
+            ))
+        }
+        elseif ($memqShim.NoPayload) {
+            # No installed plugin to resolve: a clone-only machine, where no
+            # -Fix can help because the shim runs the installed payload by
+            # design. A warning with the real remediation, never a FAIL that
+            # nothing on this machine can clear.
+            Report "WARN" "memq shim" @(
+                "Installed at $memqBinDir, but no claude-kit plugin payload is installed under ~\.claude\plugins for it to run.",
+                "Install the plugin (/plugin marketplace add, then install claude-kit); the shim picks it up with no doctor re-run."
+            )
+        }
+        elseif (-not $memqShim.Resolves) {
+            Report "FAIL" "memq shim" @(
+                "Installed at $memqBinDir, but running it did not reach memq's usage banner, so the shim or the payload it found is damaged.",
+                (Get-SanitizedLine ("Shim output: " + $memqShim.Detail) 200),
+                "Fix: re-run doctor with -Fix (reinstalls the shim files from this payload)."
+            )
+        }
+        elseif ($null -ne $memqShim.ShadowedBy) {
+            # Another memq wins name resolution, so typing `memq` does not run
+            # the kit's. PATH is appended to, so an earlier entry always wins
+            # and no -Fix here can outrank it: the path is named instead.
+            Report "FAIL" "memq shim" ($memqFixNotes + @(
+                "The shim is installed and healthy at $memqBinDir, but the name 'memq' resolves elsewhere:",
+                ("  " + (Get-SanitizedLine $memqShim.ShadowedBy 200)),
+                "That file runs instead of the kit's shim. Remove it, or order its directory after $memqBinDir on PATH."
+            ))
+        }
+        elseif (-not $memqShim.OnPath) {
+            # PATH is wired only once the shim is known healthy, so a broken
+            # install never leaves PATH pointing at a non-functional memq.
+            if ($Fix) {
+                if (Add-ToUserPath -Directory $memqBinDir) {
+                    Report "FIXED" "memq shim" ($memqFixNotes + @(
+                        "Appended $memqBinDir to the user PATH (new shells resolve 'memq'; this session updated too)."
+                    ))
+                }
+                else {
+                    Report "WARN" "memq shim" ($memqFixNotes + @(
+                        "The shim is installed and healthy at $memqBinDir, but the durable user PATH could not be written.",
+                        "Add $memqBinDir to your user PATH by hand, or new shells will not resolve 'memq'."
+                    ))
+                }
+            }
+            else {
+                Report "WARN" "memq shim" @(
+                    "Installed and resolving at $memqBinDir, but that directory is not on PATH, so 'memq' will not resolve in a shell.",
+                    "Fix: append $memqBinDir to the user PATH   (or re-run doctor with -Fix)."
+                )
+            }
+        }
+        elseif ($memqFixNotes.Count -gt 0) {
+            Report "FIXED" "memq shim" ($memqFixNotes + @(
+                "$memqBinDir is on PATH, and the shim resolves the installed payload at each invocation."
+            ))
+        }
+        else {
+            Report "PASS" "memq shim" @("$memqBinDir is on PATH, and the shim matches this payload and resolves it at each invocation.")
+        }
     }
 }
 
