@@ -47,7 +47,7 @@ When you stop, the message's very first characters are `BLOCKED: <exactly what y
 
 **The goal template.** A plan run's completion leash is armed in one line with `/kit-goal docs/plans/<plan>.md`. The kit-goal skill owns the canonical condition and enforces it with a deterministic kit Stop hook; the condition is met when (a) every section is complete and closed out, or (b) you are BLOCKED on a decision only I can make and have documented what you need from me and how I can provide it.
 
-Arming costs nothing on a long run because the state outlives the session. Native `/goal` binds its state to the session transcript, so a compaction that mints a new session id takes the goal with it; the kit hook's state is a file in the project (`.kit/`), which no session swap can delete. What the hook then needs is to recognize the new session, and it does that by identity: across a manual compact-session swap the compaction ledger's genealogy chain rebinds the leash onto the successor, with no re-arm step. A successor the hook cannot tie to the bound session is treated as a bystander and allowed to stop, so if a swap ever leaves a run unheld, re-arming with `/kit-goal <plan path>` is the one-line recovery and resets the binding.
+Arming costs nothing on a long run because the state outlives the session. The kit hook's state is a file in the project (`.kit/`), which no session boundary can delete, and native compaction preserves the session id, so an armed run rides its own auto-compactions with the leash intact. A session the hook cannot tie to the bound one is treated as a bystander and allowed to stop, so if a run is ever left unheld, re-arming with `/kit-goal <plan path>` is the one-line recovery and resets the binding.
 
 **Handoff.** When execution begins inside a conversation that was just brainstorming, say so in one line ("Spec approved, switching to autonomous execution of all N sections") so I see the mode change and can scope it down ("just §1") if I want. I should never have to set an external goal to get full execution.
 
@@ -59,7 +59,7 @@ Read the plan doc in full, **including all Chapters**. The Chapters are the stat
 
 Run it from the main checkout. `memq` resolves the store from the cwd, so a worktree at a different path resolves a different, empty store, and the tell is a digest whose coverage lines all read zero on a project you know has memories.
 
-**External-engine stand-down.** When the driving directive states that an external engine owns continuation by spawning a fresh worker per section (Spine's Dispatch pump is one), or the environment carries `KIT_EXTERNAL_ENGINE` (the marker such an engine sets at spawn), the engine is the supervisor and this session is its worker. Run the section loop for the directed section only, and never compact this session. The marker is a directive to you, not a mechanism: treat it exactly as you would the driving directive's own words. The **worker runs this skill** - it orchestrates, dispatches implementers, and writes Chapters exactly as any session would; it does not absorb implementation inline just because it is headless.
+**External-engine stand-down.** When the driving directive states that an external engine owns continuation by spawning a fresh worker per section (Spine's Dispatch pump is one), or the environment carries `KIT_EXTERNAL_ENGINE` (the marker such an engine sets at spawn), the engine is the supervisor and this session is its worker. Run the section loop for the directed section only. The marker is a directive to you, not a mechanism: treat it exactly as you would the driving directive's own words. The **worker runs this skill** - it orchestrates, dispatches implementers, and writes Chapters exactly as any session would; it does not absorb implementation inline just because it is headless.
 
 **Branch check.** Nothing is committed to main or master without my explicit permission. Commit-and-Push is that permission for its own repos; in a shared repo without it, treat the work as Branch-and-PR and note the substitution in the Chapter. If concurrency put you in a worktree on a feature branch, that is your workspace; integration and any teardown happen in finishing-work. Expect sibling sessions to touch the same repo, so own a disjoint set of files and never stage another session's work.
 
@@ -138,7 +138,7 @@ For each Section of Work, in order:
    - **Branch-and-PR:** commit the section's code together with its Chapter (the plan doc update from step 6) to the feature branch, so the record rides with the change into the eventual merge. The PR happens in finishing-work. Pushing here is not merging: nothing is final until that merge.
    - **Commit-and-Push:** commit the section and push to origin. (If concurrency put you on a worktree branch, the merge to main and teardown happen in finishing-work, not here.)
 
-Compaction is manual: I request it, or you offer it when the turn genuinely ends (a true-blocker stop, the effort's close). It is never a mid-run halt, and context pressure never stops or pauses a run.
+Compaction is the harness's own: native auto-compaction may fire mid-run on a long session, and the plan doc plus its Chapters are the recovery spine. Context pressure never stops or pauses a run, and is never a reason to end a turn.
 
 Then continue to the next section. Do not stop here.
 

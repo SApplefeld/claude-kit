@@ -1,6 +1,6 @@
 # claude-kit
 
-Scott Applefeld's personal Claude Code marketplace. One repo that every project picks up: workflow skills (brainstorm, execute, finish) with a drive-to-completion contract and per-section model down-selection, discipline skills (systematic debugging, responding to review, skill authoring, kaizen self-improvement, a multi-lens design council, and cold judgment calls), fresh-context review agents, C# and T-SQL house-style guides, a hardened compaction-recovery hook, and deliberate low-loss session compaction, packaged as the `claude-kit` plugin in the `applefeld` marketplace.
+Scott Applefeld's personal Claude Code marketplace. One repo that every project picks up: workflow skills (brainstorm, execute, finish) with a drive-to-completion contract and per-section model down-selection, discipline skills (systematic debugging, responding to review, skill authoring, kaizen self-improvement, a multi-lens design council, and cold judgment calls), fresh-context review agents, C# and T-SQL house-style guides, and a hardened compaction-recovery hook, packaged as the `claude-kit` plugin in the `applefeld` marketplace.
 
 ## STRUCTURE
 
@@ -17,7 +17,6 @@ claude-kit/                          (repo = the marketplace)
         brainstorming/               Design conversation, spec in docs/plans/, scope-check, commit model
         executing-work/              Autonomous section loop with the completion contract: implement, verify, review, Chapter
         finishing-work/              QA, security, docs curation, final review, close-out, integration per commit model
-        compact-session/             Low-loss manual compaction at section boundaries (bundles the vendored engine)
         systematic-debugging/        Root-cause discipline before any fix
         responding-to-review/        How to weigh and answer review findings; no performative agreement
         writing-skills/              Authoring and testing the kit's own behavior-shaping skills
@@ -69,12 +68,11 @@ claude-kit/                          (repo = the marketplace)
       doctor/
         install-memq-shim.ps1        Installs the per-shell memq wrappers onto PATH (run by the doctor)
         doctor.ps1                   The kit doctor (ships with the plugin, so installed machines have it):
-                                     policy, bun (with consented winget install under -Fix), engine smoke runs
-                                     including the compaction --check layer, claude CLI shape and login probe,
-                                     ANTHROPIC_API_KEY hazard, doctrine import + freshness, signpost, hooks,
+                                     policy, ANTHROPIC_API_KEY hazard, doctrine import + freshness, signpost,
+                                     hooks (goal leash wiring and load, hook canary wiring, the memq shim),
                                      and any leftover resume-relay state a machine still carries. Flags: -Fix,
                                      -Yes (pre-answers prompts), -RemoveLegacyRelay (the one destructive
-                                     action), -NoProbe.
+                                     action).
         doctor.cmd                   Execution-policy-proof wrapper (a fresh Windows box blocks .ps1 by default)
   kaizen/                            Kit self-improvement inbox (per-machine notes-*.md + briefs/)
   settings/settings.recommended.json Permission rules + acceptEdits starting point
@@ -136,7 +134,7 @@ Brainstorming produces a spec in `docs/plans/<project>_spec_v1.md` with a record
 
 Compaction recovery is deterministic: the SessionStart hook fires on startup, resume, and after every compaction, finds in-progress plans, and instructs the session to re-read them - Chapters included - before any work proceeds.
 
-`/kit-goal docs/plans/<plan>.md` arms a project-scoped completion leash for a run in one line, enforced by a deterministic Stop hook (no LLM evaluator) whose state lives in `.kit/` and so outlives a session swap, unlike native `/goal`, whose state is bound to the transcript. The hook still enforces on session identity, so a swap carries the leash only where the compaction ledger records the successor, which is a manual compact-session compaction; re-arming is the one-line recovery anywhere else. The hook allows a stop only when the plan is Complete or archived, or the last message leads with `BLOCKED:`; otherwise it blocks with a reason naming the plan. Clear an armed goal with `/kit-goal clear`.
+`/kit-goal docs/plans/<plan>.md` arms a project-scoped completion leash for a run in one line, enforced by a deterministic Stop hook (no LLM evaluator) whose state lives in `.kit/` and so outlives a session boundary, unlike native `/goal`, whose state is bound to the transcript. The hook enforces on session identity, and native compaction preserves the session id, so an armed run rides its own auto-compactions with the leash intact; re-arming is the one-line recovery if a run ever resumes under a new session. The hook allows a stop only when the plan is Complete or archived, or the last message leads with `BLOCKED:`; otherwise it blocks with a reason naming the plan. Clear an armed goal with `/kit-goal clear`.
 
 ## MODEL TIERING
 

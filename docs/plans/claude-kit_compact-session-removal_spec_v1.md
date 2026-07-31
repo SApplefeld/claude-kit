@@ -11,7 +11,7 @@ Fable Spend: session is Fable-led; tier assignments below authorize dispatch spe
 
 ## Context
 
-Decided 2026-07-31: option A, full removal. Scott's operative rationale, recorded verbatim in substance: usage is zero and he has found no use for it; native auto-compaction plus `/clear` between chapters plus plan-doc recovery is the working default; Anthropic guidance moved to filesystem-state recovery; git history is the just-in-case (`git revert` restores everything); the kit should stay clean and light. The engine is also the kit's largest untested in-repo surface (~2,280 lines of TypeScript with no in-repo tests) and the sole reason for the Bun runtime dependency and three doctor check blocks.
+Decided 2026-07-31: option A, full removal. Scott's operative rationale, recorded verbatim in substance: usage is zero and he has found no use for it; native auto-compaction plus `/clear` between chapters plus plan-doc recovery is the working default; Anthropic guidance moved to filesystem-state recovery; git history is the just-in-case (`git revert` restores everything); the kit should stay clean and light. The engine (~2,280 lines of TypeScript, with its bun test suite at `tools/engine-tests/`) is also the sole reason for the Bun runtime dependency and three doctor check blocks. (An earlier draft of this Context called the engine untested in-repo; that was wrong - the survey missed `tools/engine-tests/` - and the tests are removed with the engine they test.)
 
 **The load-bearing distinction: engine support goes, native-compaction support stays.** The harness's own compaction still fires on long sessions, and the kit's recovery from it is untouched: the `startup|resume|compact` matchers in hooks.json, session-start.js's plan-doc recovery (including its `source === 'compact'` branch), kit-version-nudge.js's compact trigger, executing-work's post-compaction re-read rule and Chapters-as-recovery discipline, and the incidental prose in operating-instructions, writing-skills, and curating-docs templates that says plan docs survive compaction. None of those are touched by this plan. memq.js's three "compact" hits are the journal rollup's own vocabulary, unrelated; untouched.
 
@@ -23,14 +23,14 @@ Decided 2026-07-31: option A, full removal. Scott's operative rationale, recorde
 
 ### 1. Delete the skill and engine; prune the skill prose that points at them (inline, fable)
 
-Delete `plugins/claude-kit/skills/compact-session/` entirely (SKILL.md, engine/*.ts, ATTRIBUTION.md, UPSTREAM-LICENSE.md) and `docs/compaction-engine.md`. Prose prunes, each preserving the surrounding rule's native-compaction half:
+Delete `plugins/claude-kit/skills/compact-session/` entirely (SKILL.md, engine/*.ts, ATTRIBUTION.md, UPSTREAM-LICENSE.md), the engine's test suite `tools/engine-tests/`, and `docs/compaction-engine.md`. Prune the root `README.md`'s summary line, tree entry, and kit-goal paragraph (its doctor-description lines move with section 3, so each commit stays individually true). `tools/transcript-study/` keeps its compact-cli and ledger references: it is historical analysis over transcripts that exist. Prose prunes, each preserving the surrounding rule's native-compaction half:
 
 - `skills/executing-work/SKILL.md` line ~141: replace the manual-compaction offer sentence with the native stance: compaction is the harness's own; it may fire mid-run on a long session; the plan doc is the recovery spine; context pressure never stops or pauses a run and is never a reason to end a turn.
 - `skills/brainstorming/SKILL.md` line ~48: the "compaction is deliberate, at my ask" clause becomes the native framing (a long stretch recovers from the plan doc; resting context stays lean by handing off, not by compacting).
 - `skills/kit-goal/SKILL.md` lines ~8 and ~40: the leash outlives session swaps because native compaction preserves the session id; drop the engine-ledger inheritance language.
 - `skills/kit-doctor/SKILL.md`: drop "compaction, summarizer" from the description's symptom list and remove the login-WARN paragraph (its check leaves in section 3).
 
-Acceptance: the directory and doc are gone; a case-insensitive grep for `compact-session|compact-cli|magic-compact` across `plugins/` and `docs/` hits only kit-goal-stop.js (section 2's surface), doctor.ps1 (section 3's), and the native-support sites named in Context; full hook suite green at the 359/0 baseline (run `./build.ps1` first: hooks are untouched but the stamp must be current for the REAL_ROOT tests).
+Acceptance: the directory and doc are gone; a case-insensitive grep for `compact-session|compact-cli|magic-compact` across `plugins/` and `docs/`, excluding `docs/archive/` (immutable history) and this plan's own text and index line, hits only kit-goal-stop.js (section 2's surface) and doctor.ps1 (section 3's) until those sections land, and nothing thereafter; full hook suite green at the 359/0 baseline (run `./build.ps1` first: hooks are untouched but the stamp must be current for the REAL_ROOT tests). (Criterion amended on the section 1 review's Major: the original grep had no archive exclusion and was unmeetable as written.)
 
 ### 2. kit-goal-stop ledger-route surgery (dispatch, opus)
 
@@ -54,4 +54,20 @@ Finishing pass: qa-verifier, security review (the changeset touches an enforceme
 
 ## Chapters
 
-(none yet)
+### Chapter 1 - 2026-07-31
+Completed: 1. Delete the skill and engine; prune the skill prose that points at them
+Implemented By: main session
+Metrics: 1 review round (adversarial only; blind waived: a deletion-plus-prose diff has no intent-free correctness surface, and the finishing pass covers it); NEEDS_CONTEXT 0; escalations 0; advisor opus (not consulted)
+Decisions / Surprises: Two survey corrections landed in the spec: the engine's bun tests existed at tools/engine-tests/ (deleted with the engine; the "untested in-repo" claim in the decision brief was wrong), and the root README needed pruning. The review's Major was a spec defect, not code: the acceptance grep had no docs/archive/ exclusion and was unmeetable as written; criterion amended. Deviations recorded per the review: the kit-doctor SKILL was pruned ahead of section 3's doctor surgery (deliberate; both land in one commit, so no installed state ever sees the mismatch), the external-engine stand-down lost its "never compact this session" clause (its only mechanism is deleted; the external-engine-standdown-contract memory and the Spine directive text carry the old wording - folded into section 4's memory task), and the brainstorming replacement initially shipped half the specified framing (hand-off clause added on the finding). Sections 1 and 3 commit together on the review's dangling-link finding: section 1 deleted compaction-engine.md while section 3 owned its two pointers, so separate commits would ship dangling links.
+Review Findings: 1 Major addressed (acceptance criterion amended), 5 Minors: 2 resolved by section 3's concurrent work (doc pointers), 1 fixed (brainstorming clause), 2 recorded as deviations (kit-doctor early prune, stand-down clause loss). The reviewer also noted the tree mutating under its read from section 3's concurrency; scope lists kept the rounds disjoint, and the porcelain bracket attributes every delta.
+Next: 2. kit-goal-stop ledger-route surgery
+Commit Model: Commit-and-Push
+
+### Chapter 3 - 2026-07-31
+Completed: 3. Doctor, architecture, index, and backlog sweep
+Implemented By: main session
+Metrics: 0 review rounds at section level (prose and script surgery folded into the finishing pass); NEEDS_CONTEXT 0; escalations 0; advisor opus (not consulted)
+Decisions / Surprises: doctor.ps1 lost the Bun block, engine smoke runs, claude CLI shape check, login probe, and the -NoProbe flag (doctor.cmd usage line updated); the API-key warning now stands on its general silent-billing-switch ground. Verified with a real check-mode run: no engine/bun/CLI sections in the output, every remaining check behaves, and the one FAIL is this desktop's pre-existing missing memq shim (the shim home is ~\.claude\bin; doctor -Fix installs it - Scott's call, untouched). The 250-line excision used an anchored explicit-UTF-8 splice rather than a hand-pasted Edit block, then was verified by grep and the live run. architecture.md now names Node as the kit's one runtime dependency. The three engine backlog items retired to archive/backlog-retired-2026-07-31.md with the resurrection check preserved in the truncation item's entry; the channels item's compact-session clause reworded in place.
+Review Findings: none at section level; the finishing reviews cover this changeset.
+Next: 2. kit-goal-stop ledger-route surgery (its report pending at chapter time), then 4. Close-out
+Commit Model: Commit-and-Push

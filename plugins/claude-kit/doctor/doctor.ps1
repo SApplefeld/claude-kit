@@ -5,16 +5,14 @@
 # (doctor.ps1 / doctor.cmd) for the dev-clone habit.
 #
 # Verifies core setup (execution policy, doctrine import and freshness, kaizen
-# signpost, git hooks on a clone), the compact-session prerequisites (bun, the
-# engine including its --check layer, the claude CLI shape and login, the
-# ANTHROPIC_API_KEY hazard), and leftover resume-relay state on a machine that
-# once armed it.
+# signpost, git hooks on a clone), the ANTHROPIC_API_KEY hazard, the hook layer
+# (goal-leash wiring and load, hook-canary wiring, the memq shim), and leftover
+# resume-relay state on a machine that once armed it.
 #
 #   .\doctor.ps1              Check only; prints PASS/WARN/FAIL with remediations.
 #   .\doctor.ps1 -Fix         Also applies the safe durable repairs (execution
-#                             policy, bun PATH wiring, the memq shim into
-#                             ~\.claude\bin, signpost + git hooks on a clone)
-#                             and offers consented installs (bun via winget).
+#                             policy, the memq shim into ~\.claude\bin,
+#                             signpost + git hooks on a clone).
 #                             It deletes nothing.
 #   .\doctor.ps1 -Fix -Yes    Pre-answers the consent prompts of the actions the
 #                             other flags already requested, for unattended runs.
@@ -26,14 +24,11 @@
 #                             directory holds. Naming this switch is the
 #                             authorization for that deletion; -Fix alone never
 #                             deletes it.
-#   .\doctor.ps1 -NoProbe     Skips the CLI login probe, the one check that
-#                             spends a model call and needs the network.
-#
 # If scripts are blocked entirely, use the wrapper beside this file:
-#   doctor.cmd [-Fix] [-Yes] [-RemoveLegacyRelay] [-NoProbe]
+#   doctor.cmd [-Fix] [-Yes] [-RemoveLegacyRelay]
 # Exit code: 0 when nothing FAILs (warnings allowed), 1 otherwise.
 
-param([switch]$Fix, [switch]$Yes, [switch]$RemoveLegacyRelay, [switch]$NoProbe)
+param([switch]$Fix, [switch]$Yes, [switch]$RemoveLegacyRelay)
 
 # Windows PowerShell 5.1 inherits PSModulePath from whatever parent launched it.
 # A pwsh 7+ parent (the Claude Code harness, a pwsh terminal) puts its own
@@ -115,11 +110,10 @@ if (-not (Test-Path (Join-Path $pluginRoot ".claude-plugin\plugin.json"))) {
     exit 1
 }
 $claudeDir = Join-Path $env:USERPROFILE ".claude"
-$engineDir = Join-Path $pluginRoot "skills\compact-session\engine"
 
 # Shim install, integrity, and PATH-membership helpers, beside this script.
-# Dot-sourced here rather than at the check, because Add-ToUserPath below and
-# the bun check both use the PATH predicate it defines.
+# Dot-sourced here rather than at the check, because Add-ToUserPath below
+# uses the PATH predicate it defines.
 . (Join-Path $PSScriptRoot "install-memq-shim.ps1")
 
 # Append a directory to the durable user PATH, and to this process's PATH so
@@ -259,237 +253,15 @@ else {
     Report "PASS" "Execution policy" @("$effectivePolicy")
 }
 
-# --- Bun. The compact-session engine runs under bun. winget sometimes creates
-# --- a Links shim and sometimes does not, so probe PATH, the Links shim, the
-# --- winget Packages payload, and the official installer location in order.
-# --- Under -Fix, a missing bun offers a consented winget install.
-function Resolve-Bun {
-    $onPath = Get-Command bun -ErrorAction SilentlyContinue
-    if ($onPath) { return @{ Path = $onPath.Source; OnPath = $true } }
-
-    $candidates = @(
-        (Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Links\bun.exe"),
-        (Join-Path $env:USERPROFILE ".bun\bin\bun.exe")
-    )
-    $packageRoot = Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Packages"
-    if (Test-Path $packageRoot) {
-        Get-ChildItem -Path $packageRoot -Directory -Filter "Oven-sh.Bun*" -ErrorAction SilentlyContinue | ForEach-Object {
-            Get-ChildItem -Path $_.FullName -Recurse -Filter "bun.exe" -ErrorAction SilentlyContinue | ForEach-Object {
-                $candidates += $_.FullName
-            }
-        }
-    }
-    foreach ($candidate in $candidates) {
-        if (Test-Path -LiteralPath $candidate) { return @{ Path = $candidate; OnPath = $false } }
-    }
-    return $null
-}
-
-$bun = Resolve-Bun
-if ($null -eq $bun) {
-    if ((Get-Command winget -ErrorAction SilentlyContinue) -and (Get-Consent "Bun is not installed. Install it now via winget (Oven-sh.Bun)?")) {
-        winget install --id Oven-sh.Bun -e --source winget --accept-source-agreements --accept-package-agreements
-        $wingetExit = $LASTEXITCODE
-        $bun = Resolve-Bun
-        if ($null -ne $bun) {
-            $bunPathWired = $true
-            if (-not $bun.OnPath) {
-                $bunPathWired = Add-ToUserPath -Directory (Split-Path $bun.Path -Parent)
-                $bun = @{ Path = $bun.Path; OnPath = $true }
-            }
-            Report "FIXED" "Bun" @("Installed via winget: $($bun.Path)" +
-                $(if ($bunPathWired) { " (PATH wired durably)." }
-                  else { " (this session's PATH updated, but the durable user PATH could not be written)." }))
-        }
-        elseif ($wingetExit -ne 0) {
-            Report "FAIL" "Bun" @("winget install exited $wingetExit (cancelled or failed); bun remains missing.")
-        }
-        else {
-            Report "FAIL" "Bun" @("winget reported success but bun.exe was not found in any known location; install manually and re-run.")
-        }
-    }
-    elseif (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
-        Report "FAIL" "Bun" @(
-            "Not found, and winget is unavailable on this host to install it.",
-            "Install manually: https://bun.sh   then re-run doctor."
-        )
-    }
-    else {
-        Report "FAIL" "Bun" @(
-            "Not found on PATH, the WinGet Links shim, the WinGet Packages dir, or ~\.bun.",
-            "Install: winget install Oven-sh.Bun   (or re-run doctor with -Fix to be prompted, -Fix -Yes unattended)."
-        )
-    }
-}
-elseif ($bun.OnPath) {
-    $bunVersion = (& $bun.Path --version) 2>$null
-    Report "PASS" "Bun" @("$($bun.Path) (v$bunVersion, on PATH)")
-}
-else {
-    if ($Fix) {
-        $bunDir = Split-Path $bun.Path -Parent
-        if (Add-ToUserPath -Directory $bunDir) {
-            Report "FIXED" "Bun" @("Found off PATH at $($bun.Path); appended $bunDir to the user PATH (new shells pick it up; this session updated too).")
-        }
-        else {
-            Report "WARN" "Bun" @(
-                "Found off PATH at $($bun.Path); this session's PATH was updated, but the durable user PATH could not be written.",
-                "Add $bunDir to your user PATH by hand, or new shells will not resolve 'bun'."
-            )
-        }
-    }
-    else {
-        Report "WARN" "Bun" @(
-            "Installed at $($bun.Path) but not on PATH; the compact-session skill resolves 'bun' from PATH.",
-            "Fix: append $(Split-Path $bun.Path -Parent) to the user PATH   (or re-run doctor with -Fix)."
-        )
-    }
-}
-
-# --- Engine smoke runs. An argless invocation loads and transpiles every engine
-# --- module before failing with usage text, so exit 1 plus 'Usage:' proves bun
-# --- executes the engine. The --check probe then exercises the tuning layer
-# --- (ledger.ts, threshold logic) against a crafted one-row transcript.
-if ($null -ne $bun) {
-    $engineCli = Join-Path $engineDir "compact-cli.ts"
-    if (Test-Path $engineCli) {
-        $smokeOutput = & cmd /c "`"$($bun.Path)`" `"$engineCli`" 2>&1"
-        if ($LASTEXITCODE -eq 1 -and ($smokeOutput -join "`n") -match "Usage:") {
-            Report "PASS" "Compact-session engine" @("compact-cli.ts loads and runs under bun (usage banner verified).")
-        }
-        else {
-            Report "FAIL" "Compact-session engine" @(
-                "Expected exit 1 with a usage banner; got exit $LASTEXITCODE.",
-                ($smokeOutput | Select-Object -First 3)
-            )
-        }
-
-        $checkTranscript = Join-Path $env:TEMP "claude-kit-doctor-check.jsonl"
-        $checkRow = '{"type":"assistant","uuid":"a1","parentUuid":null,"sessionId":"00000000-0000-0000-0000-000000000000","timestamp":"2026-01-01T00:00:00.000Z","message":{"id":"m1","role":"assistant","model":"claude-haiku-4-5","content":[{"type":"text","text":"probe"}],"usage":{"input_tokens":100,"cache_read_input_tokens":1000,"output_tokens":5}}}'
-        try {
-            [System.IO.File]::WriteAllText($checkTranscript, $checkRow + "`n", (New-Object System.Text.UTF8Encoding($false)))
-            $checkOutput = & cmd /c "`"$($bun.Path)`" `"$engineCli`" --check --transcript `"$checkTranscript`" 2>&1"
-            if ($LASTEXITCODE -eq 0 -and ($checkOutput -join "`n") -match '"status":"check"') {
-                Report "PASS" "Engine --check layer" @("Threshold check returns a verdict (compaction trigger/guard/ledger layer operational).")
-            }
-            else {
-                Report "FAIL" "Engine --check layer" @(
-                    "Expected exit 0 with check JSON; got exit $LASTEXITCODE.",
-                    ($checkOutput | Select-Object -First 3)
-                )
-            }
-        }
-        finally {
-            Remove-Item $checkTranscript -Force -ErrorAction SilentlyContinue
-        }
-    }
-    else {
-        Report "FAIL" "Compact-session engine" @("compact-cli.ts not found at $engineCli.")
-    }
-}
-else {
-    Report "INFO" "Compact-session engine" @("Skipped (bun unresolved).")
-}
-
-# --- claude CLI. The engine spawns 'claude' for the summarizer and requires a
-# --- native executable: a .cmd shim would route transcript-derived argv
-# --- through cmd.exe's parser, an injection surface.
-$claudeCmd = Get-Command claude -ErrorAction SilentlyContinue
-if ($null -eq $claudeCmd) {
-    Report "FAIL" "claude CLI" @("'claude' does not resolve on PATH; the compaction summarizer spawn needs it.")
-}
-elseif ($claudeCmd.Source -match "\.(cmd|bat)$") {
-    Report "WARN" "claude CLI" @(
-        "'claude' resolves to a cmd shim: $($claudeCmd.Source)",
-        "The compact-session skill requires a native executable (injection surface via cmd.exe argv parsing).",
-        "Install the native build: https://code.claude.com/docs (claude install) and ensure it wins on PATH."
-    )
-}
-else {
-    Report "PASS" "claude CLI" @("$($claudeCmd.Source)")
-}
-
-# --- CLI login probe. The compaction summarizer needs the CLI's own login
-# --- (claude /login); the Desktop app authenticates through its host and
-# --- leaves the CLI logged out, and a credentials file on disk is
-# --- not evidence (observed 2026-07-10: file present, CLI not logged in), so
-# --- the only honest check is a live probe. Runs with ANTHROPIC_API_KEY
-# --- scrubbed (the summarizer's auth path), from a scratch cwd whose session
-# --- debris is deleted afterward. Costs one Haiku call; -NoProbe skips.
-if ($NoProbe) {
-    Report "INFO" "claude CLI login" @("Probe skipped (-NoProbe).")
-}
-elseif ($null -eq $claudeCmd) {
-    Report "INFO" "claude CLI login" @("Skipped (claude unresolved).")
-}
-else {
-    $probeDir = Join-Path $env:TEMP "claude-kit-doctor-probe"
-    $savedApiKey = $env:ANTHROPIC_API_KEY
-    try {
-        New-Item -ItemType Directory -Force -Path $probeDir | Out-Null
-        if ($null -ne $savedApiKey) { Remove-Item env:ANTHROPIC_API_KEY -ErrorAction SilentlyContinue }
-        # The spawn runs inside a job so a network stall cannot hang the whole
-        # doctor; the job process inherits the already-scrubbed environment.
-        $probeJob = Start-Job -ScriptBlock {
-            param($ClaudeExe, $ProbeDir)
-            $output = & cmd /c "cd /d `"$ProbeDir`" && `"$ClaudeExe`" -p --model claude-haiku-4-5 `"Reply with exactly: OK`" < NUL 2>&1"
-            [pscustomobject]@{ Output = @($output); ExitCode = $LASTEXITCODE }
-        } -ArgumentList $claudeCmd.Source, $probeDir
-        if (Wait-Job $probeJob -Timeout 120) {
-            $probeResult = Receive-Job $probeJob
-            Remove-Job $probeJob -Force -ErrorAction SilentlyContinue
-            $probeExit = $probeResult.ExitCode
-            $probeOutput = @($probeResult.Output)
-            $probeText = $probeOutput -join "`n"
-            if ($probeExit -eq 0) {
-                Report "PASS" "claude CLI login" @("Headless spawn authenticated (the compaction summarizer can run here).")
-            }
-            elseif ($probeText -match "Not logged in") {
-                Report "WARN" "claude CLI login" @(
-                    "The CLI is not logged in, so the compaction summarizer cannot run on this machine.",
-                    "(Interactive Desktop/CLI sessions are unaffected.) Fix, one time, in any terminal:  claude /login"
-                )
-            }
-            else {
-                Report "WARN" "claude CLI login" @(
-                    "Probe failed with exit $probeExit (not the known not-logged-in signature):",
-                    ($probeOutput | Select-Object -First 2)
-                )
-            }
-        }
-        else {
-            Stop-Job $probeJob -ErrorAction SilentlyContinue
-            Remove-Job $probeJob -Force -ErrorAction SilentlyContinue
-            Report "WARN" "claude CLI login" @(
-                "Probe timed out after 120s (network stall or a hung spawn); login state unknown.",
-                "Re-run later, or skip this check with -NoProbe."
-            )
-        }
-    }
-    finally {
-        if ($null -ne $savedApiKey) { $env:ANTHROPIC_API_KEY = $savedApiKey }
-        $probeProjectDir = Join-Path $claudeDir ("projects\" + ($probeDir -replace "[^A-Za-z0-9]", "-"))
-        Remove-Item $probeProjectDir -Recurse -Force -ErrorAction SilentlyContinue
-        # The just-exited spawn's cwd handle can outlive it by a beat and block
-        # the directory delete; retry briefly rather than leaving debris.
-        foreach ($attempt in 1..3) {
-            Remove-Item $probeDir -Recurse -Force -ErrorAction SilentlyContinue
-            if (-not (Test-Path $probeDir)) { break }
-            Start-Sleep -Milliseconds 500
-        }
-    }
-}
-
 # --- ANTHROPIC_API_KEY. A durable (User/Machine) value reaches every Claude Code
 # --- session on this machine, flipping auth off the subscription login and onto
-# --- API billing. The compaction engine scrubs it from its own summarizer spawn,
-# --- so that one path is covered; nothing else is.
+# --- API billing, silently: nothing in the session announces the switch.
 $apiKeyScopes = @()
 if ($env:ANTHROPIC_API_KEY) { $apiKeyScopes += "process" }
 if ([Environment]::GetEnvironmentVariable("ANTHROPIC_API_KEY", "User")) { $apiKeyScopes += "User" }
 if ([Environment]::GetEnvironmentVariable("ANTHROPIC_API_KEY", "Machine")) { $apiKeyScopes += "Machine" }
 if ($apiKeyScopes.Count -eq 0) {
-    Report "PASS" "ANTHROPIC_API_KEY" @("Not set; sessions and the summarizer spawn authenticate via the claude.ai login.")
+    Report "PASS" "ANTHROPIC_API_KEY" @("Not set; sessions authenticate via the claude.ai login.")
 }
 else {
     # Only a User or Machine value reaches sessions this shell did not start; a
@@ -498,17 +270,17 @@ else {
     $apiKeyDetail = @(("Set at scope: " + ($apiKeyScopes -join ", ") + "."))
     if ($apiKeyDurable.Count -gt 0) {
         $apiKeyDetail += @(
-            "Every session started on this machine inherits it and switches to API-key auth. The compaction",
-            "engine scrubs it from its own summarizer spawn, so that path is unaffected. Unset the durable",
-            "value if it is not needed, or scrub it per command (Bash: env -u ANTHROPIC_API_KEY claude ...)."
+            "Every session started on this machine inherits it and switches to API-key auth, silently.",
+            "Unset the durable value if it is not needed, or scrub it per command",
+            "(Bash: env -u ANTHROPIC_API_KEY claude ...)."
         )
     }
     else {
         $apiKeyDetail += @(
             "Process scope only: this shell and its children switch to API-key auth, and sessions started",
-            "elsewhere on this machine keep the claude.ai login. The compaction engine scrubs it from its own",
-            "summarizer spawn. Whatever launched this shell exported it; scrub it per command if a session",
-            "started from here should not use API-key auth (Bash: env -u ANTHROPIC_API_KEY claude ...)."
+            "elsewhere on this machine keep the claude.ai login. Whatever launched this shell exported it;",
+            "scrub it per command if a session started from here should not use API-key auth",
+            "(Bash: env -u ANTHROPIC_API_KEY claude ...)."
         )
     }
     Report "WARN" "ANTHROPIC_API_KEY" $apiKeyDetail
