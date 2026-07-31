@@ -140,4 +140,9 @@ function main() {
 }
 
 try { main(); } catch { /* never trap the session */ }
-process.exit(0);
+// Zero without process.exit(): the block decision is a single stdout write the
+// harness depends on (a truncated write reads as silence and allows the stop),
+// and forcing the exit can discard a write still in flight on a pipe. Nothing
+// above sets a nonzero code, and main() is wrapped, so the process ends at 0
+// once stdout has drained.
+process.exitCode = 0;

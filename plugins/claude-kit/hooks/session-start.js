@@ -198,4 +198,8 @@ try {
 } catch {
     // Never break a session over a hook.
 }
-process.exit(0);
+// Zero without process.exit(): the recovery context is a single stdout write
+// the session depends on, and forcing the exit can discard a write still in
+// flight on a pipe. Nothing above sets a nonzero code, and main() is wrapped,
+// so the process ends at 0 once stdout has drained.
+process.exitCode = 0;
