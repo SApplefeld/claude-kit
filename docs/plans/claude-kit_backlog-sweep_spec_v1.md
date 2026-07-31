@@ -21,7 +21,7 @@ Decisions recorded from that conversation, all decided 2026-07-31:
 
 Add `effort: medium` to the frontmatter of: `plugins/claude-kit/agents/implementer-sonnet.md`, `implementer-opus.md`, `qa-verifier.md`, `docs-curator.md`, `adversarial-reviewer.md`, `blind-reviewer.md`. No other agent files change.
 
-In `plugins/claude-kit/skills/executing-work/SKILL.md` step 3 (Review), add the reviewer model rule: each per-section reviewer dispatch carries the model override one tier above the section's tier (haiku -> sonnet, sonnet -> opus, opus -> fable; fable-tier and inline sections review at fable, which on a Fable-led session is the inherited default and needs no override). On a below-fable session a fable reviewer override is Fable spend authorized by the section's tier assignment; under `Fable Spend: none (cost hold)`, cap the reviewer at the session model. In `plugins/claude-kit/skills/finishing-work/SKILL.md` step 3, the final adversarial review always dispatches with the fable model override (cost hold: session model).
+In `plugins/claude-kit/skills/executing-work/SKILL.md` step 3 (Review), add the reviewer model rule: each per-section reviewer dispatch carries the model override one tier above the section's tier (haiku -> sonnet, sonnet -> opus, opus -> fable; fable-tier and inline sections review at fable, which on a Fable-led session is the inherited default and needs no override). On a below-fable session a fable reviewer override is Fable spend authorized by the section's tier assignment; under `Fable Spend: none (cost hold)`, cap the reviewer at the session model. In `plugins/claude-kit/skills/finishing-work/SKILL.md` step 3, the final adversarial review always dispatches with the fable model override (cost hold: session model). In `plugins/claude-kit/skills/brainstorming/SKILL.md`, the Fable Spend expected-surface enumeration names the per-section reviewer bumps alongside the finishing reviews, so a spec header approved under it forecasts the reviewer spend the rule incurs (review-driven amendment).
 
 Update the backlog's effort-levels experiment item: mechanism found (frontmatter, not per-dispatch), dials set, reviewer tier rule added, remaining work is the Chapter Metrics watch. Acceptance: frontmatters carry the field; both skills state the rule; backlog item reflects in-flight status; doctrine-parity test still green.
 
@@ -53,4 +53,11 @@ Finishing pass per finishing-work (the changeset is code plus behavior-shaping p
 
 ## Chapters
 
-(none yet)
+### Chapter 1 - 2026-07-31
+Completed: 1. Effort dials and reviewer tier rule
+Implemented By: main session
+Metrics: 1 review round (adversarial only; blind waived: a prose-and-frontmatter diff has no intent-free correctness surface, and the finishing pass covers it); NEEDS_CONTEXT 0; escalations 0; advisor opus (not consulted)
+Decisions / Surprises: The review's Major held on verification: the new reviewer rule made brainstorming's Fable Spend expected-surface enumeration stale (it named only fable-tier sections and finishing reviews), so the enumeration now names the per-section reviewer bumps - a one-clause scope extension beyond the section's file list, folded into the spec text. Two Minor wording gaps closed in the same edit: after a tier escalation the escalated tier is the writer tier, and the security-reviewer is explicitly not part of the bump. The dials reach live sessions only at the next kit update (the plugin loads from a cache snapshot). blind-reviewer.md's worktree line endings are LF where siblings are CRLF (committed blob unaffected); left to self-heal.
+Review Findings: 1 Major addressed (brainstorming enumeration), 2 Minors fixed (escalation clause, pair wording), 1 Minor noted without action (worktree eol).
+Next: 2. Guard integrity detection
+Commit Model: Commit-and-Push
