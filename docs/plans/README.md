@@ -12,6 +12,6 @@ This folder holds active plans only: specs that are open or in progress. A plan 
 
 ## Current
 
-- [Claude-Kit Fleet Integration](claude-kit_fleet-integration_spec_v1.md) is **In Progress**: the kit-side seams the AI OS fleet integration consumes (hook stand-down under the external-engine marker, memq's run-scoped pending tier with provenance, the gated-vector memq grant hook, `CLAUDE_PLUGIN_ROOT`-resolved style paths in briefs, the gated events sink, and the frozen plan-doc header contract). The OS repo's `ai-os-kit-integration_spec_v1.md` depends on it; execute this spec first.
+None.
 
-Completed plans are in `../archive/` (most recent: `claude-kit_compact-session-removal_spec_v1.md`, which removed the compact-session skill, its engine, and every piece of machinery that served only them, leaving the kit Node-only with native-compaction recovery untouched).
+Completed plans are in `../archive/` (most recent: `claude-kit_fleet-integration_spec_v1.md`, which made the kit a well-mannered passenger in engine-spawned sessions: hook stand-down under the external-engine marker, memq's run-scoped pending tier with provenance, the gated-vector memq grant hook, style-skill paths resolved from the session's own loaded kit root, the gated events sink with an `isRunId`-validated `run` field, and the plan-doc header declared a frozen machine contract. The OS repo's `ai-os-kit-integration_spec_v1.md` consumes it).
