@@ -96,3 +96,16 @@ Review Findings: 4 Major and 7 Minor raised across three reviewers, all 11 fixed
 Gate: 456 tests, 456 pass, 0 fail, against a 444 baseline captured at 2b901f3 plus 36cb51b. +12 tests, all new; nothing else moved.
 Next: 2. Wire the recap into close-out and the skill reference
 Commit Model: Commit-and-Push
+
+### Chapter 2 - 2026-08-01
+Completed: 2. Wire the recap into close-out and the skill reference
+Implemented By: main session (the section carries `Locus: inline`, and both files are behavior-shaping prose)
+Metrics: 0 review rounds (see below); 0 NEEDS_CONTEXT; 0 escalations; advisor opus
+Decisions / Surprises:
+- The close-out norm has one owner, not two. Stating it in both skills would have been the rule-said-twice antipattern `writing-skills` names, so it follows the precedent already in `memory-system` for the decay pass: `finishing-work` step 7 owns the trigger and the run, and `memory-system` describes what the command is and points at that step. Neither restates the other.
+- The per-section review pair was skipped under `executing-work` step 3's allowance for a small self-contained section. Four edits, no logic, and the finishing pass reviews the whole changeset including these files. Recorded here rather than left implicit.
+- The `memq recent` row and the Session recap section state only behavior the shipped code has, including the archive clock, which was a defect until this effort fixed it. Nothing in the prose promises a capability the command does not have.
+Review Findings: none raised; the finishing reviews cover this section.
+Gate: 456 tests, 456 pass, 0 fail. Prose-only, so unchanged from Section 1, and no hook or `hooks.json` was touched, so no build stamp refresh is owed.
+Next: finishing-work
+Commit Model: Commit-and-Push
