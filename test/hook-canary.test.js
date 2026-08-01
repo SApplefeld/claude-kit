@@ -259,6 +259,62 @@ test('the goal leash stubbed to always block fails the release probe (the other 
     }
 });
 
+test('the leash probe sets KIT_EVENTS_PATH_ALLOW alongside its own throwaway KIT_EVENTS_PATH, so the sink override it relies on for isolation is never inert', () => {
+    // kit-goal-stop.js honors KIT_EVENTS_PATH only when KIT_EVENTS_PATH_ALLOW=1
+    // rides with it; without the allow signal, a probed release would fall
+    // back to (and append at) the real ~/.claude/kit-events.jsonl instead of
+    // the throwaway path the probe builds. The stub records exactly what env
+    // it was handed rather than asserting on the probe's own decision output,
+    // so this pins the isolation contract independent of the leash verdict.
+    //
+    // Both env vars this test is pinning are scrubbed from what runCanary
+    // passes to the child, case-insensitively (an ambient KIT_EVENTS_PATH_ALLOW
+    // on the host machine must not let this test pass vacuously with the
+    // canary's own line deleted), and the observed path is asserted against
+    // its actual shape (under os.tmpdir(), basename probe-events.jsonl) rather
+    // than mere truthiness, which any non-empty value including the real
+    // homedir sink would satisfy.
+    const cache = makeCache();
+    const markerDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hook-canary-marker-'));
+    const marker = path.join(markerDir, 'seen-env.json');
+    try {
+        fs.writeFileSync(hookFile(cache, 'kit-goal-stop.js'),
+            "'use strict';\n"
+            // Drain stdin before exiting: the canary spawns this stub with a
+            // JSON payload on stdin, and a child that exits without reading it
+            // can hand the parent an EPIPE on the write.
+            + "require('fs').readFileSync(0, 'utf8');\n"
+            + "require('fs').writeFileSync(process.env.CANARY_TEST_MARKER, JSON.stringify({\n"
+            + "    path: process.env.KIT_EVENTS_PATH || null,\n"
+            + "    allow: process.env.KIT_EVENTS_PATH_ALLOW || null\n"
+            + "}));\n",
+            'utf8');
+        const scrubbedEnv = { ...process.env };
+        for (const k of Object.keys(scrubbedEnv)) {
+            if (/^KIT_EVENTS_PATH(_ALLOW)?$/i.test(k)) delete scrubbedEnv[k];
+        }
+        const res = spawnSync(process.execPath, [CANARY], {
+            input: '',
+            encoding: 'utf8',
+            env: { ...scrubbedEnv, CLAUDE_PLUGIN_ROOT: cache, CANARY_TEST_MARKER: marker }
+        });
+        assert.strictEqual(res.status, 0);
+        const seen = JSON.parse(fs.readFileSync(marker, 'utf8'));
+        assert.ok(seen.path, 'the probe must set its own KIT_EVENTS_PATH');
+        assert.strictEqual(path.basename(seen.path), 'probe-events.jsonl',
+            'the probe must point at its own throwaway file, not the real sink or anything else');
+        const rel = path.relative(os.tmpdir(), path.dirname(seen.path));
+        assert.ok(rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel),
+            'the probe\'s directory must sit under os.tmpdir(), matching goalStopProbe\'s own mkdtempSync');
+        assert.strictEqual(seen.allow, '1',
+            'the probe must set KIT_EVENTS_PATH_ALLOW=1 alongside the path, or the override is inert '
+            + 'and a probed release leaks into the real event stream');
+    } finally {
+        rmDir(cache);
+        rmDir(markerDir);
+    }
+});
+
 test('a memq-grant stuck silent fails the grant probe', () => {
     // The failure mode a grant hook never announces in use: fleet workers just
     // quietly lose memq. The neutered copy drains stdin and says nothing, the

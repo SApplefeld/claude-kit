@@ -4,12 +4,17 @@
 // builds a fresh temp directory under os.tmpdir() as a fake repo cwd, writes
 // whatever plan fixture it needs, runs the lib against it, and cleans up in a
 // finally block regardless of pass/fail. The event-stream cases additionally
-// point KIT_EVENTS_PATH inside that temp dir and restore the variable afterward,
-// so no test appends to the real ~/.claude/kit-events.jsonl.
+// point KIT_EVENTS_PATH inside that temp dir, alongside KIT_EVENTS_PATH_ALLOW=1
+// (the override is honored only with that signal set), and restore both
+// variables afterward, so no in-process case falls back to and appends at the
+// real ~/.claude/kit-events.jsonl. The gate and the ungated-fallback direction
+// are pinned in spawned children instead (see gateSpawnEnv below), because the
+// once-per-process stderr-note flag lives at module scope and a second
+// in-process case would see it already tripped.
 
 'use strict';
 
-const { test } = require('node:test');
+const { test, after } = require('node:test');
 const assert = require('node:assert');
 const { spawnSync } = require('node:child_process');
 const fs = require('fs');
@@ -28,6 +33,28 @@ const {
 } = require('../plugins/claude-kit/hooks/kit-goal-lib.js');
 
 const CLI = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-goal.js');
+
+// Scrub the run-scoped variables for the file's whole run. This suite runs
+// inside fleet workers too, where the engine sets KIT_RUN_ID, and an inherited
+// value would attach a `run` field to every event the in-process schema tests
+// below emit, breaking their exact Object.keys assertions. Restored once at
+// the end so a later test file in the same process (there is none today, but
+// node's runner can share a process across files) sees the ambient value it
+// started with.
+const priorRunEnv = {
+    KIT_RUN_ID: process.env.KIT_RUN_ID,
+    KIT_SPAWN_VECTOR: process.env.KIT_SPAWN_VECTOR,
+    KIT_RUN_SECTION: process.env.KIT_RUN_SECTION
+};
+delete process.env.KIT_RUN_ID;
+delete process.env.KIT_SPAWN_VECTOR;
+delete process.env.KIT_RUN_SECTION;
+after(() => {
+    for (const key of Object.keys(priorRunEnv)) {
+        if (priorRunEnv[key] === undefined) delete process.env[key];
+        else process.env[key] = priorRunEnv[key];
+    }
+});
 
 // Fresh temp dir per test, acting as a fake repo root.
 function makeRepo() {
@@ -421,17 +448,24 @@ test('CLI status reports the binding: unbound after arm, bound after bindSession
 });
 
 // Run a case with the event sink redirected into its own temp dir, restoring
-// KIT_EVENTS_PATH (including its absence) afterward so one case cannot leak the
-// redirect into the next, and cleaning the dir regardless of pass/fail.
+// KIT_EVENTS_PATH and KIT_EVENTS_PATH_ALLOW (including their absence)
+// afterward so one case cannot leak the redirect into the next, and cleaning
+// the dir regardless of pass/fail. The allow signal rides alongside the path:
+// without it the override is inert and every case below would fall back to
+// (and append at) the real ~/.claude/kit-events.jsonl.
 function withEventSink(fn) {
     const dir = makeRepo();
-    const prior = process.env.KIT_EVENTS_PATH;
+    const priorPath = process.env.KIT_EVENTS_PATH;
+    const priorAllow = process.env.KIT_EVENTS_PATH_ALLOW;
     process.env.KIT_EVENTS_PATH = path.join(dir, 'kit-events.jsonl');
+    process.env.KIT_EVENTS_PATH_ALLOW = '1';
     try {
         fn(process.env.KIT_EVENTS_PATH);
     } finally {
-        if (prior === undefined) delete process.env.KIT_EVENTS_PATH;
-        else process.env.KIT_EVENTS_PATH = prior;
+        if (priorPath === undefined) delete process.env.KIT_EVENTS_PATH;
+        else process.env.KIT_EVENTS_PATH = priorPath;
+        if (priorAllow === undefined) delete process.env.KIT_EVENTS_PATH_ALLOW;
+        else process.env.KIT_EVENTS_PATH_ALLOW = priorAllow;
         rmRepo(dir);
     }
 }
@@ -581,6 +615,9 @@ test('emitGoalEvent skips a sink that is not a regular file, and still creates a
         // emit and must still land, or the guard would silence the whole stream.
         const nested = path.join(path.dirname(sink), 'nested', 'kit-events.jsonl');
         const prior = process.env.KIT_EVENTS_PATH;
+        // KIT_EVENTS_PATH_ALLOW is already '1' here: this block runs nested
+        // inside the outer withEventSink(sink => ...) call, whose finally
+        // restores it, so only the path itself needs its own save/restore.
         process.env.KIT_EVENTS_PATH = nested;
         try {
             emitGoalEvent({ event: 'goal-blocked', project: 'D:/repo', plan: 'docs/plans/foo.md' });
@@ -604,4 +641,145 @@ test('armGoal rejects a plan path carrying control characters', () => {
     } finally {
         rmRepo(repo);
     }
+});
+
+// KIT_EVENTS_PATH's gate, both directions, spawned rather than run in-process.
+// The gate's stderr note is guarded by a once-per-process module-scope flag
+// (ungatedEventsOverrideNoted in kit-goal-lib.js), matching memq.js's own
+// ungated-override note; a second in-process case in this same test-runner
+// process would see the flag already tripped and never see its own note. A
+// spawned child also lets each case safely retarget the homedir fallback
+// (USERPROFILE/HOME) without touching this process's real environment.
+function spawnEmit(details, extraEnv) {
+    const script = 'const { emitGoalEvent } = require(' + JSON.stringify(
+        path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-goal-lib.js')
+    ) + '); emitGoalEvent(' + JSON.stringify(details) + ');';
+    const env = { ...process.env };
+    // Scrub this process's own ambient values first, so a case that omits one
+    // of these keys from extraEnv gets a genuinely unset variable rather than
+    // whatever this test-runner process happens to carry.
+    for (const k of Object.keys(env)) {
+        if (/^(KIT_EVENTS_PATH|KIT_EVENTS_PATH_ALLOW|KIT_RUN_ID|USERPROFILE|HOME)$/i.test(k)) delete env[k];
+    }
+    Object.assign(env, extraEnv || {});
+    return spawnSync(process.execPath, ['-e', script], { env, encoding: 'utf8' });
+}
+
+test('KIT_EVENTS_PATH honored only with KIT_EVENTS_PATH_ALLOW=1: both directions plus the near-miss shapes', () => {
+    const redirect = makeRepo();
+    const fakeHome = makeRepo();
+    try {
+        const redirectedSink = path.join(redirect, 'events.jsonl');
+        const homeSink = path.join(fakeHome, '.claude', 'kit-events.jsonl');
+
+        // Gated: the override is honored, nothing reaches stderr, and the
+        // homedir default is untouched.
+        let res = spawnEmit(
+            { event: 'goal-blocked', project: 'D:/repo', plan: 'docs/plans/foo.md' },
+            { KIT_EVENTS_PATH: redirectedSink, KIT_EVENTS_PATH_ALLOW: '1', USERPROFILE: fakeHome, HOME: fakeHome }
+        );
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.doesNotMatch(res.stderr, /ignoring KIT_EVENTS_PATH/, 'a gated override emits no note');
+        assert.ok(fs.existsSync(redirectedSink), 'the gated override is honored');
+        assert.ok(!fs.existsSync(homeSink), 'the homedir default is untouched when the override is honored');
+
+        // Ungated: the override is ignored loudly, and the event still lands at
+        // the homedir default rather than silently vanishing or leaking through
+        // to the requested path.
+        fs.rmSync(redirect, { recursive: true, force: true });
+        fs.mkdirSync(redirect, { recursive: true });
+        res = spawnEmit(
+            { event: 'goal-blocked', project: 'D:/repo', plan: 'docs/plans/foo.md' },
+            { KIT_EVENTS_PATH: redirectedSink, USERPROFILE: fakeHome, HOME: fakeHome }
+        );
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stderr, /ignoring KIT_EVENTS_PATH/, 'an ungated override notes it on stderr');
+        assert.ok(!fs.existsSync(redirectedSink), 'an ungated override must not be honored');
+        assert.ok(fs.existsSync(homeSink), 'the event still lands at the homedir default');
+        fs.rmSync(homeSink);
+
+        // The allow signal set to anything other than the literal '1' is the
+        // same as unset, matching how the other kit gates treat their signal.
+        res = spawnEmit(
+            { event: 'goal-blocked', project: 'D:/repo', plan: 'docs/plans/foo.md' },
+            { KIT_EVENTS_PATH: redirectedSink, KIT_EVENTS_PATH_ALLOW: 'true', USERPROFILE: fakeHome, HOME: fakeHome }
+        );
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stderr, /ignoring KIT_EVENTS_PATH/);
+        assert.ok(!fs.existsSync(redirectedSink), 'a non-"1" allow value must not honor the override');
+        assert.ok(fs.existsSync(homeSink));
+        fs.rmSync(homeSink);
+
+        // The allow signal set with no path at all: nothing to honor, so no
+        // note and no change from today's unset-override behavior.
+        res = spawnEmit(
+            { event: 'goal-blocked', project: 'D:/repo', plan: 'docs/plans/foo.md' },
+            { KIT_EVENTS_PATH_ALLOW: '1', USERPROFILE: fakeHome, HOME: fakeHome }
+        );
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.doesNotMatch(res.stderr, /ignoring KIT_EVENTS_PATH/, 'an allow signal with no path is inert, not a note');
+        assert.ok(fs.existsSync(homeSink), 'the event lands at the homedir default as if nothing were set');
+    } finally {
+        rmRepo(redirect);
+        rmRepo(fakeHome);
+    }
+});
+
+test('emitGoalEvent adds a run field only for a KIT_RUN_ID that memq\'s isRunId itself would accept', () => {
+    // run is gated on memq's own isRunId rather than on raw truthiness, so the
+    // two producers that answer to a run id (this event stream, and memq's
+    // pending-tier routing) cannot disagree about what one looks like. Every
+    // case memq would refuse is pinned here as a refusal too: a value that is
+    // truthy but carries no charset-legal id (Unicode, a control character), a
+    // well-formed-looking value isRunId still refuses by name (a dots-only
+    // name), and a value over memq's own 40-character cap.
+    withEventSink((sink) => {
+        const prior = process.env.KIT_RUN_ID;
+        const setAndEmit = (value, detail) => {
+            if (value === undefined) delete process.env.KIT_RUN_ID;
+            else process.env.KIT_RUN_ID = value;
+            emitGoalEvent(Object.assign({ event: 'goal-blocked', project: 'D:/repo', plan: 'docs/plans/foo.md' },
+                detail ? { detail } : {}));
+            const lines = readEventLines(sink);
+            return JSON.parse(lines[lines.length - 1]);
+        };
+        const assertNoRun = (value, why) => {
+            const ev = setAndEmit(value);
+            assert.strictEqual(Object.keys(ev).includes('run'), false, why);
+        };
+        try {
+            assertNoRun(undefined, 'no run key at all when KIT_RUN_ID is unset');
+            // An empty string reads as unset, matching memq's isRunId (an
+            // interpolation that resolved to nothing is not a run).
+            assertNoRun('', 'an empty KIT_RUN_ID is treated as unset');
+            // Truthy but no charset-legal run id survives: isRunId's grammar is
+            // ASCII word characters, dot, and hyphen only, so this refuses
+            // before eventField ever gets a chance to normalize it away and
+            // ship run:"". This is the adversarial reviewer's own probe.
+            assertNoRun('\u65e5\u672c', 'a value with no charset-legal id (here, non-ASCII) must not ship run:""');
+            // A control character alone is the blind reviewer's version of the
+            // same defect.
+            assertNoRun('\u0007', 'a value that normalizes to nothing must not ship run:""');
+            // Dots-only names are a path token or a name Win32 collapses, never
+            // a run: isRunId refuses them by name even though '.' is inside
+            // its own charset, so this is the "well-formed-looking" refusal.
+            assertNoRun('..', 'a dots-only id looks well-formed but must still be refused, matching memq');
+            // Over memq's RUN_ID_CAP: two distinct over-long ids must not alias
+            // onto one run value in the stream, so this is refused outright
+            // rather than truncated.
+            assertNoRun('x'.repeat(41), 'an id past memq\'s 40-character cap must be refused, not truncated');
+
+            const withRun = setAndEmit('r1', 'plan-complete');
+            assert.deepStrictEqual(Object.keys(withRun), ['ts', 'event', 'project', 'plan', 'session', 'detail', 'run'],
+                'run rides after detail, present exactly when KIT_RUN_ID names a well-formed id');
+            assert.strictEqual(withRun.run, 'r1');
+
+            // Exactly at memq's cap is still accepted (the cap is inclusive).
+            const atCap = setAndEmit('x'.repeat(40));
+            assert.strictEqual(atCap.run, 'x'.repeat(40), 'an id at exactly the 40-character cap is accepted');
+        } finally {
+            if (prior === undefined) delete process.env.KIT_RUN_ID;
+            else process.env.KIT_RUN_ID = prior;
+        }
+    });
 });

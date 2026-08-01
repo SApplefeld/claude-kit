@@ -289,13 +289,15 @@ function goalStopProbe(root, failures) {
         try { fx = makeGoalFixture(dir); } catch { return; }
         const file = path.join(root, 'hooks', 'kit-goal-stop.js');
         // The re-read schedule is disabled (the fixture transcript is complete)
-        // and the goal event sink points inside the fixture, so the probe reads
-        // none of the real machine's session state and any event a probed
-        // release emits lands in the throwaway dir instead of the real event
-        // stream.
+        // and the goal event sink points inside the fixture, with the allow
+        // signal set alongside it (the override is inert without it), so the
+        // probe reads none of the real machine's session state and any event a
+        // probed release emits lands in the throwaway dir instead of the real
+        // event stream.
         const env = Object.assign({}, process.env, {
             KIT_GOAL_STOP_RETRY_MS: '0',
-            KIT_EVENTS_PATH: path.join(dir, 'probe-events.jsonl')
+            KIT_EVENTS_PATH: path.join(dir, 'probe-events.jsonl'),
+            KIT_EVENTS_PATH_ALLOW: '1'
         });
         const held = runHook(file, {
             cwd: dir,

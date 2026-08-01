@@ -227,15 +227,78 @@ function eventField(value, max) {
     return String(value).replace(/[^\x20-\x7E]/g, '').slice(0, max);
 }
 
+// The event sink this process writes to.
+//
+// KIT_EVENTS_PATH is honored only when KIT_EVENTS_PATH_ALLOW=1 is also set;
+// otherwise it is ignored with a once-per-process stderr note and the real
+// sink is used. The same two-signal discipline as KIT_MEMORY_ROOT's gate in
+// memq.js (memoryRoot(), read at call time there too): one innocuous-looking
+// variable is settable from a committed file a repository already has
+// (.vscode/settings.json's terminal env, devcontainer.json, an .envrc), and
+// this variable chooses where a session's goal-release events are written,
+// so it answers to the same bar as every other kit path override rather than
+// to an argument specific to this one. The intended user of both signals is
+// the repo test suite and the hook canary's own probe, which point the
+// stream at a throwaway file.
+let ungatedEventsOverrideNoted = false;
+function eventsSink() {
+    const override = process.env.KIT_EVENTS_PATH;
+    if (override) {
+        if (process.env.KIT_EVENTS_PATH_ALLOW === '1') return override;
+        if (!ungatedEventsOverrideNoted) {
+            ungatedEventsOverrideNoted = true;
+            // A failed write here must not cost the fallback emit below: the
+            // note is best-effort observability layered on top of a function
+            // whose whole body is already best-effort.
+            try {
+                process.stderr.write('kit-goal: ignoring KIT_EVENTS_PATH (it redirects the goal-event '
+                    + 'sink, so it is honored only with KIT_EVENTS_PATH_ALLOW=1)\n');
+            } catch { /* the note is best-effort; a failed write changes nothing */ }
+        }
+    }
+    return path.join(os.homedir(), '.claude', 'kit-events.jsonl');
+}
+
+// The run id this event correlates to, or undefined when none applies.
+// Reuses memq's isRunId rather than restating the grammar, so the two
+// producers that answer to a run id (this event stream, and memq's own
+// pending-tier routing) cannot disagree about what a well-formed one looks
+// like: memq's header states the rule for exactly this reason ("The hooks
+// import them rather than restating them, so no two writers can disagree").
+// A value memq would refuse (a dots-only name, a trailing dot, a reserved
+// device stem, anything outside its token charset, or over its 40-character
+// cap) is refused here too, rather than shipping a run label a correlator
+// could join into a path memq itself would never create, and rather than the
+// truthy-but-empty-after-normalization case a raw check would let through
+// (KIT_RUN_ID=<a value that normalizes to nothing> would otherwise ship
+// run:""). memq.js is required lazily and defensively, inside this function
+// rather than at module load, so a damaged or missing copy costs only the run
+// field: the rest of the event, and every other kit-goal-lib.js consumer that
+// never touches events, stay unaffected.
+//
+// Presence of a well-formed run does NOT mean run-scoped memory was active
+// for this session: memq additionally requires the KIT_MEMORY_ROOT pair
+// before honoring the id for its own pending tier, a separate condition this
+// event stream does not check. A consumer must not read run's presence as
+// proof of that.
+function runIdField() {
+    const raw = process.env.KIT_RUN_ID;
+    if (!raw) return undefined;
+    let isRunId;
+    try { ({ isRunId } = require('../scripts/memq.js')); } catch { return undefined; }
+    if (typeof isRunId !== 'function' || !isRunId(raw)) return undefined;
+    return eventField(raw, 40);
+}
+
 // Append one goal release event to the kit event stream, the well-known file an
 // outside watcher reads to turn a release into a notification. One JSON object
-// per line, { ts, event, project, plan, session, detail }: ts is ISO 8601,
+// per line, { ts, event, project, plan, session, detail, run }: ts is ISO 8601,
 // project the absolute project path, plan the repo-relative plan path, session
-// the session id or null, and detail is present only on a goal-complete, naming
-// which release it was. JSON encoding escapes any newline inside a value, so an
-// event is always exactly one line. The sink is ~/.claude/kit-events.jsonl;
-// KIT_EVENTS_PATH overrides it and is read at call time, so a test or a probe
-// redirects the stream per process.
+// the session id or null, detail is present only on a goal-complete, naming
+// which release it was, and run is present only when KIT_RUN_ID names a
+// well-formed run id per runIdField() above. JSON encoding escapes any
+// newline inside a value, so an event is always exactly one line. See
+// eventsSink() above for the sink and its override gate.
 //
 // Every field is sanitized display data: each is normalized to printable ASCII
 // and capped, at 40 characters for event and detail, 120 for plan and session,
@@ -262,8 +325,7 @@ function eventField(value, max) {
 function emitGoalEvent(details) {
     try {
         const d = details || {};
-        const sink = process.env.KIT_EVENTS_PATH
-            || path.join(os.homedir(), '.claude', 'kit-events.jsonl');
+        const sink = eventsSink();
         const record = {
             ts: new Date().toISOString(),
             event: eventField(d.event, 40),
@@ -274,8 +336,19 @@ function emitGoalEvent(details) {
         // The key is present exactly when the caller supplied a detail, judged on
         // the value it passed rather than on what survives normalization.
         if (d.detail) record.detail = eventField(d.detail, 40);
+        const run = runIdField();
+        if (run !== undefined) record.run = run;
+        // lstatSync, not statSync: a symlink or junction planted at the sink
+        // path must not pass as a regular file. statSync follows the link, so
+        // the isFile() guard below would see the target's type, the rotation
+        // would rename the link (not the target) aside, and the append would
+        // then write straight through the (unrotated, still-linked) path into
+        // whatever it points at. A repo carrying both the link and an env
+        // pointing KIT_EVENTS_PATH at it is a cheap way to plant a
+        // destroy-the-target primitive; this closes that composition without
+        // touching the ordinary regular-file path.
         let st = null;
-        try { st = fs.statSync(sink); } catch { /* no sink yet: the append creates it */ }
+        try { st = fs.lstatSync(sink); } catch { /* no sink yet: the append creates it */ }
         if (st) {
             if (!st.isFile()) return;
             if (st.size > 1024 * 1024) {

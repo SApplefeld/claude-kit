@@ -6,7 +6,10 @@
 // builds a fresh temp cwd (with its own .kit/goal-state.json and a fake JSONL
 // transcript) plus a second temp dir holding that case's event sink: pinning
 // KIT_EVENTS_PATH inside it is the isolation, so no release a case fires
-// appends to the real ~/.claude/kit-events.jsonl. Every spawn also points
+// appends to the real ~/.claude/kit-events.jsonl. KIT_EVENTS_PATH is honored
+// only alongside KIT_EVENTS_PATH_ALLOW=1, so every spawn sets both; leaving
+// the allow signal off would make the redirect inert and route every case's
+// events into the real sink instead of the temp one. Every spawn also points
 // LOCALAPPDATA at the temp root as belt-and-suspenders (the hook reads no
 // LOCALAPPDATA path today; the pin costs nothing and guards a future one).
 // All temp state is cleaned up in a finally block.
@@ -42,6 +45,19 @@ function readEvents(root) {
         .split('\n')
         .filter((line) => line.trim() !== '')
         .map((line) => JSON.parse(line));
+}
+
+// Drop the run-scoped variables from a child's environment. This suite runs
+// inside fleet workers too, where the engine sets all three, and an inherited
+// KIT_RUN_ID would attach a `run` field to every emitted event, breaking the
+// exact-shape assertions the byte-identical cases make. Keys are matched
+// case-insensitively, the same care memq.test.js's scrubRunEnv takes with a
+// Windows environment block's key casing.
+function scrubRunEnv(env) {
+    for (const k of Object.keys(env)) {
+        if (/^KIT_(RUN_ID|SPAWN_VECTOR|RUN_SECTION)$/i.test(k)) delete env[k];
+    }
+    return env;
 }
 
 function makeDir(prefix) {
@@ -88,11 +104,17 @@ function writeTranscript(full, planRel, assistantTexts) {
 // the spawnSync result (stdout, stderr, status). Clause-(b) retries are disabled
 // by default so block-path tests stay fast and an ambient KIT_GOAL_STOP_RETRY_MS
 // cannot warp the suite's timing; pass extraEnv to exercise a real schedule.
+//
+// The ambient copy is scrubbed before extraEnv is merged in, not after: a case
+// that opts into a real KIT_RUN_ID (or the vector/section pair) via extraEnv
+// must see it survive, or this suite could never host an end-to-end case for
+// a field this section adds to the stream.
 function runHook(payload, localAppData, extraEnv) {
     const env = {
-        ...process.env,
+        ...scrubRunEnv({ ...process.env }),
         KIT_GOAL_STOP_RETRY_MS: '0',
         KIT_EVENTS_PATH: eventsPath(localAppData),
+        KIT_EVENTS_PATH_ALLOW: '1',
         ...(extraEnv || {})
     };
     if (localAppData !== undefined) env.LOCALAPPDATA = localAppData;
@@ -569,9 +591,10 @@ test('an embedded same-name close tag inside CLI output cannot expose a followin
 // spawn() exposes the child's pid immediately.
 function runHookForcingBindWriteFailure(repo, payload, extraEnv) {
     const env = {
-        ...process.env,
+        ...scrubRunEnv({ ...process.env }),
         KIT_GOAL_STOP_RETRY_MS: '0',
         KIT_EVENTS_PATH: eventsPath(repo),
+        KIT_EVENTS_PATH_ALLOW: '1',
         ...(extraEnv || {})
     };
     const child = spawn(process.execPath, [HOOK], { env });
@@ -666,11 +689,12 @@ test('clause (b) tolerates the stop-time flush race: a BLOCKED entry landing jus
     // but can never falsely fail (any ordering yields an allow).
     const { repo, transcript, local } = armedRepo(['Working; about to surface a blocker.']);
     try {
-        const env = {
+        const env = scrubRunEnv({
             ...process.env,
             KIT_GOAL_STOP_RETRY_MS: '900',
-            KIT_EVENTS_PATH: eventsPath(local)
-        };
+            KIT_EVENTS_PATH: eventsPath(local),
+            KIT_EVENTS_PATH_ALLOW: '1'
+        });
         const child = spawn(process.execPath, [HOOK], { env });
         let stdout = '';
         child.stdout.on('data', (d) => { stdout += d; });
@@ -702,11 +726,12 @@ test('a partial final line that completes into a non-BLOCKED entry inside the re
             message: { role: 'assistant', content: [{ type: 'text', text: 'Just progress, not a blocker.' }] }
         });
         fs.appendFileSync(transcript, full.slice(0, 40));
-        const env = {
+        const env = scrubRunEnv({
             ...process.env,
             KIT_GOAL_STOP_RETRY_MS: '900',
-            KIT_EVENTS_PATH: eventsPath(local)
-        };
+            KIT_EVENTS_PATH: eventsPath(local),
+            KIT_EVENTS_PATH_ALLOW: '1'
+        });
         const child = spawn(process.execPath, [HOOK], { env });
         let stdout = '';
         child.stdout.on('data', (d) => { stdout += d; });
@@ -751,7 +776,7 @@ test('malformed stdin: empty stdout, exit 0 (never throws)', () => {
     // has no path to the real event stream at all.
     const local = makeDir('kit-goal-stop-local-');
     try {
-        const env = { ...process.env, KIT_EVENTS_PATH: eventsPath(local) };
+        const env = scrubRunEnv({ ...process.env, KIT_EVENTS_PATH: eventsPath(local), KIT_EVENTS_PATH_ALLOW: '1' });
         const res = spawnSync(process.execPath, [HOOK], { input: 'not json', env, encoding: 'utf8' });
         assert.strictEqual(res.stdout, '');
         assert.strictEqual(res.status, 0);
@@ -787,6 +812,28 @@ test('release event: a Complete plan emits exactly one goal-complete/plan-comple
         assert.strictEqual(ev.session, 'sess-releaser');
         assert.strictEqual(ev.detail, 'plan-complete');
         assert.ok(!Number.isNaN(Date.parse(ev.ts)));
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('release event: a real KIT_RUN_ID reaches the stream through the actual producer, in the fleet configuration the field exists for', () => {
+    // The field's only other coverage is in-process against kit-goal-lib.js
+    // directly (kit-goal-lib.test.js); this exercises it through the real
+    // Stop-hook release path, spawned, the shape a fleet worker actually
+    // produces. extraEnv survives scrubRunEnv here because runHook scrubs the
+    // ambient copy before merging extraEnv in, not after.
+    const { repo, planRel, transcript, local } = armedRepo(['Done all sections.'], 'Status: Complete');
+    try {
+        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-releaser' }, local,
+            { KIT_RUN_ID: 'fleet-run-1' });
+        assert.strictEqual(res.stdout, '');
+        const events = readEvents(local);
+        assert.strictEqual(events.length, 1);
+        const ev = events[0];
+        assert.deepStrictEqual(Object.keys(ev), ['ts', 'event', 'project', 'plan', 'session', 'detail', 'run']);
+        assert.strictEqual(ev.run, 'fleet-run-1');
     } finally {
         rmDir(repo);
         rmDir(local);
