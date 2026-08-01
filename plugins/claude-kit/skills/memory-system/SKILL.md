@@ -45,6 +45,8 @@ Type-derived records in the digest are indented under a provenance line, the sam
 
 Where `recall` answers what the store holds, `memq recent` answers what happened to it lately, so it groups by write surface rather than by tier. That grouping is what makes the digest answer whether the extension layer is being exercised at all: journal entries and applied stamps exist only through `memq`, while a project-tier memory file arrives through the Write tool, so the surface a record landed on is its own provenance. Every group states its count even at zero, so an idle surface is a stated fact. Archived files answer to the clock a rename moves rather than to their mtime, which a rename preserves, so a decay pass's demotions read as the file changes they are instead of vanishing.
 
+Do not read the file group's `added` label as "this memory is new". It reports that the file's creation time falls inside the window, and the tools that write a memory rewrite the file rather than patching it, which resets that time on every edit, so an edit to a memory written last week reports `added` too. When the recap needs to say which records are genuinely new, read the names against what the effort actually wrote rather than trusting the label.
+
 Run it over the session's span at close-out and carry the digest into the close-out status, labeled by surface, so the report says what the store actually recorded rather than asserting that the effort banked something. `finishing-work` step 7 owns that trigger, the same way it owns the decay pass.
 
 ## Action keys
