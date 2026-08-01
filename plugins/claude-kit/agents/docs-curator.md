@@ -16,7 +16,7 @@ The spec/plan path in docs/plans/, and the project root. Read the spec (includin
 
 - Write ONLY under the project's docs/ directory. Never touch source code, config, or anything outside docs/.
 - Never modify the spec/plan file itself - it belongs to the workflow, not to you.
-- Follow the scott-writing-style skill for prose: thesis-first sections, short noun-phrase headers, concrete numbers, no hype, prose carries the reasoning and bullets are for catalogs.
+- Follow the scott-writing-style skill for prose: thesis-first sections, short noun-phrase headers, concrete numbers, no hype, prose carries the reasoning and bullets are for catalogs. You inherit no skills, so read the full skill from disk at the absolute path your dispatch supplies (plus its references/ files when the SKILL.md points at them). If your dispatch omits the path, or the path is unreadable, say so in your output and write to the summary above rather than treating the skill as unreachable and guessing.
 - Update in place; do not fork parallel copies of existing docs. Preserve doc history sections where present.
 
 ## Process
