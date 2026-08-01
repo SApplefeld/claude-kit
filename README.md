@@ -55,6 +55,8 @@ claude-kit/                          (repo = the marketplace)
         pr-docs-guard.js             Requires the docs work committed before the PR goes up
         merged-pr-push-guard.js      Blocks pushes to a branch whose PR already merged
         readonly-agent-guard.js      Keeps the judgment agents from mutating the tree they review
+        memq-grant.js                The one hook that grants rather than denies: allows exactly one memq
+                                     invocation so a fleet worker on a write-gated vector keeps the CLI
         branch-reaper-nudge.js       SessionStart nudge for reapable/stranded branches
         kit-version-nudge.js         Warns when the session is running a stale kit build
         hook-canary.js               SessionStart probe that the installed kit hooks are alive
@@ -63,7 +65,9 @@ claude-kit/                          (repo = the marketplace)
       scripts/
         memq.js                      The memory-store CLI: recall (the whole store as one bounded digest, no
                                      search term), find, get, log, touch, add-type, and the decay pass
-                                     (scan, prune, done) with use-extended thresholds and pinning
+                                     (scan, prune, done) with use-extended thresholds and pinning. Inside a
+                                     run an external engine spawned, reads and writes also span that run's
+                                     own pending tier, which the engine adjudicates before promotion
         memq-shim.js                 Resolves the installed payload's memq.js so the PATH wrappers stay stable
       doctor/
         install-memq-shim.ps1        Installs the per-shell memq wrappers onto PATH (run by the doctor)

@@ -1,6 +1,6 @@
 # Claude-Kit Fleet Integration
 
-Status: In Progress
+Status: Complete
 Commit Model: Commit-and-Push
 Fable Spend: S3, finishing reviews
 Created: 2026-07-31
@@ -40,7 +40,7 @@ Model: opus
 
 When `process.env.KIT_EXTERNAL_ENGINE === '1'`:
 
-- `hooks/session-start.js` omits the drive-to-completion push (the resume-instruction block emitted around `session-start.js:169-173`, the text ordering "driving the remaining sections to completion" plus its model-tier routing). It still emits the plan-doc inventory (each In Progress plan's path and status) as plain information, followed by one line stating that the external engine's directive owns scope and continuation. Everything else the hook emits (memory index, kaizen notes) is unchanged.
+- `hooks/session-start.js` omits the drive-to-completion push (the resume-instruction block emitted around `session-start.js:169-173`, the text ordering "driving the remaining sections to completion" plus its model-tier routing). It still emits the plan-doc inventory (each In Progress plan's path and commit model; the inventory is already filtered to In Progress, so a status field would be redundant) as plain information, followed by one line stating that the external engine's directive owns scope and continuation. Everything else the hook emits (memory index, kaizen notes) is unchanged.
 - `hooks/hook-canary.js` exits 0 before spawning anything (the sweep is 22 serial node spawns; fleet payload integrity is the deploy's concern, and the canary's alert channel targets an attended operator, not a headless worker).
 - `hooks/branch-reaper-nudge.js` and `hooks/kit-version-nudge.js` emit nothing (both nudges ask for an attended operator's action a fleet worker cannot take).
 - `hooks/stop-docs-hygiene.js`: read its current behavior first; any outcome that blocks or retries the Stop becomes advisory-only text under the marker. If it is already advisory-only, record that in the Chapter and change nothing.
@@ -49,7 +49,7 @@ When `process.env.KIT_EXTERNAL_ENGINE === '1'`:
 Without the marker, behavior is byte-identical to today; the existing test suite is that pin.
 
 Files: the five hooks named above; new/extended tests in `test/`.
-Acceptance: `node --test test` green. With the marker set, session-start's output contains no drive-to-completion text and still lists In Progress plan paths; the canary spawns zero children; the two nudges emit nothing. Without the marker, existing tests pass unmodified.
+Acceptance: `node --test "test/*.test.js"` green. With the marker set, session-start's output contains no drive-to-completion text and still lists In Progress plan paths; the canary spawns zero children; the two nudges emit nothing. Without the marker, existing tests pass unmodified.
 Tests: lock both directions for every hook touched: marker set locks the stand-down shape, marker absent locks today's output. The expensive failure is a silent stand-down in attended use, so the marker-absent direction is not optional.
 
 ### 2. memq run-scoped pending tier with provenance
@@ -71,7 +71,7 @@ Run-id values are sanitized before path use (the id becomes a directory name; re
 `KIT_RUN_ID` is honored only alongside the `KIT_MEMORY_ROOT` pair, the same two-signal discipline section 5 generalizes. It carries no separate signal of its own because it selects a subdirectory within an already-gated store.
 
 Files: `plugins/claude-kit/scripts/memq.js`, `plugins/claude-kit/hooks/memory-session.js`, tests in `test/`, and `docs/security-model.md` (main-thread write, per the routing override sections 3 and 5 also carry).
-Acceptance: `node --test test` green; a child spawned with the three env vars writes to and recalls its own pending dir; a second run id's pending memory never surfaces in the first's recall, find, or get.
+Acceptance: `node --test "test/*.test.js"` green; a child spawned with the three env vars writes to and recalls its own pending dir; a second run id's pending memory never surfaces in the first's recall, find, or get.
 Tests: both directions (env set routes and scopes; env unset is byte-identical), cross-run isolation, hostile run-id values refused, and the write-shape invariant (no new shared-file rewrite outside the lock).
 
 ### 3. PreToolUse grant hook for memq under gated vectors
@@ -87,7 +87,7 @@ Under the engine's write-gated vector (`--permission-mode` gated with path allow
 - `docs/security-model.md` gains the new guard in the guard table: the invariant it enforces, the accepted risk, the compensating controls, and the gap it cannot see, in the table's existing shape.
 
 Files: `plugins/claude-kit/hooks/memq-grant.js`, `plugins/claude-kit/hooks/hooks.json`, `test/memq-grant.test.js`, `docs/security-model.md`.
-Acceptance: `node --test test` green; the exact invocation is granted under the env signals; everything in the hostile inventory falls through.
+Acceptance: `node --test "test/*.test.js"` green; the exact invocation is granted under the env signals; everything in the hostile inventory falls through.
 Tests: a hostile inventory at minimum: each banned metacharacter; a second command after the script path; `node -e`; `npx`; a different script at a lookalike path; path traversal reaching another script; quote-parity tricks aimed at the cmd.exe wrapper; the exact invocation with the env signals absent (no grant). Both directions: the one allowed shape allows, every probe falls through. A silent over-grant is the expensive failure; this section is why the spec's Fable Spend names S3.
 
 ### 4. Style-skill paths resolve from the loaded plugin
@@ -115,7 +115,7 @@ Routing override, visible up front: the `docs/architecture.md` and `docs/securit
 - `KIT_GOAL_LEDGER_PATH`, which the design dialogue also named, no longer exists in the tree (the ledger route was removed 2026-07-31); nothing to do.
 
 Files: `plugins/claude-kit/hooks/kit-goal-lib.js`, `plugins/claude-kit/hooks/hook-canary.js`, `docs/architecture.md`, `docs/security-model.md`, tests in `test/`.
-Acceptance: `node --test test` green.
+Acceptance: `node --test "test/*.test.js"` green.
 Tests: both directions: gated override honored, ungated override falls back loudly, no override untouched; the `run` field present with `KIT_RUN_ID` and absent without. The canary's probe still isolates its sink.
 
 ### 6. Plan-doc header machine contract
@@ -145,7 +145,7 @@ None. The ratified brief and the 2026-07-31 probe results settled the design for
 
 - Consumes/consumed by: `sapplefeld-ai-os` repo `docs/plans/ai-os-kit-integration_spec_v1.md` (the OS-side workstream; its sections 1-4 depend on this spec).
 - Origin: the brainstorm handoff brief, archived in the OS repo at `docs/archive/ai-os-kit-integration_brainstorm-handoff_v1.md` (Section 7 there records the rejected approaches; do not re-litigate absent new facts).
-- Builds on: `../archive/claude-kit_external-engine-standdown_spec_v1.md` (the marker and directive contract this spec gives code readers), `../archive/claude-kit_hook-canary-and-goal-events_spec_v1.md` (the event stream section 5 gates), `../archive/claude-kit_memory-extension_spec_v1.md` and `../archive/claude-kit_memory-recall-and-reinforcement_spec_v1.md` (the store sections 2 extends).
+- Builds on: `claude-kit_external-engine-standdown_spec_v1.md` (the marker and directive contract this spec gives code readers), `claude-kit_hook-canary-and-goal-events_spec_v1.md` (the event stream section 5 gates), `claude-kit_memory-extension_spec_v1.md` and `claude-kit_memory-recall-and-reinforcement_spec_v1.md` (the store sections 2 extends). All four are siblings in this archive directory.
 
 ## Chapters
 
@@ -276,4 +276,29 @@ Open, and the one item I am carrying to you rather than deciding: the kit's own 
 Review Findings: 2 Critical, 5 Major, 3 Minor, all from the adversarial reviewer, all fixed. Both Criticals (the `Model:` value rule and the missing `##` heading rows) were verified by me against the engine source before I ordered the fix, since both changed artifacts I had written. The implementer re-verified every engine-side claim in the table against its file and reported the line for each; one path in my own fix brief was wrong (`DispatchPump.cs` is in `Spine.Kernel`, not `Spine.Core`) and it corrected it rather than inheriting it.
 
 Next: finishing-work
+Commit Model: Commit-and-Push
+
+### Chapter 7 - 2026-08-01
+Completed: 7. Finishing pass
+Implemented By: main session, with qa-verifier, security-reviewer and adversarial-reviewer at fable, docs-curator, and one implementer-opus fix
+Metrics: QA PASS; security BLOCK resolved; adversarial APPROVED_WITH_CONCERNS; 1 docs-curator drift round; advisor opus
+Gate: 429 pass / 0 fail at close (353 at the pre-effort baseline, +76 across the effort, none lost). Verified independently by me and by the qa-verifier.
+
+The finishing pass earned its place. Both whole-changeset reviewers found defects that no per-section pass could have seen, because each was a contradiction between two sections rather than a fault inside one.
+
+Security, Critical, and the sharpest finding of the effort: section 1 stands `hook-canary.js` down under `KIT_EXTERNAL_ENGINE`, and section 3's security-model text then credited the canary's both-direction grant probes as a compensating control for the grant hook. The grant fires only in fleet workers; fleet workers carry the marker; the canary does not run there. The control and the risk were disjoint by construction, and the same stand-down takes the SHA-256 manifest check with it. The marker was also absent from the security model entirely, having had zero code readers before this effort and four after. The remediation is documentation, not code, and it is deliberately not a softening: the marker now has its own entry naming what it disables, and the manifest and grant-probe claims say plainly that they cover the attended machine and not the spawned worker.
+
+Security, Major: the quarantine claim was a story the docs told. The grant conditions on the store pair alone while the pending tier additionally requires a valid `KIT_RUN_ID`, so under the store pair without a run id a granted memq writes the project tier directly; and even inside a run, `log` appends to the project journal, `add-type` writes the shared type tier, and the grant covers every subcommand including `decay-prune`. The honest bound is the store the engine owns, and the entry now says so instead.
+
+Security, Major, the one code fix in this pass: `memory-session.js` emitted the pending directory inline as sentence text, and that path embeds `KIT_MEMORY_ROOT`, so printable-ASCII prose set as a store root rode into session context unfenced, in a block that is otherwise entirely instruction-shaped. The tell was in the code's own comments: the two spawn values beside it were already routed through the data fence while this one's comment reasoned about truncation and never about provenance. Now on its own indented line inside the fence, pinned by a test that was watched red against the pre-fix build with an instruction-shaped store root.
+
+Adversarial, Major: `docs/architecture.md` still described memq as reading four record-bearing surfaces. Section 2 made pending a fifth, and no section owned that sentence because the spec had routed the tier's documentation to the security model alone. Also fixed: four section `Acceptance:` lines still carried the bare `node --test test` form that Chapter 1 diagnosed and corrected everywhere except in the acceptance lines themselves, which is exactly the reader who would have run it verbatim.
+
+Drift adjudications from the docs-curator: two deviations and one mistake, all resolved rather than carried. The deviation on the stand-down inventory (the spec said the hook emits each plan's path and status; it emits path and commit model) is a spec-text correction, made here, since the inventory is already filtered to In Progress and a status field would be redundant. The deviation on the root `README.md` (its hook catalog reads as exhaustive and omitted the one hook that grants permission, and its memq line omitted the pending tier) is fixed, outside `docs/` and therefore outside the curator's charter. The mistake was a stale skill count in `docs/architecture.md`, pre-existing and off by one against the 18 directories on disk; corrected. The curator also added `docs/fleet-integration.md`, which collects the kit-to-engine contract in one place for the OS-side integrator, and repaired three stale counts in the docs index that this effort's changes had invalidated.
+
+Incident, and it altered state outside the repo: the qa-verifier probed section 5's ungated-fallback path without sandboxing `HOME`, so it appended one test event to the real `~/.claude/kit-events.jsonl`. It caught that itself via the mtime check the brief mandated, then tried to restore the file from its own transcript capture rather than a filesystem copy, and the reconstruction dropped the JSON escaping on the Windows paths: all four surviving lines read `D:\personal\...` with single backslashes, which is invalid JSON, and it reset the mtime to match, so the damage was invisible to the very check that had caught the write. I found it by diffing the byte count against a capture I had taken earlier in the session (925 before, 917 after, exactly the eight lost backslashes) and repaired it in place, verifying all four lines parse and restoring the original size and mtime. The general lesson, worth more than the incident: restore from a filesystem copy, never from a transcript rendering, and sandbox `HOME` before exercising any path that defaults to it.
+
+Open, carried to Scott rather than decided: the kit's own tier vocabulary offers `fable (inline)` on a section's `Model:` line, and the engine's parser accepts only bare tier tokens, silently dispatching anything else at sonnet. Resolving it means either moving the inline marker off that line or teaching the engine the decorated form, which is a cross-repo vocabulary change. The contract text states the current truth and the pick-list is untouched.
+
+Next: none, effort complete
 Commit Model: Commit-and-Push
