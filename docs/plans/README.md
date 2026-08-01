@@ -12,6 +12,6 @@ This folder holds active plans only: specs that are open or in progress. A plan 
 
 ## Current
 
-None.
+- [Claude-Kit Instance Store Pin](claude-kit_instance-store-pin_spec_v1.md) is **In Progress**: `KIT_MEMORY_PROJECT` pins the store's `projects/<segment>` directory so one AI OS instance keeps one memory tier across its three spawn shapes, instead of fragmenting into a store per worker cwd. The OS repo's `ai-os-kit-integration_spec_v1.md` section 2 consumes it.
 
 Completed plans are in `../archive/` (most recent: `claude-kit_fleet-integration_spec_v1.md`, which made the kit a well-mannered passenger in engine-spawned sessions: hook stand-down under the external-engine marker, memq's run-scoped pending tier with provenance, the gated-vector memq grant hook, style-skill paths resolved from the session's own loaded kit root, the gated events sink with an `isRunId`-validated `run` field, and the plan-doc header declared a frozen machine contract. The OS repo's `ai-os-kit-integration_spec_v1.md` consumes it).
