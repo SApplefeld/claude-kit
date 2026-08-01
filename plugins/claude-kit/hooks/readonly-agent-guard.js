@@ -106,6 +106,77 @@ function maskQuoted(cmd) {
     return chars.join('');
 }
 
+// A copy of the masked command with the > characters inside a quoted-delimiter
+// heredoc body blanked. A heredoc body is data the receiving command reads on
+// stdin rather than shell syntax, so a > in one is a comparison or an arrow
+// function; read as a redirect operator it denies ordinary work, since writing a
+// driver script through a heredoc is how an agent that holds no Write tool
+// authors one.
+//
+// A blanked body redirect keeps its own sentinel rather than the NUL quoted spans
+// use, because the two need different treatment downstream: a > is both a
+// redirect operator and a command boundary, and only the first reading is wrong
+// inside a body. `segment` cuts on the sentinel as it would on the character, so
+// an operand list still ends where the shell ends it, while `writeTargets` no
+// longer sees a redirect. Erasing the boundary instead would merge a body's
+// operands into the command around it, which is how a hidden `>` turns into
+// altered parsing for every heuristic that reads operands.
+//
+// Only the redirect operator is blanked, never the whole span, and that bound is
+// what makes the rest of this function's imprecision affordable. Command-position
+// scanning runs over the body untouched, so a governed verb inside one still
+// denies (the accepted false hit named in denyReason's header) and, more to the
+// point, a body that really is a command still denies however it reaches a shell:
+// `cat <<'EOF' | sh` needs no special case here, because the verb inside it was
+// never hidden. The residual this leaves is a hidden redirect, and a redirect
+// that lands leaves a tracked-file delta, which is exactly what the tree-state
+// check around a review round sees. A hidden git or gh mutation would not, and
+// nothing here can hide one.
+//
+// Only the quoted spellings (<<'EOF', <<"EOF") qualify. Both disable parameter
+// expansion and command substitution, so their bodies are literal; an unquoted
+// <<EOF still runs $(...) in its body and is left entirely alone.
+//
+// Three bounds keep the blanking near the body. A << preceded by another < is a
+// here-string operand, not an introduction. The delimiter must be a whole word,
+// so the desyncing spellings bash reads differently (<<'EOF'X, <<'E'OF) match
+// nothing here and blank nothing. And the body starts after the introducing line,
+// so a redirect on that line (cat > path <<'EOF', and the continuation case
+// above) stays visible. What is left imprecise on purpose: a <<'X' sitting in
+// comment or data position starts a span here that the shell never opens, so a
+// redirect after it can go unseen. That costs a hidden file write, which the
+// tree-state check catches, and buying it back would mean tracking comments and
+// nested bodies through the mask.
+const BODY_REDIRECT = '\x01';
+function maskHeredocRedirects(cmd, masked) {
+    const chars = masked.split('');
+    const intro = /(?<!<)<<-?[ \t]*(?:'([^'\n]*)'|"([^"\n]*)")(?=[ \t\r\n;|&)]|$)/g;
+    let m;
+    while ((m = intro.exec(cmd)) !== null) {
+        if (masked[m.index] === '\x00') continue;
+        const delim = m[1] !== undefined ? m[1] : m[2];
+        if (delim === '') continue;
+        // The body opens after the introducing LOGICAL line, so a backslash
+        // continuation carries it further: the shell removes the backslash and
+        // the newline before it reads a body at all, which leaves any redirect
+        // on the continued line genuine shell syntax rather than data. An even
+        // run of trailing backslashes is an escaped backslash, not a
+        // continuation.
+        let nl = cmd.indexOf('\n', m.index + m[0].length);
+        while (nl >= 0) {
+            const trail = /\\+$/.exec(cmd.slice(0, nl));
+            if (trail === null || trail[0].length % 2 === 0) break;
+            nl = cmd.indexOf('\n', nl + 1);
+        }
+        if (nl < 0) continue;
+        const esc = delim.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const t = new RegExp('^[ \\t]*' + esc + '[ \\t]*\\r?$', 'm').exec(cmd.slice(nl + 1));
+        const end = t === null ? cmd.length : nl + 1 + t.index;
+        for (let i = nl + 1; i < end; i++) if (chars[i] === '>') chars[i] = BODY_REDIRECT;
+    }
+    return chars.join('');
+}
+
 // One command out of a chain, pipeline, or multi-line script: the original text
 // from `from` up to the next unquoted shell separator, redirect, or line break.
 // The cut is found in the masked copy, so a separator inside a quoted argument
@@ -113,7 +184,7 @@ function maskQuoted(cmd) {
 // ends a command as surely as a semicolon; without it the next line's command
 // name reads as an operand of this one.
 function segment(cmd, masked, from) {
-    const cut = masked.slice(from).search(/[;|&<>)\r\n]/);
+    const cut = masked.slice(from).search(/[;|&<>)\r\n\x01]/);
     return cut < 0 ? cmd.slice(from) : cmd.slice(from, from + cut);
 }
 
@@ -792,14 +863,17 @@ function nestedPayloads(cmd, masked) {
 // evasion to produce, a bulk idiom other than find, xargs, and a PowerShell
 // pipeline, a nested executor deeper than the recursion bound, and a git
 // subcommand that writes files as a side effect of a read (git format-patch,
-// git archive), which leaves a tracked-file delta the backstop does see. In the
+// git archive), which leaves a tracked-file delta the backstop does see, and a
+// redirect standing inside a heredoc body the shell never opens (maskHeredocRedirects
+// above carries which spellings do that), which leaves that same delta. In the
 // other direction the residual false hit is a governed verb in genuine command
 // position whose effect is not what it looks like (a mutating verb inside a
-// heredoc body). Analysis is regex-per-heuristic over the
+// heredoc body, whose text is scanned wherever it sits, since a body reaching a
+// shell is a command). Analysis is regex-per-heuristic over the
 // whole string, so cost grows with the square of command length (a 80 KB command
 // takes seconds); the agent authoring that string is the only party it delays.
 function denyReason(cmd, cwd, strict, depth) {
-    const masked = maskQuoted(cmd);
+    const masked = maskHeredocRedirects(cmd, maskQuoted(cmd));
 
     const stateChange = gitMutation(cmd, masked)
         || ghMutation(cmd, masked)

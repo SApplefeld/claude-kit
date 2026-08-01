@@ -815,3 +815,100 @@ test('the governed agents are granted no file-writing tool', () => {
         }
     }
 });
+
+// A heredoc body is data the receiving command reads on stdin, not shell syntax,
+// so a > inside one is a comparison or an arrow rather than a redirect. The guard
+// blanks that operator and nothing else: command-position scanning runs over the
+// body untouched, which is why a body reaching a shell is still governed and why
+// no receiver list is needed. The deny cases below carry most of the weight, since
+// the narrow mechanism is what makes the introduction-matching imprecision
+// affordable, and each of them passes only because the operator is all that moved.
+
+test('a quoted heredoc body carrying > is data rather than a redirect', () => {
+    const r = runGuard(bash(STRICT, "node <<'EOF'\nconst f = (a) => a > 1;\nconsole.log(f(2) >= 1);\nEOF"));
+    assert.strictEqual(r.status, 0, r.stderr);
+    assert.strictEqual(r.stderr, '');
+});
+
+// The blanking reaches the redirect operator and nothing else, so every shape
+// below still denies on the verb. That is the property the imprecision rides on:
+// a body reaching a shell is a command wherever it sits, and no spelling of a
+// heredoc can hide one.
+
+test('a mutating verb inside a heredoc body is still scanned', () => {
+    const r = runGuard(bash(STRICT, "cat <<'EOF'\ngit commit -m x\nEOF"));
+    assert.strictEqual(r.status, 2);
+    assert.match(r.stderr, GIT);
+});
+
+test('a heredoc body piped onward to a shell is still governed', () => {
+    const r = runGuard(bash(STRICT, "cat <<'EOF' | sh\ngit commit -am pwn\nEOF"));
+    assert.strictEqual(r.status, 2);
+    assert.match(r.stderr, GIT);
+});
+
+test('a here-string is not a heredoc introduction and disarms nothing', () => {
+    const r = runGuard(bash(STRICT, 'grep -q docs <<< "$out"\necho hi > README.md'));
+    assert.strictEqual(r.status, 2);
+    assert.match(r.stderr, WRITE);
+});
+
+test('a delimiter carrying text outside the quotes blanks nothing', () => {
+    const r = runGuard(bash(STRICT, "cat <<'EOF'X\nfiller\nEOFX\necho hi > README.md"));
+    assert.strictEqual(r.status, 2);
+    assert.match(r.stderr, WRITE);
+});
+
+test('a split delimiter blanks nothing either', () => {
+    const r = runGuard(bash(STRICT, "cat <<'E'OF\nfiller\nEOF\necho hi > README.md"));
+    assert.strictEqual(r.status, 2);
+    assert.match(r.stderr, WRITE);
+});
+
+test('a backslash-continued introducing line keeps its redirect', () => {
+    const r = runGuard(bash(STRICT, "cat <<'EOF' \\\n> README.md\nhi\nEOF"));
+    assert.strictEqual(r.status, 2);
+    assert.match(r.stderr, WRITE);
+});
+
+test('a blanked body redirect still ends an operand list', () => {
+    const r = runGuard(bash(STRICT, "# <<'A'\ncp /etc/hosts README.md > /dev/null"));
+    assert.strictEqual(r.status, 2);
+    assert.match(r.stderr, PATHMUT);
+});
+
+test('a blanked body redirect cannot push a ref creation past its flags', () => {
+    const r = runGuard(bash(STRICT, "# <<'A'\ngit branch pwned > --list"));
+    assert.strictEqual(r.status, 2);
+    assert.match(r.stderr, /a git branch creation/);
+});
+
+test('an introduction in comment position cannot hide a verb', () => {
+    const r = runGuard(bash(STRICT, "# <<'A'\ngit commit -am pwn\nA"));
+    assert.strictEqual(r.status, 2);
+    assert.match(r.stderr, GIT);
+});
+
+test('a heredoc into a nested shell is code, and stays governed', () => {
+    const r = runGuard(bash(STRICT, "bash <<'EOF'\ngit commit -m x\nEOF"));
+    assert.strictEqual(r.status, 2);
+    assert.match(r.stderr, GIT);
+});
+
+test('an unquoted heredoc body still expands, so it stays scanned', () => {
+    const r = runGuard(bash(STRICT, 'cat <<EOF\n$(git commit -m x)\nEOF'));
+    assert.strictEqual(r.status, 2);
+    assert.match(r.stderr, GIT);
+});
+
+test('the redirect on a heredoc intro line is outside the body and still denies', () => {
+    const r = runGuard(bash(STRICT, "cat > README.md <<'EOF'\nhello\nEOF"));
+    assert.strictEqual(r.status, 2);
+    assert.match(r.stderr, WRITE);
+});
+
+test('the terminator ends the blanking, so a command after it is still scanned', () => {
+    const r = runGuard(bash(STRICT, "cat <<'EOF' > .kit/scratch.txt\nhello\nEOF\ngit commit -m x"));
+    assert.strictEqual(r.status, 2);
+    assert.match(r.stderr, GIT);
+});
