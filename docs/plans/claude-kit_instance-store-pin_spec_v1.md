@@ -94,3 +94,20 @@ Review Findings: 2 Major, 8 Minor across three reviewers, no Critical. Both Majo
 
 Next: Section 2, Document the pin and what it changes about the store (inline, main thread)
 Commit Model: Commit-and-Push
+
+### Chapter 2 - 2026-08-01
+Completed: 2. Document the pin and what it changes about the store
+Implemented By: main session (inline by routing; the docs-write-guard makes every `docs/` write the main thread's)
+Metrics: no dispatch, no review round of its own (the whole-changeset passes in the finishing Chapter cover it); advisor opus
+Gate: 444 pass / 0 fail, unchanged. Prose only.
+
+Decisions / Surprises:
+- The security model's fence sentence needed rewriting rather than extending. It read "Project-tier output is unfenced: the project that wrote it is the project reading it", which states a conclusion and its entire justification in one line, so once the pin makes the justification false the conclusion has to move with it. It now says the raw posture holds exactly as far as its condition does, and names the pin as the case where it does not.
+- Three counts and enumerations moved with the change, which is the drift class this session has now caught four times: the context-path list gained a fifth hop (the pinned destination block, environment-derived like the fourth), the fleet contract went from eight variables to nine, and the per-tier section gained the paragraph saying cross-repository sharing inside one instance is intended rather than tolerated.
+- The residual the security review found is written into Not claimed rather than argued away: inside an engine worker the store pair is already true, so the pin is effectively a single inherited variable there. It is the `KIT_RUN_ID` residual widened from the pending tier to the project tier, bounded the same way (everything stays inside the instance's own root, which the engine allocates per instance, so the pin is never the separator between instances), and the mitigation is the engine's, to set the variable explicitly on every spawn so an explicit value beats an inherited one.
+- `docs/fleet-integration.md` carries the operational half a reader actually needs: omitting the pin does not fail, it silently fragments, which is the property that makes it a deployment precondition rather than a nicety.
+
+Review Findings: none of its own; the finishing pass covers the changeset.
+
+Next: finishing-work
+Commit Model: Commit-and-Push
