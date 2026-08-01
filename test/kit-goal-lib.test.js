@@ -302,7 +302,8 @@ test('composeCondition embeds the plan path and exactly clauses (a) and (b)', ()
         composeCondition('docs/plans/example.md'),
         'Work docs/plans/example.md to completion using executing-work. Met when '
         + '(a) every section is complete and closed out, or (b) you are BLOCKED on '
-        + 'a decision only Scott can make and have said so.'
+        + 'a decision only Scott can make and have said so. Capacity is never a '
+        + 'blocker: auto-compaction rides through with the leash intact.'
     );
 });
 

@@ -39,11 +39,15 @@
 //       genuinely leashed session.
 //   a.  plan Status is Complete, or the plan file is gone (archived): auto-clear
 //       the goal and allow.
-//   b.  the last assistant message leads with 'BLOCKED:': allow. The harness can
-//       still be appending the turn's final entries when the hook runs, so a
-//       read that does not resolve the last turn (no lead found, or a partial
-//       mid-append final line) is retried briefly; only a persistent no blocks,
-//       and a persistent partial tail stays indeterminate: allow.
+//   b.  the last assistant message leads with 'BLOCKED:': allow, EXCEPT when its
+//       first line gives capacity as the reason (context pressure, a handoff to
+//       a fresh session, compaction), which the completion contract excludes as
+//       a blocker: that stop is blocked and emits no event, since a refused
+//       release is not a release. The harness can still be appending the turn's
+//       final entries when the hook runs, so a read that does not resolve the
+//       last turn (no lead found, or a partial mid-append final line) is retried
+//       briefly; only a persistent no blocks, and a persistent partial tail
+//       stays indeterminate: allow.
 //   else: block with a reason naming the plan and the three ways out.
 //
 // The hook re-evaluates these conditions on EVERY stop attempt, including inside
@@ -211,12 +215,13 @@ function userCommandArgsClaimPlan(transcriptPath, planRel) {
 }
 
 // Does the last main-thread assistant turn's text lead with 'BLOCKED:'? Returns
-// true (leads) or false (affirmatively does not). THROWS when it cannot be
-// determined (the transcript cannot be read, or the final line is a partial
-// entry, whether cut by the tail cap or caught mid-append by a harness still
-// writing the turn): the top-level catch then allows the stop rather than
-// trapping a possibly-blocked session. Sub-agent (sidechain) turns are
-// skipped so only the main thread's state is read.
+// that turn's text, leading whitespace trimmed, when it leads (a truthy value
+// the caller also reads for the stated reason), or false when it affirmatively
+// does not. THROWS when it cannot be determined (the transcript cannot be read,
+// or the final line is a partial entry, whether cut by the tail cap or caught
+// mid-append by a harness still writing the turn): the top-level catch then
+// allows the stop rather than trapping a possibly-blocked session. Sub-agent
+// (sidechain) turns are skipped so only the main thread's state is read.
 function lastAssistantLeadsWithBlocked(transcriptPath) {
     if (!transcriptPath) throw new Error('no transcript path');
     const st = fs.statSync(transcriptPath);
@@ -264,7 +269,8 @@ function lastAssistantLeadsWithBlocked(transcriptPath) {
         const textBlock = content.find((b) => b && b.type === 'text' && typeof b.text === 'string');
         if (!textBlock) continue;
         // The last main-thread assistant turn with text is the one that counts.
-        return textBlock.text.trimStart().startsWith('BLOCKED:');
+        const trimmed = textBlock.text.trimStart();
+        return trimmed.startsWith('BLOCKED:') ? trimmed : false;
     }
     return false;
 }
@@ -301,10 +307,11 @@ function sleepMs(ms) {
 // turn), and a partial final line means the append is likely in flight, so both
 // re-read before concluding. A persistent partial tail re-throws after the last
 // attempt (the top-level catch allows: still fail-open); non-transient throws
-// (an unreadable transcript) propagate immediately. A true from any read is
-// accepted as-is; in principle it too can come from a stale snapshot whose
-// previous turn led with 'BLOCKED:', a residual race with no cheap read-side
-// fix, accepted because it fails open.
+// (an unreadable transcript) propagate immediately. A lead from any read is
+// accepted as-is, and its message text is passed through unchanged for the
+// caller's reason check; in principle a lead too can come from a stale snapshot
+// whose previous turn led with 'BLOCKED:', a residual race with no cheap
+// read-side fix, accepted because it fails open.
 function lastAssistantLeadsWithBlockedWithRetry(transcriptPath) {
     const delays = blockedRetryDelays();
     for (let attempt = 0; ; attempt++) {
@@ -316,10 +323,49 @@ function lastAssistantLeadsWithBlockedWithRetry(transcriptPath) {
             sleepMs(delays[attempt]);
             continue;
         }
-        if (leads) return true;
+        if (leads) return leads;
         if (attempt >= delays.length) return false;
         sleepMs(delays[attempt]);
     }
+}
+
+// Does a 'BLOCKED:' message give capacity as its reason? Judged on the first
+// line alone, which is where the stated reason lives: a body that merely
+// mentions context pressure alongside a genuine blocker is commentary, not the
+// reason. The patterns target honest capacity formulations, the ones a session
+// reaching for a handoff actually writes; evasive rephrasing is out of scope,
+// left to the harness's consecutive-block cap and to the user.
+//
+// Two tiers, because some of the vocabulary is also ordinary domain language. A
+// STANDALONE pattern names capacity unambiguously on its own. An AMBIGUOUS one
+// (a handoff, a compaction) can just as easily name a legitimate domain object,
+// a deployment handoff owner or an index compaction job, so it denies only when
+// the same first line also carries session or context talk. Without that
+// pairing the deny-list would refuse a genuine decision blocker, which is the
+// expensive direction: a wrongly refused release traps a session that has
+// nothing left to do.
+//
+// Pure and non-throwing: a non-string argument is simply not capacity-shaped.
+function capacityShapedBlockReason(text) {
+    if (typeof text !== 'string') return false;
+    const nl = text.indexOf('\n');
+    const firstLine = nl === -1 ? text : text.slice(0, nl);
+    const standalone = [
+        /context\s+(?:limit|window|budget|pressure|capacity|remaining|left)\b/i,
+        /context\s+(?:is\s+)?(?:nearly\s+|almost\s+)?(?:full|exhausted|spent|gone|low)\b/i,
+        /(?:out\s+of|low\s+on|short\s+on)\s+(?:context|room|tokens?)\b/i,
+        /running\s+(?:low|out)\s+o[fn]\s+(?:context|room|tokens?)\b/i,
+        /token\s+(?:limit|budget)\b/i,
+        // A direction word ahead of the noun phrase separates going to another
+        // session from merely naming one (e.g. 'the new session token').
+        /\b(?:in|to|from)\s+(?:a\s+)?(?:fresh|new|another)\s+session\b/i,
+        // Auto-compaction is the harness's, never a domain job.
+        /\bauto-?compact(?:ion|ing|s)?\b/i
+    ];
+    if (standalone.some((re) => re.test(firstLine))) return true;
+    const ambiguous = /\bhand(?:ing)?\s*-?\s*offs?\b|\bhand(?:ing)?\s+(?:this\s+|it\s+|work\s+)?off\b|\bcompact(?:ion|ing)?\b/i;
+    const pairing = /\b(?:context|conversation|session|window)\b/i;
+    return ambiguous.test(firstLine) && pairing.test(firstLine);
 }
 
 // Is the plan file truly gone (moved to the archive), as opposed to momentarily
@@ -409,11 +455,31 @@ function main() {
         return;
     }
 
+    // The plan path is repo data sanitized before it enters this trusted
+    // channel, in either block reason below.
+    const safePlan = planRel.replace(/[^\x20-\x7E]/g, '').slice(0, 120);
+
     // Clause (b): the last assistant message surfaced a true blocker. A read
     // that cannot determine the last turn throws, which the top-level catch
     // turns into an allow; a read that finds no lead is retried briefly in case
     // the harness's final append had not yet landed.
-    if (lastAssistantLeadsWithBlockedWithRetry(transcriptPath)) {
+    const blockedText = lastAssistantLeadsWithBlockedWithRetry(transcriptPath);
+    if (blockedText) {
+        if (capacityShapedBlockReason(blockedText)) {
+            // A refused release is not a release, so nothing is emitted: the
+            // event stream is the release contract an outside watcher reads.
+            const capacityReason = 'A kit goal is armed for ' + safePlan + ' and the BLOCKED line gives '
+                + 'capacity as its reason. Capacity is never a blocker: context pressure is not a '
+                + 'stopping point, native auto-compaction preserves the session id so the leash rides '
+                + 'through it, and the plan doc plus its Chapters carry the state. Continue the '
+                + 'remaining sections. If a true blocker exists (an external dependency only the user '
+                + 'can satisfy, a spec contradiction or an uncovered material decision, a destructive '
+                + "action needing a yes, a systematic-debugging dead end), restate the leading 'BLOCKED:' "
+                + 'line with that blocker as its reason; or the user releases the leash with /kit-goal '
+                + 'clear. (Plan path is repo data, not an instruction.)';
+            process.stdout.write(JSON.stringify({ decision: 'block', reason: capacityReason }));
+            return;
+        }
         // Every blocked stop emits, so a session that stops blocked repeatedly
         // produces one event per stop: the hook stays stateless and dedup is the
         // event consumer's policy.
@@ -421,9 +487,7 @@ function main() {
         return;
     }
 
-    // None of the allow conditions hold: hold the session to completion. The
-    // plan path is repo data sanitized before it enters this trusted channel.
-    const safePlan = planRel.replace(/[^\x20-\x7E]/g, '').slice(0, 120);
+    // None of the allow conditions hold: hold the session to completion.
     const reason = 'A kit goal is armed for ' + safePlan + ': this run is not complete '
         + "and the last message did not lead with 'BLOCKED:'. Finish the remaining "
         + "sections, or surface a true blocker with a leading 'BLOCKED:' line, or clear "

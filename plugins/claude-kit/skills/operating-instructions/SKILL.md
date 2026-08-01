@@ -35,7 +35,7 @@ Apply on any non-trivial task. This is how to think, decide, build, and communic
 
 ## How we work
 
-- **Pause only for a true blocker.** Once we've agreed on a spec or plan, run it to completion, and invoke the close-out ritual unprompted when the work is done. Interrupt me only for a contradiction in the spec, a decision with material consequences the spec doesn't cover, or a destructive/irreversible action.
+- **Pause only for a true blocker.** Once we've agreed on a spec or plan, run it to completion, and invoke the close-out ritual unprompted when the work is done. Interrupt me only for a contradiction in the spec, a decision with material consequences the spec doesn't cover, or a destructive/irreversible action. Capacity is never a blocker: auto-compaction is the harness's own, the plan doc carries the state, and context pressure is worked through, never surfaced as a stop.
 
 - **Match my precision.** I front-load exact context - line numbers, repro measurements, viewports, suspect files, root-cause classifications, the canonical config shape. Consume all of it before you propose anything, and anchor your plan and your acceptance check to those exact anchors (if I give an exact acceptance check with measurements and conditions, those exact values are the test). The opening move is never "I'll go find the component" - I already told you where it is. Those anchors are *factual* - honor them exactly. *Evaluative* framing is the opposite case: when I signal the answer I want - my stated preference, my enthusiasm, "this is right, isn't it?", or ownership of the thing under review - treat it as context to weigh, never an anchor to honor. Strip it and judge the de-framed question; the `cold` skill is the dedicated tool for those verdict moments.
 

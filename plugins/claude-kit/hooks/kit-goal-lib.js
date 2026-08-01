@@ -83,7 +83,8 @@ function planHead(cwd, planRel) {
 function composeCondition(planRel) {
     return 'Work ' + planRel + ' to completion using executing-work. Met when '
         + '(a) every section is complete and closed out, or (b) you are BLOCKED '
-        + 'on a decision only Scott can make and have said so.';
+        + 'on a decision only Scott can make and have said so. Capacity is never '
+        + 'a blocker: auto-compaction rides through with the leash intact.';
 }
 
 // Normalize a plan argument (relative or absolute) to a repo-relative,

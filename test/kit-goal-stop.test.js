@@ -878,6 +878,135 @@ test('release event: a BLOCKED lead emits goal-blocked and carries no detail', (
     }
 });
 
+test('a capacity-shaped BLOCKED reason releases nothing: block, no event', () => {
+    // Capacity is excluded from the completion contract (auto-compaction keeps
+    // the session id, so the leash rides through), and a refused release is not
+    // a release, so the events file stays untouched.
+    const { repo, transcript, local } = armedRepo([
+        "BLOCKED: I'm at my context limit and need to hand off to a fresh session."
+    ]);
+    try {
+        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-capacity' }, local);
+        assert.strictEqual(res.status, 0);
+        assert.notStrictEqual(res.stdout, '', 'a capacity-shaped BLOCKED must not release the leash');
+        const out = JSON.parse(res.stdout);
+        assert.strictEqual(out.decision, 'block');
+        assert.ok(out.reason.includes('Capacity is never a blocker'),
+            'the block quotes the contract clause it is enforcing');
+        assert.deepStrictEqual(readEvents(local), [], 'a refused release emits nothing');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('the capacity deny-list is case-insensitive: an upper-case reason is refused too', () => {
+    const { repo, transcript, local } = armedRepo(['BLOCKED: OUT OF CONTEXT, pausing here.']);
+    try {
+        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-caps' }, local);
+        assert.strictEqual(res.status, 0);
+        assert.notStrictEqual(res.stdout, '', 'casing must not carry a capacity reason past the deny-list');
+        const out = JSON.parse(res.stdout);
+        assert.strictEqual(out.decision, 'block');
+        assert.ok(out.reason.includes('Capacity is never a blocker'));
+        assert.deepStrictEqual(readEvents(local), [], 'a refused release emits nothing');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('only the first line is judged: a genuine blocker mentioning context further down still releases', () => {
+    // The deny-list reads the stated reason, which is the first line. A body
+    // that happens to mention context pressure is commentary, not the reason,
+    // so a real decision blocker below it must still release.
+    const { repo, planRel, transcript, local } = armedRepo([
+        'BLOCKED: need your call on the migration direction: A or B.\n'
+        + 'For what it is worth I am also running low on context, but the decision is the blocker.'
+    ]);
+    try {
+        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-decision' }, local);
+        assert.strictEqual(res.status, 0);
+        assert.strictEqual(res.stdout, '', 'a body mention of capacity must not trip the deny-list');
+        const events = readEvents(local);
+        assert.strictEqual(events.length, 1, 'the release emits exactly one event');
+        assert.strictEqual(events[0].event, 'goal-blocked');
+        assert.strictEqual(events[0].plan, planRel);
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('a session token, not a session handoff: "the new session token" still releases', () => {
+    // The word pair "new session" inside a domain noun phrase is not a capacity
+    // reason, so the deny-list requires a direction word (in/to/from) ahead of it.
+    const { repo, planRel, transcript, local } = armedRepo([
+        'BLOCKED: the new session token for staging expired, need you to re-auth.'
+    ]);
+    try {
+        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-token' }, local);
+        assert.strictEqual(res.status, 0);
+        assert.strictEqual(res.stdout, '', 'a domain "new session token" must not read as a capacity reason');
+        const events = readEvents(local);
+        assert.strictEqual(events.length, 1);
+        assert.strictEqual(events[0].event, 'goal-blocked');
+        assert.strictEqual(events[0].plan, planRel);
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('a domain handoff with no session or context talk still releases', () => {
+    // "handoff" alone names a real decision here (who owns a deployment), which
+    // is why the ambiguous tier needs a pairing word before it denies.
+    const { repo, transcript, local } = armedRepo([
+        'BLOCKED: choose the deployment handoff owner: platform or app team?'
+    ]);
+    try {
+        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-owner-call' }, local);
+        assert.strictEqual(res.status, 0);
+        assert.strictEqual(res.stdout, '', 'an unpaired handoff must not read as a capacity reason');
+        const events = readEvents(local);
+        assert.strictEqual(events.length, 1);
+        assert.strictEqual(events[0].event, 'goal-blocked');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('a copula-free capacity claim ("context exhausted") is refused', () => {
+    const { repo, transcript, local } = armedRepo(['BLOCKED: context exhausted, handing this off.']);
+    try {
+        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-exhausted' }, local);
+        assert.strictEqual(res.status, 0);
+        assert.notStrictEqual(res.stdout, '', 'a capacity claim without a copula must still be refused');
+        assert.ok(JSON.parse(res.stdout).reason.includes('Capacity is never a blocker'));
+        assert.deepStrictEqual(readEvents(local), [], 'a refused release emits nothing');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('a handoff aimed at a fresh session is refused', () => {
+    const { repo, transcript, local } = armedRepo([
+        'BLOCKED: need to hand this off to a fresh session to finish the plan.'
+    ]);
+    try {
+        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-handoff' }, local);
+        assert.strictEqual(res.status, 0);
+        assert.notStrictEqual(res.stdout, '', 'a session-directed handoff must be refused');
+        assert.ok(JSON.parse(res.stdout).reason.includes('Capacity is never a blocker'));
+        assert.deepStrictEqual(readEvents(local), [], 'a refused release emits nothing');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
 test('bystander allows emit nothing (another session holds the leash; an unbound prose mention)', () => {
     // The expensive failure this pins: an emit placed before the scoping gate
     // would turn every stop in every kit repo into an event, so the watcher sees
