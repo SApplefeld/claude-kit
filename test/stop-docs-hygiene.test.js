@@ -29,13 +29,20 @@ function writeFile(full, contents) {
     fs.writeFileSync(full, contents, 'utf8');
 }
 
-// Spawn the hook against a fixture cwd; return { blocked, reason }.
-function runHook(cwd) {
-    const res = spawnSync(process.execPath, [HOOK], {
+// Spawn the hook against a fixture cwd. process.env is spread rather than
+// rebuilt so the child keeps its real PATH (a rebuilt env object loses the
+// Windows `Path` key); extra is where a case adds the external-engine marker.
+function spawnHook(cwd, extra) {
+    return spawnSync(process.execPath, [HOOK], {
         input: JSON.stringify({ cwd, hook_event_name: 'Stop' }),
-        env: { ...process.env },
+        env: { ...process.env, ...(extra || {}) },
         encoding: 'utf8'
     });
+}
+
+// The block verdict, reduced: { blocked, reason }.
+function runHook(cwd) {
+    const res = spawnHook(cwd);
     const out = (res.stdout || '').trim();
     if (!out) return { blocked: false, reason: '' };
     let parsed;
@@ -120,5 +127,63 @@ test('a clean docs/ tree (in-progress spec, no scratch) allows the stop', () => 
         writeFile(path.join(cwd, 'docs', 'README.md'), '# index\n');
         const { blocked } = runHook(cwd);
         assert.strictEqual(blocked, false);
+    } finally { rmDir(cwd); }
+});
+
+// Both directions of the external-engine marker, asserted on raw stdout rather
+// than through the block-verdict reducer above: that reducer reads any
+// non-block output as an allow, so it cannot tell an advisory apart from
+// silence or from a crash, and the advisory shape has to be positively seen.
+test('under KIT_EXTERNAL_ENGINE the same finding is advisory, not a block', () => {
+    const cwd = makeDir('sdh-engine-');
+    try {
+        writeFile(path.join(cwd, 'docs', 'plans', 'neo_security-packet_spec_v1.md'), COMPLETE);
+        writeFile(path.join(cwd, 'docs', 'plans', 'phase1_security.md'), '# leaked review\n');
+        const res = spawnHook(cwd, { KIT_EXTERNAL_ENGINE: '1' });
+        assert.strictEqual(res.status, 0);
+        const parsed = JSON.parse(res.stdout);
+        assert.ok(!('decision' in parsed),
+            'the absence of a decision field is what allows the stop; got: ' + res.stdout);
+        assert.match(parsed.systemMessage, /unarchived/);
+        assert.match(parsed.systemMessage, /scratch leaked/);
+    } finally { rmDir(cwd); }
+});
+
+test('the same fixture without the marker still blocks the stop', () => {
+    const cwd = makeDir('sdh-attended-');
+    try {
+        writeFile(path.join(cwd, 'docs', 'plans', 'neo_security-packet_spec_v1.md'), COMPLETE);
+        writeFile(path.join(cwd, 'docs', 'plans', 'phase1_security.md'), '# leaked review\n');
+        const res = spawnHook(cwd);
+        assert.strictEqual(res.status, 0);
+        const parsed = JSON.parse(res.stdout);
+        assert.strictEqual(parsed.decision, 'block');
+        assert.match(parsed.reason, /unarchived/);
+    } finally { rmDir(cwd); }
+});
+
+test('a marker value other than 1 still blocks', () => {
+    const cwd = makeDir('sdh-marker-off-');
+    try {
+        writeFile(path.join(cwd, 'docs', 'plans', 'phase1_security.md'), '# leaked review\n');
+        const res = spawnHook(cwd, { KIT_EXTERNAL_ENGINE: '0' });
+        assert.strictEqual(res.status, 0);
+        assert.strictEqual(JSON.parse(res.stdout).decision, 'block');
+    } finally { rmDir(cwd); }
+});
+
+// The loop guard is upstream of the marker: a stop-hook continuation says
+// nothing in either direction.
+test('a stop-hook continuation stays silent under the marker too', () => {
+    const cwd = makeDir('sdh-loop-');
+    try {
+        writeFile(path.join(cwd, 'docs', 'plans', 'phase1_security.md'), '# leaked review\n');
+        const res = spawnSync(process.execPath, [HOOK], {
+            input: JSON.stringify({ cwd, hook_event_name: 'Stop', stop_hook_active: true }),
+            env: { ...process.env, KIT_EXTERNAL_ENGINE: '1' },
+            encoding: 'utf8'
+        });
+        assert.strictEqual(res.status, 0);
+        assert.strictEqual(res.stdout, '');
     } finally { rmDir(cwd); }
 });

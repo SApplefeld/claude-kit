@@ -69,12 +69,47 @@ function stampCache(cache, options) {
         JSON.stringify(stamp, null, 2), 'utf8');
 }
 
-function runCanary(root) {
+// process.env is spread rather than rebuilt so the child keeps its real PATH
+// (a rebuilt env object loses the Windows `Path` key); extra is where a case
+// adds the external-engine marker or the spawn counter.
+function runCanary(root, extra) {
     return spawnSync(process.execPath, [CANARY], {
         input: '',
         encoding: 'utf8',
-        env: { ...process.env, CLAUDE_PLUGIN_ROOT: root }
+        env: { ...process.env, CLAUDE_PLUGIN_ROOT: root, ...(extra || {}) }
     });
+}
+
+// Count the child processes the canary starts, by patching spawnSync inside it.
+// A --require preload runs before the canary module loads, so the patch is in
+// place before the canary's own `const { spawnSync } = require('child_process')`
+// captures the binding. The call is recorded in the canary itself, at call time,
+// so a child that never runs is still counted. The preload path is
+// forward-slashed because Node parses NODE_OPTIONS with backslash as an escape
+// character.
+function spawnCounter(dir) {
+    const log = path.join(dir, 'spawns.log');
+    const shim = path.join(dir, 'count-spawns.js');
+    fs.writeFileSync(shim, [
+        "'use strict';",
+        "const cp = require('child_process');",
+        "const fs = require('fs');",
+        'const real = cp.spawnSync;',
+        'cp.spawnSync = function () {',
+        '    fs.appendFileSync(' + JSON.stringify(log) + ", 'spawn\\n');",
+        '    return real.apply(cp, arguments);',
+        '};'
+    ].join('\n') + '\n', 'utf8');
+    return {
+        env: { NODE_OPTIONS: '--require "' + shim.replace(/\\/g, '/') + '"' },
+        count() {
+            try {
+                return fs.readFileSync(log, 'utf8').split('\n').filter((l) => l).length;
+            } catch {
+                return 0;
+            }
+        }
+    };
 }
 
 // The warning text the canary injected, or null when it stayed silent.
@@ -499,6 +534,59 @@ test('a hook the build stamped but the cache does not hold is reported', () => {
         assert.ok(text, 'a packaged hook missing from the cache must not be silent');
         assertOnlyFlagged(text, [{ hook: 'retired-guard.js', probe: 'integrity check' }]);
         assert.match(text, /no file at/);
+    } finally {
+        rmDir(cache);
+    }
+});
+
+// Both directions of the external-engine marker, over a cache the canary would
+// otherwise report on. The marker-absent case is the control: it proves the
+// spawn counter is wired (an ineffective preload would read as zero spawns in
+// both directions) and that this fixture really is loud without the marker.
+test('under KIT_EXTERNAL_ENGINE the canary spawns nothing and reports nothing', () => {
+    const cache = makeCache();
+    const probe = fs.mkdtempSync(path.join(os.tmpdir(), 'hook-canary-spawns-'));
+    try {
+        fs.writeFileSync(hookFile(cache, 'docs-write-guard.js'),
+            "'use strict';\nprocess.exit(0);\n", 'utf8');
+        const counter = spawnCounter(probe);
+        const res = runCanary(cache, { ...counter.env, KIT_EXTERNAL_ENGINE: '1' });
+        assert.strictEqual(res.status, 0);
+        assert.strictEqual(res.stdout, '', 'the report targets an operator a fleet worker does not have');
+        assert.strictEqual(counter.count(), 0, 'the sweep costs a fleet worker no child processes');
+    } finally {
+        rmDir(cache);
+        rmDir(probe);
+    }
+});
+
+test('without the marker the same cache is swept, spawning children and reporting the inert guard', () => {
+    const cache = makeCache();
+    const probe = fs.mkdtempSync(path.join(os.tmpdir(), 'hook-canary-spawns-'));
+    try {
+        fs.writeFileSync(hookFile(cache, 'docs-write-guard.js'),
+            "'use strict';\nprocess.exit(0);\n", 'utf8');
+        const counter = spawnCounter(probe);
+        const res = runCanary(cache, counter.env);
+        assert.strictEqual(res.status, 0);
+        const text = warning(res);
+        assert.ok(text, 'an inert guard must not be silent in an attended session');
+        assert.match(text, /docs-write-guard\.js/);
+        assert.ok(counter.count() > 0, 'the counter sees the sweep: ' + counter.count() + ' spawn(s)');
+    } finally {
+        rmDir(cache);
+        rmDir(probe);
+    }
+});
+
+test('a marker value other than 1 leaves the sweep running', () => {
+    const cache = makeCache();
+    try {
+        fs.writeFileSync(hookFile(cache, 'docs-write-guard.js'),
+            "'use strict';\nprocess.exit(0);\n", 'utf8');
+        const res = runCanary(cache, { KIT_EXTERNAL_ENGINE: '0' });
+        assert.strictEqual(res.status, 0);
+        assert.match(warning(res), /docs-write-guard\.js/);
     } finally {
         rmDir(cache);
     }

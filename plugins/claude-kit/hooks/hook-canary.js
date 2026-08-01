@@ -44,6 +44,11 @@
 // hook's own code stays silent through the outer catch: a canary bug must never
 // warn at every session start. Residual blind spot: if Node itself is missing
 // the canary cannot run either, and the harness surfaces the failed command.
+//
+// The sweep does not run at all under KIT_EXTERNAL_ENGINE=1, the marker an
+// external engine sets on the sessions it spawns: the payload a spawn runs is
+// the deploy's concern, and the report targets an attended operator who can act
+// on it, so a headless worker pays none of the serial child spawns.
 
 'use strict';
 
@@ -414,6 +419,10 @@ function report(root, failures) {
 
 function main() {
     readStdin();                       // the payload is unused: the probes are payload-independent
+
+    // Stand down before the first spawn: under an external engine there is no
+    // operator to read a report and nothing here is worth the child processes.
+    if (process.env.KIT_EXTERNAL_ENGINE === '1') return;
 
     const root = pluginRoot();
     const hooksJson = path.join(root, 'hooks', 'hooks.json');

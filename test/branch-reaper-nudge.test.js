@@ -42,10 +42,14 @@ function makeRepo() {
     return dir;
 }
 
-function runHook(cwd) {
+// process.env is spread rather than rebuilt so the child keeps its real PATH
+// (a rebuilt env object loses the Windows `Path` key); extra is where a case
+// adds the external-engine marker.
+function runHook(cwd, extra) {
     return spawnSync(process.execPath, [HOOK], {
         input: JSON.stringify({ cwd }),
-        encoding: 'utf8'
+        encoding: 'utf8',
+        env: { ...process.env, ...(extra || {}) }
     });
 }
 
@@ -87,5 +91,29 @@ test('a repo with no extra branches stays silent', () => {
         const r = runHook(dir);
         assert.strictEqual(r.status, 0);
         assert.strictEqual(r.stdout, '');
+    } finally { rmDir(dir); }
+});
+
+// Both directions of the external-engine marker. The same fixture that nudges
+// an attended session must stay silent under the marker, and the attended
+// direction is the expensive one to get wrong: a stand-down that leaks into
+// normal use removes the hygiene trigger with no signal.
+test('under KIT_EXTERNAL_ENGINE a reapable branch draws no nudge', () => {
+    const dir = makeRepo();
+    try {
+        git(dir, 'branch feature-x');
+        const r = runHook(dir, { KIT_EXTERNAL_ENGINE: '1' });
+        assert.strictEqual(r.status, 0);
+        assert.strictEqual(r.stdout, '', 'a fleet worker cannot run the branch-hygiene skill');
+    } finally { rmDir(dir); }
+});
+
+test('a marker value other than 1 leaves the nudge live', () => {
+    const dir = makeRepo();
+    try {
+        git(dir, 'branch feature-x');
+        const r = runHook(dir, { KIT_EXTERNAL_ENGINE: '0' });
+        assert.strictEqual(r.status, 0);
+        assert.match(r.stdout, /reapable/);
     } finally { rmDir(dir); }
 });

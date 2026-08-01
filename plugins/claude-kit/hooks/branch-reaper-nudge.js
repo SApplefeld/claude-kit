@@ -19,6 +19,11 @@
 // short timeout, skipped when the repo was fetched recently; any error exits 0
 // with no output. Kept separate from session-start.js so the resume hook is
 // untouched.
+//
+// Silent under KIT_EXTERNAL_ENGINE=1, the marker an external engine sets on the
+// sessions it spawns: the nudge asks for an attended operator's branch-hygiene
+// pass, which a headless worker cannot run. The stand-down comes before the
+// fetch, so a worker spends no network time on a nudge it will never print.
 
 'use strict';
 
@@ -64,8 +69,13 @@ function maybeFetch(cwd) {
 }
 
 function main() {
+    // Drain the payload before standing down, so the harness's write to this
+    // hook's stdin always finds a reader. The stand-down still precedes the
+    // fetch and every git call, which is where the cost lives.
     let p = {};
     try { p = JSON.parse(readStdin() || '{}'); } catch { return; }
+
+    if (process.env.KIT_EXTERNAL_ENGINE === '1') return; // spawned by an external engine: no nudge, no fetch
     const cwd = p.cwd || process.cwd();
 
     maybeFetch(cwd);

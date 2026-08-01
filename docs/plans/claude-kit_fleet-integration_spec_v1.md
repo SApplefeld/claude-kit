@@ -19,7 +19,19 @@ The memory design (ratified 2026-07-31, from the brainstorm handoff brief archiv
 
 memq's write discipline is already multi-process safe and this spec adds no locking: bounded single-line appends are atomic and lock-free (`plugins/claude-kit/scripts/memq.js:19-28`, cross-process test `test/memq.test.js:254`), and every shared-file rewrite runs under the lockfile helper (`memq.js:436`, contention test `test/memq.test.js:852`). The pending tier preserves the shape by construction: each writer creates files only in its own run directory, and the one contended surface (the main tier and its `MEMORY.md`) is written only by the engine's serial kernel and by attended sessions. Every new write path in this spec must keep that discipline: appends and run-private creates lock-free, shared rewrites under the lock.
 
-Test harness: Node's built-in runner, no framework, Node v24. Run `node --test test` from the repo root; it must be green before and after every section.
+Test harness: Node's built-in runner, no framework, Node v24. The gate is `node --test "test/*.test.js"` from the repo root; it must be green before and after every section. The quotes are load-bearing and the bare directory forms (`node --test test`, `node --test test/`) do not work: the runner resolves the directory as a single module, discovers no files, and exits 1 with one synthetic failure, a false red.
+
+Editing any hook or `hooks.json` invalidates the build stamp that `test/hook-canary.test.js` asserts against (the build hashes every hook file, `hooks.json` included), so `./build.ps1` runs before the gate after any such edit. Sections 1, 3, and 5 all touch hooks.
+
+Baseline at the plan commit, after a `./build.ps1` to refresh a stale local stamp: 353 tests, 353 pass, 0 fail.
+
+## Standing Brief Amendments
+
+Folded into every dispatch brief for this plan:
+
+- The gate is `node --test "test/*.test.js"`, quoted. Never the bare directory form.
+- After editing any hook or `hooks.json`, run `./build.ps1` before the gate, or `hook-canary.test.js` reports two failures the edit did not cause.
+- Never write under `docs/`: the docs-write-guard denies a non-curator subagent that write (`plugins/claude-kit/hooks/docs-write-guard.js:87-106`). Return doc prose in the final message for the main thread to place.
 
 ## Sections of Work
 
@@ -51,6 +63,8 @@ When `KIT_RUN_ID` is set (it arrives only alongside the existing `KIT_MEMORY_ROO
 - Read paths (`recall`, `find`, `get`) span the main tier plus the caller's own `pending/<KIT_RUN_ID>/` only. Another run's pending directory is never read, listed, or counted. `recall` presents pending records under a labeled coverage line (the same explicit-surface pattern the digest already uses).
 - `KIT_RUN_ID` unset: behavior byte-identical to today, existing tests as the pin.
 
+The three read paths named above are a floor, not the list. memq's readers have a documented failure mode: the mutation helpers take a tier directory and so serve every tier equally, while each reader tends to be written against one tier and only later taught the others, leaving an absence that no green suite and no coverage count notices (it has surfaced three times). So enumerate every command in `memq.js` that resolves a tier directory and state, per command, whether the pending tier applies and why. `touch --applied` needs an explicit answer: `tierDirFor` deliberately resolves nothing under a tier's `archive/`, so a sidecar destination derived from a hit path is null there and a fail-open write swallows the miss silently. Any user-facing pointer ("the full list is X") is a claim that must hold with pending in play, not just for the common case.
+
 Run-id values are sanitized before path use (the id becomes a directory name; refuse separators, dots-only names, and anything outside a conservative token grammar, loudly).
 
 Files: `plugins/claude-kit/scripts/memq.js`, `plugins/claude-kit/hooks/memory-session.js`, tests in `test/`.
@@ -58,7 +72,9 @@ Acceptance: `node --test test` green; a child spawned with the three env vars wr
 Tests: both directions (env set routes and scopes; env unset is byte-identical), cross-run isolation, hostile run-id values refused, and the write-shape invariant (no new shared-file rewrite outside the lock).
 
 ### 3. PreToolUse grant hook for memq under gated vectors
-Model: fable
+Model: fable (code) + inline (docs)
+
+Routing override, visible up front: the `docs/security-model.md` bullet is a main-thread write. The docs-write-guard denies any non-curator subagent a write under `docs/` (`plugins/claude-kit/hooks/docs-write-guard.js:87-106`), so the dispatched implementer takes the hook, the wiring, and the tests, with the docs path out of its files-in-scope, and returns the guard-table prose in its final message for the main thread to place.
 
 Under the engine's write-gated vector (`--permission-mode` gated with path allows), Bash `node <script>` is refused for both read-only and writing memq invocations (probed live; Write/Edit file tools inside allowed roots succeed). Fleet workers on that vector need the memq CLI for recall and logging, so the kit ships a narrowly-scoped PreToolUse hook that grants exactly that and nothing else.
 
@@ -83,7 +99,9 @@ Files: `plugins/claude-kit/skills/executing-work/SKILL.md`, plus whatever the sw
 Acceptance: `grep -rn "plugins/marketplaces/" plugins/claude-kit/skills plugins/claude-kit/agents` returns no path-citation instructions (historical prose in `docs/` is exempt), and the rewritten bullet names `CLAUDE_PLUGIN_ROOT` as the source of the root.
 
 ### 5. Gate KIT_EVENTS_PATH to parity
-Model: sonnet
+Model: sonnet (code) + inline (docs)
+
+Routing override, visible up front: the `docs/architecture.md` and `docs/security-model.md` updates are main-thread writes, for the same docs-write-guard reason section 3 records. The implementer takes `kit-goal-lib.js`, `hook-canary.js`, and the tests, and returns the doc prose in its final message.
 
 `KIT_EVENTS_PATH` redirects the goal-event sink and is honored ungated (`plugins/claude-kit/hooks/kit-goal-lib.js:265-266`), while the memory and plugins roots take two-signal gates (`memq.js:174`, `memq-shim.js:82`). `docs/architecture.md:72` records the asymmetry as deliberate (a producer-side lever). Decided 2026-07-31 with the ratified brief: uniformity wins, because one auditable rule ("every kit env override that redirects a path carries a second signal") beats a per-override argument, and the engine, the only legitimate ambient setter, can set two variables as easily as one.
 
@@ -127,3 +145,22 @@ None. The ratified brief and the 2026-07-31 probe results settled the design for
 - Builds on: `../archive/claude-kit_external-engine-standdown_spec_v1.md` (the marker and directive contract this spec gives code readers), `../archive/claude-kit_hook-canary-and-goal-events_spec_v1.md` (the event stream section 5 gates), `../archive/claude-kit_memory-extension_spec_v1.md` and `../archive/claude-kit_memory-recall-and-reinforcement_spec_v1.md` (the store sections 2 extends).
 
 ## Chapters
+
+### Chapter 1 - 2026-08-01
+Completed: Section 1, Hooks stand down under KIT_EXTERNAL_ENGINE
+Implemented By: implementer-opus (no escalation); the stdin-drain fix and the spec amendments are the main session's
+Metrics: 1 review round (adversarial + blind, both at fable, one tier above the opus writer); 0 NEEDS_CONTEXT; 0 escalations; advisor opus. Security-reviewer not dispatched: the section changes hook output shape and adds no input handling, auth, SQL, secrets, or external boundary.
+Gate: baseline 353 pass / 0 fail at `5412086`; section close 370 pass / 0 fail, +17 added, none lost.
+
+Decisions / Surprises:
+- The spec's own gate command was wrong. It read `node --test test`, which on Node 24 resolves the directory as a single module, discovers no files, and exits 1 with one synthetic failure: a false red handed to every implementer this plan dispatches. Corrected in Approach to the quoted `node --test "test/*.test.js"`, and added a Standing Brief Amendments block so the correction rides in every later brief.
+- The build stamp is the other repeat trap: `./build.ps1` hashes every hook and `hooks.json` into an untracked `build-info.json` that `hook-canary.test.js` asserts against, so any hook edit costs two unrelated failures until a rebuild. The local stamp was already stale at the plan commit, which is what made the pre-work baseline read 351/2 rather than 353/0. Recorded in Approach and in the standing amendments; it bites sections 3 and 5 too.
+- Sections 3 and 5 were re-routed before dispatch. Both list files under `docs/`, and the docs-write-guard denies a non-curator subagent that write with exit 2 (`plugins/claude-kit/hooks/docs-write-guard.js:87-106`, read this turn), which would kill an implementer mid-section. Their model lines now read `<tier> (code) + inline (docs)`: the implementer takes the code and returns the doc prose in its final message for the main thread to place.
+- Section 2's brief gains a reader-enumeration requirement, from the `memq-two-tier-reader-symmetry` memory: memq's mutation helpers are tier-agnostic while its readers get written against one tier and taught the others later, an absence no green suite notices, and it has surfaced three times. The spec named three read paths; the amended text requires enumerating every command that resolves a tier directory, with `touch --applied` called out by name.
+- `stop-docs-hygiene.js` did block (`:139`), so the advisory conversion was needed rather than a no-op. The advisory shape is `{ systemMessage: text }` with no `decision` field. The reasoning, so it is not re-litigated: the absence of `decision` is what allows the stop, so if `systemMessage` is unsupported the outcome degrades to silence, which is exactly what a stderr fallback would give. Strictly no worse, with an upside. The tests pin the invariant (exit 0, no `decision` in stdout), not the channel.
+- Both reviewers flagged, in opposite directions, whether an armed kit goal can leash a fleet worker. Resolved from the code, not from either report: `kit-goal-stop.js:192` claims an unbound goal only when the plan path appears inside a `<command-args>` span of a genuinely typed user entry, with assistant, meta, attachment, tool_result, and sidechain entries all excluded (`:165-191`). An engine directive is prose, not command arguments, so a spawned worker cannot claim the leash. The gap is inert; no change made to `kit-goal-stop.js`. The adversarial reviewer had this right and the blind reviewer had it wrong.
+
+Review Findings: No Critical, no Major. Both reviewers APPROVED (blind: APPROVED_WITH_CONCERNS). Minors addressed: the two nudges returned before draining stdin while the canary deliberately drains first, an unexamined asymmetry that could EPIPE the harness's payload write; both now drain first and stand down before the fetch and the stamp read, where the cost actually is. Minors noted and deliberately not fixed: `session-start.js` still emits its goal-armed, completed-unarchived, and kaizen blocks under the marker (the section text says everything else the hook emits is unchanged, and the goal-armed case is inert per the claim-predicate finding above); the `systemMessage` channel reaches no model and may reach nobody at all in a headless worker, which is the accepted floor of the decision above. `docs/architecture.md` is now stale on the marker, since this section gives it its first code readers; section 5 already edits that file, so the update lands there.
+
+Next: Section 2, memq run-scoped pending tier with provenance (opus, dispatched)
+Commit Model: Commit-and-Push

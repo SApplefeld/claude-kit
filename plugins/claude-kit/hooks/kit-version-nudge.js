@@ -17,6 +17,10 @@
 // path it cannot positively resolve - no session id, no/older build stamp, an
 // unwritable temp dir, a marker that matches, any parse or IO error. It speaks
 // only when a pinned hash and a different on-disk hash are both in hand.
+//
+// Silent under KIT_EXTERNAL_ENGINE=1, the marker an external engine sets on the
+// sessions it spawns: the nudge asks for a session restart, which a headless
+// worker cannot perform, and each spawn carries the build the engine delivered.
 
 'use strict';
 
@@ -57,9 +61,13 @@ function markerPath(sessionId) {
 }
 
 function main() {
-    // Parse Hook Payload.
+    // Parse Hook Payload. Drained before the stand-down so the harness's write
+    // to this hook's stdin always finds a reader; the stand-down still precedes
+    // the build-stamp read and the session-marker write.
     let p = {};
     try { p = JSON.parse(readStdin() || '{}'); } catch { return; }
+
+    if (process.env.KIT_EXTERNAL_ENGINE === '1') return; // spawned by an external engine: no restart to ask for
 
     const sessionId = p.session_id || p.sessionId;
     if (!sessionId) return;              // cannot tell sessions apart: silent
