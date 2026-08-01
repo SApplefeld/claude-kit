@@ -1,6 +1,6 @@
 # Claude-Kit Memq Session Recap
 
-Status: Queued (starts after claude-kit_instance-store-pin_spec_v1.md completes; flip to In Progress at execution start)
+Status: In Progress
 Commit Model: Commit-and-Push
 Fable Spend: finishing reviews
 Created: 2026-08-01
@@ -79,3 +79,20 @@ None. Approach and sequencing were settled with Scott on 2026-08-01; the 1d defa
 - Builds on `../archive/claude-kit_fleet-integration_spec_v1.md`, which established the gated store overrides `recent` resolves through.
 
 ## Chapters
+
+### Chapter 1 - 2026-08-01
+Completed: 1. `memq recent`: the time-boxed activity digest
+Implemented By: implementer-opus, one dispatch plus one fix round via the same agent's context
+Metrics: 1 review round (adversarial + blind + security, all at the session model); 0 NEEDS_CONTEXT; 0 escalations; advisor opus
+Decisions / Surprises:
+- Two spec adjustments, both fulfilling the spec's own stated rules rather than changing intent, and both endorsed by the adversarial reviewer as following from the spec text. The digest spans three tiers, not the two the spec names: the run-scoped pending tier exists and the spec's own parenthetical says a project-tier-only reader is this store's known failure mode. And `recent` carries the provenance fence, which the spec does not mention: it is a new path carrying store content into a model's context and it is recall-shaped, so `security-model.md`'s output-shape test puts it with `recall` rather than with `find`.
+- The fence rule was applied more widely than the dispatch brief first instructed, and the brief was wrong. It told the implementer to match `cmdRecall` and leave journal lines at column zero under a store pin. The security and adversarial reviewers independently rejected that: `recall` emits one line per journal key, `recent` emits one per entry inside the window, and `recentDigest` cuts the journal last, so a pinned digest is exactly the shape where unfenced other-worker prose can fill the budget. Pinned journal lines now carry the fence. `cmdRecall`'s own narrower posture is left unchanged and is named below as out of scope.
+- The archive surface was dead code against its own contract. `decay-prune` archives with a bare `fs.renameSync` and rename preserves mtime, while membership keyed on mtime alone; an archive candidate is idle 60+ days by construction, so a demotion could never land inside any plausible window. Archive records now key on `max(mtime, ctime)`, the clock a rename actually moves. The blind reviewer reproduced the failure end to end before it was fixed.
+- The test that covered the archive surface passed only because its fixture hand-wrote an archived file with a 3-hour mtime, a state no production path can create. It now drives a real `decay-prune --archive` and was watched red against the old code first.
+- A latent crash surfaced in shared code: `recallAgeColumn` called `new Date(ms).toISOString()`, which throws `RangeError` for a finite value outside Date's range, so one corrupt file mtime ended the whole digest. The function already promised `unknown` for a moment no arithmetic can trust, so the range guard makes it honor its stated contract. It is shared with `recall`, with no behavior change on any valid input.
+- The `added` label needed a platform gate to match the spec's "where the platform distinguishes creation time, labeled updated otherwise". A birthtime-versus-mtime comparison cannot express it: where Node falls back to ctime, an ordinary content write leaves the two equal, which is indistinguishable from a genuine never-modified file.
+- `docs/security-model.md` gained the `recent` row and its two counted claims moved (three type-tier paths to four, five fenced hops to six). A change that falsifies a count has a blast radius set by where the count is repeated, which is the drift-sweep rule this session's earlier commit (36cb51b) put into the curator's charter.
+Review Findings: 4 Major and 7 Minor raised across three reviewers, all 11 fixed. 8 were verified red-first by reverting the fix against its new test, including the `RangeError` crash and the unreachable archive path. Three findings were adjudicated as no-change with the reason recorded: a rollup and a raw stamp both counting as stamps (the group counts stamps and says so), a future-dated mtime staying in every window (reading a skewed clock as "just now" beats hiding real activity), and the interleaved per-group output shape (it is what the spec's own wording describes). Two residuals are known and named rather than hidden: the framing line keys on type-derived records built rather than records surviving a budget cut, so a pin whose every type line is cut still names the type tier; and `cmdRecall`'s unfenced pinned journal lines are a narrower instance of the same question, left out of scope because changing a shipped command's output is a separate call.
+Gate: 456 tests, 456 pass, 0 fail, against a 444 baseline captured at 2b901f3 plus 36cb51b. +12 tests, all new; nothing else moved.
+Next: 2. Wire the recap into close-out and the skill reference
+Commit Model: Commit-and-Push
