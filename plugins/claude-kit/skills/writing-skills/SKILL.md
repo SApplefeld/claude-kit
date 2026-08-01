@@ -38,10 +38,11 @@ Name the failure first, then pick the form that fixes it. The form that bulletpr
 | Omits a required element from something it already produces | A structural slot: a REQUIRED field in the template it fills | Prose reminders near the template |
 | Behavior should depend on a condition | A conditional on an observable predicate ("if the brief exists, reference it") | An unconditional rule plus exemption clauses |
 
-Two rules govern any rule you write, not just the four forms above:
+Three rules govern any rule you write, not just the four forms above:
 
 - **No nuance clauses.** "Don't X unless it matters" reopens the negotiation. Express a real exception as its own conditional on something observable.
 - **Exemption clauses do not scope.** "This limit excludes code blocks" still suppresses code blocks. If part of the output must be exempt, restructure so the rule cannot reach it.
+- **Close every enumeration with its class.** A list of instances (a rationalization table, a blocker set, an antipattern list) reads as exhaustive the moment it ships, so an unlisted variant presents itself as licensed. State the class the instances belong to right where the list ends ("the table is instances, not the boundary"; "the set is closed"), so a novel variant meets the rule even though no row names it.
 
 ## Know it works before you trust it
 
