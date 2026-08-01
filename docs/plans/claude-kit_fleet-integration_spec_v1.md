@@ -75,7 +75,7 @@ Acceptance: `node --test test` green; a child spawned with the three env vars wr
 Tests: both directions (env set routes and scopes; env unset is byte-identical), cross-run isolation, hostile run-id values refused, and the write-shape invariant (no new shared-file rewrite outside the lock).
 
 ### 3. PreToolUse grant hook for memq under gated vectors
-Model: fable (code) + inline (docs)
+Model: fable
 
 Routing override, visible up front: the `docs/security-model.md` bullet is a main-thread write. The docs-write-guard denies any non-curator subagent a write under `docs/` (`plugins/claude-kit/hooks/docs-write-guard.js:87-106`), so the dispatched implementer takes the hook, the wiring, and the tests, with the docs path out of its files-in-scope, and returns the guard-table prose in its final message for the main thread to place.
 
@@ -102,7 +102,7 @@ Files: `plugins/claude-kit/skills/executing-work/SKILL.md`, plus whatever the sw
 Acceptance: `grep -rn "plugins/marketplaces/" plugins/claude-kit/skills plugins/claude-kit/agents` returns no path-citation instructions (historical prose in `docs/` is exempt), and the rewritten bullet names `CLAUDE_PLUGIN_ROOT` as the source of the root.
 
 ### 5. Gate KIT_EVENTS_PATH to parity
-Model: sonnet (code) + inline (docs)
+Model: sonnet
 
 Routing override, visible up front: the `docs/architecture.md` and `docs/security-model.md` updates are main-thread writes, for the same docs-write-guard reason section 3 records. The implementer takes `kit-goal-lib.js`, `hook-canary.js`, and the tests, and returns the doc prose in its final message.
 
@@ -126,7 +126,7 @@ The engine's `PlanDocParser` consumes the plan-doc header case-sensitively: `^St
 - `skills/writing-skills` or `skills/curating-docs` (implementer's call on which owns it; cross-link from the other) gains a short "machine contract" statement: `Status:` and `Commit Model:` are a frozen v1 contract consumed by external machinery, exact key spelling and case, at line start, one of each, above the first `##` heading; the brainstorming skill's spec template is the normative instance; changing the shape is a coordinated versioned contract change with the OS repo, never a drive-by edit.
 - The tolerant kit-side reader stays tolerant (a strict writer contract and a tolerant reader are compatible).
 
-Files: one of `plugins/claude-kit/skills/curating-docs/SKILL.md` / `plugins/claude-kit/skills/writing-skills/SKILL.md`, cross-link in the other.
+Files: `plugins/claude-kit/skills/curating-docs/SKILL.md` owns the contract, with a pointer from `plugins/claude-kit/skills/writing-skills/SKILL.md`, `plugins/claude-kit/skills/brainstorming/SKILL.md`, and `plugins/claude-kit/skills/executing-work/SKILL.md`. The last two are the amendment: a pointer is only useful if it sits in the skill a session has loaded at the moment it writes the thing, which is brainstorming for a spec header and executing-work for a Chapter.
 Acceptance: the contract text names both keys, the exact-case rule, the consumers (OS `PlanDocParser`, kit `session-start.js`), and the change rule.
 
 ## Out of Scope
@@ -150,7 +150,7 @@ None. The ratified brief and the 2026-07-31 probe results settled the design for
 ## Chapters
 
 ### Chapter 1 - 2026-08-01
-Completed: Section 1, Hooks stand down under KIT_EXTERNAL_ENGINE
+Completed: 1. Hooks stand down under KIT_EXTERNAL_ENGINE
 Implemented By: implementer-opus (no escalation); the stdin-drain fix and the spec amendments are the main session's
 Metrics: 1 review round (adversarial + blind, both at fable, one tier above the opus writer); 0 NEEDS_CONTEXT; 0 escalations; advisor opus. Security-reviewer not dispatched: the section changes hook output shape and adds no input handling, auth, SQL, secrets, or external boundary.
 Gate: baseline 353 pass / 0 fail at `5412086`; section close 370 pass / 0 fail, +17 added, none lost.
@@ -169,7 +169,7 @@ Next: Section 2, memq run-scoped pending tier with provenance (opus, dispatched)
 Commit Model: Commit-and-Push
 
 ### Chapter 2 - 2026-08-01
-Completed: Section 2, memq run-scoped pending tier with provenance
+Completed: 2. memq run-scoped pending tier with provenance
 Implemented By: implementer-opus (no tier escalation); the `docs/security-model.md` write and the spec corrections are the main session's, per the docs routing override
 Metrics: 1 review round plus 2 fix rounds on the same implementer via SendMessage; reviewers adversarial + blind at fable and security-reviewer at default; 0 NEEDS_CONTEXT; 0 escalations; advisor opus. Security-reviewer dispatched because the section builds filesystem paths from environment variables and emits environment-derived text into a trusted context channel.
 Gate: 370 pass / 0 fail at section start; 390 pass / 0 fail at close, +20 added, none lost. Also run green with `KIT_RUN_ID`, `KIT_SPAWN_VECTOR`, and `KIT_RUN_SECTION` set in the shell, which is the environment a fleet worker runs the suite in.
@@ -190,7 +190,7 @@ Next: Section 3, PreToolUse grant hook for memq under gated vectors (fable for t
 Commit Model: Commit-and-Push
 
 ### Chapter 3 - 2026-08-01
-Completed: Section 3, PreToolUse grant hook for memq under gated vectors
+Completed: 3. PreToolUse grant hook for memq under gated vectors
 Implemented By: implementer-fable (the Fable Spend header names this section); the `docs/security-model.md` writes are the main session's, per the routing override
 Metrics: 1 review round plus 1 fix round via SendMessage; reviewers adversarial + blind at fable and security-reviewer at default; 0 NEEDS_CONTEXT; 0 escalations; advisor opus
 Gate: 390 pass / 0 fail at section start; 424 pass / 0 fail at close, +34 added, none lost.
@@ -211,7 +211,7 @@ Next: Section 4, Style-skill paths resolve from the loaded plugin (sonnet)
 Commit Model: Commit-and-Push
 
 ### Chapter 4 - 2026-08-01
-Completed: Section 4, Style-skill paths resolve from the loaded plugin
+Completed: 4. Style-skill paths resolve from the loaded plugin
 Implemented By: implementer-sonnet (no escalation)
 Metrics: 1 review round plus 1 fix round via SendMessage; adversarial-reviewer at opus, one tier above the sonnet writer; blind-reviewer deliberately not dispatched; security-reviewer not dispatched (prose only, no code, and the changeset is entirely markdown); 0 NEEDS_CONTEXT; 0 escalations; advisor opus
 Gate: 424 pass / 0 fail before and after. Prose-only section, no test should have moved and none did.
@@ -232,7 +232,7 @@ Next: Section 5, Gate KIT_EVENTS_PATH to parity (sonnet for the code, main threa
 Commit Model: Commit-and-Push
 
 ### Chapter 5 - 2026-08-01
-Completed: Section 5, Gate KIT_EVENTS_PATH to parity
+Completed: 5. Gate KIT_EVENTS_PATH to parity
 Implemented By: implementer-sonnet (no escalation); the `docs/architecture.md` and `docs/security-model.md` writes and the memory correction are the main session's
 Metrics: 1 review round plus 1 fix round via SendMessage; adversarial + blind at opus, one tier above the sonnet writer, and security-reviewer at default; 0 NEEDS_CONTEXT; 0 escalations; advisor opus
 Gate: 424 pass / 0 fail at section start; 428 pass / 0 fail at close, +4, none lost. The real `~/.claude/kit-events.jsonl` mtime is unchanged at 2026-07-31 15:35:54 across the whole section, verified by me at the close, which is the evidence that no test leaked into it.
@@ -253,4 +253,27 @@ Review Findings: 3 Major and 10 Minor across three reviewers; no Critical. Major
 Verified-not-findings worth carrying: all three reviewers independently confirmed the `KIT_EVENTS_PATH` sweep across the test files is complete, that the ungated fallback both notes and actually redirects (the tests assert the event lands in the default sink, not merely that the note appeared), that the sink's non-file, rotation, and failed-rotation semantics are unchanged, that the note cannot escape the best-effort contract, and that the signal's strictness matches its siblings. The security review also confirmed `kit-goal-lib.js` sits inside the build's hashed manifest despite not being a wired hook entry, so removing this gate from the writable plugin cache is canary-visible.
 
 Next: Section 6, Plan-doc header machine contract (sonnet)
+Commit Model: Commit-and-Push
+
+### Chapter 6 - 2026-08-01
+Completed: 6. Plan-doc header machine contract
+Implemented By: implementer-sonnet (no escalation); the plan-doc repairs and the spec amendments are the main session's
+Metrics: 1 review round plus 1 fix round via SendMessage; adversarial-reviewer at opus, one tier above the sonnet writer; blind-reviewer not dispatched (prose only, same reasoning recorded in Chapter 4: its lens is a diff without the intent story, and this diff is instruction prose whose correctness is its intent); security-reviewer not dispatched (the changeset is entirely markdown, which is finishing-work's stated all-prose waiver); 0 NEEDS_CONTEXT; 0 escalations; advisor opus
+Gate: 428 pass / 0 fail before and after. Prose only.
+
+Deliberate scope expansion, recorded because it changed what the section says: the spec scoped the contract to `Status:` and `Commit Model:`. Reading the actual consumer showed the parser compiles nine patterns, none with IgnoreCase, and the reviewer confirmed the widening was correct rather than scope creep. A contract naming two keys while the engine parses nine leaves the other seven silently editable, which is the exact failure the section exists to stop.
+
+Decisions / Surprises:
+- The section found that this very plan doc violated the contract it was declaring, in two ways, both mine. Every `Completed:` line read `Completed: Section N, <title>`, and `SectionCompletion.Matches` (`SectionCompletion.cs:22-27`, read by me) accepts only a `N.` prefix, a `N ` prefix, or exact title equality, Ordinal, never a substring, so the engine would have seen all five closed sections as permanently open and re-targeted them. And sections 3 and 5 carried the compound `Model: fable (code) + inline (docs)` I introduced in Chapter 1 to make the docs routing override visible; `ModelIdForTier` (`DispatchPump.cs:5435-5442`, read by me) accepts only the bare tokens `haiku`, `sonnet`, `opus`, `fable` and silently falls through to a sonnet default, so both sections would have dispatched at sonnet. Both repaired here: the `Completed:` lines take the numeric prefix form, and the Model lines are bare tokens with the routing override staying in prose where it was always the readable half. This is the section justifying itself: the defect was introduced by a careful reader following the kit's own Chapter template, which is precisely the drive-by the contract exists to catch.
+- The value shapes are the load-bearing half and the spec did not anticipate them. Four rows carry a value rule the engine enforces silently: `Status:` must equal `Complete` exactly or the plan never reads terminal, `Commit Model:` needs a recognized leading token or the run parks without dispatching, `Model:` is the bare-token set above, and `Completed:` is the matching rule that bit this doc. A line with the right key and an unrecognized value is worse than a missing line, because the engine substitutes a default rather than failing.
+- The two `##` headings are parsed and were the largest omission. `## Sections of Work` and `## Chapters` are compared Ordinal, and `## Chapters` additionally bounds the approval-scoped fingerprint, so renaming it makes every ordinary Chapter append read as approval drift, and inserting any `##` heading inside the sections block silently drops every later section and can make a plan read as terminal with work undone.
+- The "exactly once" claim in the first draft was false and self-refuting: the parser takes the first match and breaks, and `executing-work`'s own Chapter template requires a `Commit Model:` line per Chapter, so this doc has six and an archived plan has fifteen. An author checking the contract against the first plan they opened would have seen it violated and discounted the table. Restated as first-occurrence-wins with the above-the-first-`##` rule kept as the writer discipline that makes the right occurrence win.
+- The consumer asymmetry is per-row, not uniform. `session-start.js` reads only two of the nine rows, from the first 2048 bytes, and whitelists the commit-model value to three known strings. For the other seven there is no kit-side reader at all, so the local signal is not lenient, it is absent, which is a stronger argument for writing the contract down than the first draft made.
+- Pointers were added to `brainstorming` and `executing-work` beyond the spec's two files. A pointer only works if it sits in the skill a session has loaded at the moment of the edit, and those are the two skills that own the normative templates. The spec's Files line is amended to match.
+
+Open, and the one item I am carrying to you rather than deciding: the kit's own tier vocabulary includes `fable (inline)`, offered in the brainstorming spec template's `Model:` pick-list. The engine silently downgrades that value to sonnet. Either the kit stops putting a decorated value on the `Model:` line (moving the inline marker somewhere the parser does not read) or the engine learns the decorated form. That is a cross-repo vocabulary change affecting both this kit's routing prose and the OS parser, so it is not a call to make inside this section; the contract text states the current truth, and the pick-list is untouched.
+
+Review Findings: 2 Critical, 5 Major, 3 Minor, all from the adversarial reviewer, all fixed. Both Criticals (the `Model:` value rule and the missing `##` heading rows) were verified by me against the engine source before I ordered the fix, since both changed artifacts I had written. The implementer re-verified every engine-side claim in the table against its file and reported the line for each; one path in my own fix brief was wrong (`DispatchPump.cs` is in `Spine.Kernel`, not `Spine.Core`) and it corrected it rather than inheriting it.
+
+Next: finishing-work
 Commit Model: Commit-and-Push

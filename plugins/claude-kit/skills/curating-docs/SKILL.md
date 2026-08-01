@@ -59,6 +59,29 @@ When asked to tidy or retrofit a `docs/` that predates this structure:
 2. **Propose the migration.** State which plans move to the archive, what the index and backlog will contain, and which READMEs get seeded. Present it and stop. Move nothing yet; this is a destructive-enough batch to earn a confirmation.
 3. **Apply on approval.** Create the zones and READMEs from the templates, `git mv` the completed and abandoned plans into the archive, seed the index and backlog, and report what moved. Never delete a file; relocate it.
 
+## The header is a machine contract
+
+A plan doc's header and structure are not just kit convention. An external engine (the AI OS Spine) parses every plan doc to drive its own fleet, and its parser is case-sensitive and anchored to the start of the line, so a reasonable-looking rewording parses as absent rather than as a variant. Several rows also carry a load-bearing value shape, not just a key shape: a line with the right key and a value the engine does not recognize is worse than a missing line, because it silently substitutes a default rather than failing loud. This is the frozen v1 contract:
+
+| Line or heading | Exact shape | Value rule |
+|---|---|---|
+| Title | `# <Title>` (first H1) | free-form |
+| Status header | `Status: <value>`; the first occurrence above the first `##` heading is the one read | must equal `Complete` exactly (whole string, case-insensitive) for the plan to read as terminal; `Complete (archived)` or any other trailing text does not terminate |
+| Commit Model header | `Commit Model: <value>`; the first occurrence above the first `##` heading is the one read (a Chapter's own `Commit Model:` line, required by `executing-work`'s template, is a later occurrence and is ignored) | must open with `Commit-and-Push`, `Branch-and-PR`, or `Review-Only` (case-insensitive, trailing prose tolerated); any other leading token, or an absent header, parks the run without dispatching, and `Review-Only` itself never dispatches |
+| `## Sections of Work` heading | the literal text `Sections of Work` on a `##` line | bounds the block; any other `##` heading inserted inside it ends the block early, silently dropping every later `### N.` section |
+| Section heading | `### N. <Title>` (one or more digits, a period, whitespace) inside `## Sections of Work` | free-form title |
+| Section model line | `Model: <value>`, the first one following a section heading | must be exactly `haiku`, `sonnet`, `opus`, or `fable` (trimmed, case-insensitive); anything else, including a decorated value like `fable (inline)`, silently dispatches at a default sonnet model with no error |
+| `## Chapters` heading | the literal text `Chapters` on a `##` line | bounds the block, and also marks where the approval-scoped fingerprint stops; renaming it makes that fingerprint cover the whole document, so every ordinary Chapter append then reads as approval drift |
+| Chapter heading | `### Chapter N` (only the word and the number are parsed; a trailing ` - <date>` is convention, not contract) inside `## Chapters` | N is one or more digits |
+| Chapter completed line | `Completed: <value>`, the first one in the Chapter | must start with the section number followed by a period or a space, or equal the section title exactly (case-sensitive, never a substring); anything else leaves the section permanently open. Check an existing Chapter against these three forms before assuming it registers: a phrasing like `Completed: Section 1, <title>` matches none of them |
+| Chapter next line | `Next: <value>`, the first one in the Chapter | free-form |
+
+Two consumers read this shape, at different strictness, and the difference is per-row rather than uniform. The OS repo's `PlanDocParser` is the strict reader for every row above; it is what this contract protects. The kit's own `hooks/session-start.js` plan-recovery push reads only the Status and Commit Model rows, from the first 2048 bytes of the file, case-insensitively, with a BOM strip, and reports an unrecognized Commit Model value as `unknown` rather than erroring; every other row has no kit-side reader at all. So a malformed Status or Commit Model line does surface locally, since the plan drops out of the recovery inventory; a malformed row anywhere else in the table gives no local signal at all, and only the engine notices, silently, later.
+
+The Title, Status, Commit Model, `## Sections of Work`, section heading, and section model rows are normatively instanced in the brainstorming skill's spec format (`skills/brainstorming/SKILL.md`, Spec format), though its own `Model:` pick-list includes a decorated value that silently downgrades per the row above, so a plan built from the template still needs its `Model:` lines checked against the bare-token rule. The `## Chapters`, Chapter heading, Completed, and Next rows are normatively instanced in `executing-work/SKILL.md`'s Chapter format.
+
+This is a frozen v1 contract. Changing the shape or value rule of any row is a coordinated, versioned change with the OS repo, never a drive-by edit to plan-doc prose.
+
 ## Templates
 
 The README, index, and backlog skeletons live in `references/templates.md`. Seed from there rather than inventing a new shape per project, so every project's library reads the same way.

@@ -84,6 +84,8 @@ Unresolved items and who owns the answer.
 (Appended by executing-work as sections complete. Leave empty at creation.)
 ```
 
+The header and structure above are a machine contract read by external tooling, not just kit convention; see `curating-docs/SKILL.md`'s machine contract section for the frozen shape and which values it accepts, including `Model:`.
+
 ## When not to use
 
 A trivial fix or a small obvious change does not need a spec; just fix it under the global rules. If I ask to brainstorm something that turns out to be trivial, say so and offer to just do it.

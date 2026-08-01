@@ -188,6 +188,8 @@ Commit Model: <Review-Only | Branch-and-PR | Commit-and-Push>
 
 Chapters exist so that a compacted or fresh session can recover full working state from the plan doc alone. Write them for that reader. The Metrics line doubles as the data feed for the kit's open experiments (the tier-band and advisor questions in `docs/backlog.md`), so record it even when every count is zero.
 
+The Chapter heading and its `Completed:`/`Next:` lines are a machine contract read by external tooling, not just kit convention; see `curating-docs/SKILL.md`'s machine contract section for the frozen shape and which values register a section complete.
+
 ## When all sections are complete
 
 Invoke the finishing-work skill. Do not declare the effort done without it. This holds under Review-Only: finishing-work still flips the plan to Complete, archives it, and stages it with the code. Review-Only defers the commit to me, never the doc's finalization, so the plan is never left open for me to close.

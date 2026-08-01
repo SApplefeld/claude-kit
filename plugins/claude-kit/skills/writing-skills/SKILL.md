@@ -19,6 +19,7 @@ A skill is behavior-shaping prose, not documentation. One that reads well but do
 - **Frontmatter: always quote the description.** An unquoted value containing a colon-space breaks the YAML silently and drops all skill metadata. `name` and `description` are the two that matter.
 - Body: the principle, the rules that carry judgment, the antipatterns. Tables and lists for what gets scanned; prose for the why. A flowchart only for a decision where the agent might genuinely go wrong, never for linear steps.
 - **One owner per rule.** Every rule has exactly one owning site; every other mention is a pointer or an operational residue at its point of action, never a restatement. A rule stated twice is two rules a week later: the 2026-07-14 stabilization audit found a dozen drifted copies, one in outright contradiction. When editing a rule, grep for its key phrases across the kit and fix the owner, not the nearest copy.
+- The plan-doc header and structure is one such rule, owned outside this skill: `curating-docs/SKILL.md`'s "machine contract" section is the frozen shape external tooling parses. Point at it rather than restating any of its lines here.
 
 ## The description states the trigger, not the workflow
 
