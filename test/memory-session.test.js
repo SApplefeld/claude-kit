@@ -64,13 +64,29 @@ function writeStamp(store, ageDays) {
 // Run the hook as a child. The child's cwd is the fake project so the
 // payload-cwd fallback resolves inside the test store; process.env is spread
 // rather than rebuilt so the child keeps its real PATH (a rebuilt env object
-// loses the Windows `Path` key), and extra is where a case adds NODE_OPTIONS.
+// loses the Windows `Path` key), and extra is where a case adds NODE_OPTIONS
+// or a run id.
+//
+// The run-scoped variables are dropped from every child: this suite runs
+// inside fleet workers too, where the engine sets all three, and an inherited
+// KIT_RUN_ID would put the run-scoped block into the output of every case
+// that asserts the hook is silent. Keys are matched case-insensitively,
+// because a Windows environment block's key casing is not the spelling a JS
+// object copy is indexed by.
+function scrubRunEnv(env) {
+    for (const k of Object.keys(env)) {
+        if (/^KIT_(RUN_ID|SPAWN_VECTOR|RUN_SECTION)$/i.test(k)) delete env[k];
+    }
+    return env;
+}
+
 function runHook(store, payload, extra) {
+    const env = scrubRunEnv({ ...process.env });
     return spawnSync(process.execPath, [HOOK], {
         input: typeof payload === 'string' ? payload : JSON.stringify(payload),
         cwd: store.proj,
         encoding: 'utf8',
-        env: { ...process.env, KIT_MEMORY_ROOT: store.root, KIT_MEMORY_ROOT_ALLOW_DATA: '1', ...(extra || {}) }
+        env: { ...env, KIT_MEMORY_ROOT: store.root, KIT_MEMORY_ROOT_ALLOW_DATA: '1', ...(extra || {}) }
     });
 }
 
@@ -293,7 +309,7 @@ test('an ungated KIT_MEMORY_ROOT feeds nothing into the session context', () => 
         // pointed at an empty temp directory so that store is observable and
         // hermetic) and emits nothing; the ignored override is noted on
         // stderr, which never enters context.
-        const env = { ...process.env, KIT_MEMORY_ROOT: store.root };
+        const env = scrubRunEnv({ ...process.env, KIT_MEMORY_ROOT: store.root });
         delete env.KIT_MEMORY_ROOT_ALLOW_DATA;
         for (const k of Object.keys(env)) {
             const lower = k.toLowerCase();
@@ -435,6 +451,164 @@ test('a huge type index costs a bounded read and a bounded emission', () => {
         assert.match(out[1], /- \[m0\]\(m0\.md\)/, 'emission comes from the head of the file');
         assert.match(out[out.length - 1], /^ {2}\.\.\. and \d+\+ more index lines$/,
             'a clipped index reports its remainder as a floor, marked with +');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The run-scoped memory block. A session spawned by an external engine
+// carries KIT_RUN_ID, and the block is how it learns where its memory writes
+// go. Three directions are pinned, because the expensive failure is silence
+// in the middle one: no variable at all says nothing; a usable run id names
+// the destination; a run id the kit cannot honor stands the session down,
+// since a session that believes it is in a run and hears nothing writes into
+// the shared project tier and indexes it.
+
+// The one block that is not a single line: the frontmatter it asks for is
+// emitted as its own indented lines under the instruction.
+function assertBlock(res) {
+    assert.strictEqual(res.status, 0, res.stderr);
+    assert.strictEqual(res.stderr, '');
+    const parsed = JSON.parse(res.stdout);
+    assert.strictEqual(parsed.hookSpecificOutput.hookEventName, 'SessionStart');
+    return parsed.hookSpecificOutput.additionalContext;
+}
+
+test('a run id points the session at its own pending directory, with the provenance frontmatter', () => {
+    const store = makeStore();
+    try {
+        const context = assertBlock(runHook(store, startupPayload(store), {
+            KIT_RUN_ID: 'r1', KIT_SPAWN_VECTOR: 'fleet-worker', KIT_RUN_SECTION: 'section 2'
+        }));
+        const pendingDir = path.join(store.memDir, 'pending', 'r1');
+        assert.ok(context.includes(pendingDir), 'the block names the run\'s own pending directory');
+        assert.match(context, /never in the project memory directory/);
+        assert.match(context, /Do not add a line to MEMORY\.md or edit it/,
+            'a pending memory carries no index line: that half of the block is not optional');
+        // The frontmatter is memq's own lines, so the fields the session
+        // writes by hand and the fields memq writes cannot drift. The date is
+        // matched by shape, because the child computes it and a UTC midnight
+        // between the spawn and this assert would red for no defect.
+        assert.match(context, new RegExp('\\n {2}---\\n {2}run: r1\\n {2}vector: fleet-worker'
+            + '\\n {2}section: section 2\\n {2}written: \\d{4}-\\d{2}-\\d{2}\\n {2}---$'));
+        // The indentation is presentation, and the session is told so: an
+        // indented frontmatter field does not read as one (pinState calls it
+        // misplaced), so a literal copy would write a file the store's own
+        // parsers mishandle.
+        assert.match(context, /shown indented because they are data in this block; write them at\s+column zero/);
+        assert.match(context, /set written: to the date you write the file/,
+            'the emitted date is baked at session start, so the instruction owns the drift');
+
+        // The destination is emitted exactly as memq computed it, never
+        // reduced to fit: a session acts on this path.
+        assert.ok(context.includes(pendingDir + ' (create it if it is not there)'));
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('no run id at all is silent, and an empty one reads as no run', () => {
+    const store = makeStore();
+    try {
+        assertSilent(runHook(store, startupPayload(store)));
+        // An empty value is an unset variable's ordinary shape, not a session
+        // that believes it is in a run.
+        assertSilent(runHook(store, startupPayload(store), { KIT_RUN_ID: '' }));
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a run id the kit cannot honor stands the session down instead of failing open', () => {
+    const store = makeStore();
+    try {
+        // Every case here goes through runHook, which sets KIT_MEMORY_ROOT and
+        // KIT_MEMORY_ROOT_ALLOW_DATA=1: the store signals are what make this a
+        // real engine spawn, and the stand-down exists only for that state. A
+        // malformed id there is a spawn that asked for run-scoped quarantine
+        // the kit cannot deliver, and the CLI refuses such a run outright.
+        for (const id of ['..', 'a/b', 'a\\b', 'x'.repeat(41), 'has space', 'r1.', 'NUL']) {
+            const context = assertBlock(runHook(store, startupPayload(store), { KIT_RUN_ID: id }));
+            assert.match(context, /Write no memory files this session/,
+                'silence here would mean writing into the shared project tier: ' + id);
+            assert.match(context, /do not add a line to MEMORY\.md or edit it/);
+            assert.match(context, /not usable as a directory name/);
+            assert.ok(!context.includes('pending'), 'no destination is named for a run without one');
+        }
+
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a run id without the store signals is not a spawn: the session is left alone entirely', () => {
+    const store = makeStore();
+    try {
+        // The state this case exists for: a well-formed run id from a shell
+        // profile or a committed .vscode env, with no engine behind it. It is
+        // an ungated override, which memq ignores and notes on its own stderr;
+        // standing the session down over it would cost an ordinary developer
+        // every memory write for the whole session.
+        const bare = (extra) => spawnSync(process.execPath, [HOOK], {
+            input: JSON.stringify(startupPayload(store)),
+            cwd: store.proj,
+            encoding: 'utf8',
+            env: { ...scrubRunEnv({ ...process.env }), ...extra }
+        });
+
+        // No store signals at all.
+        const none = bare({ KIT_RUN_ID: 'r1' });
+        assert.strictEqual(none.status, 0, none.stderr);
+        assert.strictEqual(none.stdout, '', 'no block of any kind, stand-down included');
+
+        // The store root set without its second signal is the same state: the
+        // pair is what marks a spawn. Reporting the ignored variable is the
+        // memq CLI's job (pinned in its own suite); this hook decides the
+        // question before it ever resolves a run, so it says nothing at all.
+        const halfGated = bare({
+            KIT_RUN_ID: 'r1', KIT_MEMORY_ROOT: store.root, KIT_MEMORY_ROOT_ALLOW_DATA: '0'
+        });
+        assert.strictEqual(halfGated.status, 0, halfGated.stderr);
+        assert.strictEqual(halfGated.stdout, '');
+
+        // A malformed id without the signals is the same non-spawn: silent,
+        // not stood down.
+        const malformed = bare({ KIT_RUN_ID: '..' });
+        assert.strictEqual(malformed.status, 0, malformed.stderr);
+        assert.strictEqual(malformed.stdout, '');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a pending directory too long to name faithfully stands the session down', () => {
+    const store = makeStore();
+    try {
+        // The store flattens a whole cwd into one directory-name segment and
+        // pending/<id>/ stacks on top, so a real store path can pass the
+        // Win32 limit. A truncated destination would be a directory the
+        // session creates and writes into where no adjudicator looks, so the
+        // hook refuses to name one at all.
+        const context = assertBlock(runHook(store, startupPayload(store),
+            { KIT_RUN_ID: 'r'.repeat(40) + '', KIT_MEMORY_ROOT: path.join(store.root, 'd'.repeat(200)) }));
+        assert.match(context, /cannot be named here/);
+        assert.match(context, /Write no memory files this session/);
+        assert.match(context, /longer than 260 characters/);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('the run block coexists with the decay nudge rather than displacing it', () => {
+    const store = makeStore();
+    try {
+        writeStamp(store, 31);
+        const context = assertBlock(runHook(store, startupPayload(store), { KIT_RUN_ID: 'r1' }));
+        assert.match(context, /decay stamp is 31 days old/);
+        assert.match(context, /Kit run-scoped memory:/);
+        // Absent spawn values are absent fields, never present and empty.
+        assert.ok(!context.includes('vector:'), 'no vector was set, so no vector field is asked for');
+        assert.ok(!context.includes('section:'));
     } finally {
         rmStore(store);
     }

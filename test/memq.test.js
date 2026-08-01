@@ -43,17 +43,37 @@ function rmStore(store) {
     }
 }
 
+// Drop the run-scoped variables from a child's environment. This suite runs
+// inside fleet workers too, where the engine sets all three, and an inherited
+// KIT_RUN_ID would reroute every child's writes and reads into a pending tier
+// and change the meaning of every exact-output assertion here, the
+// byte-identity case most of all. Keys are matched case-insensitively,
+// because a Windows environment block's key casing is not the spelling a JS
+// object copy is indexed by, the same care the KIT_MEMORY_ROOT gate test
+// takes with USERPROFILE. A case that wants a run passes it through `extra`.
+function scrubRunEnv(env) {
+    for (const k of Object.keys(env)) {
+        if (/^KIT_(RUN_ID|SPAWN_VECTOR|RUN_SECTION)$/i.test(k)) delete env[k];
+    }
+    return env;
+}
+
 // Run the CLI synchronously as a child, cwd at the fake project, store
 // redirected via KIT_MEMORY_ROOT plus its second signal (memq honors the
 // override only when KIT_MEMORY_ROOT_ALLOW_DATA=1 rides alongside; the gate
 // has its own test below). process.env is spread rather than rebuilt so the
 // child keeps its real PATH (a rebuilt env object loses the Windows `Path`
-// key), and extra is where a case adds NODE_OPTIONS.
+// key), and extra is where a case adds NODE_OPTIONS or a run id.
+function childEnv(store, extra) {
+    const env = scrubRunEnv({ ...process.env });
+    return { ...env, KIT_MEMORY_ROOT: store.root, KIT_MEMORY_ROOT_ALLOW_DATA: '1', ...(extra || {}) };
+}
+
 function run(store, args, extra) {
     return spawnSync(process.execPath, [MEMQ].concat(args), {
         cwd: store.proj,
         encoding: 'utf8',
-        env: { ...process.env, KIT_MEMORY_ROOT: store.root, KIT_MEMORY_ROOT_ALLOW_DATA: '1', ...(extra || {}) }
+        env: childEnv(store, extra)
     });
 }
 
@@ -63,7 +83,7 @@ function runAsync(store, args) {
     return new Promise((resolve) => {
         const child = spawn(process.execPath, [MEMQ].concat(args), {
             cwd: store.proj,
-            env: { ...process.env, KIT_MEMORY_ROOT: store.root, KIT_MEMORY_ROOT_ALLOW_DATA: '1' }
+            env: childEnv(store)
         });
         let stderr = '';
         child.stderr.on('data', (d) => { stderr += d; });
@@ -139,7 +159,7 @@ test('KIT_MEMORY_ROOT is honored only alongside KIT_MEMORY_ROOT_ALLOW_DATA=1', (
         // ~/.claude; the override lands under one canonical key spelling with
         // every other spelling removed, because a second spelling would leave
         // two variables in the child's block and the child reads only one.
-        const env = { ...process.env, KIT_MEMORY_ROOT: store.root };
+        const env = scrubRunEnv({ ...process.env, KIT_MEMORY_ROOT: store.root });
         delete env.KIT_MEMORY_ROOT_ALLOW_DATA;
         for (const k of Object.keys(env)) {
             const lower = k.toLowerCase();
@@ -4202,4 +4222,508 @@ test('no fence over nothing: a typed store with zero type-derived records emits 
     } finally {
         rmStore(store);
     }
+});
+
+// The run-scoped pending tier. KIT_RUN_ID arrives from an external engine
+// alongside the KIT_MEMORY_ROOT pair, and opens a third tier under the
+// project memory dir. Every case here pins both directions: what a run sees
+// of its own tier, and that a store carrying pending directories is
+// byte-identical to today for a caller outside a run. Run ids are two
+// characters throughout, because the store root already flattens a full temp
+// path into one directory name and pending/<run-id>/ stacks on top of it.
+
+function pendingDirPath(store, runId) {
+    return path.join(store.memDir, 'pending', runId);
+}
+
+function writePendingMemory(store, runId, name, contents, when) {
+    const dir = pendingDirPath(store, runId);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, name), contents, 'utf8');
+    if (when !== undefined) fs.utimesSync(path.join(dir, name), when, when);
+}
+
+function runIn(store, runId, args, extra) {
+    return run(store, args, { KIT_RUN_ID: runId, ...(extra || {}) });
+}
+
+test('a run id opens a pending tier its own reads span, leaving the project tier untouched', () => {
+    const store = makeStore();
+    try {
+        writeMemoryFile(store, 'main-fact.md', '# m\n');
+        setMtime(store, 'main-fact.md', daysAgo(9));
+        writeMemoryFile(store, 'MEMORY.md', '# Memory Index\n\n- [Main](main-fact.md) - a main fact\n');
+        const indexBefore = fs.readFileSync(path.join(store.memDir, 'MEMORY.md'), 'utf8');
+        writePendingMemory(store, 'r1', 'run-fact.md', '---\nrun: r1\n---\n# run fact\n', daysAgo(2));
+
+        // recall names the tier, counts it, and orders its records by the
+        // same clock every other surface uses.
+        const digest = runIn(store, 'r1', ['recall']);
+        assert.strictEqual(digest.status, 0, digest.stderr);
+        assert.strictEqual(digest.stdout,
+            'outcomes journal: 0 keys\n'
+            + 'archive: 0 records\n'
+            + 'type tier: none declared\n'
+            + 'project tier: 1 record, already in session context\n'
+            + 'pending tier (r1): 1 record, awaiting adjudication\n'
+            + 'project  main-fact  applied never  alive 9d\n'
+            + 'pending  run-fact  applied never  alive 2d\n');
+
+        // find reaches both tiers and labels every line, since a name can
+        // now exist in more than one.
+        const found = runIn(store, 'r1', ['find', 'fact']);
+        assert.strictEqual(found.status, 0, found.stderr);
+        assert.strictEqual(found.stdout,
+            'run-fact  []    (pending)\n'
+            + 'main-fact  []  a main fact  (project)\n');
+
+        // get serves the pending body raw, the project tier's posture.
+        const got = runIn(store, 'r1', ['get', 'run-fact']);
+        assert.strictEqual(got.status, 0, got.stderr);
+        assert.strictEqual(got.stdout, '---\nrun: r1\n---\n# run fact\n');
+
+        // Nothing about the run touched the shared record: no index line, no
+        // file, no directory in the project tier.
+        assert.strictEqual(fs.readFileSync(path.join(store.memDir, 'MEMORY.md'), 'utf8'), indexBefore,
+            'a pending memory carries no index line: the index is written at promotion');
+        assert.deepStrictEqual(fs.readdirSync(store.memDir).sort(),
+            ['MEMORY.md', 'main-fact.md', 'pending'],
+            'the project tier gained nothing but the pending parent the test itself created');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('cross-run isolation: another run\'s pending memory is never read, listed, or counted', () => {
+    const store = makeStore();
+    try {
+        writePendingMemory(store, 'r1', 'alpha-only.md', '# alpha secret\n', daysAgo(1));
+        writePendingMemory(store, 'r2', 'beta-only.md', '# beta secret\n', daysAgo(1));
+
+        for (const [mine, theirs, runId] of [['alpha-only', 'beta-only', 'r1'],
+            ['beta-only', 'alpha-only', 'r2']]) {
+            const found = runIn(store, runId, ['find', 'only']);
+            assert.strictEqual(found.status, 0, found.stderr);
+            assert.strictEqual(found.stdout, mine + '  []    (pending)\n',
+                'find lists this run\'s pending record and no other run\'s');
+
+            // get on the other run's name finds nothing at all: not the body,
+            // not an error naming it, nothing.
+            const got = runIn(store, runId, ['get', theirs]);
+            assert.strictEqual(got.status, 0, got.stderr);
+            assert.strictEqual(got.stdout, '');
+            assert.match(got.stderr, new RegExp('nothing named \'' + theirs + '\''));
+
+            // The coverage line is a count, so it is asserted as a count: one
+            // record, this run's, and the other run's body appears nowhere.
+            const digest = runIn(store, runId, ['recall']);
+            assert.strictEqual(digest.status, 0, digest.stderr);
+            assert.match(digest.stdout,
+                new RegExp('^pending tier \\(' + runId + '\\): 1 record, awaiting adjudication$', 'm'));
+            assert.match(digest.stdout, new RegExp('^pending  ' + mine + '  ', 'm'));
+            assert.ok(!digest.stdout.includes(theirs),
+                'no line and no count of the digest mentions the other run');
+        }
+
+        // Neither run wrote into the other's directory along the way.
+        assert.deepStrictEqual(fs.readdirSync(pendingDirPath(store, 'r1')), ['alpha-only.md']);
+        assert.deepStrictEqual(fs.readdirSync(pendingDirPath(store, 'r2')), ['beta-only.md']);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('KIT_RUN_ID unset is byte-identical: pending directories on disk are invisible to every reader', () => {
+    const store = makeStore();
+    try {
+        writeMemoryFile(store, 'main-fact.md', '# m\n');
+        setMtime(store, 'main-fact.md', daysAgo(90));
+        writeMemoryFile(store, 'MEMORY.md', '# Memory Index\n\n- [Main](main-fact.md) - a main fact\n');
+        seedJournal(store, [JSON.stringify({
+            ts: daysAgo(2).toISOString(), key: 'a.key', outcome: 'pass', summary: 'an outcome'
+        })]);
+        // The baseline: the same store before any run ever wrote to it.
+        const before = ['recall', 'find', 'decay-scan'].map((cmd) =>
+            run(store, cmd === 'find' ? ['find', 'fact'] : [cmd]));
+
+        writePendingMemory(store, 'r1', 'run-fact.md', '# run fact\n', daysAgo(90));
+        writePendingMemory(store, 'r2', 'other-fact.md', '# other\n', daysAgo(90));
+
+        const after = ['recall', 'find', 'decay-scan'].map((cmd) =>
+            run(store, cmd === 'find' ? ['find', 'fact'] : [cmd]));
+        for (let i = 0; i < before.length; i++) {
+            assert.strictEqual(after[i].stdout, before[i].stdout, 'stdout unchanged without a run id');
+            assert.strictEqual(after[i].stderr, before[i].stderr, 'stderr unchanged without a run id');
+            assert.strictEqual(after[i].status, before[i].status);
+        }
+        // The pending parent directory is not itself a record: it is refused
+        // as a memory name (no .md) and would fail the isFile check anyway,
+        // which is what makes this location safe to nest under the tier.
+        assert.ok(!before[0].stdout.includes('pending'), 'no pending surface exists outside a run');
+        assert.match(before[0].stdout, /^project tier: 1 record, already in session context$/m);
+
+        const got = run(store, ['get', 'run-fact']);
+        assert.strictEqual(got.stdout, '');
+        assert.match(got.stderr, /nothing named 'run-fact'/);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a hostile KIT_RUN_ID refuses the whole run loudly and creates nothing', () => {
+    const store = makeStore();
+    try {
+        const hostile = ['..', '.', '...', 'r1.', 'a/b', 'a\\b', 'C:\\Windows\\Temp', '/etc/passwd',
+            'x'.repeat(41), 'has space', 'semi;colon', '~', 'NUL', 'con', 'CoM1.md', 'lpt9'];
+        for (const id of hostile) {
+            const res = runIn(store, id, ['log', 'k.one', 'pass', 'should never land']);
+            assert.strictEqual(res.status, 1, 'refused, not ignored: ' + JSON.stringify(id));
+            assert.match(res.stderr, /KIT_RUN_ID must be characters from/);
+            assert.strictEqual(res.stdout, '');
+            // A silent fallback to the project tier is the failure this gate
+            // exists to prevent, so absence of a write is asserted, never
+            // just the exit code.
+            assert.ok(!fs.existsSync(journalPath(store)), 'nothing reached the shared journal');
+            assert.ok(!fs.existsSync(path.join(store.memDir, 'pending')),
+                'no pending directory was minted from a refused id');
+        }
+        // An empty value is the ordinary shape of an unset variable (an
+        // interpolation that resolved to nothing, or KIT_RUN_ID= in an env
+        // file), not a mangled directory name, so it reads as no run rather
+        // than refusing every command including the pure reads.
+        const empty = runIn(store, '', ['log', 'k.empty', 'pass', 'no run at all']);
+        assert.strictEqual(empty.status, 0, empty.stderr);
+        assert.strictEqual(empty.stderr, '');
+        assert.strictEqual(Object.keys(JSON.parse(readJournalLines(store)[0])).includes('run'), false,
+            'an empty id is no run, so the entry carries no run field');
+        assert.ok(!fs.existsSync(path.join(store.memDir, 'pending')));
+        assert.strictEqual(runIn(store, '', ['recall']).status, 0, 'reads are not refused either');
+
+        // A run id at the cap is a plain token and runs normally: the refusal
+        // is the grammar, not the presence of an id.
+        const ok = runIn(store, 'x'.repeat(40), ['log', 'k.one', 'pass', 'this one lands']);
+        assert.strictEqual(ok.status, 0, ok.stderr);
+        assert.strictEqual(JSON.parse(readJournalLines(store)[1]).run, 'x'.repeat(40));
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('KIT_RUN_ID is honored only alongside the two store signals', () => {
+    const store = makeStore();
+    const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'memq-home-'));
+    try {
+        // The threat this gate closes: a run id set alone against a real
+        // ~/.claude store would reroute an attended session's own memory
+        // writes and reads into a pending tier nothing promotes from. The
+        // child's home is a temp directory so "the real store" is observable,
+        // and the store-root override is removed entirely rather than left
+        // ungated, so the fallback path is the one under test.
+        const env = scrubRunEnv({ ...process.env });
+        delete env.KIT_MEMORY_ROOT;
+        delete env.KIT_MEMORY_ROOT_ALLOW_DATA;
+        for (const k of Object.keys(env)) {
+            const lower = k.toLowerCase();
+            if (lower === 'userprofile' || lower === 'home') delete env[k];
+        }
+        env.USERPROFILE = fakeHome;
+        env.HOME = fakeHome;
+        env.KIT_RUN_ID = 'r1';
+        const res = spawnSync(process.execPath, [MEMQ, 'log', 'gate.run', 'pass', 'ungated run'], {
+            cwd: store.proj, encoding: 'utf8', env
+        });
+        assert.strictEqual(res.status, 0, 'an ungated run id is ignored, not refused: ' + res.stderr);
+        assert.match(res.stderr, /ignoring KIT_RUN_ID/);
+        const realDir = path.join(fakeHome, '.claude', 'projects',
+            store.proj.replace(/[^A-Za-z0-9]/g, '-'), 'memory');
+        const entry = JSON.parse(fs.readFileSync(path.join(realDir, 'outcomes.jsonl'), 'utf8')
+            .split('\n').filter((l) => l !== '')[0]);
+        assert.ok(!('run' in entry), 'the ignored run id tags nothing');
+        assert.ok(!fs.existsSync(path.join(realDir, 'pending')),
+            'no pending tier is opened in the real store by an ungated run id');
+
+        // The store root set without its own second signal is not enough
+        // either: the trio is the gate.
+        const halfGated = { ...env, KIT_MEMORY_ROOT: store.root };
+        const half = spawnSync(process.execPath, [MEMQ, 'log', 'gate.run', 'pass', 'half gated'], {
+            cwd: store.proj, encoding: 'utf8', env: halfGated
+        });
+        assert.strictEqual(half.status, 0, half.stderr);
+        assert.match(half.stderr, /ignoring KIT_RUN_ID/);
+        assert.ok(!fs.existsSync(path.join(store.memDir, 'pending')));
+    } finally {
+        rmStore(store);
+        try { fs.rmSync(fakeHome, { recursive: true, force: true }); } catch { /* best effort */ }
+    }
+});
+
+test('isRunId closes the run-id grammar, the null byte and the Win32 aliases included', () => {
+    // The null byte cannot travel through a spawned child's environment (Node
+    // refuses to build the block), so the predicate is exercised directly;
+    // every other hostile shape is pinned end to end above.
+    const bad = ['', '.', '..', 'a/b', 'a\\b', 'a\u0000b', 'C:\\tmp', 'a b', 'a;b',
+        'x'.repeat(41), 'a$b', 'a\nb', '..\\..\\escape',
+        // Win32 name normalization: a name the charset admits and the name
+        // the filesystem creates are not the same string, which is how two
+        // run ids come to share one directory.
+        '...', '....', 'r1.', 'r1..', 'run-2.',
+        // Reserved device stems resolve as devices wherever they appear, with
+        // or without an extension, in any case.
+        'NUL', 'nul', 'CON', 'con.md', 'PRN', 'AUX', 'com1', 'COM9.txt', 'LPT1', 'lpt9'];
+    for (const v of bad) {
+        assert.strictEqual(memq.isRunId(v), false, 'refused: ' + JSON.stringify(v));
+    }
+    // Near misses that are ordinary names, so the refusals above stay narrow.
+    for (const good of ['r1', 'run-2026-08-01', 'a.b_c-9', 'x'.repeat(40),
+        'console', 'com10', 'lpt0', 'nulls', 'a.con', 'CONFIG']) {
+        assert.strictEqual(memq.isRunId(good), true, 'accepted: ' + JSON.stringify(good));
+    }
+    assert.strictEqual(memq.isRunId(undefined), false);
+    assert.strictEqual(memq.isRunId(7), false);
+});
+
+test('two spellings of one run id resolve to one pending directory on a case-folding filesystem', () => {
+    const store = makeStore();
+    try {
+        // Whatever the platform's rule is, memq answers to it: where the
+        // filesystem folds case, 'Run1' and 'run1' are one directory and both
+        // spellings must reach the same records, because pretending they are
+        // two isolated runs while the filesystem merges them is the silent
+        // version of a broken boundary.
+        const folded = process.platform === 'win32' ? 'run1' : 'Run1';
+        writePendingMemory(store, folded, 'cased-fact.md', '# c\n');
+        const upper = runIn(store, 'Run1', ['recall']);
+        assert.strictEqual(upper.status, 0, upper.stderr);
+        assert.match(upper.stdout, new RegExp('^pending tier \\(Run1\\): 1 record', 'm'),
+            'the coverage line names the id the engine set, folded or not');
+        assert.match(runIn(store, 'Run1', ['find', 'cased']).stdout, /^cased-fact/);
+        if (process.platform === 'win32') {
+            assert.match(runIn(store, 'run1', ['find', 'cased']).stdout, /^cased-fact/,
+                'the other spelling reaches the same directory, as the filesystem does');
+        }
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('log carries the run field inside a run and writes the same line without one', () => {
+    const store = makeStore();
+    try {
+        const inRun = runIn(store, 'r1', ['log', 'k.one', 'pass', 'from a run', '--tag', 'sql']);
+        assert.strictEqual(inRun.status, 0, inRun.stderr);
+        const entry = JSON.parse(readJournalLines(store)[0]);
+        assert.deepStrictEqual(Object.keys(entry), ['ts', 'key', 'outcome', 'summary', 'tags', 'run']);
+        assert.strictEqual(entry.run, 'r1');
+
+        // The journal is one shared append log per project by design: the run
+        // field correlates an entry to its run, it does not scope the entry.
+        const outside = run(store, ['log', 'k.two', 'pass', 'attended']);
+        assert.strictEqual(outside.status, 0, outside.stderr);
+        const plain = JSON.parse(readJournalLines(store)[1]);
+        assert.deepStrictEqual(Object.keys(plain), ['ts', 'key', 'outcome', 'summary']);
+        const both = run(store, ['find', 'k.']);
+        assert.match(both.stdout, /k\.one/);
+        assert.match(both.stdout, /k\.two/);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('touch --applied stamps the tier the memory is in, and a name in no tier still refuses', () => {
+    const store = makeStore();
+    try {
+        writeMemoryFile(store, 'main-fact.md', '# m\n');
+        writePendingMemory(store, 'r1', 'run-fact.md', '# r\n');
+
+        const pendingTouch = runIn(store, 'r1', ['touch', 'run-fact', '--applied']);
+        assert.strictEqual(pendingTouch.status, 0, pendingTouch.stderr);
+        assert.strictEqual(pendingTouch.stdout, 'touched run-fact applied in the pending tier\n');
+        const stamps = usageEntriesIn(pendingDirPath(store, 'r1'));
+        assert.strictEqual(stamps.length, 1);
+        assert.strictEqual(stamps[0].kind, 'applied');
+        assert.strictEqual(stamps[0].file, memq.memoryFileKey('run-fact.md'));
+        assert.ok(!fs.existsSync(usagePath(store)), 'the project sidecar took nothing');
+
+        // A project-tier memory still stamps the project tier inside a run.
+        const projectTouch = runIn(store, 'r1', ['touch', 'main-fact', '--applied']);
+        assert.strictEqual(projectTouch.status, 0, projectTouch.stderr);
+        assert.strictEqual(projectTouch.stdout, 'touched main-fact applied\n');
+        assert.strictEqual(readUsageEntries(store).length, 1);
+
+        // The other run's memory is in no tier this run can see, so the write
+        // fails loudly rather than dropping a stamp nothing answers for.
+        writePendingMemory(store, 'r2', 'other-fact.md', '# o\n');
+        const miss = runIn(store, 'r1', ['touch', 'other-fact', '--applied']);
+        assert.strictEqual(miss.status, 1);
+        assert.match(miss.stderr, /no memory file named 'other-fact'/);
+        assert.ok(!fs.existsSync(path.join(pendingDirPath(store, 'r2'), 'usage.jsonl')),
+            'nothing was written into the other run\'s directory');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('get prefers the run\'s own pending record over the project tier\'s and stamps where it hit', () => {
+    const store = makeStore();
+    try {
+        writeMemoryFile(store, 'shadowed.md', '# the project record\n');
+        writePendingMemory(store, 'r1', 'shadowed.md', '# the run\'s revision\n');
+
+        const got = runIn(store, 'r1', ['get', 'shadowed']);
+        assert.strictEqual(got.status, 0, got.stderr);
+        assert.strictEqual(got.stdout, '# the run\'s revision\n',
+            'the tier closest to the caller shadows the more widely shared one');
+        const stamps = usageEntriesIn(pendingDirPath(store, 'r1'));
+        assert.deepStrictEqual(stamps.map((s) => s.kind), ['read']);
+        assert.ok(!fs.existsSync(usagePath(store)),
+            'the read stamp lands in the tier that answered, never in one the record is not in');
+
+        // Outside the run the project record answers, unshadowed.
+        const plain = run(store, ['get', 'shadowed']);
+        assert.strictEqual(plain.stdout, '# the project record\n');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('decay-scan exempts the pending tier and says so, while the project tier still nominates', () => {
+    const store = makeStore();
+    try {
+        writeMemoryFile(store, 'idle-arch.md', '# a\n');
+        setMtime(store, 'idle-arch.md', daysAgo(90));
+        writePendingMemory(store, 'r1', 'ancient-pending.md', '# p\n', daysAgo(400));
+
+        const res = runIn(store, 'r1', ['decay-scan']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /^archive  idle-arch  idle 90d/m,
+            'the project tier is scanned exactly as before');
+        assert.ok(!res.stdout.includes('ancient-pending'),
+            'a pending memory is a candidate of no class, whatever its age');
+        assert.match(res.stderr,
+            /^memq: pending tier \(r1\): 1 memory awaiting adjudication, exempt from decay$/m,
+            'the exemption is stated, never left as a silent absence');
+
+        // decay-prune cannot reach a pending memory either: the name is not a
+        // live memory of the project tier, so the pass refuses whole.
+        const prune = runIn(store, 'r1', ['decay-prune', '--archive', 'ancient-pending']);
+        assert.strictEqual(prune.status, 1);
+        assert.match(prune.stderr, /no memory file named 'ancient-pending'/);
+        assert.ok(fs.existsSync(path.join(pendingDirPath(store, 'r1'), 'ancient-pending.md')));
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('add-type records the run that authored a shared-tier memory, and is unchanged outside a run', () => {
+    const store = makeStore();
+    try {
+        const res = runIn(store, 'r1', ['add-type', 'webapp', 'from-run', 'a shared fact', '--tag', 'sql'],
+            { KIT_SPAWN_VECTOR: 'fleet-worker', KIT_RUN_SECTION: 'section 2' });
+        assert.strictEqual(res.status, 0, res.stderr);
+        const body = fs.readFileSync(path.join(typeDirPath(store, 'webapp'), 'from-run.md'), 'utf8');
+        // The date is asserted by shape rather than by a literal computed in
+        // this process: the child writes its own, and a UTC midnight between
+        // the two would red for no defect.
+        const written = 'written: \\d{4}-\\d{2}-\\d{2}';
+        assert.match(body, new RegExp('^---\\ntags: sql\\nrun: r1\\nvector: fleet-worker\\n'
+            + 'section: section 2\\n' + written + '\\n---\\n# from-run\\n\\na shared fact\\n$'));
+        // The tags field still reads at the block's top level with the
+        // provenance lines beside it: the frontmatter walk is order-free
+        // within the block, and the added lines must not shadow it.
+        const listed = memq.listMemories(typeDirPath(store, 'webapp'));
+        assert.deepStrictEqual(listed.map((m) => m.name), ['from-run']);
+        assert.deepStrictEqual(listed[0].tags, ['sql']);
+
+        // Absent spawn values are absent fields, never present and empty.
+        const bare = runIn(store, 'r1', ['add-type', 'webapp', 'bare-run', 'another fact']);
+        assert.strictEqual(bare.status, 0, bare.stderr);
+        assert.match(fs.readFileSync(path.join(typeDirPath(store, 'webapp'), 'bare-run.md'), 'utf8'),
+            new RegExp('^---\\nrun: r1\\n' + written + '\\n---\\n# bare-run\\n\\nanother fact\\n$'));
+
+        // Outside a run the file is exactly what it always was.
+        const outside = run(store, ['add-type', 'webapp', 'attended', 'an attended fact']);
+        assert.strictEqual(outside.status, 0, outside.stderr);
+        assert.strictEqual(fs.readFileSync(path.join(typeDirPath(store, 'webapp'), 'attended.md'), 'utf8'),
+            '# attended\n\nan attended fact\n');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('the pending tier keeps the write shape: concurrent run-private appends, no lock, no rewrite', async () => {
+    const store = makeStore();
+    try {
+        writePendingMemory(store, 'r1', 'run-fact.md', '# r\n');
+        // Real cross-process concurrency against one run's sidecar, the same
+        // probe the journal takes: the pending tier adds no lock, so its
+        // safety has to come from the append shape alone.
+        const WRITERS = 8;
+        const results = await Promise.all(Array.from({ length: WRITERS }, () =>
+            new Promise((resolve) => {
+                const child = spawn(process.execPath, [MEMQ, 'touch', 'run-fact', '--applied'], {
+                    cwd: store.proj,
+                    env: childEnv(store, { KIT_RUN_ID: 'r1' })
+                });
+                let stderr = '';
+                child.stderr.on('data', (d) => { stderr += d; });
+                child.on('close', (code) => resolve({ code, stderr }));
+            })));
+        for (const r of results) assert.strictEqual(r.code, 0, r.stderr);
+        const stamps = usageEntriesIn(pendingDirPath(store, 'r1'));   // throws on a torn line
+        assert.strictEqual(stamps.length, WRITERS, 'every writer landed exactly one intact line');
+
+        // No lock file and no rewrite artifact anywhere under the store: the
+        // tier's writes are appends into a directory one run owns, and the
+        // shared surfaces this section does not touch stay untouched.
+        const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true })
+            .flatMap((e) => (e.isDirectory() ? walk(path.join(dir, e.name)) : [e.name]));
+        const names = walk(store.root);
+        for (const suffix of ['.lock', '.bak', '.tmp']) {
+            assert.ok(!names.some((n) => n.includes(suffix)),
+                'no ' + suffix + ' artifact: ' + names.join(', '));
+        }
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('recallDigest places pending last in output and cuts it just ahead of the journal', () => {
+    const reach = 'memq find <term> reaches them';
+    const mk = (label, n) => Array.from({ length: n }, (_, i) => label + ' line ' + (i + 1));
+    const surface = (label, n) => ({ coverage: 'coverage ' + label, lines: mk(label, n), narrow: reach });
+    const withPending = (j, a, t, p, pend) => ({
+        journal: surface('journal', j), archive: surface('archive', a),
+        type: surface('type', t), project: surface('project', p), pending: surface('pending', pend)
+    });
+    const coverage = ['coverage journal', 'coverage archive', 'coverage type',
+        'coverage project', 'coverage pending'];
+
+    // Under the budget: pending's coverage line joins the header and its
+    // records tail the output.
+    assert.deepStrictEqual(memq.recallDigest(withPending(2, 2, 2, 2, 2), 20), coverage.concat(
+        mk('journal', 2), mk('archive', 2), mk('type', 2), mk('project', 2), mk('pending', 2)));
+
+    // The cut order: project, type, archive, then pending, and the journal
+    // last of all, because nothing else surfaces the journal's evidence. Three
+    // surfaces cut is enough to make room here, so pending rides through whole.
+    assert.deepStrictEqual(memq.recallDigest(withPending(2, 2, 2, 2, 2), 12), coverage.concat(
+        mk('journal', 2),
+        ['... and 2 more archive lines; ' + reach,
+            '... and 2 more type lines; ' + reach,
+            '... and 2 more project lines; ' + reach,
+            'pending line 1', 'pending line 2']));
+    // One line tighter and pending goes too, while the journal still does not.
+    assert.deepStrictEqual(memq.recallDigest(withPending(2, 2, 2, 2, 2), 11), coverage.concat(
+        mk('journal', 2),
+        ['... and 2 more archive lines; ' + reach,
+            '... and 2 more type lines; ' + reach,
+            '... and 2 more project lines; ' + reach,
+            '... and 2 more pending lines; ' + reach]));
+
+    // A store with no pending tier has no pending surface at all: the digest
+    // is the four surfaces it always was, header included.
+    const four = withPending(2, 2, 2, 2, 2);
+    delete four.pending;
+    assert.deepStrictEqual(memq.recallDigest(four, 20), coverage.slice(0, 4).concat(
+        mk('journal', 2), mk('archive', 2), mk('type', 2), mk('project', 2)));
 });

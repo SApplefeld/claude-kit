@@ -24,6 +24,10 @@ The store lives at `~/.claude/projects/<sanitized-cwd>/memory/` (project tier) a
 
 **Type tier.** Authored by *any* project on the machine that declares `Project-Type: <type>`, and read into the context of *every* project declaring that type. This is a machine-wide shared read-and-write surface. A claim that no store-controlled content reaches a session's trusted context is false by design for this tier.
 
+**Pending tier.** `<project tier>/pending/<run-id>/`, present only inside a run the external engine spawned (the `KIT_RUN_ID` entry below). Authored by that one run, read back by that same run, and entered into the project tier only by an adjudication verdict the engine applies. It exists so a headless worker's memory writes do not enter a shared record unreviewed. A pending memory carries no `MEMORY.md` index line: the index is written at promotion. Its content is fenced on the way into context exactly as the type tier's is, because the writer is a spawned worker rather than the attended session reading it back.
+
+The scoping is a resolution rule, not an enforced boundary. A process resolves the single pending directory its own `KIT_RUN_ID` names and enumerates no others, so runs do not see each other in ordinary operation. Nothing stops a session that holds Bash from setting a different id and resolving another run's directory, which is the same limit the Principals section already states for every tier.
+
 Three paths carry type-tier content into a model's context, and they are not equally guarded:
 
 | Path | Guard |
@@ -42,12 +46,15 @@ A credential, connection string, or token written into an outcome journal entry 
 
 ## Environment overrides, and why they differ
 
-Two variables redirect where the tooling looks, and they are deliberately gated differently:
+Variables that redirect where the tooling looks are gated, and deliberately gated differently:
 
 - **`KIT_MEMORY_ROOT`** relocates the store root, and is honored only when `KIT_MEMORY_ROOT_ALLOW_DATA` is also set. It selects *which data reaches the model*. Set without its signal, it is ignored, the real store is used, and a note goes to stderr.
 - **`KIT_PLUGINS_ROOT`** relocates the plugin payload the `memq` shim executes, and is honored only when `KIT_PLUGINS_ROOT_ALLOW_CODE` is also set. It selects *which program runs*.
+- **`KIT_RUN_ID`** routes a run's memory writes into the pending tier and scopes its reads to that tier plus the main one. It is honored only alongside the `KIT_MEMORY_ROOT` pair above, and carries no separate signal of its own because it selects a subdirectory *within* an already-gated store: the store's gate is the one that decides whether the redirection happens at all. Set without those signals, it is ignored, the session behaves as an ordinary attended session, and a note goes to stderr. The value becomes a directory name, so it is validated against a conservative token grammar that also refuses the Windows directory-name shapes that alias onto a different directory than they spell (dots-only names, trailing dots, reserved device stems) and is folded the way the platform's filesystem folds it. A value that fails the grammar is refused rather than fallen back on, because a silent fallback would place an unadjudicated write in the shared record.
 
-Neither gate may be loosened to match the other, and the reason the store root carries one at all is worth keeping: it was originally ungated on the reasoning that it redirects data rather than code. The project-type tier voided that. The SessionStart hook reads the store, so a redirected root supplies content a session sees before the user types, which makes it a behavior-shaping input and not merely a data path.
+Two further variables, **`KIT_SPAWN_VECTOR`** and **`KIT_RUN_SECTION`**, redirect nothing. They are recorded as provenance in a pending memory's frontmatter, reduced to bounded printable ASCII at the write boundary so a value cannot forge an additional frontmatter field or break the document's structure.
+
+No gate may be loosened to match another, and the reason the store root carries one at all is worth keeping: it was originally ungated on the reasoning that it redirects data rather than code. The project-type tier voided that. The SessionStart hook reads the store, so a redirected root supplies content a session sees before the user types, which makes it a behavior-shaping input and not merely a data path.
 
 The precondition the old gate rested on was **the launching environment is trusted**. In a deployment where repositories sync across machines, accounts, and people, that precondition does not hold: a committed `.vscode/settings.json` (`terminal.integrated.env.windows`), a `devcontainer.json` env block, or an `.envrc` sets environment for whoever opens the repository. The gate exists because cloning a repository must not be enough to steer what a session reads.
 
@@ -114,4 +121,6 @@ The shared tier has no owner and no cross-project coordination beyond the lock:
 - `memq`'s argument validation protects the *store's shape*. It does not protect the user's secrets.
 - `decay-prune` is auditable, and reversible only in the weak sense that archiving is demotion rather than deletion: it prints everything it removed, leaves one generation of backup, and a retired memory keeps its description in the archive's own index and still answers `memq get` by name. The rollup is the irreversible half, discarding expired entries' prose for a tally.
 - Retention is bounded but not fixed. A memory's decay thresholds extend by 30 idle days for each distinct calendar day it was applied, capped at 365, so the most extended memory becomes an archive candidate at 425 idle days. A `pinned:` frontmatter field exempts a memory from candidacy entirely and makes the prune refuse it by name. The exemption is set only by editing the memory file and is revoked by deleting the line; a `decay-scan` that finds any pin counts the whole population and lists the first ten with a counted remainder, so the exempt population cannot grow unobserved. Because archived content is still served by name and by the recall digest, retiring a memory does not remove anything the storage properties above describe: a credential written into a memory persists after archiving exactly as it persisted before.
+- Run scoping in the pending tier is not isolation. It keeps two runs from reading each other by ordinary operation, not by enforcement: the only thing selecting a run's directory is that process's own `KIT_RUN_ID`, which any session holding Bash can set to another run's value.
+- The pending tier bounds what enters the *project* record without review. It does not bound the type tier: `memq add-type` inside a run still writes the shared type tier and its index directly, provenance-stamped rather than quarantined. Under the engine that store is per-instance, so the reach is that instance rather than the machine, but the write is unadjudicated.
 - Nothing here defends against an actor who already has write access to `~/.claude`. Such an actor can already execute code through hooks and settings.
