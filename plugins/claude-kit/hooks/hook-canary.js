@@ -234,7 +234,7 @@ const EXIT_PROBES = [
 // cache snapshot, so a coherent cache always wires all of them: one missing from
 // the wiring is a damaged cache whose guard is inactive, not a configuration
 // choice, and it is reported rather than quietly dropping that hook's probes.
-const PROBED_HOOKS = Array.from(new Set(EXIT_PROBES.map((p) => p.hook).concat('kit-goal-stop.js')));
+const PROBED_HOOKS = Array.from(new Set(EXIT_PROBES.map((p) => p.hook).concat('kit-goal-stop.js', 'memq-grant.js')));
 
 // Fills a throwaway directory with the repo state the kit-goal-stop probe needs:
 // an armed, unbound goal, an In Progress plan, and a transcript whose /kit-goal
@@ -327,6 +327,64 @@ function goalStopProbe(root, failures) {
         }
     } finally {
         try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* best effort */ }
+    }
+}
+
+// Both directions of the memq grant, judged by stdout. A grant hook that has
+// gone inert never announces itself in use (a fleet worker just quietly loses
+// memq), and one stuck at always-allow is an open door, so both directions
+// are probed like the deny guards' exit probes. The environment is
+// constructed, not inherited: the fleet-store signals point at a throwaway
+// path (the hook checks presence, never the disk), PATH is pinned to this
+// interpreter's own directory so the hook's interpreter pin resolves to the
+// node running this canary, and the preload variables the hook refuses on
+// are scrubbed so ambient state cannot fail the probe. The grant direction
+// needs the cache's own scripts/memq.js, the only command the hook can ever
+// allow; a cache without that file skips the direction rather than reporting
+// damage. The must-stay-silent direction is payload-independent and always
+// runs.
+function memqGrantProbes(root, failures) {
+    const file = path.join(root, 'hooks', 'memq-grant.js');
+    const env = {};
+    for (const k of Object.keys(process.env)) {
+        if (/^(?:PATH|NODE_OPTIONS|NODE_PATH|NODE_REPL_EXTERNAL_MODULE|KIT_MEMORY_ROOT|KIT_MEMORY_ROOT_ALLOW_DATA)$/i.test(k)) continue;
+        env[k] = process.env[k];
+    }
+    env.PATH = path.dirname(process.execPath);
+    env.KIT_MEMORY_ROOT = path.join(os.tmpdir(), 'kit-hook-canary-store');
+    env.KIT_MEMORY_ROOT_ALLOW_DATA = '1';
+    const memq = path.join(root, 'scripts', 'memq.js');
+    let hasMemq = false;
+    try { hasMemq = fs.statSync(memq).isFile(); } catch { /* no grant direction to probe */ }
+    if (hasMemq) {
+        const grant = runHook(file, {
+            tool_name: 'Bash',
+            tool_input: { command: 'node "' + memq + '" recall' }
+        }, env);
+        let decision = null;
+        try { decision = JSON.parse(grant.stdout || 'null'); } catch { /* not a decision */ }
+        const allowed = decision && decision.hookSpecificOutput
+            && decision.hookSpecificOutput.permissionDecision === 'allow';
+        if (grant.status !== 0 || !allowed) {
+            failures.push({
+                hook: 'memq-grant.js',
+                label: 'grant probe (the one allowed memq invocation under the fleet signals)',
+                expected: 'a PreToolUse allow decision on stdout',
+                got: grant.stdout ? 'stdout ' + sanitize(grant.stdout) : outcome(grant)
+            });
+        }
+    }
+    const hostile = runHook(file, {
+        tool_name: 'Bash',
+        tool_input: { command: 'node "' + memq + '" recall; echo pwned' }
+    }, env);
+    if (hostile.status !== 0 || hostile.stdout !== '') {
+        failures.push({
+            hook: 'memq-grant.js',
+            label: 'silent probe (a hostile command must get no decision)',
+            expected: 'exit 0 and no output',
+            got: hostile.stdout ? 'stdout ' + sanitize(hostile.stdout) : outcome(hostile)
+        });
     }
 }
 
@@ -477,6 +535,7 @@ function main() {
     }
 
     if (loadable.has('kit-goal-stop.js')) goalStopProbe(root, failures);
+    if (loadable.has('memq-grant.js')) memqGrantProbes(root, failures);
 
     // Last, so that a cache whose files are wholesale different (a partial or
     // interrupted install) cannot fill the report's line cap ahead of a guard

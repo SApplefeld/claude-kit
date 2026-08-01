@@ -26,11 +26,16 @@ const REAL_HOOKS = path.join(REAL_ROOT, 'hooks');
 // A throwaway plugin cache: the whole hooks directory, copied. The copy is
 // recursive and complete (not just the files hooks.json wires) because
 // kit-goal-stop.js requires kit-goal-lib.js, which no command string names.
-// Only hooks/ is copied, so a cache carries no build stamp and the integrity
-// probe has nothing to check until a test stamps one with stampCache().
+// scripts/memq.js rides along because the memq-grant probes need the cache's
+// own copy (the grant hook resolves it beside itself and grants nothing
+// else). No build stamp is copied, so the integrity probe has nothing to
+// check until a test stamps one with stampCache().
 function makeCache() {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hook-canary-cache-'));
     fs.cpSync(REAL_HOOKS, path.join(dir, 'hooks'), { recursive: true });
+    fs.mkdirSync(path.join(dir, 'scripts'), { recursive: true });
+    fs.copyFileSync(path.join(REAL_ROOT, 'scripts', 'memq.js'),
+        path.join(dir, 'scripts', 'memq.js'));
     return dir;
 }
 
@@ -150,7 +155,8 @@ function assertOnlyFlagged(text, flagged) {
             'expected a line naming ' + f.hook + ' / ' + f.probe + ', got:\n' + lines.join('\n'));
     }
     const others = ['docs-write-guard.js', 'readonly-agent-guard.js', 'kit-goal-stop.js',
-        'merged-pr-push-guard.js', 'pr-docs-guard.js', 'session-start.js', 'doctrine-refresh.js']
+        'merged-pr-push-guard.js', 'pr-docs-guard.js', 'session-start.js', 'doctrine-refresh.js',
+        'memq-grant.js']
         .filter((h) => !flagged.some((f) => f.hook === h));
     for (const h of others) {
         assert.ok(!text.includes(h), 'a healthy hook must not be named: ' + h);
@@ -248,6 +254,44 @@ test('the goal leash stubbed to always block fails the release probe (the other 
         const text = warning(res);
         assert.ok(text, 'a leash that blocks with no goal armed must not be silent');
         assertOnlyFlagged(text, [{ hook: 'kit-goal-stop.js', probe: 'release probe' }]);
+    } finally {
+        rmDir(cache);
+    }
+});
+
+test('a memq-grant stuck silent fails the grant probe', () => {
+    // The failure mode a grant hook never announces in use: fleet workers just
+    // quietly lose memq. The neutered copy drains stdin and says nothing, the
+    // exact posture the real hook holds for every hostile command, so only the
+    // grant direction can tell it from health.
+    const cache = makeCache();
+    try {
+        fs.writeFileSync(hookFile(cache, 'memq-grant.js'),
+            "'use strict';\nrequire('fs').readFileSync(0, 'utf8');\n", 'utf8');
+        const res = runCanary(cache);
+        assert.strictEqual(res.status, 0);
+        const text = warning(res);
+        assert.ok(text, 'an inert grant hook must not read as healthy');
+        assertOnlyFlagged(text, [{ hook: 'memq-grant.js', probe: 'grant probe' }]);
+    } finally {
+        rmDir(cache);
+    }
+});
+
+test('a memq-grant stuck at always-allow fails the silent probe (the other direction)', () => {
+    const cache = makeCache();
+    try {
+        fs.writeFileSync(hookFile(cache, 'memq-grant.js'),
+            "'use strict';\n"
+            + "require('fs').readFileSync(0, 'utf8');\n"
+            + "process.stdout.write(JSON.stringify({ hookSpecificOutput: {\n"
+            + "    hookEventName: 'PreToolUse', permissionDecision: 'allow' } }));\n",
+            'utf8');
+        const res = runCanary(cache);
+        assert.strictEqual(res.status, 0);
+        const text = warning(res);
+        assert.ok(text, 'an always-allow grant hook is an open door and must be loud');
+        assertOnlyFlagged(text, [{ hook: 'memq-grant.js', probe: 'silent probe' }]);
     } finally {
         rmDir(cache);
     }
