@@ -1,6 +1,6 @@
 # Claude-Kit Memq Session Recap
 
-Status: In Progress
+Status: Complete
 Commit Model: Commit-and-Push
 Fable Spend: finishing reviews
 Created: 2026-08-01
@@ -75,7 +75,7 @@ None. Approach and sequencing were settled with Scott on 2026-08-01; the 1d defa
 
 ## Related
 
-- Queued behind `claude-kit_instance-store-pin_spec_v1.md`, which holds `scripts/memq.js` in flight and whose `KIT_MEMORY_PROJECT` pin `recent` inherits through `projectMemoryDir`.
+- Builds on `../archive/claude-kit_instance-store-pin_spec_v1.md`, whose `KIT_MEMORY_PROJECT` pin `recent` inherits through `projectMemoryDir`, and whose keyed-on-the-pin fence rule decides which of `recent`'s lines ride indented.
 - Builds on `../archive/claude-kit_fleet-integration_spec_v1.md`, which established the gated store overrides `recent` resolves through.
 
 ## Chapters
@@ -108,4 +108,21 @@ Decisions / Surprises:
 Review Findings: none raised; the finishing reviews cover this section.
 Gate: 456 tests, 456 pass, 0 fail. Prose-only, so unchanged from Section 1, and no hook or `hooks.json` was touched, so no build stamp refresh is owed.
 Next: finishing-work
+Commit Model: Commit-and-Push
+
+### Chapter 3 - 2026-08-01
+Completed: finishing-work. Both sections closed in Chapters 1 and 2.
+Implemented By: main session, with qa-verifier, security-reviewer and adversarial-reviewer (both at fable), and docs-curator
+Metrics: 1 finishing round; 0 NEEDS_CONTEXT; 0 escalations; advisor opus
+Decisions / Surprises:
+- QA passed every acceptance criterion by direct execution against known-answer fixtures rather than by code inspection, including reproducing the archive fix through a real `decay-prune --archive` and proving the write-free posture with a recursive hash snapshot of the whole store root under three configurations (unpinned, pinned, and inside a run).
+- The finishing reviews found no code defect. Every finding was documentation accuracy in `docs/security-model.md`, and the sharpest one was mine: the rewritten pending-tier sentence credited `memory-session.js` with fencing pending content, and that hook emits the pending destination path and a frontmatter template, never the tier's content (`hooks/memory-session.js:264-295`, read to confirm). A threat model that names a guard which does not exist is worse than one that says nothing, so it now states that pending content reaches context only through the run's own memq reads, none of which fence it, because the resolution rule makes reader and writer the same run.
+- Adding the `recent` row to the paths table left the paragraphs below it counting ordinals that no longer lined up ("a fourth path", "these three", "a fifth path"). They name the paths instead of numbering them now, which is what stops the same edit from breaking them again.
+- The claim-scoped drift sweep earned its keep on its first run. `docs/fleet-integration.md` enumerated the pending tier's readers as `find`, `get`, and `recall`; `recent` makes that four, and the file sits nowhere near anything this effort edited. Both finishing reviewers swept for counts and correctly reported none missed, and both missed this one because it is an enumeration rather than a number. The rule that caught it names both, and shipped in this session's earlier commit 36cb51b.
+- `cmdRecall`'s unfenced pinned journal lines are now tracked in `docs/backlog.md` with the fix and its cost, not only in a Chapter that archives with this plan. The adversarial reviewer was right that a deferral recorded only in an archived Chapter has no durable tracker.
+- The curator's hygiene item asking for a back-reference from the archived instance-store-pin plan is declined, with the reason: `curating-docs` names editing an archived plan to reflect new work as an antipattern. Cross-references point forward from the new plan to the one it builds on, which this plan's Related section now does with the correct archive path.
+Review Findings: QA PASS on every criterion. Security: no Critical or Major, 2 Minor, both fixed (the stale path ordinals, and the framing line's over-claim under truncation, which is documented as an accepted residual in the safe direction since it can only over-declare content as untrusted). Adversarial: 2 Major and 4 Minor; both Majors fixed (the nonexistent guard claim, and the missing narrowing plus backlog tracker for `recall`'s journal residual), 3 Minors fixed by the curator (`architecture.md` coverage, the inaccurate "unbounded summary field", the reader enumeration), 1 Minor recorded as pre-existing and out of scope (the `find` sentence not naming `decay-scan` output, which is charset-gated and carries no forgery risk).
+Drift adjudication: 3 items, all `deviation`, none a `mistake`, so the run did not stop. The third tier, the provenance fence, and the archive clock are all deliberate as-built choices already recorded in Chapter 1, and in each the code is the side that is right.
+Gate: 456 tests, 456 pass, 0 fail, against the 444 baseline. The finishing pass changed only prose, so the gate is unmoved from Section 2.
+Next: none. Effort complete.
 Commit Model: Commit-and-Push
