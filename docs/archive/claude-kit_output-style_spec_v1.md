@@ -1,6 +1,6 @@
 # Kit Output Style
 
-Status: In Progress
+Status: Complete
 Commit Model: Commit-and-Push
 Fable Spend: n/a (Fable-led session)
 Created: 2026-08-01
@@ -105,6 +105,12 @@ In the core below, "I" and "me" are Scott.
 
 None.
 
+## Related
+
+- `claude-kit_doctrine-delivery_spec_v1.md`: how the doctrine reaches each surface; this effort adds the third register surface on top of that delivery.
+- `claude-kit_doctrine-rightsizing_spec_v1.md`: what earns always-on space; the register core is the subset that earned a second always-on carrier.
+- `claude-kit_fleet-integration_spec_v1.md`: the engine contract whose workers inherit the doctrine but never the style; that reader split is why the core lives byte-identical on both surfaces.
+
 ## Chapters
 
 ### Chapter 1 - 2026-08-01
@@ -117,5 +123,13 @@ Decisions and surprises: the core is extracted by bullet lead, so the doctrine f
 Gate: 488 tests, 488 pass, 0 fail (baseline 477/477 before the section).
 Verification limit: live activation (force-for-plugin superseding the machine's outputStyle setting) is observable only in a session loaded after the next plugin update; output-styles/ discovery is confirmed from current docs and the installed binary, not yet from a live session.
 Next: finishing pass (QA verification, docs curation, close-out and archive).
+Commit Model: Commit-and-Push
+
+### Chapter 2 - 2026-08-01
+
+Completed: 1. Ship the style and its gates
+Finishing pass: QA PASS (488/488; every criterion evidenced, and the readonly-agent-guard correctly blocked the verifier's one mutation-probe attempt). Security review CLEAR, scoped to the one non-prose file; its Minor (the flag pins accepted a quoted true) is fixed: the name and both flag pins now compare the raw bare token, and the description carries a two-character floor. Final adversarial APPROVED: machine contract, cross-file cohesion, and debris all clean; two degenerate-input Minors fixed alongside the security Minor, the colon-less-line diagnostic garble accepted (fails loud, ugly message), and the block-width finding declined because the opening rules' dash counts differ precisely to equalize total width against the differing label lengths. Docs curation: three deviations, no mistakes; architecture.md gained a register-surfaces subsection and its payload and prose enumerations now include the style, security-model.md now names the style as unhashed model-facing payload (the build manifest hashes hooks only), and whether to widen the build stamp to cover model-facing prose is surfaced as Scott's decision rather than resolved here. Cross-references added per the curator's gap note. Gate after the finishing fixes: 488 tests, 488 pass, 0 fail.
+Verification limit standing: live activation (force-for-plugin superseding a machine's outputStyle, output-styles/ discovery, per-tool-result re-assertion) is confirmed from current docs and the installed binary; a live session loaded after the next plugin update is the observation that closes it.
+Next: none; effort complete, delivered in this changeset.
 Commit Model: Commit-and-Push
 

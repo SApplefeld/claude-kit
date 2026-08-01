@@ -154,30 +154,33 @@ function sendSegment(lines, label) {
 // assembled, not documentation. With keep-coding-instructions false or absent
 // the style strips Claude Code's built-in coding instructions from the session;
 // force-for-plugin is what activates this style over the user's own outputStyle
-// setting. Both are pinned to the exact token true, never to a truthy value:
-// the string 'false' is truthy.
+// setting. Both are pinned to the exact bare token true, raw and unquoted: a
+// truthy value is not true, and a quoted "true" is a string, not the boolean,
+// to a type-strict frontmatter reader.
 test('the style file carries the frontmatter pins the harness reads', () => {
     const declared = frontmatterLines().map((l) => l.slice(0, l.indexOf(':')).trim());
     assert.deepStrictEqual(declared.slice().sort(), PINNED_KEYS.slice().sort(),
         'the style\'s frontmatter must declare the four pinned keys and nothing '
         + 'else; an unpinned key is unreviewed harness input');
 
-    assert.strictEqual(frontmatterValue('name'), 'Kit',
-        'the style\'s name must be exactly Kit');
+    assert.strictEqual(frontmatterRawValue('name'), 'Kit',
+        'the style\'s name must be exactly the bare token Kit');
 
     const rawDescription = frontmatterRawValue('description');
-    assert.ok(rawDescription.startsWith('"') && rawDescription.endsWith('"'),
+    assert.ok(rawDescription.length >= 2
+        && rawDescription.startsWith('"') && rawDescription.endsWith('"'),
         'the description must be double-quoted; its own colon-space makes an '
         + 'unquoted value break the entire frontmatter block as YAML');
     assert.ok(frontmatterValue('description').length > 0,
         'the style must carry a non-empty description');
 
-    assert.strictEqual(frontmatterValue('keep-coding-instructions'), 'true',
-        'keep-coding-instructions must be exactly true; absent or false strips '
-        + 'Claude Code\'s built-in coding instructions from every kit session');
-    assert.strictEqual(frontmatterValue('force-for-plugin'), 'true',
-        'force-for-plugin must be exactly true so the style activates wherever '
-        + 'the kit plugin is enabled');
+    assert.strictEqual(frontmatterRawValue('keep-coding-instructions'), 'true',
+        'keep-coding-instructions must be exactly the bare token true; absent, '
+        + 'false, or quoted strips Claude Code\'s built-in coding instructions '
+        + 'from every kit session under a type-strict reader');
+    assert.strictEqual(frontmatterRawValue('force-for-plugin'), 'true',
+        'force-for-plugin must be exactly the bare token true so the style '
+        + 'activates wherever the kit plugin is enabled');
 });
 
 test('the style body carries exactly one core-region marker pair', () => {
