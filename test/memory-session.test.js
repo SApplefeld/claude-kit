@@ -67,15 +67,16 @@ function writeStamp(store, ageDays) {
 // loses the Windows `Path` key), and extra is where a case adds NODE_OPTIONS
 // or a run id.
 //
-// The run-scoped variables are dropped from every child: this suite runs
-// inside fleet workers too, where the engine sets all three, and an inherited
+// The engine's spawn variables are dropped from every child: this suite runs
+// inside fleet workers too, where the engine sets them, and an inherited
 // KIT_RUN_ID would put the run-scoped block into the output of every case
-// that asserts the hook is silent. Keys are matched case-insensitively,
-// because a Windows environment block's key casing is not the spelling a JS
-// object copy is indexed by.
+// that asserts the hook is silent, while an inherited KIT_MEMORY_PROJECT would
+// point the hook at a project directory the fixtures never wrote. Keys are
+// matched case-insensitively, because a Windows environment block's key casing
+// is not the spelling a JS object copy is indexed by.
 function scrubRunEnv(env) {
     for (const k of Object.keys(env)) {
-        if (/^KIT_(RUN_ID|SPAWN_VECTOR|RUN_SECTION)$/i.test(k)) delete env[k];
+        if (/^KIT_(RUN_ID|SPAWN_VECTOR|RUN_SECTION|MEMORY_PROJECT)$/i.test(k)) delete env[k];
     }
     return env;
 }
@@ -579,6 +580,73 @@ test('a run id the kit cannot honor stands the session down instead of failing o
     }
 });
 
+test('a store pin the kit cannot honor stands the session down instead of emitting nothing', () => {
+    const store = makeStore();
+    try {
+        // The store pin names the project directory in place of the cwd-derived
+        // one, so a value that cannot be a directory name leaves no memory
+        // directory at all: not a stamp to age, not a Project-Type declaration
+        // to read, not a pending destination. Silence in that state is the
+        // expensive failure, because a session that hears nothing writes its
+        // memory files the ordinary way, so the stand-down is asserted on the
+        // emitted context rather than on the hook merely surviving.
+        for (const pin of ['..', 'a/b', 'a\\b', 'x'.repeat(41), 'has space', 'inst.', 'NUL']) {
+            const context = assertBlock(runHook(store, startupPayload(store),
+                { KIT_MEMORY_PROJECT: pin }));
+            assert.match(context, /Write no memory files this session/,
+                'silence here would mean writing into an unread directory: ' + pin);
+            assert.match(context, /do not add a line to MEMORY\.md or edit it/);
+            assert.match(context, /KIT_MEMORY_PROJECT/,
+                'the block names the variable, so an operator can act on it');
+            assert.match(context, /no memory directory resolves for this session at all/);
+        }
+
+        // The stand-down displaces the other blocks rather than riding beside
+        // them: an aged stamp in the cwd-derived directory is not this
+        // session's store, and reporting it would name a tier the pin took the
+        // session out of.
+        writeStamp(store, 90);
+        const context = assertBlock(runHook(store, startupPayload(store),
+            { KIT_MEMORY_PROJECT: '..', KIT_RUN_ID: 'r1' }));
+        assert.ok(!context.includes('decay stamp is'), 'no nudge from a store this session is not in');
+        assert.ok(!context.includes('pending'), 'no destination is named when none resolves');
+        assert.match(context, /Kit memory stand-down:/);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a usable store pin is ordinary: the blocks resolve under the pinned project directory', () => {
+    const store = makeStore();
+    try {
+        // The other direction of the stand-down, and the pin's own happy path:
+        // every block hangs off the pinned directory rather than the
+        // cwd-derived one, so an aged stamp there nudges and the run's pending
+        // destination sits under it.
+        const pinnedMemDir = path.join(store.root, 'projects', 'inst-a', 'memory');
+        fs.mkdirSync(pinnedMemDir, { recursive: true });
+        const stamp = path.join(pinnedMemDir, 'decay-stamp');
+        fs.writeFileSync(stamp, 'stamp\n', 'utf8');
+        const past = new Date(Date.now() - 31 * DAY_MS);
+        fs.utimesSync(stamp, past, past);
+        // An aged stamp in the cwd-derived directory too, to prove which one
+        // the hook read: the day counts differ, so the emitted line names it.
+        writeStamp(store, 90);
+
+        const context = assertBlock(runHook(store, startupPayload(store),
+            { KIT_MEMORY_PROJECT: 'inst-a', KIT_RUN_ID: 'r1' }));
+        assert.match(context, /decay stamp is 31 days old/,
+            'the nudge reads the pinned directory\'s stamp, not the cwd-derived one');
+        assert.ok(context.includes('\n  ' + path.join(pinnedMemDir, 'pending', 'r1') + '\n'),
+            'the run\'s pending destination sits under the pinned project directory');
+        assert.ok(!context.includes('stand-down'), 'a usable pin stands nobody down');
+        assert.ok(!context.includes('Kit pinned memory store:'),
+            'one destination, never two: the run tier answers the question when there is a run');
+    } finally {
+        rmStore(store);
+    }
+});
+
 test('a run id without the store signals is not a spawn: the session is left alone entirely', () => {
     const store = makeStore();
     try {
@@ -616,6 +684,118 @@ test('a run id without the store signals is not a spawn: the session is left alo
         assert.strictEqual(malformed.stdout, '');
     } finally {
         rmStore(store);
+    }
+});
+
+test('a pinned session with no run id is told where its memory files go, index line included', () => {
+    const store = makeStore();
+    const projB = fs.mkdtempSync(path.join(os.tmpdir(), 'memsession-projB-'));
+    const pinnedMemDir = path.join(store.root, 'projects', 'inst-a', 'memory');
+    try {
+        // The shapes that write without a run id (a reviewer, a phone-driven
+        // worker) derive their destination from the working directory unless
+        // told otherwise, so silence here means memory files landing in a
+        // cwd-derived directory the pinned store never reads. The destination
+        // is asserted from a second working directory, since one instance's
+        // workers do not share one cwd.
+        const context = assertBlock(spawnSync(process.execPath, [HOOK], {
+            input: JSON.stringify({ cwd: projB, source: 'startup' }),
+            cwd: projB,
+            encoding: 'utf8',
+            env: {
+                ...scrubRunEnv({ ...process.env }),
+                KIT_MEMORY_ROOT: store.root,
+                KIT_MEMORY_ROOT_ALLOW_DATA: '1',
+                KIT_MEMORY_PROJECT: 'inst-a'
+            }
+        }));
+        assert.match(context, /^Kit pinned memory store:/m);
+        assert.ok(context.includes('\n  ' + pinnedMemDir + '\n'),
+            'the pinned directory is named on its own line as data:\n' + context);
+        assert.match(context, /never in a directory derived from the working directory/);
+        // The pending tier's rule is the opposite one, so the difference is
+        // stated rather than left to inference: a pinned project tier is the
+        // instance's ordinary record and an index line belongs in it.
+        assert.match(context, /MEMORY\.md beside the memory files is the index to add a line to as usual/);
+        assert.ok(!context.includes('stand-down'), 'a usable pin stands nobody down');
+    } finally {
+        rmStore(store);
+        try { fs.rmSync(projB, { recursive: true, force: true }); } catch { /* best effort */ }
+    }
+});
+
+test('a pinned directory too long to name faithfully stands the session down', () => {
+    const store = makeStore();
+    try {
+        // The pinned destination gets the run-scoped destination's rule
+        // exactly: a path this block cannot carry faithfully is not named at
+        // all, because a truncated destination is a directory the session
+        // creates and writes into where nothing looks.
+        const context = assertBlock(runHook(store, startupPayload(store), {
+            KIT_MEMORY_PROJECT: 'inst-a',
+            KIT_MEMORY_ROOT: path.join(store.root, 'd'.repeat(200))
+        }));
+        assert.match(context, /cannot be named here/);
+        assert.match(context, /longer than 260 characters/);
+        assert.match(context, /Write no memory files this session/);
+        assert.ok(!context.includes('Kit pinned memory store:'),
+            'no destination is named when none can be carried faithfully');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('an unpinned session is told nothing about a destination, the posture it has always had', () => {
+    const store = makeStore();
+    try {
+        // The other direction of the block above: without a pin the working
+        // directory is the derivation, so there is nothing to say and the hook
+        // says nothing.
+        assertSilent(runHook(store, startupPayload(store)));
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a store pin without the store signals is not a spawn either: no stand-down, no block', () => {
+    const store = makeStore();
+    const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'memsession-home-'));
+    try {
+        // A pin from a shell profile or a committed .vscode env, with no engine
+        // behind it, is an ungated override memq ignores with a note on its own
+        // stderr. Whatever its value, it moves nothing, so there is nothing to
+        // stand down over, and standing an ordinary developer down would cost
+        // them every memory write for the session.
+        // The child's home is a temp directory and the store override is
+        // removed outright, so the ungated path resolves a store that is
+        // observably empty rather than whatever the real ~/.claude holds.
+        const env = scrubRunEnv({ ...process.env });
+        // Case-insensitive for every key, the store pair included: a Windows
+        // environment block's key casing is not the spelling a plain-object
+        // copy is indexed by, and an exact-case delete of the pair can leave
+        // the child gated and flip this case into asserting the wrong branch.
+        for (const k of Object.keys(env)) {
+            const lower = k.toLowerCase();
+            if (lower === 'userprofile' || lower === 'home'
+                || lower === 'kit_memory_root' || lower === 'kit_memory_root_allow_data') {
+                delete env[k];
+            }
+        }
+        env.USERPROFILE = fakeHome;
+        env.HOME = fakeHome;
+        for (const pin of ['inst-a', '..']) {
+            const res = spawnSync(process.execPath, [HOOK], {
+                input: JSON.stringify(startupPayload(store)),
+                cwd: store.proj,
+                encoding: 'utf8',
+                env: { ...env, KIT_MEMORY_PROJECT: pin }
+            });
+            assert.strictEqual(res.status, 0, res.stderr);
+            assert.strictEqual(res.stdout, '', 'no block of any kind, stand-down included: ' + pin);
+        }
+    } finally {
+        rmStore(store);
+        try { fs.rmSync(fakeHome, { recursive: true, force: true }); } catch { /* best effort */ }
     }
 });
 
