@@ -1,6 +1,6 @@
 # Claude-Kit Instance Store Pin
 
-Status: In Progress
+Status: Complete
 Commit Model: Commit-and-Push
 Fable Spend: finishing reviews
 Created: 2026-08-01
@@ -70,7 +70,7 @@ None. The fork (one shared tier per instance) was settled with Scott on 2026-08-
 
 ## Related
 
-- Builds on `../archive/claude-kit_fleet-integration_spec_v1.md`, which created the gated store, the pending tier, and the two-signal override rule this pin follows.
+- Builds on `claude-kit_fleet-integration_spec_v1.md`, a sibling in this archive directory, which created the gated store, the pending tier, and the two-signal override rule this pin follows.
 - Consumed by the `sapplefeld-ai-os` repo's `ai-os-kit-integration_spec_v1.md`, whose section 2 builds the per-instance store and the promotion into it.
 
 ## Chapters
@@ -110,4 +110,26 @@ Decisions / Surprises:
 Review Findings: none of its own; the finishing pass covers the changeset.
 
 Next: finishing-work
+Commit Model: Commit-and-Push
+
+### Chapter 3 - 2026-08-01
+Completed: 3. Finishing pass
+Implemented By: main session, with qa-verifier and a whole-changeset adversarial and security pair at fable
+Metrics: QA PASS; adversarial APPROVED_WITH_CONCERNS; security CONCERNS; no code changed in this pass; advisor opus
+Gate: 444 pass / 0 fail at close (429 at the pre-effort baseline, +15, none lost), verified by me and independently by the qa-verifier.
+
+Both finishing reviewers found the same thing from opposite ends, and it is the lesson worth carrying: section 2's count-and-claim sweep stopped at the three files it edited. Every finding was a true statement elsewhere in the library that the pin had falsified, and no per-section pass could have seen them because none of them lives in the section's own files.
+
+- The security document credited a governance control the pin makes structurally unreachable. `--confirm-shared` refuses a type-tier retirement that affects more than one declaring project, counted by enumerating `projects/` segments, and the pin collapses an instance to exactly one segment by design, so the count is always one and the gate never trips, while the type tier it guards is not collapsed and stays genuinely shared. The control was not removed; its precondition was replaced by the pin's purpose. Recorded in type-tier governance rather than quietly left.
+- The fence claim overreached. Section 2 wrote "all five hops carry the fence", and `memq find` is a sixth content path that carries none: one bounded, charset-closed, quote-stripped line per hit at column zero. The earlier decision that `find` is not a fence surface still stands and I did not reverse it (a single sanitized line cannot forge a block), but the document had to stop implying coverage it does not have and instead name `find`'s narrower guard and the exposure it leaves.
+- The pending tier's bound was overstated. Under a pin, a spawn with no run id is deliberately told to write memory files and index lines straight into the shared instance record, so the quarantine covers plan-execution runs rather than every write. Decided in Chapter 1, but the bullet claiming the bound was never qualified.
+- `docs/fleet-integration.md` stated the pending path with the sanitized-cwd segment, false under the pin the same document mandates eleven lines earlier. That is the one wrong sentence that could have sent a promotion at the wrong directory, so it is the finding I would least have wanted to ship.
+- Model-facing skill prose had gone stale in the way that matters most, because a pinned fleet worker loads it: `memory-system` told the reader the live tiers carry no descriptions because the harness injects the index, which is exactly the premise the pin invalidates, and two skills stated the cwd derivation unconditionally.
+- Two counts in `docs/README.md` and one enumeration inside the override list itself ("unlike the other three") were stale. Fourth, fifth, and sixth instances of that class this session.
+
+Also corrected: the mitigation sentence claiming an explicitly-set value beats a repository's own environment configuration. It beats an inherited parent environment, not configuration that runs inside the spawned session's shells afterwards, and the claim now says which.
+
+Nothing in the code changed during the finishing pass. Both reviewers independently verified that every claim the rewritten documents make about the code is true of the code as built, including the fence keying on the pin rather than the tier name, the fifth context path, and the store-root containment.
+
+Next: none, effort complete
 Commit Model: Commit-and-Push
