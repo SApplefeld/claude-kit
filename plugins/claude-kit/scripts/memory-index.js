@@ -145,8 +145,11 @@ function packageDirPath() {
 }
 
 // The remedy line, one place, because the doctor, the session nudge, and find's
-// absence line all state the same move.
-const INSTALL_REMEDY = 'kit doctor -Fix (installs the local embedding stack)';
+// absence line all state the same move. Names the kit-doctor skill rather than
+// a bare command: no `kit` launcher exists on a machine with the kit installed,
+// only the memq shim in ~/.claude/bin, so the skill's own locate-and-run steps
+// are what actually resolves this for a session reading the string back.
+const INSTALL_REMEDY = "run the kit-doctor skill's -Fix (installs the local embedding stack)";
 
 function absentResult(detail) {
     return {
@@ -191,8 +194,8 @@ function missingModelFiles() {
 }
 
 // Whether the embedding stack is installed and usable, answered from the
-// filesystem alone and without loading anything. Section 7's doctor check and
-// any surface that wants to state installed-or-not cheaply asks this; a caller
+// filesystem alone and without loading anything. The doctor's embedder check
+// and any surface that wants to state installed-or-not cheaply asks this; a caller
 // that needs actual vectors asks loadEmbedder below, which answers the same
 // shape plus a loaded model.
 //

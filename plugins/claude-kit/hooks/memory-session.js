@@ -38,12 +38,12 @@
 // silence it.
 //
 // The embedder-absence nudge: `memq find`'s semantic channel needs a local
-// embedding stack that installs per machine through `kit doctor -Fix`, never
-// bundled with the kit core. When it is not installed, or installed but not
-// usable, this hook says one line naming the remedy; when it is ready, it
-// says nothing. It rides beside the sync-freshness nudge on the same branch,
-// silenced under the same top-level stand-down and run-scoped conditions, for
-// the same reason.
+// embedding stack that installs per machine through the kit doctor's -Fix,
+// never bundled with the kit core. When it is not installed, or installed
+// but not usable, this hook says one line naming the remedy; when it is
+// ready, it says nothing. It rides beside the sync-freshness nudge on the
+// same branch, silenced under the same top-level stand-down and run-scoped
+// conditions, for the same reason.
 //
 // The type-index loader: a project that declares "Project-Type: <type>" at
 // the top of its memory MEMORY.md gets the shared type tier's index
@@ -307,8 +307,9 @@ function syncNudge(memq) {
     else if (facts.length === 2) stated = facts[0] + ', and ' + facts[1];
     else stated = facts[0] + ', ' + facts[1] + ', and ' + facts[2];
 
-    return 'Kit memory sync: the memory store ' + stated + '. Run `kit doctor -Fix` to commit '
-        + 'through the gated allowlist, then `git pull --rebase` and push, in the store, to bring '
+    return 'Kit memory sync: the memory store ' + stated + '. Run the kit doctor\'s -Fix (the '
+        + 'kit-doctor skill owns that run) to commit through the gated allowlist; push only once '
+        + 'it reports PASS or FIXED, then `git pull --rebase` and push, in the store, to bring '
         + 'machines back in sync.';
 }
 

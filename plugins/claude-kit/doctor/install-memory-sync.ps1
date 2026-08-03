@@ -102,6 +102,15 @@ function Get-MemorySyncIgnoreText {
         '/projects/*',
         '!/projects/*/',
         '/projects/*/*') +
+        # $tierRules admits every allowed-leaf-pattern file under this prefix,
+        # memory/pending/<run-id>/ included, so a run's own unadjudicated
+        # writes still sync and survive a crash before the run ends. That is
+        # deliberately wider than memory-index.js's semantic index, which
+        # excludes the pending tier so a run's writes never surface in
+        # another session's search before adjudication. Sync answers "should
+        # this reach another machine"; the index answers "should this be
+        # discoverable yet". Different questions, so the two surfaces disagree
+        # on purpose.
         (& $tierRules '/projects/*/memory') + @(
         '',
         '# The type tier, live and archived.') +

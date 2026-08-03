@@ -142,7 +142,7 @@ test('the probe reports absent, unusable, and ready as three distinct states', {
         const absent = probeOf(absentRoot);
         assert.strictEqual(absent.status, 'absent');
         assert.strictEqual(absent.available, false);
-        assert.match(absent.remedy, /kit doctor -Fix/);
+        assert.match(absent.remedy, /run the kit-doctor skill's -Fix/);
 
         const unusableRoot = path.join(root, 'unusable');
         plantEmbedder(unusableRoot, 'unusable');
@@ -150,7 +150,7 @@ test('the probe reports absent, unusable, and ready as three distinct states', {
         assert.strictEqual(unusable.status, 'unusable');
         assert.strictEqual(unusable.available, false);
         assert.match(unusable.detail, /model files are missing/);
-        assert.match(unusable.remedy, /kit doctor -Fix/);
+        assert.match(unusable.remedy, /run the kit-doctor skill's -Fix/);
 
         const readyRoot = path.join(root, 'ready');
         plantEmbedder(readyRoot, 'ready');
@@ -172,7 +172,7 @@ test('the doctor reports all three probe states with the right remedy direction,
         const absentLine = doctorEmbedderLine(home);
         assert.strictEqual(absentLine.status, 'WARN', absentLine.detail);
         assert.match(absentLine.detail, /Not installed/);
-        assert.match(absentLine.detail, /kit doctor -Fix \(installs the local embedding stack\)/);
+        assert.match(absentLine.detail, /run the kit-doctor skill's -Fix \(installs the local embedding stack\)/);
         assert.ok(!fs.existsSync(path.join(home, '.claude', 'kit-embedder')),
             'check mode must never create the embedder directory');
 
@@ -182,7 +182,7 @@ test('the doctor reports all three probe states with the right remedy direction,
         assert.strictEqual(unusableLine.status, 'WARN', unusableLine.detail);
         assert.match(unusableLine.detail, /Installed but not usable/);
         assert.match(unusableLine.detail, /repair, not a fresh install/);
-        assert.match(unusableLine.detail, /kit doctor -Fix/);
+        assert.match(unusableLine.detail, /run the kit-doctor skill's -Fix/);
 
         const readyHome = path.join(root, 'ready-home');
         const embedderDir = path.join(readyHome, '.claude', 'kit-embedder');
@@ -446,7 +446,7 @@ function fakeProbe(status, extra) {
         packageName: '@huggingface/transformers', packageVersion: '9.9.9',
         model: 'Xenova/all-MiniLM-L6-v2', dtype: 'q8', packageDir: 'C:\\fake\\packageDir',
         identity: status === 'ready' ? 'fake-identity' : null,
-        remedy: status === 'ready' ? null : 'kit doctor -Fix (installs the local embedding stack)',
+        remedy: status === 'ready' ? null : "run the kit-doctor skill's -Fix (installs the local embedding stack)",
         detail: status === 'ready' ? null : 'fake detail for ' + status
     }, extra || {});
 }

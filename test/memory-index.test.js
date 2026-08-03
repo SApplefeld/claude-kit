@@ -230,7 +230,7 @@ test('the embedder probe reports a typed absence rather than throwing', async ()
                 path.join(empty, 'node_modules', '@huggingface', 'transformers'));
             // The remedy is what a degraded search surface prints, so its
             // presence is part of the contract, not decoration.
-            assert.match(probe.remedy, /kit doctor -Fix/);
+            assert.match(probe.remedy, /run the kit-doctor skill/);
             assert.match(probe.detail, /no @huggingface\/transformers at/);
 
             // The loading path answers the same absence, still without throwing
@@ -274,7 +274,7 @@ test('an install whose model files are missing is unusable, not ready', async ()
             for (const rel of mi.MODEL_FILES) {
                 assert.ok(probe.detail.includes(rel), 'the detail names ' + rel);
             }
-            assert.match(probe.remedy, /kit doctor -Fix/);
+            assert.match(probe.remedy, /run the kit-doctor skill/);
 
             // The load path answers the same state without loading anything, so
             // the network is never reached from a query.
@@ -846,7 +846,7 @@ test('query answers the typed absence when the embedding stack is not installed'
                 assert.strictEqual(result.status, 'absent');
                 assert.deepStrictEqual(result.hits, []);
                 assert.strictEqual(result.sweep, null);
-                assert.match(result.embedder.remedy, /kit doctor -Fix/);
+                assert.match(result.embedder.remedy, /run the kit-doctor skill/);
             });
         });
     } finally {

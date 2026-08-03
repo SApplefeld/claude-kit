@@ -38,6 +38,17 @@
 # estimate; re-measure whenever the pinned package changes.
 $script:EmbedderConsentSizeMB = 398
 
+# The model download is not pinned to a Hugging Face Hub revision, unlike the
+# npm package above: transformers.js caches a non-'main' revision under a
+# revision-hash subdirectory (.cache/Xenova/all-MiniLM-L6-v2/<sha>/...) rather
+# than the plain per-model path it uses for the default branch, and
+# memory-index.js's probe checks for the model files at the plain path only.
+# Passing a pinned revision to the warm-up therefore downloads correctly but
+# leaves the probe unable to find what it downloaded, reporting 'unusable'
+# forever. Supporting a pin would mean teaching the probe's file-existence
+# check the revision-keyed layout, which is memory-index.js's file and outside
+# this round's authorization. Documented limitation, not silently dropped.
+
 # The -e script bodies. Each is spawned as its own node process (see header),
 # and each takes the path to memory-index.js as its one positional argument
 # (process.argv[1] under node -e; see doctor.ps1's kit-goal-stop.js load
@@ -290,7 +301,15 @@ function Invoke-EmbedderNpmInstall {
     # A private prefix, never a global install: --prefix installs into
     # EmbedderRoot's own node_modules and writes a package.json there,
     # touching nothing outside the directory Install-Embedder already created.
-    $npmOutput = & npm install "@huggingface/transformers" --prefix $EmbedderRoot --no-audit --no-fund --loglevel=error 2>&1
+    # The version is pinned rather than left to float: an unpinned install
+    # picks up whatever a later npm publish put on the tag, unreviewed. Two
+    # transitive dependencies (onnxruntime-node, sharp) install a native
+    # binary or run a build step in their own postinstall scripts; this
+    # package ships the platform binaries onnxruntime-node needs directly in
+    # its published tree, so --ignore-scripts skips those scripts without
+    # leaving the install unable to load. Re-verify that holds before raising
+    # the pin: a future release could move to a script-driven binary fetch.
+    $npmOutput = & npm install "@huggingface/transformers@4.2.0" --prefix $EmbedderRoot --ignore-scripts --no-audit --no-fund --loglevel=error 2>&1
     $npmCode = $LASTEXITCODE
     if ($npmCode -ne 0) {
         # Raw text, unsanitized here: the caller (doctor.ps1) sanitizes every
@@ -301,7 +320,7 @@ function Invoke-EmbedderNpmInstall {
         $tail = ($npmOutput | Select-Object -Last 8 | ForEach-Object { [string]$_ })
         return @{ Ok = $false; Notes = (@("npm install failed (exit $npmCode); the directory is left in place for diagnosis:") + $tail) }
     }
-    return @{ Ok = $true; Notes = @("Ran npm install --prefix $EmbedderRoot @huggingface/transformers.") }
+    return @{ Ok = $true; Notes = @("Ran npm install --prefix $EmbedderRoot @huggingface/transformers@4.2.0.") }
 }
 
 # One warm-up attempt, in its own node process (see this file's header for why
@@ -335,18 +354,18 @@ function Invoke-EmbedderWarmUp {
 # there, warm the model if the cache is missing or incomplete, then assert
 # the result is actually ready before reporting success.
 #
-# The two steps are independent because the two failure shapes this section's
-# spec calls out are independent: 'absent' (npm never ran, or ran and never
-# finished) needs the package; 'unusable' (the package is present but the
-# model cache is missing or partial) needs only the warm-up. Re-running npm
-# install over a package that is already there is not wrong, but it is a
-# multi-hundred-megabyte download this section does not need to repeat every
-# time a machine's model cache alone went missing.
+# The two steps are independent because the two failure shapes are
+# independent: 'absent' (npm never ran, or ran and never finished) needs the
+# package; 'unusable' (the package is present but the model cache is missing
+# or partial) needs only the warm-up. Re-running npm install over a package
+# that is already there is not wrong, but it is a multi-hundred-megabyte
+# download this function does not need to repeat every time a machine's
+# model cache alone went missing.
 #
 # A machine can also reach 'unusable' with a package that is present on disk
 # but not actually loadable (an npm install that failed partway through,
-# leaving a manifest without its dependencies, the "fails partway" mode the
-# spec names): skipping npm there would leave every future -Fix skipping it
+# leaving a manifest without its dependencies): skipping npm there would
+# leave every future -Fix skipping it
 # too, warming forever, and reporting the same unreachable remedy. So when the
 # warm-up reports it could not even require() the package (Status 'absent'),
 # and this call skipped npm on the assumption the package was fine, one npm

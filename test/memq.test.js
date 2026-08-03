@@ -6981,7 +6981,7 @@ test('find with the embedder absent serves lexical results unchanged plus one lo
         assert.strictEqual(loud.length, 1, 'exactly one loud line: ' + res.stderr);
         assert.match(loud[0], new RegExp('^memq: semantic search off \\(the local embedding'
             + ' stack is not installed\\); serving lexical matches only\\.'
-            + ' remedy: kit doctor -Fix'));
+            + ' remedy: run the kit-doctor skill'));
 
         // An install whose model files are missing is the other absence
         // shape: same degradation, a reason naming a repair rather than an
@@ -6993,7 +6993,7 @@ test('find with the embedder absent serves lexical results unchanged plus one lo
             assert.strictEqual(broken.stdout, res.stdout, 'the lexical output is byte-identical');
             assert.match(broken.stderr,
                 /semantic search off \(the local embedding stack is installed but unusable\)/);
-            assert.match(broken.stderr, /kit doctor -Fix/);
+            assert.match(broken.stderr, /run the kit-doctor skill/);
         } finally {
             rmFakeEmbedder(modelless);
         }

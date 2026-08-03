@@ -1060,8 +1060,7 @@ else {
 
     if ($Fix -and $syncNeedsWork) {
         # Three shapes, not two: the prompt must never describe a repair that
-        # is not happening (Section 1's own finding, applied to the newest
-        # branch), so a canonical repo that only needs its pending memories
+        # is not happening, so a canonical repo that only needs its pending memories
         # committed asks about exactly that, never about restoring an
         # allowlist that is already right.
         $syncQuestion = if (-not $syncStatus.IsRepo) {

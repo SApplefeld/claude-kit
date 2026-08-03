@@ -1390,7 +1390,7 @@ test('an ahead-only store nudges with the ahead fact and no behind or uncommitte
         assert.match(nudge, /is 1 commit\(s\) ahead of its remote \(not yet pushed\)/);
         assert.ok(!nudge.includes('behind'), 'no behind claim when nothing is behind');
         assert.ok(!nudge.includes('uncommitted'), 'no uncommitted claim over a clean tree');
-        assert.match(nudge, /kit doctor -Fix/);
+        assert.match(nudge, /the kit doctor's -Fix/);
         assert.match(nudge, /git pull --rebase/);
     } finally {
         rmStore(store);
@@ -1455,7 +1455,7 @@ test('an uncommitted-only store nudges, distinguishable from an ahead or behind 
         assert.match(nudge, /holds uncommitted changes/);
         assert.ok(!nudge.includes('ahead'), 'no ahead claim: nothing has been committed, let alone pushed');
         assert.ok(!nudge.includes('behind'), 'no behind claim: divergence and dirt are different facts');
-        assert.match(nudge, /kit doctor -Fix/, 'the remedy for uncommitted content is naming the commit path');
+        assert.match(nudge, /the kit doctor's -Fix/, 'the remedy for uncommitted content is naming the commit path');
     } finally {
         rmStore(store);
     }
@@ -1507,8 +1507,9 @@ test('the sync nudge carries no store-controlled text: no branch name, no remote
         assert.ok(!nudge.includes('.claude'), 'no directory name at all, not even the real store\'s own:\n' + nudge);
         assert.strictEqual(nudge, 'Kit memory sync: the memory store is 1 commit(s) ahead of its remote '
             + '(not yet pushed), and is 1 commit(s) behind its remote (not yet pulled, as last known here; '
-            + 'no fetch was run). Run `kit doctor -Fix` to commit through the gated allowlist, then '
-            + '`git pull --rebase` and push, in the store, to bring machines back in sync.');
+            + 'no fetch was run). Run the kit doctor\'s -Fix (the kit-doctor skill owns that run) to commit '
+            + 'through the gated allowlist; push only once it reports PASS or FIXED, then `git pull --rebase` '
+            + 'and push, in the store, to bring machines back in sync.');
     } finally {
         rmStore(store);
     }
@@ -1718,7 +1719,7 @@ test('an unusable embedder install (package present, model cache missing) fires 
         }));
         const nudge = blockStarting(context, 'Kit memory search:');
         assert.match(nudge, /not installed or not usable/);
-        assert.match(nudge, /kit doctor -Fix/);
+        assert.match(nudge, /run the kit-doctor skill's -Fix/);
     } finally {
         rmStore(store);
         try { fs.rmSync(embedderRoot, { recursive: true, force: true }); } catch { /* best effort */ }
