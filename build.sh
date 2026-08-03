@@ -79,6 +79,13 @@ done
 printf '{\n  "name": "%s",\n  "hash": "%s",\n  "dirty": %s,\n  "hooks": {\n%s\n  }\n}\n' \
     "$PLUGIN_NAME" "$HASH" "$DIRTY" "$HOOK_HASHES" > "$BUILD_INFO"
 
+# Stage the Operating Doctrine at the Plugin Root. An engine that narrows a spawn's
+# setting sources away from the user scope loses the profile CLAUDE.md chain, so it
+# appends this file to the worker's system prompt from the deployed payload instead.
+# home/ stays the single source; the copy is gitignored and regenerated on every
+# build, before the archive step so it lands inside the zip.
+cp "$SCRIPT_DIR/home/claude-kit-doctrine.md" "$SOURCE_DIR/claude-kit-doctrine.md"
+
 # Recreate Archive From Scratch. Zipping from plugins/ stores claude-kit/ at the
 # archive root. -X drops platform extra-attributes for more reproducible output.
 rm -f "$ZIP_PATH"

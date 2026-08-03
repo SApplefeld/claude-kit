@@ -70,6 +70,14 @@ Get-ChildItem -LiteralPath (Join-Path $sourceDir 'hooks') -File |
 $buildInfo = [ordered]@{ name = $pluginName; hash = $gitHash; dirty = $isDirty; hooks = $hookHashes }
 [System.IO.File]::WriteAllText($buildInfoPath, ($buildInfo | ConvertTo-Json -Depth 5))
 
+# Stage the Operating Doctrine at the Plugin Root. An engine that narrows a spawn's
+# setting sources away from the user scope loses the profile CLAUDE.md chain, so it
+# appends this file to the worker's system prompt from the deployed payload instead.
+# home\ stays the single source; the copy is gitignored and regenerated every build,
+# before the file collection below so it is packaged.
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'home\claude-kit-doctrine.md') `
+          -Destination (Join-Path $sourceDir 'claude-kit-doctrine.md') -Force
+
 # Load Compression Types.
 Add-Type -AssemblyName System.IO.Compression | Out-Null
 
