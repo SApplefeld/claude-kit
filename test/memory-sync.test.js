@@ -76,6 +76,20 @@ function makeStore(options) {
     write(path.join(store, 'projects', PROJECT_A, 'a1b2c3d4-session.jsonl'), '{"type":"user"}\n');
     write(path.join(store, 'projects', PROJECT_A, 'todos', 'todo.json'), '[]\n');
     write(path.join(store, 'shell-snapshots', 'snapshot.sh'), 'export SECRET=1\n');
+    // The embedder install and its derived search index: root-level, like the
+    // other sensitive paths above, and excluded by the same `/*` rule rather
+    // than by any rule naming them specifically. Planted several levels deep
+    // (kit-embedder/node_modules/@huggingface/transformers/...), which is
+    // where git's directory-exclusion semantics are actually exercised, not
+    // just the top-level name. Neither path is added to `allowed` below, so
+    // every existing positive-space assertion in this file (trackedPaths and
+    // historyPaths compared against `allowed`) already proves both stay out,
+    // with no new assertion required beyond this fixture existing.
+    write(path.join(store, 'kit-embedder', 'node_modules', '@huggingface', 'transformers', 'package.json'),
+        '{"name":"@huggingface/transformers","version":"9.9.9"}\n');
+    write(path.join(store, 'kit-embedder', 'node_modules', '@huggingface', 'transformers',
+        '.cache', 'Xenova', 'all-MiniLM-L6-v2', 'onnx', 'model_quantized.onnx'), 'not a real model\n');
+    write(path.join(store, 'memory-index.jsonl'), '{"store":"a","tier":"type","name":"b"}\n');
 
     // Every form memq writes into a tier: memory bodies and both indexes as
     // .md, the journals as .jsonl, and the decay pass's extension-less
@@ -313,7 +327,10 @@ test('the sensitive root files and a session transcript are ignored, and an add 
         for (const rel of ['.credentials.json', 'settings.json', 'history.jsonl',
             'projects/' + PROJECT_A + '/a1b2c3d4-session.jsonl',
             'projects/' + PROJECT_A + '/todos/todo.json',
-            'shell-snapshots/snapshot.sh']) {
+            'shell-snapshots/snapshot.sh',
+            'memory-index.jsonl',
+            'kit-embedder/node_modules/@huggingface/transformers/package.json',
+            'kit-embedder/node_modules/@huggingface/transformers/.cache/Xenova/all-MiniLM-L6-v2/onnx/model_quantized.onnx']) {
             assert.ok(isIgnored(fake.store, rel), rel + ' must be ignored');
         }
         // Both directions of the dry run at once: newly planted memory files

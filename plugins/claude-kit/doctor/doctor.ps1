@@ -123,6 +123,11 @@ $claudeDir = Join-Path $env:USERPROFILE ".claude"
 # knows the real store root, and passes it in.
 . (Join-Path $PSScriptRoot "install-memory-sync.ps1")
 
+# Embedder probe, install, and index-health helpers, beside this script. It
+# resolves no paths of its own either: this script is the only caller that
+# knows the real embedder root and store root, and passes both in.
+. (Join-Path $PSScriptRoot "install-embedder.ps1")
+
 # Append a directory to the durable user PATH, and to this process's PATH so
 # the current run sees it too. Every kit PATH repair goes through this one
 # function.
@@ -1160,6 +1165,135 @@ else {
             else { $syncDetail += "No origin remote yet, so the store is versioned locally but not replicated." }
             if ($syncFixLines.Count -gt 0) { Report "FIXED" "Memory sync" ($syncFixLines + $syncDetail) }
             else { Report "PASS" "Memory sync" $syncDetail }
+        }
+    }
+}
+
+# --- Embedder (semantic memory search). memq find's semantic channel needs an
+# --- in-process embedding stack that ships outside the plugin payload (the kit
+# --- core stays dependency-free), so this section reports whether it is
+# --- installed, installs it under -Fix, and reports the derived index's health
+# --- without ever sweeping or writing it: the index rebuilds itself, and a
+# --- doctor that touched it while reporting on it would have changed the thing
+# --- it was reporting.
+# ---
+# --- install-embedder.ps1 (dot-sourced near the top of this script) owns the
+# --- probe, the install, and the index-health reading, so the repo test suite
+# --- exercises the same functions against a redirected embedder root and store
+# --- root. probeEmbedder's three states get three different reports: 'absent'
+# --- is nothing installed yet, 'unusable' is a broken or incomplete install (a
+# --- repair, never mistaken for a fresh install), and 'ready' is a working
+# --- semantic channel. Absence is a WARN, not a FAIL: memq find degrades to its
+# --- lexical channel with a loud line, so a machine without the stack is a
+# --- working install with a named gap, the same reading every other optional
+# --- capability in this doctor gets.
+# "kit-embedder" mirrors memory-index.js's EMBEDDER_DIR constant and
+# memq.js's OPERATOR_DIR-style literal duplication: PowerShell cannot import a
+# CommonJS constant, so the two sides of this contract are pinned by comment
+# rather than by a shared definition, the same way $script:EmbedderConsentSizeMB
+# in install-embedder.ps1 is a measured figure rather than a computed one.
+$embedderRoot = Join-Path $claudeDir "kit-embedder"
+$embedderScript = Join-Path $pluginRoot "scripts\memory-index.js"
+
+if ($null -eq $nodeCmd) {
+    Report "INFO" "Embedder (semantic search)" @("Skipped (node unresolved; the hook check above already FAILs on that, and the embedder probe runs under node).")
+}
+elseif (-not (Test-Path -LiteralPath $embedderScript)) {
+    Report "FAIL" "Embedder (semantic search)" @("memory-index.js not found at $embedderScript; this plugin payload is incomplete.")
+}
+else {
+    $embedProbe = Get-EmbedderProbe -MemoryIndexPath $embedderScript -EmbedderRoot $embedderRoot -NodeExe $nodeCmd.Source
+    $embedFixNotes = @()
+    $embedReported = $false
+
+    # Gated on 'absent' or 'unusable' specifically, never on "not ready":
+    # 'probe-failed' (the module present but unloadable, an incomplete plugin
+    # payload) also reads not-ready, and offering a fresh install there would
+    # promise a multi-hundred-megabyte download that cannot fix a payload
+    # problem, ending in FAIL regardless. 'probe-failed' takes its own report
+    # in the switch below instead, and never reaches a consent prompt.
+    if ($Fix -and ($embedProbe.status -eq 'absent' -or $embedProbe.status -eq 'unusable')) {
+        if ($null -eq (Get-Command npm -ErrorAction SilentlyContinue)) {
+            # The consent prompt must not promise a repair the installer will
+            # refuse to perform: Install-Embedder itself checks for npm and
+            # returns Ok=false without ever prompting, so this mirrors that
+            # refusal before a prompt is even offered, the same shape the
+            # memq shim's "no payload to run" WARN takes. No prompt is shown,
+            # and this rides as an extra note on the ordinary absent/unusable
+            # report below rather than replacing it, so the index-health lines
+            # every other state gets still print here too.
+            $embedFixNotes = @(
+                "npm is not on PATH, so the embedding stack cannot be installed.",
+                "Install Node.js (which ships npm) and re-run doctor -Fix."
+            )
+        }
+        else {
+            $embedQuestion = if ($embedProbe.status -eq 'unusable') {
+                "Repair the local embedding stack at $embedderRoot (re-downloads the missing model files; the full install is about $($script:EmbedderConsentSizeMB) MB on disk)?"
+            }
+            else {
+                "Install the local embedding stack into $embedderRoot (about $($script:EmbedderConsentSizeMB) MB on disk; enables memq find's semantic channel)?"
+            }
+            if (Get-Consent $embedQuestion) {
+                $embedInstall = Install-Embedder -PluginRoot $pluginRoot -EmbedderRoot $embedderRoot -NodeExe $nodeCmd.Source
+                # Re-probe either way: the report below must describe the
+                # install as it actually stands after this attempt, never as
+                # the attempt hoped it would.
+                $embedProbe = Get-EmbedderProbe -MemoryIndexPath $embedderScript -EmbedderRoot $embedderRoot -NodeExe $nodeCmd.Source
+                $embedInstallNotes = @($embedInstall.Notes | ForEach-Object { Get-SanitizedLine $_ 300 })
+                if (-not $embedInstall.Ok) {
+                    Report "FAIL" "Embedder (semantic search)" ($embedInstallNotes + @(
+                        "Semantic channel inactive; memq find serves lexical results only, with a loud absence line naming the remedy.",
+                        "The install directory is left in place for diagnosis; the doctor deletes nothing."
+                    ))
+                    $embedReported = $true
+                }
+                else {
+                    $embedFixNotes = $embedInstallNotes
+                }
+            }
+        }
+    }
+
+    if (-not $embedReported) {
+        $embedIndexHealth = Get-EmbedderIndexHealth -MemoryIndexPath $embedderScript -EmbedderRoot $embedderRoot -StoreRoot $claudeDir -NodeExe $nodeCmd.Source
+        $embedIndexLines = @((Get-EmbedderIndexHealthLines -IndexHealth $embedIndexHealth -Probe $embedProbe) | ForEach-Object { Get-SanitizedLine $_ 300 })
+
+        switch ($embedProbe.status) {
+            'ready' {
+                # packageVersion comes from a package.json this doctor did not
+                # author, the same as every other foreign string reaching this
+                # report, so it takes the same sanitize pass before printing.
+                $embedDetail = @(
+                    ("Installed: $($embedProbe.packageName)@$(Get-SanitizedLine ([string]$embedProbe.packageVersion) 40), model $($embedProbe.model) ($($embedProbe.dtype)) at $($embedProbe.packageDir)."),
+                    "Semantic channel active; memq find blends lexical and semantic results."
+                ) + $embedIndexLines
+                if ($embedFixNotes.Count -gt 0) { Report "FIXED" "Embedder (semantic search)" ($embedFixNotes + $embedDetail) }
+                else { Report "PASS" "Embedder (semantic search)" $embedDetail }
+            }
+            'unusable' {
+                Report "WARN" "Embedder (semantic search)" ($embedFixNotes + @(
+                    ("Installed but not usable: " + (Get-SanitizedLine ([string]$embedProbe.detail) 300)),
+                    "This is a repair, not a fresh install.",
+                    ("Fix: " + $embedProbe.remedy),
+                    "Semantic channel inactive; memq find serves lexical results only, with a loud absence line naming the remedy."
+                ) + $embedIndexLines)
+            }
+            'absent' {
+                Report "WARN" "Embedder (semantic search)" ($embedFixNotes + @(
+                    "Not installed; memq find serves lexical results only, with a loud absence line naming the remedy.",
+                    ("Fix: " + $embedProbe.remedy + "  (about $($script:EmbedderConsentSizeMB) MB on disk)")
+                ) + $embedIndexLines)
+            }
+            default {
+                # 'probe-failed': the child node process itself could not
+                # answer, an incomplete plugin payload rather than an
+                # ordinary absent-or-broken install. Named as its own state so
+                # it is never mistaken for either.
+                Report "FAIL" "Embedder (semantic search)" (@(
+                    "Could not probe the embedder install: " + (Get-SanitizedLine ([string]$embedProbe.detail) 300)
+                ) + $embedIndexLines)
+            }
         }
     }
 }

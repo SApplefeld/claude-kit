@@ -67,6 +67,35 @@ function writeStamp(store, ageDays) {
     fs.utimesSync(stampPath(store), past, past);
 }
 
+// A fixture embedder install that probes 'ready': a package.json carrying a
+// version, and the model files probeEmbedder checks for existence, none of
+// them real model data (probeEmbedder never reads their content). Built once
+// and pointed at by default through runHook's KIT_EMBEDDER_ROOT below, so the
+// embedder nudge (silent only when the probe reads 'ready') never joins the
+// block list every pre-existing case in this file already asserts exactly;
+// the machine actually running this suite may or may not have the real stack
+// installed, and this fixture is what keeps every other case's assertions
+// independent of that. The cases that test the nudge itself override
+// KIT_EMBEDDER_ROOT to point at their own absent or unusable fixture instead.
+// MODEL_ID and MODEL_FILES come from memory-index.js itself, so this fixture
+// cannot drift from the shape the real probe checks.
+const mi = require('../plugins/claude-kit/scripts/memory-index.js');
+const READY_EMBEDDER_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'memsession-embedder-'));
+(function plantReadyEmbedder() {
+    const pkgDir = path.join(READY_EMBEDDER_ROOT, 'node_modules', '@huggingface', 'transformers');
+    fs.mkdirSync(pkgDir, { recursive: true });
+    fs.writeFileSync(path.join(pkgDir, 'package.json'), JSON.stringify({ version: '0.0.0-fixture' }), 'utf8');
+    const modelDir = path.join(pkgDir, '.cache', ...mi.MODEL_ID.split('/'));
+    for (const rel of mi.MODEL_FILES) {
+        const file = path.join(modelDir, rel);
+        fs.mkdirSync(path.dirname(file), { recursive: true });
+        fs.writeFileSync(file, '', 'utf8');
+    }
+})();
+process.on('exit', () => {
+    try { fs.rmSync(READY_EMBEDDER_ROOT, { recursive: true, force: true }); } catch { /* best effort */ }
+});
+
 // Run the hook as a child. The child's cwd is the fake project so the
 // payload-cwd fallback resolves inside the test store; process.env is spread
 // rather than rebuilt so the child keeps its real PATH (a rebuilt env object
@@ -77,12 +106,15 @@ function writeStamp(store, ageDays) {
 // inside fleet workers too, where the engine sets them, and an inherited
 // KIT_RUN_ID would put the run-scoped block into the output of every case
 // that asserts the hook is silent, while an inherited KIT_MEMORY_PROJECT would
-// point the hook at a project directory the fixtures never wrote. Keys are
-// matched case-insensitively, because a Windows environment block's key casing
-// is not the spelling a JS object copy is indexed by.
+// point the hook at a project directory the fixtures never wrote. An inherited
+// KIT_EMBEDDER_ROOT would do the same to the embedder nudge, pointing every
+// case's probe at some other machine's real or fixture install instead of the
+// one this file controls. Keys are matched case-insensitively, because a
+// Windows environment block's key casing is not the spelling a JS object copy
+// is indexed by.
 function scrubRunEnv(env) {
     for (const k of Object.keys(env)) {
-        if (/^KIT_(RUN_ID|SPAWN_VECTOR|RUN_SECTION|MEMORY_PROJECT)$/i.test(k)) delete env[k];
+        if (/^KIT_(RUN_ID|SPAWN_VECTOR|RUN_SECTION|MEMORY_PROJECT|EMBEDDER_ROOT|EMBEDDER_ROOT_ALLOW_CODE)$/i.test(k)) delete env[k];
     }
     return env;
 }
@@ -93,7 +125,14 @@ function runHook(store, payload, extra) {
         input: typeof payload === 'string' ? payload : JSON.stringify(payload),
         cwd: store.proj,
         encoding: 'utf8',
-        env: { ...env, KIT_MEMORY_ROOT: store.root, KIT_MEMORY_ROOT_ALLOW_DATA: '1', ...(extra || {}) }
+        env: {
+            ...env,
+            KIT_MEMORY_ROOT: store.root,
+            KIT_MEMORY_ROOT_ALLOW_DATA: '1',
+            KIT_EMBEDDER_ROOT: READY_EMBEDDER_ROOT,
+            KIT_EMBEDDER_ROOT_ALLOW_CODE: '1',
+            ...(extra || {})
+        }
     });
 }
 
@@ -354,6 +393,11 @@ test('an ungated KIT_MEMORY_ROOT feeds nothing into the session context', () => 
         }
         env.USERPROFILE = fakeHome;   // what os.homedir() reads on Windows
         env.HOME = fakeHome;          // and everywhere else
+        // Otherwise embedderRoot() would resolve under fakeHome, where the
+        // embedder is absent, and the resulting nudge would be a second,
+        // unrelated block this case's exact-list assertion is not about.
+        env.KIT_EMBEDDER_ROOT = READY_EMBEDDER_ROOT;
+        env.KIT_EMBEDDER_ROOT_ALLOW_CODE = '1';
         const res = spawnSync(process.execPath, [HOOK], {
             input: JSON.stringify(startupPayload(store)),
             cwd: store.proj,
@@ -725,6 +769,11 @@ test('a run id without the store signals is not a spawn: the session is left ord
         }
         env.USERPROFILE = fakeHome;
         env.HOME = fakeHome;
+        // Otherwise embedderRoot() would resolve under fakeHome, where the
+        // embedder is absent, and the resulting nudge would be a second,
+        // unrelated block this case's assertOnlyProjectMemory is not about.
+        env.KIT_EMBEDDER_ROOT = READY_EMBEDDER_ROOT;
+        env.KIT_EMBEDDER_ROOT_ALLOW_CODE = '1';
         const bare = (extra) => spawnSync(process.execPath, [HOOK], {
             input: JSON.stringify(startupPayload(store)),
             cwd: store.proj,
@@ -865,6 +914,11 @@ test('a store pin without the store signals is not a spawn either: no stand-down
         }
         env.USERPROFILE = fakeHome;
         env.HOME = fakeHome;
+        // Otherwise embedderRoot() would resolve under fakeHome, where the
+        // embedder is absent, and the resulting nudge would be a second,
+        // unrelated block this case's exact-list assertion is not about.
+        env.KIT_EMBEDDER_ROOT = READY_EMBEDDER_ROOT;
+        env.KIT_EMBEDDER_ROOT_ALLOW_CODE = '1';
         for (const pin of ['inst-a', '..']) {
             const res = spawnSync(process.execPath, [HOOK], {
                 input: JSON.stringify(startupPayload(store)),
@@ -1607,5 +1661,188 @@ test('git absent from PATH: the sync check fails silent, and the rest of the hoo
     } finally {
         rmStore(store);
         try { fs.rmSync(noGitDir, { recursive: true, force: true }); } catch { /* best effort */ }
+    }
+});
+
+// The embedder-absence nudge. Every case here overrides KIT_EMBEDDER_ROOT away
+// from runHook's default READY_EMBEDDER_ROOT fixture, to whichever probe state
+// the case means to exercise.
+
+// A fixture embedder root at whichever probe state a case asks for. 'absent':
+// the directory itself is never created. 'unusable': a package.json with no
+// model cache at all. Mirrors plantEmbedder in test/embedder-install.test.js;
+// duplicated rather than imported, since that file exercises the doctor's
+// PowerShell installer and this one exercises the hook, and the two have no
+// natural shared module to live in.
+function plantEmbedderFixture(root, stateVal) {
+    if (stateVal === 'absent') return;
+    const pkgDir = path.join(root, 'node_modules', '@huggingface', 'transformers');
+    fs.mkdirSync(pkgDir, { recursive: true });
+    fs.writeFileSync(path.join(pkgDir, 'package.json'), JSON.stringify({ version: '0.0.0-fixture' }), 'utf8');
+    if (stateVal === 'unusable') return;
+    const modelDir = path.join(pkgDir, '.cache', ...mi.MODEL_ID.split('/'));
+    for (const rel of mi.MODEL_FILES) {
+        const file = path.join(modelDir, rel);
+        fs.mkdirSync(path.dirname(file), { recursive: true });
+        fs.writeFileSync(file, '', 'utf8');
+    }
+}
+
+test('an absent embedder install fires the one-line nudge naming the remedy', () => {
+    const store = makeStore();
+    const embedderRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'memsession-emb-absent-'));
+    try {
+        const context = assertBlock(runHook(store, startupPayload(store), {
+            KIT_EMBEDDER_ROOT: embedderRoot, KIT_EMBEDDER_ROOT_ALLOW_CODE: '1'
+        }));
+        const nudge = blockStarting(context, 'Kit memory search:');
+        assert.ok(!nudge.includes('\n'), 'the nudge is one line');
+        assert.match(nudge, /not installed or not usable/);
+        assert.match(nudge, new RegExp(mi.INSTALL_REMEDY.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+            'the remedy must be memory-index.js\'s own INSTALL_REMEDY, verbatim, so the doctor, '
+                + '`memq find`, and this hook cannot state three different remedies');
+        assert.match(context, /Kit project memory:/, 'the ordinary session block still rides beside it');
+    } finally {
+        rmStore(store);
+        try { fs.rmSync(embedderRoot, { recursive: true, force: true }); } catch { /* best effort */ }
+    }
+});
+
+test('an unusable embedder install (package present, model cache missing) fires the same nudge', () => {
+    const store = makeStore();
+    const embedderRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'memsession-emb-unusable-'));
+    try {
+        plantEmbedderFixture(embedderRoot, 'unusable');
+        const context = assertBlock(runHook(store, startupPayload(store), {
+            KIT_EMBEDDER_ROOT: embedderRoot, KIT_EMBEDDER_ROOT_ALLOW_CODE: '1'
+        }));
+        const nudge = blockStarting(context, 'Kit memory search:');
+        assert.match(nudge, /not installed or not usable/);
+        assert.match(nudge, /kit doctor -Fix/);
+    } finally {
+        rmStore(store);
+        try { fs.rmSync(embedderRoot, { recursive: true, force: true }); } catch { /* best effort */ }
+    }
+});
+
+test('a ready embedder install emits no nudge', () => {
+    const store = makeStore();
+    try {
+        // No override: runHook's own default is the ready fixture.
+        assertOnlyProjectMemory(runHook(store, startupPayload(store)));
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('the top-level stand-down emits no embedder nudge, even with the stack absent', () => {
+    const store = makeStore();
+    const embedderRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'memsession-emb-standdown-'));
+    try {
+        const context = assertBlock(runHook(store, startupPayload(store), {
+            KIT_MEMORY_PROJECT: '..', KIT_EMBEDDER_ROOT: embedderRoot, KIT_EMBEDDER_ROOT_ALLOW_CODE: '1'
+        }));
+        assert.match(context, /Kit memory stand-down:/);
+        assert.ok(!context.includes('Kit memory search:'),
+            'the stand-down is the whole of what the hook says, the embedder nudge included:\n' + context);
+    } finally {
+        rmStore(store);
+        try { fs.rmSync(embedderRoot, { recursive: true, force: true }); } catch { /* best effort */ }
+    }
+});
+
+test('a run-scoped session emits no embedder nudge, even with the stack absent', () => {
+    const store = makeStore();
+    const embedderRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'memsession-emb-run-'));
+    try {
+        const context = assertBlock(runHook(store, startupPayload(store), {
+            KIT_RUN_ID: 'r1', KIT_EMBEDDER_ROOT: embedderRoot, KIT_EMBEDDER_ROOT_ALLOW_CODE: '1'
+        }));
+        assert.match(context, /Kit run-scoped memory:/);
+        assert.ok(!context.includes('Kit memory search:'),
+            'the run block already claims the whole of what this hook says about the store:\n' + context);
+    } finally {
+        rmStore(store);
+        try { fs.rmSync(embedderRoot, { recursive: true, force: true }); } catch { /* best effort */ }
+    }
+});
+
+test('an unparseable package.json in the embedder root reads as absent, not a crash', () => {
+    const store = makeStore();
+    writeStamp(store, 31); // exercises a second block over the same run, so "unaffected" is checked, not assumed
+    const embedderRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'memsession-emb-garbage-'));
+    try {
+        const pkgDir = path.join(embedderRoot, 'node_modules', '@huggingface', 'transformers');
+        fs.mkdirSync(pkgDir, { recursive: true });
+        fs.writeFileSync(path.join(pkgDir, 'package.json'), 'not json', 'utf8');
+        const context = assertBlock(runHook(store, startupPayload(store), {
+            KIT_EMBEDDER_ROOT: embedderRoot, KIT_EMBEDDER_ROOT_ALLOW_CODE: '1'
+        }));
+        assert.match(context, /decay stamp is 31 days old/, 'the rest of the hook still runs');
+        assert.match(context, /Kit project memory:/);
+        assert.match(context, /Kit memory search:/,
+            'an unparseable manifest is absent, not a crash, so the nudge still fires');
+    } finally {
+        rmStore(store);
+        try { fs.rmSync(embedderRoot, { recursive: true, force: true }); } catch { /* best effort */ }
+    }
+});
+
+// Make embedderNudge's own require('../scripts/memory-index.js') throw inside
+// the spawned hook: a preload module patches Module.prototype.require to
+// refuse that one specifier, standing in for a damaged plugin cache (the file
+// missing, or failing to parse) that no portable fixture can stage by writing
+// bytes to disk, since the file this repo ships is neither. Node parses
+// NODE_OPTIONS with backslash as an escape character, so the preload path is
+// passed forward-slashed (windows-fs-failure-injection); a backslashed path
+// fails to resolve and the child dies before the hook runs.
+function moduleLoadRefusingPreload(dir) {
+    const shim = path.join(dir, 'refuse-memory-index-require.js');
+    fs.writeFileSync(shim, [
+        "'use strict';",
+        "const Module = require('module');",
+        'const realRequire = Module.prototype.require;',
+        'Module.prototype.require = function (id) {',
+        "    if (String(id).includes('memory-index.js')) {",
+        "        throw new Error('forced require failure for test');",
+        '    }',
+        '    return realRequire.apply(this, arguments);',
+        '};'
+    ].join('\n') + '\n', 'utf8');
+    return '--require "' + shim.replace(/\\/g, '/') + '"';
+}
+
+test('memory-index.js failing to load costs only the embedder nudge, and the rest of the hook is unaffected', () => {
+    const store = makeStore();
+    writeStamp(store, 31); // exercises a second block over the same run, so "unaffected" is checked, not assumed
+    const preloadDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memsession-mi-preload-'));
+    try {
+        const context = assertBlock(runHook(store, startupPayload(store), {
+            NODE_OPTIONS: moduleLoadRefusingPreload(preloadDir)
+        }));
+        assert.strictEqual(context.includes('Kit memory search:'), false,
+            'a require() failure must not be mistaken for an absent install:\n' + context);
+        assert.match(context, /decay stamp is 31 days old/, 'the rest of the hook still runs');
+        assert.match(context, /Kit project memory:/);
+    } finally {
+        rmStore(store);
+        try { fs.rmSync(preloadDir, { recursive: true, force: true }); } catch { /* best effort */ }
+    }
+});
+
+test('the embedder nudge carries no store-controlled text: only the fixed remedy and fixed words', () => {
+    const store = makeStore();
+    const embedderRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'memsession-emb-fixed-'));
+    try {
+        const context = assertBlock(runHook(store, startupPayload(store), {
+            KIT_EMBEDDER_ROOT: embedderRoot, KIT_EMBEDDER_ROOT_ALLOW_CODE: '1'
+        }));
+        const nudge = blockStarting(context, 'Kit memory search:');
+        assert.strictEqual(nudge, 'Kit memory search: the local embedding stack is not installed or not '
+            + 'usable, so `memq find` answers by substring only this session; semantic matches are '
+            + 'unavailable. Fix: ' + mi.INSTALL_REMEDY + '.');
+    } finally {
+        rmStore(store);
+        try { fs.rmSync(embedderRoot, { recursive: true, force: true }); } catch { /* best effort */ }
     }
 });

@@ -37,6 +37,14 @@
 // claims the whole of what this hook says about where the store stands,
 // silence it.
 //
+// The embedder-absence nudge: `memq find`'s semantic channel needs a local
+// embedding stack that installs per machine through `kit doctor -Fix`, never
+// bundled with the kit core. When it is not installed, or installed but not
+// usable, this hook says one line naming the remedy; when it is ready, it
+// says nothing. It rides beside the sync-freshness nudge on the same branch,
+// silenced under the same top-level stand-down and run-scoped conditions, for
+// the same reason.
+//
 // The type-index loader: a project that declares "Project-Type: <type>" at
 // the top of its memory MEMORY.md gets the shared type tier's index
 // (memory-types/<type>/MEMORY.md) emitted into session context, so the
@@ -87,19 +95,24 @@
 //
 // SAFETY: fails open, always exits 0, and is silent on every failure path: a
 // missing store, an unreadable stamp or index, a malformed payload, a memq
-// that will not load, and a git that is absent, errors, or times out all end
-// with no output from this hook. The one voice memq brings with it is its
-// own: when KIT_MEMORY_ROOT is set without its second signal, memq notes the
-// ignored override on stderr, which never enters the session context.
-// Nothing here writes anywhere, the sync-freshness check included: it runs
+// that will not load, a git that is absent, errors, or times out, and a
+// memory-index.js that will not load or probe, all end with no output from
+// this hook (the last costs only the embedder nudge; every other block still
+// runs). The one voice memq brings with it is its own: when KIT_MEMORY_ROOT
+// is set without its second signal, memq notes the ignored override on
+// stderr, which never enters the session context. Nothing here writes
+// anywhere, the sync-freshness and embedder checks included: the former runs
 // read-only git subcommands (never `git fetch`) under the store root's own
-// `.git`, and never a repository merely reachable by walking up from it.
-// This hook's stdout lands in the model's trusted context, so what enters it
-// is bounded by provenance: the decay nudge and the sync-freshness nudge
-// carry no store-controlled strings at all, only integers (day counts, and
-// commit counts parsed out of a fixed tab-separated git count) and a bare,
-// boolean fact (uncommitted or not, read from `git status`'s output length),
-// reflowed into a literal sentence built from this file's own fixed words;
+// `.git`, and never a repository merely reachable by walking up from it; the
+// latter reads a package.json and stats up to four files, nothing more. This
+// hook's stdout lands in the model's trusted context, so what enters it is
+// bounded by provenance: the decay nudge, the sync-freshness nudge, and the
+// embedder nudge carry no store-controlled strings at all, only integers (day
+// counts, and commit counts parsed out of a fixed tab-separated git count), a
+// bare boolean fact (uncommitted or not, read from `git status`'s output
+// length), or a fixed constant from memory-index.js (the install remedy,
+// identical to the one the doctor and `memq find` state), reflowed into a
+// literal sentence built from this file's own fixed words;
 // the type index and the project index ARE store content, so every index
 // line is reduced to bounded printable ASCII (no line can smuggle control
 // characters or forge a block's structure), the line count and per-line
@@ -297,6 +310,40 @@ function syncNudge(memq) {
     return 'Kit memory sync: the memory store ' + stated + '. Run `kit doctor -Fix` to commit '
         + 'through the gated allowlist, then `git pull --rebase` and push, in the store, to bring '
         + 'machines back in sync.';
+}
+
+// The embedder-absence nudge: `memq find`'s semantic channel needs the local
+// embedding stack scripts/memory-index.js probes for, a per-machine,
+// doctor-installed opt-in the kit core does not ship. The probe (a
+// package.json read plus up to four file-existence checks) is cheap enough to
+// pay on every session start, the same order of cost the decay nudge's stamp
+// stat already carries.
+//
+// Required and called inside this function rather than at module load, so a
+// damaged or absent memory-index.js costs this nudge alone, never the rest of
+// the hook: the same local-failure discipline gitStoreOutput already applies
+// to a git call syncNudge depends on.
+//
+// This rides the same branch syncNudge does, silenced under the same two
+// conditions and for the same reasons: the top-level stand-down resolves no
+// memory directory at all, and a run-scoped session's block already claims
+// the whole of what this hook says about the store, so a second voice about
+// its search capability would contradict it.
+//
+// INSTALL_REMEDY is memory-index.js's own fixed constant, the same string the
+// doctor's embedder check and `memq find`'s absence line use, so the three
+// surfaces cannot drift onto three different remedies for one condition. It
+// is a literal from this file's dependency, not a value read from the store,
+// so the nudge still carries no store-derived text.
+function embedderNudge() {
+    let mi;
+    try { mi = require('../scripts/memory-index.js'); } catch { return null; }
+    let probe;
+    try { probe = mi.probeEmbedder(); } catch { return null; }
+    if (probe.status === 'ready') return null;
+    return 'Kit memory search: the local embedding stack is not installed or not usable, so '
+        + '`memq find` answers by substring only this session; semantic matches are unavailable. '
+        + 'Fix: ' + mi.INSTALL_REMEDY + '.';
 }
 
 // An index file as {lines, unreadable}: the indented, reduced lines ready to
@@ -695,6 +742,10 @@ function main() {
             // the rest of this branch already speaks to.
             const sync = syncNudge(memq);
             if (sync !== null) blocks.push(sync);
+            // Gated on the same branch, for the same reason: see
+            // embedderNudge's own comment.
+            const embedder = embedderNudge();
+            if (embedder !== null) blocks.push(embedder);
             const pinnedDestination = pinnedDestinationBlock(cwd, memq);
             if (pinnedDestination !== null) blocks.push(pinnedDestination.text);
             const projectMemory = projectMemoryBlock(cwd, memq, pinnedDestination);
