@@ -51,6 +51,8 @@ Do not read the file group's `added` label as "this memory is new". It reports t
 
 Run it over the session's span at close-out and carry the digest into the close-out status, labeled by surface, so the report says what the store actually recorded rather than asserting that the effort banked something. `finishing-work` step 7 owns that trigger, the same way it owns the decay pass.
 
+After recording the recap, sync the store: `kit doctor -Fix` first, so this session's new and edited memory files commit through the allowlist gate (nothing else in the kit commits the store), then `git -C ~/.claude pull --rebase` (a plain `pull` refuses on a diverged branch), then `git -C ~/.claude push`, so what this machine just recorded reaches the private remote and whatever another machine recorded reaches here.
+
 ## Action keys
 
 Dot-namespaced, project or domain leading: `neo.sql.procs`, `neat.deploy.iis`, `sql.linked-server`. The key is the retrieval handle (`find` matches key substrings), so lead with the name a future session will reach for and keep one hierarchy per subject rather than minting near-duplicates. When a fact cuts across the hierarchy ("everything SQL-related"), that is what tags are for, not a second key.
@@ -85,6 +87,10 @@ Tags are the cross-cutting escape hatch: an optional `tags` list on memory front
 - **The registry** is `~/.claude/memory-types/tag-registry.md`: one tag per line, an optional one-phrase gloss after it, `#` comments and blank lines ignored. Add a line before minting a tag; `memq` warns on any tag outside the registry (and still writes the record).
 - **Absent registry, no warnings; present registry, authoritative.** An absent file means the vocabulary is not yet established, so nothing warns. A present file, an empty one included, makes every unregistered tag warn. Creating the file is therefore the deliberate act that turns the control on.
 - **Starter vocabulary**: projects (`neo`, `neat`), domains (`sql`), kinds (`gotcha`). Extend freely; the decay pass folds in tag hygiene against the registry.
+
+## The `machine:` field
+
+A memory frontmatter field, inline single-line form, the same line discipline as `tags:`: `machine: SCOTT-DESKTOP`. It records a fact as true of one machine rather than of the operator generally or of a project, so the fact still syncs and is still readable from another machine (useful when working against that box remotely) rather than being excluded outright. Route by this test: a fact true of one box carries the field; a fact true of the operator or of a project does not. Written by `memq add-operator --machine <name>`; no read surface parses the field today.
 
 ## The project-type tier
 

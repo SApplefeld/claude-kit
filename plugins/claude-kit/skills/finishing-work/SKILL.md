@@ -44,4 +44,6 @@ In a session running below fable, dispatch the security review (step 2) and the 
 
    **Then recap what the store recorded.** After the memory writes and any decay pass, run `memq recent --since <the session's span>` and carry its digest into the close-out status, labeled by surface. That is what makes the close-out's memory claim checkable: the digest names the journal entries, the applied stamps, and the memory files added or updated across every tier, so a session that banked nothing says so in its own counts. Report the digest; never paraphrase it into a claim it does not make.
 
+   **Then sync the store.** Run `kit doctor -Fix` first, so this session's new and edited memory files commit through the gated allowlist (nothing else in the kit commits the store), then `git -C ~/.claude pull --rebase` (a plain `pull` refuses on a diverged branch), then `git -C ~/.claude push`, so what this session recorded reaches the private remote and whatever another machine recorded lands here.
+
 8. **Kaizen check.** First make sure any kit friction from this effort (captured along the way, or a Chapter Surprise that traced to the kit) is in the kaizen inbox. Then offer a kaizen pass in one line only if the inbox has pending items; on a clean effort the inbox is empty and you say nothing. The predicate, not your read of the session, gates the offer.

@@ -21,6 +21,22 @@
 // absent store is the fresh-machine case and stays silent; otherwise the
 // nudge is one line naming the pass.
 //
+// The sync-freshness nudge: the memory store at ~/.claude can be a git
+// repository synced to a private remote. When it is and it holds uncommitted
+// changes, unpushed commits, or unpulled commits, this hook says one line
+// naming which; when there is no repository at the store root itself, no
+// remote, or none of the three, it says nothing. The check is local only,
+// comparing HEAD against the last-fetched remote-tracking ref, never running
+// `git fetch`: a hook runs on every session start, and a network round trip
+// there is unacceptable. The "not yet pulled" count can therefore be stale,
+// which is the correct trade-off, since the nudge's job is to prompt a sync,
+// not to be an authoritative status. It rides beside every state this branch
+// reaches, the same way the decay nudge already does, including a session
+// whose pin resolves to a directory this hook cannot name; only the top-level
+// store-pin stand-down and a run-scoped session, whose own block already
+// claims the whole of what this hook says about where the store stands,
+// silence it.
+//
 // The type-index loader: a project that declares "Project-Type: <type>" at
 // the top of its memory MEMORY.md gets the shared type tier's index
 // (memory-types/<type>/MEMORY.md) emitted into session context, so the
@@ -70,36 +86,45 @@
 // none of it.
 //
 // SAFETY: fails open, always exits 0, and is silent on every failure path: a
-// missing store, an unreadable stamp or index, a malformed payload, and a
-// memq that will not load all end with no output from this hook. The one
-// voice memq brings with it is its own: when KIT_MEMORY_ROOT is set without
-// its second signal, memq notes the ignored override on stderr, which never
-// enters the session context. Nothing here writes anywhere. This hook's stdout lands in the model's trusted context, so what
-// enters it is bounded by provenance: the nudge carries no store-controlled
-// strings at all, only day counts computed from file mtimes; the type index
-// and the project index ARE store content, so every index line is reduced to
-// bounded printable ASCII (no line can smuggle control characters or forge a
-// block's structure), the line count and per-line length are capped with the
-// remainder counted, and the block carrying them names the lines as data, not
-// instructions. The run-scoped block carries environment content (the store
-// root inside the pending path, and the spawn values in the provenance
-// lines): the provenance lines come from memq, which gates the run id against
-// its own closed charset and reduces the other two at the same boundary,
-// while the pending path is emitted verbatim or not at all, because it is a
-// destination the session acts on rather than text it reads, and a reduced
-// one would be a wrong directory stated confidently. Verbatim is not
-// unfenced: the path carries the store root's text, so it goes out on its own
-// indented line named as data, the same framing the type index and the
-// frontmatter get, and the block's instructions keep column zero as the kit's
-// own voice.
+// missing store, an unreadable stamp or index, a malformed payload, a memq
+// that will not load, and a git that is absent, errors, or times out all end
+// with no output from this hook. The one voice memq brings with it is its
+// own: when KIT_MEMORY_ROOT is set without its second signal, memq notes the
+// ignored override on stderr, which never enters the session context.
+// Nothing here writes anywhere, the sync-freshness check included: it runs
+// read-only git subcommands (never `git fetch`) under the store root's own
+// `.git`, and never a repository merely reachable by walking up from it.
+// This hook's stdout lands in the model's trusted context, so what enters it
+// is bounded by provenance: the decay nudge and the sync-freshness nudge
+// carry no store-controlled strings at all, only integers (day counts, and
+// commit counts parsed out of a fixed tab-separated git count) and a bare,
+// boolean fact (uncommitted or not, read from `git status`'s output length),
+// reflowed into a literal sentence built from this file's own fixed words;
+// the type index and the project index ARE store content, so every index
+// line is reduced to bounded printable ASCII (no line can smuggle control
+// characters or forge a block's structure), the line count and per-line
+// length are capped with the remainder counted, and the block carrying them
+// names the lines as data, not instructions. The run-scoped block carries
+// environment content (the store root inside the pending path, and the spawn
+// values in the provenance lines): the provenance lines come from memq, which
+// gates the run id against its own closed charset and reduces the other two
+// at the same boundary, while the pending path is emitted verbatim or not at
+// all, because it is a destination the session acts on rather than text it
+// reads, and a reduced one would be a wrong directory stated confidently.
+// Verbatim is not unfenced: the path carries the store root's text, so it
+// goes out on its own indented line named as data, the same framing the type
+// index and the frontmatter get, and the block's instructions keep column
+// zero as the kit's own voice.
 
 'use strict';
 
 const fs = require('fs');
 const path = require('path');
+const { spawnSync } = require('child_process');
 
 const NUDGE_AFTER_DAYS = 30;   // stamp (or oldest-memory) age at which the nudge fires
 const DAY_MS = 86400000;
+const GIT_TIMEOUT_MS = 2000;   // bound on each sync-check git call, so a wedged git never holds up a session start
 
 // Bounds on an emitted index, at both boundaries, shared by the project index
 // and the type index. The read is a fixed-size prefix of the file, so the cost
@@ -156,6 +181,122 @@ function decayNudge(cwd, memq) {
     return 'Kit memory decay: this project has memories but no decay pass has ever completed, '
         + 'and its oldest memory is ' + ageDays + ' days old (threshold ' + NUDGE_AFTER_DAYS + '). '
         + PASS_INSTRUCTIONS;
+}
+
+// The environment a store-root git call runs under: process.env with
+// GIT_DIR and GIT_WORK_TREE removed, case-insensitively (Windows env keys are
+// not the casing a plain-object copy is indexed by, the same rule the test
+// suite documents for PATH). Neither variable is known to reach this process,
+// but either would override `-C` outright and point every call at a
+// repository this hook never chose, so they are stripped rather than trusted
+// to be absent.
+function gitStoreEnv() {
+    const env = { ...process.env };
+    for (const k of Object.keys(env)) {
+        if (/^GIT_(DIR|WORK_TREE)$/i.test(k)) delete env[k];
+    }
+    return env;
+}
+
+// A read-only git subcommand run under the store root, or null on any
+// failure: git absent, a nonzero exit, or a run past GIT_TIMEOUT_MS. Every
+// one of those is silence to syncNudge's caller, never a thrown error, which
+// is what lets a machine with no git at all, or a store that predates the
+// sync repo, pass through this check unremarked.
+function gitStoreOutput(root, args) {
+    let res;
+    try {
+        res = spawnSync('git', ['-C', root].concat(args), {
+            encoding: 'utf8',
+            timeout: GIT_TIMEOUT_MS,
+            stdio: ['ignore', 'pipe', 'ignore'],
+            env: gitStoreEnv()
+        });
+    } catch {
+        return null;
+    }
+    if (!res || res.error || res.status !== 0 || typeof res.stdout !== 'string') return null;
+    return res.stdout;
+}
+
+// The sync-freshness nudge, or null when the store root is not itself a git
+// repository, has no configured upstream, or holds none of the three
+// conditions below.
+//
+// `git -C <dir>` discovers a repository by walking UP from <dir> through its
+// parent directories, the way an ordinary working-tree lookup does, so a
+// store root that is merely nested under someone else's repository (a
+// scratch checkout one level up, an operator's dotfiles repo) would answer
+// every call below about that foreign repository rather than staying silent.
+// Requiring the store root's own `.git` before any git call runs is the same
+// rule install-memory-sync.ps1 already applies to the sync repo's ownership
+// check (it tests for the path; this stats it and additionally requires a
+// directory, refusing a stray `.git` file this hook has no reason to trust
+// is a worktree pointer at the sync repo), so a machine with no sync repo at
+// all (git installed or not) costs this check nothing beyond the one stat.
+//
+// One call answers both the ahead and behind counts and doubles as the
+// upstream check: `@{upstream}` fails to resolve when the branch has none
+// configured, which fails the whole command rather than emitting a
+// resolvable-but-empty name, so "no remote" and "no upstream" both read as
+// nothing to say here (the kit doctor's own memory-sync check is what
+// surfaces that state). Passing the literal `@{upstream}` token, rather than
+// a name resolved by a prior call and concatenated in, means no
+// store-controlled ref text ever occupies an argv position `rev-list` could
+// read as a flag.
+//
+// No `git fetch` runs here: the ahead/behind comparison is against the
+// remote-tracking ref this machine last fetched, so the "not yet pulled"
+// count is a floor of what the remote actually holds, current as of whenever
+// this machine last synced. That staleness is the intended trade-off, the
+// same direction decayNudge takes on a stamp that might itself be stale:
+// silence is always the safe failure for a hook that runs before every
+// session. `git status --porcelain` adds the uncommitted-changes fact the
+// commit-count comparison cannot see at all: a memory file written and never
+// committed shows as no divergence to `rev-list`, so without this check the
+// single most common drift (memory files piling up locally, uncommitted)
+// nudges never.
+//
+// Every value that reaches the returned sentence is one of these three
+// counts (an integer this function parsed itself) or a fixed literal from
+// this file; nothing git prints, a path, a branch name, a remote URL, or any
+// other store-controlled text, ever reaches it. That is stricter than
+// sanitizing a value for display: no store-derived string rides this line at
+// all.
+function syncNudge(memq) {
+    const root = memq.memoryRoot();
+    let hasGit = false;
+    try { hasGit = fs.statSync(path.join(root, '.git')).isDirectory(); } catch { hasGit = false; }
+    if (!hasGit) return null;
+
+    const counts = gitStoreOutput(root, ['rev-list', '--left-right', '--count', '@{upstream}...HEAD']);
+    if (counts === null) return null;
+    const m = /^(\d+)\t(\d+)$/.exec(counts.trim());
+    if (!m) return null;
+    const behind = Number(m[1]);
+    const ahead = Number(m[2]);
+    if (!Number.isFinite(behind) || !Number.isFinite(ahead)) return null;
+
+    const status = gitStoreOutput(root, ['status', '--porcelain']);
+    const dirty = status !== null && status.trim() !== '';
+
+    if (behind === 0 && ahead === 0 && !dirty) return null;
+
+    const facts = [];
+    if (dirty) facts.push('holds uncommitted changes');
+    if (ahead > 0) facts.push('is ' + ahead + ' commit(s) ahead of its remote (not yet pushed)');
+    if (behind > 0) {
+        facts.push('is ' + behind + ' commit(s) behind its remote (not yet pulled, as last known '
+            + 'here; no fetch was run)');
+    }
+    let stated;
+    if (facts.length === 1) stated = facts[0];
+    else if (facts.length === 2) stated = facts[0] + ', and ' + facts[1];
+    else stated = facts[0] + ', ' + facts[1] + ', and ' + facts[2];
+
+    return 'Kit memory sync: the memory store ' + stated + '. Run `kit doctor -Fix` to commit '
+        + 'through the gated allowlist, then `git pull --rebase` and push, in the store, to bring '
+        + 'machines back in sync.';
 }
 
 // An index file as {lines, unreadable}: the indented, reduced lines ready to
@@ -544,6 +685,16 @@ function main() {
         const runScoped = runScopedBlock(cwd, memq);
         if (runScoped !== null) blocks.push(runScoped);
         else {
+            // The sync-freshness nudge is a maintenance reminder about the
+            // store, the same shape as the decay nudge above, but it cannot
+            // sit beside it unconditionally: a run-scoped session's block
+            // already claims the whole of what this hook says about where
+            // the store stands, and displacing that with a second voice about
+            // the repo would contradict it. Gating on the same branch as the
+            // destination blocks keeps it to the ordinary and pinned sessions
+            // the rest of this branch already speaks to.
+            const sync = syncNudge(memq);
+            if (sync !== null) blocks.push(sync);
             const pinnedDestination = pinnedDestinationBlock(cwd, memq);
             if (pinnedDestination !== null) blocks.push(pinnedDestination.text);
             const projectMemory = projectMemoryBlock(cwd, memq, pinnedDestination);
