@@ -359,10 +359,39 @@ function projectSegment(cwd) {
     return pinned === null ? sanitizeProjectPath(cwd) : pinned;
 }
 
+// The parent of every project's state directory under the current store root.
+// The project tier, the cross-project scans, and the semantic index all hang
+// off this one path, so "where do project stores live" has a single answer.
+function projectsRootPath() {
+    return path.join(memoryRoot(), 'projects');
+}
+
+// The memory directory for a named project directory segment. Callers that
+// hold a segment already (a cross-project scan reading every store on the
+// machine) join through here rather than rebuilding the shape, so a segment
+// this process is not itself pinned to still resolves the same way.
+function projectMemoryDirFor(segment) {
+    return path.join(projectsRootPath(), segment, 'memory');
+}
+
 // The memory directory for a project cwd, under the current store root. Every
 // store surface hangs off this one path, so a pin reaches all of them at once.
 function projectMemoryDir(cwd) {
-    return path.join(memoryRoot(), 'projects', projectSegment(cwd), 'memory');
+    return projectMemoryDirFor(projectSegment(cwd));
+}
+
+// Every project directory segment the store holds, sorted, or null when the
+// projects root cannot be enumerated at all. Null rather than an empty array
+// because the two are different facts: no projects is an answer, while an
+// unreadable root is the absence of one, and a caller that treats them alike
+// reports a store it never read as empty. Each caller says what it does with
+// the null, since the right answer differs by surface.
+function projectSegments() {
+    try {
+        return fs.readdirSync(projectsRootPath()).sort();
+    } catch {
+        return null;
+    }
 }
 
 // Path and filename fragments compare the way the platform's filesystem
@@ -602,10 +631,16 @@ function isTypeName(t) {
     return !fsEq(t.slice(-3), '.md');
 }
 
+// The parent of every type tier under the current store root, and the home of
+// the tag registry beside them.
+function typesRootPath() {
+    return path.join(memoryRoot(), 'memory-types');
+}
+
 // Where a project type's tier lives. The caller validates the type name with
 // isTypeName before joining; projectType below returns only validated names.
 function typeDir(type) {
-    return path.join(memoryRoot(), 'memory-types', type);
+    return path.join(typesRootPath(), type);
 }
 
 // The type tier's MEMORY.md index. The SessionStart hook reads this path to
@@ -696,7 +731,7 @@ function operatorTierOrNull() {
 // The controlled tag vocabulary lives beside the type tier, one file for the
 // whole store.
 function tagRegistryPath() {
-    return path.join(memoryRoot(), 'memory-types', 'tag-registry.md');
+    return path.join(typesRootPath(), 'tag-registry.md');
 }
 
 // Tag registry reader: one tag per line, an optional one-phrase gloss after
@@ -3703,9 +3738,8 @@ function archiveStep(memDir, archives, report, tag) {
 // since two spellings of one type reach the same tier directory on a
 // case-insensitive filesystem.
 function projectsDeclaringType(type, cwd) {
-    const projectsDir = path.join(memoryRoot(), 'projects');
-    let entries = null;
-    try { entries = fs.readdirSync(projectsDir); } catch { /* noted just below */ }
+    const projectsDir = projectsRootPath();
+    const entries = projectSegments();
     if (entries === null) {
         process.stderr.write('memq: could not scan ' + sanitize(projectsDir, 260)
             + ' for declaring projects\n');
@@ -3716,10 +3750,10 @@ function projectsDeclaringType(type, cwd) {
         return [sanitize(projectSegment(cwd), 260)];
     }
     const declaring = [];
-    for (const name of entries.sort()) {
+    for (const name of entries) {
         let raw;
         try {
-            raw = fs.readFileSync(path.join(projectsDir, name, 'memory', INDEX_FILE), 'utf8');
+            raw = fs.readFileSync(path.join(projectMemoryDirFor(name), INDEX_FILE), 'utf8');
         } catch (err) {
             // No index there (or a stray file under projects/) is simply not
             // a declarer; any other failure is a project this scan cannot
@@ -4452,9 +4486,15 @@ module.exports = {
     recallDigest,
     recentDigest,
     parseSince,
+    ARCHIVE_DIR,
+    OPERATOR_LABEL,
     memoryRoot,
     sanitizeProjectPath,
+    projectsRootPath,
+    projectMemoryDirFor,
     projectMemoryDir,
+    projectSegments,
+    typesRootPath,
     pinnedProjectSegment,
     storePinUnusable,
     isMemoryFilename,
