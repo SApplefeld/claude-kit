@@ -48,7 +48,7 @@ References: `plugins/claude-kit/scripts/memq.js` (the type-tier authoring, walk,
 ### 3. Remote creation and first sync
 Model: opus
 Locus: inline
-Create the private GitHub repository (default name `claude-memory` under the operator's account, confirmed at the stop below) via the REST pattern already proven on this machine (no `gh` CLI; token via git credential fill), add it as origin, push the initial commit from S1, and verify the remote shows memory paths only. This section is outward and irreversible-adjacent, so it stops for an explicit go-ahead before creating the repo and before the first push, with the rollback named (delete the remote repo; the local repo and store are untouched). Produce the per-machine rollout note as part of this section: the exact doctor invocation and remote-add step the other three machines run, recorded in the plan doc Chapter, since those machines are reached in their own sessions.
+Create the private GitHub repository (`sapplefeld-claude-memory` under the operator's account) via the REST pattern already proven on this machine (no `gh` CLI; token via git credential fill), add it as origin, push the initial commit from S1, and verify the remote shows memory paths only. This section is outward and irreversible-adjacent, so it stops for an explicit go-ahead before creating the repo and before the first push, with the rollback named (delete the remote repo; the local repo and store are untouched). Produce the per-machine rollout note as part of this section: the exact doctor invocation and remote-add step the other three machines run, recorded in the plan doc Chapter, since those machines are reached in their own sessions.
 Acceptance: remote exists, is private (verified via the API response, not assumption), holds exactly the allowlisted paths, and a clone to a scratch directory contains no file outside `projects/*/memory/**`, `memory-types/**`, and `memory-operator/**`.
 References: memory `github-pr-without-gh` (the REST + credential-fill pattern; migrates to the operator tier in S2 and is read from there).
 
@@ -116,15 +116,15 @@ Supersedes `docs/archive/claude-kit_synced-semantic-memory_spec_v1.md`, the same
 
 ## Section status
 
-Sections 1 and 2 are implemented, reviewed, and committed. Section 1 took three review rounds, Section 2 one. No remote exists and nothing has been pushed, so nothing these sections built has left this machine.
+Sections 1 through 3 are implemented, reviewed, and committed. Section 1 took three review rounds, Section 2 one, and Section 3 changed no repository code.
 
 Gate: full suite 555 pass, 0 fail, exit 0 across all 19 test files. Baseline before this effort was 514; `test/memory-sync.test.js` contributes 28 and `test/memq.test.js` 187.
 
-Machine state, open for the operator: `~/.claude` is a git repository at commit `6b2c556` ("kit memory sync: allowlist and memory tiers"), 57 tracked files, no remote. It audits clean on both surfaces: zero non-allowlisted paths in the index, zero non-allowlisted blobs across the object history, and `.credentials.json`, `settings.json`, and `history.jsonl` each ignored. Nothing sensitive is in it and nothing has been pushed, so no credential rotation is implicated. What created it is not established; no session step authorized a real `-Fix`, and the `-Fix` test is ruled out (`doctor.ps1:114` resolves the store from `$env:USERPROFILE`, which `test/memory-sync.test.js` redirects). The standing brief now forbids any agent running a real repair against the operator's own store root.
+The store repository is `~/.claude` at commit `7fe68d2`, 61 tracked files, pushed to the private remote `SApplefeld/sapplefeld-claude-memory`. Its index and its whole object history hold memory paths only, verified by clone; `.credentials.json`, `settings.json`, `history.jsonl`, and every session transcript are excluded. Rollback for the remote: delete the repository through GitHub, then `git -C ~/.claude remote remove origin`.
 
-Because the ignore text changed across the rounds, that repository reads `IgnoreState: Drift` today and the doctor reports the sync section as a drift FAIL. It self-heals on the operator's next `doctor -Fix`, which the `$syncNeedsWork` fix makes reachable. Rollback if the repository is unwanted: `Remove-Item -Recurse -Force ~/.claude/.git`, then delete `~/.claude/.gitignore` and `~/.claude/.gitattributes`.
+That repository was first created during Section 1 by a mechanism this effort could not establish, at commit `6b2c556`; no session step authorized a real `-Fix`. It audited clean then and audits clean now. The standing brief forbids any agent running a real repair against the operator own store root.
 
-Section 3 creates the remote and is the step that publishes whatever this repository holds. It stops for an explicit go-ahead before both the repo creation and the first push.
+Because the allowlist text changed across Section 1 review rounds, the repository reads `IgnoreState: Drift` and the doctor reports the memory-sync section as a drift FAIL until the operator runs `kit doctor -Fix`, which restores the canonical text and self-heals. The other three machines are reached in their own sessions; Chapter 3 carries their rollout steps.
 
 ## Chapters
 
@@ -166,4 +166,33 @@ Migration, run inline against the live store rather than dispatched, since it mu
 Machine state altered outside the repo: `~/.claude/memory-operator/` now exists with five memories and its index, and five memory files plus their index lines were removed from this project's tier. A pre-migration copy of the project store sits at `C:\tmp\memory-backup-1785739302`. The sync repo sees only tier paths (`git add -A --dry-run` lists nothing outside `memory-operator/`, `projects/*/memory/`, and `memory-types/`, and the tier's `MEMORY.md.bak` is correctly excluded), which is the allowlist's first exercise against a real store change rather than a fixture.
 Review Findings: One round, two reviewers. Two Majors addressed (the false type-tier provenance clause, found independently by both; the untested `add-operator` unwind), one Major addressed after the reviewer independently confirmed the implementer's own diagnosis (the project-directory gate), two Minors addressed (the `operator` type-name collision, the pin-clause asymmetry raised by the implementer and folded in by the recurrence rule). One Minor left as inherited behavior with the reason recorded: a refused `add-operator` leaves an empty tier directory, because taking a lock creates the directory the lock sits in, which is true of every lock in the store and of `add-type` since it shipped. The migration gap the reviewer flagged against the section's acceptance was the deliberate sequencing recorded above.
 Next: 3. Remote creation and first sync
+Commit Model: Commit-and-Push
+
+### Chapter 3 - 2026-08-03
+Completed: 3. Remote creation and first sync
+Implemented By: main session (Locus: inline; outward action, operator-authorized)
+Metrics: 0 review rounds (no repo code changed); 0 NEEDS_CONTEXT; 0 escalations; advisor opus
+Decisions / Surprises: The repository is `SApplefeld/sapplefeld-claude-memory`, private, named to match the operator's other custom repositories rather than the spec's placeholder `claude-memory`. Created through the REST API with a token from `git credential fill`, per the operator-tier memory `github-pr-without-gh`, which was recalled and stamped applied; this was that memory's first use since migrating, and the round trip (written by `add-operator`, recalled by `get`, stamped by `touch --operator`) is the operator tier's first end-to-end exercise.
+
+Privacy is read from the creation response and re-read from the API after the push, never assumed: `private: true`, `visibility: private`, `fork: false`.
+
+The store commit that shipped is the operator-tier migration. Git recorded all five moves as renames rather than as delete-plus-add, so the tier change reads as a promotion in the history rather than as a loss.
+
+Acceptance verified against the real remote, not the local repository: a fresh clone to a scratch directory holds 61 files and nothing outside `memory-operator/`, `memory-types/`, and `projects/*/memory/`; its top level holds only the two managed files and the three tier directories; `.credentials.json`, `settings.json`, and `history.jsonl` are each absent from the working tree and from every blob in the clone's object history; and `check-attr` confirms `merge=union` reaches a journal in both the operator tier and a project tier. The clone was deleted after verification. Outcome logged as `kit.memory.sync pass`.
+
+Machine state altered outside the repo: `~/.claude` gained an `origin` remote and one commit (`7fe68d2`), and its 61 tracked files now exist on GitHub in a private repository. Rollback: delete the repository through GitHub, then `git -C ~/.claude remote remove origin`; the local repository and every memory file survive that untouched.
+
+Rollout for the other three machines, each run in its own session on that machine. Same-path discipline is the standing convention and it is what makes a project store resolve after it syncs: a project tier is keyed by the flattened project path, so `D:\personal\sapplefeld-claude-kit` on this desktop resolves only against a checkout at that identical path elsewhere. The type and operator tiers are path-independent and resolve everywhere.
+
+1. Update the kit on that machine, so `memq` knows the operator tier and the doctor knows the allowlist.
+2. Run `kit doctor` and read the memory-sync section. On a machine whose `~/.claude` is not yet a repository it reports a WARN naming the remedy.
+3. Run `kit doctor -Fix` and consent to the memory-sync repair. It initializes `~/.claude`, writes the allowlist and the merge attributes, sets the ownership marker, and commits that machine's memory tiers.
+4. Re-run `kit doctor` and require a PASS on the memory-sync section before going further. A FAIL there means the allowlist does not match or a probe could not answer, and a push under either condition is what the section exists to prevent.
+5. `git -C ~/.claude remote add origin https://github.com/SApplefeld/sapplefeld-claude-memory.git`
+6. `git -C ~/.claude fetch origin` then `git -C ~/.claude merge origin/main --allow-unrelated-histories`. The histories are unrelated because each machine initialized its own repository; the journals merge as line unions, and any conflict outside a journal is two machines holding different text for one memory name, which is a hand decision rather than a mechanical one.
+7. `git -C ~/.claude push -u origin main`.
+
+A machine that already has memories under a project path this desktop does not know about simply adds them; the tiers are additive and nothing is overwritten.
+Review Findings: None dispatched. The section changed no repository code, so there was no diff for a reviewer to read; its risk is the outward action, which is covered by the operator's explicit authorization and by the pre-push audit recorded above.
+Next: 4. Sync cadence surfaces
 Commit Model: Commit-and-Push
