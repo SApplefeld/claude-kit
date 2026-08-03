@@ -3,8 +3,12 @@
 // the project-type memory index for a project that has opted into one, put the
 // project's own memory index and write destination in front of the session,
 // and tell a session running under an external engine's run id where its
-// memory writes go. The blocks are independent and coexist: a session can be
-// overdue, typed, and run-scoped at once.
+// memory writes go. The nudge and the type index are independent of everything
+// else and of each other, so a session can be overdue and typed at once. The
+// three blocks that name a destination are mutually exclusive, because a
+// session must be handed one destination and never two: a run displaces the
+// pin block and silences the project block, and a pin reduces the project
+// block to its index lines alone.
 //
 // The decay nudge: the decay stamp (memory/decay-stamp in the project's
 // memory directory) is touched by `memq decay-done` when a decay pass
@@ -444,7 +448,20 @@ function projectMemoryBlock(cwd, memq, pinned) {
     const index = indexLines(() => path.join(memDir, memq.INDEX_FILE),
         PROJECT_INDEX_MAX_LINES, memq);
     if (pinned !== null) {
-        if (index.lines === null) return null;
+        // An index that is merely absent or empty leaves this row nothing to
+        // say, since the index lines are the whole of it and the pin block has
+        // already named the destination. An index that could not be READ is a
+        // different fact and is said: the pin block goes on to instruct adding
+        // an index line as usual, and a session that heard silence would take
+        // the tier for empty and re-record something already in it.
+        if (index.lines === null) {
+            return index.unreadable
+                ? 'Kit project memory: this session\'s project memory index could not be read, so '
+                    + 'the tier may hold records this block cannot show. Reach them with `memq '
+                    + 'recall`, `memq find`, and `memq get <name>`, which read the tier directly, '
+                    + 'and treat the tier as populated rather than empty.'
+                : null;
+        }
         return 'Kit project memory: the index of this session\'s project memory tier follows, so '
             + 'what is already recorded there is known from the first turn. Read a full memory '
             + 'with `memq get <name>`; search with `memq find`. Where new memory files go is the '

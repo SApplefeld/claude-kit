@@ -2096,13 +2096,14 @@ function cmdRecall(argv) {
     // this digest is the only place a reader sees these records, and a bare
     // name is little to judge a memory by. It rides last, where a journal
     // line carries its summary, so the fixed columns keep their positions.
-    // The emptiness check runs on the sanitized value, not the raw one: a
-    // description that is entirely outside sanitize's printable-ASCII range
-    // reduces to '', and testing the raw string first would let that case
-    // through as a bare trailing separator with nothing after it.
+    // The emptiness check runs on the sanitized and trimmed value, never the
+    // raw one: a description entirely outside sanitize's printable-ASCII range
+    // reduces to '', and one written as spaces survives the reduction intact,
+    // so testing the raw string would let either through as a trailing
+    // separator with nothing legible after it.
     const projectLines = recallTierRecords(memDir, projectTally)
         .map((r) => {
-            const desc = sanitize(r.description, SUMMARY_CAP);
+            const desc = sanitize(r.description, SUMMARY_CAP).trim();
             return projectIndent + 'project  ' + sanitize(r.name, NAME_CAP)
                 + '  ' + recallAppliedColumn(r.applied, projectUnread)
                 + '  alive ' + recallAgeColumn(r.aliveMs, now)
@@ -2329,8 +2330,8 @@ function byRecentThenName(a, b) {
 //
 // The cut order is the reverse of the output order, which is a rule rather
 // than a coincidence: the surfaces are printed from the one with no other
-// ambient path to it (the journal, which nothing injects and no other
-// reader summarizes) to the one with the most (memory files, which `find`,
+// ambient path to it (the journal, which no session-start block carries and
+// no other reader summarizes) to the one with the most (memory files, which `find`,
 // `recall`, and the session's own index all reach), so the last printed is
 // the first cut. A cut surface keeps its newest lines and ends with a counted
 // remainder naming the narrowing move, because a truncation the output does

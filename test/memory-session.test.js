@@ -1120,6 +1120,40 @@ test('a pinned session gets the index alone, since the pin block already named t
     }
 });
 
+// The pin row says nothing when the index is merely absent or empty, because
+// the index lines are the whole of that row. An index that could not be READ
+// is a different fact: the pin block goes on to instruct adding an index line
+// as usual, so a session left silent takes the tier for empty and re-records
+// what is already in it. Both directions are pinned here, since the whole
+// point is that the two no-lines cases are not one case.
+test('a pinned session hears about an unreadable index, and hears nothing about an empty one', () => {
+    const store = makeStore();
+    const pinnedMemDir = path.join(store.root, 'projects', 'inst-a', 'memory');
+    try {
+        // A directory where the index file belongs: openSync succeeds and the
+        // read throws, which is the unreadable shape rather than the absent one.
+        fs.mkdirSync(path.join(pinnedMemDir, 'MEMORY.md'), { recursive: true });
+        const unreadable = assertBlock(runHook(store, startupPayload(store),
+            { KIT_MEMORY_PROJECT: 'inst-a' }));
+        const project = blockStarting(unreadable, 'Kit project memory:');
+        assert.match(project, /could not be read/);
+        assert.match(project, /may hold records/);
+        assert.match(project, /treat the tier as populated rather than empty/);
+        assert.ok(!project.includes(pinnedMemDir),
+            'the pin block still owns the destination:\n' + project);
+
+        // Empty is the recorded silence, and it stays silent.
+        fs.rmSync(path.join(pinnedMemDir, 'MEMORY.md'), { recursive: true, force: true });
+        fs.writeFileSync(path.join(pinnedMemDir, 'MEMORY.md'), '', 'utf8');
+        const empty = assertBlock(runHook(store, startupPayload(store),
+            { KIT_MEMORY_PROJECT: 'inst-a' }));
+        assert.deepStrictEqual(blocksOf(empty).map((b) => b.split(':')[0]),
+            ['Kit pinned memory store'], 'an empty pinned index adds no block');
+    } finally {
+        rmStore(store);
+    }
+});
+
 test('a run displaces the project block outright, index included', () => {
     const store = makeStore();
     try {

@@ -1,6 +1,6 @@
 # Auto-Memory Independence
 
-Status: In Progress
+Status: Complete
 Commit Model: Commit-and-Push
 Fable Spend: S1 reviewer pair; S3 reviewer pair (inline locus puts its writer tier at the session model); finishing reviews
 Created: 2026-08-02
@@ -93,6 +93,8 @@ None open. Two were resolved 2026-08-02 and are recorded in Chapter 1; both conc
 
 Builds on three archived plans: `docs/archive/claude-kit_memory-extension_spec_v1.md` (the store, the CLI, and the `memory-system` skill this plan extends), `docs/archive/claude-kit_memory-recall-and-reinforcement_spec_v1.md` (the recall digest whose budget reasoning S2 amends), and `docs/archive/claude-kit_instance-store-pin_spec_v1.md` (the pinned-store precedent both S1's destination treatment and S2's description carry follow).
 
+Gates one successor: `docs/plans/claude-kit_synced-semantic-memory_spec_v1.md` replicates the memory tiers across machines and adds a per-machine semantic layer, and its execution waits on this plan reaching Complete. It builds on both surfaces this plan changed, `memory-session.js`'s emission and `cmdRecall`, so it is written against them as landed here.
+
 ## Chapters
 
 ### Chapter 1 - 2026-08-02
@@ -158,4 +160,26 @@ Review Findings: One Major and six Minors, all addressed, all on prose written i
 
 Gate: full 18-file suite 498 / 498 / 0, unchanged from Section 2 as expected for an all-prose section. `output-style-parity` and `doctrine-parity` 13/13, proving the sweep did not reach the doctrine or the output style. An en-dash and em-dash scan over the three files returns zero, run with a known-answer control so a broken check cannot read as a pass.
 Next: finishing-work
+Commit Model: Commit-and-Push
+
+### Chapter 6 - 2026-08-02
+Completed: the whole effort. Status flipped to Complete.
+Implemented By: main session (finishing pass), with the qa-verifier, security-reviewer, adversarial-reviewer, and docs-curator agents
+Metrics: QA PASS; 1 finishing security review (fable) CLEAR; 1 finishing adversarial review (fable) APPROVED_WITH_CONCERNS; 1 docs-curator pass; advisor opus
+
+**QA.** Full 18-file suite green and every acceptance criterion in all three sections checked with evidence. The verifier confirmed each of the four matrix rows is exercised by a test that would fail if the row were wrong rather than merely asserted somewhere, and that the two fixed defects (an unreadable index reported as an empty store, and an emptiness guard testing the raw description instead of the sanitized one) each carry a real regression test. It independently confirmed no harness-state read exists anywhere in `plugins/` or `test/`.
+
+**Security, CLEAR, no Criticals or Majors.** It answered the question that mattered most: the provenance fence does cover the newly-carried recall descriptions, structurally rather than by intent, because the description is appended to a line the indent already prefixes and `sanitize` bars the newline that would be needed to escape it. It also confirmed no store-controlled string can forge block structure through the shared index emitter, and that no path-traversal, symlink, TOCTOU, or exhaustion surface was introduced beyond the three conditions Out of Scope already records. Four Minors: two fixed here (a description of spaces surviving the emptiness guard, and a wording inversion in `security-model.md`), one fixed as part of the adversarial round below (the pin row's silence on an unreadable index), and one accepted and recorded rather than fixed.
+
+**Accepted, not fixed: a store-authored index line can byte-identically mimic the counted-remainder line.** The indent holds, so no block structure is forged and nothing reaches column zero; the effect is bounded to misleading a session about how much of its own index was shown. It is pre-existing on the type-index path, this effort puts it on a more frequent one, and closing it properly means either a marker `sanitize` strips or moving the shown-and-total counts into the block's own column-zero voice. That is a design change to the shared emitter and belongs in its own effort, not in a finishing round.
+
+**Adversarial, APPROVED_WITH_CONCERNS.** It confirmed the three sections cohere with each other and with the prose, found no debris, no orphaned helper, no dead constant, and no residue of the abandoned detector anywhere in the tree. One Major and four Minors, all fixed: a self-contradiction in `security-model.md` about trigger breadth (introduced in Section 3's own fix round while fixing a different finding, and caught independently by both finishing reviewers), a cross-reference pointing the wrong direction, an over-claim in the hook's header that the blocks are independent when three of them are mutually exclusive, the pin row's undecided unreadable-index case, and one vocabulary drift in `memq.js`.
+
+**The pin-row gap is the one that mattered.** Both finishing reviewers reached it independently. Section 1's Major established that a session facing an unreadable index must be told the tier may hold records it cannot see, so it does not re-record something already there. Under a pin the same risk applies, since the pin block still instructs adding an index line as usual, but the code collapsed unreadable and empty into one silence. Chapter 3 recorded the empty-and-absent pin case as a deliberate call; the unreadable case had never been decided. It now emits its own notice, with a test watched red before green (the ordering reverted, exactly one failure, restored from a filesystem copy under the scratchpad and the tree verified byte-identical to its pre-probe status capture).
+
+**Docs curation, all deviations, no mistakes, so nothing stopped.** The curator updated `architecture.md`, `security-model.md`, `fleet-integration.md`, `backlog.md`, and the docs index from the as-built code. Its most useful finding was outside this plan's named surfaces: `fleet-integration.md` said omitting `KIT_MEMORY_PROJECT` "silently fragments" the store, and after Section 1 the fragmentation is no longer silent, because the hook now states the cwd-derived directory in its own voice at every such session start. Two repo-root README items it flagged but could not write (its charter is `docs/` only) were fixed here: the hook inventory understated the hook by two blocks, and a line directing durable learnings to Claude Code's auto-memory rather than the kit store, which was stale before this effort and reads worse after it. That second one is a bonus fix outside the plan's scope; reverting it is a one-line restore of the previous sentence.
+
+Review Findings: 1 Major and 8 Minors across the two finishing reviews, 8 addressed, 1 accepted with the reasoning recorded above. Zero Criticals in any round of the whole effort.
+
+Gate: full 18-file suite 499 / 499 / 0 against the captured 488 / 488 / 0 baseline at d0c5221, a net +11 tests, no regressions. Build stamp regenerated after the final hook edit.
 Commit Model: Commit-and-Push

@@ -61,7 +61,8 @@ claude-kit/                          (repo = the marketplace)
         kit-version-nudge.js         Warns when the session is running a stale kit build
         hook-canary.js               SessionStart probe that the installed kit hooks are alive
         memory-usage-stamp.js        Stamps reads of memory files to the store's usage sidecar
-        memory-session.js            SessionStart decay nudge and project-type memory index
+        memory-session.js            SessionStart decay nudge, both tiers' memory indexes, and the
+                                     memory write destination for a pinned or run-scoped session
       scripts/
         memq.js                      The memory-store CLI: recall (the whole store as one bounded digest, no
                                      search term), find, get, log, touch, add-type, and the decay pass
@@ -152,7 +153,7 @@ Quality is protected by three things, none of which is the implementer's model: 
 
 - Specs and plans: `docs/plans/` in each project, named `<project>_<content-type>_v1.md`, versions increment, never overwrite.
 - Chapters are appended to the plan doc, not kept in a separate file. The plan doc is the single source of truth for intent and state.
-- Durable learnings go to Claude Code auto memory (curate with `/memory`), not into plan docs or CLAUDE.md.
+- Durable learnings go to the kit memory store, not into plan docs or CLAUDE.md. One fact per file with an index line beside it, written under the `memory-system` skill's bar and read back through `memq`; the SessionStart hook names the store's directory and its index at the start of an ordinary session. The store works the same whether Claude Code's own auto-memory is on or off.
 - Project CLAUDE.md files carry what is true of that project only: build commands, architecture pointers, and the rules that hold nowhere else (a product's honesty, identity, and privacy gates, its test-suite naming), stated next to the gate tests that enforce them. Global rules live in the operating-instructions skill (delivered always-on in Code via the `~/.claude/CLAUDE.md` import of `@claude-kit-doctrine.md`, and available as a skill in Cowork/Chat), which carries only what is general and not already guaranteed by the harness; the mechanics of a workflow moment live in the skill that owns it.
 - Each project documents its access architecture and accepted risks in `docs/security-model.md` (for example, a procedure-only or impersonation model: the roles, schema, impersonation mechanism, and any accepted-risk rationale). The security-reviewer agent reads it first, verifies the code upholds it, and re-checks accepted-risk preconditions instead of re-flagging them, which is also the document auditors ask for.
 
