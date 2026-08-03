@@ -265,6 +265,17 @@ function Invoke-MemorySyncGit {
 # can say how much of the negative was actually proven. An empty result set
 # means nothing on its own: it reads identically whether a probe found nothing
 # or never ran.
+#
+# Dirty is a fifth, separate fact from the four leak probes: whether the
+# worktree holds a change under the allowlist that has not been committed yet
+# (a memory the session wrote this run, most commonly). It is not folded into
+# ProbesAttempted/ProbesAnswered, because those count how much of the security
+# negative was proven and Dirty proves nothing about leaks; a git status call
+# that fails leaves Dirty false rather than marking the whole status unproven,
+# the same fail-quiet posture the session hook's own sync-freshness check
+# takes on the identical git call. `--untracked-files=all` is what keeps
+# DirtyCount an exact file count rather than one line for a whole new
+# untracked directory, which git's default porcelain output would collapse to.
 function Get-MemorySyncStatus {
     param(
         [Parameter(Mandatory = $true)][string]$StoreRoot,
@@ -286,6 +297,9 @@ function Get-MemorySyncStatus {
         Tracked       = @()
         HistoryPaths  = @()
         Remote        = ""
+        Dirty         = $false
+        DirtyKnown    = $false
+        DirtyCount    = 0
         Notes         = @()
     }
 
@@ -310,6 +324,14 @@ function Get-MemorySyncStatus {
 
     $remote = Invoke-MemorySyncGit -StoreRoot $StoreRoot -Arguments @("remote", "get-url", "origin") -GitExe $GitExe
     if ($remote.Code -eq 0 -and $remote.Output.Count -gt 0) { $status.Remote = $remote.Output[0].Trim() }
+
+    $dirty = Invoke-MemorySyncGit -StoreRoot $StoreRoot -Arguments @("status", "--porcelain", "--untracked-files=all") -GitExe $GitExe
+    if ($dirty.Code -eq 0) {
+        $status.DirtyKnown = $true
+        $dirtyLines = @($dirty.Output | Where-Object { $_.Trim() -ne "" })
+        $status.DirtyCount = $dirtyLines.Count
+        $status.Dirty = $dirtyLines.Count -gt 0
+    }
 
     $status.ProbesRan = $true
     $status.ProbesAttempted += 1
@@ -612,8 +634,21 @@ function Install-MemorySyncRepo {
         return @{ Ok = $false; Notes = ($notes + $postAdd + @($restored)) }
     }
 
-    $staged = Invoke-MemorySyncGit -StoreRoot $StoreRoot -Arguments @("diff", "--cached", "--quiet") -GitExe $GitExe
-    if ($staged.Code -eq 0) {
+    # --name-only rather than --quiet's bare exit code, so the same call
+    # answers both "is there anything to commit" and "how many paths", which
+    # is what lets the final note say a real count instead of a fixed
+    # sentence. This is also what makes a healthy, canonical repo with
+    # uncommitted memory-tier changes reach a commit at all: the caller may
+    # invoke this function with both managed files already Canonical, purely
+    # because the worktree is dirty, and the count is the only way the note
+    # distinguishes "committed pending changes" from the repair notes above it
+    # in the same list.
+    $stagedNames = Invoke-MemorySyncGit -StoreRoot $StoreRoot -Arguments @("diff", "--cached", "--name-only") -GitExe $GitExe
+    if ($stagedNames.Code -ne 0) {
+        return @{ Ok = $false; Notes = ($notes + @("git diff --cached --name-only failed, so what would be committed could not be counted: " + ($stagedNames.Output -join " "))) }
+    }
+    $stagedCount = @($stagedNames.Output | Where-Object { $_.Trim() -ne "" }).Count
+    if ($stagedCount -eq 0) {
         $notes += "Nothing to commit; the repository already holds the current memory tiers."
         return @{ Ok = $true; Notes = $notes }
     }
@@ -621,6 +656,6 @@ function Install-MemorySyncRepo {
     if ($commit.Code -ne 0) {
         return @{ Ok = $false; Notes = ($notes + @("git commit failed: " + ($commit.Output -join " "))) }
     }
-    $notes += "Committed the memory tiers the allowlist admits."
+    $notes += ("Committed " + $stagedCount + " pending change(s) admitted by the allowlist.")
     return @{ Ok = $true; Notes = $notes }
 }

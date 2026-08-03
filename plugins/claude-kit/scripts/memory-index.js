@@ -587,8 +587,15 @@ function indexPath() {
 // A record's identity in the index: the three fields that place it in the
 // store. Names compare the way the platform's filesystem compares them, the
 // same rule memq applies to usage keys, so one file cannot occupy two slots.
+//
+// The separator is a space, and it cannot collide: a store segment and a
+// memory name are both closed to [A-Za-z0-9_.-] by the store's own gates, and
+// every tier token is a fixed word from the closed set above. A control
+// character would separate just as well and would make this source read as
+// binary to the tools that scan it, which is how a claim living in a file
+// goes unread by every later grep over the tree.
 function recordKey(store, tier, name) {
-    return store + ' ' + tier + ' ' + memq.memoryFileKey(name);
+    return store + ' ' + tier + ' ' + memq.memoryFileKey(name);
 }
 
 // Whether a parsed line is a record this module wrote. Every field is checked.

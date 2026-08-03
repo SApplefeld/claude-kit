@@ -1045,16 +1045,33 @@ else {
     # "re-run with -Fix" is one -Fix actually acts on. A missing file counts:
     # a repo recognized by its config marker with no .gitignore on disk has no
     # rules at all, which is the state most in need of the repair.
+    #
+    # The last clause is what closes the steady-state hole: a repository
+    # already canonical on both managed files never used to reach
+    # Install-MemorySyncRepo at all, so -Fix committed nothing beyond the
+    # first heal that made it canonical, and every memory a session wrote
+    # afterward stayed local until the next drift. Dirty is true only inside
+    # an owned repo (Get-MemorySyncStatus leaves it false outside one), so
+    # this clause cannot fire for a repo $syncAdoptable would refuse anyway.
     $syncNeedsWork = $syncAdoptable -and ((-not $syncStatus.IsRepo) -or
         $syncStatus.IgnoreState -eq "Missing" -or $syncStatus.IgnoreState -eq "Drift" -or
-        $syncStatus.AttrState -eq "Missing" -or $syncStatus.AttrState -eq "Drift")
+        $syncStatus.AttrState -eq "Missing" -or $syncStatus.AttrState -eq "Drift" -or
+        $syncStatus.Dirty)
 
     if ($Fix -and $syncNeedsWork) {
-        $syncQuestion = if ($syncStatus.IsRepo) {
+        # Three shapes, not two: the prompt must never describe a repair that
+        # is not happening (Section 1's own finding, applied to the newest
+        # branch), so a canonical repo that only needs its pending memories
+        # committed asks about exactly that, never about restoring an
+        # allowlist that is already right.
+        $syncQuestion = if (-not $syncStatus.IsRepo) {
+            "Initialize $claudeDir as the memory-sync git repository (allowlist plus one commit of the memory tiers)?"
+        }
+        elseif ($syncStatus.IgnoreState -ne "Canonical" -or $syncStatus.AttrState -ne "Canonical") {
             "Restore the canonical memory-sync allowlist in $claudeDir and commit the memory tiers?"
         }
         else {
-            "Initialize $claudeDir as the memory-sync git repository (allowlist plus one commit of the memory tiers)?"
+            "Commit $($syncStatus.DirtyCount) pending memory-tier change(s) in $claudeDir through the gated allowlist?"
         }
         if (Get-Consent $syncQuestion) {
             $syncInstall = Install-MemorySyncRepo -StoreRoot $claudeDir
@@ -1163,6 +1180,19 @@ else {
             )
             if ($syncStatus.Remote -ne "") { $syncDetail += ("origin: " + (Get-SanitizedLine $syncStatus.Remote 200)) }
             else { $syncDetail += "No origin remote yet, so the store is versioned locally but not replicated." }
+            # Reached either from a plain check (no -Fix) or from a -Fix run
+            # whose commit succeeded and cleared the worktree: $syncStatus was
+            # re-read after that commit, so Dirty is already false there and
+            # this line adds nothing beside the FIXED notes above it. A check
+            # that stayed silent about pending, uncommitted memories would
+            # tell an operator the store is fine while it holds unsynced work;
+            # check mode cannot commit them, but it can say they are there.
+            if ($syncStatus.Dirty) {
+                # The count leads with a string, never bare: "$int + ' text'"
+                # asks PowerShell to add an integer to a string and throws,
+                # where "'' + $int + ' text'" concatenates as intended.
+                $syncDetail += ("" + $syncStatus.DirtyCount + " uncommitted change(s) under the allowlist, not yet committed. Fix: re-run doctor with -Fix (commits them through the gated allowlist).")
+            }
             if ($syncFixLines.Count -gt 0) { Report "FIXED" "Memory sync" ($syncFixLines + $syncDetail) }
             else { Report "PASS" "Memory sync" $syncDetail }
         }

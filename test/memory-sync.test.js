@@ -249,6 +249,31 @@ function doctorFixGate(statusFields) {
     return JSON.parse(res.stdout);
 }
 
+// Lifts $syncAdoptable, $syncNeedsWork, and $syncQuestion (the consent
+// prompt's own text) as AST nodes and runs all three against a stubbed
+// $syncStatus, the same technique doctorFixGate uses for the first two. This
+// is what proves the prompt matches the state without ever running a real
+// -Fix: real doctor.ps1 code, not a paraphrase of its three-way branch, so a
+// rewrite that adds a fourth state or reorders the branches is caught here.
+function doctorFixQuestion(statusFields) {
+    const fields = Object.entries(statusFields)
+        .map(([k, v]) => k + ' = ' + (typeof v === 'boolean' ? (v ? '$true' : '$false') : q(v)))
+        .join('; ');
+    const script = '$errs = $null; $tokens = $null; '
+        + '$ast = [System.Management.Automation.Language.Parser]::ParseFile(' + q(DOCTOR)
+        + ', [ref]$tokens, [ref]$errs); '
+        + '$stmts = @($ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.AssignmentStatementAst] '
+        + "-and ($n.Left.Extent.Text -eq '$syncAdoptable' -or $n.Left.Extent.Text -eq '$syncNeedsWork' -or $n.Left.Extent.Text -eq '$syncQuestion') }, $true)); "
+        + 'if ($stmts.Count -ne 3) { Write-Output ("expected 3 gate/question assignments, found " + $stmts.Count); exit 1 }; '
+        + '$claudeDir = "C:\\stub-claude-dir-for-test"; '
+        + '$syncStatus = @{ ' + fields + ' }; $syncForeign = @(); '
+        + 'foreach ($s in $stmts) { Invoke-Expression $s.Extent.Text }; '
+        + '@{ Adoptable = [bool]$syncAdoptable; NeedsWork = [bool]$syncNeedsWork; Question = [string]$syncQuestion } | ConvertTo-Json -Compress';
+    const res = pwsh(script);
+    assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+    return JSON.parse(res.stdout);
+}
+
 function ownMarker(store) {
     const res = git(store, ['config', '--local', '--get', 'claudekit.memorysync']);
     return res.status === 0 ? res.stdout.trim() : null;
@@ -447,7 +472,7 @@ test('a memory file whose name carries an accent is an ordinary tracked file, no
         write(path.join(fake.store, 'memory-types', 'another.md'), '# another\n');
         const again = installRepo(fake.store);
         assert.strictEqual(again.status, 0, again.stdout + again.stderr);
-        assert.match(again.stdout, /Committed the memory tiers/);
+        assert.match(again.stdout, /Committed 1 pending change\(s\) admitted by the allowlist/);
     } finally {
         rmDir(fake.home);
     }
@@ -954,6 +979,12 @@ test('a second -Fix is a no-op that neither re-commits nor changes what is track
     const fake = makeStore();
     try {
         assert.strictEqual(installRepo(fake.store).status, 0);
+        // A clean canonical repo reads as not dirty, which is what keeps
+        // -Fix's new pending-change clause from prompting on a healthy store
+        // that has nothing to commit.
+        const cleanStatus = statusOf(fake.store);
+        assert.strictEqual(cleanStatus.Dirty, false, JSON.stringify(cleanStatus));
+        assert.strictEqual(cleanStatus.DirtyCount, 0, JSON.stringify(cleanStatus));
         const before = trackedPaths(fake.store);
         const head = git(fake.store, ['rev-parse', 'HEAD']).stdout.trim();
         const again = installRepo(fake.store);
@@ -961,6 +992,190 @@ test('a second -Fix is a no-op that neither re-commits nor changes what is track
         assert.match(again.stdout, /Nothing to commit/);
         assert.deepStrictEqual(trackedPaths(fake.store), before);
         assert.strictEqual(git(fake.store, ['rev-parse', 'HEAD']).stdout.trim(), head);
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// The steady-state hole was in doctor.ps1's own decision of when to call
+// Install-MemorySyncRepo at all (locked separately below, by lifting
+// $syncNeedsWork itself): a repository already canonical on both managed
+// files never used to reach it, so -Fix committed nothing beyond the heal
+// that made it canonical, and every memory a session wrote afterward stayed
+// local. This case locks the other half, Get-MemorySyncStatus's new Dirty
+// field and Install-MemorySyncRepo's commit path itself: once reached, the
+// commit runs through the same gates a drift repair takes (the pre-add and
+// post-add index checks against the allowlist), and the status the caller
+// would gate on reads correctly.
+test('a canonical repo with a pending memory-tier change reads as dirty, and -Fix commits it through the same gates', { skip: !isWin }, () => {
+    const fake = makeStore();
+    try {
+        assert.strictEqual(installRepo(fake.store).status, 0);
+        const head = git(fake.store, ['rev-parse', 'HEAD']).stdout.trim();
+        write(path.join(fake.store, 'memory-types', 'pending-fact.md'), '# pending\n');
+
+        const status = statusOf(fake.store);
+        assert.strictEqual(status.IgnoreState, 'Canonical');
+        assert.strictEqual(status.AttrState, 'Canonical');
+        assert.strictEqual(status.Dirty, true, JSON.stringify(status));
+        assert.strictEqual(status.DirtyCount, 1, JSON.stringify(status));
+
+        const res = installRepo(fake.store);
+        assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+        assert.match(res.stdout, /Committed 1 pending change\(s\) admitted by the allowlist/);
+        assert.ok(!/Wrote \.git|Restored the canonical/.test(res.stdout),
+            'no managed file was rewritten; only a pending memory was committed:\n' + res.stdout);
+
+        assert.notStrictEqual(git(fake.store, ['rev-parse', 'HEAD']).stdout.trim(), head, 'a new commit was made');
+        const tracked = trackedPaths(fake.store);
+        assert.ok(tracked.includes('memory-types/pending-fact.md'), tracked.join(','));
+        assert.deepStrictEqual(historyPaths(fake.store), fake.allowed.concat(['memory-types/pending-fact.md']).sort(),
+            'the new commit went through the same history probe every other commit here does');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// A disallowed path blocks a pending-change commit exactly as it blocks a
+// drift-repair commit: the same pre-add and post-add gates run regardless of
+// why Install-MemorySyncRepo was reached, so a leak already in the index is
+// caught here too, and nothing is committed over it.
+test('a disallowed tracked path still blocks a pending-change-only commit', { skip: !isWin }, () => {
+    const fake = makeStore();
+    try {
+        assert.strictEqual(installRepo(fake.store).status, 0);
+        assert.strictEqual(git(fake.store, ['add', '-f', '.credentials.json']).status, 0);
+        assert.strictEqual(git(fake.store, ['commit', '--quiet', '-m', 'forced']).status, 0);
+        const head = git(fake.store, ['rev-parse', 'HEAD']).stdout.trim();
+        // A real change alongside the leak, so the commit has something it
+        // would otherwise take.
+        write(path.join(fake.store, 'memory-types', 'new-type.md'), '# new\n');
+
+        const res = installRepo(fake.store);
+        assert.notStrictEqual(res.status, 0, res.stdout + res.stderr);
+        assert.match(res.stdout, /the allowlist does not admit/);
+        assert.strictEqual(git(fake.store, ['rev-parse', 'HEAD']).stdout.trim(), head,
+            'no commit is made over a disallowed index, whether reached by drift or by a pending change');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// The neighbouring state the fix must not touch: drift repair and a pending
+// memory-tier commit compose in one -Fix run rather than the dirty path
+// silently taking over. Both facts ride in the same notes list.
+test('a drifted repo still repairs the allowlist and commits both the repair and any pending change', { skip: !isWin }, () => {
+    const fake = makeStore();
+    try {
+        assert.strictEqual(installRepo(fake.store).status, 0);
+        const ignorePath = path.join(fake.store, '.gitignore');
+        const canonical = fs.readFileSync(ignorePath, 'utf8');
+        fs.writeFileSync(ignorePath, canonical.replace('\n/*\n', '\n'), 'utf8');
+        write(path.join(fake.store, 'memory-types', 'pending-fact.md'), '# pending\n');
+
+        assert.strictEqual(statusOf(fake.store).IgnoreState, 'Drift');
+
+        const res = installRepo(fake.store);
+        assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+        assert.match(res.stdout, /Restored the canonical \.gitignore/);
+        assert.match(res.stdout, /Committed 1 pending change\(s\) admitted by the allowlist/);
+
+        const repaired = statusOf(fake.store);
+        assert.strictEqual(repaired.IgnoreState, 'Canonical');
+        assert.ok(trackedPaths(fake.store).includes('memory-types/pending-fact.md'));
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// The other neighbouring state: a foreign repository (one the doctor did not
+// create) is still refused outright even when it holds uncommitted changes,
+// because Dirty can only ever be true and $syncAdoptable simultaneously false
+// there is exactly the state $syncAdoptable's own foreign-file check exists
+// to catch; the fix's new clause never overrides it.
+test('a foreign repository with uncommitted changes is still refused, never committed into', { skip: !isWin }, () => {
+    const fake = makeStore();
+    try {
+        assert.strictEqual(git(fake.store, ['init', '--quiet']).status, 0);
+        fs.writeFileSync(path.join(fake.store, '.gitignore'), '# my own rules\n*.log\n', 'utf8');
+        assert.strictEqual(git(fake.store, ['add', 'settings.json']).status, 0);
+
+        const status = statusOf(fake.store);
+        assert.strictEqual(status.IsRepo, true);
+        assert.strictEqual(status.IsOwnRepo, false);
+
+        const res = installRepo(fake.store);
+        assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+        assert.match(res.stdout, /did not create/);
+        assert.match(res.stdout, /Nothing was written, staged, or committed/);
+        assert.notStrictEqual(git(fake.store, ['rev-parse', 'HEAD']).status, 0, 'no commit was ever made');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// The consent prompt itself, real doctor.ps1 code lifted and run against a
+// stubbed status for every combination: it must never describe a repair that
+// is not happening (Section 1's original finding, mirrored onto the new
+// branch), and it must offer nothing at all when there is genuinely nothing
+// to do.
+test('the consent prompt names exactly the action -Fix is about to take, for every combination', { skip: !isWin }, () => {
+    // Not a repo at all: init plus one commit.
+    let g = doctorFixQuestion({ IsRepo: false, IsOwnRepo: false, IgnoreState: 'Missing', AttrState: 'Missing', Dirty: false, DirtyCount: 0 });
+    assert.strictEqual(g.NeedsWork, true);
+    assert.match(g.Question, /Initialize .* as the memory-sync git repository/);
+
+    // A repo whose allowlist drifted: restore plus commit, regardless of Dirty.
+    for (const dirty of [false, true]) {
+        g = doctorFixQuestion({ IsRepo: true, IsOwnRepo: true, IgnoreState: 'Drift', AttrState: 'Canonical', Dirty: dirty, DirtyCount: dirty ? 2 : 0 });
+        assert.strictEqual(g.NeedsWork, true);
+        assert.match(g.Question, /Restore the canonical memory-sync allowlist/, JSON.stringify({ dirty, g }));
+        assert.ok(!/pending memory-tier change/.test(g.Question), 'a drift repair must not be described as a plain commit');
+    }
+
+    // A canonical repo, clean: nothing to do, and the prompt is never reached
+    // in practice since NeedsWork is false (doctor.ps1 never calls Get-Consent
+    // in that state), but the gate itself is the property this line checks.
+    g = doctorFixQuestion({ IsRepo: true, IsOwnRepo: true, IgnoreState: 'Canonical', AttrState: 'Canonical', Dirty: false, DirtyCount: 0 });
+    assert.strictEqual(g.NeedsWork, false);
+
+    // A canonical repo, dirty: the new case. The prompt must name a commit of
+    // pending changes, never a repair, and it must carry the real count.
+    g = doctorFixQuestion({ IsRepo: true, IsOwnRepo: true, IgnoreState: 'Canonical', AttrState: 'Canonical', Dirty: true, DirtyCount: 3 });
+    assert.strictEqual(g.NeedsWork, true);
+    assert.match(g.Question, /Commit 3 pending memory-tier change\(s\)/);
+    assert.ok(!/Restore the canonical|Initialize/.test(g.Question),
+        'a pending-change commit must not be described as a repair or a fresh init:\n' + g.Question);
+
+    // A foreign file: never adoptable, so NeedsWork is false regardless of
+    // Dirty, and no prompt question is ever built for this state in practice.
+    g = doctorFixGate({ IsRepo: true, IsOwnRepo: false, IgnoreState: 'Foreign', AttrState: 'Canonical' });
+    assert.strictEqual(g.Adoptable, false);
+    assert.strictEqual(g.NeedsWork, false);
+});
+
+// Check mode (no -Fix) against a redirected store root: the PASS line names
+// uncommitted memory-tier changes when they exist, and says nothing extra
+// when the repo is clean, so an operator reading PASS can tell whether their
+// memories are actually committed without running -Fix first.
+test('check mode names uncommitted changes in the PASS line, and says nothing extra when clean', { skip: !isWin }, () => {
+    const fake = makeStore();
+    try {
+        assert.strictEqual(installRepo(fake.store).status, 0);
+
+        const clean = doctorSyncLine(fake.home);
+        assert.strictEqual(clean.status, 'PASS', clean.detail);
+        assert.ok(!/uncommitted change/.test(clean.detail), 'a clean repo must not claim uncommitted work:\n' + clean.detail);
+
+        write(path.join(fake.store, 'memory-types', 'pending-fact.md'), '# pending\n');
+        const dirty = doctorSyncLine(fake.home);
+        assert.strictEqual(dirty.status, 'PASS', dirty.detail);
+        assert.match(dirty.detail, /1 uncommitted change\(s\) under the allowlist, not yet committed/);
+        assert.match(dirty.detail, /re-run doctor with -Fix/);
+
+        // And check mode changed nothing: the new file is still untracked,
+        // and HEAD has not moved.
+        assert.ok(!trackedPaths(fake.store).includes('memory-types/pending-fact.md'));
     } finally {
         rmDir(fake.home);
     }
