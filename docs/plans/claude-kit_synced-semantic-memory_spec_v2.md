@@ -7,7 +7,7 @@ Created: 2026-08-02
 
 ## Goal
 
-The kit memory store follows the operator across machines, has a home for every kind of fact, and answers meaning, not just substrings. One private git remote replicates the memory tiers across all four machines, born with an allowlist that makes it structurally impossible to stage credentials or any other non-memory file. A new operator tier gives operator- and machine-scoped facts a legitimate destination instead of stranding them in whichever project store learned them, and the known orphans migrate into it. On each machine, an optional local embedding layer builds a derived semantic index over every store present, and `memq find` becomes a hybrid search: the lexical channel it has today plus a semantic nearest-neighbors channel, merged, provenance-labeled, and usage-ranked, degrading loudly to lexical-only where the embedder is absent. When this plan is done, a memory learned on one machine is recallable by meaning on any other, and store growth costs index bytes rather than session context.
+The kit memory store follows the operator across machines, has a home for every kind of fact, and answers meaning, not just substrings. One private git remote replicates the memory tiers across all four machines, born with an allowlist that excludes every non-memory file, backed by direct probes that refuse a commit carrying anything the allowlist does not admit. A new operator tier gives operator- and machine-scoped facts a legitimate destination instead of stranding them in whichever project store learned them, and the known orphans migrate into it. On each machine, an optional local embedding layer builds a derived semantic index over every store present, and `memq find` becomes a hybrid search: the lexical channel it has today plus a semantic nearest-neighbors channel, merged, provenance-labeled, and usage-ranked, degrading loudly to lexical-only where the embedder is absent. When this plan is done, a memory learned on one machine is recallable by meaning on any other, and store growth costs index bytes rather than session context.
 
 ## Approach
 
@@ -17,7 +17,7 @@ The kit memory store follows the operator across machines, has a home for every 
 
 **Sync the sources, never the index.** Embedding vectors are valid only against the local embedder that produced them, and a synced binary index is exactly the stale-derived-data hazard the rebuildable design avoids. Each machine rebuilds its own index; machines therefore need no model agreement with each other.
 
-**The repo is `~/.claude` itself, allowlisted, and the allowlist is security-load-bearing.** `~/.claude`'s root holds `.credentials.json`, `settings.json`, and `history.jsonl`. The repo's gitignore excludes everything and re-includes only `projects/*/memory/**`, `memory-types/**`, and `memory-operator/**` (locks and `.bak` files excluded even there), so no add, however careless, can stage a secret. The journals (`outcomes.jsonl`, `usage.jsonl`) merge as line unions via `.gitattributes`, which fits their append-only shape. Project stores are keyed by the flattened project path, so a synced project store resolves on another machine only when the project lives at the identical path; same-path discipline across machines is the standing convention, and no mapping layer is built.
+**The repo is `~/.claude` itself, allowlisted, and the allowlist is security-load-bearing.** `~/.claude`'s root holds `.credentials.json`, `settings.json`, and `history.jsonl`. The repo's gitignore excludes everything and re-includes only `projects/*/memory/**`, `memory-types/**`, and `memory-operator/**` (locks and `.bak` files excluded even there). The ignore rules are the first barrier but not the whole one: a `.gitignore` planted inside a traversed directory takes precedence over the root file and can re-include what the allowlist excludes, so the guarantee rests on the ignore rules plus four direct probes (`check-ignore`, a dry-run add, the index, and the object history) that refuse any commit carrying a path the allowlist does not admit. The journals (`outcomes.jsonl`, `usage.jsonl`) merge as line unions via `.gitattributes`, which fits their append-only shape. Project stores are keyed by the flattened project path, so a synced project store resolves on another machine only when the project lives at the identical path; same-path discipline across machines is the standing convention, and no mapping layer is built.
 
 **Sync everything; scope with metadata.** Machine-bound facts are synced and labeled, never excluded: a `machine: <name>` frontmatter field marks a fact as true of one box, so other machines can still see it (useful when working against that box remotely) while search labels it as foreign. Excluding would discard information; labeling keeps it and defuses it. Machine facts live in the operator tier under that field; there is no fourth machine tier.
 
@@ -104,6 +104,7 @@ Folded into every dispatch brief from here on.
 - **Cross-store and cross-machine content is parsable, never promptable.** Any surface that moves store content into context applies the established sanitize, cap, and provenance-fence discipline. A new emission path without its guard entry in `docs/security-model.md` is incomplete work.
 - **Embedding-ecosystem claims are verified at build time, never trusted from memory.** Library names, model names, sizes, and install mechanics are checked against the current ecosystem in the section that uses them; the spec pins requirements, not packages.
 - **Stores are keyed by flattened project path.** A cross-machine claim about a project store holds only under same-path discipline; state the constraint wherever rollout instructions are written.
+- **No agent runs a real repair against the operator's own store root.** `doctor.ps1 -Fix`, `Install-MemorySyncRepo`, or any other sync mutation runs only against an explicitly redirected sandbox store root. The real `~/.claude` holds the credentials, the settings, and every session transcript, and a repair there is an unauthorized write to shared machine state outside the repo, invisible to the repo's own `git status`. Check mode against the real root is fine; a write is not.
 
 ## Open Questions
 
@@ -113,4 +114,37 @@ None open. The spec-shaping decisions (one combined spec; the operator tier fold
 
 Supersedes `docs/archive/claude-kit_synced-semantic-memory_spec_v1.md`, the same design without the operator tier, archived unexecuted. Builds on `docs/archive/claude-kit_automemory-off_spec_v1.md` (the session hook's unconditional project-index emission and `recall`'s unconditional descriptions are the floor these surfaces extend). Extends the store and CLI delivered by `docs/archive/claude-kit_memory-extension_spec_v1.md` and the recall digest from `docs/archive/claude-kit_memory-recall-and-reinforcement_spec_v1.md`; the provenance-fencing discipline follows `docs/archive/claude-kit_instance-store-pin_spec_v1.md`.
 
+## Section 1 status: complete, three review rounds
+
+Section 1 is implemented, reviewed through three rounds, and committed. No remote exists and nothing has been pushed, so nothing this section built has left this machine.
+
+Gate: full suite 527 pass, 0 fail, exit 0 across all 19 test files, `test/memory-sync.test.js` contributing 28. Baseline before the section was 514.
+
+Machine state, open for the operator: `~/.claude` is a git repository at commit `6b2c556` ("kit memory sync: allowlist and memory tiers"), 57 tracked files, no remote. It audits clean on both surfaces: zero non-allowlisted paths in the index, zero non-allowlisted blobs across the object history, and `.credentials.json`, `settings.json`, and `history.jsonl` each ignored. Nothing sensitive is in it and nothing has been pushed, so no credential rotation is implicated. What created it is not established; no session step authorized a real `-Fix`, and the `-Fix` test is ruled out (`doctor.ps1:114` resolves the store from `$env:USERPROFILE`, which `test/memory-sync.test.js` redirects). The standing brief now forbids any agent running a real repair against the operator's own store root.
+
+Because the ignore text changed across the rounds, that repository reads `IgnoreState: Drift` today and the doctor reports the sync section as a drift FAIL. It self-heals on the operator's next `doctor -Fix`, which the `$syncNeedsWork` fix makes reachable. Rollback if the repository is unwanted: `Remove-Item -Recurse -Force ~/.claude/.git`, then delete `~/.claude/.gitignore` and `~/.claude/.gitattributes`.
+
+Section 3 creates the remote and is the step that publishes whatever this repository holds. It stops for an explicit go-ahead before both the repo creation and the first push.
+
 ## Chapters
+
+### Chapter 1 - 2026-08-03
+Completed: 1. Sync repo bootstrap and allowlist integrity
+Implemented By: implementer-opus (one dispatch, three fix rounds via SendMessage; no tier escalation)
+Metrics: 3 review rounds; 0 NEEDS_CONTEXT; 0 escalations; advisor opus
+Decisions / Surprises: The history probe is `git rev-list --objects --all --filter=object:type=blob`. Round 1 shipped no history probe; round 2 shipped `git log --all --name-only`, which lists no file names for a merge commit, so a blob introduced in a merge resolution read clean on all four probes (reproduced in a scratch repo: the evil-merge blob was absent from the log surface and present in the rev-list surface). Plain `rev-list --objects` emits tree paths that would FAIL a clean repo; the blob filter drops them. The filter needs git 2.32 or newer, which fails loud rather than silently.
+
+The round-2 Critical landed on the same site as a round-1 Critical, which reads as a repeating finding class earning a tier bump. It was not: the round-2 brief told the implementer to use `git log`, marked confirmed, on an orchestrator misreading of a real-repo probe. The lever was the brief's evidence, not the writer's tier, so no bump was spent.
+
+The allowlist is not structurally closed as the spec originally claimed. A `.gitignore` planted inside a traversed directory takes precedence over the root file and can re-include excluded content: confirmed in a scratch repo, where `projects/P/.gitignore` containing `!*.jsonl` made a dry-run add stage a session transcript. The probes catch it and the repair refuses, so the real guarantee is "excluded by rules, and refused by probe", which the Approach and Goal now state. A fifth probe naming nested ignore files as the cause is a deliberate follow-up, not built.
+
+Only `git ls-files` C-quotes non-ASCII paths; `add --dry-run` and `rev-list --objects` emit them verbatim (confirmed on git 2.55.0.windows.3). Both index readers pass `-c core.quotePath=false`; without it, a memory file with an accent in its name reads as a leak and permanently blocks `-Fix`.
+
+`git add -A --dry-run` does not write `.git/index` (mtime unchanged across a real run against `~/.claude`), so check mode against the live store writes nothing.
+
+Machine state altered outside the repo: none this section. `~/.claude` became a git repository during round 1 by an unestablished mechanism, recorded in the Section 1 status block above with its audit and rollback; it was not touched after.
+
+One test flake: a single full-suite run reported an assertion failure with exit 0 and no failing-test name in the captured output. Five subsequent full runs and sixteen isolated runs of the two candidate files were clean at 527 pass, 0 fail. Recorded as a flake on the evidence, not root-caused; no test was changed for it.
+Review Findings: Round 1, three Criticals (fresh-init allowlist bypass, no history probe, leak probes suppressed in the foreign-file branches), five Majors, four Minors, all addressed. Round 2, one Critical (merge-blind history probe) and three Majors (a `-Fix` remediation `-Fix` would not perform, FAIL branches silent about failed probes, the installer's `Ok=false` path suppressing the leak probes), all addressed. Round 3, no Criticals, five Majors (the `ls-files` quotepath gap, the leaf-only transient deny axis, a probe-failure state exiting 0 as healthy, a stale post-failure report, a post-add refusal leaving paths staged), all addressed. Minors addressed except the fifth nested-ignore probe, recorded above as a follow-up. Two rounds each found a test passing for a reason other than its name; both were rewritten, and every new mechanism was watched red before green.
+Next: 2. The operator tier
+Commit Model: Commit-and-Push

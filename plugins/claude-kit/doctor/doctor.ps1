@@ -6,12 +6,14 @@
 #
 # Verifies core setup (execution policy, doctrine import and freshness, kaizen
 # signpost, git hooks on a clone), the ANTHROPIC_API_KEY hazard, the hook layer
-# (goal-leash wiring and load, hook-canary wiring, the memq shim), and leftover
-# resume-relay state on a machine that once armed it.
+# (goal-leash wiring and load, hook-canary wiring, the memq shim), the memory
+# store's sync repo and its allowlist, and leftover resume-relay state on a
+# machine that once armed it.
 #
 #   .\doctor.ps1              Check only; prints PASS/WARN/FAIL with remediations.
 #   .\doctor.ps1 -Fix         Also applies the safe durable repairs (execution
 #                             policy, the memq shim into ~\.claude\bin,
+#                             the memory store's sync repo and allowlist,
 #                             signpost + git hooks on a clone).
 #                             It deletes nothing.
 #   .\doctor.ps1 -Fix -Yes    Pre-answers the consent prompts of the actions the
@@ -115,6 +117,11 @@ $claudeDir = Join-Path $env:USERPROFILE ".claude"
 # Dot-sourced here rather than at the check, because Add-ToUserPath below
 # uses the PATH predicate it defines.
 . (Join-Path $PSScriptRoot "install-memq-shim.ps1")
+
+# Memory-sync allowlist, state, and initialization helpers, beside this
+# script. It resolves no paths of its own: this script is the only caller that
+# knows the real store root, and passes it in.
+. (Join-Path $PSScriptRoot "install-memory-sync.ps1")
 
 # Append a directory to the durable user PATH, and to this process's PATH so
 # the current run sees it too. Every kit PATH repair goes through this one
@@ -944,6 +951,215 @@ else {
         }
         else {
             Report "PASS" "memq shim" @("$memqBinDir is on PATH, and the shim matches this payload and resolves it at each invocation.")
+        }
+    }
+}
+
+# --- Memory sync. The memory store is ~\.claude itself, which also holds
+# --- .credentials.json, settings.json, history.jsonl, and every session
+# --- transcript, so the sync repo carries an allowlist that excludes
+# --- everything and re-includes only the memory tiers. That allowlist is the
+# --- entire barrier between syncing memories and publishing credentials,
+# --- which is why this check re-derives it on every run and proves the
+# --- negative directly (check-ignore on the sensitive files, a dry-run add,
+# --- the tracked-file list, and committed history) rather than trusting a file
+# --- that merely looks right. Any drift is a FAIL, never a warning. Every leak
+# --- probe is printed in every state the section can report, because the
+# --- states where the allowlist is least trustworthy are exactly the ones
+# --- where a staged or committed secret most needs naming.
+# ---
+# --- install-memory-sync.ps1 (dot-sourced near the top of this script) owns
+# --- the canonical text, the state reading, and the initialization, so the
+# --- repo test suite exercises the same functions against a redirected store
+# --- root. -Fix is additive: it initializes the repo, writes the two managed
+# --- files, and commits what the allowlist admits. It never replaces a .git
+# --- it did not create, and never rewrites a .gitignore or .gitattributes
+# --- that does not carry the doctor's marker line.
+
+# The leak probes as report lines, plus what to do about them, plus what to say
+# when a probe could not answer. Every branch of the section below prints all
+# three, because a report that names a broken allowlist without naming what is
+# already staged or committed under it reads as reassurance, and a report whose
+# leak list is empty because a probe errored reads as a clean index.
+function Get-MemorySyncReportLines {
+    param($Status)
+    $leaks = @()
+    foreach ($probe in $Status.NotIgnored) { $leaks += ("Not ignored: " + (Get-SanitizedLine $probe 200)) }
+    foreach ($path in ($Status.Unexpected | Select-Object -First 5)) { $leaks += ("An add would stage: " + (Get-SanitizedLine $path 200)) }
+    if ($Status.Unexpected.Count -gt 5) { $leaks += ("... and $($Status.Unexpected.Count - 5) more path(s) an add would stage.") }
+    foreach ($path in ($Status.Tracked | Select-Object -First 5)) { $leaks += ("Already tracked: " + (Get-SanitizedLine $path 200)) }
+    if ($Status.Tracked.Count -gt 5) { $leaks += ("... and $($Status.Tracked.Count - 5) more tracked path(s).") }
+    foreach ($path in ($Status.HistoryPaths | Select-Object -First 5)) { $leaks += ("In committed history: " + (Get-SanitizedLine $path 200)) }
+    if ($Status.HistoryPaths.Count -gt 5) { $leaks += ("... and $($Status.HistoryPaths.Count - 5) more path(s) in committed history.") }
+
+    # A path in history is its own remedy: untracking leaves the blob
+    # reachable, so only a rewrite removes it, and anything secret it held is
+    # spent.
+    $fixes = @("Untrack what should not be there (git rm --cached) and re-run this check; the doctor removes nothing.")
+    if ($Status.HistoryPaths.Count -gt 0) {
+        $fixes += "A path already committed stays reachable after git rm --cached: rewrite the history (or start the repository over) and rotate every credential that ever appeared in it."
+    }
+
+    # A probe that did not answer is the difference between a clean index and
+    # an unread one, and the two are indistinguishable from an empty result
+    # set, so the count says how much of the negative was actually proven.
+    $unproven = @()
+    if ($Status.IsRepo -and -not $Status.ProbesRan) {
+        $unproven += ("Only " + $Status.ProbesAnswered + " of " + $Status.ProbesAttempted +
+            " direct probes could answer, so the lines above are not a full account of what this repository holds and the negative is unproven.")
+        $unproven += @($Status.Notes | ForEach-Object { Get-SanitizedLine $_ 200 })
+    }
+    # Outside a repository there is no probe to run and no index to read, so
+    # any note is what the status has to say about the store root itself.
+    $context = @()
+    if (-not $Status.IsRepo) { $context += @($Status.Notes | ForEach-Object { Get-SanitizedLine $_ 200 }) }
+    return @{ Leaks = $leaks; Fixes = $fixes; Unproven = $unproven; Context = $context }
+}
+
+$syncStatus = Get-MemorySyncStatus -StoreRoot $claudeDir
+$syncFixNotes = @()
+$syncReported = $false
+
+if (-not $syncStatus.GitAvailable) {
+    Report "WARN" "Memory sync" @(
+        "git is not on PATH, so the memory store's sync repo cannot be checked or initialized.",
+        "Install git and re-run the doctor; every other check above is unaffected."
+    )
+}
+else {
+    $syncForeign = @()
+    if ($syncStatus.IgnoreState -eq "Foreign") { $syncForeign += ".gitignore" }
+    if ($syncStatus.AttrState -eq "Foreign") { $syncForeign += ".gitattributes" }
+    # A repository at the store root that the doctor did not create is nobody
+    # else's to write in, and a managed file the doctor did not write is left
+    # as found, which means the installer's canonical-allowlist gate refuses to
+    # stage anything there. Neither case is offered a -Fix, because the repair
+    # the prompt describes is one the installer will not perform.
+    $syncAdoptable = ((-not $syncStatus.IsRepo) -or $syncStatus.IsOwnRepo) -and ($syncForeign.Count -eq 0)
+    # Every repairable state of both managed files, so a check that prints
+    # "re-run with -Fix" is one -Fix actually acts on. A missing file counts:
+    # a repo recognized by its config marker with no .gitignore on disk has no
+    # rules at all, which is the state most in need of the repair.
+    $syncNeedsWork = $syncAdoptable -and ((-not $syncStatus.IsRepo) -or
+        $syncStatus.IgnoreState -eq "Missing" -or $syncStatus.IgnoreState -eq "Drift" -or
+        $syncStatus.AttrState -eq "Missing" -or $syncStatus.AttrState -eq "Drift")
+
+    if ($Fix -and $syncNeedsWork) {
+        $syncQuestion = if ($syncStatus.IsRepo) {
+            "Restore the canonical memory-sync allowlist in $claudeDir and commit the memory tiers?"
+        }
+        else {
+            "Initialize $claudeDir as the memory-sync git repository (allowlist plus one commit of the memory tiers)?"
+        }
+        if (Get-Consent $syncQuestion) {
+            $syncInstall = Install-MemorySyncRepo -StoreRoot $claudeDir
+            # The installer's notes name paths and quote git's output, both of
+            # which come from the store rather than from this script, so they
+            # are sanitized like every other store-derived string before
+            # reaching a report a human reads to make a security decision.
+            if (-not $syncInstall.Ok) {
+                # Re-read before reporting: a refusal can follow an init or an
+                # add, so the repository the operator is being told about is
+                # the one on disk now, not the one the attempt started from.
+                $syncStatus = Get-MemorySyncStatus -StoreRoot $claudeDir
+                $syncFailed = Get-MemorySyncReportLines $syncStatus
+                Report "FAIL" "Memory sync" (@($syncInstall.Notes | ForEach-Object { Get-SanitizedLine $_ 200 }) +
+                    $syncFailed.Leaks +
+                    $(if ($syncFailed.Leaks.Count -gt 0) { $syncFailed.Fixes } else { @() }) +
+                    $syncFailed.Unproven + $syncFailed.Context)
+                $syncReported = $true
+            }
+            else {
+                $syncFixNotes += $syncInstall.Notes
+                # Re-read after writing: the report describes the state on disk
+                # now, never the state that prompted the repair.
+                $syncStatus = Get-MemorySyncStatus -StoreRoot $claudeDir
+                $syncForeign = @()
+                if ($syncStatus.IgnoreState -eq "Foreign") { $syncForeign += ".gitignore" }
+                if ($syncStatus.AttrState -eq "Foreign") { $syncForeign += ".gitattributes" }
+            }
+        }
+    }
+
+    if (-not $syncReported) {
+        $syncGaps = @()
+        foreach ($pair in @(@(".gitignore", $syncStatus.IgnoreState), @(".gitattributes", $syncStatus.AttrState))) {
+            if ($pair[1] -eq "Drift") { $syncGaps += "$($pair[0]) differs from the allowlist this doctor derives." }
+            if ($pair[1] -eq "Missing" -and $syncStatus.IsRepo) { $syncGaps += "$($pair[0]) is missing." }
+        }
+        $syncReport = Get-MemorySyncReportLines $syncStatus
+        $syncLeaks = $syncReport.Leaks
+        # The leak fixes ride wherever the leaks do, and the unproven lines
+        # ride everywhere, because an empty leak list means nothing when a
+        # probe could not answer.
+        $syncTail = $(if ($syncLeaks.Count -gt 0) { $syncReport.Fixes } else { @() }) + $syncReport.Unproven
+        # Notes from the installer quote paths and git output, so they carry
+        # the same sanitization every other store-derived string does.
+        $syncFixLines = @($syncFixNotes | ForEach-Object { Get-SanitizedLine $_ 200 })
+
+        if ($syncForeign.Count -gt 0) {
+            # Someone else's file: rewriting it would destroy their rules, so
+            # the doctor names it and stops. No -Fix is offered here, because
+            # none is going to run. The leak probes are printed all the same:
+            # this is a state in which the rules are unknown, which is when
+            # what an add would stage and what is already committed matter
+            # most.
+            Report "FAIL" "Memory sync" ($syncFixLines + @(
+                ("$claudeDir holds a " + ($syncForeign -join " and a ") + " the doctor did not write, so the memory-sync allowlist cannot be trusted."),
+                "The store root holds .credentials.json, settings.json, history.jsonl, and every session transcript.",
+                "Review that file by hand; move it aside to let the doctor write the canonical allowlist."
+            ) + $syncLeaks + $syncTail)
+        }
+        elseif ($syncStatus.IsRepo -and -not $syncStatus.IsOwnRepo) {
+            # A repository here that carries no doctor-written allowlist was
+            # created by someone else (an operator versioning their dotfiles at
+            # the store root). Writing an allowlist and committing into it
+            # would put the memory tiers, and whatever that repo had staged, in
+            # a commit and possibly a push nobody asked for.
+            Report "FAIL" "Memory sync" ($syncFixLines + @(
+                "$claudeDir is already a git repository the doctor did not create, and it carries no memory-sync allowlist.",
+                "The store root holds .credentials.json, settings.json, history.jsonl, and every session transcript, all of which that repository can stage.",
+                "Review it by hand; the doctor writes nothing into a repository it did not create."
+            ) + $syncLeaks + $syncTail)
+        }
+        elseif (-not $syncStatus.IsRepo) {
+            Report "WARN" "Memory sync" (@(
+                "$claudeDir is not a git repository, so the memory store does not sync across machines.",
+                "Fix: re-run doctor with -Fix (initializes the repo with the memory-only allowlist and commits the tiers)."
+            ) + $syncReport.Context)
+        }
+        elseif ($syncGaps.Count -gt 0) {
+            # A missing or drifted allowlist is the other state in which the
+            # rules cannot be trusted, so the leak probes are printed here for
+            # the same reason they are printed above: what an add would reach
+            # and what is already staged or committed is the whole question.
+            Report "FAIL" "Memory sync" ($syncFixLines + $syncGaps + @(
+                "Until it matches, an add in $claudeDir can stage credentials, settings, and session transcripts.",
+                "Fix: re-run doctor with -Fix (restores the canonical allowlist)."
+            ) + $syncLeaks + $syncTail)
+        }
+        elseif ($syncLeaks.Count -gt 0) {
+            Report "FAIL" "Memory sync" ($syncFixLines + $syncLeaks + @(
+                "The allowlist reads as expected, but the repository state above puts non-memory paths in reach of a push."
+            ) + $syncTail)
+        }
+        elseif (-not $syncStatus.ProbesRan) {
+            # A probe that could not run proves nothing, and this is the report
+            # the operator reads before giving the store a remote, so an
+            # unanswerable probe is a failure rather than a warning: a warning
+            # exits 0 under a "healthy" summary line.
+            Report "FAIL" "Memory sync" (@(
+                "The allowlist matches on disk, but what this repository would actually publish is unverified."
+            ) + $syncReport.Unproven)
+        }
+        else {
+            $syncDetail = @(
+                ("Allowlist canonical; " + $syncStatus.Probed.Count + " sensitive path(s) proven ignored, an add would stage memory paths only, and no non-memory blob is reachable in committed history.")
+            )
+            if ($syncStatus.Remote -ne "") { $syncDetail += ("origin: " + (Get-SanitizedLine $syncStatus.Remote 200)) }
+            else { $syncDetail += "No origin remote yet, so the store is versioned locally but not replicated." }
+            if ($syncFixLines.Count -gt 0) { Report "FIXED" "Memory sync" ($syncFixLines + $syncDetail) }
+            else { Report "PASS" "Memory sync" $syncDetail }
         }
     }
 }
