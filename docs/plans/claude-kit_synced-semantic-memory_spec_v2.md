@@ -116,9 +116,9 @@ Supersedes `docs/archive/claude-kit_synced-semantic-memory_spec_v1.md`, the same
 
 ## Section status
 
-Sections 1 through 3 are implemented, reviewed, and committed. Section 1 took three review rounds, Section 2 one, and Section 3 changed no repository code.
+Sections 1 through 4 are implemented, reviewed, and committed. Section 1 took three review rounds, Sections 2 and 4 one each, and Section 3 changed no repository code.
 
-Gate: full suite 555 pass, 0 fail, exit 0 across all 19 test files. Baseline before this effort was 514; `test/memory-sync.test.js` contributes 28 and `test/memq.test.js` 187.
+Gate: full suite 568 pass, 0 fail, exit 0 across all 19 test files. Baseline before this effort was 514.
 
 The store repository is `~/.claude` at commit `7fe68d2`, 61 tracked files, pushed to the private remote `SApplefeld/sapplefeld-claude-memory`. Its index and its whole object history hold memory paths only, verified by clone; `.credentials.json`, `settings.json`, `history.jsonl`, and every session transcript are excluded. Rollback for the remote: delete the repository through GitHub, then `git -C ~/.claude remote remove origin`.
 
@@ -195,4 +195,25 @@ Rollout for the other three machines, each run in its own session on that machin
 A machine that already has memories under a project path this desktop does not know about simply adds them; the tiers are additive and nothing is overwritten.
 Review Findings: None dispatched. The section changed no repository code, so there was no diff for a reviewer to read; its risk is the outward action, which is covered by the operator's explicit authorization and by the pre-push audit recorded above.
 Next: 4. Sync cadence surfaces
+Commit Model: Commit-and-Push
+
+### Chapter 4 - 2026-08-03
+Completed: 4. Sync cadence surfaces
+Implemented By: implementer-sonnet (one dispatch, one fix round via SendMessage; no tier escalation)
+Metrics: 1 review round; 0 NEEDS_CONTEXT; 0 escalations; advisor opus
+Decisions / Surprises: Git discovers repositories upward, so `git -C <dir>` answers about an ancestor's repository when the directory itself is not one. Confirmed by probe: a plain non-repo directory inside a repo with one unpushed commit returned `origin/main` for `@{upstream}` and `0	1` for the divergence count. Without a guard the hook would have written a foreign repository's state into trusted session context as a claim about the memory store. The store root's own `.git` is now checked by a stat before any git call runs, which also removes both spawns on the common non-repo machine, and `GIT_DIR` and `GIT_WORK_TREE` are stripped from the child environment because either would override the directory the check was pointed at. Section 1 had already reached this conclusion for the doctor; Section 4 initially did not, which is the same defect class appearing at a second site.
+
+The nudge was silent in the store's most common state. Comparing commits alone means a store with memory files written and never committed reads as in sync; the live store was in exactly that state while the reviewers looked at it. An uncommitted-changes check is now folded into the predicate, and the three conditions are worded separately because the remedies differ.
+
+The close-out sync step could not do what it said. Nothing in the kit commits the store: `memq` shells out to git nowhere, and the only commit path is the doctor's installer. A pull and push therefore carried none of the session's memory writes. The step now names the doctor's fix as the commit, which is also the safer route, since that path commits through the four probes rather than trusting the ignore rules alone. The pull is `--rebase`, confirmed by probe: a plain pull on genuinely diverged branches exits 128 asking for a reconcile strategy, and `--rebase` succeeds in the identical state.
+
+A skill sentence claimed search could label a foreign-machine fact. No reader parses the `machine:` field; Section 6 builds that. The prose now records what the field is and states that no read surface parses it yet, rather than promising a label that never appears.
+
+Three tests passed for reasons other than their names: a stand-down test exercising a branch the nudge is structurally unreachable from, a no-fetch test whose fixture was in sync so the git calls were never reached, and three silence assertions satisfied by a hook that emitted nothing at all. All three were rewritten. The reviewer also found an untested state where the nudge legitimately rides beside a localized pin stand-down; the header comment had overclaimed silence there and was corrected rather than new suppression added.
+
+One test scope was deliberately narrowed rather than strained: proving no network call of any kind would need the argv pinned, and a PATH-shimmed `git.cmd` cannot do it, because Node's spawn without a shell appends only `.exe` to an extensionless name and skips the shim. The test proves no `git fetch` runs, evidenced by `FETCH_HEAD`, and its name and comment say exactly that.
+
+The security model gained the nudge's guard entry, placed with the surfaces that carry content without fencing rather than in the fenced table, since it carries no store-derived text at all.
+Review Findings: One round, two reviewers. One Critical (upward repository discovery) and five Majors addressed: the uncommitted-state blindness, the close-out step that could not commit, the untrue search-capability claim, the three tests passing for the wrong reason, and the missing git-absent test. Minors addressed: the unvalidated upstream name in argv, now removed entirely by a single-call form; the nudge naming a directory it had not checked; the plan-section citations in a shipped comment; a ragged comment reflow. Every new mechanism was watched red before green.
+Next: 5. The embedder and the index sidecar
 Commit Model: Commit-and-Push
