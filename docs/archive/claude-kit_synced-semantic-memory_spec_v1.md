@@ -1,6 +1,7 @@
 # Synced Semantic Memory
 
-Status: In Progress
+Status: Superseded
+Superseded-By: claude-kit_synced-semantic-memory_spec_v2.md (the same design with the operator memory tier folded in; superseded before execution began, no section was built from this version)
 Commit Model: Commit-and-Push
 Fable Spend: S5 writer; S1/S4 reviewer pairs; finishing reviews
 Created: 2026-08-02
@@ -102,6 +103,6 @@ None open. The spec-shaping decisions (one combined spec; private GitHub remote 
 
 ## Related
 
-Builds on `docs/plans/claude-kit_automemory-off_spec_v1.md` (execution gate: this plan starts only after it reaches Complete; its emissions and recall behavior are the floor this plan extends). Extends the store and CLI delivered by `docs/archive/claude-kit_memory-extension_spec_v1.md` and the recall digest from `docs/archive/claude-kit_memory-recall-and-reinforcement_spec_v1.md`; the provenance-fencing discipline follows `docs/archive/claude-kit_instance-store-pin_spec_v1.md`.
+Superseded by `claude-kit_synced-semantic-memory_spec_v2.md`. Builds on `claude-kit_automemory-off_spec_v1.md` (its emissions and recall behavior are the floor this plan extends). Extends the store and CLI delivered by `docs/archive/claude-kit_memory-extension_spec_v1.md` and the recall digest from `docs/archive/claude-kit_memory-recall-and-reinforcement_spec_v1.md`; the provenance-fencing discipline follows `docs/archive/claude-kit_instance-store-pin_spec_v1.md`.
 
 ## Chapters
