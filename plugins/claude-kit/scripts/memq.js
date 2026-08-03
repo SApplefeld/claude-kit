@@ -113,14 +113,23 @@
 //
 // All output is deterministic formatted lines, never raw JSON: scripts parse,
 // the model reads summary lines. `find` output is byte-stable for identical
-// store state (a documented total order, never filesystem enumeration order).
+// store and semantic-index state (a documented total order, never filesystem
+// enumeration order). `find` is hybrid: a lexical substring channel over this
+// project's tiers plus, where the optional local embedder is installed, a
+// semantic channel over every store on the machine (memory-index.js owns the
+// index; cmdFind below owns the merge and the ranking). An absent or broken
+// embedder degrades find to its lexical results with one loud stderr line
+// naming the remedy, never a failure.
 //
 // SAFETY: reads never destroy data. A malformed journal or usage line is
 // skipped with a stderr note and reading continues; a journal or registry
 // that exists but cannot be read is noted on stderr rather than silently
 // reading as empty. `decay-scan` and `recall` write nothing at all: neither
 // ever moves, edits, or deletes a memory, and `recall` does not even stamp
-// reads, because it serves summaries rather than bodies. The only rewriting
+// reads, because it serves summaries rather than bodies. `find` writes no
+// memory file and no store sidecar either: the one file its semantic channel
+// maintains is the derived vector index at the store root, which
+// memory-index.js owns and can rebuild from the store at any time. The only rewriting
 // paths in the store are
 // `decay-prune` and the `add-type` and `add-operator` index updates, all
 // under a lock and all
@@ -235,6 +244,37 @@ const ARCHIVE_AFTER_DAYS = 60;     // idle days before it is an archive candidat
 const EXTEND_PER_APPLIED_DAY = 30; // idle days both decay thresholds gain per distinct applied day
 const EXTEND_CAP_DAYS = 365;       // the most an applied tally can ever defer decay
 const ROLLUP_AFTER_DAYS = 30;      // journal entry age before it is a rollup candidate
+
+// The semantic channel behind `find`. memory-index.js owns the embedder and
+// the index; the constants here are find's own display and ranking policy.
+//
+// The blend is similarity + SEMANTIC_APPLIED_BOOST per distinct applied day
+// (capped) minus SEMANTIC_ARCHIVE_DEMOTION for a retired record, and the
+// proportions come from the model's measured scale rather than invention:
+// the known-answer control for this model scores a paraphrase at about 0.26
+// against an unrelated sentence's -0.01, so meaningful similarity
+// differences live in tenths. The applied boost tops out at one such tenth,
+// so heavy use breaks ties and lifts near-equals but can never carry an
+// unrelated record past a related one. The archive demotion is the same
+// single step down: an equally similar live record always outranks its
+// retired twin, while a retired record that is clearly the best match still
+// surfaces. The floor gates on raw similarity before the blend, because it
+// asks a different question (is this related at all) than the blend does
+// (which related record first): a boosted or demoted score must never move
+// a record across the admission line.
+//
+// There is no fetch pool. The index search scores every record on a query
+// regardless (brute-force cosine; its limit only truncates the sorted
+// list), so find takes the whole ranking and applies its own admission
+// floor, dedupe, tag filter, and display cap. A fixed pool would let a
+// post-fetch filter strand a matching record below the truncation while
+// display slots sit empty; taking everything costs nothing the search has
+// not already paid.
+const SEMANTIC_SHOWN = 10;             // semantic hits displayed, after ranking and filtering
+const SEMANTIC_FLOOR = 0.1;            // similarity below which a neighbor is noise, not an answer
+const SEMANTIC_APPLIED_BOOST = 0.01;   // rank added per distinct applied day
+const SEMANTIC_BOOST_CAP_DAYS = 10;    // days the boost counts, so no tally can outweigh meaning
+const SEMANTIC_ARCHIVE_DEMOTION = 0.1; // rank subtracted from a retired record
 
 // The store root this process reads and writes under.
 //
@@ -1574,27 +1614,82 @@ function journalKeyLine(key, g, now) {
         + '  ' + sanitize(g.latest.summary, SUMMARY_CAP);
 }
 
-// memq find: one summary line per hit. Match is a case-insensitive substring
-// over journal keys, memory names, and descriptions (which subsumes key
-// prefix), intersected with --tag when given. Total order of the output:
-// journal key lines precede memory lines; memory lines run tier by tier from
-// the one closest to the caller outward, project then type then operator;
-// within each group, ascending codepoint order on the key or
-// name. That order, plus the sorted grouping itself, is what makes the output
-// byte-stable for identical store state.
+// memq find: one summary line per hit, over two retrieval channels that fail
+// differently. The lexical channel is a case-insensitive substring over
+// journal keys, memory names, and descriptions (which subsumes key prefix),
+// intersected with --tag when given. The semantic channel embeds the term
+// and ranks every indexed memory on the machine by meaning (memory-index.js
+// owns the embedder and the index). One command carries both rather than a
+// command each, because the two miss differently: a substring catches the
+// exact identifiers embeddings fuzz (action keys, memory names), and an
+// embedding catches the paraphrase substrings miss, so a caller made to
+// choose a channel would re-learn that fork on every query.
+//
+// Total order of the lexical output: journal key lines precede memory
+// lines; memory lines run
+// tier by tier from the one closest to the caller outward, project then type
+// then operator; within each group, ascending codepoint order on the key or
+// name. That order, plus the sorted grouping itself, is what makes the
+// output byte-stable for identical store and semantic-index state.
 //
 // A project with more than one memory tier carries a tier label on every
-// memory line, "(pending)", "(project)", "(type:<type>)", or "(operator)",
-// because the same
-// name can exist in several tiers and an unlabeled hit would not say which
-// record it is. A project with one tier has no ambiguity, so its lines stay
-// unlabeled. The journal is project-tier only, so key lines are never
-// labeled.
+// lexical memory line, "(pending)", "(project)", "(type:<type>)", or
+// "(operator)", because the same name can exist in several tiers and an
+// unlabeled hit would not say which record it is. A project with one tier
+// has no ambiguity, so its lines stay unlabeled. The journal is project-tier
+// only, so key lines are never labeled. Pending lines lead the memory lines,
+// the precedence `get` walks: a record this run wrote and the store has not
+// adjudicated is the one closest to the caller, so it shows before the tiers
+// it may be a revision of.
 //
-// Pending lines lead the memory lines, the precedence `get` walks: a record
-// this run wrote and the store has not adjudicated is the one closest to the
-// caller, so it shows before the tiers it may be a revision of.
-function cmdFind(argv) {
+// THE MERGE RULE: the lexical block prints first, in its own total order
+// above, and the semantic hits follow as one fenced block, deduplicated against the
+// lexical hits by record identity (store, tier, name). Two blocks in
+// sequence rather than one interleaved ranking, for two reasons. A substring
+// hit has no score, so any number invented for it would decide every
+// interleaving, and the failure mode of a bad blend is exactly the one that
+// matters most: a weak semantic neighbor outranking an exact match on a
+// memory's own name. Leading with the whole lexical block makes that
+// structurally impossible. And the two blocks carry different trust
+// framings: the lexical channel spans only the tiers this project already
+// resolves and prints at column zero, while the semantic channel
+// spans every store on the machine and rides under a provenance fence.
+// Deduplication is by identity rather than by name, so a record never prints
+// twice while its archived namesake can still surface, demoted and labeled.
+//
+// THE SEMANTIC CHANNEL'S REACH is deliberately wider than the lexical
+// channel's, on two axes. It spans every project store on the machine, not
+// only the caller's, because the index exists to answer whether any project
+// here has learned something, and one operator owns all of them. And it
+// spans every tier's archive, which the lexical channel never reaches: a
+// retired memory is a fact someone once banked, and a search by meaning is
+// exactly where resurfacing one earns a demoted, labeled line. Both
+// widenings live inside the fenced semantic block and serve names, scores,
+// and provenance only, never descriptions or bodies. A body is fetched with
+// `get` where the hit sits in a tier this project resolves (its own store,
+// its declared type, the operator tier, and their archives), and that read
+// is the one the decay clock's read stamps can see; a hit from another
+// project's store or from a type this project does not declare is outside
+// `get`'s reach from this working directory, which is why its line names
+// the store and tier, the address a caller needs to open the file by path.
+// The retrieval-visibility reasoning therefore holds only for the tiers
+// this project resolves; a cross-store hit takes no read stamp from here.
+//
+// Absence degrades loudly and never fails: any embedder condition (not
+// installed, unusable, a query the model refuses, a sweep that only partly
+// completed) leaves this command serving its lexical results with one stderr
+// line naming the condition and the remedy, at exit 0. A find that exited
+// nonzero because an optional stack is missing would train sessions off the
+// command entirely.
+//
+// The output ends with a standing one-line stamp reminder whenever a shown
+// memory hit is one `touch` can actually stamp from this working directory,
+// naming the tier flags those hits need: applied stamps are a judgment act
+// sessions demonstrably under-record, and the moment of use is the one
+// moment a reminder can ride. Reachability, not mere display, decides the
+// line (stampReminder below carries the rule), because a reminder naming an
+// invocation that errors trains sessions off the stamp instead of onto it.
+async function cmdFind(argv) {
     let term = null;
     let tag = null;
     let scope = 'all';
@@ -1614,12 +1709,33 @@ function cmdFind(argv) {
     if (term === null) return usage('find needs a <term>');
 
     const memDir = readMemDirOrNote();
-    if (memDir === null) return;
+    // --outcomes asks for journal keys alone, and the journal is project-tier
+    // only, so with no project store the note readMemDirOrNote printed is the
+    // whole answer. Every other scope goes on even when memDir is null,
+    // because the semantic channel answers from stores this project has never
+    // opened, which is exactly the state a fresh project on a full machine
+    // sits in.
+    if (memDir === null && scope === 'outcomes') return;
+
     const needle = term.toLowerCase();
     const now = Date.now();
     const lines = [];
+    // What the lexical block printed, as the record identities the semantic
+    // index would report for the same files (the merge rule above), and the
+    // live tiers holding a shown hit `touch` can stamp from here, which is
+    // what the closing reminder derives its flags from. Every lexical hit is
+    // reachable: the channel lists live records of this project's own tiers
+    // only, and touch resolves each of them (the pending tier included; its
+    // rung in cmdTouch stats the run's own pending file first).
+    const lexicalShown = new Set();
+    const reachableTiers = new Set();
+    // The shared-tier resolutions serve both channels: the lexical listing
+    // below, and the semantic reachability question of whether a hit's type
+    // tier is the one this project declares.
+    const typed = scope === 'outcomes' ? null : typedTierOrNull(process.cwd());
+    const operator = scope === 'outcomes' ? null : operatorTierOrNull();
 
-    if (scope !== 'memories') {
+    if (memDir !== null && scope !== 'memories') {
         const byKey = journalByKey(readJournal(memDir));
         const keys = Array.from(byKey.keys())
             .filter((k) => k.toLowerCase().includes(needle))
@@ -1631,10 +1747,12 @@ function cmdFind(argv) {
         }
     }
 
-    if (scope !== 'outcomes') {
+    if (memDir !== null && scope !== 'outcomes') {
         // One formatter for every tier, so a tier cannot drift its own line
-        // shape; only the trailing label differs.
-        const memoryLines = (dir, label) => {
+        // shape; only the trailing label differs. tier and storeSegment are
+        // the identity the semantic index records for the same file, or null
+        // for the pending tier, which the index deliberately does not hold.
+        const memoryLines = (dir, label, tier, storeSegment) => {
             for (const m of listMemories(dir)) {
                 if (!m.name.toLowerCase().includes(needle)
                     && !m.description.toLowerCase().includes(needle)) continue;
@@ -1646,25 +1764,303 @@ function cmdFind(argv) {
                 lines.push(sanitize(m.name, NAME_CAP)
                     + '  [' + m.tags.slice(0, MAX_TAGS).map((t) => sanitize(t, TAG_CAP)).join(',') + ']'
                     + '  ' + sanitize(m.description, SUMMARY_CAP) + label);
+                reachableTiers.add(tier === null ? 'pending' : tier);
+                if (tier !== null) {
+                    lexicalShown.add(recordIdentity(storeSegment, tier, m.name));
+                }
             }
         };
-        const typed = typedTierOrNull(process.cwd());
-        const operator = operatorTierOrNull();
         const pendingDir = pendingDirFor(process.cwd());
         const labeled = typed !== null || operator !== null || pendingDir !== null;
-        if (pendingDir !== null) memoryLines(pendingDir, '  (pending)');
-        memoryLines(memDir, labeled ? '  (project)' : '');
+        if (pendingDir !== null) memoryLines(pendingDir, '  (pending)', null, null);
+        memoryLines(memDir, labeled ? '  (project)' : '', 'project', projectSegment(process.cwd()));
         if (typed !== null) {
-            memoryLines(typed.dir, '  (type:' + sanitize(typed.type, TYPE_CAP) + ')');
+            memoryLines(typed.dir, '  (type:' + sanitize(typed.type, TYPE_CAP) + ')',
+                'type', typed.type);
         }
-        if (operator !== null) memoryLines(operator, '  (operator)');
+        if (operator !== null) memoryLines(operator, '  (operator)', 'operator', OPERATOR_LABEL);
     }
 
-    if (lines.length === 0) {
+    const semanticLines = [];
+    if (scope !== 'outcomes') {
+        const semantic = await semanticChannel(term, tag, lexicalShown);
+        for (const note of semantic.notes) process.stderr.write(note + '\n');
+        for (const h of semantic.hits) {
+            semanticLines.push(semanticHitLine(h));
+            // A semantic hit feeds the reminder only where `touch` can stamp
+            // it from this working directory, cmdTouch's own resolution: the
+            // plain form stats this cwd's live project tier, --type the
+            // declared type's directory, --operator the operator directory,
+            // and every form stats the live tier only, so an archived
+            // record, another project's store, and an undeclared type are
+            // all out of reach. The store comparison is the platform's,
+            // because that is how the filesystem touch stats will compare
+            // them.
+            const live = liveTierOf(h.tier);
+            const reachable = !h.archived
+                && ((live === 'project' && fsEq(h.store, projectSegment(process.cwd())))
+                    || (live === 'type' && typed !== null && fsEq(h.store, typed.type))
+                    || live === 'operator');
+            if (reachable) reachableTiers.add(live);
+        }
+    }
+
+    if (lines.length === 0 && semanticLines.length === 0) {
         process.stderr.write('memq: no matches for \'' + sanitize(term, NAME_CAP) + '\'\n');
         return;
     }
-    process.stdout.write(lines.join('\n') + '\n');
+    const out = lines.slice();
+    if (semanticLines.length > 0) {
+        out.push(fenceLine([semanticClause()]));
+        for (const l of semanticLines) out.push(l);
+    }
+    if (reachableTiers.size > 0) out.push(stampReminder(reachableTiers));
+    process.stdout.write(out.join('\n') + '\n');
+}
+
+// A record's identity for cross-channel deduplication: the three fields the
+// semantic index keys a record by, with the store segment and the name both
+// folded the way the platform's filesystem compares them (memoryFileKey is
+// the store's one spelling of that fold). Both fields are directory or file
+// names, so both fold: a type declared in a different case than its on-disk
+// directory, or a cwd spelled differently from the store directory's own
+// casing, resolves the same file on a case-folding filesystem, and an
+// identity built from the spelled forms would print that one file twice.
+// The space separator cannot collide, because neither folded field can
+// contain one (both are closed to [\w.-] by the store's own gates).
+function recordIdentity(store, tier, name) {
+    return memoryFileKey(store) + ' ' + tier + ' ' + memoryFileKey(name);
+}
+
+// The live tier a record's applied evidence lives in. An archived record's
+// stamps sit in the tier above it, where stampRead and `touch` put them,
+// because nothing reads a sidecar below a tier.
+function liveTierOf(tier) {
+    if (tier === 'project-archive') return 'project';
+    if (tier === 'type-archive') return 'type';
+    if (tier === 'operator-archive') return 'operator';
+    return tier;
+}
+
+// The applied tally for one tier instance, cached per directory because
+// several hits commonly share a tier and the sidecar read is the expensive
+// step. appliedTally is the store's single reader of applied evidence, so
+// the ranking boost counts exactly the distinct days the decay clock counts.
+function tallyForTier(cache, liveTier, store) {
+    const dir = liveTier === 'project' ? projectMemoryDirFor(store)
+        : liveTier === 'type' ? typeDir(store)
+            : operatorDirPath();
+    let tally = cache.get(dir);
+    if (tally === undefined) {
+        tally = appliedTally(readUsage(dir).stamps);
+        cache.set(dir, tally);
+    }
+    return tally;
+}
+
+// The semantic half of `find`, answered as displayable hits plus stderr
+// notes: never a throw and never a nonzero exit, because whatever the
+// embedder's condition, the caller still owes its lexical results.
+//
+// The require of memory-index.js is lazy and rides after an await, both
+// deliberately. memory-index requires this module back for the store's
+// shape, and this file assigns module.exports at its bottom, after main()
+// has already dispatched, so a synchronous require from inside the dispatch
+// would hand memory-index the default empty exports of a module still
+// mid-evaluation. The await parks this continuation on the microtask queue,
+// which drains only after this file finishes evaluating, so by the time the
+// require runs the export object is the real one. Lazy also keeps every
+// non-find command from loading a module it never uses.
+async function semanticChannel(term, tag, alreadyShown) {
+    await null;
+    let mi;
+    let result;
+    try {
+        mi = require('./memory-index.js');
+        // The whole ranking, not a fixed pool: the search scores every
+        // record regardless and its limit only truncates the sorted list, so
+        // there is nothing to save by fetching less, and a truncation here
+        // is what would let the floor, the dedupe, or the tag filter strand
+        // a matching record below it (the no-pool comment at the constants).
+        result = await mi.query(String(term), { limit: Number.MAX_SAFE_INTEGER });
+    } catch (err) {
+        // memory-index answers every expected embedder condition as a typed
+        // status, so a throw here is a genuine bug in the optional stack; it
+        // still degrades, because absence-or-breakage never fails a find.
+        return {
+            notes: ['memq: semantic search failed ('
+                + sanitize(err && err.message ? err.message : String(err), 200)
+                + '); serving lexical matches only'],
+            hits: []
+        };
+    }
+    if (result.status === 'absent' || result.status === 'unusable') {
+        // The one loud line for a missing channel: the condition, the
+        // degradation, and the remedy, which is memory-index's shared remedy
+        // string so this line and the doctor cannot drift.
+        const reason = result.status === 'absent'
+            ? 'the local embedding stack is not installed'
+            : 'the local embedding stack is installed but unusable';
+        const remedy = result.embedder && result.embedder.remedy
+            ? result.embedder.remedy : mi.INSTALL_REMEDY;
+        return {
+            notes: ['memq: semantic search off (' + reason
+                + '); serving lexical matches only. remedy: ' + sanitize(remedy, 200)],
+            hits: []
+        };
+    }
+    if (result.status !== 'ok') {
+        return {
+            notes: ['memq: semantic search failed ('
+                + sanitize(result.detail || 'the embedder returned no vector for the query', 200)
+                + '); serving lexical matches only'],
+            hits: []
+        };
+    }
+
+    const notes = [];
+    // A partial sweep is said before any hit prints, because the caller is
+    // about to treat this ranking as the machine's answer: a record the
+    // sweep could not read or embed is absent from the index, and absence
+    // from a partial index is not evidence of absence from the store.
+    const swept = result.sweep;
+    const failedCount = swept && Array.isArray(swept.failed) ? swept.failed.length : 0;
+    const carriedCount = swept && typeof swept.carried === 'number' ? swept.carried : 0;
+    if (failedCount > 0 || carriedCount > 0) {
+        notes.push('memq: the semantic index is partial this run ('
+            + failedCount + ' record(s) unreadable or unembeddable and so missing, '
+            + carriedCount + ' served unverified from a directory that could not be scanned);'
+            + ' a semantic miss here proves nothing');
+    }
+    if (swept && swept.written === false && swept.writeError) {
+        notes.push('memq: could not persist the semantic index ('
+            + sanitize(swept.writeError, 200) + '); these results are complete,'
+            + ' and the next find sweeps again');
+    }
+
+    // Admission and ranking, per the blend constants above.
+    const tallies = new Map();
+    const localMachine = os.hostname();
+    const admitted = [];
+    for (const h of result.hits) {
+        // Finiteness first: NaN compares false against the floor, and one
+        // NaN component in the query vector makes every cosine NaN, so a
+        // bare floor comparison would admit the entire ranking in
+        // nondeterministic order with NaN printed as the similarity. The
+        // index side is finiteness-checked at write; the query vector is
+        // not, so this is where a non-finite score stops.
+        if (!Number.isFinite(h.score) || h.score < SEMANTIC_FLOOR) continue;
+        if (alreadyShown.has(recordIdentity(h.store, h.tier, h.name))) continue;
+        // The file is resolved through the index module's own derivation,
+        // which refuses any identity it did not write, so an index record
+        // can never steer this read outside a tier.
+        const file = mi.recordPath(h.store, h.tier, h.name);
+        if (file === null) continue;
+        if (tag !== null && !readFrontmatterTags(file).includes(tag)) continue;
+        // A `machine:` frontmatter field scopes a fact to one box
+        // (add-operator --machine writes it, gated to the store's identifier
+        // charset at MACHINE_CAP); this channel is the reader that labels a
+        // foreign one. The read value is re-validated against that same
+        // writer's gate, and a failing value gets no label at all rather
+        // than a harder sanitize: frontmatter is hand-editable and the store
+        // syncs, this line is the one emission path spanning stores the
+        // caller never opened, and the label's whole job (is this fact from
+        // another box) is answered completely by a charset-closed
+        // identifier, so a value the writer would have refused carries
+        // nothing worth preserving. Machine names compare case-insensitively
+        // on every platform, the NetBIOS and DNS rule, and the local name is
+        // resolved at runtime so no machine's build hard-codes another's
+        // answer.
+        const machineValue = frontmatterField(file, 'machine');
+        const machineName = typeof machineValue === 'string' ? machineValue.trim() : '';
+        const machineValid = machineName !== '' && machineName.length <= MACHINE_CAP
+            && /^[\w.-]+$/.test(machineName);
+        const foreign = machineValid
+            && machineName.toLowerCase() !== localMachine.toLowerCase();
+        const applied = tallyForTier(tallies, liveTierOf(h.tier), h.store)
+            .get(memoryFileKey(h.name + '.md'));
+        const days = applied === undefined ? 0
+            : Math.min(applied.distinctDays, SEMANTIC_BOOST_CAP_DAYS);
+        admitted.push({
+            name: h.name,
+            tier: h.tier,
+            store: h.store,
+            archived: h.archived === true,
+            score: h.score,
+            days,
+            machine: foreign ? machineName : null,
+            rank: h.score + SEMANTIC_APPLIED_BOOST * days
+                - (h.archived === true ? SEMANTIC_ARCHIVE_DEMOTION : 0),
+            tierOrder: mi.TIERS.indexOf(h.tier)
+        });
+    }
+    // Blend descending, then the index's own tier, store, and name order, so
+    // equal blends print in one order however the pool arrived.
+    admitted.sort((a, b) => b.rank - a.rank
+        || a.tierOrder - b.tierOrder
+        || (a.store < b.store ? -1 : a.store > b.store ? 1 : 0)
+        || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+    return { notes, hits: admitted.slice(0, SEMANTIC_SHOWN) };
+}
+
+// One displayed line per semantic hit, indented under the channel's fence:
+// name, similarity, tier-and-store provenance, then the retirement, the
+// foreign-machine, and the applied labels where they hold. Deliberately no
+// description and no body. A name in this store is a fact-bearing phrase
+// (memories are named for what they teach, not numbered), so a name plus
+// provenance is already an answer, and holding the channel to names and
+// labels means the one emission path spanning stores this project never
+// opened carries no free prose at all: every fragment here is a
+// charset-closed identifier (the machine value re-validated against its
+// writer's gate at admission), a number, or this module's own words. A hit
+// in a tier this project resolves is fetched with `get`, whose read the
+// decay clock can see; a cross-store hit is outside `get`'s reach from
+// here, and its provenance label is the address for opening the file by
+// path.
+function semanticHitLine(h) {
+    let label;
+    if (h.tier === 'project' || h.tier === 'project-archive') {
+        label = 'project:' + sanitize(h.store, NAME_CAP);
+    } else if (h.tier === 'type' || h.tier === 'type-archive') {
+        label = 'type:' + sanitize(h.store, TYPE_CAP);
+    } else {
+        label = 'operator';
+    }
+    if (h.archived) label += ', retired';
+    let line = '  ' + sanitize(h.name, NAME_CAP) + '  ' + h.score.toFixed(2)
+        + '  (' + label + ')';
+    if (h.machine !== null) line += '  machine:' + sanitize(h.machine, MACHINE_CAP);
+    if (h.days > 0) line += '  applied ' + h.days + 'd';
+    return line;
+}
+
+// The semantic block's provenance clause. The channel spans stores and
+// archives the reading project never wrote, so the whole block rides under
+// one fence even when a line happens to be this project's own: one block
+// under one framing line is the fence discipline, and splitting the block by
+// per-line ownership would put two competing frames over one listing.
+function semanticClause() {
+    return 'the semantic index, ranking every memory store and archive on this'
+        + ' machine by meaning';
+}
+
+// The standing stamp reminder closing a find whose shown hits include at
+// least one `touch` can stamp from this working directory. It rides at the
+// moment of use because applied stamps are a judgment act sessions
+// demonstrably under-record, and the decay clock starves without them. The
+// tiers passed in are the reachable ones only, so the flags teach exact
+// invocations rather than a menu, and a result whose every hit is out of
+// touch's reach (a journal-only result, a foreign store's record, an
+// undeclared type's, an archived one) gets no reminder at all: a line
+// recommending an invocation that errors, or that stamps a same-named local
+// record instead of the one displayed, trains sessions off the stamp, the
+// opposite of the line's job.
+function stampReminder(tiers) {
+    const flags = [];
+    if (tiers.has('type')) flags.push('--type for a type-tier hit');
+    if (tiers.has('operator')) flags.push('--operator for an operator-tier hit');
+    return 'memq: act on one? memq touch <name> --applied'
+        + (flags.length > 0 ? ' (' + flags.join(', ') + ')' : '');
 }
 
 // The provenance fence over content the reading session did not write: one
@@ -4461,7 +4857,18 @@ function main() {
     const cmd = argv[0];
     const rest = argv.slice(1);
     if (cmd === 'log') cmdLog(rest);
-    else if (cmd === 'find') cmdFind(rest);
+    else if (cmd === 'find') {
+        // find is async for its semantic channel. Every expected embedder
+        // condition is answered inside cmdFind (absence degrades to the
+        // lexical results with a loud line), so this catch is a backstop for
+        // a genuine bug, reported like any other failed command rather than
+        // left to crash as an unhandled rejection.
+        cmdFind(rest).catch((err) => {
+            process.stderr.write('memq: find failed: '
+                + sanitize(err && err.message ? err.message : String(err), 200) + '\n');
+            process.exitCode = 1;
+        });
+    }
     else if (cmd === 'get') cmdGet(rest);
     else if (cmd === 'recall') cmdRecall(rest);
     else if (cmd === 'recent') cmdRecent(rest);
