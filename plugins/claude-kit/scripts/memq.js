@@ -3921,6 +3921,7 @@ if (require.main === module) main();
 
 module.exports = {
     USAGE_FILE,
+    INDEX_FILE,
     appliedTally,
     lastAliveMs,
     recallDigest,

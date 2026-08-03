@@ -13,6 +13,12 @@
 // fresher one must not, since a hook that nudges every session is as wrong as
 // one that never fires. Every silent path asserts exit 0 with empty stdout
 // and stderr, because this hook fails open and never blocks a session start.
+//
+// The project-memory block rides on every ordinary session, so "the hook has
+// nothing to say" is asserted as that block alone rather than as an empty
+// stdout (assertOnlyProjectMemory). Empty stdout is the assertion only where
+// the hook truly emits nothing, which is under a memq that will not load: a
+// withheld block is withheld beside some other block that speaks.
 
 'use strict';
 
@@ -103,7 +109,34 @@ function assertSilent(res) {
     assert.strictEqual(res.stderr, '', 'the hook never writes stderr');
 }
 
-// The one loud path, asserted on the exact JSON shape the harness consumes.
+// The blocks of an emitted context, which the hook joins with a blank line.
+// No block carries a blank line of its own, so this split is exact.
+function blocksOf(context) {
+    return context.split('\n\n');
+}
+
+function blockStarting(context, opening) {
+    const found = blocksOf(context).filter((b) => b.startsWith(opening));
+    assert.strictEqual(found.length, 1, 'exactly one ' + opening + ' block in:\n' + context);
+    return found[0];
+}
+
+// A session the hook has nothing special to say to: the standing
+// project-memory block and no other. Asserted rather than assumed, because the
+// cases that use it exist to prove some other block did not fire.
+function assertOnlyProjectMemory(res) {
+    assert.strictEqual(res.status, 0, 'the hook always exits 0, got: ' + res.stderr);
+    assert.strictEqual(res.stderr, '');
+    const context = JSON.parse(res.stdout).hookSpecificOutput.additionalContext;
+    const blocks = blocksOf(context);
+    assert.strictEqual(blocks.length, 1, 'one block only, got:\n' + context);
+    assert.ok(blocks[0].startsWith('Kit project memory:'), 'the one block is the project one:\n' + context);
+    return context;
+}
+
+// The decay nudge, asserted on the exact JSON shape the harness consumes. The
+// nudge is one block of one line; the project-memory block that rides beside
+// it on an ordinary session is not this assertion's business.
 function assertNudge(res) {
     assert.strictEqual(res.status, 0, res.stderr);
     assert.strictEqual(res.stderr, '');
@@ -112,8 +145,9 @@ function assertNudge(res) {
     assert.strictEqual(parsed.hookSpecificOutput.hookEventName, 'SessionStart');
     const context = parsed.hookSpecificOutput.additionalContext;
     assert.strictEqual(typeof context, 'string');
-    assert.ok(!context.includes('\n'), 'the nudge is one line');
-    return context;
+    const nudge = blockStarting(context, 'Kit memory decay:');
+    assert.ok(!nudge.includes('\n'), 'the nudge is one line');
+    return nudge;
 }
 
 test('a stamp past the threshold fires the one-line nudge naming the pass', () => {
@@ -134,11 +168,11 @@ test('a stamp fresher than the threshold is silent', () => {
     const store = makeStore();
     try {
         writeStamp(store, 29);
-        assertSilent(runHook(store, startupPayload(store)));
+        assertOnlyProjectMemory(runHook(store, startupPayload(store)));
 
         // A stamp written moments ago, the state right after a pass.
         fs.writeFileSync(stampPath(store), 'stamp\n', 'utf8');
-        assertSilent(runHook(store, startupPayload(store)));
+        assertOnlyProjectMemory(runHook(store, startupPayload(store)));
     } finally {
         rmStore(store);
     }
@@ -161,7 +195,7 @@ test('a store with memories but no stamp nudges once its oldest memory passes th
         // enough to be overdue, so the fresh-project silence holds.
         fs.mkdirSync(store.memDir, { recursive: true });
         fs.writeFileSync(path.join(store.memDir, 'young-memory.md'), '# y\n', 'utf8');
-        assertSilent(runHook(store, startupPayload(store)));
+        assertOnlyProjectMemory(runHook(store, startupPayload(store)));
 
         // An aged memory with still no stamp is the population the backstop
         // exists for: a store accumulating for the whole threshold that never
@@ -185,14 +219,14 @@ test('a missing store, a missing stamp, and a non-file stamp are all silent', ()
     const obstructed = makeStore();
     try {
         // The fresh-machine case: no store at all under the root.
-        assertSilent(runHook(missing, startupPayload(missing)));
+        assertOnlyProjectMemory(runHook(missing, startupPayload(missing)));
 
         // A store with only a young memory and no stamp: no pass has ever
         // run, but nothing has aged past the threshold either, so no nudge.
         // The never-run-but-aged direction has its own test below.
         fs.mkdirSync(stampless.memDir, { recursive: true });
         fs.writeFileSync(path.join(stampless.memDir, 'a-memory.md'), '# m\n', 'utf8');
-        assertSilent(runHook(stampless, startupPayload(stampless)));
+        assertOnlyProjectMemory(runHook(stampless, startupPayload(stampless)));
 
         // A directory at the stamp path, aged past the threshold so a hook
         // that honored a non-file mtime would nudge: silence here is the
@@ -200,7 +234,7 @@ test('a missing store, a missing stamp, and a non-file stamp are all silent', ()
         fs.mkdirSync(stampPath(obstructed), { recursive: true });
         const past = new Date(Date.now() - 40 * DAY_MS);
         fs.utimesSync(stampPath(obstructed), past, past);
-        assertSilent(runHook(obstructed, startupPayload(obstructed)));
+        assertOnlyProjectMemory(runHook(obstructed, startupPayload(obstructed)));
     } finally {
         rmStore(missing);
         rmStore(stampless);
@@ -308,8 +342,10 @@ test('an ungated KIT_MEMORY_ROOT feeds nothing into the session context', () => 
 
         // Without the second signal the hook resolves the real store (home is
         // pointed at an empty temp directory so that store is observable and
-        // hermetic) and emits nothing; the ignored override is noted on
-        // stderr, which never enters context.
+        // hermetic). The standing project-memory block still speaks, for that
+        // home-derived store: nothing from the override store, neither its
+        // planted index nor its path, reaches the context. The ignored override
+        // is noted on stderr, which never enters context.
         const env = scrubRunEnv({ ...process.env, KIT_MEMORY_ROOT: store.root });
         delete env.KIT_MEMORY_ROOT_ALLOW_DATA;
         for (const k of Object.keys(env)) {
@@ -325,7 +361,12 @@ test('an ungated KIT_MEMORY_ROOT feeds nothing into the session context', () => 
             env
         });
         assert.strictEqual(res.status, 0, res.stderr);
-        assert.strictEqual(res.stdout, '', 'nothing from the override store reached the context');
+        const ungated = JSON.parse(res.stdout).hookSpecificOutput.additionalContext;
+        assert.deepStrictEqual(blocksOf(ungated).map((b) => b.split(':')[0]), ['Kit project memory'],
+            'the standing block and nothing else:\n' + ungated);
+        assert.ok(!ungated.includes('planted line'), 'no line of the override store\'s index reached context');
+        assert.ok(!ungated.includes(store.root), 'not even the override store\'s path reached context');
+        assert.ok(ungated.includes(fakeHome), 'the destination named is the home-derived store');
         assert.match(res.stderr, /ignoring KIT_MEMORY_ROOT/);
     } finally {
         rmStore(store);
@@ -355,7 +396,8 @@ test('a typed project gets the type index at session start; an untyped one gets 
         writeTypeIndex(untyped, 'nextjs', '# Memory Index\n\n- [Testing](testing.md) - how tests run\n');
         fs.mkdirSync(untyped.memDir, { recursive: true });
         fs.writeFileSync(path.join(untyped.memDir, 'MEMORY.md'), '# Memory Index\n', 'utf8');
-        assertSilent(runHook(untyped, startupPayload(untyped)));
+        const untypedContext = assertOnlyProjectMemory(runHook(untyped, startupPayload(untyped)));
+        assert.ok(!untypedContext.includes('type-tier'), 'the tier exists on disk; only the opt-in is missing');
     } finally {
         rmStore(typed);
         rmStore(untyped);
@@ -369,7 +411,8 @@ test('a declared type with no tier on disk, and a path-token type value, are bot
         // Declared but never authored: nothing to emit, and the fail-open
         // posture is silence rather than an error at every session start.
         declareType(missing, 'ghost-type');
-        assertSilent(runHook(missing, startupPayload(missing)));
+        const missingContext = assertOnlyProjectMemory(runHook(missing, startupPayload(missing)));
+        assert.ok(!missingContext.includes('type-tier'), 'a declared but unauthored tier emits no block');
 
         // A traversal value must read as no declaration: the planted file one
         // level up is exactly what '..' would resolve to, so silence proves
@@ -377,7 +420,9 @@ test('a declared type with no tier on disk, and a path-token type value, are bot
         fs.writeFileSync(path.join(hostile.root, 'MEMORY.md'),
             '- [Loot](loot.md) - a root file the loader must never emit\n', 'utf8');
         declareType(hostile, '..');
-        assertSilent(runHook(hostile, startupPayload(hostile)));
+        const hostileContext = assertOnlyProjectMemory(runHook(hostile, startupPayload(hostile)));
+        assert.ok(!hostileContext.includes('type-tier'), 'a path-token type reads as no declaration');
+        assert.ok(!hostileContext.includes('Loot'), 'the file one level up never reaches the context');
     } finally {
         rmStore(missing);
         rmStore(hostile);
@@ -393,10 +438,11 @@ test('an overdue and typed project gets both blocks in one context', () => {
         const context = assertContext(runHook(store, startupPayload(store)));
         assert.match(context, /decay stamp is 40 days old/);
         assert.match(context, /Project-Type 'nextjs'/);
-        const blocks = context.split('\n\n');
-        assert.strictEqual(blocks.length, 2, 'two blocks joined by a blank line');
+        const blocks = blocksOf(context);
+        assert.strictEqual(blocks.length, 3, 'three blocks joined by blank lines');
         assert.match(blocks[0], /decay/);
         assert.match(blocks[1], /type-tier memory/);
+        assert.match(blocks[2], /^Kit project memory:/);
     } finally {
         rmStore(store);
     }
@@ -421,7 +467,7 @@ test('the emitted index is sanitized and bounded: hostile lines cannot forge str
             'nothing outside printable ASCII plus the line breaks reaches the context');
         assert.match(context, /- \[Evil\]\(evil\.md\) - bell esc\[2J caf end/,
             'the hostile line survives as data with its control characters stripped');
-        const lines = context.split('\n');
+        const lines = blockStarting(context, 'Kit type-tier memory:').split('\n');
         assert.strictEqual(lines.length, 1 + 30 + 1, 'header, 30 index lines, remainder counter');
         assert.strictEqual(lines[lines.length - 1], '  ... and 13 more index lines');
         for (const line of lines.slice(1, -1)) {
@@ -447,7 +493,7 @@ test('a huge type index costs a bounded read and a bounded emission', () => {
         declareType(store, 'big');
 
         const context = assertContext(runHook(store, startupPayload(store)));
-        const out = context.split('\n');
+        const out = blockStarting(context, 'Kit type-tier memory:').split('\n');
         assert.strictEqual(out.length, 1 + 30 + 1, 'header, 30 lines, remainder counter');
         assert.match(out[1], /- \[m0\]\(m0\.md\)/, 'emission comes from the head of the file');
         assert.match(out[out.length - 1], /^ {2}\.\.\. and \d+\+ more index lines$/,
@@ -549,10 +595,11 @@ test('the destination path is fenced as data, so a prose store root cannot read 
 test('no run id at all is silent, and an empty one reads as no run', () => {
     const store = makeStore();
     try {
-        assertSilent(runHook(store, startupPayload(store)));
+        assertOnlyProjectMemory(runHook(store, startupPayload(store)));
         // An empty value is an unset variable's ordinary shape, not a session
         // that believes it is in a run.
-        assertSilent(runHook(store, startupPayload(store), { KIT_RUN_ID: '' }));
+        const empty = assertOnlyProjectMemory(runHook(store, startupPayload(store), { KIT_RUN_ID: '' }));
+        assert.ok(!empty.includes('run-scoped'), 'no run block, and no stand-down over an empty value');
     } finally {
         rmStore(store);
     }
@@ -573,6 +620,8 @@ test('a run id the kit cannot honor stands the session down instead of failing o
             assert.match(context, /do not add a line to MEMORY\.md or edit it/);
             assert.match(context, /not usable as a directory name/);
             assert.ok(!context.includes('pending'), 'no destination is named for a run without one');
+            assert.ok(!context.includes('Kit project memory:'),
+                'the stand-down is the whole of what the hook says: no index, no destination');
         }
 
     } finally {
@@ -599,6 +648,8 @@ test('a store pin the kit cannot honor stands the session down instead of emitti
             assert.match(context, /KIT_MEMORY_PROJECT/,
                 'the block names the variable, so an operator can act on it');
             assert.match(context, /no memory directory resolves for this session at all/);
+            assert.ok(!context.includes('Kit project memory:'),
+                'no index and no destination beside an instruction to write nothing');
         }
 
         // The stand-down displaces the other blocks rather than riding beside
@@ -642,48 +693,71 @@ test('a usable store pin is ordinary: the blocks resolve under the pinned projec
         assert.ok(!context.includes('stand-down'), 'a usable pin stands nobody down');
         assert.ok(!context.includes('Kit pinned memory store:'),
             'one destination, never two: the run tier answers the question when there is a run');
+        assert.ok(!context.includes('Kit project memory:'),
+            'a directed session\'s index and destination rules are the run block\'s to state');
     } finally {
         rmStore(store);
     }
 });
 
-test('a run id without the store signals is not a spawn: the session is left alone entirely', () => {
+test('a run id without the store signals is not a spawn: the session is left ordinary', () => {
     const store = makeStore();
+    const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'memsession-home-'));
     try {
         // The state this case exists for: a well-formed run id from a shell
         // profile or a committed .vscode env, with no engine behind it. It is
         // an ungated override, which memq ignores and notes on its own stderr;
         // standing the session down over it would cost an ordinary developer
-        // every memory write for the whole session.
+        // every memory write for the whole session. The ordinary session's own
+        // project-memory block still speaks, which is the point: this developer
+        // keeps everything an unspawned session gets.
+        //
+        // The store override is dropped outright here, so the hook resolves the
+        // home-derived store; home is a temp directory so that store is
+        // hermetic rather than the machine's real one.
+        const env = scrubRunEnv({ ...process.env });
+        for (const k of Object.keys(env)) {
+            const lower = k.toLowerCase();
+            if (lower === 'userprofile' || lower === 'home'
+                || lower === 'kit_memory_root' || lower === 'kit_memory_root_allow_data') {
+                delete env[k];
+            }
+        }
+        env.USERPROFILE = fakeHome;
+        env.HOME = fakeHome;
         const bare = (extra) => spawnSync(process.execPath, [HOOK], {
             input: JSON.stringify(startupPayload(store)),
             cwd: store.proj,
             encoding: 'utf8',
-            env: { ...scrubRunEnv({ ...process.env }), ...extra }
+            env: { ...env, ...extra }
         });
 
         // No store signals at all.
         const none = bare({ KIT_RUN_ID: 'r1' });
-        assert.strictEqual(none.status, 0, none.stderr);
-        assert.strictEqual(none.stdout, '', 'no block of any kind, stand-down included');
+        const noneContext = assertOnlyProjectMemory(none);
+        assert.ok(!noneContext.includes('run-scoped') && !noneContext.includes('stand-down'),
+            'no run block of any kind, stand-down included');
 
         // The store root set without its second signal is the same state: the
         // pair is what marks a spawn. Reporting the ignored variable is the
         // memq CLI's job (pinned in its own suite); this hook decides the
-        // question before it ever resolves a run, so it says nothing at all.
+        // question before it ever resolves a run, so it says nothing about one.
         const halfGated = bare({
             KIT_RUN_ID: 'r1', KIT_MEMORY_ROOT: store.root, KIT_MEMORY_ROOT_ALLOW_DATA: '0'
         });
         assert.strictEqual(halfGated.status, 0, halfGated.stderr);
-        assert.strictEqual(halfGated.stdout, '');
+        const halfContext = JSON.parse(halfGated.stdout).hookSpecificOutput.additionalContext;
+        assert.deepStrictEqual(blocksOf(halfContext).map((b) => b.split(':')[0]), ['Kit project memory']);
+        assert.ok(!halfContext.includes(store.root), 'the ungated override reaches nothing');
 
-        // A malformed id without the signals is the same non-spawn: silent,
+        // A malformed id without the signals is the same non-spawn: ordinary,
         // not stood down.
         const malformed = bare({ KIT_RUN_ID: '..' });
-        assert.strictEqual(malformed.status, 0, malformed.stderr);
-        assert.strictEqual(malformed.stdout, '');
+        const malformedContext = assertOnlyProjectMemory(malformed);
+        assert.ok(!malformedContext.includes('stand-down'));
     } finally {
         rmStore(store);
+        try { fs.rmSync(fakeHome, { recursive: true, force: true }); } catch { /* best effort */ }
     }
 });
 
@@ -718,6 +792,10 @@ test('a pinned session with no run id is told where its memory files go, index l
         // instance's ordinary record and an index line belongs in it.
         assert.match(context, /MEMORY\.md beside the memory files is the index to add a line to as usual/);
         assert.ok(!context.includes('stand-down'), 'a usable pin stands nobody down');
+        // The pinned tier has no index file here, and under a pin the index
+        // lines are the whole of the project-memory block, so there is nothing
+        // for it to add: the destination is already named above it.
+        assert.deepStrictEqual(blocksOf(context).map((b) => b.split(':')[0]), ['Kit pinned memory store']);
     } finally {
         rmStore(store);
         try { fs.rmSync(projB, { recursive: true, force: true }); } catch { /* best effort */ }
@@ -740,24 +818,28 @@ test('a pinned directory too long to name faithfully stands the session down', (
         assert.match(context, /Write no memory files this session/);
         assert.ok(!context.includes('Kit pinned memory store:'),
             'no destination is named when none can be carried faithfully');
+        assert.ok(!context.includes('Kit project memory:'),
+            'nor an index beside an instruction to write nothing');
     } finally {
         rmStore(store);
     }
 });
 
-test('an unpinned session is told nothing about a destination, the posture it has always had', () => {
+test('an unpinned session hears about the cwd-derived directory, never a pinned one', () => {
     const store = makeStore();
     try {
         // The other direction of the block above: without a pin the working
-        // directory is the derivation, so there is nothing to say and the hook
-        // says nothing.
-        assertSilent(runHook(store, startupPayload(store)));
+        // directory is the derivation, so the pinned block has nothing to say
+        // and the destination the session is given is the derived one.
+        const context = assertOnlyProjectMemory(runHook(store, startupPayload(store)));
+        assert.ok(context.includes('\n  ' + store.memDir + '\n'),
+            'the cwd-derived directory, on its own line as data:\n' + context);
     } finally {
         rmStore(store);
     }
 });
 
-test('a store pin without the store signals is not a spawn either: no stand-down, no block', () => {
+test('a store pin without the store signals is not a spawn either: no stand-down, no pin block', () => {
     const store = makeStore();
     const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'memsession-home-'));
     try {
@@ -791,7 +873,17 @@ test('a store pin without the store signals is not a spawn either: no stand-down
                 env: { ...env, KIT_MEMORY_PROJECT: pin }
             });
             assert.strictEqual(res.status, 0, res.stderr);
-            assert.strictEqual(res.stdout, '', 'no block of any kind, stand-down included: ' + pin);
+            // memq notes the ignored pin on its own stderr, which never enters
+            // the session context, so this case reads stdout for the blocks and
+            // leaves stderr to that note.
+            assert.match(res.stderr, /ignoring KIT_MEMORY_PROJECT/);
+            const context = JSON.parse(res.stdout).hookSpecificOutput.additionalContext;
+            assert.deepStrictEqual(blocksOf(context).map((b) => b.split(':')[0]), ['Kit project memory'],
+                'the standing block and nothing else: ' + pin);
+            assert.ok(!context.includes('stand-down') && !context.includes('Kit pinned memory store:'),
+                'no pin block of any kind, stand-down included: ' + pin);
+            assert.ok(!context.includes('inst-a'),
+                'the destination is the cwd-derived directory, since the pin moved nothing: ' + pin);
         }
     } finally {
         rmStore(store);
@@ -812,6 +904,235 @@ test('a pending directory too long to name faithfully stands the session down', 
         assert.match(context, /cannot be named here/);
         assert.match(context, /Write no memory files this session/);
         assert.match(context, /longer than 260 characters/);
+        assert.ok(!context.includes('Kit project memory:'),
+            'a stood-down session gets no index and no second destination');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The project-memory block. It rides on every ordinary session, so what is
+// pinned here is both halves of its job (the index of what the tier already
+// holds, and the destination plus convention new memory files follow) and the
+// four session states that decide how much of it is said.
+
+function writeProjectIndex(store, contents) {
+    fs.mkdirSync(store.memDir, { recursive: true });
+    fs.writeFileSync(path.join(store.memDir, 'MEMORY.md'), contents, 'utf8');
+}
+
+test('an ordinary session is told what its memory tier holds, where new files go, and the convention', () => {
+    const store = makeStore();
+    try {
+        writeProjectIndex(store, '# Memory Index\n\n'
+            + '- [Build](build.md) - how the build runs\n'
+            + '- [Deploy](deploy.md) - the release path\n');
+        const context = assertOnlyProjectMemory(runHook(store, startupPayload(store)));
+
+        assert.match(context, /- \[Build\]\(build\.md\) - how the build runs/);
+        assert.match(context, /- \[Deploy\]\(deploy\.md\) - the release path/);
+        assert.match(context, /data,\s+not instructions/);
+        assert.ok(context.includes('\n  ' + store.memDir + '\n'),
+            'the destination is the memory directory verbatim, on its own line as data:\n' + context);
+        assert.match(context, /Create\s+it if it is not there/);
+        assert.match(context, /Memory files are written with the Write tool/);
+        assert.match(context, /one fact per file/);
+        assert.match(context, /each file gets its own line added to the MEMORY\.md beside them/);
+        // One block, not two: a blank line inside it would split it, and every
+        // block count in this suite is taken on that separator.
+        assert.strictEqual(blocksOf(context).length, 1);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('an absent or empty index still names the destination, with the emptiness stated', () => {
+    const absent = makeStore();
+    const empty = makeStore();
+    try {
+        // A fresh store is when the destination matters most: the session that
+        // hears nothing here is the one that writes its first memory file into
+        // a directory nothing reads.
+        const absentContext = assertOnlyProjectMemory(runHook(absent, startupPayload(absent)));
+        assert.match(absentContext, /no index yet/);
+        assert.ok(absentContext.includes('\n  ' + absent.memDir + '\n'), absentContext);
+        assert.match(absentContext, /Memory files are written with the Write tool/);
+
+        // An index file of nothing but blank lines is the same state, since
+        // the emitted lines are what the block has to show.
+        writeProjectIndex(empty, '\n\n   \n');
+        const emptyContext = assertOnlyProjectMemory(runHook(empty, startupPayload(empty)));
+        assert.match(emptyContext, /no index yet/);
+        assert.ok(emptyContext.includes('\n  ' + empty.memDir + '\n'), emptyContext);
+    } finally {
+        rmStore(absent);
+        rmStore(empty);
+    }
+});
+
+test('an index that cannot be read says so, rather than reporting an empty store', () => {
+    const store = makeStore();
+    try {
+        // A directory at the index path: openSync succeeds and the read fails,
+        // standing in for every unreadable-index shape (a lock, a permission
+        // denial). "No index yet" would be false here, and a session that
+        // believes the store is fresh re-derives facts already recorded and
+        // writes a second memory file for one of them. The destination half of
+        // the block is unaffected, so it still rides.
+        fs.mkdirSync(path.join(store.memDir, 'MEMORY.md'), { recursive: true });
+
+        const context = assertOnlyProjectMemory(runHook(store, startupPayload(store)));
+        assert.match(context, /index could not be read/);
+        assert.match(context, /may hold records/,
+            'the session is told what it cannot see, not that there is nothing to see');
+        assert.ok(!context.includes('no index yet'),
+            'an unreadable index is not an empty one:\n' + context);
+        assert.ok(context.includes('\n  ' + store.memDir + '\n'),
+            'the destination still rides, since nothing about it failed');
+        assert.match(context, /Memory files are written with the Write tool/);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('an index of exactly the read cap keeps its last line, with no phantom remainder', () => {
+    const store = makeStore();
+    try {
+        // The read prefix is a fixed size, and a file that ends exactly at it
+        // is complete rather than clipped: its last line is whole. Treating it
+        // as clipped drops that line and then counts the remainder as zero,
+        // which announces a truncation that both hid a line and reported none.
+        let body = '';
+        for (let i = 0; i < 59; i++) body += '- [m' + i + '](m' + i + '.md) - fact ' + i + '\n';
+        const tail = '- [last](last.md) - ';
+        body += tail + 'z'.repeat(65536 - body.length - tail.length);
+        assert.strictEqual(Buffer.byteLength(body, 'utf8'), 65536, 'the fixture is exactly the read cap');
+        writeProjectIndex(store, body);
+
+        const context = assertOnlyProjectMemory(runHook(store, startupPayload(store)));
+        const lines = context.split('\n');
+        assert.strictEqual(lines.filter((l) => l.startsWith('  - [')).length, 60,
+            'all 60 lines are emitted:\n' + context);
+        assert.ok(lines.some((l) => l.startsWith('  - [last](last.md) - z')),
+            'the last line is complete, not torn:\n' + context);
+        assert.ok(!context.includes('more index lines'),
+            'nothing was clipped, so no remainder is announced:\n' + context);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('the project index is sanitized and bounded: hostile lines cannot forge structure, long ones truncate', () => {
+    const store = makeStore();
+    try {
+        // The index is store content entering trusted context at every session
+        // start, so it is held to the type index's treatment exactly: printable
+        // ASCII per line, a per-line cap, a line-count cap, and the remainder
+        // counted rather than emitted.
+        const idx = ['- [Evil](evil.md) - bell \x07esc\x1b[2J café end'];
+        idx.push('- [Long](long.md) - ' + 'x'.repeat(400));
+        // A line that is nothing but non-ASCII: it is non-empty before the
+        // reduction and empty after it, so it reaches the emission as its
+        // indent alone. The block count below is what that matters to, since
+        // an emitted blank line would split this block in two and every block
+        // count in this suite is taken on that separator.
+        idx.push('ééé');
+        for (let i = 0; i < 58; i++) idx.push('- [m' + i + '](m' + i + '.md) - fact ' + i);
+        assert.strictEqual(idx.length, 61, 'one line past the 60-line cap');
+        writeProjectIndex(store, idx.join('\n') + '\n');
+
+        const context = assertOnlyProjectMemory(runHook(store, startupPayload(store)));
+        assert.ok(!/[^\n\x20-\x7E]/.test(context),
+            'nothing outside printable ASCII plus the line breaks reaches the context');
+        assert.match(context, /- \[Evil\]\(evil\.md\) - bell esc\[2J caf end/,
+            'the hostile line survives as data with its control characters stripped');
+        const lines = context.split('\n');
+        const emitted = lines.filter((l) => l.startsWith('  - ['));
+        assert.strictEqual(emitted.length, 59, 'the cap is 60 index lines, one of them reduced away');
+        assert.ok(lines.includes('  '), 'the all-non-ASCII line emits as its indent, never as a blank line');
+        assert.strictEqual(blocksOf(context).length, 1, 'and so cannot split the block');
+        for (const line of emitted) {
+            assert.ok(line.length <= 2 + 200, 'each emitted index line is capped, got ' + line.length);
+        }
+        assert.ok(lines.includes('  ... and 1 more index lines'),
+            'the 61st line is counted, not emitted:\n' + context);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a memory directory that cannot be named faithfully sends the session to memq, index still riding', () => {
+    const store = makeStore();
+    // A store root outside printable ASCII: the directory is real and readable,
+    // so the index half of the block is unaffected, but the path cannot go into
+    // context as itself and a reduced one would be a confidently wrong
+    // directory. An ordinary session has asked for nothing the kit cannot do,
+    // so it is not stood down: it is pointed at memq, which resolves the
+    // directory without it in context.
+    const evilRoot = path.join(os.tmpdir(), 'memsession-café-' + process.pid);
+    const memDir = path.join(evilRoot, 'projects', store.proj.replace(/[^A-Za-z0-9]/g, '-'), 'memory');
+    try {
+        fs.mkdirSync(memDir, { recursive: true });
+        fs.writeFileSync(path.join(memDir, 'MEMORY.md'),
+            '- [Kept](kept.md) - a fact the session must still hear about\n', 'utf8');
+
+        const context = assertOnlyProjectMemory(runHook(store, startupPayload(store),
+            { KIT_MEMORY_ROOT: evilRoot }));
+        assert.match(context, /- \[Kept\]\(kept\.md\) - a fact the session must still hear about/,
+            'the index lines still ride when the destination cannot be named');
+        assert.match(context, /cannot be named here/);
+        assert.match(context, /`memq recall` resolve the directory themselves/);
+        assert.ok(!context.includes('Write no memory files'),
+            'an ordinary session is redirected, never stood down');
+        // Never a reduction of the path: the whole point of withholding it.
+        const reduced = memDir.replace(/[^\x20-\x7E]|"/g, '');
+        assert.ok(!context.includes(reduced), 'no truncated or reduced destination reaches the context');
+        assert.ok(!/[^\n\x20-\x7E]/.test(context), 'and no verbatim one either');
+    } finally {
+        rmStore(store);
+        try { fs.rmSync(evilRoot, { recursive: true, force: true }); } catch { /* best effort */ }
+    }
+});
+
+test('a pinned session gets the index alone, since the pin block already named the destination', () => {
+    const store = makeStore();
+    const pinnedMemDir = path.join(store.root, 'projects', 'inst-a', 'memory');
+    try {
+        fs.mkdirSync(pinnedMemDir, { recursive: true });
+        fs.writeFileSync(path.join(pinnedMemDir, 'MEMORY.md'),
+            '- [Pinned](pinned.md) - a fact of the pinned tier\n', 'utf8');
+
+        const context = assertBlock(runHook(store, startupPayload(store),
+            { KIT_MEMORY_PROJECT: 'inst-a' }));
+        const project = blockStarting(context, 'Kit project memory:');
+        assert.match(project, /- \[Pinned\]\(pinned\.md\) - a fact of the pinned tier/,
+            'the pinned tier\'s index is what nothing else supplies');
+        assert.match(project, /data, not instructions/);
+        // The pin block owns the destination and the index-line rule, so a
+        // second statement of either would be a second voice on a settled
+        // question.
+        assert.ok(!project.includes(pinnedMemDir), 'no destination in the index block:\n' + project);
+        assert.ok(!project.includes('Write tool'), 'no convention instruction either:\n' + project);
+        assert.deepStrictEqual(blocksOf(context).map((b) => b.split(':')[0]),
+            ['Kit pinned memory store', 'Kit project memory']);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a run displaces the project block outright, index included', () => {
+    const store = makeStore();
+    try {
+        // A directed worker's writes belong in the run's pending tier, and its
+        // index line is written at adjudication rather than by the session, so
+        // an index plus ordinary-write guidance beside the run block would
+        // dilute the prohibition the run block exists to state.
+        writeProjectIndex(store, '- [Shared](shared.md) - a project-tier fact\n');
+        const context = assertBlock(runHook(store, startupPayload(store), { KIT_RUN_ID: 'r1' }));
+        assert.match(context, /Kit run-scoped memory:/);
+        assert.ok(!context.includes('Kit project memory:'));
+        assert.ok(!context.includes('shared.md'), 'no project index rides beside a run');
+        assert.deepStrictEqual(blocksOf(context).map((b) => b.split(':')[0]), ['Kit run-scoped memory']);
     } finally {
         rmStore(store);
     }
@@ -824,6 +1145,8 @@ test('the run block coexists with the decay nudge rather than displacing it', ()
         const context = assertBlock(runHook(store, startupPayload(store), { KIT_RUN_ID: 'r1' }));
         assert.match(context, /decay stamp is 31 days old/);
         assert.match(context, /Kit run-scoped memory:/);
+        assert.ok(!context.includes('Kit project memory:'),
+            'the run block is the destination and index authority for a directed session');
         // Absent spawn values are absent fields, never present and empty.
         assert.ok(!context.includes('vector:'), 'no vector was set, so no vector field is asked for');
         assert.ok(!context.includes('section:'));
