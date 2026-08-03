@@ -1,6 +1,6 @@
 # Synced Semantic Memory
 
-Status: In Progress
+Status: Complete
 Commit Model: Commit-and-Push
 Fable Spend: S6 writer; S1/S2/S3/S5 reviewer pairs; finishing reviews
 Created: 2026-08-02
@@ -117,9 +117,9 @@ Supersedes `docs/archive/claude-kit_synced-semantic-memory_spec_v1.md`, the same
 
 ## Section status
 
-Sections 1 through 7 are implemented, reviewed, and committed. Section 1 took three review rounds, Sections 2, 4, 5, 6, and 7 one each, and Section 3 changed no repository code.
+All eight sections are implemented, reviewed, and committed, and the whole-effort finishing pass is done. Section 1 took three review rounds, Sections 2 and 4 through 7 one each, Section 3 changed no repository code, and the finishing reviews added two more rounds over the whole changeset.
 
-Gate: full suite 638 pass, 0 fail, 0 skipped, exit 0 across all 21 test files. Baseline before this effort was 514. The embedding stack is installed on this machine, so the real-model tests run rather than skip.
+Gate: full suite 644 pass, 0 fail, 0 skipped, exit 0 across all 21 test files. Baseline before this effort was 514 across 19 files. The embedding stack is installed on this machine, so the real-model tests run rather than skip.
 
 The store repository is `~/.claude` at commit `7fe68d2`, 61 tracked files, pushed to the private remote `SApplefeld/sapplefeld-claude-memory`. Its index and its whole object history hold memory paths only, verified by clone; `.credentials.json`, `settings.json`, `history.jsonl`, and every session transcript are excluded. Rollback for the remote: delete the repository through GitHub, then `git -C ~/.claude remote remove origin`.
 
@@ -278,4 +278,27 @@ Machine state altered outside the repo: `~/.claude/kit-embedder/` now exists at 
 The build stamp went stale from the hook edit, which the canary caught with two failures naming their own remedy. Refreshed by running the build, which touched only gitignored outputs. Another session's concurrent work in `.gitignore`, `build.ps1`, and `build.sh` was left unstaged throughout.
 Review Findings: One round, two reviewers, no Criticals. Five Majors addressed: the missing absence nudge, the over-wide `-Fix` gate, the unrepairable `unusable` state, the two tests that could not fail for their own claims, and the untested consent-to-installer wiring. Minors addressed: an unsanitized package version reaching the report, two unguarded JSON parses that could fail into an empty-detail report, an npm-absent warning that overstated the state and suppressed index health, a durable pin for the allowlist exclusion, and two comments stating the journey rather than the fact. Both reviewers independently verified the two install traps are genuinely closed, that check mode reaches only read-only paths, and that every failure path leaves state in place and never claims the channel active.
 Next: 8. Docs and skill sweep
+Commit Model: Commit-and-Push
+
+### Chapter 8 - 2026-08-03
+Completed: 8. Docs and skill sweep, and the whole-effort finishing pass
+Implemented By: main session (docs sweep, `Locus: inline` by the docs routing override); implementer-sonnet for the code fixes the finishing reviews found
+Metrics: 1 docs-curator pass; 1 QA pass; 1 security review; 1 final adversarial review; 2 fix rounds; 0 escalations; advisor opus
+Decisions / Surprises: The docs sweep found more than the three surfaces the section named. The curator's claim-scoped pass, which checks claims rather than changed files, caught eleven falsified statements across five documents: a hook block count, a recall surface list and its cut order, the archive-surface enumeration, the read-stamp hook's tier reach, `get`'s archive reach, the index's own description, the library index's summary of a doc it indexes, and stale line citations in the backlog that this effort's own additions had shifted. Every one was true when written and false after a later section moved the thing it described, which is the characteristic failure of a long effort and the reason a claim-scoped sweep exists.
+
+The doctrine's memory bullet gained the operator tier. The always-on boundary admits a rule that is general, earned, and needed before any skill loads, and this qualifies: the moment a session learns an operator-scoped fact is before it has loaded the memory skill, so a session that does not know the tier exists writes into the project store, which is the stranding the tier was built to end. It is a two-file byte-identical edit the parity test enforces.
+
+The finishing reviews found three defects no section owned, and all three shipped fixed. The security model stated the memory tiers were plaintext, unversioned, and outside git, and that a credential written into one persisted locally; every clause stopped being true when the tiers entered a repository with an off-machine remote, and the honesty rule does not let a shipped untruth about where credentials can end up stand. The remedy string every surface names, `kit doctor -Fix`, is not a resolvable command: confirmed by probe that no `kit` launcher exists anywhere on this machine or in the repo, only the memq shim, so the loud line naming the remedy named an invocation that errors. And the embedding stack installed whatever the registry served with lifecycle scripts enabled, into a directory loaded into the process that reads every memory store; it is now pinned to the verified version with scripts disabled, tested end to end rather than assumed.
+
+The taught close-out gained the gate it was missing. Prevention covered the doctor's commit and left the push to a sequence that never checked the verdict, while the history probe that would have caught a leaked blob ran and was ignored. Push now waits on a clean report. The consent mechanics are named too, since the doctor declines every prompt on a redirected stdin and a session following the earlier wording committed nothing at all.
+
+One requested fix was reduced with evidence rather than judgment: pinning the model to a revision works in isolation but caches under a revision-keyed path the probe does not check, so the model downloads correctly and the probe reports the install unusable forever. Reproduced directly, reverted, and the limitation documented in place rather than dropped silently.
+
+Two test flakes, each named with its discriminating evidence and neither chased: a lock-race test that failed once under heavy parallel load then passed 5/5 isolated and 203/203 in its file, and a git-fixture test in the push guard that failed once and passed immediately on re-run. Both trace to real process timing under load, and neither touches anything this effort changed.
+
+Machine state altered outside the repo, cumulative across the effort: `~/.claude` is a git repository pushed to the private remote `SApplefeld/sapplefeld-claude-memory`; `~/.claude/memory-operator/` holds 6 memories, 5 of them migrated out of this project's tier; `~/.claude/kit-embedder/` holds the embedding stack at about 404 MB; `~/.claude/memory-index.jsonl` holds the derived index. A pre-migration copy of the project store sits at `C:\tmp\memory-backup-1785739302`. The store's allowlist reads as drifted until the operator runs the doctor's fix, which is expected and self-heals.
+
+One kaizen note captured: a dispatch brief cannot grant a scope a mechanical guard denies, learned by granting `docs/` to an implementer twice and being denied both times.
+Review Findings: QA returned FAIL on one item, the plan doc's own terminal state, which this Chapter closes; every other acceptance criterion across all eight sections passed with evidence, including two verified by substitute probe where the read-only guard blocked the direct one. The security review returned three Majors and four Minors, all addressed. The final adversarial review returned two Majors and four Minors, all addressed, and independently confirmed the ranking constants are sound, the decay reasoning holds across all three tiers, no test passes for a reason other than its name, all eight Out of Scope items are absent, and the diff carries no em dashes. The docs curator returned sixteen drift items, all adjudicated: fifteen mistakes fixed, one deviation recorded (the index's deliberate exclusion of the pending tier, which the prose overclaimed and now states correctly).
+Next: finishing-work complete; the plan archives with this Chapter.
 Commit Model: Commit-and-Push
