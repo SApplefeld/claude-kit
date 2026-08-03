@@ -4,7 +4,10 @@
 //
 // A stamp is one JSON object, {ts, file, kind: "read"}, appended to usage.jsonl
 // in the same directory as the memory file: a project's memory dir
-// (<root>/projects/<project>/memory) or a type dir (<root>/memory-types/<type>).
+// (<root>/projects/<project>/memory), a type dir (<root>/memory-types/<type>),
+// or the operator dir (<root>/memory-operator). Which of them a path sits in
+// is memq's own answer, through the tierDirFor it exports, so a tier is added
+// to the store in one place rather than restated here.
 // `file` is the memory's filename alone, which the sidecar's own location
 // already qualifies with the tier it belongs to.
 //
