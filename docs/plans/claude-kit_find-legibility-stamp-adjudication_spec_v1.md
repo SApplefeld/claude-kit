@@ -1,6 +1,6 @@
 # Find Legibility and Stamp Adjudication
 
-Status: In Progress
+Status: Complete
 Commit Model: Commit-and-Push
 Fable Spend: S3+S4 review pairs (opus writers bump to fable), finishing reviews
 Created: 2026-08-03
@@ -13,9 +13,9 @@ Created: 2026-08-03
 
 Three principles carry over from the store's existing design and govern every section:
 
-**Filter deterministically, weight minimally, annotate everything else.** The semantic channel already blends similarity with a tenth-capped applied boost and an archive demotion, deliberately sized so use breaks ties but never carries an unrelated record past a related one. This effort does not touch that blend. What changes is the display layer above it: archived hits move from "demoted but shown" to "withheld by default, stated by count", because a retired record in the default view is noise the reader must re-classify on every search, while a counted remainder line is one fact. The demotion constant stays, becoming effective only under `--archived`, where it keeps an equally similar live record ahead of its retired twin. A suppressed hit must never be a silent miss: the withheld line is mandatory whenever suppression removed anything, and it carries the best withheld raw similarity, the same number a hit line prints, so the reader can judge whether the rerun is worth it by comparing like with like. This is the store's standing idiom (counted remainders on recall truncation, coverage lines at zero) applied to one more surface.
+**Filter deterministically, weight minimally, annotate everything else.** The semantic channel already blends similarity with a tenth-capped applied boost and an archive demotion, deliberately sized so use breaks ties but never carries an unrelated record past a related one. This effort does not touch that blend. What changes is the display layer above it: archived hits move from "demoted but shown" to "withheld by default, stated by count", because a retired record in the default view is noise the reader must re-classify on every search, while a counted remainder line is one fact. The demotion constant stays, becoming effective only under `--archived`, where it keeps an equally similar live record ahead of its retired twin. A suppressed hit must never be a silent miss: the withheld line is mandatory whenever suppression removed anything, and it headlines the full withheld count. Where a rerun would show some of that set, the line also carries the best raw similarity among exactly those records, the same number a hit line prints, so the reader judges the rerun by comparing like with like; where the rerun's own display cap would show none of them, the line says that instead of quoting a figure for a line nobody will see (Section 1 carries the shape, the Decisions block the reasoning). This is the store's standing idiom (counted remainders on recall truncation, coverage lines at zero) applied to one more surface.
 
-**Ranking stays dumb; judgment stays with the reader.** The current hit line's `applied 4d` conflates two facts: it renders the distinct-day application tally in a form that reads as recency. The fix is annotation, not weighting: render tally and last-applied age as separate tokens (`applied x4, last 2mo`). The last-applied timestamp already survives the decay rollup (the rollup record carries first and last application), so no new data is captured; the line just stops hiding a fact the boost computation already read.
+**Ranking stays dumb; judgment stays with the reader.** The current hit line's `applied 4d` conflates two facts: it renders the distinct-day application tally in a form that reads as recency. The fix is annotation, not weighting: render tally and last-applied age as separate tokens (`applied x4, last 25h`, the age in the store's own coarse format, which has no unit above days). The last-applied timestamp already survives the decay rollup (the rollup record carries first and last application), so no new data is captured; the line just stops hiding a fact the boost computation already read.
 
 **Capture is mechanical; adjudication is judgment, scheduled where judgment is fresh.** Applied stamps under-fire because `touch --applied` demands a side action at an arbitrary mid-task moment, and a close-out sweep over a long run demands free recall across compaction boundaries. But `usage.jsonl` already holds the candidate set: every read stamp, written by hook, surviving compaction. `memq unstamped` diffs read events against applied events inside a window and emits the gap as a short list, converting the question from "what did you use?" to "of these files you opened, which changed what you did?", which is recognition over a machine-provided list. The adjudication runs at every Chapter boundary (executing-work step 6), because Chapters are long and compaction or a session handoff can land between them, so waiting for finishing-work loses exactly the judgment freshness the mechanism exists to protect; finishing-work keeps a final sweep as the backstop. The adjudication bar is generous by design, and the skill text states the asymmetry that justifies it: a false applied delays decay by one cycle, while a missed applied ages a load-bearing memory toward the archive, so "did it plausibly steer me" is the bar, not "can I prove it did". One residual gap is accepted and stated: a memory acted on straight from its digest description, file never opened, generates no read stamp and never enters the candidate list, so the in-turn `touch` habit and find's closing reminder line remain in force rather than being retired.
 
@@ -46,6 +46,14 @@ Four documents change, and the section's product is behavior, not prose. executi
 Tests: n/a (skill text); acceptance is the writing-skills self-check plus the adversarial reviewer reading each edit against the section text above.
 References: plugins/claude-kit/skills/writing-skills/SKILL.md; executing-work SKILL.md's Chapter format block (the `Stamps:` field sits outside the frozen machine contract, which covers the heading and the Completed:/Next: lines only); finishing-work SKILL.md step 7.
 
+## Related
+
+All three antecedents are in `docs/archive/`.
+
+- `claude-kit_memq-session-recap_spec_v1.md` built `memq recent`, whose windowing, tier grouping, coverage-line-at-zero idiom, and no-write discipline are the sibling pattern Section 3 follows.
+- `claude-kit_memory-recall-and-reinforcement_spec_v1.md` built the applied stamps, the ranking boost, and the decay gradient. This effort annotates what that one measures and feeds it the evidence it was starved of.
+- `claude-kit_synced-semantic-memory_spec_v2.md` built the semantic block that Section 1 filters and Section 2 re-renders.
+
 ## Out of Scope
 
 - Any change to the ranking blend: the applied boost, the archive demotion, the admission floor, and their constants stay as shipped.
@@ -69,6 +77,25 @@ Folded verbatim into every dispatch brief from Section 3 onward (executing-work 
 - **A test must fail under the bug it replaces, and must say why it would.** State in the test's own comment the property that makes it discriminate, then assert that property rather than arranging it and trusting it. A fixture whose premise is merely set up (two records scoring equally, a record sitting inside the display cut, an ordering that only holds under one reading) passes just as green when the premise quietly drifts, and it then proves nothing about the defect it was written for. Both review rounds of this effort surfaced exactly this shape: once as a Major (a regression test that passed identically under the bug it was written to catch) and once as a Minor (an ordering assertion resting on an unasserted score equality).
 
 ## Chapters
+
+### Chapter 5 - 2026-08-04 (close-out)
+Completed: the whole effort; Status flipped to Complete
+Implemented By: main session (finishing pass)
+Metrics: QA PASS; security review CLEAR; final adversarial APPROVED_WITH_CONCERNS; docs curation 1 drift item; advisor opus
+Gate: full 21-file suite 666 pass / 0 fail against a 644 / 0 pre-effort baseline at af4e40b, the +22 being exactly the new `test()` calls. QA verified every acceptance criterion across all four sections, by live CLI against both a constructed temp store and the real operator store where the behavior is observable, and by naming the pinning test where it is not. A whole-tree snapshot of 8492 files across two live `memq unstamped` runs found one changed file, the QA agent's own harness transcript, which is the writes-nothing property confirmed outside the suite.
+
+What shipped: `memq find` withholds archived records from its semantic block by default behind one counted, scored line, and `--archived` restores the old view; a hit line states its applied tally and its last-applied recency as two tokens instead of one number that read as the wrong fact; `memq unstamped` turns applied-stamp capture from free recall into recognition over a machine-built list; and the three workflow skills schedule that adjudication where the judgment is still fresh, at every Chapter boundary and once more at close-out. The three commands now close one loop: `find` surfaces and reminds, `unstamped` catches what the reminder missed, `touch` records, and none of the three ever teaches an invocation that errors.
+
+Review outcomes: no Critical findings at any stage. The security review cleared the store-data-to-model-context boundary on every new and changed surface, with three Minors, all documentation accuracy against the project's own standard rather than exploitable behavior. The final adversarial review confirmed the four sections cohere rather than sitting as four bolted-on patches, and raised one Major: `docs/security-model.md` still said "the five above" after the table grew to six rows, the third instance of that document's own miscount class in this effort. Fixed, along with a coverage-line claim that overlooked the declared type name at column zero, two in-code comments whose claims overreached their code, the spec's Approach paragraphs still describing two superseded designs, and trailing whitespace.
+
+Two Minors declined with reasons rather than silently dropped. The `--since` parsing loop duplicated between `cmdRecent` and `cmdUnstamped` stays: a per-command option loop is this file's own convention, and extracting a shared parser would break the register more than the duplication costs, the same call already made for the tier-assembly duplication beside it. The generous-bar clause appearing in both executing-work and finishing-work stays: that is the point-of-action pattern writing-skills endorses, and both point at memory-system as the named owner rather than restating the rationale, which is what the earlier Major was actually about.
+
+Drift adjudication: one item, Class deviation, and it was a backlog entry this session had written an hour earlier. The curator found it under-enumerated the untagged sidecar readers, naming `recall`, `recent`, and `decay-scan` while omitting `find`, whose `tallyForTier` reads a sidecar per tier per store across every project store on the machine and is therefore the widest reader of all. Confirmed against the eleven `readUsage` call sites and corrected. No `mistake` items: nothing suggested the code was wrong rather than the docs.
+
+Out of scope, routed rather than left as a note: two backlog entries, one for the `merged-pr-push-guard` flake root-caused in Chapter 4, one for tagging the remaining multi-sidecar readers' malformed-line notes.
+
+Next: none; effort complete
+Commit Model: Commit-and-Push
 
 ### Chapter 4 - 2026-08-04
 Completed: 4. Workflow and skill-text integration

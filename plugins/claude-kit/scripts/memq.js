@@ -1057,8 +1057,11 @@ function isUsageStamp(v) {
 // `tag` is the optional tier suffix a note about this read carries, the same
 // convention readArchiveDescriptions takes. A caller reading one sidecar needs
 // none: there is only one file the note could be about. A caller reading
-// several in one pass does, because two bare "line 2" notes from different
-// tiers are indistinguishable and neither names the file to go fix.
+// several in one pass wants it, because two bare "line 2" notes from different
+// tiers are indistinguishable and neither names the file to go fix. Only
+// `unstamped` passes one today; the other multi-sidecar readers (`recall`,
+// `recent`, `decay-scan`) still emit the ambiguous form, so tagging them is
+// available work rather than a rule they are breaking.
 function readUsage(memDir, tag) {
     const where = tag === undefined || tag === '' ? '' : ' in the ' + tag + ' tier';
     let raw;
@@ -3484,9 +3487,15 @@ function cmdRecent(argv) {
 //
 // `unread` rides alongside because an empty list has two meanings, readUsage's
 // own rule over the same failure. A tier whose sidecar could not be read
-// yields no stamps at all, and a hit requires a read stamp, so lost evidence
-// can only hide hits and never manufacture one: the count is a floor, and the
-// coverage line says so.
+// yields no stamps at all, and a hit requires a read stamp, so a whole-surface
+// loss can only hide hits and never manufacture one: the count is a floor, and
+// the coverage line says so. The flag is that whole-surface question and not a
+// per-line one, because readUsage skips a malformed line with its own note and
+// still reports 'ok'. A torn applied append beside an intact read line can
+// therefore raise a hit that was already adjudicated, without raising the
+// floor. That is the tolerance the sidecar's lock-free appends are built on,
+// and it lands in the cheap direction: one extra recognition question, against
+// the missed stamp a stricter reader would cost.
 function unstampedTierHits(dir, from, tag) {
     // Two independent readings can fail, and a zero built on either one is a
     // claim this command cannot make. The sidecar carries the read stamps a
