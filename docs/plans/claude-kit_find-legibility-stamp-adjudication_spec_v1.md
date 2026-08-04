@@ -1,0 +1,64 @@
+# Find Legibility and Stamp Adjudication
+
+Status: In Progress
+Commit Model: Commit-and-Push
+Fable Spend: S3+S4 review pairs (opus writers bump to fable), finishing reviews
+Created: 2026-08-03
+
+## Goal
+
+`memq find`'s semantic block stops serving archived records by default, replacing them with one counted line naming what was withheld and how to see it; its hit lines state a memory's usage history unambiguously (application tally and recency as separate facts) so the reading model judges freshness itself instead of inferring it from a rank; and a new read-only `memq unstamped` subcommand turns the applied-stamp problem from prospective memory into recognition, adjudicated at every Chapter boundary so long runs with compactions and handoffs never depend on a session remembering what it used.
+
+## Approach
+
+Three principles carry over from the store's existing design and govern every section:
+
+**Filter deterministically, weight minimally, annotate everything else.** The semantic channel already blends similarity with a tenth-capped applied boost and an archive demotion, deliberately sized so use breaks ties but never carries an unrelated record past a related one. This effort does not touch that blend. What changes is the display layer above it: archived hits move from "demoted but shown" to "withheld by default, stated by count", because a retired record in the default view is noise the reader must re-classify on every search, while a counted remainder line is one fact. The demotion constant stays, becoming effective only under `--archived`, where it keeps an equally similar live record ahead of its retired twin. A suppressed hit must never be a silent miss: the withheld line is mandatory whenever suppression removed anything, and it carries the best withheld raw similarity, the same number a hit line prints, so the reader can judge whether the rerun is worth it by comparing like with like. This is the store's standing idiom (counted remainders on recall truncation, coverage lines at zero) applied to one more surface.
+
+**Ranking stays dumb; judgment stays with the reader.** The current hit line's `applied 4d` conflates two facts: it renders the distinct-day application tally in a form that reads as recency. The fix is annotation, not weighting: render tally and last-applied age as separate tokens (`applied x4, last 2mo`). The last-applied timestamp already survives the decay rollup (the rollup record carries first and last application), so no new data is captured; the line just stops hiding a fact the boost computation already read.
+
+**Capture is mechanical; adjudication is judgment, scheduled where judgment is fresh.** Applied stamps under-fire because `touch --applied` demands a side action at an arbitrary mid-task moment, and a close-out sweep over a long run demands free recall across compaction boundaries. But `usage.jsonl` already holds the candidate set: every read stamp, written by hook, surviving compaction. `memq unstamped` diffs read events against applied events inside a window and emits the gap as a short list, converting the question from "what did you use?" to "of these files you opened, which changed what you did?", which is recognition over a machine-provided list. The adjudication runs at every Chapter boundary (executing-work step 6), because Chapters are long and compaction or a session handoff can land between them, so waiting for finishing-work loses exactly the judgment freshness the mechanism exists to protect; finishing-work keeps a final sweep as the backstop. The adjudication bar is generous by design, and the skill text states the asymmetry that justifies it: a false applied delays decay by one cycle, while a missed applied ages a load-bearing memory toward the archive, so "did it plausibly steer me" is the bar, not "can I prove it did". One residual gap is accepted and stated: a memory acted on straight from its digest description, file never opened, generates no read stamp and never enters the candidate list, so the in-turn `touch` habit and find's closing reminder line remain in force rather than being retired.
+
+## Sections of Work
+
+### 1. Archive suppression in find's semantic block
+Model: sonnet
+The semantic block of `memq find` excludes hits whose record is archived unless the run carries a new `--archived` flag. The `SEMANTIC_SHOWN` display cap applies after suppression, so live hits fill the freed slots. The admission floor continues to gate on raw similarity before anything else. Whenever suppression removed at least one hit, exactly one line in memq's own voice (column zero on stdout, outside the fenced block, between the block and the stamp reminder) follows the semantic block: the withheld count, the best withheld raw similarity to two decimals (the same quantity the hit lines print, so the reader compares like with like), and the rerun remedy, in the shape `memq: 3 archived hits withheld (best 0.62); rerun with --archived`. When every admitted hit was archived, the block prints its framing line and the withheld line only, per the coverage-at-zero idiom; note that find's current empty-result path prints `no matches` to stderr and exits before any block, so suppression must not fall into that branch. Under `--archived`, output matches today's behavior: retired hits shown, labeled, demoted by the existing constant. The lexical channel never reaches archived records (its listing walks the live tier directories only), so `--archived` changes the semantic block alone; preserve that. `--archived` is rejected with a usage line on subcommands other than `find`.
+Tests: at minimum, lock both directions of the flag (default run withholds and counts; `--archived` run shows and labels), the all-hits-archived edge locking stdout content (framing line plus withheld line, not a silent `no matches` exit), and the no-archived-hits case printing no withheld line; a silent suppression with no counted line is the expensive failure.
+References: test/memory-index.test.js and test/memory-session.test.js for the suite's harness conventions (KIT_MEMORY_ROOT_ALLOW_DATA temp-store pattern).
+
+### 2. Unambiguous usage annotation on semantic hit lines
+Model: sonnet
+`semanticHitLine` renders the application tally and the last-applied recency as two facts: `applied x<tally>, last <age>` where `<age>` uses the store's existing age-formatting conventions. The tally shown is the true distinct-day count, not the boost-capped value. A record with no applied history shows neither token (unchanged). A record whose applied history survives only as a decay rollup record still yields a correct last-applied age from the rollup's last-application field. Ranking, the boost, and the demotion are untouched; this section changes rendering only. The `retired` label and `machine:` token keep their current form and order.
+Tests: lock the rollup-only case (age from the rollup record) and the no-history case (no token); a tally silently rendered as a recency is the defect this section exists to remove, so lock the new format's shape.
+
+### 3. memq unstamped
+Model: opus
+A new read-only subcommand: `memq unstamped [--since <n>d|<n>h]`, default window matching `memq recent`'s (1d); when executing-work invokes it at a Chapter boundary, the window is since the previous Chapter's date, else the default. It reports every memory file with at least one `read` event inside the window and no `applied` event inside the window, across the tiers this project reaches (project, and the declared type tier, and operator), grouped by tier with a coverage line per tier even at zero. An `applied-rollup` record whose last-application timestamp falls inside the window counts as applied evidence, the same reading `recent` gives it. Hits are limited to files currently live in their tier: a read-stamped file that has since been archived is skipped, following the stamp reminder's rule that the command never teaches an invocation that errors (`touch` refuses an archived record). Each hit is one line: name, last-read age within the window, and the index description where the tier's index carries one. Journal keys are out of the subcommand's domain (the journal has no applied concept), as is `MEMORY.md` (the stamp hook never records it), as is the run-scoped pending tier (`touch` cannot stamp it). The command writes nothing: no read stamps, no usage entries, no lock taken beyond what a consistent read of the sidecars requires, following `recent`'s discipline. Output closes with the same tier-aware stamp reminder `find` uses, teaching the exact `touch` invocations reachable from here. The memq header comment block and `--help` surface gain the subcommand alongside its siblings.
+Tests: lock the window edges (applied-inside-window clears a hit; applied-before-window does not), the archived-file skip, the writes-nothing property (sidecar bytes identical before and after a run), and the per-tier zero coverage lines.
+References: `recent`'s implementation as the sibling pattern for windowing, grouping, and the no-write discipline; test/memory-usage-stamp.test.js for the usage-sidecar test conventions.
+
+### 4. Workflow and skill-text integration
+Model: opus
+Four documents change, and the section's product is behavior, not prose. executing-work step 6: before appending a Chapter, run `memq unstamped --since` a window covering the section's span (since the previous Chapter's date, else the 1d default), adjudicate each hit (stamp with `touch --applied` and the tier flag it needs, or skip), and record the outcome in the Chapter; the Chapter format gains one field, `Stamps: <adjudicated N, stamped M>` (with `none surfaced` acceptable), placed with the other counted fields. The trivial-section review skip does not skip adjudication; the command is one line and the judgment is cheapest at the boundary. finishing-work's close-out gains a final `unstamped` sweep over the session's span, ordered before the decay pass and before the recap: before the decay pass because applied stamps are the evidence the decay thresholds extend on, so a sweep that ran after it could stamp a memory the same close-out just archived; before the recap so late stamps land in the recap's counts. The order within step 7 is sweep, then decay pass, then recap. memory-system SKILL.md: the memq reference table gains `unstamped` and `find --archived`; the find prose describes the withheld line and the new hit-line format; a short adjudication passage states the recognition-over-recall rationale, the generous bar with its asymmetry, and the accepted digest-only gap that keeps the in-turn habit alive. All edits follow the writing-skills skill's discipline for behavior-shaping text: state the trigger, the act, and the reason the act survives pressure, in the imperative register the surrounding steps use.
+Tests: n/a (skill text); acceptance is the writing-skills self-check plus the adversarial reviewer reading each edit against the section text above.
+References: plugins/claude-kit/skills/writing-skills/SKILL.md; executing-work SKILL.md's Chapter format block (the `Stamps:` field sits outside the frozen machine contract, which covers the heading and the Completed:/Next: lines only); finishing-work SKILL.md step 7.
+
+## Out of Scope
+
+- Any change to the ranking blend: the applied boost, the archive demotion, the admission floor, and their constants stay as shipped.
+- Weighted recency scoring in any form; recency enters as annotation only.
+- `memq recall` and the session-start emission: the digest's archive coverage lines and truncation order are untouched.
+- The lexical channel's matching behavior.
+- The sync allowlist, the sidecar's location, and the embedder stack.
+- Any per-turn enforcement hook for stamping; the design accepts the digest-only gap rather than instrumenting `recall`.
+
+## Decisions
+
+- Commit model is Commit-and-Push, the kit repo's standing model (decided 2026-08-03; the kaizen skill states it and the repo history agrees).
+- The withheld line keeps its best-score clause, stated as raw similarity rather than blended rank, because it is the same number the visible hit lines print and is what lets a reader skip a pointless rerun (decided 2026-08-03).
+- `unstamped`'s window at a Chapter boundary is the mechanical approximation, since the previous Chapter's date, else the 1d default, stated in the skill text (decided 2026-08-03; the section's wall-clock span is the honest window but the approximation is what a session can compute).
+
+## Chapters
+
+(Appended by executing-work as sections complete. Leave empty at creation.)
