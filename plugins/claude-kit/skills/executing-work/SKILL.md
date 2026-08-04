@@ -149,7 +149,13 @@ For each Section of Work, in order:
 
 5. **Update the plan doc.** Mark the section complete. If the implementation deviated from the spec, update the spec section to match reality and flag the deviation in the Chapter; if the deviation changes design intent, raise it to me rather than silently rewriting the spec.
 
-6. **Append a Chapter** (format below). If a Decision or Surprise traced to the kit itself fighting the work (an ambiguous rule, a contradictory step), also jot it to the kaizen inbox per the global capture rule.
+6. **Adjudicate the applied stamps, then append a Chapter** (format below). If a Decision or Surprise traced to the kit itself fighting the work (an ambiguous rule, a contradictory step), also jot it to the kaizen inbox per the global capture rule.
+
+   Before writing the Chapter, run `memq unstamped --since <n>d` (or `<n>h`; the flag takes a duration, never a date) over a window covering the section's span, which is the elapsed time since the previous Chapter, else the 1d default. It lists the memories this stretch's sessions opened and never reported applying. Walk the list and, for each, either stamp it (`memq touch <name> --applied`, with `--type` or `--operator` where the hit's tier needs it) or skip it, then record the outcome in the Chapter's `Stamps:` field. Stamp on the generous bar the memory-system skill owns: did it plausibly steer what you did, and when in doubt, stamp.
+
+   This runs at every section boundary rather than waiting for the close-out, because the judgment is only cheap while it is fresh: a compaction or a session handoff can land between Chapters, and by the close-out of a long run nobody can say which of forty records changed a decision. The trivially-small section that skips its reviews does not skip this; the command is one line and the answer is a recognition question over a list the machine already built.
+
+   **Do not widen the window past the previous Chapter, on the theory that more is safer.** Widening pulls applied stamps into range as well as reads, so an earlier section's stamp on a record this section freshly read masks it, and the new use is never asked about. A wider window returns a shorter list, and the records it drops are exactly the ones a boundary sweep exists to catch.
 
 7. **Apply the commit model** recorded in the spec header:
    - **Review-Only:** stage the section's changes (`git add`); never commit. Accumulate a running changed-files summary in the Chapter for the final walkthrough. `git diff --staged` is my review surface.
@@ -189,6 +195,7 @@ Implemented By: <main session | implementer-haiku | implementer-sonnet | impleme
 Metrics: <review rounds; NEEDS_CONTEXT count; escalations; advisor <model | off>>
 Decisions / Surprises: <anything resolved or discovered; "none" is acceptable>
 Review Findings: <Critical/Major addressed; Majors justified; Minors noted>
+Stamps: <adjudicated N, stamped M; "none surfaced" is acceptable>
 Next: <next section, or "finishing-work">
 Commit Model: <Review-Only | Branch-and-PR | Commit-and-Push>
 ```

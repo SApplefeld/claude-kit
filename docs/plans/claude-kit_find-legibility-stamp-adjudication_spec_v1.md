@@ -70,6 +70,18 @@ Folded verbatim into every dispatch brief from Section 3 onward (executing-work 
 
 ## Chapters
 
+### Chapter 4 - 2026-08-04
+Completed: 4. Workflow and skill-text integration
+Implemented By: main session (docs routing override: a section writing under `docs/` or into skill text is the main thread's, since the docs-write-guard denies a non-curator subagent that write and the authoring is voice-entangled)
+Metrics: 1 review round (adversarial at fable; blind skipped, an all-prose changeset having no correctness surface for a diff-only lens, per finishing-work's own waiver); 0 NEEDS_CONTEXT; 0 escalations; advisor opus
+Decisions / Surprises: `docs/security-model.md` needed a second pass this effort. Section 3's changeset fixed its path enumeration for `unstamped`; the review caught that the same document's semantic-hit-line row still enumerated the pre-Section-2 field list, and that its column-zero enumeration predated Section 1's withheld line. Both are the same defect class the document itself exists to guard against, on a surface Section 4's References line never named. The window prose was also strengthened from a neutral observation into a prohibition: a wider `--since` returns a shorter list, because widening pulls an earlier section's applied stamps into range and masks a record this section freshly read, so widening-for-thoroughness is exactly backwards and the text now says so.
+Review Findings: Critical: none. Major addressed: the generous bar and the accepted digest-only gap were restated near-verbatim in executing-work when memory-system owns them, which is the duplication writing-skills bans by name, and the two copies had already drifted one word; executing-work now carries a one-line point-of-action residue pointing at the owner. Major addressed: the two stale security-model enumerations above. Minor addressed: both skills taught `--since <window>` with a date-shaped description where the flag takes only `<n>d|<n>h`, which would teach an invocation that errors; Minor addressed: the wider-window note stated the mechanism without the cost, now a prohibition with its reason.
+Stamps: adjudicated 0, none surfaced (a prose section following a boundary sweep three hours earlier, both tiers at zero).
+Next: finishing-work
+Commit Model: Commit-and-Push
+
+Gate: full 21-file suite 666 pass / 0 fail. One flake observed and root-caused rather than dismissed: `merged-pr-push-guard.test.js`'s "a push to a branch with a merged PR is blocked" failed once in a group run, taking 11.1s against 1.1s alone. The guard hook spawns `gh` through `execSync` with an 8-second timeout and fails open on any query failure, both deliberate so a hook never hangs a push; under twenty parallel test processes the faked shim exceeded that budget, the hook allowed the push, and the assertion flipped. It passes alone and on a clean re-run of the full suite. The defect is test-side (an under-contention spawn starving past a fixed budget) and the fix belongs to that hook's own test, outside this effort's scope; recorded here rather than widened into this changeset.
+
 ### Chapter 3 - 2026-08-04
 Completed: 3. memq unstamped
 Implemented By: implementer-opus, with the review fixes taken in the main session
