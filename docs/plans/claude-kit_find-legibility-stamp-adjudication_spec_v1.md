@@ -62,7 +62,25 @@ References: plugins/claude-kit/skills/writing-skills/SKILL.md; executing-work SK
 - The withheld line headlines the full withheld count and scores only the subset a rerun would show (decided 2026-08-03, during Section 1). The spec as written named one count, and the two commitments behind it turned out to need two: quoting a best similarity from a record the rerun's own display cap would cut sends a reader after a line that does not exist, while headlining only what the rerun shows would both let a mature store's archive vanish silently and make the sentence read backwards ("3 in range, 2 withheld" implies one was shown). Keeping "withheld" on the true total and attaching the score to the rerun-visible subset satisfies both, at the cost of one clause in the case where they differ.
 - `unstamped`'s window at a Chapter boundary is the mechanical approximation, since the previous Chapter's date, else the 1d default, stated in the skill text (decided 2026-08-03; the section's wall-clock span is the honest window but the approximation is what a session can compute).
 
+## Standing Brief Amendments
+
+Folded verbatim into every dispatch brief from Section 3 onward (executing-work step 1).
+
+- **A test must fail under the bug it replaces, and must say why it would.** State in the test's own comment the property that makes it discriminate, then assert that property rather than arranging it and trusting it. A fixture whose premise is merely set up (two records scoring equally, a record sitting inside the display cut, an ordering that only holds under one reading) passes just as green when the premise quietly drifts, and it then proves nothing about the defect it was written for. Both review rounds of this effort surfaced exactly this shape: once as a Major (a regression test that passed identically under the bug it was written to catch) and once as a Minor (an ordering assertion resting on an unasserted score equality).
+
 ## Chapters
+
+### Chapter 2 - 2026-08-04
+Completed: 2. Unambiguous usage annotation on semantic hit lines
+Implemented By: implementer-sonnet, with the review fixes taken in the main session
+Metrics: 1 review round; 0 NEEDS_CONTEXT; 0 escalations; advisor opus
+Decisions / Surprises: The live store proved the section's premise on its first run. `kit-test-runner-explicit-files` printed `applied 4d`, which reads as "four days ago" and actually meant "on four distinct days, last 25 hours ago". The split is `applied x4, last 25h`. The Approach's illustrative `last 2mo` is not reachable: the store's `formatAge` has no month unit and yields days beyond 48 hours, and Section 2's normative text defers to the store's existing conventions, so a two-month age renders as `62d`; adding a month unit would silently change `recall`, `recent`, and the journal lines. Displayed tally and ranking tally have deliberately diverged, since the boost stays capped at `SEMANTIC_BOOST_CAP_DAYS` while the line prints the true count.
+Review Findings: Critical: none. Major declined with justification: the blind reviewer flagged that a hit reading `applied x15` can now sort below one reading `applied x10` with nothing on either line accounting for it, and proposed either printing the capped value or annotating the cap. Both invert the Approach's second principle ("ranking stays dumb; judgment stays with the reader") and Section 2's explicit requirement that the shown tally be the true count; the hit line is annotation, not a rank trace, and the case only arises where two records both exceed ten distinct applied days. The adversarial reviewer, holding the spec, cleared the same code as compliant. Minor addressed: an unused `now` parameter threaded into `semanticChannel` (both reviewers); the capped-versus-uncapped rule stated twice in near-identical prose; a fixture pinned to calendar literals where `formatAge`'s 48-hour day boundary made it clock-dependent; a cap test whose ordering assertion rested on an unasserted score equality; a comment saying "with no stamps" where both fixtures carried stamps. Minor noted, not taken: the new format omits the word "distinct" that `recall` and `decay-scan` both carry, which Section 2 pins by naming the exact shape `applied x<tally>, last <age>` and which the `x` prefix already disambiguates.
+Recurrence: the unasserted-premise finding is the second instance of "a test that passes just as green under the bug it was written for" (Chapter 1's adversarial Major was the first). A Standing Brief Amendments block was added to this plan and folds into every dispatch brief from Section 3 onward.
+Next: 3. memq unstamped
+Commit Model: Commit-and-Push
+
+Gate: full 21-file suite 654 pass / 0 fail, against 651 / 0 at the Section 1 commit; the +3 is exactly the three new `test()` calls. Verified additionally by a live `memq find` against the real store showing the new two-token format.
 
 ### Chapter 1 - 2026-08-03
 Completed: 1. Archive suppression in find's semantic block

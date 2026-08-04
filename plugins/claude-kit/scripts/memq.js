@@ -1812,7 +1812,7 @@ async function cmdFind(argv) {
         for (const note of semantic.notes) process.stderr.write(note + '\n');
         withheld = semantic.withheld;
         for (const h of semantic.hits) {
-            semanticLines.push(semanticHitLine(h));
+            semanticLines.push(semanticHitLine(h, now));
             // A semantic hit feeds the reminder only where `touch` can stamp
             // it from this working directory, cmdTouch's own resolution: the
             // plain form stats this cwd's live project tier, --type the
@@ -2014,6 +2014,13 @@ async function semanticChannel(term, tag, alreadyShown, showArchived) {
             && machineName.toLowerCase() !== localMachine.toLowerCase();
         const applied = tallyForTier(tallies, liveTierOf(h.tier), h.store)
             .get(memoryFileKey(h.name + '.md'));
+        // Two different numbers come out of the same tally, and only one of
+        // them is allowed to touch rank. `days` feeds the boost and stays
+        // capped at SEMANTIC_BOOST_CAP_DAYS, the existing rule that a tally
+        // can break a tie but never outweigh meaning; `appliedDays` is the
+        // uncapped truth the hit line prints, because a reader deciding
+        // whether to trust a memory needs the real count, not the fraction
+        // of it the ranking bothered to reward.
         const days = applied === undefined ? 0
             : Math.min(applied.distinctDays, SEMANTIC_BOOST_CAP_DAYS);
         admitted.push({
@@ -2022,7 +2029,8 @@ async function semanticChannel(term, tag, alreadyShown, showArchived) {
             store: h.store,
             archived: h.archived === true,
             score: h.score,
-            days,
+            appliedDays: applied === undefined ? 0 : applied.distinctDays,
+            appliedLastMs: applied === undefined ? null : applied.lastMs,
             machine: foreign ? machineName : null,
             rank: h.score + SEMANTIC_APPLIED_BOOST * days
                 - (h.archived === true ? SEMANTIC_ARCHIVE_DEMOTION : 0),
@@ -2093,7 +2101,7 @@ async function semanticChannel(term, tag, alreadyShown, showArchived) {
 // decay clock can see; a cross-store hit is outside `get`'s reach from
 // here, and its provenance label is the address for opening the file by
 // path.
-function semanticHitLine(h) {
+function semanticHitLine(h, now) {
     let label;
     if (h.tier === 'project' || h.tier === 'project-archive') {
         label = 'project:' + sanitize(h.store, NAME_CAP);
@@ -2106,7 +2114,17 @@ function semanticHitLine(h) {
     let line = '  ' + sanitize(h.name, NAME_CAP) + '  ' + h.score.toFixed(2)
         + '  (' + label + ')';
     if (h.machine !== null) line += '  machine:' + sanitize(h.machine, MACHINE_CAP);
-    if (h.days > 0) line += '  applied ' + h.days + 'd';
+    // A tally and a recency are two different facts, and folding them into
+    // one number ("applied 4d") reads as an age even though it counts
+    // distinct days used, not days since. Splitting them into `applied x<n>`
+    // and `last <age>` costs one comma and removes the ambiguity: the reader
+    // judges freshness from the age token and trust from the count token,
+    // instead of a rank silently deciding which one mattered. The count is
+    // the uncapped truth, for the reason semanticChannel states where the two
+    // numbers part.
+    if (h.appliedDays > 0) {
+        line += '  applied x' + h.appliedDays + ', last ' + recallAgeColumn(h.appliedLastMs, now);
+    }
     return line;
 }
 

@@ -7460,9 +7460,12 @@ test('the applied-day tally boosts a semantic hit past an otherwise identical ri
             < beforeHits.findIndex((l) => l.includes('  boost-two  ')),
         'without stamps the store tiebreak leads: ' + JSON.stringify(beforeHits));
 
+        // Relative dates, not calendar literals: the assertion below reads a
+        // `last <age>` token, and formatAge only reaches its day unit past
+        // 48h, so fixed literals would tie this test to the wall clock.
         fs.writeFileSync(path.join(store.root, 'projects', 'D--proj-bbb', 'memory', 'usage.jsonl'),
-            ['2026-07-01', '2026-07-02', '2026-07-03'].map((d) => JSON.stringify({
-                ts: d + 'T10:00:00.000Z', file: 'boost-two.md', kind: 'applied'
+            [5, 4, 3].map((n) => JSON.stringify({
+                ts: daysAgo(n).toISOString(), file: 'boost-two.md', kind: 'applied'
             }) + '\n').join(''), 'utf8');
 
         const after = run(store, ['find', 'zebra quantum'], withEmbedder(emb));
@@ -7472,8 +7475,122 @@ test('the applied-day tally boosts a semantic hit past an otherwise identical ri
         const twoAt = hits.findIndex((l) => l.includes('  boost-two  '));
         assert.ok(twoAt !== -1 && oneAt !== -1, JSON.stringify(hits));
         assert.ok(twoAt < oneAt, 'the applied tally lifts the used record: ' + JSON.stringify(hits));
-        assert.ok(hits[twoAt].includes('applied 3d'), hits[twoAt]);
+        assert.match(hits[twoAt], /applied x3, last \d+d/, hits[twoAt]);
         assert.ok(!hits[oneAt].includes('applied'), hits[oneAt]);
+    } finally {
+        rmFakeEmbedder(emb);
+        rmStore(store);
+    }
+});
+
+// Section 2's fixtures: the hit line's applied clause as two unambiguous
+// tokens, `applied x<tally>` and `last <age>`, never the old single number
+// that read as a recency when it counted distinct days.
+
+test('a distinct-day tally past the boost cap still prints the true count, while ranking stays capped', () => {
+    const store = makeStore();
+    const emb = makeFakeEmbedder();
+    try {
+        // Same body, same score, different stores: with equal capped boosts
+        // the store order (aaa before bbb) is the tiebreak. cap-ten applies on exactly
+        // SEMANTIC_BOOST_CAP_DAYS distinct days; cap-many applies on five
+        // more. If the boost read the uncapped tally, cap-many would outrank
+        // cap-ten; because the boost stays capped, the two land on an equal
+        // rank and fall back to the same store-order tiebreak, which is the
+        // proof that the extra five days never reached ranking even though
+        // they must still reach the printed line.
+        plantAt(store, ['projects', 'D--proj-aaa', 'memory'], 'cap-ten', 'zebra quantum cap body\n');
+        plantAt(store, ['projects', 'D--proj-bbb', 'memory'], 'cap-many', 'zebra quantum cap body\n');
+
+        const tenDates = [];
+        for (let i = 0; i < 10; i++) tenDates.push(daysAgo(30 - i).toISOString());
+        fs.writeFileSync(path.join(store.root, 'projects', 'D--proj-aaa', 'memory', 'usage.jsonl'),
+            tenDates.map((ts) => JSON.stringify({ ts, file: 'cap-ten.md', kind: 'applied' }) + '\n').join(''),
+            'utf8');
+
+        const manyDates = [];
+        for (let i = 0; i < 15; i++) manyDates.push(daysAgo(30 - i).toISOString());
+        fs.writeFileSync(path.join(store.root, 'projects', 'D--proj-bbb', 'memory', 'usage.jsonl'),
+            manyDates.map((ts) => JSON.stringify({ ts, file: 'cap-many.md', kind: 'applied' }) + '\n').join(''),
+            'utf8');
+
+        const res = run(store, ['find', 'zebra quantum'], withEmbedder(emb));
+        assert.strictEqual(res.status, 0, res.stderr);
+        const hits = semanticBlockLines(res.stdout);
+        assert.ok(hits !== null, res.stdout);
+        const tenAt = hits.findIndex((l) => l.includes('  cap-ten  '));
+        const manyAt = hits.findIndex((l) => l.includes('  cap-many  '));
+        assert.ok(tenAt !== -1 && manyAt !== -1, JSON.stringify(hits));
+        // The order proves the cap only while the two similarities are equal:
+        // if the fixture ever drifted so that one record simply scored higher,
+        // the ordering assertion below would still pass and prove nothing
+        // about the boost. Pin the premise before leaning on it.
+        const scoreOf = (l) => l.match(/ (\d\.\d\d) /)[1];
+        assert.strictEqual(scoreOf(hits[tenAt]), scoreOf(hits[manyAt]),
+            'the fixture must score both records identically for the order to test the cap: '
+            + JSON.stringify(hits));
+        assert.ok(tenAt < manyAt,
+            'equal capped boost falls back to store order, proving rank never saw the extra five days: '
+            + JSON.stringify(hits));
+        assert.match(hits[tenAt], /applied x10, last \d+d/, hits[tenAt]);
+        assert.match(hits[manyAt], /applied x15, last \d+d/, hits[manyAt]);
+    } finally {
+        rmFakeEmbedder(emb);
+        rmStore(store);
+    }
+});
+
+test('a rollup-only applied history still yields a correct last-applied age from the rollup record', () => {
+    const store = makeStore();
+    const emb = makeFakeEmbedder();
+    try {
+        plantAt(store, ['memory-operator'], 'rolled-up', 'zebra quantum rollup body\n');
+
+        // The rollup's own ts and firstApplied sit far outside the window the
+        // hit line must report; only lastApplied may drive the printed age,
+        // proving the line reads the field the fold actually carries rather
+        // than whichever timestamp happens to ride first on the record.
+        fs.mkdirSync(path.join(store.root, 'memory-operator'), { recursive: true });
+        fs.writeFileSync(path.join(store.root, 'memory-operator', 'usage.jsonl'),
+            JSON.stringify({
+                ts: daysAgo(400).toISOString(),
+                file: 'rolled-up.md',
+                kind: 'applied-rollup',
+                distinctDays: 4,
+                firstApplied: daysAgo(200).toISOString(),
+                lastApplied: daysAgo(5).toISOString()
+            }) + '\n', 'utf8');
+
+        const res = run(store, ['find', 'zebra quantum'], withEmbedder(emb));
+        assert.strictEqual(res.status, 0, res.stderr);
+        const hits = semanticBlockLines(res.stdout);
+        assert.ok(hits !== null, res.stdout);
+        assert.strictEqual(hits.length, 1, JSON.stringify(hits));
+        // The full line, not a substring: the exact shape the defect this
+        // section removes (a tally that read as a recency) must not recur.
+        const score = hits[0].match(/ (\d\.\d\d) /)[1];
+        assert.strictEqual(hits[0],
+            '  rolled-up  ' + score + '  (operator)  applied x4, last 5d',
+            hits[0]);
+    } finally {
+        rmFakeEmbedder(emb);
+        rmStore(store);
+    }
+});
+
+test('a hit with no applied history carries neither token, the unchanged no-history case', () => {
+    const store = makeStore();
+    const emb = makeFakeEmbedder();
+    try {
+        plantAt(store, ['memory-operator'], 'never-applied', 'zebra quantum untouched body\n');
+
+        const res = run(store, ['find', 'zebra quantum'], withEmbedder(emb));
+        assert.strictEqual(res.status, 0, res.stderr);
+        const hits = semanticBlockLines(res.stdout);
+        assert.ok(hits !== null, res.stdout);
+        assert.strictEqual(hits.length, 1, JSON.stringify(hits));
+        const score = hits[0].match(/ (\d\.\d\d) /)[1];
+        assert.strictEqual(hits[0], '  never-applied  ' + score + '  (operator)', hits[0]);
     } finally {
         rmFakeEmbedder(emb);
         rmStore(store);
