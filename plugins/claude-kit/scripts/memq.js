@@ -4,7 +4,7 @@
 //
 // Subcommands:
 //   memq log <key> pass|fail "<summary>" [--tag t]... [--detail "..."]
-//   memq find <term> [--tag t] [--outcomes|--memories|--all]
+//   memq find <term> [--tag t] [--outcomes|--memories|--all] [--archived]
 //   memq get <key|name>
 //   memq recall
 //   memq recent [--since <n>d|<n>h]
@@ -1483,7 +1483,7 @@ function usage(problem) {
     if (problem) process.stderr.write('memq: ' + problem + '\n');
     process.stderr.write(
         'usage: memq log <key> pass|fail "<summary>" [--tag t]... [--detail "..."]\n'
-        + '       memq find <term> [--tag t] [--outcomes|--memories|--all]\n'
+        + '       memq find <term> [--tag t] [--outcomes|--memories|--all] [--archived]\n'
         + '       memq get <key|name>\n'
         + '       memq recall\n'
         + '       memq recent [--since <n>d|<n>h]\n'
@@ -1655,16 +1655,28 @@ function journalKeyLine(key, g, now) {
 // resolves and prints at column zero, while the semantic channel
 // spans every store on the machine and rides under a provenance fence.
 // Deduplication is by identity rather than by name, so a record never prints
-// twice while its archived namesake can still surface, demoted and labeled.
+// twice while its archived namesake can still surface under `--archived`,
+// demoted and labeled.
 //
 // THE SEMANTIC CHANNEL'S REACH is deliberately wider than the lexical
 // channel's, on two axes. It spans every project store on the machine, not
 // only the caller's, because the index exists to answer whether any project
 // here has learned something, and one operator owns all of them. And it
 // spans every tier's archive, which the lexical channel never reaches: a
-// retired memory is a fact someone once banked, and a search by meaning is
-// exactly where resurfacing one earns a demoted, labeled line. Both
-// widenings live inside the fenced semantic block and serve names, scores,
+// retired memory is a fact someone once banked, and a search by meaning can
+// find it again. That reach is ranked but not shown by default: a retired
+// record clears the same floor, dedupe, and tag filter as any live hit, then
+// is withheld from the block rather than printed among live answers, because
+// a session asking what it knows now should not have to sort a live match
+// from a superseded one. Withholding stays legible rather than silent: one
+// line counts what was held back and names the best similarity among the
+// part of it a rerun can actually show (withheldLine below owns why those
+// are two different counts), so a caller who needs the retired history knows
+// it exists and what reaching it would cost. `--archived` turns the filter
+// off: every admitted hit prints, archived ones demoted and labeled
+// `retired`, and no withheld line, because the flag itself is the caller
+// declaring the interest the default line pointed at.
+// Both widenings live inside the fenced semantic block and serve names, scores,
 // and provenance only, never descriptions or bodies. A body is fetched with
 // `get` where the hit sits in a tier this project resolves (its own store,
 // its declared type, the operator tier, and their archives), and that read
@@ -1693,6 +1705,7 @@ async function cmdFind(argv) {
     let term = null;
     let tag = null;
     let scope = 'all';
+    let showArchived = false;
     for (let i = 0; i < argv.length; i++) {
         const a = argv[i];
         if (a === '--tag') {
@@ -1702,11 +1715,22 @@ async function cmdFind(argv) {
         } else if (a === '--outcomes') scope = 'outcomes';
         else if (a === '--memories') scope = 'memories';
         else if (a === '--all') scope = 'all';
+        else if (a === '--archived') showArchived = true;
         else if (a.startsWith('--')) return usage('unknown option ' + sanitize(a, 40));
         else if (term !== null) return usage('find takes one <term>');
         else term = a;
     }
     if (term === null) return usage('find needs a <term>');
+    // --outcomes answers from the journal alone and never opens the semantic
+    // channel, so --archived alongside it is a request this run cannot
+    // serve. It is refused rather than ignored: a caller who asked for
+    // retired records and got a clean exit 0 has no way to learn the ask was
+    // dropped, and a flag that silently does nothing is the shape every
+    // other option here already refuses.
+    if (showArchived && scope === 'outcomes') {
+        return usage('--archived has nothing to filter under --outcomes:'
+            + ' the journal has no archive');
+    }
 
     const memDir = readMemDirOrNote();
     // --outcomes asks for journal keys alone, and the journal is project-tier
@@ -1782,9 +1806,11 @@ async function cmdFind(argv) {
     }
 
     const semanticLines = [];
+    let withheld = null;
     if (scope !== 'outcomes') {
-        const semantic = await semanticChannel(term, tag, lexicalShown);
+        const semantic = await semanticChannel(term, tag, lexicalShown, showArchived);
         for (const note of semantic.notes) process.stderr.write(note + '\n');
+        withheld = semantic.withheld;
         for (const h of semantic.hits) {
             semanticLines.push(semanticHitLine(h));
             // A semantic hit feeds the reminder only where `touch` can stamp
@@ -1805,15 +1831,21 @@ async function cmdFind(argv) {
         }
     }
 
-    if (lines.length === 0 && semanticLines.length === 0) {
+    // A truthiness check rather than a null identity: semanticChannel's own
+    // contract is that it never throws whatever the embedder did, and a
+    // future degradation path that returned without the key at all would
+    // turn that promise into a TypeError here.
+    const withheldTotal = withheld ? withheld.total : 0;
+    if (lines.length === 0 && semanticLines.length === 0 && withheldTotal === 0) {
         process.stderr.write('memq: no matches for \'' + sanitize(term, NAME_CAP) + '\'\n');
         return;
     }
     const out = lines.slice();
-    if (semanticLines.length > 0) {
+    if (semanticLines.length > 0 || withheldTotal > 0) {
         out.push(fenceLine([semanticClause()]));
         for (const l of semanticLines) out.push(l);
     }
+    if (withheldTotal > 0) out.push(withheldLine(withheld));
     if (reachableTiers.size > 0) out.push(stampReminder(reachableTiers));
     process.stdout.write(out.join('\n') + '\n');
 }
@@ -1871,7 +1903,7 @@ function tallyForTier(cache, liveTier, store) {
 // which drains only after this file finishes evaluating, so by the time the
 // require runs the export object is the real one. Lazy also keeps every
 // non-find command from loading a module it never uses.
-async function semanticChannel(term, tag, alreadyShown) {
+async function semanticChannel(term, tag, alreadyShown, showArchived) {
     await null;
     let mi;
     let result;
@@ -1891,7 +1923,8 @@ async function semanticChannel(term, tag, alreadyShown) {
             notes: ['memq: semantic search failed ('
                 + sanitize(err && err.message ? err.message : String(err), 200)
                 + '); serving lexical matches only'],
-            hits: []
+            hits: [],
+            withheld: null
         };
     }
     if (result.status === 'absent' || result.status === 'unusable') {
@@ -1906,7 +1939,8 @@ async function semanticChannel(term, tag, alreadyShown) {
         return {
             notes: ['memq: semantic search off (' + reason
                 + '); serving lexical matches only. remedy: ' + sanitize(remedy, 200)],
-            hits: []
+            hits: [],
+            withheld: null
         };
     }
     if (result.status !== 'ok') {
@@ -1914,7 +1948,8 @@ async function semanticChannel(term, tag, alreadyShown) {
             notes: ['memq: semantic search failed ('
                 + sanitize(result.detail || 'the embedder returned no vector for the query', 200)
                 + '); serving lexical matches only'],
-            hits: []
+            hits: [],
+            withheld: null
         };
     }
 
@@ -2000,7 +2035,48 @@ async function semanticChannel(term, tag, alreadyShown) {
         || a.tierOrder - b.tierOrder
         || (a.store < b.store ? -1 : a.store > b.store ? 1 : 0)
         || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
-    return { notes, hits: admitted.slice(0, SEMANTIC_SHOWN) };
+    // Archive suppression runs after admission and ranking, and before the
+    // SEMANTIC_SHOWN slice, so a live hit fills the display slot an archived
+    // one would otherwise have taken: the admission floor, the cross-channel
+    // dedupe, the recordPath resolution, and the tag filter have all already
+    // run by this point, and suppression is one more filter over that same
+    // admitted set, not a second gate on top of it. `--archived` disables the
+    // filter and reports no withheld count, so its output stays exactly what
+    // shipped before this filter existed.
+    //
+    // The withheld report counts two different sets, because one number
+    // cannot answer both questions the line has to answer. `shown` is the
+    // archived records inside the pre-suppression display slice, which is
+    // exactly what a `--archived` rerun puts on screen, so `shown` and the
+    // best raw similarity among them are the only figures that can honestly
+    // carry the remedy: quoting a similarity from a record the rerun's own
+    // cap would cut sends a caller after a line they will never see.
+    // `total` is every archived record that cleared admission, which is the
+    // suppression's true extent and the figure that keeps a withheld hit
+    // from being a silent miss. They diverge on any mature store, where the
+    // floor admits far more than the cap shows, so the line states both
+    // whenever they differ rather than picking one and quietly losing the
+    // other.
+    let withheld = null;
+    let visible = admitted;
+    if (!showArchived) {
+        const kept = [];
+        let total = 0;
+        for (const a of admitted) {
+            if (a.archived) total += 1;
+            else kept.push(a);
+        }
+        let shown = 0;
+        let best = -Infinity;
+        for (const a of admitted.slice(0, SEMANTIC_SHOWN)) {
+            if (!a.archived) continue;
+            shown += 1;
+            if (a.score > best) best = a.score;
+        }
+        visible = kept;
+        if (total > 0) withheld = { shown, best, total };
+    }
+    return { notes, hits: visible.slice(0, SEMANTIC_SHOWN), withheld };
 }
 
 // One displayed line per semantic hit, indented under the channel's fence:
@@ -2042,6 +2118,43 @@ function semanticHitLine(h) {
 function semanticClause() {
     return 'the semantic index, ranking every memory store and archive on this'
         + ' machine by meaning';
+}
+
+// The one line that keeps archive suppression from being a silent miss, in
+// memq's own voice at column zero, so it closes the fenced block rather than
+// reading as one more hit inside it.
+//
+// The count the word "withheld" names is `total`, every archived record
+// suppression removed from the block, because that is the quantity the
+// no-silent-miss commitment is about and the only one the sentence can carry
+// without lying: a headline of the rerun-visible subset would read as "three
+// exist, two were withheld, so one is on screen", the exact inverse of what
+// happened.
+//
+// `shown` and `best` then answer the second question, whether the rerun is
+// worth running. `--archived` reruns under this same display cap, so it
+// prints only the archived records inside the pre-suppression slice; `shown`
+// is exactly that set and `best` is the strongest raw similarity within it,
+// at the same precision a hit line prints, so the number a caller weighs
+// against the scores already on screen always belongs to a line the rerun
+// will actually produce. Quoting a similarity from a record the cap would
+// cut is what sends a caller after a line that does not exist. The subset
+// clause appears only when the two counts differ, so the ordinary
+// small-store case reads as the plain sentence it always was.
+//
+// With nothing archived inside the cut the remedy inverts: the rerun is the
+// same lines, so the line says so instead of recommending it. A remedy that
+// hands a caller their own screen back trains sessions off the flag, the
+// same failure the stamp reminder avoids by naming only invocations that
+// work.
+function withheldLine(w) {
+    const head = 'memq: ' + w.total + ' archived hit' + (w.total === 1 ? '' : 's') + ' withheld';
+    if (w.shown === 0) {
+        return head + ', none inside the rerun\'s cut; --archived would show these same lines';
+    }
+    return head
+        + (w.total > w.shown ? ', ' + w.shown + ' inside the rerun\'s cut' : '')
+        + ' (best ' + w.best.toFixed(2) + '); rerun with --archived';
 }
 
 // The standing stamp reminder closing a find whose shown hits include at
@@ -4892,6 +5005,8 @@ module.exports = {
     lastAliveMs,
     recallDigest,
     recentDigest,
+    withheldLine,
+    SEMANTIC_SHOWN,
     parseSince,
     ARCHIVE_DIR,
     OPERATOR_LABEL,
