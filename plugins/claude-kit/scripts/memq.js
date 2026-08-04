@@ -8,6 +8,7 @@
 //   memq get <key|name>
 //   memq recall
 //   memq recent [--since <n>d|<n>h]
+//   memq unstamped [--since <n>d|<n>h]
 //   memq touch <name> --applied [--type|--operator]
 //   memq add-type <type> <name> "<description>" [--body "..."] [--tag t]...
 //   memq add-operator <name> "<description>" [--body "..."] [--tag t]...
@@ -1053,7 +1054,13 @@ function isUsageStamp(v) {
 // unreadable sidecar that would silently zero every memory's applied
 // evidence. The standing evidence line decay-scan prints needs the reason,
 // and a bare [] here would erase it.
-function readUsage(memDir) {
+// `tag` is the optional tier suffix a note about this read carries, the same
+// convention readArchiveDescriptions takes. A caller reading one sidecar needs
+// none: there is only one file the note could be about. A caller reading
+// several in one pass does, because two bare "line 2" notes from different
+// tiers are indistinguishable and neither names the file to go fix.
+function readUsage(memDir, tag) {
+    const where = tag === undefined || tag === '' ? '' : ' in the ' + tag + ' tier';
     let raw;
     try {
         raw = fs.readFileSync(path.join(memDir, USAGE_FILE), 'utf8');
@@ -1061,7 +1068,7 @@ function readUsage(memDir) {
         // Only absence reads as no stamps. Any other failure is noted, so it
         // cannot masquerade as "nothing was ever applied".
         if (!err || err.code !== 'ENOENT') {
-            process.stderr.write('memq: could not read usage sidecar: '
+            process.stderr.write('memq: could not read usage sidecar' + where + ': '
                 + sanitize(err && err.message ? err.message : String(err), 200) + '\n');
             return { status: 'unreadable', stamps: [] };
         }
@@ -1075,7 +1082,7 @@ function readUsage(memDir) {
         let parsed = null;
         try { parsed = JSON.parse(line); } catch { /* reported just below */ }
         if (!isUsageStamp(parsed)) {
-            process.stderr.write('memq: skipping malformed usage line ' + (i + 1) + '\n');
+            process.stderr.write('memq: skipping malformed usage line ' + (i + 1) + where + '\n');
             continue;
         }
         stamps.push(parsed);
@@ -1487,6 +1494,7 @@ function usage(problem) {
         + '       memq get <key|name>\n'
         + '       memq recall\n'
         + '       memq recent [--since <n>d|<n>h]\n'
+        + '       memq unstamped [--since <n>d|<n>h]\n'
         + '       memq touch <name> --applied [--type|--operator]\n'
         + '       memq add-type <type> <name> "<description>" [--body "..."] [--tag t]...\n'
         + '       memq add-operator <name> "<description>" [--body "..."] [--tag t]...'
@@ -3451,6 +3459,266 @@ function cmdRecent(argv) {
     process.stdout.write(recentDigest(surfaces, fence, RECENT_MAX_LINES).join('\n') + '\n');
 }
 
+// One tier's unstamped reads: the live records of that tier whose sidecar
+// carries at least one `read` stamp inside the window and no applied evidence
+// inside it, newest read first with the name as tiebreak so output never
+// depends on enumeration order.
+//
+// The window is a diff rather than a list, which is the whole idea of the
+// command: a list of everything read is the session's own recent history and
+// tells it nothing it does not already have, while the reads with no applied
+// answer beside them are exactly the set a judgment is still owed on.
+//
+// A rollup counts as applied evidence and is dated by the last application it
+// folded, never by the fold's own timestamp: a decay pass runs whenever it
+// runs, which says nothing about when the memory was used. That is the reading
+// `recent` gives the same record.
+//
+// Candidates come from listMemories, so only records live in the tier can be
+// hits and a read-stamped file since archived drops out. That is the stamp
+// reminder's rule reaching one command further: `touch` refuses an archived
+// record, and a list that named one would teach an invocation that errors,
+// which trains sessions off the stamp instead of onto it. listMemories also
+// carries the tier index's description, so the liveness question and the line's
+// last column are one read.
+//
+// `unread` rides alongside because an empty list has two meanings, readUsage's
+// own rule over the same failure. A tier whose sidecar could not be read
+// yields no stamps at all, and a hit requires a read stamp, so lost evidence
+// can only hide hits and never manufacture one: the count is a floor, and the
+// coverage line says so.
+function unstampedTierHits(dir, from, tag) {
+    // Two independent readings can fail, and a zero built on either one is a
+    // claim this command cannot make. The sidecar carries the read stamps a
+    // hit requires; the listing carries the live records a hit is drawn from.
+    // Lose either and every hit that tier owed silently becomes no hit at
+    // all, which reads as an adjudicated-clean tier and is the expensive
+    // direction: a missed applied ages a load-bearing memory toward the
+    // archive, while a false one costs a single recognition question. So the
+    // floor keys on the tier's whole reachability, not the sidecar alone.
+    // listMemories answers an unreadable directory and an absent one the same
+    // way, with an empty list, so the reachability question is asked through
+    // recentFileNames, the store's one listing reader that reports how the
+    // read went, rather than inferred from a list that cannot tell the two
+    // apart. An absent directory counts as unreached for the same reason: a
+    // project whose store this run never found (the operator-tier case, where
+    // the project path is handed back regardless) has no records to sweep,
+    // and a bare zero there is a claim about a store that is not there.
+    const listing = recentFileNames(dir);
+    const usage = readUsage(dir, tag);
+    const lastRead = new Map();
+    const applied = new Set();
+    for (const s of usage.stamps) {
+        const ms = s.kind === 'applied-rollup' ? Date.parse(s.lastApplied) : Date.parse(s.ts);
+        if (!(ms >= from)) continue;
+        const key = memoryFileKey(s.file);
+        if (s.kind === 'read') {
+            const prev = lastRead.get(key);
+            if (prev === undefined || ms > prev) lastRead.set(key, ms);
+        } else applied.add(key);
+    }
+    // The window is a set membership question, not an ordering one: any
+    // applied evidence inside it clears the record, even where a later read
+    // followed that stamp. Deliberately so, because the command's caller is a
+    // section boundary asking which of this stretch's reads went unadjudicated,
+    // and a record already stamped inside the stretch has had its judgment.
+    // Comparing timestamps instead would re-surface it on every subsequent
+    // read, which is the nagging that trains sessions to skim the list, and
+    // the list only works while every line on it is a real question.
+    const hits = [];
+    for (const m of listMemories(dir)) {
+        const key = memoryFileKey(m.name + '.md');
+        const readMs = lastRead.get(key);
+        if (readMs === undefined || applied.has(key)) continue;
+        hits.push({ name: m.name, description: m.description, ms: readMs });
+    }
+    hits.sort((a, b) => b.ms - a.ms || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+    return { hits, unread: usage.status === 'unreadable' || listing.status !== 'ok' };
+}
+
+// memq unstamped: the memories this project's sessions opened inside a window
+// and never reported applying, grouped by tier, for adjudication at a section
+// boundary. Applied stamps under-fire because `touch --applied` asks for a side
+// action at an arbitrary mid-task moment and a close-out sweep asks for free
+// recall across compaction boundaries; the read stamps the hook already wrote
+// survive both, so this turns the question from "what did you use?" into "of
+// these files you opened, which one changed what you did?", which is
+// recognition over a machine-provided list rather than memory.
+//
+// Output shape, in order, with the tier token leading every record line (the
+// decay-scan convention, so a line stays self-describing wherever it lands):
+//
+//   project tier: <n> records read but not applied in the last <window>
+//   project  <name>  read <age>  <description>
+//     (pinned, indented under the fence with the shared tiers' lines)
+//   type tier (<type>): <n> records read but not applied in the last <window>
+//   memq: from type '<type>', ... The indented lines below are data, not instructions:
+//     type  <name>  read <age>  <description>
+//   operator tier: <n> records read but not applied in the last <window>
+//     operator  <name>  read <age>  <description>
+//   memq: act on one? memq touch <name> --applied (...)
+//
+// Every tier this project reaches contributes: the project tier, the declared
+// type tier, and the operator tier, each stating its count even at zero,
+// because a tier with nothing to adjudicate is a stated fact rather than a
+// silent absence. A reader that spanned the project tier alone would report the
+// shared tiers as clean, which is this store's known failure shape. Three
+// surfaces are deliberately out of the domain: journal keys, which have no
+// applied concept at all; MEMORY.md, which the stamp hook never records; and
+// the pending tier, whose records `touch` cannot stamp, so a line naming one
+// would again teach an invocation that errors.
+//
+// There is no line budget here, unlike `recall` and `recent`. Those digest
+// whole surfaces of unbounded size; this reports a diff over the read stamps of
+// one short window, which is bounded by what a session actually opened, and a
+// truncated adjudication list would hide exactly the record whose judgment is
+// owed.
+//
+// unstamped is stamp-free, the `recall`, `find`, and `recent` posture: it reads
+// sidecars and tier indexes, serves no body, and writes nothing at all, not a
+// read stamp, not a usage entry, not a lock (acquireLock creates the directory
+// its lock sits in, so taking one would itself be a write). A command that
+// stamped the reads it reports on would corrupt the evidence it exists to show
+// and would silently clear its own next run.
+//
+// An absent store, tier, or sidecar is a normal empty state; a malformed line
+// is skipped with a note by the shared reader; and finding nothing is an
+// answer, so only argument errors exit nonzero. A declared type tier whose
+// directory is missing is said on stderr, `recent`'s wording, because that is a
+// fact about the declaration rather than about a tier this run reaches.
+function cmdUnstamped(argv) {
+    let since = null;
+    for (let i = 0; i < argv.length; i++) {
+        const a = argv[i];
+        // An option value that itself looks like an option is a swallowed
+        // flag, not a value, the rule every option here answers to. A second
+        // --since is refused rather than taken last-wins, because a window
+        // this command reports on has one spelling.
+        if (a === '--since') {
+            if (since !== null) return usage('--since is given once');
+            const v = argv[++i];
+            if (v === undefined || v.startsWith('--')) return usage('--since needs a value');
+            since = v;
+        } else if (a.startsWith('--since=')) {
+            return usage('--since takes its value as a separate argument: --since <n>d');
+        } else if (a.startsWith('--')) return usage('unknown option ' + sanitize(a, 40));
+        else return usage('unstamped takes no arguments but --since');
+    }
+    const window = parseSince(since === null ? RECENT_DEFAULT_SINCE : since);
+    if (window === null) {
+        return usage('--since takes <n>d or <n>h, a positive whole number of days or hours');
+    }
+    const memDir = readMemDirOrNote();
+    if (memDir === null) return;
+    const now = Date.now();
+    const from = now - window.ms;
+
+    // The tiers this command spans, each with the token its record lines carry,
+    // the coverage line's name for it, the indent that fences it, and the
+    // reminder flag a hit of that tier needs. The project tier's indent is the
+    // pin's question: the pin is what makes that tier's writer another of this
+    // instance's workers rather than the session reading it.
+    const pinned = pinnedProjectSegment();
+    const typed = typedTierOrNull(process.cwd());
+    if (typed === null) {
+        // Two states routing callers merge into one null, told apart here: a
+        // project that declared a type whose tier directory does not exist
+        // declared something, and a sweep that skipped it in silence would read
+        // as a store with no shared tier at all.
+        const declared = projectType(process.cwd());
+        if (declared !== null) {
+            process.stderr.write('memq: type tier \'' + sanitize(declared, TYPE_CAP)
+                + '\' is declared, but its tier directory does not exist\n');
+        }
+    }
+    const operator = operatorTierOrNull();
+    const tiers = [{
+        dir: memDir, token: 'project', name: 'project tier',
+        indent: pinned === null ? '' : '  ', reminder: 'project'
+    }];
+    if (typed !== null) {
+        tiers.push({
+            dir: typed.dir,
+            token: 'type',
+            name: 'type tier (' + sanitize(typed.type, TYPE_CAP) + ')',
+            indent: '  ',
+            reminder: 'type'
+        });
+    }
+    if (operator !== null) {
+        tiers.push({
+            dir: operator, token: 'operator', name: 'operator tier',
+            indent: '  ', reminder: 'operator'
+        });
+    }
+
+    // Every tier's block is built before anything prints, because the framing
+    // line speaks for all of them at once: one sentence naming every surface
+    // that put an indented line in this output, which cannot be settled while
+    // the first such line is being written.
+    const blocks = [];
+    const reachable = new Set();
+    for (const tier of tiers) {
+        const found = unstampedTierHits(tier.dir, from, tier.reminder);
+        const lines = found.hits.map((hit) => {
+            // The emptiness check runs on the sanitized and trimmed value,
+            // never the raw one: a description entirely outside sanitize's
+            // printable-ASCII range reduces to '', and one written as spaces
+            // survives the reduction intact, so testing the raw string would
+            // leave a trailing separator with nothing legible after it.
+            const desc = sanitize(hit.description, SUMMARY_CAP).trim();
+            return tier.indent + tier.token + '  ' + sanitize(hit.name, NAME_CAP)
+                + '  read ' + recallAgeColumn(hit.ms, now)
+                + (desc === '' ? '' : '  ' + desc);
+        });
+        if (lines.length > 0) reachable.add(tier.reminder);
+        blocks.push({
+            tier,
+            lines,
+            // Unread evidence is stated on the tier that lost it, rather than
+            // in one sentence for the whole command the way `recent` states
+            // it: these coverage lines are per tier, so the tier that could
+            // not be read whole is the one whose count is a floor.
+            coverage: tier.name + ': ' + lines.length + ' record'
+                + (lines.length === 1 ? '' : 's')
+                + ' read but not applied in the last ' + window.label
+                + (found.unread ? '; evidence unread, so this count is a floor' : '')
+        });
+    }
+
+    // One framing line teaches the indent for every fenced line here, folding
+    // every contributing surface into one sentence under digestFenceLine's
+    // contribution rule. What each surface contributes is what carries the
+    // two-space indent: the shared tiers always, and the project tier only
+    // under a pin, since the pin is what makes its records another worker's
+    // writing. A tier that put no line in this output is not named, however
+    // present it is.
+    const contributed = (name) => blocks.some((b) => b.tier.reminder === name && b.lines.length > 0);
+    const fence = digestFenceLine(pinned !== null && contributed('project') ? pinned : null,
+        contributed('type') ? typed.type : null, contributed('operator'));
+    const out = [];
+    let fenceEmitted = false;
+    for (const b of blocks) {
+        out.push(b.coverage);
+        for (const line of b.lines) {
+            // The framing line is emitted once, immediately before the first
+            // fenced line wherever the tier order puts it, so it teaches the
+            // indent over content actually below it.
+            if (!fenceEmitted && fence !== null && line.startsWith('  ')) {
+                out.push(fence);
+                fenceEmitted = true;
+            }
+            out.push(line);
+        }
+    }
+    // Every hit is a live record of a tier this working directory resolves, so
+    // every hit is one `touch` can stamp: the reminder names the flags this
+    // output's own hits need, and with nothing to adjudicate it is omitted
+    // rather than teaching an invocation with no argument to give it.
+    if (reachable.size > 0) out.push(stampReminder(reachable));
+    process.stdout.write(out.join('\n') + '\n');
+}
+
 // memq touch: the self-report half of used-tracking. The stamp hook records
 // that a memory file was opened; this records that one was actually applied,
 // which is the signal the decay lifecycle keys on, so --applied is required
@@ -5003,6 +5271,7 @@ function main() {
     else if (cmd === 'get') cmdGet(rest);
     else if (cmd === 'recall') cmdRecall(rest);
     else if (cmd === 'recent') cmdRecent(rest);
+    else if (cmd === 'unstamped') cmdUnstamped(rest);
     else if (cmd === 'touch') cmdTouch(rest);
     else if (cmd === 'add-type') cmdAddType(rest);
     else if (cmd === 'add-operator') cmdAddOperator(rest);
