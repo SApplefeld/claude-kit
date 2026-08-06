@@ -84,7 +84,10 @@ function composeCondition(planRel) {
     return 'Work ' + planRel + ' to completion using executing-work. Met when '
         + '(a) every section is complete and closed out, or (b) you are BLOCKED '
         + 'on a decision only Scott can make and have said so. Capacity is never '
-        + 'a blocker: auto-compaction rides through with the leash intact.';
+        + 'a blocker: auto-compaction rides through with the leash intact. '
+        + 'Waiting on dispatched background work is a pause, not a stop: lead '
+        + "with 'WAITING:' and what you await; the leash stays armed and the "
+        + 'completion notification resumes the run.';
 }
 
 // Normalize a plan argument (relative or absolute) to a repo-relative,

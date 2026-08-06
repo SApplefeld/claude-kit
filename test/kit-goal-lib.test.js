@@ -297,13 +297,16 @@ test('planHead classifies a header behind a UTF-8 BOM (PowerShell Set-Content wr
 // promised a release that never comes. An exact compare is free here because
 // the function is pure and deterministic, and it catches a reworded or
 // re-added clause that an absence check on '(c)' would sail past.
-test('composeCondition embeds the plan path and exactly clauses (a) and (b)', () => {
+test('composeCondition embeds the plan path and exactly clauses (a) and (b) plus the waiting pause', () => {
     assert.strictEqual(
         composeCondition('docs/plans/example.md'),
         'Work docs/plans/example.md to completion using executing-work. Met when '
         + '(a) every section is complete and closed out, or (b) you are BLOCKED on '
         + 'a decision only Scott can make and have said so. Capacity is never a '
-        + 'blocker: auto-compaction rides through with the leash intact.'
+        + 'blocker: auto-compaction rides through with the leash intact. Waiting on '
+        + "dispatched background work is a pause, not a stop: lead with 'WAITING:' "
+        + 'and what you await; the leash stays armed and the completion notification '
+        + 'resumes the run.'
     );
 });
 

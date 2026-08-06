@@ -916,6 +916,80 @@ test('the capacity deny-list is case-insensitive: an upper-case reason is refuse
     }
 });
 
+test('a WAITING lead allows the stop with the goal intact and no event (clause b2)', () => {
+    // Parked on dispatched background work: the completion notification is the
+    // wake, so the stop is allowed, the leash stays armed for the first stop
+    // after the wake, and nothing is emitted (a waiting session is a running
+    // session to an outside watcher).
+    const { repo, transcript, local } = armedRepo([
+        'WAITING: on the section 2 implementer and its reviewer pair, dispatched in the background.'
+    ]);
+    try {
+        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-waiting' }, local);
+        assert.strictEqual(res.stdout, '');
+        assert.strictEqual(res.status, 0);
+        assert.ok(fs.existsSync(path.join(repo, '.kit', 'goal-state.json')),
+            'a waiting stop must NOT clear the goal: the leash re-enters enforcement after the wake');
+        assert.deepStrictEqual(readEvents(local), [], 'waiting is not a release and emits nothing');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('a WAITING line mid-message does not release: block (the literal leading prefix rule)', () => {
+    const { repo, transcript, local } = armedRepo([
+        'Section 2 is dispatched.\nWAITING: on the background implementers.'
+    ]);
+    try {
+        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-waiting-mid' }, local);
+        const out = JSON.parse(res.stdout);
+        assert.strictEqual(out.decision, 'block');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('an EARLIER WAITING turn with a non-lead last turn: block (only the last counts)', () => {
+    // The wake after a waiting stop lands new turns; the leash must re-enter
+    // enforcement from the post-wake turn, not keep honoring the stale WAITING.
+    const { repo, transcript, local } = armedRepo([
+        'WAITING: on the background reviewers.',
+        'Reviewers are back; folding in their findings.'
+    ]);
+    try {
+        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-waiting-stale' }, local);
+        const out = JSON.parse(res.stdout);
+        assert.strictEqual(out.decision, 'block');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('a capacity-shaped WAITING reason is refused: block naming WAITING, no event', () => {
+    // Without this, WAITING becomes the escape hatch the clause-(b) capacity
+    // refusal exists to close: the same deny-list judges both prefixes.
+    const { repo, transcript, local } = armedRepo([
+        'WAITING: for a fresh session to pick this up, my context is nearly full.'
+    ]);
+    try {
+        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-waiting-cap' }, local);
+        assert.strictEqual(res.status, 0);
+        assert.notStrictEqual(res.stdout, '', 'a capacity-shaped WAITING must not release the leash');
+        const out = JSON.parse(res.stdout);
+        assert.strictEqual(out.decision, 'block');
+        assert.ok(out.reason.includes('the WAITING line gives'),
+            'the refusal names the prefix it is refusing');
+        assert.ok(out.reason.includes('Capacity is never a blocker'));
+        assert.deepStrictEqual(readEvents(local), [], 'a refused release emits nothing');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
 test('only the first line is judged: a genuine blocker mentioning context further down still releases', () => {
     // The deny-list reads the stated reason, which is the first line. A body
     // that happens to mention context pressure is commentary, not the reason,
