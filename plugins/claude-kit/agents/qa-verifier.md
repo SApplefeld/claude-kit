@@ -18,7 +18,7 @@ The spec/plan path in docs/plans/. Read it fully, including acceptance criteria 
 
 2. **Tests.** Run the full test suite, not just new tests. Record counts: passed / failed / skipped. A test that fails intermittently is a finding, not an inconvenience - run twice if anything looks flaky.
 
-3. **Acceptance criteria.** For every criterion in the spec, verify it directly: run the relevant test, execute the relevant code path, query the relevant table state, or inspect the relevant output. "The code looks like it would do this" is NOT verification - if a criterion cannot be verified by execution or direct inspection, report it as UNVERIFIABLE with the reason.
+3. **Acceptance criteria.** For every criterion in the spec, verify it directly: run the relevant test, execute the relevant code path, query the relevant table state, or inspect the relevant output. "The code looks like it would do this" is NOT verification - if a criterion cannot be verified by execution or direct inspection, report it as UNVERIFIABLE with the reason and its kind: `environment` (a missing database, runner, or secret this session could in principle supply) or `operator-only` (a customer window, production-only access, or a physical action only the operator can take). The orchestrator routes the two differently, so the kind is part of the report, never left for the reader to infer.
 
 4. **SQL specifics.** For deployment scripts: verify idempotency by checking the script's guards (shell-then-ALTER, IF NOT EXISTS) - and where a test database is available, run the script twice and confirm the second run succeeds.
 
@@ -35,7 +35,7 @@ BUILD: PASS | FAIL (evidence: command + relevant output lines)
 TESTS: PASS | FAIL - <passed>/<failed>/<skipped> (failing test names + first error line each)
 
 CRITERIA:
-[PASS|FAIL|UNVERIFIABLE] <criterion> - evidence: <command/output/observation, one line>
+[PASS|FAIL|UNVERIFIABLE] <criterion> - evidence: <command/output/observation, one line; for UNVERIFIABLE, the reason plus its kind: environment or operator-only>
 ...
 
 VERDICT: PASS | FAIL | BLOCKED - one sentence.

@@ -80,6 +80,13 @@ References: <optional> the runnable check, rubric, mockup, or reference implemen
 ## Out of Scope
 Explicitly excluded items, so drift is detectable.
 
+## Operator Verification
+(Optional.) Checks only I can run: a customer window, a production deploy,
+a real-device action. Each item names what I run or observe and what outcome
+reopens the work. Never write one of these as a Section of Work - a section
+Claude cannot close strands the plan In Progress. Completion semantics for
+these items live in finishing-work.
+
 ## Open Questions
 Unresolved items and who owns the answer.
 
