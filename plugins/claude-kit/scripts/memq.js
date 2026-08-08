@@ -1218,6 +1218,12 @@ function sanitize(s, max) {
 // argument is what covers that). What it does guarantee is that no value the
 // store hands back can carry the break: a summary read out of `find` or `get`
 // and pasted into a later command line is quote-free by construction.
+// The return carries the cut alongside the text ({ text, cut, length },
+// length being the sanitized length before any cut) so a caller can surface
+// the truncation where its reader actually looks: a stderr note beside an
+// exit 0 and a success line is the one shape that guarantees a cut lands
+// unnoticed, and what was cut is the tail, which is where a well-written
+// record's actionable part lives.
 function boundedFreeText(value, cap, label) {
     // The reduction is sanitize's own, applied uncapped: one charset rule
     // for store text, stated once, with this gate adding the report and the
@@ -1228,7 +1234,31 @@ function boundedFreeText(value, cap, label) {
     }
     if (stripped.length > cap) {
         process.stderr.write('memq: ' + label + ' truncated to ' + cap + ' characters\n');
-        return stripped.slice(0, cap);
+        return { text: stripped.slice(0, cap), cut: true, length: stripped.length };
+    }
+    return { text: stripped, cut: false, length: stripped.length };
+}
+
+// The write gate for shared-tier prose (a type or operator description or
+// body): the same charset reduction, but an over-cap value is refused rather
+// than cut. The tiers earn different treatment because they fail differently.
+// A truncated journal entry is repairable by logging again; a shared-tier
+// record is final at creation (the duplicate guard refuses the name, hand
+// edits are barred because writes serialize under the tier lock), so a
+// silent cut there is damage the author cannot see at the keystroke and
+// could not repair before --update existed, and even --update restores only
+// what the author comes back to re-type. Refusal at compose time, with the
+// actual length beside the cap, is the one report the author can act on in
+// the same breath. Returns the sanitized text, or null after the usage error.
+function sharedFreeText(value, cap, label) {
+    const stripped = sanitize(value, Infinity);
+    if (stripped !== String(value)) {
+        process.stderr.write('memq: ' + label + ' reduced to printable ASCII without double quotes\n');
+    }
+    if (stripped.length > cap) {
+        usage(label + ' is ' + stripped.length + ' characters; the cap is ' + cap
+            + ', and shared-tier text over it is refused rather than silently cut. Shorten it and rerun');
+        return null;
     }
     return stripped;
 }
@@ -1499,14 +1529,36 @@ function usage(problem) {
         + '       memq recent [--since <n>d|<n>h]\n'
         + '       memq unstamped [--since <n>d|<n>h]\n'
         + '       memq touch <name> --applied [--type|--operator]\n'
-        + '       memq add-type <type> <name> "<description>" [--body "..."] [--tag t]...\n'
+        + '       memq add-type <type> <name> "<description>" [--body "..."] [--tag t]...'
+        + ' [--update]\n'
         + '       memq add-operator <name> "<description>" [--body "..."] [--tag t]...'
-        + ' [--machine <name>]\n'
+        + ' [--machine <name>] [--update]\n'
         + '       memq decay-scan\n'
         + '       memq decay-prune [--rollup] [--archive <name>]... [--archive-type <name>]...\n'
         + '                        [--archive-operator <name>]... [--confirm-shared]\n'
         + '       memq decay-done\n');
     process.exitCode = 1;
+}
+
+// The count error for the commands that take free-text positionals, with the
+// one diagnosis the count alone cannot make. A wrong positional count where
+// some argument carries a literal double quote is the signature of the
+// caller's shell splitting the command line, not of a missing or extra
+// argument: Windows PowerShell 5.1 passes an embedded '"' to a native
+// process in a form that ends the quoted region, so one quoted argument
+// arrives here as several, and the bare count error then points at arguments
+// the caller supplied correctly. The command line is already parsed by the
+// time node runs, so this cannot be prevented here, only named; the remedy
+// rides the hint because stored text drops '"' regardless (sanitize), so
+// rewording without the character loses nothing the store would have kept.
+function usageCount(argv, problem) {
+    if (argv.some((a) => a.includes('"'))) {
+        process.stderr.write('memq: an argument contains a literal \'"\'; on Windows PowerShell'
+            + ' an embedded double quote splits one argument into several before memq runs,'
+            + ' which is the usual cause of a wrong argument count here. Reword without'
+            + ' double quotes; stored text drops them anyway\n');
+    }
+    return usage(problem);
 }
 
 // memq log: append one entry to the journal. The write is a single
@@ -1536,7 +1588,7 @@ function cmdLog(argv) {
             positionals.push(a);
         }
     }
-    if (positionals.length !== 3) return usage('log needs <key> pass|fail "<summary>"');
+    if (positionals.length !== 3) return usageCount(argv, 'log needs <key> pass|fail "<summary>"');
     const key = positionals[0];
     const outcome = positionals[1];
     const summary = positionals[2];
@@ -1556,17 +1608,23 @@ function cmdLog(argv) {
 
     const memDir = projectMemoryDir(process.cwd());
     // Free-text fields are bounded at write time by reduction, with a note,
-    // rather than by rejection: the head of an oversized summary still logs.
-    // The write-time caps equal the display caps, so nothing beyond them
-    // would ever be shown, and the bounded line they produce is what keeps
-    // the append atomic against concurrent writers.
+    // rather than by rejection: the head of an oversized summary still logs,
+    // and the journal is repairable by logging again, unlike the shared
+    // tiers, whose gate refuses instead (sharedFreeText). The write-time
+    // caps equal the display caps, so nothing beyond them would ever be
+    // shown, and the bounded line they produce is what keeps the append
+    // atomic against concurrent writers. The cut report rides the success
+    // line below, not only stderr, so the author sees it where they read.
+    const boundedSummary = boundedFreeText(summary, SUMMARY_CAP, 'summary');
     const entry = {
         ts: new Date().toISOString(), key, outcome,
-        summary: boundedFreeText(summary, SUMMARY_CAP, 'summary')
+        summary: boundedSummary.text
     };
     if (tags.length > 0) entry.tags = tags;
+    let boundedDetail;
     if (detail !== undefined) {
-        entry.detail = boundedFreeText(detail, DETAIL_CAP, 'detail');
+        boundedDetail = boundedFreeText(detail, DETAIL_CAP, 'detail');
+        entry.detail = boundedDetail.text;
     }
     // The journal is one shared append log per project, unlike the memory
     // tiers: an outcome is evidence about the project, and a run's outcomes
@@ -1586,7 +1644,20 @@ function cmdLog(argv) {
     }
 
     warnUnregisteredTags(tags, 'logged');
-    process.stdout.write('logged ' + sanitize(key, NAME_CAP) + ' ' + outcome + '\n');
+    // A cut is announced on the success line itself, with the original
+    // length, because the tail is what truncation takes and the tail is
+    // where a well-composed record's actionable part lives: an author who
+    // sees "truncated to 120 of 240" can re-log the lost half now, while a
+    // stderr note beside "logged ... pass" reads as success and scrolls away.
+    const cuts = [];
+    if (boundedSummary.cut) {
+        cuts.push('summary truncated to ' + SUMMARY_CAP + ' of ' + boundedSummary.length + ' characters');
+    }
+    if (boundedDetail !== undefined && boundedDetail.cut) {
+        cuts.push('detail truncated to ' + DETAIL_CAP + ' of ' + boundedDetail.length + ' characters');
+    }
+    process.stdout.write('logged ' + sanitize(key, NAME_CAP) + ' ' + outcome
+        + (cuts.length > 0 ? ' (' + cuts.join('; ') + ')' : '') + '\n');
 }
 
 // Aggregate the journal per key: pass/fail tallies, the latest entry
@@ -4468,7 +4539,7 @@ function carryArchiveIndex(archiveDir, retired) {
 // it does reduce, so a cut here is never silent.
 function archiveIndexLine(name, description) {
     return '- [' + name + '](' + name + '.md) - '
-        + boundedFreeText(description, DETAIL_CAP, 'archived description');
+        + boundedFreeText(description, DETAIL_CAP, 'archived description').text;
 }
 
 // Move each named memory to the tier's archive/ subdirectory, carry its index
@@ -4886,15 +4957,55 @@ function cmdDecayPrune(argv) {
 // project's Project-Type line) because authoring is how a type first comes
 // into existence: the first add-type for a type creates its directory. An
 // existing memory name is refused, never overwritten: a shared fact another
-// project may rely on is not silently replaced by a one-line command. A
-// stale index line for the name (a file removed by hand) is dropped and
-// replaced. The description doubles as the index line and, when --body is
-// absent, the file body; every field is bounded at this write boundary, and
-// an unregistered tag warns without blocking, exactly as in `log`.
+// project may rely on is not silently replaced by a one-line command; the
+// one sanctioned rewrite is --update, which replaces the record's index
+// description under the tier lock and touches nothing else. A stale index
+// line for the name (a file removed by hand) is dropped and replaced. The
+// description doubles as the index line and, when --body is absent, the
+// file body; prose over its cap is refused at this write boundary rather
+// than cut (sharedFreeText owns the reasoning), and an unregistered tag
+// warns without blocking, exactly as in `log`.
+// Replace the index line for one memory file with a line carrying the new
+// description, in place: the record keeps its position, because a repair is
+// not a re-insertion. A missing line (an index that drifted from the files
+// beside it) is appended instead, the same self-healing the create path
+// applies to a stale line, and an unreadable index is created whole around
+// this one line. Runs under the caller's tier lock and takes the sidecars'
+// backup path, because it is a read-modify-write over a shared file.
+function updateIndexDescription(indexPath, name, file, description) {
+    const line = '- [' + name + '](' + file + ') - ' + description;
+    const src = readStoreFile(indexPath);
+    if (src === null) {
+        fs.writeFileSync(indexPath, '# Memory Index\n\n' + line + '\n', 'utf8');
+        return;
+    }
+    // The first matching line is replaced and any later match is dropped,
+    // the create path's own self-healing for a drifted index: this function
+    // is the one lawful writer of the line, so a duplication it preserved
+    // would be preserved forever.
+    let replaced = false;
+    const kept = [];
+    for (const l of src.lines) {
+        const parsed = parseIndexLine(l);
+        if (parsed !== null && fsEq(parsed.file, file)) {
+            if (!replaced) {
+                kept.push(line);
+                replaced = true;
+            }
+            continue;
+        }
+        kept.push(l);
+    }
+    while (kept.length > 0 && kept[kept.length - 1].trim() === '') kept.pop();
+    if (!replaced) kept.push(line);
+    rewriteWithBackup(indexPath, src.buf, kept.join('\n') + '\n');
+}
+
 function cmdAddType(argv) {
     const positionals = [];
     const tags = [];
     let body;
+    let update = false;
     for (let i = 0; i < argv.length; i++) {
         const a = argv[i];
         if (a === '--tag') {
@@ -4905,13 +5016,15 @@ function cmdAddType(argv) {
             const v = argv[++i];
             if (v === undefined || v.startsWith('--')) return usage('--body needs a value');
             body = v;
+        } else if (a === '--update') {
+            update = true;
         } else if (a.startsWith('--')) {
             return usage('unknown option ' + sanitize(a, 40));
         } else {
             positionals.push(a);
         }
     }
-    if (positionals.length !== 3) return usage('add-type needs <type> <name> "<description>"');
+    if (positionals.length !== 3) return usageCount(argv, 'add-type needs <type> <name> "<description>"');
     const type = positionals[0];
     const name = positionals[1];
     if (!isTypeName(type)) {
@@ -4929,6 +5042,17 @@ function cmdAddType(argv) {
             return usage('tag must be characters from [A-Za-z0-9_.-], at most ' + TAG_CAP);
         }
     }
+    // --update repairs the one field that is otherwise final at creation.
+    // It stays description-only by design: an update that also rewrote the
+    // body or tags would be the overwrite path this command exists to
+    // refuse, one flag away from replacing a fact another project relies on.
+    // The exclusivity check runs before the cap gates so a refused command
+    // is refused for the flag set it carries, not for the length of a field
+    // it may never write: a cap error first would send the author to
+    // shorten a body the command was going to refuse regardless.
+    if (update && (body !== undefined || tags.length > 0)) {
+        return usage('--update replaces the index description only; --body and --tag are set at creation');
+    }
     // The index is a line-oriented shared record, so the description's
     // charset is closed here at the write boundary, not only its length:
     // the reduction strips newlines and control characters, which is what
@@ -4936,12 +5060,15 @@ function cmdAddType(argv) {
     // another project's session hook will emit as context. The journal never
     // needed that half of the guard because JSON.stringify escapes newlines;
     // this format has no serializer to hide behind. The double quote goes for
-    // the reason boundedFreeText gives: this description is printed by `find`
-    // and is a value a caller pastes onto a command line.
-    const description = boundedFreeText(positionals[2], SUMMARY_CAP, 'description');
+    // the reason sharedFreeText gives: this description is printed by `find`
+    // and is a value a caller pastes onto a command line. Over-cap prose is
+    // refused rather than cut, sharedFreeText's rule, and the body follows it
+    // for the same reason: nothing shared-tier is ever silently shortened.
+    const description = sharedFreeText(positionals[2], SUMMARY_CAP, 'description');
+    if (description === null) return;
     if (body !== undefined && body.length > BODY_CAP) {
-        body = body.slice(0, BODY_CAP);
-        process.stderr.write('memq: body truncated to ' + BODY_CAP + ' characters\n');
+        return usage('body is ' + body.length + ' characters; the cap is ' + BODY_CAP
+            + ', and shared-tier text over it is refused rather than silently cut. Shorten it and rerun');
     }
 
     // The type tier is not the pending tier and this write is not routed
@@ -4952,6 +5079,19 @@ function cmdAddType(argv) {
     // so a reviewer of the shared tier can tell an attended session's fact
     // from a spawned run's.
     const dir = typeDir(type);
+    // In the update path an absent tier directory is refused before the
+    // lock: acquireLock mints the directory as a side effect of placing the
+    // lock file, and a refusal (a typo'd type name in a repair command) must
+    // not leave durable shared-store state behind. The under-lock file check
+    // below remains the authoritative one; this is only the no-side-effect
+    // early exit for a tier that cannot hold the record at all.
+    if (update && !fs.existsSync(dir)) {
+        process.stderr.write('memq: \'' + sanitize(name, NAME_CAP)
+            + '\' does not exist in type \'' + sanitize(type, TYPE_CAP)
+            + '\'; drop --update to create it\n');
+        process.exitCode = 1;
+        return;
+    }
     const front = [];
     if (tags.length > 0) front.push('tags: ' + tags.join(', '));
     for (const line of provenanceLines()) front.push(line);
@@ -4968,6 +5108,23 @@ function cmdAddType(argv) {
     }
     let fileWritten = false;
     try {
+        // The update path first: it requires exactly the state the create
+        // path refuses. The memory file is never opened, so the repair can
+        // not disturb a body, tags, or provenance; only the tier index is
+        // rewritten, under the same lock and backup as every index rewrite.
+        if (update) {
+            if (!fs.existsSync(path.join(dir, file))) {
+                process.stderr.write('memq: \'' + sanitize(name, NAME_CAP)
+                    + '\' does not exist in type \'' + sanitize(type, TYPE_CAP)
+                    + '\'; drop --update to create it\n');
+                process.exitCode = 1;
+                return;
+            }
+            updateIndexDescription(typeIndexPath(type), name, file, description);
+            process.stdout.write('updated ' + sanitize(name, NAME_CAP)
+                + ' in type ' + sanitize(type, TYPE_CAP) + '\n');
+            return;
+        }
         if (fs.existsSync(path.join(dir, file))) {
             process.stderr.write('memq: \'' + sanitize(name, NAME_CAP)
                 + '\' already exists in type \'' + sanitize(type, TYPE_CAP) + '\'\n');
@@ -5034,11 +5191,13 @@ function cmdAddType(argv) {
 // there is no equivalent of add-type's type-name gate: nothing here is joined
 // onto a path from an argument. The first add-operator creates the directory.
 // An existing memory name is refused, never overwritten: a shared fact
-// another session may rely on is not silently replaced by a one-line command.
-// A stale index line for the name (a file removed by hand) is dropped and
-// replaced. The description doubles as the index line and, when --body is
-// absent, the file body; every field is bounded at this write boundary, and
-// an unregistered tag warns without blocking, exactly as in `log`.
+// another session may rely on is not silently replaced by a one-line
+// command; the one sanctioned rewrite is --update, add-type's rule. A stale
+// index line for the name (a file removed by hand) is dropped and replaced.
+// The description doubles as the index line and, when --body is absent, the
+// file body; prose over its cap is refused at this write boundary rather
+// than cut (sharedFreeText owns the reasoning), and an unregistered tag
+// warns without blocking, exactly as in `log`.
 //
 // --machine scopes the fact to one box, writing a `machine: <name>` line into
 // the frontmatter. It is the whole of the store's answer to a machine-bound
@@ -5050,6 +5209,7 @@ function cmdAddOperator(argv) {
     const tags = [];
     let body;
     let machine;
+    let update = false;
     for (let i = 0; i < argv.length; i++) {
         const a = argv[i];
         if (a === '--tag') {
@@ -5064,13 +5224,15 @@ function cmdAddOperator(argv) {
             const v = argv[++i];
             if (v === undefined || v.startsWith('--')) return usage('--machine needs a value');
             machine = v;
+        } else if (a === '--update') {
+            update = true;
         } else if (a.startsWith('--')) {
             return usage('unknown option ' + sanitize(a, 40));
         } else {
             positionals.push(a);
         }
     }
-    if (positionals.length !== 2) return usage('add-operator needs <name> "<description>"');
+    if (positionals.length !== 2) return usageCount(argv, 'add-operator needs <name> "<description>"');
     const name = positionals[0];
     const file = name + '.md';
     if (!isMemoryFilename(file)) {
@@ -5097,17 +5259,28 @@ function cmdAddOperator(argv) {
     if (machine !== undefined && (!/^[\w.-]+$/.test(machine) || machine.length > MACHINE_CAP)) {
         return usage('machine must be characters from [A-Za-z0-9_.-], at most ' + MACHINE_CAP);
     }
+    // --update repairs the one field that is otherwise final at creation.
+    // Description-only by design, add-type's rule, and checked before the
+    // cap gates for add-type's reason: a refused command is refused for the
+    // flag set it carries, not for the length of a field it may never write.
+    if (update && (body !== undefined || tags.length > 0 || machine !== undefined)) {
+        return usage('--update replaces the index description only;'
+            + ' --body, --tag, and --machine are set at creation');
+    }
     // The index is a line-oriented shared record, so the description's
     // charset is closed here at the write boundary, not only its length: the
     // reduction strips newlines and control characters, which is what keeps a
     // description from forging additional index lines into a file another
-    // session reads back. The double quote goes for the reason boundedFreeText
+    // session reads back. The double quote goes for the reason sharedFreeText
     // gives: this description is printed by `find` and is a value a caller
-    // pastes onto a command line.
-    const description = boundedFreeText(positionals[1], SUMMARY_CAP, 'description');
+    // pastes onto a command line. Over-cap prose is refused rather than cut,
+    // sharedFreeText's rule, and the body follows it for the same reason:
+    // nothing shared-tier is ever silently shortened.
+    const description = sharedFreeText(positionals[1], SUMMARY_CAP, 'description');
+    if (description === null) return;
     if (body !== undefined && body.length > BODY_CAP) {
-        body = body.slice(0, BODY_CAP);
-        process.stderr.write('memq: body truncated to ' + BODY_CAP + ' characters\n');
+        return usage('body is ' + body.length + ' characters; the cap is ' + BODY_CAP
+            + ', and shared-tier text over it is refused rather than silently cut. Shorten it and rerun');
     }
 
     // A run's write lands in the shared tier like any other, carrying the
@@ -5116,6 +5289,15 @@ function cmdAddOperator(argv) {
     // command maintains, none of which a run-private directory can stand in
     // for.
     const dir = operatorDirPath();
+    // An absent operator directory refuses an update before the lock, for
+    // add-type's reason: acquireLock mints the directory as a side effect,
+    // and a refusal path must not leave durable shared-store state behind.
+    if (update && !fs.existsSync(dir)) {
+        process.stderr.write('memq: \'' + sanitize(name, NAME_CAP)
+            + '\' does not exist in the operator tier; drop --update to create it\n');
+        process.exitCode = 1;
+        return;
+    }
     const front = [];
     if (tags.length > 0) front.push('tags: ' + tags.join(', '));
     // `machine:` scopes the fact to one box, in the inline single-line form
@@ -5140,6 +5322,23 @@ function cmdAddOperator(argv) {
     }
     let fileWritten = false;
     try {
+        // The update path first: it requires exactly the state the create
+        // path refuses. The memory file is never opened, so the repair
+        // cannot disturb a body, tags, or a machine scope; only the tier
+        // index is rewritten, under the same lock and backup as every index
+        // rewrite.
+        if (update) {
+            if (!fs.existsSync(path.join(dir, file))) {
+                process.stderr.write('memq: \'' + sanitize(name, NAME_CAP)
+                    + '\' does not exist in the operator tier; drop --update to create it\n');
+                process.exitCode = 1;
+                return;
+            }
+            updateIndexDescription(operatorIndexPath(), name, file, description);
+            process.stdout.write('updated ' + sanitize(name, NAME_CAP)
+                + ' in the operator tier\n');
+            return;
+        }
         if (fs.existsSync(path.join(dir, file))) {
             process.stderr.write('memq: \'' + sanitize(name, NAME_CAP)
                 + '\' already exists in the operator tier\n');
