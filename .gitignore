@@ -15,3 +15,6 @@ plugins/claude-kit.zip
 # never tracked (a committed stamp would churn and lie).
 plugins/claude-kit/.claude-plugin/build-info.json
 plugins/claude-kit/claude-kit-doctrine.md
+
+# PowerShell writes its module analysis cache here when a test spawns it with a redirected profile.
+Microsoft/
