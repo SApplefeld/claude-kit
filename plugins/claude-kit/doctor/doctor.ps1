@@ -1021,6 +1021,40 @@ function Get-MemorySyncReportLines {
     return @{ Leaks = $leaks; Fixes = $fixes; Unproven = $unproven; Context = $context }
 }
 
+# Whether a push from this store would reach the branch another machine's pull
+# reads. Split by what an operator choice can explain: a detached HEAD, a
+# branch tracking nothing, and an upstream on some other remote are broken in
+# ways nobody opts into, so they block. A second branch on origin is the
+# reported silent case, but a backup or an abandoned branch explains it too, so
+# it is named rather than failed on: a check that exits 1 over a stale ref
+# teaches the operator to stop reading this section.
+function Get-MemorySyncDestinationLines {
+    param($Status)
+    $blocking = @()
+    $advisory = @()
+
+    if ($Status.Detached) {
+        $blocking += "HEAD is detached, so commits here belong to no branch and a push sends nothing."
+    }
+    elseif ($Status.Branch -ne "" -and $Status.Upstream -eq "") {
+        $blocking += ("Branch " + (Get-SanitizedLine $Status.Branch 200) +
+            " tracks no upstream, so the close-out's pull and push have no destination.")
+    }
+    elseif ($Status.Upstream -ne "" -and -not $Status.Upstream.StartsWith("origin/")) {
+        $blocking += ("Branch " + (Get-SanitizedLine $Status.Branch 200) + " tracks " +
+            (Get-SanitizedLine $Status.Upstream 200) + ", which is not the origin reported above.")
+    }
+
+    $others = @($Status.RemoteBranches | Where-Object { $_ -ne $Status.Upstream })
+    if ($Status.Upstream -ne "" -and $others.Count -gt 0) {
+        $advisory += ("This machine tracks " + (Get-SanitizedLine $Status.Upstream 200) + ", and origin also carries " +
+            (($others | Select-Object -First 5 | ForEach-Object { Get-SanitizedLine $_ 200 }) -join ", ") +
+            ". A machine pushing to one of those never reaches this store, and neither side reports an error.")
+        $advisory += "That reads local refs as of the last fetch; this check makes no network call."
+    }
+    return @{ Blocking = $blocking; Advisory = $advisory }
+}
+
 $syncStatus = Get-MemorySyncStatus -StoreRoot $claudeDir
 $syncFixNotes = @()
 $syncReported = $false
@@ -1178,7 +1212,6 @@ else {
                 ("Allowlist canonical; " + $syncStatus.Probed.Count + " sensitive path(s) proven ignored, an add would stage memory paths only, and no non-memory blob is reachable in committed history.")
             )
             if ($syncStatus.Remote -ne "") { $syncDetail += ("origin: " + (Get-SanitizedLine $syncStatus.Remote 200)) }
-            else { $syncDetail += "No origin remote yet, so the store is versioned locally but not replicated." }
             # Reached either from a plain check (no -Fix) or from a -Fix run
             # whose commit succeeded and cleared the worktree: $syncStatus was
             # re-read after that commit, so Dirty is already false there and
@@ -1192,8 +1225,48 @@ else {
                 # where "'' + $int + ' text'" concatenates as intended.
                 $syncDetail += ("" + $syncStatus.DirtyCount + " uncommitted change(s) under the allowlist, not yet committed. Fix: re-run doctor with -Fix (commits them through the gated allowlist).")
             }
-            if ($syncFixLines.Count -gt 0) { Report "FIXED" "Memory sync" ($syncFixLines + $syncDetail) }
-            else { Report "PASS" "Memory sync" $syncDetail }
+            # The allowlist is sound from here down, so nothing below is a leak.
+            # What is left to prove is that the store publishes somewhere: every
+            # probe above can read clean on a store that syncs nowhere, which is
+            # a passing report on a memory tier no other machine will ever see.
+            $syncDest = Get-MemorySyncDestinationLines $syncStatus
+
+            if ($syncStatus.Remote -eq "") {
+                Report "WARN" "Memory sync" ($syncFixLines + $syncDetail + @(
+                    "No origin remote, so the store is versioned locally and replicates nowhere: nothing this machine records leaves it, and nothing another machine records arrives.",
+                    "Fix: add the private remote (git -C `"$claudeDir`" remote add origin <url>) and push the branch with -u."
+                ))
+            }
+            elseif ($syncDest.Blocking.Count -gt 0) {
+                Report "FAIL" "Memory sync" ($syncFixLines + $syncDetail + $syncDest.Blocking + $syncDest.Advisory + @(
+                    "Fix: put HEAD on the sync branch and give it an upstream (git -C `"$claudeDir`" push -u origin <branch>)."
+                ))
+            }
+            elseif (-not $syncStatus.DestinationRead) {
+                Report "WARN" "Memory sync" ($syncFixLines + $syncDetail + @(
+                    "The branch this store would push to could not be read, so whether it reaches any other machine is unverified."
+                ))
+            }
+            elseif ($syncDest.Advisory.Count -gt 0) {
+                Report "WARN" "Memory sync" ($syncFixLines + $syncDetail + $syncDest.Advisory)
+            }
+            elseif (-not $syncStatus.RemoteBranchesRead -or $syncStatus.RemoteBranches.Count -eq 0) {
+                # The sole-branch claim below rests on having read origin's
+                # branches. An unreadable or empty set is not evidence of one
+                # branch, and saying so from zero observations is the same
+                # mistake as reading an empty leak probe as a clean index.
+                Report "WARN" "Memory sync" ($syncFixLines + $syncDetail + @(
+                    ("Branch " + (Get-SanitizedLine $syncStatus.Branch 200) + " tracks " +
+                        (Get-SanitizedLine $syncStatus.Upstream 200) + ", but no remote-tracking branch for origin could be read here, so whether this store shares a branch with the other machines is unverified."),
+                    "Fix: run git -C `"$claudeDir`" fetch origin, then re-run this check."
+                ))
+            }
+            else {
+                $syncDetail += ("Destination: " + (Get-SanitizedLine $syncStatus.Branch 200) + " tracks " +
+                    (Get-SanitizedLine $syncStatus.Upstream 200) + ", the only branch on origin.")
+                if ($syncFixLines.Count -gt 0) { Report "FIXED" "Memory sync" ($syncFixLines + $syncDetail) }
+                else { Report "PASS" "Memory sync" $syncDetail }
+            }
         }
     }
 }

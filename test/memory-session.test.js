@@ -1508,8 +1508,9 @@ test('the sync nudge carries no store-controlled text: no branch name, no remote
         assert.strictEqual(nudge, 'Kit memory sync: the memory store is 1 commit(s) ahead of its remote '
             + '(not yet pushed), and is 1 commit(s) behind its remote (not yet pulled, as last known here; '
             + 'no fetch was run). Run the kit doctor\'s -Fix (the kit-doctor skill owns that run) to commit '
-            + 'through the gated allowlist; push only once it reports PASS or FIXED, then `git pull --rebase` '
-            + 'and push, in the store, to bring machines back in sync.');
+            + 'through the gated allowlist; push only once that run\'s memory-sync line clears (the '
+            + 'memory-system skill owns what each status allows), then `git pull --rebase` and push, in '
+            + 'the store, to bring machines back in sync.');
     } finally {
         rmStore(store);
     }

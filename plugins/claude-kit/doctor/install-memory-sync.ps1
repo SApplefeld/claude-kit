@@ -306,6 +306,12 @@ function Get-MemorySyncStatus {
         Tracked       = @()
         HistoryPaths  = @()
         Remote        = ""
+        Branch        = ""
+        Detached      = $false
+        Upstream      = ""
+        RemoteBranches = @()
+        RemoteBranchesRead = $false
+        DestinationRead = $false
         Dirty         = $false
         DirtyKnown    = $false
         DirtyCount    = 0
@@ -333,6 +339,42 @@ function Get-MemorySyncStatus {
 
     $remote = Invoke-MemorySyncGit -StoreRoot $StoreRoot -Arguments @("remote", "get-url", "origin") -GitExe $GitExe
     if ($remote.Code -eq 0 -and $remote.Output.Count -gt 0) { $status.Remote = $remote.Output[0].Trim() }
+
+    # Where a push from this machine would actually land. The allowlist proves
+    # what may be published; this proves there is anywhere to publish it to. A
+    # store passes every leak probe above and still replicates nowhere when it
+    # has no remote, when its branch tracks nothing, or when origin carries a
+    # branch name this machine does not track. The last is the silent one: both
+    # the pull and the push succeed, neither reports anything, and no machine
+    # ever sees another's memories.
+    #
+    # Every read here is of a local ref, so the answer costs no network and is
+    # as of the last fetch, which is a limit the report states rather than hides.
+    $branch = Invoke-MemorySyncGit -StoreRoot $StoreRoot -Arguments @("rev-parse", "--abbrev-ref", "HEAD") -GitExe $GitExe
+    if ($branch.Code -eq 0 -and $branch.Output.Count -gt 0) {
+        $status.DestinationRead = $true
+        # A detached HEAD answers with the literal string rather than failing,
+        # so the name is only a branch when it is not that string.
+        if ($branch.Output[0].Trim() -eq "HEAD") { $status.Detached = $true }
+        else { $status.Branch = $branch.Output[0].Trim() }
+    }
+
+    # No upstream exits nonzero, which is the answer "this branch tracks
+    # nothing" rather than a failure to read, so it is recorded as data and
+    # never as an unproven probe.
+    $upstream = Invoke-MemorySyncGit -StoreRoot $StoreRoot -Arguments @("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}") -GitExe $GitExe
+    if ($upstream.Code -eq 0 -and $upstream.Output.Count -gt 0) { $status.Upstream = $upstream.Output[0].Trim() }
+
+    # refname:short renders refs/remotes/origin/HEAD as the bare remote name,
+    # so both that and the unshortened form are dropped: neither is a branch,
+    # and counting either as one reports a divergence on a healthy store.
+    $remoteRefs = Invoke-MemorySyncGit -StoreRoot $StoreRoot -Arguments @("for-each-ref", "--format=%(refname:short)", "refs/remotes/origin") -GitExe $GitExe
+    if ($remoteRefs.Code -eq 0) {
+        $status.RemoteBranchesRead = $true
+        $status.RemoteBranches = @($remoteRefs.Output |
+            ForEach-Object { $_.Trim() } |
+            Where-Object { $_ -ne "" -and $_ -ne "origin" -and $_ -ne "origin/HEAD" })
+    }
 
     $dirty = Invoke-MemorySyncGit -StoreRoot $StoreRoot -Arguments @("status", "--porcelain", "--untracked-files=all") -GitExe $GitExe
     if ($dirty.Code -eq 0) {

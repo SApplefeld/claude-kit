@@ -309,8 +309,9 @@ function syncNudge(memq) {
 
     return 'Kit memory sync: the memory store ' + stated + '. Run the kit doctor\'s -Fix (the '
         + 'kit-doctor skill owns that run) to commit through the gated allowlist; push only once '
-        + 'it reports PASS or FIXED, then `git pull --rebase` and push, in the store, to bring '
-        + 'machines back in sync.';
+        + 'that run\'s memory-sync line clears (the memory-system skill owns what each status '
+        + 'allows), then `git pull --rebase` and push, in the store, to bring machines back in '
+        + 'sync.';
 }
 
 // The embedder-absence nudge: `memq find`'s semantic channel needs the local

@@ -1154,22 +1154,24 @@ test('the consent prompt names exactly the action -Fix is about to take, for eve
     assert.strictEqual(g.NeedsWork, false);
 });
 
-// Check mode (no -Fix) against a redirected store root: the PASS line names
+// Check mode (no -Fix) against a redirected store root: the report names
 // uncommitted memory-tier changes when they exist, and says nothing extra
-// when the repo is clean, so an operator reading PASS can tell whether their
-// memories are actually committed without running -Fix first.
-test('check mode names uncommitted changes in the PASS line, and says nothing extra when clean', { skip: !isWin }, () => {
+// when the repo is clean, so an operator can tell whether their memories are
+// actually committed without running -Fix first. A freshly installed store has
+// no remote yet, so the section reads WARN here on that count alone; what this
+// case pins is the uncommitted-changes detail, which rides either status.
+test('check mode names uncommitted changes in the report, and says nothing extra when clean', { skip: !isWin }, () => {
     const fake = makeStore();
     try {
         assert.strictEqual(installRepo(fake.store).status, 0);
 
         const clean = doctorSyncLine(fake.home);
-        assert.strictEqual(clean.status, 'PASS', clean.detail);
+        assert.strictEqual(clean.status, 'WARN', clean.detail);
         assert.ok(!/uncommitted change/.test(clean.detail), 'a clean repo must not claim uncommitted work:\n' + clean.detail);
 
         write(path.join(fake.store, 'memory-types', 'pending-fact.md'), '# pending\n');
         const dirty = doctorSyncLine(fake.home);
-        assert.strictEqual(dirty.status, 'PASS', dirty.detail);
+        assert.strictEqual(dirty.status, 'WARN', dirty.detail);
         assert.match(dirty.detail, /1 uncommitted change\(s\) under the allowlist, not yet committed/);
         assert.match(dirty.detail, /re-run doctor with -Fix/);
 
@@ -1230,10 +1232,14 @@ test('the doctor reports the sync section in both states against a redirected st
         assert.match(absent.detail, /-Fix/);
 
         assert.strictEqual(installRepo(fake.store).status, 0);
+        // A canonical allowlist with no remote is not a pass: every leak probe
+        // reads clean on a store that replicates nowhere, which is the one
+        // state where a green section is actively misleading.
         const present = doctorSyncLine(fake.home);
-        assert.strictEqual(present.status, 'PASS', present.detail);
+        assert.strictEqual(present.status, 'WARN', present.detail);
         assert.match(present.detail, /4 sensitive path\(s\) proven ignored/);
-        assert.match(present.detail, /No origin remote yet/);
+        assert.match(present.detail, /replicates nowhere/);
+        assert.match(present.detail, /remote add origin/);
 
         // Drift is a failure, never a warning: a mangled ignore file is how
         // sync becomes credential exfiltration.
@@ -1243,6 +1249,86 @@ test('the doctor reports the sync section in both states against a redirected st
         const drifted = doctorSyncLine(fake.home);
         assert.strictEqual(drifted.status, 'FAIL', drifted.detail);
         assert.match(drifted.detail, /differs from the allowlist/);
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// Give an installed store an origin it can actually push to. A bare repo on
+// disk is a real remote for every read this check makes (they are all local
+// refs), so the case needs no network and no credentials. It lives under the
+// fake home so the existing cleanup reaps it.
+function attachRemote(fake) {
+    const bare = path.join(fake.home, 'origin.git');
+    assert.strictEqual(spawnSync('git', ['init', '--bare', '-q', bare],
+        { encoding: 'utf8', env: { ...process.env } }).status, 0);
+    assert.strictEqual(git(fake.store, ['remote', 'add', 'origin', bare]).status, 0);
+    const head = git(fake.store, ['rev-parse', '--abbrev-ref', 'HEAD']);
+    assert.strictEqual(head.status, 0, head.stderr);
+    return { bare, branch: head.stdout.trim() };
+}
+
+// The destination half of the section. The allowlist proves what the store may
+// publish; these cases prove there is somewhere for it to go. Every one of them
+// sits on a canonical allowlist with all four leak probes clean, which is the
+// point: before this check, each of these states reported PASS.
+test('a store that syncs nowhere is reported, however clean its allowlist', { skip: !isWin }, () => {
+    const fake = makeStore();
+    try {
+        assert.strictEqual(installRepo(fake.store).status, 0);
+        const { bare, branch } = attachRemote(fake);
+
+        // A remote with no upstream on the branch: push and pull in the
+        // close-out have nothing to resolve, so this one blocks.
+        const noUpstream = doctorSyncLine(fake.home);
+        assert.strictEqual(noUpstream.status, 'FAIL', noUpstream.detail);
+        assert.match(noUpstream.detail, /tracks no upstream/);
+        assert.match(noUpstream.detail, new RegExp('Branch ' + branch));
+
+        // Wired up properly: one branch on origin, tracked by this machine.
+        assert.strictEqual(git(fake.store, ['push', '-q', '-u', 'origin', branch]).status, 0);
+        const healthy = doctorSyncLine(fake.home);
+        assert.strictEqual(healthy.status, 'PASS', healthy.detail);
+        assert.match(healthy.detail, /Destination: /);
+        assert.match(healthy.detail, new RegExp(branch + ' tracks origin/' + branch));
+        assert.match(healthy.detail, /the only branch on origin/);
+
+        // Another machine pushes its store under a different branch name. Both
+        // machines' pushes and pulls keep succeeding and neither ever sees the
+        // other, which is the silent failure this check exists for.
+        assert.strictEqual(git(fake.store, ['push', '-q', 'origin', branch + ':other-machine']).status, 0);
+        assert.strictEqual(git(fake.store, ['fetch', '-q', 'origin']).status, 0);
+        const divergent = doctorSyncLine(fake.home);
+        assert.strictEqual(divergent.status, 'WARN', divergent.detail);
+        assert.match(divergent.detail, /origin also carries origin\/other-machine/);
+        assert.match(divergent.detail, /never reaches this store/);
+        // refs/remotes/origin/HEAD shortens to the bare remote name, which is
+        // not a branch: counting it would report a divergence on every store
+        // that has one.
+        assert.ok(!/carries origin,|carries origin$/m.test(divergent.detail),
+            'the remote-HEAD ref must not be counted as a branch:\n' + divergent.detail);
+
+        // Upstream resolution reads the remote-tracking ref, so losing that ref
+        // (a pruned or never-fetched origin) drops the branch back to tracking
+        // nothing rather than to a store that merely cannot see the other side.
+        // That ordering is why the report can only reach its sole-branch claim
+        // with at least one branch actually observed.
+        assert.strictEqual(git(fake.store, ['update-ref', '-d', 'refs/remotes/origin/other-machine']).status, 0);
+        assert.strictEqual(git(fake.store, ['update-ref', '-d', 'refs/remotes/origin/' + branch]).status, 0);
+        const pruned = doctorSyncLine(fake.home);
+        assert.strictEqual(pruned.status, 'FAIL', pruned.detail);
+        assert.match(pruned.detail, /tracks no upstream/);
+        assert.ok(!/only branch on origin/.test(pruned.detail),
+            'a sole-branch claim must never be made from zero observations:\n' + pruned.detail);
+
+        // A detached HEAD commits to no branch at all.
+        assert.strictEqual(git(fake.store, ['fetch', '-q', 'origin']).status, 0);
+        assert.strictEqual(git(fake.store, ['checkout', '-q', '--detach', 'HEAD']).status, 0);
+        const detached = doctorSyncLine(fake.home);
+        assert.strictEqual(detached.status, 'FAIL', detached.detail);
+        assert.match(detached.detail, /HEAD is detached/);
+
+        assert.ok(fs.existsSync(bare));
     } finally {
         rmDir(fake.home);
     }

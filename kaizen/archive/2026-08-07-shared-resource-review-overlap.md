@@ -1,0 +1,11 @@
+# Kaizen brief: the review overlap needs a single-shared-resource caveat
+
+Friction: executing-work step 3 dispatches the reviewer pair ahead of the slow suites so the reviews work the idle time. On a repo with one shared test binary that inverts: a Release suite held the DLLs and blocked a reviewer's own test run for six minutes, spending the idle time the overlap exists to save. The reviewer agents were also the proximate enabler: their shared inputs clause said "never run builds" and then, three clauses later, that the kit hook leaves "builds and test runs deliberately open", which reads as permission to do the thing the same sentence just forbade.
+
+Change:
+- `plugins/claude-kit/skills/executing-work/SKILL.md`: step 3 carries the caveat on the overlap instruction itself. The predicate is a property of the repo rather than a judgment call (one test binary or build output path, one integration database), and it offers two exits: sequence the suite ahead of the reviewers, or keep the parallel dispatch and carry the Dispatch Brief's workspace-constraint line into every reviewer brief naming the process holding the resource and the operations it puts off-limits. The second exit is the default. Points at the Delegating section's serialize-what-the-environment-cannot-share rule as the owner.
+- `plugins/claude-kit/agents/adversarial-reviewer.md`, `blind-reviewer.md`, `security-reviewer.md`: the hook-shape clause now says the opening is the guard's shape rather than a licence, that the no-build instruction stands on the reviewer's discipline, and that a run of its own contends with the orchestrator's suite where one shared binary serves the repo. `council-member.md` and `design-facilitator.md` keep the original clause: they run at design time, when no suite is in flight, so the contention sentence would be false there.
+
+Acceptance: step 3 names the observable predicate and both exits, and a reader reaching the reviewer dispatch cannot follow the overlap instruction without meeting the caveat; the three code reviewers no longer contain a sentence that forbids builds and then describes them as open with no reconciliation.
+
+Discipline: follow writing-skills; the rule is a conditional on an observable predicate, which is the form that skill prescribes for condition-dependent behavior.
