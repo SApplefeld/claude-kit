@@ -45,7 +45,9 @@ claude-kit/                          (repo = the marketplace)
         design-facilitator.md        Neutral convergence judge for the design council
       hooks/
         hooks.json                   Hook registrations
-        session-start.js             Re-injects in-progress plans on startup/resume/compaction
+        session-start.js             Re-injects in-progress plans on startup/resume/compaction, flags
+                                     Complete-but-unarchived plans, and reports the active backlog's
+                                     item count and oldest-item age
         format-on-edit.js            CSharpier on edited .cs files (silent when not installed)
         doctrine-refresh.js          Rewrites ~/.claude/claude-kit-doctrine.md from the installed skill each session
         kit-goal.js / kit-goal-stop.js / kit-goal-lib.js
@@ -138,6 +140,8 @@ Some environments - for example a work Cowork/Chat account that can't reach this
 Brainstorming produces a spec in `docs/plans/<project>_spec_v1.md` with a recorded commit model: Review-Only (stage, Scott reviews the diff), Branch-and-PR (feature branch and a PR, for shared repos), or Commit-and-Push (land on main and auto-tear-down any worktree branch it used). At a hard, hard-to-reverse design fork it can offer a read-only design council (`design-council`) that pressure-tests the candidate approaches through blind, independent lens positions and facilitator-run convergence rounds, returning a recommendation or a clean fork for Scott, offered and never automatic. Executing-work runs the spec section by section under the completion contract (it drives every remaining unblocked section to done rather than pausing at boundaries): implement, verify with evidence, a paired review (spec-anchored adversarial plus blind diff-only, with security review added on sensitive surfaces), update the plan, append a Chapter, commit per the model. Finishing-work closes the effort: qa-verifier, security-reviewer, final adversarial-reviewer pass, docs-curator with Drift Report, plan closed, changes presented, pushed, or opened as a PR per the model.
 
 Compaction recovery is deterministic: the SessionStart hook fires on startup, resume, and after every compaction, finds in-progress plans, and instructs the session to re-read them - Chapters included - before any work proceeds.
+
+The same hook keeps the backlog from rotting. In any project holding a `docs/backlog.md`, session start reports how many active items it carries, the oldest one's parked date and its age in days, and how many carry no date at all, injecting those figures and never an item's text. Anything older than 90 days is named, with its date, for a promote/retire/keep call at the next close-out.
 
 `/kit-goal docs/plans/<plan>.md` arms a project-scoped completion leash for a run in one line, enforced by a deterministic Stop hook (no LLM evaluator) whose state lives in `.kit/` and so outlives a session boundary, unlike native `/goal`, whose state is bound to the transcript. The hook enforces on session identity, and native compaction preserves the session id, so an armed run rides its own auto-compactions with the leash intact; re-arming is the one-line recovery if a run ever resumes under a new session. The hook allows a stop only when the plan is Complete or archived, or the last message leads with `BLOCKED:`; otherwise it blocks with a reason naming the plan. Clear an armed goal with `/kit-goal clear`.
 

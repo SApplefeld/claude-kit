@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-// SessionStart hook: compaction/startup recovery, plus a kit-repo kaizen nudge
-// and a docs-library hygiene nudge.
+// SessionStart hook: compaction/startup recovery, plus a kit-repo kaizen nudge,
+// a docs-library hygiene nudge, an armed-goal notice, and a backlog block
+// (any project with a docs/backlog.md).
 // Scans docs/plans/ for in-progress plan docs and injects an instruction to
 // re-read them (including Chapters) before any work proceeds. Fires on
 // startup, resume, and (critically) after compaction.
@@ -121,16 +122,19 @@ function summarizeBacklog(cwd) {
         // structure, not an item.
         if (/^\(.*\)$/.test(content)) continue;
         count++;
-        // First ISO date token anywhere in the line: the parked date rides
-        // in the title's parentheses, often with context beside it
-        // ("(2026-08-03, from ...)"), so the first token is the parked date.
+        // First ISO date token anywhere in the line: the date rides in the
+        // title's parentheses, often with context beside it ("(2026-08-03,
+        // from ...)"), so the first token is the aging anchor (the parked
+        // or, after a keep, last-adjudicated date).
         const dateMatch = /\b(\d{4}-\d{2}-\d{2})\b/.exec(line);
         if (!dateMatch) {
             undated++;
             continue;
         }
-        // An ISO-shaped but invalid date (2026-02-30) parses NaN and joins
-        // the undated tally.
+        // An ISO-shaped but impossible date (2026-02-30) is engine-dependent:
+        // this runtime rolls it to a neighboring real date, others yield NaN,
+        // which joins the undated tally. Either outcome is fine for a
+        // coarse age nudge, so the token is not validated further.
         const ms = Date.parse(`${dateMatch[1]}T00:00:00Z`);
         if (Number.isNaN(ms)) {
             undated++;

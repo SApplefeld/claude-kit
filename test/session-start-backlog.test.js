@@ -172,6 +172,20 @@ test('dates with context beside them in the parens still count as dated', () => 
     } finally { rmDir(dir); }
 });
 
+test('KIT_EXTERNAL_ENGINE does not suppress the backlog block', () => {
+    const dir = makeProject();
+    try {
+        writeBacklog(dir, '## Active\n\n- **Engine-visible item (2026-06-15).** Body.\n');
+        const r = spawnSync(process.execPath, [HOOK], {
+            input: JSON.stringify({ cwd: dir }),
+            encoding: 'utf8',
+            env: { ...process.env, KIT_EXTERNAL_ENGINE: '1' }
+        });
+        assert.strictEqual(r.status, 0);
+        assert.match(context(r), /docs\/backlog\.md holds 1 active item\(s\)/);
+    } finally { rmDir(dir); }
+});
+
 test('a hostile item line never reaches stdout as text, but the count still does', () => {
     const dir = makeProject();
     try {
