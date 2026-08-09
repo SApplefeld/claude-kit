@@ -63,7 +63,7 @@ This folder is immutable history. Nothing here is live or pending.
 ## Contents
 
 - **Completed and abandoned plans**, moved here from `../plans/` with their Chapters intact.
-- **Backlog snapshots** (`backlog-YYYY-QN.md`). Completed backlog items are moved into the quarter's snapshot rather than struck through in place.
+- **Backlog snapshots** (`backlog-YYYY-QN.md`). Completed and retired backlog items are moved into the quarter's snapshot rather than struck through in place.
 
 ## Rules
 
@@ -82,9 +82,11 @@ The living handoff and next-steps doc. It carries active items only. When an ite
 
 Per-plan history does not live here. A plan's Chapters travel with the plan into `archive/` when it closes. This file is for cross-effort next-steps that do not belong to any single open plan.
 
+Every active item carries the date it was parked: `- **<item> (YYYY-MM-DD).** <body>`. The surfacing layers age an item from the first date on its line, so a keep decision at the aging check writes its fresh adjudication date first and preserves the original beside it (`(2026-11-07, parked 2026-05-01)`), and an item with no date at all is counted but ageless: the session-start block reports it only in the undated tally, and the aging check cannot age what carries no date.
+
 ## Active
 
-- (Active next-steps and handoffs.)
+- (Active next-steps and handoffs. Each item takes the dated shape above.)
 
 ## Snapshots
 
@@ -98,7 +100,7 @@ Completed items are archived to `archive/backlog-YYYY-QN.md`.
 ```markdown
 # Backlog Snapshot YYYY QN
 
-Completed cross-effort items moved out of `../backlog.md` during this quarter. Append-only within the quarter.
+Completed and retired cross-effort items moved out of `../backlog.md` during this quarter. Append-only within the quarter.
 
 - YYYY-MM-DD: <item, one line, with the outcome>
 ```

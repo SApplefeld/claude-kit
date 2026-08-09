@@ -51,6 +51,8 @@ When `brainstorming` writes a new spec, before handing it to `executing-work`:
 
 `docs/backlog.md` carries active items only. When an item is done, move it into the quarter's snapshot at `docs/archive/backlog-YYYY-QN.md` (create it if absent; append within the quarter). Do not strike items through in place. Per-plan Chapters are the effort-level history; the backlog is cross-effort next-steps kept lean.
 
+The prune pass is also the aging check. Read each active item's parked date and name every one older than 90 days, with its date, for a promote/retire/keep call: promote it (spec it now), retire it (move to the snapshot with the reason), or keep it (write the fresh adjudication date ahead of the original, `(YYYY-MM-DD, parked YYYY-MM-DD)`, with the reason it stays, so it ages from the adjudication). An undated active item is past the threshold by definition: give it its parked date (from git history, or today's marked `backfilled`) and adjudicate it in the same pass. The check also runs without a close-out: when the session-start block reports an oldest item older than the threshold and no close-out is near, offer the prune pass in one line. An item never sits silently past the threshold; 90 days is the tunable knob, aligned with the quarterly snapshot cadence.
+
 ## Retrofit an existing tree
 
 When asked to tidy or retrofit a `docs/` that predates this structure:

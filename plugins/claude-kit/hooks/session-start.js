@@ -75,6 +75,79 @@ function countPendingKaizen(cwd) {
     return count;
 }
 
+// Summarize the active backlog (docs/backlog.md) under cwd: item count, the
+// oldest dated item's ISO date and age in days, and an undated count. Fires
+// in any project, not just the kit repo (unlike countPendingKaizen above).
+// Injects numbers and a regex-extracted ISO date only, never item text: a
+// hostile backlog line cannot inject instructions into session context.
+// No file, unreadable file, no Active section, or zero items: returns null,
+// silently. Any failure returns null (never throws).
+function summarizeBacklog(cwd) {
+    const file = path.join(cwd, 'docs', 'backlog.md');
+    let fd;
+    try {
+        fd = fs.openSync(file, 'r');
+    } catch {
+        return null;
+    }
+    let head;
+    try {
+        // Bounded read: never pull a huge file into memory to scan it.
+        const buf = Buffer.alloc(65536);
+        const bytes = fs.readSync(fd, buf, 0, 65536, 0);
+        head = buf.toString('utf8', 0, bytes);
+    } catch {
+        return null;
+    } finally {
+        try { fs.closeSync(fd); } catch { /* already closed or invalid */ }
+    }
+    if (head.charCodeAt(0) === 0xFEFF) head = head.slice(1);
+
+    const activeHeading = /^##\s+Active/im.exec(head);
+    if (!activeHeading) return null;
+    const afterHeading = head.slice(activeHeading.index + activeHeading[0].length);
+    const nextHeading = /^##\s/m.exec(afterHeading);
+    const section = nextHeading ? afterHeading.slice(0, nextHeading.index) : afterHeading;
+
+    let count = 0;
+    let undated = 0;
+    let oldestIso = null;
+    let oldestMs = null;
+    for (const line of section.split('\n')) {
+        if (!/^- /.test(line)) continue;
+        const content = line.slice(2).trim();
+        if (!content) continue;
+        // A template placeholder bullet (content entirely parenthesized) is
+        // structure, not an item.
+        if (/^\(.*\)$/.test(content)) continue;
+        count++;
+        // First ISO date token anywhere in the line: the parked date rides
+        // in the title's parentheses, often with context beside it
+        // ("(2026-08-03, from ...)"), so the first token is the parked date.
+        const dateMatch = /\b(\d{4}-\d{2}-\d{2})\b/.exec(line);
+        if (!dateMatch) {
+            undated++;
+            continue;
+        }
+        // An ISO-shaped but invalid date (2026-02-30) parses NaN and joins
+        // the undated tally.
+        const ms = Date.parse(`${dateMatch[1]}T00:00:00Z`);
+        if (Number.isNaN(ms)) {
+            undated++;
+            continue;
+        }
+        if (oldestMs === null || ms < oldestMs) {
+            oldestMs = ms;
+            oldestIso = dateMatch[1];
+        }
+    }
+
+    if (count === 0) return null;
+
+    const ageDays = oldestMs === null ? null : Math.max(0, Math.floor((Date.now() - oldestMs) / 86400000));
+    return { count, undated, oldestIso, ageDays };
+}
+
 function main() {
     // Parse Hook Payload.
     let payload = {};
@@ -159,8 +232,18 @@ function main() {
         // Never let the goal check break recovery or the session.
     }
 
+    // Backlog check is additive and must never affect plan recovery. Unlike
+    // the kaizen counter it carries no kit-repo marker gate: it fires in any
+    // project with a docs/backlog.md.
+    let backlog = null;
+    try {
+        backlog = summarizeBacklog(cwd);
+    } catch {
+        // Never let the backlog check break recovery or the session.
+    }
+
     // Emit Additional Context.
-    if (activePlans.length === 0 && kaizenCount === 0 && completedUnarchived === 0 && !goalArmed) return;
+    if (activePlans.length === 0 && kaizenCount === 0 && completedUnarchived === 0 && !goalArmed && !backlog) return;
 
     const blocks = [];
 
@@ -191,6 +274,14 @@ function main() {
 
     if (goalArmed) {
         blocks.push(`A kit goal is armed for ${goalArmed} in this project. If you are working that plan, a Stop hook holds the session to completion, allowing a stop only on plan Complete or a leading 'BLOCKED:'. Reminder, not a blocker.`);
+    }
+
+    if (backlog) {
+        const undatedClause = backlog.undated > 0 ? `; ${backlog.undated} undated` : '';
+        const oldestClause = backlog.oldestIso
+            ? `; oldest dated ${backlog.oldestIso} (${backlog.ageDays} days ago)${undatedClause}`
+            : ', none dated';
+        blocks.push(`docs/backlog.md holds ${backlog.count} active item(s)${oldestClause}. If any bear on this session's work, read the backlog and say so; items older than 90 days get a promote/retire/keep call at the close-out. Reminder, not a blocker.`);
     }
 
     process.stdout.write(JSON.stringify({
