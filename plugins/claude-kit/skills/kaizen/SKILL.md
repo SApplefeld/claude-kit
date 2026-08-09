@@ -30,7 +30,7 @@ Capture happens while you are working in some other project, so the kit clone is
 
 **Not worth a note:**
 - "it went fine", or general praise
-- a project-specific gotcha (that goes to auto memory, not here)
+- a project-specific gotcha (that goes to the project's memory tier, not here)
 - a one-off mistake of your own that is not about the kit
 
 **State the lesson, not the incident.** Capture every note one level more general than the incident that taught it: the incident is the evidence, the lesson is the note. One burn should teach you "hot," not "that stove."
@@ -45,7 +45,7 @@ My weekly kit review is the pass. Run it when I ask, when I accept an end-of-eff
 2. **Reflect and triage.** For each item, with me: is it real, and what is the smallest change that fixes it? Sort into:
    - **Apply now:** small and clear. Becomes a brief (or is fixed directly, since the pass already runs in the kit repo).
    - **Promote:** large enough to deserve its own design. Brainstorm it into a `docs/plans/` spec instead of a brief.
-   - **Route elsewhere:** not actually about the kit. A project learning goes to auto memory; a project convention to that project's CLAUDE.md. It leaves the inbox either way.
+   - **Route elsewhere:** not actually about the kit. A project learning goes to the project's memory tier; a project convention to that project's CLAUDE.md. It leaves the inbox either way.
    - **Park (wait-for-signal):** real and about the kit, but an open experiment with a defined driving signal and no data yet. Nothing to fix; move it to the kit's `docs/backlog.md` with its signal and decision protocol, and clear the note. The inbox stays a friction-only signal, so the pending-items nudge never cries wolf over an experiment that is simply waiting.
 3. **Write briefs and apply.** Write a brief for each apply-now item (format below), make the change per the writing-skills skill (baseline-test any behavior-shaping wording before trusting it), then clear the note lines you handled and archive applied briefs out of `kaizen/briefs/`. The kit repo is Commit-and-Push; a promoted spec follows its own recorded commit model.
 

@@ -30,7 +30,7 @@ One hypothesis at a time, stated explicitly: "X causes Y because Z." Then the sm
 
 ## Phase 4 - Fix the root cause
 
-Fix the cause, not the symptom. Then: verify the repro now passes, run the surrounding tests to confirm nothing else moved, delete the repro script (unless told to keep it), and bank any durable learning to auto memory (the gotcha, not the incident). If the work was part of a planned effort, record the finding in the plan doc's Chapter.
+Fix the cause, not the symptom. Then: verify the repro now passes, run the surrounding tests to confirm nothing else moved, delete the repro script (unless told to keep it), and bank any durable learning to the kit memory store (the gotcha, not the incident). If the work was part of a planned effort, record the finding in the plan doc's Chapter.
 
 ## The escalation rule
 

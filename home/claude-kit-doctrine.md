@@ -82,7 +82,7 @@ Apply on any non-trivial task. This is how to think, decide, build, and communic
 
 - **Never state external specifics from memory in anything that will be forwarded or quoted.** Prices, rates, versions, dates, market figures: verify them before they ride in a draft, email, or memo, and name each claim left unverified in the handoff message that delivers the artifact, never inside the artifact itself.
 
-- **A recalled memory contradicted by evidence gets fixed in the same turn.** When verification shows a memory is wrong or stale - the file moved, the contract changed, the fact expired - correcting or deleting that memory file is part of the current task, not optional hygiene: memories are injected into every later session's priors, so routing around a known-false one ships the bug you just found to the next session. Update it when the fact changed, delete it when the fact no longer exists, keep the index line in step, and name the correction in the close-out.
+- **A recalled memory contradicted by evidence gets fixed in the same turn.** When verification shows a memory is wrong or stale - the file moved, the contract changed, the fact expired - correcting or deleting that memory file is part of the current task, not optional hygiene: memories feed every later session's priors, so routing around a known-false one ships the bug you just found to the next session. Update it when the fact changed, delete it when the fact no longer exists, keep the index line in step, and name the correction in the close-out.
 
 ## What the test suite can't see
 
