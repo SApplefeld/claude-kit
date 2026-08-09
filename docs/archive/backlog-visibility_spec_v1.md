@@ -1,6 +1,6 @@
 # Backlog Visibility
 
-Status: In Progress
+Status: Complete
 Commit Model: Commit-and-Push
 Fable Spend: n/a (Fable-led session)
 Created: 2026-08-09
@@ -17,7 +17,7 @@ Two layers, chosen over a scheduled cross-project digest (deferred; see Out of S
 
 2. **Behavioral layer (the skills).** Three prose additions at the points of action: curating-docs formalizes the dated-item shape the kit's own backlog already uses informally and adds an aging adjudication to the prune pass; finishing-work names 90-day-plus items in the close-out status for a promote/retire/keep call (this is how aging items reach Scott's phone via the board recap); brainstorming's recall step reads the backlog after `memq recall` so a new effort discovers an already-parked solution before designing a fresh one (Scott's memq tie-in, 2026-08-09).
 
-The mechanical layer is the primary enforcement (it fires whether or not any skill loads); the prose layer directs what a session does with the signal. Age thresholds: the hook reports the oldest age unconditionally (continuous visibility); the close-out adjudication fires at 90+ days, aligned with the quarterly snapshot cadence. Both are named tunable knobs.
+The mechanical layer is the primary enforcement (it fires whether or not any skill loads); the prose layer directs what a session does with the signal. Age thresholds: the hook reports the oldest age unconditionally (continuous visibility); the close-out adjudication fires for items older than 90 days, aligned with the quarterly snapshot cadence. Both are named tunable knobs.
 
 Decided 2026-08-09: Mode A (in-session surfacing) over Mode B (scheduled cross-project digest). The YIKES moments happen in projects with recent sessions where the backlog simply never surfaced; a digest for projects that go fully dark is a separate subsystem and is deferred until the need is demonstrated.
 
@@ -79,6 +79,10 @@ Files in scope: the four files above only. Note: `plugins/claude-kit/skills/exec
 
 None; thresholds (90 days, 64 KB) are named as tunable knobs rather than open questions.
 
+## Related
+
+- `docs/archive/claude-kit_docs-lifecycle_spec_v1.md` created the machinery this plan extends: `docs/backlog.md` itself and the curating-docs prune pass that now doubles as the aging check.
+
 ## Chapters
 
 ### Chapter 1 - 2026-08-09
@@ -99,4 +103,14 @@ Decisions / Surprises: The keep-branch date semantics were contradictory as spec
 Review Findings: Critical 1 (the template placeholder regression, adjudicated under Chapter 1's fix). Majors fixed: keep-date contradiction, undated-item exemption. Major addressed by record: the writing-skills RED/GREEN bar for these prose rules is satisfied by rationale rather than probes because the mechanical hook is the primary enforcement and every prose rule binds at a named trigger inside an already-loaded skill's procedure (point-of-action encoding); a probe would test the harness's skill-loading, not the wording. Minors fixed: one-owner cleanup in finishing-work, "chosen to" narrative, register (impersonal/first-person per file), snapshot templates admitting retired items, brainstorming wiring to the finishing prune, third "Then" scan fix. Minor accepted: the quarterly-cadence rationale is approximate (rolling 90 days vs calendar quarter); kept as a mnemonic, not a mechanism.
 Stamps: none surfaced beyond Chapter 1's
 Next: finishing-work
+Commit Model: Commit-and-Push
+
+### Chapter 3 - 2026-08-09 (close-out)
+Completed: finishing pass
+Implemented By: main session (qa-verifier, adversarial-reviewer, docs-curator dispatched)
+Metrics: review rounds 1 (final adversarial at the session model, fable); NEEDS_CONTEXT 0; escalations 0; advisor opus (consultations 0)
+Decisions / Surprises: QA verdict PASS, suite 689 pass / 2 machine-local memq-shim failures matching baseline on two independent runs, hook exercised live against the real backlog (21 items, oldest 2026-07-03, 2 undated pre-backfill). Security gate: the per-section security review (verdict CLEAR) covered the changeset's only non-prose files (session-start.js, the test file); the post-review hook deltas were that reviewer's own recommendations (fd try/finally, age clamp) plus a comment and one fixed-sentence swap, so no re-dispatch; the prose remainder rides the finishing-work waiver, changed-file evidence in the fa5df56 stat. Final adversarial: APPROVED_WITH_CONCERNS, all Minor; fixed the two template consistency gaps, both hook comments, and added the external-engine pin test. Its requested invalid-date test went red and exposed a wrong claim: on this Node (v24.19), Date.parse of an impossible ISO date (2026-02-30) rolls to a neighboring date rather than NaN; the hook comment now states the engine-dependent truth, the NaN branch stays as cross-engine defense, and no test pins engine-dependent behavior. Greedy placeholder exclusion (interior parens) accepted as a noted edge matching the spec's wording. Docs curation: DRIFT NONE, four surfaces updated (architecture.md gained a Backlog surfacing section; README.md, docs/README.md, fleet-integration.md aligned), CLAIMS SWEPT clean on all counted enumerations. Aging check's first live run: no items older than 90 days; two undated items backfilled from git history (2026-07-09 doctor.sh sibling, 2026-06-19 plan-status helper). A separate kaizen batch (eb7d29d) rode this session outside the plan: harness-injection wording sweep plus the auto-memory-to-kit-store renames.
+Review Findings: final round Minors: 6 fixed, 2 accepted with reasons above
+Stamps: adjudicated 1 effort-wide, stamped 1 (hook-edits-require-rebuild)
+Next: none (delivered in this changeset)
 Commit Model: Commit-and-Push
