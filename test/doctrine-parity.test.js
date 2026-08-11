@@ -75,3 +75,29 @@ test('the memory-extension pointer bullet is present once in each copy and ident
         'expected exactly one memory-extension bullet in the doctrine mirror');
     assert.strictEqual(inMirror[0], inSkill[0]);
 });
+
+// Same reasoning as above, and load-bearing for a second reason: the
+// executing-work and finishing-work skills both point at this bullet as the
+// authorization for their Workflow reviewer dispatch. A symmetric deletion of
+// the Workflow grant would pass whole-body identity while silently falsifying
+// both of those committed pointers, so the grant's presence is pinned here
+// rather than left to the bodies matching each other.
+test('the standing-dispatch bullet is present once in each copy, identical, and carries the Workflow grant', () => {
+    const lead = '- **Dispatch is requested standing';
+    const inSkill = skillBody().split('\n').filter((l) => l.startsWith(lead));
+    const inMirror = mirrorBody().split('\n').filter((l) => l.startsWith(lead));
+    assert.strictEqual(inSkill.length, 1,
+        'expected exactly one standing-dispatch bullet in the skill body');
+    assert.strictEqual(inMirror.length, 1,
+        'expected exactly one standing-dispatch bullet in the doctrine mirror');
+    assert.strictEqual(inMirror[0], inSkill[0]);
+    assert.match(inSkill[0], /covers the Workflow tool/,
+        'the standing-dispatch bullet no longer grants the Workflow tool, but '
+        + 'executing-work and finishing-work both cite it as the authorization '
+        + 'for their reviewer-effort dispatch; restore the grant or remove those '
+        + 'pointers');
+    assert.match(inSkill[0], /agentType/,
+        'the Workflow grant no longer requires an agentType the read-only guard '
+        + 'governs, which is the condition that keeps a Workflow-dispatched '
+        + 'reviewer from holding write access to the tree under review');
+});
