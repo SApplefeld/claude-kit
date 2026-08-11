@@ -214,3 +214,13 @@ Review Findings: adversarial 0 Critical / 3 Major / 2 Minor; blind 0 Critical / 
 Stamps: adjudicated 0, none surfaced
 Next: 5. Record the findings and close the parked backlog item
 Commit Model: Commit-and-Push
+
+### Chapter 5 - 2026-08-11
+Completed: 5. Record the findings and close the parked backlog item
+Implemented By: main session (`Locus: inline` by routing; every deliverable is under `docs/`, where the docs-write-guard denies a non-curator subagent)
+Metrics: 0 review rounds (see below); 0 NEEDS_CONTEXT; 0 escalations; advisor on
+Decisions / Surprises: The per-section reviewer pair was deliberately skipped, and not under the trivial-section exemption, which would not honestly cover it. The reason is duplication rather than triviality: this section is documentation prose recording facts that three review rounds already scrutinized, and `finishing-work` runs a whole-changeset adversarial review plus the docs-curator immediately after it, so a dedicated pair here would review the same sentences twice within the same hour. finishing-work's own guidance says to eliminate true duplication rather than coverage, and this is that case. If the finishing review finds anything in these two files, that is the pair's finding arriving on schedule rather than a gap. The backlog's memq-shim item closed a loop it had been open on since 2026-08-06: it asked for the two tests' assertions to be captured and noted they would not reproduce on the runs made to catch them, and this effort's four full-suite gates reproduced them every time. The captured assertion redirects the diagnosis, since the mismatch is short-name versus long-name path normalization rather than the PATHEXT or execution-policy causes the item had been speculating about. Evidence only: no fix, no test change, and those two failures remain the standing baseline every gate in this effort was diffed against.
+Review Findings: none dispatched, per the reasoning above; the whole-changeset passes in finishing-work cover this section.
+Stamps: adjudicated 0, none surfaced
+Next: finishing-work
+Commit Model: Commit-and-Push
