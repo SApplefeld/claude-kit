@@ -816,6 +816,27 @@ test('the governed agents are granted no file-writing tool', () => {
     }
 });
 
+// The three reviewers' effort is a literal two committed skills cite as
+// load-bearing: executing-work's reviewer-effort table calls `high` the
+// frontmatter default that keeps a fable-tier dispatch off the Workflow route,
+// and finishing-work says the same of the finishing gate. Reverting one of these
+// lines to `medium` would leave the whole suite green while the gate silently
+// dropped a notch and both skills asserted a value no longer true, which is the
+// same gap the third doctrine-parity test closes for the doctrine's own grant.
+test('the reviewers pin the effort the skills cite as their frontmatter default', () => {
+    for (const name of ['adversarial-reviewer', 'blind-reviewer', 'security-reviewer']) {
+        const text = fs.readFileSync(path.join(AGENTS, `${name}.md`), 'utf8');
+        const fm = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
+        assert.ok(fm, `${name}.md has no frontmatter`);
+        const line = /^effort:[ \t]*(\S+)[ \t]*$/m.exec(fm[1]);
+        assert.ok(line, `${name}.md declares no effort, so it inherits the session's and the `
+            + 'skills\' "frontmatter default" claim is no longer true of it');
+        assert.strictEqual(line[1], 'high', `${name}.md pins effort ${line[1]}, but `
+            + 'executing-work and finishing-work both name `high` as the reviewers\' '
+            + 'frontmatter default; change the skills too, or restore the pin');
+    }
+});
+
 // A heredoc body is data the receiving command reads on stdin, not shell syntax,
 // so a > inside one is a comparison or an arrow rather than a redirect. The guard
 // blanks that operator and nothing else: command-position scanning runs over the

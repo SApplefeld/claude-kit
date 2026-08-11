@@ -96,7 +96,11 @@ test('the standing-dispatch bullet is present once in each copy, identical, and 
         + 'executing-work and finishing-work both cite it as the authorization '
         + 'for their reviewer-effort dispatch; restore the grant or remove those '
         + 'pointers');
-    assert.match(inSkill[0], /agentType/,
+    // Matched on the requiring phrase rather than the bare field name: a rewrite
+    // that mentions agentType while making it optional would pass /agentType/ and
+    // still drop the condition, and this assertion is the only mechanical trace
+    // over a requirement nothing else enforces (no hook matches the Workflow tool).
+    assert.match(inSkill[0], /naming an `agentType` the read-only guard governs/,
         'the Workflow grant no longer requires an agentType the read-only guard '
         + 'governs, which is the condition that keeps a Workflow-dispatched '
         + 'reviewer from holding write access to the tree under review');
