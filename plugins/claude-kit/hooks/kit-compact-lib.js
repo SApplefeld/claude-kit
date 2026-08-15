@@ -7,8 +7,9 @@
 // chapter-close ritual, and the PreCompact gate (kit-compact-gate.js) reads it
 // to decide whether a pending auto-compaction may land, consuming (deleting) it
 // on the allow so the next mid-chapter attempt is denied again. Single-sourcing
-// the path and the read/write/clear operations here is what keeps the writer
-// and the reader from drifting apart.
+// the path, the read/write/clear operations, and the match rule
+// (checkpointMatches, with its age constants) here is what keeps the writer,
+// the gate, and the status report from drifting apart.
 //
 // Node core modules only, CommonJS, zero dependencies. Every exported function
 // that touches the filesystem is wrapped so it never throws: a filesystem
@@ -24,6 +25,77 @@ const { normalizePlanArg } = require('./kit-goal-lib.js');
 // Path to the checkpoint file for a given repo root.
 function checkpointPath(cwd) {
     return path.join(cwd, '.kit', 'compact-checkpoint.json');
+}
+
+// How long an open checkpoint stays honorable. A checkpoint opened at a
+// boundary that is already past the compaction trigger is consumed within
+// seconds (the harness re-offers a compaction every assistant turn once past
+// the trigger), so fifteen minutes is generous for the case that matters. A
+// checkpoint opened BELOW the trigger has no offer to catch and must age out
+// instead: honoring it later, when the next chapter crosses the trigger
+// mid-section, would land the compaction mid-chapter, which is the exact
+// placement the gate exists to prevent, and self-sustainingly so (the landed
+// compaction resets consumption, the next boundary opens another
+// below-trigger checkpoint, and the cycle repeats). When the bound misfires,
+// the cost is one mid-chapter compaction, the pre-gate status quo, so the
+// failure direction stays fail-open.
+const CHECKPOINT_MAX_AGE_MS = 15 * 60 * 1000;
+
+// Skew allowance for a checkpoint whose openedAt sits in the future: a small
+// clock adjustment between the write and the read is tolerated, but a far-
+// future timestamp is treated as illegible rather than honored, so a clock
+// change can never mint an effectively immortal checkpoint.
+const CHECKPOINT_FUTURE_SKEW_MS = 2 * 60 * 1000;
+
+// Compare two session ids as opaque, case-insensitive strings (session UUIDs
+// are surfaced in mixed case across the harness), the same convention as
+// kit-goal-stop.js. False when either side is missing, which is exactly the
+// treat-as-absent handling an unbound goal or an old-format checkpoint needs.
+function sameSessionId(a, b) {
+    if (!a || !b) return false;
+    return String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
+}
+
+// The one checkpoint match rule, shared by its two consumers so they cannot
+// drift: the PreCompact gate uses the verdict to decide whether a pending
+// auto-compaction may land (and the checkpoint be consumed), and the CLI's
+// status report uses the reason to say why a checkpoint on disk gates
+// nothing. A checkpoint counts only when its recorded plan equals the armed
+// goal's plan, its recorded boundSession equals the goal's current
+// boundSession, and its openedAt is fresh (parseable, within
+// CHECKPOINT_MAX_AGE_MS of nowMs, and no further than
+// CHECKPOINT_FUTURE_SKEW_MS into the future).
+//
+// Returns { ok:true, reason:null } on a match, else { ok:false, reason } with
+// reason naming the first failed clause in evaluation order:
+//   'no-checkpoint'  cp is missing or carries no plan string
+//   'no-goal'        goal is missing or carries no plan string
+//   'wrong-plan'     the plans differ (a stale file from a prior run)
+//   'wrong-session'  the bound sessions differ (an orphan from a crashed run,
+//                    or an unbound side on either record)
+//   'no-timestamp'   openedAt is missing or does not parse as a date
+//   'expired'        openedAt is older than CHECKPOINT_MAX_AGE_MS
+//   'future'         openedAt is beyond the future skew allowance
+// Never throws on JSON-derived input: every access is guarded and Date.parse
+// returns NaN on garbage. nowMs exists so a caller can pin the clock; an
+// absent or illegible value means the current time.
+function checkpointMatches(cp, goal, nowMs) {
+    const now = (typeof nowMs === 'number' && Number.isFinite(nowMs)) ? nowMs : Date.now();
+    if (!cp || typeof cp !== 'object' || typeof cp.plan !== 'string') {
+        return { ok: false, reason: 'no-checkpoint' };
+    }
+    if (!goal || typeof goal !== 'object' || typeof goal.plan !== 'string' || goal.plan === '') {
+        return { ok: false, reason: 'no-goal' };
+    }
+    if (cp.plan !== goal.plan) return { ok: false, reason: 'wrong-plan' };
+    if (!sameSessionId(cp.boundSession, goal.boundSession)) return { ok: false, reason: 'wrong-session' };
+    if (typeof cp.openedAt !== 'string') return { ok: false, reason: 'no-timestamp' };
+    const opened = Date.parse(cp.openedAt);
+    if (!Number.isFinite(opened)) return { ok: false, reason: 'no-timestamp' };
+    const age = now - opened;
+    if (age > CHECKPOINT_MAX_AGE_MS) return { ok: false, reason: 'expired' };
+    if (age < -CHECKPOINT_FUTURE_SKEW_MS) return { ok: false, reason: 'future' };
+    return { ok: true, reason: null };
 }
 
 // Read and parse the checkpoint file. Returns the parsed object, or null if
@@ -117,4 +189,8 @@ function clearCheckpoint(cwd) {
     }
 }
 
-module.exports = { checkpointPath, readCheckpoint, writeCheckpoint, clearCheckpoint };
+module.exports = {
+    checkpointPath, readCheckpoint, writeCheckpoint, clearCheckpoint,
+    checkpointMatches, sameSessionId,
+    CHECKPOINT_MAX_AGE_MS, CHECKPOINT_FUTURE_SKEW_MS
+};

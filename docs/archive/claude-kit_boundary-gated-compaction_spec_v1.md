@@ -1,14 +1,16 @@
 # Boundary-gated compaction: land native auto-compaction at chapter boundaries
 
-Status: In Progress
+Status: Complete
 Commit Model: Commit-and-Push
 Fable Spend: S2 (implementer-fable); per-section reviewer pairs above opus writers ride at fable; finishing reviews at fable
 Created: 2026-08-15
 
 ## Related
 
-- `archive/claude-kit_compact-session-removal_spec_v1.md` (archived): removed the kit's own compaction engine; its Context records the standing default this plan amends (ride native auto-compaction, recover from the plan doc). This plan does not revive any removed machinery: the kit never summarizes anything itself; it only schedules when the harness's own compaction is allowed to land. (Pointer runs one way; that plan is archived and immutable.)
-- `archive/claude-kit_compaction-unwind_spec_v1.md` (archived): removed the old context-tripwire and resume relay. The old tripwire nudged the model to run a kit compaction; this plan's gate is the inverse shape, a deterministic hook vetoing the harness's compaction until the right moment, with no model behavior in the loop at fire time. (One-way pointer, same ground.)
+- `claude-kit_compact-session-removal_spec_v1.md` (archived): removed the kit's own compaction engine; its Context records the standing default this plan amends (ride native auto-compaction, recover from the plan doc). This plan does not revive any removed machinery: the kit never summarizes anything itself; it only schedules when the harness's own compaction is allowed to land. (Pointer runs one way; that plan is archived and immutable.)
+- `claude-kit_compaction-tuning_spec_v1.md` (archived): tuned the removed kit engine's own thresholds against a 55-session transcript corpus. It set no native window, so this plan is not a reversal of it, but two of its measurements set the level chosen here: 92 percent of spend fell on calls carrying over 150,000 context, and compactions fired with a small delta measured break-even to negative. (One-way pointer; that plan is archived and immutable.)
+- `claude-kit_compaction-tripwire_spec_v1.md` (archived): the context tripwire this plan's gate is the inverse of, nudging the model toward a compaction rather than deterministically scheduling the harness's own. (One-way pointer, same ground.)
+- `claude-kit_compaction-unwind_spec_v1.md` (archived): removed the old context-tripwire and resume relay. The old tripwire nudged the model to run a kit compaction; this plan's gate is the inverse shape, a deterministic hook vetoing the harness's compaction until the right moment, with no model behavior in the loop at fire time. (One-way pointer, same ground.)
 
 ## Context
 
@@ -194,3 +196,25 @@ Commit Model: Commit-and-Push
 **Deliberate spec deviation, recorded rather than reconciled.** The spec asked the doctor to WARN when the configured window would put the ceiling out of reach, meaning the session-killer direction. That is not implementable as written: any threshold low enough to flag a small-window machine would flag the recommended value itself. The check covers the safe-but-inert direction only, and the amended spec bullet says so.
 
 **Not applied, and it is Scott's to run.** The `autoCompactWindow` value is not set on this machine. Writing it is a change to live machine configuration, so it ships as the doctor's offer and waits for an explicit `.\doctor.ps1 -Fix`.
+
+### Chapter 4 - 2026-08-15 (close-out)
+Completed: 4. Close-out (finishing-work)
+Implemented By: main session, with implementer-fable for the review-fix rounds
+Metrics: finishing pass ran qa-verifier, security-reviewer and adversarial-reviewer (both at the fable override, effort high per the reviewer table; no cost hold, no unavailability, so no compensation was needed), and docs-curator; 2 fix rounds; 0 escalations; advisor opus (4 consultations, 2 of which changed the work)
+Decisions / Surprises: see below.
+Review Findings: QA PASS. Security CLEAR with 4 Minors (3 fixed, 1 declined with reason). Adversarial APPROVED_WITH_CONCERNS with 1 Major and 3 Minors, all fixed.
+Stamps: adjudicated 0 surfaced across the effort's sweeps, stamped 3 (`probe-scripts-scratchpad-and-controls`, `claude-code-hook-payload-facts`, `hook-edits-require-rebuild`)
+Next: none, effort complete
+Commit Model: Commit-and-Push
+
+**Final gate: 745 tests, 743 pass, 2 fail**, against the 694/692/2 baseline captured before Section 2. The 2 are this machine's standing memq-shim short-path failures, identical in every run across the effort. Delta is exactly the 51 tests this effort added. Build clean. Doctor check-mode run completes on this machine showing the new check.
+
+**The Major, and why it mattered.** The final adversarial pass caught the valve's coverage being overclaimed on two surfaces the caveat never reached: the README said the gate's "worst failure is the pre-gate behavior" and the executing-work skill said "sustained deferral cannot wedge a run", both unconditional, while the design's own record says the opposite for a model window smaller than 200,000. The skill line was the dangerous one, since it is behavioral prose telling a running model that a deferral is never worth acting on. Both are now qualified, and the skill additionally names the one case worth surfacing rather than ignoring. This was the third instance of the defect class this effort itself named in its Standing Brief Amendments block after Section 2, which is the strongest possible argument that the amendment earned its place.
+
+**A finding declined, with the reasoning recorded so it is not re-litigated.** The security review wanted `test/kit-compact-gate.test.js` to import `CHECKPOINT_MAX_AGE_MS` rather than restate `15 * 60 * 1000`, arguing a future change would silently desynchronize the fixtures. The premise is wrong: the literal drives fixture construction, so changing the lib constant makes the boundary tests fail loudly. That is the double-edit pin working as designed, and importing the constant would make the test agree with any value it takes, destroying the pin.
+
+**Docs drift: five items, all `deviation`, none a `mistake`, so nothing stopped.** The curator found the external-engine stand-down membership stale in three places (the gate is a sixth hook that changes behavior under the marker, and the only one that stands down for a scope reason rather than because a headless worker cannot answer a nudge), the fleet-integration hook-event enumeration missing PreCompact, and the root README's doctor inventory stale, the last both from this effort (a new installer) and from two installers that predate it. All fixed. The curator also flagged that Chapter 2's "Minor recorded unfixed" is now stale in the good direction: the shared-predicate refactor landed in this close-out, so the CLI's `status` and the gate answer from one rule.
+
+**Cross-references added** to the archived compaction-tuning and compaction-tripwire plans, per the curator's library-hygiene finding.
+
+**What was verified live, and what only Scott can verify.** The mechanism was probed against the real harness across nine throwaway headless sessions rather than trusted to a green suite. Confirmed live: a deny by exit code 2 is honored and re-offered once per turn indefinitely; the JSON deny form is inert; an opened checkpoint is spent on the very next offer and consumed; a backdated checkpoint draws continuous denials and is never consumed; the safety valve allows at the first reading past its ceiling; the session id survives a compaction; and the chapter-close-then-section-start ordering cannot destroy a checkpoint the gate should have spent, because the offer arrives one turn after the open. What no session can produce is the thing the effort exists for: a real multi-day unattended plan run showing compactions landing at chapter boundaries and the degraded stretches shortening. That is carried in `docs/backlog.md` as an active operator item, with the two outcomes that reopen work named.

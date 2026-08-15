@@ -77,12 +77,19 @@ claude-kit/                          (repo = the marketplace)
         memq-shim.js                 Resolves the installed payload's memq.js so the PATH wrappers stay stable
       doctor/
         install-memq-shim.ps1        Installs the per-shell memq wrappers onto PATH (run by the doctor)
+        install-memory-sync.ps1      Memory-sync allowlist, state, and initialization (run by the doctor)
+        install-embedder.ps1         Embedder probe, install, and index health (run by the doctor)
+        install-compact-window.ps1   Writes autoCompactWindow into user settings.json (run by the doctor
+                                     under -Fix; backs up, verifies, and aborts rather than clobbering)
         doctor.ps1                   The kit doctor (ships with the plugin, so installed machines have it):
                                      policy, ANTHROPIC_API_KEY hazard, doctrine import + freshness, signpost,
                                      hooks (goal leash wiring and load, hook canary wiring, the memq shim),
-                                     and any leftover resume-relay state a machine still carries. Flags: -Fix,
-                                     -Yes (pre-answers prompts), -RemoveLegacyRelay (the one destructive
-                                     action).
+                                     memory sync, the embedder, the auto-compaction window (and whether the
+                                     installed Claude Code supports PreCompact), and any leftover
+                                     resume-relay state a machine still carries. Flags: -Fix, -Yes
+                                     (pre-answers prompts), -RemoveLegacyRelay (the one destructive
+                                     action). Under -Fix the auto-compaction check offers to write your
+                                     user settings.json, the only change it makes to harness config.
         doctor.cmd                   Execution-policy-proof wrapper (a fresh Windows box blocks .ps1 by default)
   kaizen/                            Kit self-improvement inbox (per-machine notes-*.md + briefs/)
   settings/settings.recommended.json Permission rules + acceptEdits starting point
@@ -144,7 +151,7 @@ Brainstorming produces a spec in `docs/plans/<project>_spec_v1.md` with a record
 
 Compaction recovery is deterministic: the SessionStart hook fires on startup, resume, and after every compaction, finds in-progress plans, and instructs the session to re-read them - Chapters included - before any work proceeds.
 
-Compaction *placement* is deterministic too, on a leashed run. Nothing can raise a compaction on demand, but a PreCompact hook can veto one, and a denied auto attempt is re-offered every turn until it is allowed. `kit-compact-gate.js` uses that to schedule: it defers auto-compaction while a chapter is in flight and stands aside once the chapter-close ritual has opened a checkpoint, so the context wipe falls where nothing is half-finished instead of at an arbitrary point mid-section. The kit summarizes nothing itself; the native summarizer runs unmodified. The gate is a no-op unless a kit goal is armed and this session holds its leash, it never touches manual `/compact`, and every error path allows, so its worst failure is the pre-gate behavior. A safety valve allows the compaction regardless once consumption nears the model's limit, because a session held against the hard context limit dies outright.
+Compaction *placement* is deterministic too, on a leashed run. Nothing can raise a compaction on demand, but a PreCompact hook can veto one, and a denied auto attempt is re-offered every turn until it is allowed. `kit-compact-gate.js` uses that to schedule: it defers auto-compaction while a chapter is in flight and stands aside once the chapter-close ritual has opened a checkpoint, so the context wipe falls where nothing is half-finished instead of at an arbitrary point mid-section. The kit summarizes nothing itself; the native summarizer runs unmodified. The gate is a no-op unless a kit goal is armed and this session holds its leash, it never touches manual `/compact`, and every error path allows, so its worst failure is the pre-gate behavior. A safety valve allows the compaction regardless once consumption nears the model's limit, because a session held against the hard context limit dies outright. The valve's ceiling is an absolute token count sized for a 200,000-token model window, which is the one assumption here that does not fail safe and that nothing detects; `docs/security-model.md` carries it.
 
 The same hook keeps the backlog from rotting. In any project holding a `docs/backlog.md`, session start reports how many active items it carries, the oldest one's parked date and its age in days, and how many carry no date at all, injecting those figures and never an item's text. Anything older than 90 days is named, with its date, for a promote/retire/keep call at the next close-out.
 

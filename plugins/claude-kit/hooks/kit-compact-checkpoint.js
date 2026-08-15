@@ -20,8 +20,9 @@
 
 'use strict';
 
+const fs = require('fs');
 const { readGoal } = require('./kit-goal-lib.js');
-const { readCheckpoint, writeCheckpoint, clearCheckpoint } = require('./kit-compact-lib.js');
+const { checkpointPath, readCheckpoint, writeCheckpoint, clearCheckpoint, checkpointMatches } = require('./kit-compact-lib.js');
 
 // Repo-controlled strings (a plan path, a timestamp read back from disk) are
 // sanitized to printable ASCII and length-capped before they reach
@@ -77,21 +78,52 @@ function cmdClear() {
     process.exitCode = 0;
 }
 
+// Why a checkpoint on disk gates nothing, per checkpointMatches reason code.
+// Every message states plainly that the gate treats the file as absent, so a
+// reader never mistakes an open-but-dead checkpoint for a live one. The
+// 'no-checkpoint' code has no entry because cmdStatus reports that state
+// before consulting the rule; an unknown future code falls back to the bare
+// treats-as-absent clause rather than printing nothing.
+const ABSENT_REASONS = {
+    'no-goal': 'no kit goal is armed, so the gate treats it as absent',
+    'wrong-plan': 'does not match the armed goal, so the gate treats it as absent',
+    'wrong-session': 'bound to a different session than the armed goal, so the gate treats it as absent',
+    'no-timestamp': 'its opened timestamp is missing or unreadable, so the gate treats it as absent',
+    'expired': 'expired (past the checkpoint age bound), so the gate treats it as absent',
+    'future': 'its opened timestamp is in the future, so the gate treats it as absent'
+};
+
 function cmdStatus() {
-    const cp = readCheckpoint(process.cwd());
+    const cwd = process.cwd();
+    const cp = readCheckpoint(cwd);
     if (!cp || typeof cp.plan !== 'string') {
-        process.stdout.write('no compact checkpoint is open\n');
+        // readCheckpoint answers null for a genuinely absent file AND for one
+        // that exists but did not parse (or carries no plan). The gate treats
+        // both as absent, but only one of them is a garbage file worth
+        // knowing about, so status distinguishes them rather than reporting
+        // absence over a file that is sitting right there.
+        let fileExists = false;
+        try { fileExists = fs.existsSync(checkpointPath(cwd)); } catch { /* report plain absence */ }
+        process.stdout.write(fileExists
+            ? 'an illegible checkpoint file is present (the gate treats it as absent); clear removes it\n'
+            : 'no compact checkpoint is open\n');
         process.exitCode = 0;
         return;
     }
     // File-derived values print indented, never at column zero (see cmdOpen).
-    let line = '  compact checkpoint open for ' + sanitize(cp.plan)
-        + ' (opened ' + sanitize(cp.openedAt) + ')';
-    // A checkpoint the gate would read as absent is worth flagging here: the
-    // file exists but gates nothing, which status alone would misreport.
-    const goal = readGoal(process.cwd());
-    if (!goal || goal.plan !== cp.plan) {
-        line += ' - does not match the armed goal, so the gate treats it as absent';
+    // A missing openedAt is stated as missing rather than stringified (the
+    // literal "undefined" would read as a value the file carries).
+    let line = '  compact checkpoint open for ' + sanitize(cp.plan);
+    line += (typeof cp.openedAt === 'string')
+        ? ' (opened ' + sanitize(cp.openedAt) + ')'
+        : ' (no opened timestamp recorded)';
+    // A checkpoint the gate would read as absent is worth flagging here, with
+    // the reason: the file exists but gates nothing, which status alone would
+    // misreport. The verdict comes from the same checkpointMatches rule the
+    // gate itself decides by, so this report cannot drift from the gate.
+    const verdict = checkpointMatches(cp, readGoal(cwd), Date.now());
+    if (!verdict.ok) {
+        line += ' - ' + (ABSENT_REASONS[verdict.reason] || 'the gate treats it as absent');
     }
     process.stdout.write(line + '\n');
     process.exitCode = 0;

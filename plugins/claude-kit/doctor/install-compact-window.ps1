@@ -49,6 +49,13 @@ function Set-AutoCompactWindow {
             $textBytes = $rawBytes[3..($rawBytes.Length - 1)]
         }
         $raw = (New-Object System.Text.UTF8Encoding($false)).GetString($textBytes)
+        # Written for Windows PowerShell 5.1, the interpreter doctor.cmd
+        # pins. Under pwsh 7 this same ConvertFrom-Json coerces ISO-8601-
+        # looking strings into DateTime objects, a change the value
+        # verification below cannot see because both the original and the
+        # candidate pass through the same parse and re-serialize the same
+        # way. Unreachable through the shipped launcher; stated here because
+        # this is where someone running it by hand under pwsh would look.
         $original = $raw | ConvertFrom-Json
         $originalKeys = @($original.PSObject.Properties.Name)
 
@@ -102,7 +109,11 @@ function Set-AutoCompactWindow {
         # ordinarily run from inside a live session, so the window between
         # the snapshot above and the swap below is real. Anything written in
         # between is in neither the candidate nor the backup, so the swap
-        # must not clobber it.
+        # must not clobber it. This comparison NARROWS the clobber window
+        # from the whole rewrite down to the gap between this check and the
+        # Move-Item below; that gap is near zero but not zero, so a write
+        # landing inside it is still lost. Closing it outright would need an
+        # OS-level exclusive hold on the file, which nothing here takes.
         $current = [System.IO.File]::ReadAllBytes($Path)
         if ([Convert]::ToBase64String($current) -ne [Convert]::ToBase64String($rawBytes)) {
             Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue
@@ -112,9 +123,15 @@ function Set-AutoCompactWindow {
         Move-Item -LiteralPath $temp -Destination $Path -Force
 
         # A verified swap leaves the backup nothing to restore; removing it
-        # keeps plaintext settings copies from persisting.
+        # keeps plaintext settings copies from persisting. A removal that
+        # fails (an antivirus scan holding the file, a stray handle) is
+        # surfaced to the caller rather than swallowed: the leftover is a
+        # plaintext copy of a file that can carry secrets, so nobody-told is
+        # the one wrong outcome.
         Remove-Item -LiteralPath $backup -Force -ErrorAction SilentlyContinue
-        return @{ ok = $true }
+        $result = @{ ok = $true }
+        if (Test-Path -LiteralPath $backup) { $result.backupLeftover = $backup }
+        return $result
     }
     catch {
         # A failure anywhere (an unreadable file, a locked destination at the

@@ -701,6 +701,112 @@ test('cli: status reports an open checkpoint, a mismatched one, and none', () =>
     }
 });
 
+test('cli: status names each state the gate ignores, and the gate agrees on the same fixture', () => {
+    // Status answers from the same checkpointMatches rule the gate decides
+    // by, so every stage asserts both surfaces against one fixture: the
+    // reason line on status, and the deny (file left in place) on the gate.
+    const { repo, planRel, transcript } = armedRepo();
+    const payload = () => gatePayload(repo, transcript);
+    const statusLine = () => {
+        const res = runCli(['status'], repo);
+        assert.strictEqual(res.status, 0, 'status runs; stderr: ' + res.stderr);
+        return res.stdout;
+    };
+    try {
+        // Wrong session (the crash orphan).
+        writeCheckpoint(repo, planRel, 'ses-crashed-previous-run');
+        let out = statusLine();
+        assert.ok(out.includes('bound to a different session'), 'names the session mismatch: ' + out);
+        assert.ok(out.includes('treats it as absent'), out);
+        assertDeny(runGate(payload()));
+
+        // Expired.
+        writeCheckpointAt(repo, planRel, new Date(Date.now() - (MAX_AGE_MS + 60 * 1000)).toISOString());
+        out = statusLine();
+        assert.ok(out.includes('expired'), 'names the expiry: ' + out);
+        assert.ok(out.includes('treats it as absent'), out);
+        assertDeny(runGate(payload()));
+
+        // Missing openedAt (older format). The missing value is stated as
+        // missing, never stringified into a literal "undefined".
+        writeCheckpointAt(repo, planRel, undefined);
+        out = statusLine();
+        assert.ok(out.includes('missing or unreadable'), 'names the missing timestamp: ' + out);
+        assert.ok(out.includes('no opened timestamp recorded'), out);
+        assert.ok(!out.includes('undefined'), 'no stringified undefined: ' + out);
+        assertDeny(runGate(payload()));
+
+        // Unparseable openedAt.
+        writeCheckpointAt(repo, planRel, 'not a timestamp');
+        out = statusLine();
+        assert.ok(out.includes('missing or unreadable'), 'names the unreadable timestamp: ' + out);
+        assertDeny(runGate(payload()));
+
+        // Far-future openedAt.
+        writeCheckpointAt(repo, planRel, new Date(Date.now() + 60 * 60 * 1000).toISOString());
+        out = statusLine();
+        assert.ok(out.includes('in the future'), 'names the future timestamp: ' + out);
+        assertDeny(runGate(payload()));
+
+        // A live checkpoint carries no absent note, and the gate consumes it.
+        const opened = runCli(['open'], repo);
+        assert.strictEqual(opened.status, 0, 'open succeeds; stderr: ' + opened.stderr);
+        out = statusLine();
+        assert.ok(out.includes(planRel), out);
+        assert.ok(!out.includes('treats it as absent'), 'a live checkpoint carries no absent note: ' + out);
+        assertAllow(runGate(payload()));
+        out = statusLine();
+        assert.ok(out.includes('no compact checkpoint'), 'consumed: ' + out);
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('cli: status reports an illegible checkpoint file instead of claiming absence', () => {
+    const { repo, transcript } = armedRepo();
+    try {
+        writeFile(checkpointPath(repo), 'garbage, not json {');
+        const res = runCli(['status'], repo);
+        assert.strictEqual(res.status, 0);
+        assert.ok(res.stdout.includes('illegible checkpoint file'), 'names the garbage file: ' + res.stdout);
+        assert.ok(res.stdout.includes('treats it as absent'), res.stdout);
+        // The gate agrees (treat as absent means deny), and does not consume
+        // a file it cannot read.
+        assertDeny(runGate(gatePayload(repo, transcript)));
+        assert.ok(fs.existsSync(checkpointPath(repo)), 'illegible file left in place');
+        // clear is the remedy status points at.
+        const cleared = runCli(['clear'], repo);
+        assert.strictEqual(cleared.status, 0);
+        assert.ok(!fs.existsSync(checkpointPath(repo)), 'clear removes it');
+        // And with the file truly gone, status reports plain absence again.
+        const after = runCli(['status'], repo);
+        assert.ok(after.stdout.includes('no compact checkpoint is open'), after.stdout);
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('cli: status on a checkpoint whose goal is gone says so, and the gate leaves it alone', () => {
+    const { repo, transcript } = armedRepo();
+    try {
+        const opened = runCli(['open'], repo);
+        assert.strictEqual(opened.status, 0, 'open succeeds; stderr: ' + opened.stderr);
+        // The goal is cleared out from under the checkpoint (a temp fixture
+        // repo, never the real one).
+        fs.rmSync(path.join(repo, '.kit', 'goal-state.json'));
+        const res = runCli(['status'], repo);
+        assert.strictEqual(res.status, 0);
+        assert.ok(res.stdout.includes('no kit goal is armed'), 'names the missing goal: ' + res.stdout);
+        assert.ok(res.stdout.includes('treats it as absent'), res.stdout);
+        // The gate allows on the no-goal clause, long before the checkpoint,
+        // so the file is not consumed.
+        assertAllow(runGate(gatePayload(repo, transcript)));
+        assert.ok(fs.existsSync(checkpointPath(repo)), 'not consumed on a no-goal allow');
+    } finally {
+        rmDir(repo);
+    }
+});
+
 test('cli: clear removes an open checkpoint and is a no-op when none is open', () => {
     const { repo, planRel } = armedRepo();
     try {

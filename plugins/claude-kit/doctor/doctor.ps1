@@ -1487,6 +1487,11 @@ $recommendedTrigger = $recommendedWindow - $autoCompactReserve
 # as soon as the harness starts offering, so it is warned on, not just the
 # zero-or-negative case.
 $minUsableBand = 20000
+# The documented floor of autoCompactWindow's accepted range. Below it the
+# harness may clamp or ignore the value, so the real trigger is unknown and a
+# derived trigger number would be fiction; the check reports that state
+# instead of assessing it.
+$windowFloor = 100000
 $settingsPath = Join-Path $claudeDir "settings.json"
 # The reported first version with PreCompact hook support. That is a support
 # floor only: the deny mechanism the gate relies on (exit code 2 honored, the
@@ -1593,6 +1598,12 @@ elseif ($null -eq $configuredWindow) {
         $result = Set-AutoCompactWindow -Path $settingsPath -Value $recommendedWindow
         if ($result.ok) {
             Report "FIXED" "Auto-compaction window" @("Set autoCompactWindow to $recommendedWindow.", "Restart Claude Code for it to take effect.")
+            if ($result.backupLeftover) {
+                # The leftover is a plaintext copy of settings.json, which can
+                # carry an env block and apiKeyHelper, so it is named rather
+                # than silently left behind.
+                Report "INFO" "Auto-compaction window" @("The pre-write backup could not be removed and remains at " + (Get-SanitizedLine $result.backupLeftover 200) + "; it holds a plaintext copy of settings.json, so delete it when convenient.")
+            }
         }
         else {
             # The reason can carry file-derived text (key names, exception
@@ -1604,10 +1615,20 @@ elseif ($null -eq $configuredWindow) {
         Report "INFO" "Auto-compaction window" $detail
     }
 }
+elseif ($configuredWindow -lt $windowFloor) {
+    # Below the documented floor nothing derived from the value can be
+    # trusted, so no trigger arithmetic is shown: the honest report is that
+    # the behavior is unknown, not a clamped-to-zero number and a PASS.
+    Report "WARN" "Auto-compaction window" @(
+        "autoCompactWindow is $configuredWindow, below the documented floor of $windowFloor, so the harness may clamp or ignore it and the real trigger is unknown.",
+        "Set it to $recommendedWindow (the documented range starts at $windowFloor)."
+    )
+}
 else {
     $trigger = $configuredWindow - $autoCompactReserve
-    # Clamped for display: a window below the reserve never triggers, and a
-    # negative "offered near" number would read as nonsense.
+    # Display guard only: the floor branch above already refuses any window
+    # small enough to derive a negative trigger, so this clamp is unreachable
+    # belt-and-braces against the two constants drifting.
     $displayTrigger = [Math]::Max(0, $trigger)
     $detail = @("autoCompactWindow is $configuredWindow, so a compaction is offered near $displayTrigger consumed (the trigger runs about $autoCompactReserve below the configured window).")
     # The one direction of the gate that is not fail-open: the valve is an
