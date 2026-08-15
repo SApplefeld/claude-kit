@@ -364,4 +364,4 @@ function emitGoalEvent(details) {
     } catch { /* the event stream is best-effort; a failed emit changes nothing */ }
 }
 
-module.exports = { goalPath, readGoal, armGoal, bindSession, clearGoal, composeCondition, planHead, emitGoalEvent };
+module.exports = { goalPath, readGoal, armGoal, bindSession, clearGoal, composeCondition, planHead, emitGoalEvent, normalizePlanArg };

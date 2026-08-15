@@ -60,7 +60,7 @@ New hook `plugins/claude-kit/hooks/kit-compact-gate.js` wired in `hooks.json` as
 
 Deny mechanism and valve signal, as Section 1's probe confirmed them:
 
-- **Deny is `process.exit(2)`, never JSON.** The JSON `decision: "deny"` form is inert here; a gate written on it allows every compaction while appearing to work.
+- **Deny is exit code 2, never JSON.** The JSON `decision: "deny"` form is inert here; a gate written on it allows every compaction while appearing to work. (The hook sets `process.exitCode = 2` rather than calling `process.exit(2)`, so its stderr note drains before the process ends.)
 - **The valve signal is the newest assistant `usage` row in the transcript at the payload's `transcript_path`**, read at fire time. The PreCompact payload itself carries no usage field: its keys are `session_id`, `transcript_path`, `cwd`, `prompt_id`, `hook_event_name`, `trigger`, `custom_instructions`. The consumed figure is `input_tokens + cache_creation_input_tokens + cache_read_input_tokens` off that row, which sits 4 to 6 lines from the transcript's end and is monotonic across a session (32 consecutive samples, zero decreases), so a rising-signal ceiling check is sound. A transcript with no readable usage row means allow, per the fail-open posture.
 
 Tests: at minimum, lock both directions of every gate condition, because a silent wrong-way gate is the expensive failure in each case: deny in the armed-bound-no-checkpoint state and allow in each single-condition negation (no goal, bystander session, checkpoint open, external-engine marker, usage at ceiling, unreadable transcript, unreadable goal state); checkpoint consumption is single-shot (second attempt after an allow is denied again); a checkpoint naming the wrong plan reads as absent; manual trigger never gated. Mirror `test/kit-goal-stop.test.js` fixture patterns.
@@ -69,8 +69,10 @@ Acceptance: `./build.ps1` run before the suite (hook edits fail two hook-canary 
 
 ### 3. Threshold, doctor, and skill wiring
 Model: opus
-- The lowered trigger ships as `autoCompactWindow` in user settings.json, applied via a doctor `-Fix` offer (the doctor already owns gated machine-state repairs). **The 500000 starting instinct is withdrawn: Section 1 showed the effective trigger is the configured value minus about 35,000, so a configured window larger than the model's real context window pushes the trigger past a point the session can never reach, and auto-compaction simply never fires.** That would leave the gate with nothing to schedule and the whole feature inert. Size the value against the model's real window instead: pick the context level at which compaction should be offered, then add about 35,000. On a 200,000-token window, a value near 155,000 offers compaction at roughly 120,000 consumed. Record the chosen value and the arithmetic in the Chapter.
-- Doctor check: reports the configured window (INFO when absent), and WARNs when the installed Claude Code predates PreCompact support (reported v2.1.208).
+- The lowered trigger ships as `autoCompactWindow` in user settings.json, applied via a doctor `-Fix` offer (the doctor already owns gated machine-state repairs). **The 500000 starting instinct is withdrawn: Section 1 showed the effective trigger is the configured value minus about 35,000, so a configured window larger than the model's real context window pushes the trigger past a point the session can never reach, and auto-compaction simply never fires.** That would leave the gate with nothing to schedule and the whole feature inert. Size the value against the model's real window instead: pick the context level at which compaction should be offered, then add about 35,000.
+
+**The value must also leave a usable denial band.** The gate can only defer a compaction between the trigger (where the harness first offers) and the safety ceiling Section 2 shipped at 140,000 consumed (where the valve stops deferring). Too narrow a band and a chapter cannot close before the valve fires, so the compaction lands mid-chapter anyway and the feature does nothing. On a 200,000-token window, a trigger near 100,000 leaves roughly 40,000 tokens of runway, which is `autoCompactWindow` near **135,000**. Record the chosen value and the arithmetic in the Chapter.
+- Doctor check: reports the configured window (INFO when absent), and WARNs when the installed Claude Code predates PreCompact support (reported v2.1.208). It also WARNs when the configured window would put the gate's 140,000-token safety ceiling out of reach, because the ceiling is an absolute count assuming a 200,000-token model window and the hook cannot derive the real one (the PreCompact payload carries no `model` field; only SessionStart does). That is the single direction of this design that is not fail-open: on a smaller window the valve never fires and the gate becomes an unconditional session-killer for the bound session, so the doctor is where it gets caught.
 - `skills/executing-work/SKILL.md`: the chapter-close ritual gains the checkpoint CLI line (write the checkpoint after the Chapter is appended and the section's commit model has been honored), and the native-compaction prose gains the boundary-gating sentence: on a gated run, compaction lands at chapter boundaries by design, and mid-chapter denial is the gate working, never a reason to act.
 - Docs: `architecture.md` hook wiring section gains the gate; `security-model.md` gains the gate's row (invariant enforced, the accepted risk that a user-writable checkpoint file steers compaction timing, worst case a compaction landing earlier or later than intended, compensating valve, fail-open posture); root `README.md` tree/summary if the hook list appears there.
 
@@ -99,6 +101,12 @@ Finishing pass: qa-verifier, security review (an enforcement hook plus doctor su
 - ~~Valve signal~~ Resolved by Section 1: the newest assistant `usage` row in the transcript, read at fire time. The ceiling **value** remains Section 2's to name in code, sized so a single turn's growth cannot leap the gap to the hard limit (observed turn deltas ranged from about 850 to about 8,300 tokens, and a large tool result can exceed both).
 - Whether `autoCompactWindow` is clamped to the model's window above it: **unresolved, and deliberately so.** The probe could not settle it, because context growth in this harness is not a controllable input (two runs with byte-identical reads peaked at 161,618 and 95,534). The question is moot under Section 3's amended sizing rule: a value below the model window is correct whether or not clamping happens, and the risk is asymmetric, since clamping would be harmless while its absence would disable auto-compaction entirely. Do not spend another probe on it.
 
+## Standing Brief Amendments
+
+Folded into every later dispatch brief for this effort.
+
+- **A comment may only name a control that exists.** Section 2's review caught the gate's header claiming a "kit-doctor load-check" covered it when no such check exists (the canary's pass is syntax-only `node --check`). A documented-but-nonexistent control is worse than an undocumented one, because it stops anyone from adding the real thing. Before writing that a check, guard, or test covers something, open the checker and confirm it does.
+
 ## Chapters
 
 ### Chapter 1 - 2026-08-15
@@ -123,3 +131,36 @@ Commit Model: Commit-and-Push
 Queued for Section 4's operator-tier memory write (harness facts, machine-wide, same family as `claude-code-hook-payload-facts`): PreCompact denies by exit 2 only; the JSON form is inert; the trigger equals the configured window minus about 35,000; `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` does not work here; `session_id` survives a compaction.
 
 Carried into Section 3: the archived `claude-kit_compaction-tuning_spec_v1.md` predates this effort and may already have settled a window value or deliberately removed one. Read it before choosing the number, so this plan is not a silent move back across an earlier decision.
+
+### Chapter 2 - 2026-08-15
+Completed: 2. The gate: PreCompact hook, checkpoint CLI, tests
+Implemented By: implementer-fable (dispatched with the fable model override from this Opus-led session, per the plan's `Fable Spend` header), one review round plus one fix round
+Metrics: 1 review round (adversarial + blind + security, the pair at fable per the reviewer-tier rule, security at its default); 0 NEEDS_CONTEXT; 0 escalations; advisor opus
+Decisions / Surprises: see below.
+Review Findings: 1 Major addressed (the safety ceiling), 10 Minors addressed, 3 Minors declined with reasons, 1 Minor recorded unfixed. Detail below.
+Stamps: adjudicated 0 surfaced by `memq unstamped`, stamped 1 (`hook-edits-require-rebuild`, which put the `./build.ps1`-before-the-suite step into the dispatch brief and saved a wasted full pass)
+Next: 3. Threshold, doctor, and skill wiring
+Commit Model: Commit-and-Push
+
+**What shipped.** `kit-compact-gate.js` (the PreCompact hook), `kit-compact-lib.js` (checkpoint path and read/write/clear, single-sourced so the writer and reader cannot drift), `kit-compact-checkpoint.js` (the CLI, subcommands `open | clear | status`), the `PreCompact` block in `hooks.json` with matcher `auto`, and `test/kit-compact-gate.test.js`. `kit-goal-lib.js` changed by exactly one line, adding `normalizePlanArg` to its exports so the checkpoint writer can validate through the sibling's rule rather than its own.
+
+**Gate: 730 tests, 728 pass, 2 fail**, against a baseline of 694/692/2 captured on this tree immediately before dispatch. The 2 failures are identical in both runs: the standing `test/memq-shim.test.js` short-path failures on this machine. Delta is exactly the 36 new tests, all passing. Run independently by the orchestrator, not taken from the implementer's report.
+
+**The live gate, which the suite cannot reach.** A green unit suite proves the hook's own exit code, never that the harness honors it. Four throwaway headless sessions on Claude Code 2.1.233, driving real context growth against the real hook file:
+
+- Armed, bound, no checkpoint: **19 consecutive real auto-compaction attempts denied, zero compactions landed.**
+- Checkpoint opened mid-session by the real CLI: the **first** attempt allowed, the compaction landed (SessionStart fired with `source: "compact"`), and the checkpoint was consumed. Session id identical either side of the compaction, which is the property the leash binding depends on.
+- Orphan checkpoint (right plan, wrong session): denied throughout and never consumed, confirming the session-binding fix.
+- **The safety valve firing, observed live**: 20 denials climbing from 56,058 to 139,827 consumed, then an allow at 141,314, the first reading past the 140,000 ceiling. The run ended on `Reached max turns`, not a context death, which is the whole difference from Section 1's valve-less probe that died at the hard limit.
+
+**Decisions / Surprises.**
+
+- **The safety ceiling moved 160,000 to 140,000**, the round's one Major. The original number was sized against average turn growth, but two mechanics compound against that: the valve reads a one-turn-stale figure (the newest assistant usage row reflects the previous turn's request), and a denied attempt is only re-evaluated once per turn, so the real margin from a deny decision to death is two turns. Independently confirmed from Section 1's data, where the harness fired its trigger while the newest usage row still read 63,869 against a threshold near 65,000, so the harness's view of context runs ahead of the last row. Arithmetic now in the constant's comment: 185,000 observed death, minus two 20,000-token large turns, is 145,000, rounded down.
+- **Checkpoints are session-bound.** Both reviewers found that a checkpoint naming the same plan, orphaned by a crash, would open the gate for the resumed session. The checkpoint now records the goal's `boundSession` at write time and the gate requires it to match, so a re-bind retires the orphan. A checkpoint with no such field reads as absent, which handles any older file.
+- **Deliberate deviation from the spec's wording, kept:** the spec said `process.exit(2)`; the code sets `process.exitCode = 2` so the stderr note drains before the process ends (`process.exit` can truncate an async pipe write). Functionally identical for the verdict and better on the note. The spec's Context bullet now states the contract as "exit code 2" rather than naming the API call.
+- **The one direction of this design that is not fail-open, now named in code:** the ceiling is an absolute token count assuming a 200,000-token model window, and the PreCompact payload carries no `model` field to derive the real one. On a smaller window the valve would never fire and the gate would become an unconditional session-killer. Stated as an explicit assumption beside the constant, and routed to Section 3 as a doctor WARN.
+- **A false coverage claim, caught by two reviewers independently:** the gate's header claimed a "kit-doctor load-check" verified its dependencies resolve. No such check exists (the canary's pass is syntax-only `node --check`, and the gate is not in its behavior-probe list). Corrected, and generalized into the Standing Brief Amendments block above.
+
+**Minors declined, with reasons.** The checkpoint CLI has no `require.main` guard: it matches the existing `kit-goal.js` convention and nothing requires it, so consistency wins over a hypothetical future load-check. The clause-5 read-then-delete is not atomic: unreachable while the writer and the gate serialize through one session, so it carries a comment naming that assumption instead of a lock. A directory junction planted at `.kit` could redirect the checkpoint delete: bounded to that one filename and requires tree write access that already breaks the goal state.
+
+**Minor recorded unfixed.** The CLI's `status` flags a checkpoint the gate would ignore only when the *plan* mismatches, not when the *session* does, so a crash-orphaned checkpoint reports as open. Display only; the gate itself is correct and tested both directions. The drift-free fix is a shared match predicate in `kit-compact-lib.js` used by both the gate and the CLI, which is a refactor of freshly reviewed matching logic and disproportionate to a status-line gap. Carry it to finishing-work as a candidate.
