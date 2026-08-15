@@ -489,6 +489,91 @@ test('gate: checkpoint with no boundSession field (older format) reads as absent
     }
 });
 
+// The shipped checkpoint age bound, duplicated as a pin like CEILING above:
+// changing the constant in the hook must fail the boundary cases here and
+// force a visible double-edit.
+const MAX_AGE_MS = 15 * 60 * 1000;
+
+// Hand-write a plan-and-session-matching checkpoint with an arbitrary
+// openedAt value (or none), isolating the freshness leg of the match.
+function writeCheckpointAt(repo, planRel, openedAt) {
+    const record = { plan: planRel, boundSession: SESSION };
+    if (openedAt !== undefined) record.openedAt = openedAt;
+    writeFile(checkpointPath(repo), JSON.stringify(record) + '\n');
+}
+
+test('gate: checkpoint just inside the age bound: allow AND consume (freshness both directions)', () => {
+    const { repo, planRel, transcript } = armedRepo();
+    try {
+        // One minute of margin inside the bound, so a slow test run cannot
+        // drift the fixture across the boundary.
+        writeCheckpointAt(repo, planRel, new Date(Date.now() - (MAX_AGE_MS - 60 * 1000)).toISOString());
+        assertAllow(runGate(gatePayload(repo, transcript)));
+        assert.ok(!fs.existsSync(checkpointPath(repo)), 'fresh checkpoint consumed');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: checkpoint older than the age bound reads as absent: deny, file left in place', () => {
+    // The ordinary same-run leftover: a boundary reached below the trigger
+    // opens a checkpoint no offer ever catches. Honoring it when the NEXT
+    // chapter crosses the trigger would land the compaction mid-chapter on
+    // every cycle, making the whole gate inert after the first chapter.
+    const { repo, planRel, transcript } = armedRepo();
+    try {
+        writeCheckpointAt(repo, planRel, new Date(Date.now() - (MAX_AGE_MS + 60 * 1000)).toISOString());
+        assertDeny(runGate(gatePayload(repo, transcript)));
+        assert.ok(fs.existsSync(checkpointPath(repo)), 'expired checkpoint is not consumed');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: checkpoint with no openedAt reads as absent: deny', () => {
+    const { repo, planRel, transcript } = armedRepo();
+    try {
+        writeCheckpointAt(repo, planRel, undefined);
+        assertDeny(runGate(gatePayload(repo, transcript)));
+        assert.ok(fs.existsSync(checkpointPath(repo)), 'unmatched checkpoint is not consumed');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: checkpoint with an unparseable openedAt reads as absent: deny', () => {
+    const { repo, planRel, transcript } = armedRepo();
+    try {
+        writeCheckpointAt(repo, planRel, 'not a timestamp');
+        assertDeny(runGate(gatePayload(repo, transcript)));
+        assert.ok(fs.existsSync(checkpointPath(repo)), 'unmatched checkpoint is not consumed');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: checkpoint with a far-future openedAt reads as absent: deny (no immortal checkpoint)', () => {
+    const { repo, planRel, transcript } = armedRepo();
+    try {
+        writeCheckpointAt(repo, planRel, new Date(Date.now() + 60 * 60 * 1000).toISOString());
+        assertDeny(runGate(gatePayload(repo, transcript)));
+        assert.ok(fs.existsSync(checkpointPath(repo)), 'unmatched checkpoint is not consumed');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: checkpoint a few seconds in the future (clock skew) still matches: allow AND consume', () => {
+    const { repo, planRel, transcript } = armedRepo();
+    try {
+        writeCheckpointAt(repo, planRel, new Date(Date.now() + 30 * 1000).toISOString());
+        assertAllow(runGate(gatePayload(repo, transcript)));
+        assert.ok(!fs.existsSync(checkpointPath(repo)), 'within-skew checkpoint consumed');
+    } finally {
+        rmDir(repo);
+    }
+});
+
 test('gate: bystander allow does NOT consume a matching checkpoint', () => {
     const { repo, planRel, transcript } = armedRepo();
     try {

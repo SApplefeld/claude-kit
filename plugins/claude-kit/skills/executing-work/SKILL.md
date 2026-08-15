@@ -74,6 +74,14 @@ Run it from the main checkout. `memq` resolves the store from the cwd unless an 
 
 For each Section of Work, in order:
 
+0. **Close the previous boundary.** If the run is leashed, clear any compaction checkpoint the last chapter left open, since work is about to resume and this is no longer a boundary:
+
+   ```
+   node <plugin-root>/hooks/kit-compact-checkpoint.js clear
+   ```
+
+   It is a no-op when nothing is open, so it costs one call on the first section. The gate also expires a checkpoint on its own after a short window, so skipping this degrades to one mistimed compaction rather than a broken run, but the two guards are independent on purpose: a checkpoint that outlives its boundary is exactly how this feature turns into a silent no-op.
+
 1. **Confirm the approach, then implement.** Before writing a section whose mechanism the spec assumed without reading the code, do a quick in-session read of the files it touches and confirm the planned approach holds. A spec written during brainstorming can be fictional about code nobody had open yet. This is a lightweight read, not a fan-out; if the real shape differs materially, adjust and note it in the Chapter (raise it to me only if it changes design intent). Then implement per the section's model tier, which is a dispatch instruction rather than a hint: a section carrying a `Model:` tier goes to that tier's implementer, and the doctrine's standing dispatch request covers it, including where a session-prompt line makes dispatch conditional on my having requested it.
    - **A section that writes under `docs/` goes to the main thread regardless of the tier it carries.** The docs-write-guard denies any non-curator subagent a write into `docs/`, so a dispatched implementer is blocked mid-section; doc authoring is also design-entangled (voice, structure, cross-references). An implementer may still draft the prose and return it in its final message for the main thread to place, but the `docs/` write itself is always the main thread's. (This is a routing override, not a tier change: record `Locus: inline` under the section's `Model:` line so the override is visible up front, and leave the `Model:` value the bare tier it earned.)
    - **Tier `haiku` / `sonnet` / `opus` / `fable`:** dispatch the matching `implementer-haiku` / `implementer-sonnet` / `implementer-opus` / `implementer-fable` agent with a complete brief built from the Dispatch Brief template:
@@ -195,7 +203,17 @@ For each Section of Work, in order:
    - **Branch-and-PR:** commit the section's code together with its Chapter (the plan doc update from step 6) to the feature branch, so the record rides with the change into the eventual merge. The PR happens in finishing-work. Pushing here is not merging: nothing is final until that merge.
    - **Commit-and-Push:** commit the section and push to origin. (If concurrency put you on a worktree branch, the merge to main and teardown happen in finishing-work, not here.)
 
+8. **Open the compaction checkpoint.** Once the Chapter is appended and the section's commit model has been honored, this is a chapter boundary, which is the one moment a context compaction costs nothing. Tell the gate so:
+
+   ```
+   node <plugin-root>/hooks/kit-compact-checkpoint.js open
+   ```
+
+   Resolve `<plugin-root>` the same way the Dispatch Brief template's style-skill bullet does. The command is a no-op refusal when no kit goal is armed, so running it on an unleashed session is harmless. It opens exactly one compaction: the gate consumes the checkpoint when the compaction lands, so the next mid-chapter attempt is deferred again. A checkpoint the gate never spends expires on its own shortly after, and step 0 of the next section clears it regardless, so an open checkpoint cannot leak into the next chapter and admit a compaction mid-section.
+
 Compaction is the harness's own: native auto-compaction may fire mid-run on a long session, and the plan doc plus its Chapters are the recovery spine. Context pressure never stops or pauses a run, and is never a reason to end a turn.
+
+**On a gated run, compaction lands at chapter boundaries by design.** With a kit goal armed and this session holding the leash, the kit's PreCompact gate defers auto-compaction mid-chapter and stands aside once step 8 has opened a checkpoint, so the compaction falls where nothing is half-finished. A deferral you notice mid-section is the gate working, never a fault and never something to act on: do not clear the goal, do not touch the checkpoint, and do not treat it as context pressure (which is never a stop condition anyway). A safety valve allows the compaction regardless once consumption nears the model's limit, so sustained deferral cannot wedge a run.
 
 Then continue to the next section. Do not stop here.
 

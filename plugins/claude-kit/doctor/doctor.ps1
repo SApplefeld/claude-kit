@@ -14,7 +14,9 @@
 #   .\doctor.ps1 -Fix         Also applies the safe durable repairs (execution
 #                             policy, the memq shim into ~\.claude\bin,
 #                             the memory store's sync repo and allowlist,
-#                             signpost + git hooks on a clone).
+#                             signpost + git hooks on a clone, and the
+#                             autoCompactWindow value written into user
+#                             settings.json, behind its own consent prompt).
 #                             It deletes nothing.
 #   .\doctor.ps1 -Fix -Yes    Pre-answers the consent prompts of the actions the
 #                             other flags already requested, for unattended runs.
@@ -127,6 +129,11 @@ $claudeDir = Join-Path $env:USERPROFILE ".claude"
 # resolves no paths of its own either: this script is the only caller that
 # knows the real embedder root and store root, and passes both in.
 . (Join-Path $PSScriptRoot "install-embedder.ps1")
+
+# Auto-compaction-window writer for user settings.json, beside this script.
+# It resolves no paths of its own: this script passes the settings path in,
+# and the test suite passes a sandbox path.
+. (Join-Path $PSScriptRoot "install-compact-window.ps1")
 
 # Append a directory to the durable user PATH, and to this process's PATH so
 # the current run sees it too. Every kit PATH repair goes through this one
@@ -1453,6 +1460,171 @@ if ($isClone) {
 }
 else {
     Report "INFO" "Kit goal state" @("Skipped (installed plugin cache, not a repo clone; no specific repo to inspect).")
+}
+
+# --- Auto-compaction window. The boundary-gated compaction feature needs the
+# --- harness to OFFER a compaction early enough that the gate has something to
+# --- schedule: the gate can only defer an offer, never raise one. That offer
+# --- point is set by autoCompactWindow in user settings.json.
+#
+# The effective trigger is the configured window minus a reserve (measured,
+# not documented: a configured 100,000 fires near 64,000 and a configured
+# 150,000 fires near 116,400). The recommended window is sized against a
+# 200,000-token model window so the trigger lands with usable runway below
+# the gate's safety valve for a chapter to close; every displayed number is
+# derived from $recommendedWindow and $autoCompactReserve rather than
+# restated, so changing one value cannot strand the prose beside it.
+#
+# A window set too HIGH is the quiet failure: above the model's real context
+# window the trigger is never reached, no compaction is ever offered, and the
+# whole feature is inert while looking installed.
+$recommendedWindow = 135000
+$autoCompactReserve = 35000
+$recommendedTrigger = $recommendedWindow - $autoCompactReserve
+# The minimum usable band between the trigger and the valve ceiling: one
+# large turn (a wide git diff, a big plan-doc read runs about 20,000 tokens).
+# A thinner band is inert in practice, with the valve ending deferral almost
+# as soon as the harness starts offering, so it is warned on, not just the
+# zero-or-negative case.
+$minUsableBand = 20000
+$settingsPath = Join-Path $claudeDir "settings.json"
+# The reported first version with PreCompact hook support. That is a support
+# floor only: the deny mechanism the gate relies on (exit code 2 honored, the
+# JSON decision form inert) is confirmed on 2.1.233 and unprobed on anything
+# older, so this must not be read as a verified deny-support floor.
+$minPreCompactVersion = "2.1.208"
+
+# The valve ceiling is read out of the hook rather than restated here, so the
+# doctor and the gate cannot drift apart. An unreadable constant costs only
+# the trigger-versus-ceiling sub-checks, and that skip is reported below
+# rather than silent: a silent skip is indistinguishable from a healthy
+# result.
+$valveCeiling = $null
+try {
+    $gateSource = Get-Content -LiteralPath (Join-Path $pluginRoot "hooks\kit-compact-gate.js") -Raw -ErrorAction Stop
+    if ($gateSource -match 'SAFETY_CEILING_TOKENS\s*=\s*(\d+)') { $valveCeiling = [int]$Matches[1] }
+}
+catch {}
+if ($null -eq $valveCeiling) {
+    Report "INFO" "Auto-compaction window" @("Skipped sub-check: the gate's SAFETY_CEILING_TOKENS could not be read from hooks\kit-compact-gate.js, so the trigger-versus-ceiling comparisons are skipped this run.")
+}
+
+$installedVersion = $null
+try {
+    if (Get-Command claude -ErrorAction SilentlyContinue) {
+        $versionOut = (& claude --version) 2>$null
+        if ("$versionOut" -match '(\d+)\.(\d+)\.(\d+)') { $installedVersion = $Matches[0] }
+    }
+}
+catch {}
+
+if ($null -ne $installedVersion) {
+    $installedParts = $installedVersion.Split(".") | ForEach-Object { [int]$_ }
+    $minParts = $minPreCompactVersion.Split(".") | ForEach-Object { [int]$_ }
+    $tooOld = $false
+    for ($i = 0; $i -lt 3; $i++) {
+        if ($installedParts[$i] -lt $minParts[$i]) { $tooOld = $true; break }
+        if ($installedParts[$i] -gt $minParts[$i]) { break }
+    }
+    if ($tooOld) {
+        Report "WARN" "PreCompact support" @(
+            "Claude Code $installedVersion predates PreCompact hook support (needs $minPreCompactVersion or later).",
+            "The boundary-gated compaction hook will never fire on this version, so compaction lands wherever context happens to fill."
+        )
+    }
+}
+else {
+    # A silent skip would be indistinguishable from a healthy result, so the
+    # unverifiable case says so.
+    Report "INFO" "PreCompact support" @("Skipped: 'claude --version' is not on PATH or did not report a version, so PreCompact support (needs $minPreCompactVersion or later) cannot be verified on this machine.")
+}
+
+$configuredWindow = $null
+$configuredWindowRaw = $null
+$settingsReadable = $false
+if (Test-Path -LiteralPath $settingsPath) {
+    # Explicit UTF-8, matching the installer: Get-Content -Raw on Windows
+    # PowerShell 5.1 decodes a UTF-8 file with the ANSI codepage.
+    try {
+        $settingsObj = [System.IO.File]::ReadAllText($settingsPath, (New-Object System.Text.UTF8Encoding($false))) | ConvertFrom-Json
+        $settingsReadable = $true
+    }
+    catch {}
+    if ($settingsReadable -and $settingsObj.PSObject.Properties.Name -contains "autoCompactWindow") {
+        # A present value that does not cast is a different state from an
+        # absent one: the user set SOMETHING, so it is reported as what it is
+        # (and never overwritten by -Fix), rather than misreported as "not
+        # set" and replaced.
+        $rawWindowValue = $settingsObj.autoCompactWindow
+        try { $configuredWindow = [int]$rawWindowValue }
+        catch { $configuredWindowRaw = "$rawWindowValue" }
+    }
+}
+
+# The default-trigger judgment both no-window branches share: with no window
+# configured, the harness's per-model default trigger sits near the top of
+# the model window, which is above the gate's absolute safety ceiling, so the
+# valve allows every compaction and the gate defers nothing until a window is
+# configured.
+$noWindowJudgment = @()
+if ($null -ne $valveCeiling) {
+    $noWindowJudgment = @("The default trigger sits near the top of the model window, above the gate's safety ceiling of $valveCeiling, so the valve allows every compaction and the gate defers nothing until a window is configured.")
+}
+
+if (-not (Test-Path -LiteralPath $settingsPath)) {
+    Report "INFO" "Auto-compaction window" (@("No user settings.json at $settingsPath, so no window is configured and the harness uses its per-model default.") + $noWindowJudgment)
+}
+elseif (-not $settingsReadable) {
+    Report "WARN" "Auto-compaction window" @("$settingsPath could not be parsed, so the configured window cannot be read.")
+}
+elseif ($null -ne $configuredWindowRaw) {
+    Report "WARN" "Auto-compaction window" @(
+        "autoCompactWindow is set to '" + (Get-SanitizedLine $configuredWindowRaw) + "', which is not a usable number, so the trigger cannot be assessed and the harness behavior is undefined.",
+        "Set it by hand to $recommendedWindow, or remove it to fall back to the per-model default."
+    )
+}
+elseif ($null -eq $configuredWindow) {
+    $detail = @(
+        "No autoCompactWindow is set, so the harness compacts at its per-model default trigger, near the top of the context window."
+    ) + $noWindowJudgment + @(
+        "Recommended: $recommendedWindow (offers a compaction near $recommendedTrigger consumed on a 200,000-token window)."
+    )
+    if ($Fix -and (Get-Consent "Set autoCompactWindow to $recommendedWindow in $settingsPath?")) {
+        $result = Set-AutoCompactWindow -Path $settingsPath -Value $recommendedWindow
+        if ($result.ok) {
+            Report "FIXED" "Auto-compaction window" @("Set autoCompactWindow to $recommendedWindow.", "Restart Claude Code for it to take effect.")
+        }
+        else {
+            # The reason can carry file-derived text (key names, exception
+            # messages), so it is sanitized before this trusted channel.
+            Report "WARN" "Auto-compaction window" @("Could not set it: " + (Get-SanitizedLine $result.reason 200) + ".", "Add it by hand instead: `"autoCompactWindow`": $recommendedWindow")
+        }
+    }
+    else {
+        Report "INFO" "Auto-compaction window" $detail
+    }
+}
+else {
+    $trigger = $configuredWindow - $autoCompactReserve
+    # Clamped for display: a window below the reserve never triggers, and a
+    # negative "offered near" number would read as nonsense.
+    $displayTrigger = [Math]::Max(0, $trigger)
+    $detail = @("autoCompactWindow is $configuredWindow, so a compaction is offered near $displayTrigger consumed (the trigger runs about $autoCompactReserve below the configured window).")
+    # The one direction of the gate that is not fail-open: the valve is an
+    # absolute token count assuming a 200,000-token model window, and the
+    # PreCompact payload carries no model field to derive the real one. A
+    # trigger at or above the ceiling makes the feature inert outright, and a
+    # band thinner than one large turn ($minUsableBand) is inert in practice,
+    # so both warn rather than only the zero-or-negative case.
+    if ($null -ne $valveCeiling -and ($valveCeiling - $trigger) -lt $minUsableBand) {
+        Report "WARN" "Auto-compaction window" ($detail + @(
+            "That trigger leaves less than $minUsableBand tokens of deferral band below the gate's safety ceiling of $valveCeiling (one large turn), so the valve ends deferral as soon as, or before, the harness starts offering.",
+            "Lower it to $recommendedWindow to restore a usable band between the trigger and the ceiling."
+        ))
+    }
+    else {
+        Report "PASS" "Auto-compaction window" $detail
+    }
 }
 
 # --- Summary.

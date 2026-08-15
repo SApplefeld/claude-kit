@@ -40,18 +40,29 @@
 //      trimmed strings. An armed-but-unbound goal is not a match: a bystander
 //      session is never gated, and the bound session keeps matching across a
 //      compaction because the harness preserves the session id.
-//   5. No boundary checkpoint is open. A checkpoint matches only when BOTH
-//      its recorded plan equals the armed goal's plan AND its recorded
-//      boundSession equals the goal's current boundSession; anything else is
-//      treated as absent. The plan match retires a stale file from a prior
-//      run, and the session match retires an orphan from a crashed run: a
-//      checkpoint written just before a crash names the same plan, but the
-//      resumed session re-binds under a new id, so the orphan must not open
-//      the gate for its first mid-chapter compaction. The normal path keeps
-//      matching because the harness preserves the session id across a
-//      compaction. A checkpoint with no boundSession field (written by an
-//      older version, or hand-made) is a mismatch, the fail-open-toward-
-//      status-quo direction. When a MATCHING checkpoint is
+//   5. No boundary checkpoint is open. A checkpoint matches only when its
+//      recorded plan equals the armed goal's plan, its recorded boundSession
+//      equals the goal's current boundSession, AND it is fresh (opened within
+//      CHECKPOINT_MAX_AGE_MS); anything else is treated as absent. The plan
+//      match retires a stale file from a prior run, and the session match
+//      retires an orphan from a crashed run: a checkpoint written just before
+//      a crash names the same plan, but the resumed session re-binds under a
+//      new id, so the orphan must not open the gate for its first mid-chapter
+//      compaction. The normal path keeps matching because the harness
+//      preserves the session id across a compaction. The age bound retires
+//      the ordinary same-run leftover the other two cannot: the chapter-close
+//      ritual opens a checkpoint at EVERY boundary, and a boundary reached
+//      below the trigger has no compaction offer to catch, so its checkpoint
+//      would otherwise sit open until the NEXT chapter crossed the trigger
+//      mid-section and be honored there, landing the compaction mid-chapter
+//      (the exact placement the gate exists to prevent) on every cycle after
+//      the first. A boundary reached above the trigger needs only seconds:
+//      past the trigger the harness re-offers a compaction every assistant
+//      turn, so a real boundary checkpoint is consumed almost immediately and
+//      the age bound never touches it. A checkpoint with no boundSession
+//      field or no legible openedAt (written by an older version, or
+//      hand-made) is a mismatch, the fail-open-toward-status-quo direction.
+//      When a MATCHING checkpoint is
 //      open the hook allows and consumes (deletes) it before exiting, so the
 //      next mid-chapter attempt is denied again: consumption is single-shot,
 //      and it happens only on this checkpoint-driven allow. Allowing for any
@@ -107,8 +118,43 @@ const { readCheckpoint, clearCheckpoint } = require('./kit-compact-lib.js');
 // 185,000 minus 40,000 is 145,000, rounded down to 140,000.
 const SAFETY_CEILING_TOKENS = 140000;
 
+// How long an open checkpoint stays honorable. A checkpoint opened at a
+// boundary that is already past the trigger is consumed within seconds (the
+// harness re-offers a compaction every assistant turn once past the trigger),
+// so fifteen minutes is generous for the case that matters. A checkpoint
+// opened BELOW the trigger has no offer to catch and must age out instead:
+// honoring it later, when the next chapter crosses the trigger mid-section,
+// would land the compaction mid-chapter, which is the exact placement the
+// gate exists to prevent, and self-sustainingly so (the landed compaction
+// resets consumption, the next boundary opens another below-trigger
+// checkpoint, and the cycle repeats). When the bound misfires, the cost is
+// one mid-chapter compaction, the pre-gate status quo, so the failure
+// direction stays fail-open.
+const CHECKPOINT_MAX_AGE_MS = 15 * 60 * 1000;
+
+// Skew allowance for a checkpoint whose openedAt sits in the future: a small
+// clock adjustment between the write and the read is tolerated, but a far-
+// future timestamp is treated as illegible rather than honored, so a clock
+// change can never mint an effectively immortal checkpoint.
+const CHECKPOINT_FUTURE_SKEW_MS = 2 * 60 * 1000;
+
 function readStdin() {
     try { return fs.readFileSync(0, 'utf8'); } catch { return ''; }
+}
+
+// Is a checkpoint's openedAt value fresh? False for a missing or non-string
+// value, one Date.parse cannot read, one older than CHECKPOINT_MAX_AGE_MS,
+// or one in the future beyond CHECKPOINT_FUTURE_SKEW_MS; every false reads
+// as checkpoint-absent, the same treat-as-absent handling as a wrong plan or
+// wrong session. Never throws: Date.parse returns NaN on garbage.
+function checkpointIsFresh(openedAt) {
+    if (typeof openedAt !== 'string') return false;
+    const t = Date.parse(openedAt);
+    if (!Number.isFinite(t)) return false;
+    const age = Date.now() - t;
+    if (age > CHECKPOINT_MAX_AGE_MS) return false;
+    if (age < -CHECKPOINT_FUTURE_SKEW_MS) return false;
+    return true;
 }
 
 // Compare two session ids as opaque, case-insensitive strings (session UUIDs
@@ -225,12 +271,16 @@ function main() {
     if (!goal.boundSession || !sameSessionId(goal.boundSession, sessionId)) return 'allow';
 
     // Clause 5: a matching open checkpoint is the boundary firing. Matching
-    // means the plan AND the recorded boundSession both equal the goal's (see
-    // the header); sameSessionId returns false for a null or missing field,
-    // which is exactly the treat-as-absent handling an unbound or old-format
-    // checkpoint needs. Allow and consume it, single-shot; a non-matching
-    // checkpoint is stale, reads as absent, and is left in place (the next
-    // CLI write replaces it). The read here and the delete below are not
+    // means the plan and the recorded boundSession both equal the goal's AND
+    // the checkpoint is fresh (see the header for why each leg exists);
+    // sameSessionId returns false for a null or missing field, which is
+    // exactly the treat-as-absent handling an unbound or old-format
+    // checkpoint needs, and checkpointIsFresh does the same for a missing,
+    // unreadable, expired, or far-future openedAt. Allow and consume it,
+    // single-shot; a non-matching checkpoint is stale, reads as absent, and
+    // is left in place (the next CLI write replaces it, and the expired case
+    // in particular must NOT be consumed: an expiry deny is not the boundary
+    // firing). The read here and the delete below are not
     // atomic: this assumes the single-writer reality, where the CLI writer
     // and this gate serialize through the one bound session, so no checkpoint
     // can land between them and be consumed by an allow the previous one
@@ -238,7 +288,8 @@ function main() {
     // compare-before-delete or an atomic take.
     const cp = readCheckpoint(cwd);
     if (cp && typeof cp.plan === 'string' && cp.plan === goal.plan
-        && sameSessionId(cp.boundSession, goal.boundSession)) {
+        && sameSessionId(cp.boundSession, goal.boundSession)
+        && checkpointIsFresh(cp.openedAt)) {
         clearCheckpoint(cwd); // best-effort: a failed delete degrades to an open gate, never a wedged run
         return 'allow';
     }

@@ -52,6 +52,9 @@ claude-kit/                          (repo = the marketplace)
         doctrine-refresh.js          Rewrites ~/.claude/claude-kit-doctrine.md from the installed skill each session
         kit-goal.js / kit-goal-stop.js / kit-goal-lib.js
                                      The /kit-goal leash: arm command, deterministic Stop hook, shared library
+        kit-compact-gate.js / kit-compact-checkpoint.js / kit-compact-lib.js
+                                     Boundary-gated compaction: PreCompact hook that defers auto-compaction
+                                     until a chapter boundary, the checkpoint command that marks one, shared library
         docs-write-guard.js          Denies non-curator subagent writes into docs/
         stop-docs-hygiene.js         Stop-time docs-library backstop
         pr-docs-guard.js             Requires the docs work committed before the PR goes up
@@ -140,6 +143,8 @@ Some environments - for example a work Cowork/Chat account that can't reach this
 Brainstorming produces a spec in `docs/plans/<project>_spec_v1.md` with a recorded commit model: Review-Only (stage, Scott reviews the diff), Branch-and-PR (feature branch and a PR, for shared repos), or Commit-and-Push (land on main and auto-tear-down any worktree branch it used). At a hard, hard-to-reverse design fork it can offer a read-only design council (`design-council`) that pressure-tests the candidate approaches through blind, independent lens positions and facilitator-run convergence rounds, returning a recommendation or a clean fork for Scott, offered and never automatic. Executing-work runs the spec section by section under the completion contract (it drives every remaining unblocked section to done rather than pausing at boundaries): implement, verify with evidence, a paired review (spec-anchored adversarial plus blind diff-only, with security review added on sensitive surfaces), update the plan, append a Chapter, commit per the model. Finishing-work closes the effort: qa-verifier, security-reviewer, final adversarial-reviewer pass, docs-curator with Drift Report, plan closed, changes presented, pushed, or opened as a PR per the model.
 
 Compaction recovery is deterministic: the SessionStart hook fires on startup, resume, and after every compaction, finds in-progress plans, and instructs the session to re-read them - Chapters included - before any work proceeds.
+
+Compaction *placement* is deterministic too, on a leashed run. Nothing can raise a compaction on demand, but a PreCompact hook can veto one, and a denied auto attempt is re-offered every turn until it is allowed. `kit-compact-gate.js` uses that to schedule: it defers auto-compaction while a chapter is in flight and stands aside once the chapter-close ritual has opened a checkpoint, so the context wipe falls where nothing is half-finished instead of at an arbitrary point mid-section. The kit summarizes nothing itself; the native summarizer runs unmodified. The gate is a no-op unless a kit goal is armed and this session holds its leash, it never touches manual `/compact`, and every error path allows, so its worst failure is the pre-gate behavior. A safety valve allows the compaction regardless once consumption nears the model's limit, because a session held against the hard context limit dies outright.
 
 The same hook keeps the backlog from rotting. In any project holding a `docs/backlog.md`, session start reports how many active items it carries, the oldest one's parked date and its age in days, and how many carry no date at all, injecting those figures and never an item's text. Anything older than 90 days is named, with its date, for a promote/retire/keep call at the next close-out.
 
