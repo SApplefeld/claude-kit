@@ -43,6 +43,7 @@ claude-kit/                          (repo = the marketplace)
         docs-curator.md              Updates docs/, returns Drift Report
         council-member.md            Read-only lens on the design council (one per lens)
         design-facilitator.md        Neutral convergence judge for the design council
+        consultant.md                Fresh-context single-agent ruling on a question a stuck run cannot settle
       hooks/
         hooks.json                   Hook registrations
         session-start.js             Re-injects in-progress plans on startup/resume/compaction, flags

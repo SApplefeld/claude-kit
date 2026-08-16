@@ -3,9 +3,10 @@
 //
 // The kit's access model, by agent class:
 //   Strict (adversarial-reviewer, blind-reviewer, security-reviewer,
-//   council-member, design-facilitator): the repo tree is read-only. Git and
-//   GitHub state changes, writes into the tree, file mutations (delete, move,
-//   copy, create, chmod), package installs, and formatters are all denied.
+//   council-member, design-facilitator, consultant): the repo tree is
+//   read-only. Git and GitHub state changes, writes into the tree, file
+//   mutations (delete, move, copy, create, chmod), package installs, and
+//   formatters are all denied.
 //   Gate-runner (qa-verifier): it builds and runs the suites, so inside a fixed
 //   list of build-output directories (bin, obj, TestResults, node_modules, .vs),
 //   matched at any depth, it may write and delete freely. Everywhere else in the
@@ -67,7 +68,7 @@ function subagentType(p) {
 // name that merely contains one ("blind-reviewer-helper") does not.
 function agentClass(t) {
     if (/(^|[:/])qa-verifier$/i.test(t)) return 'gate';
-    if (/(^|[:/])(?:adversarial-reviewer|blind-reviewer|security-reviewer|council-member|design-facilitator)$/i.test(t)) return 'strict';
+    if (/(^|[:/])(?:adversarial-reviewer|blind-reviewer|security-reviewer|council-member|design-facilitator|consultant)$/i.test(t)) return 'strict';
     return null;
 }
 

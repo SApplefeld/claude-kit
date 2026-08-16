@@ -96,10 +96,11 @@ function denyAll(agentType, cases) {
     for (const [c, reason] of cases) assertDenied(agentType, c, reason);
 }
 
-test('all five judgment agents resolve to the strict class, namespaced or bare', () => {
+test('all six judgment agents resolve to the strict class, namespaced or bare', () => {
     for (const t of ['adversarial-reviewer', 'blind-reviewer', 'security-reviewer', 'council-member',
-        'design-facilitator', 'claude-kit:adversarial-reviewer', 'claude-kit:blind-reviewer',
-        'claude-kit:security-reviewer', 'claude-kit:council-member', 'claude-kit:design-facilitator']) {
+        'design-facilitator', 'consultant', 'claude-kit:adversarial-reviewer',
+        'claude-kit:blind-reviewer', 'claude-kit:security-reviewer', 'claude-kit:council-member',
+        'claude-kit:design-facilitator', 'claude-kit:consultant']) {
         assertDenied(t, 'git commit -m x', GIT);
     }
 });
@@ -108,6 +109,30 @@ test('a type that merely contains a judgment agent name is not governed', () => 
     allowAll('blind-reviewer-helper', ['git commit -m x']);
     allowAll('my-adversarial-reviewer', ['git commit -m x']);
     allowAll('reviewer', ['git commit -m x']);
+    allowAll('consultant-helper', ['git commit -m x']);
+    allowAll('my-consultant', ['git commit -m x']);
+});
+
+// The last case is the one that pins the *class* rather than merely pinning
+// that the type is governed at all. Every other command here is denied for the
+// gate class too, so a future edit that misfiled `consultant` under 'gate'
+// would leave them all green while silently granting in-tree file creation,
+// deletion anywhere under a bin/obj/node_modules/.vs/TestResults name at any
+// depth, and package installs. `touch` on a fresh path is the discriminator:
+// strict denies it, the gate class allows it deliberately for test scaffolding.
+test('consultant: git state changes, tree writes, and path mutations are denied', () => {
+    denyAll('claude-kit:consultant', [
+        ['git commit -m x', GIT],
+        ['echo findings > src/notes.md', WRITE],
+        ['rm src/a.cs', PATHMUT],
+        ['mv src/a.cs src/b.cs', PATHMUT],
+        ['touch src/new.cs', PATHMUT],
+    ]);
+});
+
+test('consultant: reads and scratch writes pass', () => {
+    allowAll('claude-kit:consultant', ['git diff main...HEAD', 'git log --oneline -20',
+        'rg "denyReason" plugins/', 'echo findings > .kit/consult-notes.md']);
 });
 
 test('strict class: git state mutations are denied', () => {
@@ -803,28 +828,33 @@ test('cp reads its destination from -t when the invocation carries one', () => {
 
 test('the governed agents are granted no file-writing tool', () => {
     for (const name of ['adversarial-reviewer', 'blind-reviewer', 'security-reviewer',
-        'council-member', 'design-facilitator', 'qa-verifier']) {
+        'council-member', 'design-facilitator', 'consultant', 'qa-verifier']) {
         const text = fs.readFileSync(path.join(AGENTS, `${name}.md`), 'utf8');
         const fm = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
         assert.ok(fm, `${name}.md has no frontmatter`);
         const line = /^tools:[ \t]*(.+)$/m.exec(fm[1]);
         assert.ok(line, `${name}.md declares no tools list`);
         const granted = line[1].split(',').map(s => s.trim());
-        for (const tool of ['Write', 'Edit', 'MultiEdit']) {
+        // NotebookEdit belongs in this list for the same reason the other three
+        // do: hooks.json matches the guard on Bash and PowerShell only, so any
+        // file-writing tool granted here writes outside the guard's scope
+        // entirely and the shell denylist never sees it.
+        for (const tool of ['Write', 'Edit', 'MultiEdit', 'NotebookEdit']) {
             assert.ok(!granted.includes(tool), `${name}.md grants ${tool}, so the guard's shell-only scope no longer covers it`);
         }
     }
 });
 
-// The three reviewers' effort is a literal two committed skills cite as
-// load-bearing: executing-work's reviewer-effort table calls `high` the
-// frontmatter default that keeps a fable-tier dispatch off the Workflow route,
-// and finishing-work says the same of the finishing gate. Reverting one of these
-// lines to `medium` would leave the whole suite green while the gate silently
-// dropped a notch and both skills asserted a value no longer true, which is the
-// same gap the third doctrine-parity test closes for the doctrine's own grant.
-test('the reviewers pin the effort the skills cite as their frontmatter default', () => {
-    for (const name of ['adversarial-reviewer', 'blind-reviewer', 'security-reviewer']) {
+// These agents' effort is a literal committed skills cite as load-bearing:
+// executing-work's reviewer-effort table calls `high` the frontmatter default
+// that keeps a fable-tier dispatch off the Workflow route, finishing-work says
+// the same of the finishing gate, and the consult skill says the same of the
+// consultant. Reverting one of these lines to `medium` would leave the whole
+// suite green while the gate silently dropped a notch and the skills asserted a
+// value no longer true, which is the same gap the third doctrine-parity test
+// closes for the doctrine's own grant.
+test('the reviewers and the consultant pin the effort the skills cite as their frontmatter default', () => {
+    for (const name of ['adversarial-reviewer', 'blind-reviewer', 'security-reviewer', 'consultant']) {
         const text = fs.readFileSync(path.join(AGENTS, `${name}.md`), 'utf8');
         const fm = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
         assert.ok(fm, `${name}.md has no frontmatter`);
@@ -832,7 +862,7 @@ test('the reviewers pin the effort the skills cite as their frontmatter default'
         assert.ok(line, `${name}.md declares no effort, so it inherits the session's and the `
             + 'skills\' "frontmatter default" claim is no longer true of it');
         assert.strictEqual(line[1], 'high', `${name}.md pins effort ${line[1]}, but `
-            + 'executing-work and finishing-work both name `high` as the reviewers\' '
+            + 'the dispatching skills name `high` as this agent\'s '
             + 'frontmatter default; change the skills too, or restore the pin');
     }
 });
