@@ -1,6 +1,6 @@
 ---
 name: design-council
-description: "Convene a read-only, multi-lens design council to pressure-test competing approaches at a genuine architecture fork. Offered by the brainstorming skill when a decision is material and hard to reverse - architecture, schema/data-model, build-vs-buy, a migration direction - and directly invocable when I ask to 'convene the council', 'pressure-test this approach', or 'get multiple angles on this design' before building. Not for reviewing written code (use adversarial-reviewer) or non-code judgment calls (use cold)."
+description: "Convene a read-only, multi-lens design council to pressure-test competing approaches at a genuine architecture fork. Offered by the brainstorming skill when a decision is material and hard to reverse - architecture, schema/data-model, build-vs-buy, a migration direction - and directly invocable when I ask to 'convene the council', 'pressure-test this approach', or 'get multiple angles on this design' before building. Not for reviewing written code (use adversarial-reviewer), non-code judgment calls (use cold), or a session stuck mid-execution (use the consult: one seat with a ruling mandate, convened by the session itself, where the council is multi-lens, sits at design time, and never runs without me present to adjudicate)."
 ---
 
 # Design Council

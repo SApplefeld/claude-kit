@@ -29,8 +29,6 @@ recorded in `docs/archive/claude-kit_operating-model_spec_v1.md`.
   `subagents\` files, which are counted separately. On a version that writes
   sidechain usage only into the main transcript, that spend would be dropped
   from totals; check for a `subagents` folder before trusting a share.
-- Advisor consultations do not appear in transcripts (billed out of band) and
-  cannot be measured here.
 
 ## Run
 

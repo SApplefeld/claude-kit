@@ -34,7 +34,7 @@ Fix the cause, not the symptom. Then: verify the repro now passes, run the surro
 
 ## The escalation rule
 
-**Two failed fixes mean the mental model is wrong - stop.** Do not attempt fix number three from the same understanding. Instead: list every assumption in play, verify each against evidence, and widen the frame - the bug may be in the design, the spec, the deployment, or the data rather than the code under suspicion. If the root cause implicates a design decision, surface it to me with the evidence rather than quietly patching around it.
+**Two failed fixes mean the mental model is wrong - stop.** Do not attempt fix number three from the same understanding. Instead: list every assumption in play, verify each against evidence, and widen the frame - the bug may be in the design, the spec, the deployment, or the data rather than the code under suspicion. Convene a consult on the dead end before you stop and report: a fresh-context ruling never formed the mental model that just failed twice, so it can test the frame you can only extend, and the consult skill (`consult/SKILL.md`) owns the triggers and the mechanics. The stop still happens and the report still goes out, carrying the ruling: if the root cause implicates a design decision, surface it to me with the evidence and the ruling attached rather than quietly patching around it.
 
 ## When not to use
 

@@ -23,6 +23,7 @@ claude-kit/                          (repo = the marketplace)
         kaizen/                      Capture kit friction, reflect into briefs, apply improvements
         design-council/              Opt-in multi-lens pressure-test for a hard-to-reverse design fork
         cold/                        Neutral evidence-first lens for non-code judgment calls
+        consult/                     Fresh-context single-judge ruling on a question a stuck run cannot settle
         kit-goal/                    /kit-goal <plan> arms a deterministic project-scoped completion leash
         kit-doctor/                  Validate and repair the machine's kit install (runs the payload doctor)
         branch-hygiene/              Clean up branches and worktrees after Branch-and-PR; reap merged, recover stranded
@@ -123,7 +124,7 @@ The catalog at `.claude-plugin/marketplace.json` points to the plugin with `"sou
    - Windows: `.\doctor.cmd -Fix` (setup and verification in one pass; the wrapper works on a fresh box, where the default execution policy blocks `.ps1` files)
    - WSL/macOS/Linux: `./setup.sh`
 
-5. Merge `settings/settings.recommended.json` into `~/.claude/settings.json` (review the allow-list first - it includes `git push` for the Commit-and-Push model; remove it if you want pushes gated). Then set the standing advisor once per machine: `/advisor opus` in any session (it persists in settings and reaches headless spawns and subagents; the executing-work skill owns the advisor facts).
+5. Merge `settings/settings.recommended.json` into `~/.claude/settings.json` (review the allow-list first - it includes `git push` for the Commit-and-Push model; remove it if you want pushes gated).
 
 6. Operating doctrine (single-sourced as the `operating-instructions` skill, which rides plugin auto-update):
    - Claude Code (once per machine): add `@claude-kit-doctrine.md` to `~/.claude/CLAUDE.md`. The `doctrine-refresh` hook rewrites that imported file from the installed skill each session, so the doctrine loads always-on and stays current; the hook offers to add the line if it is missing.
