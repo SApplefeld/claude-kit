@@ -1326,6 +1326,8 @@ test('queue, current plan Complete with a plan remaining: advance, one goal-comp
         assert.ok(out.reason.includes('the current plan is now ' + plans[1]),
             'the reason names the plan now current');
         assert.ok(out.reason.includes('executing-work'), 'the reason instructs the continuation');
+        assert.ok(!out.reason.includes('test whether it actually blocks'),
+            'the judge-the-blocker clause rides only where a blocker was recorded');
 
         const state = readState(repo);
         assert.strictEqual(state.plan, plans[1], 'plan moves to the next in the queue');
@@ -1413,6 +1415,13 @@ test('queue, a mid-queue BLOCKED: records the blocker, emits goal-blocked, advan
         assert.ok(out.reason.includes('The recorded blocker for ' + plans[0] + ' was: ' + blocker),
             'the reason names the recorded blocker');
         assert.ok(out.reason.includes('the current plan is now ' + plans[1]));
+        // A cross-cutting blocker ("I need your AWS credentials") is true of
+        // every plan in the queue, and each restatement is a genuinely new
+        // entry the idempotency key cannot slow, so the advance reason must
+        // tell the session to judge the recorded blocker against the new plan
+        // before restating it.
+        assert.ok(out.reason.includes('test whether it actually blocks ' + plans[1]),
+            'the reason instructs judging the blocker against the new plan');
 
         const state = readState(repo);
         assert.strictEqual(state.plan, plans[1]);
@@ -1688,6 +1697,24 @@ test('an unchanged transcript across two stops advances once: the second stop ho
         assert.strictEqual(out.decision, 'block');
         assert.ok(out.reason.includes(plans[1]), 'the hold names the current plan');
         assert.ok(!out.reason.includes('has advanced'), 'the second stop claims no advance');
+        // The spent hold is its own reason, not the generic enforcement
+        // block: that block's text would deny a BLOCKED lead that provably
+        // exists, and its 'surface a true blocker' offer invites a fresh
+        // BLOCKED entry whose new identity is not spent and would advance the
+        // queue again, one stop later. The dedicated reason states the
+        // blocker as already recorded, names it, and never invites a
+        // restatement.
+        assert.ok(out.reason.includes('already recorded'), 'the spent hold says the blocker is recorded');
+        assert.ok(out.reason.includes('need your call on the rollout order'),
+            'the spent hold names the recorded blocker');
+        assert.ok(out.reason.includes('the current plan is now ' + plans[1]),
+            'the spent hold names the plan now current');
+        assert.ok(!out.reason.includes('did not lead with'),
+            'the generic not-complete clause is absent: on this path the message DID lead with BLOCKED');
+        assert.ok(!out.reason.includes('surface a true blocker'),
+            'no invitation to restate the blocker');
+        assert.ok(!out.reason.includes("leading 'BLOCKED:'"),
+            'no instruction whose compliance would regenerate the advance');
         state = readState(repo);
         assert.strictEqual(state.plan, plans[1], 'the leash did not move again');
         assert.strictEqual(state.history.length, 1, 'no second outcome was recorded');
@@ -1832,6 +1859,166 @@ test('an advance whose state was re-armed underneath it is refused: re-block, no
         assert.strictEqual(state.plan, plans[0], 'the on-disk state was not advanced from a snapshot its writer never made');
         assert.deepStrictEqual(state.history, []);
         assert.deepStrictEqual(readEvents(local), [], 'no goal-complete is reported for an advance that did not land');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('a re-arm that put the SAME plan back at the head is refused by the advance (the armedAt compare)', () => {
+    // The crash-recovery spelling /kit-goal <currentPlan> <newTail> passes a
+    // plan-only compare-and-swap: the fresh queue's head is the very plan the
+    // stop decided from. Advancing it would record the fresh arm's plan 1
+    // finished without it ever running and carry the arm's null binding
+    // forward. The arming timestamp is what tells the two states apart, so
+    // the advance is refused, the stop re-blocks, and the fresh arm is left
+    // exactly as its writer intended.
+    const { repo, plans, transcript, local } = armedQueueRepo(['Done all sections.'], ['Status: Complete']);
+    try {
+        assert.strictEqual(bindSession(repo, 'sess-queue').ok, true);
+        const rearmed = {
+            plan: plans[0], condition: 'c', armedAt: '2000-01-01T00:00:00.000Z',
+            boundSession: null, boundTranscript: null,
+            queue: [plans[0], 'docs/plans/fresh-tail.md'], queueIndex: 0, history: []
+        };
+        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-queue' }, local,
+            { NODE_OPTIONS: goalSwapPreload(local, rearmed) });
+        assert.strictEqual(res.status, 0, 'exit 0: a nonzero exit would mean the preload itself failed to load');
+        const out = JSON.parse(res.stdout);
+        assert.strictEqual(out.decision, 'block', 'the refused advance re-blocks rather than releasing');
+        assert.ok(out.reason.includes('could not be recorded'), 'the reason claims no advance');
+        const state = readState(repo);
+        assert.strictEqual(state.plan, plans[0], 'the freshly armed queue was not advanced');
+        assert.deepStrictEqual(state.history, [], 'no plan was recorded finished off the stale snapshot');
+        assert.deepStrictEqual(readEvents(local), [], 'no goal-complete for an advance that did not land');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('the advanced reason names the plan the state actually moved to, not the snapshot\'s prediction', () => {
+    // A writer that lands in a way the compare-and-swap does not catch (here:
+    // the same plan and armedAt but an edited tail) leaves the snapshot's
+    // next-plan prediction stale while the advance itself re-reads and moves
+    // to the authoritative next. The reason must name where the state
+    // actually went, or the session is directed into a plan that is not the
+    // state's current one.
+    const { repo, plans, transcript, local } = armedQueueRepo(['Done all sections.'], ['Status: Complete']);
+    try {
+        assert.strictEqual(bindSession(repo, 'sess-queue').ok, true);
+        const real = readState(repo);
+        const edited = { ...real, queue: [plans[0], 'docs/plans/edited-tail.md'] };
+        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-queue' }, local,
+            { NODE_OPTIONS: goalSwapPreload(local, edited) });
+        assert.strictEqual(res.status, 0, 'exit 0: a nonzero exit would mean the preload itself failed to load');
+        const out = JSON.parse(res.stdout);
+        assert.strictEqual(out.decision, 'block');
+        assert.ok(out.reason.includes('the current plan is now docs/plans/edited-tail.md'),
+            'the reason names the plan the advance actually recorded');
+        assert.ok(!out.reason.includes(plans[1]),
+            'the stale snapshot prediction is not what the session is directed into');
+        assert.strictEqual(readState(repo).plan, 'docs/plans/edited-tail.md',
+            'setup check: the advance really did move to the edited tail');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('a clause-(a) advance clears the standing blockedAdvanceKey', () => {
+    // Only a clause-(b) advance writes the key; without the clearing, the key
+    // of a blocker from two plans ago stays live for the rest of the queue,
+    // and in a uuid-less transcript a genuinely new blocker whose text
+    // digest collides with it would be held until the harness's block cap.
+    const repo = makeDir('kit-goal-stop-repo-');
+    const local = makeDir('kit-goal-stop-local-');
+    const plans = ['docs/plans/p1.md', 'docs/plans/p2.md', 'docs/plans/p3.md'];
+    try {
+        for (const p of plans) writeFile(path.join(repo, p), 'Status: In Progress\n\nbody\n');
+        assert.strictEqual(armGoal(repo, plans).ok, true, 'test setup: the queue should arm');
+        const transcript = path.join(repo, 'transcript.jsonl');
+        writeFile(transcript, [
+            JSON.stringify({
+                type: 'user',
+                message: {
+                    role: 'user',
+                    content: '<command-name>/kit-goal</command-name>\n'
+                        + '<command-args>' + plans.join(' ') + '</command-args>'
+                }
+            }),
+            JSON.stringify({
+                type: 'assistant', uuid: 'u-key-1',
+                message: { role: 'assistant', content: [{ type: 'text', text: 'BLOCKED: pick the schema owner.' }] }
+            })
+        ].join('\n') + '\n');
+
+        const first = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-q' }, local);
+        assert.strictEqual(JSON.parse(first.stdout).decision, 'block');
+        assert.strictEqual(readState(repo).blockedAdvanceKey, 'uuid:u-key-1', 'setup: the blocked advance wrote its key');
+
+        writeFile(path.join(repo, plans[1]), 'Status: Complete\n\nbody\n');
+        fs.appendFileSync(transcript, JSON.stringify({
+            type: 'assistant', uuid: 'u-key-2',
+            message: { role: 'assistant', content: [{ type: 'text', text: 'Plan 2 is closed out.' }] }
+        }) + '\n');
+        const second = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-q' }, local);
+        assert.strictEqual(JSON.parse(second.stdout).decision, 'block', 'the Complete advance holds as usual');
+        const state = readState(repo);
+        assert.strictEqual(state.plan, plans[2], 'the clause-(a) advance landed');
+        assert.strictEqual(state.blockedAdvanceKey, undefined, 'the keyless advance retired the standing key');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+// A preload that records any fs.openSync whose target names the probe needle,
+// by creating a marker file through the un-patched open: proves a path was
+// never OPENED, which is the hazard (a traversal target outside the repo, or
+// a FIFO whose open blocks), where asserting on the hook's silence alone
+// would not. The NODE_OPTIONS shape matches the other preloads': forward-
+// slashed, because Node reads a backslash in NODE_OPTIONS as an escape.
+function openSpyPreload(dir, needle, marker) {
+    const shim = path.join(dir, 'open-spy.js');
+    writeFile(shim, [
+        "'use strict';",
+        "const fs = require('fs');",
+        'const real = fs.openSync;',
+        'fs.openSync = function (target) {',
+        '    if (String(target).includes(' + JSON.stringify(needle) + ')) {',
+        '        const fd = real(' + JSON.stringify(marker) + ", 'w');",
+        '        fs.closeSync(fd);',
+        '    }',
+        '    return real.apply(fs, arguments);',
+        '};'
+    ].join('\n') + '\n');
+    return '--require "' + shim.replace(/\\/g, '/') + '"';
+}
+
+test('a goal state whose plan traverses out of the repo is never opened by the Stop hook: allow', () => {
+    // readGoal re-validates the plan as a path, so a hand-edited traversal
+    // value reads as no armed goal: the hook allows on its hot path and the
+    // outside target (which on POSIX could be a FIFO whose open would wedge
+    // the stop) is never handed to planHead.
+    const repo = makeDir('kit-goal-stop-repo-');
+    const local = makeDir('kit-goal-stop-local-');
+    const probe = 'kit-goal-outside-probe.md';
+    const marker = path.join(local, 'opened-outside.marker');
+    try {
+        writeFile(path.join(repo, '.kit', 'goal-state.json'), JSON.stringify({
+            plan: '../../' + probe, condition: 'c', armedAt: '2026-08-16T00:00:00.000Z',
+            boundSession: 'sess-x', boundTranscript: null,
+            queue: ['../../' + probe], queueIndex: 0, history: []
+        }, null, 2) + '\n');
+        const transcript = path.join(repo, 'transcript.jsonl');
+        writeTranscript(transcript, '../../' + probe, ['Working.']);
+        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-x' }, local,
+            { NODE_OPTIONS: openSpyPreload(local, probe, marker) });
+        assert.strictEqual(res.status, 0);
+        assert.strictEqual(res.stdout, '', 'a malformed state enforces nothing');
+        assert.ok(!fs.existsSync(marker), 'the traversal plan was never opened');
+        assert.deepStrictEqual(readEvents(local), [], 'nothing is emitted off a malformed state');
     } finally {
         rmDir(repo);
         rmDir(local);

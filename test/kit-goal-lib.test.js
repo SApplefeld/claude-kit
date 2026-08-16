@@ -1172,6 +1172,104 @@ test('advanceGoal stores a usable leadKey as blockedAdvanceKey and drops an unus
     }
 });
 
+test('advanceGoal with expectedArmedAt refuses a state re-armed under the same current plan', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
+        writePlan(repo, 'docs/plans/b.md', 'Status: In Progress\n');
+        armGoal(repo, ['docs/plans/a.md', 'docs/plans/b.md']);
+        const armedAt = readGoal(repo).armedAt;
+        const before = fs.readFileSync(goalPath(repo), 'utf8');
+
+        // A re-arm that puts the SAME plan back at the head (/kit-goal
+        // <currentPlan> <newTail>, the ordinary crash-recovery spelling)
+        // passes a plan-only compare; the arming timestamp is what tells the
+        // fresh queue from the snapshot the caller decided on, so a stale
+        // expectedArmedAt refuses without writing.
+        const refused = advanceGoal(repo, {
+            outcome: 'complete', expectedPlan: 'docs/plans/a.md',
+            expectedArmedAt: '2000-01-01T00:00:00.000Z'
+        });
+        assert.strictEqual(refused.ok, false);
+        assert.match(refused.reason, /re-armed/);
+        assert.strictEqual(fs.readFileSync(goalPath(repo), 'utf8'), before, 'a refused advance writes nothing');
+
+        // The other direction: the armedAt the caller actually read advances.
+        const advanced = advanceGoal(repo, {
+            outcome: 'complete', expectedPlan: 'docs/plans/a.md', expectedArmedAt: armedAt
+        });
+        assert.strictEqual(advanced.ok, true);
+        assert.strictEqual(advanced.advanced, true);
+        assert.strictEqual(readGoal(repo).plan, 'docs/plans/b.md');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('advanceGoal on a state whose plan is not a string refuses instead of throwing', () => {
+    const repo = makeRepo();
+    try {
+        // A hand-edited non-string plan returns from the normalizer without
+        // the queue fields it otherwise guarantees; a truthiness guard would
+        // dereference the absent queue and break the never-throws contract.
+        fs.mkdirSync(path.dirname(goalPath(repo)), { recursive: true });
+        fs.writeFileSync(goalPath(repo), '{"plan": 123}', 'utf8');
+        let result;
+        assert.doesNotThrow(() => { result = advanceGoal(repo, { outcome: 'complete' }); });
+        assert.strictEqual(result.ok, false);
+        assert.match(result.reason, /no goal is armed/);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('a clause-(a)-shaped advance (no leadKey) clears a standing blockedAdvanceKey', () => {
+    const repo = makeRepo();
+    try {
+        for (const n of ['a', 'b', 'c']) writePlan(repo, 'docs/plans/' + n + '.md', 'Status: In Progress\n');
+        armGoal(repo, ['docs/plans/a.md', 'docs/plans/b.md', 'docs/plans/c.md']);
+        assert.strictEqual(advanceGoal(repo, { outcome: 'blocked', note: 'n', leadKey: 'uuid:k-1' }).advanced, true);
+        assert.strictEqual(readGoal(repo).blockedAdvanceKey, 'uuid:k-1', 'setup: the blocked advance wrote its key');
+
+        // A key that outlives the advance that follows it would hold a
+        // genuinely new blocker whose text digest collides with the old one,
+        // for the rest of the queue; a keyless advance retires it.
+        assert.strictEqual(advanceGoal(repo, { outcome: 'complete' }).advanced, true);
+        assert.strictEqual(readGoal(repo).blockedAdvanceKey, undefined, 'the keyless advance cleared the key');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('readGoal refuses a plan path that escapes the repo and drops an escaping queue entry', () => {
+    const repo = makeRepo();
+    try {
+        // The plan and every queue entry are re-validated as paths at read:
+        // planHead joins them onto cwd and opens the result, so a traversal
+        // or absolute value written by hand must never reach a reader. A bad
+        // plan makes the whole state malformed (null: no reader sees an armed
+        // goal); a bad queue entry collapses the queue to [plan].
+        const base = {
+            condition: 'c', armedAt: '2026-08-16T00:00:00.000Z',
+            boundSession: null, boundTranscript: null, queueIndex: 0, history: []
+        };
+        fs.mkdirSync(path.dirname(goalPath(repo)), { recursive: true });
+        for (const badPlan of ['../outside.md', path.join(os.tmpdir(), 'outside.md')]) {
+            fs.writeFileSync(goalPath(repo), JSON.stringify(
+                { ...base, plan: badPlan, queue: [badPlan] }) + '\n', 'utf8');
+            assert.strictEqual(readGoal(repo), null, JSON.stringify(badPlan) + ' must read as malformed');
+        }
+
+        fs.writeFileSync(goalPath(repo), JSON.stringify(
+            { ...base, plan: 'docs/plans/ok.md', queue: ['docs/plans/ok.md', '../outside.md'] }) + '\n', 'utf8');
+        const state = readGoal(repo);
+        assert.deepStrictEqual(state.queue, ['docs/plans/ok.md'], 'the escaping entry is dropped with its queue');
+        assert.strictEqual(state.queueIndex, 0);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
 test('writeState unlinks its tmp file when the rename fails', () => {
     const repo = makeRepo();
     try {
@@ -1295,6 +1393,107 @@ test('armGoal refuses two casings of one plan path where the filesystem is case-
             rmRepo(repo);
         }
     });
+
+test('CLI status caps a long queue and a long history at five entries each, with counted remainders', () => {
+    const repo = makeRepo();
+    try {
+        const plans = [];
+        for (let i = 1; i <= 9; i++) {
+            plans.push(`docs/plans/p${i}.md`);
+            writePlan(repo, `docs/plans/p${i}.md`, 'Status: In Progress\n');
+        }
+        assert.strictEqual(armGoal(repo, plans).ok, true);
+
+        // Fresh arm: five entries render from the current position, the rest
+        // are a count. The skill echoes this stdout into the session, so an
+        // oversized state file must not become an unbounded context flood or
+        // one file open per entry.
+        let res = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /queue: plan 1 of 9/);
+        assert.match(res.stdout, /> docs\/plans\/p1\.md/);
+        assert.match(res.stdout, /docs\/plans\/p5\.md/);
+        assert.doesNotMatch(res.stdout, /p6\.md/, 'the sixth entry is behind the cap');
+        assert.match(res.stdout, /\.\.\. and 4 more/);
+
+        // Mid-queue with a long history: the queue window follows the current
+        // position, and the history shows its five most recent outcomes with
+        // the earlier ones counted.
+        for (let i = 0; i < 6; i++) {
+            assert.strictEqual(advanceGoal(repo, { outcome: 'complete' }).advanced, true);
+        }
+        res = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /queue: plan 7 of 9/);
+        assert.match(res.stdout, /> docs\/plans\/p7\.md/);
+        assert.doesNotMatch(res.stdout, /\.\.\. and \d+ more/, 'nothing remains past the window');
+        assert.match(res.stdout, /finished:/);
+        assert.match(res.stdout, /\.\.\. 1 earlier omitted/);
+        assert.match(res.stdout, /docs\/plans\/p2\.md complete at /);
+        assert.match(res.stdout, /docs\/plans\/p6\.md complete at /);
+        assert.doesNotMatch(res.stdout, /p1\.md complete/, 'the oldest outcome sits behind the count');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+// A preload that records any fs.openSync whose target names the probe needle,
+// by creating a marker file through the un-patched open. Spawned alongside the
+// CLI it proves a path was never OPENED, which is the actual hazard (a
+// traversal target outside the repo, or a FIFO whose open blocks), where
+// asserting on stdout alone would only prove it was not printed.
+function openSpyPreload(dir, needle, marker) {
+    const shim = path.join(dir, 'open-spy.js');
+    fs.writeFileSync(shim, [
+        "'use strict';",
+        "const fs = require('fs');",
+        'const real = fs.openSync;',
+        'fs.openSync = function (target) {',
+        '    if (String(target).includes(' + JSON.stringify(needle) + ')) {',
+        '        const fd = real(' + JSON.stringify(marker) + ", 'w');",
+        '        fs.closeSync(fd);',
+        '    }',
+        '    return real.apply(fs, arguments);',
+        '};'
+    ].join('\n') + '\n', 'utf8');
+    return '--require "' + shim.replace(/\\/g, '/') + '"';
+}
+
+test('CLI status never opens a plan or queue entry that traverses out of the repo', () => {
+    const repo = makeRepo();
+    const probe = 'kit-goal-outside-probe.md';
+    const marker = path.join(repo, 'opened-outside.marker');
+    try {
+        const base = {
+            condition: 'c', armedAt: '2026-08-16T00:00:00.000Z',
+            boundSession: null, boundTranscript: null, queueIndex: 0, history: []
+        };
+        const env = { ...process.env, NODE_OPTIONS: openSpyPreload(repo, probe, marker) };
+
+        // A traversal plan makes the whole state malformed at read, so status
+        // reports no armed goal and the path is never handed to planHead.
+        fs.mkdirSync(path.dirname(goalPath(repo)), { recursive: true });
+        fs.writeFileSync(goalPath(repo), JSON.stringify(
+            { ...base, plan: '../../' + probe, queue: ['../../' + probe] }) + '\n', 'utf8');
+        let res = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8', env });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /no kit goal armed/);
+        assert.ok(!fs.existsSync(marker), 'the traversal plan was never opened');
+
+        // A traversal queue entry collapses the queue to the (valid) current
+        // plan, so only that plan is opened.
+        writePlan(repo, 'docs/plans/ok.md', 'Status: In Progress\n');
+        fs.writeFileSync(goalPath(repo), JSON.stringify(
+            { ...base, plan: 'docs/plans/ok.md', queue: ['docs/plans/ok.md', '../../' + probe] }) + '\n', 'utf8');
+        res = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8', env });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /> docs\/plans\/ok\.md \[in progress\]/);
+        assert.doesNotMatch(res.stdout, /outside-probe/);
+        assert.ok(!fs.existsSync(marker), 'the traversal queue entry was never opened');
+    } finally {
+        rmRepo(repo);
+    }
+});
 
 test('emitGoalEvent adds a run field only for a KIT_RUN_ID that memq\'s isRunId itself would accept', () => {
     // run is gated on memq's own isRunId rather than on raw truthiness, so the

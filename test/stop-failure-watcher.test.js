@@ -529,11 +529,15 @@ test('a plan path escaping the repo is refused by the goal-state rule', { skip: 
 // --- The re-armed queue: what the prompt names when the armed goal carries a
 // --- sequence, and every way it falls back to naming the current plan alone.
 
-// A second plan on disk, repo-relative, for the queue cases.
-function writePlan(sb, rel) {
+// A second plan on disk, repo-relative, for the queue cases. The Status header
+// is what decides whether the prompt may name the plan at all: arming refuses a
+// Complete plan and refuses the whole list with it. A null status writes a plan
+// with no Status header, the unclassifiable case.
+function writePlan(sb, rel, status) {
     const abs = path.join(sb.dir, rel);
+    const header = status === null ? '' : '\nStatus: ' + (status || 'In Progress') + '\n';
     fs.mkdirSync(path.dirname(abs), { recursive: true });
-    fs.writeFileSync(abs, '# Probe plan\n\nStatus: In Progress\n', 'utf8');
+    fs.writeFileSync(abs, '# Probe plan\n' + header, 'utf8');
     return rel;
 }
 
@@ -722,6 +726,196 @@ test('the resume prompt is bounded: a long queue is carried only as far as it fi
         }
         assert.ok(expected.length < queue.length, 'the fixture queue is long enough to hit the ceiling');
         assert.deepStrictEqual(plans, expected);
+    } finally {
+        rmSandbox(sb);
+    }
+});
+
+// --- Complete plans: the prompt may name only plans that still have work,
+// --- because arming refuses a Complete plan and the whole list with it.
+
+test('a Complete current plan is skipped and the prompt arms the plans that remain', { skip: !isWin }, () => {
+    // The likeliest state an unattended run dies in: the current plan just
+    // marked Complete and the advance not yet recorded. Leading the prompt with
+    // it would have /kit-goal refuse the whole arm and lose the remainder.
+    const sb = makeSandbox();
+    try {
+        writePlan(sb, PLAN, 'Complete');
+        const second = writePlan(sb, 'docs/plans/probe-two_spec_v1.md');
+        const third = writePlan(sb, 'docs/plans/probe-three_spec_v1.md');
+        writeMarker(sb);
+        writeGoal(sb, { queue: [PLAN, second, third], queueIndex: 0 });
+        runWatcher(sb);
+        assert.deepStrictEqual(promptPlans(sb), [second, third]);
+    } finally {
+        rmSandbox(sb);
+    }
+});
+
+test('a Complete plan inside the remainder is skipped and the plans after it still carry', { skip: !isWin }, () => {
+    // A Complete plan is finished work, not a gap in the sequence, so it is
+    // skipped wherever it sits rather than truncating the remainder.
+    const sb = makeSandbox();
+    try {
+        const second = writePlan(sb, 'docs/plans/probe-two_spec_v1.md', 'Complete');
+        const third = writePlan(sb, 'docs/plans/probe-three_spec_v1.md');
+        writeMarker(sb);
+        writeGoal(sb, { queue: [PLAN, second, third], queueIndex: 0 });
+        runWatcher(sb);
+        assert.deepStrictEqual(promptPlans(sb), [PLAN, third]);
+    } finally {
+        rmSandbox(sb);
+    }
+});
+
+test('a queue whose every remaining plan is Complete launches nothing and notes why', { skip: !isWin }, () => {
+    // Nothing left to arm is a finished run, not a resume: composing a prompt
+    // there would arm a list /kit-goal refuses outright.
+    const sb = makeSandbox();
+    try {
+        writePlan(sb, PLAN, 'Complete');
+        const second = writePlan(sb, 'docs/plans/probe-two_spec_v1.md', 'Complete');
+        writeMarker(sb);
+        writeGoal(sb, { queue: [PLAN, second], queueIndex: 0 });
+        runWatcher(sb);
+        assertNoLaunch(sb, 'every remaining plan Complete');
+        const notes = fs.readFileSync(sb.events, 'utf8').split('\n').filter((l) => l.includes('no-plans-to-resume'));
+        assert.strictEqual(notes.length, 1, 'the pass records why it launched nothing');
+        assert.strictEqual(JSON.parse(notes[0]).candidates, 2, 'the note counts the plans it considered');
+    } finally {
+        rmSandbox(sb);
+    }
+});
+
+test('a lone Complete plan, with no queue at all, launches nothing', { skip: !isWin }, () => {
+    const sb = makeSandbox();
+    try {
+        writePlan(sb, PLAN, 'Complete');
+        writeMarker(sb);
+        writeGoal(sb);
+        runWatcher(sb);
+        assertNoLaunch(sb, 'lone Complete plan');
+    } finally {
+        rmSandbox(sb);
+    }
+});
+
+test('a plan whose Status cannot be classified is armed: only Complete is skipped', { skip: !isWin }, () => {
+    // Arming accepts a plan it cannot classify, so skipping one here would drop
+    // work the operator armed. The rule skips exactly what arming refuses.
+    const sb = makeSandbox();
+    try {
+        writePlan(sb, PLAN, null);
+        writeMarker(sb);
+        writeGoal(sb);
+        runWatcher(sb);
+        assert.strictEqual(readJson(sb.shimOut).argv[3], EXPECTED_PROMPT);
+    } finally {
+        rmSandbox(sb);
+    }
+});
+
+// --- The path grammar: what a filename is allowed to be before it reaches a
+// --- prompt whose paths are separated by spaces.
+
+test('a plan path containing a space truncates the queue there', { skip: !isWin }, () => {
+    // The prompt joins paths with spaces, so a path carrying one would reach
+    // the arm as two paths nobody wrote, and the arm would fail naming them.
+    const sb = makeSandbox();
+    try {
+        const spaced = writePlan(sb, 'docs/plans/my plan_spec_v1.md');
+        const third = writePlan(sb, 'docs/plans/probe-three_spec_v1.md');
+        writeMarker(sb);
+        writeGoal(sb, { queue: [PLAN, spaced, third], queueIndex: 0 });
+        runWatcher(sb);
+        assert.deepStrictEqual(promptPlans(sb), [PLAN], 'the tail after the failing path is dropped, not skipped');
+    } finally {
+        rmSandbox(sb);
+    }
+});
+
+test('a current plan containing a space: no launch', { skip: !isWin }, () => {
+    const sb = makeSandbox();
+    try {
+        const spaced = writePlan(sb, 'docs/plans/my plan_spec_v1.md');
+        writeMarker(sb);
+        writeGoal(sb, { plan: spaced });
+        runWatcher(sb);
+        assertNoLaunch(sb, 'spaced current plan');
+    } finally {
+        rmSandbox(sb);
+    }
+});
+
+test('every truncation of the queue is recorded with the failing plan and the cause', { skip: !isWin }, () => {
+    // The plans a truncation drops are plans the operator armed, and this
+    // watcher runs for sessions nobody is watching, so each cause leaves a
+    // record naming what was lost and why.
+    const sb = makeSandbox();
+    try {
+        const truncations = () => fs.readFileSync(sb.events, 'utf8').split('\n')
+            .filter((l) => l.includes('queue-truncated')).map((l) => JSON.parse(l));
+        const second = writePlan(sb, 'docs/plans/probe-two_spec_v1.md');
+        const spaced = writePlan(sb, 'docs/plans/my plan_spec_v1.md');
+        const long = [];
+        for (let i = 0; i < 20; i++) {
+            long.push(writePlan(sb, 'docs/plans/probe-' + String(i).padStart(2, '0') + 'a'.repeat(80) + '_spec_v1.md'));
+        }
+        const cases = [
+            { label: 'existence', queue: [PLAN, 'docs/plans/no-such-plan_spec_v1.md', second], cause: 'existence', plan: 'docs/plans/no-such-plan_spec_v1.md', dropped: 2 },
+            { label: 'grammar', queue: [PLAN, spaced, second], cause: 'grammar', plan: spaced, dropped: 2 },
+            { label: 'escaping the repo', queue: [PLAN, '..\\other-repo\\plan.md'], cause: 'refused', plan: '..\\other-repo\\plan.md', dropped: 1 },
+            { label: 'the prompt ceiling', queue: [PLAN, ...long], cause: 'ceiling' }
+        ];
+        for (const c of cases) {
+            fs.rmSync(sb.events, { force: true });
+            writeMarker(sb);
+            writeGoal(sb, { queue: c.queue, queueIndex: 0 });
+            runWatcher(sb);
+            const notes = truncations();
+            assert.strictEqual(notes.length, 1, c.label + ': exactly one truncation record');
+            assert.strictEqual(notes[0].cause, c.cause, c.label + ': the record names the check that refused');
+            if (c.plan) assert.strictEqual(notes[0].plan, c.plan, c.label + ': the record names the failing plan');
+            if (c.dropped) assert.strictEqual(notes[0].dropped, c.dropped, c.label + ': the record counts the candidates dropped');
+            assert.ok(notes[0].dropped > 0, c.label + ': a truncation always drops at least the failing candidate');
+            fs.rmSync(sb.shimOut, { force: true });
+            fs.rmSync(sb.attempts, { force: true });
+            fs.rmSync(sb.sentinel, { force: true });
+        }
+        // A queue that carries whole leaves no truncation record.
+        fs.rmSync(sb.events, { force: true });
+        writeMarker(sb);
+        writeGoal(sb, { queue: [PLAN, second], queueIndex: 0 });
+        runWatcher(sb);
+        assert.strictEqual(fs.existsSync(sb.events) && truncations().length, 0, 'an untruncated queue records nothing');
+    } finally {
+        rmSandbox(sb);
+    }
+});
+
+test('a plan path carrying shell metacharacters is refused even though the file exists', { skip: !isWin }, () => {
+    // These are all legal Windows filenames, so existence alone admits them.
+    // The grammar is what keeps a filename, which is free text, from reaching
+    // an unattended session's prompt carrying anything but a path.
+    const sb = makeSandbox();
+    try {
+        const hostile = [
+            'docs/plans/probe$(calc)_spec_v1.md',
+            'docs/plans/probe;calc_spec_v1.md',
+            'docs/plans/probe&calc_spec_v1.md',
+            'docs/plans/probe`calc`_spec_v1.md',
+            "docs/plans/probe'calc'_spec_v1.md"
+        ];
+        for (const rel of hostile) {
+            writePlan(sb, rel);
+            writeMarker(sb);
+            writeGoal(sb, { queue: [PLAN, rel], queueIndex: 0 });
+            runWatcher(sb);
+            assert.strictEqual(readJson(sb.shimOut).argv[3], EXPECTED_PROMPT, rel);
+            fs.unlinkSync(sb.shimOut);
+            fs.rmSync(sb.attempts, { force: true });
+            fs.rmSync(sb.sentinel, { force: true });
+        }
     } finally {
         rmSandbox(sb);
     }

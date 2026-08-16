@@ -1442,6 +1442,34 @@ if ($isClone) {
         Report "INFO" "Kit goal state" @("No kit goal armed in this clone.")
     }
     else {
+        # The goal state file carries plan paths, and every armed session's
+        # SessionStart notice reads them back into its context. A queue makes
+        # that payload several times larger than a single plan did. The posture
+        # that keeps it safe is the file staying machine-local, so this checks
+        # the property rather than assuming it: a committed or committable
+        # goal state turns one clone's plan paths into text that reaches every
+        # collaborator's session start.
+        if (Get-Command git -ErrorAction SilentlyContinue) {
+            $tracked = (& git -C $repoRoot ls-files -- ".kit/goal-state.json")
+            & git -C $repoRoot check-ignore -q -- ".kit/goal-state.json"
+            $ignored = ($LASTEXITCODE -eq 0)
+            if ($tracked) {
+                Report "WARN" "Kit goal state exposure" @(
+                    "$goalStatePath is tracked by git, so its plan paths are in this repo's history and reach every clone.",
+                    "Fix: git rm --cached .kit/goal-state.json, then add .kit/ to .gitignore."
+                )
+            }
+            elseif (-not $ignored) {
+                Report "WARN" "Kit goal state exposure" @(
+                    "$goalStatePath is neither tracked nor ignored, so the next 'git add -A' commits it and its plan paths reach every clone.",
+                    "Fix: add .kit/ to this repo's .gitignore."
+                )
+            }
+            else {
+                Report "PASS" "Kit goal state exposure" @("Goal state is gitignored, so its plan paths stay on this machine.")
+            }
+        }
+
         $goalState = $null
         try { $goalState = Get-Content $goalStatePath -Raw | ConvertFrom-Json } catch {}
         if ($null -eq $goalState -or -not $goalState.plan) {

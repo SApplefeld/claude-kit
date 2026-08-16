@@ -92,15 +92,29 @@ function cmdStatus() {
         + ' (armed ' + sanitize(state.armedAt) + '; ' + binding + ')'];
 
     out.push('queue: plan ' + (state.queueIndex + 1) + ' of ' + state.queue.length);
-    state.queue.forEach((plan, i) => {
+    // The rendering is capped at five entries from the current position, with
+    // the rest as a count, matching the SessionStart notice's queue clause:
+    // this stdout is echoed into the session by the /kit-goal skill, and each
+    // rendered entry costs a file open (planHead), so an oversized state file
+    // must not become an unbounded context flood or an open per line. Entries
+    // behind the current position are not rendered here: each plan the leash
+    // advanced past is reported under finished below.
+    const window = state.queue.slice(state.queueIndex, state.queueIndex + 5);
+    window.forEach((plan, i) => {
         const head = planHead(cwd, plan);
         const status = head.exists ? head.status : 'missing';
-        out.push('  ' + (i === state.queueIndex ? '>' : ' ') + ' ' + sanitize(plan) + ' [' + status + ']');
+        out.push('  ' + (i === 0 ? '>' : ' ') + ' ' + sanitize(plan) + ' [' + status + ']');
     });
+    const more = state.queue.length - state.queueIndex - window.length;
+    if (more > 0) out.push('  ... and ' + more + ' more');
 
     if (state.history.length > 0) {
         out.push('finished:');
-        for (const entry of state.history) {
+        // The five most recent outcomes, newest last, with the rest as a
+        // count: the same bound as the queue above and for the same reason.
+        const omitted = state.history.length - 5;
+        if (omitted > 0) out.push('  ... ' + omitted + ' earlier omitted');
+        for (const entry of state.history.slice(-5)) {
             out.push('  ' + sanitize(entry.plan) + ' ' + sanitize(entry.outcome) + ' at ' + sanitize(entry.at)
                 + (entry.note ? ': ' + sanitize(entry.note) : ''));
         }

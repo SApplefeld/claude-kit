@@ -19,11 +19,14 @@
 # header, so this script computes no wake time: it launches promptly once the
 # failure has settled, and the child does the waiting, bounded by
 # ChildLifetimeBoundSeconds so a weekly-limit incident cannot park a claude for
-# days. The prompt is the literal `/kit-goal <plan path> ...`, naming the armed
-# plan and whatever remains of its queue, which re-arms the goal leash over the
-# rest of the sequence and re-binds it to the resumed session (a slash command
-# in a -p prompt executes and writes the user-typed command markup the leash
-# claims on).
+# days. The prompt is the literal `/kit-goal <plan path> ...`, naming every
+# plan of the armed queue from the current one on that still has work (a plan
+# already reading Complete is skipped, because arming refuses such a plan and
+# refuses the whole list with it), which re-arms the goal leash over the rest
+# of the sequence and re-binds it to the resumed session (a slash command in a
+# -p prompt executes and writes the user-typed command markup the leash claims
+# on). A queue with no unfinished plan left in it is a finished run: no prompt
+# is composed and nothing is launched.
 #
 # Security posture: the marker is a user-writable file feeding an unattended
 # command execution, so nothing in it is trusted. The session id must match a
@@ -32,11 +35,14 @@
 # quote-escaped into acceptability. Every plan path is validated by the same
 # normalizePlanArg rule the goal state itself enforces (called out of
 # kit-goal-lib.js under node rather than restated here, so the two rules
-# cannot drift) and must name a file that exists. The resume prompt is fixed
-# text whose only interpolations are those validated plan paths, bounded in
-# total length, and both values reach the child through
-# environment variables read by a constant wrapper script, so no marker
-# content is ever spliced into a command line. Every guard fails toward
+# cannot drift), must clear a conservative path grammar, and must name a file
+# that exists. The resume prompt is fixed text whose only interpolations are
+# those validated plan paths, bounded in total length, and both values reach
+# the child through environment variables read by a constant wrapper script, so
+# no marker content is ever spliced into a command line. A plan path refused by
+# any of those rules truncates the queue there, recorded to the events log with
+# the cause, so an unattended run never drops armed plans silently. Every guard
+# fails toward
 # exit-without-acting: an absent, unparseable, ambiguous, or unexpected input
 # ends the pass with exit 0 and no child launched.
 #
@@ -104,7 +110,7 @@ $TaskIntervalMinutes = 15
 # .cmd shim routes it through cmd.exe, whose line limit is an order of
 # magnitude below the Win32 one, so an armed queue of any length cannot grow
 # the command line without bound: the remainder is carried only as far as it
-# fits and truncated there. The current plan is always carried whatever its
+# fits and truncated there. The first plan carried is carried whatever its
 # length, since dropping it would mean resuming with no plan at all; this
 # bounds the queue tail.
 $ResumePromptMaxChars = 1024
@@ -197,6 +203,19 @@ function Add-WatcherEvent {
     catch { <# the log is observability; a failed append changes nothing #> }
 }
 
+# A value rendered safe to record in the events log: printable ASCII, capped,
+# the safeForReason convention from kit-goal-lib.js. Goal-state plan paths are
+# free text until they clear Resolve-PlanRel, and the ones that fail it are
+# exactly the ones the log has to name, so a refused value is recorded in a
+# form that cannot carry more than its own characters.
+function Get-SafeForLog {
+    param($Value)
+    $text = [string]$Value
+    $text = [System.Text.RegularExpressions.Regex]::Replace($text, '[^\x20-\x7E]', '')
+    if ($text.Length -gt 120) { $text = $text.Substring(0, 120) }
+    return $text
+}
+
 # Opaque case-insensitive session-id compare, the sameSessionId convention
 # from kit-compact-lib.js (session UUIDs surface in mixed case across the
 # harness). False when either side is missing.
@@ -230,21 +249,30 @@ function Test-WrapperAlive {
     return ($proc.ProcessName -eq "powershell" -or $proc.ProcessName -eq "pwsh")
 }
 
-# One plan path, put through the exact rule the goal state enforces
-# (normalizePlanArg in kit-goal-lib.js, run under node with the values as argv
-# so nothing is interpolated into the -e source) and then required to name a
-# file that exists. Returns the repo-relative path, or $null when the value is
-# not a usable plan path, which every caller answers by carrying no further
-# plan into the prompt.
+# One plan path, put through the exact rules the goal state enforces
+# (normalizePlanArg and planHead in kit-goal-lib.js, run under node with the
+# values as argv so nothing is interpolated into the -e source), a conservative
+# path grammar, and then required to name a file that exists. Returns
+# @{ rel; status; reason }: on success rel is the repo-relative path, status is
+# the plan's own Status header as the rest of the kit classifies it
+# ("complete", "in progress", or "unknown"), and reason is "ok". On any refusal
+# rel is $null and reason names the check that refused ("not-a-path",
+# "refused", "grammar", or "existence"), which every caller answers by carrying
+# no further plan into the prompt and recording the named cause.
 #
-# The existence check is what closes the free-text channel: plan paths are the
-# only project-state values that reach the resume prompt, so a shape-valid path
-# naming nothing on disk would otherwise be a way to deliver prose to an
-# unattended session as operator instruction. A control character is rejected
-# up front because it could not survive the command-line crossing intact enough
-# to be judged, and the quote check is belt and braces on the value that gets
-# interpolated: a Windows filename cannot carry either, so a normalized path
-# that does is not a path this machine produced.
+# Two checks close the free-text channel, because plan paths are the only
+# project-state values that reach the resume prompt. Existence: a shape-valid
+# path naming nothing on disk would be a way to deliver prose to an unattended
+# session as operator instruction. Grammar: a FILENAME is itself free text, so
+# the normalized path must be letters, digits, underscore, dot, hyphen, and
+# forward slash and nothing else, anchored at the very ends of the string
+# (\A/\z, so a trailing newline cannot ride through the $ anchor's
+# end-of-line allowance). That also rejects a space, which matters beyond
+# injection: the prompt joins paths with spaces, so a path carrying one would
+# split into two unparseable arguments on the receiving side and the arm would
+# fail naming paths nobody wrote. A control character is rejected up front,
+# before node, because it could not survive the command-line crossing intact
+# enough to be judged.
 function Resolve-PlanRel {
     param(
         [Parameter(Mandatory = $true)][string]$NodeExe,
@@ -252,27 +280,36 @@ function Resolve-PlanRel {
         [Parameter(Mandatory = $true)][string]$ProjectDir,
         $Plan
     )
-    if ($Plan -isnot [string] -or $Plan -eq "") { return $null }
-    if ($Plan -match '[\x00-\x1F]') { return $null }
+    if ($Plan -isnot [string] -or $Plan -eq "") { return @{ rel = $null; reason = "not-a-path" } }
+    if ($Plan -match '[\x00-\x1F]') { return @{ rel = $null; reason = "not-a-path" } }
+    # Two lines out, path then status, so a status carrying a space ("in
+    # progress") stays whole and neither value has to be delimited inside a
+    # line. The separator is built with String.fromCharCode because this source
+    # crosses to node as a native-command argument, where a double quote does
+    # not survive PowerShell's argument quoting intact.
     $normalizeSrc = 'const lib = require(process.argv[1]); ' +
         'const rel = lib.normalizePlanArg(process.argv[2], process.argv[3]); ' +
-        'if (rel === null) process.exit(1); process.stdout.write(rel);'
-    # The rule runs with errors non-terminating and its stderr discarded:
+        'if (rel === null) process.exit(1); ' +
+        'process.stdout.write(rel + String.fromCharCode(10) + lib.planHead(process.argv[2], rel).status);'
+    # The rules run with errors non-terminating and their stderr discarded:
     # Windows PowerShell wraps each stderr line of a native command as an error
     # record, which under Stop would turn any byte node writes there (a
     # deprecation or experimental warning) into a terminating error and end
     # every pass on that host without acting. The preference is restored
     # immediately, so every guard around this one still fails toward exit.
-    $rel = ""
+    $out = @()
     try {
         $ErrorActionPreference = "Continue"
-        $rel = [string](& $NodeExe "-e" $normalizeSrc $LibPath $ProjectDir $Plan 2>$null)
+        $out = @(& $NodeExe "-e" $normalizeSrc $LibPath $ProjectDir $Plan 2>$null)
     }
     finally { $ErrorActionPreference = "Stop" }
-    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrEmpty($rel)) { return $null }
-    if ($rel -match '["\x00-\x1F]') { return $null }
-    if (-not (Test-Path -LiteralPath (Join-Path $ProjectDir $rel) -PathType Leaf)) { return $null }
-    return $rel
+    if ($LASTEXITCODE -ne 0 -or $out.Count -lt 2) { return @{ rel = $null; reason = "refused" } }
+    $rel = [string]$out[0]
+    $status = [string]$out[1]
+    if ([string]::IsNullOrEmpty($rel)) { return @{ rel = $null; reason = "refused" } }
+    if ($rel -notmatch '\A[A-Za-z0-9_./-]+\z') { return @{ rel = $null; reason = "grammar" } }
+    if (-not (Test-Path -LiteralPath (Join-Path $ProjectDir $rel) -PathType Leaf)) { return @{ rel = $null; reason = "existence" } }
+    return @{ rel = $rel; status = $status; reason = "ok" }
 }
 
 try {
@@ -347,47 +384,104 @@ try {
     if ($RetryableErrors -notcontains $errorClass) { exit 0 }
 
     # 5. The plan paths that will be re-armed, each through Resolve-PlanRel
-    # (the goal state's own normalizePlanArg rule, plus the existence check
-    # that keeps free text out of the prompt). node missing, the lib missing,
-    # or the rule refusing the current plan all exit without acting.
+    # (the goal state's own normalizePlanArg rule, the path grammar, and the
+    # existence check that keep free text out of the prompt, plus the plan's
+    # own Status). node or the lib missing exits without acting.
     $node = Get-Command node -ErrorAction SilentlyContinue
     if ($null -eq $node) { exit 0 }
     $libPath = Join-Path (Split-Path $PSScriptRoot -Parent) "hooks\kit-goal-lib.js"
     if (-not (Test-Path -LiteralPath $libPath)) { exit 0 }
-    $planRel = Resolve-PlanRel $node.Source $libPath $ProjectDir $plan
-    if ($null -eq $planRel) { exit 0 }
 
-    # The current plan, then whatever remains of the armed queue. Re-arming is
-    # wholesale: `/kit-goal` naming one plan replaces the queue with a queue of
-    # one, so a resume that named the current plan alone would finish it,
-    # release the leash, and lose the plans after it with no signal anywhere.
-    # Naming the remainder is the same recovery an operator performs by hand.
+    # The candidates, in armed order: the current plan, then whatever remains
+    # of the armed queue. Re-arming is wholesale: `/kit-goal` naming one plan
+    # replaces the queue with a queue of one, so a resume that named the
+    # current plan alone would finish it, release the leash, and lose the plans
+    # after it with no signal anywhere. Naming the remainder is the same
+    # recovery an operator performs by hand.
     #
     # The queue fields are read defensively and any doubt falls back to the
-    # current plan alone, which is exactly today's prompt: a state file without
-    # them predates the queue, and one whose queue disagrees with plan is a
-    # hand edit rather than a sequence to re-arm from.
-    $planRels = @($planRel)
+    # current plan alone, which is exactly the pre-queue prompt: a state file
+    # without them predates the queue, and one whose queue disagrees with plan
+    # is a hand edit rather than a sequence to re-arm from.
+    $candidates = @($plan)
     $queueValue = Get-JsonFieldArray $goal.data "queue"
     $queueIndexValue = Get-JsonField $goal.data "queueIndex"
     if ($queueValue -is [System.Collections.IList] -and ($queueIndexValue -is [int] -or $queueIndexValue -is [long])) {
         $queueIndex = [int]$queueIndexValue
         if ($queueIndex -ge 0 -and $queueIndex -lt $queueValue.Count -and ([string]$queueValue[$queueIndex]) -eq $plan) {
-            $promptLength = "/kit-goal ".Length + $planRel.Length
-            for ($i = $queueIndex + 1; $i -lt $queueValue.Count; $i++) {
-                # A remaining path that fails the rule, or that would carry the
-                # prompt past its ceiling, truncates the remainder here rather
-                # than being stepped over: the queue is ordered, so a prefix of
-                # it is still a sequence the operator armed while a gapped one
-                # is not, and resuming with fewer plans is recoverable by a
-                # re-arm where resuming out of order is not.
-                $tailRel = Resolve-PlanRel $node.Source $libPath $ProjectDir $queueValue[$i]
-                if ($null -eq $tailRel) { break }
-                if (($promptLength + 1 + $tailRel.Length) -gt $ResumePromptMaxChars) { break }
-                $promptLength += 1 + $tailRel.Length
-                $planRels += $tailRel
+            for ($i = $queueIndex + 1; $i -lt $queueValue.Count; $i++) { $candidates += $queueValue[$i] }
+        }
+    }
+
+    # The prompt carries only plans that still have work. `/kit-goal` refuses,
+    # all-or-nothing, an arm naming any plan whose Status reads Complete, and a
+    # run that died with its current plan just marked Complete and the advance
+    # not yet recorded is the single likeliest state this watcher meets, so
+    # leading with that plan would have the whole arm refused and the entire
+    # remainder lost with no signal. A plan whose Status cannot be classified
+    # counts as not Complete: arming accepts it, so dropping it would lose work
+    # the operator armed, and this rule skips exactly what arming refuses.
+    #
+    # The two ways a candidate leaves the prompt split on certainty. Doubt
+    # truncates: a path that fails the rule, or that would carry the prompt
+    # past its ceiling, ends the remainder there rather than being stepped
+    # over, because the queue is ordered, so a prefix of it is still a sequence
+    # the operator armed while a gapped one is not, and resuming with fewer
+    # plans is recoverable by a re-arm where resuming out of order is not.
+    # Proof of done skips: a Complete plan is known-finished work rather than
+    # an uncertain entry, carrying it would have arming refuse the whole list,
+    # and truncating there would drop the unfinished plans after it for no
+    # safety gain, so it is skipped wherever it sits.
+    #
+    # Every truncation is recorded, on this one shared path so the causes
+    # cannot drift apart: the plans lost are plans the operator armed, and this
+    # watcher exists for runs nobody is watching, so a silent truncation would
+    # leave no record anywhere of what the resume dropped.
+    $planRels = @()
+    $promptLength = "/kit-goal ".Length
+    $truncation = $null
+    for ($i = 0; $i -lt $candidates.Count; $i++) {
+        $resolved = Resolve-PlanRel $node.Source $libPath $ProjectDir $candidates[$i]
+        if ($null -eq $resolved.rel) {
+            $truncation = @{ plan = $candidates[$i]; cause = $resolved.reason; index = $i }
+            break
+        }
+        if ($resolved.status -eq "complete") { continue }
+        # The first plan carried is carried whatever its length, since a prompt
+        # without it would arm nothing; the ceiling bounds the tail.
+        $addition = $resolved.rel.Length
+        if ($planRels.Count -gt 0) {
+            $addition += 1
+            if (($promptLength + $addition) -gt $ResumePromptMaxChars) {
+                $truncation = @{ plan = $resolved.rel; cause = "ceiling"; index = $i }
+                break
             }
         }
+        $promptLength += $addition
+        $planRels += $resolved.rel
+    }
+    if ($null -ne $truncation) {
+        Add-WatcherEvent $kitDir @{
+            watcher    = "queue-truncated"
+            sessionId  = $sessionId
+            plan       = (Get-SafeForLog $truncation.plan)
+            cause      = $truncation.cause
+            dropped    = $candidates.Count - $truncation.index
+            recordedAt = $nowIso
+        }
+    }
+    if ($planRels.Count -eq 0) {
+        # Nothing left to arm: every remaining plan reads Complete (the run
+        # finished and the release is all that is missing) or the first one is
+        # not a usable plan path. Either way a resume would carry an arm that
+        # names nothing, so this pass launches nothing and notes why.
+        Add-WatcherEvent $kitDir @{
+            watcher    = "no-plans-to-resume"
+            sessionId  = $sessionId
+            candidates = $candidates.Count
+            recordedAt = $nowIso
+        }
+        exit 0
     }
 
     # 6. Due-ness, not wake-time arithmetic: the payload carries no reset
@@ -519,7 +613,11 @@ try {
     $encodedWrapper = [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($WrapperScript))
 
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-    $child = Start-Process -FilePath "powershell.exe" `
+    # The host is spelled absolutely, as the taskkill call below is: a bare
+    # name resolves through PATH, and this process launches unattended under
+    # whatever environment the scheduled task inherits.
+    $powershell = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
+    $child = Start-Process -FilePath $powershell `
         -ArgumentList @("-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-EncodedCommand", $encodedWrapper) `
         -WorkingDirectory $ProjectDir -WindowStyle Hidden -PassThru
 
@@ -532,7 +630,7 @@ try {
     Add-WatcherEvent $kitDir @{
         watcher    = "launched"
         sessionId  = $sessionId
-        plan       = $planRel
+        plan       = $planRels[0]
         pid        = $child.Id
         recordedAt = $nowIso
     }

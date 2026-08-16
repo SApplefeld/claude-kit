@@ -37,10 +37,13 @@ const TRANSCRIPT_MAX = 512;
 // lives in a gitignored file; it is only ever fs.stat'ed, never executed, and
 // never surfaced raw. The control-character check is a sanitize-before-store
 // guard (a newline would smuggle text into a file the hooks surface into the
-// model's context); the network-path check protects the stat itself, which
-// runs synchronously at every SessionStart and would block for the SMB
-// timeout on an unreachable share, a shape the harness never produces for a
-// transcript (transcripts live under the local user profile).
+// model's context). The network-path check narrows the hang surface of the
+// stat, which runs synchronously at every SessionStart and blocks for the SMB
+// timeout on an unreachable share: it rejects the UNC and //server forms, and
+// only those. A path on a mapped network drive letter is indistinguishable
+// from a local disk without a syscall, so it passes this check and can still
+// hang the stat; that residual takes a hand-edited state file to reach, since
+// the harness produces transcript paths under the local user profile.
 function validTranscript(value) {
     return typeof value === 'string' && value !== '' && value.length <= TRANSCRIPT_MAX
         && !/[\x00-\x1F]/.test(value)
@@ -49,18 +52,30 @@ function validTranscript(value) {
 
 // Normalize a parsed goal state to the current shape, so every reader can rely
 // on queue, queueIndex, history, and boundTranscript being present and on
-// queue[queueIndex] === plan. A state file carrying no queue is a queue of one:
-// plan is the authority on what is current, so a queue that is absent,
-// malformed, or disagreeing with plan is replaced by [plan] at index 0.
-// Applied inside readGoal, so no caller sees the un-normalized shape.
-function normalizeState(state) {
+// queue[queueIndex] === plan. Path fields are re-validated on every read, not
+// only at write time: planHead joins plan (and the status report joins each
+// queue entry) onto cwd and opens the result, so a hand-edited value that
+// traverses out of the repo, or names a FIFO outside it, must never reach a
+// reader. A plan that does not round-trip normalizePlanArg (that is, was not
+// the product of armGoal's own normalization) makes the whole state
+// malformed: readGoal returns null, every reader sees no armed goal, and the
+// doctor, which reads the raw file, is the surface that flags the damage. A
+// state file carrying no queue is a queue of one: plan is the authority on
+// what is current, so a queue that is absent, malformed, carrying an entry
+// that fails the same path rule, or disagreeing with plan is replaced by
+// [plan] at index 0. Applied inside readGoal, so no caller sees the
+// un-normalized shape.
+function normalizeState(cwd, state) {
     if (!state || typeof state !== 'object' || typeof state.plan !== 'string' || state.plan === '') {
         return state;
+    }
+    if (normalizePlanArg(cwd, state.plan) !== state.plan) {
+        return null;
     }
     const queue = state.queue;
     const index = state.queueIndex;
     const usable = Array.isArray(queue) && queue.length > 0
-        && queue.every((p) => typeof p === 'string' && p !== '')
+        && queue.every((p) => typeof p === 'string' && normalizePlanArg(cwd, p) === p)
         && Number.isInteger(index) && index >= 0 && index < queue.length
         && queue[index] === state.plan;
     if (!usable) {
@@ -74,11 +89,12 @@ function normalizeState(state) {
 
 // Read and parse the goal-state file, normalized to the current shape (see
 // normalizeState). Returns the parsed object, or null if the file is absent,
-// unreadable, or not valid JSON.
+// unreadable, not valid JSON, or carrying a plan path the normalizer's
+// path re-validation refuses.
 function readGoal(cwd) {
     try {
         const raw = fs.readFileSync(goalPath(cwd), 'utf8');
-        return normalizeState(JSON.parse(raw));
+        return normalizeState(cwd, JSON.parse(raw));
     } catch {
         return null;
     }
@@ -292,15 +308,20 @@ function armGoal(cwd, planArgs) {
 //
 // outcome is 'complete', 'archived', or 'blocked'; note is the optional
 // recorded blocker, sanitized and capped here because it originates in
-// transcript text. expectedPlan is an optional compare-and-swap guard: the
-// caller decided to advance from a snapshot, another writer (a CLI re-arm or
-// clear) can land between that snapshot and this function's own re-read, and
-// a state whose current plan is no longer the expected one is refused rather
-// than advanced over. leadKey is the optional identity of the transcript
-// entry whose 'BLOCKED:' lead drove this advance; a usable value (printable
-// ASCII, capped) is stored as blockedAdvanceKey so the Stop hook can refuse
-// consuming the same entry twice, and an unusable one is dropped rather than
-// stored, the same bar every stored field answers to.
+// transcript text. expectedPlan and expectedArmedAt are an optional
+// compare-and-swap guard: the caller decided to advance from a snapshot,
+// another writer (a CLI re-arm or clear) can land between that snapshot and
+// this function's own re-read, and a state that no longer matches either
+// value is refused rather than advanced over. The plan alone cannot tell a
+// re-arm that put the same plan back at the head (/kit-goal <currentPlan>
+// <newTail>, the ordinary crash-recovery spelling) from the state the caller
+// saw, which is why the arming timestamp rides with it: a fresh arm writes a
+// fresh armedAt. leadKey is the optional identity of the transcript entry
+// whose 'BLOCKED:' lead drove this advance; a usable value (printable ASCII,
+// capped) is stored as blockedAdvanceKey so the Stop hook can refuse
+// consuming the same entry twice, an unusable one is dropped rather than
+// stored, the same bar every stored field answers to, and an advance carrying
+// no leadKey at all clears any standing key (see the clearing branch below).
 //
 // Returns { ok:true, advanced:true, finished, plan } when the leash moved,
 // { ok:true, advanced:false, finished } on the last plan of the queue (nothing
@@ -313,14 +334,25 @@ function advanceGoal(cwd, outcomeEntry) {
     if (!['complete', 'archived', 'blocked'].includes(entry.outcome)) {
         return { ok: false, reason: 'outcome must be complete, archived, or blocked' };
     }
+    // The plan must be a string, matching every other reader's guard, not
+    // merely truthy: a hand-edited non-string plan returns from the
+    // normalizer without the queue fields it otherwise guarantees, so a
+    // truthiness check here would dereference an absent queue below and break
+    // this surface's never-throws contract.
     const state = readGoal(cwd);
-    if (!state || !state.plan) {
+    if (!state || typeof state.plan !== 'string' || state.plan === '') {
         return { ok: false, reason: 'no goal is armed' };
     }
     if (typeof entry.expectedPlan === 'string' && entry.expectedPlan !== state.plan) {
         return {
             ok: false,
             reason: 'goal state changed: the current plan is no longer ' + safeForReason(entry.expectedPlan)
+        };
+    }
+    if (typeof entry.expectedArmedAt === 'string' && entry.expectedArmedAt !== state.armedAt) {
+        return {
+            ok: false,
+            reason: 'goal state changed: the goal was re-armed after this advance was decided'
         };
     }
 
@@ -339,6 +371,16 @@ function advanceGoal(cwd, outcomeEntry) {
     if (typeof entry.leadKey === 'string' && entry.leadKey !== '' && entry.leadKey.length <= 128
         && !/[^\x20-\x7E]/.test(entry.leadKey)) {
         state.blockedAdvanceKey = entry.leadKey;
+    } else if (entry.leadKey === undefined || entry.leadKey === null) {
+        // An advance carrying no key at all (clause (a)'s Complete or
+        // archived, or a BLOCKED lead whose identity could not be derived)
+        // retires any standing key: the key exists to refuse re-consuming one
+        // already-spent transcript entry, and one that outlives the advance
+        // that follows it widens the text-digest collision surface in a
+        // uuid-less transcript to every later plan of the queue. A key that
+        // is present but unusable keeps the prior value instead, erring
+        // toward holding a lead that was in fact consumed.
+        delete state.blockedAdvanceKey;
     }
     const written = writeState(cwd, state);
     if (!written.ok) return written;

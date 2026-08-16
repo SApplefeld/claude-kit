@@ -205,18 +205,27 @@ function composeGoalBlock(goal, sessionId) {
     // branch is talking to the leash holder and the others are talking to a
     // session that may or may not be it.
     // Returned unterminated and lower-case so each caller owns its own
-    // punctuation: one branch opens a sentence with it, the others splice it
-    // after a comma and continue past it.
+    // punctuation: one branch opens a sentence with it (through
+    // holdRuleSentence below), the others splice it after a comma and
+    // continue past it.
     const holdRule = (subject) => (tail !== ''
         ? `a Stop hook holds ${subject} through the armed queue: a terminal state (plan Complete or a`
             + ` leading 'BLOCKED:') on any plan but the last advances the leash to the next plan and keeps`
             + ` holding, and only the last plan's terminal state releases the stop`
         : `a Stop hook holds ${subject} to completion, allowing a stop only on plan Complete or a`
             + ` leading 'BLOCKED:'`);
+    // The sentence form capitalizes the shared text's first character rather
+    // than assuming its first word: a branch that spliced 'A' + slice(1)
+    // would silently eat a character the moment a reword opened the rule with
+    // anything but an article.
+    const holdRuleSentence = (subject) => {
+        const rule = holdRule(subject);
+        return rule.charAt(0).toUpperCase() + rule.slice(1);
+    };
 
     if (bound && sid && sameSessionId(bound, sid)) {
-        return `A kit goal is armed for ${plan} in this project, and the leash is bound to THIS session. A`
-            + holdRule('this session').slice(1) + `.${tail} ${skillPointer} Reminder, not a blocker.`
+        return `A kit goal is armed for ${plan} in this project, and the leash is bound to THIS session. `
+            + holdRuleSentence('this session') + `.${tail} ${skillPointer} Reminder, not a blocker.`
             + ` ${provenance}`;
     }
 
