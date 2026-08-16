@@ -1469,24 +1469,32 @@ else {
 #
 # The effective trigger is the configured window minus a reserve (measured,
 # not documented: a configured 100,000 fires near 64,000 and a configured
-# 150,000 fires near 116,400). The recommended window is sized against a
-# 200,000-token model window so the trigger lands with usable runway below
-# the gate's safety valve for a chapter to close; every displayed number is
+# 150,000 fires near 116,400). The recommended window is sized against the
+# roughly 1,000,000-token window the models running leashed plan sessions
+# carry, and against where a real run actually sits: context reaches about
+# 100,000 once tools and a plan doc have loaded, chapters rarely close below
+# 200,000, and quality holds until roughly 400,000. So the trigger belongs
+# well above the setup floor and below the point where deferring starts to
+# cost something, which puts it near 265,000 with a long runway below the
+# gate's safety valve for a chapter to close. Every displayed number is
 # derived from $recommendedWindow and $autoCompactReserve rather than
 # restated, so changing one value cannot strand the prose beside it.
 #
-# A window set too HIGH is the quiet failure: above the model's real context
+# A window set too HIGH is one quiet failure: above the model's real context
 # window the trigger is never reached, no compaction is ever offered, and the
-# whole feature is inert while looking installed.
-$recommendedWindow = 135000
+# whole feature is inert while looking installed. A window set too LOW is the
+# other, and it is worse than doing nothing: it compacts during setup and then
+# repeatedly, throwing away context a run has not finished using.
+$recommendedWindow = 300000
 $autoCompactReserve = 35000
 $recommendedTrigger = $recommendedWindow - $autoCompactReserve
-# The minimum usable band between the trigger and the valve ceiling: one
-# large turn (a wide git diff, a big plan-doc read runs about 20,000 tokens).
-# A thinner band is inert in practice, with the valve ending deferral almost
-# as soon as the harness starts offering, so it is warned on, not just the
-# zero-or-negative case.
-$minUsableBand = 20000
+# The minimum usable band between the trigger and the valve ceiling. A band
+# thinner than a couple of large turns is inert in practice, with the valve
+# ending deferral almost as soon as the harness starts offering, so it is
+# warned on rather than only the zero-or-negative case. Sized against turns on
+# a real orchestration run (a wide git diff, a big plan-doc read, a subagent
+# report), which run far larger than the small-window probe's 20,000.
+$minUsableBand = 50000
 # The documented floor of autoCompactWindow's accepted range. Below it the
 # harness may clamp or ignore the value, so the real trigger is unknown and a
 # derived trigger number would be fiction; the check reports that state
@@ -1573,7 +1581,11 @@ if (Test-Path -LiteralPath $settingsPath) {
 # configured.
 $noWindowJudgment = @()
 if ($null -ne $valveCeiling) {
-    $noWindowJudgment = @("The default trigger sits near the top of the model window, above the gate's safety ceiling of $valveCeiling, so the valve allows every compaction and the gate defers nothing until a window is configured.")
+    # Stated as expectation rather than measurement: the per-model default
+    # trigger sits near the top of the window by design, which on a large-window
+    # model puts it above the ceiling, but that has not been measured on the
+    # window plan sessions actually run.
+    $noWindowJudgment = @("The default trigger sits near the top of the model window, which on a large-window model is expected to be above the gate's safety ceiling of $valveCeiling, leaving the valve to allow every compaction and the gate to defer nothing until a window is configured.")
 }
 
 if (-not (Test-Path -LiteralPath $settingsPath)) {
@@ -1592,7 +1604,7 @@ elseif ($null -eq $configuredWindow) {
     $detail = @(
         "No autoCompactWindow is set, so the harness compacts at its per-model default trigger, near the top of the context window."
     ) + $noWindowJudgment + @(
-        "Recommended: $recommendedWindow (offers a compaction near $recommendedTrigger consumed on a 200,000-token window)."
+        "Recommended: $recommendedWindow (offers a compaction near $recommendedTrigger consumed on the ~1,000,000-token window plan sessions run)."
     )
     if ($Fix -and (Get-Consent "Set autoCompactWindow to $recommendedWindow in $settingsPath?")) {
         $result = Set-AutoCompactWindow -Path $settingsPath -Value $recommendedWindow
@@ -1632,14 +1644,14 @@ else {
     $displayTrigger = [Math]::Max(0, $trigger)
     $detail = @("autoCompactWindow is $configuredWindow, so a compaction is offered near $displayTrigger consumed (the trigger runs about $autoCompactReserve below the configured window).")
     # The one direction of the gate that is not fail-open: the valve is an
-    # absolute token count assuming a 200,000-token model window, and the
-    # PreCompact payload carries no model field to derive the real one. A
+    # absolute token count assuming the model window plan sessions run on, and
+    # the PreCompact payload carries no model field to derive the real one. A
     # trigger at or above the ceiling makes the feature inert outright, and a
-    # band thinner than one large turn ($minUsableBand) is inert in practice,
-    # so both warn rather than only the zero-or-negative case.
+    # band thinner than a couple of large turns ($minUsableBand) is inert in
+    # practice, so both warn rather than only the zero-or-negative case.
     if ($null -ne $valveCeiling -and ($valveCeiling - $trigger) -lt $minUsableBand) {
         Report "WARN" "Auto-compaction window" ($detail + @(
-            "That trigger leaves less than $minUsableBand tokens of deferral band below the gate's safety ceiling of $valveCeiling (one large turn), so the valve ends deferral as soon as, or before, the harness starts offering.",
+            "That trigger leaves less than $minUsableBand tokens of deferral band below the gate's safety ceiling of $valveCeiling, so the valve ends deferral as soon as, or before, the harness starts offering.",
             "Lower it to $recommendedWindow to restore a usable band between the trigger and the ceiling."
         ))
     }

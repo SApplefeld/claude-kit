@@ -48,17 +48,35 @@ async function scanFile(file, kind, parentSession) {
     if (row.subtype === 'compact_boundary' || row.compactMetadata) out.nativeCompactions++;
     const msg = row.message;
     if (t === 'assistant' && msg && msg.usage) {
-      const u = msg.usage;
+      // On a turn that took several internal iterations, the top-level cache
+      // figures are the SUM across those iterations rather than any single
+      // request, so reading them overstates the context a call ran against by
+      // roughly the iteration count (observed: a top-level 710,223 over three
+      // iterations of ~355,000 each). Measure the largest iteration instead,
+      // matching the compaction gate's reader in
+      // plugins/claude-kit/hooks/kit-compact-gate.js. Absent or empty, the top
+      // level is the reading, which is every single-iteration turn.
+      const its = Array.isArray(msg.usage.iterations) ? msg.usage.iterations : null;
+      const u = (its && its.length)
+        ? its.reduce((best, it) => {
+            const size = (it?.input_tokens ?? 0) + (it?.cache_read_input_tokens ?? 0) + (it?.cache_creation_input_tokens ?? 0);
+            const bestSize = (best?.input_tokens ?? 0) + (best?.cache_read_input_tokens ?? 0) + (best?.cache_creation_input_tokens ?? 0);
+            return size > bestSize ? it : best;
+          }, its[0])
+        : msg.usage;
       const cw5 = u.cache_creation?.ephemeral_5m_input_tokens ?? 0;
       const cw1h = u.cache_creation?.ephemeral_1h_input_tokens ?? 0;
       const cw = (u.cache_creation_input_tokens ?? 0) || (cw5 + cw1h);
-      const id = msg.id || `${row.timestamp}|${u.input_tokens}|${u.output_tokens}`;
+      // Output tokens stay the message's own figure: only the INPUT-side cache
+      // fields are aggregated across iterations, so `u` above is the right
+      // source for context and the wrong one for output.
+      const id = msg.id || `${row.timestamp}|${u.input_tokens}|${msg.usage.output_tokens}`;
       if (!seen.has(id)) {
         seen.add(id);
         out.calls.push({
           id, ts: row.timestamp, model: msg.model || '?',
           in: u.input_tokens ?? 0, cr: u.cache_read_input_tokens ?? 0, cw, cw1h,
-          out: u.output_tokens ?? 0, side: !!row.isSidechain,
+          out: msg.usage.output_tokens ?? 0, side: !!row.isSidechain,
         });
       } else {
         const c = out.calls[out.calls.length - 1];

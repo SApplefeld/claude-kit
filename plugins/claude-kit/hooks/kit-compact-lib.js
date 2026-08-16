@@ -30,7 +30,7 @@ function checkpointPath(cwd) {
 // How long an open checkpoint stays honorable. A checkpoint opened at a
 // boundary that is already past the compaction trigger is consumed within
 // seconds (the harness re-offers a compaction every assistant turn once past
-// the trigger), so fifteen minutes is generous for the case that matters. A
+// the trigger), so ten minutes is generous for the case that matters. A
 // checkpoint opened BELOW the trigger has no offer to catch and must age out
 // instead: honoring it later, when the next chapter crosses the trigger
 // mid-section, would land the compaction mid-chapter, which is the exact
@@ -39,7 +39,19 @@ function checkpointPath(cwd) {
 // below-trigger checkpoint, and the cycle repeats). When the bound misfires,
 // the cost is one mid-chapter compaction, the pre-gate status quo, so the
 // failure direction stays fail-open.
-const CHECKPOINT_MAX_AGE_MS = 15 * 60 * 1000;
+//
+// The floor on this value is a long dispatched tool call: a chapter close
+// followed immediately by a multi-minute implementer run delays the next
+// assistant turn, and therefore the next compaction offer, past the open.
+// Implementers have run 6 to 12 minutes, so a bound much under ten minutes
+// would start discarding boundaries that were about to be honored. The
+// ceiling on it is how long a below-trigger checkpoint can linger before the
+// next chapter crosses the trigger, which at the recommended trigger the
+// doctor derives is far longer than either number. That figure is deliberately
+// not restated here: the doctor computes every displayed number from its own
+// window and reserve values, and a copy in this comment would strand the
+// moment either changes.
+const CHECKPOINT_MAX_AGE_MS = 10 * 60 * 1000;
 
 // Skew allowance for a checkpoint whose openedAt sits in the future: a small
 // clock adjustment between the write and the read is tolerated, but a far-

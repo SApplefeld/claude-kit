@@ -102,22 +102,28 @@ const { readCheckpoint, clearCheckpoint, checkpointMatches, sameSessionId } = re
 // The valve ceiling, in consumed tokens.
 //
 // ASSUMPTION, named because it is the one direction of this design that is
-// not fail-open: this is an absolute token count derived from a 200,000-token
-// model window. The PreCompact payload carries no model field (only
-// SessionStart does), so the window cannot be derived at fire time. On a
-// model with a SMALLER window the ceiling sits above the hard limit, the
-// valve never fires, and sustained denial kills the bound session outright.
+// not fail-open: this is an absolute token count sized for the roughly
+// 1,000,000-token window the models that run leashed plan sessions carry. The
+// PreCompact payload provides no model field (only SessionStart does), so the
+// window cannot be derived at fire time. On a model with a SMALLER window the
+// ceiling sits above the hard limit, the valve never fires, and sustained
+// denial kills the bound session outright. Nothing detects that state; the
+// doctor's window check reads the configured autoCompactWindow, which says
+// nothing about the running model's real window.
 //
-// Arithmetic: on the 200,000-token window, a gated session dies with "Prompt
-// is too long" near 185,000 consumed. Two mechanics compound against the
-// margin. The reading is one turn STALE: the newest usage row reflects the
-// previous turn's request, so true context at decision time is already
-// higher than what the valve reads. And a denied attempt is re-evaluated
-// only once per turn, so nothing checks in between: the true margin from a
-// deny decision to death is two turns of growth, not one. Budgeting a large
-// turn (a wide git diff, a big plan-doc read) at 20,000 tokens each:
-// 185,000 minus 40,000 is 145,000, rounded down to 140,000.
-const SAFETY_CEILING_TOKENS = 140000;
+// Arithmetic. The ceiling has two jobs and the tighter one sets the value.
+// Its hard job is preventing a dead run: a denied attempt is re-offered every
+// turn and never forced, so without a valve the context climbs to the model's
+// limit and the session dies with "Prompt is too long", which was observed
+// live. Its softer job is landing the compaction before a run gets bad, and
+// quality is observed degrading through the 700,000 to 800,000 band. Sitting
+// at the bottom of that band satisfies both with roughly 200,000 tokens of
+// headroom under the limit, which absorbs the two mechanics that compound
+// against the margin: the reading is one turn STALE (the newest usage row
+// reflects the previous turn's request), and a denied attempt is re-evaluated
+// only once per turn, so the true margin from a deny decision to the limit is
+// two turns of growth rather than one.
+const SAFETY_CEILING_TOKENS = 800000;
 
 function readStdin() {
     try { return fs.readFileSync(0, 'utf8'); } catch { return ''; }
@@ -149,15 +155,15 @@ function readTranscriptTail(transcriptPath) {
     }
 }
 
-// Sum a usage object into a consumed-token figure, or null when it is not a
-// legible reading. Consumed = input_tokens + cache_creation_input_tokens +
-// cache_read_input_tokens; an absent field counts as zero (a turn with no
+// Sum one usage-shaped object into a consumed-token figure, or null when it is
+// not a legible reading. Consumed = input_tokens + cache_creation_input_tokens
+// + cache_read_input_tokens; an absent field counts as zero (a turn with no
 // cache activity omits nothing load-bearing), but a present field that is not
-// a finite non-negative number makes the whole reading illegible, and a usage
-// object carrying none of the three fields is no reading at all. Illegible
-// returns null, which the caller turns into an allow: guessing low here would
-// keep the gate denying a session that may already be at the limit.
-function consumedFromUsage(usage) {
+// a finite non-negative number makes the whole reading illegible, and an object
+// carrying none of the three fields is no reading at all. Illegible returns
+// null, which the caller turns into an allow: guessing low here would keep the
+// gate denying a session that may already be at the limit.
+function sumUsageFields(usage) {
     const fields = ['input_tokens', 'cache_creation_input_tokens', 'cache_read_input_tokens'];
     let total = 0;
     let sawAny = false;
@@ -169,6 +175,57 @@ function consumedFromUsage(usage) {
         sawAny = true;
     }
     return sawAny ? total : null;
+}
+
+// The current context size a usage object describes.
+//
+// A message whose assistant turn took several internal iterations carries a
+// usage.iterations array, and the object's TOP-LEVEL cache fields are summed
+// across those iterations rather than describing the final request. Observed
+// in the wild: a row whose top-level fields sum to 710,223 is three iterations
+// of roughly 355,000 each, its top-level cache_read of 708,291 being exactly
+// the iterations' 353,812 + 0 + 354,479. Reading the top level there overstates
+// the real context by about a factor of two.
+//
+// So a single iteration is the reading when the array is present and non-empty,
+// and the top-level fields are the reading otherwise, which is every
+// single-iteration turn. Note the top level is not uniformly a sum
+// (input_tokens is not aggregated the way the cache fields are), which is why
+// this picks an iteration outright rather than trying to divide the aggregate.
+//
+// Which iteration: the LARGEST, not the last. The last entry is the final
+// request and on every row observed so far it is also the largest, the
+// iterations of a turn running within a percent of each other. But that is one
+// session's evidence for a rule that has to hold on shapes nobody has seen, and
+// the two candidates fail in opposite directions. If a turn ever ends on a
+// small internal call, reading the last entry understates the context, the gate
+// keeps denying a session that may be at its limit, and the run dies: the one
+// outcome this whole design exists to prevent. Reading the largest can only
+// overstate by comparison, which trips the valve early and costs a mistimed
+// compaction, the pre-gate status quo. Identical on the observed shape, safe on
+// the ones that are not.
+//
+// An unreadable entry makes the whole reading illegible rather than being
+// skipped, so a malformed array cannot silently narrow the set being maximized.
+// Illegible allows, per sumUsageFields.
+//
+// The error this corrects was fail-open (overstating consumption makes the
+// valve allow earlier, never deny longer), but it tripped the valve at roughly
+// half the intended ceiling on the affected rows, which is the same inertness
+// the ceiling exists to avoid.
+function consumedFromUsage(usage) {
+    const iterations = usage.iterations;
+    if (Array.isArray(iterations) && iterations.length > 0) {
+        let largest = null;
+        for (const entry of iterations) {
+            if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return null;
+            const sum = sumUsageFields(entry);
+            if (sum === null) return null;
+            if (largest === null || sum > largest) largest = sum;
+        }
+        return largest;
+    }
+    return sumUsageFields(usage);
 }
 
 // The newest main-thread consumed-token reading from the transcript, or null

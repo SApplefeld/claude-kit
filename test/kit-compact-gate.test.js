@@ -36,7 +36,7 @@ const SESSION = 'ses-11112222-aaaa-bbbb-cccc-333344445555';
 // The shipped valve ceiling, duplicated here deliberately as a pin: changing
 // the constant in the hook must fail these boundary cases and force a
 // double-edit, so the ceiling can never drift silently.
-const CEILING = 140000;
+const CEILING = 800000;
 
 function makeDir(prefix) {
     return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
@@ -344,6 +344,159 @@ test('gate: consumed exactly at the ceiling: allow (valve trips at the boundary)
     }
 });
 
+// A multi-iteration turn's usage block, in the shape observed live: the
+// top-level cache figures are the SUM across iterations while input_tokens is
+// not, so the top level describes no single request and reading it overstates
+// the context by roughly the iteration count. The reading has to come from the
+// last iteration, which is the final request. `perIteration` is the true
+// context; three iterations of it inflate the top level to about triple.
+function writeIterationsTranscript(full, perIteration) {
+    const iter = () => ({ input_tokens: 2, cache_creation_input_tokens: 600, cache_read_input_tokens: perIteration - 602 });
+    const iterations = [iter(), iter(), iter()];
+    const lines = [
+        JSON.stringify({ type: 'user', message: { role: 'user', content: 'keep going' } }),
+        JSON.stringify({
+            type: 'assistant',
+            message: {
+                role: 'assistant',
+                content: [{ type: 'text', text: 'Working.' }],
+                usage: {
+                    // Deliberately the aggregate, exactly as the harness writes it.
+                    input_tokens: 4,
+                    cache_creation_input_tokens: iterations.reduce((n, i) => n + i.cache_creation_input_tokens, 0),
+                    cache_read_input_tokens: iterations.reduce((n, i) => n + i.cache_read_input_tokens, 0),
+                    iterations
+                }
+            }
+        }),
+        JSON.stringify({ type: 'system', subtype: 'turn-metadata' })
+    ];
+    writeFile(full, lines.join('\n') + '\n');
+}
+
+test('gate: a multi-iteration usage row reads the last iteration, not the inflated aggregate', () => {
+    // True context sits just below the ceiling, so the correct reading denies.
+    // The top-level aggregate is about triple that, well above the ceiling, so
+    // reading the aggregate would allow: the two answers are opposite, which is
+    // what makes this test discriminating rather than incidental.
+    const { repo, transcript } = armedRepo({});
+    try {
+        writeIterationsTranscript(transcript, CEILING - 1000);
+        assertDeny(runGate(gatePayload(repo, transcript)));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a multi-iteration row whose last iteration is at the ceiling still allows', () => {
+    const { repo, transcript } = armedRepo({});
+    try {
+        writeIterationsTranscript(transcript, CEILING);
+        assertAllow(runGate(gatePayload(repo, transcript)));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a usage row with no iterations array still reads the top-level fields', () => {
+    // The other direction of the same fix: single-iteration turns are the
+    // common case and must be unaffected by the iterations handling.
+    const { repo, transcript } = armedRepo({ consumed: CEILING - 1000 });
+    try {
+        assertDeny(runGate(gatePayload(repo, transcript)));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: an empty iterations array falls back to the top-level fields', () => {
+    const { repo, transcript } = armedRepo({});
+    try {
+        writeFile(transcript, [
+            JSON.stringify({ type: 'user', message: { role: 'user', content: 'go' } }),
+            JSON.stringify({
+                type: 'assistant',
+                message: {
+                    role: 'assistant',
+                    content: [{ type: 'text', text: 'Working.' }],
+                    usage: {
+                        // The three fields sum to CEILING - 1000, just under
+                        // the valve, so the correct reading denies.
+                        input_tokens: CEILING - 2000,
+                        cache_creation_input_tokens: 600,
+                        cache_read_input_tokens: 400,
+                        iterations: []
+                    }
+                }
+            })
+        ].join('\n') + '\n');
+        assertDeny(runGate(gatePayload(repo, transcript)));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a malformed entry in the iterations array reads as illegible: allow', () => {
+    // The branch that decides allow-versus-deny on a hostile or truncated
+    // array. One unreadable entry makes the whole reading illegible rather
+    // than being skipped, so a malformed array cannot silently narrow the set
+    // being maximized and pass off a smaller figure as the context.
+    const { repo, transcript } = armedRepo({});
+    try {
+        writeFile(transcript, [
+            JSON.stringify({ type: 'user', message: { role: 'user', content: 'go' } }),
+            JSON.stringify({
+                type: 'assistant',
+                message: {
+                    role: 'assistant',
+                    content: [{ type: 'text', text: 'Working.' }],
+                    usage: {
+                        input_tokens: 4,
+                        cache_creation_input_tokens: 600,
+                        cache_read_input_tokens: 400,
+                        iterations: [{ input_tokens: 10, cache_creation_input_tokens: 0, cache_read_input_tokens: 10 }, null]
+                    }
+                }
+            })
+        ].join('\n') + '\n');
+        assertAllow(runGate(gatePayload(repo, transcript)));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: the LARGEST iteration decides, not the last (understating would deny near the limit)', () => {
+    // A turn ending on a small internal call. Reading the last entry would see
+    // a few hundred tokens and deny; reading the largest sees a context above
+    // the ceiling and allows. Deny here would be the fail-closed direction the
+    // rule exists to avoid, so the two answers are opposite and this pins it.
+    const { repo, transcript } = armedRepo({});
+    try {
+        writeFile(transcript, [
+            JSON.stringify({ type: 'user', message: { role: 'user', content: 'go' } }),
+            JSON.stringify({
+                type: 'assistant',
+                message: {
+                    role: 'assistant',
+                    content: [{ type: 'text', text: 'Working.' }],
+                    usage: {
+                        input_tokens: 4,
+                        cache_creation_input_tokens: 0,
+                        cache_read_input_tokens: 0,
+                        iterations: [
+                            { input_tokens: 2, cache_creation_input_tokens: 600, cache_read_input_tokens: CEILING + 1000 },
+                            { input_tokens: 2, cache_creation_input_tokens: 0, cache_read_input_tokens: 300 }
+                        ]
+                    }
+                }
+            })
+        ].join('\n') + '\n');
+        assertAllow(runGate(gatePayload(repo, transcript)));
+    } finally {
+        rmDir(repo);
+    }
+});
+
 test('gate: consumed above the ceiling: allow', () => {
     const { repo, transcript } = armedRepo({ consumed: CEILING + 15000 });
     try {
@@ -492,7 +645,7 @@ test('gate: checkpoint with no boundSession field (older format) reads as absent
 // The shipped checkpoint age bound, duplicated as a pin like CEILING above:
 // changing the constant in the hook must fail the boundary cases here and
 // force a visible double-edit.
-const MAX_AGE_MS = 15 * 60 * 1000;
+const MAX_AGE_MS = 10 * 60 * 1000;
 
 // Hand-write a plan-and-session-matching checkpoint with an arbitrary
 // openedAt value (or none), isolating the freshness leg of the match.
