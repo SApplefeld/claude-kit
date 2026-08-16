@@ -143,3 +143,39 @@ Commit Model: Commit-and-Push
 **Gate:** 866 tests, 864 pass, 2 fail, against the 851/849/2 baseline. Delta exactly +15 new tests, same two standing `memq-shim` exceptions by name. Re-run by the orchestrator after the implementer reported, not taken on report. Red/green probes on the two load-bearing tests (legacy compatibility, all-or-nothing validation), restored from pre-probe copies verified by md5 `fa2fb584dce9ecf6f4dbb08e881dfa6b`.
 
 **Next:** Sections 2 and 3 in parallel. They touch disjoint files (`kit-goal-stop.js` and `session-start.js`) and both consume Section 1 through the normalizer rather than reaching into it, so they can build simultaneously. Each runs only its own test file during red/green probes so neither sees the other's mid-probe tree; the orchestrator runs the full suite once both land. Their reviews batch into one pair over Sections 1 to 3 as a single changeset, since serializing per-section reviews would cost exactly the wall-clock the parallel build buys, and the three sections are one state-shape surgery whose seams read best together.
+
+### Chapter 2: Section 2, the Stop hook advance (2026-08-16)
+
+Completed: 2. Stop hook: terminal states advance, the last releases
+Commit Model: Commit-and-Push
+
+**Built in parallel with Section 3.** The two sections own disjoint files and both reach Section 1 only through `readGoal`'s normalizer, so they ran simultaneously with each implementer scoped to its own test file. That scoping is the load-bearing part: a red/green probe mutates the tree, so two implementers running full-suite probes in one worktree would each have poisoned the other's green. The full-suite run was reserved for the orchestrator once both landed.
+
+**The advance is one helper, and its exactly-once assumption is written down.** `advanceAndHold` records the outcome through `advanceGoal`, emits the finished plan's `goal-complete` where the clause has one, and writes the advance block. The comment above it mirrors the checkpoint-consume comment at `kit-compact-gate.js:354-359`: single-writer today, and a future concurrent writer breaks it. The failed-write path degrades to re-blocking rather than releasing, so a write that does not land costs a retry on the next stop instead of a silently unleashed session.
+
+**The capacity refusal and the `WAITING:` clause were left strictly alone and are now tested at every queue position.** They run before any advance logic, which is the ordering the spec wanted: a capacity-shaped `BLOCKED:` must not become a way to skip a plan, and a wait must leave the state untouched wherever the queue stands.
+
+**Live validation ran against a real driven session, and it surfaced a finding the suite could not.** The rig needed an isolated `CLAUDE_CONFIG_DIR`, because the installed plugin cache carries the pre-queue Stop hook: an ordinary session on this machine would have run the old hook alongside the worktree one and raced a `clearGoal` against the advance. Under isolation, a two-plan scratch queue behaved exactly as specified: an unbound goal allowed the stop untouched, the bound session advanced on plan 1's Complete with one `goal-complete`, blocked with the advance reason, and **the model obeyed it**, reading plan 2 on its next turn; plan 2's Complete cleared the state, emitted, and allowed. The sink held exactly two events, one per finished plan. One incidental confirmation: the harness records a block reason as an `isMeta` user entry plus an attachment, both already excluded by the claim predicate, so an advance reason naming plan paths cannot self-claim a bystander.
+
+**Gate:** `kit-goal-stop.test.js` 53 to 64, exactly +11, all 53 pre-existing tests passing unmodified, which is the compatibility gate. Red/green both directions: forcing `plansRemain` false (the pre-change behavior) failed exactly the five advance tests and left capacity, `WAITING:`, bystander, legacy, and all 53 originals green; making the capacity refusal advance failed exactly the capacity test. Restored from pre-probe copies verified by md5, never `git checkout`.
+
+**Next:** Chapter 3 covers Section 3, built in the same window.
+
+### Chapter 3: Section 3, the SessionStart framing (2026-08-16)
+
+Completed: 3. SessionStart framing: bound, bystander, unbound
+Commit Model: Commit-and-Push
+
+**The block now answers "is this mine?" before it answers "what is armed?"** A bound session gets the queue and its position; a bystander gets the leash named as another session's, with an explicit not-yours instruction (do not work it, do not modify its goal state) and the re-arm path for the case where the bound run has died; an unbound goal reads as before. The liveness hint is derived from `boundTranscript`'s mtime and emits only a number and a unit, never the path, so a hostile path in the state file cannot ride out through the hint.
+
+**Everything degrades toward the old notice rather than toward silence or an error.** The stat is wrapped and absent on any failure, the queue clause caps its list at five plans plus a counted remainder, and every interpolation goes through the existing sanitizer.
+
+**One path was resolved on spec silence, and it is the concern worth naming:** an armed-and-bound goal beside a payload carrying no `session_id`. There is no way to tell "mine" from "another's" there, so it degrades to the undifferentiated notice, mirroring the absent-session-id handling already documented at `docs/security-model.md:162`. The alternative, defaulting to the bystander framing, would tell a session it is not leashed when it may well be, which is the more expensive wrong answer.
+
+**The kit-goal skill pointer was deliberately omitted from the bystander block.** A bystander is being told to leave the plan alone; pointing it at the skill that arms plans works against that.
+
+**Gate:** new `test/session-start-goal.test.js`, 18 tests, sibling to the existing `session-start-kaizen` / `-backlog` / `-external-engine` files, which stayed at 4/16/4 pass and unmodified. Red/green probes on the bystander framing and on the liveness fail-soft, md5 `b9554ae201eef28c32684ec6a9b504bd` before and after each restore.
+
+**Full suite across Sections 2 and 3:** 895 tests, 893 pass, 2 fail, against the 866/864/2 baseline. Delta exactly +29 (Section 2's +11, Section 3's +18), same two standing `memq-shim` exceptions by name. Run by the orchestrator after both implementers reported, not taken on report.
+
+**Next:** the batched adversarial and blind reviewer pair over Sections 1 to 3 as one changeset (base `e138399`), then Section 4, the skill, doctor, and docs surfaces.
