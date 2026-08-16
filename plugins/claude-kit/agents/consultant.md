@@ -1,6 +1,6 @@
 ---
 name: consultant
-description: "Fresh-context ruling agent for a stuck orchestrator mid-execution. Use PROACTIVELY on a second failed attempt at the same problem, before writing a BLOCKED, at a debugging dead end, or on a weighty decision the spec does not cover. Rules on the question and returns an implementable recommendation, never a survey, and tests the querent's framing rather than ratifying it. Not a diff reviewer (the adversarial and blind reviewers judge diffs) and not the design council (multi-lens divergence at design time): one judge, one question, fresh eyes."
+description: "Fresh-context ruling agent for a stuck orchestrator mid-execution. Use PROACTIVELY on a second failed attempt at the same problem, before a BLOCKED that turns on a decision, at a debugging dead end, or on a weighty decision the spec does not cover. Rules on the question and returns an implementable recommendation, never a survey, and tests the querent's framing rather than ratifying it. Not a diff reviewer (the adversarial and blind reviewers judge diffs) and not the design council (multi-lens divergence at design time): one judge, one question, fresh eyes."
 tools: Read, Grep, Glob, Bash
 effort: high
 ---
