@@ -1,6 +1,6 @@
 ---
 name: consult
-description: "Convene one fresh-context judge (the consultant agent) to rule on a question this session cannot settle. Use mid-execution at the trigger floor - a second failed attempt at the same problem, any BLOCKED about to be written, a debugging dead end, a weighty decision the spec does not cover - and when the operator asks to 'get a consult on X' or wants a 'second opinion on this problem'. The session that needs this rarely feels stuck; it feels almost done, so check the floor, not the feeling. Not a diff review (the adversarial and blind reviewers) and not design-time divergence (design-council)."
+description: "Convene one fresh-context judge (the consultant agent) to rule on a question this session cannot settle. Use mid-execution at the trigger floor - a second failed attempt at the same problem, any BLOCKED that turns on a decision, a debugging dead end, a weighty decision the spec does not cover - and when the operator asks to 'get a consult on X' or wants a 'second opinion on this problem'. The session that needs this rarely feels stuck; it feels almost done, so check the floor, not the feeling. Not a diff review (the adversarial and blind reviewers) and not design-time divergence (design-council)."
 ---
 
 # The Consult
@@ -34,7 +34,7 @@ Writing the brief is itself part of the mechanism, not overhead: the briefing co
 
 ## The model rule
 
-Fable at `high`, the consultant agent's frontmatter default: a plain Agent-tool dispatch of `consultant` with the fable model override. Where fable is unreachable - confirmed from an actual dispatch failure, never an expectation: attempt the override and read the error, per the unavailability rule the finishing-work skill owns - the stand-in is Opus at `max` through `Workflow`'s `agent()`, filling executing-work's Reviewer Dispatch template with all three fields named explicitly: `agentType` (`claude-kit:consultant`), `model`, and `effort`. That template owns why each field is required; a consult dispatch just fills it in.
+Fable at `high`, the consultant agent's frontmatter default: a plain Agent-tool dispatch of `consultant` with the fable model override. Where fable is unreachable - confirmed from an actual dispatch failure, never an expectation: attempt the override and read the error, per the unavailability rule the finishing-work skill owns - the stand-in is Opus at `max` through `Workflow`'s `agent()`, filling executing-work's Reviewer Dispatch template with all three fields named explicitly: `agentType` (`claude-kit:consultant`), `model`, and `effort`. That template owns why each field is required; a consult dispatch just fills it in. The doctrine's standing-dispatch bullet carries the operator's request for both routes, so convening a consult at the triggers is autonomous: no per-plan ask, no per-session ask.
 
 The model choice is static, never dynamic: the consult fires at exactly the moment the session's judgment is compromised, so any rule that asks the stuck session to pick a tier correctly fails precisely when it is needed. And the consultant is gate-shaped, which is why it earns the compensation notch: a shallow ruling gets adopted and steers the section with nothing downstream re-asking the question.
 

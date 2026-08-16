@@ -174,10 +174,10 @@ For each Section of Work, in order:
 
    ```
    Reviewer Dispatch (all REQUIRED):
-   - agentType: the reviewer's scoped name (claude-kit:adversarial-reviewer,
-     claude-kit:blind-reviewer, claude-kit:security-reviewer). Omitting it yields a
-     workflow-subagent, a type readonly-agent-guard does not govern, which hands the
-     tree under review to an agent free to rewrite it
+   - agentType: the agent's scoped name (claude-kit:adversarial-reviewer,
+     claude-kit:blind-reviewer, claude-kit:security-reviewer, claude-kit:consultant).
+     Omitting it yields a workflow-subagent, a type readonly-agent-guard does not
+     govern, which hands the tree under review to an agent free to rewrite it
    - model: named explicitly, never left to inherit. A call carrying an effort but no
      model runs the session's model at that effort, which on a below-fable session is
      a weak model at maximum effort: the downgrade this rule exists to prevent
@@ -185,7 +185,7 @@ For each Section of Work, in order:
      observed resolving to xhigh on a session whose agents were expected at medium
    ```
 
-   The doctrine's standing-dispatch bullet carries the operator's request for this route, so it needs no per-session ask; this skill states the mechanics, never the authorization. The round stays one round: mixed Agent-tool and Workflow dispatches go out together under the single tree-state capture, and a Workflow round is awaited in-turn the way the completion contract awaits any other live agent, `TaskOutput(task_id, block: true)` against the run's task id, looped past the per-call cap. The route leaves the reviewers themselves untouched: `agentType` applies the named agent's frontmatter `tools:` list as well as its prompt, so a Workflow-dispatched reviewer holds the same read-only toolset and meets the same guard; the blind-reviewer still receives the base ref or changed-file list only and never a captured diff; and neither reviewer is pre-judged. Where the Workflow route is unavailable in a session, record the review in the Chapter as run at reduced effort rather than taking that downgrade silently.
+   The doctrine's standing-dispatch bullet carries the operator's request for this route, so it needs no per-session ask; this skill states the mechanics, never the authorization. The round stays one round: mixed Agent-tool and Workflow dispatches go out together under the single tree-state capture, and a Workflow round is awaited in-turn the way the completion contract awaits any other live agent, `TaskOutput(task_id, block: true)` against the run's task id, looped past the per-call cap. The route leaves the dispatched agent itself untouched: `agentType` applies the named agent's frontmatter `tools:` list as well as its prompt, so a Workflow-dispatched agent holds the same read-only toolset and meets the same guard; the blind-reviewer still receives the base ref or changed-file list only and never a captured diff; and neither reviewer is pre-judged. Where the Workflow route is unavailable in a session, record the review in the Chapter as run at reduced effort rather than taking that downgrade silently.
 
    **The compensation notch belongs to gate-shaped work and never to plan-following work**, which is the rule step 1 states and this is its ground. The two fail differently: an under-powered reviewer fails silently, since the finding it never raises leaves no trace and the gate reports green either way, while an under-powered implementer fails loudly into a review round that already exists and a tier ladder that already handles it. Compensation belongs to the gate with no backstop, which is what makes it a reviewer's instrument and never an implementer's, and what extends it to the consultant: a shallow ruling gets adopted and steers the section with nothing downstream re-asking the question. Surplus effort also runs in opposite directions on the two, buying recall on an open-ended search and buying tangents on a settled plan, which is why the plan-following implementers sit at their pinned defaults rather than climbing when a tier is lost.
 
