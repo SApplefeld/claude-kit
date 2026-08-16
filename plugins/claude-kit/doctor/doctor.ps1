@@ -66,20 +66,31 @@ function Report {
 # removing state. Only ever true under -Fix; -Yes pre-answers for unattended runs
 # (it consents to what the flags already asked for, it never asks for more); a
 # non-interactive host that cannot prompt declines rather than stalling.
+#
+# -Interactive withholds the -Yes shortcut for the one class of action -Yes must
+# not cover: replacing a value the operator chose, as opposed to supplying one
+# that is missing or repairing state the kit itself owns. That class is not
+# idempotent against intent. An unattended run cannot tell a deliberate setting
+# from a stale one, so it would revert the deliberate one, and would do it again
+# after every retune of the constant it compares against. Such an action asks for
+# more than the flags did, so it waits for a person.
 function Get-Consent {
-    param([string]$Question)
+    param([string]$Question, [switch]$Interactive)
     if (-not $Fix) { return $false }
-    if ($Yes) { return $true }
+    if ($Yes -and -not $Interactive) { return $true }
+    # The unattended remedy is real advice for an ordinary prompt and false
+    # advice for an -Interactive one, where -Yes is exactly what does not apply.
+    $unattendedNote = if ($Interactive) { "this one needs a person, since it replaces a value you chose" } else { "add -Yes to consent unattended" }
     try {
         $answer = Read-Host "$Question [y/N]"
         if ([string]::IsNullOrWhiteSpace($answer)) {
-            Write-Host "        (no answer; declining. A redirected stdin cannot answer prompts; add -Yes to consent unattended.)"
+            Write-Host "        (no answer; declining. A redirected stdin cannot answer prompts; $unattendedNote.)"
             return $false
         }
         return $answer -match '^[Yy]'
     }
     catch {
-        Write-Host "        (non-interactive host; skipping the prompt. Add -Yes to consent unattended.)"
+        Write-Host "        (non-interactive host; skipping the prompt. $unattendedNote.)"
         return $false
     }
 }
@@ -1475,7 +1486,7 @@ else {
 # 100,000 once tools and a plan doc have loaded, chapters rarely close below
 # 200,000, and quality holds until roughly 400,000. So the trigger belongs
 # well above the setup floor and below the point where deferring starts to
-# cost something, which puts it near 265,000 with a long runway below the
+# cost something, which puts it near 250,000 with a long runway below the
 # gate's safety valve for a chapter to close. Every displayed number is
 # derived from $recommendedWindow and $autoCompactReserve rather than
 # restated, so changing one value cannot strand the prose beside it.
@@ -1485,7 +1496,7 @@ else {
 # whole feature is inert while looking installed. A window set too LOW is the
 # other, and it is worse than doing nothing: it compacts during setup and then
 # repeatedly, throwing away context a run has not finished using.
-$recommendedWindow = 300000
+$recommendedWindow = 285000
 $autoCompactReserve = 35000
 $recommendedTrigger = $recommendedWindow - $autoCompactReserve
 # The minimum usable band between the trigger and the valve ceiling. A band
@@ -1654,6 +1665,62 @@ else {
             "That trigger leaves less than $minUsableBand tokens of deferral band below the gate's safety ceiling of $valveCeiling, so the valve ends deferral as soon as, or before, the harness starts offering.",
             "Lower it to $recommendedWindow to restore a usable band between the trigger and the ceiling."
         ))
+    }
+    elseif ($configuredWindow -ne $recommendedWindow) {
+        # A usable window that is not the recommended one is stale rather than
+        # broken: its trigger is real, and it either cleared the thin-band check
+        # above or that check was skipped for an unreadable ceiling. INFO rather
+        # than WARN for that reason, so a machine that is merely un-migrated does
+        # not report yellow, and the thin-band case above takes precedence when
+        # both apply. Without this branch the recommendation could never reach a
+        # machine that already has a value, since every other branch here answers
+        # only an absent, unparseable, or below-floor one.
+        $mismatchDetail = $detail + @(
+            "The recommended window is $recommendedWindow, which offers a compaction near $recommendedTrigger consumed."
+        )
+        # The band comparison is directional and depends on a ceiling that may
+        # not have been readable, so it is claimed only where it is true. Moving
+        # DOWN to the recommendation widens the band; moving up to it narrows
+        # one that was already wider, which is still the recommended trade but
+        # not for this reason, so no reason is offered there rather than a
+        # false one.
+        if ($null -ne $valveCeiling -and $configuredWindow -gt $recommendedWindow) {
+            $mismatchDetail += "That also widens the deferral band below the gate's safety ceiling of $valveCeiling, from $($valveCeiling - $trigger) tokens to $($valveCeiling - $recommendedTrigger)."
+        }
+        # Replacing a value the operator chose is a wider act than filling in an
+        # absent one, so it takes an interactive yes and is withheld from -Yes:
+        # an unattended run cannot tell a deliberate window from a stale one,
+        # and would revert the deliberate one on every run after every retune of
+        # $recommendedWindow. The prompt names both values rather than only the
+        # target, so the answer is given against the actual change.
+        if ($Fix -and (Get-Consent "Change autoCompactWindow from $configuredWindow to $recommendedWindow in $settingsPath?" -Interactive)) {
+            $result = Set-AutoCompactWindow -Path $settingsPath -Value $recommendedWindow
+            if ($result.ok) {
+                Report "FIXED" "Auto-compaction window" @("Changed autoCompactWindow from $configuredWindow to $recommendedWindow.", "Restart Claude Code for it to take effect.")
+                if ($result.backupLeftover) {
+                    Report "INFO" "Auto-compaction window" @("The pre-write backup could not be removed and remains at " + (Get-SanitizedLine $result.backupLeftover 200) + "; it holds a plaintext copy of settings.json, so delete it when convenient.")
+                }
+            }
+            else {
+                # The failure reasons name the pre-write backup's full path, and
+                # that backup holds a plaintext copy of settings.json, so this
+                # line is allowed more room than the usual report: truncating the
+                # one channel that says where a secrets-adjacent copy was left is
+                # the wrong economy.
+                Report "WARN" "Auto-compaction window" @("Could not change it: " + (Get-SanitizedLine $result.reason 400) + ".", "Set it by hand instead: `"autoCompactWindow`": $recommendedWindow")
+            }
+        }
+        else {
+            # The remedy differs by why consent was not given, and naming the
+            # flag already supplied would send the operator back through a
+            # prompt they just declined.
+            $remedy = if ($Fix) {
+                "Set it by hand in $settingsPath, or re-run and answer yes at the prompt (this change is withheld from -Yes because it replaces a value you chose)."
+            } else {
+                "Re-run the doctor with -Fix to change it, which asks before writing, or set it by hand in $settingsPath."
+            }
+            Report "INFO" "Auto-compaction window" ($mismatchDetail + @($remedy))
+        }
     }
     else {
         Report "PASS" "Auto-compaction window" $detail
