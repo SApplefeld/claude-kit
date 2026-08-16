@@ -1453,6 +1453,41 @@ if ($isClone) {
             # misclassify the plan.
             $planSafe = Get-SanitizedLine $goalState.plan
             $planRaw = [string]$goalState.plan
+
+            # Queue context, read defensively. kit-goal-lib.js's readGoal
+            # normalizes every read so that queue[queueIndex] is always plan,
+            # but the doctor reads the raw file and a hand edit is exactly the
+            # case it exists to catch, so a queue that disagrees with plan is
+            # discarded in favour of the legacy single-plan reading rather than
+            # trusted. A pre-queue state file has no queue at all and takes the
+            # same path, which is what keeps this check working on both shapes.
+            $queue = @()
+            foreach ($q in @($goalState.queue)) {
+                if ($q -is [string] -and $q.Length -gt 0) { $queue += [string]$q }
+            }
+            $queueIndex = 0
+            if ($goalState.queueIndex -is [int] -or $goalState.queueIndex -is [long] -or $goalState.queueIndex -is [double]) {
+                $queueIndex = [int]$goalState.queueIndex
+            }
+            if ($queue.Count -eq 0 -or $queueIndex -lt 0 -or $queueIndex -ge $queue.Count -or $queue[$queueIndex] -ne $planRaw) {
+                $queue = @($planRaw)
+                $queueIndex = 0
+            }
+            $remainingCount = $queue.Count - $queueIndex - 1
+            $queueLines = @()
+            if ($queue.Count -gt 1) {
+                $queueLines += "Plan $($queueIndex + 1) of $($queue.Count) in the armed queue."
+                if ($remainingCount -gt 0) {
+                    $shown = $queue[($queueIndex + 1)..($queue.Count - 1)]
+                    $tail = ""
+                    if ($shown.Count -gt 5) {
+                        $tail = ", and $($shown.Count - 5) more"
+                        $shown = $shown[0..4]
+                    }
+                    $queueLines += "Remaining after it: " + (($shown | ForEach-Object { Get-SanitizedLine $_ }) -join ", ") + $tail
+                }
+            }
+
             if ($planRaw -match '(^|[\\/])\.\.([\\/]|$)') {
                 # armGoal never writes a traversing path, so a plan containing a
                 # '..' segment means a hand-edited or corrupt state file; do not
@@ -1475,13 +1510,29 @@ if ($isClone) {
                     catch {}
                 }
                 if (-not $planExists -or $planStatus -eq "complete") {
-                    Report "WARN" "Kit goal state" @(
-                        "A kit goal is armed for $planSafe but that plan is Complete or archived.",
-                        "Clear it (node `"$pluginRoot\hooks\kit-goal.js`" clear, or /kit-goal clear) or it will leash this repo's sessions."
-                    )
+                    if ($remainingCount -gt 0) {
+                        # A stalled advance, not a stale goal. The Stop hook
+                        # advances a finished plan at the bound session's next
+                        # stop, so a terminal current plan with the queue still
+                        # holding work means no stop has happened since it
+                        # finished: either the run is mid-turn, or it died
+                        # before its next stop and the queue needs re-arming
+                        # with the remainder.
+                        Report "WARN" "Kit goal state" ($queueLines + @(
+                            "The current plan $planSafe is Complete or archived, but $remainingCount plan(s) remain in the queue.",
+                            "The Stop hook advances at the bound session's next stop, so this is normal mid-turn and a stalled advance otherwise.",
+                            "If the bound run has died, re-arm with the remaining plans (/kit-goal <plan paths>), which resets the binding."
+                        ))
+                    }
+                    else {
+                        Report "WARN" "Kit goal state" ($queueLines + @(
+                            "A kit goal is armed for $planSafe but that plan is Complete or archived.",
+                            "Clear it (node `"$pluginRoot\hooks\kit-goal.js`" clear, or /kit-goal clear) or it will leash this repo's sessions."
+                        ))
+                    }
                 }
                 else {
-                    Report "PASS" "Kit goal state" @("Armed for $planSafe (active).")
+                    Report "PASS" "Kit goal state" (@("Armed for $planSafe (active).") + $queueLines)
                 }
             }
         }

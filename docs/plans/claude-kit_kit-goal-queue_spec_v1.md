@@ -179,3 +179,24 @@ Commit Model: Commit-and-Push
 **Full suite across Sections 2 and 3:** 895 tests, 893 pass, 2 fail, against the 866/864/2 baseline. Delta exactly +29 (Section 2's +11, Section 3's +18), same two standing `memq-shim` exceptions by name. Run by the orchestrator after both implementers reported, not taken on report.
 
 **Next:** the batched adversarial and blind reviewer pair over Sections 1 to 3 as one changeset (base `e138399`), then Section 4, the skill, doctor, and docs surfaces.
+
+### Chapter 4: Section 4, the skill, doctor, and docs (2026-08-16)
+
+Completed: 4. Skill, doctor, and docs
+Commit Model: Commit-and-Push
+
+**Built in the main thread while the Sections 1 to 3 reviewers read the committed diff.** Its surfaces are disjoint from what they review (a skill file, the doctor, four docs), so the two ran in parallel rather than in sequence.
+
+**The doctor gained the queue and a stalled-advance WARN, and it reads the state file defensively rather than trusting the normalizer.** `readGoal` guarantees `queue[queueIndex] === plan` on every read, but the doctor reads the raw file, and a hand edit is exactly the case it exists to catch, so a queue that disagrees with `plan` is discarded in favour of the legacy single-plan reading. That also means a pre-queue state file needs no special case: it takes the same path.
+
+The WARN split is the substantive change. A terminal current plan used to be one thing, a stale goal to clear. Under a queue it is two, and they want opposite advice: with plans remaining it is a stalled advance, which is *normal* mid-turn (the hook advances at the bound session's next stop) and means a dead run otherwise, so the advice is to re-arm with the remainder; on the last plan it is the old stale goal, and the advice is still to clear it.
+
+**All four branches were verified by running the real doctor, not by reading the code.** Against this repo (check mode, exit 0) the live legacy arming renders `Armed for ... (active)` with no queue lines, which is the compatibility case. Against a scratch clone under the scratchpad, carrying a synthetic three-plan queue: position and remainder render; a Complete plan at index 0 draws the stalled-advance WARN naming two remaining plans; the same plan at the last index draws the stale-goal WARN with the clear advice; a legacy state and a corrupt state whose queue disagrees with `plan` both fall back to the single-plan reading. The scratch tree was deleted afterward, and this repo's live `.kit/goal-state.json` was never written.
+
+**The event contract's exactly-once claim needed a real correction, not an addition.** `architecture.md` said a `goal-complete` is exactly-once because the emit is gated on the clear that removed the state. Mid-queue there is nothing to clear, so that sentence was simply false under a queue. It now states both positions and names the one accepted exception: an advance whose write fails re-runs the clause at the next stop and may emit twice, accepted because the alternative is a lost release.
+
+**The security model had no goal-state section at all, and `boundTranscript` is the field that earned one.** It is the only field naming a path outside the project. The section states what bounds it: recorded sanitized at claim time, only ever `fs.stat`ed, and reaching the model as a number and a unit rather than as the path, so the FIFO-hang concern governing transcript reads elsewhere does not arise because the path is stated rather than opened. It also names what the atomic advance does not have, a lock, and that the single-writer guarantee is the session binding.
+
+**Acceptance:** greps for `queueIndex` and `boundTranscript` outside `test/` hit exactly seven files, all intended (the lib, the CLI, the Stop hook, SessionStart, the doctor, and the two docs that describe them). The skill's `arm <plan path>...` example matches the CLI's own usage string at `kit-goal.js:26` verbatim. Suite 895 tests, 893 pass, 2 fail, unchanged from Chapter 3 as expected for a section that adds no tests, same two standing `memq-shim` exceptions.
+
+**Next:** Section 5, the finishing pass, once the Sections 1 to 3 reviewer findings are triaged.
