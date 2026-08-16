@@ -102,9 +102,10 @@ claude-kit/                          (repo = the marketplace)
                                      installed Claude Code supports PreCompact), the stop-failure watcher's
                                      scheduled task, and any leftover resume-relay state a machine still
                                      carries. Flags: -Fix, -Yes (pre-answers prompts), -RemoveLegacyRelay
-                                     (the one destructive action), -RegisterStopFailureWatcher and
-                                     -UnregisterStopFailureWatcher (opt-in either way, so a bare -Fix
-                                     neither installs a resume daemon nor nags about one). Under -Fix the
+                                     and -UnregisterStopFailureWatcher (the two destructive actions, each
+                                     needing its own switch on top of -Fix), and -RegisterStopFailureWatcher
+                                     (opt-in either way, so a bare -Fix neither installs a resume daemon
+                                     nor nags about one). Under -Fix the
                                      auto-compaction check offers to write your user settings.json, the
                                      only change it makes to harness config.
         doctor.cmd                   Execution-policy-proof wrapper (a fresh Windows box blocks .ps1 by default)

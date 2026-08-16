@@ -39,12 +39,13 @@ const PLAN = 'docs/plans/probe_spec_v1.md';
 const REC = '2026-08-16T10:00:00.000Z';
 const NOW = '2026-08-16T10:30:00.000Z';
 // The exact prompt the watcher ships. Pinned in full because the leash claims
-// on the opening /kit-goal invocation and the whole point of a fixed prompt
-// is that nothing else ever rides in it.
-const EXPECTED_PROMPT = '/kit-goal ' + PLAN + '\n\n'
-    + 'This session was resumed by the stop-failure watcher after the previous turn '
-    + 'died of a retryable API failure with the goal above still armed. Re-ground '
-    + 'from the plan doc and continue executing it to completion.';
+// on the /kit-goal invocation and the whole point of a fixed prompt is that
+// nothing else ever rides in it: anything trailing the plan path is read as
+// part of the command's argument span, where the path is expected to stand
+// alone. One line by construction, which is also what survives a `claude` that
+// resolves to a .cmd shim, since cmd.exe truncates an argument at its first
+// newline.
+const EXPECTED_PROMPT = '/kit-goal ' + PLAN;
 
 // The fake claude: records argv and the one environment variable under test,
 // then follows the knobs the case set (append to a count file, rewrite the
@@ -74,6 +75,10 @@ function makeSandbox() {
     fs.mkdirSync(kit);
     fs.mkdirSync(shimDir);
     fs.writeFileSync(path.join(shimDir, 'claude.ps1'), SHIM, 'utf8');
+    // The armed plan exists on disk: the watcher resumes only for a plan path
+    // that resolves to a real file, so a sandbox without one launches nothing.
+    fs.mkdirSync(path.join(dir, 'docs', 'plans'), { recursive: true });
+    fs.writeFileSync(path.join(dir, PLAN), '# Probe plan\n\nStatus: In Progress\n', 'utf8');
     return {
         dir,
         kit,
@@ -147,6 +152,8 @@ test('all guards passing: resume fires with the validated id, the fixed prompt, 
         assert.strictEqual(fs.existsSync(sb.shimOut), true, 'the shim ran');
         const rec = readJson(sb.shimOut);
         assert.deepStrictEqual(rec.argv, ['-p', '--resume', SESSION, EXPECTED_PROMPT]);
+        assert.ok(!/[\r\n]/.test(rec.argv[3]),
+            'the composed prompt crosses to the child as one line, which is what survives a .cmd shim');
         assert.strictEqual(rec.watchdog, '1', 'CLAUDE_CODE_RETRY_WATCHDOG=1 reaches the child even when the watcher itself started without it');
         assert.strictEqual(fs.existsSync(sb.marker), false, 'the marker clears on a zero exit');
         assert.strictEqual(fs.existsSync(sb.attempts), false, 'the incident record clears on a zero exit');
@@ -250,6 +257,53 @@ test('session ids differing only in case still match, and the resume fires', { s
     }
 });
 
+test('an unbound goal resumes when the sentinel names this watcher as the session\'s launcher', { skip: !isWin }, () => {
+    // Arming writes boundSession = null and the leash is claimed at the
+    // session's first stop, so a watcher-launched child that re-armed and then
+    // died before that stop leaves the goal armed-unbound. The sentinel naming
+    // that same session as the one this watcher launched is what makes the run
+    // unattended by construction, and without it the incident would sit
+    // refused with its launch budget unspent.
+    const sb = makeSandbox();
+    try {
+        writeMarker(sb);
+        writeGoal(sb, { boundSession: null });
+        fs.writeFileSync(sb.sentinel, JSON.stringify({ launchedAt: REC, pid: 4242, oldSessionId: SESSION, state: 'exited', exitCode: 1 }), 'utf8');
+        runWatcher(sb);
+        assert.strictEqual(fs.existsSync(sb.shimOut), true, 'the watcher resumes the run it launched itself');
+    } finally {
+        rmSandbox(sb);
+    }
+});
+
+test('an unbound goal beside a sentinel from another session: no launch', { skip: !isWin }, () => {
+    // The unattended-by-construction argument holds only for the session this
+    // watcher launched. Any other unbound goal is the interactive-death case.
+    const sb = makeSandbox();
+    try {
+        writeMarker(sb);
+        writeGoal(sb, { boundSession: null });
+        fs.writeFileSync(sb.sentinel, JSON.stringify({ launchedAt: REC, pid: 4242, oldSessionId: 'ffffffff-1111-2222-3333-444444444444', state: 'exited', exitCode: 0 }), 'utf8');
+        runWatcher(sb);
+        assertNoLaunch(sb, 'unbound goal, sentinel from elsewhere');
+    } finally {
+        rmSandbox(sb);
+    }
+});
+
+test('a goal bound to another session is refused even when the sentinel names this one', { skip: !isWin }, () => {
+    const sb = makeSandbox();
+    try {
+        writeMarker(sb);
+        writeGoal(sb, { boundSession: 'ffffffff-1111-2222-3333-444444444444' });
+        fs.writeFileSync(sb.sentinel, JSON.stringify({ launchedAt: REC, pid: 4242, oldSessionId: SESSION, state: 'exited', exitCode: 1 }), 'utf8');
+        runWatcher(sb);
+        assertNoLaunch(sb, 'bound elsewhere');
+    } finally {
+        rmSandbox(sb);
+    }
+});
+
 test('a non-retryable error: no launch', { skip: !isWin }, () => {
     const sb = makeSandbox();
     try {
@@ -295,6 +349,45 @@ test('not yet due (inside the settle delay): no launch; at the delay: launch', {
         assertNoLaunch(sb, 'still settling (60s of 120)');
         runWatcher(sb, { now: '2026-08-16T10:02:00.000Z' });
         assert.strictEqual(fs.existsSync(sb.shimOut), true, 'due exactly at the settle delay');
+    } finally {
+        rmSandbox(sb);
+    }
+});
+
+test('a marker past the staleness ceiling is refused; one inside it still resumes', { skip: !isWin }, () => {
+    // Inside a live incident the hook rewrites the marker on every re-death, so
+    // a legitimate marker is always fresh. An hour-old one means nobody acted
+    // on it, which is the operator-is-back case: resuming there would fork the
+    // run against a session the operator may have taken over at the console.
+    const sb = makeSandbox();
+    try {
+        writeGoal(sb);
+        writeMarker(sb, { recordedAt: '2026-08-16T09:00:00.000Z' }); // 90 minutes before NOW.
+        runWatcher(sb);
+        assertNoLaunch(sb, 'stale marker');
+        writeMarker(sb, { recordedAt: '2026-08-16T09:35:00.000Z' }); // 55 minutes.
+        runWatcher(sb);
+        assert.strictEqual(fs.existsSync(sb.shimOut), true, 'inside the ceiling the resume fires');
+    } finally {
+        rmSandbox(sb);
+    }
+});
+
+test('an exhausted incident blocks for its own budget window and no longer', { skip: !isWin }, () => {
+    const sb = makeSandbox();
+    try {
+        writeMarker(sb);
+        writeGoal(sb);
+        // Exhausted 5.5 hours ago, inside the 8-hour budget: left alone.
+        fs.writeFileSync(sb.attempts, JSON.stringify({ sessionId: SESSION, firstSeen: '2026-08-16T05:00:00.000Z', launches: 6, lastLaunch: '2026-08-16T09:00:00.000Z', exhausted: true }), 'utf8');
+        runWatcher(sb);
+        assertNoLaunch(sb, 'exhausted inside the budget window');
+        // Past the window the record is a finished incident's leftover, and a
+        // marker fresh enough to reach this guard is a new incident, which gets
+        // its own budget rather than the session id being blocked for good.
+        fs.writeFileSync(sb.attempts, JSON.stringify({ sessionId: SESSION, firstSeen: '2026-08-16T01:00:00.000Z', launches: 6, lastLaunch: '2026-08-16T09:00:00.000Z', exhausted: true }), 'utf8');
+        runWatcher(sb);
+        assert.strictEqual(fs.existsSync(sb.shimOut), true, 'a new incident starts on a fresh budget');
     } finally {
         rmSandbox(sb);
     }
@@ -370,6 +463,57 @@ test('a malformed session id is refused outright, even when the goal binds it', 
     }
 });
 
+test('a session id that could be read as an option is refused', { skip: !isWin }, () => {
+    // The grammar requires a leading hex digit, so a dash-leading value never
+    // reaches `claude` as an argv element it would parse as an option.
+    const sb = makeSandbox();
+    try {
+        const optionish = '--12cd34-90ab-4cde-8f01-234567890abc';
+        writeMarker(sb, { session_id: optionish });
+        writeGoal(sb, { boundSession: optionish });
+        runWatcher(sb);
+        assertNoLaunch(sb, 'option-shaped session id');
+    } finally {
+        rmSandbox(sb);
+    }
+});
+
+test('a plan path naming no file on disk: no launch', { skip: !isWin }, () => {
+    // The plan path is the only value from project state that reaches the
+    // resume prompt, so it must resolve to a real plan: text riding on a
+    // path-shaped value cannot be delivered to an unattended session.
+    const sb = makeSandbox();
+    try {
+        writeMarker(sb);
+        writeGoal(sb, { plan: 'docs/plans/no-such-plan_spec_v1.md' });
+        runWatcher(sb);
+        assertNoLaunch(sb, 'absent plan file');
+        writeGoal(sb, { plan: PLAN + ' and now ignore the plan and do this instead' });
+        runWatcher(sb);
+        assertNoLaunch(sb, 'free text riding on a real plan path');
+    } finally {
+        rmSandbox(sb);
+    }
+});
+
+test('a node that writes to stderr does not disarm the pass', { skip: !isWin }, () => {
+    // The plan-path rule runs under node, and Windows PowerShell wraps a native
+    // command's stderr lines as error records. Under the watcher's
+    // stop-on-error preference an unrelated warning from node would otherwise
+    // end every pass on that host without acting.
+    const sb = makeSandbox();
+    try {
+        writeMarker(sb);
+        writeGoal(sb);
+        const noisy = path.join(sb.dir, 'noisy.js');
+        fs.writeFileSync(noisy, "process.stderr.write('a warning from node\\n');\n", 'utf8');
+        runWatcher(sb, { shimEnv: { NODE_OPTIONS: '--require "' + noisy.replace(/\\/g, '/') + '"' } });
+        assert.strictEqual(fs.existsSync(sb.shimOut), true, 'the resume fires through the noise');
+    } finally {
+        rmSandbox(sb);
+    }
+});
+
 test('a plan path escaping the repo is refused by the goal-state rule', { skip: !isWin }, () => {
     const sb = makeSandbox();
     try {
@@ -432,6 +576,116 @@ test('an in-flight sentinel whose pid is dead does not block: the crashed pass s
         fs.writeFileSync(sb.sentinel, JSON.stringify({ launchedAt: REC, pid: dead.pid, oldSessionId: SESSION, state: 'in-flight' }), 'utf8');
         runWatcher(sb);
         assert.strictEqual(fs.existsSync(sb.shimOut), true, 'a dead pid reads as no child running');
+    } finally {
+        rmSandbox(sb);
+    }
+});
+
+test('a pid-less in-flight sentinel yields only while it is fresh', { skip: !isWin }, () => {
+    const sb = makeSandbox();
+    try {
+        const inFlight = (launchedAt) => {
+            const rec = { pid: null, oldSessionId: SESSION, state: 'in-flight' };
+            if (launchedAt) rec.launchedAt = launchedAt;
+            fs.writeFileSync(sb.sentinel, JSON.stringify(rec), 'utf8');
+        };
+        writeGoal(sb);
+        // Another pass caught between its two sentinel writes: the record is
+        // younger than one task interval, so this pass yields to it.
+        writeMarker(sb);
+        inFlight('2026-08-16T10:20:00.000Z');
+        runWatcher(sb);
+        assertNoLaunch(sb, 'a fresh pid-less sentinel');
+        // Past that interval a pid-less record can only be a pass that died
+        // before it ever recorded a pid, and nothing else would clear it, so it
+        // must not block the incident for good.
+        inFlight('2026-08-16T10:00:00.000Z');
+        runWatcher(sb);
+        assert.strictEqual(fs.existsSync(sb.shimOut), true, 'a stale pid-less sentinel does not block');
+        // A record with no launchedAt cannot be aged at all, so it does not
+        // block either.
+        fs.unlinkSync(sb.shimOut);
+        writeMarker(sb);
+        inFlight(null);
+        runWatcher(sb, { now: '2026-08-16T10:45:00.000Z' });
+        assert.strictEqual(fs.existsSync(sb.shimOut), true, 'a pid-less sentinel with no launchedAt does not block');
+    } finally {
+        rmSandbox(sb);
+    }
+});
+
+// --- The outcome the pass records, and what it clears.
+
+test('a nonzero exit leaves the incident record however long the child ran', { skip: !isWin }, () => {
+    // Runtime is no evidence of progress: the retry watchdog this watcher sets
+    // on the child makes the client sleep to the rate-limit reset, so a child
+    // that parks for hours and re-dies on the still-active limit has only
+    // waited. Clearing the incident on runtime would leave the launch backstop
+    // unable to bind across a multi-day limit.
+    const sb = makeSandbox();
+    try {
+        writeMarker(sb);
+        writeGoal(sb);
+        runWatcher(sb, { shimEnv: { KIT_TEST_SHIM_EXIT: '3', KIT_TEST_SHIM_SLEEP: '3' } });
+        assert.strictEqual(readJson(sb.attempts).launches, 1, 'the launch stays spent');
+        assert.strictEqual(fs.existsSync(sb.marker), true, 'and the marker stays for the next due pass');
+        const sentinel = readJson(sb.sentinel);
+        assert.strictEqual(sentinel.exitCode, 3);
+        assert.ok(sentinel.runtimeSeconds >= 3, 'runtime rides in the sentinel as observability');
+    } finally {
+        rmSandbox(sb);
+    }
+});
+
+test('a zero exit clears only the marker this pass acted on', { skip: !isWin }, () => {
+    // The child can run for hours; a marker recorded while it ran is a newer
+    // failure the next pass owns, not this pass's record to delete.
+    const sb = makeSandbox();
+    try {
+        writeMarker(sb);
+        writeGoal(sb);
+        const fresher = JSON.stringify({
+            hook_event_name: 'StopFailure', session_id: SESSION, error: 'rate_limit',
+            cwd: sb.dir, recordedAt: '2026-08-16T10:29:00.000Z'
+        });
+        runWatcher(sb, { shimEnv: { KIT_TEST_SHIM_MARKER_PATH: sb.marker, KIT_TEST_SHIM_MARKER_JSON: fresher } });
+        assert.strictEqual(fs.existsSync(sb.shimOut), true, 'the shim ran');
+        assert.strictEqual(fs.existsSync(sb.marker), true, 'the newer marker survives the zero exit');
+        assert.strictEqual(readJson(sb.marker).recordedAt, '2026-08-16T10:29:00.000Z');
+    } finally {
+        rmSandbox(sb);
+    }
+});
+
+test('the atomic writer refuses a tmp path that is not a plain file', { skip: !isWin }, () => {
+    // The watcher's tmp name carries its own pid, which no caller can predict,
+    // so the guard is exercised by loading the script's definitions (everything
+    // above its top-level `try {`, which runs and writes nothing) into a
+    // PowerShell session and calling the writer there, against a directory
+    // planted at the tmp path that session will use. A directory stands in for
+    // the link this guard is really about, since planting a file symlink needs
+    // a privilege the suite does not have; the refusal message is what tells
+    // the guard apart from the OS declining a write to a directory.
+    const sb = makeSandbox();
+    try {
+        const source = fs.readFileSync(WATCHER, 'utf8');
+        const cut = source.indexOf('\ntry {');
+        assert.ok(cut > 0, 'the watcher body opens with a top-level try');
+        const defs = path.join(sb.dir, 'watcher-defs.ps1');
+        fs.writeFileSync(defs, source.slice(0, cut) + '\n', 'utf8');
+        const target = path.join(sb.kit, 'atomic-probe.json');
+        const script = '. ' + q(defs) + '; '
+            + '$t = ' + q(target) + '; '
+            + 'New-Item -ItemType Directory -Path ($t + ".tmp." + $PID) | Out-Null; '
+            + '$msg = ""; '
+            + 'try { Write-JsonAtomic -Path $t -Object @{ a = 1 } } catch { $msg = $_.Exception.Message }; '
+            + '@{ msg = $msg; wrote = (Test-Path -LiteralPath $t) } | ConvertTo-Json -Compress | Write-Output';
+        const res = pwsh(script);
+        assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+        const r = JSON.parse(res.stdout);
+        assert.ok(/refusing to write through/.test(r.msg),
+            'the writer itself refuses the tmp path rather than attempting the write: ' + r.msg);
+        assert.strictEqual(r.wrote, false, 'and nothing lands at the destination');
     } finally {
         rmSandbox(sb);
     }
@@ -525,12 +779,17 @@ test('a child that outlives the lifetime bound is killed, recorded, and counted 
             shimEnv: { KIT_TEST_SHIM_SLEEP: '120' }
         });
         const sentinel = readJson(sb.sentinel);
+        // killed-timeout is the state for a tree that genuinely ended, and it
+        // does not block a later pass. A wrapper that survived the kill would
+        // stay in-flight with its pid instead, so guard 8 holds the next pass
+        // on the live process rather than launching a second child beside it.
         assert.strictEqual(sentinel.state, 'killed-timeout', 'the kill is recorded');
         assert.ok(sentinel.runtimeSeconds >= 2, 'the child ran to the bound before the kill');
         assert.strictEqual(readJson(sb.attempts).launches, 1, 'the kill counts as a launch');
         assert.strictEqual(fs.existsSync(sb.marker), true, 'no successful resume, so the marker stays');
         const killedNote = fs.readFileSync(sb.events, 'utf8').split('\n').filter((l) => l.includes('killed-timeout'));
         assert.strictEqual(killedNote.length, 1, 'the kill lands in the events log');
+        assert.strictEqual(JSON.parse(killedNote[0]).killed, true, 'the events entry records that the kill landed');
     } finally {
         rmSandbox(sb);
     }
@@ -581,6 +840,25 @@ test('register pins the settings, the read-back verifies them, and unregister re
         pwsh('Unregister-ScheduledTask -TaskName ' + q(taskName) + ' -Confirm:$false -ErrorAction SilentlyContinue');
         rmSandbox(sb);
     }
+});
+
+test('a task whose action and trigger cannot be read still reports a status', { skip: !isWin }, () => {
+    // The status function's contract is to describe whatever it found, so a
+    // same-named task carrying no readable action reports empty fields rather
+    // than throwing out past the contract. Nothing is registered here: the
+    // scheduler query is shadowed by a local function returning the shape.
+    const res = pwsh('. ' + q(INSTALLER) + '; '
+        + 'function Get-ScheduledTask { [CmdletBinding()] param() '
+        + '[pscustomobject]@{ TaskName = "probe-task"; Actions = $null; Triggers = $null; '
+        + 'Settings = [pscustomobject]@{ MultipleInstances = "IgnoreNew"; ExecutionTimeLimit = "PT8H" } } }; '
+        + 'Get-StopFailureWatcherStatus -TaskName "probe-task" | ConvertTo-Json -Compress | Write-Output');
+    assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+    const r = JSON.parse(res.stdout);
+    assert.strictEqual(r.present, true);
+    assert.strictEqual(r.execute, '', 'an unreadable action reads as empty');
+    assert.strictEqual(r.arguments, '');
+    assert.strictEqual(r.repetitionInterval, '', 'and so does an unreadable trigger');
+    assert.strictEqual(r.multipleInstances, 'IgnoreNew', 'the settings it could read are still reported');
 });
 
 test('the registrar refuses a missing project directory and registers nothing', { skip: !isWin }, () => {

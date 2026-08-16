@@ -68,6 +68,14 @@ param(
     # still-settling failure is not raced.
     [int]$SettleDelaySeconds = 120,
 
+    # And only while the marker is at most this old. Within a live incident the
+    # hook rewrites the marker on every re-death, so a legitimate marker is
+    # always fresh; one nobody acted on for this long means the machine was
+    # down or the task disabled, and the operator is back at the console with
+    # the run theirs to take. Resuming past that point is the fork this whole
+    # design exists to prevent.
+    [int]$MarkerStalenessSeconds = 3600,
+
     # Minimum spacing between launches within one incident.
     [int]$RetrySpacingSeconds = 1200,
 
@@ -88,12 +96,6 @@ param(
 # (install-stop-failure-watcher.ps1) reads this value out of this file when it
 # registers the task, so the interval has exactly one home.
 $TaskIntervalMinutes = 15
-
-# A child that ran at least this long before exiting got past the limit and
-# did real work, so its incident record is cleared even on a nonzero exit; the
-# next failure starts a fresh incident. A killed child never counts as
-# progress, whatever its runtime.
-$ChildProgressRuntimeSeconds = 1800
 
 # The wrapper the child runs under. A constant script, encoded below, that
 # reads the validated session id and the fixed prompt from the environment and
@@ -141,6 +143,16 @@ function Get-JsonField {
 function Write-JsonAtomic {
     param([Parameter(Mandatory = $true)][string]$Path, [Parameter(Mandatory = $true)]$Object)
     $tmp = $Path + ".tmp." + $PID
+    # The tmp name is predictable, so anything already sitting at it that is
+    # not a plain file is refused rather than written through: a symlink or a
+    # junction planted there would send the write into whatever it points at.
+    # Get-Item -Force so a hidden entry is seen too; an absent tmp is the
+    # ordinary case and the write creates it. The throw ends the pass in the
+    # outer catch, which launches nothing.
+    $existing = Get-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
+    if ($null -ne $existing -and ($existing -isnot [System.IO.FileInfo] -or ($existing.Attributes -band [System.IO.FileAttributes]::ReparsePoint))) {
+        throw "refusing to write through a non-regular temporary file at $tmp"
+    }
     [System.IO.File]::WriteAllText($tmp, (ConvertTo-Json -InputObject $Object -Depth 10), $Utf8NoBom)
     Move-Item -LiteralPath $tmp -Destination $Path -Force
 }
@@ -220,21 +232,42 @@ try {
     if ($sessionId -isnot [string]) { exit 0 }
 
     # 2. Session-id grammar, before the id goes anywhere near a command line:
-    # hex and dashes, bounded length, matched against the very ends of the
-    # string (\A/\z, so a trailing newline cannot ride through the $ anchor's
-    # end-of-line allowance). Anything else is refused outright.
-    if ($sessionId -notmatch '\A[0-9a-fA-F-]{8,64}\z') { exit 0 }
+    # a leading hex digit then hex and dashes, bounded length, matched against
+    # the very ends of the string (\A/\z, so a trailing newline cannot ride
+    # through the $ anchor's end-of-line allowance). The leading digit is what
+    # keeps a value that is all dashes at the front from reaching `claude` as
+    # its own argv element and being read there as an option rather than an id.
+    # Anything else is refused outright.
+    if ($sessionId -notmatch '\A[0-9a-fA-F][0-9a-fA-F-]{7,63}\z') { exit 0 }
 
     # 3. Scope: only a leashed unattended run auto-resumes. The goal state
     # must hold an armed plan whose bound session is the marker's session.
     # An interactive session that died on an API error is the operator's to
     # resume, and this guard is the main fork-risk mitigation: the stranded
     # console case is precisely the armed-run case.
+    #
+    # The one accepted unbound case is a goal this watcher's own child armed.
+    # Arming writes boundSession = null and the leash is claimed at the
+    # session's first stop, so a resumed child that re-arms and then dies (or
+    # reaches the lifetime bound) before that first stop leaves the goal
+    # armed-unbound, and a match-only rule would refuse every later pass with
+    # the incident budget unspent. The sentinel naming this same session as the
+    # one it launched is what makes that run unattended by construction. An
+    # original unattended run that dies before its very first stop is
+    # deliberately not covered: covering it would mean accepting any unbound
+    # goal, and an unbound goal in a project where an interactive session died
+    # is exactly the fork this guard refuses.
     $goal = Read-JsonState (Join-Path $kitDir "goal-state.json")
     if ($goal.state -ne "ok") { exit 0 }
     $plan = Get-JsonField $goal.data "plan"
     if ($plan -isnot [string] -or $plan -eq "") { exit 0 }
-    if (-not (Test-SameSessionId (Get-JsonField $goal.data "boundSession") $sessionId)) { exit 0 }
+    $boundSession = [string](Get-JsonField $goal.data "boundSession")
+    if (-not (Test-SameSessionId $boundSession $sessionId)) {
+        if ($boundSession.Trim() -ne "") { exit 0 }
+        $launcher = Read-JsonState $sentinelPath
+        if ($launcher.state -ne "ok") { exit 0 }
+        if (-not (Test-SameSessionId ([string](Get-JsonField $launcher.data "oldSessionId")) $sessionId)) { exit 0 }
+    }
 
     # 4. Retryability: the classification must be a string in the configured
     # retryable set. Missing, non-string, or unrecognized reads as
@@ -257,12 +290,28 @@ try {
     $normalizeSrc = 'const lib = require(process.argv[1]); ' +
         'const rel = lib.normalizePlanArg(process.argv[2], process.argv[3]); ' +
         'if (rel === null) process.exit(1); process.stdout.write(rel);'
-    $planRel = [string](& $node.Source "-e" $normalizeSrc $libPath $ProjectDir $plan 2>$null)
+    # The rule runs with errors non-terminating and its stderr discarded:
+    # Windows PowerShell wraps each stderr line of a native command as an error
+    # record, which under Stop would turn any byte node writes there (a
+    # deprecation or experimental warning) into a terminating error and end
+    # every pass on that host without acting. The preference is restored
+    # immediately, so every guard after this one still fails toward exit.
+    $planRel = ""
+    try {
+        $ErrorActionPreference = "Continue"
+        $planRel = [string](& $node.Source "-e" $normalizeSrc $libPath $ProjectDir $plan 2>$null)
+    }
+    finally { $ErrorActionPreference = "Stop" }
     if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrEmpty($planRel)) { exit 0 }
     # Belt and braces for the one value interpolated into the prompt: a
     # Windows filename cannot carry a double quote or a control character, so
     # a normalized path that does is not a path this machine produced.
     if ($planRel -match '["\x00-\x1F]') { exit 0 }
+    # And the path must name a file that exists. The plan path is the only
+    # marker-adjacent value that reaches the resume prompt, so requiring it to
+    # resolve to a real plan is what keeps free text carried in the goal state
+    # from being delivered to an unattended session as operator instruction.
+    if (-not (Test-Path -LiteralPath (Join-Path $ProjectDir $planRel) -PathType Leaf)) { exit 0 }
 
     # 6. Due-ness, not wake-time arithmetic: the payload carries no reset
     # timestamp and the resumed child reads the true one for itself, so the
@@ -270,6 +319,10 @@ try {
     $recordedAt = Read-IsoInstant ([string](Get-JsonField $marker.data "recordedAt"))
     if ($null -eq $recordedAt) { exit 0 }
     if ($now -lt $recordedAt.AddSeconds($SettleDelaySeconds)) { exit 0 }
+    # The other end of the same window: a marker past the staleness ceiling is
+    # not acted on at all. See MarkerStalenessSeconds for why an old marker
+    # means the run is the operator's rather than this watcher's.
+    if ($now -gt $recordedAt.AddSeconds($MarkerStalenessSeconds)) { exit 0 }
 
     # 7. The incident budget, keyed on the session id rather than the marker:
     # --resume preserves the session id, so a resumed run that re-dies of the
@@ -283,50 +336,71 @@ try {
     $firstSeen = $now
     $firstSeenIso = $nowIso
     if ($attempts.state -eq "ok" -and (Test-SameSessionId ([string](Get-JsonField $attempts.data "sessionId")) $sessionId)) {
-        if (Get-JsonField $attempts.data "exhausted") { exit 0 }
-        try { $priorLaunches = [int](Get-JsonField $attempts.data "launches") } catch { exit 0 }
-        $firstSeenIso = [string](Get-JsonField $attempts.data "firstSeen")
-        $firstSeen = Read-IsoInstant $firstSeenIso
-        if ($null -eq $firstSeen) { exit 0 }
-        if ($priorLaunches -ge $LaunchBackstop -or $now -gt $firstSeen.AddHours($IncidentBudgetHours)) {
-            # Spent. Mark the incident exhausted so the note below lands once,
-            # note it, and leave the incident alone thereafter.
-            Write-JsonAtomic $attemptsPath @{
-                sessionId  = $sessionId
-                firstSeen  = $firstSeenIso
-                launches   = $priorLaunches
-                lastLaunch = [string](Get-JsonField $attempts.data "lastLaunch")
-                exhausted  = $true
-            }
-            Add-WatcherEvent $kitDir @{
-                watcher    = "incident-exhausted"
-                sessionId  = $sessionId
-                launches   = $priorLaunches
-                firstSeen  = $firstSeenIso
-                recordedAt = $nowIso
-            }
-            exit 0
+        $priorFirstSeenIso = [string](Get-JsonField $attempts.data "firstSeen")
+        $priorFirstSeen = Read-IsoInstant $priorFirstSeenIso
+        if ($null -eq $priorFirstSeen) { exit 0 }
+        $withinBudget = ($now -le $priorFirstSeen.AddHours($IncidentBudgetHours))
+        if (Get-JsonField $attempts.data "exhausted") {
+            # A spent incident is left alone for as long as its own budget
+            # window stands. Past that window the record is a finished
+            # incident's leftover, and since a marker only reaches this guard
+            # while it is fresh, a failure still on the marker here is a new
+            # incident: it falls through to a launch on a fresh budget rather
+            # than blocking this session id for the life of the machine.
+            if ($withinBudget) { exit 0 }
         }
-        $lastLaunchRaw = Get-JsonField $attempts.data "lastLaunch"
-        if ($null -ne $lastLaunchRaw) {
-            $lastLaunch = Read-IsoInstant ([string]$lastLaunchRaw)
-            if ($null -eq $lastLaunch) { exit 0 }
-            if ($now -lt $lastLaunch.AddSeconds($RetrySpacingSeconds)) { exit 0 }
+        else {
+            $firstSeenIso = $priorFirstSeenIso
+            $firstSeen = $priorFirstSeen
+            try { $priorLaunches = [int](Get-JsonField $attempts.data "launches") } catch { exit 0 }
+            if ($priorLaunches -ge $LaunchBackstop -or -not $withinBudget) {
+                # Spent. Mark the incident exhausted so the note below lands
+                # once, note it, and leave the incident alone thereafter.
+                Write-JsonAtomic $attemptsPath @{
+                    sessionId  = $sessionId
+                    firstSeen  = $firstSeenIso
+                    launches   = $priorLaunches
+                    lastLaunch = [string](Get-JsonField $attempts.data "lastLaunch")
+                    exhausted  = $true
+                }
+                Add-WatcherEvent $kitDir @{
+                    watcher    = "incident-exhausted"
+                    sessionId  = $sessionId
+                    launches   = $priorLaunches
+                    firstSeen  = $firstSeenIso
+                    recordedAt = $nowIso
+                }
+                exit 0
+            }
+            $lastLaunchRaw = Get-JsonField $attempts.data "lastLaunch"
+            if ($null -ne $lastLaunchRaw) {
+                $lastLaunch = Read-IsoInstant ([string]$lastLaunchRaw)
+                if ($null -eq $lastLaunch) { exit 0 }
+                if ($now -lt $lastLaunch.AddSeconds($RetrySpacingSeconds)) { exit 0 }
+            }
         }
     }
 
     # 8. The in-flight sentinel: a resumed child already running means this
     # pass has nothing to add, which is what keeps two scheduled passes from
     # launching two children. An in-flight record with no live wrapper is a
-    # crashed pass's leftover and does not block; an in-flight record with no
-    # pid at all is another pass caught between its two sentinel writes, so
-    # this pass yields.
+    # crashed pass's leftover and does not block.
+    #
+    # An in-flight record with no pid at all is another pass caught between its
+    # two sentinel writes, and the yield it earns is bounded by its age the
+    # same way a dead pid's is bounded by liveness: a pass that died in that
+    # window (a launch that threw before the second write) leaves a pid-less
+    # record no later pass can ever clear, so only a record written within one
+    # pass interval yields. A missing or unparseable launchedAt does not block.
     $sentinel = Read-JsonState $sentinelPath
     if ($sentinel.state -eq "bad") { exit 0 }
     if ($sentinel.state -eq "ok" -and ([string](Get-JsonField $sentinel.data "state")) -eq "in-flight") {
         $sentinelPid = Get-JsonField $sentinel.data "pid"
-        if ($null -eq $sentinelPid) { exit 0 }
-        if (Test-WrapperAlive $sentinelPid) { exit 0 }
+        if ($null -eq $sentinelPid) {
+            $launchedAt = Read-IsoInstant ([string](Get-JsonField $sentinel.data "launchedAt"))
+            if ($null -ne $launchedAt -and $now -le $launchedAt.AddMinutes($TaskIntervalMinutes)) { exit 0 }
+        }
+        elseif (Test-WrapperAlive $sentinelPid) { exit 0 }
     }
 
     # 9. Launch. The incident record is written before the child starts, so a
@@ -342,13 +416,18 @@ try {
         lastLaunch = $nowIso
     }
 
-    # The resume prompt: fixed text, the validated plan path its only
-    # interpolation. It opens with the literal /kit-goal invocation, which
-    # re-arms the leash and binds it to the resumed session.
-    $resumePrompt = "/kit-goal " + $planRel + "`n`n" +
-        "This session was resumed by the stop-failure watcher after the previous turn " +
-        "died of a retryable API failure with the goal above still armed. Re-ground " +
-        "from the plan doc and continue executing it to completion."
+    # The resume prompt: the /kit-goal invocation and nothing else, the
+    # validated plan path its only interpolation. Re-arming is the whole job
+    # here, because --resume carries the prior conversation and the SessionStart
+    # resume hook re-states the plan and the completion contract, so explanatory
+    # prose would add nothing the resumed session does not already have. It
+    # would also be read as part of the command's argument span, where the
+    # plan path is expected to stand alone, so trailing prose risks the arm
+    # failing and the recovery running unleashed. One line by construction,
+    # which is also what survives a `claude` that resolves to a .cmd shim: that
+    # call routes through cmd.exe, which truncates an argument at its first
+    # newline.
+    $resumePrompt = "/kit-goal " + $planRel
 
     Write-JsonAtomic $sentinelPath @{
         launchedAt   = $nowIso
@@ -389,19 +468,29 @@ try {
         # Its own try: a taskkill complaint on stderr must not skip the
         # recording below, which is the whole point of this branch.
         try { & $taskkill /PID $child.Id /T /F 2>$null | Out-Null } catch { <# recorded below either way #> }
-        $null = $child.WaitForExit(15000)
-        Write-JsonAtomic $sentinelPath @{
+        # Whether the kill landed decides what the sentinel says. A wrapper
+        # that survived it is still a live child, so the record stays in-flight
+        # with its pid and guard 8 blocks the next pass on that live process
+        # instead of starting a second child beside it; killed-timeout, which
+        # does not block, is only for a tree that genuinely ended.
+        $killed = $child.WaitForExit(15000)
+        $killRecord = @{
             launchedAt     = $nowIso
             pid            = $child.Id
             oldSessionId   = $sessionId
-            state          = "killed-timeout"
-            endedAt        = [DateTimeOffset]::UtcNow.UtcDateTime.ToString("o")
+            state          = "in-flight"
             runtimeSeconds = [int]$stopwatch.Elapsed.TotalSeconds
         }
+        if ($killed) {
+            $killRecord.state = "killed-timeout"
+            $killRecord.endedAt = [DateTimeOffset]::UtcNow.UtcDateTime.ToString("o")
+        }
+        Write-JsonAtomic $sentinelPath $killRecord
         Add-WatcherEvent $kitDir @{
             watcher        = "killed-timeout"
             sessionId      = $sessionId
             pid            = $child.Id
+            killed         = $killed
             runtimeSeconds = [int]$stopwatch.Elapsed.TotalSeconds
             recordedAt     = $nowIso
         }
@@ -428,15 +517,24 @@ try {
         recordedAt     = $nowIso
     }
 
-    # The marker clears only on a zero exit; on any other outcome it stays so
-    # the next due pass retries within the incident budget. The incident
-    # record also clears when the child ran long enough to prove it got past
-    # the limit, so a later, unrelated failure of the same session starts a
-    # fresh budget.
+    # A zero exit is the only outcome that clears anything. On any other one
+    # both records stay, so the next due pass retries within the incident
+    # budget: runtime is no evidence of progress here, because the retry
+    # watchdog this watcher sets on the child makes the client sleep to the
+    # rate-limit reset, so a child that parks for hours and then re-dies on the
+    # still-active limit has done nothing but wait. Runtime rides in the
+    # sentinel and the events log as observability and gates nothing.
+    #
+    # The marker clears only while it is still the record this pass acted on.
+    # The child may have run for hours, and a marker replaced in the meantime
+    # is a newer failure the next pass owns.
     if ($exitCode -eq 0) {
-        Remove-Item -LiteralPath $markerPath -Force -ErrorAction SilentlyContinue
-    }
-    if ($exitCode -eq 0 -or $runtimeSeconds -ge $ChildProgressRuntimeSeconds) {
+        $current = Read-JsonState $markerPath
+        if ($current.state -eq "ok" -and
+            (Test-SameSessionId ([string](Get-JsonField $current.data "session_id")) $sessionId) -and
+            ([string](Get-JsonField $current.data "recordedAt")) -eq ([string](Get-JsonField $marker.data "recordedAt"))) {
+            Remove-Item -LiteralPath $markerPath -Force -ErrorAction SilentlyContinue
+        }
         Remove-Item -LiteralPath $attemptsPath -Force -ErrorAction SilentlyContinue
     }
     exit 0

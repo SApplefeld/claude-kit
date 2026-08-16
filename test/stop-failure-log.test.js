@@ -136,6 +136,28 @@ function failingFsPreload(dir, fn, needle) {
     return '--require "' + shim.replace(/\\/g, '/') + '"';
 }
 
+// Make one path report as something other than a regular file inside the
+// spawned hook, standing in for a symlink or junction planted at that path. No
+// portable fixture can plant one at a name carrying the child's own pid, and on
+// Windows a symlink needs a privilege the suite does not have, so the lstat the
+// guard makes is shimmed instead. Returns the NODE_OPTIONS value that loads the
+// preload.
+function linkedPathPreload(dir, needle) {
+    const shim = path.join(dir, 'linked-path.js');
+    writeFile(shim, [
+        "'use strict';",
+        "const fs = require('fs');",
+        'const real = fs.lstatSync;',
+        'fs.lstatSync = function (target) {',
+        '    if (String(target).includes(' + JSON.stringify(needle) + ')) {',
+        '        return { isFile: () => false, isSymbolicLink: () => true, size: 0 };',
+        '    }',
+        '    return real.apply(fs, arguments);',
+        '};'
+    ].join('\n') + '\n');
+    return '--require "' + shim.replace(/\\/g, '/') + '"';
+}
+
 // ---------------------------------------------------------------------------
 // The happy path.
 // ---------------------------------------------------------------------------
@@ -399,6 +421,28 @@ test('a failing rename leaves no tmp orphan in .kit/', () => {
         const leftovers = fs.readdirSync(path.join(repo, '.kit')).filter((n) => n.includes('.tmp.'));
         assert.deepStrictEqual(leftovers, [], 'the failed rename unlinked its tmp');
         assert.strictEqual(readEvents(repo).length, 1, 'the append still happened');
+    } finally {
+        rmDir(repo);
+        rmDir(shims);
+    }
+});
+
+test('a tmp path that is not a regular file is refused, and the events append still happens', () => {
+    // The tmp name is predictable, so a link planted at it would otherwise be
+    // written through into whatever it points at. The refusal keeps the hook's
+    // fail-open posture: exit 0, the previous marker untouched, and the
+    // independent append unaffected.
+    const repo = makeDir('stop-failure-log-repo-');
+    const shims = makeDir('stop-failure-log-shim-');
+    try {
+        const res = runHook(failurePayload(repo), repo, {
+            NODE_OPTIONS: linkedPathPreload(shims, 'stop-failure-latest.json.tmp.')
+        });
+        assertSilentSuccess(res);
+        assert.ok(!fs.existsSync(latestPath(repo)), 'the marker write stopped at the guard');
+        const leftovers = fs.readdirSync(path.join(repo, '.kit')).filter((n) => n.includes('.tmp.'));
+        assert.deepStrictEqual(leftovers, [], 'nothing was written at the tmp path');
+        assert.strictEqual(readEvents(repo).length, 1, 'the append is independent of the marker write');
     } finally {
         rmDir(repo);
         rmDir(shims);

@@ -50,13 +50,24 @@ function Get-StopFailureWatcherStatus {
     }
     if ($found.Count -eq 0) { return @{ queried = $true; present = $false } }
     $task = $found[0]
+    # The action and the trigger are each read behind their own catch, so a
+    # same-named task that carries neither (or carries a kind this reads as
+    # absent) reports empty fields rather than throwing out of a function whose
+    # contract is to describe whatever it found.
     $interval = ""
     try { $interval = "" + $task.Triggers[0].Repetition.Interval } catch { $interval = "" }
+    $execute = ""
+    $arguments = ""
+    try {
+        $execute = "" + $task.Actions[0].Execute
+        $arguments = "" + $task.Actions[0].Arguments
+    }
+    catch { $execute = ""; $arguments = "" }
     return @{
         queried            = $true
         present            = $true
-        execute            = "" + $task.Actions[0].Execute
-        arguments          = "" + $task.Actions[0].Arguments
+        execute            = $execute
+        arguments          = $arguments
         multipleInstances  = "" + $task.Settings.MultipleInstances
         executionTimeLimit = "" + $task.Settings.ExecutionTimeLimit
         repetitionInterval = $interval

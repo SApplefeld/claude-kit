@@ -95,6 +95,16 @@ function writeLatest(dir, line) {
         const latest = path.join(dir, 'stop-failure-latest.json');
         fs.mkdirSync(dir, { recursive: true });
         const tmp = latest + '.tmp.' + process.pid;
+        // lstatSync, not statSync: the tmp name is predictable, and a symlink
+        // or junction planted at it must not pass as a regular file. statSync
+        // follows the link, so the write would land in whatever it points at,
+        // which turns a predictable name into a write-anywhere primitive. An
+        // absent tmp is the ordinary case, the write creates it; anything
+        // present that is not a plain file ends the marker write, leaving the
+        // previous marker and the independent events append untouched.
+        let st = null;
+        try { st = fs.lstatSync(tmp); } catch { /* no tmp yet: the write creates it */ }
+        if (st && !st.isFile()) return;
         try {
             fs.writeFileSync(tmp, line + '\n', 'utf8');
             fs.renameSync(tmp, latest);

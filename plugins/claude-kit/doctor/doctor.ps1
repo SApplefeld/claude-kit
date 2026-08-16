@@ -40,6 +40,7 @@
 #                             alone never removes it.
 # If scripts are blocked entirely, use the wrapper beside this file:
 #   doctor.cmd [-Fix] [-Yes] [-RemoveLegacyRelay]
+#              [-RegisterStopFailureWatcher] [-UnregisterStopFailureWatcher]
 # Exit code: 0 when nothing FAILs (warnings allowed), 1 otherwise.
 
 param([switch]$Fix, [switch]$Yes, [switch]$RemoveLegacyRelay,
