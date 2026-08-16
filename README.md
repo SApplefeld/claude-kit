@@ -55,8 +55,9 @@ claude-kit/                          (repo = the marketplace)
         kit-goal.js / kit-goal-stop.js / kit-goal-lib.js
                                      The /kit-goal leash: arm command, deterministic Stop hook, shared library
         kit-compact-gate.js / kit-compact-checkpoint.js / kit-compact-lib.js
-                                     Boundary-gated compaction: PreCompact hook that defers auto-compaction
-                                     until a chapter boundary, the checkpoint command that marks one, shared library
+                                     Compaction scheduling: PreCompact hook that defers auto-compaction to a
+                                     chapter boundary on a leashed run and to a safety ceiling on a hands-on
+                                     one, the checkpoint command that marks a boundary, shared library
         docs-write-guard.js          Denies non-curator subagent writes into docs/
         stop-docs-hygiene.js         Stop-time docs-library backstop
         pr-docs-guard.js             Requires the docs work committed before the PR goes up
@@ -153,7 +154,9 @@ Brainstorming produces a spec in `docs/plans/<project>_spec_v1.md` with a record
 
 Compaction recovery is deterministic: the SessionStart hook fires on startup, resume, and after every compaction, finds in-progress plans, and instructs the session to re-read them - Chapters included - before any work proceeds.
 
-Compaction *placement* is deterministic too, on a leashed run. Nothing can raise a compaction on demand, but a PreCompact hook can veto one, and a denied auto attempt is re-offered every turn until it is allowed. `kit-compact-gate.js` uses that to schedule: it defers auto-compaction while a chapter is in flight and stands aside once the chapter-close ritual has opened a checkpoint, so the context wipe falls where nothing is half-finished instead of at an arbitrary point mid-section. The kit summarizes nothing itself; the native summarizer runs unmodified. The gate is a no-op unless a kit goal is armed and this session holds its leash, it never touches manual `/compact`, and every error path allows, so its worst failure is the pre-gate behavior. A safety valve allows the compaction regardless once consumption nears the model's limit, because a session held against the hard context limit dies outright. The valve's ceiling is an absolute token count sized for the roughly 1,000,000-token window the models running plan sessions carry, which is the one assumption here that does not fail safe and that nothing detects; `docs/security-model.md` carries it.
+Compaction *placement* is deterministic too, on a leashed run. Nothing can raise a compaction on demand, but a PreCompact hook can veto one, and a denied auto attempt is re-offered every turn until it is allowed. `kit-compact-gate.js` uses that to schedule, and it schedules two populations differently. On a leashed run it defers auto-compaction while a chapter is in flight and stands aside once the chapter-close ritual has opened a checkpoint, so the context wipe falls where nothing is half-finished instead of at an arbitrary point mid-section. Every other session gets the other treatment: a hands-on one defers to a safety ceiling far above the configured trigger, so a long working stretch keeps its context instead of being compacted in the middle of a discussion, while a session being driven by a native `/goal` or `/loop` is left on the early trigger, which is what an automated run wants. Which one a session is, the gate reads from the transcript.
+
+The kit summarizes nothing itself; the native summarizer runs unmodified. It never touches manual `/compact`, and every error path, every unreadable transcript, and every ambiguity allows, so its worst failure is the pre-gate behavior. The safety ceiling ends both deferrals, because a session held against the hard context limit dies outright. That ceiling is an absolute token count sized for the roughly 1,000,000-token window these models carry, which is the one assumption here that does not fail safe and that nothing detects; `docs/security-model.md` carries it, along with what bounds it.
 
 The same hook keeps the backlog from rotting. In any project holding a `docs/backlog.md`, session start reports how many active items it carries, the oldest one's parked date and its age in days, and how many carry no date at all, injecting those figures and never an item's text. Anything older than 90 days is named, with its date, for a promote/retire/keep call at the next close-out.
 

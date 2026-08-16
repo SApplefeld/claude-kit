@@ -1,8 +1,9 @@
 # Interactive compaction deferral: hold auto-compaction to the ceiling in hands-on sessions
 
-Status: In Progress
+Status: Complete
 Commit Model: Commit-and-Push
 Created: 2026-08-16
+Completed: 2026-08-16
 
 ## Related
 
@@ -180,7 +181,7 @@ The adjudicated one is the **widened ceiling**, rated Major by two reviewers: th
 - **The false-positive defense, confirmed in the wild rather than in a fixture.** Six lines in this session's transcript and one in an unrelated channels session carry the `<command-name>/goal</command-name>` or `/loop` literal in a non-command position, planted by reading this very plan doc and the broker source. The channels session is the decisive case, because it has the poison and no real automation: it classified interactive and denied, so the harness-derived exclusions hold on production data.
 - **Goal completion reclassifies.** A real session carrying a `goal_status` with `met: true` classified interactive and denied. That is Chapter 1's retired residual proven live: a finished native goal returns the session to the deferral.
 - **The ceiling valve flips.** A scratch copy of the gate with the constant patched to 1,000 turned the same two denying transcripts into allows, on their real newest usage readings. This is the section's patched-constant run: the mechanism is proven and the constant itself stays proven by inspection plus the suite.
-- **`/loop` in effect, confirmed on the NEO corpus.** Two real dynamic-loop sessions from the operator-supplied share classified automation-in-effect.
+- **`/loop` in effect, on the NEO corpus.** Two real dynamic-loop sessions from the operator-supplied share classified automation-in-effect. **This bullet was wrong, and Chapter 4 corrects it:** one of those two had genuinely ended its loop, and the classification was a false positive from the read-cap gap, read here as a success because the loop was assumed still running. The check confirmed only that `/loop` markup is found, not that the verdict was right.
 - **Scan cost.** The capped read plus classification runs 42-54 ms on real transcripts up to 6.2 MB, so the head-plus-tail cap holds and the scan-cursor optimization stays out of scope as the Approach expected.
 
 Residual, stated plainly: what the above proves is that the gate returns the right verdict on real inputs. It does not re-prove that the harness honors exit code 2 in an interactive session; that mechanism was confirmed for the boundary deny and is the same code path, so this is inferred rather than confirmed for the interactive note specifically. Section 3's operator verification is where it becomes observable.
@@ -211,5 +212,32 @@ Resolved by giving `Get-Consent` an `-Interactive` switch that withholds the `-Y
 Review Findings: three reviewers, one Major reported by all three (the `-Fix -Yes` overwrite), fixed. Eleven Minors across the three reports: eight fixed, three accepted with reasons above. No Criticals.
 Stamps: adjudicated 1, stamped 1 (`hook-edits-require-rebuild`, applied again this section: the plugin zip and integrity manifest restamp on every `./build.ps1`, and the doctor lives in the plugin payload)
 Next: 4. Close-out (finishing-work)
+Commit Model: Commit-and-Push
+
+### Chapter 4 - 2026-08-16
+Completed: 4. Close-out (finishing-work). Plan Complete.
+Implemented By: qa-verifier, adversarial-reviewer (fable), docs-curator, implementer-fable (the defect fix); main session (adjudication, the docs and README corrections, memory writes)
+Metrics: finishing agents 4; review rounds 1; NEEDS_CONTEXT 0; escalations 0; consults 0. Suite 788/786/2 at the start of the pass to **791/789/2** at close, delta +3, all three the regression tests for the defect below, zero new failures.
+
+**QA verification returned FAIL, and it was right.** The finding is a genuine defect in Section 2's core mechanism, found by probing a real production transcript rather than a fixture. The "newest evidence wins" rule is only true over bytes actually read, and the reader took a 384 KB head plus a 128 KB tail with an unread gap between. A `/loop` starts near the head, where it was typed; its terminating stop can land anywhere. When it lands in the gap, the gate sees the start and never the stop, so a session whose loop genuinely ended keeps the early trigger instead of getting the deferral this plan exists to provide.
+
+Reproduced independently before acting on it, on `bf62f5c5` from the NEO corpus (2,156,295 bytes): whole-file scan `false`, capped scan `true`, with the stop record 188,237 bytes from EOF and the `/loop` line at offset 19,039.
+
+**This also corrects Chapter 2.** Its live-validation bullet reported that same file classifying automation-in-effect and recorded it as a confirmation. It was a false positive. The check confirmed only that `/loop` markup was found, not that the verdict was correct, and the difference went unnoticed because the loop was assumed to be still running. Chapter 2's bullet now carries the correction inline. The general lesson, which is the reason this is written out rather than quietly fixed: a validation that asserts the answer it expected is not a validation. The differential (capped verdict versus whole-file verdict) is what found it, and that comparison cost nothing once someone thought to make it.
+
+**The fix, and the premise of mine it refuted.** Read the whole file for the automation question under a byte ceiling, keeping head-plus-tail as the fallback above it. The ruling rested on the scan being cheap enough that the cap bought nothing, which held: whole-file read plus classify measures 70.8 ms at 27.7 MB, 91.0 ms at 37.0 MB, and 146.7 ms at 57.2 MB, linear as the earlier per-KB benchmark predicted. My brief also asserted real transcripts top out around 6 MB; the implementer measured the actual corpus and refuted it, since 6 MB is true only of this project's directory while the machine's 184 transcripts reach 57.18 MB, with 8 over 16 MB. That is why the ceiling is 64 MB rather than the 8 or 16 I would have picked: at 16 MB one of the two real misclassifications found on local files would still be wrong. Verified independently: 184 transcripts, largest 57.18 MB, none above the ceiling.
+
+**The fix cured a second defect nobody had asked about.** Sweeping all 184 local transcripts for capped-versus-whole disagreement found two, and the second runs the opposite way: a 35.3 MB session whose only two evidence records both sit in the gap, so the capped read saw no evidence at all and denied a genuinely automated session. Evidence can be absent from both ends, not merely retired in the middle. Both flips were opened and the new verdict confirmed correct in each.
+
+Tests went red first, on the unfixed hook after a clean build, and each fixture self-checks that it actually exercises the gap (asserting the capped read contains the head evidence and not the retiring line), so a fixture drifting out of the gap fails loudly instead of passing vacuously. The ceiling itself is pinned by a 65 MB file classified in both directions, because fail-open means a throwing reader would also produce an allow, and only the paired deny proves the fallback genuinely read.
+
+**Final adversarial review** returned APPROVED_WITH_CONCERNS with one Major: `architecture.md` claimed the valve reads the last entry of a usage row's `iterations` array, where the code takes the largest and its own comment argues that reading the last is the dangerous direction. Confirmed against `kit-compact-gate.js:263-276` and fixed, with the asymmetry now stated (understating consumption walks a session toward the hard limit; overstating only ends a deferral early). The same stale prose in two test comments and a section divider describing the retired one-state design is corrected. The review also proved, by running rather than reading, that the shared-library extraction is semantics-preserving for the leash hook (a 40,000-case fuzz differential, zero divergences), that all three quadratic rewrites are linear with no fourth instance anywhere in `plugins/`, and that no fail-open path escapes.
+
+**Docs curation** found the miss that mattered most: the repo's front-door `README.md` still told a reader "the gate is a no-op unless a kit goal is armed and this session holds its leash", which is false for every session on the machine and is the one surface an outsider reads before installing. Section 3's old-value sweep had covered `docs/` and never the root README. Fixed, along with its payload-map line. Also corrected: `fleet-integration.md`'s stand-down rationale, which justified only the boundary schedule; `docs/README.md`'s index line, which inverted the ceiling assumption to a 200,000-token window (pre-existing, and false since the earlier retune); and the doctor's description in both `architecture.md` and `security-model.md`, which still described the pre-change check and implied `-Fix -Yes` performs every write the doctor offers. A missing one-way cross-reference from the stop-failure-recovery plan to this one was added, since this plan's Chapter 1 settled that plan's Section 1(c) in advance.
+
+**Accepted residuals.** The 64 MB ceiling rests on a corpus rather than a bound, clearing today's largest file by 12%, and a larger session silently returns to the head-plus-tail gap; the failure direction is the designed-safe one, so this is coverage rather than hazard. Peak memory at the ceiling is roughly 175 MB RSS for the hook subprocess, a real step up from 512 KB, bounded by being short-lived and fired only when a compaction is already being offered. `doctor.ps1` still has no automated test harness in this repo, so its new branch is verified by scratch-profile runs rather than by the suite.
+Review Findings: QA FAIL (fixed, with three regression tests). Final adversarial: 1 Major (fixed), 2 Minors (1 fixed, 1 accepted as a one-regex duplication with no behavior difference). Docs curator: 4 drift items, all 4 fixed, plus 1 hygiene item fixed. No Criticals across the effort.
+Stamps: adjudicated 1, stamped 0 this pass (`harness-tools-the-kit-depends-on` was read to locate the memory store path and did not change what was built, so it is correctly unstamped). Decay pass run: no candidates, stamp touched. Memory written: `goal-and-loop-transcript-shapes` (operator tier), `transcript-readers-must-scan-linearly` (project tier), and a `kit.hooks.transcript-parsing` journal entry.
+Next: none. Plan Complete.
 Commit Model: Commit-and-Push
 

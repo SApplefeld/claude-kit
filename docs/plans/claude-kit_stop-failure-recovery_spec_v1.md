@@ -7,6 +7,7 @@ Created: 2026-08-16
 ## Related
 
 - `docs/backlog.md`, item "Explore channels for unattended interactive runs (research preview) (2026-07-08)": a different instrument for the same operating mode. A channel injects events into a live session; it cannot answer the session-limit modal or start a session, so it does not cover this plan's failure and stays parked on its own terms.
+- `claude-kit_interactive-compact-deferral_spec_v1.md`: its Chapter 1 settles this plan's Section 1(c) in advance. A slash command passed to `claude -p` does not execute, arriving as prose and writing no command markup, so this plan's resume prompt cannot arm the leash with `/kit-goal` and must instruct the arm CLI instead. (One-way pointer: that plan needs nothing from this one.)
 - External reference: `github.com/softcane/cc-session-recover` (MIT, read 2026-08-16, not installed). Its contribution to this design is the discovery that the `StopFailure` hook event exists and carries the failure metadata; its handoff-notebook and watcher components are re-implemented kit-natively here because the kit already owns stronger versions of the state half (plan docs, `.kit/goal-state.json`, Chapters) and the watcher half is small.
 
 ## Context

@@ -29,7 +29,7 @@ const CLI = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-co
 const { armGoal, bindSession } = require('../plugins/claude-kit/hooks/kit-goal-lib.js');
 const {
     checkpointPath, writeCheckpoint, automationInEffect, stripLocalCommandOutput,
-    commandArgsSpans
+    commandArgsSpans, readTranscriptCapped
 } = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
 
 // The session id the fixtures bind the goal to; payloads default to it so the
@@ -175,7 +175,8 @@ function assertAllow(res) {
 }
 
 // ---------------------------------------------------------------------------
-// The one deny state, and each single-condition negation isolated from it.
+// The boundary-gated deny state, and each single-condition negation isolated
+// from it. The interactive deny state has its own section further down.
 // ---------------------------------------------------------------------------
 
 test('gate: armed, bound, no checkpoint, below ceiling: deny (exit 2)', () => {
@@ -377,9 +378,13 @@ test('gate: consumed exactly at the ceiling: allow (valve trips at the boundary)
 // A multi-iteration turn's usage block, in the shape observed live: the
 // top-level cache figures are the SUM across iterations while input_tokens is
 // not, so the top level describes no single request and reading it overstates
-// the context by roughly the iteration count. The reading has to come from the
-// last iteration, which is the final request. `perIteration` is the true
-// context; three iterations of it inflate the top level to about triple.
+// the context by roughly the iteration count. The reading has to come from a
+// single iteration rather than the aggregate, and the code takes the largest,
+// because understating consumption defers longer and walks a session toward the
+// hard limit while overstating it only ends a deferral early. `perIteration` is
+// the true context; three iterations of it inflate the top level to about
+// triple. The iterations here are equal, so this fixture pins the
+// single-iteration rule; the largest-versus-last choice is pinned separately.
 function writeIterationsTranscript(full, perIteration) {
     const iter = () => ({ input_tokens: 2, cache_creation_input_tokens: 600, cache_read_input_tokens: perIteration - 602 });
     const iterations = [iter(), iter(), iter()];
@@ -404,7 +409,7 @@ function writeIterationsTranscript(full, perIteration) {
     writeFile(full, lines.join('\n') + '\n');
 }
 
-test('gate: a multi-iteration usage row reads the last iteration, not the inflated aggregate', () => {
+test('gate: a multi-iteration usage row reads a single iteration, not the inflated aggregate', () => {
     // True context sits just below the ceiling, so the correct reading denies.
     // The top-level aggregate is about triple that, well above the ceiling, so
     // reading the aggregate would allow: the two answers are opposite, which is
@@ -1422,10 +1427,11 @@ test('gate: automation-detected allow does NOT consume a matching checkpoint', (
     }
 });
 
-// Build a transcript past the 512KB whole-file threshold of the head-plus-tail
-// read, with chosen lines at the head and at the tail and inert filler between,
-// ending on a usage row summing to `consumed`. Exercises the capped branch the
-// detection actually runs on for a long session.
+// Build a long-session transcript, past the 512KB point where the
+// head-plus-tail fallback would engage, with chosen lines at the head and at
+// the tail and inert filler between, ending on a usage row summing to
+// `consumed`. Evidence at either end must classify the same way it does in a
+// small file, whichever read the size selects.
 function writeOversizedDetectionTranscript(full, headLines, tailLines, consumed) {
     const filler = JSON.stringify({ type: 'user', message: { role: 'user', content: 'x'.repeat(2048) } });
     const lines = [...headLines];
@@ -1442,42 +1448,138 @@ function writeOversizedDetectionTranscript(full, headLines, tailLines, consumed)
     writeFile(full, lines.join('\n') + '\n');
 }
 
-test('gate: oversized transcript with the /loop line at the head: allow (the head read finds it)', () => {
-    // The /loop invocation is the first user line of its session, which is
-    // why the detection reads head plus tail: a tail-only read would miss it
-    // on any session past the cap and wrongly defer an automated session.
+test('gate: long transcript with the /loop line at its head: allow', () => {
+    // The /loop invocation is the first user line of its session, so a
+    // tail-only read would miss it on any long session and wrongly defer an
+    // automated one.
     const repo = makeDir('kit-compact-gate-repo-');
     try {
         const t = path.join(repo, 'huge.jsonl');
         writeOversizedDetectionTranscript(t, [LOOP_LINE], [], 50000);
-        assert.ok(fs.statSync(t).size > 512 * 1024, 'fixture exceeds the whole-file threshold');
+        assert.ok(fs.statSync(t).size > 512 * 1024, 'fixture is a long-session transcript');
         assertAllow(runGate(gatePayload(repo, t)));
     } finally {
         rmDir(repo);
     }
 });
 
-test('gate: oversized transcript with a goal_status record in the tail: allow (the tail read finds it)', () => {
+test('gate: long transcript with a goal_status record in its tail: allow', () => {
     const repo = makeDir('kit-compact-gate-repo-');
     try {
         const t = path.join(repo, 'huge.jsonl');
         writeOversizedDetectionTranscript(t, [], [GOAL_EVAL], 50000);
-        assert.ok(fs.statSync(t).size > 512 * 1024, 'fixture exceeds the whole-file threshold');
+        assert.ok(fs.statSync(t).size > 512 * 1024, 'fixture is a long-session transcript');
         assertAllow(runGate(gatePayload(repo, t)));
     } finally {
         rmDir(repo);
     }
 });
 
-test('gate: oversized transcript with no evidence anywhere: interactive deny below the ceiling', () => {
-    // The deny is the discriminating direction here: it proves the capped
-    // read both found no evidence AND still surfaced a legible valve reading
-    // across the head-plus-tail join.
+test('gate: long transcript with no evidence anywhere: interactive deny below the ceiling', () => {
+    // The deny is the discriminating direction here: it proves the read both
+    // found no evidence AND still surfaced a legible valve reading from a file
+    // of this size.
     const repo = makeDir('kit-compact-gate-repo-');
     try {
         const t = path.join(repo, 'huge.jsonl');
         writeOversizedDetectionTranscript(t, [], [], 50000);
-        assert.ok(fs.statSync(t).size > 512 * 1024, 'fixture exceeds the whole-file threshold');
+        assert.ok(fs.statSync(t).size > 512 * 1024, 'fixture is a long-session transcript');
+        assertInteractiveDeny(runGate(gatePayload(repo, t)));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+// The whole-file read ceiling, duplicated here as a pin the same way CEILING
+// is: a file past it takes the head-plus-tail fallback, and moving the
+// constant in the hook must fail the fallback case below rather than silently
+// changing which transcripts scan whole.
+const AUTOMATION_READ_MAX = 64 * 1024 * 1024;
+
+// Build a transcript whose evidence sits at two positions a head-plus-tail
+// read cannot both see: `headLines` in the opening bytes, then filler past the
+// head window, then `middleLines`, then `tailPadBytes` of further filler and a
+// closing usage row summing to `consumed`. With a small tail pad the middle
+// lines land in the unread gap of the head-plus-tail read, which is the shape
+// a real session has when a loop ends and the session keeps working: the
+// /loop invocation is the session's first user line, its terminal stop lands
+// wherever the loop finished, and everything after it is ordinary interactive
+// work. Returns the file size.
+function writeGappedDetectionTranscript(full, headLines, middleLines, tailPadBytes, consumed) {
+    const filler = JSON.stringify({ type: 'user', message: { role: 'user', content: 'x'.repeat(2048) } });
+    const lines = [...headLines];
+    let bytes = lines.reduce((n, l) => n + l.length + 1, 0);
+    // Past the head window, with margin, so the middle lines are never in it.
+    while (bytes < 448 * 1024) {
+        lines.push(filler);
+        bytes += filler.length + 1;
+    }
+    lines.push(...middleLines);
+    bytes += middleLines.reduce((n, l) => n + l.length + 1, 0);
+    const target = bytes + tailPadBytes;
+    while (bytes < target) {
+        lines.push(filler);
+        bytes += filler.length + 1;
+    }
+    lines.push(JSON.stringify({
+        type: 'assistant',
+        message: { role: 'assistant', content: [], usage: { input_tokens: consumed } }
+    }));
+    writeFile(full, lines.join('\n') + '\n');
+    return fs.statSync(full).size;
+}
+
+test('gate: /loop at the head, its terminal stop in the head-plus-tail gap: interactive deny', () => {
+    // Newest-evidence-wins only holds over the bytes actually read. A loop
+    // that started at the head and ended in the middle of a long session
+    // leaves its retiring stop outside a head-plus-tail read, so a capped scan
+    // sees the start alone and keeps an ended loop classified as automation.
+    const repo = makeDir('kit-compact-gate-repo-');
+    try {
+        const t = path.join(repo, 'gapped.jsonl');
+        writeGappedDetectionTranscript(t, [LOOP_LINE], [WAKEUP_STOP], 256 * 1024, 50000);
+        const capped = readTranscriptCapped(t);
+        assert.ok(capped.includes(LOOP_LINE), 'the fixture keeps the /loop line inside the head read');
+        assert.ok(!capped.includes(WAKEUP_STOP), 'the fixture puts the stop evidence in the unread gap');
+        assertInteractiveDeny(runGate(gatePayload(repo, t)));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: /goal at the head, its met:true record in the head-plus-tail gap: interactive deny', () => {
+    // The same shape on the other instrument: a native goal that was satisfied
+    // and auto-cleared mid-session reclassifies as interactive, and the record
+    // that says so is nowhere near either end of the file.
+    const repo = makeDir('kit-compact-gate-repo-');
+    try {
+        const t = path.join(repo, 'gapped.jsonl');
+        writeGappedDetectionTranscript(t, [goalCommandLine(GOAL_CONDITION)], [GOAL_MET], 256 * 1024, 50000);
+        const capped = readTranscriptCapped(t);
+        assert.ok(!capped.includes(GOAL_MET), 'the fixture puts the met:true record in the unread gap');
+        assertInteractiveDeny(runGate(gatePayload(repo, t)));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: past the whole-read ceiling the head-plus-tail fallback still classifies', () => {
+    // Both directions on one oversized shape, because a fail-open reader that
+    // threw or returned nothing would also produce the allow: the same file
+    // classifies as automation with the /loop line in its head and as
+    // interactive without it, so the allow is the head read's doing. The
+    // retiring stop sits in the unread middle here and stays unseen, the
+    // accepted residual above the ceiling.
+    const repo = makeDir('kit-compact-gate-repo-');
+    try {
+        const t = path.join(repo, 'past-ceiling.jsonl');
+        const pad = AUTOMATION_READ_MAX - 256 * 1024;
+        const size = writeGappedDetectionTranscript(t, [LOOP_LINE], [WAKEUP_STOP], pad, 50000);
+        assert.ok(size > AUTOMATION_READ_MAX, 'fixture exceeds the whole-read ceiling');
+        assertAllow(runGate(gatePayload(repo, t)));
+
+        const inert = JSON.stringify({ type: 'user', message: { role: 'user', content: 'no automation here' } });
+        assert.ok(writeGappedDetectionTranscript(t, [inert], [WAKEUP_STOP], pad, 50000) > AUTOMATION_READ_MAX);
         assertInteractiveDeny(runGate(gatePayload(repo, t)));
     } finally {
         rmDir(repo);

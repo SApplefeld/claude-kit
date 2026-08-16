@@ -216,10 +216,13 @@ function clearCheckpoint(cwd) {
 
 // Read a transcript with a size cap: for a large file, the head plus tail. The
 // evidence each consumer scans for can land near either end of a long-running
-// session: the arming invocation and any re-arm for the goal leash, a /loop
-// invocation's first user line (head) and the newest goal_status record (tail)
-// for the gate's automation scan. Returns '' on any error or a non-regular
-// file. The isFile check narrows, without closing, the window in which the
+// session: the arming invocation and any re-arm for the goal leash, and for
+// the gate's automation scan a /loop invocation's first user line (head)
+// beside the newest goal_status record (tail). It is the goal leash's reader
+// and the automation scan's above-ceiling fallback (see
+// readTranscriptForAutomation, which owns why the fallback is not that scan's
+// primary read). Returns '' on any error or a non-regular file, whatever the
+// size. The isFile check narrows, without closing, the window in which the
 // path could be swapped for a FIFO between the stat and the open (a blocking
 // read on a FIFO hangs, which no try/catch can rescue): both read branches
 // re-resolve the path after the stat. The residual is accepted because
@@ -494,6 +497,44 @@ function automationInEffect(text) {
     return goalInEffect === true || loopInEffect === true;
 }
 
+// The byte ceiling on reading a transcript whole for the automation scan.
+//
+// Newest-evidence-wins only holds over bytes actually read, so the scan wants
+// the whole file: a head-plus-tail read leaves an unread middle, and a loop
+// whose terminating stop lands there shows its opening /loop line and nothing
+// that retires it, classifying a session that has been hands-on for hours as
+// automation-driven. That is the exact case the deferral exists to serve, and
+// it is the common one, because a session keeps working for as long as it
+// likes after its loop ends.
+//
+// 64 MB scans a whole multi-day session (the largest transcripts observed run
+// to 57 MB) with headroom, and the cost is linear and bounded: at that size
+// the read plus classification is roughly 150 ms and 175 MB of peak resident
+// memory in this short-lived hook process, which runs only when the harness
+// is already offering a compaction. Past the ceiling the head-plus-tail
+// reader takes over, so a runaway or hostile file costs the same 512 KB it
+// always did; the unread middle comes back with it, and the misread it can
+// produce degrades to the early trigger, never to a wedged session.
+const AUTOMATION_READ_MAX_BYTES = 64 * 1024 * 1024;
+
+// Read a transcript for the automation scan: the whole file at or below
+// AUTOMATION_READ_MAX_BYTES, the head-plus-tail read above it. Returns '' on
+// any error or a non-regular file, which classifies as no evidence. The
+// isFile check narrows the same FIFO-swap window readTranscriptCapped
+// documents, and on the same accepted residual: a blocking read on a FIFO
+// hangs where no try/catch can rescue it, and the path is re-resolved after
+// the stat either way.
+function readTranscriptForAutomation(transcriptPath) {
+    try {
+        const st = fs.statSync(transcriptPath);
+        if (!st.isFile()) return '';
+        if (st.size > AUTOMATION_READ_MAX_BYTES) return readTranscriptCapped(transcriptPath);
+        return fs.readFileSync(transcriptPath, 'utf8');
+    } catch {
+        return '';
+    }
+}
+
 // Does the transcript at this path show a native automation instrument
 // driving the session? A missing path, an unreadable or non-regular file, or
 // any escape reads as no evidence (false); the caller's valve leg reads the
@@ -502,7 +543,7 @@ function automationInEffect(text) {
 function transcriptShowsAutomation(transcriptPath) {
     try {
         if (!transcriptPath) return false;
-        const text = readTranscriptCapped(transcriptPath);
+        const text = readTranscriptForAutomation(transcriptPath);
         if (!text) return false;
         return automationInEffect(text);
     } catch {
