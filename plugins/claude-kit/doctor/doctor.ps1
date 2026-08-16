@@ -7,8 +7,8 @@
 # Verifies core setup (execution policy, doctrine import and freshness, kaizen
 # signpost, git hooks on a clone), the ANTHROPIC_API_KEY hazard, the hook layer
 # (goal-leash wiring and load, hook-canary wiring, the memq shim), the memory
-# store's sync repo and its allowlist, and leftover resume-relay state on a
-# machine that once armed it.
+# store's sync repo and its allowlist, the stop-failure watcher's scheduled
+# task, and leftover resume-relay state on a machine that once armed it.
 #
 #   .\doctor.ps1              Check only; prints PASS/WARN/FAIL with remediations.
 #   .\doctor.ps1 -Fix         Also applies the safe durable repairs (execution
@@ -28,11 +28,22 @@
 #                             directory holds. Naming this switch is the
 #                             authorization for that deletion; -Fix alone never
 #                             deletes it.
+#   .\doctor.ps1 -Fix -RegisterStopFailureWatcher
+#                             Also registers the stop-failure watcher scheduled
+#                             task for the directory the doctor was run from.
+#                             Opt-in (only unattended machines want it), so
+#                             naming this switch is the request; -Fix alone
+#                             never registers it.
+#   .\doctor.ps1 -Fix -UnregisterStopFailureWatcher
+#                             Removes the stop-failure watcher scheduled task.
+#                             Naming this switch is the authorization; -Fix
+#                             alone never removes it.
 # If scripts are blocked entirely, use the wrapper beside this file:
 #   doctor.cmd [-Fix] [-Yes] [-RemoveLegacyRelay]
 # Exit code: 0 when nothing FAILs (warnings allowed), 1 otherwise.
 
-param([switch]$Fix, [switch]$Yes, [switch]$RemoveLegacyRelay)
+param([switch]$Fix, [switch]$Yes, [switch]$RemoveLegacyRelay,
+      [switch]$RegisterStopFailureWatcher, [switch]$UnregisterStopFailureWatcher)
 
 # Windows PowerShell 5.1 inherits PSModulePath from whatever parent launched it.
 # A pwsh 7+ parent (the Claude Code harness, a pwsh terminal) puts its own
@@ -145,6 +156,12 @@ $claudeDir = Join-Path $env:USERPROFILE ".claude"
 # It resolves no paths of its own: this script passes the settings path in,
 # and the test suite passes a sandbox path.
 . (Join-Path $PSScriptRoot "install-compact-window.ps1")
+
+# Stop-failure watcher task registrar and status reader, beside this script.
+# It owns the task name, the pinned-settings registration, and the read-back
+# verification; the repo test suite runs the same functions under a throwaway
+# task name.
+. (Join-Path $PSScriptRoot "install-stop-failure-watcher.ps1")
 
 # Append a directory to the durable user PATH, and to this process's PATH so
 # the current run sees it too. Every kit PATH repair goes through this one
@@ -1471,6 +1488,129 @@ if ($isClone) {
 }
 else {
     Report "INFO" "Kit goal state" @("Skipped (installed plugin cache, not a repo clone; no specific repo to inspect).")
+}
+
+# --- Stop-failure watcher. An unattended kit-goal run that dies of an API
+# --- error (the session limit above all) routes to StopFailure, which the
+# --- Stop-hook leash never sees; the stop-failure-log.js hook records the
+# --- death and the watcher scheduled task resumes the run once the failure has
+# --- settled. The watcher script ships in the payload; the task is opt-in
+# --- (only unattended machines want it), so an absent task is INFO, never a
+# --- gap -Fix heals on its own: registering takes -Fix plus
+# --- -RegisterStopFailureWatcher plus consent, run from the project directory
+# --- the task should watch, and unregistering takes -Fix plus
+# --- -UnregisterStopFailureWatcher plus consent, following the
+# --- -RemoveLegacyRelay precedent that naming the switch is the request.
+$watcherScript = Join-Path $pluginRoot "scripts\stop-failure-watcher.ps1"
+$watcherTaskName = $script:StopFailureWatcherTaskName
+$watcherStatus = Get-StopFailureWatcherStatus
+$watcherReported = $false
+
+if (-not (Test-Path -LiteralPath $watcherScript)) {
+    Report "FAIL" "Stop-failure watcher" @("stop-failure-watcher.ps1 not found at $watcherScript; this plugin payload is incomplete.")
+    $watcherReported = $true
+}
+elseif ($Fix -and $UnregisterStopFailureWatcher) {
+    if (-not $watcherStatus.queried) {
+        Report "WARN" "Stop-failure watcher" @(
+            "Could not query scheduled tasks (" + (Get-SanitizedLine $watcherStatus.detail 200) + "), so nothing was removed.",
+            "Remove the task '$watcherTaskName' by hand in Task Scheduler if it exists."
+        )
+    }
+    elseif (-not $watcherStatus.present) {
+        Report "INFO" "Stop-failure watcher" @("No scheduled task '$watcherTaskName' is registered; nothing to remove.")
+    }
+    elseif (Get-Consent "Unregister the scheduled task '$watcherTaskName' (failed runs on this machine will no longer auto-resume)?") {
+        $watcherRemove = Uninstall-StopFailureWatcher
+        if ($watcherRemove.ok) {
+            Report "FIXED" "Stop-failure watcher" @("Unregistered scheduled task '$watcherTaskName'; the watcher script itself stays in the payload.")
+        }
+        else {
+            Report "FAIL" "Stop-failure watcher" @(
+                "Could not unregister '$watcherTaskName': " + (Get-SanitizedLine $watcherRemove.reason 200),
+                "Remove it by hand in Task Scheduler."
+            )
+        }
+    }
+    else {
+        Report "WARN" "Stop-failure watcher" @(
+            "Left in place: no consent given at the prompt, so nothing was removed.",
+            "Unattended:  doctor -Fix -UnregisterStopFailureWatcher -Yes"
+        )
+    }
+    $watcherReported = $true
+}
+elseif ($Fix -and $RegisterStopFailureWatcher) {
+    # The watched project is the directory the doctor was launched from: the
+    # goal state the watcher scopes to is project-local, so the operator runs
+    # the doctor from the repo whose unattended runs should auto-resume, and
+    # the consent prompt names the resolved directory so the yes is given
+    # against the actual value.
+    $watcherProjectDir = (Get-Location).Path
+    $watcherInterval = Get-StopFailureWatcherInterval -WatcherPath $watcherScript
+    $watcherIntervalNote = if ($null -ne $watcherInterval) { "every $watcherInterval minutes" } else { "on its configured interval" }
+    if (Get-Consent "Register scheduled task '$watcherTaskName' to run the stop-failure watcher $watcherIntervalNote for $watcherProjectDir?") {
+        $watcherInstall = Install-StopFailureWatcher -WatcherPath $watcherScript -ProjectDir $watcherProjectDir
+        if ($watcherInstall.ok) {
+            Report "FIXED" "Stop-failure watcher" $watcherInstall.notes
+        }
+        else {
+            Report "FAIL" "Stop-failure watcher" @(
+                "Could not register '$watcherTaskName': " + (Get-SanitizedLine $watcherInstall.reason 300)
+            )
+        }
+    }
+    else {
+        Report "WARN" "Stop-failure watcher" @(
+            "Not registered: no consent given at the prompt.",
+            "Unattended, from the project directory to watch:  doctor -Fix -RegisterStopFailureWatcher -Yes"
+        )
+    }
+    $watcherReported = $true
+}
+
+if (-not $watcherReported) {
+    if (-not $watcherStatus.queried) {
+        Report "WARN" "Stop-failure watcher" @(
+            "Watcher script present, but scheduled tasks could not be queried (" + (Get-SanitizedLine $watcherStatus.detail 200) + "),",
+            "so whether the task '$watcherTaskName' is registered is undetermined."
+        )
+    }
+    elseif (-not $watcherStatus.present) {
+        Report "INFO" "Stop-failure watcher" @(
+            "Watcher script present; no scheduled task '$watcherTaskName' is registered, so a failed unattended run on this machine is not auto-resumed.",
+            "Opt-in for unattended machines. From the project directory to watch:  doctor -Fix -RegisterStopFailureWatcher"
+        )
+    }
+    else {
+        # The task is registered: hold it to the pins the parked-child design
+        # depends on, and to the current payload's watcher path, which rotates
+        # with every release on an installed plugin cache. The action string
+        # is task data, not doctor-authored, so it is sanitized like every
+        # other foreign string before reaching the report.
+        $watcherGaps = @()
+        if ($watcherStatus.arguments.IndexOf($watcherScript, [System.StringComparison]::OrdinalIgnoreCase) -lt 0) {
+            $watcherGaps += "The task runs a watcher at a different path than this payload's (a moved clone, or a plugin cache from an earlier release)."
+        }
+        if ($watcherStatus.multipleInstances -ne "IgnoreNew") {
+            $watcherGaps += ("MultipleInstances is '" + (Get-SanitizedLine $watcherStatus.multipleInstances) + "', not IgnoreNew, so a second pass can start beside a parked child.")
+        }
+        if ($watcherStatus.executionTimeLimit -ne "PT8H") {
+            $watcherGaps += ("ExecutionTimeLimit is '" + (Get-SanitizedLine $watcherStatus.executionTimeLimit) + "', not PT8H, so the scheduler can cut a parked child short or let a hung one run unbounded.")
+        }
+        $watcherDetail = @(
+            "Scheduled task '$watcherTaskName' registered, repeating at " + (Get-SanitizedLine $watcherStatus.repetitionInterval 40) + ".",
+            "Action: " + (Get-SanitizedLine ($watcherStatus.execute + " " + $watcherStatus.arguments) 300)
+        )
+        if ($watcherGaps.Count -gt 0) {
+            Report "WARN" "Stop-failure watcher" ($watcherDetail + $watcherGaps + @(
+                "Fix: re-register from the project directory to watch  (doctor -Fix -RegisterStopFailureWatcher replaces the task)."
+            ))
+        }
+        else {
+            Report "PASS" "Stop-failure watcher" $watcherDetail
+        }
+    }
 }
 
 # --- Auto-compaction window. The boundary-gated compaction feature needs the

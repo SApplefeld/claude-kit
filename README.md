@@ -58,6 +58,9 @@ claude-kit/                          (repo = the marketplace)
                                      Compaction scheduling: PreCompact hook that defers auto-compaction to a
                                      chapter boundary on a leashed run and to a safety ceiling on a hands-on
                                      one, the checkpoint command that marks a boundary, shared library
+        stop-failure-log.js          StopFailure hook: records an API-error turn death to .kit/ and decides
+                                     nothing, so the watcher script can resume an unattended run that the
+                                     Stop leash never saw die
         docs-write-guard.js          Denies non-curator subagent writes into docs/
         stop-docs-hygiene.js         Stop-time docs-library backstop
         pr-docs-guard.js             Requires the docs work committed before the PR goes up
@@ -78,21 +81,32 @@ claude-kit/                          (repo = the marketplace)
                                      run an external engine spawned, reads and writes also span that run's
                                      own pending tier, which the engine adjudicates before promotion
         memq-shim.js                 Resolves the installed payload's memq.js so the PATH wrappers stay stable
+        stop-failure-watcher.ps1     Scheduled-task pass that reads the stop-failure marker and resumes a
+                                     leashed unattended run that died on a retryable API failure. Owns every
+                                     decision the logger hook refuses: scope, retryability, incident budget,
+                                     and whether a resume is already in flight
       doctor/
         install-memq-shim.ps1        Installs the per-shell memq wrappers onto PATH (run by the doctor)
         install-memory-sync.ps1      Memory-sync allowlist, state, and initialization (run by the doctor)
         install-embedder.ps1         Embedder probe, install, and index health (run by the doctor)
+        install-stop-failure-watcher.ps1
+                                     Registers/unregisters the stop-failure watcher's scheduled task (run by
+                                     the doctor under -Fix plus the named switch; pins the task's instance
+                                     and time-limit policy and verifies them by read-back)
         install-compact-window.ps1   Writes autoCompactWindow into user settings.json (run by the doctor
                                      under -Fix; backs up, verifies, and aborts rather than clobbering)
         doctor.ps1                   The kit doctor (ships with the plugin, so installed machines have it):
                                      policy, ANTHROPIC_API_KEY hazard, doctrine import + freshness, signpost,
                                      hooks (goal leash wiring and load, hook canary wiring, the memq shim),
                                      memory sync, the embedder, the auto-compaction window (and whether the
-                                     installed Claude Code supports PreCompact), and any leftover
-                                     resume-relay state a machine still carries. Flags: -Fix, -Yes
-                                     (pre-answers prompts), -RemoveLegacyRelay (the one destructive
-                                     action). Under -Fix the auto-compaction check offers to write your
-                                     user settings.json, the only change it makes to harness config.
+                                     installed Claude Code supports PreCompact), the stop-failure watcher's
+                                     scheduled task, and any leftover resume-relay state a machine still
+                                     carries. Flags: -Fix, -Yes (pre-answers prompts), -RemoveLegacyRelay
+                                     (the one destructive action), -RegisterStopFailureWatcher and
+                                     -UnregisterStopFailureWatcher (opt-in either way, so a bare -Fix
+                                     neither installs a resume daemon nor nags about one). Under -Fix the
+                                     auto-compaction check offers to write your user settings.json, the
+                                     only change it makes to harness config.
         doctor.cmd                   Execution-policy-proof wrapper (a fresh Windows box blocks .ps1 by default)
   kaizen/                            Kit self-improvement inbox (per-machine notes-*.md + briefs/)
   settings/settings.recommended.json Permission rules + acceptEdits starting point

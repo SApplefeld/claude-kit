@@ -177,6 +177,27 @@ The quarantine is not a control here, and an earlier reading of it as one was wr
 
 **Not a control:** the gate stands down under `KIT_EXTERNAL_ENGINE` because an engine's workers are fresh per section and have no mid-chapter context to protect. That is a scope decision, not a security property, and it removes nothing an attacker would otherwise face.
 
+## The stop-failure logger and watcher
+
+This pair is the kit's only component that executes a command unattended, on a schedule, using a value read from a file. That shape sets its whole posture, so the trust boundary is stated before the controls.
+
+**The marker is user-writable.** `.kit/stop-failure-latest.json` is an ordinary file in the project tree, so anything that can write the tree can author one. What it can reach is the watcher's decision to launch `claude -p --resume <id>`, which is why the id is treated as hostile input rather than as the harness's own word.
+
+- **The session id is validated against a strict grammar before it reaches any command line**, and a value failing it is refused outright rather than escaped or quoted around. Rejection, not sanitization, because a value that is not a session id has no correct interpretation.
+- **The resume prompt is fixed text shipped in the repo.** No marker content reaches it. Its one interpolation is the plan path, read from the goal state and validated through the same rule the goal state itself enforces, called out of `kit-goal-lib.js` rather than restated so the two cannot drift.
+- **Nothing is spliced into a command line at all.** The validated session id and the fixed prompt reach a constant wrapper script through environment variables, and the child receives per-element argv, so the class of defect where a hostile value escapes its quoting has no surface to occur on rather than being escaped correctly.
+- **The scope guard is a control, not only a policy.** A marker only acts when the project holds an armed goal whose bound session is the one the marker names, so authoring a marker is not by itself enough to make the watcher run anything; an unarmed project ignores every marker it is handed.
+- **Every guard fails toward exit-without-acting.** No unparseable, ambiguous, or unexpected input reaches a launch. This is the opposite posture from the compaction gate above, and deliberately so: that gate's fail-open costs a mistimed compaction, while this one's would cost an unattended process launch.
+- **The logger writes and reveals nothing.** It emits nothing on stdout or stderr, and a payload that is not a JSON object is recorded as a note naming only its length, so error text that could carry sensitive detail is never echoed into a channel a model reads. A non-object payload is treated the same as an unparseable one, since spreading an array into the record would reinstate its raw content under numeric keys.
+- **The events log is capped**, so a session failing on every turn cannot fill a disk. The cap costs history only; the marker the watcher reads is written on every event regardless.
+- **The build's SHA-256 manifest covers the logger** like every other shipped hook, with the same detection-not-prevention gap stated under the guard hooks above. The watcher and its installer are scripts rather than wired hooks and are not stamped by it.
+
+**Accepted, and named rather than closed:**
+
+- **The logger takes its output directory from the payload's own `cwd`.** A payload naming another directory would be written there. The trust boundary is the harness that writes the hook's stdin, and anything able to forge that already runs code on the machine; the sibling compaction gate resolves its project the same way. Stated because the "writes nothing outside `.kit/`" property is true of the project's own payloads, not of every conceivable one.
+- **The operator at a stale console modal.** The dangerous sequence is a watcher resuming headlessly while the dead session's console still shows its limit modal, and the operator later answering that modal, producing two continuations on one worktree. Three things narrow it: the scope guard, since re-arming rebinds the leash to the resumed session and leaves the console session unleashed; the in-flight sentinel, written before the child starts precisely so it exists during the window a fork is possible rather than only after it closes; and the operational rule that a stale modal is checked against `.kit/stop-failure-resumed.json` and the console session exited rather than continued. The residual is a human choosing otherwise, and nothing mechanical stops that.
+- **The child runs with `CLAUDE_CODE_RETRY_WATCHDOG=1`**, which means a rate-limited child waits rather than failing. That is the intended behavior, and it also means a launched child can hold a process open for hours. It is bounded by an explicit child lifetime limit and by the incident budget, not by the retry logic itself.
+
 ## Type-tier governance limits
 
 The shared tier has no owner and no cross-project coordination beyond the lock:
