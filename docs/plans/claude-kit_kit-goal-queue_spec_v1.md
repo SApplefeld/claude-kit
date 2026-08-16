@@ -125,3 +125,21 @@ Finishing pass: qa-verifier, security review (enforcement-hook and state-shape s
 
 ## Chapters
 
+### Chapter 1: Section 1, state, lib, and CLI (2026-08-16)
+
+Completed: 1. State, lib, and CLI: the queue exists and is legible
+Commit Model: Commit-and-Push
+
+**The compatibility constraint shaped the whole design, and it held.** Two readers outside this plan depend on `plan` meaning "the current plan" and `boundSession` meaning "the leash holder": `kit-compact-gate.js` and the stop-failure watcher shipped earlier today. Both were opened and confirmed to read only that pair (`kit-compact-gate.js:335-345`, `stop-failure-watcher.ps1:262-266`), and neither was touched, because the queue fields are strictly additive and `plan` still names the current plan at every position.
+
+**Normalization went into `readGoal` rather than into call sites**, which is the decision Sections 2 and 3 inherit for free: every read yields `queue`, `queueIndex`, `history`, and `boundTranscript` with the invariant `queue[queueIndex] === plan`, and a pre-queue file normalizes to a queue of one. A queue that disagrees with `plan`, a non-array `history`, and a control-character `boundTranscript` all normalize the same way rather than propagating a malformed shape.
+
+**`composeCondition` appends the queue tail only while plans remain**, so a solo arm and the last plan of a queue produce byte-identical text to what shipped before. That is why the suite's one verbatim condition pin passes unmodified rather than needing an update, which is the better outcome: a pin that has to change with every edit stops being a pin.
+
+**One existing test was changed, deliberately and named:** the schema pin asserting `Object.keys(state).sort()` equals the four-key shape. The spec widens that shape on purpose, so the pin was extended to the eight keys and given assertions that a one-plan arm reads back as a queue of one. Every other existing test is untouched, which is itself the compatibility gate.
+
+**Two design calls made on spec silence, recorded rather than reconciled.** `advanceGoal` writes nothing on the last plan and reports `advanced: false`, leaving the clear-then-emit-then-allow to Section 2 rather than persisting a final history entry into a file about to be deleted. And `bindSession` upgrades a legacy state file to the normalized shape on first bind, which is additive since nothing reads the file expecting those keys to be absent.
+
+**Gate:** 866 tests, 864 pass, 2 fail, against the 851/849/2 baseline. Delta exactly +15 new tests, same two standing `memq-shim` exceptions by name. Re-run by the orchestrator after the implementer reported, not taken on report. Red/green probes on the two load-bearing tests (legacy compatibility, all-or-nothing validation), restored from pre-probe copies verified by md5 `fa2fb584dce9ecf6f4dbb08e881dfa6b`.
+
+**Next:** Sections 2 and 3 in parallel. They touch disjoint files (`kit-goal-stop.js` and `session-start.js`) and both consume Section 1 through the normalizer rather than reaching into it, so they can build simultaneously. Each runs only its own test file during red/green probes so neither sees the other's mid-probe tree; the orchestrator runs the full suite once both land. Their reviews batch into one pair over Sections 1 to 3 as a single changeset, since serializing per-section reviews would cost exactly the wall-clock the parallel build buys, and the three sections are one state-shape surgery whose seams read best together.

@@ -27,15 +27,74 @@ function goalPath(cwd) {
     return path.join(cwd, '.kit', 'goal-state.json');
 }
 
-// Read and parse the goal-state file. Returns the parsed object, or null if
-// the file is absent, unreadable, or not valid JSON.
+// The cap on a stored transcript path. Long enough for a real harness
+// transcript path, short enough that no caller can pad the state file.
+const TRANSCRIPT_MAX = 512;
+
+// Whether a value is storable as boundTranscript: a non-empty string, within
+// the cap, free of control characters. The path is machine-local and lives in
+// a gitignored file; it is only ever fs.stat'ed, never executed, and never
+// surfaced raw, so the check is a sanitize-before-store guard (a newline would
+// smuggle text into a file the hooks surface into the model's context) rather
+// than a claim the path is safe to run.
+function validTranscript(value) {
+    return typeof value === 'string' && value !== '' && value.length <= TRANSCRIPT_MAX
+        && !/[\x00-\x1F]/.test(value);
+}
+
+// Normalize a parsed goal state to the current shape, so every reader can rely
+// on queue, queueIndex, history, and boundTranscript being present and on
+// queue[queueIndex] === plan. A state file carrying no queue is a queue of one:
+// plan is the authority on what is current, so a queue that is absent,
+// malformed, or disagreeing with plan is replaced by [plan] at index 0.
+// Applied inside readGoal, so no caller sees the un-normalized shape.
+function normalizeState(state) {
+    if (!state || typeof state !== 'object' || typeof state.plan !== 'string' || state.plan === '') {
+        return state;
+    }
+    const queue = state.queue;
+    const index = state.queueIndex;
+    const usable = Array.isArray(queue) && queue.length > 0
+        && queue.every((p) => typeof p === 'string' && p !== '')
+        && Number.isInteger(index) && index >= 0 && index < queue.length
+        && queue[index] === state.plan;
+    if (!usable) {
+        state.queue = [state.plan];
+        state.queueIndex = 0;
+    }
+    if (!Array.isArray(state.history)) state.history = [];
+    if (!validTranscript(state.boundTranscript)) state.boundTranscript = null;
+    return state;
+}
+
+// Read and parse the goal-state file, normalized to the current shape (see
+// normalizeState). Returns the parsed object, or null if the file is absent,
+// unreadable, or not valid JSON.
 function readGoal(cwd) {
     try {
         const raw = fs.readFileSync(goalPath(cwd), 'utf8');
-        return JSON.parse(raw);
+        return normalizeState(JSON.parse(raw));
     } catch {
         return null;
     }
+}
+
+// Write the goal state atomically (tmp file + rename). The tmp name carries
+// this process's pid so two writers (e.g. a CLI arm racing a Stop hook's bind)
+// never collide on the same tmp path. Returns { ok } or { ok:false, reason }:
+// a filesystem failure is reported, never thrown, keeping the whole exported
+// surface non-throwing.
+function writeState(cwd, state) {
+    const gp = goalPath(cwd);
+    try {
+        fs.mkdirSync(path.dirname(gp), { recursive: true });
+        const tmp = gp + '.tmp.' + process.pid;
+        fs.writeFileSync(tmp, JSON.stringify(state, null, 2) + '\n', 'utf8');
+        fs.renameSync(tmp, gp);
+    } catch (err) {
+        return { ok: false, reason: 'could not write goal state: ' + (err && err.message ? err.message : String(err)) };
+    }
+    return { ok: true };
 }
 
 // Read the first 2KB of a plan file and classify its Status header.
@@ -84,7 +143,22 @@ function planHead(cwd, planRel) {
 // rides with the goal state across session swaps; the /kit-goal skill owns
 // the full statement of what arming requests, and the Stop hook's enforcement
 // block restates it at the point of action.
-function composeCondition(planRel) {
+//
+// queue and queueIndex are optional and describe the armed sequence this plan
+// belongs to. When plans remain after this one, the text gains the queue
+// context: the position, the plans still to come, and that each runs to
+// Complete or a recorded BLOCKED: before the next begins. A single plan, or
+// the last plan of a queue, has nothing remaining and reads exactly as a solo
+// arming does.
+function composeCondition(planRel, queue, queueIndex) {
+    const remaining = Array.isArray(queue) && Number.isInteger(queueIndex)
+        ? queue.slice(queueIndex + 1)
+        : [];
+    const tail = remaining.length === 0 ? '' : ' This plan is ' + (queueIndex + 1)
+        + ' of ' + queue.length + ' in an armed queue; still to come after it: '
+        + remaining.join(', ') + '. Each plan runs to Complete or a recorded '
+        + "'BLOCKED:' before the next begins, and the leash advances to the next "
+        + 'plan on its own: no re-arming, and the run continues in this session.';
     return 'Work ' + planRel + ' to completion using executing-work. Arming is '
         + "Scott's request for this run: reduce wall-clock time by parallelizing "
         + 'work that can run simultaneously, via subagent dispatch and via '
@@ -93,7 +167,7 @@ function composeCondition(planRel) {
         + 'Capacity is never a blocker: auto-compaction rides through with the '
         + 'leash intact. Waiting on dispatched background work is a pause, not a '
         + "stop: lead with 'WAITING:' and what you await; the leash stays armed "
-        + 'and the completion notification resumes the run.';
+        + 'and the completion notification resumes the run.' + tail;
 }
 
 // Normalize a plan argument (relative or absolute) to a repo-relative,
@@ -120,48 +194,118 @@ function normalizePlanArg(cwd, planArg) {
     return rel.split(path.sep).join('/');
 }
 
-// Validate the plan argument, then write the goal-state file atomically
-// (tmp file + rename). Returns { ok:true, plan } on success or
+// A caller-supplied path rendered safe for a reason string: printable ASCII,
+// capped. Reason strings reach stderr and, through the Stop hook, the model's
+// context, so an offending path is named in a form that cannot carry more than
+// its own characters.
+function safeForReason(value) {
+    return String(value).replace(/[^\x20-\x7E]/g, '').slice(0, 120);
+}
+
+// Validate the plan arguments, then write the goal-state file atomically.
+// planArgs is one plan path or an ordered array of them (the armed queue).
+// Every path is validated before anything is written and the whole arm is
+// refused if any one fails, so a partial queue can never reach the state file;
+// the reason names the offending path. Duplicates are refused for the same
+// reason: a queue that visits a plan twice would advance past it the first
+// time and stall the second. Returns { ok:true, plan, queue } on success or
 // { ok:false, reason } on any failure: a bad path, a missing or Complete plan,
-// or an unexpected filesystem error, which is caught and reported rather than
-// thrown. This keeps the whole exported surface non-throwing.
-function armGoal(cwd, planArg) {
-    const rel = normalizePlanArg(cwd, planArg);
-    if (rel === null) {
-        return { ok: false, reason: 'plan path is invalid or outside the repo' };
+// a duplicate, or an unexpected filesystem error, which is caught and reported
+// rather than thrown. This keeps the whole exported surface non-throwing.
+function armGoal(cwd, planArgs) {
+    const args = Array.isArray(planArgs) ? planArgs : [planArgs];
+    if (args.length === 0) {
+        return { ok: false, reason: 'no plan path given' };
     }
 
-    const head = planHead(cwd, rel);
-    if (!head.exists) {
-        return { ok: false, reason: 'plan not found: ' + rel };
-    }
-    if (head.status === 'complete') {
-        return { ok: false, reason: 'plan is already Complete: ' + rel };
+    const queue = [];
+    for (const arg of args) {
+        const rel = normalizePlanArg(cwd, arg);
+        if (rel === null) {
+            return { ok: false, reason: 'plan path is invalid or outside the repo: ' + safeForReason(arg) };
+        }
+        if (queue.includes(rel)) {
+            return { ok: false, reason: 'plan appears twice in the queue: ' + rel };
+        }
+        const head = planHead(cwd, rel);
+        if (!head.exists) {
+            return { ok: false, reason: 'plan not found: ' + rel };
+        }
+        if (head.status === 'complete') {
+            return { ok: false, reason: 'plan is already Complete: ' + rel };
+        }
+        queue.push(rel);
     }
 
-    const gp = goalPath(cwd);
     const state = {
-        plan: rel,
-        condition: composeCondition(rel),
+        // The current plan of the queue. Every other reader of this file
+        // (the compaction gate, the stop-failure watcher) answers to this
+        // field and to boundSession, so both keep their meaning as the queue
+        // advances: plan is what is being worked now.
+        plan: queue[0],
+        condition: composeCondition(queue[0], queue, 0),
         armedAt: new Date().toISOString(),
         // Which session currently holds the leash, or null when unclaimed. A
         // fresh arm (including re-arming an already-armed goal after a crash)
         // starts unbound: the next stop that resolves to a leashed session
         // claims it, so re-arm is always a clean rebind opportunity.
-        boundSession: null
+        boundSession: null,
+        // The bound session's transcript path, recorded at claim time and used
+        // only as a liveness hint for a session other than the leash holder.
+        boundTranscript: null,
+        queue,
+        queueIndex: 0,
+        // One entry per finished plan: { plan, outcome, at } and, for a
+        // blocked plan, the recorded blocker.
+        history: []
     };
-    try {
-        fs.mkdirSync(path.dirname(gp), { recursive: true });
-        // The tmp name carries this process's pid so two writers (e.g. a CLI
-        // arm racing a Stop hook's bind) never collide on the same tmp path.
-        const tmp = gp + '.tmp.' + process.pid;
-        fs.writeFileSync(tmp, JSON.stringify(state, null, 2) + '\n', 'utf8');
-        fs.renameSync(tmp, gp);
-    } catch (err) {
-        return { ok: false, reason: 'could not write goal state: ' + (err && err.message ? err.message : String(err)) };
+    const written = writeState(cwd, state);
+    if (!written.ok) return written;
+
+    return { ok: true, plan: queue[0], queue };
+}
+
+// Record the current plan's outcome and move the leash to the next plan in the
+// queue, in one atomic rewrite: the history entry is appended, queueIndex and
+// plan move together, the condition is recomposed for the new current plan,
+// and boundSession and boundTranscript are preserved, so one binding rides the
+// whole queue.
+//
+// outcome is 'complete', 'archived', or 'blocked'; note is the optional
+// recorded blocker, sanitized and capped here because it originates in
+// transcript text.
+//
+// Returns { ok:true, advanced:true, finished, plan } when the leash moved,
+// { ok:true, advanced:false, finished } on the last plan of the queue (nothing
+// is written: the caller releases the goal, and the session's own closing
+// summary is the operator-facing record), and { ok:false, reason } when no
+// goal is armed, the outcome is unusable, or the write fails. Never throws.
+function advanceGoal(cwd, outcomeEntry) {
+    const entry = outcomeEntry || {};
+    if (!['complete', 'archived', 'blocked'].includes(entry.outcome)) {
+        return { ok: false, reason: 'outcome must be complete, archived, or blocked' };
+    }
+    const state = readGoal(cwd);
+    if (!state || !state.plan) {
+        return { ok: false, reason: 'no goal is armed' };
     }
 
-    return { ok: true, plan: rel };
+    const finished = state.plan;
+    const next = state.queueIndex + 1;
+    if (next >= state.queue.length) {
+        return { ok: true, advanced: false, finished };
+    }
+
+    const record = { plan: finished, outcome: entry.outcome, at: new Date().toISOString() };
+    if (entry.note) record.note = safeForReason(entry.note);
+    state.history.push(record);
+    state.queueIndex = next;
+    state.plan = state.queue[next];
+    state.condition = composeCondition(state.plan, state.queue, next);
+    const written = writeState(cwd, state);
+    if (!written.ok) return written;
+
+    return { ok: true, advanced: true, finished, plan: state.plan };
 }
 
 // Bind (or rebind) the armed goal to a session id, recording which session
@@ -183,7 +327,14 @@ function armGoal(cwd, planArg) {
 // resurrected by this write, recoverable by clearing again. Enforcement never
 // depends on this write succeeding: a failed bind still leashes the current
 // stop and is retried at the next one.
-function bindSession(cwd, sessionId) {
+//
+// transcriptPath is optional: the binding session's transcript, recorded as
+// boundTranscript so another session can read a liveness hint from its mtime.
+// It travels with the binding, so a bind that carries no usable path clears
+// any previous one rather than leaving the prior session's transcript standing
+// for the new holder. An absent or invalid path never fails the bind: leashing
+// the session is the load-bearing half, and the hint is decoration.
+function bindSession(cwd, sessionId, transcriptPath) {
     if (typeof sessionId !== 'string' || sessionId === '' || sessionId.length > 128
         || /[\x00-\x1F]/.test(sessionId)) {
         return { ok: false, reason: 'session id is invalid' };
@@ -193,15 +344,9 @@ function bindSession(cwd, sessionId) {
         return { ok: false, reason: 'no goal is armed' };
     }
     state.boundSession = sessionId;
-    const gp = goalPath(cwd);
-    try {
-        fs.mkdirSync(path.dirname(gp), { recursive: true });
-        const tmp = gp + '.tmp.' + process.pid;
-        fs.writeFileSync(tmp, JSON.stringify(state, null, 2) + '\n', 'utf8');
-        fs.renameSync(tmp, gp);
-    } catch (err) {
-        return { ok: false, reason: 'could not write goal state: ' + (err && err.message ? err.message : String(err)) };
-    }
+    state.boundTranscript = validTranscript(transcriptPath) ? transcriptPath : null;
+    const written = writeState(cwd, state);
+    if (!written.ok) return written;
     return { ok: true };
 }
 
@@ -370,4 +515,4 @@ function emitGoalEvent(details) {
     } catch { /* the event stream is best-effort; a failed emit changes nothing */ }
 }
 
-module.exports = { goalPath, readGoal, armGoal, bindSession, clearGoal, composeCondition, planHead, emitGoalEvent, normalizePlanArg };
+module.exports = { goalPath, readGoal, armGoal, advanceGoal, bindSession, clearGoal, composeCondition, planHead, emitGoalEvent, normalizePlanArg };

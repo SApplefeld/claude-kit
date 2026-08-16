@@ -25,6 +25,7 @@ const {
     goalPath,
     readGoal,
     armGoal,
+    advanceGoal,
     bindSession,
     clearGoal,
     composeCondition,
@@ -86,9 +87,14 @@ test('armGoal success writes goal-state.json with the exact schema', () => {
 
         const state = readGoal(repo);
         assert.ok(state, 'goal state should be readable after arming');
-        assert.deepStrictEqual(Object.keys(state).sort(), ['armedAt', 'boundSession', 'condition', 'plan']);
+        assert.deepStrictEqual(Object.keys(state).sort(),
+            ['armedAt', 'boundSession', 'boundTranscript', 'condition', 'history', 'plan', 'queue', 'queueIndex']);
         assert.strictEqual(state.plan, 'docs/plans/foo.md');
         assert.strictEqual(state.boundSession, null, 'a freshly armed goal is unbound');
+        assert.strictEqual(state.boundTranscript, null, 'the transcript is recorded at claim time, not at arm');
+        assert.deepStrictEqual(state.queue, ['docs/plans/foo.md'], 'one plan is a queue of one');
+        assert.strictEqual(state.queueIndex, 0);
+        assert.deepStrictEqual(state.history, []);
         assert.ok(!state.plan.includes('\\'), 'plan path must be forward-slash');
         // The stored condition is whatever composeCondition produces, so the
         // clause text is pinned in one place (its own test) rather than twice.
@@ -448,6 +454,393 @@ test('CLI status reports the binding: unbound after arm, bound after bindSession
         res = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
         assert.strictEqual(res.status, 0);
         assert.match(res.stdout, /bound to session sess-42/);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+// A goal-state file in the pre-queue shape: plan, condition, armedAt, and
+// boundSession only. Every reader goes through readGoal's normalizer, so this
+// fixture is how the suite proves a state file written before the queue
+// existed still reads and advances correctly.
+function writeLegacyState(repo, planRel, boundSession) {
+    fs.mkdirSync(path.dirname(goalPath(repo)), { recursive: true });
+    fs.writeFileSync(goalPath(repo), JSON.stringify({
+        plan: planRel,
+        condition: composeCondition(planRel),
+        armedAt: new Date().toISOString(),
+        boundSession: boundSession === undefined ? null : boundSession
+    }, null, 2) + '\n', 'utf8');
+}
+
+test('armGoal arms an ordered queue from several plans, with the first as the current plan', () => {
+    const repo = makeRepo();
+    try {
+        for (const name of ['a', 'b', 'c']) {
+            writePlan(repo, 'docs/plans/' + name + '.md', 'Status: In Progress\n');
+        }
+        const result = armGoal(repo, ['docs/plans/a.md', 'docs/plans/b.md', 'docs/plans/c.md']);
+        assert.strictEqual(result.ok, true);
+        assert.strictEqual(result.plan, 'docs/plans/a.md', 'the first plan is the current one');
+        assert.deepStrictEqual(result.queue, ['docs/plans/a.md', 'docs/plans/b.md', 'docs/plans/c.md']);
+
+        const state = readGoal(repo);
+        // plan and boundSession keep their pre-queue meanings (current plan,
+        // leash holder): the compaction gate and the stop-failure watcher read
+        // exactly that pair and must keep working against a queued state.
+        assert.strictEqual(state.plan, 'docs/plans/a.md');
+        assert.strictEqual(state.boundSession, null);
+        assert.deepStrictEqual(state.queue, ['docs/plans/a.md', 'docs/plans/b.md', 'docs/plans/c.md']);
+        assert.strictEqual(state.queueIndex, 0);
+        assert.deepStrictEqual(state.history, []);
+        assert.strictEqual(state.condition, composeCondition('docs/plans/a.md', state.queue, 0));
+        assert.match(state.condition, /docs\/plans\/b\.md, docs\/plans\/c\.md/, 'the condition names what is still to come');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('a one-plan arm and a legacy state read back identically through the normalizer', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/solo.md', 'Status: In Progress\n');
+        assert.strictEqual(armGoal(repo, 'docs/plans/solo.md').ok, true);
+        const armed = readGoal(repo);
+
+        // The pre-queue shape carries none of the new fields; the normalizer
+        // supplies them, so a legacy file is a queue of one and every reader
+        // downstream sees the same object an arm would have produced.
+        writeLegacyState(repo, 'docs/plans/solo.md');
+        const legacy = readGoal(repo);
+        for (const key of ['plan', 'boundSession', 'boundTranscript', 'queue', 'queueIndex', 'history', 'condition']) {
+            assert.deepStrictEqual(legacy[key], armed[key], key + ' reads identically');
+        }
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('readGoal normalizes a queue that disagrees with plan back to a queue of one', () => {
+    const repo = makeRepo();
+    try {
+        // A hand-edited or half-written state file whose queue does not contain
+        // the current plan at queueIndex. plan is the authority on what is being
+        // worked, so the queue is discarded rather than believed: believing it
+        // would advance the leash onto a plan nobody armed.
+        fs.mkdirSync(path.dirname(goalPath(repo)), { recursive: true });
+        fs.writeFileSync(goalPath(repo), JSON.stringify({
+            plan: 'docs/plans/a.md',
+            queue: ['docs/plans/x.md', 'docs/plans/y.md'],
+            queueIndex: 1,
+            history: 'not an array',
+            boundTranscript: 'bad\npath'
+        }) + '\n', 'utf8');
+        const state = readGoal(repo);
+        assert.deepStrictEqual(state.queue, ['docs/plans/a.md']);
+        assert.strictEqual(state.queueIndex, 0);
+        assert.deepStrictEqual(state.history, []);
+        assert.strictEqual(state.boundTranscript, null, 'a transcript path with a control character is dropped at read');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('armGoal refuses the whole queue when any plan fails, naming the offender and writing nothing', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/good.md', 'Status: In Progress\n');
+        writePlan(repo, 'docs/plans/done.md', 'Status: Complete\n');
+
+        // A partial queue is the silent-failure shape: the operator would think
+        // the sequence was armed and lose the tail. Every refusal names the
+        // offending path and leaves no state file at all.
+        const cases = [
+            { args: ['docs/plans/good.md', 'docs/plans/missing.md'], reason: /not found: docs\/plans\/missing\.md/ },
+            { args: ['docs/plans/good.md', 'docs/plans/done.md'], reason: /already Complete: docs\/plans\/done\.md/ },
+            { args: ['docs/plans/good.md', '../outside.md'], reason: /outside the repo: \.\.\/outside\.md/ },
+            { args: ['docs/plans/good.md', 'docs/plans/evil\nInjected.md'], reason: /outside the repo: docs\/plans\/evilInjected\.md/ },
+            { args: ['docs/plans/good.md', 'docs/plans/good.md'], reason: /twice in the queue: docs\/plans\/good\.md/ },
+            { args: [], reason: /no plan path given/ }
+        ];
+        for (const c of cases) {
+            const result = armGoal(repo, c.args);
+            assert.strictEqual(result.ok, false, JSON.stringify(c.args) + ' must be refused');
+            assert.match(result.reason, c.reason);
+            assert.ok(!fs.existsSync(goalPath(repo)), 'nothing is written for ' + JSON.stringify(c.args));
+        }
+
+        // The other direction: the same first plan in a queue whose every entry
+        // is valid does arm, so the refusals above are the check working, not
+        // the whole path being broken.
+        writePlan(repo, 'docs/plans/second.md', 'Status: In Progress\n');
+        assert.strictEqual(armGoal(repo, ['docs/plans/good.md', 'docs/plans/second.md']).ok, true);
+        assert.deepStrictEqual(readGoal(repo).queue, ['docs/plans/good.md', 'docs/plans/second.md']);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('armGoal refusing a queue leaves an existing armed goal untouched', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
+        writePlan(repo, 'docs/plans/b.md', 'Status: In Progress\n');
+        assert.strictEqual(armGoal(repo, 'docs/plans/a.md').ok, true);
+        const before = fs.readFileSync(goalPath(repo), 'utf8');
+
+        assert.strictEqual(armGoal(repo, ['docs/plans/b.md', 'docs/plans/nope.md']).ok, false);
+        assert.strictEqual(fs.readFileSync(goalPath(repo), 'utf8'), before,
+            'a refused re-arm must not disturb the goal already enforcing');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('advanceGoal moves to the next plan, records the outcome, and preserves the binding', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
+        writePlan(repo, 'docs/plans/b.md', 'Status: In Progress\n');
+        assert.strictEqual(armGoal(repo, ['docs/plans/a.md', 'docs/plans/b.md']).ok, true);
+        assert.strictEqual(bindSession(repo, 'sess-1', '/tmp/transcript.jsonl').ok, true);
+        const armedAt = readGoal(repo).armedAt;
+
+        const result = advanceGoal(repo, { outcome: 'complete' });
+        assert.strictEqual(result.ok, true);
+        assert.strictEqual(result.advanced, true);
+        assert.strictEqual(result.finished, 'docs/plans/a.md');
+        assert.strictEqual(result.plan, 'docs/plans/b.md');
+
+        const state = readGoal(repo);
+        assert.strictEqual(state.plan, 'docs/plans/b.md', 'plan is the new current plan');
+        assert.strictEqual(state.queueIndex, 1);
+        assert.deepStrictEqual(state.queue, ['docs/plans/a.md', 'docs/plans/b.md']);
+        assert.strictEqual(state.condition, composeCondition('docs/plans/b.md', state.queue, 1),
+            'the condition is recomposed for the new current plan');
+        // One binding rides the whole queue: the session that claimed the arming
+        // stays leashed across every plan without re-arming.
+        assert.strictEqual(state.boundSession, 'sess-1');
+        assert.strictEqual(state.boundTranscript, '/tmp/transcript.jsonl');
+        assert.strictEqual(state.armedAt, armedAt, 'the arming time is the queue\'s, not the plan\'s');
+        assert.strictEqual(state.history.length, 1);
+        assert.strictEqual(state.history[0].plan, 'docs/plans/a.md');
+        assert.strictEqual(state.history[0].outcome, 'complete');
+        assert.ok(!Number.isNaN(Date.parse(state.history[0].at)));
+        assert.ok(!('note' in state.history[0]), 'no note is recorded when none was given');
+        assert.ok(!fs.existsSync(goalPath(repo) + '.tmp.' + process.pid), 'the advance is one atomic rewrite');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('advanceGoal records a blocked outcome with its sanitized note', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
+        writePlan(repo, 'docs/plans/b.md', 'Status: In Progress\n');
+        armGoal(repo, ['docs/plans/a.md', 'docs/plans/b.md']);
+        // The note originates in transcript text, so it is normalized to short
+        // printable ASCII before it reaches a file the hooks surface into the
+        // model's context.
+        const result = advanceGoal(repo, { outcome: 'blocked', note: 'need a decision\n' + 'x'.repeat(200) });
+        assert.strictEqual(result.advanced, true);
+        const entry = readGoal(repo).history[0];
+        assert.strictEqual(entry.outcome, 'blocked');
+        assert.strictEqual(entry.note, 'need a decision' + 'x'.repeat(105));
+        assert.strictEqual(entry.note.length, 120);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('advanceGoal on the last plan reports no advance and writes nothing', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
+        writePlan(repo, 'docs/plans/b.md', 'Status: In Progress\n');
+        armGoal(repo, ['docs/plans/a.md', 'docs/plans/b.md']);
+        advanceGoal(repo, { outcome: 'complete' });
+        const before = fs.readFileSync(goalPath(repo), 'utf8');
+
+        const result = advanceGoal(repo, { outcome: 'complete' });
+        assert.strictEqual(result.ok, true);
+        assert.strictEqual(result.advanced, false, 'the last plan has nowhere to advance to');
+        assert.strictEqual(result.finished, 'docs/plans/b.md');
+        assert.strictEqual(fs.readFileSync(goalPath(repo), 'utf8'), before,
+            'the caller releases the goal; the advance leaves the state as it was');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('advanceGoal on a legacy single-plan state reports no advance without touching the file', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/solo.md', 'Status: In Progress\n');
+        writeLegacyState(repo, 'docs/plans/solo.md', 'sess-1');
+        const before = fs.readFileSync(goalPath(repo), 'utf8');
+
+        const result = advanceGoal(repo, { outcome: 'complete' });
+        assert.strictEqual(result.ok, true);
+        assert.strictEqual(result.advanced, false, 'a pre-queue state is a queue of one and releases as it always did');
+        assert.strictEqual(result.finished, 'docs/plans/solo.md');
+        assert.strictEqual(fs.readFileSync(goalPath(repo), 'utf8'), before);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('advanceGoal refuses an unusable outcome, an unarmed repo, and a failed write', () => {
+    const repo = makeRepo();
+    try {
+        assert.strictEqual(advanceGoal(repo, { outcome: 'complete' }).ok, false, 'nothing is armed');
+        assert.ok(!fs.existsSync(goalPath(repo)));
+
+        writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
+        writePlan(repo, 'docs/plans/b.md', 'Status: In Progress\n');
+        armGoal(repo, ['docs/plans/a.md', 'docs/plans/b.md']);
+        assert.strictEqual(advanceGoal(repo, { outcome: 'finished' }).ok, false, 'an unknown outcome is refused');
+        assert.strictEqual(advanceGoal(repo).ok, false, 'a missing outcome is refused');
+        assert.strictEqual(readGoal(repo).plan, 'docs/plans/a.md', 'a refused advance leaves the leash where it was');
+
+        // A directory occupying the deterministic in-process tmp path makes the
+        // atomic write fail. The hook re-runs the same terminal clause at its
+        // next stop, so a failed advance must report failure rather than pass
+        // for a release.
+        fs.mkdirSync(goalPath(repo) + '.tmp.' + process.pid, { recursive: true });
+        const result = advanceGoal(repo, { outcome: 'complete' });
+        assert.strictEqual(result.ok, false);
+        assert.ok(result.reason.includes('could not write'));
+        assert.strictEqual(readGoal(repo).plan, 'docs/plans/a.md', 'the leash stays on the finished plan for the retry');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('bindSession records a usable transcript path and drops an unusable one without failing the bind', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
+        armGoal(repo, 'docs/plans/foo.md');
+
+        assert.strictEqual(bindSession(repo, 'sess-1', '/home/u/.claude/projects/p/t.jsonl').ok, true);
+        assert.strictEqual(readGoal(repo).boundTranscript, '/home/u/.claude/projects/p/t.jsonl');
+
+        // Binding the session is the load-bearing half: an absent, oversized, or
+        // control-character-carrying transcript path never costs the leash. The
+        // path travels with the binding, so it is cleared rather than left
+        // pointing at the previous holder's transcript.
+        for (const bad of [undefined, '', 'x'.repeat(513), '/tmp/a\nInjected.jsonl', 42]) {
+            assert.strictEqual(bindSession(repo, 'sess-2', bad).ok, true, JSON.stringify(bad) + ' must not fail the bind');
+            const state = readGoal(repo);
+            assert.strictEqual(state.boundSession, 'sess-2');
+            assert.strictEqual(state.boundTranscript, null);
+        }
+        assert.strictEqual(bindSession(repo, 'sess-3', 'x'.repeat(512)).ok, true, 'exactly the cap is accepted');
+        assert.strictEqual(readGoal(repo).boundTranscript, 'x'.repeat(512));
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('composeCondition adds the queue context only while plans remain', () => {
+    const queue = ['docs/plans/a.md', 'docs/plans/b.md', 'docs/plans/c.md'];
+    const first = composeCondition('docs/plans/a.md', queue, 0);
+    assert.ok(first.startsWith(composeCondition('docs/plans/a.md')), 'the solo text is the stem');
+    assert.strictEqual(
+        first.slice(composeCondition('docs/plans/a.md').length),
+        ' This plan is 1 of 3 in an armed queue; still to come after it: '
+        + 'docs/plans/b.md, docs/plans/c.md. Each plan runs to Complete or a recorded '
+        + "'BLOCKED:' before the next begins, and the leash advances to the next "
+        + 'plan on its own: no re-arming, and the run continues in this session.'
+    );
+    assert.match(composeCondition('docs/plans/b.md', queue, 1), /2 of 3.*docs\/plans\/c\.md/);
+    // The last plan of a queue has nothing after it, so its condition is exactly
+    // a solo arming's: what it promises is what the hook then does (release).
+    assert.strictEqual(composeCondition('docs/plans/c.md', queue, 2), composeCondition('docs/plans/c.md'));
+});
+
+test('CLI arm accepts several plan paths and names the queue', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
+        writePlan(repo, 'docs/plans/b.md', 'Status: In Progress\n');
+
+        const res = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md', 'docs/plans/b.md'],
+            { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /armed for docs\/plans\/a\.md \(1 of 2; then docs\/plans\/b\.md\)/);
+        assert.deepStrictEqual(readGoal(repo).queue, ['docs/plans/a.md', 'docs/plans/b.md']);
+
+        // One bad path refuses the whole arm at the CLI too, naming the offender
+        // on stderr with a non-zero exit.
+        const bad = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md', 'docs/plans/gone.md'],
+            { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(bad.status, 1);
+        assert.match(bad.stderr, /not found: docs\/plans\/gone\.md/);
+
+        const none = spawnSync(process.execPath, [CLI, 'arm'], { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(none.status, 1);
+        assert.match(none.stderr, /usage: kit-goal\.js arm <planPath>\.\.\./);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('CLI status renders the queue, the per-plan heads, the history, and the liveness hint', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
+        writePlan(repo, 'docs/plans/b.md', 'Status: Approved\n');
+        armGoal(repo, ['docs/plans/a.md', 'docs/plans/b.md']);
+
+        // Unbound, nothing finished yet: the current plan is marked and both
+        // plans carry their own Status head.
+        let res = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /armed for docs\/plans\/a\.md/);
+        assert.match(res.stdout, /unbound/);
+        assert.match(res.stdout, /queue: plan 1 of 2/);
+        assert.match(res.stdout, /> docs\/plans\/a\.md \[in progress\]/);
+        assert.match(res.stdout, /docs\/plans\/b\.md \[unknown\]/);
+        assert.doesNotMatch(res.stdout, /finished:/, 'nothing has finished yet');
+
+        // Bound, one plan finished: the binding names the session, the liveness
+        // hint comes from the bound transcript's mtime, and the recorded outcome
+        // is reported.
+        const transcript = path.join(repo, 'transcript.jsonl');
+        fs.writeFileSync(transcript, '{}\n', 'utf8');
+        bindSession(repo, 'sess-42', transcript);
+        advanceGoal(repo, { outcome: 'complete' });
+        res = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /bound to session sess-42, last active under a minute ago/);
+        assert.match(res.stdout, /queue: plan 2 of 2/);
+        assert.match(res.stdout, /> docs\/plans\/b\.md \[unknown\]/);
+        assert.match(res.stdout, /finished:\n {2}docs\/plans\/a\.md complete at /);
+
+        // An unreadable transcript path costs the hint, not the report.
+        fs.rmSync(transcript);
+        res = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /bound to session sess-42\)/);
+        assert.doesNotMatch(res.stdout, /last active/);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('CLI status renders a legacy single-plan state as a queue of one', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/solo.md', 'Status: In Progress\n');
+        writeLegacyState(repo, 'docs/plans/solo.md', 'sess-9');
+        const res = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /armed for docs\/plans\/solo\.md/);
+        assert.match(res.stdout, /bound to session sess-9/);
+        assert.match(res.stdout, /queue: plan 1 of 1/);
+        assert.doesNotMatch(res.stdout, /last active/, 'a legacy state records no transcript, so there is no hint');
     } finally {
         rmRepo(repo);
     }
