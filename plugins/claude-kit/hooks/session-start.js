@@ -17,7 +17,8 @@
 
 const fs = require('fs');
 const path = require('path');
-const { readGoal } = require('./kit-goal-lib.js');
+const { readGoal, lastActivePhrase } = require('./kit-goal-lib.js');
+const { sameSessionId } = require('./kit-compact-lib.js');
 
 // Read Hook Input from stdin.
 function readStdin() {
@@ -158,26 +159,6 @@ function safeText(value, cap) {
     return String(value).replace(/[^\x20-\x7E]/g, '').slice(0, cap);
 }
 
-// A coarse "last active" phrase from a transcript file's mtime, or null when
-// the path is absent, unreadable, or not a usable string. Only a number and a
-// unit ever leave this function: the transcript path is machine-local (it
-// typically embeds an OS username) and is never surfaced.
-function livenessPhrase(transcriptPath) {
-    if (typeof transcriptPath !== 'string' || transcriptPath === '') return null;
-    let mtimeMs;
-    try {
-        mtimeMs = fs.statSync(transcriptPath).mtimeMs;
-    } catch {
-        return null;
-    }
-    if (!Number.isFinite(mtimeMs)) return null;
-    const minutes = Math.max(0, Math.floor((Date.now() - mtimeMs) / 60000));
-    if (minutes < 1) return 'less than a minute ago';
-    if (minutes < 60) return `about ${minutes} minute${minutes === 1 ? '' : 's'} ago`;
-    const hours = Math.floor(minutes / 60);
-    return `about ${hours} hour${hours === 1 ? '' : 's'} ago`;
-}
-
 // The queue-context sentence for an armed sequence: which position the current
 // plan holds and what remains after it. Empty for a solo arming and for the
 // last plan of a queue, where there is nothing left to name. Plan paths pass
@@ -211,14 +192,40 @@ function composeGoalBlock(goal, sessionId) {
     const bound = typeof goal.boundSession === 'string' && goal.boundSession !== '' ? goal.boundSession : null;
     const sid = typeof sessionId === 'string' && sessionId !== '' ? sessionId : null;
 
-    if (bound && sid && bound === sid) {
-        return `A kit goal is armed for ${plan} in this project, and the leash is bound to THIS session.`
-            + ` A Stop hook holds this session to completion, allowing a stop only on plan Complete or a`
-            + ` leading 'BLOCKED:'.${tail} ${skillPointer} ${provenance}`;
+    // Session identity goes through sameSessionId, the one comparison rule
+    // the Stop hook and the PreCompact gate share (harness session UUIDs
+    // surface in mixed case): a private compare here would let a case
+    // difference tell the leash holder the plan is another session's while
+    // its stops keep being blocked.
+    // The stated rule must match what the Stop hook enforces for THIS state:
+    // with plans remaining, a terminal state advances the leash and keeps
+    // holding; on the last (or only) plan, a terminal state releases. Composed
+    // once and shared by every branch that states it, so the three cannot
+    // drift into describing different leashes. The subject varies because one
+    // branch is talking to the leash holder and the others are talking to a
+    // session that may or may not be it.
+    // Returned unterminated and lower-case so each caller owns its own
+    // punctuation: one branch opens a sentence with it, the others splice it
+    // after a comma and continue past it.
+    const holdRule = (subject) => (tail !== ''
+        ? `a Stop hook holds ${subject} through the armed queue: a terminal state (plan Complete or a`
+            + ` leading 'BLOCKED:') on any plan but the last advances the leash to the next plan and keeps`
+            + ` holding, and only the last plan's terminal state releases the stop`
+        : `a Stop hook holds ${subject} to completion, allowing a stop only on plan Complete or a`
+            + ` leading 'BLOCKED:'`);
+
+    if (bound && sid && sameSessionId(bound, sid)) {
+        return `A kit goal is armed for ${plan} in this project, and the leash is bound to THIS session. A`
+            + holdRule('this session').slice(1) + `.${tail} ${skillPointer} Reminder, not a blocker.`
+            + ` ${provenance}`;
     }
 
     if (bound && sid) {
-        const phrase = livenessPhrase(goal.boundTranscript);
+        // The liveness phrase is single-sourced in kit-goal-lib
+        // (lastActivePhrase), shared with the CLI's status report, so the two
+        // surfaces cannot answer the same mtime differently; only a number
+        // and a unit reach the notice, never the machine-local path.
+        const phrase = lastActivePhrase(goal.boundTranscript);
         const liveness = phrase
             ? ` As a hint and not a verdict, that session was last active ${phrase}.`
             : '';
@@ -231,15 +238,13 @@ function composeGoalBlock(goal, sessionId) {
     }
 
     if (bound) {
-        return `A kit goal is armed for ${plan} in this project. If you are working that plan, a Stop hook`
-            + ` holds the session to completion, allowing a stop only on plan Complete or a leading`
-            + ` 'BLOCKED:'.${tail} ${skillPointer} Reminder, not a blocker. ${provenance}`;
+        return `A kit goal is armed for ${plan} in this project. If you are working that plan, `
+            + holdRule('the session') + `.${tail} ${skillPointer} Reminder, not a blocker. ${provenance}`;
     }
 
     return `A kit goal is armed for ${plan} in this project and no session holds its leash yet.${tail}`
-        + ` If you are working that plan, a Stop hook holds the session to completion, allowing a stop only`
-        + ` on plan Complete or a leading 'BLOCKED:'; the session that armed it claims the leash at its`
-        + ` first stop, and that one binding then rides the whole queue. ${skillPointer}`
+        + ` If you are working that plan, ` + holdRule('the session') + `; the session that armed it claims`
+        + ` the leash at its first stop, and that one binding then rides the whole queue. ${skillPointer}`
         + ` Reminder, not a blocker. ${provenance}`;
 }
 

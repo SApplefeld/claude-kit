@@ -32,14 +32,19 @@ function goalPath(cwd) {
 const TRANSCRIPT_MAX = 512;
 
 // Whether a value is storable as boundTranscript: a non-empty string, within
-// the cap, free of control characters. The path is machine-local and lives in
-// a gitignored file; it is only ever fs.stat'ed, never executed, and never
-// surfaced raw, so the check is a sanitize-before-store guard (a newline would
-// smuggle text into a file the hooks surface into the model's context) rather
-// than a claim the path is safe to run.
+// the cap, free of control characters, and not network-shaped (two leading
+// separators: a UNC path or a //server form). The path is machine-local and
+// lives in a gitignored file; it is only ever fs.stat'ed, never executed, and
+// never surfaced raw. The control-character check is a sanitize-before-store
+// guard (a newline would smuggle text into a file the hooks surface into the
+// model's context); the network-path check protects the stat itself, which
+// runs synchronously at every SessionStart and would block for the SMB
+// timeout on an unreachable share, a shape the harness never produces for a
+// transcript (transcripts live under the local user profile).
 function validTranscript(value) {
     return typeof value === 'string' && value !== '' && value.length <= TRANSCRIPT_MAX
-        && !/[\x00-\x1F]/.test(value);
+        && !/[\x00-\x1F]/.test(value)
+        && !/^[\\/]{2}/.test(value);
 }
 
 // Normalize a parsed goal state to the current shape, so every reader can rely
@@ -81,16 +86,23 @@ function readGoal(cwd) {
 
 // Write the goal state atomically (tmp file + rename). The tmp name carries
 // this process's pid so two writers (e.g. a CLI arm racing a Stop hook's bind)
-// never collide on the same tmp path. Returns { ok } or { ok:false, reason }:
-// a filesystem failure is reported, never thrown, keeping the whole exported
-// surface non-throwing.
+// never collide on the same tmp path, and a failed rename unlinks its tmp so
+// orphans do not accumulate in .kit/, matching writeCheckpoint in
+// kit-compact-lib.js. Returns { ok } or { ok:false, reason }: a filesystem
+// failure is reported, never thrown, keeping the whole exported surface
+// non-throwing.
 function writeState(cwd, state) {
     const gp = goalPath(cwd);
     try {
         fs.mkdirSync(path.dirname(gp), { recursive: true });
         const tmp = gp + '.tmp.' + process.pid;
-        fs.writeFileSync(tmp, JSON.stringify(state, null, 2) + '\n', 'utf8');
-        fs.renameSync(tmp, gp);
+        try {
+            fs.writeFileSync(tmp, JSON.stringify(state, null, 2) + '\n', 'utf8');
+            fs.renameSync(tmp, gp);
+        } catch (err) {
+            try { fs.unlinkSync(tmp); } catch { /* nothing to remove, or it is the unwritable path itself */ }
+            throw err;
+        }
     } catch (err) {
         return { ok: false, reason: 'could not write goal state: ' + (err && err.message ? err.message : String(err)) };
     }
@@ -219,14 +231,21 @@ function armGoal(cwd, planArgs) {
     }
 
     const queue = [];
+    const seen = new Set();
     for (const arg of args) {
         const rel = normalizePlanArg(cwd, arg);
         if (rel === null) {
             return { ok: false, reason: 'plan path is invalid or outside the repo: ' + safeForReason(arg) };
         }
-        if (queue.includes(rel)) {
+        // The dedupe key is case-folded on Windows, where the filesystem is
+        // case-insensitive and two casings of one path name one file: a queue
+        // holding both would advance past the plan once and stall on the
+        // repeat, the exact shape this refusal exists to stop.
+        const dupKey = process.platform === 'win32' ? rel.toLowerCase() : rel;
+        if (seen.has(dupKey)) {
             return { ok: false, reason: 'plan appears twice in the queue: ' + rel };
         }
+        seen.add(dupKey);
         const head = planHead(cwd, rel);
         if (!head.exists) {
             return { ok: false, reason: 'plan not found: ' + rel };
@@ -273,13 +292,22 @@ function armGoal(cwd, planArgs) {
 //
 // outcome is 'complete', 'archived', or 'blocked'; note is the optional
 // recorded blocker, sanitized and capped here because it originates in
-// transcript text.
+// transcript text. expectedPlan is an optional compare-and-swap guard: the
+// caller decided to advance from a snapshot, another writer (a CLI re-arm or
+// clear) can land between that snapshot and this function's own re-read, and
+// a state whose current plan is no longer the expected one is refused rather
+// than advanced over. leadKey is the optional identity of the transcript
+// entry whose 'BLOCKED:' lead drove this advance; a usable value (printable
+// ASCII, capped) is stored as blockedAdvanceKey so the Stop hook can refuse
+// consuming the same entry twice, and an unusable one is dropped rather than
+// stored, the same bar every stored field answers to.
 //
 // Returns { ok:true, advanced:true, finished, plan } when the leash moved,
 // { ok:true, advanced:false, finished } on the last plan of the queue (nothing
 // is written: the caller releases the goal, and the session's own closing
 // summary is the operator-facing record), and { ok:false, reason } when no
-// goal is armed, the outcome is unusable, or the write fails. Never throws.
+// goal is armed, the outcome is unusable, the expected plan no longer
+// matches, or the write fails. Never throws.
 function advanceGoal(cwd, outcomeEntry) {
     const entry = outcomeEntry || {};
     if (!['complete', 'archived', 'blocked'].includes(entry.outcome)) {
@@ -288,6 +316,12 @@ function advanceGoal(cwd, outcomeEntry) {
     const state = readGoal(cwd);
     if (!state || !state.plan) {
         return { ok: false, reason: 'no goal is armed' };
+    }
+    if (typeof entry.expectedPlan === 'string' && entry.expectedPlan !== state.plan) {
+        return {
+            ok: false,
+            reason: 'goal state changed: the current plan is no longer ' + safeForReason(entry.expectedPlan)
+        };
     }
 
     const finished = state.plan;
@@ -302,6 +336,10 @@ function advanceGoal(cwd, outcomeEntry) {
     state.queueIndex = next;
     state.plan = state.queue[next];
     state.condition = composeCondition(state.plan, state.queue, next);
+    if (typeof entry.leadKey === 'string' && entry.leadKey !== '' && entry.leadKey.length <= 128
+        && !/[^\x20-\x7E]/.test(entry.leadKey)) {
+        state.blockedAdvanceKey = entry.leadKey;
+    }
     const written = writeState(cwd, state);
     if (!written.ok) return written;
 
@@ -370,6 +408,33 @@ function clearGoal(cwd) {
             reason: 'could not clear goal state: ' + (err && err.message ? err.message : String(err))
         };
     }
+}
+
+// How long ago a transcript file was last written, as a coarse phrase
+// ('less than a minute ago', 'about N minutes ago', 'about N hours ago'), or
+// null when the path is absent, invalid per validTranscript, or unreadable.
+// The single source of the liveness hint that the CLI's status report and the
+// SessionStart armed-goal notice both render, so two surfaces cannot answer
+// the same mtime differently. Only a number and a unit ever leave this
+// function: the transcript path is machine-local (it typically embeds an OS
+// username) and is never surfaced. Math.floor and the 60-minute crossover
+// make the phrase err toward reading recent: the one decision this hint feeds
+// is whether a bound sibling run is dead enough to re-arm over, and
+// overstating liveness errs away from stealing a live run's leash.
+function lastActivePhrase(transcriptPath) {
+    if (!validTranscript(transcriptPath)) return null;
+    let mtimeMs;
+    try {
+        mtimeMs = fs.statSync(transcriptPath).mtimeMs;
+    } catch {
+        return null;
+    }
+    if (!Number.isFinite(mtimeMs)) return null;
+    const minutes = Math.max(0, Math.floor((Date.now() - mtimeMs) / 60000));
+    if (minutes < 1) return 'less than a minute ago';
+    if (minutes < 60) return 'about ' + minutes + ' minute' + (minutes === 1 ? '' : 's') + ' ago';
+    const hours = Math.floor(minutes / 60);
+    return 'about ' + hours + ' hour' + (hours === 1 ? '' : 's') + ' ago';
 }
 
 // Normalize one event field to printable ASCII, capped at max characters; an
@@ -515,4 +580,4 @@ function emitGoalEvent(details) {
     } catch { /* the event stream is best-effort; a failed emit changes nothing */ }
 }
 
-module.exports = { goalPath, readGoal, armGoal, advanceGoal, bindSession, clearGoal, composeCondition, planHead, emitGoalEvent, normalizePlanArg };
+module.exports = { goalPath, readGoal, armGoal, advanceGoal, bindSession, clearGoal, composeCondition, planHead, emitGoalEvent, normalizePlanArg, lastActivePhrase };

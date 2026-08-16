@@ -79,7 +79,16 @@ test('bound to this session: the notice says the leash is this session\'s and na
         const text = context(r);
         assert.match(text, /A kit goal is armed for docs\/plans\/first_spec_v1\.md in this project/);
         assert.match(text, /the leash is bound to THIS session/);
-        assert.match(text, /allowing a stop only on plan Complete or a leading 'BLOCKED:'/);
+        // The stated rule must be the queue rule the Stop hook actually
+        // enforces: mid-queue, Complete and 'BLOCKED:' advance and HOLD, and
+        // only the last plan's terminal state releases. The pre-queue wording
+        // ("allowing a stop only on plan Complete or a leading 'BLOCKED:'")
+        // would tell the bound session, the one audience that must not
+        // conclude it, that Complete means free.
+        assert.match(text, /a terminal state \(plan Complete or a leading 'BLOCKED:'\) on any plan but the last advances the leash/);
+        assert.match(text, /only the last plan's terminal state releases the stop/);
+        assert.doesNotMatch(text, /allowing a stop only on plan Complete/);
+        assert.match(text, /Reminder, not a blocker\./);
         assert.doesNotMatch(text, /ANOTHER session/);
         assert.match(text, /It is plan 1 of 2 in the armed queue; remaining after it: docs\/plans\/second_spec_v1\.md\./);
     } finally { rmDir(dir); }
@@ -101,6 +110,22 @@ test('bound to another session: the bystander notice names the not-yours instruc
     } finally { rmDir(dir); }
 });
 
+test('a session id differing only in case still renders the bound-to-THIS-session framing', () => {
+    // Harness session UUIDs surface in mixed case; the Stop hook and the
+    // PreCompact gate compare through sameSessionId, and this notice must
+    // share that rule or a case difference tells the leash holder the plan is
+    // another session's while its stops keep being blocked.
+    const dir = makeRepo();
+    try {
+        writeGoal(dir, queuedState('sess-A'));
+        const r = runHook(dir, 'SESS-a');
+        assert.strictEqual(r.status, 0);
+        const text = context(r);
+        assert.match(text, /the leash is bound to THIS session/);
+        assert.doesNotMatch(text, /ANOTHER session/);
+    } finally { rmDir(dir); }
+});
+
 test('unbound: the notice keeps the claimable framing and names the first-stop claim', () => {
     const dir = makeRepo();
     try {
@@ -113,6 +138,57 @@ test('unbound: the notice keeps the claimable framing and names the first-stop c
         assert.match(text, /It is plan 1 of 2 in the armed queue/);
         assert.doesNotMatch(text, /ANOTHER session/);
         assert.doesNotMatch(text, /THIS session/);
+    } finally { rmDir(dir); }
+});
+
+// Every branch that states the hold rule must state the one the Stop hook
+// actually enforces for that state. The bound branch is covered above; these
+// two cover the branches a session sees before anyone holds the leash, where
+// stating the pre-queue release rule would tell a session that finishing the
+// current plan frees it when the hook will advance and keep holding.
+test('unbound: the hold rule states the queue behavior, not the pre-queue release rule', () => {
+    const dir = makeRepo();
+    try {
+        writeGoal(dir, queuedState(null));
+        const r = runHook(dir, 'sess-B');
+        assert.strictEqual(r.status, 0);
+        const text = context(r);
+        assert.match(text, /holds the session through the armed queue/);
+        assert.match(text, /advances the leash to the next plan and keeps holding/);
+        assert.match(text, /only the last plan's terminal state releases the stop/);
+        assert.doesNotMatch(text, /allowing a stop only on plan Complete/);
+    } finally { rmDir(dir); }
+});
+
+test('undifferentiated: the hold rule states the queue behavior, not the pre-queue release rule', () => {
+    const dir = makeRepo();
+    try {
+        // Bound, but the payload carries no session id, so the hook cannot tell
+        // this session from the holder and falls to the undifferentiated notice.
+        writeGoal(dir, queuedState('sess-A'));
+        const r = runHook(dir, undefined);
+        assert.strictEqual(r.status, 0);
+        const text = context(r);
+        assert.match(text, /holds the session through the armed queue/);
+        assert.match(text, /only the last plan's terminal state releases the stop/);
+        assert.doesNotMatch(text, /allowing a stop only on plan Complete/);
+    } finally { rmDir(dir); }
+});
+
+test('a legacy single-plan state still states the plain release rule in the unbound notice', () => {
+    const dir = makeRepo();
+    try {
+        writeGoal(dir, {
+            plan: 'docs/plans/first_spec_v1.md',
+            condition: 'x',
+            armedAt: '2026-08-16T00:00:00.000Z',
+            boundSession: null,
+        });
+        const r = runHook(dir, 'sess-B');
+        assert.strictEqual(r.status, 0);
+        const text = context(r);
+        assert.match(text, /allowing a stop only on plan Complete or a leading 'BLOCKED:'/);
+        assert.doesNotMatch(text, /armed queue/);
     } finally { rmDir(dir); }
 });
 

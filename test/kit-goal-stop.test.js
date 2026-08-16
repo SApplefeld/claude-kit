@@ -25,6 +25,10 @@ const os = require('os');
 
 const HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-goal-stop.js');
 const { armGoal, bindSession, advanceGoal } = require('../plugins/claude-kit/hooks/kit-goal-lib.js');
+// The compaction-checkpoint helpers pin the advance's checkpoint rewrite (the
+// chapter-close ritual opens a checkpoint the advance would otherwise strand
+// as wrong-plan at the plan boundary).
+const { writeCheckpoint, readCheckpoint, checkpointPath } = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
 
 // The goal-event sink for a case, always inside a temp root that case cleans up,
 // never the real ~/.claude/kit-events.jsonl that a release fired by any spawn
@@ -1612,7 +1616,15 @@ test('a failed advance write re-blocks rather than releasing, and the next stop 
         assert.strictEqual(res.status, 0, 'exit 0: a nonzero exit would mean the preload itself failed to load');
         const out = JSON.parse(res.stdout);
         assert.strictEqual(out.decision, 'block', 'a failed advance must not release the session');
-        assert.ok(out.reason.includes('the current plan is now ' + plans[1]));
+        // The reason must not assert a state change that did not land: the
+        // state file, the compaction gate, and the stop-failure watcher all
+        // still name the finished plan, so the session must not be told the
+        // current plan already moved.
+        assert.ok(out.reason.includes('could not be recorded'), 'the reason says the advance did not land');
+        assert.ok(!out.reason.includes('the leash has advanced'), 'the reason claims no advance');
+        assert.ok(!out.reason.includes('the current plan is now'), 'the reason claims no new current plan');
+        assert.ok(out.reason.includes('The plan after ' + plans[0] + ' in the armed queue is ' + plans[1]),
+            'the reason still names where the retry will land');
         const state = readState(repo);
         assert.strictEqual(state.plan, plans[0], 'the write genuinely failed, so the leash has not moved');
         assert.deepStrictEqual(state.history, []);
@@ -1630,6 +1642,253 @@ test('a failed advance write re-blocks rather than releasing, and the next stop 
     } finally {
         rmDir(repo);
         rmDir(local);
+    }
+});
+
+test('an unchanged transcript across two stops advances once: the second stop holds, emits nothing, and does not release', () => {
+    // The discriminating case for the spent-lead key. A mid-queue advance
+    // blocks the stop, which guarantees a following stop that re-reads the
+    // transcript; a stale snapshot re-surfacing the same BLOCKED entry must
+    // not advance again. Without the key, one BLOCKED turn re-read at each
+    // stop walks the whole queue, records plans as blocked that were never
+    // opened, and then releases the session; here, with two plans, the second
+    // stop would be the last plan and would ALLOW.
+    const repo = makeDir('kit-goal-stop-repo-');
+    const local = makeDir('kit-goal-stop-local-');
+    const plans = ['docs/plans/first.md', 'docs/plans/second.md'];
+    try {
+        for (const p of plans) writeFile(path.join(repo, p), 'Status: In Progress\n\nbody\n');
+        assert.strictEqual(armGoal(repo, plans).ok, true, 'test setup: the queue should arm');
+        const transcript = path.join(repo, 'transcript.jsonl');
+        writeFile(transcript, [
+            JSON.stringify({
+                type: 'user',
+                message: {
+                    role: 'user',
+                    content: '<command-name>/kit-goal</command-name>\n'
+                        + '<command-args>' + plans.join(' ') + '</command-args>'
+                }
+            }),
+            JSON.stringify({
+                type: 'assistant', uuid: 'e1a2b3c4-0001',
+                message: { role: 'assistant', content: [{ type: 'text', text: 'BLOCKED: need your call on the rollout order.' }] }
+            })
+        ].join('\n') + '\n');
+
+        const first = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-q' }, local);
+        assert.strictEqual(JSON.parse(first.stdout).decision, 'block', 'the mid-queue blocker advances and holds');
+        let state = readState(repo);
+        assert.strictEqual(state.plan, plans[1], 'stop 1 advanced the leash');
+        assert.strictEqual(state.blockedAdvanceKey, 'uuid:e1a2b3c4-0001', 'the advance records the consumed entry');
+        assert.strictEqual(readEvents(local).length, 1, 'stop 1 emitted its goal-blocked');
+
+        const second = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-q' }, local);
+        assert.notStrictEqual(second.stdout, '', 'the spent lead must not release the session');
+        const out = JSON.parse(second.stdout);
+        assert.strictEqual(out.decision, 'block');
+        assert.ok(out.reason.includes(plans[1]), 'the hold names the current plan');
+        assert.ok(!out.reason.includes('has advanced'), 'the second stop claims no advance');
+        state = readState(repo);
+        assert.strictEqual(state.plan, plans[1], 'the leash did not move again');
+        assert.strictEqual(state.history.length, 1, 'no second outcome was recorded');
+        assert.strictEqual(readEvents(local).length, 1, 'the spent lead emitted nothing');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('two genuinely different BLOCKED turns advance twice: the key is the entry uuid, not the text', () => {
+    // Identical text under two uuids is two real blockers (a session can hit
+    // the same wording twice); a text-keyed dedupe would wrongly hold the
+    // second, which is why the uuid is preferred when the entry carries one.
+    const repo = makeDir('kit-goal-stop-repo-');
+    const local = makeDir('kit-goal-stop-local-');
+    const plans = ['docs/plans/p1.md', 'docs/plans/p2.md', 'docs/plans/p3.md'];
+    const sameText = 'BLOCKED: the same decision, stated the same way.';
+    try {
+        for (const p of plans) writeFile(path.join(repo, p), 'Status: In Progress\n\nbody\n');
+        assert.strictEqual(armGoal(repo, plans).ok, true, 'test setup: the queue should arm');
+        const transcript = path.join(repo, 'transcript.jsonl');
+        writeFile(transcript, [
+            JSON.stringify({
+                type: 'user',
+                message: {
+                    role: 'user',
+                    content: '<command-name>/kit-goal</command-name>\n'
+                        + '<command-args>' + plans.join(' ') + '</command-args>'
+                }
+            }),
+            JSON.stringify({
+                type: 'assistant', uuid: 'u-0001',
+                message: { role: 'assistant', content: [{ type: 'text', text: sameText }] }
+            })
+        ].join('\n') + '\n');
+
+        const first = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-q' }, local);
+        assert.strictEqual(JSON.parse(first.stdout).decision, 'block');
+        assert.strictEqual(readState(repo).plan, plans[1], 'the first blocker advanced');
+
+        fs.appendFileSync(transcript, JSON.stringify({
+            type: 'assistant', uuid: 'u-0002',
+            message: { role: 'assistant', content: [{ type: 'text', text: sameText }] }
+        }) + '\n');
+        const second = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-q' }, local);
+        assert.strictEqual(JSON.parse(second.stdout).decision, 'block');
+        const state = readState(repo);
+        assert.strictEqual(state.plan, plans[2], 'a new entry with the same text still advances');
+        assert.strictEqual(state.history.length, 2);
+        assert.deepStrictEqual(state.history.map((h) => h.outcome), ['blocked', 'blocked']);
+        assert.strictEqual(state.blockedAdvanceKey, 'uuid:u-0002', 'the key follows the newest consumed entry');
+        assert.strictEqual(readEvents(local).length, 2, 'each real blocker emitted its own goal-blocked');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('a uuid-less transcript falls back to a text key: a repeat holds, a genuinely new blocker still releases', () => {
+    // armedQueueRepo's transcript carries no uuids, so the key is the text
+    // digest: the repeat direction must still refuse, and a different BLOCKED
+    // text must still count as new (here on the last plan, releasing as the
+    // pre-queue contract always did).
+    const { repo, plans, transcript, local } = armedQueueRepo(['BLOCKED: pick the storage engine, A or B.']);
+    try {
+        const first = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-q' }, local);
+        assert.strictEqual(JSON.parse(first.stdout).decision, 'block', 'the mid-queue blocker advances and holds');
+        let state = readState(repo);
+        assert.strictEqual(state.plan, plans[1]);
+        assert.ok(typeof state.blockedAdvanceKey === 'string' && state.blockedAdvanceKey.startsWith('text:'),
+            'a uuid-less entry keys on its text digest');
+        assert.strictEqual(readEvents(local).length, 1);
+
+        const repeat = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-q' }, local);
+        assert.strictEqual(JSON.parse(repeat.stdout).decision, 'block', 'the spent lead holds instead of releasing');
+        state = readState(repo);
+        assert.strictEqual(state.plan, plans[1], 'the leash did not move');
+        assert.strictEqual(state.history.length, 1);
+        assert.strictEqual(readEvents(local).length, 1, 'the repeat emitted nothing');
+
+        fs.appendFileSync(transcript, JSON.stringify({
+            type: 'assistant',
+            message: { role: 'assistant', content: [{ type: 'text', text: 'BLOCKED: now a different question entirely.' }] }
+        }) + '\n');
+        const third = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-q' }, local);
+        assert.strictEqual(third.stdout, '', 'a genuinely new blocker on the last plan releases as before');
+        assert.ok(fs.existsSync(path.join(repo, '.kit', 'goal-state.json')),
+            'a blocked release does not clear the goal');
+        assert.strictEqual(readEvents(local).length, 2, 'the new blocker emitted its own goal-blocked');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+// Make the spawned hook see a different goal state on its second read: a
+// preload wraps fs.readFileSync so the first goal-state read (main()'s
+// snapshot) is real and every later one (advanceGoal's re-read) returns the
+// given state, which is what the hook sees when a CLI re-arm lands inside its
+// clause retry sleep. The NODE_OPTIONS shape matches the other preloads':
+// forward-slashed, because Node reads a backslash in NODE_OPTIONS as an escape.
+function goalSwapPreload(dir, swappedState) {
+    const shim = path.join(dir, 'swap-goal-read.js');
+    writeFile(shim, [
+        "'use strict';",
+        "const fs = require('fs');",
+        'const real = fs.readFileSync;',
+        'let reads = 0;',
+        'fs.readFileSync = function (target) {',
+        "    if (String(target).endsWith('goal-state.json')) {",
+        '        reads++;',
+        '        if (reads >= 2) return ' + JSON.stringify(JSON.stringify(swappedState)) + ';',
+        '    }',
+        '    return real.apply(fs, arguments);',
+        '};'
+    ].join('\n') + '\n');
+    return '--require "' + shim.replace(/\\/g, '/') + '"';
+}
+
+test('an advance whose state was re-armed underneath it is refused: re-block, no write, no event', () => {
+    // The CLI is a writer the session binding does not exclude: a /kit-goal
+    // re-arm or clear can land between the snapshot main() decided on and
+    // advanceGoal's own re-read. The advance carries the snapshot's plan and
+    // the lib refuses on a mismatch, so the hook re-blocks and the re-armed
+    // state is left exactly as its writer intended.
+    const { repo, plans, transcript, local } = armedQueueRepo(['Done all sections.'], ['Status: Complete']);
+    try {
+        assert.strictEqual(bindSession(repo, 'sess-queue').ok, true);
+        const swapped = {
+            plan: 'docs/plans/x.md', condition: 'c', armedAt: '2026-08-16T00:00:00.000Z',
+            boundSession: 'sess-queue', boundTranscript: null,
+            queue: ['docs/plans/x.md', 'docs/plans/y.md'], queueIndex: 0, history: []
+        };
+        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-queue' }, local,
+            { NODE_OPTIONS: goalSwapPreload(local, swapped) });
+        assert.strictEqual(res.status, 0, 'exit 0: a nonzero exit would mean the preload itself failed to load');
+        const out = JSON.parse(res.stdout);
+        assert.strictEqual(out.decision, 'block', 'the refused advance re-blocks rather than releasing');
+        assert.ok(out.reason.includes('could not be recorded'), 'the reason claims no advance');
+        const state = readState(repo);
+        assert.strictEqual(state.plan, plans[0], 'the on-disk state was not advanced from a snapshot its writer never made');
+        assert.deepStrictEqual(state.history, []);
+        assert.deepStrictEqual(readEvents(local), [], 'no goal-complete is reported for an advance that did not land');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('a queue advance rewrites a matching open compaction checkpoint to the new current plan', () => {
+    // The chapter-close ritual opens a checkpoint immediately after every
+    // Chapter, the plan's final one included, and the compaction gate rejects
+    // a checkpoint whose plan differs from the goal's current plan. Without
+    // the rewrite, "close final chapter -> open checkpoint -> flip Complete
+    // -> stop" strands the just-opened checkpoint as wrong-plan at the
+    // largest boundary in the run.
+    const { repo, plans, transcript, local } = armedQueueRepo(['Closed the final chapter.'], ['Status: Complete']);
+    try {
+        assert.strictEqual(bindSession(repo, 'sess-queue').ok, true);
+        assert.strictEqual(writeCheckpoint(repo, plans[0], 'sess-queue').ok, true);
+        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-queue' }, local);
+        assert.strictEqual(JSON.parse(res.stdout).decision, 'block', 'setup: the advance held the stop');
+        assert.strictEqual(readState(repo).plan, plans[1], 'setup: the advance landed');
+        const cp = readCheckpoint(repo);
+        assert.strictEqual(cp.plan, plans[1], 'the open checkpoint follows the advance');
+        assert.strictEqual(cp.boundSession, 'sess-queue');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('the advance leaves a non-matching checkpoint alone and creates none when none is open', () => {
+    // Only a checkpoint the match rule already honors against the pre-advance
+    // goal (same plan, same bound session, fresh) follows the advance: an
+    // orphan from another session stays as it is (wrong-session, the status
+    // quo), and an absent checkpoint stays absent.
+    const orphan = armedQueueRepo(['Done all sections.'], ['Status: Complete']);
+    try {
+        assert.strictEqual(bindSession(orphan.repo, 'sess-queue').ok, true);
+        assert.strictEqual(writeCheckpoint(orphan.repo, orphan.plans[0], 'sess-other').ok, true);
+        runHook({ cwd: orphan.repo, transcript_path: orphan.transcript, session_id: 'sess-queue' }, orphan.local);
+        assert.strictEqual(readState(orphan.repo).plan, orphan.plans[1], 'setup: the advance landed');
+        const cp = readCheckpoint(orphan.repo);
+        assert.strictEqual(cp.plan, orphan.plans[0], 'an orphan checkpoint is not rewritten');
+        assert.strictEqual(cp.boundSession, 'sess-other');
+    } finally {
+        rmDir(orphan.repo);
+        rmDir(orphan.local);
+    }
+
+    const none = armedQueueRepo(['Done all sections.'], ['Status: Complete']);
+    try {
+        assert.strictEqual(bindSession(none.repo, 'sess-queue').ok, true);
+        runHook({ cwd: none.repo, transcript_path: none.transcript, session_id: 'sess-queue' }, none.local);
+        assert.strictEqual(readState(none.repo).plan, none.plans[1], 'setup: the advance landed');
+        assert.ok(!fs.existsSync(checkpointPath(none.repo)), 'no checkpoint is minted by the advance');
+    } finally {
+        rmDir(none.repo);
+        rmDir(none.local);
     }
 });
 

@@ -30,7 +30,8 @@ const {
     clearGoal,
     composeCondition,
     planHead,
-    emitGoalEvent
+    emitGoalEvent,
+    lastActivePhrase
 } = require('../plugins/claude-kit/hooks/kit-goal-lib.js');
 
 const CLI = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-goal.js');
@@ -814,7 +815,7 @@ test('CLI status renders the queue, the per-plan heads, the history, and the liv
         advanceGoal(repo, { outcome: 'complete' });
         res = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
         assert.strictEqual(res.status, 0, res.stderr);
-        assert.match(res.stdout, /bound to session sess-42, last active under a minute ago/);
+        assert.match(res.stdout, /bound to session sess-42, last active less than a minute ago/);
         assert.match(res.stdout, /queue: plan 2 of 2/);
         assert.match(res.stdout, /> docs\/plans\/b\.md \[unknown\]/);
         assert.match(res.stdout, /finished:\n {2}docs\/plans\/a\.md complete at /);
@@ -1123,6 +1124,177 @@ test('KIT_EVENTS_PATH honored only with KIT_EVENTS_PATH_ALLOW=1: both directions
         rmRepo(fakeHome);
     }
 });
+
+test('advanceGoal with expectedPlan is a compare-and-swap: a mismatch refuses without writing', () => {
+    const repo = makeRepo();
+    try {
+        for (const n of ['a', 'b', 'c']) writePlan(repo, 'docs/plans/' + n + '.md', 'Status: In Progress\n');
+        armGoal(repo, ['docs/plans/a.md', 'docs/plans/b.md', 'docs/plans/c.md']);
+        const before = fs.readFileSync(goalPath(repo), 'utf8');
+
+        // The caller decided to advance from a snapshot, and a CLI re-arm or
+        // clear can land between that snapshot and this function's own
+        // re-read: a state whose current plan is no longer the expected one
+        // is refused rather than advanced over.
+        const refused = advanceGoal(repo, { outcome: 'complete', expectedPlan: 'docs/plans/zzz.md' });
+        assert.strictEqual(refused.ok, false);
+        assert.match(refused.reason, /no longer/);
+        assert.strictEqual(fs.readFileSync(goalPath(repo), 'utf8'), before, 'a refused advance writes nothing');
+
+        const advanced = advanceGoal(repo, { outcome: 'complete', expectedPlan: 'docs/plans/a.md' });
+        assert.strictEqual(advanced.ok, true);
+        assert.strictEqual(advanced.advanced, true);
+        assert.strictEqual(readGoal(repo).plan, 'docs/plans/b.md', 'a matching expectation advances as before');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('advanceGoal stores a usable leadKey as blockedAdvanceKey and drops an unusable one', () => {
+    const repo = makeRepo();
+    try {
+        for (const n of ['a', 'b', 'c']) writePlan(repo, 'docs/plans/' + n + '.md', 'Status: In Progress\n');
+        armGoal(repo, ['docs/plans/a.md', 'docs/plans/b.md', 'docs/plans/c.md']);
+        assert.strictEqual(readGoal(repo).blockedAdvanceKey, undefined, 'no key before any blocked advance');
+
+        assert.strictEqual(advanceGoal(repo, { outcome: 'blocked', note: 'n', leadKey: 'uuid:abc-123' }).advanced, true);
+        assert.strictEqual(readGoal(repo).blockedAdvanceKey, 'uuid:abc-123');
+
+        // An unusable key (a control character, an oversized value) is
+        // dropped rather than stored: the field lands in a file the hooks
+        // read back, so it answers to the same printable-and-capped bar as
+        // every stored field. The prior key stays, which errs toward holding
+        // a lead that was in fact consumed.
+        assert.strictEqual(advanceGoal(repo, { outcome: 'blocked', leadKey: 'bad\u0007key' }).advanced, true);
+        assert.strictEqual(readGoal(repo).blockedAdvanceKey, 'uuid:abc-123', 'a control-character key is not stored');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('writeState unlinks its tmp file when the rename fails', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
+        // A directory occupying the goal-state path makes the rename fail
+        // after the tmp write succeeded; the tmp must not be left behind in
+        // .kit/, matching writeCheckpoint's discipline in kit-compact-lib.js.
+        fs.mkdirSync(goalPath(repo), { recursive: true });
+        const result = armGoal(repo, 'docs/plans/foo.md');
+        assert.strictEqual(result.ok, false);
+        assert.ok(result.reason.includes('could not write'));
+        assert.ok(!fs.existsSync(goalPath(repo) + '.tmp.' + process.pid), 'no orphan tmp after a failed rename');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('a UNC/network-shaped transcript path is dropped at bind and nulled at read', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
+        armGoal(repo, 'docs/plans/foo.md');
+        // The stored path is fs.stat'ed synchronously at every SessionStart
+        // and by the status report, and a stat on an unreachable network
+        // share blocks for the SMB timeout; a shape the harness never
+        // produces for a transcript is dropped, costing only the hint.
+        for (const unc of ['\\\\srv\\share\\t.jsonl', '//srv/share/t.jsonl']) {
+            assert.strictEqual(bindSession(repo, 'sess-1', unc).ok, true, 'the bind itself still succeeds');
+            assert.strictEqual(readGoal(repo).boundTranscript, null, JSON.stringify(unc) + ' must not be stored');
+        }
+        // A state file already carrying one (hand-written) reads back null
+        // through the normalizer, so no consumer ever stats it.
+        const state = JSON.parse(fs.readFileSync(goalPath(repo), 'utf8'));
+        state.boundTranscript = '\\\\srv\\share\\t.jsonl';
+        fs.writeFileSync(goalPath(repo), JSON.stringify(state) + '\n', 'utf8');
+        assert.strictEqual(readGoal(repo).boundTranscript, null);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('lastActivePhrase is the one liveness wording: minutes, the hour crossover at 60, null on any failure', () => {
+    const repo = makeRepo();
+    try {
+        const file = path.join(repo, 't.jsonl');
+        const ageMinutes = (m) => {
+            fs.writeFileSync(file, '{}\n', 'utf8');
+            const when = new Date(Date.now() - m * 60000);
+            fs.utimesSync(file, when, when);
+            return lastActivePhrase(file);
+        };
+        assert.strictEqual(ageMinutes(0), 'less than a minute ago');
+        assert.strictEqual(ageMinutes(1), 'about 1 minute ago');
+        assert.strictEqual(ageMinutes(7), 'about 7 minutes ago');
+        // The crossover sits at 60 minutes with Math.floor, so the phrase
+        // errs toward reading recent, away from re-arming over a live sibling.
+        assert.strictEqual(ageMinutes(90), 'about 1 hour ago');
+        assert.strictEqual(ageMinutes(200), 'about 3 hours ago');
+        assert.strictEqual(lastActivePhrase(path.join(repo, 'absent.jsonl')), null);
+        assert.strictEqual(lastActivePhrase(undefined), null);
+        assert.strictEqual(lastActivePhrase('//srv/share/t.jsonl'), null, 'a network-shaped path is never statted');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('CLI status renders the shared liveness phrase, hours crossover included', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
+        armGoal(repo, 'docs/plans/foo.md');
+        const transcript = path.join(repo, 'transcript.jsonl');
+        fs.writeFileSync(transcript, '{}\n', 'utf8');
+        const when = new Date(Date.now() - 90 * 60000);
+        fs.utimesSync(transcript, when, when);
+        bindSession(repo, 'sess-42', transcript);
+        // 90 minutes renders as about 1 hour through the one shared helper;
+        // a second wording here would let the CLI and the SessionStart
+        // notice answer the same mtime differently.
+        const res = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /bound to session sess-42, last active about 1 hour ago/);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('CLI status treats a plan-less or malformed state file as no armed goal instead of crashing', () => {
+    const repo = makeRepo();
+    try {
+        // Each shape parses as JSON but normalizes to no usable plan; the
+        // lib's contract is that a hiccup degrades to a default result, so
+        // status reports no armed goal at exit 0 rather than dying on a
+        // dereference with a stack trace.
+        for (const raw of ['{}', '[]', '123', '{"plan":""}']) {
+            fs.mkdirSync(path.dirname(goalPath(repo)), { recursive: true });
+            fs.writeFileSync(goalPath(repo), raw, 'utf8');
+            const res = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
+            assert.strictEqual(res.status, 0, raw + ' must not crash status: ' + res.stderr);
+            assert.match(res.stdout, /no kit goal armed/, raw + ' reads as no armed goal');
+            assert.strictEqual(res.stderr, '', raw + ' writes no error');
+        }
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('armGoal refuses two casings of one plan path where the filesystem is case-insensitive',
+    { skip: process.platform !== 'win32' }, () => {
+        const repo = makeRepo();
+        try {
+            writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
+            // On win32 both casings name one file: a queue holding both would
+            // advance past the plan once and stall on the repeat, the exact
+            // shape the duplicate refusal exists to stop.
+            const result = armGoal(repo, ['docs/plans/a.md', 'docs/plans/A.md']);
+            assert.strictEqual(result.ok, false);
+            assert.match(result.reason, /twice in the queue/);
+            assert.ok(!fs.existsSync(goalPath(repo)));
+        } finally {
+            rmRepo(repo);
+        }
+    });
 
 test('emitGoalEvent adds a run field only for a KIT_RUN_ID that memq\'s isRunId itself would accept', () => {
     // run is gated on memq's own isRunId rather than on raw truthiness, so the

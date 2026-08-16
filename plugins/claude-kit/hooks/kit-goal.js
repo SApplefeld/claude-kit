@@ -12,8 +12,7 @@
 
 'use strict';
 
-const fs = require('fs');
-const { armGoal, clearGoal, readGoal, planHead } = require('./kit-goal-lib.js');
+const { armGoal, clearGoal, readGoal, planHead, lastActivePhrase } = require('./kit-goal-lib.js');
 
 // Repo-controlled strings (a plan path) are sanitized to printable ASCII and
 // length-capped before they reach stdout/stderr, matching the sibling hooks'
@@ -65,36 +64,29 @@ function cmdClear() {
     process.exitCode = 0;
 }
 
-// How long ago the bound session's transcript was last written, as a coarse
-// phrase, or null when the path is absent or unreadable. This is a hint about
-// whether the leash holder is still working, never a verdict: a session can be
-// alive and quiet, and only the number and its unit reach the output.
-function livenessHint(transcriptPath) {
-    if (!transcriptPath) return null;
-    let mtimeMs;
-    try {
-        mtimeMs = fs.statSync(transcriptPath).mtimeMs;
-    } catch {
-        return null;
-    }
-    const minutes = Math.max(0, Math.round((Date.now() - mtimeMs) / 60000));
-    if (minutes < 1) return 'last active under a minute ago';
-    if (minutes < 120) return 'last active about ' + minutes + ' minute' + (minutes === 1 ? '' : 's') + ' ago';
-    return 'last active about ' + Math.round(minutes / 60) + ' hours ago';
-}
-
 function cmdStatus() {
     const cwd = process.cwd();
     const state = readGoal(cwd);
-    if (!state) {
+    // A parseable state file with no usable plan string enforces nothing (the
+    // Stop hook's hot path checks the same field before doing anything), so
+    // it reads as unarmed here rather than being dereferenced into a crash;
+    // the doctor is the surface that flags such a file as damage worth a
+    // look. Only a state with a plan is normalized, so every field below is
+    // guaranteed present past this guard.
+    if (!state || typeof state.plan !== 'string' || state.plan === '') {
         process.stdout.write('no kit goal armed\n');
         process.exitCode = 0;
         return;
     }
 
-    const hint = livenessHint(state.boundTranscript);
+    // The liveness phrase is single-sourced in kit-goal-lib (lastActivePhrase),
+    // shared with the SessionStart armed-goal notice, so the two surfaces
+    // cannot answer the same mtime differently. It is a hint about whether
+    // the leash holder is still working, never a verdict: a session can be
+    // alive and quiet, and only the number and its unit reach the output.
+    const phrase = lastActivePhrase(state.boundTranscript);
     const binding = state.boundSession
-        ? 'bound to session ' + sanitize(state.boundSession) + (hint ? ', ' + hint : '')
+        ? 'bound to session ' + sanitize(state.boundSession) + (phrase ? ', last active ' + phrase : '')
         : 'unbound';
     const out = ['kit goal armed for ' + sanitize(state.plan)
         + ' (armed ' + sanitize(state.armedAt) + '; ' + binding + ')'];
@@ -131,4 +123,12 @@ function main() {
     else usage();
 }
 
-main();
+// Wrapped so an unexpected defect prints one sanitized line and a nonzero
+// exit instead of a stack trace: this CLI's output is echoed into a session's
+// context by the /kit-goal skill invocation, and a stack dump is noise there.
+try {
+    main();
+} catch (err) {
+    process.stderr.write('kit-goal: ' + sanitize(err && err.message ? err.message : String(err)) + '\n');
+    process.exitCode = 1;
+}
