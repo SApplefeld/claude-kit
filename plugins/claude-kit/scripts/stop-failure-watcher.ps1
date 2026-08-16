@@ -35,8 +35,8 @@
 # quote-escaped into acceptability. Every plan path is validated by the same
 # normalizePlanArg rule the goal state itself enforces (called out of
 # kit-goal-lib.js under node rather than restated here, so the two rules
-# cannot drift), must clear a conservative path grammar, and must name a file
-# that exists. The resume prompt is fixed text whose only interpolations are
+# cannot drift), must clear a conservative path grammar, and must name a plan
+# file arming itself can open. The resume prompt is fixed text whose only interpolations are
 # those validated plan paths, bounded in total length, and both values reach
 # the child through environment variables read by a constant wrapper script, so
 # no marker content is ever spliced into a command line. A plan path refused by
@@ -251,20 +251,24 @@ function Test-WrapperAlive {
 
 # One plan path, put through the exact rules the goal state enforces
 # (normalizePlanArg and planHead in kit-goal-lib.js, run under node with the
-# values as argv so nothing is interpolated into the -e source), a conservative
-# path grammar, and then required to name a file that exists. Returns
-# @{ rel; status; reason }: on success rel is the repo-relative path, status is
-# the plan's own Status header as the rest of the kit classifies it
-# ("complete", "in progress", or "unknown"), and reason is "ok". On any refusal
-# rel is $null and reason names the check that refused ("not-a-path",
-# "refused", "grammar", or "existence"), which every caller answers by carrying
-# no further plan into the prompt and recording the named cause.
+# values as argv so nothing is interpolated into the -e source) plus a
+# conservative path grammar. Returns @{ rel; status; reason }: on success rel is
+# the repo-relative path, status is the plan's own Status header as the rest of
+# the kit classifies it ("complete", "in progress", or "unknown"), and reason is
+# "ok". On any refusal rel is $null and reason names the check that refused
+# ("not-a-path", "refused", "grammar", or "existence"), which every caller
+# answers by carrying no further plan into the prompt and recording the named
+# cause.
 #
 # Two checks close the free-text channel, because plan paths are the only
 # project-state values that reach the resume prompt. Existence: a shape-valid
 # path naming nothing on disk would be a way to deliver prose to an unattended
-# session as operator instruction. Grammar: a FILENAME is itself free text, so
-# the normalized path must be letters, digits, underscore, dot, hyphen, and
+# session as operator instruction. It is planHead's own existence answer that
+# decides, the one arming reads, so the file must be openable and not merely
+# present: a path arming would refuse (an exclusive share, a deny ACL) refuses
+# here too, which is what keeps this rule from composing a prompt the resumed
+# session's arm rejects all-or-nothing. Grammar: a FILENAME is itself free text,
+# so the normalized path must be letters, digits, underscore, dot, hyphen, and
 # forward slash and nothing else, anchored at the very ends of the string
 # (\A/\z, so a trailing newline cannot ride through the $ anchor's
 # end-of-line allowance). That also rejects a space, which matters beyond
@@ -273,6 +277,16 @@ function Test-WrapperAlive {
 # fail naming paths nobody wrote. A control character is rejected up front,
 # before node, because it could not survive the command-line crossing intact
 # enough to be judged.
+#
+# The grammar is deliberately stricter than what arming accepts, so a legal
+# plan filename outside the class (a space, parentheses, a non-ASCII letter) is
+# refused here even though `/kit-goal` would take it. That is the trade the
+# unattended path is held to: the class admits nothing a cmd.exe re-parse
+# through a .cmd shim could act on, and being ASCII-only it makes the bytes
+# PowerShell decodes off node's stdout byte-identical to what node wrote
+# whatever the console codepage is. What makes it acceptable is that the
+# refusal is loud: a queue-truncated record naming cause "grammar" and the
+# failing plan.
 function Resolve-PlanRel {
     param(
         [Parameter(Mandatory = $true)][string]$NodeExe,
@@ -282,15 +296,17 @@ function Resolve-PlanRel {
     )
     if ($Plan -isnot [string] -or $Plan -eq "") { return @{ rel = $null; reason = "not-a-path" } }
     if ($Plan -match '[\x00-\x1F]') { return @{ rel = $null; reason = "not-a-path" } }
-    # Two lines out, path then status, so a status carrying a space ("in
-    # progress") stays whole and neither value has to be delimited inside a
-    # line. The separator is built with String.fromCharCode because this source
-    # crosses to node as a native-command argument, where a double quote does
-    # not survive PowerShell's argument quoting intact.
+    # Three lines out, path then status then existence, so a status carrying a
+    # space ("in progress") stays whole and no value has to be delimited inside
+    # a line. The separator is built with String.fromCharCode because this
+    # source crosses to node as a native-command argument, where a double quote
+    # does not survive PowerShell's argument quoting intact.
     $normalizeSrc = 'const lib = require(process.argv[1]); ' +
         'const rel = lib.normalizePlanArg(process.argv[2], process.argv[3]); ' +
         'if (rel === null) process.exit(1); ' +
-        'process.stdout.write(rel + String.fromCharCode(10) + lib.planHead(process.argv[2], rel).status);'
+        'const nl = String.fromCharCode(10); ' +
+        'const head = lib.planHead(process.argv[2], rel); ' +
+        'process.stdout.write(rel + nl + head.status + nl + (head.exists ? 1 : 0));'
     # The rules run with errors non-terminating and their stderr discarded:
     # Windows PowerShell wraps each stderr line of a native command as an error
     # record, which under Stop would turn any byte node writes there (a
@@ -303,12 +319,13 @@ function Resolve-PlanRel {
         $out = @(& $NodeExe "-e" $normalizeSrc $LibPath $ProjectDir $Plan 2>$null)
     }
     finally { $ErrorActionPreference = "Stop" }
-    if ($LASTEXITCODE -ne 0 -or $out.Count -lt 2) { return @{ rel = $null; reason = "refused" } }
+    if ($LASTEXITCODE -ne 0 -or $out.Count -lt 3) { return @{ rel = $null; reason = "refused" } }
     $rel = [string]$out[0]
     $status = [string]$out[1]
+    $exists = (([string]$out[2]).Trim() -eq "1")
     if ([string]::IsNullOrEmpty($rel)) { return @{ rel = $null; reason = "refused" } }
     if ($rel -notmatch '\A[A-Za-z0-9_./-]+\z') { return @{ rel = $null; reason = "grammar" } }
-    if (-not (Test-Path -LiteralPath (Join-Path $ProjectDir $rel) -PathType Leaf)) { return @{ rel = $null; reason = "existence" } }
+    if (-not $exists) { return @{ rel = $null; reason = "existence" } }
     return @{ rel = $rel; status = $status; reason = "ok" }
 }
 
@@ -383,10 +400,110 @@ try {
     if ($errorClass -isnot [string]) { exit 0 }
     if ($RetryableErrors -notcontains $errorClass) { exit 0 }
 
-    # 5. The plan paths that will be re-armed, each through Resolve-PlanRel
+    # 5. Due-ness, not wake-time arithmetic: the payload carries no reset
+    # timestamp and the resumed child reads the true one for itself, so the
+    # only timing here is that the failure has settled.
+    $recordedAt = Read-IsoInstant ([string](Get-JsonField $marker.data "recordedAt"))
+    if ($null -eq $recordedAt) { exit 0 }
+    if ($now -lt $recordedAt.AddSeconds($SettleDelaySeconds)) { exit 0 }
+    # The other end of the same window: a marker past the staleness ceiling is
+    # not acted on at all. See MarkerStalenessSeconds for why an old marker
+    # means the run is the operator's rather than this watcher's.
+    if ($now -gt $recordedAt.AddSeconds($MarkerStalenessSeconds)) { exit 0 }
+
+    # 6. The incident budget, keyed on the session id rather than the marker:
+    # --resume preserves the session id, so a resumed run that re-dies of the
+    # same limit writes a fresh but indistinguishable marker, and a per-marker
+    # counter would reset on every death and never bind. A budget record for
+    # some other session is a finished incident's leftover and this failure
+    # starts fresh.
+    $attempts = Read-JsonState $attemptsPath
+    if ($attempts.state -eq "bad") { exit 0 }
+    $priorLaunches = 0
+    $firstSeen = $now
+    $firstSeenIso = $nowIso
+    if ($attempts.state -eq "ok" -and (Test-SameSessionId ([string](Get-JsonField $attempts.data "sessionId")) $sessionId)) {
+        $priorFirstSeenIso = [string](Get-JsonField $attempts.data "firstSeen")
+        $priorFirstSeen = Read-IsoInstant $priorFirstSeenIso
+        if ($null -eq $priorFirstSeen) { exit 0 }
+        $withinBudget = ($now -le $priorFirstSeen.AddHours($IncidentBudgetHours))
+        if (Get-JsonField $attempts.data "exhausted") {
+            # A spent incident is left alone for as long as its own budget
+            # window stands. Past that window the record is a finished
+            # incident's leftover, and since a marker only reaches this guard
+            # while it is fresh, a failure still on the marker here is a new
+            # incident: it falls through to a launch on a fresh budget rather
+            # than blocking this session id for the life of the machine.
+            if ($withinBudget) { exit 0 }
+        }
+        else {
+            $firstSeenIso = $priorFirstSeenIso
+            $firstSeen = $priorFirstSeen
+            try { $priorLaunches = [int](Get-JsonField $attempts.data "launches") } catch { exit 0 }
+            if ($priorLaunches -ge $LaunchBackstop -or -not $withinBudget) {
+                # Spent. Mark the incident exhausted so the note below lands
+                # once, note it, and leave the incident alone thereafter.
+                Write-JsonAtomic $attemptsPath @{
+                    sessionId  = $sessionId
+                    firstSeen  = $firstSeenIso
+                    launches   = $priorLaunches
+                    lastLaunch = [string](Get-JsonField $attempts.data "lastLaunch")
+                    exhausted  = $true
+                }
+                Add-WatcherEvent $kitDir @{
+                    watcher    = "incident-exhausted"
+                    sessionId  = $sessionId
+                    launches   = $priorLaunches
+                    firstSeen  = $firstSeenIso
+                    recordedAt = $nowIso
+                }
+                exit 0
+            }
+            $lastLaunchRaw = Get-JsonField $attempts.data "lastLaunch"
+            if ($null -ne $lastLaunchRaw) {
+                $lastLaunch = Read-IsoInstant ([string]$lastLaunchRaw)
+                if ($null -eq $lastLaunch) { exit 0 }
+                if ($now -lt $lastLaunch.AddSeconds($RetrySpacingSeconds)) { exit 0 }
+            }
+        }
+    }
+
+    # 7. The in-flight sentinel: a resumed child already running means this
+    # pass has nothing to add, which is what keeps two scheduled passes from
+    # launching two children. An in-flight record with no live wrapper is a
+    # crashed pass's leftover and does not block.
+    #
+    # An in-flight record with no pid at all is another pass caught between its
+    # two sentinel writes, and the yield it earns is bounded by its age the
+    # same way a dead pid's is bounded by liveness: a pass that died in that
+    # window (a launch that threw before the second write) leaves a pid-less
+    # record no later pass can ever clear, so only a record written within one
+    # pass interval yields. A missing or unparseable launchedAt does not block.
+    $sentinel = Read-JsonState $sentinelPath
+    if ($sentinel.state -eq "bad") { exit 0 }
+    if ($sentinel.state -eq "ok" -and ([string](Get-JsonField $sentinel.data "state")) -eq "in-flight") {
+        $sentinelPid = Get-JsonField $sentinel.data "pid"
+        if ($null -eq $sentinelPid) {
+            $launchedAt = Read-IsoInstant ([string](Get-JsonField $sentinel.data "launchedAt"))
+            if ($null -ne $launchedAt -and $now -le $launchedAt.AddMinutes($TaskIntervalMinutes)) { exit 0 }
+        }
+        elseif (Test-WrapperAlive $sentinelPid) { exit 0 }
+    }
+
+    # 8. The plan paths that will be re-armed, each through Resolve-PlanRel
     # (the goal state's own normalizePlanArg rule, the path grammar, and the
     # existence check that keep free text out of the prompt, plus the plan's
     # own Status). node or the lib missing exits without acting.
+    #
+    # This is the last guard because it is the only one that both costs and
+    # speaks: it spawns a node per candidate, and it records to the events log
+    # what the queue lost. Above the guards it would resolve the queue on every
+    # scheduled pass and append a truncation record on each, so one unhealing
+    # incident (a renamed plan, a queue whose every plan reads Complete, a
+    # resumed child running for hours) would fill the log with identical lines
+    # and eventually push it past the 4 MB ceiling that silences it. Below them,
+    # only a pass that would actually launch resolves anything, so each record
+    # in the log belongs to a pass that acted on it.
     $node = Get-Command node -ErrorAction SilentlyContinue
     if ($null -eq $node) { exit 0 }
     $libPath = Join-Path (Split-Path $PSScriptRoot -Parent) "hooks\kit-goal-lib.js"
@@ -484,96 +601,6 @@ try {
         exit 0
     }
 
-    # 6. Due-ness, not wake-time arithmetic: the payload carries no reset
-    # timestamp and the resumed child reads the true one for itself, so the
-    # only timing here is that the failure has settled.
-    $recordedAt = Read-IsoInstant ([string](Get-JsonField $marker.data "recordedAt"))
-    if ($null -eq $recordedAt) { exit 0 }
-    if ($now -lt $recordedAt.AddSeconds($SettleDelaySeconds)) { exit 0 }
-    # The other end of the same window: a marker past the staleness ceiling is
-    # not acted on at all. See MarkerStalenessSeconds for why an old marker
-    # means the run is the operator's rather than this watcher's.
-    if ($now -gt $recordedAt.AddSeconds($MarkerStalenessSeconds)) { exit 0 }
-
-    # 7. The incident budget, keyed on the session id rather than the marker:
-    # --resume preserves the session id, so a resumed run that re-dies of the
-    # same limit writes a fresh but indistinguishable marker, and a per-marker
-    # counter would reset on every death and never bind. A budget record for
-    # some other session is a finished incident's leftover and this failure
-    # starts fresh.
-    $attempts = Read-JsonState $attemptsPath
-    if ($attempts.state -eq "bad") { exit 0 }
-    $priorLaunches = 0
-    $firstSeen = $now
-    $firstSeenIso = $nowIso
-    if ($attempts.state -eq "ok" -and (Test-SameSessionId ([string](Get-JsonField $attempts.data "sessionId")) $sessionId)) {
-        $priorFirstSeenIso = [string](Get-JsonField $attempts.data "firstSeen")
-        $priorFirstSeen = Read-IsoInstant $priorFirstSeenIso
-        if ($null -eq $priorFirstSeen) { exit 0 }
-        $withinBudget = ($now -le $priorFirstSeen.AddHours($IncidentBudgetHours))
-        if (Get-JsonField $attempts.data "exhausted") {
-            # A spent incident is left alone for as long as its own budget
-            # window stands. Past that window the record is a finished
-            # incident's leftover, and since a marker only reaches this guard
-            # while it is fresh, a failure still on the marker here is a new
-            # incident: it falls through to a launch on a fresh budget rather
-            # than blocking this session id for the life of the machine.
-            if ($withinBudget) { exit 0 }
-        }
-        else {
-            $firstSeenIso = $priorFirstSeenIso
-            $firstSeen = $priorFirstSeen
-            try { $priorLaunches = [int](Get-JsonField $attempts.data "launches") } catch { exit 0 }
-            if ($priorLaunches -ge $LaunchBackstop -or -not $withinBudget) {
-                # Spent. Mark the incident exhausted so the note below lands
-                # once, note it, and leave the incident alone thereafter.
-                Write-JsonAtomic $attemptsPath @{
-                    sessionId  = $sessionId
-                    firstSeen  = $firstSeenIso
-                    launches   = $priorLaunches
-                    lastLaunch = [string](Get-JsonField $attempts.data "lastLaunch")
-                    exhausted  = $true
-                }
-                Add-WatcherEvent $kitDir @{
-                    watcher    = "incident-exhausted"
-                    sessionId  = $sessionId
-                    launches   = $priorLaunches
-                    firstSeen  = $firstSeenIso
-                    recordedAt = $nowIso
-                }
-                exit 0
-            }
-            $lastLaunchRaw = Get-JsonField $attempts.data "lastLaunch"
-            if ($null -ne $lastLaunchRaw) {
-                $lastLaunch = Read-IsoInstant ([string]$lastLaunchRaw)
-                if ($null -eq $lastLaunch) { exit 0 }
-                if ($now -lt $lastLaunch.AddSeconds($RetrySpacingSeconds)) { exit 0 }
-            }
-        }
-    }
-
-    # 8. The in-flight sentinel: a resumed child already running means this
-    # pass has nothing to add, which is what keeps two scheduled passes from
-    # launching two children. An in-flight record with no live wrapper is a
-    # crashed pass's leftover and does not block.
-    #
-    # An in-flight record with no pid at all is another pass caught between its
-    # two sentinel writes, and the yield it earns is bounded by its age the
-    # same way a dead pid's is bounded by liveness: a pass that died in that
-    # window (a launch that threw before the second write) leaves a pid-less
-    # record no later pass can ever clear, so only a record written within one
-    # pass interval yields. A missing or unparseable launchedAt does not block.
-    $sentinel = Read-JsonState $sentinelPath
-    if ($sentinel.state -eq "bad") { exit 0 }
-    if ($sentinel.state -eq "ok" -and ([string](Get-JsonField $sentinel.data "state")) -eq "in-flight") {
-        $sentinelPid = Get-JsonField $sentinel.data "pid"
-        if ($null -eq $sentinelPid) {
-            $launchedAt = Read-IsoInstant ([string](Get-JsonField $sentinel.data "launchedAt"))
-            if ($null -ne $launchedAt -and $now -le $launchedAt.AddMinutes($TaskIntervalMinutes)) { exit 0 }
-        }
-        elseif (Test-WrapperAlive $sentinelPid) { exit 0 }
-    }
-
     # 9. Launch. The incident record is written before the child starts, so a
     # watcher that dies mid-launch has still spent the attempt, and the
     # sentinel goes down before the child starts because it exists to keep an
@@ -645,7 +672,7 @@ try {
         try { & $taskkill /PID $child.Id /T /F 2>$null | Out-Null } catch { <# recorded below either way #> }
         # Whether the kill landed decides what the sentinel says. A wrapper
         # that survived it is still a live child, so the record stays in-flight
-        # with its pid and guard 8 blocks the next pass on that live process
+        # with its pid and guard 7 blocks the next pass on that live process
         # instead of starting a second child beside it; killed-timeout, which
         # does not block, is only for a tree that genuinely ended.
         $killed = $child.WaitForExit(15000)

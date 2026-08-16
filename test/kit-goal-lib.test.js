@@ -1159,14 +1159,18 @@ test('advanceGoal stores a usable leadKey as blockedAdvanceKey and drops an unus
 
         assert.strictEqual(advanceGoal(repo, { outcome: 'blocked', note: 'n', leadKey: 'uuid:abc-123' }).advanced, true);
         assert.strictEqual(readGoal(repo).blockedAdvanceKey, 'uuid:abc-123');
+        assert.strictEqual(readGoal(repo).blockedAdvancePlan, 'docs/plans/b.md',
+            'the key rides with the plan the advance moved to');
 
         // An unusable key (a control character, an oversized value) is
         // dropped rather than stored: the field lands in a file the hooks
         // read back, so it answers to the same printable-and-capped bar as
-        // every stored field. The prior key stays, which errs toward holding
+        // every stored field. The prior pair stays, which errs toward holding
         // a lead that was in fact consumed.
         assert.strictEqual(advanceGoal(repo, { outcome: 'blocked', leadKey: 'bad\u0007key' }).advanced, true);
         assert.strictEqual(readGoal(repo).blockedAdvanceKey, 'uuid:abc-123', 'a control-character key is not stored');
+        assert.strictEqual(readGoal(repo).blockedAdvancePlan, 'docs/plans/b.md',
+            'the prior recording plan stays with the prior key');
     } finally {
         rmRepo(repo);
     }
@@ -1223,7 +1227,7 @@ test('advanceGoal on a state whose plan is not a string refuses instead of throw
     }
 });
 
-test('a clause-(a)-shaped advance (no leadKey) clears a standing blockedAdvanceKey', () => {
+test('a clause-(a)-shaped advance (no leadKey) leaves the standing key and its recording plan in place', () => {
     const repo = makeRepo();
     try {
         for (const n of ['a', 'b', 'c']) writePlan(repo, 'docs/plans/' + n + '.md', 'Status: In Progress\n');
@@ -1231,11 +1235,15 @@ test('a clause-(a)-shaped advance (no leadKey) clears a standing blockedAdvanceK
         assert.strictEqual(advanceGoal(repo, { outcome: 'blocked', note: 'n', leadKey: 'uuid:k-1' }).advanced, true);
         assert.strictEqual(readGoal(repo).blockedAdvanceKey, 'uuid:k-1', 'setup: the blocked advance wrote its key');
 
-        // A key that outlives the advance that follows it would hold a
-        // genuinely new blocker whose text digest collides with the old one,
-        // for the rest of the queue; a keyless advance retires it.
+        // Deleting the key here is what a keyless advance must NOT do: the
+        // consumed entry can re-surface at a later stop's stale transcript
+        // read, and a deleted key would let it advance the queue again. The
+        // pair retires by position instead (the Stop hook honors it only
+        // while the recording plan is the current or the immediately previous
+        // queue position), so leaving it standing costs nothing.
         assert.strictEqual(advanceGoal(repo, { outcome: 'complete' }).advanced, true);
-        assert.strictEqual(readGoal(repo).blockedAdvanceKey, undefined, 'the keyless advance cleared the key');
+        assert.strictEqual(readGoal(repo).blockedAdvanceKey, 'uuid:k-1', 'the keyless advance leaves the key standing');
+        assert.strictEqual(readGoal(repo).blockedAdvancePlan, 'docs/plans/b.md', 'and leaves its recording plan');
     } finally {
         rmRepo(repo);
     }

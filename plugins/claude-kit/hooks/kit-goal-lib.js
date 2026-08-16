@@ -318,10 +318,14 @@ function armGoal(cwd, planArgs) {
 // saw, which is why the arming timestamp rides with it: a fresh arm writes a
 // fresh armedAt. leadKey is the optional identity of the transcript entry
 // whose 'BLOCKED:' lead drove this advance; a usable value (printable ASCII,
-// capped) is stored as blockedAdvanceKey so the Stop hook can refuse
-// consuming the same entry twice, an unusable one is dropped rather than
-// stored, the same bar every stored field answers to, and an advance carrying
-// no leadKey at all clears any standing key (see the clearing branch below).
+// capped) is stored as blockedAdvanceKey, together with the plan this advance
+// moves to as blockedAdvancePlan, so the Stop hook can refuse consuming the
+// same entry twice. An unusable leadKey is dropped rather than stored, the
+// same bar every stored field answers to, and no advance ever deletes a
+// standing pair: the hook retires it by queue position instead (honored only
+// while the recording plan is the current or the immediately previous
+// position), so a keyless advance slotting in between two reads of the same
+// entry cannot make that entry consumable again.
 //
 // Returns { ok:true, advanced:true, finished, plan } when the leash moved,
 // { ok:true, advanced:false, finished } on the last plan of the queue (nothing
@@ -371,16 +375,18 @@ function advanceGoal(cwd, outcomeEntry) {
     if (typeof entry.leadKey === 'string' && entry.leadKey !== '' && entry.leadKey.length <= 128
         && !/[^\x20-\x7E]/.test(entry.leadKey)) {
         state.blockedAdvanceKey = entry.leadKey;
-    } else if (entry.leadKey === undefined || entry.leadKey === null) {
-        // An advance carrying no key at all (clause (a)'s Complete or
-        // archived, or a BLOCKED lead whose identity could not be derived)
-        // retires any standing key: the key exists to refuse re-consuming one
-        // already-spent transcript entry, and one that outlives the advance
-        // that follows it widens the text-digest collision surface in a
-        // uuid-less transcript to every later plan of the queue. A key that
-        // is present but unusable keeps the prior value instead, erring
-        // toward holding a lead that was in fact consumed.
-        delete state.blockedAdvanceKey;
+        // The plan this advance moved to, stored beside the key. The Stop
+        // hook honors the pair only while this plan is the current or the
+        // immediately previous queue position, which is as far as a stale
+        // transcript re-read of the consumed entry can plausibly reach, and
+        // an advance carrying no key (clause (a)'s Complete or archived, or
+        // a lead whose identity could not be derived) leaves the pair
+        // standing rather than deleting it. Retiring by position closes both
+        // failure directions at once: a keyless advance in between cannot
+        // resurrect the consumed entry, and a stale text-digest key in a
+        // uuid-less transcript cannot collide with a genuinely new,
+        // identically worded blocker beyond that neighbourhood.
+        state.blockedAdvancePlan = state.plan;
     }
     const written = writeState(cwd, state);
     if (!written.ok) return written;

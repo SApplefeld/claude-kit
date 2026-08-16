@@ -921,6 +921,107 @@ test('a plan path carrying shell metacharacters is refused even though the file 
     }
 });
 
+test('a plan file that exists but cannot be opened truncates the queue, and carries once the lock lifts', { skip: !isWin }, async () => {
+    // Arming tests a plan by opening it, not by asking whether the name is
+    // there, so a present but unopenable plan (an exclusive share from an
+    // editor, a deny ACL) is one `/kit-goal` refuses, and with it the whole
+    // list. The watcher applies that same test, so such a plan truncates the
+    // queue here instead of riding into a prompt the resumed session rejects
+    // outright.
+    const sb = makeSandbox();
+    let holder = null;
+    try {
+        const second = writePlan(sb, 'docs/plans/probe-two_spec_v1.md');
+        const third = writePlan(sb, 'docs/plans/probe-three_spec_v1.md');
+        const abs = path.join(sb.dir, second);
+        const ready = path.join(sb.dir, 'locked.flag');
+        holder = spawn('powershell.exe', ['-NoProfile', '-Command',
+            '$f = [System.IO.File]::Open(' + q(abs) + ', [System.IO.FileMode]::Open, '
+            + '[System.IO.FileAccess]::Read, [System.IO.FileShare]::None); '
+            + 'Set-Content -LiteralPath ' + q(ready) + ' -Value ok; '
+            + 'Start-Sleep -Seconds 120; $f.Close()'], { stdio: 'ignore' });
+        for (let i = 0; i < 300 && !fs.existsSync(ready); i++) await sleep(100);
+        assert.ok(fs.existsSync(ready), 'the exclusive handle is open');
+        assert.strictEqual(fs.existsSync(abs), true,
+            'the locked plan is still present, so a presence check alone would admit it');
+        writeMarker(sb);
+        writeGoal(sb, { queue: [PLAN, second, third], queueIndex: 0 });
+        runWatcher(sb);
+        assert.deepStrictEqual(promptPlans(sb), [PLAN], 'the unopenable plan ends the remainder');
+        const notes = fs.readFileSync(sb.events, 'utf8').split('\n')
+            .filter((l) => l.includes('queue-truncated')).map((l) => JSON.parse(l));
+        assert.strictEqual(notes.length, 1, 'exactly one truncation record');
+        assert.strictEqual(notes[0].cause, 'existence', 'the record names the existence check');
+        assert.strictEqual(notes[0].plan, second, 'and the plan it refused');
+        // The other direction: the same queue on the same files, with the
+        // handle released, carries whole.
+        holder.kill();
+        holder = null;
+        for (let i = 0; i < 300; i++) {
+            try { fs.closeSync(fs.openSync(abs, 'r')); break; } catch { await sleep(100); }
+        }
+        fs.rmSync(sb.shimOut, { force: true });
+        fs.rmSync(sb.attempts, { force: true });
+        fs.rmSync(sb.sentinel, { force: true });
+        fs.rmSync(sb.events, { force: true });
+        writeMarker(sb);
+        runWatcher(sb);
+        assert.deepStrictEqual(promptPlans(sb), [PLAN, second, third], 'an openable plan carries');
+        assert.strictEqual(fs.existsSync(sb.events) && fs.readFileSync(sb.events, 'utf8').includes('queue-truncated'),
+            false, 'and records no truncation');
+    } finally {
+        if (holder) { try { holder.kill(); } catch { /* already gone */ } }
+        rmSandbox(sb);
+    }
+});
+
+test('a pass that stops at a guard resolves no plans and writes no queue record', { skip: !isWin }, () => {
+    // Plan resolution is the last guard, so the records it writes belong only
+    // to a pass that would act. Above the guards, an incident that does not
+    // self-heal (a renamed plan, a queue whose every plan reads Complete, a
+    // resumed child holding the sentinel for hours) would append an identical
+    // record on every scheduled pass, indefinitely, and eventually push the
+    // shared events log past the ceiling that stops it growing.
+    const sb = makeSandbox();
+    const sleeper = spawn('powershell.exe', ['-NoProfile', '-Command', 'Start-Sleep -Seconds 60'], { stdio: 'ignore' });
+    try {
+        // A goal whose resolution would write both records: the current plan
+        // reads Complete and is skipped, the plan after it names no file and
+        // truncates the remainder, leaving nothing to arm.
+        writePlan(sb, PLAN, 'Complete');
+        writeGoal(sb, { queue: [PLAN, 'docs/plans/no-such-plan_spec_v1.md'], queueIndex: 0 });
+        const queueRecords = () => (fs.existsSync(sb.events) ? fs.readFileSync(sb.events, 'utf8') : '')
+            .split('\n').filter((l) => l.includes('queue-truncated') || l.includes('no-plans-to-resume'))
+            .map((l) => JSON.parse(l));
+
+        writeMarker(sb);
+        runWatcher(sb, { now: '2026-08-16T10:01:00.000Z' }); // inside the settle delay
+        writeMarker(sb, { recordedAt: '2026-08-16T09:00:00.000Z' });
+        runWatcher(sb); // past the staleness ceiling: the incident is the operator's
+        writeMarker(sb);
+        fs.writeFileSync(sb.attempts, JSON.stringify({ sessionId: SESSION, firstSeen: '2026-08-16T05:00:00.000Z', launches: 6, lastLaunch: '2026-08-16T09:00:00.000Z', exhausted: true }), 'utf8');
+        runWatcher(sb); // the incident budget is spent
+        fs.rmSync(sb.attempts, { force: true });
+        fs.writeFileSync(sb.sentinel, JSON.stringify({ launchedAt: REC, pid: sleeper.pid, oldSessionId: SESSION, state: 'in-flight' }), 'utf8');
+        runWatcher(sb); // a resumed child is already in flight, three passes running
+        runWatcher(sb);
+        runWatcher(sb);
+        assert.deepStrictEqual(queueRecords(), [], 'a pass stopped at a guard says nothing about a queue it never resolved');
+
+        // The pass that clears every guard resolves the queue and records what
+        // it dropped, once each.
+        fs.rmSync(sb.sentinel, { force: true });
+        runWatcher(sb);
+        assertNoLaunch(sb, 'nothing left to arm');
+        const notes = queueRecords();
+        assert.strictEqual(notes.filter((n) => n.watcher === 'queue-truncated').length, 1, 'one truncation record');
+        assert.strictEqual(notes.filter((n) => n.watcher === 'no-plans-to-resume').length, 1, 'one no-plans record');
+    } finally {
+        try { sleeper.kill(); } catch { /* already gone */ }
+        rmSandbox(sb);
+    }
+});
+
 test('an unparseable incident record: no launch (fail toward not acting)', { skip: !isWin }, () => {
     const sb = makeSandbox();
     try {
@@ -1176,7 +1277,7 @@ test('a child that outlives the lifetime bound is killed, recorded, and counted 
         const sentinel = readJson(sb.sentinel);
         // killed-timeout is the state for a tree that genuinely ended, and it
         // does not block a later pass. A wrapper that survived the kill would
-        // stay in-flight with its pid instead, so guard 8 holds the next pass
+        // stay in-flight with its pid instead, so guard 7 holds the next pass
         // on the live process rather than launching a second child beside it.
         assert.strictEqual(sentinel.state, 'killed-timeout', 'the kill is recorded');
         assert.ok(sentinel.runtimeSeconds >= 2, 'the child ran to the bound before the kill');

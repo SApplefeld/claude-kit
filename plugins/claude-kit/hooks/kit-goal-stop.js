@@ -58,9 +58,13 @@
 //       mid-append final line) is retried briefly; only a persistent no blocks,
 //       and a persistent partial tail stays indeterminate: allow. A clause-(b)
 //       advance also records the identity of the transcript entry whose lead
-//       it consumed: a later stop re-reading that same entry (a stale snapshot
-//       of an already-recorded blocker) finds it spent and holds the session
-//       instead of advancing, emitting, or releasing again.
+//       it consumed, beside the plan it advanced to: a later stop re-reading
+//       that same entry (a stale snapshot of an already-recorded blocker)
+//       finds it spent and holds the session instead of advancing, emitting,
+//       or releasing again, for as long as that recording plan is the current
+//       or the immediately previous queue position (so an intervening
+//       clause-(a) advance does not retire it; further along the queue it
+//       retires by position).
 //   b2. the last assistant message leads with 'WAITING:': the session is parked
 //       on dispatched background work whose completion re-invokes it, so the
 //       stop is allowed WITHOUT clearing the goal and without an event (a
@@ -409,8 +413,8 @@ function plansRemain(goal) {
 // is the goal-complete detail value for the clauses that emit one (clause (b)
 // emits its goal-blocked before advancing, so it passes none), and leadKey is
 // the identity of the transcript entry whose 'BLOCKED:' lead drove a
-// clause-(b) advance, persisted so a stale re-read of that same entry cannot
-// advance the queue again.
+// clause-(b) advance, persisted beside the plan the advance moves to so a
+// stale re-read of that same entry cannot advance the queue again.
 //
 // Exactly-once for the advance is a compare-and-swap, not an assumption: only
 // the bound session's stops reach this point (a bystander returns at the
@@ -476,9 +480,14 @@ function advanceAndHold(cwd, goal, sessionId, entry) {
         ? 'A kit goal is armed for a queue of plans and the leash has advanced: '
             + safeFinished + ' finished (' + entry.word + ') and the current plan is now '
             + safeNext + '.'
+            // The note is the first line of transcript text and carries no
+            // guaranteed sentence end, so it is quoted and terminated: an
+            // unmarked splice would dissolve the boundary between the repo
+            // data and the instruction that follows, exactly where the
+            // reason then labels it repo data.
             + (entry.note
-                ? ' The recorded blocker for ' + safeFinished + ' was: ' + safeForReason(entry.note)
-                    + ' Before restating that blocker, test whether it actually blocks '
+                ? " The recorded blocker for " + safeFinished + " was: '" + safeForReason(entry.note)
+                    + "'. Before restating that blocker, test whether it actually blocks "
                     + safeNext + ' too: a blocker specific to ' + safeFinished
                     + ' does not carry over, and one that does not apply here is no reason '
                     + 'to stop, so work the plan.'
@@ -496,8 +505,10 @@ function advanceAndHold(cwd, goal, sessionId, entry) {
             + entry.word + '), but the advance could not be recorded, so this stop changed no '
             + 'goal state: the leash re-evaluates from the state file at the next stop and '
             + 'retries the advance then.'
+            // Quoted and terminated for the same boundary reason as the
+            // advanced branch's note above.
             + (entry.note
-                ? ' The blocker to record for ' + safeFinished + ' is: ' + safeForReason(entry.note)
+                ? " The blocker to record for " + safeFinished + " is: '" + safeForReason(entry.note) + "'."
                 : '')
             + ' The plan after ' + safeFinished + ' in the armed queue is ' + safeNext
             + '. Continue in this session: no re-arming is needed, and the leash releases when '
@@ -641,16 +652,32 @@ function main() {
         // following stop that re-reads the transcript, and that read can
         // re-surface the same entry (the stale-snapshot race the retry
         // schedule narrows but cannot close). blockedAdvanceKey is the
-        // identity of the entry the last clause-(b) advance consumed; a lead
-        // carrying that identity is spent, so it advances nothing, emits
-        // nothing, and releases nothing at any queue position. It is held
-        // with its own reason below; a genuinely new BLOCKED turn carries a
-        // new identity (its own uuid, or its own text digest) and advances or
-        // releases as usual. Capacity and WAITING leads never advance, so a
-        // spent key can only ever name a non-capacity BLOCKED entry, which is
-        // why this check sits after both of those clauses.
+        // identity of the entry the last clause-(b) advance consumed and
+        // blockedAdvancePlan is the plan that advance moved to; a lead
+        // carrying that identity is spent while the recording plan is still
+        // the current or the immediately previous queue position, so there it
+        // advances nothing, emits nothing, and releases nothing, even when a
+        // clause-(a) advance ran in between (advances leave the pair
+        // standing; deleting it there is what would let the consumed entry
+        // re-surface and walk the queue again). Past that neighbourhood the
+        // pair retires by position: a stale read cannot plausibly reach
+        // further back than one interposed advance, and retiring keeps a
+        // text-digest key in a uuid-less transcript from colliding with a
+        // genuinely new, identically worded blocker for the rest of the
+        // queue. A key with no recorded plan (a state file written before the
+        // plan rode with the key) is honored wherever it matches, erring
+        // toward holding. A spent lead is held with its own reason below; a
+        // genuinely new BLOCKED turn carries a new identity (its own uuid, or
+        // its own text digest) and advances or releases as usual. Capacity
+        // and WAITING leads never advance, so a spent key can only ever name
+        // a non-capacity BLOCKED entry, which is why this check sits after
+        // both of those clauses.
+        const keyPlan = goal.blockedAdvancePlan;
+        const keyStands = typeof keyPlan !== 'string'
+            || keyPlan === goal.plan
+            || (goal.queueIndex > 0 && keyPlan === goal.queue[goal.queueIndex - 1]);
         const spent = !!(lead.key && typeof goal.blockedAdvanceKey === 'string'
-            && goal.blockedAdvanceKey === lead.key);
+            && goal.blockedAdvanceKey === lead.key && keyStands);
         if (!spent) {
             // Every blocked stop emits, so a session that stops blocked repeatedly
             // produces one event per stop: the hook stays stateless and dedup is the
@@ -678,15 +705,21 @@ function main() {
         // states what actually happened (the blocker is already recorded and
         // the leash already advanced), names the plan now current, and
         // directs the session into it without inviting a restatement. The
-        // recorded blocker is read from the newest history entry, which the
-        // matching key guarantees was written by the same clause-(b) advance
-        // that wrote the key (a clause-(a) advance clears it).
-        const lastRecord = Array.isArray(goal.history) && goal.history.length > 0
-            ? goal.history[goal.history.length - 1]
-            : null;
+        // recorded blocker is read from the newest history entry with a
+        // blocked outcome: within the neighbourhood the key is honored in,
+        // that entry is the one the key's own advance wrote, because a later
+        // keyed advance overwrites the key and an intervening clause-(a)
+        // advance appends only note-less complete/archived entries.
+        let lastBlocked = null;
+        if (Array.isArray(goal.history)) {
+            for (let i = goal.history.length - 1; i >= 0; i--) {
+                const h = goal.history[i];
+                if (h && h.outcome === 'blocked') { lastBlocked = h; break; }
+            }
+        }
         const spentReason = 'A kit goal is armed for a queue of plans, and the blocker in the last '
             + 'message is already recorded'
-            + (lastRecord && lastRecord.note ? ' (as: ' + safeForReason(lastRecord.note) + ')' : '')
+            + (lastBlocked && lastBlocked.note ? ' (as: ' + safeForReason(lastBlocked.note) + ')' : '')
             + ': the leash advanced when it was recorded, and the current plan is now '
             + safePlan + '. Read ' + safePlan + ' in full and work it to completion using '
             + 'executing-work, parallelizing what can run simultaneously (the armed goal '

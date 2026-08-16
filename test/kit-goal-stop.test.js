@@ -19,6 +19,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const { spawn, spawnSync } = require('node:child_process');
+const crypto = require('node:crypto');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -1412,8 +1413,10 @@ test('queue, a mid-queue BLOCKED: records the blocker, emits goal-blocked, advan
         assert.strictEqual(res.status, 0);
         const out = JSON.parse(res.stdout);
         assert.strictEqual(out.decision, 'block', 'a blocker mid-queue moves to the next plan, it does not release');
-        assert.ok(out.reason.includes('The recorded blocker for ' + plans[0] + ' was: ' + blocker),
-            'the reason names the recorded blocker');
+        assert.ok(out.reason.includes("The recorded blocker for " + plans[0] + " was: '" + blocker + "'."),
+            'the reason names the recorded blocker, quoted and terminated: the note is transcript '
+            + 'text with no guaranteed sentence end, and an unmarked splice would dissolve the '
+            + 'boundary between repo data and the instruction that follows');
         assert.ok(out.reason.includes('the current plan is now ' + plans[1]));
         // A cross-cutting blocker ("I need your AWS credentials") is true of
         // every plan in the queue, and each restatement is a genuinely new
@@ -1689,6 +1692,7 @@ test('an unchanged transcript across two stops advances once: the second stop ho
         let state = readState(repo);
         assert.strictEqual(state.plan, plans[1], 'stop 1 advanced the leash');
         assert.strictEqual(state.blockedAdvanceKey, 'uuid:e1a2b3c4-0001', 'the advance records the consumed entry');
+        assert.strictEqual(state.blockedAdvancePlan, plans[1], 'the key rides with the plan the advance moved to');
         assert.strictEqual(readEvents(local).length, 1, 'stop 1 emitted its goal-blocked');
 
         const second = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-q' }, local);
@@ -1926,11 +1930,18 @@ test('the advanced reason names the plan the state actually moved to, not the sn
     }
 });
 
-test('a clause-(a) advance clears the standing blockedAdvanceKey', () => {
-    // Only a clause-(b) advance writes the key; without the clearing, the key
-    // of a blocker from two plans ago stays live for the rest of the queue,
-    // and in a uuid-less transcript a genuinely new blocker whose text
-    // digest collides with it would be held until the harness's block cap.
+test('a clause-(a) advance between two reads of the same BLOCKED entry does not resurrect it: the stale re-read holds', () => {
+    // The three-stop shape that reopens the consumed-blocker defect if the
+    // key is deleted rather than retired by position: a BLOCKED entry E
+    // advances plan 1 and records its key; plan 2 turns Complete out of band,
+    // so the next stop's clause-(a) advance runs without reading the
+    // transcript at all; the stop after that re-reads the transcript and can
+    // surface E again (the stale-snapshot race the retry schedule narrows but
+    // cannot close). Were the clause-(a) advance to delete the key, E would
+    // emit a second goal-blocked off a blocker the queue already consumed
+    // and, plan 3 being last, RELEASE the session; the retained pair holds it
+    // instead, because plan 2, the key's recording plan, is still the
+    // immediately previous queue position.
     const repo = makeDir('kit-goal-stop-repo-');
     const local = makeDir('kit-goal-stop-local-');
     const plans = ['docs/plans/p1.md', 'docs/plans/p2.md', 'docs/plans/p3.md'];
@@ -1956,17 +1967,157 @@ test('a clause-(a) advance clears the standing blockedAdvanceKey', () => {
         const first = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-q' }, local);
         assert.strictEqual(JSON.parse(first.stdout).decision, 'block');
         assert.strictEqual(readState(repo).blockedAdvanceKey, 'uuid:u-key-1', 'setup: the blocked advance wrote its key');
+        assert.strictEqual(readState(repo).blockedAdvancePlan, plans[1], 'setup: the key rides with the plan it advanced to');
 
+        // Plan 2 turns Complete with the transcript deliberately NOT
+        // extended: entry E stays its newest assistant turn, which is exactly
+        // what a stale re-read surfaces at the third stop.
         writeFile(path.join(repo, plans[1]), 'Status: Complete\n\nbody\n');
-        fs.appendFileSync(transcript, JSON.stringify({
-            type: 'assistant', uuid: 'u-key-2',
-            message: { role: 'assistant', content: [{ type: 'text', text: 'Plan 2 is closed out.' }] }
-        }) + '\n');
         const second = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-q' }, local);
         assert.strictEqual(JSON.parse(second.stdout).decision, 'block', 'the Complete advance holds as usual');
-        const state = readState(repo);
+        let state = readState(repo);
         assert.strictEqual(state.plan, plans[2], 'the clause-(a) advance landed');
-        assert.strictEqual(state.blockedAdvanceKey, undefined, 'the keyless advance retired the standing key');
+        assert.strictEqual(state.blockedAdvanceKey, 'uuid:u-key-1', 'the keyless advance leaves the key standing');
+        assert.strictEqual(state.blockedAdvancePlan, plans[1], 'the recording plan is now the immediately previous position');
+        assert.strictEqual(readEvents(local).length, 2, 'setup: one goal-blocked, one goal-complete so far');
+
+        const third = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-q' }, local);
+        assert.notStrictEqual(third.stdout, '', 'the stale re-read of E must not release the session');
+        const out = JSON.parse(third.stdout);
+        assert.strictEqual(out.decision, 'block');
+        assert.ok(out.reason.includes('already recorded'), 'the spent hold says the blocker is recorded');
+        assert.ok(out.reason.includes('pick the schema owner'),
+            'the spent hold names the blocker E recorded, read past the intervening note-less entry');
+        state = readState(repo);
+        assert.strictEqual(state.plan, plans[2], 'the leash did not move again');
+        assert.strictEqual(state.history.length, 2, 'no third outcome was recorded');
+        assert.strictEqual(readEvents(local).length, 2, 'the spent lead emitted nothing');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('the spent key retires by position: past its neighbourhood, a matching text digest is judged as new', () => {
+    // The direction that bounds the collision surface: a text-digest key in a
+    // uuid-less transcript matches any later identically worded blocker, so a
+    // key honored forever would hold a genuinely new cross-cutting blocker
+    // ("I need the staging credentials") for the rest of the queue. Once the
+    // recording plan is neither current nor immediately previous, a matching
+    // identity is far more plausibly a new lead than a three-stop-stale read,
+    // so it advances or releases as usual (here, on the last plan: the
+    // pre-queue allow, with its goal-blocked emitted).
+    const repo = makeDir('kit-goal-stop-repo-');
+    const local = makeDir('kit-goal-stop-local-');
+    const plans = ['docs/plans/p1.md', 'docs/plans/p2.md', 'docs/plans/p3.md', 'docs/plans/p4.md'];
+    const sameText = 'BLOCKED: I need the staging credentials.';
+    try {
+        for (const p of plans) writeFile(path.join(repo, p), 'Status: In Progress\n\nbody\n');
+        assert.strictEqual(armGoal(repo, plans).ok, true, 'test setup: the queue should arm');
+        const digestKey = 'text:' + crypto.createHash('sha256').update(sameText).digest('hex');
+        assert.strictEqual(advanceGoal(repo, { outcome: 'blocked', note: sameText, leadKey: digestKey }).advanced, true);
+        assert.strictEqual(advanceGoal(repo, { outcome: 'complete' }).advanced, true);
+        assert.strictEqual(advanceGoal(repo, { outcome: 'complete' }).advanced, true);
+        assert.strictEqual(bindSession(repo, 'sess-q').ok, true);
+        const state = readState(repo);
+        assert.strictEqual(state.plan, plans[3], 'setup: the leash is on the last plan');
+        assert.strictEqual(state.blockedAdvancePlan, plans[1], 'setup: the recording plan is two positions back');
+
+        const transcript = path.join(repo, 'transcript.jsonl');
+        writeFile(transcript, [
+            JSON.stringify({
+                type: 'user',
+                message: {
+                    role: 'user',
+                    content: '<command-name>/kit-goal</command-name>\n'
+                        + '<command-args>' + plans.join(' ') + '</command-args>'
+                }
+            }),
+            JSON.stringify({
+                type: 'assistant',
+                message: { role: 'assistant', content: [{ type: 'text', text: sameText }] }
+            })
+        ].join('\n') + '\n');
+        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-q' }, local);
+        assert.strictEqual(res.stdout, '', 'a retired key no longer holds: the last-plan blocker releases');
+        assert.strictEqual(res.status, 0);
+        const events = readEvents(local);
+        assert.strictEqual(events.length, 1);
+        assert.strictEqual(events[0].event, 'goal-blocked');
+        assert.strictEqual(events[0].plan, plans[3]);
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('a bare key with no recording plan (a state file from before the plan rode with it) still holds a matching lead', () => {
+    // Backward compatibility stated as a direction: with no recorded plan,
+    // position cannot be judged, and the cheap wrong answer is an advance off
+    // an already-consumed entry, so the bare key is honored wherever it
+    // matches, failing toward holding.
+    const repo = makeDir('kit-goal-stop-repo-');
+    const local = makeDir('kit-goal-stop-local-');
+    const plans = ['docs/plans/first.md', 'docs/plans/second.md'];
+    try {
+        for (const p of plans) writeFile(path.join(repo, p), 'Status: In Progress\n\nbody\n');
+        writeFile(path.join(repo, '.kit', 'goal-state.json'), JSON.stringify({
+            plan: plans[1],
+            condition: 'Work ' + plans[1] + ' to completion using executing-work.',
+            armedAt: '2026-08-16T00:00:00.000Z',
+            boundSession: 'sess-q', boundTranscript: null,
+            queue: plans, queueIndex: 1,
+            history: [{ plan: plans[0], outcome: 'blocked', at: '2026-08-16T00:00:00.000Z', note: 'BLOCKED: need the deploy key.' }],
+            blockedAdvanceKey: 'uuid:legacy-1'
+        }, null, 2) + '\n');
+        const transcript = path.join(repo, 'transcript.jsonl');
+        writeFile(transcript, [
+            JSON.stringify({
+                type: 'user',
+                message: {
+                    role: 'user',
+                    content: '<command-name>/kit-goal</command-name>\n'
+                        + '<command-args>' + plans.join(' ') + '</command-args>'
+                }
+            }),
+            JSON.stringify({
+                type: 'assistant', uuid: 'legacy-1',
+                message: { role: 'assistant', content: [{ type: 'text', text: 'BLOCKED: need the deploy key.' }] }
+            })
+        ].join('\n') + '\n');
+        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-q' }, local);
+        const out = JSON.parse(res.stdout);
+        assert.strictEqual(out.decision, 'block', 'the bare legacy key still holds the spent lead');
+        assert.ok(out.reason.includes('already recorded'));
+        assert.strictEqual(readState(repo).plan, plans[1], 'the leash did not move');
+        assert.deepStrictEqual(readEvents(local), [], 'the spent lead emitted nothing');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('a failed mid-queue BLOCKED advance re-blocks and names the unrecorded blocker, quoted and terminated', () => {
+    // The not-advanced branch splices the same transcript-sourced note into
+    // its reason as the advanced branch does, so it answers to the same
+    // boundary rule: the note carries no guaranteed sentence end, and the
+    // quotes plus the period keep the repo data separable from the
+    // instruction that follows it.
+    const blocker = 'BLOCKED: the rollout order is yours to call';
+    const { repo, plans, transcript, local } = armedQueueRepo([blocker]);
+    try {
+        assert.strictEqual(bindSession(repo, 'sess-q').ok, true,
+            'setup: bound already, so the refused write is the advance, not the bind');
+        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-q' }, local,
+            { NODE_OPTIONS: writeRefusingPreload(local) });
+        assert.strictEqual(res.status, 0, 'exit 0: a nonzero exit would mean the preload itself failed to load');
+        const out = JSON.parse(res.stdout);
+        assert.strictEqual(out.decision, 'block', 'a failed advance must not release the session');
+        assert.ok(out.reason.includes('could not be recorded'), 'the reason says the advance did not land');
+        assert.ok(out.reason.includes("The blocker to record for " + plans[0] + " is: '" + blocker + "'."),
+            'the unrecorded note is quoted and terminated');
+        assert.strictEqual(readState(repo).plan, plans[0], 'the write genuinely failed, so the leash has not moved');
+        assert.strictEqual(readEvents(local).length, 1, 'the blocked stop still emitted its goal-blocked');
     } finally {
         rmDir(repo);
         rmDir(local);

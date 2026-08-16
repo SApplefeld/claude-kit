@@ -1436,40 +1436,20 @@ else {
     }
 }
 
+# --- Nothing may be inserted between the embedder section above and the
+# --- `if ($isClone) {` line below. test/embedder-install.test.js runs real
+# --- doctor code by extracting the text between the embedder section's own
+# --- marker comment and the next `if ($isClone) {`, then asserting on the
+# --- reports that region emits, so a check placed in this gap silently joins
+# --- that extracted section and fails those cases with a report count they
+# --- never asked for. Add new checks after the goal state block instead.
+
 if ($isClone) {
     $goalStatePath = Join-Path $repoRoot ".kit\goal-state.json"
     if (-not (Test-Path -LiteralPath $goalStatePath)) {
         Report "INFO" "Kit goal state" @("No kit goal armed in this clone.")
     }
     else {
-        # The goal state file carries plan paths, and every armed session's
-        # SessionStart notice reads them back into its context. A queue makes
-        # that payload several times larger than a single plan did. The posture
-        # that keeps it safe is the file staying machine-local, so this checks
-        # the property rather than assuming it: a committed or committable
-        # goal state turns one clone's plan paths into text that reaches every
-        # collaborator's session start.
-        if (Get-Command git -ErrorAction SilentlyContinue) {
-            $tracked = (& git -C $repoRoot ls-files -- ".kit/goal-state.json")
-            & git -C $repoRoot check-ignore -q -- ".kit/goal-state.json"
-            $ignored = ($LASTEXITCODE -eq 0)
-            if ($tracked) {
-                Report "WARN" "Kit goal state exposure" @(
-                    "$goalStatePath is tracked by git, so its plan paths are in this repo's history and reach every clone.",
-                    "Fix: git rm --cached .kit/goal-state.json, then add .kit/ to .gitignore."
-                )
-            }
-            elseif (-not $ignored) {
-                Report "WARN" "Kit goal state exposure" @(
-                    "$goalStatePath is neither tracked nor ignored, so the next 'git add -A' commits it and its plan paths reach every clone.",
-                    "Fix: add .kit/ to this repo's .gitignore."
-                )
-            }
-            else {
-                Report "PASS" "Kit goal state exposure" @("Goal state is gitignored, so its plan paths stay on this machine.")
-            }
-        }
-
         $goalState = $null
         try { $goalState = Get-Content $goalStatePath -Raw | ConvertFrom-Json } catch {}
         if ($null -eq $goalState -or -not $goalState.plan) {
@@ -1568,6 +1548,59 @@ if ($isClone) {
 }
 else {
     Report "INFO" "Kit goal state" @("Skipped (installed plugin cache, not a repo clone; no specific repo to inspect).")
+}
+
+# --- Goal state exposure. The goal state file carries plan paths, and every
+# --- armed session's SessionStart notice reads them back into its context; a
+# --- queue makes that payload several times what a single plan did. The
+# --- posture that keeps it safe is the file staying machine-local, which is a
+# --- property of the consuming repository rather than one the kit can impose,
+# --- so this checks the property instead of assuming it. It sits deliberately
+# --- outside the $isClone gate above: $repoRoot is derived from where this
+# --- script lives, so it only ever names the kit's own checkout, whose
+# --- .gitignore already covers .kit/, while the exposure exists in whatever
+# --- project a goal was armed in. The inspected project is the directory the
+# --- doctor was launched from, the same resolution the watcher registration
+# --- uses and for the same reason: goal state is project-local, so the
+# --- operator runs the doctor from the project.
+$goalExposureDir = (Get-Location).Path
+$goalExposurePath = Join-Path $goalExposureDir ".kit\goal-state.json"
+if (-not (Test-Path -LiteralPath $goalExposurePath)) {
+    Report "INFO" "Kit goal state exposure" @("No goal state file in $goalExposureDir; nothing to expose.")
+}
+elseif (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    # Reported rather than skipped silently, so an absent check cannot read as
+    # a passing one.
+    Report "INFO" "Kit goal state exposure" @("Skipped (git is not on PATH, so tracked and ignored status cannot be read).")
+}
+else {
+    & git -C $goalExposureDir rev-parse --is-inside-work-tree 2>$null | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        Report "PASS" "Kit goal state exposure" @("$goalExposureDir is not a git working tree, so the goal state cannot be committed from here.")
+    }
+    else {
+        # Order matters: git stops reporting a path as ignored once it is
+        # tracked, so the tracked case must be tested first or it renders as
+        # merely unignored and understates the damage.
+        $goalTracked = (& git -C $goalExposureDir ls-files -- ".kit/goal-state.json")
+        & git -C $goalExposureDir check-ignore -q -- ".kit/goal-state.json"
+        $goalIgnored = ($LASTEXITCODE -eq 0)
+        if ($goalTracked) {
+            Report "WARN" "Kit goal state exposure" @(
+                "$goalExposurePath is tracked by git, so its plan paths are in this repo's history and reach every clone.",
+                "Fix: git rm --cached .kit/goal-state.json, then add .kit/ to this repo's .gitignore."
+            )
+        }
+        elseif (-not $goalIgnored) {
+            Report "WARN" "Kit goal state exposure" @(
+                "$goalExposurePath is neither tracked nor ignored, so the next 'git add -A' commits it and its plan paths reach every clone.",
+                "Fix: add .kit/ to this repo's .gitignore."
+            )
+        }
+        else {
+            Report "PASS" "Kit goal state exposure" @("Goal state is gitignored in $goalExposureDir, so its plan paths stay on this machine.")
+        }
+    }
 }
 
 # --- Stop-failure watcher. An unattended kit-goal run that dies of an API
