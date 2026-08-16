@@ -177,6 +177,45 @@ test('goal armed, transcript names plan, In Progress, no BLOCKED: block', () => 
     }
 });
 
+test('unbound goal: the plan path in a LATER <command-args> span still claims (every span searched)', () => {
+    // Pins the all-spans search in userCommandArgsInclude: an invocation can
+    // carry more than one <command-args> span, and the plan path counts
+    // wherever it rides. A first-span-only read would miss this claim, leave
+    // the session unleashed, and pass every single-span case silently.
+    const repo = makeDir('kit-goal-stop-repo-');
+    const local = makeDir('kit-goal-stop-local-');
+    try {
+        const planRel = 'docs/plans/example.md';
+        writeFile(path.join(repo, planRel), 'Status: In Progress\n\nbody\n');
+        const armed = armGoal(repo, planRel);
+        assert.strictEqual(armed.ok, true, 'test setup: goal should arm');
+        const transcript = path.join(repo, 'transcript.jsonl');
+        writeFile(transcript, [
+            JSON.stringify({
+                type: 'user',
+                message: {
+                    role: 'user',
+                    content: '<command-name>/kit-goal</command-name>\n'
+                        + '<command-message>kit-goal</command-message>\n'
+                        + '<command-args>status</command-args>\n'
+                        + '<command-args>' + planRel + '</command-args>'
+                }
+            }),
+            JSON.stringify({
+                type: 'assistant',
+                message: { role: 'assistant', content: [{ type: 'text', text: 'Working on it.' }] }
+            })
+        ].join('\n') + '\n');
+        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'ses-claimer' }, local);
+        assert.strictEqual(res.status, 0);
+        const out = JSON.parse(res.stdout);
+        assert.strictEqual(out.decision, 'block', 'the claim binds and the leash enforces');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
 test('goal armed but transcript does NOT name the plan: empty stdout (scoping allow)', () => {
     const { repo, local } = armedRepo(['Making progress.']);
     try {

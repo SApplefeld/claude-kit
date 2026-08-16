@@ -27,7 +27,10 @@ const os = require('os');
 const HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-compact-gate.js');
 const CLI = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-compact-checkpoint.js');
 const { armGoal, bindSession } = require('../plugins/claude-kit/hooks/kit-goal-lib.js');
-const { checkpointPath, writeCheckpoint } = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
+const {
+    checkpointPath, writeCheckpoint, automationInEffect, stripLocalCommandOutput,
+    commandArgsSpans
+} = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
 
 // The session id the fixtures bind the goal to; payloads default to it so the
 // full deny state is the baseline and each case negates exactly one condition.
@@ -147,12 +150,23 @@ function gatePayload(repo, transcript, overrides) {
 // stderr: the note is part of the deny contract (it is what a transcript
 // reader sees instead of a failure), and pinning it here means a regression
 // that drops it, or leaks payload or repo data into stderr, cannot pass green.
+// The two deny kinds carry distinct notes so a transcript reader can tell
+// which deferral fired, so each assert also pins the OTHER note's absence.
 const DENY_NOTE = 'kit-compact-gate: auto-compaction deferred to the next chapter boundary';
+const INTERACTIVE_NOTE = 'kit-compact-gate: auto-compaction deferred to the context safety ceiling';
 
 function assertDeny(res) {
     assert.strictEqual(res.status, 2, 'expected deny (exit 2); stderr: ' + res.stderr);
     assert.strictEqual(res.stdout, '', 'deny emits nothing on stdout');
     assert.ok(res.stderr.includes(DENY_NOTE), 'deny carries the fixed deferral note; stderr: ' + res.stderr);
+    assert.ok(!res.stderr.includes(INTERACTIVE_NOTE), 'a boundary deny never carries the interactive note; stderr: ' + res.stderr);
+}
+
+function assertInteractiveDeny(res) {
+    assert.strictEqual(res.status, 2, 'expected interactive deny (exit 2); stderr: ' + res.stderr);
+    assert.strictEqual(res.stdout, '', 'deny emits nothing on stdout');
+    assert.ok(res.stderr.includes(INTERACTIVE_NOTE), 'interactive deny carries its own fixed note; stderr: ' + res.stderr);
+    assert.ok(!res.stderr.includes(DENY_NOTE), 'an interactive deny never carries the boundary note; stderr: ' + res.stderr);
 }
 
 function assertAllow(res) {
@@ -199,28 +213,40 @@ test('gate: missing trigger field: allow (the in-code auto check holds without t
     }
 });
 
-test('gate: no goal armed: allow', () => {
+test('gate: no goal armed, no automation, below ceiling: interactive deny', () => {
+    // Flipped from an unconditional allow by
+    // docs/plans/claude-kit_interactive-compact-deferral_spec_v1.md: a session
+    // no automation instrument is driving defers compaction to the ceiling.
     const repo = makeDir('kit-compact-gate-repo-');
     try {
         const transcript = path.join(repo, 'transcript.jsonl');
         writeUsageTranscript(transcript, 50000);
-        assertAllow(runGate(gatePayload(repo, transcript)));
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript)));
     } finally {
         rmDir(repo);
     }
 });
 
-test('gate: unparseable goal state: allow', () => {
+test('gate: unparseable goal state reads as no goal: interactive deny below the ceiling', () => {
+    // Flipped from an unconditional allow by
+    // docs/plans/claude-kit_interactive-compact-deferral_spec_v1.md: an
+    // unparseable goal state is the no-goal state, which is now the
+    // interactive path rather than a stand-aside.
     const { repo, transcript } = armedRepo();
     try {
         writeFile(path.join(repo, '.kit', 'goal-state.json'), 'not json at all {');
-        assertAllow(runGate(gatePayload(repo, transcript)));
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript)));
     } finally {
         rmDir(repo);
     }
 });
 
 test('gate: goal armed but unbound (boundSession null): allow', () => {
+    // Deliberately NOT flipped by
+    // docs/plans/claude-kit_interactive-compact-deferral_spec_v1.md: an
+    // unbound armed goal is almost always the arming session moments before
+    // its first stop claims the binding, a real plan run that keeps its
+    // early trigger.
     const { repo, transcript } = armedRepo({ unbound: true });
     try {
         assertAllow(runGate(gatePayload(repo, transcript)));
@@ -229,10 +255,14 @@ test('gate: goal armed but unbound (boundSession null): allow', () => {
     }
 });
 
-test('gate: bystander session (session_id differs from boundSession): allow', () => {
+test('gate: bystander session (session_id differs from boundSession): interactive deny', () => {
+    // Flipped from an unconditional allow by
+    // docs/plans/claude-kit_interactive-compact-deferral_spec_v1.md: a
+    // session the armed goal does not cover is classified by its own
+    // transcript, and with no automation evidence it defers to the ceiling.
     const { repo, transcript } = armedRepo();
     try {
-        assertAllow(runGate(gatePayload(repo, transcript, { session_id: 'ses-other-99998888' })));
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript, { session_id: 'ses-other-99998888' })));
     } finally {
         rmDir(repo);
     }
@@ -727,11 +757,15 @@ test('gate: checkpoint a few seconds in the future (clock skew) still matches: a
     }
 });
 
-test('gate: bystander allow does NOT consume a matching checkpoint', () => {
+test('gate: bystander verdict does NOT consume a matching checkpoint', () => {
+    // The bystander verdict flipped from allow to interactive deny
+    // (docs/plans/claude-kit_interactive-compact-deferral_spec_v1.md); the
+    // non-consumption invariant it pins is unchanged: consumption is
+    // exclusive to the bound run's boundary-driven allow.
     const { repo, planRel, transcript } = armedRepo();
     try {
         writeCheckpoint(repo, planRel, SESSION);
-        assertAllow(runGate(gatePayload(repo, transcript, { session_id: 'ses-someone-else' })));
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript, { session_id: 'ses-someone-else' })));
         assert.ok(fs.existsSync(checkpointPath(repo)), 'the bound run still needs its checkpoint');
     } finally {
         rmDir(repo);
@@ -951,10 +985,12 @@ test('cli: status on a checkpoint whose goal is gone says so, and the gate leave
         assert.strictEqual(res.status, 0);
         assert.ok(res.stdout.includes('no kit goal is armed'), 'names the missing goal: ' + res.stdout);
         assert.ok(res.stdout.includes('treats it as absent'), res.stdout);
-        // The gate allows on the no-goal clause, long before the checkpoint,
-        // so the file is not consumed.
-        assertAllow(runGate(gatePayload(repo, transcript)));
-        assert.ok(fs.existsSync(checkpointPath(repo)), 'not consumed on a no-goal allow');
+        // The no-goal verdict flipped from allow to interactive deny
+        // (docs/plans/claude-kit_interactive-compact-deferral_spec_v1.md);
+        // the invariant this pins is unchanged: the interactive path never
+        // touches the checkpoint.
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript)));
+        assert.ok(fs.existsSync(checkpointPath(repo)), 'not consumed on the no-goal path');
     } finally {
         rmDir(repo);
     }
@@ -993,6 +1029,636 @@ test('cli: unknown or missing subcommand prints usage and exits 1', () => {
 // ---------------------------------------------------------------------------
 // Round-trip: the CLI-written checkpoint is the one the gate consumes.
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// The interactive-deferral path: automation detection, the deferred deny, and
+// its error paths (docs/plans/claude-kit_interactive-compact-deferral_spec_v1.md).
+// Fixture lines reproduce the real captured transcript shapes from that plan's
+// Chapter 1, not hand-invented approximations: the three goal_status attachment
+// shapes, the /goal command line (command-name first), the /loop command line
+// (command-message BEFORE command-name, the order the harness really writes),
+// and the ScheduleWakeup tool_use in both its continuing and terminal shapes.
+// ---------------------------------------------------------------------------
+
+// A goal_status attachment entry. The three captured attachment shapes:
+// arming {met:false, sentinel:true, condition}, a stop evaluation
+// {met:false, reason, condition}, and satisfied-and-auto-cleared
+// {met:true, reason, condition, iterations, durationMs, tokens}.
+function goalStatusLine(fields) {
+    return JSON.stringify({ type: 'attachment', attachment: { type: 'goal_status', ...fields } });
+}
+const GOAL_CONDITION = 'the suite is green and the plan is Complete';
+const GOAL_ARMED = goalStatusLine({ met: false, sentinel: true, condition: GOAL_CONDITION });
+const GOAL_EVAL = goalStatusLine({ met: false, reason: 'sections remain', condition: GOAL_CONDITION });
+const GOAL_MET = goalStatusLine({
+    met: true, reason: 'all sections done', condition: GOAL_CONDITION,
+    iterations: 4, durationMs: 5230000, tokens: 412000
+});
+
+// A typed /goal command line: a user entry with string content, command-name
+// tag first, matching the captured markup order.
+function goalCommandLine(args) {
+    return JSON.stringify({
+        type: 'user',
+        message: {
+            role: 'user',
+            content: '<command-name>/goal</command-name>\n<command-message>goal</command-message>\n'
+                + '<command-args>' + args + '</command-args>'
+        }
+    });
+}
+
+const LOOP_PROMPT = 'check the workers and reschedule every 5 minutes';
+
+// A typed /loop command line: command-message BEFORE command-name, the order
+// the harness really writes for /loop (the reverse of /goal's).
+const LOOP_LINE = JSON.stringify({
+    type: 'user',
+    message: {
+        role: 'user',
+        content: '<command-message>loop</command-message>\n<command-name>/loop</command-name>\n'
+            + '<command-args>' + LOOP_PROMPT + '</command-args>'
+    }
+});
+
+// A ScheduleWakeup tool_use entry. A continuing wakeup carries
+// {delaySeconds, noop, prompt, reason} with the loop prompt VERBATIM (so its
+// prompt contains a literal '/loop ...'); the terminal one carries exactly
+// {stop: true}.
+function wakeupLine(input) {
+    return JSON.stringify({
+        type: 'assistant',
+        message: {
+            role: 'assistant',
+            content: [
+                { type: 'text', text: 'Scheduling the next check.' },
+                { type: 'tool_use', id: 'toolu_wakeup_1', name: 'ScheduleWakeup', input }
+            ]
+        }
+    });
+}
+const WAKEUP_CONTINUE = wakeupLine({ delaySeconds: 300, noop: false, prompt: '/loop ' + LOOP_PROMPT, reason: 'next poll' });
+const WAKEUP_STOP = wakeupLine({ stop: true });
+
+// A no-goal repo whose transcript carries the given evidence lines between an
+// ordinary user turn and a usage row summing to `consumed` (defaulting to a
+// mid-conversation figure well below the ceiling), the append order real
+// transcripts have: the newest evidence is the last line of `evidence`.
+function interactiveRepo(evidence, consumed) {
+    const repo = makeDir('kit-compact-gate-repo-');
+    const transcript = path.join(repo, 'transcript.jsonl');
+    const total = consumed === undefined ? 50000 : consumed;
+    const lines = [
+        JSON.stringify({ type: 'user', message: { role: 'user', content: 'let us talk this design through' } }),
+        ...evidence,
+        JSON.stringify({
+            type: 'assistant',
+            message: {
+                role: 'assistant',
+                content: [{ type: 'text', text: 'Thinking it over.' }],
+                usage: {
+                    input_tokens: total - 1000,
+                    cache_creation_input_tokens: 600,
+                    cache_read_input_tokens: 400
+                }
+            }
+        })
+    ];
+    writeFile(transcript, lines.join('\n') + '\n');
+    return { repo, transcript };
+}
+
+test('gate: interactive deny just below the ceiling; the note is fixed and leaks nothing', () => {
+    const { repo, transcript } = interactiveRepo([], CEILING - 1);
+    try {
+        const res = runGate(gatePayload(repo, transcript));
+        assertInteractiveDeny(res);
+        for (const leak of [SESSION, repo, transcript]) {
+            assert.ok(!res.stderr.includes(leak), 'stderr must not carry input-derived data: ' + leak);
+        }
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: interactive session exactly at the ceiling: allow (the deferral has a hard stop)', () => {
+    const { repo, transcript } = interactiveRepo([], CEILING);
+    try {
+        assertAllow(runGate(gatePayload(repo, transcript)));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: native /goal in effect (goal_status met:false): allow, the native trigger governs', () => {
+    const { repo, transcript } = interactiveRepo([GOAL_ARMED, GOAL_EVAL]);
+    try {
+        assertAllow(runGate(gatePayload(repo, transcript)));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: goal_status met:true (satisfied and auto-cleared): interactive deny', () => {
+    // A finished native goal reclassifies the session as interactive: the
+    // residual the plan retired. met decides alone; the arming record's
+    // sentinel field rides on met:false and met:true records alike.
+    const { repo, transcript } = interactiveRepo([GOAL_ARMED, GOAL_EVAL, GOAL_MET]);
+    try {
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript)));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: goal_status with a non-boolean met is ignored, never guessed', () => {
+    const { repo, transcript } = interactiveRepo([goalStatusLine({ met: 'false', condition: GOAL_CONDITION })]);
+    try {
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript)));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: typed /goal command line with a condition: allow', () => {
+    const { repo, transcript } = interactiveRepo([goalCommandLine(GOAL_CONDITION)]);
+    try {
+        assertAllow(runGate(gatePayload(repo, transcript)));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: /goal then a newer /goal clear: interactive deny (newest evidence wins)', () => {
+    const { repo, transcript } = interactiveRepo([goalCommandLine(GOAL_CONDITION), goalCommandLine('clear')]);
+    try {
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript)));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: /goal clear then a newer /goal condition: allow (newest evidence wins)', () => {
+    const { repo, transcript } = interactiveRepo([goalCommandLine('clear'), goalCommandLine(GOAL_CONDITION)]);
+    try {
+        assertAllow(runGate(gatePayload(repo, transcript)));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: the two /goal surfaces rank by recency: a newer met:true retires an older command line', () => {
+    const { repo, transcript } = interactiveRepo([goalCommandLine(GOAL_CONDITION), GOAL_MET]);
+    try {
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript)));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a /goal command line newer than a met:true record reads as in effect again: allow', () => {
+    const { repo, transcript } = interactiveRepo([GOAL_MET, goalCommandLine(GOAL_CONDITION)]);
+    try {
+        assertAllow(runGate(gatePayload(repo, transcript)));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: active /loop (command line, continuing wakeups): allow', () => {
+    // The /loop line writes command-message before command-name; detecting it
+    // from this fixture is what pins the independent-regex tag parse.
+    const { repo, transcript } = interactiveRepo([LOOP_LINE, WAKEUP_CONTINUE, LOOP_LINE, WAKEUP_CONTINUE]);
+    try {
+        assertAllow(runGate(gatePayload(repo, transcript)));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: ended loop (terminal stop:true after the last /loop line): interactive deny', () => {
+    // The real end-of-loop sequence: /loop lines and wakeups, one terminal
+    // stop, then the session continues as ordinary interactive work.
+    const { repo, transcript } = interactiveRepo([LOOP_LINE, WAKEUP_CONTINUE, LOOP_LINE, WAKEUP_STOP]);
+    try {
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript)));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a /loop line newer than a stop:true reads as a fresh loop: allow', () => {
+    const { repo, transcript } = interactiveRepo([LOOP_LINE, WAKEUP_STOP, LOOP_LINE]);
+    try {
+        assertAllow(runGate(gatePayload(repo, transcript)));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a continuing wakeup alone is not a loop invocation (its prompt carries a literal /loop)', () => {
+    const { repo, transcript } = interactiveRepo([WAKEUP_CONTINUE]);
+    try {
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript)));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a wakeup whose prompt quotes the full /loop command tag still does not classify', () => {
+    // Command-line evidence must come from a USER entry; an assistant
+    // tool_use carrying the literal tag in its input is quoted data.
+    const quoted = wakeupLine({ delaySeconds: 300, noop: false, prompt: '<command-name>/loop</command-name>', reason: 'next poll' });
+    const { repo, transcript } = interactiveRepo([quoted]);
+    try {
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript)));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a tool_result line quoting the /goal markup does not classify: interactive deny', () => {
+    // The observed false positive: reading a file that contains the literal
+    // markup (this plan doc itself does) plants the tag inside a tool_result
+    // line of the reading session's own transcript.
+    const quoted = JSON.stringify({
+        type: 'user',
+        message: {
+            role: 'user',
+            content: [{
+                type: 'tool_result',
+                tool_use_id: 'toolu_read_1',
+                content: 'the broker reads <command-name>/goal</command-name> beside <command-args>hold until green</command-args>'
+            }]
+        },
+        toolUseResult: { stdout: 'file contents' }
+    });
+    const { repo, transcript } = interactiveRepo([quoted]);
+    try {
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript)));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: an assistant text echo of the /goal markup does not classify: interactive deny', () => {
+    const echo = JSON.stringify({
+        type: 'assistant',
+        message: {
+            role: 'assistant',
+            content: [{ type: 'text', text: 'The reader keys on <command-name>/goal</command-name> and <command-args>...</command-args>.' }]
+        }
+    });
+    const { repo, transcript } = interactiveRepo([echo]);
+    try {
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript)));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a local-command echo carrying fake /goal markup is stripped before the tag scan', () => {
+    const echo = JSON.stringify({
+        type: 'user',
+        message: {
+            role: 'user',
+            content: '<local-command-stdout>quoted: <command-name>/goal</command-name>'
+                + '<command-args>hold until green</command-args></local-command-stdout>'
+        }
+    });
+    const { repo, transcript } = interactiveRepo([echo]);
+    try {
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript)));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: isMeta, isCompactSummary, and sidechain entries carrying valid evidence are ignored', () => {
+    const meta = JSON.stringify({
+        type: 'user', isMeta: true,
+        message: {
+            role: 'user',
+            content: '<command-name>/goal</command-name>\n<command-args>' + GOAL_CONDITION + '</command-args>'
+        }
+    });
+    const summary = JSON.stringify({
+        type: 'user', isCompactSummary: true,
+        message: {
+            role: 'user',
+            content: '<command-message>loop</command-message>\n<command-name>/loop</command-name>\n'
+                + '<command-args>' + LOOP_PROMPT + '</command-args>'
+        }
+    });
+    const sidechain = JSON.stringify({
+        type: 'attachment', isSidechain: true,
+        attachment: { type: 'goal_status', met: false, sentinel: true, condition: GOAL_CONDITION }
+    });
+    const { repo, transcript } = interactiveRepo([meta, summary, sidechain]);
+    try {
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript)));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: interactive path error cases all allow (empty, missing, non-regular, no path)', () => {
+    const repo = makeDir('kit-compact-gate-repo-');
+    try {
+        // Empty transcript: no evidence AND no valve reading, so allow.
+        const empty = path.join(repo, 'empty.jsonl');
+        writeFile(empty, '');
+        assertAllow(runGate(gatePayload(repo, empty)));
+
+        // Missing transcript file.
+        assertAllow(runGate(gatePayload(repo, path.join(repo, 'no-such.jsonl'))));
+
+        // A directory (non-regular file).
+        const dir = path.join(repo, 'transcript-dir');
+        fs.mkdirSync(dir);
+        assertAllow(runGate(gatePayload(repo, dir)));
+
+        // No transcript_path in the payload at all.
+        const payload = gatePayload(repo, 'unused');
+        delete payload.transcript_path;
+        assertAllow(runGate(payload));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: non-auto trigger and the external-engine marker precede the interactive path', () => {
+    const { repo, transcript } = interactiveRepo([], CEILING - 1);
+    try {
+        assertAllow(runGate(gatePayload(repo, transcript, { trigger: 'manual' })));
+        assertAllow(runGate(gatePayload(repo, transcript), { KIT_EXTERNAL_ENGINE: '1' }));
+        // And the same fixture without either override is the deny state, so
+        // the two allows above are the overrides' doing.
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript)));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: automation-detected allow does NOT consume a matching checkpoint', () => {
+    // A bystander session whose own transcript shows a native goal: the allow
+    // comes from the detection, and the bound run's checkpoint must survive
+    // it (consumption is exclusive to the boundary-driven allow).
+    const { repo, planRel } = armedRepo();
+    try {
+        writeCheckpoint(repo, planRel, SESSION);
+        const bystander = path.join(repo, 'bystander.jsonl');
+        writeFile(bystander, [
+            GOAL_ARMED,
+            JSON.stringify({
+                type: 'assistant',
+                message: { role: 'assistant', content: [], usage: { input_tokens: 50000 } }
+            })
+        ].join('\n') + '\n');
+        assertAllow(runGate(gatePayload(repo, bystander, { session_id: 'ses-someone-else' })));
+        assert.ok(fs.existsSync(checkpointPath(repo)), 'the bound run still needs its checkpoint');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+// Build a transcript past the 512KB whole-file threshold of the head-plus-tail
+// read, with chosen lines at the head and at the tail and inert filler between,
+// ending on a usage row summing to `consumed`. Exercises the capped branch the
+// detection actually runs on for a long session.
+function writeOversizedDetectionTranscript(full, headLines, tailLines, consumed) {
+    const filler = JSON.stringify({ type: 'user', message: { role: 'user', content: 'x'.repeat(2048) } });
+    const lines = [...headLines];
+    let bytes = lines.reduce((n, l) => n + l.length + 1, 0);
+    while (bytes < 700 * 1024) {
+        lines.push(filler);
+        bytes += filler.length + 1;
+    }
+    lines.push(...tailLines);
+    lines.push(JSON.stringify({
+        type: 'assistant',
+        message: { role: 'assistant', content: [], usage: { input_tokens: consumed } }
+    }));
+    writeFile(full, lines.join('\n') + '\n');
+}
+
+test('gate: oversized transcript with the /loop line at the head: allow (the head read finds it)', () => {
+    // The /loop invocation is the first user line of its session, which is
+    // why the detection reads head plus tail: a tail-only read would miss it
+    // on any session past the cap and wrongly defer an automated session.
+    const repo = makeDir('kit-compact-gate-repo-');
+    try {
+        const t = path.join(repo, 'huge.jsonl');
+        writeOversizedDetectionTranscript(t, [LOOP_LINE], [], 50000);
+        assert.ok(fs.statSync(t).size > 512 * 1024, 'fixture exceeds the whole-file threshold');
+        assertAllow(runGate(gatePayload(repo, t)));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: oversized transcript with a goal_status record in the tail: allow (the tail read finds it)', () => {
+    const repo = makeDir('kit-compact-gate-repo-');
+    try {
+        const t = path.join(repo, 'huge.jsonl');
+        writeOversizedDetectionTranscript(t, [], [GOAL_EVAL], 50000);
+        assert.ok(fs.statSync(t).size > 512 * 1024, 'fixture exceeds the whole-file threshold');
+        assertAllow(runGate(gatePayload(repo, t)));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: oversized transcript with no evidence anywhere: interactive deny below the ceiling', () => {
+    // The deny is the discriminating direction here: it proves the capped
+    // read both found no evidence AND still surfaced a legible valve reading
+    // across the head-plus-tail join.
+    const repo = makeDir('kit-compact-gate-repo-');
+    try {
+        const t = path.join(repo, 'huge.jsonl');
+        writeOversizedDetectionTranscript(t, [], [], 50000);
+        assert.ok(fs.statSync(t).size > 512 * 1024, 'fixture exceeds the whole-file threshold');
+        assertInteractiveDeny(runGate(gatePayload(repo, t)));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: armed-and-bound goal with a missing or empty session_id: allow (ambiguity allows)', () => {
+    // An armed goal with a payload carrying no session id is ambiguous: the
+    // offer may belong to the bound session itself, so it must not fall
+    // through to an interactive deny against the bound run.
+    const { repo, transcript } = armedRepo();
+    try {
+        const missing = gatePayload(repo, transcript);
+        delete missing.session_id;
+        assertAllow(runGate(missing));
+        assertAllow(runGate(gatePayload(repo, transcript, { session_id: '' })));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: no goal armed and no session_id: interactive deny (identity plays no role unarmed)', () => {
+    // The other direction of the ambiguity allow above: it is scoped to an
+    // armed goal. With none armed, session identity decides nothing and the
+    // interactive classification stands on the transcript alone.
+    const { repo, transcript } = interactiveRepo([]);
+    try {
+        const payload = gatePayload(repo, transcript);
+        delete payload.session_id;
+        assertInteractiveDeny(runGate(payload));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a typed /loop whose args mention tool_result is still detected: allow', () => {
+    // The tool_result exclusion keys on the quoted JSON form ("tool_result"),
+    // never the bare substring: a genuine command line whose argument text
+    // mentions tool_result must not be skipped, or its loop is invisible and
+    // the session wrongly defers to the ceiling.
+    const line = JSON.stringify({
+        type: 'user',
+        message: {
+            role: 'user',
+            content: '<command-message>loop</command-message>\n<command-name>/loop</command-name>\n'
+                + '<command-args>check the tool_result parser every 5 minutes</command-args>'
+        }
+    });
+    const { repo, transcript } = interactiveRepo([line]);
+    try {
+        assertAllow(runGate(gatePayload(repo, transcript)));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('lib: stripLocalCommandOutput preserves the documented regex semantics', () => {
+    // Reference implementation: the original regex form, kept here as a pin
+    // (like CEILING above). It is correct on small inputs and quadratic on
+    // large ones, which is why the shipped function is a linear scan;
+    // equality against it on these small cases pins the semantics exactly.
+    const reference = (text) => text
+        .replace(/<local-command-([a-z]+)>[\s\S]*<\/local-command-\1>/gi, ' ')
+        .replace(/<local-command-[a-z]+>[\s\S]*$/gi, ' ');
+    const cases = [
+        'no wrappers at all',
+        'a<local-command-stdout>OUT</local-command-stdout>b',
+        // Greedy to the LAST same-name close: typed text between two
+        // same-name blocks is over-stripped (the documented trade-off).
+        'a<local-command-stdout>X</local-command-stdout>typed<local-command-stdout>Y</local-command-stdout>b',
+        // A mismatched-name close cannot end the strip early and expose a
+        // fake claim quoted inside the echoed output.
+        'a<local-command-stdout>X</local-command-caveat>fake<command-name>/kit-goal</command-name></local-command-stdout>b',
+        // An unmatched opener strips to end-of-text (truncated echo).
+        'keep<local-command-stdout>truncated echo',
+        // An unmatched opener ahead of a paired different-name block.
+        'keep<local-command-stdout>x<local-command-caveat>y</local-command-caveat>z',
+        // An opener pairs with a LATER same-name close even across another
+        // same-name opener between them.
+        'k<local-command-stdout>x<local-command-stdout>y</local-command-stdout>z',
+        // A trailing unmatched same-name opener after a stripped pair.
+        'k<local-command-stdout>x</local-command-stdout>y<local-command-stdout>z',
+        // Two different-name blocks, both stripped, text between kept.
+        '<local-command-stdout>a</local-command-stdout>M<local-command-caveat>b</local-command-caveat>N',
+        // Case-insensitive tags pair across cases.
+        'a<LOCAL-COMMAND-STDOUT>x</local-command-stdout>b',
+        // A dangling close with no opener is left alone.
+        'a</local-command-stdout>b',
+        // A close before the opener does not pair backwards.
+        '</local-command-stdout>a<local-command-stdout>b',
+        // A different-name opener inside a stripped span disappears with it.
+        'a<local-command-stdout>x<local-command-caveat>y</local-command-stdout>z'
+    ];
+    for (const c of cases) {
+        assert.strictEqual(stripLocalCommandOutput(c), reference(c), 'case: ' + c);
+    }
+});
+
+test('lib: stripLocalCommandOutput is linear on pathological input (the 512KB read cap)', () => {
+    // Worst case for the retired regex form: unmatched openers back to back,
+    // each restarting an O(n) backtrack (measured in whole seconds at this
+    // size). The linear scan must finish in a small fraction of that.
+    const bomb = '<local-command-stdout>'.repeat(Math.ceil((512 * 1024) / 22));
+    const t0 = process.hrtime.bigint();
+    const out = stripLocalCommandOutput(bomb);
+    const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+    assert.strictEqual(out, ' ', 'the first unmatched opener strips to end-of-text');
+    assert.ok(ms < 1000, 'linear scan completes fast; took ' + ms.toFixed(1) + 'ms');
+});
+
+test('lib: commandArgsSpans matches the global lazy regex enumeration', () => {
+    // Reference implementation: the original global lazy regex loop, kept
+    // here as a pin like the strip reference above. Correct on small inputs,
+    // quadratic on large ones; equality against it on these cases pins the
+    // enumeration exactly, first-close pairing and resume-past-close
+    // included.
+    const reference = (text) => {
+        const re = /<command-args>([\s\S]*?)<\/command-args>/gi;
+        const spans = [];
+        let m;
+        while ((m = re.exec(text))) spans.push(m[1]);
+        return spans;
+    };
+    const cases = [
+        'no spans here',
+        '<command-args>a</command-args>',
+        '<command-args>a</command-args>x<command-args>b</command-args>',
+        // A nested opener is span content, not a new span.
+        '<command-args>a<command-args>b</command-args>c</command-args>',
+        // An unclosed trailing opener contributes no span.
+        '<command-args>a</command-args><command-args>unclosed',
+        // Case-insensitive tags.
+        '<COMMAND-ARGS>a</COMMAND-ARGS>',
+        // A close before any opener does not pair backwards.
+        '</command-args>before<command-args>a</command-args>',
+        // An empty span is still a span.
+        '<command-args></command-args>'
+    ];
+    for (const c of cases) {
+        assert.deepStrictEqual(commandArgsSpans(c), reference(c), 'case: ' + c);
+    }
+});
+
+test('lib: commandArgsSpans is linear on pathological input (the 512KB read cap)', () => {
+    // Worst case for the retired regex form on the Stop-hook path: unclosed
+    // openers back to back, each restarting an O(n) lazy walk.
+    const bomb = '<command-args>'.repeat(Math.ceil((512 * 1024) / 14));
+    const t0 = process.hrtime.bigint();
+    const spans = commandArgsSpans(bomb);
+    const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+    assert.deepStrictEqual(spans, [], 'unclosed openers yield no spans');
+    assert.ok(ms < 1000, 'linear scan completes fast; took ' + ms.toFixed(1) + 'ms');
+});
+
+test('lib: /goal args parse is linear on pathological input (unit level)', () => {
+    // Same failure class as the strip: a lazy [\s\S]*? span restarted an
+    // O(n) walk at every unclosed <command-args> opener.
+    const bomb = '<command-name>/goal</command-name>' + '<command-args>'.repeat(35000);
+    const line = JSON.stringify({ type: 'user', message: { role: 'user', content: bomb } });
+    const t0 = process.hrtime.bigint();
+    const verdict = automationInEffect(line);
+    const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+    assert.strictEqual(verdict, false, 'unclosed args decide nothing');
+    assert.ok(ms < 1000, 'args scan completes fast; took ' + ms.toFixed(1) + 'ms');
+});
+
+test('lib: automationInEffect edge semantics (unit level)', () => {
+    // A bare /goal (empty args) reads state and decides nothing.
+    assert.strictEqual(automationInEffect(goalCommandLine('')), false, 'empty /goal args decide nothing');
+    // Independent evidence tracks: an ended loop does not retire a live goal,
+    // and a cleared goal does not retire a live loop.
+    assert.strictEqual(automationInEffect([LOOP_LINE, GOAL_ARMED, WAKEUP_STOP].join('\n')), true,
+        'a stop:true ends the loop, not the goal');
+    assert.strictEqual(automationInEffect([GOAL_ARMED, LOOP_LINE, goalCommandLine('clear')].join('\n')), true,
+        'a /goal clear ends the goal, not the loop');
+    // An unparseable line is skipped, no evidence.
+    assert.strictEqual(automationInEffect('{"type":"user", truncated <command-name>/loop</command-name>'), false,
+        'an unparseable line is no evidence');
+    // Empty text is no evidence.
+    assert.strictEqual(automationInEffect(''), false);
+});
 
 test('round-trip: CLI open lets exactly one auto-compaction through the gate', () => {
     const { repo, transcript } = armedRepo();

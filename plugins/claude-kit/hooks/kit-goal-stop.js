@@ -73,72 +73,19 @@
 const fs = require('fs');
 const path = require('path');
 const { readGoal, planHead, clearGoal, bindSession, emitGoalEvent } = require('./kit-goal-lib.js');
+const {
+    readTranscriptCapped, stripLocalCommandOutput, sameSessionId, commandArgsSpans
+} = require('./kit-compact-lib.js');
 
 function readStdin() {
     try { return fs.readFileSync(0, 'utf8'); } catch { return ''; }
 }
 
-// Read a transcript with a size cap: for a large file, the head plus tail (the
-// arming invocation and any re-arm can each land near either end of a long-
-// running session). Returns '' on any error or a non-regular file (a blocking
-// read on a FIFO would hang, which no try/catch can rescue).
-function readTranscriptCapped(transcriptPath) {
-    try {
-        const st = fs.statSync(transcriptPath);
-        if (!st.isFile()) return '';
-        const HEAD = 384 * 1024;
-        const TAIL = 128 * 1024;
-        if (st.size <= 512 * 1024) {
-            return fs.readFileSync(transcriptPath, 'utf8');
-        }
-        const fd = fs.openSync(transcriptPath, 'r');
-        try {
-            const head = Buffer.alloc(HEAD);
-            const hb = fs.readSync(fd, head, 0, HEAD, 0);
-            const tail = Buffer.alloc(TAIL);
-            const tb = fs.readSync(fd, tail, 0, TAIL, st.size - TAIL);
-            return head.toString('utf8', 0, hb) + '\n' + tail.toString('utf8', 0, tb);
-        } finally {
-            try { fs.closeSync(fd); } catch { /* already closed */ }
-        }
-    } catch {
-        return '';
-    }
-}
-
-// Compare two session ids as opaque, case-insensitive strings (session UUIDs
-// are surfaced in mixed case across the harness).
-function sameSessionId(a, b) {
-    if (!a || !b) return false;
-    return String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
-}
-
-// Remove local-command output and caveat blocks from user-slot text. When a user
-// runs a slash command the CLI echoes its stdout (and a caveat) back into the
-// user turn inside <local-command-stdout>/<local-command-caveat> wrappers; that
-// is the CLI's own output, not something the user typed, so it must not bind the
-// leash (e.g. /kit-goal status prints the armed plan path, and a catted file or
-// grep hit can echo a literal <command-args> string as data). The deliberate
-// slash-command invocation record (<command-name>/<command-args>) is NOT
-// stripped: the plan path a user types as a command argument is exactly how the
-// arming session claims the binding. A close tag must name the same wrapper as
-// its opener (the backreference), so a coincidental mismatched-name closing tag
-// inside real output cannot terminate the strip early and leave the rest of that
-// output, or content past it, looking like ordinary typed text. The paired match
-// is greedy: it runs to the LAST same-name close tag in the entry, so echoed
-// output that embeds a literal same-name close tag followed by a fake
-// <command-name>/<command-args> claim cannot end the strip early and expose that
-// claim. The accepted trade-off is that genuine typed text sitting between two
-// same-name blocks in one entry is over-stripped, which errs toward NOT claiming
-// (the safe direction). An opener with no matching closer anywhere in the
-// (possibly capped) text is a truncated echo (cut by the read cap, or caught
-// mid-write); it is stripped to end-of-text rather than left holding whatever it
-// happened to contain.
-function stripLocalCommandOutput(text) {
-    return text
-        .replace(/<local-command-([a-z]+)>[\s\S]*<\/local-command-\1>/gi, ' ')
-        .replace(/<local-command-[a-z]+>[\s\S]*$/gi, ' ');
-}
+// readTranscriptCapped (the head-plus-tail capped read),
+// stripLocalCommandOutput (the local-command echo strip, whose greedy
+// same-name pairing semantics are load-bearing), and sameSessionId (the one
+// session-identity comparison the leash and the gate must share) live in
+// kit-compact-lib.js, shared with the PreCompact gate.
 
 // Extract genuine user-typed text from a user message (a string content, or
 // {type:'text'} blocks), strip local-command output, and test whether it is a
@@ -169,10 +116,11 @@ function userCommandArgsInclude(message, needle) {
     if (!nameMatch) return false;
     const name = nameMatch[1].trim();
     if (name !== '/kit-goal' && !name.endsWith(':kit-goal')) return false;
-    const args = /<command-args>([\s\S]*?)<\/command-args>/gi;
-    let m;
-    while ((m = args.exec(stripped))) {
-        if (m[1].includes(needle)) return true;
+    // EVERY span is searched, not just the first: a real invocation can carry
+    // more than one <command-args> span, and the plan path counts wherever it
+    // rides. The enumeration is kit-compact-lib's linear scanner.
+    for (const span of commandArgsSpans(stripped)) {
+        if (span.includes(needle)) return true;
     }
     return false;
 }
