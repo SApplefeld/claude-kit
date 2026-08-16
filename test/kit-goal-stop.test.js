@@ -169,6 +169,8 @@ test('goal armed, transcript names plan, In Progress, no BLOCKED: block', () => 
         const out = JSON.parse(res.stdout);
         assert.strictEqual(out.decision, 'block');
         assert.ok(out.reason.includes(path.basename(planRel)), 'reason names the plan basename');
+        assert.ok(out.reason.includes('subagent dispatch and Workflows'),
+            "the block reason restates the user's per-run parallelization request");
     } finally {
         rmDir(repo);
         rmDir(local);

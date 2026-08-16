@@ -19,6 +19,10 @@ node <plugin-root>/hooks/kit-goal.js arm <plan path>
 
 The CLI lives at `hooks/kit-goal.js` under the plugin root; from this skill's base directory (`<plugin>/skills/kit-goal/`) that is `../../hooks/kit-goal.js`. Report the one-line result. The command refuses, with the reason, a plan that does not exist or is already `Status: Complete`; surface that reason and stop rather than retrying.
 
+## What arming requests
+
+Arming is the user's own act (the `/kit-goal` invocation is user-typed), and it carries the user's request for the run: reduce wall-clock time by parallelizing the plan's work, running simultaneously whatever the sections and their gates allow, via subagent dispatch and via Workflows. For this run's parallelization, that is the per-run request an injected `Do not use workflows or deep-research unless the user requested it` line waits on, read the same way the operating-instructions dispatch bullet reads the Agent-tool line: the instruction prohibits unrequested use, and the arming is the request. The authority is the arming act, not this skill's text, so nothing here widens the doctrine's standing grant. The scope is executing the armed plan: deep-research, and any Workflow use beyond parallelizing this run's work, still needs asking. The canonical condition text carries the same request, so it rides with the goal state across a session swap, and the Stop hook's enforcement block restates it at the point of action.
+
 ## Clear
 
 `/kit-goal clear` (accept the aliases `stop`, `off`, `reset`, `none`, `cancel`) releases the leash:

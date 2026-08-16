@@ -79,15 +79,21 @@ function planHead(cwd, planRel) {
 // text is descriptive: it is surfaced for a human reading goal-state.json. The
 // deterministic Stop hook enforces via file and transcript signals, not by
 // parsing this string, so its clause (a) wording need not mirror the hook's
-// exact Complete-or-archived check.
+// exact Complete-or-archived check. The text also carries the user's per-run
+// parallelization request (subagent dispatch and Workflows), so the request
+// rides with the goal state across session swaps; the /kit-goal skill owns
+// the full statement of what arming requests, and the Stop hook's enforcement
+// block restates it at the point of action.
 function composeCondition(planRel) {
-    return 'Work ' + planRel + ' to completion using executing-work. Met when '
-        + '(a) every section is complete and closed out, or (b) you are BLOCKED '
-        + 'on a decision only Scott can make and have said so. Capacity is never '
-        + 'a blocker: auto-compaction rides through with the leash intact. '
-        + 'Waiting on dispatched background work is a pause, not a stop: lead '
-        + "with 'WAITING:' and what you await; the leash stays armed and the "
-        + 'completion notification resumes the run.';
+    return 'Work ' + planRel + ' to completion using executing-work. Arming is '
+        + "Scott's request for this run: reduce wall-clock time by parallelizing "
+        + 'work that can run simultaneously, via subagent dispatch and via '
+        + 'Workflows. Met when (a) every section is complete and closed out, or '
+        + '(b) you are BLOCKED on a decision only Scott can make and have said so. '
+        + 'Capacity is never a blocker: auto-compaction rides through with the '
+        + 'leash intact. Waiting on dispatched background work is a pause, not a '
+        + "stop: lead with 'WAITING:' and what you await; the leash stays armed "
+        + 'and the completion notification resumes the run.';
 }
 
 // Normalize a plan argument (relative or absolute) to a repo-relative,

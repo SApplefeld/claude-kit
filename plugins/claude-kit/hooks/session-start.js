@@ -277,7 +277,7 @@ function main() {
     }
 
     if (goalArmed) {
-        blocks.push(`A kit goal is armed for ${goalArmed} in this project. If you are working that plan, a Stop hook holds the session to completion, allowing a stop only on plan Complete or a leading 'BLOCKED:'. Reminder, not a blocker.`);
+        blocks.push(`A kit goal is armed for ${goalArmed} in this project. If you are working that plan, a Stop hook holds the session to completion, allowing a stop only on plan Complete or a leading 'BLOCKED:'. The arming carries the user's request for subagent dispatch and Workflows to parallelize that plan's work and reduce wall-clock time. Reminder, not a blocker.`);
     }
 
     if (backlog) {
