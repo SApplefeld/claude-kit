@@ -1,13 +1,13 @@
 # Kit-goal queue: one arming for a plan sequence, and bystander-aware goal framing
 
-Status: In Progress
+Status: Complete
 Commit Model: Commit-and-Push
 Created: 2026-08-16
 
 ## Related
 
-- `../archive/claude-kit_goal-continuity_spec_v1.md` (archived): built `/kit-goal`, the goal state, and the Stop-hook leash this plan extends. (One-way pointer; archived and immutable.)
-- `../archive/claude-kit_interactive-compact-deferral_spec_v1.md` and `../archive/claude-kit_stop-failure-recovery_spec_v1.md` (archived): both read `.kit/goal-state.json` (the compact gate reads `plan` and `boundSession`; the stop-failure watcher reads the same pair), and the recovery plan added a sentence to the kit-goal skill. This plan's state changes are additive precisely so those readers keep working unmodified, and it ran after both to avoid shared-file tangles in `kit-goal-stop.js` and the skill. (One-way pointers; both archived and immutable.)
+- `claude-kit_goal-continuity_spec_v1.md` (archived): built `/kit-goal`, the goal state, and the Stop-hook leash this plan extends. (One-way pointer; archived and immutable.)
+- `claude-kit_interactive-compact-deferral_spec_v1.md` and `claude-kit_stop-failure-recovery_spec_v1.md` (archived): both read `.kit/goal-state.json` (the compact gate reads `plan` and `boundSession`; the stop-failure watcher reads the same pair), and the recovery plan added a sentence to the kit-goal skill. This plan's state changes are additive precisely so those readers keep working unmodified, and it ran after both to avoid shared-file tangles in `kit-goal-stop.js` and the skill. (One-way pointers; both archived and immutable.)
 - `docs/backlog.md`, item "AI OS: consume `~/.claude/kit-events.jsonl` for notifications (2026-07-25)": the goal-event consumer contract lives in `architecture.md` and this plan touches emission cadence (per-plan releases within one armed queue). Changes are additive (existing event names, fields, and detail values unchanged; a queue emits one `goal-complete` per finished plan), and the contract prose is updated in the same section that changes the behavior.
 
 ## Context
@@ -278,3 +278,22 @@ The same finding named a consequence worth recording separately: the pre-existin
 **Gate:** 948 tests, 946 pass, 2 fail, against the 943/941/2 baseline at Chapter 6. Delta exactly +5 (Stop hook 3, watcher 2, goal library 0), same two standing `memq-shim` exceptions by name. The doctor was verified by running it, which is this project's convention for the doctor and the reason no doctor test file exists.
 
 **Next:** close-out. Flip to Complete, archive, index moves, memory.
+
+### Chapter 8: Close-out (2026-08-16)
+
+Completed: 5. Finishing pass
+Commit Model: Commit-and-Push
+
+All five sections are delivered and the plan is Complete. `/kit-goal docs/plans/a.md docs/plans/b.md docs/plans/c.md` arms an ordered queue in one typed invocation; one binding rides the whole sequence; a plan reaching `Status: Complete` or ending on a leading `BLOCKED:` advances the leash rather than releasing it, and only the last plan releases. The SessionStart notice tells the leash holder from a bystander, with a liveness hint drawn from the bound transcript's mtime. The `/kit-goal` CLI, the doctor, and the stop-failure watcher all read the queue, and the compaction gate reads it without knowing queues exist, which is what the strictly additive state shape was for.
+
+**What the effort actually cost, and where the value came from.** Four sections built cleanly and passed their gates. Three review rounds then found, in order: a critical double-consume defect that would burn an entire queue off one blocker; a major queue-loss reachable through a Complete current plan; and a major coverage gap in the exposure check written to close the previous round's security finding. Every one of them passed a fully green suite first. The pattern across all three is the same and is the durable lesson: a fix that closes one door leaves an adjacent one open, and the adjacent door is invisible from the diff that closed the first.
+
+**Docs curation ran and its as-built corrections were accepted.** The curator's rewrites of `architecture.md` and `security-model.md` were read against the code rather than taken on report; its correction of the goal-event exactly-once prose was right and this session's original wording was wrong. The library's own hygiene is done: this plan moves to `docs/archive/` in this changeset, its cross-references repointed for the move, and both indexes updated.
+
+**Backlog.** One item added, to make `.kit/` self-ignoring rather than relying on each consuming repository, which is the preventive fix the shipped doctor check only detects. The existing item on a finished queue's blocker notes stands. No aging pass was owed: the oldest active item is 58 days, inside the 90-day threshold.
+
+**What only the operator can do, in order.** First, update the installed plugin. None of this is live anywhere until that happens: all fifteen cached builds carry zero occurrences of the queue code, and the session that built it was itself running three commits behind, so a multi-plan `/kit-goal` typed today arms one plan and says nothing about the rest. Second, once updated, arm a real two-plan queue and watch one advance, since the leash's behavior across a genuine plan boundary is the one thing no test in this repo can observe. The watcher's unattended resume path is likewise only provable on a real incident, and it shares the live-fire backlog item the stop-failure plan already left.
+
+**Machine state altered to get this done, so it is named:** the plugin zip was rebuilt several times (a tracked artifact, regenerated by the pre-commit hook anyway), and scratch git repositories were created and deleted under the session scratchpad. `test/stop-failure-watcher.test.js` registers a real Windows scheduled task under a per-process throwaway name and unregisters it in an unconditional `finally`; killed between the two, it leaves one enabled task named `claude-kit-stop-failure-watcher-test-<pid>` pointed at a deleted temp directory, which resumes nothing and is removed with `Unregister-ScheduledTask`. Live `~/.claude/settings.json` was not touched.
+
+**Next:** none. Plan Complete and archived.
