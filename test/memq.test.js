@@ -6609,6 +6609,19 @@ test('add-operator writes the memory file and its index line under the operator 
     }
 });
 
+test('a wrong positional count names the parsed positionals, not only the expected shape', () => {
+    const store = makeStore();
+    try {
+        const res = run(store, ['add-operator', 'split-name', 'first-piece', 'second-piece']);
+        assert.strictEqual(res.status, 1);
+        assert.match(res.stderr,
+            /parsed 3 positional argument\(s\): \[1\] split-name \[2\] first-piece \[3\] second-piece/);
+        assert.match(res.stderr, /add-operator needs <name> "<description>"/);
+    } finally {
+        rmStore(store);
+    }
+});
+
 test('add-operator --update replaces the index description in place and touches nothing else', () => {
     const store = makeStore();
     try {

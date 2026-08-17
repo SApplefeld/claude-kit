@@ -13,6 +13,8 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const { spawnSync } = require('node:child_process');
 const path = require('path');
+const fs = require('fs');
+const os = require('os');
 
 const GUARD = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'docs-write-guard.js');
 
@@ -81,4 +83,67 @@ test('governed agents are denied shell redirects into docs/', () => {
 test('unparseable payload fails open', () => {
     const r = spawnSync(process.execPath, [GUARD], { input: 'not json', encoding: 'utf8' });
     assert.strictEqual(r.status, 0);
+});
+
+// Containment: with a cwd in the payload, the guard judges targets against the
+// git root above it, so a docs/ segment outside the project tree (a session
+// scratchpad, a fixture repo, a sibling checkout) is out of scope, while
+// in-tree docs/ writes stay denied whatever form the path takes. Payloads with
+// no cwd keep the shape-only judgment the earlier cases pin.
+function makeTree() {
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'dwg-'));
+    const repo = path.join(base, 'repo');
+    fs.mkdirSync(path.join(repo, '.git'), { recursive: true });
+    fs.mkdirSync(path.join(base, 'scratch', 'docs', 'plans'), { recursive: true });
+    return { base, repo };
+}
+
+test('with a cwd, an absolute docs/ path outside the project tree is allowed', () => {
+    const { base, repo } = makeTree();
+    try {
+        const target = path.join(base, 'scratch', 'docs', 'plans', 'report.md');
+        const r = runGuard({
+            tool_name: 'Write',
+            agent_type: 'claude-kit:qa-verifier',
+            cwd: repo,
+            tool_input: { file_path: target },
+        });
+        assert.strictEqual(r.status, 0, r.stderr);
+    } finally { fs.rmSync(base, { recursive: true, force: true }); }
+});
+
+test('with a cwd, in-tree docs/ writes are still denied, absolute and relative', () => {
+    const { base, repo } = makeTree();
+    try {
+        for (const fp of [path.join(repo, 'docs', 'plans', 'x.md'), 'docs/plans/x.md']) {
+            const r = runGuard({
+                tool_name: 'Write',
+                agent_type: 'claude-kit:qa-verifier',
+                cwd: repo,
+                tool_input: { file_path: fp },
+            });
+            assert.strictEqual(r.status, 2, `expected deny for ${fp}`);
+        }
+    } finally { fs.rmSync(base, { recursive: true, force: true }); }
+});
+
+test('with a cwd, a shell redirect to an out-of-tree docs/ path is allowed, an in-tree one denied', () => {
+    const { base, repo } = makeTree();
+    try {
+        const outPath = path.join(base, 'scratch', 'docs', 'notes.md').replace(/\\/g, '/');
+        const out = runGuard({
+            tool_name: 'Bash',
+            agent_type: 'claude-kit:implementer-opus',
+            cwd: repo,
+            tool_input: { command: 'echo hi > ' + outPath },
+        });
+        assert.strictEqual(out.status, 0, out.stderr);
+        const inTree = runGuard({
+            tool_name: 'Bash',
+            agent_type: 'claude-kit:implementer-opus',
+            cwd: repo,
+            tool_input: { command: 'echo hi > docs/notes.md' },
+        });
+        assert.strictEqual(inTree.status, 2);
+    } finally { fs.rmSync(base, { recursive: true, force: true }); }
 });

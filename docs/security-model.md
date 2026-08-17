@@ -145,7 +145,7 @@ The quarantine is not a control here, and an earlier reading of it as one was wr
 
 - The gate-runner's build-directory list is a policy assumption the guard does not check: a repo that tracks real content under one of those names gets no protection there.
 - Agent identity comes from the hook payload's subagent-type field; a call the guard cannot positively attribute to a governed agent is allowed.
-- `docs-write-guard` covers the Write/Edit tools exactly and shell writes heuristically; an exotic write (python, `sed -i`, `Copy-Item`, a variable-assembled path) is out of its reach and is caught, if at all, by the Stop-scan backstop. Its `docs/` match carries no containment against the session's repo, so a governed subagent is denied a write to any path holding a `docs/` segment anywhere on the filesystem - an over-reach in the false-deny direction, with the containment fix tracked in the backlog.
+- `docs-write-guard` covers the Write/Edit tools exactly and shell writes heuristically; an exotic write (python, `sed -i`, `Copy-Item`, a variable-assembled path) is out of its reach and is caught, if at all, by the Stop-scan backstop. When the payload carries a cwd, its `docs/` match is contained against the git root above that cwd, so a path outside the session's project tree (a session scratchpad, a fixture repo) is out of scope; without a cwd, or for a target unresolvable before the shell runs (a variable, a home-relative path), the shape-only match stands and over-reaches in the false-deny direction.
 - `pr-docs-guard` carries a residual false-deny: a payload cwd resolving to a different checkout that is both dirty and parked on a non-default branch still denies.
 
 **Compensating controls, and the gap each cannot see:**

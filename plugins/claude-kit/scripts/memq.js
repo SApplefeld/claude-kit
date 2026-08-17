@@ -1540,24 +1540,33 @@ function usage(problem) {
     process.exitCode = 1;
 }
 
-// The count error for the commands that take free-text positionals, with the
-// one diagnosis the count alone cannot make. A wrong positional count where
-// some argument carries a literal double quote is the signature of the
-// caller's shell splitting the command line, not of a missing or extra
-// argument: Windows PowerShell 5.1 passes an embedded '"' to a native
-// process in a form that ends the quoted region, so one quoted argument
-// arrives here as several, and the bare count error then points at arguments
-// the caller supplied correctly. The command line is already parsed by the
-// time node runs, so this cannot be prevented here, only named; the remedy
-// rides the hint because stored text drops '"' regardless (sanitize), so
-// rewording without the character loses nothing the store would have kept.
-function usageCount(argv, problem) {
+// The count error for the commands that take free-text positionals. The check
+// rejects on a computed property of the input (the parsed positional count),
+// so the error names the computed value: the positionals as this process
+// received them, each display-bounded, so any splitting cause is self-evident
+// from the first failure rather than only the anticipated one. One diagnosis
+// the echo alone cannot make rides ahead of it: a wrong count where some
+// argument carries a literal double quote is the signature of the caller's
+// shell splitting the command line, not of a missing or extra argument.
+// Windows PowerShell 5.1 passes an embedded '"' to a native process in a form
+// that ends the quoted region, so one quoted argument arrives here as several,
+// and the bare count error then points at arguments the caller supplied
+// correctly. The command line is already parsed by the time node runs, so this
+// cannot be prevented here, only named; the remedy rides the hint because
+// stored text drops '"' regardless (sanitize), so rewording without the
+// character loses nothing the store would have kept. The quote scan reads the
+// raw argv rather than the positionals, since a split can land the quote in a
+// token the parser read as a flag value.
+function usageCount(argv, positionals, problem) {
     if (argv.some((a) => a.includes('"'))) {
         process.stderr.write('memq: an argument contains a literal \'"\'; on Windows PowerShell'
             + ' an embedded double quote splits one argument into several before memq runs,'
             + ' which is the usual cause of a wrong argument count here. Reword without'
             + ' double quotes; stored text drops them anyway\n');
     }
+    const parsed = positionals.map((a, i) => ' [' + (i + 1) + '] ' + sanitize(a, 60)).join('');
+    process.stderr.write('memq: parsed ' + positionals.length + ' positional argument(s)'
+        + (parsed ? ':' + parsed : '') + '\n');
     return usage(problem);
 }
 
@@ -1588,7 +1597,7 @@ function cmdLog(argv) {
             positionals.push(a);
         }
     }
-    if (positionals.length !== 3) return usageCount(argv, 'log needs <key> pass|fail "<summary>"');
+    if (positionals.length !== 3) return usageCount(argv, positionals, 'log needs <key> pass|fail "<summary>"');
     const key = positionals[0];
     const outcome = positionals[1];
     const summary = positionals[2];
@@ -5024,7 +5033,7 @@ function cmdAddType(argv) {
             positionals.push(a);
         }
     }
-    if (positionals.length !== 3) return usageCount(argv, 'add-type needs <type> <name> "<description>"');
+    if (positionals.length !== 3) return usageCount(argv, positionals, 'add-type needs <type> <name> "<description>"');
     const type = positionals[0];
     const name = positionals[1];
     if (!isTypeName(type)) {
@@ -5232,7 +5241,7 @@ function cmdAddOperator(argv) {
             positionals.push(a);
         }
     }
-    if (positionals.length !== 2) return usageCount(argv, 'add-operator needs <name> "<description>"');
+    if (positionals.length !== 2) return usageCount(argv, positionals, 'add-operator needs <name> "<description>"');
     const name = positionals[0];
     const file = name + '.md';
     if (!isMemoryFilename(file)) {

@@ -19,6 +19,13 @@
 // (python, sed -i, Copy-Item, a path passed through a variable) are out of reach
 // here and are caught by the Stop-scan backstop.
 //
+// The tree the guard protects is the session project's own: when the payload
+// carries a cwd, a target is resolved and judged by containment against the git
+// root above that cwd, so a docs/ segment outside the project (a session
+// scratchpad, a fixture repo, a sibling checkout) is structurally out of scope
+// rather than incidentally matching. Without a cwd, or for a target that cannot
+// be resolved before the shell runs, the shape-only judgment stands.
+//
 // SAFETY: this hook can BLOCK a tool call, so it fails OPEN. Any parse error,
 // unrecognized payload, or inability to positively identify a non-curator
 // subagent exits 0 (allow). It exits 2 (deny) only when certain. A guard bug
@@ -27,6 +34,7 @@
 'use strict';
 
 const fs = require('fs');
+const path = require('path');
 
 function readStdin() {
     try { return fs.readFileSync(0, 'utf8'); } catch { return ''; }
@@ -61,23 +69,74 @@ function targetsDocs(s) {
     return /(^|[\\/])docs[\\/]/i.test(String(s || ''));
 }
 
-// A shell command that writes into a docs/ path. Two heuristics, either a hit:
+// The git root at or above `dir`: the nearest ancestor holding a .git entry, or
+// `dir` itself when there is none. Containment is judged against this rather
+// than against the payload cwd, so a subagent working from a subdirectory is
+// still judged against the whole project tree.
+function repoRoot(dir) {
+    let cur = dir;
+    for (let i = 0; i < 64; i++) {
+        try { if (fs.existsSync(path.join(cur, '.git'))) return cur; } catch { return dir; }
+        const parent = path.dirname(cur);
+        if (parent === cur) break;
+        cur = parent;
+    }
+    return dir;
+}
+
+// A target resolved against the directory the write runs in, with the alternate
+// spellings of an absolute path normalized first: a \\?\ extended-length prefix
+// on a drive path is stripped, and on a Windows host the Git-Bash form
+// /<drive>/<rest> becomes <drive>:/<rest>. Null for a path that cannot be
+// resolved before the shell runs (a variable, a home-relative path), which the
+// caller judges by shape alone.
+function resolveTarget(raw, base) {
+    let s = String(raw || '').trim().replace(/^["']|["']$/g, '');
+    if (!s) return null;
+    if (/^\\\\\?\\[A-Za-z]:/.test(s)) s = s.slice(4);
+    if (path.sep === '\\' && /^\/[A-Za-z]\//.test(s)) s = `${s[1]}:${s.slice(2)}`;
+    if (/[$%`]/.test(s) || s.startsWith('~')) return null;
+    try { return path.resolve(base, s); } catch { return null; }
+}
+
+// True when a target is a docs/ write in the project tree this guard protects.
+// Containment first: with a cwd to place it against, a path resolving outside
+// the git root above that cwd is out of scope whatever segments it contains,
+// and the shape test runs on the root-relative remainder. Without a cwd, or for
+// an unresolvable target, the shape-only judgment is the only evidence
+// available, and it stands.
+function inGuardedDocs(raw, cwd) {
+    if (!cwd) return targetsDocs(raw);
+    const resolved = resolveTarget(raw, cwd);
+    if (resolved === null) return targetsDocs(raw);
+    const rel = path.relative(repoRoot(cwd), resolved);
+    if (path.isAbsolute(rel) || /^\.\.(?:[\\/]|$)/.test(rel)) return false;
+    return targetsDocs(rel);
+}
+
+// The docs/-shaped targets of a shell command's writers. Two heuristics:
 //   Bash: a >, >>, tee, or heredoc redirect into docs/ (cat > docs/x <<EOF).
 //   PowerShell: an Out-File / Set-Content / Add-Content / Tee-Object cmdlet, in
 //   command position, with a docs/ path that is positional or reached across a
 //   short bounded run of parameters, including -FilePath / -Path / -LiteralPath
 //   joined by a space or a colon (-Path docs/x or -FilePath:docs/x).
-// Both require a separator before docs (so "mydocs/" does not match). Known misses,
-// all backstopped by the Stop-scan: non-redirect writers (python, sed -i,
-// Copy-Item, a path passed through a variable), and, in the other direction, a
-// residual false hit on a cmdlet name sitting in command position inside a quoted
-// string (a docs path merely named in prose, e.g. a commit message). The
-// command-position anchor keeps an embedded name (Reset-Content) from matching.
-function commandWritesDocs(cmd) {
+// Both require a separator before docs (so "mydocs/" does not match). Each hit
+// is returned for the caller's containment judgment rather than being a verdict
+// itself. Known misses, all backstopped by the Stop-scan: non-redirect writers
+// (python, sed -i, Copy-Item, a path passed through a variable), and, in the
+// other direction, a residual false hit on a cmdlet name sitting in command
+// position inside a quoted string (a docs path merely named in prose, e.g. a
+// commit message). The command-position anchor keeps an embedded name
+// (Reset-Content) from matching.
+function commandDocsTargets(cmd) {
     const c = String(cmd || '');
-    const redirect = /(?:>>?|tee(?:\s+-a)?\s)\s*["']?(?:[^\s"'|;&><]*[\\/])?docs[\\/]/i;
-    const cmdlet = /(?:^|[\s;|&(])(?:Out-File|Set-Content|Add-Content|Tee-Object)\b\s+(?:-\w+(?::\S+)?(?:\s+(?!-)[^\s"';|&]+)?\s+){0,4}(?:-(?:FilePath|Path|LiteralPath)[:\s]\s*)?["']?(?:[^\s"']*[\\/])?docs[\\/]/i;
-    return redirect.test(c) || cmdlet.test(c);
+    const out = [];
+    const redirect = /(?:>>?|tee(?:\s+-a)?\s)\s*["']?((?:[^\s"'|;&><]*[\\/])?docs[\\/][^\s"';|&><]*)/gi;
+    const cmdlet = /(?:^|[\s;|&(])(?:Out-File|Set-Content|Add-Content|Tee-Object)\b\s+(?:-\w+(?::\S+)?(?:\s+(?!-)[^\s"';|&]+)?\s+){0,4}(?:-(?:FilePath|Path|LiteralPath)[:\s]\s*)?["']?((?:[^\s"']*[\\/])?docs[\\/][^\s"';|&]*)/gi;
+    let m;
+    while ((m = redirect.exec(c)) !== null) out.push(m[1]);
+    while ((m = cmdlet.exec(c)) !== null) out.push(m[1]);
+    return out;
 }
 
 function main() {
@@ -91,11 +150,14 @@ function main() {
 
     const input = p.tool_input || p.toolInput || (p.tool && p.tool.input) || {};
     const fp = input.file_path || input.path;
+    const cwd = (typeof p.cwd === 'string' && p.cwd.trim()) ? p.cwd.trim() : null;
 
     let hit = false;
-    if (fp) hit = targetsDocs(fp);
-    if (!hit && input.command) hit = commandWritesDocs(input.command);
-    if (!hit) return;          // not a docs/ write: allow
+    if (fp) hit = inGuardedDocs(fp, cwd);
+    if (!hit && input.command) {
+        hit = commandDocsTargets(input.command).some((t) => inGuardedDocs(t, cwd));
+    }
+    if (!hit) return;          // not a docs/ write in this project: allow
 
     process.stderr.write(
         `Blocked: the ${t} subagent may not write into docs/. docs/ holds curated content only ` +
