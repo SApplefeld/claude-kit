@@ -1,0 +1,1 @@
+2026-08-02 NEO-CLAUDE neuro-evolution-operations-dispatch: executing-work's blind-reviewer contract says to omit docs/ paths from its changed-file list but not what to do when the omission empties it (a docs-only section); the empty-list = no-dispatch call and its Chapter recording had to be derived under pressure - one sentence in step 3 would close it.
