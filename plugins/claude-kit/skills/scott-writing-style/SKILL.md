@@ -115,6 +115,12 @@ Conspicuously absent across all the samples:
 - **No passive voice as the default.** Active construction: "We create…", "We deny…", "We block permissions…". Passive is reserved for describing third-party system behavior.
 - **No hedging stacked deep.** One hedge per claim max (`"typically"`, `"usually"`, `"in most cases"`). Never `"it could potentially perhaps in some cases…"`.
 
+## MACHINE-PROSE TELLS
+
+The NEVER DO list above covers what is absent from the samples. A second class of defect is present in no sample and appears in generated drafts constantly: patterns that read as machine-written regardless of whether the claims are true. The catalog lives in `references/ai-tells.md` beside this file, with the pattern, why it reads as machine-written, and a before/after rewrite for each.
+
+Read it in both directions. A writer drafting in this voice reads it before finishing a draft, because the tells survive every rule above (a document can obey Sections 1 through 8 and still read as generated). A reviewer of a document in this voice reads the same file and hunts the patterns by name, so writer and reviewer work from one list rather than two.
+
 ---
 
 ## CONTRADICTIONS ACROSS THE SAMPLES

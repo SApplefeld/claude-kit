@@ -96,11 +96,13 @@ function denyAll(agentType, cases) {
     for (const [c, reason] of cases) assertDenied(agentType, c, reason);
 }
 
-test('all six judgment agents resolve to the strict class, namespaced or bare', () => {
+test('all eight judgment agents resolve to the strict class, namespaced or bare', () => {
     for (const t of ['adversarial-reviewer', 'blind-reviewer', 'security-reviewer', 'council-member',
-        'design-facilitator', 'consultant', 'claude-kit:adversarial-reviewer',
+        'design-facilitator', 'consultant', 'blind-reader', 'prose-reviewer',
+        'claude-kit:adversarial-reviewer',
         'claude-kit:blind-reviewer', 'claude-kit:security-reviewer', 'claude-kit:council-member',
-        'claude-kit:design-facilitator', 'claude-kit:consultant']) {
+        'claude-kit:design-facilitator', 'claude-kit:consultant', 'claude-kit:blind-reader',
+        'claude-kit:prose-reviewer']) {
         assertDenied(t, 'git commit -m x', GIT);
     }
 });
@@ -111,6 +113,8 @@ test('a type that merely contains a judgment agent name is not governed', () => 
     allowAll('reviewer', ['git commit -m x']);
     allowAll('consultant-helper', ['git commit -m x']);
     allowAll('my-consultant', ['git commit -m x']);
+    allowAll('blind-reader-helper', ['git commit -m x']);
+    allowAll('my-prose-reviewer', ['git commit -m x']);
 });
 
 // The last case is the one that pins the *class* rather than merely pinning
@@ -828,7 +832,8 @@ test('cp reads its destination from -t when the invocation carries one', () => {
 
 test('the governed agents are granted no file-writing tool', () => {
     for (const name of ['adversarial-reviewer', 'blind-reviewer', 'security-reviewer',
-        'council-member', 'design-facilitator', 'consultant', 'qa-verifier']) {
+        'council-member', 'design-facilitator', 'consultant', 'qa-verifier',
+        'blind-reader', 'prose-reviewer']) {
         const text = fs.readFileSync(path.join(AGENTS, `${name}.md`), 'utf8');
         const fm = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
         assert.ok(fm, `${name}.md has no frontmatter`);
@@ -854,7 +859,8 @@ test('the governed agents are granted no file-writing tool', () => {
 // value no longer true, which is the same gap the third doctrine-parity test
 // closes for the doctrine's own grant.
 test('the reviewers and the consultant pin the effort the skills cite as their frontmatter default', () => {
-    for (const name of ['adversarial-reviewer', 'blind-reviewer', 'security-reviewer', 'consultant']) {
+    for (const name of ['adversarial-reviewer', 'blind-reviewer', 'security-reviewer', 'consultant',
+        'blind-reader', 'prose-reviewer']) {
         const text = fs.readFileSync(path.join(AGENTS, `${name}.md`), 'utf8');
         const fm = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
         assert.ok(fm, `${name}.md has no frontmatter`);

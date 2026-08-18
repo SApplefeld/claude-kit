@@ -1,6 +1,6 @@
 {
   "name": "claude-kit",
-  "description": "A personal Claude Code kit: brainstorm/execute/finish workflow skills, five review agents, C# and T-SQL style guides, and session-recovery hooks that re-anchor a run on its plan doc after any session boundary.",
+  "description": "A personal Claude Code kit: brainstorm/execute/finish workflow skills, seven review agents, C# and T-SQL style guides, and session-recovery hooks that re-anchor a run on its plan doc after any session boundary.",
   "author": {
     "name": "Scott Applefeld",
     "email": "scott@applefeld.com"
