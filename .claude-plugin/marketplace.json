@@ -9,7 +9,7 @@
     {
       "name": "claude-kit",
       "source": "./plugins/claude-kit",
-      "description": "Workflow skills (brainstorm/execute/finish), four review agents, C# and T-SQL style guides, and compaction-recovery hooks.",
+      "description": "Workflow skills (brainstorm/execute/finish), seven review agents, C# and T-SQL style guides, and compaction-recovery hooks.",
       "author": {
         "name": "Scott Applefeld",
         "email": "scott@applefeld.com"

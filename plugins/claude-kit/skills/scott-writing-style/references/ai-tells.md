@@ -56,7 +56,9 @@ Tell:
 - **Reliability:** Fewer failures occur.
 - **Cost:** Spend goes down.
 
-Rewrite: run it as prose, or keep the bullets and drop the labels where the bullet is a sentence rather than a catalog entry. Bold the term when the reader will scan for that term later. Do not bold it to make the list look organized.
+Rewrite: "The cache is keyed on tenant, so a cross-tenant read cannot hit. Eviction is manual, because nothing here changes often enough to earn a timer. The cache is process-local and does not survive a restart."
+
+Keep the bullets and the bold only where the reader will scan for that term later, as in a catalog entry or a lookup table. Bolding to make a list look organized is the tell.
 
 ### Signposting and throat-clearing
 
@@ -148,7 +150,13 @@ Tell: "The rollout is staged by region. We start in Canada because it is the sma
 - **United Kingdom:** second, after a full billing cycle closes in Canada.
 - **United States:** last.
 
-Rewrite: keep whichever one carries the detail. If the regions have distinct dates and owners, cut the paragraph's enumeration and let the list hold it. If the paragraph is the argument, cut the list.
+Rewrite: "The rollout is staged by region, smallest book first, each region waiting on a full billing cycle in the one before it."
+
+- **Canada:** 3 March, owned by Priya.
+- **United Kingdom:** 7 April, owned by Tom.
+- **United States:** 12 May, owned by Priya.
+
+Keep whichever one carries the detail. Here the paragraph holds the argument and the list holds dates and owners the paragraph never had, so neither restates the other. Where the list would only re-say the sentence, cut the list.
 
 ### Weightless intensifiers
 

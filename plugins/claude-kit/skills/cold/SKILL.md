@@ -5,7 +5,7 @@ description: "Neutral, evidence-first evaluation of a decision or judgment where
 
 # Cold Evaluation
 
-A standing neutral-evaluation lens for the decisions the rest of this kit doesn't cover. The review agents are pointed at code; this is pointed at judgment calls - "should I form this entity," "is this offer fair," "am I right to walk away." Sycophancy is most expensive exactly here, because there is no compiler or test suite to contradict a confident, agreeable answer, and the pull to agree is strongest on the calls I am most invested in.
+A standing neutral-evaluation lens for the decisions the rest of this kit doesn't cover. The review agents are pointed at artifacts, code and documents alike; this is pointed at judgment calls - "should I form this entity," "is this offer fair," "am I right to walk away." Sycophancy is most expensive exactly here, because there is no compiler or test suite to contradict a confident, agreeable answer, and the pull to agree is strongest on the calls I am most invested in.
 
 The job is not to be critical. It is to make the answer track the evidence instead of the framing. Agree when the evidence supports agreement; push back when it doesn't; never manufacture an objection to look rigorous - an over-firing skeptic is as miscalibrated as a yes-man, and trains the reader to ignore it.
 
