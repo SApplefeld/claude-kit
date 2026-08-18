@@ -13,7 +13,7 @@ Explore the problem space WITH me in conversation, then capture the agreement as
 
 2. **Scope check.** Before drilling into questions, gauge the size of the request. If it spans multiple independent subsystems (its own data, its own lifecycle, useful on its own), it is too big for one spec: name the pieces, how they relate, and the order to build them, then split into sub-project specs. Brainstorm the first through this process; each sub-project gets its own spec and its own execute and finish cycle. Decomposing first beats refining the details of something that should have been three specs.
 
-3. **One question at a time.** Ask the question whose answer most changes the design. Wait for the answer before asking the next. Do not front-load a questionnaire.
+3. **One question at a time.** Ask the question whose answer most changes the design. Wait for the answer before asking the next. Do not front-load a questionnaire. Inside this design conversation, this rule is how route (c) of the intake gap check is asked, the material gap that is mine to call, one question at a time rather than the batch the doctrine's mid-run and close-out asks use; it is not license to skip the enumeration, and routes (a) and (b), a gap an existing source answers and a gap a low-blast default covers, are answered by the session and declared, not asked.
 
 4. **Feel out the corners.** Edge cases, failure modes, integration points, performance characteristics, who consumes the output, what happens on re-run (idempotency matters in this codebase), what already exists that solves a similar shape.
 
@@ -21,11 +21,11 @@ Explore the problem space WITH me in conversation, then capture the agreement as
 
 6. **Offer the design council at a hard fork.** When step 5 surfaces a genuinely hard or material decision with more than one defensible approach (an architecture or schema choice, build-vs-buy, a migration direction, a tradeoff that is expensive or awkward to undo), offer the `design-council` skill before settling it 1:1. Offering is cheap, running is not: the offer is one line and I decline in a word, while the run is token-intensive and slow. So err toward offering, and lower the bar to offer, never the bar to run. Make the offer in the turn you recognize the fork, not a later one you control: "offer it later if the fork is still open" is precisely how it never gets offered. Do not auto-run it: name the cost so I can authorize the spend, and if I decline, stay in the 1:1 conversation. The council returns a converged recommendation or a cleanly-stated unresolved fork; it informs my call, never replaces it or the conversation. I can invoke it directly at any time. This is offered, not default.
 
-7. **Plan sketch before full spec.** Present a short sketch first: goal, approach, the sections of work. Cheap to redirect here; expensive after the full write-up. Iterate on the sketch until agreed.
+7. **Plan sketch before full spec.** Present a short sketch first: goal, approach, the sections of work. Cheap to redirect here; expensive after the full write-up. Iterate on the sketch until agreed. The sketch, and every later recap I approve, carries an `Assumptions` block naming the route (a) and route (b) items in plain words, and my approval covers them; a recap that omits the block has not shown the plan.
 
 8. **Write the spec** to `docs/plans/<project>_spec_v1.md` (increment the version if the name exists; never overwrite a prior version). Then invoke the `curating-docs` skill's create path: add the new plan to the `docs/README.md` index, and if it builds on or supersedes an existing plan, cross-reference both directions (a `## Related` section in the new plan, and a supersession note in the older plan's header). A plan no one can find from the index, that does not point at the work it extends, is half-written.
 
-9. **Spec self-review.** Before handing the spec to executing-work, read it once with fresh eyes and fix inline: placeholders (TBD, TODO, "handle appropriately"), sections that contradict each other, requirements that could be read two ways (pick one, make it explicit), and scope that drifted past the goal. A defect caught here is a sentence to fix; the same defect found mid-execution is rework. Fix and move on; no re-review ceremony.
+9. **Spec self-review.** Before handing the spec to executing-work, read it once with fresh eyes and fix inline: placeholders (TBD, TODO, "handle appropriately"), sections that contradict each other, requirements that could be read two ways (pick one, make it explicit), and scope that drifted past the goal. A defect caught here is a sentence to fix; the same defect found mid-execution is rework. The inline pass gets no second inline pass: fix and move on. The blind read that follows is separate and is not optional, because the inline read cannot catch a gap this session already filled while reading. Dispatch the `blind-reader` agent with the spec itself as the document under review and `Reader: an implementer with no session context, engineer persona, may open the repository`. Adjudicate each question it returns one of three ways: answer it in the spec, declare it under `## Assumptions` and in the recap, or put it to me with a recommendation. Record `blind read: <n> questions, <a> answered, <b> assumed, <c> asked` in the handoff recap. The cost is one dispatch per spec; a trivial spec of one or two sections may skip the blind read, saying so.
 
 10. **Agree on the commit model** and record it in the spec header:
    - **Review-Only:** changes accumulate staged as sections complete, and `git diff --staged` is my review surface before anything is committed. Common for smaller changesets in big existing projects.
@@ -82,6 +82,17 @@ Audience: <deliverable documents only> each persona and its knowledge level; the
 ## Out of Scope
 Explicitly excluded items, so drift is detectable.
 
+## Assumptions
+One bullet per assumption the session proceeded on, in this exact form:
+`- assumed YYYY-MM-DD (<route: a source name | default>): <the assumption>; reversal: <what changing it costs>`,
+with `, section N` inside the parenthetical when the assumption was made during
+execution rather than at design time. An assumption first shown to me in the
+recap is recorded here, never the reverse. This section holds the assumptions the plan
+was approved on and freezes at approval, because everything above `## Chapters` falls
+inside the external engine's approval-scoped fingerprint and a later edit here reads as
+approval drift. An assumption made during execution rides the Chapter's `Assumptions:`
+line instead, in this same form with `, section N` present.
+
 ## Operator Verification
 (Optional.) Checks only I can run: a customer window, a production deploy,
 a real-device action. Each item names what I run or observe and what outcome
@@ -96,7 +107,7 @@ Unresolved items and who owns the answer.
 (Appended by executing-work as sections complete. Leave empty at creation.)
 ```
 
-The header and structure above are a machine contract read by external tooling, not just kit convention; see `curating-docs/SKILL.md`'s machine contract section for the frozen shape and which values it accepts, including `Model:`.
+The header and structure above are a machine contract read by external tooling, not just kit convention; see `curating-docs/SKILL.md`'s machine contract section for the frozen shape and which values it accepts, including `Model:`. `## Assumptions` sits outside the parsed blocks: it is inert to the external parser, and it must stay outside `## Sections of Work`, whose block any foreign `##` heading ends early.
 
 ## When not to use
 
