@@ -14,7 +14,7 @@ A watch runs on exactly two written surfaces, and they differ in what they hold,
 - **The runbook** is the procedure: what a pass checks, in what order, with which commands, and what each result means. It is project-specific, committed, and changes only when the procedure changes.
 - **The ledger** is the state: what is true of the watched system right now and what the loop has learned about it. It is gitignored, lives under `.kit/`, and is rewritten in place rather than appended to.
 
-Nothing the loop needs lives only in a session's context. The order at the end of every pass is fixed: finish the tick, write the ledger, then arm the wake. A pass that ends by arming before it writes loses the pass when the write does not happen. A watch arms twice for two different reasons, and the class is closed at two: a safety arm on any restart, put up before the pass checks anything, because a session that died mid-pass left no timer behind at all; and this paced arm at the end of a completed pass, which sets when the next one runs. The tick order below opens with the first and closes with the second. Anything else a tick produces (a ping, a commit, an intervention on the watched system) is an output of that tick rather than a loop artifact; those two artifacts are the loop's entire memory, and the class is closed.
+Nothing the loop needs lives only in a session's context. The order at the end of every pass is fixed: finish the tick, write the ledger, then arm the wake. A pass that ends by arming before it writes loses the pass when the write does not happen. A watch arms for two different reasons, and the class is closed at two. The safety arm is the standing heartbeat, a repeating timer whose only job is to guarantee that some wake exists: a session that died mid-pass left no timer behind at all, so a restart puts the heartbeat up before it checks anything. The paced arm is a one-shot that sets when the next pass runs, and it is what the end of a completed pass decides. The tick order below opens with the first and closes with the second, and both steps read as ensure rather than add: a heartbeat already standing needs no second one, and a static board takes no one-shot at all. Anything else a tick produces (a ping, a commit, an intervention on the watched system) is an output of that tick rather than a loop artifact; those two artifacts are the loop's entire memory, and the class is closed.
 
 ## The ledger's shape
 
@@ -37,10 +37,10 @@ A **read protocol** sits at the top of the ledger, stating what a constrained pa
 
 The order is fixed. What a tick does inside the act step is the runbook's business and varies per system; the sequence around it does not vary.
 
-1. **Arm the safety wake first**, before any check, on any restart. This is the safety arm rather than the paced one step 4 sets: session-only timers die with the session, so a loop that checks first and arms later is one crash away from silence nobody notices.
+1. **Ensure the heartbeat is armed first**, before any check, on any restart. This is the safety arm rather than the paced one step 4 sets, and its cadence is the runbook's to state: session-only timers die with the session, so a loop that checks first and arms later is one crash away from silence nobody notices. A heartbeat already running satisfies this step; the move is to look, not to add a second.
 2. **Re-derive the board** from the watched system's own source of truth. Never from the ledger, the handoff, or any situation text the wake prompt carries (a self-authored prompt carries none, by the rule under Wake mechanics; an operator-authored one may): each of those is a hint with a timestamp, written by a pass that could not see this one.
 3. **Re-measure before obeying.** For every standing DO or DO-NOT that cites a condition, measure the condition now, and re-read the governing document behind it. A plan doc outranks the ledger for that plan's gate: the ledger line was true when it was written and the plan changed under it.
-4. **Act**, then **write the ledger**, then **arm the next wake**, then **sleep.**
+4. **Act**, then **write the ledger**, then **ensure the next wake is armed**, then **sleep.** On a static board the heartbeat is that wake and nothing more is armed.
 
 ## Wake mechanics
 
@@ -48,7 +48,7 @@ A self-authored wake prompt carries the standing prohibitions and a pointer to t
 
 Check the timer list against the clock before assuming pacing is covered. A one-shot whose time elapsed during a long pass is stale rather than pending, and it fires the instant the pass ends, which reads as a wake the loop did not schedule. Timers fire only while the session is idle, so a long attended turn defers the heartbeat; that is expected behavior, not a broken timer.
 
-Pacing follows the board: a static board gets the heartbeat only, an active one gets a one-shot 15 to 60 minutes out.
+Pacing follows the board: a static board gets the heartbeat only, an active one gets a one-shot 15 to 60 minutes out. A board is active when something on it is expected to change before the heartbeat comes round again, and a board you cannot confidently place is active, because the cost of the two errors is not symmetric: an unnecessary one-shot spends a pass, and a missing one spends the window the loop existed to watch.
 
 ## The ping template
 
@@ -60,7 +60,7 @@ A ping is what the loop sends the operator. Its parts, in order:
 
 Carry a **dedup key per condition**: one ping per condition, and never a re-send of an ask already pending. A loop that re-asks reads as escalation and gets the operator's attention for a question they already answered.
 
-Two rules that govern a ping are owned outside this skill and are not restated here: when to escalate at all, and what a measurement reads when the source that would answer is down (the doctrine's "cannot measure" line, under Verify before you claim).
+Two rules that govern a ping are owned outside this skill and are not restated here: when to escalate at all (the doctrine's "Pause only for a true blocker" bullet, under How we work, which owns the blocker set a ping may interrupt on), and what a measurement reads when the source that would answer is down (the doctrine's "cannot measure" line, under Verify before you claim).
 
 ## The one-way-door preflight
 

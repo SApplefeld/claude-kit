@@ -85,7 +85,7 @@ Files: none shipped; fixtures are transient.
 
 ## Related
 
-Depends on `claude-kit_document-review-battery_spec_v1.md` (Section 2 dispatches its `blind-reader`); run the battery plan first when both are queued. Extends the doctrine's "Surface decisions in batches" and "state your assumption or ask your question at the right time" rules rather than replacing them. Runs before `../plans/claude-kit_standing-watch_spec_v1.md`, which edits the same doctrine sources and the same `executing-work` skill.
+Depends on `claude-kit_document-review-battery_spec_v1.md` (Section 2 dispatches its `blind-reader`); run the battery plan first when both are queued. Extends the doctrine's "Surface decisions in batches" and "state your assumption or ask your question at the right time" rules rather than replacing them. Runs before `claude-kit_standing-watch_spec_v1.md`, which edits the same doctrine sources and the same `executing-work` skill.
 
 ## Chapters
 
