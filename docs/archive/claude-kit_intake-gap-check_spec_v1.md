@@ -1,6 +1,6 @@
 # Intake Gap Check
 
-Status: In Progress
+Status: Complete
 Commit Model: Commit-and-Push
 Created: 2026-08-18
 
@@ -85,7 +85,7 @@ Files: none shipped; fixtures are transient.
 
 ## Related
 
-Depends on `claude-kit_document-review-battery_spec_v1.md` (Section 2 dispatches its `blind-reader`); run the battery plan first when both are queued. Extends the doctrine's "Surface decisions in batches" and "state your assumption or ask your question at the right time" rules rather than replacing them.
+Depends on `claude-kit_document-review-battery_spec_v1.md` (Section 2 dispatches its `blind-reader`); run the battery plan first when both are queued. Extends the doctrine's "Surface decisions in batches" and "state your assumption or ask your question at the right time" rules rather than replacing them. Runs before `../plans/claude-kit_standing-watch_spec_v1.md`, which edits the same doctrine sources and the same `executing-work` skill.
 
 ## Chapters
 
@@ -139,4 +139,30 @@ Surface dry-run: not verifiable from this session, and recorded as such rather t
 Stamps: none surfaced. `memq unstamped --since 1h` returned zero on both tiers.
 Gate: no code shipped, so the suite is unchanged from Chapter 1 at 954 pass / 2 fail. Fixtures were written only under the session scratchpad and no agent read or wrote under the repository.
 Next: finishing-work
+Commit Model: Commit-and-Push
+
+### Chapter 3 - 2026-08-18 (close-out)
+Completed: finishing-work over the whole changeset
+Implemented By: main session, with a fable QA verifier, a fable security reviewer, two fable adversarial reviewers, and a docs curator
+Metrics: 2 finishing review rounds (the whole-changeset pass and a scoped re-review of its own fix delta); NEEDS_CONTEXT 0; escalations 0; consults 0
+Gates:
+- QA verifier: PASS. 954 pass / 2 fail / 0 unresolved, the two being the `memq-shim` environment cases the backlog already tracks, identical by name to the recorded baseline. Every Section 1 through 3 acceptance criterion PASS; Section 4's surface dry-run UNVERIFIABLE by design, with the Chapter's partial-result accounting judged accurate.
+- Security review (fable, high): CLEAR, one minor. The changeset is markdown throughout, but the waiver does not apply: skill and agent frontmatter is machine-read, so those files are not prose. The minor: the close-out block mandated pasting each Chapter `Assumptions:` line verbatim onto the Discord relay, and a line can carry text that originated in a subagent report or a file. Fixed rather than accepted: an entry embedding an instruction is summarized instead of pasted.
+- Adversarial review (fable, high), whole changeset: CHANGES_REQUIRED. Both of the section round's Critical fixes were applied at their primary site and not at every surface stating the same rule, which is this repo's own named defect class. Fixed across seven files.
+- Adversarial re-review (fable, high), scoped to the fix delta: CHANGES_REQUIRED on one surface the first pass had not been asked to check. `docs/architecture.md` still described the `blind-reader` persona bounds without the spec-as-subject carve-out, which reads as a refusal on exactly the dispatch brainstorming step 9 now makes. Fixed. Its two minors were also fixed: the Chapter 2 Verdict line now carries the same route (c) qualifier as the bullet above it, and the freeze rationale in the brainstorming template now says which append it bars, since as written it condemned the deliberate spec amendment this effort itself used.
+- Tree-state bracket: `git status --porcelain` captured before and after each round, no delta in any round.
+Decisions / Surprises:
+- The whole-changeset pass found no defect in what the sections built and every defect in how far the section round's own fixes had travelled. A rule that lives in a doctrine bullet, two skills, an agent charter, a spec, and two indexes is fixed at six or seven sites or it is not fixed, and a truncated read takes whichever one it lands on.
+- Two Chapter 2 statements were corrected against the effort's own interest. The proof run's GREEN arm declared the refund proration convention rather than asking about it, and this plan's own premise classes that gap as a policy the operator owns, which is route (c). The Chapter had framed the declaration as correct routing. It now records a partial miss with the ask branch unexercised, and the Verdict line says the same.
+Drift adjudications, all three classed deviation, none a mistake, so none stopped the run:
+- The doctrine bullet scopes the close-out surface to an assumption "made while I was away" while finishing-work lists every Chapter entry unconditionally. A safe superset (finishing-work shows more, never less), so nothing is lost, but the two texts describe different filters and a future editor reading only the doctrine would look for a filter no skill applies. Carried to the backlog.
+- Route (c)'s ask branch is shipped and unproven. Carried to the backlog with the cause the Chapter names: a scratch-module framing gives a model an easy non-material verdict on a gap that would be material in a real codebase.
+- The surface dry-run is unverifiable from any session: the approving recap belongs to the spec-writing session. Carried to the backlog as an operator-only item.
+Operator-pending, each also in `docs/backlog.md` so it survives the archive:
+- The surface dry-run. Read this plan's `## Assumptions` section and confirm each of its three entries appeared in the brainstorming recap approved on 2026-08-18. An entry that did not appear reopens the brainstorming half of the surface rule as a new round.
+- The plugin cache. Everything this effort shipped lives in the working tree, and a live session reads the kit from the installed plugin cache, which is at an older commit. Until the update lands, no session runs the intake gap check and `blind-reader` and `prose-reviewer` are not dispatchable at all.
+- The project memory store path. `memq` resolves this project's store from the cwd, and `D:\claude-kit` flattens to a directory that holds no memories, while two older paths do. Which one is canonical is the operator's call; nothing was written to either.
+Stamps: `memq unstamped --since 12h` listed one operator-tier record, `fable-limit-can-exhaust-mid-run`. Skipped, same adjudication as Chapter 1: every fable dispatch in this effort succeeded, so it steered nothing.
+Gate at close: full suite 954 pass / 2 fail, unchanged. Zero em dash characters across every changed file.
+Next: none. Plan complete and archived.
 Commit Model: Commit-and-Push

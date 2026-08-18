@@ -6,6 +6,8 @@ Created: 2026-08-18
 
 ## Related
 
+- `../archive/claude-kit_intake-gap-check_spec_v1.md`: complete. Added the intake gap check to the doctrine and the assumption-declaration surfaces to brainstorming, executing-work, and finishing-work. It edits the same doctrine sources and the same `executing-work` skill this plan does, and it runs first.
+
 - `D:\ai-os\.kit\distill-handoff\DISTILLATION.md` (gitignored working artifact in the AI OS repo): the
   2026-08-18 distillation of the NEO babysitter ledger, forty-one passes of an attended watch over a live
   engine, whose kit-side clusters (items 10 through 14) this plan carries. The engine-side clusters became
