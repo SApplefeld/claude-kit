@@ -84,14 +84,16 @@ Explicitly excluded items, so drift is detectable.
 
 ## Assumptions
 One bullet per assumption the session proceeded on, in this exact form:
-`- assumed YYYY-MM-DD (<route: a source name | default>): <the assumption>; reversal: <what changing it costs>`,
-with `, section N` inside the parenthetical when the assumption was made during
-execution rather than at design time. An assumption first shown to me in the
-recap is recorded here, never the reverse. This section holds the assumptions the plan
+`- assumed YYYY-MM-DD (<route: a source name | default>): <the assumption>; reversal: <what changing it costs>`.
+
+An assumption first shown to me in the recap is recorded here, never the reverse. This section holds the assumptions the plan
 was approved on and freezes at approval, because everything above `## Chapters` falls
 inside the external engine's approval-scoped fingerprint and a later edit here reads as
-approval drift. An assumption made during execution rides the Chapter's `Assumptions:`
-line instead, in this same form with `, section N` present.
+approval drift. What the freeze bars is the routine append, the per-section entry that would
+mutate the fingerprinted region on ordinary progress; a deliberate spec amendment above that
+line is still made when the design changes, and it is recorded in a Chapter as the drift it is.
+An assumption made during execution rides the Chapter's `Assumptions:`
+line instead, in this same form with `, section N` added inside the parenthetical.
 
 ## Operator Verification
 (Optional.) Checks only I can run: a customer window, a production deploy,

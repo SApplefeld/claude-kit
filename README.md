@@ -40,7 +40,7 @@ claude-kit/                          (repo = the marketplace)
         adversarial-reviewer.md      Fresh-context spec-compliance + code-quality review
         blind-reviewer.md            Diff-only correctness review, dispatched without the spec or intent story
         prose-reviewer.md            Adversarial review of a document against its spec, fact base, and audience, accuracy before style
-        blind-reader.md              Blind outside-reader review of a document, dispatched as a named persona without the spec or intent
+        blind-reader.md              Blind outside-reader review of a document, dispatched as a named persona without an intent story alongside it
         qa-verifier.md               Build, tests, acceptance criteria with evidence
         security-reviewer.md         OWASP + SOC 2 review; procedure-only model where a project uses it
         docs-curator.md              Updates docs/, returns Drift Report
