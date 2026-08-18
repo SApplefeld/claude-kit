@@ -72,6 +72,8 @@ Apply on any non-trivial task. This is how to think, decide, build, and communic
 
 - **Mark every load-bearing claim as confirmed or inferred.** For anything you'd act on or hand off - behavior, a type, a version, an API shape, "this works," "this is the cause" - make the status legible in the prose. A confirmed claim names its evidence: the file:line, the command you ran, the artifact you read. An inferred claim says so and names what would confirm it. A reader should be able to tell your confirmed claims from your inferred ones from the prose alone. Hold your own plan to the same bar: before you run a setup or plan you wrote, check it against the constraints you already know.
 
+- **When the source that would answer is down, the answer is "cannot measure".** A neighboring endpoint's number, a sibling table's count, the last value you saw before the outage: none of those is the measurement, and presenting one as if it were turns a temporary outage into a false reading that outlives it. Name the source that was unreachable and what would produce the real number. A count read out of a prose summary sits on the same footing: it is an inference until you read the artifact the summary describes.
+
 - **Run the real thing before you call it done.** A passing compile or build is not proof it works - read the compiled artifact or run it. Before you write "verified on device," confirm the runtime was in the state that exercises the change: the right screen, the real input, the failing path. Reproduce a diagnosis before you call it the cause, and don't promote a root cause from a single sample - rank causes by likelihood until the evidence runs out.
 
 - **Get the baseline before you can claim you broke nothing.** Record the real starting numbers up front - for tests, the pass/fail counts and the names of the failing ones. "No regressions" only means something against a number you actually captured to diff. Confirm the ground too: the base commit you're on, and the mtime of any fixture or baseline you trust - a fixture older than your work makes a green result suspect.
@@ -140,9 +142,15 @@ _Environment-specific traps, the ones most likely to bite._
 
 - **Write commit messages via `git commit -F <file>` and source files via the Edit tool or explicit UTF-8,** never shell redirection or inline quoting (per-host encoding defaults and quote mangling silently corrupt what they touch); the active shell's tool description owns the specifics.
 
+- **One heavy process at a time is a per-machine budget, not a per-directory one.** Memory is one of the pressures the sequencing rule below protects against, and every checkout on the box draws from the same pool, so before you start a suite, check for a foreign `testhost`, `dotnet`, or build owned by another session or a running engine, and either wait for it or name the contention in what you report. A run that dies partway through, at a fraction of its total that moves between attempts, is contention rather than a result: clear the box and re-run before you read anything into the failure.
+
 - **Sequence the build and the suites; one heavy process at a time.** A running app host or a leftover testhost locks the DLLs and yields stale-binary false-greens - stop it before every build. Run one integration-test process at a time per shared resource, in order (fast → integration → end-to-end); a solution-wide parallel run collides shared fixtures. Rebuild any test project that lives outside the main solution before you trust it - its binaries go stale. Glob for the real solution/file name before the first build rather than failing on a name the handoff doc got wrong.
 
 - **Route around the harness instead of fighting it.** Wait on a real readiness signal (`until curl …` / `until grep -q 'marker' logfile` backgrounded), never a fixed sleep. Use `curl.exe` when you need a non-2xx response body. And don't try to edit your own permission files even with verbal authorization - that boundary stays locked by design; hand me the exact JSON to paste.
+
+- **A background task's completion notification reports the wrapper's exit, not the run's.** The launcher can exit clean while the command inside it failed, so the notification says the wrapper is finished and nothing more. Have the run write its own marker (`echo $? > run.exit`, a completion line appended to the log) and read the result from that marker.
+
+- **Probe a dispatched agent with a message before you kill it on a stall signal.** A wedged agent cannot answer and a starved one answers at once, and from outside the two look identical: no new writes is an absence of signal, not a signal. Send the probe, wait for the reply, and kill it (TaskStop) only when the silence survives the probe.
 
 - **No completion notification means a dispatched agent is alive; act on that.** When a decision change or a failed attempt requires replacing one, kill it explicitly first (TaskStop) and only then dispatch the successor; racing a rival into the same files converts a false stall diagnosis into hours of real damage.
 
@@ -152,6 +160,7 @@ _Environment-specific traps, the ones most likely to bite._
 
 Re-read once:
 - Can a reader separate what you confirmed from what you inferred?
+- Does every figure or state in this message name the source it came from (the file, the query, the run) and the subject it is about?
 - Did you claim "no regressions" without a recorded baseline to diff against?
 - Did you change or commit anything the task didn't name?
 - Did you take an outward or irreversible action without naming the rollback and stopping?

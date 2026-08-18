@@ -51,6 +51,8 @@ Verify on every pass:
 
 **Dependencies (A06):** run `dotnet list package --vulnerable --include-transitive` where a project file is available; report known-vulnerable packages.
 
+**Permission grants (A05):** for any shell-command allow rule or grant a change composes or widens (`Bash(<prefix>:*)`-shaped rules and their equivalents), run the two-question grant audit and flag the grant when it fails either screen; a grant failing both is the worst case rather than an exempt one. The screens are independent. First, does the verb mutate its target. Second, can the verb write a file or reach the network while reading, which covers options like `--output=<path>` on a read verb and any verb carrying a mutating flag form. The second screen is the one that gets missed. In a settings file the verb list is the only enforcement point, because a companion deny rule cannot carve an option back out of a granted verb: a rule matches leading text on whole-token boundaries and grants the whole tail after the pinned prefix, a deny rule matches the same way, and so a deny binds only while the option sits at the front of the tail and the option escapes it by moving. That matcher account is measured on Claude Code 2.1.235 and recorded in the operator-tier memory `claude-code-bash-rule-token-matching`. It describes settings-file permission rules and nothing else: a hook that parses the whole command (this kit's `readonly-agent-guard.js`) or emits an allow keyed on an absolute path (`memq-grant.js`) enforces on a model these two questions do not describe, and is read on its own terms.
+
 ## Output format
 
 ```

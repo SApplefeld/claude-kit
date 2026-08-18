@@ -61,6 +61,7 @@ In the core below, "I" and "me" are Scott.
 
 Re-read once:
 - Can a reader separate what you confirmed from what you inferred?
+- Does every figure or state in this message name the source it came from (the file, the query, the run) and the subject it is about?
 - Did you claim "no regressions" without a recorded baseline to diff against?
 - Did you change or commit anything the task didn't name?
 - Did you take an outward or irreversible action without naming the rollback and stopping?
