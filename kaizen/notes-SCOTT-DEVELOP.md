@@ -1,2 +1,0 @@
-- 2026-07-24, NEO-CLAUDE (via SCOTT-DEVELOP signpost), Neuro-Evolution-Operations: reviewer agents documented read-only carry Bash and are not read-only in practice - one applied its own edits to BenignHttpStubGateTests.cs mid-review during the engine-dispatched bUnit effort; surfaced twice on that run.
-- 2026-07-24, NEO-CLAUDE (via SCOTT-DEVELOP signpost), Neuro-Evolution-Operations: a reviewer that mutates the tree to test falsifiability must run ALONE - a concurrently dispatched reviewer read the probe state and reported phantom findings (same bUnit run).

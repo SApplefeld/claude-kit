@@ -351,17 +351,40 @@ function main() {
         // Never let the backlog check break recovery or the session.
     }
 
+    // A compaction drops everything a tool call had loaded into context: skill
+    // bodies brought in by the Skill tool and deferred tool schemas brought in
+    // by ToolSearch go with the summarized turns, while the doctrine and this
+    // hook's own output are re-injected. Left unsaid, a session runs the half
+    // of a skill its summary kept and calls a tool whose schema it no longer
+    // holds; so on the compact source alone, plan in progress or not, the
+    // first block tells it to re-load before continuing. Under the external
+    // engine marker the block names no skill: the plan block below withholds
+    // the drive-to-completion push there on purpose, and a worker told to
+    // re-invoke executing-work by name would be handed that loop by the side
+    // door. It still needs its governing skill back, so the engine's own
+    // directive is what names it.
+    const governing = process.env.KIT_EXTERNAL_ENGINE === '1'
+        ? 'the skill the engine\'s directive names'
+        : 'executing-work on a plan run';
+    const reload = source === 'compact'
+        ? `Context was just compacted. Anything a tool call loaded into context before it is gone: a skill body brought in by the Skill tool does not survive a compaction, a deferred tool schema brought in by ToolSearch cannot be assumed to, and a summarized skill can leave a multi-step procedure half-present without saying so. Before continuing, re-invoke the skill governing the work in hand (${governing}) and re-load any deferred tool the work ahead needs; where the harness leaves a visible truncation notice inside a loaded skill or a tool result, that notice is the same trigger.`
+        : null;
+
     // Emit Additional Context.
-    if (activePlans.length === 0 && kaizenCount === 0 && completedUnarchived === 0 && !goalBlock && !backlog) return;
+    if (!reload && activePlans.length === 0 && kaizenCount === 0 && completedUnarchived === 0 && !goalBlock && !backlog) return;
 
     const blocks = [];
+
+    if (reload) blocks.push(reload);
 
     if (activePlans.length > 0) {
         const lines = activePlans.map(
             (p) => `- docs/plans/${p.file} (Commit Model: ${p.model})`
         );
+        // On compact the re-load block above already says so; this block
+        // names what the re-read is of rather than repeating the lead-in.
         const reason = source === 'compact'
-            ? 'Context was just compacted.'
+            ? 'The plan-doc re-read that recovery calls for is of these.'
             : 'Session is starting.';
         const closing = process.env.KIT_EXTERNAL_ENGINE === '1'
             ? 'The external engine that spawned this session owns its scope and continuation: work what its directive names, and read a plan doc only as far as that directive needs. The inventory above is information, not an instruction to resume.'
