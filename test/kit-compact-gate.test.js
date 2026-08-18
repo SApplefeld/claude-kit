@@ -29,7 +29,7 @@ const CLI = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-co
 const { armGoal, bindSession } = require('../plugins/claude-kit/hooks/kit-goal-lib.js');
 const {
     checkpointPath, writeCheckpoint, automationInEffect, stripLocalCommandOutput,
-    commandArgsSpans, readTranscriptCapped
+    commandArgsSpans, readTranscriptCapped, userCommandArgsClaimPlan
 } = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
 
 // The session id the fixtures bind the goal to; payloads default to it so the
@@ -1760,6 +1760,45 @@ test('lib: automationInEffect edge semantics (unit level)', () => {
         'an unparseable line is no evidence');
     // Empty text is no evidence.
     assert.strictEqual(automationInEffect(''), false);
+});
+
+test('lib: userCommandArgsClaimPlan (unit level)', () => {
+    const repo = makeDir('kit-compact-lib-claim-repo-');
+    try {
+        const planRel = 'docs/plans/example.md';
+        // Claims: a genuine user entry whose <command-name> is /kit-goal and
+        // whose <command-args> span carries the plan path.
+        const claiming = path.join(repo, 'claiming.jsonl');
+        writeFile(claiming, JSON.stringify({
+            type: 'user',
+            message: {
+                role: 'user',
+                content: '<command-name>/kit-goal</command-name>\n            '
+                    + '<command-args>' + planRel + '</command-args>'
+            }
+        }) + '\n');
+        assert.strictEqual(userCommandArgsClaimPlan(claiming, planRel), true,
+            'a genuine /kit-goal command-args entry claims the plan');
+
+        // Does not claim: an assistant entry echoing the same plan path, which
+        // must never self-leash the session.
+        const echoing = path.join(repo, 'echoing.jsonl');
+        writeFile(echoing, JSON.stringify({
+            type: 'assistant',
+            message: {
+                role: 'assistant',
+                content: [{
+                    type: 'text',
+                    text: '<command-name>/kit-goal</command-name>\n'
+                        + '<command-args>' + planRel + '</command-args>'
+                }]
+            }
+        }) + '\n');
+        assert.strictEqual(userCommandArgsClaimPlan(echoing, planRel), false,
+            'an assistant echo of the plan path must not claim it');
+    } finally {
+        rmDir(repo);
+    }
 });
 
 test('round-trip: CLI open lets exactly one auto-compaction through the gate', () => {

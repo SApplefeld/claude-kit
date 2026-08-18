@@ -321,9 +321,9 @@ function stripLocalCommandOutput(text) {
 // and measured in whole seconds at the transcript read cap). Tags match
 // case-insensitively. Spans are returned raw: callers own their
 // normalization. An unclosed trailing opener contributes no span. Shared by
-// the goal-leash Stop hook (userCommandArgsInclude searches every span) and
-// the gate's automation detection (which reads the first span only); the two
-// must enumerate identically, which is why there is exactly one scanner.
+// userCommandArgsInclude below (which searches every span) and the gate's
+// automation detection (which reads the first span only); the two must
+// enumerate identically, which is why there is exactly one scanner.
 function commandArgsSpans(text) {
     const spans = [];
     const openRe = /<command-args>/gi;
@@ -338,6 +338,92 @@ function commandArgsSpans(text) {
         if (!c) return spans;
         spans.push(text.slice(o.index + o[0].length, c.index));
         pos = c.index + c[0].length;
+    }
+}
+
+// Extract genuine user-typed text from a user message (a string content, or
+// {type:'text'} blocks), strip local-command output, and test whether it is a
+// kit-goal invocation whose <command-args> span carries the needle. Separators
+// are normalized to '/' so a Windows-style reference matches the forward-slash
+// plan path. tool_use and tool_result blocks are ignored: they carry tool I/O,
+// which can echo the plan path outside any command invocation. The command-args
+// only count when they belong to a kit-goal invocation: the same content must
+// carry a <command-name> whose value is exactly '/kit-goal' or ends with
+// ':kit-goal' (the plugin-namespaced form, e.g. '/claude-kit:kit-goal'), so
+// another command that legitimately takes a path argument (e.g. /graphify
+// docs/plans/<plan>.md) cannot steal the binding from the arming session.
+function userCommandArgsInclude(message, needle) {
+    if (!message) return false;
+    const c = message.content;
+    let text = '';
+    if (typeof c === 'string') {
+        text = c;
+    } else if (Array.isArray(c)) {
+        for (const b of c) {
+            if (b && b.type === 'text' && typeof b.text === 'string') text += '\n' + b.text;
+        }
+    } else {
+        return false;
+    }
+    const stripped = stripLocalCommandOutput(text).replace(/\\/g, '/');
+    const nameMatch = /<command-name>([^<]*)<\/command-name>/i.exec(stripped);
+    if (!nameMatch) return false;
+    const name = nameMatch[1].trim();
+    if (name !== '/kit-goal' && !name.endsWith(':kit-goal')) return false;
+    // EVERY span is searched, not just the first: a real invocation can carry
+    // more than one <command-args> span, and the plan path counts wherever it
+    // rides. The enumeration is this file's linear scanner (commandArgsSpans).
+    for (const span of commandArgsSpans(stripped)) {
+        if (span.includes(needle)) return true;
+    }
+    return false;
+}
+
+// Scoping predicate for an unbound goal: does this session's transcript show the
+// user typing the armed plan path as a slash-command argument? Matches the full
+// repo-relative plan path (e.g. docs/plans/foo.md), separator-normalized, and
+// only inside a <command-args>...</command-args> span of a USER entry (the
+// /kit-goal arming invocation, including a re-arm after a crash). A plain prose
+// mention of the path never claims: without this, any bystander session that
+// happens to type or discuss the path (or that echoes it back, e.g. reading the
+// session-start goal surfacing aloud) could steal the binding from the session
+// actually working the plan. Deliberate exclusions:
+//   - Assistant entries are skipped entirely: an assistant echo of the plan path
+//     must never self-leash the session.
+//   - isMeta entries are skipped: harness-injected records (e.g. the Stop
+//     hook's own block reason, replayed back as "Stop hook feedback: ...") land
+//     in the transcript as a user-type entry but are not something the user
+//     typed, and the Stop hook's reason text names the plan path in full.
+//   - Attachment and tool_result entries are skipped: the session-start
+//     surfacing injects the plan path into EVERY session's transcript as an
+//     attachment, and tool output can echo it, neither of which is the user
+//     working the plan.
+//   - Local-command output inside a user turn is stripped before the
+//     <command-args> scan (the CLI's own echo of a slash command's stdout could
+//     otherwise carry a literal, fake <command-args> string as quoted data),
+//     and sub-agent (sidechain) turns do not count.
+//   - It matches the dir-qualified path, not just the basename, so a session
+//     that merely names a same-basename file is not leashed.
+// False if there is no path or it is unreadable: a session we cannot scope is
+// never leashed.
+function userCommandArgsClaimPlan(transcriptPath, planRel) {
+    try {
+        if (!transcriptPath || !planRel) return false;
+        const needle = String(planRel).replace(/\\/g, '/');
+        const content = readTranscriptCapped(transcriptPath);
+        if (!content) return false;
+        const lines = content.split('\n');
+        for (const line of lines) {
+            const t = line.trim();
+            if (!t) continue;
+            let entry;
+            try { entry = JSON.parse(t); } catch { continue; }
+            if (!entry || entry.type !== 'user' || entry.isSidechain || entry.isMeta === true) continue;
+            if (userCommandArgsInclude(entry.message, needle)) return true;
+        }
+        return false;
+    } catch {
+        return false;
     }
 }
 
@@ -556,5 +642,6 @@ module.exports = {
     checkpointMatches, sameSessionId,
     CHECKPOINT_MAX_AGE_MS, CHECKPOINT_FUTURE_SKEW_MS,
     readTranscriptCapped, stripLocalCommandOutput, commandArgsSpans,
+    userCommandArgsClaimPlan,
     automationInEffect, transcriptShowsAutomation
 };
