@@ -1,6 +1,6 @@
 # Cap the per-section reviewer bump at Opus, and bring the security reviewer under the same rule
 
-Status: In Progress
+Status: Complete
 Commit Model: Commit-and-Push
 Disjoint: yes
 Created: 2026-08-19
@@ -168,4 +168,28 @@ Rejected, with reasons: the blind reviewer's Major, that a haiku-tier section's 
 Stamps: adjudicated 1, stamped 1. `memq unstamped --since 1d` surfaced one operator-tier record, `claude-code-usage-iterations-aggregate`, read by a hook rather than by this work and skipped as not steering it. Separately stamped `docs-write-guard-blocks-subagent-doc-writes`, which decided this section's inline routing.
 
 Next: finishing-work
+Commit Model: Commit-and-Push
+
+### Chapter 2 - 2026-08-19
+Completed: 2. Finishing pass (close-out over the whole effort)
+Implemented By: main session, with qa-verifier, security-reviewer, adversarial-reviewer, and docs-curator all dispatched at fable. Fable was reachable on every dispatch: no unavailability, no compensation, no fallback, so every finishing gate ran at its intended top-model strength.
+Metrics: finishing rounds 1; NEEDS_CONTEXT 0; escalations 0; consults 0. Whole-effort changeset: five files, one commit (ec02424..e181897) plus this close-out.
+
+Gates: `node --test test/*.test.js` reports 964 tests, 962 pass, 2 fail. That is a delta from the recorded baseline of 964 / 961 / 3, and it moved in the passing direction: the baseline's third failure, `the status check reports a content-swapped shim as stale` (`test/memq-shim.test.js:475`), passed in all four post-change runs. The qa-verifier root-caused it rather than waving it through: `test/memq-shim.test.js` is byte-identical across the whole changeset, which touches no JavaScript at all, so the flip is run-to-run variance in a pre-existing intermittent test. The two remaining failures are the same pre-existing environment assertions the baseline named, at `:401` and `:512`. Foreign `dotnet` and `testhost.exe` processes from another session were on the box during both runs and are the plausible contributor to the baseline-time failure.
+
+The security review was run rather than waived. The changeset is five markdown files, which reads as prose, but finishing-work's waiver predicate explicitly classes a skill's `SKILL.md` as configuration wearing a `.md` extension, and two of the five are skill bodies. The review was scoped to those two and returned CLEAR, with a tier-by-tier before-and-after of the security path: on an Opus-led session the haiku tier weakens (opus at `xhigh` to sonnet), sonnet holds, and the opus, inline, and fable tiers all strengthen to opus at `max`; on any below-opus session every tier strengthens, because the old rule left the security review at the weak session model while the new one is section-determined. It confirmed the finishing security pass still pins fable in the untouched `finishing-work/SKILL.md:12`, so the exception's stated backstop genuinely exists.
+
+Review Findings: across the whole effort, 2 Critical, 2 Major, and 6 Minor were raised at section time; 6 were fixed and 4 rejected with reasons. Chapter 1's tally line misstated that as "2 Critical, 1 Major, 6 Minor," which sums to 9 against 10 dispositions; the finishing adversarial pass caught the arithmetic. The correct raised count is 10, the second Major being the blind reviewer's haiku-tier security finding. Chapters are append-only, so the correction is recorded here rather than edited into Chapter 1.
+
+The finishing pass raised 2 Major and 3 Minor of its own. Both Majors are resolved rather than outstanding. The first, that the finishing security pass could not be waived on a changeset containing skill bodies, was already satisfied: that review ran in parallel with the adversarial pass, and the reviewer flagged it without knowing it had been dispatched. The second, that `docs/backlog.md`'s pointer to Chapter 1 of the archived plan was false on origin while the plan still sat in `docs/plans/`, is cured by this close-out's archive move, which is why the reviewer correctly called that move blocking. Of the Minors, one was fixed: `docs/architecture.md`'s clause had grown from a pointer into a near-complete second statement of the rule, which is the drift shape the one-owner-per-rule standard exists to prevent, so the finishing-backstop clause was trimmed and the disambiguating consequence clause kept. The other two are accepted and recorded: the haiku-tier security drop rests on brainstorming banding security-sensitive surfaces to fable, and the fable exception's backstop rests on a finishing pass whose own model substitution is this plan's stated Open Question, which already has a tripwire in finishing-work's requirement to record the model each pass actually ran at.
+
+Drift: one item, Class deviation, no stop. The untiered-section clause as built takes whichever tier actually built the section rather than the inline rule flatly, because step 1 of the same skill dispatches a clearly-briefable untiered section at the tier it would have earned, and the spec was written without seeing that contradiction. The as-built form preserves the spec's own stated ground, that the writer tier is what actually built the section. The spec was amended in place and the deviation rides this record. The docs-curator's claims sweep found no other drift and needed no doc edits: every living doc already stated the as-built rule.
+
+Decisions / Surprises: a concurrent session was working in this same checkout during the finishing pass, and its uncommitted files appeared inside this effort's tree-state bracket. It was correctly read as a sibling rather than a rogue agent (a 12KB authored plan doc is not something a read-only reviewer produces), left entirely alone, and named as an off-limits workspace constraint in every subsequent dispatch brief. It committed and pushed as `28b8f1e` before the archive step, which removed the collision risk on the two doc indexes this close-out had to edit. No agent produced a tree delta at any point in the effort: every bracket compared clean.
+
+Assumptions: none new in this section. The three recorded in Chapter 1 stand.
+
+Stamps: adjudicated 0, stamped 0 in this section; the sweep is recorded in the close-out.
+
+Next: none, the effort is complete
 Commit Model: Commit-and-Push
