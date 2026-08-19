@@ -196,6 +196,16 @@
 // With KIT_RUN_ID unset there is no pending tier and every command behaves as
 // it does without the engine.
 //
+// A git worktree resolves the project directory of the main checkout it hangs
+// off rather than one of its own: with no pin honored, a working directory
+// whose .git is a pointer file into <main>/.git/worktrees/<name>, and whose
+// back-pointer and administrative shape answer for it, sanitizes <main>
+// instead of itself. Without that rule a worktree of a repository is a second,
+// empty store the main checkout's sessions never read. The link is followed
+// only where git itself maintains both halves of it (worktreeMainRoot below
+// carries the reasoning and the trust boundary); every other shape, including
+// a submodule's, keeps the working directory's own derivation.
+//
 // Node core modules only, CommonJS, zero dependencies, UTF-8 throughout.
 
 'use strict';
@@ -237,6 +247,8 @@ const PINNED_SHOWN = 10;      // pinned memories listed by decay-scan before the
 const RECALL_MAX_LINES = 200;           // total lines `recall` emits before tier-ordered truncation
 const RECENT_MAX_LINES = 200;           // total lines `recent` emits before surface-ordered truncation
 const ARCHIVE_INDEX_READ_CAP = 65536;   // bytes of the archive index `recall` reads, a fixed-size prefix
+const GIT_POINTER_READ_CAP = 4096;      // bytes read from a .git pointer file, which git writes as one line
+const GIT_POINTER_PATH_CAP = 2048;      // characters of a path a .git pointer file may name
 const DAY_MS = 86400000;
 const HOUR_MS = 3600000;
 const MAX_DATE_MS = 8.64e15;   // the widest moment Date can render, either side of the epoch
@@ -311,9 +323,210 @@ function memoryRoot() {
 // by replacing every character outside [A-Za-z0-9] with '-', case preserved
 // ("D:\personal\claude-kit" becomes "D--personal-claude-kit"). Reproducing
 // that rule is what lets memq land on the same memory directory the harness
-// writes.
+// writes. The one deliberate divergence is a git worktree, whose memories are
+// filed under the main checkout's directory (worktreeMainRoot below) while the
+// harness keeps writing that session's transcript under the worktree's own:
+// the memories are the repository's, and a store split per worktree is the
+// defect that resolution exists to close.
 function sanitizeProjectPath(cwd) {
     return String(cwd).replace(/[^A-Za-z0-9]/g, '-');
+}
+
+// A .git pointer file's first bytes, or '' when the path does not answer as a
+// regular file. Git writes one line into both the worktree's .git file and the
+// back-pointer beside its administrative directory, so a fixed-size prefix
+// reads all of either one, and the cap is what keeps a directory whose .git
+// happens to be some arbitrary large file from being pulled into memory on a
+// path every store surface crosses.
+//
+// The fstat is taken on the open descriptor rather than on the name, so what
+// is measured is the file that was opened: a name checked and then swapped for
+// something else between the check and the open is the classic way a read is
+// steered somewhere it was never meant to go. Off win32 the open itself is
+// non-blocking, because opening a fifo for reading otherwise waits for a
+// writer that a planted one will never provide, and this call sits on the path
+// every store surface crosses.
+function readGitPointer(file) {
+    const flags = process.platform === 'win32'
+        ? fs.constants.O_RDONLY
+        : fs.constants.O_RDONLY | (fs.constants.O_NONBLOCK || 0);
+    const fd = fs.openSync(file, flags);
+    try {
+        if (!fs.fstatSync(fd).isFile()) return '';
+        const buf = Buffer.alloc(GIT_POINTER_READ_CAP);
+        const n = fs.readSync(fd, buf, 0, GIT_POINTER_READ_CAP, 0);
+        return buf.toString('utf8', 0, n);
+    } finally {
+        fs.closeSync(fd);
+    }
+}
+
+// The main checkout a git worktree belongs to, or null when the working
+// directory is not a worktree of one.
+//
+// A worktree's cwd sanitizes to a project directory of its own, so a session
+// working in one accumulates its memories where the main checkout's sessions
+// never look: two stores for one repository, split silently, which is the
+// defect this resolves. The main checkout's root is the segment both sides
+// share.
+//
+// The two-way handshake is the security boundary, not a validity check. The
+// .git pointer file is on-disk data in a directory the session cd'd into, the
+// same trust class as the committed files the KIT_MEMORY_PROJECT gate exists
+// for (a repository can carry .vscode/settings.json, a devcontainer.json, an
+// .envrc), so a pointer alone must never redirect an attended session's memory
+// reads and writes to a path of its author's choosing. What a planted pointer
+// cannot supply is the other half: <gitdir>/gitdir naming this directory back,
+// beside the commondir file and under a real .git directory, all of it inside
+// the administrative directory of the checkout being claimed. What that proves
+// is bounded and worth stating exactly: whoever made the claim could already
+// write a git-shaped administrative directory at the path now named as the
+// main checkout. It does not prove the two directories are one repository. The
+// reason a clone alone cannot arrange it is git's own refusal to check out any
+// path whose components include .git, so the far half has to be planted by
+// something with write access there, not by content that merely arrived.
+//
+// Only <cwd>/.git is consulted, never an upward walk, which keeps parity with
+// the cwd derivation: a subdirectory of a checkout is its own project tier
+// today and stays one. Submodules are excluded by construction rather than by
+// a test of their own, since their gitdir names .git/modules/<name> and only
+// the worktrees form is accepted.
+//
+// Every failure answers null and the working directory stands, because a
+// worktree pointer is ambient filesystem state rather than the explicit
+// configuration a pin is: an unreadable or unrecognized one means an ordinary
+// checkout far more often than it means a problem, and refusing the run over
+// it would stand down sessions that never wanted this resolution. The one
+// failure worth saying out loud is a worktree-shaped pointer whose handshake
+// does not close, since there the operator meant to share the main checkout's
+// store and is silently getting a second one.
+//
+// Memoized per working directory: projectMemoryDir resolves the segment dozens
+// of times in a single command, and each resolution would otherwise stat and
+// read several files.
+const worktreeMainRoots = new Map();
+let worktreeHandshakeNoted = false;
+let worktreeOrphanNoted = false;
+
+function worktreeMainRoot(cwd) {
+    const key = String(cwd);
+    if (worktreeMainRoots.has(key)) return worktreeMainRoots.get(key);
+    const main = resolveWorktreeMainRoot(key);
+    worktreeMainRoots.set(key, main);
+    return main;
+}
+
+function resolveWorktreeMainRoot(cwd) {
+    const dotGit = path.join(cwd, '.git');
+    let gitdir;
+    try {
+        // A directory is the ordinary checkout, an absent entry is no
+        // repository at all, and both take the cwd derivation untouched.
+        if (!fs.statSync(dotGit).isFile()) return null;
+        // Anchored at the start of the file, not at any line of it: git writes
+        // the pointer as the first and only line, and a gitdir: line found
+        // somewhere inside an arbitrary file is that file's content rather
+        // than a pointer.
+        const line = /^[ \t]*gitdir:[ \t]*([^\r\n]+?)[ \t]*\r?(?:\n|$)/.exec(readGitPointer(dotGit));
+        if (line === null) return null;
+        gitdir = path.resolve(cwd, line[1]);
+    } catch {
+        return null;
+    }
+    // Every rejection below this point is decided on the path text alone,
+    // before anything touches the filesystem at the pointer's target, because
+    // for the two shapes that follow the touch is itself the harm.
+    //
+    // A pointer naming a UNC or device path from a checkout that is not itself
+    // on that share is refused outright: opening a path under \\host\share is
+    // an outbound SMB connection that authenticates automatically as the
+    // logged-in account, so a single planted file in any directory a session
+    // cd's into would hand an attacker-named host a credential exchange, and
+    // the SessionStart hook resolves this on its own. Reading the target to
+    // find out whether the pointer is honest is exactly the operation being
+    // guarded against, so the shape is judged first and never opened.
+    if (process.platform === 'win32' && path.parse(gitdir).root.startsWith('\\\\')
+        && !fsEq(path.parse(gitdir).root, path.parse(path.resolve(cwd)).root)) {
+        return null;
+    }
+    // A working directory is bounded by what the OS will hand back; pointer
+    // content is not. An absurd path resolves to an absurd project directory
+    // name, which is a store segment every later write fails on.
+    if (gitdir.length > GIT_POINTER_PATH_CAP) return null;
+    // The shape is read by walking path segments rather than by matching the
+    // raw text, so a pointer spelled with either separator, as git spells them
+    // with forward slashes on Windows too, is the same shape.
+    const worktrees = path.dirname(gitdir);
+    const mainDotGit = path.dirname(worktrees);
+    const main = path.dirname(mainDotGit);
+    if (!fsEq(path.basename(worktrees), 'worktrees') || !fsEq(path.basename(mainDotGit), '.git')) {
+        return null;
+    }
+    try {
+        // The far half of the handshake, in the order that reads cheapest:
+        // the claimed main checkout carries a real .git directory, that
+        // worktree's administrative directory carries the commondir file git
+        // keeps beside every one of them, and its gitdir file names this
+        // working directory's own .git back.
+        if (!fs.statSync(mainDotGit).isDirectory()) throw new Error('no .git directory');
+        if (!fs.statSync(path.join(gitdir, 'commondir')).isFile()) throw new Error('no commondir');
+        const back = readGitPointer(path.join(gitdir, 'gitdir')).replace(/\s+$/, '');
+        if (back !== '' && fsEq(path.resolve(gitdir, back), path.resolve(dotGit))) {
+            return acceptedWorktreeMain(cwd, main);
+        }
+    } catch {
+        // An unreadable or absent half is a handshake that did not close, the
+        // same answer as one naming somewhere else.
+    }
+    if (!worktreeHandshakeNoted) {
+        worktreeHandshakeNoted = true;
+        process.stderr.write('memq: the .git file in the working directory points at a worktree '
+            + 'whose back-pointer does not name this directory, so memories are filed under the '
+            + 'working directory rather than the main checkout (git worktree repair is the usual '
+            + 'remedy)\n');
+    }
+    return null;
+}
+
+// The accepted main checkout, in the spelling the store keys on, plus the one
+// note a successful resolution can owe the operator.
+//
+// Project directory names preserve case while the handshake compares paths the
+// way the filesystem does, so a pointer spelling the main root 'd:/eleoscore'
+// would otherwise mint a third store beside the main session's own
+// process.cwd() derivation: the volume's own spelling is the one both agree
+// on. Only win32 folds, since names are case-sensitive elsewhere and resolving
+// the real path there would silently follow symlinks, changing which store a
+// deliberately linked checkout uses.
+//
+// A store already standing at the worktree's own path-derived name is worth
+// one line, because it is now unread: nothing here moves or merges records
+// written before the resolution existed, and a directory that quietly stops
+// being consulted is the kind of loss that is noticed months later.
+function acceptedWorktreeMain(cwd, main) {
+    let root = main;
+    if (process.platform === 'win32') {
+        try {
+            root = fs.realpathSync.native(main);
+        } catch {
+            // An unresolvable path keeps the lexical spelling: the handshake
+            // already closed, so the resolution stands either way.
+        }
+    }
+    if (!worktreeOrphanNoted) {
+        try {
+            if (fs.statSync(projectMemoryDirFor(sanitizeProjectPath(cwd))).isDirectory()) {
+                worktreeOrphanNoted = true;
+                process.stderr.write('memq: this worktree reads and writes the main checkout\'s '
+                    + 'memories, and a memory directory left under the worktree\'s own '
+                    + 'path-derived store is no longer read; records written there stay until '
+                    + 'they are moved by hand\n');
+            }
+        } catch {
+            // No such directory is the ordinary case and the quiet one.
+        }
+    }
+    return root;
 }
 
 // The project directory segment this process is pinned to, or null when it is
@@ -392,12 +605,20 @@ function pinnedProjectSegment() {
 }
 
 // The projects/ directory name this process reads and writes under: the pin
-// when one is honored, the cwd derivation otherwise. Every caller that needs
-// the segment rather than the path takes it from here, so no surface can name
-// a directory the store is not using.
+// when one is honored, otherwise the derivation from the working directory, or
+// from the main checkout when that working directory is a worktree of one.
+// Every caller that needs the segment rather than the path takes it from here,
+// so no surface can name a directory the store is not using.
+//
+// The pin wins outright and the worktree link is not even consulted under one:
+// a pin names the tier an external engine's spawn shapes share, which is an
+// answer about the instance rather than about the filesystem, so a repository
+// checkout underneath it must not move it.
 function projectSegment(cwd) {
     const pinned = pinnedProjectSegment();
-    return pinned === null ? sanitizeProjectPath(cwd) : pinned;
+    if (pinned !== null) return pinned;
+    const main = worktreeMainRoot(cwd);
+    return sanitizeProjectPath(main === null ? cwd : main);
 }
 
 // The parent of every project's state directory under the current store root.
@@ -5516,6 +5737,7 @@ module.exports = {
     OPERATOR_LABEL,
     memoryRoot,
     sanitizeProjectPath,
+    worktreeMainRoot,
     projectsRootPath,
     projectMemoryDirFor,
     projectMemoryDir,

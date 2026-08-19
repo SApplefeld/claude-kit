@@ -8603,3 +8603,367 @@ test('a type declared in a different case than its directory yields one line, no
         rmStore(store);
     }
 });
+
+// --- the worktree's main checkout -------------------------------------------
+//
+// A git worktree's cwd sanitizes to a project directory of its own, so a
+// session working in one would read and write a store the main checkout never
+// sees. The resolver follows the link git itself maintains: the worktree's
+// `.git` pointer file out to `<main>/.git/worktrees/<name>`, and that
+// directory's own `gitdir` file back to the worktree. Fixtures are synthesized
+// rather than produced by a real `git worktree add`, because what the resolver
+// reads is the on-disk shape, and a suite needing a git binary on PATH is a
+// suite that skips where the shape is still there to test. No two fixture
+// names differ only by case: NTFS collapses those into one file.
+
+// Worktree fixtures are built under the canonical spelling of the temp root
+// rather than under os.tmpdir() directly. This machine's TEMP is an 8.3 short
+// path, and an accepted main root is folded to the volume's own spelling on
+// win32, so fixtures built from the short form would resolve to a directory
+// name no assertion here could write down twice. The mixed-case case below
+// exercises that fold deliberately, which is where it belongs.
+const WORKTREE_TMP = process.platform === 'win32'
+    ? fs.realpathSync.native(os.tmpdir())
+    : os.tmpdir();
+
+// A main checkout plus a worktree wired to it. Options bend one joint each:
+// `name` is the worktrees/<name> segment, `kind` the directory under `.git`
+// (`modules` is the submodule shape), `pointer` the path written into the
+// worktree's `.git` file with `relative` writing that same target as a
+// forward-slash relative path instead, `backPointer` the content of the
+// back-pointer file with null leaving that file absent, and `commondir: null`
+// leaving out the file git keeps beside every worktree's administrative
+// directory.
+function makeWorktree(options) {
+    const opts = options || {};
+    const main = fs.mkdtempSync(path.join(WORKTREE_TMP, 'memq-main-'));
+    const tree = fs.mkdtempSync(path.join(WORKTREE_TMP, 'memq-tree-'));
+    const gitdir = path.join(main, '.git', opts.kind || 'worktrees', opts.name || 'wt');
+    fs.mkdirSync(gitdir, { recursive: true });
+    if (opts.commondir !== null) {
+        fs.writeFileSync(path.join(gitdir, 'commondir'), '../..\n', 'utf8');
+    }
+    if (opts.backPointer !== null) {
+        const back = opts.backPointer === undefined ? path.join(tree, '.git') : opts.backPointer;
+        fs.writeFileSync(path.join(gitdir, 'gitdir'), back + '\n', 'utf8');
+    }
+    const pointer = opts.relative
+        ? path.relative(tree, gitdir).split(path.sep).join('/')
+        : (opts.pointer === undefined ? gitdir : opts.pointer);
+    fs.writeFileSync(path.join(tree, '.git'), 'gitdir: ' + pointer + '\n', 'utf8');
+    return { main, tree, gitdir, pointer };
+}
+
+function rmWorktree(w) {
+    for (const dir of [w.main, w.tree]) {
+        try {
+            fs.rmSync(dir, { recursive: true, force: true });
+        } catch {
+            // Best-effort cleanup; leaving a temp dir behind never fails the test.
+        }
+    }
+}
+
+function cwdMemDir(store, cwd) {
+    return path.join(store.root, 'projects', cwd.replace(/[^A-Za-z0-9]/g, '-'), 'memory');
+}
+
+// Two module-level resolutions in one child, so a once-per-process note can be
+// counted and the second answer compared against the first.
+const TWICE_PROBE = 'const memq = require(process.argv[1]);'
+    + 'console.log("A " + memq.projectMemoryDir(process.cwd()));'
+    + 'console.log("B " + memq.projectMemoryDir(process.cwd()));';
+
+function probeTwice(store, cwd, extra) {
+    return spawnSync(process.execPath, ['-e', TWICE_PROBE, MEMQ], {
+        cwd, encoding: 'utf8', env: childEnv(store, extra)
+    });
+}
+
+test('a worktree whose back-pointer handshake holds resolves the main checkout\'s store', () => {
+    const store = makeStore();
+    const w = makeWorktree();
+    try {
+        assert.strictEqual(memq.worktreeMainRoot(w.tree), w.main);
+
+        // The CLI half: a record written from the worktree lands in the main
+        // checkout's tier and reads back from the main checkout's own cwd,
+        // which is the whole point of the resolution.
+        const logged = runFrom(store, w.tree, ['log', 'k.wt', 'pass', 'written from the worktree']);
+        assert.strictEqual(logged.status, 0, logged.stderr);
+        assert.strictEqual(logged.stderr, '', 'a handshake that holds says nothing on stderr');
+        assert.deepStrictEqual(projectDirNames(store), [w.main.replace(/[^A-Za-z0-9]/g, '-')],
+            'the worktree cwd files nothing under a directory of its own');
+        const digest = runFrom(store, w.main, ['recall']);
+        assert.strictEqual(digest.status, 0, digest.stderr);
+        assert.ok(digest.stdout.includes('written from the worktree'),
+            'the main checkout reads what the worktree wrote: ' + digest.stdout);
+    } finally {
+        rmStore(store);
+        rmWorktree(w);
+    }
+});
+
+test('a worktree pointer with no back-pointer file falls back to its own cwd, noting it once', () => {
+    const store = makeStore();
+    const w = makeWorktree({ backPointer: null });
+    try {
+        const probe = probeTwice(store, w.tree);
+        assert.strictEqual(probe.status, 0, probe.stderr);
+        assert.deepStrictEqual(probe.stdout.split('\n').filter((l) => l !== ''),
+            ['A ' + cwdMemDir(store, w.tree), 'B ' + cwdMemDir(store, w.tree)],
+            'both resolutions land on the working directory\'s own tier');
+        assert.match(probe.stderr, /back-pointer/);
+        assert.match(probe.stderr, /git worktree repair/);
+        assert.strictEqual(probe.stderr.split('memq: ').length - 1, 1,
+            'the note is written once per process, not once per call: ' + probe.stderr);
+        // Every assertion about a failed handshake is made on a child's
+        // stderr. Resolving one in this process would write the note into the
+        // runner's own output and spend a once-per-process flag the later
+        // cases still need unspent.
+    } finally {
+        rmStore(store);
+        rmWorktree(w);
+    }
+});
+
+test('a back-pointer naming a different worktree falls back to the cwd derivation', () => {
+    const store = makeStore();
+    const other = makeWorktree({ name: 'other' });
+    const w = makeWorktree({ backPointer: path.join(other.tree, '.git') });
+    try {
+        const logged = runFrom(store, w.tree, ['log', 'k.x', 'pass', 'written from a broken link']);
+        assert.strictEqual(logged.status, 0, logged.stderr);
+        assert.match(logged.stderr, /back-pointer/);
+        assert.deepStrictEqual(projectDirNames(store), [w.tree.replace(/[^A-Za-z0-9]/g, '-')]);
+    } finally {
+        rmStore(store);
+        rmWorktree(w);
+        rmWorktree(other);
+    }
+});
+
+test('a submodule-shaped gitdir falls back to the cwd derivation with nothing on stderr', () => {
+    const store = makeStore();
+    const w = makeWorktree({ kind: 'modules', name: 'sub' });
+    try {
+        assert.strictEqual(memq.worktreeMainRoot(w.tree), null);
+        // A submodule is an ordinary checkout as far as this store is
+        // concerned, so the fallback is its expected state and a note would be
+        // noise on every submodule session.
+        const probe = probeTwice(store, w.tree);
+        assert.strictEqual(probe.status, 0, probe.stderr);
+        assert.strictEqual(probe.stderr, '');
+        assert.deepStrictEqual(probe.stdout.split('\n').filter((l) => l !== ''),
+            ['A ' + cwdMemDir(store, w.tree), 'B ' + cwdMemDir(store, w.tree)]);
+    } finally {
+        rmStore(store);
+        rmWorktree(w);
+    }
+});
+
+test('an ordinary checkout, .git a directory, keeps the cwd derivation', () => {
+    const store = makeStore();
+    try {
+        fs.mkdirSync(path.join(store.proj, '.git', 'worktrees', 'wt'), { recursive: true });
+        assert.strictEqual(memq.worktreeMainRoot(store.proj), null);
+        const probe = probeTwice(store, store.proj);
+        assert.strictEqual(probe.status, 0, probe.stderr);
+        assert.strictEqual(probe.stderr, '');
+        assert.deepStrictEqual(probe.stdout.split('\n').filter((l) => l !== ''),
+            ['A ' + store.memDir, 'B ' + store.memDir]);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('an honored pin beats a worktree whose handshake holds', () => {
+    const store = makeStore();
+    const w = makeWorktree();
+    try {
+        const logged = runFrom(store, w.tree, ['log', 'k.p', 'pass', 'pinned from a worktree'],
+            { KIT_MEMORY_PROJECT: PIN });
+        assert.strictEqual(logged.status, 0, logged.stderr);
+        assert.deepStrictEqual(projectDirNames(store), [PIN],
+            'the pin names the tier outright; the worktree link is never consulted');
+    } finally {
+        rmStore(store);
+        rmWorktree(w);
+    }
+});
+
+test('a relative gitdir: path resolves against the worktree directory', () => {
+    const store = makeStore();
+    // The pointer is written relative and with forward slashes, the way git
+    // spells its own paths on Windows too.
+    const w = makeWorktree({ relative: true });
+    try {
+        assert.ok(!path.isAbsolute(w.pointer),
+            'the fixture must exercise the relative form: ' + w.pointer);
+        assert.strictEqual(memq.worktreeMainRoot(w.tree), w.main);
+        const logged = runFrom(store, w.tree, ['log', 'k.rel', 'pass', 'relative pointer']);
+        assert.strictEqual(logged.status, 0, logged.stderr);
+        assert.deepStrictEqual(projectDirNames(store), [w.main.replace(/[^A-Za-z0-9]/g, '-')]);
+    } finally {
+        rmStore(store);
+        rmWorktree(w);
+    }
+});
+
+test('the resolver holds one answer per working directory for the life of the process', () => {
+    const w = makeWorktree();
+    try {
+        const first = memq.worktreeMainRoot(w.tree);
+        assert.strictEqual(first, w.main);
+        // The answer is memoized because projectMemoryDir asks dozens of times
+        // per run: one stat-and-read per working directory, not one per call.
+        fs.rmSync(path.join(w.gitdir, 'gitdir'));
+        assert.strictEqual(memq.worktreeMainRoot(w.tree), first);
+        assert.strictEqual(memq.worktreeMainRoot(w.tree), first);
+    } finally {
+        rmWorktree(w);
+    }
+});
+
+test('a worktree administrative directory without commondir fails the handshake', () => {
+    const store = makeStore();
+    const w = makeWorktree({ commondir: null });
+    try {
+        // commondir is a file git writes into every worktree's administrative
+        // directory, so a two-file tree assembled to look like one no longer
+        // closes the handshake.
+        const probe = probeTwice(store, w.tree);
+        assert.strictEqual(probe.status, 0, probe.stderr);
+        assert.deepStrictEqual(probe.stdout.split('\n').filter((l) => l !== ''),
+            ['A ' + cwdMemDir(store, w.tree), 'B ' + cwdMemDir(store, w.tree)]);
+        assert.match(probe.stderr, /back-pointer/);
+    } finally {
+        rmStore(store);
+        rmWorktree(w);
+    }
+});
+
+test('a .git file that is not a pointer at all resolves the cwd in silence', () => {
+    const store = makeStore();
+    const w = makeWorktree();
+    try {
+        // A gitdir: line anywhere but the first line is that file's content,
+        // not a pointer, and an ordinary file where .git happens to sit is a
+        // shape nobody needs to hear about.
+        fs.writeFileSync(path.join(w.tree, '.git'),
+            'notes to self\ngitdir: ' + w.gitdir + '\n', 'utf8');
+        assert.strictEqual(memq.worktreeMainRoot(w.tree), null);
+        const probe = probeTwice(store, w.tree);
+        assert.strictEqual(probe.status, 0, probe.stderr);
+        assert.strictEqual(probe.stderr, '');
+        assert.deepStrictEqual(probe.stdout.split('\n').filter((l) => l !== ''),
+            ['A ' + cwdMemDir(store, w.tree), 'B ' + cwdMemDir(store, w.tree)]);
+    } finally {
+        rmStore(store);
+        rmWorktree(w);
+    }
+});
+
+test('a .git file far larger than the read cap is read as its first bytes only', () => {
+    const store = makeStore();
+    const w = makeWorktree();
+    try {
+        // Leading blanks are the one padding the pointer grammar tolerates, so
+        // this file is a pointer in every respect except that its gitdir word
+        // begins past the read cap. Uncapped, the handshake would close and
+        // the main checkout would resolve; capped, the read never reaches the
+        // word, which is what makes the cap observable rather than asserted.
+        fs.writeFileSync(path.join(w.tree, '.git'),
+            ' '.repeat(65536) + 'gitdir: ' + w.gitdir + '\n', 'utf8');
+        assert.strictEqual(memq.worktreeMainRoot(w.tree), null);
+        const probe = probeTwice(store, w.tree);
+        assert.strictEqual(probe.status, 0, probe.stderr);
+        assert.strictEqual(probe.stderr, '');
+        assert.deepStrictEqual(probe.stdout.split('\n').filter((l) => l !== ''),
+            ['A ' + cwdMemDir(store, w.tree), 'B ' + cwdMemDir(store, w.tree)]);
+    } finally {
+        rmStore(store);
+        rmWorktree(w);
+    }
+});
+
+test('a UNC-shaped pointer is refused on the path text, with no note and no network', {
+    skip: process.platform === 'win32' ? false : 'UNC paths are a win32 shape'
+}, () => {
+    const store = makeStore();
+    const w = makeWorktree({ pointer: '//evil.invalid/share/.git/worktrees/w' });
+    try {
+        // Opening anything under \\host\share is an outbound SMB connect that
+        // authenticates as the logged-in account, so the refusal is decided on
+        // the string before any filesystem call: this case answers instantly
+        // against a host that does not resolve, which is the proof that
+        // nothing was opened.
+        const started = Date.now();
+        assert.strictEqual(memq.worktreeMainRoot(w.tree), null);
+        assert.ok(Date.now() - started < 1000,
+            'the rejection is string logic, not a connection attempt');
+        const probe = probeTwice(store, w.tree);
+        assert.strictEqual(probe.status, 0, probe.stderr);
+        assert.strictEqual(probe.stderr, '');
+        assert.deepStrictEqual(probe.stdout.split('\n').filter((l) => l !== ''),
+            ['A ' + cwdMemDir(store, w.tree), 'B ' + cwdMemDir(store, w.tree)]);
+    } finally {
+        rmStore(store);
+        rmWorktree(w);
+    }
+});
+
+test('a pointer spelling the main root in another case resolves the volume\'s own spelling', {
+    skip: process.platform === 'win32' ? false : 'path names do not fold case off win32'
+}, () => {
+    const store = makeStore();
+    const w = makeWorktree();
+    try {
+        // The handshake compares paths the way the filesystem does, so a
+        // lowercased pointer closes it; the project directory name preserves
+        // case, so accepting that spelling would mint a store beside the one
+        // the main checkout's own sessions write.
+        const shouted = w.gitdir.toLowerCase();
+        fs.writeFileSync(path.join(w.tree, '.git'), 'gitdir: ' + shouted + '\n', 'utf8');
+        assert.notStrictEqual(shouted, w.gitdir, 'the fixture must differ in case');
+        assert.strictEqual(memq.worktreeMainRoot(w.tree), w.main);
+        const logged = runFrom(store, w.tree, ['log', 'k.case', 'pass', 'from a lowercased pointer']);
+        assert.strictEqual(logged.status, 0, logged.stderr);
+        assert.deepStrictEqual(projectDirNames(store), [w.main.replace(/[^A-Za-z0-9]/g, '-')]);
+    } finally {
+        rmStore(store);
+        rmWorktree(w);
+    }
+});
+
+test('a store left behind under the worktree\'s own path is named once', () => {
+    const store = makeStore();
+    const w = makeWorktree();
+    try {
+        // Records written before the worktree resolved its main checkout stay
+        // where they were written, and nothing here moves them, so the one
+        // thing owed is the sentence saying they are no longer read.
+        fs.mkdirSync(cwdMemDir(store, w.tree), { recursive: true });
+        const probe = probeTwice(store, w.tree);
+        assert.strictEqual(probe.status, 0, probe.stderr);
+        assert.deepStrictEqual(probe.stdout.split('\n').filter((l) => l !== ''),
+            ['A ' + cwdMemDir(store, w.main), 'B ' + cwdMemDir(store, w.main)],
+            'the main checkout\'s store is the one in use');
+        assert.match(probe.stderr, /no longer read/);
+        assert.strictEqual(probe.stderr.split('memq: ').length - 1, 1,
+            'once per process: ' + probe.stderr);
+
+        // Without the orphan, the same resolution says nothing at all.
+        const quiet = makeWorktree();
+        try {
+            const silent = probeTwice(store, quiet.tree);
+            assert.strictEqual(silent.status, 0, silent.stderr);
+            assert.strictEqual(silent.stderr, '');
+        } finally {
+            rmWorktree(quiet);
+        }
+    } finally {
+        rmStore(store);
+        rmWorktree(w);
+    }
+});
