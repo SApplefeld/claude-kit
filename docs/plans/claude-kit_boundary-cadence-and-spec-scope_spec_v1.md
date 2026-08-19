@@ -172,3 +172,29 @@ Stamps: adjudicated 0 surfaced, stamped 0. `memq unstamped --since 3h` returned 
 
 Next: 4. Docs alignment
 Commit Model: Commit-and-Push
+
+### Chapter 4 - 2026-08-19
+Completed: 4. Docs alignment
+Implemented By: main session, per the section's `Locus: inline`
+Metrics: review rounds 1; NEEDS_CONTEXT 0; escalations 0; consults 0. review: adversarial only, at opus effort `max` through the Workflow route. An inline section's writer tier is the session's own model, which is Opus, and the capped rule reviews it at opus with no tier headroom, so the effort table's `max` row applies. blind: no code diff, since the section's only changed file is under `docs/` and the section carries no `Audience:` line, so omitting docs paths from the changed-file list empties it and the blind lens has nothing to read. No security-reviewer: one sentence pair of descriptive prose in an internal architecture document.
+
+Gate: 964 tests, 962 pass, 2 fail, the recorded baseline with `:475` passing. No test reads `docs/architecture.md`, so the run confirms the absence of collateral damage rather than the change itself.
+
+Decisions / Surprises: the section's second half correctly did not fire. Its instruction is conditional, that the parallelization-request clause gains the stagger expectation only if that passage states how parallel work advances. It does not: it states the arming-time Workflow authorization, its authority, and its scope, and a whole-file scan found no passage in `architecture.md` mentioning stagger, lockstep, or concurrent sections at all. Writing the expectation there would have created a second owner of a rule `executing-work` owns, which is exactly what the conditional exists to prevent. The reviewer independently checked that reading and confirmed it.
+
+The round returned 2 Major and 1 Minor, all fixed, and the two Majors are worth recording because neither was a writing defect.
+
+The first was mine and it is the same class this plan keeps producing. My first draft made the interim boundary conditional on a parallelized run with every section mid-flight, because I wrote it from the spec's framing of the incident rather than from the rule section 1 actually shipped. The shipped floor is two consecutive review-round adjudications with no section closing, which says nothing about concurrency: a serial run whose one section takes three rounds earns an interim boundary, and so does a parallel run where half the sections have already closed. The doc would have told a future session that a serial run never earns one. The qualifiers are gone. The lesson generalizes past this sentence: a docs-alignment section written from the spec is written from the design intent, and the acceptance is consistency with the as-built rule, so the as-built rule is the source to read.
+
+The second was a pre-existing staleness the new sentence exposed rather than caused. The same passage enumerates where the boundary signal is written and named the executing-work chapter close as the only such site, which the interim boundary falsifies two sentences earlier. Section 4's acceptance is passage-level consistency, so it was in scope and is fixed. This is the third instance in this plan of an amendment being correct in itself and wrong against an unchanged neighbour, now in a second file, which makes it a property of amending dense cross-referenced prose rather than of one file.
+
+The Minor corrected an ownership attribution: the skill owns the moment a checkpoint opens, while the artifact is written by `kit-compact-checkpoint.js` with a second writer in `kit-goal-stop.js` and the match rule in `kit-compact-lib.js`, all of which the same passage already states.
+
+Assumptions: none.
+
+Review Findings: 2 Major and 1 Minor, all three fixed; none survived unaddressed. 0 Critical.
+
+Stamps: adjudicated 0 surfaced, stamped 0. `memq unstamped --since 2h` returned an empty list in both tiers.
+
+Next: finishing-work
+Commit Model: Commit-and-Push
