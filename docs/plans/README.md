@@ -12,6 +12,7 @@ This folder holds active plans only: specs that are open or in progress. A plan 
 
 ## Current
 
+- `claude-kit_boundary-cadence-and-spec-scope_spec_v1.md`: In Progress (2026-08-19). Skill-prose amendments from two kaizen intakes. Boundary cadence: parallel sections advance staggered rather than in lockstep, a closure drought gets an interim board entry plus checkpoint open so compaction boundaries no longer wait on section closure, and a green-but-in-review section commits to its feature branch instead of pooling in the worktree. Spec scope: "Files in scope" is derived by a scout sweep at authoring time, and an out-of-scope finding gets a named route back into the plan. Four sections (fable, opus x3), Commit-and-Push. No hook or gate code changes.
 - `claude-kit_reviewer-tier-cap_spec_v1.md`: In Progress (2026-08-19). Caps the per-section reviewer bump at Opus (haiku at sonnet, sonnet at opus, opus at opus, fable at fable) with the capped Opus reviewers at `max`, re-grounds the reviewer-effort table on whether the reviewer sits above the writer, and brings the security-reviewer under the same section-determined rule with one exception (never fable per-section; opus at `max` on a fable-tier section, the finishing security pass at fable being its backstop). The finishing gate is untouched. Folds into the open reviewer-tier experiment in `../backlog.md` with a recorded baseline. One section, opus tier, Commit-and-Push.
 
 Every earlier plan is complete and archived; the most recent is described below.
