@@ -1,6 +1,6 @@
 # Boundary Cadence and Spec Scope
 
-Status: In Progress
+Status: Complete
 Commit Model: Commit-and-Push
 Created: 2026-08-19
 
@@ -199,4 +199,40 @@ Review Findings: 2 Major and 1 Minor, all three fixed; none survived unaddressed
 Stamps: adjudicated 0 surfaced, stamped 0. `memq unstamped --since 2h` returned an empty list in both tiers.
 
 Next: finishing-work
+Commit Model: Commit-and-Push
+
+### Chapter 5 - 2026-08-19
+Completed: the whole-effort finishing pass
+Implemented By: main session, with implementer-fable for the fix round and the finishing agents named below
+Metrics: QA 1 round plus a targeted re-verify; security review 1; final adversarial review 1; docs curation 1; fix rounds 1; consults 0. The security and adversarial reviews both ran at fable, effort `high`, on the Agent tool: fable was reachable, so no compensation and no fallback. The tree-state bracket around QA and both reviews closed identical each time.
+
+Gate: 964 tests, 962 pass, 2 fail after the fix round, run by the controller. The two are the known `test/memq-shim.test.js` environment assertions at `:401` and `:512`, with `:475` passing. Zero delta across the whole effort.
+
+**QA.** The first pass returned FAIL on one criterion and it was a real miss: section 2's acceptance requires the writing-skills call recorded in the Chapter, the implementer made both calls in its report, and I omitted them when writing Chapter 3. Fixed by recording both, then re-verified by the same verifier reading Chapter 3 fresh. Every other criterion across all four sections passed with evidence on the first pass. The `## Operator Verification` item is UNVERIFIABLE by class rather than by effort: it needs a real parallelized run on the operator's machine, and no environment work available to this session could produce one. It is carried to the operator as the one pending item.
+
+**Security review.** CONCERNS, 3 Major and 3 Minor, no Critical. The waiver was void on its own predicate: two of the four changed files are `SKILL.md`, which is configuration wearing a markdown extension rather than prose. The disclosure sweep read clean across all four files.
+
+**Final adversarial review.** CHANGES_REQUIRED, 1 Critical, 2 Major, 4 Minor. It confirmed the eight interacting rules inside `executing-work` otherwise compose cleanly, that one owner per rule holds everywhere it checked, that the brainstorming renumbering is complete and citation-safe, that `## Out of Scope` held, and that both Chapter 3 deviations were the right calls.
+
+**The finding worth carrying forward.** The two lenses landed on the same clause pulling in opposite directions, and the fix is the synthesis neither proposed. The adversarial pass found the tree-state bracket's exemption list too narrow: it covered a concurrent section's declared files and out-of-scope-route writes, but not the Chapter append and plan-doc staging that a sibling closing mid-round produces, so under Review-Only, where nothing commits and the delta survives to the post-round capture, the rule's own remedy would restore the tree and destroy the closed sibling's only copy. That is precisely the exposure this plan exists to close, reintroduced by the plan itself. The security pass found the same clause too wide: the comparison is `git status --porcelain`, which is name-level, so an agent-authored write to the plan doc, the recovery spine a post-compaction session re-reads and executes, produces a line identical to the orchestrator's own and would be waved through. The shipped classification is by author, with authorship established by reading the delta's content rather than by recognizing the path, and content unrecognized in a file you also write to takes the incident path. The whole-tree capture and the full incident remedy are untouched, so section 1's classify-rather-than-narrow ruling still stands.
+
+The other surviving findings, one clause each: the staggered-progress arm now holds only while a live dispatch covering those files exists, since a fold widens a section's declared list mid-run; an appended section under Commit-and-Push, the one model with no later human gate, is named to the operator at the moment of the append rather than only at close-out; the route's severity bar now stops a security Major as well as a Critical, since a parked security finding under Commit-and-Push is a written-up open defect pushed to the remote, and a finding adjudicated down from Critical is named in the Chapter with the destination it took; the route confirms a reported surface against the code before adjudicating it, so a hallucinated report line cannot become a plan mutation; and a backlog entry sharing a file with another session's uncommitted content commits separately with the foreign lines named.
+
+**What still spoke the old contract.** Three surfaces outside the changeset still stated the superseded chapter-only boundary and no section had swept them: `kit-goal/SKILL.md`, `docs/security-model.md`, and the plan's own section 1(c), which still carried the conditional first-green trigger Chapter 1 records as undecidable and replaced. All three are corrected. Two more are parked with reasons rather than fixed: the compaction gate's user-visible `BOUNDARY_NOTE`, since the spec puts code changes out of scope by design and the string is read by a human rather than evaluated by anything, carried onto the parked mechanization item's slate; and the finishing pass having no boundary of its own, which is real found work needing a trigger it cannot borrow from the section loop, since finishing has no section closes to count.
+
+**Docs curation.** Four drift items, all `Class: deviation`, no `mistake`, so no stop. The curator updated `docs/architecture.md`, `docs/security-model.md`, `docs/fleet-integration.md`, and `docs/README.md`. Two of its catches are worth naming. The security model credited the step 0 checkpoint clear as an independent second guard against a stale checkpoint, which is structurally inert for an interim boundary because step 0 runs only when a section starts, so the expiry alone bounds it; a stale credited control is the most expensive kind to leave standing. And `docs/fleet-integration.md` said nothing about `## Chapters` now carrying a second heading kind, which an engine integrator parsing every plan doc would need and would not have found anywhere.
+
+**Assumptions made during execution**, verbatim from the Chapters:
+- assumed 2026-08-19 (review adjudication, section 1): the stagger rule's tree-state exception is scoped by classifying the delta rather than by narrowing the capture, so a delta in files no section declares stays an incident; reversal: one clause in step 3's bracket rule.
+- assumed 2026-08-19 (review adjudication, section 3): the sweep's dispatch vehicle is the built-in Explore subagent rather than a dedicated scout agent, because the tree defines none; reversal: name a new agent if one is ever added.
+- assumed 2026-08-19 (review adjudication, section 2): a folded surface needs no fresh review round of its own, since the Chapter record and the section's gate cover it and step 3 catches it in the next round where one is still pending; reversal: one clause in the fold destination.
+- assumed 2026-08-19 (implementer ruling, section 2): a plan that grows by an appended section carries no depth bound on further growth, since each growth step is gated by the goal question and a counted cap is the arbitrary bound this plan's design decisions reject elsewhere; reversal: one sentence in the append destination.
+
+**Pending on the operator.** The plan's `## Operator Verification` item: on the next real parallelized run, compactions should land at boundaries rather than at the safety valve, and no finished section should sit uncommitted on a feature branch for hours. Either observation failing reopens section 1. It is carried to `docs/backlog.md` so it survives the archive.
+
+**Deviations recorded for awareness:** the two from Chapter 3 (the third destination reshaped against the doctrine the spec misquoted, and the plan-append anchor corrected against the machine contract), plus the four `deviation`-class drift items above.
+
+Stamps: adjudicated at the close-out sweep; see the memory recap in the close-out status.
+
+Next: complete
 Commit Model: Commit-and-Push
