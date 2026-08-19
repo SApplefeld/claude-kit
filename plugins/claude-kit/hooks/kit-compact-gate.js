@@ -47,15 +47,37 @@
 //      worker per section, so there is no mid-chapter context to protect:
 //      stand down (same marker as branch-reaper-nudge.js and hook-canary.js).
 //   3. A kit goal is armed for the project (.kit/goal-state.json has a plan).
-//   4. The compacting session IS the leash-bound session: payload session_id
-//      equals the goal's boundSession, compared as opaque case-insensitive
-//      trimmed strings. The bound session keeps matching across a compaction
-//      because the harness preserves the session id. An armed-but-UNBOUND
-//      goal allows outright: an unbound armed goal is almost always the
-//      arming session moments before its first stop claims the binding, a
-//      real plan run that should keep its early trigger. A goal bound to a
-//      DIFFERENT session (a bystander) is never boundary-gated; it falls
-//      through to the interactive path below, the same as no goal at all.
+//   4. The compacting session HOLDS the leash, by either of two routes. It is
+//      already bound: payload session_id equals the goal's boundSession,
+//      compared as opaque case-insensitive trimmed strings (the bound session
+//      keeps matching across a compaction because the harness preserves the
+//      session id). Or the goal is UNBOUND and this session's transcript
+//      shows the user typing the arming command against the armed plan
+//      (userCommandArgsClaimPlan in kit-compact-lib.js, the same predicate
+//      and the same anti-steal exclusions the Stop hook claims a binding
+//      with). That session claims the binding here, best-effort via
+//      bindSession, and is boundary-gated for this offer whether or not the
+//      write landed, mirroring bindSession's own posture that enforcement
+//      never depends on it. Claiming at the first compaction offer, rather
+//      than only at the first stop, is what makes the gate reachable at all:
+//      executing-work's completion contract forbids stopping with unblocked
+//      work remaining, so a run behaving correctly never stops and a
+//      stop-only claim never fires. A goal bound to a DIFFERENT session, or
+//      unbound with no claim in this transcript (a bystander either way), is
+//      never boundary-gated; it falls through to the interactive path below,
+//      the same as no goal at all. A payload carrying no session id can be
+//      neither compared nor bound, so it allows outright.
+//      Two windows are widened rather than opened by claiming here, both
+//      pre-existing at the stop-point claim and both bounded by the same
+//      last-writer-wins posture bindSession already documents. A session
+//      whose transcript carries a superseded arming of the same plan can
+//      claim a freshly re-armed goal, and a clear landing between the bind's
+//      read and its write can be resurrected by it. What changes is the
+//      cadence: past the compaction trigger the harness re-offers every
+//      assistant turn, so an unbound armed goal in a claiming session
+//      attempts the write far more often than it would at stops alone. Both
+//      recover by clearing or re-arming again; a compare-and-swap on the
+//      bind, matching the one the advance carries, is backlogged.
 //   5. No boundary checkpoint is open. A checkpoint matches only when its
 //      recorded plan equals the armed goal's plan, its recorded boundSession
 //      equals the goal's current boundSession, AND it is fresh (opened within
@@ -102,8 +124,9 @@
 //      sound).
 //
 // The INTERACTIVE deny is the second deny state. When no kit goal covers this
-// session (none armed, an unparseable goal state, or a goal bound to another
-// session), the session is either a human interacting directly or one driven
+// session (none armed, an unparseable goal state, a goal bound to another
+// session, or an unbound goal this session's transcript makes no claim on),
+// the session is either a human interacting directly or one driven
 // by a native automation instrument, and the transcript at the payload's
 // transcript_path tells the two apart (transcriptShowsAutomation in
 // kit-compact-lib.js, which owns the evidence shapes and their exclusions).
@@ -131,10 +154,10 @@
 'use strict';
 
 const fs = require('fs');
-const { readGoal } = require('./kit-goal-lib.js');
+const { readGoal, bindSession } = require('./kit-goal-lib.js');
 const {
     readCheckpoint, clearCheckpoint, checkpointMatches, sameSessionId,
-    transcriptShowsAutomation
+    transcriptShowsAutomation, userCommandArgsClaimPlan
 } = require('./kit-compact-lib.js');
 
 // The deferral ceiling, in consumed tokens, shared by both deny paths: the
@@ -307,6 +330,42 @@ function latestConsumedTokens(transcriptPath) {
     }
 }
 
+// Clauses 5 and 6 for a session that holds the leash: the boundary-gated
+// verdict. `goal` must carry the boundSession the checkpoint is expected to
+// name, which for a session that just claimed the binding is its own id.
+//
+// Clause 5: a matching open checkpoint is the boundary firing. The match rule
+// (plan equals the goal's, boundSession equals the goal's, openedAt fresh; see
+// the header for why each leg exists) is checkpointMatches in
+// kit-compact-lib.js, single-sourced there because the CLI's status report
+// answers from the same rule and the two must never drift. Allow and consume
+// on a match, single-shot; a non-matching checkpoint reads as absent and is
+// left in place (the next CLI write replaces it, and the expired case in
+// particular must NOT be consumed: an expiry deny is not the boundary firing).
+// A checkpoint opened while the goal was still unbound records boundSession
+// null and so does not match the session that has now claimed the binding: the
+// compaction defers one more chapter, and the next checkpoint, written bound,
+// opens the gate. The read here and the delete below are not atomic: this
+// assumes the single-writer reality, where the CLI writer and this gate
+// serialize through the one bound session, so no checkpoint can land between
+// them and be consumed by an allow the previous one earned. A future
+// concurrent writer breaks that assumption and needs a compare-before-delete
+// or an atomic take.
+//
+// Clause 6: the safety valve. Illegible reads allow rather than denying blind.
+function boundaryVerdict(cwd, goal, transcriptPath) {
+    const cp = readCheckpoint(cwd);
+    if (checkpointMatches(cp, goal, Date.now()).ok) {
+        clearCheckpoint(cwd); // best-effort: a failed delete degrades to an open gate, never a wedged run
+        return 'allow';
+    }
+
+    const consumed = latestConsumedTokens(transcriptPath);
+    if (consumed === null || consumed >= SAFETY_CEILING_TOKENS) return 'allow';
+
+    return 'deny-boundary';
+}
+
 // Decide the verdict: 'allow', 'deny-boundary' (the armed-and-bound run held
 // mid-chapter), or 'deny-interactive' (a hands-on session held below the
 // ceiling). The clauses run cheapest first (see the header for why each
@@ -327,48 +386,37 @@ function main() {
     const cwd = payload.cwd || process.cwd();
     const transcriptPath = payload.transcript_path || payload.transcriptPath;
 
-    // Clauses 3 and 4: an armed goal bound to THIS session takes the
-    // boundary-gated path; an armed-but-unbound goal allows outright (the
-    // arming session moments before its first stop claims the binding); an
-    // armed goal bound to ANOTHER session (a bystander), or no armed goal at
-    // all, falls through to the interactive path.
+    // Clauses 3 and 4: an armed goal held by THIS session, whether already
+    // bound to it or claimed here from its transcript, takes the
+    // boundary-gated path; an armed goal bound to ANOTHER session or unbound
+    // with no claim in this transcript (a bystander either way), or no armed
+    // goal at all, falls through to the interactive path.
     const goal = readGoal(cwd);
     const armed = !!(goal && typeof goal.plan === 'string' && goal.plan !== '');
-    if (armed && !goal.boundSession) return 'allow';
     const sessionId = payload.session_id || payload.sessionId;
     // An armed goal beside a payload carrying no session id is ambiguous: the
     // harness normally always sends session_id, so its absence is an anomaly,
     // not evidence of a bystander, and the offer may belong to the bound
-    // session itself. Ambiguity allows rather than risking an interactive
-    // deny against the bound run.
-    if (armed && !sessionId) return 'allow';
+    // session itself. A bind is impossible without an id either, and an id
+    // that is not a string is the same anomaly one step further on: it would
+    // reach the checkpoint compare only through a String() coercion, so the
+    // shape is checked here rather than relied on downstream. Ambiguity
+    // allows rather than risking an interactive deny against the bound run.
+    if (armed && (typeof sessionId !== 'string' || !sessionId)) return 'allow';
     if (armed && sameSessionId(goal.boundSession, sessionId)) {
-        // Clause 5: a matching open checkpoint is the boundary firing. The match
-        // rule (plan equals the goal's, boundSession equals the goal's, openedAt
-        // fresh; see the header for why each leg exists) is checkpointMatches in
-        // kit-compact-lib.js, single-sourced there because the CLI's status
-        // report answers from the same rule and the two must never drift. Allow
-        // and consume on a match, single-shot; a non-matching checkpoint reads as
-        // absent and is left in place (the next CLI write replaces it, and the
-        // expired case in particular must NOT be consumed: an expiry deny is not
-        // the boundary firing). The read here and the delete below are not
-        // atomic: this assumes the single-writer reality, where the CLI writer
-        // and this gate serialize through the one bound session, so no checkpoint
-        // can land between them and be consumed by an allow the previous one
-        // earned. A future concurrent writer breaks that assumption and needs a
-        // compare-before-delete or an atomic take.
-        const cp = readCheckpoint(cwd);
-        if (checkpointMatches(cp, goal, Date.now()).ok) {
-            clearCheckpoint(cwd); // best-effort: a failed delete degrades to an open gate, never a wedged run
-            return 'allow';
-        }
-
-        // Clause 6: the safety valve. Illegible reads allow rather than denying
-        // blind.
-        const consumed = latestConsumedTokens(transcriptPath);
-        if (consumed === null || consumed >= SAFETY_CEILING_TOKENS) return 'allow';
-
-        return 'deny-boundary';
+        return boundaryVerdict(cwd, goal, transcriptPath);
+    }
+    // An unbound goal whose arming command this session's transcript shows the
+    // user typing is this run: claim the binding now, so the gate reaches a
+    // run that holds the completion contract and therefore never stops to
+    // claim it. The write is best-effort and the verdict does not wait on it;
+    // a bind that never lands leaves the run deferring to the safety ceiling,
+    // which is where a .kit/ that rejects this write also leaves checkpoint
+    // placement anyway.
+    if (armed && !goal.boundSession && userCommandArgsClaimPlan(transcriptPath, goal.plan)) {
+        bindSession(cwd, sessionId, transcriptPath);
+        goal.boundSession = sessionId;
+        return boundaryVerdict(cwd, goal, transcriptPath);
     }
 
     // The interactive path (see the header): no kit goal covers this session,

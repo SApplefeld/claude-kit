@@ -253,7 +253,8 @@ function composeGoalBlock(goal, sessionId) {
 
     return `A kit goal is armed for ${plan} in this project and no session holds its leash yet.${tail}`
         + ` If you are working that plan, ` + holdRule('the session') + `; the session that armed it claims`
-        + ` the leash at its first stop, and that one binding then rides the whole queue. ${skillPointer}`
+        + ` the leash at its first stop or its first auto-compaction offer, whichever`
+        + ` comes first, and that one binding then rides the whole queue. ${skillPointer}`
         + ` Reminder, not a blocker. ${provenance}`;
 }
 

@@ -171,9 +171,12 @@ Invariants no new branch may violate, each already load-bearing:
 - Checkpoint consumption stays exclusive to the bound-boundary allow (line 362).
   The new bystander path is the interactive path, which never touches the
   checkpoint.
-- Fail-open on every axis. A predicate throw or an unreadable transcript reads
-  false and lands on the interactive path, where an unreadable transcript also
-  yields no valve reading, so the verdict is `allow`.
+- Fail-open on every axis. An unreadable transcript reads false and lands on the
+  interactive path, where it also yields no valve reading, so the verdict is
+  `allow`. A throw out of the predicate would escape `main()` to the entry-point
+  wrapper and allow outright rather than reaching the interactive path; both
+  routes end in an allow, and the predicate wraps its own body so neither is
+  reachable today.
 - No new steal surface: the predicate is the same one the Stop hook trusts,
   unmodified.
 
@@ -206,10 +209,24 @@ code path can reach a deny at or above the ceiling.
 Model: opus
 Locus: inline
 
-`plugins/claude-kit/skills/kit-goal/SKILL.md:50` documents the binding as
-claimed "at its first stop". That sentence becomes first stop or first
-auto-compaction offer, whichever comes first, without disturbing the
-bystander-isolation rationale around it, which the change preserves exactly.
+Every surface that states when the leash is claimed says "at its first stop", and
+each is now false. They are one finding in five places, and the set is what the
+"name what still speaks the old contract" check returns for this change:
+
+- `plugins/claude-kit/skills/kit-goal/SKILL.md`, the contract text, in two
+  sentences.
+- `plugins/claude-kit/hooks/session-start.js`, the unbound-goal notice. This one
+  is model-facing: it is injected into every session that opens beside an armed
+  unbound goal, so leaving it would tell a model a claim rule the hooks no longer
+  follow.
+- `docs/security-model.md`, the compaction gate's stated verdict table, which
+  says an unclaimed armed goal "deliberately does not reach that path and allows
+  outright" and after this change means the opposite. Its goal-state concurrency
+  paragraph also reasons from a writer set the gate is now a member of.
+- `docs/architecture.md`, which repeats the verdict sentence in its own words.
+- `plugins/claude-kit/hooks/kit-compact-checkpoint.js` and
+  `plugins/claude-kit/scripts/stop-failure-watcher.ps1`, two comments stating
+  the binding is the Stop hook's job.
 
 Add a `docs/backlog.md` item for the arm-time binding supplement: confirm
 whether `CLAUDE_CODE_SESSION_ID` equals the hook payload's `session_id` (and
@@ -218,13 +235,15 @@ supplement that shrinks the unbound window to zero. Never a replacement: the
 variable can vanish upstream and the gate claim must remain the fallback.
 
 Files in scope: `plugins/claude-kit/skills/kit-goal/SKILL.md`,
-`docs/backlog.md`.
+`plugins/claude-kit/hooks/session-start.js`, `docs/security-model.md`,
+`docs/architecture.md`, `plugins/claude-kit/hooks/kit-compact-checkpoint.js`,
+`plugins/claude-kit/scripts/stop-failure-watcher.ps1`, `docs/backlog.md`.
 
-Tests: none warranted. Prose and a backlog line, both covered by the finishing
-docs curation.
+Tests: `test/session-start-goal.test.js` pins the unbound notice's wording and
+its expectation moves with the text. Nothing else here is machine-read.
 
-Acceptance: the SKILL.md sentence names both claim points; the backlog carries
-the dated item; no em dash characters in either file.
+Acceptance: no surface in the repo states the stop-only claim rule; the backlog
+carries the dated item; no em dash characters in any changed file.
 
 ## Verification
 
@@ -258,4 +277,36 @@ Decisions / Surprises:
 Review Findings: none (no reviewers dispatched; see Decisions)
 Stamps: adjudicated 1, stamped 1 (`crlf-per-file-in-windows-checkouts`, which steered Section 3's backlog insert into detecting the file's line endings at the insertion point rather than assuming). Two more were stamped ahead of the first section, `claude-code-precompact-facts` and `claude-code-hook-payload-facts`, which together confirmed the design premise that the PreCompact payload carries `session_id` and `transcript_path` and that a session id survives a compaction.
 Next: 2. Claim the binding at the compaction gate
+Commit Model: Commit-and-Push
+
+### Chapter 2 - 2026-08-18
+Completed: 2. Claim the binding at the compaction gate
+Implemented By: implementer-opus
+Metrics: 1 review round (adversarial + blind at fable, security at its default); NEEDS_CONTEXT 0; escalations 0; consults 0 in this section
+Decisions / Surprises:
+- The implementer extracted the old clauses 5 and 6 into a `boundaryVerdict` helper because two call sites now need them. That is beyond a minimal edit, so I checked it rather than accepting it: the helper is byte-identical to the original logic, checkpoint consumption still requires a match, and the valve still guards the only deny. The claim path sets the in-memory `boundSession` before calling it, which is what makes a checkpoint written while unbound correctly read `wrong-session` and defer one more chapter instead of being consumed.
+- The implementer ran its own red/green probe: it reinstated the old allow line in a scratchpad copy and watched 4 of the 6 new tests go red, restoring from the file copy rather than `git checkout`. The 2 that stayed green are invariant pins (allow at the ceiling, allow with no session id), and the adversarial reviewer independently confirmed both fail against a plausible wrong implementation rather than being vacuous.
+- Tree-state bracket: `git status --porcelain` captured before dispatching the review round and again when all three returned. No delta.
+Review Findings:
+- Two Majors, both the same class and both fixed: a surface still stating the superseded contract. The adversarial and blind reviewers independently found `session-start.js`, which is the worst of the set because the notice is injected into the context of every session that opens beside an armed unbound goal, so it would have taught a model a claim rule the hooks no longer follow. The security reviewer found the other two, `docs/security-model.md` and `docs/architecture.md`, where the published gate verdict table said an unclaimed armed goal "deliberately does not reach that path and allows outright" and now means the opposite. The security model is the audit-facing artifact, so that is a change-management defect rather than a documentation nit. All three reviewers correctly attributed the omission to my spec's Section 3 file scope rather than to the implementer; Section 3 has been rewritten to the as-built set and the finding recorded there.
+- Two code Minors fixed, each found independently by two reviewers. A non-string `session_id` was reaching `checkpointMatches` through a `String()` coercion, since only falsiness was checked; the ambiguity-allows guard now checks the shape too, which is one line and consistent with the existing posture. And `goal.boundSession` was being set from the raw payload regardless of whether `bindSession` had accepted the value; the shape check upstream is what closes that, keeping the write-failure path at `deny-boundary` where its test pins it.
+- One security Minor fixed as hardening rather than a live hole: the claim predicate filtered tool blocks out of an entry block by block, while its two siblings in the same file discard the whole entry. The reviewer measured the gap as unreachable on today's harness shapes (0 of 17,437 local user entries mixed a `text` and a `tool_result` block) and argued it as a second consumer's problem now. Since the predicate is an authorization decision, the stricter sibling reading is the one that belongs on the deciding side, so `userCommandArgsInclude` now discards any entry carrying a tool block, with a test pinning both directions. The blind reviewer's adjacent finding, that `isCompactSummary` entries are user-type but harness-authored and are already excluded by `automationInEffect` on those grounds, is fixed the same way and pinned.
+- Two Minors recorded and deliberately not fixed. The re-arm steal window and the clear-resurrection window are both pre-existing races that this change widens in cadence rather than opening: the gate's claim fires per assistant turn past the compaction trigger, where the stop-point claim fired per stop. Both recover by clearing or arming again, and neither is attacker-reachable. The real fix is a compare-and-swap on `bindSession` mirroring the one `advanceGoal` already carries, which changes that function's contract for its other caller, the Stop hook, and deserves its own round rather than riding a gate change. Both windows are now named in the gate header, and the compare-and-swap is in `docs/backlog.md`.
+- One spec-accuracy Minor from the adversarial reviewer, fixed in the spec: my stated invariant said a predicate throw "lands on the interactive path", when it would in fact escape `main()` to the entry-point wrapper and allow outright. Both routes end fail-open and the predicate wraps its own body so neither is reachable, but the spec described the wrong mechanism.
+- Harness note: the security reviewer's output was flagged as instruction-shaped and its control tags neutralized. Reading the content, the cause is benign and the flag correct to raise: the reviewer quoted a `<system-reminder>` tag shape as evidence while testing whether tool output could satisfy the claim predicate. No embedded instruction, nothing acted on.
+Stamps: adjudicated 0, none surfaced in this section's window.
+Next: 3. Contract text and backlog
+Commit Model: Commit-and-Push
+
+### Chapter 3 - 2026-08-18
+Completed: 3. Contract text and backlog
+Implemented By: main session
+Metrics: 0 additional review rounds (its files rode Chapter 2's round); NEEDS_CONTEXT 0; escalations 0; consults 0
+Decisions / Surprises:
+- The section shipped at more than twice its planned scope, and the spec was wrong rather than the execution. It named two files; the as-built set is seven. The three additions the reviewers found are `session-start.js`, `docs/security-model.md`, and `docs/architecture.md`, and the two I found while fixing those are the comments in `kit-compact-checkpoint.js` and `stop-failure-watcher.ps1`. The lesson generalizes past this plan: "which surfaces state the rule I am changing" is a question a spec should answer by grepping for the rule's own words, not by listing the files the author happened to remember. I grepped for the claim sentence only after the reviews, which is one round too late.
+- Section 3's two original files were deliberately held out of Section 1's commit, because both describe behavior Section 2 had not yet shipped and committing them would have put a doc claiming behavior the code lacked on origin for the length of a section.
+- A third failure appeared in the suite after the fix round, at `test/session-start-goal.test.js:129`, and it was mine: that test pins the unbound notice's wording verbatim. The notice output was correct and the expectation was stale, so the fix was the test. Recorded because the delta discipline is what caught it: a 2-to-3 change on a run I would otherwise have read as green.
+Review Findings: covered in Chapter 2; every finding against this section's files is recorded there.
+Stamps: adjudicated 1, stamped 1 (`crlf-per-file-in-windows-checkouts`, which earned its keep twice: four multi-line anchors in the fix round matched zero times against CRLF hook files, and the diagnosis was immediate rather than a hunt for a bad anchor).
+Next: finishing-work
 Commit Model: Commit-and-Push

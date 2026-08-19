@@ -48,8 +48,9 @@ function cmdOpen() {
     // plan: the gate requires both to match, so a checkpoint orphaned by a
     // crash cannot open the gate for the re-bound session that resumes the
     // plan. An unbound goal writes null, which the gate never matches; the
-    // open still succeeds because binding is the Stop hook's job and may
-    // simply not have happened yet in an unusual arming order.
+    // open still succeeds because the binding is claimed at a stop or at an
+    // auto-compaction offer, either of which may simply not have happened yet
+    // in an unusual arming order.
     const result = writeCheckpoint(process.cwd(), goal.plan, goal.boundSession);
     if (result.ok) {
         // File-derived values print indented, never at column zero, keeping

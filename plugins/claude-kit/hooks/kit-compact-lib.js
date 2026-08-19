@@ -359,6 +359,14 @@ function userCommandArgsInclude(message, needle) {
     if (typeof c === 'string') {
         text = c;
     } else if (Array.isArray(c)) {
+        // A tool block discards the WHOLE entry rather than being filtered out of
+        // it, matching userTypedText in this file. A claim is an authorization
+        // decision, so an entry mixing genuine user text with tool output is one
+        // where planted markup could ride beside a real turn, and the stricter
+        // of the two readings is the one that belongs on the deciding side.
+        for (const b of c) {
+            if (b && (b.type === 'tool_result' || b.type === 'tool_use')) return false;
+        }
         for (const b of c) {
             if (b && b.type === 'text' && typeof b.text === 'string') text += '\n' + b.text;
         }
@@ -418,7 +426,8 @@ function userCommandArgsClaimPlan(transcriptPath, planRel) {
             if (!t) continue;
             let entry;
             try { entry = JSON.parse(t); } catch { continue; }
-            if (!entry || entry.type !== 'user' || entry.isSidechain || entry.isMeta === true) continue;
+            if (!entry || entry.type !== 'user' || entry.isSidechain || entry.isMeta === true
+                || entry.isCompactSummary === true) continue;
             if (userCommandArgsInclude(entry.message, needle)) return true;
         }
         return false;

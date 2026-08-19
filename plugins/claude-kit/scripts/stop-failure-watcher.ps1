@@ -372,8 +372,9 @@ try {
     #
     # The one accepted unbound case is a goal this watcher's own child armed.
     # Arming writes boundSession = null and the leash is claimed at the
-    # session's first stop, so a resumed child that re-arms and then dies (or
-    # reaches the lifetime bound) before that first stop leaves the goal
+    # session's first stop or its first auto-compaction offer, so a resumed
+    # child that re-arms and then dies (or reaches the lifetime bound) before
+    # either of those leaves the goal
     # armed-unbound, and a match-only rule would refuse every later pass with
     # the incident budget unspent. The sentinel naming this same session as the
     # one it launched is what makes that run unattended by construction. An

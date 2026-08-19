@@ -126,7 +126,7 @@ test('a session id differing only in case still renders the bound-to-THIS-sessio
     } finally { rmDir(dir); }
 });
 
-test('unbound: the notice keeps the claimable framing and names the first-stop claim', () => {
+test('unbound: the notice keeps the claimable framing and names both claim points', () => {
     const dir = makeRepo();
     try {
         writeGoal(dir, queuedState(null));
@@ -134,7 +134,7 @@ test('unbound: the notice keeps the claimable framing and names the first-stop c
         assert.strictEqual(r.status, 0);
         const text = context(r);
         assert.match(text, /no session holds its leash yet/);
-        assert.match(text, /the session that armed it claims the leash at its first stop, and that one binding then rides the whole queue/);
+        assert.match(text, /the session that armed it claims the leash at its first stop or its first auto-compaction offer, whichever comes first, and that one binding then rides the whole queue/);
         assert.match(text, /It is plan 1 of 2 in the armed queue/);
         assert.doesNotMatch(text, /ANOTHER session/);
         assert.doesNotMatch(text, /THIS session/);
