@@ -259,8 +259,9 @@ test('session ids differing only in case still match, and the resume fires', { s
 
 test('an unbound goal resumes when the sentinel names this watcher as the session\'s launcher', { skip: !isWin }, () => {
     // Arming writes boundSession = null and the leash is claimed at the
-    // session's first stop, so a watcher-launched child that re-armed and then
-    // died before that stop leaves the goal armed-unbound. The sentinel naming
+    // session's first stop or its first auto-compaction offer, so a
+    // watcher-launched child that re-armed and then died before either leaves
+    // the goal armed-unbound. The sentinel naming
     // that same session as the one this watcher launched is what makes the run
     // unattended by construction, and without it the incident would sit
     // refused with its launch budget unspent.

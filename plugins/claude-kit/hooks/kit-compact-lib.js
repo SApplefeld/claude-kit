@@ -360,7 +360,9 @@ function userCommandArgsInclude(message, needle) {
         text = c;
     } else if (Array.isArray(c)) {
         // A tool block discards the WHOLE entry rather than being filtered out of
-        // it, matching userTypedText in this file. A claim is an authorization
+        // it, taking userTypedText's whole-entry reading in this file and going one
+        // step stricter: that one discards on a tool_result, this one on either
+        // tool block. A claim is an authorization
         // decision, so an entry mixing genuine user text with tool output is one
         // where planted markup could ride beside a real turn, and the stricter
         // of the two readings is the one that belongs on the deciding side.

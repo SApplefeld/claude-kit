@@ -1,6 +1,6 @@
 # Compaction gate binding: claim the leash before the first compaction, not at the first stop
 
-Status: Approved
+Status: Complete
 Commit Model: Commit-and-Push
 Disjoint: yes
 Created: 2026-08-18
@@ -177,8 +177,12 @@ Invariants no new branch may violate, each already load-bearing:
   wrapper and allow outright rather than reaching the interactive path; both
   routes end in an allow, and the predicate wraps its own body so neither is
   reachable today.
-- No new steal surface: the predicate is the same one the Stop hook trusts,
-  unmodified.
+- No new steal surface. The gate calls the same predicate the Stop hook claims
+  with, single-sourced rather than copied, so neither hook can drift into a
+  weaker rule than the other. The predicate was tightened during the review
+  round and the Stop hook inherits that tightening, which is the safe direction
+  for an authorization check: it can now refuse a claim it would once have
+  granted, never the reverse.
 
 Files in scope: `plugins/claude-kit/hooks/kit-compact-gate.js`,
 `test/kit-compact-gate.test.js`.
@@ -258,11 +262,18 @@ carries the dated item; no em dash characters in any changed file.
 
 ## Related
 
-- `../archive/claude-kit_interactive-compact-deferral_spec_v1.md` introduced the
-  interactive deferral path and deliberately left the unbound case allowing
-  outright, recording that decision in the test comment at
-  `test/kit-compact-gate.test.js:245`. This plan reverses that call on evidence
-  that its stated premise is false.
+- `claude-kit_goal-continuity_spec_v1.md` established the stop-point claim this
+  plan supersedes. It is archived and append-only, so the pointer runs one way;
+  read its account of the claim as the history of a rule this plan changed, not
+  as current behavior.
+- `claude-kit_kit-goal-queue_spec_v1.md` made one binding ride a whole queue,
+  which is the property the second claim point has to preserve and does: the
+  claim happens once, at whichever point comes first, and the leash then advances
+  plan to plan under it.
+- `claude-kit_interactive-compact-deferral_spec_v1.md` introduced the interactive
+  deferral path and deliberately left the unbound case allowing outright,
+  recording that decision in a test comment. This plan reverses that call on
+  evidence that its stated premise is false.
 
 ## Chapters
 
@@ -303,10 +314,32 @@ Completed: 3. Contract text and backlog
 Implemented By: main session
 Metrics: 0 additional review rounds (its files rode Chapter 2's round); NEEDS_CONTEXT 0; escalations 0; consults 0
 Decisions / Surprises:
-- The section shipped at more than twice its planned scope, and the spec was wrong rather than the execution. It named two files; the as-built set is seven. The three additions the reviewers found are `session-start.js`, `docs/security-model.md`, and `docs/architecture.md`, and the two I found while fixing those are the comments in `kit-compact-checkpoint.js` and `stop-failure-watcher.ps1`. The lesson generalizes past this plan: "which surfaces state the rule I am changing" is a question a spec should answer by grepping for the rule's own words, not by listing the files the author happened to remember. I grepped for the claim sentence only after the reviews, which is one round too late.
+- The section shipped at more than twice its planned scope, and the spec was wrong rather than the execution. It named two files; the as-built set is seven. The three additions the reviewers found are `session-start.js`, `docs/security-model.md`, and `docs/architecture.md`, and the two I found while fixing those are the comments in `kit-compact-checkpoint.js` and `stop-failure-watcher.ps1`. The lesson generalizes past this plan: "which surfaces state the rule I am changing" is a question a spec should answer by grepping for the rule's own words, not by listing the files the author happened to remember. Correcting my own record here: I never ran that grep before the finishing reviews. Reviewers found each surface one at a time and I fixed what they named, which is why the set kept growing. The finishing pass then found two more, and only then did I run the repo-wide grep, which returned both of them plus two nobody had flagged, in one command. Every hit is fixed and recorded in Chapter 4.
 - Section 3's two original files were deliberately held out of Section 1's commit, because both describe behavior Section 2 had not yet shipped and committing them would have put a doc claiming behavior the code lacked on origin for the length of a section.
 - A third failure appeared in the suite after the fix round, at `test/session-start-goal.test.js:129`, and it was mine: that test pins the unbound notice's wording verbatim. The notice output was correct and the expectation was stale, so the fix was the test. Recorded because the delta discipline is what caught it: a 2-to-3 change on a run I would otherwise have read as green.
 Review Findings: covered in Chapter 2; every finding against this section's files is recorded there.
 Stamps: adjudicated 1, stamped 1 (`crlf-per-file-in-windows-checkouts`, which earned its keep twice: four multi-line anchors in the fix round matched zero times against CRLF hook files, and the diagnosis was immediate rather than a hunt for a bad anchor).
 Next: finishing-work
+Commit Model: Commit-and-Push
+
+### Chapter 4 - 2026-08-18 (close-out)
+Completed: finishing-work over the whole changeset
+Implemented By: main session, with a qa-verifier, a fable security reviewer, a fable adversarial reviewer, and a docs-curator
+Metrics: 1 finishing review round; NEEDS_CONTEXT 0; escalations 0; consults 1 for the whole effort (at design time)
+Gates:
+- QA verification: PASS. Build clean, suite 962 pass / 2 fail against a 954 / 2 baseline, the two failures identical by name to the baseline (`test/memq-shim.test.js` at 401 and 512). Every acceptance criterion across all three sections verified with evidence, and the spec's claim of no operator-only criteria confirmed correct: the gate tests spawn the real hook file rather than a mock, so every branch including the claim path is exercised in-process. One item came back UNVERIFIABLE and I overturned it rather than accepting it: the verifier reported that no test calls the moved predicate in-process, while its own grep had already found the import. `test/kit-compact-gate.test.js:32` imports `userCommandArgsClaimPlan` and five assertions across three tests call it directly. The criterion is PASS.
+- Security review (fable, high), whole changeset: CLEAR, one Minor, fixed. It re-verified all four section-round fixes against the code, re-diffed Section 1's move independently, and confirmed the structural reason the rejected one-line alternative was dangerous: because `boundaryVerdict`'s callers guarantee a non-empty string binding, a null-session checkpoint can never be consumed, so the bystander-burns-the-real-run's-boundary hazard is unreachable rather than merely unlikely.
+- Adversarial review (fable, high), whole changeset: APPROVED_WITH_CONCERNS, one Major and two Minors, all fixed. It attacked the five post-review fixes specifically, on the correct reasoning that they were written after the reviews and so had no independent review at all, and all five held. Its Chapter-claim audit checked every "recorded in the backlog" and "named in the gate header" assertion in Chapters 2 and 3 against the files and found no false records.
+- Docs curation: one `deviation`, zero `mistake`, so nothing stopped the run. It swept eight claims by claim rather than by changed file and found the docs already correct on seven, having been fixed mid-effort.
+- Tree-state bracket: `git status --porcelain` captured before dispatching QA and again when all three review rounds returned. No delta.
+Decisions / Surprises:
+- Both finishing reviewers independently found the same Major, and it was the same class the effort had already fixed twice: a surface still stating the superseded rule, this time a test comment mirroring the very PowerShell comment Section 3 had corrected. That is three rounds finding the same class one instance at a time, which is the signal that the method was wrong rather than the execution. The generator was that I fixed what each reviewer named instead of asking what the whole set was. Only at the finishing round did I run the repo-wide grep, and it returned both reviewer findings plus two nobody had flagged (`docs/architecture.md`'s watcher-scope sentence, and a second mention in the watcher script the first fix had not reached) in one command. All four are fixed and the grep now returns only correct text.
+- The docs curator's `deviation` corrected a factual claim in my own spec. The Approach section said the gate adds no steal surface because the predicate is "the same one the Stop hook trusts, unmodified", and the review round then modified it, strictly stricter, with the Stop hook inheriting the change. The behavior is safer and Chapter 2 records the adjudication, but the spec sentence a later reviewer would check the code against had become false. The invariant now states the single-sourcing as the property and names the tightening and its direction.
+- The curator flagged one pre-existing looseness it declined to fix (`docs/architecture.md` saying the gate "consumes it when it allows", where consumption is exclusive to the checkpoint-driven allow) on the grounds that it predates this effort and the security model states it correctly. I agree with leaving it: it is drift this effort did not cause, and rewriting it here would widen the changeset for no correctness gain. Named rather than silently passed over.
+- Cross-references added at the curator's prompting: two archived plans, the one that established the stop-point claim this supersedes and the one that made a single binding ride a queue, were unlinked in both directions. The pointers run one way, since the archive is append-only.
+Review Findings: 1 Major (stale test comment, fixed), 3 Minors (an index entry stating the old rule in the present tense, an inaccurate cross-reference in a code comment, and the spec's own "unmodified" claim), all fixed. Zero Criticals across every round of this effort.
+Stamps: adjudicated 0, none surfaced in the close-out window.
+Operator-pending: none from this plan's work. The plugin cache item the previous efforts parked still governs whether any of this reaches a live session, and stays in the backlog.
+Gate at close: build clean, suite 962 pass / 2 fail, unchanged failing set from baseline. Zero em dash characters across every changed file.
+Next: none. Plan complete and archived.
 Commit Model: Commit-and-Push

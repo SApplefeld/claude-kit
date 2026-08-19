@@ -378,8 +378,8 @@ try {
     # armed-unbound, and a match-only rule would refuse every later pass with
     # the incident budget unspent. The sentinel naming this same session as the
     # one it launched is what makes that run unattended by construction. An
-    # original unattended run that dies before its very first stop is
-    # deliberately not covered: covering it would mean accepting any unbound
+    # original unattended run that dies before it can claim the leash at all,
+    # at a stop or at an auto-compaction offer, is deliberately not covered: covering it would mean accepting any unbound
     # goal, and an unbound goal in a project where an interactive session died
     # is exactly the fork this guard refuses.
     $goal = Read-JsonState (Join-Path $kitDir "goal-state.json")
