@@ -48,7 +48,7 @@
 // embedding stack that installs per machine through the kit doctor's -Fix,
 // never bundled with the kit core. When it is not installed, or installed
 // but not usable, this hook says one line naming the remedy; when it is
-// ready, it says nothing. It rides beside the sync-freshness nudge on the
+// ready, it says nothing. It rides beside the sync trigger on the
 // same branch, silenced under the same top-level stand-down and run-scoped
 // conditions, for the same reason.
 //
@@ -106,9 +106,11 @@
 // unreadable or corrupt sync state file, a sync spawn that fails, and a
 // memory-index.js that will not load or probe, all end with no output from
 // this hook (the last costs only the embedder nudge; every other block still
-// runs). The one voice memq brings with it is its own: when KIT_MEMORY_ROOT
-// is set without its second signal, memq notes the ignored override on
-// stderr, which never enters the session context. The sync check runs
+// runs). The voices memq brings with it are its own, all on stderr, which
+// never enters the session context: the ignored-override note when
+// KIT_MEMORY_ROOT is set without its second signal, and, from a worktree
+// cwd, a note when a worktree-shaped `.git` pointer fails the handshake and
+// a note when a resolved worktree also has an orphaned path-derived store. The sync check runs
 // read-only git subcommands (never `git fetch`) under the store root's own
 // `.git`, and never a repository merely reachable by walking up from it,
 // plus a bounded read of the sync state file and stats of the sync lock and
@@ -118,7 +120,9 @@
 // each spawn), which is how a spawn chain that silently never runs is
 // eventually noticed. The one thing it starts that writes is the detached
 // sync script, spawned only on Windows, only for an ordinary or pinned
-// attended session, only when the store is pending, only when the store
+// attended session, only when the store is pending or standing down on a
+// recorded gate (a clean gate state still spawns so the script re-probes and
+// self-heals once the operator repairs the store), only when the store
 // carries the kit's own ownership marker (a repo the kit does not own gets no
 // marker write and no spawn, so a foreign repo at the store root is never
 // touched), and only at the default store root (an environment-overridden
@@ -239,6 +243,9 @@ function powershellPath() {
 // emitted line is built from these literals only: a code the map does not
 // know gets the fallback, and no string out of the state file ever rides the
 // line, however that file was produced.
+// 'foreign' and 'git-missing' are defensive-only: the script writes no state
+// file for either, so neither reason ever reaches this lookup, but both are
+// carried so the map mirrors the full enum rather than a subset that drifts.
 const SYNC_REASON_TEXT = {
     'leaks': 'a leak probe found content the allowlist does not admit',
     'foreign': 'the store root is not the kit\'s own sync repository',

@@ -281,7 +281,7 @@ function Invoke-MemorySyncGit {
 # ProbesAttempted/ProbesAnswered, because those count how much of the security
 # negative was proven and Dirty proves nothing about leaks; a git status call
 # that fails leaves Dirty false rather than marking the whole status unproven,
-# the same fail-quiet posture the session hook's own sync-freshness check
+# the same fail-quiet posture the session hook's own sync trigger
 # takes on the identical git call. `--untracked-files=all` is what keeps
 # DirtyCount an exact file count rather than one line for a whole new
 # untracked directory, which git's default porcelain output would collapse to.
