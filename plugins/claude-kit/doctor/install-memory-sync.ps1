@@ -498,7 +498,12 @@ function Get-MemorySyncStatus {
     # clean result rather than a failure.
     $status.ProbesAttempted += 1
     $historyOk = $true
-    $history = Invoke-MemorySyncGit -StoreRoot $StoreRoot -Arguments @("rev-list", "--objects", "--all", "--filter=object:type=blob") -GitExe $GitExe
+    # Scoped to local pushable refs (branches and tags) rather than --all: the
+    # outbound leak check is about what THIS store would publish, and --all also
+    # spans refs/remotes, so a disallowed path a peer pushed and this store
+    # merely fetched (and refused) would otherwise read as a local leak and
+    # wedge the sync under the wrong reason with a remedy that cannot clear it.
+    $history = Invoke-MemorySyncGit -StoreRoot $StoreRoot -Arguments @("rev-list", "--objects", "--branches", "--tags", "--filter=object:type=blob") -GitExe $GitExe
     if ($history.Code -ne 0) {
         $status.ProbesRan = $false
         $historyOk = $false

@@ -1,5 +1,7 @@
 // Tests for the memory store's sync repo: plugins/claude-kit/doctor/
-// install-memory-sync.ps1 and the "Memory sync" section of doctor.ps1.
+// install-memory-sync.ps1, the "Memory sync" section of doctor.ps1, and the
+// silent sync runner plugins/claude-kit/doctor/sync-store.ps1 (its cases sit
+// at the end of this file).
 //
 // Node's built-in test runner, no framework, no install (Node v24). Every
 // case builds its own fake store root under a short temp directory and passes
@@ -211,7 +213,7 @@ function isIgnored(store, rel) {
 // untracking clears. The blob filter drops the tree entry rev-list otherwise
 // emits for each directory.
 function historyPaths(store) {
-    const res = git(store, ['rev-list', '--objects', '--all', '--filter=object:type=blob']);
+    const res = git(store, ['rev-list', '--objects', '--branches', '--tags', '--filter=object:type=blob']);
     assert.strictEqual(res.status, 0, res.stderr);
     return [...new Set(res.stdout.split(/\r?\n/)
         .map((l) => l.trimEnd())
@@ -1377,4 +1379,635 @@ test('install-memory-sync.ps1 parses cleanly', { skip: !isWin }, () => {
         + 'if ($errs.Count -gt 0) { $errs | Write-Output; exit 1 }';
     const res = pwsh(script);
     assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+});
+
+// The silent sync runner, doctor/sync-store.ps1. The SessionStart hook spawns
+// it detached whenever the store is pending; these cases run it directly, in
+// the foreground, against sandbox store roots. Its whole contract is: exit 0
+// always, print nothing ever, mutate nothing unless the doctor's full safety
+// bar holds (re-derived per run through Get-MemorySyncStatus), commit through
+// Install-MemorySyncRepo's own gated path, pull --rebase then push only where
+// an upstream is configured, and record every outcome to
+// <store>/kit-sync-state.json as fixed enum codes.
+
+const SYNC = path.join(PLUGIN_ROOT, 'doctor', 'sync-store.ps1');
+
+function runSync(store) {
+    return spawnSync('powershell.exe',
+        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', SYNC, '-StoreRoot', store],
+        { encoding: 'utf8', env: { ...process.env } });
+}
+
+// Exit 0 with both streams empty: the runner is spawned detached with its
+// streams ignored, so anything it printed would reach nobody, and the state
+// file is its whole report.
+function assertSilentSync(res) {
+    assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+    assert.strictEqual(res.stdout, '', 'the sync runner never writes stdout');
+    assert.strictEqual(res.stderr, '', 'the sync runner never writes stderr');
+}
+
+function statePath(store) {
+    return path.join(store, 'kit-sync-state.json');
+}
+
+function readState(store) {
+    return JSON.parse(fs.readFileSync(statePath(store), 'utf8'));
+}
+
+function headOf(store) {
+    const res = git(store, ['rev-parse', 'HEAD']);
+    assert.strictEqual(res.status, 0, res.stderr);
+    return res.stdout.trim();
+}
+
+// A fake store initialized as the doctor's own canonical sync repo, with a
+// local commit identity so no case leans on the machine's global git config.
+// The ownership key is set before Install-MemorySyncRepo runs so the repo
+// takes the recognized-own path rather than the fresh-init one, which is the
+// only way to get the identity config in before the first commit.
+function makeOwnStore() {
+    const fake = makeStore();
+    assert.strictEqual(git(fake.store, ['init', '--quiet', '-b', 'main']).status, 0);
+    assert.strictEqual(git(fake.store, ['config', '--local', 'user.email', 'sync-test@example.com']).status, 0);
+    assert.strictEqual(git(fake.store, ['config', '--local', 'user.name', 'sync-test']).status, 0);
+    assert.strictEqual(git(fake.store, ['config', '--local', 'claudekit.memorysync', 'true']).status, 0);
+    const res = installRepo(fake.store);
+    assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+    return fake;
+}
+
+// A bare repo under the fake home as origin, with the store's main pushed and
+// tracking it: a real remote for every git operation here, no network needed.
+// The bare side's HEAD is set to main at init, so a clone of it checks out
+// the pushed branch rather than an unborn machine-default one.
+function attachBareOrigin(fake) {
+    const bare = path.join(fake.home, 'origin.git');
+    assert.strictEqual(spawnSync('git', ['init', '--bare', '--quiet', '-b', 'main', bare],
+        { encoding: 'utf8', env: { ...process.env } }).status, 0);
+    assert.strictEqual(git(fake.store, ['remote', 'add', 'origin', bare]).status, 0);
+    assert.strictEqual(git(fake.store, ['push', '--quiet', '-u', 'origin', 'main']).status, 0);
+    return bare;
+}
+
+// A working clone of the bare origin, standing in for another machine's
+// store, with its own local commit identity.
+function cloneOf(fake, bare) {
+    const clone = path.join(fake.home, 'other-machine');
+    assert.strictEqual(spawnSync('git', ['clone', '--quiet', bare, clone],
+        { encoding: 'utf8', env: { ...process.env } }).status, 0);
+    assert.strictEqual(git(clone, ['config', '--local', 'user.email', 'other@example.com']).status, 0);
+    assert.strictEqual(git(clone, ['config', '--local', 'user.name', 'other']).status, 0);
+    return clone;
+}
+
+test('sync-store: a dirty canonical store with no remote commits locally, prints nothing, and records ok', { skip: !isWin }, () => {
+    const fake = makeOwnStore();
+    try {
+        const head = headOf(fake.store);
+        write(path.join(fake.store, 'memory-types', 'pending-fact.md'), '# pending\n');
+
+        assertSilentSync(runSync(fake.store));
+
+        assert.notStrictEqual(headOf(fake.store), head, 'the pending change was committed');
+        assert.ok(trackedPaths(fake.store).includes('memory-types/pending-fact.md'));
+        const state = readState(fake.store);
+        assert.strictEqual(state.lastResult, 'ok');
+        assert.strictEqual(state.reason, '');
+        assert.notStrictEqual(state.lastOk, '', 'success stamps lastOk');
+        assert.strictEqual(state.firstFailSince, '', 'success clears the failure streak');
+        assert.ok(!fs.existsSync(path.join(fake.store, 'kit-sync.lock')), 'the lock is removed on exit');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+test('sync-store: an ahead store pushes to its configured upstream, verified on the bare side', { skip: !isWin }, () => {
+    const fake = makeOwnStore();
+    try {
+        const bare = attachBareOrigin(fake);
+        write(path.join(fake.store, 'memory-types', 'local-fact.md'), '# local\n');
+        assert.strictEqual(git(fake.store, ['add', 'memory-types/local-fact.md']).status, 0);
+        assert.strictEqual(git(fake.store, ['commit', '--quiet', '-m', 'local work']).status, 0);
+        const head = headOf(fake.store);
+
+        assertSilentSync(runSync(fake.store));
+
+        const bareHead = spawnSync('git', ['-C', bare, 'rev-parse', 'main'],
+            { encoding: 'utf8', env: { ...process.env } });
+        assert.strictEqual(bareHead.status, 0, bareHead.stderr);
+        assert.strictEqual(bareHead.stdout.trim(), head, 'the push landed on the bare origin');
+        assert.strictEqual(readState(fake.store).lastResult, 'ok');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// The pull-unreachability pin: nothing else in the system ever fetches, so
+// the runner's own fetch is what discovers a remote that moved on. The
+// fixture deliberately leaves the tracking ref stale (no manual fetch): a
+// runner that reads behind from the stale ref sees zero, merges nothing, and
+// its push is rejected non-fast-forward forever, which is the live-store
+// failure this case reproduces.
+test('sync-store: a behind store discovers the remote advance with its own fetch and converges', { skip: !isWin }, () => {
+    const fake = makeOwnStore();
+    try {
+        const bare = attachBareOrigin(fake);
+        const clone = cloneOf(fake, bare);
+        write(path.join(clone, 'memory-types', 'from-other-machine.md'), '# other\n');
+        assert.strictEqual(git(clone, ['add', 'memory-types/from-other-machine.md']).status, 0);
+        assert.strictEqual(git(clone, ['commit', '--quiet', '-m', 'other machine work']).status, 0);
+        assert.strictEqual(git(clone, ['push', '--quiet', 'origin', 'main']).status, 0);
+        const bareHead = spawnSync('git', ['-C', bare, 'rev-parse', 'main'],
+            { encoding: 'utf8', env: { ...process.env } });
+        assert.strictEqual(bareHead.status, 0, bareHead.stderr);
+        const advanced = bareHead.stdout.trim();
+        const staleRef = git(fake.store, ['rev-parse', 'refs/remotes/origin/main']);
+        assert.strictEqual(staleRef.status, 0, staleRef.stderr);
+        assert.notStrictEqual(staleRef.stdout.trim(), advanced,
+            'the tracking ref is stale before the run; a converging runner proves it fetched');
+
+        assertSilentSync(runSync(fake.store));
+
+        assert.strictEqual(headOf(fake.store), advanced, 'both sides converge');
+        assert.ok(fs.existsSync(path.join(fake.store, 'memory-types', 'from-other-machine.md')),
+            'the other machine\'s memory landed in the worktree');
+        assert.strictEqual(readState(fake.store).lastResult, 'ok');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// The inbound half of the allowlist. The store root is ~/.claude, where
+// settings.json, CLAUDE.md, and the kit's own hooks live gitignored, so a
+// fetched commit naming one of those paths would clobber live configuration
+// the moment a merge checks it out. Incoming content must pass the same
+// positive path rule outbound content does, before the working tree is
+// touched.
+test('sync-store: an incoming disallowed path gates as inbound-leak, with no merge and no push', { skip: !isWin }, () => {
+    const fake = makeOwnStore();
+    try {
+        const bare = attachBareOrigin(fake);
+        const clone = cloneOf(fake, bare);
+        write(path.join(clone, 'settings.json'), '{"model":"attacker"}\n');
+        assert.strictEqual(git(clone, ['add', '-f', 'settings.json']).status, 0);
+        assert.strictEqual(git(clone, ['commit', '--quiet', '-m', 'planted config']).status, 0);
+        assert.strictEqual(git(clone, ['push', '--quiet', 'origin', 'main']).status, 0);
+        const head = headOf(fake.store);
+
+        assertSilentSync(runSync(fake.store));
+
+        const state = readState(fake.store);
+        assert.strictEqual(state.lastResult, 'gate');
+        assert.strictEqual(state.reason, 'inbound-leak');
+        assert.strictEqual(headOf(fake.store), head, 'nothing was merged');
+        assert.strictEqual(fs.readFileSync(path.join(fake.store, 'settings.json'), 'utf8'),
+            '{"model":"opus"}\n', 'the live settings file is untouched');
+        assert.ok(!fs.existsSync(path.join(fake.store, '.git', 'rebase-merge')));
+        assert.ok(!fs.existsSync(path.join(fake.store, '.git', 'rebase-apply')));
+        const porcelain = git(fake.store, ['status', '--porcelain']);
+        assert.strictEqual(porcelain.stdout.trim(), '', 'the working tree is untouched');
+        // The fetched tracking ref is left in place on a refusal: deleting it
+        // would make the store read converged and silently stop syncing while
+        // the recorded gate line vanished. It stays so the gate is visible and
+        // the next run re-screens the same disallowed tip.
+        assert.strictEqual(git(fake.store, ['rev-parse', '--verify', 'refs/remotes/origin/main']).status, 0,
+            'the fetched tracking ref is left in place so the gate stays visible');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// The rename/duplicate-blob bypass a blob-OBJECT screen misses: an incoming
+// commit that places a blob HEAD already has at a disallowed path introduces
+// no new blob object, so `rev-list --objects --filter=object:type=blob` emits
+// nothing for it and an object screen waves it through; the path screen
+// (ls-tree over the incoming tree) names the destination and refuses it. The
+// exploit this pins: `git mv` an allowlisted memory file onto settings.json on
+// another machine, whose next sync would otherwise rebase attacker content
+// over the live, hook-defining settings.json in the store root.
+test('sync-store: an incoming rename onto a disallowed path gates as inbound-leak, though it introduces no new blob', { skip: !isWin }, () => {
+    const fake = makeOwnStore();
+    try {
+        const bare = attachBareOrigin(fake);
+        // Seed an allowlisted file, committed and pushed, so its blob exists in
+        // HEAD and on the origin: the rename below then carries a blob already
+        // known here, which is exactly what an object screen cannot see.
+        write(path.join(fake.store, 'memory-types', 'seed.md'), '# a known blob\n');
+        assert.strictEqual(git(fake.store, ['add', 'memory-types/seed.md']).status, 0);
+        assert.strictEqual(git(fake.store, ['commit', '--quiet', '-m', 'seed a known blob']).status, 0);
+        assert.strictEqual(git(fake.store, ['push', '--quiet', 'origin', 'main']).status, 0);
+        const head = headOf(fake.store);
+
+        // Another machine renames that same blob onto settings.json: a new path
+        // for a known blob, no new blob object introduced.
+        const clone = cloneOf(fake, bare);
+        assert.strictEqual(git(clone, ['mv', 'memory-types/seed.md', 'settings.json']).status, 0);
+        assert.strictEqual(git(clone, ['commit', '--quiet', '-m', 'rename a known blob onto config']).status, 0);
+        assert.strictEqual(git(clone, ['push', '--quiet', 'origin', 'main']).status, 0);
+
+        assertSilentSync(runSync(fake.store));
+
+        const state = readState(fake.store);
+        assert.strictEqual(state.lastResult, 'gate');
+        assert.strictEqual(state.reason, 'inbound-leak',
+            'the path screen caught a disallowed destination an object screen would have missed');
+        assert.strictEqual(headOf(fake.store), head, 'nothing was merged');
+        assert.strictEqual(fs.readFileSync(path.join(fake.store, 'settings.json'), 'utf8'),
+            '{"model":"opus"}\n', 'the live, gitignored settings file was never clobbered');
+        assert.ok(!fs.existsSync(path.join(fake.store, '.git', 'rebase-merge')));
+        assert.ok(!fs.existsSync(path.join(fake.store, '.git', 'rebase-apply')));
+        assert.strictEqual(git(fake.store, ['status', '--porcelain']).stdout.trim(), '',
+            'the working tree is untouched');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// A tree entry has two security-relevant axes, mode and path, and the screen
+// must check both: a symlink (mode 120000) at an allowlisted memory PATH would
+// be materialized by the rebase, and a later kit read through it would emit a
+// credential file's contents into the session's trusted context. The entry is
+// planted via plumbing (update-index --cacheinfo) so the test needs no OS
+// symlink support: the blob's content is the link target.
+test('sync-store: an incoming symlink at an allowed path gates as inbound-leak', { skip: !isWin }, () => {
+    const fake = makeOwnStore();
+    try {
+        const bare = attachBareOrigin(fake);
+        const head = headOf(fake.store);
+        const clone = cloneOf(fake, bare);
+        const target = '../../../../.credentials.json';
+        const hashed = spawnSync('git', ['-C', clone, 'hash-object', '-w', '--stdin'],
+            { input: target, encoding: 'utf8', env: { ...process.env } });
+        assert.strictEqual(hashed.status, 0, hashed.stderr);
+        const sha = hashed.stdout.trim();
+        assert.strictEqual(git(clone, ['update-index', '--add', '--cacheinfo',
+            '120000,' + sha + ',memory-types/link.md']).status, 0);
+        assert.strictEqual(git(clone, ['commit', '--quiet', '-m', 'plant a symlink at an allowed path']).status, 0);
+        assert.strictEqual(git(clone, ['push', '--quiet', 'origin', 'main']).status, 0);
+
+        assertSilentSync(runSync(fake.store));
+
+        const state = readState(fake.store);
+        assert.strictEqual(state.lastResult, 'gate');
+        assert.strictEqual(state.reason, 'inbound-leak', 'a symlink at an allowed path is a leak, not admitted');
+        assert.strictEqual(headOf(fake.store), head, 'nothing was merged');
+        assert.ok(!fs.existsSync(path.join(fake.store, '.git', 'rebase-merge')));
+        assert.strictEqual(git(fake.store, ['rev-parse', '--verify', 'refs/remotes/origin/main']).status, 0,
+            'the fetched tracking ref is left in place so the recorded gate stays visible');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// A path with fringe whitespace trims to an allowed path but git materializes
+// the untrimmed one, so a screen that trimmed its input would validate a
+// different string than lands on disk. Planted via plumbing (cacheinfo admits
+// arbitrary path bytes) with a leading space; the screen must refuse it.
+test('sync-store: an incoming path with fringe whitespace gates as inbound-leak', { skip: !isWin }, () => {
+    const fake = makeOwnStore();
+    try {
+        const bare = attachBareOrigin(fake);
+        const head = headOf(fake.store);
+        const clone = cloneOf(fake, bare);
+        const hashed = spawnSync('git', ['-C', clone, 'hash-object', '-w', '--stdin'],
+            { input: 'a fact\n', encoding: 'utf8', env: { ...process.env } });
+        assert.strictEqual(hashed.status, 0, hashed.stderr);
+        const sha = hashed.stdout.trim();
+        assert.strictEqual(git(clone, ['update-index', '--add', '--cacheinfo',
+            '100644,' + sha + ', memory-types/leading-space.md']).status, 0);
+        assert.strictEqual(git(clone, ['commit', '--quiet', '-m', 'plant a fringe-whitespace path']).status, 0);
+        assert.strictEqual(git(clone, ['push', '--quiet', 'origin', 'main']).status, 0);
+
+        assertSilentSync(runSync(fake.store));
+
+        const state = readState(fake.store);
+        assert.strictEqual(state.lastResult, 'gate');
+        assert.strictEqual(state.reason, 'inbound-leak',
+            'a fringe-whitespace path is refused, not trimmed and admitted');
+        assert.strictEqual(headOf(fake.store), head, 'nothing was merged');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// A paused merge (or cherry-pick/revert) leaves HEAD attached but conflict
+// markers in the worktree; the detached gate does not catch it. Committing
+// here would `git add -A` the markers and conclude the merge, baking
+// `<<<<<<<` into a memory file and pushing it fleet-wide. The run must defer.
+test('sync-store: a paused merge conflict in the store defers rather than committing its markers', { skip: !isWin }, () => {
+    const fake = makeOwnStore();
+    try {
+        write(path.join(fake.store, 'memory-types', 'x.md'), '# base\n');
+        assert.strictEqual(git(fake.store, ['add', 'memory-types/x.md']).status, 0);
+        assert.strictEqual(git(fake.store, ['commit', '--quiet', '-m', 'base']).status, 0);
+        assert.strictEqual(git(fake.store, ['checkout', '--quiet', '-b', 'other']).status, 0);
+        write(path.join(fake.store, 'memory-types', 'x.md'), '# other machine\n');
+        assert.strictEqual(git(fake.store, ['commit', '--quiet', '-am', 'other']).status, 0);
+        assert.strictEqual(git(fake.store, ['checkout', '--quiet', 'main']).status, 0);
+        write(path.join(fake.store, 'memory-types', 'x.md'), '# this machine\n');
+        assert.strictEqual(git(fake.store, ['commit', '--quiet', '-am', 'mine']).status, 0);
+        const head = headOf(fake.store);
+        const merge = git(fake.store, ['merge', '--no-edit', 'other']);
+        assert.notStrictEqual(merge.status, 0, 'the merge really did conflict');
+        assert.ok(fs.existsSync(path.join(fake.store, '.git', 'MERGE_HEAD')), 'a merge is paused');
+
+        assertSilentSync(runSync(fake.store));
+
+        const state = readState(fake.store);
+        assert.strictEqual(state.lastResult, 'transient');
+        assert.strictEqual(state.reason, 'unproven');
+        assert.strictEqual(headOf(fake.store), head, 'the conflicted merge was not concluded into a commit');
+        assert.ok(fs.existsSync(path.join(fake.store, '.git', 'MERGE_HEAD')),
+            'the paused merge is left exactly as found for the operator');
+        assert.ok(fs.readFileSync(path.join(fake.store, 'memory-types', 'x.md'), 'utf8').includes('<<<<<<<'),
+            'the conflict markers were never committed away');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// A paused rebase detaches HEAD, so without the in-progress deferral it would
+// take the loud 'detached' gate; the deferral (which runs before the gate)
+// records the quiet transient instead and leaves the rebase for the operator.
+test('sync-store: a paused rebase in the store defers as transient, not the detached gate', { skip: !isWin }, () => {
+    const fake = makeOwnStore();
+    try {
+        write(path.join(fake.store, 'memory-types', 'x.md'), '# base\n');
+        assert.strictEqual(git(fake.store, ['add', 'memory-types/x.md']).status, 0);
+        assert.strictEqual(git(fake.store, ['commit', '--quiet', '-m', 'base']).status, 0);
+        assert.strictEqual(git(fake.store, ['checkout', '--quiet', '-b', 'other']).status, 0);
+        write(path.join(fake.store, 'memory-types', 'x.md'), '# other machine\n');
+        assert.strictEqual(git(fake.store, ['commit', '--quiet', '-am', 'other']).status, 0);
+        assert.strictEqual(git(fake.store, ['checkout', '--quiet', 'main']).status, 0);
+        write(path.join(fake.store, 'memory-types', 'x.md'), '# this machine\n');
+        assert.strictEqual(git(fake.store, ['commit', '--quiet', '-am', 'mine']).status, 0);
+        const rebase = git(fake.store, ['rebase', 'other']);
+        assert.notStrictEqual(rebase.status, 0, 'the rebase really did conflict and pause');
+        const paused = fs.existsSync(path.join(fake.store, '.git', 'rebase-merge')) ||
+            fs.existsSync(path.join(fake.store, '.git', 'rebase-apply'));
+        assert.ok(paused, 'a rebase is paused');
+
+        assertSilentSync(runSync(fake.store));
+
+        const state = readState(fake.store);
+        assert.strictEqual(state.lastResult, 'transient');
+        assert.strictEqual(state.reason, 'unproven', 'the in-progress deferral pre-empts the detached gate');
+        const stillPaused = fs.existsSync(path.join(fake.store, '.git', 'rebase-merge')) ||
+            fs.existsSync(path.join(fake.store, '.git', 'rebase-apply'));
+        assert.ok(stillPaused, 'the paused rebase is left exactly as found for the operator');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+test('sync-store: a tracked disallowed path gates as leaks, with no commit, no push, and the index untouched', { skip: !isWin }, () => {
+    const fake = makeOwnStore();
+    try {
+        const bare = attachBareOrigin(fake);
+        const head = headOf(fake.store);
+        assert.strictEqual(git(fake.store, ['add', '-f', '.credentials.json']).status, 0);
+        write(path.join(fake.store, 'memory-types', 'pending-fact.md'), '# pending\n');
+
+        assertSilentSync(runSync(fake.store));
+
+        const state = readState(fake.store);
+        assert.strictEqual(state.lastResult, 'gate');
+        assert.strictEqual(state.reason, 'leaks');
+        assert.strictEqual(headOf(fake.store), head, 'a gate mutates nothing: no commit');
+        assert.ok(trackedPaths(fake.store).includes('.credentials.json'),
+            'the index is exactly as found; unstaging is the operator\'s call');
+        assert.ok(!trackedPaths(fake.store).includes('memory-types/pending-fact.md'),
+            'nothing new reached the index either');
+        const bareHead = spawnSync('git', ['-C', bare, 'rev-parse', 'main'],
+            { encoding: 'utf8', env: { ...process.env } });
+        assert.strictEqual(bareHead.stdout.trim(), head, 'no push over a gate');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// A foreign repository gets no state file at all, not a gate record: a
+// non-owned repo at the store root (an operator's dotfiles repo) has no
+// allowlist ignoring kit-sync-state.json, so writing one would dirty their
+// worktree forever, keep the hook pending forever, and make the loud line
+// permanent with a doctor -Fix that cannot clear it.
+test('sync-store: a repository without the ownership key gates as foreign, with nothing written at all', { skip: !isWin }, () => {
+    const fake = makeStore();
+    try {
+        assert.strictEqual(git(fake.store, ['init', '--quiet', '-b', 'main']).status, 0);
+
+        assertSilentSync(runSync(fake.store));
+
+        assert.ok(!fs.existsSync(statePath(fake.store)),
+            'a foreign gate writes no state file into somebody else\'s worktree');
+        assert.ok(!fs.existsSync(path.join(fake.store, 'kit-sync.lock')), 'and leaves no lock');
+        assert.ok(!fs.existsSync(path.join(fake.store, '.gitignore')), 'no managed file was written');
+        assert.ok(!fs.existsSync(path.join(fake.store, '.gitattributes')));
+        assert.deepStrictEqual(trackedPaths(fake.store), [], 'nothing reached the index');
+        assert.notStrictEqual(git(fake.store, ['rev-parse', 'HEAD']).status, 0, 'no commit was ever made');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+test('sync-store: a detached HEAD gates as detached and commits nothing', { skip: !isWin }, () => {
+    const fake = makeOwnStore();
+    try {
+        assert.strictEqual(git(fake.store, ['checkout', '--quiet', '--detach', 'HEAD']).status, 0);
+        const head = headOf(fake.store);
+        write(path.join(fake.store, 'memory-types', 'pending-fact.md'), '# pending\n');
+
+        assertSilentSync(runSync(fake.store));
+
+        const state = readState(fake.store);
+        assert.strictEqual(state.lastResult, 'gate');
+        assert.strictEqual(state.reason, 'detached');
+        assert.strictEqual(headOf(fake.store), head, 'no commit onto a detached HEAD');
+        assert.ok(!trackedPaths(fake.store).includes('memory-types/pending-fact.md'));
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// The fail-closed side of the same gate: a HEAD the status read could not
+// resolve at all (here, a symbolic ref to a branch that does not exist) must
+// gate rather than pass as not-detached, because a commit against it would
+// land on whatever that ref turns out to be.
+test('sync-store: an unreadable HEAD fails closed as detached, and commits nothing', { skip: !isWin }, () => {
+    const fake = makeOwnStore();
+    try {
+        const mainSha = git(fake.store, ['rev-parse', 'refs/heads/main']).stdout.trim();
+        assert.strictEqual(git(fake.store, ['symbolic-ref', 'HEAD', 'refs/heads/nowhere']).status, 0);
+        write(path.join(fake.store, 'memory-types', 'pending-fact.md'), '# pending\n');
+
+        assertSilentSync(runSync(fake.store));
+
+        const state = readState(fake.store);
+        assert.strictEqual(state.lastResult, 'gate');
+        assert.strictEqual(state.reason, 'detached');
+        assert.strictEqual(git(fake.store, ['rev-parse', 'refs/heads/main']).stdout.trim(), mainSha,
+            'the real branch did not move');
+        assert.notStrictEqual(git(fake.store, ['rev-parse', 'refs/heads/nowhere']).status, 0,
+            'no commit materialized the dangling branch');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+test('sync-store: a genuinely conflicting divergence aborts the rebase, records pull-conflict, and pushes nothing', { skip: !isWin }, () => {
+    const fake = makeOwnStore();
+    try {
+        const bare = attachBareOrigin(fake);
+        const clone = cloneOf(fake, bare);
+        // Both machines rewrite the same line of the same memory body (.md
+        // takes git's default merge, unlike the union-merged journals), so
+        // the rebase must conflict rather than auto-resolve.
+        const rel = path.join('projects', PROJECT_A, 'memory', 'a-fact.md');
+        write(path.join(clone, rel), '# the other machine\'s rewrite\n');
+        assert.strictEqual(git(clone, ['add', '-A']).status, 0);
+        assert.strictEqual(git(clone, ['commit', '--quiet', '-m', 'other rewrite']).status, 0);
+        assert.strictEqual(git(clone, ['push', '--quiet', 'origin', 'main']).status, 0);
+        write(path.join(fake.store, rel), '# this machine\'s rewrite\n');
+        assert.strictEqual(git(fake.store, ['add', '-A']).status, 0);
+        assert.strictEqual(git(fake.store, ['commit', '--quiet', '-m', 'local rewrite']).status, 0);
+        // No manual fetch: the runner's own fetch is what discovers the
+        // divergence this case conflicts on.
+        const localHead = headOf(fake.store);
+        const bareHeadBefore = spawnSync('git', ['-C', bare, 'rev-parse', 'main'],
+            { encoding: 'utf8', env: { ...process.env } }).stdout.trim();
+
+        assertSilentSync(runSync(fake.store));
+
+        const state = readState(fake.store);
+        assert.strictEqual(state.lastResult, 'transient');
+        assert.strictEqual(state.reason, 'pull-conflict');
+        assert.notStrictEqual(state.firstFailSince, '', 'the failure streak starts here');
+        assert.ok(!fs.existsSync(path.join(fake.store, '.git', 'rebase-merge')),
+            'the rebase was aborted, not left in progress');
+        assert.ok(!fs.existsSync(path.join(fake.store, '.git', 'rebase-apply')));
+        assert.strictEqual(headOf(fake.store), localHead, 'the abort restored the local tip');
+        const porcelain = git(fake.store, ['status', '--porcelain']);
+        assert.strictEqual(porcelain.stdout.trim(), '', 'the worktree is clean after the abort');
+        const bareHeadAfter = spawnSync('git', ['-C', bare, 'rev-parse', 'main'],
+            { encoding: 'utf8', env: { ...process.env } }).stdout.trim();
+        assert.strictEqual(bareHeadAfter, bareHeadBefore, 'nothing was pushed over a conflict');
+
+        // A second failing run preserves the streak's start rather than
+        // resetting it, which is what the hook's seven-day nudge counts from.
+        assertSilentSync(runSync(fake.store));
+        assert.strictEqual(readState(fake.store).firstFailSince, state.firstFailSince,
+            'firstFailSince marks the streak\'s start, not the latest attempt');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+test('sync-store: a fresh lock exits fast with git untouched, the lock kept, and no state written', { skip: !isWin }, () => {
+    const fake = makeOwnStore();
+    try {
+        const head = headOf(fake.store);
+        write(path.join(fake.store, 'memory-types', 'pending-fact.md'), '# pending\n');
+        const lock = path.join(fake.store, 'kit-sync.lock');
+        fs.writeFileSync(lock, '', 'utf8');
+
+        assertSilentSync(runSync(fake.store));
+
+        assert.ok(fs.existsSync(lock), 'a fresh lock belongs to the run that made it, never deleted here');
+        assert.ok(!fs.existsSync(statePath(fake.store)),
+            'a concurrent run in progress is not a failure, so no state is recorded');
+        assert.strictEqual(headOf(fake.store), head, 'no commit was made');
+        assert.ok(!trackedPaths(fake.store).includes('memory-types/pending-fact.md'));
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+test('sync-store: a lock older than fifteen minutes is stale and replaced, and the sync proceeds', { skip: !isWin }, () => {
+    const fake = makeOwnStore();
+    try {
+        write(path.join(fake.store, 'memory-types', 'pending-fact.md'), '# pending\n');
+        const lock = path.join(fake.store, 'kit-sync.lock');
+        fs.writeFileSync(lock, '', 'utf8');
+        const past = new Date(Date.now() - 20 * 60 * 1000);
+        fs.utimesSync(lock, past, past);
+
+        assertSilentSync(runSync(fake.store));
+
+        assert.strictEqual(readState(fake.store).lastResult, 'ok');
+        assert.ok(trackedPaths(fake.store).includes('memory-types/pending-fact.md'),
+            'the crashed run\'s leavings did not block the sync');
+        assert.ok(!fs.existsSync(lock), 'the replacing run removed its own lock on exit');
+        assert.deepStrictEqual(fs.readdirSync(fake.store).filter((n) => n.startsWith('kit-sync.lock.stale')),
+            [], 'the takeover rename leaves no remnant behind');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// The lock names its owner (pid, then an ISO start time), so staleness is a
+// fact about the owning process rather than only about file age: a dead
+// owner's lock is taken over at once, a live owner's fresh lock is respected.
+test('sync-store: a lock naming a dead process is taken over at once', { skip: !isWin }, () => {
+    const fake = makeOwnStore();
+    try {
+        write(path.join(fake.store, 'memory-types', 'pending-fact.md'), '# pending\n');
+        // A process that has provably exited: spawnSync waits for it, so its
+        // pid names nothing by the time the runner checks.
+        const dead = spawnSync(process.execPath, ['-e', ''], { encoding: 'utf8', env: { ...process.env } });
+        assert.strictEqual(dead.status, 0);
+        fs.writeFileSync(path.join(fake.store, 'kit-sync.lock'),
+            dead.pid + '\n' + new Date().toISOString() + '\n', 'utf8');
+
+        assertSilentSync(runSync(fake.store));
+
+        assert.strictEqual(readState(fake.store).lastResult, 'ok');
+        assert.ok(trackedPaths(fake.store).includes('memory-types/pending-fact.md'),
+            'the dead owner\'s fresh lock did not block the sync');
+        assert.ok(!fs.existsSync(path.join(fake.store, 'kit-sync.lock')));
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+test('sync-store: a fresh lock naming a live process is respected', { skip: !isWin }, () => {
+    const fake = makeOwnStore();
+    try {
+        const head = headOf(fake.store);
+        write(path.join(fake.store, 'memory-types', 'pending-fact.md'), '# pending\n');
+        // This test process is the live owner.
+        const lock = path.join(fake.store, 'kit-sync.lock');
+        fs.writeFileSync(lock, process.pid + '\n' + new Date().toISOString() + '\n', 'utf8');
+
+        assertSilentSync(runSync(fake.store));
+
+        assert.ok(fs.existsSync(lock), 'the live owner\'s lock is never deleted by a rival');
+        assert.strictEqual(fs.readFileSync(lock, 'utf8').split('\n')[0], String(process.pid),
+            'and never rewritten either');
+        assert.ok(!fs.existsSync(statePath(fake.store)), 'a run in progress is not a failure: no state');
+        assert.strictEqual(headOf(fake.store), head, 'no commit was made');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+test('sync-store: the store root is mandatory, and the script parses cleanly', { skip: !isWin }, () => {
+    // The same no-default rule the installer's own test pins: a forgotten
+    // argument is a loud parameter error, never a silent run against the
+    // operator's real ~/.claude.
+    const res = spawnSync('powershell.exe',
+        ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', SYNC],
+        { encoding: 'utf8', env: { ...process.env } });
+    assert.notStrictEqual(res.status, 0, 'sync-store.ps1 must not run without -StoreRoot');
+    const code = fs.readFileSync(SYNC, 'utf8').split(/\r?\n/)
+        .filter((l) => !/^\s*#/.test(l)).join('\n');
+    assert.ok(!/USERPROFILE|\$HOME|HomeDirectory|\$env:HOME/.test(code),
+        'the sync runner must resolve no store path of its own');
+
+    const script = '$errs = $null; $tokens = $null; '
+        + '[System.Management.Automation.Language.Parser]::ParseFile(' + q(SYNC)
+        + ', [ref]$tokens, [ref]$errs) | Out-Null; '
+        + 'if ($errs.Count -gt 0) { $errs | Write-Output; exit 1 }';
+    const parsed = pwsh(script);
+    assert.strictEqual(parsed.status, 0, parsed.stdout + parsed.stderr);
 });
