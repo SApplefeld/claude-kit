@@ -98,3 +98,14 @@ Review Findings: 5 rounds. Round 2: 1 Critical (inbound object-vs-path) + Majors
 Stamps: `memq unstamped --since 1d` returned zero read-but-unapplied on both shared tiers; the section was self-contained.
 Next: 3. Contract-surface alignment
 Commit Model: Commit-and-Push
+
+### Chapter 3 - 2026-08-19
+Completed: 3. Contract-surface alignment
+Implemented By: main session (inline, per the section's `Locus: inline`)
+Metrics: review rounds 1 (adversarial + blind, opus at max effort via the Workflow route; no security reviewer, the changeset is prose only); NEEDS_CONTEXT 0; escalations 0; consults 0
+Decisions / Surprises: the section updated `memory-system`, `executing-work`, and `finishing-work` SKILL prose plus `docs/architecture.md` and `docs/security-model.md` to state two shipped behaviors as current fact: a git worktree resolves its main checkout's store (Section 1), and the store syncs itself through the background runner (Section 2) rather than needing a hand-run doctor `-Fix` plus pull/push at close-out. Folded in two `architecture.md` surfaces the spec's line-number list (125, 131) missed but which carried the same stale contract: the session-hook block list (the "sync-freshness nudge" renamed to the sync trigger) and the store-sync description (now naming the auto-sync and the both-direction allowlist). `kit-doctor/SKILL.md` verified needing no change: its memory-sync line describes the doctor's own check, which the auto-sync does not alter. The parity-tested doctrine copies and output-style carry no sync or worktree statements, so they stayed untouched (verified by grep before closing).
+Assumptions: none beyond the plan's own block.
+Review Findings: 1 Major fixed (a residual "only the doctor commits the store" claim in `security-model.md`, security-relevant, that contradicted the section's own new auto-sync text: a leaked credential is now committed and pushed silently by the runner at the next session start, not only when the doctor repairs the store). Minors fixed: a `memory-system` sentence that miscstated the nag rules (a foreign store is silent, not loud; the seven-day streak is soft, not loud); journey phrasing ("now", "arrived with") against the section's own no-journey criterion; an `architecture.md` line attributing the outbound leak probes to the doctor alone when the runner re-derives the same ones; an incomplete worktree-failure enumeration (added the handshake-failure fallback and its stderr note); and a `finishing-work` "verify the store syncs" framing that could invite a false "synced" close-out claim, retitled to "report the store's sync state" and made to report this session's writes as PENDING until the next session start.
+Stamps: `memq unstamped --since 1d` returned zero read-but-unapplied on both shared tiers.
+Next: finishing-work
+Commit Model: Commit-and-Push
