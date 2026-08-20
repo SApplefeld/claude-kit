@@ -39,18 +39,24 @@ const CLI = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-go
 // Scrub the run-scoped variables for the file's whole run. This suite runs
 // inside fleet workers too, where the engine sets KIT_RUN_ID, and an inherited
 // value would attach a `run` field to every event the in-process schema tests
-// below emit, breaking their exact Object.keys assertions. Restored once at
-// the end so a later test file in the same process (there is none today, but
-// node's runner can share a process across files) sees the ambient value it
-// started with.
+// below emit, breaking their exact Object.keys assertions. CLAUDE_CODE_SESSION_ID
+// is scrubbed for the same reason one step further on: the suite runs inside a
+// Claude Code session shell, which sets it, and the CLI binds an arm to that
+// value, so an inherited one would bind every spawned arm the cases below
+// expect unbound. The cases that need it set pass it explicitly in the child's
+// environment. Restored once at the end so a later test file in the same
+// process (there is none today, but node's runner can share a process across
+// files) sees the ambient value it started with.
 const priorRunEnv = {
     KIT_RUN_ID: process.env.KIT_RUN_ID,
     KIT_SPAWN_VECTOR: process.env.KIT_SPAWN_VECTOR,
-    KIT_RUN_SECTION: process.env.KIT_RUN_SECTION
+    KIT_RUN_SECTION: process.env.KIT_RUN_SECTION,
+    CLAUDE_CODE_SESSION_ID: process.env.CLAUDE_CODE_SESSION_ID
 };
 delete process.env.KIT_RUN_ID;
 delete process.env.KIT_SPAWN_VECTOR;
 delete process.env.KIT_RUN_SECTION;
+delete process.env.CLAUDE_CODE_SESSION_ID;
 after(() => {
     for (const key of Object.keys(priorRunEnv)) {
         if (priorRunEnv[key] === undefined) delete process.env[key];
@@ -91,8 +97,9 @@ test('armGoal success writes goal-state.json with the exact schema', () => {
         assert.deepStrictEqual(Object.keys(state).sort(),
             ['armedAt', 'boundSession', 'boundTranscript', 'condition', 'history', 'plan', 'queue', 'queueIndex']);
         assert.strictEqual(state.plan, 'docs/plans/foo.md');
-        assert.strictEqual(state.boundSession, null, 'a freshly armed goal is unbound');
-        assert.strictEqual(state.boundTranscript, null, 'the transcript is recorded at claim time, not at arm');
+        assert.strictEqual(state.boundSession, null, 'an arm carrying no bind is unbound');
+        assert.strictEqual(state.boundTranscript, null,
+            'with no bind to corroborate, the transcript is recorded at claim time instead');
         assert.deepStrictEqual(state.queue, ['docs/plans/foo.md'], 'one plan is a queue of one');
         assert.strictEqual(state.queueIndex, 0);
         assert.deepStrictEqual(state.history, []);
@@ -362,15 +369,16 @@ test('bindSession binds an armed goal, and re-arming resets the binding to null'
     try {
         writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
         assert.strictEqual(armGoal(repo, 'docs/plans/foo.md').ok, true);
-        assert.strictEqual(readGoal(repo).boundSession, null, 'a freshly armed goal is unbound');
+        assert.strictEqual(readGoal(repo).boundSession, null, 'an arm carrying no bind is unbound');
 
         assert.strictEqual(bindSession(repo, 'sess-1').ok, true);
         assert.strictEqual(readGoal(repo).boundSession, 'sess-1');
         // bindSession runs in this same process, so its tmp name is deterministic here.
         assert.ok(!fs.existsSync(goalPath(repo) + '.tmp.' + process.pid), 'no leftover tmp after an atomic bind');
 
-        // Re-arming (the crash-recovery rebind opportunity) resets the binding so
-        // the successor session can claim it fresh.
+        // Re-arming without a usable bind (the crash-recovery rebind
+        // opportunity) resets the binding so the successor session can claim
+        // it fresh at its own first stop.
         assert.strictEqual(armGoal(repo, 'docs/plans/foo.md').ok, true);
         assert.strictEqual(readGoal(repo).boundSession, null, 're-arm resets the binding');
     } finally {
@@ -1500,6 +1508,399 @@ test('CLI status never opens a plan or queue entry that traverses out of the rep
         assert.ok(!fs.existsSync(marker), 'the traversal queue entry was never opened');
     } finally {
         rmRepo(repo);
+    }
+});
+
+// A harness-shaped session id (the arm-time bind's gate accepts exactly this
+// shape) and a second one for the rebind direction.
+const SID = '2f4e97f8-5b7f-425e-8b33-076013d24873';
+const SID2 = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+
+// The state file as written, not as normalized at read. normalizeState nulls
+// an invalid boundTranscript on every read, so a case pinning that a bad path
+// was never stored has to look at the raw bytes: through readGoal it would
+// pass identically whether armGoal dropped the value or wrote it verbatim.
+function rawState(repo) {
+    return JSON.parse(fs.readFileSync(goalPath(repo), 'utf8'));
+}
+
+test('armGoal binds the arming session when the session id and its transcript arrive together', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
+        const transcript = path.join(repo, 'sessions', SID + '.jsonl');
+        const result = armGoal(repo, 'docs/plans/foo.md', { sessionId: SID, transcriptPath: transcript });
+        assert.strictEqual(result.ok, true);
+        assert.strictEqual(result.boundSession, SID, 'the caller learns what was bound without restating the gate');
+
+        // The binding rides in the arm's own single write, so it is on disk
+        // the moment the arm returns: an in-session arm holds the leash
+        // without waiting for a claim point. Both fields land together, so a
+        // bound goal is never left without the transcript its liveness hint
+        // reads from.
+        const raw = rawState(repo);
+        assert.strictEqual(raw.boundSession, SID);
+        assert.strictEqual(raw.boundTranscript, transcript);
+        assert.strictEqual(readGoal(repo).boundSession, SID);
+        assert.deepStrictEqual(Object.keys(readGoal(repo)).sort(),
+            ['armedAt', 'boundSession', 'boundTranscript', 'condition', 'history', 'plan', 'queue', 'queueIndex'],
+            'the state shape is unchanged by the bind');
+        assert.ok(!fs.existsSync(goalPath(repo) + '.tmp.' + process.pid), 'the bound arm is one atomic write');
+
+        // Uppercase is the same shape: the gate is case-insensitive, and the
+        // value is stored exactly as given so it compares against the session
+        // id the hook payloads carry.
+        assert.strictEqual(armGoal(repo, 'docs/plans/foo.md',
+            { sessionId: SID.toUpperCase(), transcriptPath: transcript }).boundSession, SID.toUpperCase());
+        assert.strictEqual(rawState(repo).boundSession, SID.toUpperCase());
+
+        // A transcript path at exactly validTranscript's cap still binds: the
+        // second key answers to that one shared rule, not to a stricter local
+        // one.
+        assert.strictEqual(armGoal(repo, 'docs/plans/foo.md',
+            { sessionId: SID, transcriptPath: 'x'.repeat(512) }).boundSession, SID);
+        assert.strictEqual(rawState(repo).boundTranscript, 'x'.repeat(512));
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('a session id with no usable transcript arms unbound: the bind takes both keys or neither', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
+        // The shape of an id cannot authenticate it, and an arm-time bind to
+        // the wrong session is unrecoverable: both claim points act only on an
+        // unbound goal, so the real run would stay a bystander for the goal's
+        // whole life while the arm reported success. The transcript found on
+        // this machine is the corroboration, so a shaped id with no usable
+        // path arms unbound rather than leashing the goal to a session that
+        // will never stop. Absent, oversized, control-character-carrying,
+        // network-shaped, and wrong-typed paths all fail validTranscript, the
+        // same bar bindSession and the read normalizer apply.
+        for (const bad of [undefined, null, '', 'x'.repeat(513), '/tmp/a\nInjected.jsonl',
+            '\\\\srv\\share\\t.jsonl', '//srv/share/t.jsonl', 42]) {
+            const result = armGoal(repo, 'docs/plans/foo.md', { sessionId: SID, transcriptPath: bad });
+            assert.strictEqual(result.ok, true, JSON.stringify(bad) + ' must not fail the arm');
+            assert.strictEqual(result.boundSession, null, JSON.stringify(bad) + ' must arm unbound');
+            const raw = rawState(repo);
+            assert.strictEqual(raw.boundSession, null, JSON.stringify(bad) + ' must write no binding');
+            assert.strictEqual(raw.boundTranscript, null, JSON.stringify(bad) + ' must not be stored');
+        }
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('armGoal arms unbound for any session id that is not UUID-shaped, and never fails over it', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
+        const transcript = path.join(repo, 't.jsonl');
+        // The other key, tested against a transcript path that is itself
+        // perfectly usable, so only the id's shape decides. Anything off the
+        // exact shape falls back to an unbound arm rather than to a refusal:
+        // the arm still succeeds and the stop and compaction-offer claim
+        // points bind it. The transcript never rides an unbound arm, which
+        // would leave a hint pointing at a session that holds nothing.
+        const cases = [
+            [undefined, 'no bind argument at all'],
+            [{}, 'a bind carrying no session id'],
+            [{ sessionId: undefined }, 'an absent value (the variable is unset)'],
+            [{ sessionId: '' }, 'an empty value'],
+            [{ sessionId: 'sess-1' }, 'a value of another shape entirely'],
+            [{ sessionId: SID.slice(0, -1) }, 'a UUID one character short'],
+            [{ sessionId: SID + 'a' }, 'a UUID with a trailing character'],
+            [{ sessionId: ' ' + SID }, 'a UUID with leading whitespace'],
+            [{ sessionId: SID + '\n' }, 'a UUID with a trailing newline'],
+            [{ sessionId: '{' + SID + '}', }, 'a brace-wrapped UUID'],
+            [{ sessionId: SID.replace(/-/g, '') }, 'a UUID with its hyphens stripped'],
+            [{ sessionId: '2f4e97f8-5b7f-425e-8b33-076013d2487g' }, 'a non-hex character'],
+            [{ sessionId: 42 }, 'a number'],
+            [{ sessionId: { toString: () => SID } }, 'an object that stringifies to a UUID'],
+            [{ sessionId: [SID] }, 'an array holding a UUID'],
+            [{ sessionId: '../../evil' }, 'a value carrying a path separator']
+        ];
+        for (const [bind, why] of cases) {
+            const withTranscript = bind === undefined ? undefined : { ...bind, transcriptPath: transcript };
+            const result = armGoal(repo, 'docs/plans/foo.md', withTranscript);
+            assert.strictEqual(result.ok, true, why + ' must still arm');
+            assert.strictEqual(result.boundSession, null, why + ' must arm unbound');
+            const raw = rawState(repo);
+            assert.strictEqual(raw.boundSession, null, why + ' must write no binding');
+            assert.strictEqual(raw.boundTranscript, null, why + ' must write no transcript');
+        }
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('a re-arm replaces the previous binding, and an unbound re-arm clears it', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
+        const transcript = path.join(repo, 't.jsonl');
+        assert.strictEqual(armGoal(repo, 'docs/plans/foo.md',
+            { sessionId: SID, transcriptPath: transcript }).ok, true);
+        assert.strictEqual(readGoal(repo).boundSession, SID);
+
+        // A successor session re-arming takes the leash outright: the whole
+        // state is rewritten, so nothing of the previous holder survives.
+        const transcript2 = path.join(repo, 't2.jsonl');
+        assert.strictEqual(armGoal(repo, 'docs/plans/foo.md',
+            { sessionId: SID2, transcriptPath: transcript2 }).boundSession, SID2);
+        let state = readGoal(repo);
+        assert.strictEqual(state.boundSession, SID2);
+        assert.strictEqual(state.boundTranscript, transcript2, 'the successor\'s own transcript replaces it');
+
+        // And a re-arm with no usable bind returns the goal to unclaimed,
+        // which is the crash-recovery rebind opportunity.
+        assert.strictEqual(armGoal(repo, 'docs/plans/foo.md').boundSession, null);
+        state = readGoal(repo);
+        assert.strictEqual(state.boundSession, null);
+        assert.strictEqual(state.boundTranscript, null);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+// A child environment for a spawned CLI arm. This process's own values for the
+// binding variable and the two the homedir resolves from are scrubbed first, so
+// a case that omits one gets a genuinely unset variable rather than whatever
+// the test-runner process carries; extra then sets exactly what the case is
+// about. Matches spawnEmit's env handling above.
+function armEnv(extra) {
+    const env = { ...process.env };
+    for (const k of Object.keys(env)) {
+        if (/^(CLAUDE_CODE_SESSION_ID|USERPROFILE|HOME)$/i.test(k)) delete env[k];
+    }
+    return Object.assign(env, extra || {});
+}
+
+test('CLI arm binds the arming session from the environment and says so', () => {
+    const repo = makeRepo();
+    const fakeHome = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
+        writePlan(repo, 'docs/plans/b.md', 'Status: In Progress\n');
+        // The arming session's transcript, where the harness keeps it. Its
+        // presence is the second key the bind requires.
+        const transcript = path.join(fakeHome, '.claude', 'projects', 'D--repo', SID + '.jsonl');
+        fs.mkdirSync(path.dirname(transcript), { recursive: true });
+        fs.writeFileSync(transcript, '{}\n', 'utf8');
+
+        // The arm runs inside the arming session's shell, so the harness
+        // variable plus the transcript it names are the whole input to the
+        // binding, and the output states which way it went: an
+        // armed-but-unbound goal is otherwise silent.
+        let res = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md'], {
+            cwd: repo, encoding: 'utf8',
+            env: armEnv({ CLAUDE_CODE_SESSION_ID: SID, USERPROFILE: fakeHome, HOME: fakeHome })
+        });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /armed for docs\/plans\/a\.md \(bound to this session\)/);
+        assert.strictEqual(res.stdout.trim().split('\n').length, 1, 'the binding rides on the one output line');
+        assert.strictEqual(readGoal(repo).boundSession, SID);
+        assert.strictEqual(readGoal(repo).boundTranscript, transcript,
+            'a bound goal always carries the transcript that corroborated it');
+
+        // The binding parenthetical follows the queue one on the same line.
+        res = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md', 'docs/plans/b.md'], {
+            cwd: repo, encoding: 'utf8',
+            env: armEnv({ CLAUDE_CODE_SESSION_ID: SID, USERPROFILE: fakeHome, HOME: fakeHome })
+        });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout,
+            /armed for docs\/plans\/a\.md \(1 of 2; then docs\/plans\/b\.md\) \(bound to this session\)/);
+    } finally {
+        rmRepo(repo);
+        rmRepo(fakeHome);
+    }
+});
+
+test('CLI arm reports an unbound arm and names the fallback claim points', () => {
+    const repo = makeRepo();
+    const fakeHome = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
+        // No transcript exists anywhere under this home, so even a
+        // perfectly-shaped id is uncorroborated here. The variable is
+        // undocumented and can vanish or change shape upstream, and a shaped
+        // value can still be stale or planted, which is why each of these arms
+        // unbound rather than failing, and why the output names what will bind
+        // it instead.
+        const unbound = [
+            [{}, 'the variable unset'],
+            [{ CLAUDE_CODE_SESSION_ID: '' }, 'an empty value'],
+            [{ CLAUDE_CODE_SESSION_ID: 'not-a-uuid' }, 'a value of another shape'],
+            [{ CLAUDE_CODE_SESSION_ID: SID.slice(0, -1) }, 'a UUID one character short'],
+            [{ CLAUDE_CODE_SESSION_ID: SID }, 'a UUID naming no transcript on this machine'],
+            [{ CLAUDE_CODE_SESSION_ID: '../../evil' }, 'a value carrying a path separator']
+        ];
+        for (const [extra, why] of unbound) {
+            const res = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md'], {
+                cwd: repo, encoding: 'utf8',
+                env: armEnv({ ...extra, USERPROFILE: fakeHome, HOME: fakeHome })
+            });
+            assert.strictEqual(res.status, 0, why + ': ' + res.stderr);
+            assert.match(res.stdout,
+                /armed for docs\/plans\/a\.md \(unbound; the leash binds at the arming session's first stop or auto-compaction offer\)/,
+                why + ' must arm unbound and say so');
+            const raw = rawState(repo);
+            assert.strictEqual(raw.boundSession, null, why + ' must write no binding');
+            assert.strictEqual(raw.boundTranscript, null, why + ' must write no transcript');
+        }
+    } finally {
+        rmRepo(repo);
+        rmRepo(fakeHome);
+    }
+});
+
+// A preload that records any fs.readdirSync whose target names the needle, by
+// creating a marker file. The counterpart of openSpyPreload above: it proves a
+// directory was never LISTED, where asserting on stdout alone would only prove
+// the result was not used.
+function readdirSpyPreload(dir, needle, marker) {
+    const shim = path.join(dir, 'readdir-spy.js');
+    fs.writeFileSync(shim, [
+        "'use strict';",
+        "const fs = require('fs');",
+        'const real = fs.readdirSync;',
+        'fs.readdirSync = function (target) {',
+        '    if (String(target).includes(' + JSON.stringify(needle) + ')) {',
+        '        fs.writeFileSync(' + JSON.stringify(marker) + ", 'x');",
+        '    }',
+        '    return real.apply(fs, arguments);',
+        '};'
+    ].join('\n') + '\n', 'utf8');
+    return '--require "' + shim.replace(/\\/g, '/') + '"';
+}
+
+test('CLI arm tests the session id shape before it touches the filesystem', () => {
+    const repo = makeRepo();
+    const fakeHome = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
+        const marker = path.join(repo, 'listed-projects.marker');
+        const projects = path.join(fakeHome, '.claude', 'projects');
+        fs.mkdirSync(path.join(projects, 'D--real'), { recursive: true });
+        fs.writeFileSync(path.join(projects, 'D--real', SID + '.jsonl'), '{}\n', 'utf8');
+        const preload = readdirSpyPreload(repo, 'projects', marker);
+        const spawn = (sessionId) => spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md'], {
+            cwd: repo, encoding: 'utf8',
+            env: armEnv({
+                CLAUDE_CODE_SESSION_ID: sessionId, USERPROFILE: fakeHome, HOME: fakeHome,
+                NODE_OPTIONS: preload
+            })
+        });
+
+        // Arbitrary environment content never drives a directory scan: the
+        // shape decides first, so a refused value costs nothing at all.
+        for (const junk of ['not-a-uuid', '../../evil', 'x'.repeat(400)]) {
+            const res = spawn(junk);
+            assert.strictEqual(res.status, 0, junk + ': ' + res.stderr);
+            assert.ok(!fs.existsSync(marker), JSON.stringify(junk) + ' must not list the projects tree');
+        }
+
+        // The other direction: a shaped id does list it, so the assertions
+        // above are the ordering working rather than a spy that never fires.
+        const res = spawn(SID);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /\(bound to this session\)/);
+        assert.ok(fs.existsSync(marker), 'a shaped id is looked up');
+    } finally {
+        rmRepo(repo);
+        rmRepo(fakeHome);
+    }
+});
+
+test('CLI arm records the arming session\'s transcript when one exists under the harness projects tree', () => {
+    const repo = makeRepo();
+    const fakeHome = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
+        // The harness names each project directory by munging the project
+        // path, so the CLI lists the directories and takes the first existing
+        // <sessionId>.jsonl rather than reproducing the munging. A decoy
+        // directory sitting ahead of the real one proves the scan, not a
+        // guessed path, is what finds it.
+        const projects = path.join(fakeHome, '.claude', 'projects');
+        fs.mkdirSync(path.join(projects, 'D--decoy'), { recursive: true });
+        fs.mkdirSync(path.join(projects, 'D--real'), { recursive: true });
+        const transcript = path.join(projects, 'D--real', SID + '.jsonl');
+        fs.writeFileSync(transcript, '{}\n', 'utf8');
+
+        let res = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md'], {
+            cwd: repo, encoding: 'utf8',
+            env: armEnv({ CLAUDE_CODE_SESSION_ID: SID, USERPROFILE: fakeHome, HOME: fakeHome })
+        });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /\(bound to this session\)/);
+        assert.strictEqual(readGoal(repo).boundTranscript, transcript);
+
+        // The status report then renders the liveness hint from that file,
+        // which is the whole reason the path is recorded.
+        res = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, new RegExp('bound to session ' + SID + ', last active less than a minute ago'));
+
+        // A different session id, with no transcript of its own under that
+        // tree, arms unbound: the lookup is the corroboration, so nothing
+        // found means nothing bound, and the previous holder's binding is
+        // replaced rather than inherited.
+        res = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md'], {
+            cwd: repo, encoding: 'utf8',
+            env: armEnv({ CLAUDE_CODE_SESSION_ID: SID2, USERPROFILE: fakeHome, HOME: fakeHome })
+        });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /\(unbound; the leash binds/);
+        assert.strictEqual(readGoal(repo).boundSession, null);
+        assert.strictEqual(readGoal(repo).boundTranscript, null);
+
+        // And an unreadable projects tree (here, a file where the directory
+        // would be) arms unbound silently rather than failing the arm: the
+        // claim points still bind the goal at the run's first stop.
+        const brokenHome = makeRepo();
+        try {
+            fs.mkdirSync(path.join(brokenHome, '.claude'), { recursive: true });
+            fs.writeFileSync(path.join(brokenHome, '.claude', 'projects'), 'not a directory\n', 'utf8');
+            res = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md'], {
+                cwd: repo, encoding: 'utf8',
+                env: armEnv({ CLAUDE_CODE_SESSION_ID: SID, USERPROFILE: brokenHome, HOME: brokenHome })
+            });
+            assert.strictEqual(res.status, 0, res.stderr);
+            assert.match(res.stdout, /\(unbound; the leash binds/);
+            assert.strictEqual(res.stderr, '', 'a failed transcript lookup is silent');
+            assert.strictEqual(readGoal(repo).boundSession, null);
+            assert.strictEqual(readGoal(repo).boundTranscript, null);
+        } finally {
+            rmRepo(brokenHome);
+        }
+    } finally {
+        rmRepo(repo);
+        rmRepo(fakeHome);
+    }
+});
+
+test('CLI arm refuses a bad plan path unchanged, whether or not a session id is present', () => {
+    const repo = makeRepo();
+    const fakeHome = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
+        // The binding is not a second failure mode: a refusal reads exactly as
+        // it did before, names the offender, writes no state, and never
+        // mentions a binding that did not happen.
+        const res = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md', 'docs/plans/gone.md'], {
+            cwd: repo, encoding: 'utf8',
+            env: armEnv({ CLAUDE_CODE_SESSION_ID: SID, USERPROFILE: fakeHome, HOME: fakeHome })
+        });
+        assert.strictEqual(res.status, 1);
+        assert.match(res.stderr, /not found: docs\/plans\/gone\.md/);
+        assert.doesNotMatch(res.stdout, /bound/);
+        assert.ok(!fs.existsSync(goalPath(repo)), 'a refused arm writes no state, bind or no bind');
+    } finally {
+        rmRepo(repo);
+        rmRepo(fakeHome);
     }
 });
 

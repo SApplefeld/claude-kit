@@ -150,6 +150,15 @@ function writeClaimingTranscript(full, planRel, consumed) {
     writeFile(full, claim + '\n' + fs.readFileSync(full, 'utf8'));
 }
 
+// The same usage transcript with an arbitrary extra entry ahead of it, the
+// mechanics of writeClaimingTranscript generalized: the typed-lead cases pin
+// which entry shapes claim the binding and which do not, so each supplies its
+// own leading entry.
+function writeLeadEntryTranscript(full, entry, consumed) {
+    writeUsageTranscript(full, consumed);
+    writeFile(full, JSON.stringify(entry) + '\n' + fs.readFileSync(full, 'utf8'));
+}
+
 // Arm a goal in a fresh temp repo against an In-Progress plan, bind it to
 // SESSION (unless opts.unbound), and lay down a usage transcript (consumed
 // defaults to a mid-run figure well below the ceiling; opts.claiming makes it
@@ -366,6 +375,170 @@ test('gate: a claim whose bind write fails still denies this offer', () => {
             { NODE_OPTIONS: writeRefusingPreload(repo) });
         assertDeny(res);
         assert.strictEqual(readGoal(repo).boundSession, null, 'the write genuinely failed');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a multi-line typed /kit-goal (no harness markup) claims the binding: deny-boundary', () => {
+    // The harness writes <command-name>/<command-args> markup only when the
+    // command and its arguments share the message's first line; a multi-line
+    // /kit-goal with one plan path per line lands as plain prose. The typed-
+    // lead claim shape makes that arming claimable at the compaction offer,
+    // exactly like the markup shape.
+    const { repo, planRel, transcript } = armedRepo({ unbound: true });
+    try {
+        writeLeadEntryTranscript(transcript, {
+            type: 'user',
+            message: { role: 'user', content: '/kit-goal\n' + planRel }
+        }, 50000);
+        assertDeny(runGate(gatePayload(repo, transcript)));
+        assert.strictEqual(readGoal(repo).boundSession, SESSION, 'the typed-lead claim binds this session');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a namespaced typed lead (/claude-kit:kit-goal <path>, no markup) claims: deny-boundary', () => {
+    const { repo, planRel, transcript } = armedRepo({ unbound: true });
+    try {
+        writeLeadEntryTranscript(transcript, {
+            type: 'user',
+            message: { role: 'user', content: '/claude-kit:kit-goal ' + planRel }
+        }, 50000);
+        assertDeny(runGate(gatePayload(repo, transcript)));
+        assert.strictEqual(readGoal(repo).boundSession, SESSION, 'the namespaced typed lead binds this session');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: prose before the command token does NOT claim: interactive deny, still unbound', () => {
+    // A message that quotes or reports the command after prose is discussion,
+    // not arming: the lead anchor refuses it, and the session stays a
+    // bystander on the interactive path.
+    const { repo, planRel, transcript } = armedRepo({ unbound: true });
+    try {
+        writeLeadEntryTranscript(transcript, {
+            type: 'user',
+            message: { role: 'user', content: 'Here is what I ran:\n/kit-goal ' + planRel }
+        }, 50000);
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript)));
+        assert.strictEqual(readGoal(repo).boundSession, null, 'the goal stays unbound');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a code fence containing the command does NOT claim: interactive deny, still unbound', () => {
+    const { repo, planRel, transcript } = armedRepo({ unbound: true });
+    try {
+        writeLeadEntryTranscript(transcript, {
+            type: 'user',
+            message: { role: 'user', content: '```\n/kit-goal ' + planRel + '\n```' }
+        }, 50000);
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript)));
+        assert.strictEqual(readGoal(repo).boundSession, null, 'the goal stays unbound');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a lead naming /kit-goal-notes.md does NOT claim (token boundary): interactive deny, still unbound', () => {
+    const { repo, planRel, transcript } = armedRepo({ unbound: true });
+    try {
+        writeLeadEntryTranscript(transcript, {
+            type: 'user',
+            message: { role: 'user', content: '/kit-goal-notes.md ' + planRel }
+        }, 50000);
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript)));
+        assert.strictEqual(readGoal(repo).boundSession, null, 'the goal stays unbound');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a tool-block entry whose text leads with the command does NOT claim: interactive deny, still unbound', () => {
+    // The whole-entry discard governs the typed-lead shape too: an entry
+    // mixing tool output with a command-leading text block never claims.
+    const { repo, planRel, transcript } = armedRepo({ unbound: true });
+    try {
+        writeLeadEntryTranscript(transcript, {
+            type: 'user',
+            message: {
+                role: 'user',
+                content: [
+                    { type: 'tool_result', tool_use_id: 'x', content: 'file contents' },
+                    { type: 'text', text: '/kit-goal ' + planRel }
+                ]
+            }
+        }, 50000);
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript)));
+        assert.strictEqual(readGoal(repo).boundSession, null, 'the goal stays unbound');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: an assistant entry leading with the command does NOT claim: interactive deny, still unbound', () => {
+    const { repo, planRel, transcript } = armedRepo({ unbound: true });
+    try {
+        writeLeadEntryTranscript(transcript, {
+            type: 'assistant',
+            message: { role: 'assistant', content: [{ type: 'text', text: '/kit-goal ' + planRel }] }
+        }, 50000);
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript)));
+        assert.strictEqual(readGoal(repo).boundSession, null, 'the goal stays unbound');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a lead-token arming of ANOTHER plan mentioning the armed path after a blank line does NOT claim: interactive deny, still unbound', () => {
+    // The needle counts only inside the argument block, which a blank line
+    // ends: a bystander genuinely arming plan B whose message body then
+    // mentions armed plan A must not steal A's binding at the compaction
+    // offer.
+    const { repo, planRel, transcript } = armedRepo({ unbound: true });
+    try {
+        writeLeadEntryTranscript(transcript, {
+            type: 'user',
+            message: { role: 'user', content: '/kit-goal docs/plans/other.md\n\nAlso relevant: ' + planRel }
+        }, 50000);
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript)));
+        assert.strictEqual(readGoal(repo).boundSession, null, 'the goal stays unbound');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a lead-token arming of ANOTHER plan with the armed path only inside a trailing code fence does NOT claim: interactive deny, still unbound', () => {
+    // A fence line ends the argument block: quoted material after the typed
+    // path list must never supply the needle.
+    const { repo, planRel, transcript } = armedRepo({ unbound: true });
+    try {
+        writeLeadEntryTranscript(transcript, {
+            type: 'user',
+            message: { role: 'user', content: '/kit-goal docs/plans/other.md\n```\n' + planRel + '\n```' }
+        }, 50000);
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript)));
+        assert.strictEqual(readGoal(repo).boundSession, null, 'the goal stays unbound');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a mid-message prose mention of the plan path does NOT claim: interactive deny, still unbound', () => {
+    // Neither shape accepts a bare path mention: no markup, and no command
+    // token at the head of the message.
+    const { repo, planRel, transcript } = armedRepo({ unbound: true });
+    try {
+        writeLeadEntryTranscript(transcript, {
+            type: 'user',
+            message: { role: 'user', content: 'Please work ' + planRel + ' to completion.' }
+        }, 50000);
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript)));
+        assert.strictEqual(readGoal(repo).boundSession, null, 'the goal stays unbound');
     } finally {
         rmDir(repo);
     }

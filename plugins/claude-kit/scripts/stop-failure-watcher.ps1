@@ -371,12 +371,15 @@ try {
     # console case is precisely the armed-run case.
     #
     # The one accepted unbound case is a goal this watcher's own child armed.
-    # Arming writes boundSession = null and the leash is claimed at the
-    # session's first stop or its first auto-compaction offer, so a resumed
-    # child that re-arms and then dies (or reaches the lifetime bound) before
-    # either of those leaves the goal
-    # armed-unbound, and a match-only rule would refuse every later pass with
-    # the incident budget unspent. The sentinel naming this same session as the
+    # An in-session arm normally binds the arming session at arm time, so a
+    # resumed child that re-arms and dies matches on boundSession directly and
+    # never needs this branch. The branch serves the arm the CLI could not
+    # corroborate (no usable session id in its shell, or no transcript on disk
+    # for it): that arm writes boundSession = null and the leash is claimed at
+    # the session's first stop or its first auto-compaction offer, so a child
+    # in that state that re-arms and then dies (or reaches the lifetime bound)
+    # before either of those leaves the goal armed-unbound, and a match-only
+    # rule would refuse every later pass with the incident budget unspent. The sentinel naming this same session as the
     # one it launched is what makes that run unattended by construction. An
     # original unattended run that dies before it can claim the leash at all,
     # at a stop or at an auto-compaction offer, is deliberately not covered: covering it would mean accepting any unbound

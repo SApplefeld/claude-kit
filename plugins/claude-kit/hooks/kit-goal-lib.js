@@ -50,6 +50,34 @@ function validTranscript(value) {
         && !/^[\\/]{2}/.test(value);
 }
 
+// The shape a harness session id has: a lowercase-or-uppercase UUID. This is
+// the first of the two keys armGoal's arm-time bind requires, and it is only a
+// shape: it cannot authenticate an id, since any 36-character UUID passes it.
+// The second key is a transcript file on this machine that the id names (see
+// armGoal), which is the evidence that the id belongs to a real local session.
+// Both are required because an arm-time bind is not recoverable from the wrong
+// value: a goal bound to a session that never stops is one the real run can
+// never claim, because both fallback claim points (the first stop, the first
+// auto-compaction offer) act only on an unbound goal, so the real run stays a
+// bystander for the goal's whole life. Arming unbound costs nothing by
+// comparison: the claim points bind it at the run's first stop. The residual
+// the two keys leave is a stale id that still names a real local transcript
+// (an id from an earlier session on this machine); that binds, and the operator
+// re-arms to correct it.
+//
+// A value passing this gate is 36 printable ASCII characters, so it satisfies
+// bindSession's storage rules (string, within the 128-character cap, no control
+// characters) by construction, and carries no path separator.
+const SESSION_ID_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Whether a value has the shape of a harness session id. Exported so the CLI
+// can test the shape before doing any filesystem work on the value, without a
+// second copy of the grammar: one definition decides what both the CLI's
+// transcript lookup and armGoal's bind answer to.
+function isSessionIdShaped(value) {
+    return typeof value === 'string' && SESSION_ID_SHAPE.test(value);
+}
+
 // Normalize a parsed goal state to the current shape, so every reader can rely
 // on queue, queueIndex, history, and boundTranscript being present and on
 // queue[queueIndex] === plan. Path fields are re-validated on every read, not
@@ -232,15 +260,37 @@ function safeForReason(value) {
 
 // Validate the plan arguments, then write the goal-state file atomically.
 // planArgs is one plan path or an ordered array of them (the armed queue).
+//
+// bind is optional, { sessionId, transcriptPath }: the session doing the
+// arming, so an in-session arm holds the leash from the moment it is written
+// rather than waiting for a claim point. The bind takes two keys together, and
+// writes boundSession and boundTranscript as a pair: sessionId must be
+// session-id shaped, and transcriptPath must pass validTranscript, which the
+// CLI supplies only from a transcript file it found on this machine under the
+// harness's own projects tree. The shape alone cannot authenticate an id (see
+// SESSION_ID_SHAPE), so the transcript on disk is what corroborates that the id
+// names a real local session: a stale, mistyped, or planted value that matches
+// no local transcript arms unbound instead of leashing the goal to a session
+// that will never stop. A bound goal therefore always carries its transcript,
+// and the liveness hint every reader renders from it is never stranded null.
+//
+// Anything short of both keys arms unbound exactly as an arm with no bind does:
+// that is a silent fallback, not a failure, because the stop and
+// auto-compaction-offer claim points still bind the goal, recording the hook
+// payload's own authoritative transcript path. The binding rides in the same
+// single atomic write as the rest of the state, so arming never becomes a
+// read-modify-write and cannot race one.
 // Every path is validated before anything is written and the whole arm is
 // refused if any one fails, so a partial queue can never reach the state file;
 // the reason names the offending path. Duplicates are refused for the same
 // reason: a queue that visits a plan twice would advance past it the first
-// time and stall the second. Returns { ok:true, plan, queue } on success or
+// time and stall the second. Returns { ok:true, plan, queue, boundSession } on
+// success (boundSession is the id that was written, or null when the arm is
+// unbound, so the CLI reports the binding without restating the gate) or
 // { ok:false, reason } on any failure: a bad path, a missing or Complete plan,
 // a duplicate, or an unexpected filesystem error, which is caught and reported
 // rather than thrown. This keeps the whole exported surface non-throwing.
-function armGoal(cwd, planArgs) {
+function armGoal(cwd, planArgs, bind) {
     const args = Array.isArray(planArgs) ? planArgs : [planArgs];
     if (args.length === 0) {
         return { ok: false, reason: 'no plan path given' };
@@ -272,6 +322,12 @@ function armGoal(cwd, planArgs) {
         queue.push(rel);
     }
 
+    const requested = bind || {};
+    // Both keys or neither: an id of the right shape whose transcript is
+    // absent or unusable arms unbound rather than failing the arm.
+    const bindable = isSessionIdShaped(requested.sessionId) && validTranscript(requested.transcriptPath);
+    const boundSession = bindable ? requested.sessionId : null;
+
     const state = {
         // The current plan of the queue. Every other reader of this file
         // (the compaction gate, the stop-failure watcher) answers to this
@@ -280,14 +336,19 @@ function armGoal(cwd, planArgs) {
         plan: queue[0],
         condition: composeCondition(queue[0], queue, 0),
         armedAt: new Date().toISOString(),
-        // Which session currently holds the leash, or null when unclaimed. A
-        // fresh arm (including re-arming an already-armed goal after a crash)
-        // starts unbound: the next stop that resolves to a leashed session
-        // claims it, so re-arm is always a clean rebind opportunity.
-        boundSession: null,
-        // The bound session's transcript path, recorded at claim time and used
-        // only as a liveness hint for a session other than the leash holder.
-        boundTranscript: null,
+        // Which session currently holds the leash, or null when unclaimed. An
+        // arm carrying a usable bind (the CLI supplies the arming session's
+        // id) holds the leash from this write; an arm with no usable bind,
+        // including a re-arm after a crash, starts unbound, and the next stop
+        // that resolves to a leashed session claims it, so re-arm is always a
+        // clean rebind opportunity.
+        boundSession,
+        // The bound session's transcript path, used as a liveness hint for a
+        // session other than the leash holder and, at arm time, as the
+        // corroboration that the bound id names a real local session. It is
+        // written with the binding or not at all, so an unbound arm records
+        // none and a bound one always has it.
+        boundTranscript: bindable ? requested.transcriptPath : null,
         queue,
         queueIndex: 0,
         // One entry per finished plan: { plan, outcome, at } and, for a
@@ -297,7 +358,7 @@ function armGoal(cwd, planArgs) {
     const written = writeState(cwd, state);
     if (!written.ok) return written;
 
-    return { ok: true, plan: queue[0], queue };
+    return { ok: true, plan: queue[0], queue, boundSession };
 }
 
 // Record the current plan's outcome and move the leash to the next plan in the
@@ -628,4 +689,4 @@ function emitGoalEvent(details) {
     } catch { /* the event stream is best-effort; a failed emit changes nothing */ }
 }
 
-module.exports = { goalPath, readGoal, armGoal, advanceGoal, bindSession, clearGoal, composeCondition, planHead, emitGoalEvent, normalizePlanArg, lastActivePhrase };
+module.exports = { goalPath, readGoal, armGoal, advanceGoal, bindSession, clearGoal, composeCondition, planHead, emitGoalEvent, normalizePlanArg, lastActivePhrase, isSessionIdShaped };

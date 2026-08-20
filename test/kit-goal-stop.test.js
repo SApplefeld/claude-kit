@@ -507,6 +507,304 @@ test('the real namespaced /kit-goal arming record (backtick-wrapped args) binds 
     }
 });
 
+test('a multi-line typed /kit-goal (no harness markup) binds the leash and enforces', () => {
+    // The harness writes <command-name>/<command-args> markup only when the
+    // command and its arguments share the message's first line; a multi-line
+    // /kit-goal with one plan path per line lands as plain prose. The typed-
+    // lead shape makes that user-typed arming claimable: the message's first
+    // non-whitespace characters are the command token, and the plan path
+    // rides after it.
+    const { repo, planRel, local } = armedRepo(['unused']);
+    try {
+        const tx = path.join(repo, 'typed-multiline.jsonl');
+        const lines = [
+            JSON.stringify({ type: 'user', message: { role: 'user', content: '/kit-goal\n' + planRel } }),
+            JSON.stringify({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text: 'Working on it.' }] } })
+        ];
+        writeFile(tx, lines.join('\n') + '\n');
+        const res = runHook({ cwd: repo, transcript_path: tx, session_id: 'typed-arming-sess' }, local);
+        const out = JSON.parse(res.stdout);
+        assert.strictEqual(out.decision, 'block', 'the multi-line typed arming leashes and enforces');
+        assert.strictEqual(readBoundSession(repo), 'typed-arming-sess');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('a namespaced typed lead (/claude-kit:kit-goal <path>, no markup) binds the leash and enforces', () => {
+    const { repo, planRel, local } = armedRepo(['unused']);
+    try {
+        const tx = path.join(repo, 'typed-namespaced.jsonl');
+        writeFile(tx, JSON.stringify({
+            type: 'user',
+            message: { role: 'user', content: '/claude-kit:kit-goal ' + planRel }
+        }) + '\n');
+        const res = runHook({ cwd: repo, transcript_path: tx, session_id: 'typed-ns-sess' }, local);
+        const out = JSON.parse(res.stdout);
+        assert.strictEqual(out.decision, 'block', 'the namespaced typed lead leashes and enforces');
+        assert.strictEqual(readBoundSession(repo), 'typed-ns-sess');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('prose before the command token does NOT claim: allow, still unbound', () => {
+    // The lead anchor is the anti-steal boundary: a message that quotes or
+    // reports the command after prose is discussion, not arming, and the
+    // harness's own single-line parsing would not have produced an invocation
+    // record for it either.
+    const { repo, planRel, local } = armedRepo(['unused']);
+    try {
+        const tx = path.join(repo, 'prose-lead.jsonl');
+        writeFile(tx, JSON.stringify({
+            type: 'user',
+            message: { role: 'user', content: 'Here is what I ran:\n/kit-goal ' + planRel }
+        }) + '\n');
+        const res = runHook({ cwd: repo, transcript_path: tx, session_id: 'prose-lead-sess' }, local);
+        assert.strictEqual(res.stdout, '', 'a prose-led command mention must not claim the binding');
+        assert.strictEqual(res.status, 0);
+        assert.strictEqual(readBoundSession(repo), null, 'the goal stays unbound');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('a code fence containing the command does NOT claim: allow, still unbound', () => {
+    // A fenced command is quoted material: the message's first non-whitespace
+    // character is the backtick, not the command token, so the lead anchor
+    // refuses it.
+    const { repo, planRel, local } = armedRepo(['unused']);
+    try {
+        const tx = path.join(repo, 'fenced-lead.jsonl');
+        writeFile(tx, JSON.stringify({
+            type: 'user',
+            message: { role: 'user', content: '```\n/kit-goal ' + planRel + '\n```' }
+        }) + '\n');
+        const res = runHook({ cwd: repo, transcript_path: tx, session_id: 'fenced-sess' }, local);
+        assert.strictEqual(res.stdout, '', 'a code-fenced command must not claim the binding');
+        assert.strictEqual(res.status, 0);
+        assert.strictEqual(readBoundSession(repo), null, 'the goal stays unbound');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('a lead naming /kit-goal-notes.md does NOT claim (token boundary): allow, still unbound', () => {
+    // The lookahead after the command token is the boundary: a longer word
+    // that merely starts with the token (a file reference, a hyphenated name)
+    // is not the command.
+    const { repo, planRel, local } = armedRepo(['unused']);
+    try {
+        const tx = path.join(repo, 'token-boundary.jsonl');
+        writeFile(tx, JSON.stringify({
+            type: 'user',
+            message: { role: 'user', content: '/kit-goal-notes.md ' + planRel }
+        }) + '\n');
+        const res = runHook({ cwd: repo, transcript_path: tx, session_id: 'boundary-sess' }, local);
+        assert.strictEqual(res.stdout, '', 'a longer token starting with /kit-goal must not claim');
+        assert.strictEqual(res.status, 0);
+        assert.strictEqual(readBoundSession(repo), null, 'the goal stays unbound');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('a tool-block entry whose text leads with the command does NOT claim: allow, still unbound', () => {
+    // The whole-entry discard governs the typed-lead shape too: an entry
+    // mixing tool output with a command-leading text block is one where
+    // planted text could ride beside a real turn, so it never claims.
+    const { repo, planRel, local } = armedRepo(['unused']);
+    try {
+        const tx = path.join(repo, 'tool-block-lead.jsonl');
+        writeFile(tx, JSON.stringify({
+            type: 'user',
+            message: {
+                role: 'user',
+                content: [
+                    { type: 'tool_result', tool_use_id: 'x', content: 'file contents' },
+                    { type: 'text', text: '/kit-goal ' + planRel }
+                ]
+            }
+        }) + '\n');
+        const res = runHook({ cwd: repo, transcript_path: tx, session_id: 'tool-lead-sess' }, local);
+        assert.strictEqual(res.stdout, '', 'a tool-block entry must not claim, whatever its text leads with');
+        assert.strictEqual(res.status, 0);
+        assert.strictEqual(readBoundSession(repo), null, 'the goal stays unbound');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('an assistant entry leading with the command does NOT claim: allow, still unbound', () => {
+    const { repo, planRel, local } = armedRepo(['unused']);
+    try {
+        const tx = path.join(repo, 'assistant-lead.jsonl');
+        const lines = [
+            JSON.stringify({ type: 'user', message: { role: 'user', content: 'Help me with an unrelated task.' } }),
+            JSON.stringify({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text: '/kit-goal ' + planRel } ] } })
+        ];
+        writeFile(tx, lines.join('\n') + '\n');
+        const res = runHook({ cwd: repo, transcript_path: tx, session_id: 'assistant-lead-sess' }, local);
+        assert.strictEqual(res.stdout, '', 'an assistant turn leading with the command must not self-leash');
+        assert.strictEqual(res.status, 0);
+        assert.strictEqual(readBoundSession(repo), null, 'the goal stays unbound');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('a lead-token arming of ANOTHER plan mentioning the armed path after a blank line does NOT claim', () => {
+    // The needle counts only inside the argument block, which a blank line
+    // ends: a bystander genuinely arming plan B whose message body then
+    // mentions armed plan A must not steal A's binding.
+    const { repo, planRel, local } = armedRepo(['unused']);
+    try {
+        const tx = path.join(repo, 'blank-line-boundary.jsonl');
+        writeFile(tx, JSON.stringify({
+            type: 'user',
+            message: { role: 'user', content: '/kit-goal docs/plans/other.md\n\nAlso relevant: ' + planRel }
+        }) + '\n');
+        const res = runHook({ cwd: repo, transcript_path: tx, session_id: 'blank-line-sess' }, local);
+        assert.strictEqual(res.stdout, '', 'a mention behind a blank line must not claim the binding');
+        assert.strictEqual(res.status, 0);
+        assert.strictEqual(readBoundSession(repo), null, 'the goal stays unbound');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('a lead-token arming of ANOTHER plan with the armed path only inside a trailing code fence does NOT claim', () => {
+    // A fence line ends the argument block: quoted material after the typed
+    // path list must never supply the needle.
+    const { repo, planRel, local } = armedRepo(['unused']);
+    try {
+        const tx = path.join(repo, 'fence-boundary.jsonl');
+        writeFile(tx, JSON.stringify({
+            type: 'user',
+            message: { role: 'user', content: '/kit-goal docs/plans/other.md\n```\n' + planRel + '\n```' }
+        }) + '\n');
+        const res = runHook({ cwd: repo, transcript_path: tx, session_id: 'fence-boundary-sess' }, local);
+        assert.strictEqual(res.stdout, '', 'a fenced mention after the path list must not claim the binding');
+        assert.strictEqual(res.status, 0);
+        assert.strictEqual(readBoundSession(repo), null, 'the goal stays unbound');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('a lead-token message with the armed path only in a tag-opening line does NOT claim', () => {
+    // A line whose first non-whitespace character is '<' ends the argument
+    // block: injected tag-shaped material (an appended attachment-style text
+    // block arrives '\n'-joined onto the typed text) must never supply the
+    // needle.
+    const { repo, planRel, local } = armedRepo(['unused']);
+    try {
+        const tx = path.join(repo, 'tag-boundary.jsonl');
+        writeFile(tx, JSON.stringify({
+            type: 'user',
+            message: { role: 'user', content: '/kit-goal docs/plans/other.md\n<attachment>' + planRel + '</attachment>' }
+        }) + '\n');
+        const res = runHook({ cwd: repo, transcript_path: tx, session_id: 'tag-boundary-sess' }, local);
+        assert.strictEqual(res.stdout, '', 'a tag-line mention after the path list must not claim the binding');
+        assert.strictEqual(res.status, 0);
+        assert.strictEqual(readBoundSession(repo), null, 'the goal stays unbound');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('a literal backslash lead (\\kit-goal <path>) does NOT claim: the token gets no separator tolerance', () => {
+    // The lead anchor runs on the UN-normalized text: separator normalization
+    // exists for path comparison, and a '\\kit-goal' lead is not a command the
+    // harness would ever execute, so it must not normalize into one.
+    const { repo, planRel, local } = armedRepo(['unused']);
+    try {
+        const tx = path.join(repo, 'backslash-lead.jsonl');
+        writeFile(tx, JSON.stringify({
+            type: 'user',
+            message: { role: 'user', content: '\\kit-goal ' + planRel }
+        }) + '\n');
+        const res = runHook({ cwd: repo, transcript_path: tx, session_id: 'backslash-sess' }, local);
+        assert.strictEqual(res.stdout, '', 'a backslash lead must not claim the binding');
+        assert.strictEqual(res.status, 0);
+        assert.strictEqual(readBoundSession(repo), null, 'the goal stays unbound');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('an upper-case typed lead (/KIT-GOAL <path>) DOES claim: the token match is case-insensitive', () => {
+    const { repo, planRel, local } = armedRepo(['unused']);
+    try {
+        const tx = path.join(repo, 'upper-case-lead.jsonl');
+        writeFile(tx, JSON.stringify({
+            type: 'user',
+            message: { role: 'user', content: '/KIT-GOAL ' + planRel }
+        }) + '\n');
+        const res = runHook({ cwd: repo, transcript_path: tx, session_id: 'upper-sess' }, local);
+        const out = JSON.parse(res.stdout);
+        assert.strictEqual(out.decision, 'block', 'a case-variant typed lead leashes and enforces');
+        assert.strictEqual(readBoundSession(repo), 'upper-sess');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('a multi-segment namespaced lead (/a:b:kit-goal <path>) DOES claim, agreeing with the markup suffix rule', () => {
+    const { repo, planRel, local } = armedRepo(['unused']);
+    try {
+        const tx = path.join(repo, 'multi-segment-lead.jsonl');
+        writeFile(tx, JSON.stringify({
+            type: 'user',
+            message: { role: 'user', content: '/a:b:kit-goal ' + planRel }
+        }) + '\n');
+        const res = runHook({ cwd: repo, transcript_path: tx, session_id: 'multi-ns-sess' }, local);
+        const out = JSON.parse(res.stdout);
+        assert.strictEqual(out.decision, 'block', 'a multi-segment namespaced lead leashes and enforces');
+        assert.strictEqual(readBoundSession(repo), 'multi-ns-sess');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('typed text after a stripped local-command block that leads with the token DOES claim (strip runs before the anchor)', () => {
+    // Text outside the local-command wrappers is treated as typed, by design:
+    // the strip removes the CLI's own echo, and what survives leads the
+    // message, so a contiguous token-plus-path there is arming intent.
+    const { repo, planRel, local } = armedRepo(['unused']);
+    try {
+        const tx = path.join(repo, 'strip-then-anchor.jsonl');
+        writeFile(tx, JSON.stringify({
+            type: 'user',
+            message: {
+                role: 'user',
+                content: '<local-command-stdout>kit goal armed for docs/plans/other.md</local-command-stdout>'
+                    + '/kit-goal ' + planRel
+            }
+        }) + '\n');
+        const res = runHook({ cwd: repo, transcript_path: tx, session_id: 'strip-anchor-sess' }, local);
+        const out = JSON.parse(res.stdout);
+        assert.strictEqual(out.decision, 'block', 'the typed lead after the stripped block leashes and enforces');
+        assert.strictEqual(readBoundSession(repo), 'strip-anchor-sess');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
 test('a local-command-stdout echoing the plan path does NOT bind (a /kit-goal status check in a bystander)', () => {
     const { repo, planRel, local } = armedRepo(['unused']);
     try {

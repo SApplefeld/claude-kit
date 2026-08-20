@@ -343,15 +343,39 @@ function commandArgsSpans(text) {
 
 // Extract genuine user-typed text from a user message (a string content, or
 // {type:'text'} blocks), strip local-command output, and test whether it is a
-// kit-goal invocation whose <command-args> span carries the needle. Separators
-// are normalized to '/' so a Windows-style reference matches the forward-slash
-// plan path. tool_use and tool_result blocks are ignored: they carry tool I/O,
-// which can echo the plan path outside any command invocation. The command-args
-// only count when they belong to a kit-goal invocation: the same content must
-// carry a <command-name> whose value is exactly '/kit-goal' or ends with
-// ':kit-goal' (the plugin-namespaced form, e.g. '/claude-kit:kit-goal'), so
-// another command that legitimately takes a path argument (e.g. /graphify
-// docs/plans/<plan>.md) cannot steal the binding from the arming session.
+// kit-goal invocation that carries the needle. Two shapes count, checked in
+// order on the same stripped text:
+//   1. Harness markup: a <command-args> span carries the needle, and the same
+//      content carries a <command-name> whose value is exactly '/kit-goal' or
+//      ends with ':kit-goal' (the plugin-namespaced form, e.g.
+//      '/claude-kit:kit-goal'), so another command that legitimately takes a
+//      path argument (e.g. /graphify docs/plans/<plan>.md) cannot steal the
+//      binding from the arming session.
+//   2. Typed lead: the message's first non-whitespace characters are the
+//      /kit-goal command token (optionally plugin-namespaced, any number of
+//      ':'-joined segments, agreeing with the markup path's ':kit-goal'
+//      suffix rule) followed by a token boundary, and the needle sits inside
+//      the argument block that follows the token: the text up to the first
+//      line that is blank (whitespace-only), or whose first non-whitespace
+//      character is a backtick or '<'. A blank line ends a typed argument
+//      list; a fence or tag line opens quoted or injected material, which
+//      must never supply the needle; the one-plan-per-line arming shape
+//      stays fully inside the block. The harness writes the markup shape
+//      only when the command and its arguments share the message's first
+//      line; a multi-line /kit-goal with one plan path per line lands as
+//      plain prose, and this shape is what makes that arming claimable. The
+//      lead anchor plus the block boundary are the anti-steal control: a
+//      prose or code-fence lead never anchors, and a mention of the armed
+//      plan behind a blank line, a fence, or a tag line inside a lead-token
+//      message never supplies the needle. The shape is deliberately looser
+//      than the harness's own parsing in exactly two ways, both confined to
+//      hand-typed text: the token is case-insensitive (case variance in
+//      typing is plausible and harmless), and the block spans lines (the
+//      multi-line arming is this shape's whole reason to exist); the harness
+//      itself would take only the first line and the exact case.
+// Separators are normalized to '/' so a Windows-style reference matches the
+// forward-slash plan path. tool_use and tool_result blocks are ignored: they
+// carry tool I/O, which can echo the plan path outside any command invocation.
 function userCommandArgsInclude(message, needle) {
     if (!message) return false;
     const c = message.content;
@@ -375,29 +399,72 @@ function userCommandArgsInclude(message, needle) {
     } else {
         return false;
     }
-    const stripped = stripLocalCommandOutput(text).replace(/\\/g, '/');
+    const strippedRaw = stripLocalCommandOutput(text);
+    // Markup shape, on the separator-normalized whole: command-args spans are
+    // matched by substring and the needle is a forward-slash path. EVERY span
+    // is searched, not just the first: a real invocation can carry more than
+    // one <command-args> span, and the plan path counts wherever it rides.
+    // The enumeration is this file's linear scanner (commandArgsSpans).
+    const stripped = strippedRaw.replace(/\\/g, '/');
     const nameMatch = /<command-name>([^<]*)<\/command-name>/i.exec(stripped);
-    if (!nameMatch) return false;
-    const name = nameMatch[1].trim();
-    if (name !== '/kit-goal' && !name.endsWith(':kit-goal')) return false;
-    // EVERY span is searched, not just the first: a real invocation can carry
-    // more than one <command-args> span, and the plan path counts wherever it
-    // rides. The enumeration is this file's linear scanner (commandArgsSpans).
-    for (const span of commandArgsSpans(stripped)) {
-        if (span.includes(needle)) return true;
+    if (nameMatch) {
+        const name = nameMatch[1].trim();
+        if (name === '/kit-goal' || name.endsWith(':kit-goal')) {
+            for (const span of commandArgsSpans(stripped)) {
+                if (span.includes(needle)) return true;
+            }
+        }
     }
-    return false;
+    // Typed-lead shape, evaluated only when the markup shape did not match.
+    // Anchored against the stripped but UN-normalized text: the token is a
+    // command, not a path, so a literal '\kit-goal' lead (which the harness
+    // would never execute) must not normalize into a claiming '/kit-goal'.
+    // The lookahead is the token boundary, so /kit-goal-notes.md never
+    // matches; the (?:[\w-]+:)* prefix accepts the plugin-namespaced form,
+    // multi-segment included, agreeing with the markup path's ':kit-goal'
+    // suffix rule. Case-insensitive, unlike the markup path's exact name
+    // comparison: this shape matches hand-typed text, where case variance is
+    // plausible and harmless, while the markup name is harness-written and
+    // exact.
+    const lead = strippedRaw.trimStart();
+    const leadMatch = /^\/(?:[\w-]+:)*kit-goal(?=\s|$)/i.exec(lead);
+    if (!leadMatch) return false;
+    // The needle counts only inside the argument block: the text from just
+    // after the token up to the first line that is blank (whitespace-only),
+    // or whose first non-whitespace character is a backtick or '<'. A blank
+    // line ends a typed argument list; a fence or tag line opens quoted or
+    // injected material, which must never supply the needle; the
+    // one-plan-per-line arming shape stays fully inside the block. The
+    // array-content path above concatenates every text block with '\n'
+    // separators, so an appended second text block continues the argument
+    // block only if nothing terminates it first: the '<' terminator is what
+    // cuts an injected tag-shaped block. The token line's own tail is part
+    // of the block even when empty (a token followed directly by a newline
+    // is the multi-line arming's normal head); only a terminator character
+    // ends the block there. Separator normalization applies to the block
+    // alone, for the path comparison.
+    const restLines = lead.slice(leadMatch[0].length).split('\n');
+    let block = '';
+    for (let i = 0; i < restLines.length; i++) {
+        const t = restLines[i].trim();
+        if (i > 0 && t === '') break;
+        if (t !== '' && (t[0] === '`' || t[0] === '<')) break;
+        block += restLines[i] + '\n';
+    }
+    return block.replace(/\\/g, '/').includes(needle);
 }
 
 // Scoping predicate for an unbound goal: does this session's transcript show the
-// user typing the armed plan path as a slash-command argument? Matches the full
+// user typing the armed plan path as a /kit-goal argument? Matches the full
 // repo-relative plan path (e.g. docs/plans/foo.md), separator-normalized, and
-// only inside a <command-args>...</command-args> span of a USER entry (the
-// /kit-goal arming invocation, including a re-arm after a crash). A plain prose
-// mention of the path never claims: without this, any bystander session that
-// happens to type or discuss the path (or that echoes it back, e.g. reading the
-// session-start goal surfacing aloud) could steal the binding from the session
-// actually working the plan. Deliberate exclusions:
+// only in one of userCommandArgsInclude's two invocation shapes of a USER entry
+// (the arming invocation, including a re-arm after a crash): inside a
+// <command-args>...</command-args> span of a kit-goal invocation, or anywhere
+// after a typed /kit-goal lead. A plain prose mention of the path never claims:
+// without this, any bystander session that happens to type or discuss the path
+// (or that echoes it back, e.g. reading the session-start goal surfacing aloud)
+// could steal the binding from the session actually working the plan.
+// Deliberate exclusions:
 //   - Assistant entries are skipped entirely: an assistant echo of the plan path
 //     must never self-leash the session.
 //   - isMeta entries are skipped: harness-injected records (e.g. the Stop
@@ -412,6 +479,14 @@ function userCommandArgsInclude(message, needle) {
 //     <command-args> scan (the CLI's own echo of a slash command's stdout could
 //     otherwise carry a literal, fake <command-args> string as quoted data),
 //     and sub-agent (sidechain) turns do not count.
+//   - The typed-lead shape anchors at the message's first non-whitespace
+//     characters and reads the needle only from the argument block that
+//     follows the token: a mid-message or quoted /kit-goal (prose before it,
+//     a code fence around it) never claims, and a mention of the armed plan
+//     behind a blank line, a fence, or a tag line inside a lead-token
+//     message never claims either, so quoting or discussing an arming
+//     command, or arming a DIFFERENT plan while mentioning this one, is not
+//     arming this plan.
 //   - It matches the dir-qualified path, not just the basename, so a session
 //     that merely names a same-basename file is not leashed.
 // False if there is no path or it is unreadable: a session we cannot scope is

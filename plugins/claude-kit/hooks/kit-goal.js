@@ -7,12 +7,29 @@
 //   kit-goal.js clear              clear any armed goal
 //   kit-goal.js status             report whether a goal is armed
 //
-// Invoked by the /kit-goal skill. All filesystem work is delegated to
-// kit-goal-lib.js; this file is only argument parsing and output formatting.
+// Invoked by the /kit-goal skill. Goal-state work is delegated to
+// kit-goal-lib.js, which takes the binding as an argument; this file is the
+// only reader of the session-id variable, plus argument parsing and output
+// formatting.
+//
+// arm runs inside the arming session's own shell, so it binds the goal to that
+// session at arm time: CLAUDE_CODE_SESSION_ID names the session, and the
+// harness writes that session's transcript under ~/.claude/projects. Both are
+// required to bind (kit-goal-lib.js's SESSION_ID_SHAPE states why), so a
+// session id naming no transcript on this machine arms unbound. The variable is
+// undocumented, so it can change shape or vanish upstream without notice; an
+// absent or non-UUID value arms unbound too, and the Stop hook's and compaction
+// gate's claim points bind the goal instead. Every arm reports which of the two
+// happened, because an armed-but-unbound goal is otherwise silent.
 
 'use strict';
 
-const { armGoal, clearGoal, readGoal, planHead, lastActivePhrase } = require('./kit-goal-lib.js');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
+const {
+    armGoal, clearGoal, readGoal, planHead, lastActivePhrase, isSessionIdShaped
+} = require('./kit-goal-lib.js');
 
 // Repo-controlled strings (a plan path) are sanitized to printable ASCII and
 // length-capped before they reach stdout/stderr, matching the sibling hooks'
@@ -26,19 +43,65 @@ function usage() {
     process.exitCode = 1;
 }
 
+// The transcript file of a session id, or null when it cannot be located. The
+// harness stores each session's transcript as <sessionId>.jsonl inside a
+// per-project directory under ~/.claude/projects, and that directory's name is
+// a munged form of the project path, so the directories are listed and the
+// first existing candidate wins rather than reproducing the munging here. The
+// whole body is wrapped, and an absent or unreadable projects directory yields
+// null.
+//
+// The shape test runs before any filesystem work, so arbitrary environment
+// content never drives a directory scan. The id is then used as a bare file
+// name, and a value carrying a path separator is refused rather than joined
+// into a path it could steer: a shape-passed id cannot carry one, and the
+// check is kept so this function is safe on its own terms whatever calls it.
+//
+// A null result is what makes the arm unbound: a session id naming no local
+// transcript is not corroborated as a real session on this machine, and
+// armGoal writes the binding and the transcript together or not at all.
+function findTranscript(sessionId) {
+    try {
+        if (!isSessionIdShaped(sessionId) || path.basename(sessionId) !== sessionId) {
+            return null;
+        }
+        const root = path.join(os.homedir(), '.claude', 'projects');
+        for (const entry of fs.readdirSync(root)) {
+            const candidate = path.join(root, entry, sessionId + '.jsonl');
+            if (fs.existsSync(candidate)) return candidate;
+        }
+        return null;
+    } catch {
+        return null;
+    }
+}
+
 function cmdArm(planArgs) {
     if (planArgs.length === 0) {
         usage();
         return;
     }
     try {
-        const result = armGoal(process.cwd(), planArgs);
+        // The environment of this process is the only source of the binding:
+        // no argument, no file, and no repo data can bind the goal, and the
+        // transcript is located rather than supplied. armGoal owns the gate
+        // that decides whether the pair is usable, so this output answers to
+        // what was actually written rather than to a second copy of the rule.
+        const sessionId = process.env.CLAUDE_CODE_SESSION_ID;
+        const result = armGoal(process.cwd(), planArgs, {
+            sessionId,
+            transcriptPath: findTranscript(sessionId)
+        });
         if (result.ok) {
             process.stdout.write('kit goal armed for ' + sanitize(result.plan)
                 + (result.queue.length > 1
                     ? ' (1 of ' + result.queue.length + '; then '
                         + result.queue.slice(1).map(sanitize).join(', ') + ')'
                     : '')
+                + (result.boundSession
+                    ? ' (bound to this session)'
+                    : " (unbound; the leash binds at the arming session's first stop"
+                        + ' or auto-compaction offer)')
                 + '\n');
             process.exitCode = 0;
         } else {
