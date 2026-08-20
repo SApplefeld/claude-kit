@@ -379,8 +379,9 @@ try {
     # the session's first stop or its first auto-compaction offer, so a child
     # in that state that re-arms and then dies (or reaches the lifetime bound)
     # before either of those leaves the goal armed-unbound, and a match-only
-    # rule would refuse every later pass with the incident budget unspent. The sentinel naming this same session as the
-    # one it launched is what makes that run unattended by construction. An
+    # rule would refuse every later pass with the incident budget unspent.
+    # The sentinel naming this same session as the one it launched is what
+    # makes that run unattended by construction. An
     # original unattended run that dies before it can claim the leash at all,
     # at a stop or at an auto-compaction offer, is deliberately not covered: covering it would mean accepting any unbound
     # goal, and an unbound goal in a project where an interactive session died

@@ -68,7 +68,13 @@ function findTranscript(sessionId) {
         const root = path.join(os.homedir(), '.claude', 'projects');
         for (const entry of fs.readdirSync(root)) {
             const candidate = path.join(root, entry, sessionId + '.jsonl');
-            if (fs.existsSync(candidate)) return candidate;
+            // A regular file, not mere existence: the stored path's one use is
+            // an fs.stat liveness hint, and the corroboration this scan
+            // provides is that a session's transcript FILE exists, which is
+            // what the security model states.
+            try {
+                if (fs.statSync(candidate).isFile()) return candidate;
+            } catch { /* no candidate in this project directory */ }
         }
         return null;
     } catch {

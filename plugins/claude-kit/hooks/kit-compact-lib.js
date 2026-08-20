@@ -459,8 +459,9 @@ function userCommandArgsInclude(message, needle) {
 // repo-relative plan path (e.g. docs/plans/foo.md), separator-normalized, and
 // only in one of userCommandArgsInclude's two invocation shapes of a USER entry
 // (the arming invocation, including a re-arm after a crash): inside a
-// <command-args>...</command-args> span of a kit-goal invocation, or anywhere
-// after a typed /kit-goal lead. A plain prose mention of the path never claims:
+// <command-args>...</command-args> span of a kit-goal invocation, or inside
+// the argument block of a typed /kit-goal lead (the block boundary is
+// userCommandArgsInclude's; never past it). A plain prose mention of the path never claims:
 // without this, any bystander session that happens to type or discuss the path
 // (or that echoes it back, e.g. reading the session-start goal surfacing aloud)
 // could steal the binding from the session actually working the plan.

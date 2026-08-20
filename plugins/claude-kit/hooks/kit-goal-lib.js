@@ -338,10 +338,12 @@ function armGoal(cwd, planArgs, bind) {
         armedAt: new Date().toISOString(),
         // Which session currently holds the leash, or null when unclaimed. An
         // arm carrying a usable bind (the CLI supplies the arming session's
-        // id) holds the leash from this write; an arm with no usable bind,
-        // including a re-arm after a crash, starts unbound, and the next stop
-        // that resolves to a leashed session claims it, so re-arm is always a
-        // clean rebind opportunity.
+        // id) holds the leash from this write, a crash-recovery re-arm
+        // included, which rebinds to the re-arming session here; an arm with
+        // no usable bind (none supplied, or one the CLI could not
+        // corroborate) starts unbound, and the next stop that resolves to a
+        // leashed session claims it, so re-arm is always a clean rebind
+        // opportunity either way.
         boundSession,
         // The bound session's transcript path, used as a liveness hint for a
         // session other than the leash holder and, at arm time, as the

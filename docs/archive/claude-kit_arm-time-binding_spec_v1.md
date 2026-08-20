@@ -1,6 +1,6 @@
 # Arm-time leash binding and the typed-lead claim
 
-Status: In Progress
+Status: Complete
 Commit model: Commit-and-Push
 Date: 2026-08-20
 
@@ -92,8 +92,10 @@ non-whitespace character is a backtick or `<`. The block boundary is the
 analogue of the markup shape's `<command-args>` span: a blank line ends a
 typed argument list, and a fence or tag line opens quoted or injected
 material, which must never supply the needle, so a bystander message that
-leads with the command for one plan but merely mentions another in its body
-cannot steal the other plan's binding. Every existing exclusion runs
+leads with the command for one plan and mentions another only behind one of
+those boundaries cannot steal the other plan's binding (a contiguous prose
+line inside the block is the accepted residual, documented in
+security-model.md). Every existing exclusion runs
 unchanged before this shape is ever evaluated: user-type entries only, no
 isMeta / sidechain / compact-summary, any tool block discards the whole
 entry, local-command output stripped first. A message that leads with prose
@@ -207,6 +209,16 @@ fallback). `docs/backlog.md`: the arm-time-binding item is delivered by this
 plan; retire it to the quarterly archive snapshot in the close-out per
 curating-docs. Prose only; no behavior claims that the code does not have.
 
+## Related
+
+- `claude-kit_compact-gate-binding_spec_v1.md`: added the compaction-offer
+  claim point this plan demotes to a fallback, and parked the arm-time-binding
+  idea with its two then-unpinned facts.
+- `claude-kit_goal-continuity_spec_v1.md`: the original leash.
+- `claude-kit_stop-failure-recovery_spec_v1.md`: the watcher whose scope
+  guard's unbound-accept branch now serves only the uncorroborated-arm
+  fallback.
+
 ## Out of Scope
 
 - The bind compare-and-swap (`docs/backlog.md` item dated 2026-08-18): its
@@ -249,4 +261,15 @@ Assumptions: none.
 Review Findings: n/a per-section; finishing reviewers are briefed to read whole files rather than diffs (the skill-amendments-collide-with-neighbours memory).
 Stamps: skill-amendments-collide-with-neighbours stamped applied.
 Next: finishing-work
+Commit Model: Commit-and-Push
+
+### Chapter 4 - 2026-08-20 (close-out)
+Completed: finishing pass; effort Complete
+Implemented By: main session (gates dispatched: qa-verifier, security-reviewer at fable, adversarial-reviewer at fable, docs-curator)
+Metrics: review rounds 1 finishing (plus the 2 per-section rounds recorded above); NEEDS_CONTEXT 0; escalations 0; consults 0
+Decisions / Surprises: QA verdict PASS with every acceptance criterion exercised by execution (suite 1041/1039/2, the documented memq-shim environment pair only; live arm bound and unbound cases both proven against the real CLI). Finishing security verdict CLEAR; finishing adversarial APPROVED_WITH_CONCERNS. Post-gate minors applied: the contiguous-prose-line residual of the typed-lead argument block is now named in security-model.md's claim paragraph and in this spec's Design; findTranscript corroborates with statSync().isFile() rather than existsSync so code and control document state the same fact; the boundSession field comment's crash-re-arm example and the userCommandArgsClaimPlan header's "anywhere after a typed lead" wording (the curator's one mistake-class drift, a stale pre-fix comment over verified-correct code) were corrected; the watcher comment rewrapped. Declined with reason: hardening armGoal's lib boundary with a basename(transcriptPath)-equals-sessionId check (the lib contract is deliberately shape-only, pinned by its own test; the CLI is the only caller and carries the existence corroboration; re-opening reviewed code post-gate costs more than the note). Drift Report: one mistake (the comment above, resolved in this pass with the review evidence), three deviations (fleet-integration.md's leash-claim account, docs/README.md's security summary, architecture.md's gate-claim justification), all updated by the curator to as-built and recorded here.
+Assumptions: none new this pass.
+Review Findings: finishing security CLEAR (3 minors: 2 fixed, 1 declined as above); finishing adversarial APPROVED_WITH_CONCERNS (3 minors, all fixed).
+Stamps: clean sweep (memq unstamped listed nothing pending; 5 stamped in-flight across the effort).
+Next: none; archived
 Commit Model: Commit-and-Push
