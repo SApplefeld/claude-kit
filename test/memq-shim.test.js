@@ -399,7 +399,10 @@ test('a bare `memq` resolves and runs through the sh wrapper in Git Bash', { ski
 });
 
 test('PowerShell resolves memq.ps1, and that is what keeps an argument from starting a second command', { skip: !isWin }, () => {
-    const claudeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memq-claude-'));
+    // Long-form the temp dir: os.tmpdir() can answer in 8.3 short form
+    // (LOCALA~1), while PowerShell reports resolved commands long-form, and
+    // the assertions below compare the two as strings.
+    const claudeDir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'memq-claude-')));
     const root = makePluginsRoot();
     try {
         assert.strictEqual(runInstaller(claudeDir).status, 0);
@@ -510,9 +513,11 @@ test('the status check reports a content-swapped shim as stale, which is what ma
 });
 
 test('a foreign memq winning name resolution is reported, never read as on-PATH', { skip: !isWin }, () => {
-    const claudeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memq-claude-'));
+    // Long-form both temp dirs, for the same 8.3-vs-long reason as above:
+    // OnPath and ShadowedBy come back from PowerShell spelled long-form.
+    const claudeDir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'memq-claude-')));
     const root = makePluginsRoot();
-    const foreignDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memq-foreign-'));
+    const foreignDir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'memq-foreign-')));
     try {
         assert.strictEqual(runInstaller(claudeDir).status, 0);
         addCacheEntry(root, 'applefeld', 'aaaa');
