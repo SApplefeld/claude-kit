@@ -105,3 +105,26 @@ test('the standing-dispatch bullet is present once in each copy, identical, and 
         + 'governs, which is the condition that keeps a Workflow-dispatched '
         + 'reviewer from holding write access to the tree under review');
 });
+
+// Whole-body identity would pass with the checkpoint sentence deleted from
+// BOTH copies, and three shipped surfaces lean on the doctrine carrying it:
+// the chapter-boundary nudge hook, the Stop hook's hold reasons, and the
+// compaction gate's operator note each reinforce a rule that the
+// always-loaded layer would no longer state. A symmetric deletion would
+// leave those three pointing at nothing while the suite stayed green, so the
+// sentence's presence inside the chapter-close bullet is pinned here.
+test('the chapter-close bullet names the compaction checkpoint in each copy', () => {
+    const lead = '- **Close each section with a Chapter.**';
+    for (const [label, body] of [['skill body', skillBody()], ['doctrine mirror', mirrorBody()]]) {
+        const lines = body.split(/\r?\n/).filter((l) => l.startsWith(lead));
+        assert.strictEqual(lines.length, 1,
+            'expected exactly one chapter-close bullet in the ' + label);
+        assert.ok(lines[0].includes('the compaction checkpoint is opened'),
+            'the chapter-close bullet in the ' + label + ' must name the compaction '
+            + 'checkpoint as part of closing a section on a leashed run');
+        assert.ok(lines[0].includes('kit-compact-checkpoint.js open'),
+            'the chapter-close bullet in the ' + label + ' must name the command, '
+            + 'because its audience is a session that never loaded executing-work '
+            + 'and so cannot follow a pointer to it');
+    }
+});

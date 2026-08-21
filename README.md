@@ -60,6 +60,9 @@ claude-kit/                          (repo = the marketplace)
                                      Compaction scheduling: PreCompact hook that defers auto-compaction to a
                                      chapter boundary on a leashed run and to a safety ceiling on a hands-on
                                      one, the checkpoint command that marks a boundary, shared library
+        chapter-boundary-nudge.js    PostToolUse nudge that puts the boundary steps in front of a leashed
+                                     run when it appends a Chapter to a plan doc, so the checkpoint the
+                                     compaction gate waits on gets opened
         stop-failure-log.js          StopFailure hook: records an API-error turn death to .kit/ and decides
                                      nothing, so the watcher script can resume an unattended run that the
                                      Stop leash never saw die
@@ -198,7 +201,7 @@ Quality is protected by three things, none of which is the implementer's model: 
 ## NOTES AND KNOWN TRADEOFFS
 
 - Plugin skills are namespaced: explicit invocation is `/claude-kit:brainstorming`. Automatic (model-invoked) triggering is unaffected.
-- The format-on-edit hook rewrites .cs files on disk after Claude edits them. If a subsequent edit fails to match file contents, that is the formatter's doing - Claude re-reads and retries. Remove the PostToolUse block naming `format-on-edit.js` from `hooks/hooks.json` if this annoys more than it helps; there are two PostToolUse blocks, and the other one stamps memory reads.
+- The format-on-edit hook rewrites .cs files on disk after Claude edits them. If a subsequent edit fails to match file contents, that is the formatter's doing - Claude re-reads and retries. Remove the `format-on-edit.js` command object from its PostToolUse group in `hooks/hooks.json` if this annoys more than it helps; that group holds a second command, the chapter-boundary nudge, which should stay.
 - Plugins are copied to a cache at install (`~/.claude/plugins/cache`); the plugin cannot reference files outside `plugins/claude-kit/`. That is why `home/` and `settings/` live outside the plugin - they are machine-setup assets, not plugin components.
 - Plugin-shipped agents cannot declare their own hooks, MCP servers, or permissionMode (Claude Code security restriction). None of these agents need them.
 - `settings.recommended.json` reflects the settings schema as of June 2026; verify key names against current docs if something is ignored: https://code.claude.com/docs/en/settings

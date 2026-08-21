@@ -176,6 +176,8 @@ test('goal armed, transcript names plan, In Progress, no BLOCKED: block', () => 
         assert.ok(out.reason.includes(path.basename(planRel)), 'reason names the plan basename');
         assert.ok(out.reason.includes('subagent dispatch and Workflows'),
             "the block reason restates the user's per-run parallelization request");
+        assert.ok(out.reason.includes('kit-compact-checkpoint.js open'),
+            'the standard hold reason names the boundary checkpoint command');
     } finally {
         rmDir(repo);
         rmDir(local);
@@ -1237,6 +1239,8 @@ test('a capacity-shaped BLOCKED reason releases nothing: block, no event', () =>
         assert.strictEqual(out.decision, 'block');
         assert.ok(out.reason.includes('Capacity is never a blocker'),
             'the block quotes the contract clause it is enforcing');
+        assert.ok(out.reason.includes('kit-compact-checkpoint.js open'),
+            'the capacity-shaped refusal names the boundary checkpoint command');
         assert.deepStrictEqual(readEvents(local), [], 'a refused release emits nothing');
     } finally {
         rmDir(repo);
@@ -1627,6 +1631,11 @@ test('queue, current plan Complete with a plan remaining: advance, one goal-comp
         assert.ok(out.reason.includes('executing-work'), 'the reason instructs the continuation');
         assert.ok(!out.reason.includes('test whether it actually blocks'),
             'the judge-the-blocker clause rides only where a blocker was recorded');
+        assert.ok(out.reason.includes('kit-compact-checkpoint.js open'),
+            'the queue-advance reason carries boundary guidance: the advance itself only rewrites '
+            + 'an already-matching checkpoint, so a plan that never opened one advances with none');
+        assert.ok(out.reason.includes(plans[0] + "'s commit model was honored"),
+            'the boundary guidance names the just-finished plan, not the one now current');
 
         const state = readState(repo);
         assert.strictEqual(state.plan, plans[1], 'plan moves to the next in the queue');
@@ -2017,6 +2026,9 @@ test('an unchanged transcript across two stops advances once: the second stop ho
             'no invitation to restate the blocker');
         assert.ok(!out.reason.includes("leading 'BLOCKED:'"),
             'no instruction whose compliance would regenerate the advance');
+        assert.ok(!out.reason.includes('kit-compact-checkpoint.js open'),
+            'the spent hold carries no boundary guidance: the advance that produced this key '
+            + 'already delivered it, and no new work has happened since (the lead is provably stale)');
         state = readState(repo);
         assert.strictEqual(state.plan, plans[1], 'the leash did not move again');
         assert.strictEqual(state.history.length, 1, 'no second outcome was recorded');

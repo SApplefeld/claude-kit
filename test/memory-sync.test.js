@@ -1207,8 +1207,8 @@ test('the store root is mandatory: no call can default to the real home director
 // nothing (every write in doctor.ps1 sits under -Fix), and the run is
 // asserted on its own section's line rather than on the exit code, because
 // other sections legitimately fail against a fake home.
-function doctorSyncLine(home) {
-    const res = pwsh('& ' + q(DOCTOR), { USERPROFILE: home });
+function doctorSyncLine(home, extraEnv) {
+    const res = pwsh('& ' + q(DOCTOR), { USERPROFILE: home, ...(extraEnv || {}) });
     const lines = res.stdout.split(/\r?\n/);
     const header = /^\[\w+\s*\] .+$/;
     const at = lines.findIndex((l) => /^\[\w+\s*\] Memory sync$/.test(l.trim()));
@@ -1331,6 +1331,375 @@ test('a store that syncs nowhere is reported, however clean its allowlist', { sk
         assert.match(detached.detail, /HEAD is detached/);
 
         assert.ok(fs.existsSync(bare));
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// The name pair the sync runner's push rests on. sync-store.ps1 pushes with a
+// bare `git push`, and push.default simple, git's default since 2.0, refuses
+// one whose local branch name differs from its upstream's. Every other
+// destination read passes in that state: the branch exists, tracks a real
+// branch on origin, and origin carries only that branch, so the section reads
+// as a healthy destination while the automated push exits nonzero every run.
+//
+// push.default comes from config, so these cases pin git's global and system
+// files out of the doctor's run: what the machine running the suite happens to
+// set must not decide what the check reports.
+function isolatedGitConfig(fake) {
+    const absent = path.join(fake.home, 'absent.gitconfig');
+    return { GIT_CONFIG_GLOBAL: absent, GIT_CONFIG_SYSTEM: absent };
+}
+
+// A store tracking origin under a branch name that no longer matches its own.
+// `git branch -m` carries the branch's tracking config with it, so the
+// upstream stays origin/<original>, which is the state a machine lands in when
+// one side of the pair is renamed and the other is not.
+function mismatchedStore(fake) {
+    assert.strictEqual(installRepo(fake.store).status, 0);
+    const upstream = attachRemote(fake).branch;
+    assert.strictEqual(git(fake.store, ['push', '-q', '-u', 'origin', upstream]).status, 0);
+    const local = upstream === 'master' ? 'main' : 'master';
+    assert.strictEqual(git(fake.store, ['branch', '-m', upstream, local]).status, 0);
+    return { local, upstream };
+}
+
+test('push.default simple blocks a branch whose name differs from its upstream, and names the rename', { skip: !isWin }, () => {
+    const fake = makeStore();
+    try {
+        const { local, upstream } = mismatchedStore(fake);
+        assert.strictEqual(git(fake.store, ['config', 'push.default', 'simple']).status, 0);
+
+        const line = doctorSyncLine(fake.home, isolatedGitConfig(fake));
+        assert.strictEqual(line.status, 'FAIL', line.detail);
+        assert.match(line.detail, /push\.default simple/);
+        assert.match(line.detail, new RegExp('git branch -m ' + local + ' ' + upstream));
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+test('a matching branch name pair is no finding under push.default simple', { skip: !isWin }, () => {
+    const fake = makeStore();
+    try {
+        assert.strictEqual(installRepo(fake.store).status, 0);
+        const { branch } = attachRemote(fake);
+        assert.strictEqual(git(fake.store, ['push', '-q', '-u', 'origin', branch]).status, 0);
+        assert.strictEqual(git(fake.store, ['config', 'push.default', 'simple']).status, 0);
+
+        const line = doctorSyncLine(fake.home, isolatedGitConfig(fake));
+        assert.strictEqual(line.status, 'PASS', line.detail);
+        assert.ok(!/branch -m/.test(line.detail),
+            'a matching pair must not be told to rename anything:\n' + line.detail);
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+test('push.default upstream accepts a differing name pair, so it is no finding', { skip: !isWin }, () => {
+    const fake = makeStore();
+    try {
+        mismatchedStore(fake);
+        assert.strictEqual(git(fake.store, ['config', 'push.default', 'upstream']).status, 0);
+
+        const line = doctorSyncLine(fake.home, isolatedGitConfig(fake));
+        assert.strictEqual(line.status, 'PASS', line.detail);
+        assert.ok(!/branch -m/.test(line.detail),
+            'a push this configuration accepts must not be reported as blocked:\n' + line.detail);
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+test('push.default tracking is the deprecated alias for upstream and is read as one', { skip: !isWin }, () => {
+    const fake = makeStore();
+    try {
+        mismatchedStore(fake);
+        assert.strictEqual(git(fake.store, ['config', 'push.default', 'tracking']).status, 0);
+
+        const line = doctorSyncLine(fake.home, isolatedGitConfig(fake));
+        assert.strictEqual(line.status, 'PASS', line.detail);
+        assert.ok(!/branch -m/.test(line.detail),
+            'the alias must reach the same arm as upstream, not the malformed-value one:\n' + line.detail);
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+test('push.default current publishes a differing name pair where nobody reads it, which advises rather than blocks', { skip: !isWin }, () => {
+    const fake = makeStore();
+    try {
+        mismatchedStore(fake);
+        assert.strictEqual(git(fake.store, ['config', 'push.default', 'current']).status, 0);
+
+        // The push succeeds under this setting and lands on a branch named
+        // after the local one, so the memories are published, just not where
+        // the other machines pull from. Nothing is dead, so nothing fails.
+        const line = doctorSyncLine(fake.home, isolatedGitConfig(fake));
+        assert.notStrictEqual(line.status, 'FAIL', line.detail);
+        assert.strictEqual(line.status, 'WARN', line.detail);
+        assert.match(line.detail, /push\.default current publishes to the branch on origin named after the local branch/);
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+test('an unset push.default is read as simple, so a differing name pair still blocks', { skip: !isWin }, () => {
+    const fake = makeStore();
+    try {
+        const { local, upstream } = mismatchedStore(fake);
+        assert.notStrictEqual(git(fake.store, ['config', '--local', '--get', 'push.default']).status, 0,
+            'this case rests on the value being unset in the store');
+
+        const line = doctorSyncLine(fake.home, isolatedGitConfig(fake));
+        assert.strictEqual(line.status, 'FAIL', line.detail);
+        assert.match(line.detail, new RegExp('git branch -m ' + local + ' ' + upstream));
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// A pair whose two names differ only in case. git compares the local branch
+// against the raw branch.<name>.merge ref byte for byte, so it refuses this
+// push exactly as it refuses `master` against `origin/main`, while a
+// case-insensitive comparison calls the pair a match and reports a healthy
+// destination for a store whose every automated push exits 128. The rename
+// runs through a third name because refs in a Windows checkout are
+// case-insensitive and a direct `git branch -m main Main` fails.
+function caseMismatchedStore(fake) {
+    assert.strictEqual(installRepo(fake.store).status, 0);
+    const upstream = attachRemote(fake).branch;
+    assert.strictEqual(git(fake.store, ['push', '-q', '-u', 'origin', upstream]).status, 0);
+    const local = upstream[0].toUpperCase() + upstream.slice(1);
+    assert.notStrictEqual(local, upstream);
+    assert.strictEqual(git(fake.store, ['branch', '-m', upstream, 'case-pivot']).status, 0);
+    assert.strictEqual(git(fake.store, ['branch', '-m', 'case-pivot', local]).status, 0);
+    // The pair still resolves as a tracking pair: this case is about the
+    // comparison, not about an upstream that went missing in the rename.
+    assert.strictEqual(git(fake.store, ['config', '--get', 'branch.' + local + '.merge']).stdout.trim(),
+        'refs/heads/' + upstream);
+    return { local, upstream };
+}
+
+test('a name pair differing only in case blocks, because git compares the two refs byte for byte', { skip: !isWin }, () => {
+    const fake = makeStore();
+    try {
+        const { local, upstream } = caseMismatchedStore(fake);
+        assert.strictEqual(git(fake.store, ['config', 'push.default', 'simple']).status, 0);
+        // The remote is a bare repo on disk, so this asks git itself, offline,
+        // and pins the check against the refusal rather than against a claim
+        // about it.
+        assert.notStrictEqual(git(fake.store, ['push', '--dry-run']).status, 0,
+            'this case rests on git refusing the push');
+
+        const line = doctorSyncLine(fake.home, isolatedGitConfig(fake));
+        assert.strictEqual(line.status, 'FAIL', line.detail);
+        assert.match(line.detail, /push\.default simple/);
+        assert.match(line.detail, new RegExp('git branch -m ' + local + ' ' + upstream));
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+test('push.default matching reports the pair that pushes nothing and still exits successfully', { skip: !isWin }, () => {
+    const fake = makeStore();
+    try {
+        const { local, upstream } = mismatchedStore(fake);
+        assert.strictEqual(git(fake.store, ['config', 'push.default', 'matching']).status, 0);
+
+        const line = doctorSyncLine(fake.home, isolatedGitConfig(fake));
+        assert.strictEqual(line.status, 'FAIL', line.detail);
+        // Scoped to the tracked branch on purpose: where origin also carries a
+        // branch named after the local one, matching does publish there, and
+        // the finding is still correct because the branch this store pulls
+        // from stays dead.
+        assert.match(line.detail, /exits successfully while publishing nothing to the branch this store pulls from/);
+        assert.match(line.detail, new RegExp('git branch -m ' + local + ' ' + upstream));
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+test('push.default nothing blocks even a matched name pair, because no bare push works under it', { skip: !isWin }, () => {
+    const fake = makeStore();
+    try {
+        assert.strictEqual(installRepo(fake.store).status, 0);
+        const { branch } = attachRemote(fake);
+        assert.strictEqual(git(fake.store, ['push', '-q', '-u', 'origin', branch]).status, 0);
+        assert.strictEqual(git(fake.store, ['config', 'push.default', 'nothing']).status, 0);
+
+        const line = doctorSyncLine(fake.home, isolatedGitConfig(fake));
+        assert.strictEqual(line.status, 'FAIL', line.detail);
+        assert.match(line.detail, /push\.default is set to nothing/);
+        assert.ok(!/branch -m/.test(line.detail),
+            'the names match, so nothing here is a rename:\n' + line.detail);
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+test('a push.default git does not recognize is never reported as a healthy store', { skip: !isWin }, () => {
+    const fake = makeStore();
+    try {
+        assert.strictEqual(installRepo(fake.store).status, 0);
+        const { branch } = attachRemote(fake);
+        assert.strictEqual(git(fake.store, ['push', '-q', '-u', 'origin', branch]).status, 0);
+        // git parses the value byte-exactly, so `Simple` is malformed and a
+        // matched name pair under it is still a store that cannot push.
+        assert.strictEqual(git(fake.store, ['config', 'push.default', 'Simple']).status, 0);
+        assert.notStrictEqual(git(fake.store, ['push', '--dry-run']).status, 0,
+            'this case rests on git rejecting the value');
+        // The rejection is not confined to push: every command but `git config
+        // --get` dies on the malformed key, so the store's leak probes cannot
+        // answer either, and the report says so before it says anything about
+        // the destination. That ordering is the point of the assertion below:
+        // an unproven security negative outranks a destination finding.
+        assert.notStrictEqual(git(fake.store, ['ls-files']).status, 0);
+
+        const line = doctorSyncLine(fake.home, isolatedGitConfig(fake));
+        assert.strictEqual(line.status, 'FAIL', line.detail);
+        assert.match(line.detail, /the negative is unproven/);
+        assert.match(line.detail, /malformed value for push\.default: Simple/);
+        assert.ok(!/Destination: /.test(line.detail),
+            'a store whose git refuses to run must not read as a healthy destination:\n' + line.detail);
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+test('a branch.<name>.merge carrying the short form of the ref is reported, never read as a match', { skip: !isWin }, () => {
+    const fake = makeStore();
+    try {
+        assert.strictEqual(installRepo(fake.store).status, 0);
+        const { branch } = attachRemote(fake);
+        assert.strictEqual(git(fake.store, ['push', '-q', '-u', 'origin', branch]).status, 0);
+        // git compares refs/heads/<branch> against this value as configured, so
+        // the documented short form is a refusal even though the two names are
+        // the same. It also stops @{u} resolving, which is what the report
+        // names.
+        assert.strictEqual(git(fake.store, ['config', 'branch.' + branch + '.merge', branch]).status, 0);
+        assert.strictEqual(git(fake.store, ['config', 'push.default', 'simple']).status, 0);
+        assert.notStrictEqual(git(fake.store, ['push', '--dry-run']).status, 0,
+            'this case rests on git refusing the push');
+
+        const line = doctorSyncLine(fake.home, isolatedGitConfig(fake));
+        assert.strictEqual(line.status, 'FAIL', line.detail);
+        assert.ok(!/Destination: /.test(line.detail),
+            'a push git refuses must not read as a healthy destination:\n' + line.detail);
+        assert.ok(!/branch -m/.test(line.detail),
+            'a merge ref outside refs/heads/ names no branch to rename to:\n' + line.detail);
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// The generic remedy on the failing branch of the report tells the operator to
+// push HEAD with -u. That repairs a detached HEAD and a branch tracking
+// nothing; against a branch whose upstream is already correct it creates a
+// second branch on origin and repoints the upstream at it, which is the silent
+// divergence the advisory check reports.
+test('the push-with-upstream remedy is printed for a missing upstream and withheld from a name pair', { skip: !isWin }, () => {
+    const generic = /put HEAD on the sync branch/;
+    const mismatched = makeStore();
+    try {
+        const { local, upstream } = mismatchedStore(mismatched);
+        assert.strictEqual(git(mismatched.store, ['config', 'push.default', 'simple']).status, 0);
+        const named = doctorSyncLine(mismatched.home, isolatedGitConfig(mismatched));
+        assert.strictEqual(named.status, 'FAIL', named.detail);
+        assert.match(named.detail, new RegExp('git branch -m ' + local + ' ' + upstream));
+        assert.ok(!generic.test(named.detail),
+            'a branch with a correct upstream must not be told to push a new one:\n' + named.detail);
+    } finally {
+        rmDir(mismatched.home);
+    }
+
+    const bare = makeStore();
+    try {
+        assert.strictEqual(installRepo(bare.store).status, 0);
+        attachRemote(bare);
+        const noUpstream = doctorSyncLine(bare.home, isolatedGitConfig(bare));
+        assert.strictEqual(noUpstream.status, 'FAIL', noUpstream.detail);
+        assert.match(noUpstream.detail, /tracks no upstream/);
+        assert.match(noUpstream.detail, generic);
+    } finally {
+        rmDir(bare.home);
+    }
+
+    // The third state the remedy repairs. An upstream on some other remote
+    // leaves origin with no branch to reach, so pushing HEAD to origin with
+    // -u is the right repair and the finding carries no remedy of its own.
+    const foreign = makeStore();
+    try {
+        assert.strictEqual(installRepo(foreign.store).status, 0);
+        const { branch } = attachRemote(foreign);
+        const other = path.join(foreign.home, 'backup.git');
+        assert.strictEqual(spawnSync('git', ['init', '--bare', '-q', other],
+            { encoding: 'utf8', env: { ...process.env } }).status, 0);
+        assert.strictEqual(git(foreign.store, ['remote', 'add', 'backup', other]).status, 0);
+        assert.strictEqual(git(foreign.store, ['push', '-q', '-u', 'backup', branch]).status, 0);
+
+        const offOrigin = doctorSyncLine(foreign.home, isolatedGitConfig(foreign));
+        assert.strictEqual(offOrigin.status, 'FAIL', offOrigin.detail);
+        assert.match(offOrigin.detail, /which is not the origin reported above/);
+        assert.match(offOrigin.detail, generic);
+    } finally {
+        rmDir(foreign.home);
+    }
+});
+
+test('a branch name carrying a shell metacharacter is reported without a pasteable command', { skip: !isWin }, () => {
+    const fake = makeStore();
+    try {
+        assert.strictEqual(installRepo(fake.store).status, 0);
+        const upstream = attachRemote(fake).branch;
+        assert.strictEqual(git(fake.store, ['push', '-q', '-u', 'origin', upstream]).status, 0);
+        // git permits `;` in a branch name, and the report's sanitizer promises
+        // printable ASCII, which is the character set a shell reads its
+        // metacharacters from. A remedy composed from this name would run calc
+        // out of the operator's paste buffer.
+        assert.strictEqual(git(fake.store, ['branch', '-m', upstream, 'sync;calc']).status, 0);
+        assert.strictEqual(git(fake.store, ['config', 'push.default', 'simple']).status, 0);
+
+        const line = doctorSyncLine(fake.home, isolatedGitConfig(fake));
+        assert.strictEqual(line.status, 'FAIL', line.detail);
+        assert.match(line.detail, /push\.default simple/);
+        assert.ok(!/branch -m/.test(line.detail),
+            'no command may be composed from a name carrying a metacharacter:\n' + line.detail);
+        assert.match(line.detail, new RegExp('rename the local branch sync;calc to ' + upstream));
+        assert.match(line.detail, /no runnable command is printed here/);
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+test('an option-shaped branch name is reported without a pasteable command', { skip: !isWin }, () => {
+    const fake = makeStore();
+    try {
+        assert.strictEqual(installRepo(fake.store).status, 0);
+        const upstream = attachRemote(fake).branch;
+        assert.strictEqual(git(fake.store, ['push', '-q', '-u', 'origin', upstream]).status, 0);
+
+        // A name git's own porcelain refuses (`git branch -m -- <old> -f` is
+        // rejected as an invalid branch name, `--` included), so the state is
+        // built through plumbing, which is also how a store reaches it: a
+        // hostile origin publishing refs/remotes/origin/-f, or a direct ref
+        // write. The name is printable ASCII with no metacharacter in it, so
+        // the charset gate alone admits it, and a remedy composed from it
+        // reads `git branch -m -f <upstream>`, which git parses as a forced
+        // rename that clobbers an existing ref rather than the rename the
+        // report advertised.
+        assert.strictEqual(git(fake.store, ['update-ref', 'refs/heads/-f', 'HEAD']).status, 0);
+        assert.strictEqual(git(fake.store, ['symbolic-ref', 'HEAD', 'refs/heads/-f']).status, 0);
+        assert.strictEqual(git(fake.store, ['config', 'branch.-f.remote', 'origin']).status, 0);
+        assert.strictEqual(git(fake.store, ['config', 'branch.-f.merge', 'refs/heads/' + upstream]).status, 0);
+        assert.strictEqual(git(fake.store, ['config', 'push.default', 'simple']).status, 0);
+
+        const line = doctorSyncLine(fake.home, isolatedGitConfig(fake));
+        assert.strictEqual(line.status, 'FAIL', line.detail);
+        assert.match(line.detail, /push\.default simple/);
+        assert.ok(!/branch -m/.test(line.detail),
+            'no command may be composed from a name git would read as an option:\n' + line.detail);
+        assert.match(line.detail, /no runnable command is printed here/);
     } finally {
         rmDir(fake.home);
     }
@@ -1898,6 +2267,70 @@ test('sync-store: a genuinely conflicting divergence aborts the rebase, records 
         assertSilentSync(runSync(fake.store));
         assert.strictEqual(readState(fake.store).firstFailSince, state.firstFailSince,
             'firstFailSince marks the streak\'s start, not the latest attempt');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// Write-SyncState's second write to an existing state file goes through
+// File.Replace rather than File.Move. A single-write test cannot exercise
+// that branch at all, so this drives two runs with different outcomes and
+// reads back a field only the second run's write could set.
+test('sync-store: a second run\'s state write actually lands, not just the first', { skip: !isWin }, () => {
+    const fake = makeOwnStore();
+    try {
+        assert.strictEqual(git(fake.store, ['checkout', '--quiet', '--detach', 'HEAD']).status, 0);
+        write(path.join(fake.store, 'memory-types', 'pending-fact.md'), '# pending\n');
+
+        assertSilentSync(runSync(fake.store));
+
+        const first = readState(fake.store);
+        assert.strictEqual(first.lastResult, 'gate');
+        assert.strictEqual(first.reason, 'detached');
+
+        assert.strictEqual(git(fake.store, ['checkout', '--quiet', 'main']).status, 0);
+
+        assertSilentSync(runSync(fake.store));
+
+        const second = readState(fake.store);
+        assert.strictEqual(second.lastResult, 'ok',
+            'only the second write could ever record ok here; a dropped write leaves the first run\'s gate');
+        assert.strictEqual(second.reason, '',
+            'only the second write could ever clear the reason left by the first run');
+        assert.notStrictEqual(second.lastAttempt, first.lastAttempt,
+            'lastAttempt moves on every write, so a frozen one is the dropped-write tell');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// The seven-day nudge in hooks/memory-session.js reads lastResult and
+// firstFailSince; lastOk is Write-SyncState's own success stamp. Both
+// streak fields are set by the first write (no prior state), so a case
+// proving the runner clears a failure streak on a later success must
+// itself write twice: once to establish the streak, once to clear it.
+test('sync-store: a run reaching the success path after a failure stamps lastOk and clears firstFailSince', { skip: !isWin }, () => {
+    const fake = makeOwnStore();
+    try {
+        assert.strictEqual(git(fake.store, ['checkout', '--quiet', '--detach', 'HEAD']).status, 0);
+        write(path.join(fake.store, 'memory-types', 'pending-fact.md'), '# pending\n');
+
+        assertSilentSync(runSync(fake.store));
+
+        const first = readState(fake.store);
+        assert.strictEqual(first.lastResult, 'gate');
+        assert.ok(Number.isFinite(Date.parse(first.firstFailSince)),
+            'the gate starts the failure streak with a parseable instant');
+
+        assert.strictEqual(git(fake.store, ['checkout', '--quiet', 'main']).status, 0);
+
+        assertSilentSync(runSync(fake.store));
+
+        const second = readState(fake.store);
+        assert.strictEqual(second.lastResult, 'ok');
+        assert.ok(Number.isFinite(Date.parse(second.lastOk)),
+            'success stamps lastOk with a parseable instant');
+        assert.strictEqual(second.firstFailSince, '', 'success clears the failure streak the first run started');
     } finally {
         rmDir(fake.home);
     }

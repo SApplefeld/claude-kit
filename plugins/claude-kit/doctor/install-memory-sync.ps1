@@ -309,6 +309,13 @@ function Get-MemorySyncStatus {
         Branch        = ""
         Detached      = $false
         Upstream      = ""
+        # The raw branch.<name>.merge value, which is what git itself compares,
+        # and the bare branch name derived from it for the report's prose.
+        UpstreamMergeRef = ""
+        UpstreamBranch = ""
+        # git's own default since 2.0, which is what an unset push.default
+        # means, so the unread and the unset states read alike here.
+        PushDefault   = "simple"
         RemoteBranches = @()
         RemoteBranchesRead = $false
         DestinationRead = $false
@@ -364,6 +371,31 @@ function Get-MemorySyncStatus {
     # never as an unproven probe.
     $upstream = Invoke-MemorySyncGit -StoreRoot $StoreRoot -Arguments @("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}") -GitExe $GitExe
     if ($upstream.Code -eq 0 -and $upstream.Output.Count -gt 0) { $status.Upstream = $upstream.Output[0].Trim() }
+
+    # What a bare push, which is what the sync runner issues, does with this
+    # branch's pair of names. The value decides everything from a fatal refusal
+    # to a push that succeeds while publishing nothing, so the setting is part
+    # of whether the destination is reachable at all rather than a formatting
+    # detail of the report. It is kept as configured, uppercase and all, because
+    # git parses it byte-exactly and rejects a value it does not recognize.
+    $pushDefault = Invoke-MemorySyncGit -StoreRoot $StoreRoot -Arguments @("config", "--get", "push.default") -GitExe $GitExe
+    if ($pushDefault.Code -eq 0 -and $pushDefault.Output.Count -gt 0 -and $pushDefault.Output[0].Trim() -ne "") {
+        $status.PushDefault = $pushDefault.Output[0].Trim()
+    }
+
+    # The ref git compares the local branch against. It is kept raw, because
+    # git's own comparison is byte-exact against the configured value: a short
+    # form (`merge = main`) and a differently-cased ref are both refusals that a
+    # normalized copy would hide. The bare branch name is derived from it for
+    # the report's prose, and needs no remote-prefix parsing, so it stays right
+    # for a branch name that itself contains a slash.
+    if ($status.Branch -ne "" -and $status.Upstream -ne "") {
+        $merge = Invoke-MemorySyncGit -StoreRoot $StoreRoot -Arguments @("config", "--get", "branch.$($status.Branch).merge") -GitExe $GitExe
+        if ($merge.Code -eq 0 -and $merge.Output.Count -gt 0) {
+            $status.UpstreamMergeRef = $merge.Output[0].Trim()
+            $status.UpstreamBranch = ($status.UpstreamMergeRef -replace "^refs/heads/", "")
+        }
+    }
 
     # refname:short renders refs/remotes/origin/HEAD as the bare remote name,
     # so both that and the unshortened form are dropped: neither is a branch,

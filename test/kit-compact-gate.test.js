@@ -203,14 +203,28 @@ function gatePayload(repo, transcript, overrides) {
 // that drops it, or leaks payload or repo data into stderr, cannot pass green.
 // The two deny kinds carry distinct notes so a transcript reader can tell
 // which deferral fired, so each assert also pins the OTHER note's absence.
-const DENY_NOTE = 'kit-compact-gate: auto-compaction deferred to the next chapter boundary';
+const DENY_NOTE = 'kit-compact-gate: auto-compaction deferred to the next chapter close or interim board entry';
 const INTERACTIVE_NOTE = 'kit-compact-gate: auto-compaction deferred to the context safety ceiling';
+// A distinctive fragment of the boundary note's skipped-checkpoint
+// diagnostic, pinned separately so a regression that drops the diagnostic
+// sentences (while leaving the lead intact) still fails this suite.
+const DIAGNOSTIC_FRAGMENT = 'boundary checkpoint was likely never opened';
 
 function assertDeny(res) {
     assert.strictEqual(res.status, 2, 'expected deny (exit 2); stderr: ' + res.stderr);
     assert.strictEqual(res.stdout, '', 'deny emits nothing on stdout');
     assert.ok(res.stderr.includes(DENY_NOTE), 'deny carries the fixed deferral note; stderr: ' + res.stderr);
     assert.ok(!res.stderr.includes(INTERACTIVE_NOTE), 'a boundary deny never carries the interactive note; stderr: ' + res.stderr);
+    // The hold is bounded (the safety valve), never permanent: a boundary
+    // note must not claim otherwise.
+    assert.ok(!res.stderr.includes('rest of the session'), 'boundary note must not claim a permanent hold; stderr: ' + res.stderr);
+    assert.ok(res.stderr.includes(DIAGNOSTIC_FRAGMENT), 'boundary note must carry the skipped-checkpoint diagnostic; stderr: ' + res.stderr);
+    // The remedy names a command the operator is meant to run, and the gate
+    // ships as a plugin into every project, so the path must be the hook's own
+    // absolute location rather than a repo-relative one that resolves only
+    // where the kit is dogfooded in its own checkout.
+    assert.ok(res.stderr.includes('"' + CLI.split(path.sep).join('/') + '"'),
+        'boundary note must name the checkpoint CLI by its absolute installed path; stderr: ' + res.stderr);
 }
 
 function assertInteractiveDeny(res) {

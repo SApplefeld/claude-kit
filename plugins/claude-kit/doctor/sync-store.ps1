@@ -306,7 +306,7 @@ function Write-SyncState {
         # delete-then-move, which opens exactly that gap. A first write has no
         # destination to replace and simply moves into place.
         if (Test-Path -LiteralPath $statePath -PathType Leaf) {
-            [System.IO.File]::Replace($temp, $statePath, $null)
+            [System.IO.File]::Replace($temp, $statePath, [NullString]::Value)
         }
         else {
             [System.IO.File]::Move($temp, $statePath)

@@ -1059,7 +1059,8 @@ function Get-MemorySyncReportLines {
 
 # Whether a push from this store would reach the branch another machine's pull
 # reads. Split by what an operator choice can explain: a detached HEAD, a
-# branch tracking nothing, and an upstream on some other remote are broken in
+# branch tracking nothing, an upstream on some other remote, and a push.default
+# that refuses this pair of branch names or refuses to push at all are broken in
 # ways nobody opts into, so they block. A second branch on origin is the
 # reported silent case, but a backup or an abandoned branch explains it too, so
 # it is named rather than failed on: a check that exits 1 over a stale ref
@@ -1079,6 +1080,103 @@ function Get-MemorySyncDestinationLines {
     elseif ($Status.Upstream -ne "" -and -not $Status.Upstream.StartsWith("origin/")) {
         $blocking += ("Branch " + (Get-SanitizedLine $Status.Branch 200) + " tracks " +
             (Get-SanitizedLine $Status.Upstream 200) + ", which is not the origin reported above.")
+    }
+
+    # A branch that tracks a real branch on origin and still cannot publish to
+    # it. The sync runner's push leg is a bare `git push`, so what happens to
+    # this store's memories is push.default's to decide, and every check above
+    # reads clean in each of the states below.
+    #
+    # git compares the raw branch.<name>.merge value against refs/heads/<local
+    # branch> byte for byte, so the comparison is ordinal over the raw ref: a
+    # case-only difference and a short form (`merge = main`) are both refusals
+    # a normalized or case-insensitive comparison would call a match.
+    $mergeRef = [string]$Status.UpstreamMergeRef
+    $pairMismatch = ($Status.Branch -ne "" -and $mergeRef -ne "" -and
+        -not [string]::Equals("refs/heads/" + $Status.Branch, $mergeRef, [System.StringComparison]::Ordinal))
+
+    # The rename remedy is printed as a runnable command only where pasting it
+    # is safe. Get-SanitizedLine guarantees printable ASCII, which is the
+    # character set shell metacharacters live in, and git accepts `;`, `&&`,
+    # `|`, `$()` and quotes in a branch name, so both names must also be within
+    # a charset that carries none of them and must survive the sanitizer
+    # unchanged, truncation marker included. Each name must also open on an
+    # alphanumeric: a leading `-` carries no shell meaning at all, but git
+    # reads it as an option, so a branch named `-f` composes
+    # `git branch -m -f <upstream>`, a forced rename that clobbers an existing
+    # ref rather than the rename this line advertises. A merge ref outside
+    # refs/heads/ names no branch to rename to at all. Where any of that fails
+    # the finding is still reported, in prose: refusing to print a command is
+    # the answer, not quoting it.
+    $renameSafe = ($pairMismatch -and
+        $mergeRef.StartsWith("refs/heads/", [System.StringComparison]::Ordinal) -and
+        $Status.Branch -match '^[A-Za-z0-9][A-Za-z0-9._/-]*$' -and
+        $Status.UpstreamBranch -match '^[A-Za-z0-9][A-Za-z0-9._/-]*$' -and
+        (Get-SanitizedLine $Status.Branch 200) -eq $Status.Branch -and
+        (Get-SanitizedLine $Status.UpstreamBranch 200) -eq $Status.UpstreamBranch)
+    $renameFix = @()
+    if ($renameSafe) {
+        $renameFix += ("Fix: rename the local branch to match its upstream (git branch -m " +
+            (Get-SanitizedLine $Status.Branch 200) + " " + (Get-SanitizedLine $Status.UpstreamBranch 200) +
+            ") in the store root.")
+    }
+    elseif ($pairMismatch) {
+        $renameFix += ("Fix: rename the local branch " + (Get-SanitizedLine $Status.Branch 200) + " to " +
+            (Get-SanitizedLine $Status.UpstreamBranch 200) +
+            " in the store root. These branch names carry characters that make a pasted command unsafe, so no runnable command is printed here.")
+    }
+
+    # The value is matched case-sensitively because git parses it that way and
+    # errors on anything it does not recognize, `Simple` included.
+    $pushDefault = [string]$Status.PushDefault
+    $setPushDefaultFix = "Fix: set push.default to simple in the store root (git config push.default simple)."
+    if ($pushDefault -ceq "upstream" -or $pushDefault -ceq "tracking") {
+        # The push follows the upstream ref whatever the two names are, so a
+        # differing pair costs nothing and is not a finding.
+    }
+    elseif ($pushDefault -ceq "simple") {
+        if ($pairMismatch) {
+            # Fatal on every run, while every check above it reads clean.
+            $blocking += ("Branch " + (Get-SanitizedLine $Status.Branch 200) + " tracks " +
+                (Get-SanitizedLine $Status.Upstream 200) +
+                ", and push.default simple refuses a push whose branch names differ, so the store's automated push fails on every run.")
+            $blocking += $renameFix
+        }
+    }
+    elseif ($pushDefault -ceq "matching") {
+        if ($pairMismatch) {
+            # The quietest of the set: matching updates only branches carrying
+            # the same name on both ends, so a differing pair matches nothing
+            # and the runner records a success for a push that published
+            # nothing.
+            $blocking += ("Branch " + (Get-SanitizedLine $Status.Branch 200) + " tracks " +
+                (Get-SanitizedLine $Status.Upstream 200) +
+                ", and push.default matching updates only branches that carry the same name on both ends, so the store's automated push exits successfully while publishing nothing to the branch this store pulls from.")
+            $blocking += $renameFix
+        }
+    }
+    elseif ($pushDefault -ceq "nothing") {
+        # Names are irrelevant here: a bare push under this setting errors out
+        # for want of a refspec, matched pair or not.
+        $blocking += "push.default is set to nothing, so a bare push errors out for want of a refspec and the store's automated push fails on every run, whatever the branch names are."
+        $blocking += $setPushDefaultFix
+    }
+    elseif ($pushDefault -ceq "current") {
+        if ($pairMismatch) {
+            # The push succeeds, and lands on a branch named after the local
+            # one rather than on the upstream this store pulls from. Advisory
+            # rather than blocking: the memories are published, just where no
+            # other machine reads them.
+            $advisory += ("Branch " + (Get-SanitizedLine $Status.Branch 200) + " tracks " +
+                (Get-SanitizedLine $Status.Upstream 200) +
+                ", and push.default current publishes to the branch on origin named after the local branch, so this store's memories land somewhere the other machines never pull from.")
+            $advisory += $renameFix
+        }
+    }
+    else {
+        $blocking += ("push.default is set to " + (Get-SanitizedLine $pushDefault 200) +
+            ", which git does not recognize, so it refuses every push in this store as a malformed config value.")
+        $blocking += $setPushDefaultFix
     }
 
     $others = @($Status.RemoteBranches | Where-Object { $_ -ne $Status.Upstream })
@@ -1274,9 +1372,21 @@ else {
                 ))
             }
             elseif ($syncDest.Blocking.Count -gt 0) {
-                Report "FAIL" "Memory sync" ($syncFixLines + $syncDetail + $syncDest.Blocking + $syncDest.Advisory + @(
-                    "Fix: put HEAD on the sync branch and give it an upstream (git -C `"$claudeDir`" push -u origin <branch>)."
-                ))
+                # The remedy below repairs the three findings that leave this
+                # store without a usable destination on origin: a HEAD on no
+                # branch, a branch tracking nothing, and a branch tracking some
+                # remote other than origin. It is withheld from every other
+                # finding, which carries its own remedy, because running
+                # `push -u origin <branch>` against a branch whose upstream on
+                # origin is already correct creates a second branch there and
+                # repoints the upstream at it, which is exactly the silent
+                # cross-machine divergence the advisory check above reports.
+                $syncDestFix = @()
+                if ($syncStatus.Detached -or $syncStatus.Upstream -eq "" -or
+                    -not $syncStatus.Upstream.StartsWith("origin/")) {
+                    $syncDestFix += "Fix: put HEAD on the sync branch and give it an upstream (git -C `"$claudeDir`" push -u origin <branch>)."
+                }
+                Report "FAIL" "Memory sync" ($syncFixLines + $syncDetail + $syncDest.Blocking + $syncDest.Advisory + $syncDestFix)
             }
             elseif (-not $syncStatus.DestinationRead) {
                 Report "WARN" "Memory sync" ($syncFixLines + $syncDetail + @(

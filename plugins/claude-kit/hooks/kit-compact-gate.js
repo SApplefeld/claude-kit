@@ -7,9 +7,10 @@
 // only native lever is this hook's power to veto a pending compaction (a
 // denied auto attempt is re-tried once per assistant turn, indefinitely), so
 // the kit uses the veto as a scheduler: deny auto-compaction mid-chapter,
-// stand aside once the chapter-close ritual has written a boundary checkpoint
-// (.kit/compact-checkpoint.json, via kit-compact-checkpoint.js), and the
-// compaction lands on the first attempt after the boundary. The kit summarizes
+// stand aside once the chapter-close ritual or an interim board entry has
+// written a boundary checkpoint (.kit/compact-checkpoint.json, via
+// kit-compact-checkpoint.js), and the compaction lands on the first attempt
+// after the boundary. The kit summarizes
 // nothing itself; re-grounding after the compaction is the existing
 // SessionStart plan-doc recovery.
 //
@@ -34,7 +35,8 @@
 // nothing at all: everything this hook reads (the payload, the goal state, the
 // checkpoint, the transcript) is untrusted data, and the cheapest way to keep
 // it out of a model's context is to print none of it. Each deny path writes
-// its own fixed string to stderr, carrying no data from any input, distinct
+// its own string to stderr, carrying no data from any input (the one composed
+// value is this hook's own install directory, see CHECKPOINT_CLI), distinct
 // per deferral kind so a transcript reader can tell which one fired.
 //
 // The gate is a three-state classifier evaluated per offer, cheapest check
@@ -438,13 +440,33 @@ function main() {
 // whether the lib requires above resolve; resolution is exercised by this
 // hook's own test suite, which spawns the real file. Either deny is exit code
 // 2 via process.exitCode rather than process.exit(), so the stderr note can
-// drain before the process ends; each note is a fixed string carrying no
-// input data, distinct per deny kind so a transcript reader can tell which
-// deferral fired, there so a watcher (or the model, if the harness surfaces
-// it) reads a deferral, not a failure. Any exception, and any verdict value
-// that is not a recognized deny, allows: fail-open on every axis.
-const BOUNDARY_NOTE = 'kit-compact-gate: auto-compaction deferred to the next chapter boundary; '
-    + 'this is the kit scheduling the compaction, not an error. Keep working.\n';
+// drain before the process ends; each note carries no input data, the one
+// composed value being this hook's own installed directory (see CHECKPOINT_CLI
+// below), and each is distinct per deny kind so a transcript reader can tell
+// which deferral fired, there so the operator watching (PreCompact stderr reaches
+// the operator only, never the model) reads a deferral, not a failure. Any
+// exception, and any verdict value that is not a recognized deny, allows:
+// fail-open on every axis.
+// The gate ships as a plugin and runs in every project, so a repo-relative
+// command path in the note below resolves only where the kit is dogfooded in
+// its own checkout. The note names a command the operator is meant to run, so
+// it is built from this hook's own location instead: __dirname is the module's
+// path, never a payload, transcript, or repo value, so the injection posture is
+// unchanged. Forward slashes because node accepts them on Windows and a
+// backslash path pasted into a shell does not survive every shell. The doctor
+// charset-gates the interpolants in its own pasteable command line; this one is
+// exempt because the value is module state rather than input, and an actor who
+// controls this file's path is already running this file's code. The CLI reads
+// its state from the cwd, so the remedy names the project directory too.
+const CHECKPOINT_CLI = __dirname.split('\\').join('/') + '/kit-compact-checkpoint.js';
+const BOUNDARY_NOTE = 'kit-compact-gate: auto-compaction deferred to the next chapter close or interim board entry; '
+    + 'this is the kit scheduling the compaction, not an error. Keep working. '
+    + 'The hold runs until that boundary or the context safety valve fires near the token limit, whichever '
+    + 'comes first; a skipped boundary costs a compaction landing at the worst point in the section, never a '
+    + 'wedged run. Repeating for many turns within one section is expected. If it is still firing after a '
+    + 'Chapter has closed, the boundary checkpoint was likely never opened: prompt the session to close its '
+    + 'boundary, or check yourself from the project directory with node "' + CHECKPOINT_CLI
+    + '" status and open one at a true boundary with node "' + CHECKPOINT_CLI + '" open.\n';
 const INTERACTIVE_NOTE = 'kit-compact-gate: auto-compaction deferred to the context safety ceiling; '
     + 'this is the kit holding compaction out of an interactive session, not an error. Keep working.\n';
 
