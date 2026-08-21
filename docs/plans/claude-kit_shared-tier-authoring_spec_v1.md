@@ -1,6 +1,6 @@
 # Shared-tier authoring: a correction path, and a body input that survives shells
 
-Status: Draft
+Status: In Progress
 Commit Model: Commit-and-Push
 Created: 2026-08-21
 
@@ -99,7 +99,8 @@ bar: what a shared-tier write no longer is, is one-way.
 
 Model: opus
 
-Files in scope: `plugins/claude-kit/scripts/memq.js`, `test/memq.test.js`.
+Files in scope: `plugins/claude-kit/scripts/memq.js`, `test/memq.test.js`,
+`docs/security-model.md`.
 
 Root-cause the multi-line `--body` failure across the three invocation paths
 (Git Bash sh wrapper, `memq.cmd`, `memq.ps1`) before writing the hint, so the
@@ -149,3 +150,63 @@ file, not the diff). Curate docs per curating-docs at close-out.
   `--body-file` incidentally covers.
 
 ## Chapters
+
+### Interim board 1 - 2026-08-21
+
+**In-flight sections.** Section 1 only; sections 2 and 3 are unstarted and
+run in order after it. Section 1 is in its third implementation round, after
+two review rounds. Sections 2 and 3 both touch files section 1 holds
+(`memq.js` for section 2, the skill for section 3), so nothing runs
+concurrently with it.
+
+**Live dispatches.** One: `implementer-opus`, resumed twice on the same
+agent so it keeps its context. Round 1 built `--body-file` plus the
+truncation hint. Round 2 was asked for one Critical and seven Major fixes.
+Round 3, dispatched now, was asked for three Majors (a path-text guard before
+the open, a fatal UTF-8 decode, and writer/reader cap consistency) and nine
+Minors, with two Major findings explicitly rejected and the reasons given.
+
+**Gate baseline.** Pre-effort baseline is 1084 pass / 0 fail, exit 0,
+captured on this machine and diffed at every round since. Round 1 reached
+1090/0, round 2 reached 1096/0, both confirmed by the orchestrator running
+`node --test test/*.test.js` itself rather than from the implementer's
+report. Wall clock runs 200 to 340 seconds depending on contention from a
+foreign .NET suite on the same box.
+
+**Rulings adopted since the plan was approved.**
+
+- The root cause of the multi-line `--body` failure is `cmd.exe` truncating
+  a command line at its first newline, reached only through the `memq.cmd`
+  wrapper. The sh wrapper and the `memq.ps1` wrapper both pass a multi-line
+  argument byte-exact, measured on Windows PowerShell 5.1.26100.9168 and on
+  pwsh 7.6.5. The newline therefore never survives into argv, so the hint
+  keys on the residue truncation leaves (a trailing free-text flag value
+  with the positional count short) and is worded as a hypothesis rather than
+  a verdict, because that shape also matches an ordinary forgotten argument.
+- The dangerous half of the cause is undetectable: with the body flag last,
+  truncation yields a correct positional count and a silently shortened
+  body at exit 0. The write side answers it by reporting the stored body
+  length on the success line.
+- `--body-file` is refused whenever `storeSignalsPresent()` is true. Under
+  those signals `memq-grant` emits a prompt-free allow for any memq argv,
+  and a caller-named path read would make the store-not-machine bound in
+  `docs/security-model.md` false. A granted worker invokes the script
+  directly and crosses no wrapper, so it meets no truncation and loses
+  nothing to the refusal.
+- Body content stays charset-ungated on both channels. `printMemoryBody`
+  states the design: the fence `get` puts around another writer's body is
+  the control, not the charset. Gating control bytes on the file channel
+  alone would be the channel drift this section exists to prevent.
+- The fleet refusal stays in the CLI rather than moving into
+  `memq-grant.js`. The hook governs only the Bash-tool grant, so a hook-only
+  refusal is strictly weaker than an unconditional one, and the security
+  reviewer verified the CLI placement uses the hook's own exported
+  predicate and cannot be reached around.
+
+**Next action per section.** Section 1: await round 3, re-verify the gate,
+run a targeted re-review of the changed guard, then close with a Chapter and
+the Commit-and-Push commit. Section 2: dispatch at `opus` once section 1
+releases `memq.js`; its repair verb is also the tool for correcting the
+stale operator memory `pwsh-absent-on-scott-claude`, which this run found
+contradicted by evidence (pwsh 7.6.5 is installed and runs). Section 3:
+inline in the main thread, since it writes under `docs/`.
