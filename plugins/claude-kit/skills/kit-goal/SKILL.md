@@ -31,6 +31,8 @@ One naming constraint is worth knowing before it costs something, because it bin
 
 Arming is the user's own act (the `/kit-goal` invocation is user-typed), and it carries the user's request for the run: reduce wall-clock time by parallelizing the plan's work, running simultaneously whatever the sections and their gates allow, via subagent dispatch and via Workflows. For this run's parallelization, that is the per-run request an injected `Do not use workflows or deep-research unless the user requested it` line waits on, read the same way the operating-instructions dispatch bullet reads the Agent-tool line: the instruction prohibits unrequested use, and the arming is the request. The authority is the arming act, not this skill's text, so nothing here widens the doctrine's standing grant. The scope is executing the armed plan: deep-research, and any Workflow use beyond parallelizing this run's work, still needs asking. The canonical condition text carries the same request, so it rides with the goal state across a session swap, and the Stop hook's enforcement block restates it at the point of action.
 
+Arming is also approval. An armed plan is approved as written by the arming act itself: the invocation is user-typed, so it carries the same authority as a typed "proceed", and a run under an armed leash never waits for a separate approval message and never reads the plan's `Status:` header as evidence approval is missing. A `Status:` value the kit does not define does not gate arming; executing-work owns the run-start step that normalizes it.
+
 ## Clear
 
 `/kit-goal clear` (accept the aliases `stop`, `off`, `reset`, `none`, `cancel`) releases the leash:
