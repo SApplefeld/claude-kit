@@ -138,7 +138,13 @@ repair and the delete verbs make both halves false),
 shared tiers cannot be repaired or removed, which a security review rated
 Major once the code shipped the verbs; doctrine bars parking a security Major
 into a later section, so the skill's destructive-verb surface lands here and
-section 3 keeps the section-1 drift and the close-out).
+section 3 keeps the section-1 drift and the close-out),
+`plugins/claude-kit/hooks/memq-grant.js` and `test/memq-grant.test.js`
+(round 4's security review rated
+Major that the CLI-side refusal of the destructive verbs keys on the child's
+environment, which the granted principal controls; the hook is the only
+enforcement point that sees an argv the child cannot forge, and a security
+Major is never parked into a later section).
 
 Implement body repair and gated delete per the Design section, under the
 existing lock, index kept consistent in the same operation. Follow the
@@ -220,14 +226,54 @@ Added mid-run, and so approval drift by construction; recorded as such in the
 Chapter of the section whose review earned each entry. Every later dispatch
 brief carries these verbatim.
 
-- **Check every operator-facing message against every path that can reach it,
-  the failure paths included.** Section 2's two review rounds produced five
-  findings of this one class: a message naming a `.bak` at a throw point where
-  none was written or where the command had just removed it, a filename bound
-  at the wrong cap so a maximum-length name printed a path that does not
-  exist, and a consent refusal asserting a record and a body that may not
-  exist. Two instances would have been coincidence; five is the workflow
-  generating the defect, so the check is standing rather than three fixes.
+- **Compose a message about what an operation did from state that operation
+  recorded as it went, never from a filesystem probe taken afterward.** A
+  `fs.existsSync` or a `stat` in a catch block cannot tell an artifact this
+  run produced from one that was already there, and cannot tell a step that
+  finished from a step that never ran, so a message built on one asserts a
+  history it did not observe. Set a flag or accumulate a counter at each step
+  as it lands, and let the message read those. This entry replaces an earlier
+  one that asked for the same accuracy as a check rather than as a mechanism:
+  rounds 2 and 3 produced eleven findings of the class, and round 4 produced
+  two more inside the very code written to satisfy the check, which is what
+  says the guard was the wrong shape. The mechanical form is also the
+  reviewable one, since a stat inside a failure path is greppable and
+  "did you check every path" is not.
+
+- **Decide a per-file safety behavior at the call site that knows the file,
+  never by a default the next caller inherits silently.** `rewriteWithBackup`'s
+  tail copy was reasoned about as a property of the file being rewritten, but
+  the same two index files are rewritten by writers in different tiers with
+  opposite requirements, so the property belongs to the call. Where a helper
+  takes an option whose wrong value is a silent corruption rather than an
+  error, the option is required, so a new call site cannot acquire the unsafe
+  behavior by omission.
+
+- **Before changing a shared predicate or a shared guard, enumerate everything
+  that relies on it and say what each one now sees.** Three rulings in section
+  2 were faithful to their brief and wrong in the same way: the tail-copy
+  revert did not check the other tiers reaching the same helper, the switch of
+  the record-existence predicate to `lstat` did not check that every reader
+  still used `stat`, and the grant hook's argv screen did not check what its
+  own tokenizer could be made to miss. Each shipped a defect the next review
+  round found. The check is not "is this change correct" but "who else shares
+  this, and is it still correct for them", and it belongs to whoever writes the
+  ruling as much as to whoever implements it. A change to a predicate, a
+  regular expression standing as a gate, or a helper's default is the shape
+  that earns it.
+
+- **Verify a claim on the axis the code depends on, never on the axis the
+  argument was made on.** The grant hook's tilde omission was argued on word
+  count (tilde expansion produces exactly one word, so it cannot carry an
+  argument past the screen) and both the implementer and the orchestrator
+  verified exactly that, correctly. The screen it protects is a content test,
+  and tilde expansion substitutes caller-controlled content into the word it
+  produces, so the true claim and the safe claim were different claims. When
+  accepting or writing a justification for a guard, restate what the guard
+  actually tests, then verify against that restatement rather than against the
+  sentence offered. This entry is distinct from the one above it: that one asks
+  who else shares the thing being changed, this one asks whether the evidence
+  offered for a change bears on the property that makes it safe.
 
 ## Chapters
 
@@ -358,6 +404,82 @@ Commit-and-Push commit. Section 3: a whole-file consistency read of
 orchestrator concurrently with round 3 and were not in that round's
 changed-file list, so no reviewer has read them. Section 3's whole-file pass
 covers the skill; the finishing docs pass covers architecture.md.
+
+### Interim board 3 - 2026-08-22
+
+Written on the closure-drought trigger: review rounds 5 and 6 on section 2 both
+adjudicated with no section closing.
+
+**In-flight sections.** Section 2 only, in its ninth implementation round after
+six full review rounds. Section 3 is unstarted and runs after it; both touch
+`memory-system/SKILL.md`, so nothing runs concurrently.
+
+**Live dispatches.** One: `implementer-opus`, the same agent resumed
+throughout so it keeps its context. Round 7 was asked for one Critical, four
+Majors and eleven minors. Round 8 was one ruling, R27. Round 9, dispatched now,
+was asked for four Majors and nine minors, one finding recorded rather than
+fixed.
+
+**Gate baseline.** 1162 pass / 0 fail / 0 skipped, exit 0, confirmed by the
+orchestrator running `node --test test/*.test.js` itself rather than from the
+implementer's report. The progression across this effort, every figure the
+orchestrator's own run: 1084 (pre-effort), 1099 (section 1 shipped), 1108,
+1118, 1129, 1136, 1144, 1153, 1162, with 0 fail and 0 skipped at every point.
+Wall clock runs 230 to 400 seconds depending on contention.
+
+**Rulings adopted since Interim board 2.**
+
+- The grant hook's argv screen is a content test, so what protects it is the
+  guarantee that the words the hook reads are the words the child receives. A
+  caller-controlled shell expansion breaks that guarantee rather than bypassing
+  the screen, which is why an unquoted brace, glob, or leading tilde refuses
+  the grant outright instead of being screened. The refusal lives in the
+  splitter rather than in the screen, because the splitter already knows which
+  characters arrived from inside a quoted span.
+- Where an expansion is refused is part of its rule. Bash performs none of
+  these expansions inside quotes, so the ban is scoped to unquoted spans;
+  quoted braces, globs and brackets are ordinary free text, which is what a
+  summary naming a test glob or a description carrying a bracketed note is made
+  of. The tilde takes that span rule with a position rule on top, since only a
+  leading tilde expands, and the mid-word case is not a concession but the case
+  that matters most here: a Windows 8.3 short path carries its tilde mid-word
+  and is an ordinary spelling of the script path this hook exists to grant.
+- The delete's steps are ordered copies, both index lines, stamps, record
+  files, so that every state a stop can leave is one a re-run of the same
+  command completes. Round 9 corrects the one place that promise was not kept:
+  the copy sweep's listing now leads its own named unlink, so the first step is
+  genuinely all-or-nothing.
+- `rewriteWithBackup`'s tail copy tests the wrong thing, and the fix is the
+  test rather than the per-call value. It fires on the replacement being longer
+  and infers an append, but a sync rebase replaces a store file wholesale and a
+  replaced file can also be longer, so the splice grafts a byte-offset fragment
+  of a different document. A head-identity check makes the copy honest for
+  every tier at once; switching one call site would have treated the instance
+  and left the class, since the whole store syncs.
+- A security finding inside the grant hook is fixed in this section whatever
+  its provenance. The caller-named embedder root reaching `require` through a
+  granted `find` predates the section, but it sits inside the guard this
+  section reopened, and doctrine bars parking a security Major.
+
+**Standing Brief Amendment earned here.** Verify a claim on the axis the code
+depends on, never on the axis the argument was made on. Recorded in its own
+section above. It was earned by the orchestrator's own ratification of the
+tilde omission, which was verified on word count while the screen it protects
+is a content test, and it has since caught two further findings including one
+inside the round-7 work.
+
+**Next action per section.** Section 2: await round 9, re-run the gate, rewrite
+the tail-copy passages in `docs/architecture.md` and `docs/security-model.md`
+that R30 makes false, decide whether a seventh review round is warranted,
+correct the known-false operator memory `pwsh-absent-on-scott-claude` as the
+section's dogfood test, then close with Chapter 2 and the Commit-and-Push
+commit. Section 3: a whole-file consistency read of `memory-system/SKILL.md`,
+inline in the main thread, then curating-docs.
+
+**Not yet reviewed.** `docs/architecture.md` remains unread by any reviewer;
+the finishing docs pass covers it. `docs/security-model.md` was read this
+round by the security reviewer, which rated two of its sentences Major and both
+are now rewritten.
 
 ### Chapter 1 - 2026-08-21
 Completed: 1. `--body-file` and the newline hint
