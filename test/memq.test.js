@@ -2650,7 +2650,10 @@ test('add-type writes the memory file and its index line under the type dir, and
     try {
         const res = run(store, ['add-type', 'nextjs', 'testing-conventions', 'how tests run', '--tag', 'gotcha']);
         assert.strictEqual(res.status, 0, res.stderr);
-        assert.match(res.stdout, /^added testing-conventions to type nextjs\n$/);
+        // The stored body's length closes the success line. With no --body
+        // given, the description is the body, so the count is its length: the
+        // one number that would differ had anything arrived short.
+        assert.match(res.stdout, /^added testing-conventions to type nextjs \(body 13 chars\)\n$/);
         const dir = typeDirPath(store, 'nextjs');
         assert.strictEqual(fs.readFileSync(path.join(dir, 'testing-conventions.md'), 'utf8'),
             '---\ntags: gotcha\n---\n# testing-conventions\n\nhow tests run\n');
@@ -6560,7 +6563,7 @@ test('add-operator writes the memory file and its index line under the operator 
     try {
         const res = run(store, ['add-operator', 'pr-without-gh', 'REST plus credential fill', '--tag', 'gotcha']);
         assert.strictEqual(res.status, 0, res.stderr);
-        assert.match(res.stdout, /^added pr-without-gh to the operator tier\n$/);
+        assert.match(res.stdout, /^added pr-without-gh to the operator tier \(body 25 chars\)\n$/);
         const dir = operatorDirPath(store);
         assert.strictEqual(fs.readFileSync(path.join(dir, 'pr-without-gh.md'), 'utf8'),
             '---\ntags: gotcha\n---\n# pr-without-gh\n\nREST plus credential fill\n');
@@ -6659,14 +6662,17 @@ test('--update is description-only: body, tags, and machine are refused alongsid
         // moment it is tested rather than half-honored: an update that also
         // rewrote a body or tags would be the overwrite path add-operator
         // exists to refuse.
-        for (const extra of [['--body', 'new body'], ['--tag', 'sql'], ['--machine', 'BOX']]) {
+        for (const extra of [['--body', 'new body'], ['--body-file', 'somewhere.txt'],
+            ['--tag', 'sql'], ['--machine', 'BOX']]) {
             const res = run(store, ['add-operator', 'a-fact', 'new words', '--update'].concat(extra));
             assert.strictEqual(res.status, 1, extra[0] + ' alongside --update is refused');
             assert.match(res.stderr, /--update replaces the index description only/);
         }
-        const typeSide = run(store, ['add-type', 'ptype', 'a-fact', 'words', '--update', '--body', 'b']);
-        assert.strictEqual(typeSide.status, 1);
-        assert.match(typeSide.stderr, /--update replaces the index description only/);
+        for (const extra of [['--body', 'b'], ['--body-file', 'somewhere.txt']]) {
+            const typeSide = run(store, ['add-type', 'ptype', 'a-fact', 'words', '--update'].concat(extra));
+            assert.strictEqual(typeSide.status, 1, extra[0] + ' alongside --update is refused on add-type');
+            assert.match(typeSide.stderr, /--update replaces the index description only/);
+        }
 
         // The exclusivity refusal answers before the cap gates, so a doomed
         // command is refused for its flag set rather than sending the author
@@ -6710,6 +6716,773 @@ test('a wrong positional count names the quote-mangling cause when an argument c
         assert.match(ty.stderr, /an embedded double quote splits one argument into several/);
     } finally {
         rmStore(store);
+    }
+});
+
+// The body channels: --body, whose value crosses every shell between the
+// caller and this process, and --body-file, whose value is a path and whose
+// content is read here. The cases below pin what that buys and what it costs:
+// a body no shell can mangle, a file channel normalized to what argv could
+// have carried and then held to the identical cap, and the one environment
+// where the file channel is refused outright.
+
+// A store the CLI resolves with neither engine store signal set. --body-file
+// is refused whenever KIT_MEMORY_ROOT rides with KIT_MEMORY_ROOT_ALLOW_DATA=1,
+// so a child carrying this suite's usual redirection cannot reach the read at
+// all. Pointing the child's home at a temp directory redirects the store by
+// the route the KIT_MEMORY_ROOT gate test uses, which leaves both signals
+// absent while still keeping every write out of the real ~/.claude. The
+// object carries `root` under the name the tier-path helpers read, so
+// operatorDirPath and typeDirPath work against it unchanged.
+function makeHomeStore() {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'memq-home-'));
+    const proj = fs.mkdtempSync(path.join(os.tmpdir(), 'memq-proj-'));
+    return { home, proj, root: path.join(home, '.claude') };
+}
+
+function rmHomeStore(store) {
+    for (const dir of [store.home, store.proj]) {
+        try {
+            fs.rmSync(dir, { recursive: true, force: true });
+        } catch {
+            // Best-effort cleanup; leaving a temp dir behind never fails the test.
+        }
+    }
+}
+
+// The child environment for a home-redirected store: both store signals
+// removed under every spelling, because a Windows environment block's key
+// casing is not the spelling a JS object copy is indexed by and a second
+// spelling would leave the signal in the child's block after the delete.
+function homeEnv(store) {
+    const env = scrubRunEnv({ ...process.env });
+    for (const k of Object.keys(env)) {
+        const lower = k.toLowerCase();
+        if (lower === 'userprofile' || lower === 'home'
+            || lower === 'kit_memory_root' || lower === 'kit_memory_root_allow_data') {
+            delete env[k];
+        }
+    }
+    env.USERPROFILE = store.home;   // what os.homedir() reads on Windows
+    env.HOME = store.home;          // and everywhere else
+    env.KIT_EMBEDDER_ROOT = EMBED_ABSENT_ROOT;
+    env.KIT_EMBEDDER_ROOT_ALLOW_CODE = '1';
+    return env;
+}
+
+function runHome(store, args) {
+    return spawnSync(process.execPath, [MEMQ].concat(args), {
+        cwd: store.proj,
+        encoding: 'utf8',
+        env: homeEnv(store)
+    });
+}
+
+// Whether the home redirect actually took, asked of the same environment the
+// children run under and answered by the same resolver they use. These cases
+// are the only ones in this suite without KIT_MEMORY_ROOT, which they have to
+// drop for --body-file to be reachable at all, so the home variables are the
+// whole of what keeps their writes off the operator's real shared tiers. A
+// redirect that silently failed would not fail a test: it would write records
+// named from these fixtures into the real operator tier and rewrite its
+// index, where the duplicate guard then refuses those names for good. So the
+// group checks the redirect before it writes anything, and stands down rather
+// than writing into a store it cannot place.
+const HOME_REDIRECT_SKIP = 'the home-directory redirect did not take, so these writes'
+    + ' cannot be kept out of the real store';
+
+function homeRedirected(store) {
+    const res = spawnSync(process.execPath, ['-p', 'require("os").homedir()'], {
+        cwd: store.proj,
+        encoding: 'utf8',
+        env: homeEnv(store)
+    });
+    return res.status === 0 && String(res.stdout).trim() === store.home;
+}
+
+// Git Bash, when this machine has it, and plain bash elsewhere when the box
+// carries one. The sh wrapper is the path a Bash-tool invocation takes, and
+// it is a control the cmd.exe case is read against: the hint names cmd.exe
+// alone, which is only honest if the other wrappers really do carry a newline
+// through.
+const bashExe = (() => {
+    const candidates = process.platform === 'win32'
+        ? [path.join(process.env.ProgramFiles || 'C:\\Program Files', 'Git', 'bin', 'bash.exe'),
+            path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Git', 'bin', 'bash.exe')]
+        : ['/bin/bash', '/usr/bin/bash'];
+    for (const p of candidates) {
+        try { if (fs.statSync(p).isFile()) return p; } catch { /* try the next */ }
+    }
+    return null;
+})();
+
+// A multi-line body written to a file, and the memory file the tier should
+// hold once it lands: the body verbatim under the name heading, which is what
+// byte-identical means for these cases.
+const WRAPPER_BODY = 'First line.\nSecond line, with a comma.\n\nFourth line, after a blank one.';
+
+// Every wrapper case below spawns memq.js directly, the way the installed
+// wrappers spawn memq-shim.js, and so elides the shim's own resolution hop.
+// What is under test is the shell between the caller and node, which is the
+// layer the shim never touches; the shim's own behavior has its own suite.
+
+test('--body-file carries a multi-line body through the cmd.exe wrapper intact, where --body arrives cut', {
+    skip: process.platform === 'win32' ? false : 'the memq.cmd wrapper is a win32 shape'
+}, (t) => {
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        // A wrapper of the installed memq.cmd's shape: a batch file that
+        // hands its whole argument list to node. The mangling under test
+        // happens in cmd.exe, above node, so nothing short of a real batch
+        // hop can show it; an argv built in this process would pass any body
+        // through cleanly and prove nothing. CRLF, because cmd.exe reads a
+        // batch file a line at a time and the installed wrapper is CRLF too.
+        const wrapper = path.join(store.proj, 'memq.cmd');
+        fs.writeFileSync(wrapper,
+            '@echo off\r\n"' + process.execPath + '" "' + MEMQ + '" %*\r\n', 'utf8');
+        const bodyFile = path.join(store.proj, 'body.txt');
+        fs.writeFileSync(bodyFile, WRAPPER_BODY, 'utf8');
+        // The payload is wrapped in one more pair of quotes because cmd.exe
+        // /s strips the first and last quote of what follows /c: a temp path
+        // holding a space would otherwise split and fail here for a reason
+        // unrelated to the body channel.
+        const viaCmd = (payload) => spawnSync('cmd.exe',
+            ['/d', '/s', '/c', '""' + wrapper + '" ' + payload + '"'], {
+                cwd: store.proj,
+                encoding: 'utf8',
+                windowsVerbatimArguments: true,
+                env: homeEnv(store)
+            });
+
+        const res = viaCmd('add-operator from-file "an index description" --body-file "' + bodyFile + '"');
+        assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+        assert.strictEqual(fs.readFileSync(path.join(operatorDirPath(store), 'from-file.md'), 'utf8'),
+            '# from-file\n\n' + WRAPPER_BODY + '\n');
+        assert.match(res.stdout,
+            new RegExp('^added from-file to the operator tier \\(body ' + WRAPPER_BODY.length + ' chars\\)\n$'));
+
+        // The known-answer control in the other direction: the same body over
+        // --body across the same hop is cut at its first newline and written
+        // short with no error at all, so this harness would see corruption if
+        // the file channel had let any through. The reported body length is
+        // the only signal the cut leaves anywhere.
+        const cut = viaCmd('add-operator from-flag "an index description" --body "' + WRAPPER_BODY + '"');
+        assert.strictEqual(cut.status, 0, cut.stdout + cut.stderr);
+        assert.strictEqual(fs.readFileSync(path.join(operatorDirPath(store), 'from-flag.md'), 'utf8'),
+            '# from-flag\n\nFirst line.\n',
+            'cmd.exe truncates the command line at the newline, and the short body lands unremarked');
+        assert.match(cut.stdout, /^added from-flag to the operator tier \(body 11 chars\)\n$/);
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+test('--body-file carries a multi-line body through the sh wrapper, which carries --body intact too', {
+    skip: bashExe === null ? 'no bash on this machine' : false
+}, (t) => {
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        // LF only, matching the installed sh wrapper's line endings. The
+        // shebang is not what is under test here: the wrapper is handed to
+        // `sh` explicitly, so what is measured is the argument transport
+        // through that shell rather than how the file is dispatched.
+        const wrapper = path.join(store.proj, 'memq').replace(/\\/g, '/');
+        fs.writeFileSync(wrapper,
+            '#!/bin/sh\nexec "' + process.execPath.replace(/\\/g, '/') + '" "'
+            + MEMQ.replace(/\\/g, '/') + '" "$@"\n', 'utf8');
+        const bodyFile = path.join(store.proj, 'body.txt').replace(/\\/g, '/');
+        fs.writeFileSync(bodyFile, WRAPPER_BODY, 'utf8');
+        const viaSh = (payload) => spawnSync(bashExe, ['-c', 'sh "' + wrapper + '" ' + payload], {
+            cwd: store.proj,
+            encoding: 'utf8',
+            env: homeEnv(store)
+        });
+
+        const res = viaSh('add-operator from-file "an index description" --body-file "' + bodyFile + '"');
+        assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+        assert.strictEqual(fs.readFileSync(path.join(operatorDirPath(store), 'from-file.md'), 'utf8'),
+            '# from-file\n\n' + WRAPPER_BODY + '\n');
+
+        // The control that keeps the hint honest: this shell hands a
+        // multi-line argument to node byte-exact, so a caller sent here by a
+        // hint naming sh would be sent to the wrong place.
+        const flag = viaSh("add-operator from-flag 'an index description' --body '" + WRAPPER_BODY + "'");
+        assert.strictEqual(flag.status, 0, flag.stdout + flag.stderr);
+        assert.strictEqual(fs.readFileSync(path.join(operatorDirPath(store), 'from-flag.md'), 'utf8'),
+            '# from-flag\n\n' + WRAPPER_BODY + '\n',
+            'the sh wrapper is not a truncating hop');
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+// The two PowerShell engines a wrapper can run under: powershell.exe is
+// Windows PowerShell 5.1 and pwsh is PowerShell 7, separate quoting engines,
+// and the hint's claim about the PowerShell wrapper has to hold for both.
+// Each is probed by running it, because a name on PATH here can be an app
+// execution alias that resolves to no install at all. The probe runs from
+// inside the case rather than at load, so a run that never reaches this file's
+// PowerShell case pays nothing for it.
+function psEnginesPresent() {
+    if (process.platform !== 'win32') return [];
+    return ['powershell.exe', 'pwsh.exe'].filter((exe) => {
+        const res = spawnSync(exe, ['-NoProfile', '-Command', '$PSVersionTable.PSVersion.Major'],
+            { encoding: 'utf8' });
+        return res.status === 0 && /^\d+/.test(String(res.stdout).trim());
+    });
+}
+
+test('the PowerShell wrapper carries a multi-line body over either channel', {
+    skip: process.platform === 'win32' ? false : 'the memq.ps1 wrapper is a win32 shape'
+}, (t) => {
+    // The wrapper splats @args onto the interpreter, the installed memq.ps1's
+    // shape and the whole of why it carries an argument no rebuilt command
+    // line could.
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        const psEngines = psEnginesPresent();
+        if (psEngines.length === 0) return t.skip('no PowerShell engine on this machine');
+        const wrapper = path.join(store.proj, 'memq.ps1');
+        const q = (s) => "'" + String(s).replace(/'/g, "''") + "'";
+        fs.writeFileSync(wrapper, '& ' + q(process.execPath) + ' ' + q(MEMQ) + ' @args\r\n', 'utf8');
+        const bodyFile = path.join(store.proj, 'body.txt');
+        fs.writeFileSync(bodyFile, WRAPPER_BODY, 'utf8');
+        for (const exe of psEngines) {
+            const viaPwsh = (payload) => spawnSync(exe,
+                ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', '& ' + q(wrapper) + ' ' + payload], {
+                    cwd: store.proj,
+                    encoding: 'utf8',
+                    env: homeEnv(store)
+                });
+            const fromFile = 'from-file-' + exe.replace(/\W/g, '');
+            const res = viaPwsh('add-operator ' + fromFile + ' ' + q('an index description')
+                + ' --body-file ' + q(bodyFile));
+            assert.strictEqual(res.status, 0, exe + ': ' + res.stdout + res.stderr);
+            assert.strictEqual(fs.readFileSync(path.join(operatorDirPath(store), fromFile + '.md'), 'utf8'),
+                '# ' + fromFile + '\n\n' + WRAPPER_BODY + '\n');
+
+            const fromFlag = 'from-flag-' + exe.replace(/\W/g, '');
+            const flag = viaPwsh('add-operator ' + fromFlag + ' ' + q('an index description')
+                + ' --body ' + q(WRAPPER_BODY));
+            assert.strictEqual(flag.status, 0, exe + ': ' + flag.stdout + flag.stderr);
+            assert.strictEqual(fs.readFileSync(path.join(operatorDirPath(store), fromFlag + '.md'), 'utf8'),
+                '# ' + fromFlag + '\n\n' + WRAPPER_BODY + '\n',
+                exe + ' is not a truncating hop either');
+        }
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+test('--body-file is refused under the engine store signals, and read without them', (t) => {
+    // The signals say this process was pointed at a fleet store deliberately,
+    // which is the environment carrying a standing grant for a direct `node
+    // memq.js` invocation. That grant's bound is that the invocation reaches
+    // the store rather than the machine, so the one flag here that reads an
+    // arbitrary path is refused there. Nothing is lost: the granted shape
+    // crosses no wrapper, so it never meets the truncation the flag answers.
+    const store = makeStore();
+    const home = makeHomeStore();
+    try {
+        if (!homeRedirected(home)) return t.skip(HOME_REDIRECT_SKIP);
+        const bodyFile = path.join(store.proj, 'body.txt');
+        fs.writeFileSync(bodyFile, 'a body composed in an editor.\nAcross two lines.', 'utf8');
+        for (const args of [['add-operator', 'gated-fact', 'a description', '--body-file', bodyFile],
+            ['add-type', 'ptype', 'gated-fact', 'a description', '--body-file', bodyFile]]) {
+            const gated = run(store, args);
+            assert.strictEqual(gated.status, 1, args[0] + ' refuses the file channel under the signals');
+            assert.match(gated.stderr, /--body-file reads a path the caller names, which is refused/);
+            assert.match(gated.stderr, /KIT_MEMORY_ROOT_ALLOW_DATA=1/);
+        }
+        assert.ok(!fs.existsSync(path.join(operatorDirPath(store), 'gated-fact.md')),
+            'nothing was written to the operator tier');
+        assert.ok(!fs.existsSync(path.join(typeDirPath(store, 'ptype'), 'gated-fact.md')),
+            'nothing was written to the type tier either');
+
+        // --body is the channel that remains, and it writes normally there.
+        const flag = run(store, ['add-operator', 'gated-fact', 'a description', '--body', 'inline text']);
+        assert.strictEqual(flag.status, 0, flag.stderr);
+
+        // The same command with neither signal set reads the file.
+        const ungated = runHome(home, ['add-operator', 'gated-fact', 'a description',
+            '--body-file', bodyFile]);
+        assert.strictEqual(ungated.status, 0, ungated.stderr);
+        assert.strictEqual(fs.readFileSync(path.join(operatorDirPath(home), 'gated-fact.md'), 'utf8'),
+            '# gated-fact\n\na body composed in an editor.\nAcross two lines.\n');
+    } finally {
+        rmStore(store);
+        rmHomeStore(home);
+    }
+});
+
+test('--body and --body-file on one call is a refusal, not a merge', () => {
+    const store = makeStore();
+    try {
+        const bodyFile = path.join(store.proj, 'body.txt');
+        fs.writeFileSync(bodyFile, 'from the file', 'utf8');
+        const both = ['a description', '--body', 'inline text', '--body-file', bodyFile];
+        const op = run(store, ['add-operator', 'two-channels'].concat(both));
+        assert.strictEqual(op.status, 1, 'one body, given twice, is a refusal');
+        assert.match(op.stderr, /--body and --body-file are two ways to give one body/);
+        assert.ok(!fs.existsSync(path.join(operatorDirPath(store), 'two-channels.md')),
+            'nothing was written');
+        const ty = run(store, ['add-type', 'ptype', 'two-channels'].concat(both));
+        assert.strictEqual(ty.status, 1);
+        assert.match(ty.stderr, /--body and --body-file are two ways to give one body/);
+        assert.ok(!fs.existsSync(path.join(typeDirPath(store, 'ptype'), 'two-channels.md')),
+            'nothing was written');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('add-type writes a body from a file, and reports the stored length on the success line', (t) => {
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        const bodyFile = path.join(store.proj, 'body.txt');
+        fs.writeFileSync(bodyFile, WRAPPER_BODY, 'utf8');
+        const res = runHome(store, ['add-type', 'nextjs', 'testing-conventions',
+            'how tests run', '--body-file', bodyFile, '--tag', 'gotcha']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout, 'added testing-conventions to type nextjs (body '
+            + WRAPPER_BODY.length + ' chars)\n');
+        const dir = typeDirPath(store, 'nextjs');
+        assert.strictEqual(fs.readFileSync(path.join(dir, 'testing-conventions.md'), 'utf8'),
+            '---\ntags: gotcha\n---\n# testing-conventions\n\n' + WRAPPER_BODY + '\n');
+        assert.strictEqual(fs.readFileSync(path.join(dir, 'MEMORY.md'), 'utf8'),
+            '# Memory Index\n\n- [testing-conventions](testing-conventions.md) - how tests run\n');
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+test('the cap the write gate holds a body to is the one `get` prints it back through', (t) => {
+    // The reader caps the whole file, so the writer measures the whole
+    // record: heading, blank line, body, and closing newline. A record at the
+    // cap prints whole, and one character more is refused rather than written
+    // into a shared tier as a record that could never be read back complete.
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        const bodyFile = path.join(store.proj, 'body.txt');
+        const name = 'at-cap-fact';
+        const overhead = ('# ' + name + '\n\n' + '\n').length;
+        const capLine = (stderr) => stderr.split('\n').find((l) => l.startsWith('memq: the record is'));
+
+        fs.writeFileSync(bodyFile, 'x'.repeat(65536 - overhead + 1), 'utf8');
+        const over = runHome(store, ['add-operator', name, 'a description', '--body-file', bodyFile]);
+        assert.strictEqual(over.status, 1, 'shared-tier text over the cap is refused, not cut');
+        assert.ok(!fs.existsSync(path.join(operatorDirPath(store), name + '.md')), 'nothing was written');
+        assert.strictEqual(capLine(over.stderr),
+            'memq: the record is 65537 characters (its body is ' + (65536 - overhead + 1)
+            + '); the cap is 65536, the whole `get` prints, and shared-tier text over it is'
+            + ' refused rather than silently cut. Shorten it and rerun');
+
+        // The refusal is a ceiling and not a coincidence: the same record one
+        // character shorter is stored whole, the success line reports what
+        // landed, and `get` prints it back without a truncation note.
+        const body = 'x'.repeat(65536 - overhead);
+        fs.writeFileSync(bodyFile, body, 'utf8');
+        const atCap = runHome(store, ['add-operator', name, 'a description', '--body-file', bodyFile]);
+        assert.strictEqual(atCap.status, 0, atCap.stderr);
+        assert.strictEqual(atCap.stdout,
+            'added ' + name + ' to the operator tier (body ' + body.length + ' chars)\n');
+        const record = fs.readFileSync(path.join(operatorDirPath(store), name + '.md'), 'utf8');
+        assert.strictEqual(record, '# ' + name + '\n\n' + body + '\n');
+        assert.strictEqual(record.length, 65536, 'the record sits exactly on the cap');
+        const read = runHome(store, ['get', name]);
+        assert.strictEqual(read.status, 0, read.stderr);
+        assert.ok(!/body truncated at/.test(read.stdout + read.stderr),
+            'a record the write gate accepted prints back whole');
+        assert.ok(read.stdout.includes('x'.repeat(body.length)), 'the whole body came back');
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+test('an over-cap --body-file is refused in the same voice as an over-cap --body', (t) => {
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        const bodyFile = path.join(store.proj, 'body.txt');
+        const over = 'x'.repeat(65537);
+        fs.writeFileSync(bodyFile, over, 'utf8');
+        const capLine = (stderr) => stderr.split('\n').find((l) => l.startsWith('memq: the record is'));
+        const fromFile = runHome(store, ['add-operator', 'huge-fact', 'a description',
+            '--body-file', bodyFile]);
+        assert.strictEqual(fromFile.status, 1, 'shared-tier text over the cap is refused, not cut');
+        assert.ok(!fs.existsSync(path.join(operatorDirPath(store), 'huge-fact.md')), 'nothing was written');
+        if (process.platform === 'win32') {
+            // Windows caps a whole process command line at 32,767 characters,
+            // far under the body cap, so no --body value can reach the gate
+            // here at all to be compared against. The exact message is pinned
+            // instead, and the equality check runs wherever the OS can carry
+            // an over-cap argument.
+            assert.match(capLine(fromFile.stderr),
+                /^memq: the record is 65551 characters \(its body is 65537\); the cap is 65536/);
+        } else {
+            const fromFlag = runHome(store, ['add-operator', 'huge-fact', 'a description', '--body', over]);
+            assert.strictEqual(fromFlag.status, 1);
+            assert.strictEqual(capLine(fromFile.stderr), capLine(fromFlag.stderr),
+                'the two channels refuse over-cap text in one voice');
+        }
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+test('a file too large to hold a lawful body is refused on its size, before it is read', (t) => {
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        const bodyFile = path.join(store.proj, 'body.txt');
+        // One byte past four bytes per capped character, the widest a UTF-8
+        // body within the cap can encode to: past it, no reading is needed to
+        // know the body cannot fit.
+        const size = 65536 * 4 + 1;
+        fs.writeFileSync(bodyFile, 'y'.repeat(size), 'utf8');
+        const res = runHome(store, ['add-operator', 'huge-file', 'a description',
+            '--body-file', bodyFile]);
+        assert.strictEqual(res.status, 1);
+        assert.match(res.stderr, new RegExp('is ' + size + ' bytes, which no body within the 65536'
+            + '-character cap can encode to'));
+        assert.ok(!fs.existsSync(path.join(operatorDirPath(store), 'huge-file.md')), 'nothing was written');
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+test('a --body-file that is not a regular file is refused, and the refusal says what one is', (t) => {
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        const dirGiven = runHome(store, ['add-type', 'ptype', 'not-a-file', 'a description',
+            '--body-file', store.proj]);
+        assert.strictEqual(dirGiven.status, 1);
+        assert.match(dirGiven.stderr, /is not a regular file\. The body is read from a real file on disk/);
+        // The shell idioms this refuses are the ones a caller would reach for
+        // first, so the message names the remedy rather than only the rule.
+        assert.match(dirGiven.stderr, /process substitution or a standard-input path has to be written to a file first/);
+        assert.ok(!/\n\s+at /.test(dirGiven.stderr), 'a named refusal, not a stack trace:\n' + dirGiven.stderr);
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+test('a blank body is refused on either channel, and a repeated body flag is refused too', (t) => {
+    // A zero-byte file is what a heredoc or a redirect that wrote nothing
+    // leaves behind; whitespace-only is the same failure with a newline in
+    // it; and an unset shell variable expanding to nothing is how --body
+    // arrives blank. All three would write a heading over an empty line into
+    // a tier that has no repair path, so the gate is one rule over both
+    // channels rather than a property of the file one.
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        const bodyFile = path.join(store.proj, 'body.txt');
+        for (const content of ['', '   \n\t\n']) {
+            fs.writeFileSync(bodyFile, content, 'utf8');
+            const viaFile = runHome(store, ['add-operator', 'blank-body', 'a description',
+                '--body-file', bodyFile]);
+            assert.strictEqual(viaFile.status, 1, JSON.stringify(content) + ' is not a body');
+            assert.match(viaFile.stderr, /the body holds no text/);
+            const viaFlag = runHome(store, ['add-operator', 'blank-body', 'a description',
+                '--body', content]);
+            assert.strictEqual(viaFlag.status, 1, JSON.stringify(content) + ' is not a body over argv');
+            assert.match(viaFlag.stderr, /the body holds no text/);
+            assert.ok(!fs.existsSync(path.join(operatorDirPath(store), 'blank-body.md')),
+                'nothing was written');
+        }
+
+        // With no body flag at all the description is the body, so a blank
+        // description writes the same empty record and is refused the same
+        // way. A description of nothing but characters the index charset
+        // drops reduces to the same thing and lands here too.
+        for (const description of ['', '   ', '日本語']) {
+            const res = runHome(store, ['add-operator', 'blank-description', description]);
+            assert.strictEqual(res.status, 1, JSON.stringify(description) + ' leaves nothing to store');
+            assert.match(res.stderr, /the body holds no text/);
+            assert.ok(!fs.existsSync(path.join(operatorDirPath(store), 'blank-description.md')),
+                'nothing was written');
+        }
+        // The control: a description that survives the reduction is a body,
+        // and the record carries it.
+        const kept = runHome(store, ['add-type', 'ptype', 'kept-description', 'a real description']);
+        assert.strictEqual(kept.status, 0, kept.stderr);
+        assert.strictEqual(fs.readFileSync(path.join(typeDirPath(store, 'ptype'), 'kept-description.md'), 'utf8'),
+            '# kept-description\n\na real description\n');
+
+        // One body, given once. A repeat that silently kept the last value
+        // would drop a body without a word, two lines from the rule that
+        // refuses a body given over both channels at all.
+        fs.writeFileSync(bodyFile, 'a body with text in it', 'utf8');
+        const twiceFlag = runHome(store, ['add-operator', 'twice', 'a description',
+            '--body', 'first', '--body', 'second']);
+        assert.strictEqual(twiceFlag.status, 1);
+        assert.match(twiceFlag.stderr, /--body is given once/);
+        const twiceFile = runHome(store, ['add-type', 'ptype', 'twice', 'a description',
+            '--body-file', bodyFile, '--body-file', bodyFile]);
+        assert.strictEqual(twiceFile.status, 1);
+        assert.match(twiceFile.stderr, /--body-file is given once/);
+        assert.ok(!fs.existsSync(path.join(operatorDirPath(store), 'twice.md')), 'nothing was written');
+        assert.ok(!fs.existsSync(path.join(typeDirPath(store, 'ptype'), 'twice.md')), 'nothing was written');
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+test('a --body-file naming a UNC or device path is refused on the path text, unopened', {
+    skip: process.platform === 'win32' ? false : 'UNC and device roots are a win32 shape'
+}, (t) => {
+    // Reaching \\host\share is an outbound SMB connection that authenticates
+    // as the logged-in account, and \\.\pipe\name connects to a named pipe,
+    // so for both the open is itself the harm and no fd-side check can be in
+    // time. The refusal is decided on the path text alone, which is what the
+    // instant answer here shows: nothing waits on a host that does not exist.
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        for (const spelling of ['\\\\host-that-does-not-exist\\share\\body.txt',
+            '\\\\.\\pipe\\memq-body-probe']) {
+            const res = runHome(store, ['add-operator', 'unc-body', 'a description',
+                '--body-file', spelling]);
+            assert.strictEqual(res.status, 1, spelling + ' is refused');
+            assert.match(res.stderr, /names a UNC or device path, which memq does not open/);
+            assert.ok(!/\n\s+at /.test(res.stderr), 'a named refusal, not a stack trace:\n' + res.stderr);
+        }
+        assert.ok(!fs.existsSync(path.join(operatorDirPath(store), 'unc-body.md')), 'nothing was written');
+
+        // A share in the extended-length spelling is the same share, so it is
+        // refused with the rest rather than admitted by its prefix.
+        const uncExtended = runHome(store, ['add-operator', 'unc-body', 'a description',
+            '--body-file', '\\\\?\\UNC\\host-that-does-not-exist\\share\\body.txt']);
+        assert.strictEqual(uncExtended.status, 1);
+        assert.match(uncExtended.stderr, /names a UNC or device path, which memq does not open/);
+        assert.ok(!fs.existsSync(path.join(operatorDirPath(store), 'unc-body.md')), 'nothing was written');
+
+        // The controls in the other direction. An ordinary local path with
+        // the same content is read, so the refusal keys on the root and not
+        // on something incidental to the fixture, and a drive-letter path in
+        // the extended-length spelling is an ordinary local file too: it is
+        // the spelling a path long enough to need it arrives in, so refusing
+        // it would invite exactly the shape it then declined.
+        const bodyFile = path.join(store.proj, 'body.txt');
+        fs.writeFileSync(bodyFile, 'a body on a local path', 'utf8');
+        const local = runHome(store, ['add-operator', 'unc-body', 'a description',
+            '--body-file', bodyFile]);
+        assert.strictEqual(local.status, 0, local.stderr);
+        const extended = runHome(store, ['add-operator', 'extended-body', 'a description',
+            '--body-file', '\\\\?\\' + bodyFile]);
+        assert.strictEqual(extended.status, 0, extended.stderr);
+        assert.strictEqual(fs.readFileSync(path.join(operatorDirPath(store), 'extended-body.md'), 'utf8'),
+            '# extended-body\n\na body on a local path\n');
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+test('a body file authored by a Windows editor lands as text, or is refused by name', (t) => {
+    // The shapes an editor produces that argv never could. A UTF-8 byte order
+    // mark would sit in the record forever, right after its heading, where no
+    // reader strips it; UTF-16 (what Windows PowerShell 5.1's `>` and
+    // Out-File write by default) and an ANSI save with a smart quote in it
+    // are not UTF-8 at all, and an ordinary decode would substitute U+FFFD
+    // for each bad byte and report success; CRLF or a lone CR would put mixed
+    // line endings inside a record whose structural lines are written LF.
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        const bodyFile = path.join(store.proj, 'body.txt');
+        const dir = () => operatorDirPath(store);
+
+        fs.writeFileSync(bodyFile, Buffer.concat([Buffer.from([0xEF, 0xBB, 0xBF]),
+            Buffer.from('Body from a BOM-writing editor.', 'utf8')]));
+        const bom = runHome(store, ['add-operator', 'bom-body', 'a description', '--body-file', bodyFile]);
+        assert.strictEqual(bom.status, 0, bom.stderr);
+        assert.strictEqual(fs.readFileSync(path.join(dir(), 'bom-body.md'), 'utf8'),
+            '# bom-body\n\nBody from a BOM-writing editor.\n',
+            'the byte order mark is stripped, not stored');
+
+        fs.writeFileSync(bodyFile, 'Line one.\r\nLine two.\r\n\r\nLine four.', 'utf8');
+        const crlf = runHome(store, ['add-operator', 'crlf-body', 'a description', '--body-file', bodyFile]);
+        assert.strictEqual(crlf.status, 0, crlf.stderr);
+        assert.strictEqual(fs.readFileSync(path.join(dir(), 'crlf-body.md'), 'utf8'),
+            '# crlf-body\n\nLine one.\nLine two.\n\nLine four.\n',
+            'CRLF normalizes to the LF the record is written in');
+        assert.match(crlf.stdout, /\(body 31 chars\)\n$/,
+            'the reported length counts the normalized text, not the file\'s bytes');
+
+        fs.writeFileSync(bodyFile, 'Line one.\rLine two.\r\rLine four.', 'utf8');
+        const cr = runHome(store, ['add-operator', 'cr-body', 'a description', '--body-file', bodyFile]);
+        assert.strictEqual(cr.status, 0, cr.stderr);
+        assert.strictEqual(fs.readFileSync(path.join(dir(), 'cr-body.md'), 'utf8'),
+            '# cr-body\n\nLine one.\nLine two.\n\nLine four.\n',
+            'a lone CR normalizes too, so no record carries mixed endings');
+
+        fs.writeFileSync(bodyFile, Buffer.from('Body saved as UTF-16.', 'utf16le'));
+        const utf16 = runHome(store, ['add-operator', 'utf16-body', 'a description', '--body-file', bodyFile]);
+        // ASCII text saved as markless UTF-16 decodes as valid UTF-8, since a
+        // NUL is a codepoint UTF-8 admits, so the NUL scan is what catches it
+        // rather than the strict decode.
+        assert.strictEqual(utf16.status, 1, 'mojibake is refused, never written');
+        assert.match(utf16.stderr, /holds a NUL byte, so it is not text/);
+
+        // An ANSI save: CP1252 for a right single quote, one byte UTF-8 has
+        // no reading for. An ordinary decode would store it as U+FFFD in a
+        // record that is final at creation and report success.
+        fs.writeFileSync(bodyFile, Buffer.concat([Buffer.from('The operator', 'utf8'),
+            Buffer.from([0x92]), Buffer.from('s box.', 'utf8')]));
+        const cp1252 = runHome(store, ['add-operator', 'ansi-body', 'a description', '--body-file', bodyFile]);
+        assert.strictEqual(cp1252.status, 1, 'a substituted character is damage, not a body');
+        assert.match(cp1252.stderr, /is not UTF-8 text: it holds a byte sequence UTF-8 has no reading for/);
+        assert.ok(!fs.existsSync(path.join(dir(), 'ansi-body.md')), 'nothing was written');
+
+        // The control in the other direction: multi-byte UTF-8 is text, and
+        // it lands byte-identical rather than being caught by the guard.
+        // An editor ends a file with a newline and argv cannot carry one, so
+        // the same body composed either way has to land as the same record.
+        fs.writeFileSync(bodyFile, 'A body an editor saved.\n', 'utf8');
+        const trailing = runHome(store, ['add-operator', 'trailing-body', 'a description',
+            '--body-file', bodyFile]);
+        assert.strictEqual(trailing.status, 0, trailing.stderr);
+        assert.strictEqual(fs.readFileSync(path.join(dir(), 'trailing-body.md'), 'utf8'),
+            '# trailing-body\n\nA body an editor saved.\n',
+            'the trailing newline is dropped, so the record does not end on a blank line');
+        const inline = runHome(store, ['add-operator', 'inline-body', 'a description',
+            '--body', 'A body an editor saved.']);
+        assert.strictEqual(inline.status, 0, inline.stderr);
+        assert.strictEqual(fs.readFileSync(path.join(dir(), 'inline-body.md'), 'utf8')
+            .replace('inline-body', 'trailing-body'),
+            fs.readFileSync(path.join(dir(), 'trailing-body.md'), 'utf8'),
+            'the same body over either channel is the same record');
+
+        const multibyte = 'The operator’s box, and a café.';
+        fs.writeFileSync(bodyFile, multibyte, 'utf8');
+        const utf8 = runHome(store, ['add-operator', 'utf8-body', 'a description', '--body-file', bodyFile]);
+        assert.strictEqual(utf8.status, 0, utf8.stderr);
+        assert.strictEqual(fs.readFileSync(path.join(dir(), 'utf8-body.md'), 'utf8'),
+            '# utf8-body\n\n' + multibyte + '\n');
+
+        fs.writeFileSync(bodyFile, Buffer.concat([Buffer.from([0xFF, 0xFE]),
+            Buffer.from('Body saved as UTF-16.', 'utf16le')]));
+        const utf16bom = runHome(store, ['add-operator', 'utf16-body', 'a description', '--body-file', bodyFile]);
+        assert.strictEqual(utf16bom.status, 1);
+        assert.match(utf16bom.stderr, /is UTF-16: it opens with a UTF-16 byte order mark/);
+
+        fs.writeFileSync(bodyFile, Buffer.concat([Buffer.from([0xFE, 0xFF]),
+            Buffer.from('Body saved as UTF-16.', 'utf16le')]));
+        const utf16be = runHome(store, ['add-operator', 'utf16-body', 'a description', '--body-file', bodyFile]);
+        assert.strictEqual(utf16be.status, 1, 'either endianness is refused');
+        assert.match(utf16be.stderr, /is UTF-16: it opens with a UTF-16 byte order mark/);
+
+        assert.ok(!fs.existsSync(path.join(dir(), 'utf16-body.md')), 'nothing was written');
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+test('an unreadable --body-file is a named refusal, not a crash', (t) => {
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        const missing = path.join(store.proj, 'no-such-body.txt');
+        const res = runHome(store, ['add-operator', 'ghost-body', 'a description',
+            '--body-file', missing]);
+        assert.strictEqual(res.status, 1);
+        assert.match(res.stderr, /could not read --body-file/);
+        // The echoed path is sanitized to printable ASCII, so the assertion
+        // reads the file name rather than the whole path: a home directory
+        // with a non-ASCII segment would fail an exact comparison for a
+        // reason that has nothing to do with the behavior under test.
+        assert.ok(res.stderr.includes('no-such-body.txt'), res.stderr);
+        assert.ok(!/\n\s+at /.test(res.stderr), 'a named refusal, not a stack trace:\n' + res.stderr);
+        assert.ok(!fs.existsSync(path.join(operatorDirPath(store), 'ghost-body.md')), 'nothing was written');
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+test('a wrong positional count after a trailing free-text value names the cmd.exe truncation cause', () => {
+    // cmd.exe cuts a command line at its first newline and drops the rest, so
+    // a multi-line --body written before the positionals leaves the body's
+    // first line as the last token and the arguments after it gone. The
+    // newline never reaches argv, so that shape is the whole signature, and
+    // the hint states it as a condition rather than a verdict: the same argv
+    // is what a forgotten positional leaves behind after a single-line body.
+    const store = makeStore();
+    const home = makeHomeStore();
+    try {
+        const HINT = /this is what cmd\.exe truncation looks like/;
+        // Every assertion about the remedy reads the hint line alone. The
+        // usage banner printed underneath it names --body-file for the
+        // commands that take one, so an assertion against the whole of stderr
+        // would pass with the remedy clause deleted.
+        const hintLine = (stderr) => stderr.split('\n')[0];
+        const cut = run(store, ['add-operator', '--body', 'First line.']);
+        assert.strictEqual(cut.status, 1);
+        assert.match(cut.stderr, HINT);
+        assert.match(hintLine(cut.stderr), /If that value spanned more than one line/);
+        assert.match(hintLine(cut.stderr), /If it was a single line, this hint does not apply/);
+        assert.match(cut.stderr, /add-operator needs <name> "<description>"/);
+        // The remedy is what the caller can do where they are standing. Under
+        // the engine store signals --body-file is refused, so the hint names
+        // --body there; without them it names the file channel.
+        assert.match(hintLine(cut.stderr), /pass the body with --body, which crosses no wrapper/);
+        assert.ok(!/--body-file/.test(hintLine(cut.stderr)),
+            'no flag this environment refuses:\n' + hintLine(cut.stderr));
+        if (homeRedirected(home)) {
+            const unsignalled = runHome(home, ['add-operator', '--body', 'First line.']);
+            assert.strictEqual(unsignalled.status, 1);
+            assert.match(hintLine(unsignalled.stderr), HINT);
+            assert.match(hintLine(unsignalled.stderr), /--body-file "<path>"/);
+        }
+        // `log --detail` carries the same exposure and draws the same hint,
+        // with the remedy that command actually has. It takes no file
+        // channel, and no wrapper rescues it either: a detail that arrives
+        // whole is bounded by a reduction that removes newlines rather than
+        // replacing them, so one line is the contract.
+        const detail = run(store, ['log', 'a.key', '--detail', 'First line.']);
+        assert.strictEqual(detail.status, 1);
+        assert.match(detail.stderr, HINT);
+        assert.match(hintLine(detail.stderr), /keep the detail on one line/);
+        assert.ok(!/--body-file/.test(hintLine(detail.stderr)),
+            'the remedy names no flag log does not have:\n' + hintLine(detail.stderr));
+        assert.ok(!/PowerShell|sh wrapper|newline intact/.test(hintLine(detail.stderr)),
+            'and no shell that would not help either, since the reduction removes the newline'
+            + ' whatever carried it:\n' + hintLine(detail.stderr));
+
+        // A trailing --body-file value cannot be a truncation remnant: its
+        // value is a path, which holds no newline, and a cut earlier on the
+        // line would have taken the flag with it. So that shape draws no
+        // hint, which would otherwise send a caller already on the safe
+        // channel to switch to the safe channel.
+        const filePath = run(store, ['add-type', 'ptype', '--body-file', 'C:/tmp/body.txt']);
+        assert.strictEqual(filePath.status, 1);
+        assert.ok(!HINT.test(filePath.stderr), 'no hint on the file channel:\n' + filePath.stderr);
+
+        // A plain usage error draws no hint: a forgotten description with no
+        // free-text flag in sight is the caller's own omission.
+        const plain = run(store, ['add-operator', 'a-name']);
+        assert.strictEqual(plain.status, 1);
+        assert.ok(!HINT.test(plain.stderr), 'no hint without the signature:\n' + plain.stderr);
+        // Neither does an over-count, which truncation cannot produce: it
+        // only ever loses arguments.
+        const tooMany = run(store,
+            ['add-operator', 'a-name', 'a description', 'a stray third', '--body', 'inline']);
+        assert.strictEqual(tooMany.status, 1);
+        assert.ok(!HINT.test(tooMany.stderr), 'no hint on an over-count:\n' + tooMany.stderr);
+        // Nor a body value with arguments after it, which is the shape of a
+        // line that was never cut.
+        const bodyMidLine = run(store, ['add-operator', '--body', 'inline', 'a-name']);
+        assert.strictEqual(bodyMidLine.status, 1);
+        assert.ok(!HINT.test(bodyMidLine.stderr), 'no hint mid-line:\n' + bodyMidLine.stderr);
+    } finally {
+        rmStore(store);
+        rmHomeStore(home);
     }
 });
 

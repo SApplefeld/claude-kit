@@ -10,9 +10,10 @@
 //   memq recent [--since <n>d|<n>h]
 //   memq unstamped [--since <n>d|<n>h]
 //   memq touch <name> --applied [--type|--operator]
-//   memq add-type <type> <name> "<description>" [--body "..."] [--tag t]...
-//   memq add-operator <name> "<description>" [--body "..."] [--tag t]...
-//                    [--machine <name>]
+//   memq add-type <type> <name> "<description>" [--tag t]... [--update]
+//                 [--body "..."|--body-file "<path>"]
+//   memq add-operator <name> "<description>" [--tag t]... [--machine <name>]
+//                     [--update] [--body "..."|--body-file "<path>"]
 //   memq decay-scan
 //   memq decay-prune [--rollup] [--archive <name>]... [--archive-type <name>]...
 //                    [--archive-operator <name>]... [--confirm-shared]
@@ -232,6 +233,13 @@ const TYPE_CAP = 40;       // characters of a project-type name, at write and di
 const MACHINE_CAP = 40;
 const MAX_TAGS = 8;        // tags per entry, so a journal line stays bounded
 const BODY_CAP = 65536;    // characters of a memory body printed by `get`
+// The byte ceiling on a --body-file, the size gate that answers before the
+// file is read at all. UTF-8 spends at most four bytes on a character, so no
+// file larger than this can hold a body within BODY_CAP characters, and the
+// character count itself is measured after the decode against the same gate
+// --body takes.
+const BODY_FILE_READ_CAP = BODY_CAP * 4;
+const BODY_FILE_PATH_CAP = 2048;   // characters of the path --body-file may name
 const STORE_SEGMENT_CAP = 40;   // characters of a store path segment (a run id, a pinned project)
 const ARCHIVE_DIR = 'archive';            // the retired-memory subdirectory of every tier
 const PENDING_DIR = 'pending';            // the run-scoped tier's parent, under the project memory dir
@@ -1484,6 +1492,182 @@ function sharedFreeText(value, cap, label) {
     return stripped;
 }
 
+// The body text a --body-file holds, or null after the refusal that names why
+// it holds none. Every failure here is named on stderr and answers with exit
+// 1: the caller needs to know which path could not be read and what about it
+// was wrong, never a stack through this file.
+//
+// The path is judged as text before anything opens it, readGitPointer's rule
+// and for its reason: for a UNC or device path the touch is itself the harm.
+// Opening a path under \\host\share is an outbound SMB connection that
+// authenticates automatically as the logged-in account, and \\.\pipe\name
+// connects to a named pipe, so neither can be checked by opening it and
+// asking what it was. The refusal here is outright rather than the sibling's
+// comparison against the working directory's own root: a .git pointer is
+// ambient state that a checkout living on a share may legitimately name,
+// while this path is one the caller writes for a file they are composing, and
+// a body has no reason to live on a share when a local copy costs a copy. The
+// length cap is the sibling's guard too: a path the OS would answer for is
+// bounded, and an absurd one is a caller error better named than pursued.
+// Windows reserved device names need no rule of their own here: node opens
+// through the extended-length form, which does not map CON, NUL, or COM1 to a
+// device, so such a path answers ENOENT like any other name that is not there.
+//
+// The read then mirrors readGitPointer's fd discipline. The descriptor is
+// opened first and the fstat taken on it, so what is measured is the file
+// that was opened rather than a name that could be swapped between the check
+// and the read. A non-regular file is refused, which keeps a fifo out of a
+// read that would otherwise wait for a writer that never comes, and off win32
+// the open itself is non-blocking so the wait cannot even begin. The size
+// gate answers before a byte is read, so an arbitrary large file is never
+// materialized only to be refused afterwards by the character cap. The size
+// is measured again on the same descriptor once the read is done, and a file
+// that shrank or grew in between is refused rather than accepted: a file
+// still being written lands otherwise as a body cut at wherever the writer
+// had reached, which is the silent-shortening failure this whole channel
+// exists to remove. Both directions matter, because the buffer is sized from
+// the first measurement, so a file that grew reads exactly full and looks
+// complete.
+//
+// The encoding checks exist because this is the one input a caller composes
+// in an editor rather than at a prompt, and an editor's defaults produce
+// shapes argv never could. A UTF-8 byte order mark would sit inside the
+// record forever, right after its heading, where no reader strips it, so it
+// is stripped here. UTF-16, which Windows PowerShell 5.1's `>` and Out-File
+// write by default, is refused by its byte order mark, and by the NUL scan
+// when it carries none: UTF-8 admits a NUL codepoint, so ASCII text saved as
+// markless UTF-16 decodes without complaint and only its NUL bytes give it
+// away. Everything else that is not UTF-8, a CP1252 save with a smart quote
+// in it the common case, is refused by the strict decode: an ordinary decode
+// substitutes U+FFFD silently, which would write mojibake into a record that
+// is final at creation and report success. Line endings normalize to LF,
+// CRLF and lone CR both, because the record's own structural lines are
+// written LF and a record of mixed endings is one no diff of the synced
+// store reads cleanly, and the trailing newline an editor appends is dropped,
+// since argv cannot carry one and the record closes with its own.
+//
+// What comes back is text the argv channel could equally have carried, held
+// afterwards to the same blank and cap gates --body takes. That is the sense
+// in which the two channels cannot drift: not that they accept the same
+// bytes, since argv can carry neither a byte order mark nor an invalid
+// sequence, but that the file channel normalizes to what argv can express and
+// is then judged by the same rules.
+function readBodyFile(file) {
+    const named = '--body-file ' + sanitize(file, 260);
+    const refuse = (why) => {
+        process.stderr.write('memq: ' + named + ' ' + why + '\n');
+        process.exitCode = 1;
+        return null;
+    };
+    if (file.length > BODY_FILE_PATH_CAP) {
+        return refuse('names a path of ' + file.length + ' characters; the cap is '
+            + BODY_FILE_PATH_CAP);
+    }
+    const uncOrDevice = (p) => {
+        const root = path.parse(p).root;
+        // \\?\C:\ is the extended-length spelling of an ordinary drive-letter
+        // root, the one \\-rooted form that names a local file, and the cap
+        // above admits paths long enough to need it. \\?\UNC\ is a share in
+        // that same spelling and stays refused with the rest.
+        return root.startsWith('\\\\') && !/^\\\\\?\\[A-Za-z]:\\$/.test(root);
+    };
+    const unc = 'names a UNC or device path, which memq does not open: reaching one is an'
+        + ' outbound connection made as the logged-in account. Copy the file to a local path'
+        + ' and rerun';
+    if (uncOrDevice(path.resolve(file))) return refuse(unc);
+    // The spelling is only half the question, because the open follows links:
+    // a local-looking path that is a symlink or a directory junction onto a
+    // share reaches the same outbound connection the spelling check exists to
+    // prevent. So the link chain is resolved first and the same rule applied
+    // to what it lands on, and the resolved path is what gets opened, leaving
+    // no second resolution between the check and the read. A drive letter
+    // mapped to a share is the residual: Z:\ is indistinguishable from a
+    // local root at this layer.
+    let resolved;
+    try {
+        // The native resolver, because the JS one cannot read an
+        // extended-length path (it lstats the bare drive and fails), while
+        // this one answers it in the plain spelling.
+        resolved = fs.realpathSync.native(file);
+    } catch (err) {
+        process.stderr.write('memq: could not read ' + named + ': '
+            + sanitize(err && err.message ? err.message : String(err), 200) + '\n');
+        process.exitCode = 1;
+        return null;
+    }
+    if (uncOrDevice(resolved)) return refuse(unc);
+    const flags = process.platform === 'win32'
+        ? fs.constants.O_RDONLY
+        : fs.constants.O_RDONLY | (fs.constants.O_NONBLOCK || 0);
+    let fd;
+    try {
+        fd = fs.openSync(resolved, flags);
+    } catch (err) {
+        process.stderr.write('memq: could not read ' + named + ': '
+            + sanitize(err && err.message ? err.message : String(err), 200) + '\n');
+        process.exitCode = 1;
+        return null;
+    }
+    let raw;
+    try {
+        const st = fs.fstatSync(fd);
+        if (!st.isFile()) {
+            return refuse('is not a regular file. The body is read from a real file on disk,'
+                + ' never from a directory, a device, or a pipe, so a process substitution or a'
+                + ' standard-input path has to be written to a file first');
+        }
+        if (st.size > BODY_FILE_READ_CAP) {
+            return refuse('is ' + st.size + ' bytes, which no body within the ' + BODY_CAP
+                + '-character cap can encode to. Shorten it and rerun');
+        }
+        const buf = Buffer.alloc(st.size);
+        let read = 0;
+        while (read < buf.length) {
+            const n = fs.readSync(fd, buf, read, buf.length - read, read);
+            if (n === 0) break;
+            read += n;
+        }
+        const after = fs.fstatSync(fd);
+        if (read < st.size || after.size !== st.size) {
+            return refuse('changed size while it was being read (' + st.size + ' bytes, then '
+                + after.size + '), which is what a file still being written answers. Finish'
+                + ' writing it and rerun');
+        }
+        raw = buf;
+    } catch (err) {
+        process.stderr.write('memq: could not read ' + named + ': '
+            + sanitize(err && err.message ? err.message : String(err), 200) + '\n');
+        process.exitCode = 1;
+        return null;
+    } finally {
+        fs.closeSync(fd);
+    }
+    if (raw.length >= 2 && ((raw[0] === 0xFF && raw[1] === 0xFE)
+        || (raw[0] === 0xFE && raw[1] === 0xFF))) {
+        return refuse('is UTF-16: it opens with a UTF-16 byte order mark. Save it as UTF-8 and rerun');
+    }
+    if (raw.length >= 3 && raw[0] === 0xEF && raw[1] === 0xBB && raw[2] === 0xBF) {
+        raw = raw.subarray(3);
+    }
+    if (raw.includes(0x00)) {
+        return refuse('holds a NUL byte, so it is not text: UTF-16 without a byte order mark'
+            + ' reads this way, and a NUL is a codepoint UTF-8 admits, so the decode below'
+            + ' would accept it. Save it as UTF-8 and rerun');
+    }
+    let text;
+    try {
+        text = new TextDecoder('utf-8', { fatal: true }).decode(raw);
+    } catch {
+        return refuse('is not UTF-8 text: it holds a byte sequence UTF-8 has no reading for.'
+            + ' Save it as UTF-8 and rerun');
+    }
+    // The trailing newline an editor appends is dropped, because argv cannot
+    // carry one and the record is assembled with its own closing newline: a
+    // body composed the same way over either channel has to land as the same
+    // record, and keeping it would end the file on a blank line.
+    return text.replace(/\r\n?/g, '\n').replace(/\n$/, '');
+}
+
 // Coarse age for find lines: minutes under an hour, hours under two days,
 // days beyond. Coarse units keep repeated runs byte-identical except at a
 // unit boundary.
@@ -1750,10 +1934,10 @@ function usage(problem) {
         + '       memq recent [--since <n>d|<n>h]\n'
         + '       memq unstamped [--since <n>d|<n>h]\n'
         + '       memq touch <name> --applied [--type|--operator]\n'
-        + '       memq add-type <type> <name> "<description>" [--body "..."] [--tag t]...'
-        + ' [--update]\n'
-        + '       memq add-operator <name> "<description>" [--body "..."] [--tag t]...'
-        + ' [--machine <name>] [--update]\n'
+        + '       memq add-type <type> <name> "<description>" [--tag t]... [--update]\n'
+        + '                     [--body "..."|--body-file "<path>"]\n'
+        + '       memq add-operator <name> "<description>" [--tag t]... [--machine <name>]\n'
+        + '                         [--update] [--body "..."|--body-file "<path>"]\n'
         + '       memq decay-scan\n'
         + '       memq decay-prune [--rollup] [--archive <name>]... [--archive-type <name>]...\n'
         + '                        [--archive-operator <name>]... [--confirm-shared]\n'
@@ -1778,12 +1962,67 @@ function usage(problem) {
 // character loses nothing the store would have kept. The quote scan reads the
 // raw argv rather than the positionals, since a split can land the quote in a
 // token the parser read as a flag value.
-function usageCount(argv, positionals, problem) {
+//
+// A second cause gets the same treatment, from the other Windows hop. The
+// memq.cmd wrapper hands its command line to cmd.exe, which truncates the
+// line at its first newline and drops everything after it, so a multi-line
+// free-text value arrives as its first line and every argument written after
+// it is simply gone. The newline itself never reaches argv, which is why this
+// hint keys on the shape truncation leaves behind rather than on the
+// character: a free-text flag's value is the last token on the line and the
+// positional count came up short of what the command needs. Truncation can
+// only lose arguments, never add them, so an over-count is not this cause and
+// draws no hint. The flag set is the free-text one, --body and --detail: a
+// --body-file value is a path, which holds no newline, so no cut can leave
+// one trailing and a hint there would only tell a caller already on the safe
+// channel to switch to it.
+//
+// That signature is a hypothesis, not a verdict, and the wording says so. The
+// same shape is what a genuinely forgotten positional leaves behind when the
+// body was written last and held one line, and no reading of argv can tell
+// the two apart, because they are the same argv. So the hint states its
+// condition (a body that spanned more than one line) and hands the reader
+// back to the count error when the condition does not hold, which is also how
+// two hints firing at once stay readable as two candidates rather than two
+// contradictory verdicts.
+//
+// The mirror case, a body written last with the positionals already complete,
+// produces a correct count and no error at all: cmd.exe writes a silently
+// shortened body, which nothing here can detect and is the reason --body-file
+// exists. The sh wrapper and both PowerShell wrappers pass a multi-line
+// argument through byte-exact, so the hint names cmd.exe alone; naming the
+// others would send a caller to inspect a shell that is not the problem.
+function usageCount(argv, positionals, expected, problem) {
     if (argv.some((a) => a.includes('"'))) {
         process.stderr.write('memq: an argument contains a literal \'"\'; on Windows PowerShell'
             + ' an embedded double quote splits one argument into several before memq runs,'
             + ' which is the usual cause of a wrong argument count here. Reword without'
             + ' double quotes; stored text drops them anyway\n');
+    }
+    const textFlag = argv.length >= 2 ? argv[argv.length - 2] : undefined;
+    if ((textFlag === '--body' || textFlag === '--detail') && positionals.length < expected) {
+        // The remedy is per flag and per environment, because it has to name
+        // something the caller can actually do here. `log --detail` has no
+        // file channel, and no wrapper saves it either: a detail that reaches
+        // argv whole is bounded by sanitize, which removes the newlines
+        // rather than replacing them, so the lines land concatenated however
+        // they travelled. One line is the contract there. And under the
+        // engine store signals --body-file is refused, so a fleet worker sent
+        // to it would be sent to a flag its own environment declines; that
+        // path runs the script directly and never meets a wrapper, so --body
+        // is the answer there.
+        const remedy = textFlag !== '--body'
+            ? 'keep the detail on one line, which is what the journal stores either way'
+            : storeSignalsPresent()
+                ? 'pass the body with --body, which crosses no wrapper on this path'
+                : 'pass the body as a file instead, with --body-file "<path>", which no shell'
+                    + ' can mangle';
+        process.stderr.write('memq: the command line ends with a ' + textFlag + ' value and came up'
+            + ' short of the arguments this command needs. If that value spanned more than one'
+            + ' line, this is what cmd.exe truncation looks like: the memq.cmd wrapper\'s route'
+            + ' cuts a command line at its first newline and drops the rest, so ' + remedy
+            + '. If it was a single line, this hint does not apply and the argument named below'
+            + ' is the one to check\n');
     }
     const parsed = positionals.map((a, i) => ' [' + (i + 1) + '] ' + sanitize(a, 60)).join('');
     process.stderr.write('memq: parsed ' + positionals.length + ' positional argument(s)'
@@ -1818,7 +2057,7 @@ function cmdLog(argv) {
             positionals.push(a);
         }
     }
-    if (positionals.length !== 3) return usageCount(argv, positionals, 'log needs <key> pass|fail "<summary>"');
+    if (positionals.length !== 3) return usageCount(argv, positionals, 3, 'log needs <key> pass|fail "<summary>"');
     const key = positionals[0];
     const outcome = positionals[1];
     const summary = positionals[2];
@@ -5195,6 +5434,22 @@ function cmdDecayPrune(argv) {
 // file body; prose over its cap is refused at this write boundary rather
 // than cut (sharedFreeText owns the reasoning), and an unregistered tag
 // warns without blocking, exactly as in `log`.
+//
+// A body arrives over one of two channels, and never both: --body carries the
+// text itself, and --body-file names a file whose UTF-8 content is the body.
+// The file channel exists because the text channel crosses every shell
+// between the caller and this process, and one of those shells destroys a
+// multi-line value: the memq.cmd wrapper hands its command line to cmd.exe,
+// which truncates it at the first newline, so a body composed across lines
+// arrives as its first line and the rest of the command is gone (usageCount
+// names that signature when it can be seen). A path holds no newline, so the
+// file channel is the one shape no shell can mangle, and a body of any
+// composition should take it. readBodyFile normalizes a file's content to
+// text the argv channel could equally have carried, and both channels then
+// meet the identical cap gate, so neither can accept a body the other would
+// refuse. The one environment where the file channel is refused outright is
+// the engine's fleet store, whose reasoning sits with the check below.
+//
 // Replace the index line for one memory file with a line carrying the new
 // description, in place: the record keeps its position, because a repair is
 // not a re-insertion. A missing line (an index that drifted from the files
@@ -5235,6 +5490,7 @@ function cmdAddType(argv) {
     const positionals = [];
     const tags = [];
     let body;
+    let bodyFile;
     let update = false;
     for (let i = 0; i < argv.length; i++) {
         const a = argv[i];
@@ -5245,7 +5501,17 @@ function cmdAddType(argv) {
         } else if (a === '--body') {
             const v = argv[++i];
             if (v === undefined || v.startsWith('--')) return usage('--body needs a value');
+            // One body, given once. A repeated flag silently taking the last
+            // value would sit two lines from the rule that refuses a body
+            // given over both channels, and a body dropped without a word is
+            // the failure this command is built to refuse.
+            if (body !== undefined) return usage('--body is given once');
             body = v;
+        } else if (a === '--body-file') {
+            const v = argv[++i];
+            if (v === undefined || v.startsWith('--')) return usage('--body-file needs a value');
+            if (bodyFile !== undefined) return usage('--body-file is given once');
+            bodyFile = v;
         } else if (a === '--update') {
             update = true;
         } else if (a.startsWith('--')) {
@@ -5254,7 +5520,7 @@ function cmdAddType(argv) {
             positionals.push(a);
         }
     }
-    if (positionals.length !== 3) return usageCount(argv, positionals, 'add-type needs <type> <name> "<description>"');
+    if (positionals.length !== 3) return usageCount(argv, positionals, 3, 'add-type needs <type> <name> "<description>"');
     const type = positionals[0];
     const name = positionals[1];
     if (!isTypeName(type)) {
@@ -5272,6 +5538,9 @@ function cmdAddType(argv) {
             return usage('tag must be characters from [A-Za-z0-9_.-], at most ' + TAG_CAP);
         }
     }
+    if (body !== undefined && bodyFile !== undefined) {
+        return usage('--body and --body-file are two ways to give one body; pass one, not both');
+    }
     // --update repairs the one field that is otherwise final at creation.
     // It stays description-only by design: an update that also rewrote the
     // body or tags would be the overwrite path this command exists to
@@ -5280,8 +5549,29 @@ function cmdAddType(argv) {
     // is refused for the flag set it carries, not for the length of a field
     // it may never write: a cap error first would send the author to
     // shorten a body the command was going to refuse regardless.
-    if (update && (body !== undefined || tags.length > 0)) {
-        return usage('--update replaces the index description only; --body and --tag are set at creation');
+    if (update && (body !== undefined || bodyFile !== undefined || tags.length > 0)) {
+        return usage('--update replaces the index description only;'
+            + ' --body, --body-file, and --tag are set at creation');
+    }
+    // The file channel is refused under the engine's store signals, the pair
+    // that says this process was pointed at a fleet store deliberately. That
+    // environment carries a standing grant for `node <abspath>/memq.js ...`
+    // (hooks/memq-grant.js), whose accepted risk is that the arguments after
+    // the script path are memq's argv and memq's own validation is the
+    // control over them; the bound that rests on is that a granted invocation
+    // reaches the redirected store and not the machine. --body-file reads a
+    // path of the caller's choosing, which is the one thing here that would
+    // reach outside it. Nothing is lost by refusing: that grant's shape runs
+    // the script directly and crosses no wrapper, so a fleet worker never
+    // meets the cmd.exe truncation the flag exists to route around, and
+    // --body carries a body of any composition on that path. It answers after
+    // the flag-set checks above, so a command doomed by the flags it carries
+    // hears that in every environment, and before the read, so a refused
+    // command touches no filesystem.
+    if (bodyFile !== undefined && storeSignalsPresent()) {
+        return usage('--body-file reads a path the caller names, which is refused under the'
+            + ' engine store signals (KIT_MEMORY_ROOT with KIT_MEMORY_ROOT_ALLOW_DATA=1). This'
+            + ' path crosses no shell wrapper, so --body carries a body of any shape here');
     }
     // The index is a line-oriented shared record, so the description's
     // charset is closed here at the write boundary, not only its length:
@@ -5296,9 +5586,13 @@ function cmdAddType(argv) {
     // for the same reason: nothing shared-tier is ever silently shortened.
     const description = sharedFreeText(positionals[2], SUMMARY_CAP, 'description');
     if (description === null) return;
-    if (body !== undefined && body.length > BODY_CAP) {
-        return usage('body is ' + body.length + ' characters; the cap is ' + BODY_CAP
-            + ', and shared-tier text over it is refused rather than silently cut. Shorten it and rerun');
+    // The file channel resolves here, after every check that reads the
+    // arguments alone and before the cap gate the flag channel takes, so a
+    // command doomed by its arguments never touches the filesystem and a body
+    // that arrived by file is held to exactly what --body is held to.
+    if (bodyFile !== undefined) {
+        body = readBodyFile(bodyFile);
+        if (body === null) return;
     }
 
     // The type tier is not the pending tier and this write is not routed
@@ -5327,7 +5621,34 @@ function cmdAddType(argv) {
     for (const line of provenanceLines()) front.push(line);
     let content = '';
     if (front.length > 0) content += '---\n' + front.join('\n') + '\n---\n';
-    content += '# ' + name + '\n\n' + (body === undefined ? description : body) + '\n';
+    const stored = body === undefined ? description : body;
+    // A record whose body holds no text is refused, and the check reads the
+    // text actually about to be written rather than the flag that supplied
+    // it: with neither --body nor --body-file, the description is the body,
+    // and a description can arrive blank on its own (an empty string, or
+    // prose the charset reduction leaves nothing of). Every route lands the
+    // same way, a heading over a blank line, which is a fact its author
+    // cannot see is missing and cannot repair afterwards. The shapes that
+    // produce one are ordinary: a shell variable that expanded to nothing, a
+    // heredoc or a redirect that wrote nothing.
+    if (!update && stored.trim() === '') {
+        return usage('the body holds no text, so there is nothing to record; a shared-tier body'
+            + ' is never written blank (with neither --body nor --body-file, the description is'
+            + ' the body)');
+    }
+    content += '# ' + name + '\n\n' + stored + '\n';
+    // The cap measures the record, not the body alone, because the record is
+    // what the reader measures: `get` reads the whole file and caps the whole
+    // file, so a body that fits with its frontmatter and heading pushed past
+    // the cap would be a shared-tier record lawfully written and never
+    // printable whole afterwards. Judging the same number on the way in is
+    // what keeps every record that exists readable end to end. Over-cap text
+    // is refused rather than cut, sharedFreeText's rule, on both channels.
+    if (content.length > BODY_CAP) {
+        return usage('the record is ' + content.length + ' characters (its body is '
+            + stored.length + '); the cap is ' + BODY_CAP + ', the whole `get` prints, and'
+            + ' shared-tier text over it is refused rather than silently cut. Shorten it and rerun');
+    }
 
     const lock = acquireLock(path.join(dir, STORE_LOCK_FILE));
     if (!lock.ok) {
@@ -5403,8 +5724,16 @@ function cmdAddType(argv) {
         lock.release();
     }
     warnUnregisteredTags(tags, 'recorded');
+    // The stored body's length rides on the success line because the one
+    // corruption this command cannot detect is a body that arrived short: a
+    // --body written last and cut by cmd.exe leaves the positional count
+    // correct and the write lawful, so nothing in argv says anything is
+    // wrong. A count the author can compare against what they composed is the
+    // whole signal available, and it costs one number on a line they already
+    // read.
     process.stdout.write('added ' + sanitize(name, NAME_CAP)
-        + ' to type ' + sanitize(type, TYPE_CAP) + '\n');
+        + ' to type ' + sanitize(type, TYPE_CAP)
+        + ' (body ' + stored.length + ' chars)\n');
 }
 
 // memq add-operator: the operator tier's authoring flow, add-type's shape
@@ -5438,6 +5767,7 @@ function cmdAddOperator(argv) {
     const positionals = [];
     const tags = [];
     let body;
+    let bodyFile;
     let machine;
     let update = false;
     for (let i = 0; i < argv.length; i++) {
@@ -5449,7 +5779,15 @@ function cmdAddOperator(argv) {
         } else if (a === '--body') {
             const v = argv[++i];
             if (v === undefined || v.startsWith('--')) return usage('--body needs a value');
+            // One body, given once, add-type's rule: a repeat that silently
+            // kept the last value would drop a body without a word.
+            if (body !== undefined) return usage('--body is given once');
             body = v;
+        } else if (a === '--body-file') {
+            const v = argv[++i];
+            if (v === undefined || v.startsWith('--')) return usage('--body-file needs a value');
+            if (bodyFile !== undefined) return usage('--body-file is given once');
+            bodyFile = v;
         } else if (a === '--machine') {
             const v = argv[++i];
             if (v === undefined || v.startsWith('--')) return usage('--machine needs a value');
@@ -5462,7 +5800,7 @@ function cmdAddOperator(argv) {
             positionals.push(a);
         }
     }
-    if (positionals.length !== 2) return usageCount(argv, positionals, 'add-operator needs <name> "<description>"');
+    if (positionals.length !== 2) return usageCount(argv, positionals, 2, 'add-operator needs <name> "<description>"');
     const name = positionals[0];
     const file = name + '.md';
     if (!isMemoryFilename(file)) {
@@ -5489,13 +5827,27 @@ function cmdAddOperator(argv) {
     if (machine !== undefined && (!/^[\w.-]+$/.test(machine) || machine.length > MACHINE_CAP)) {
         return usage('machine must be characters from [A-Za-z0-9_.-], at most ' + MACHINE_CAP);
     }
+    if (body !== undefined && bodyFile !== undefined) {
+        return usage('--body and --body-file are two ways to give one body; pass one, not both');
+    }
     // --update repairs the one field that is otherwise final at creation.
     // Description-only by design, add-type's rule, and checked before the
     // cap gates for add-type's reason: a refused command is refused for the
     // flag set it carries, not for the length of a field it may never write.
-    if (update && (body !== undefined || tags.length > 0 || machine !== undefined)) {
+    if (update && (body !== undefined || bodyFile !== undefined
+        || tags.length > 0 || machine !== undefined)) {
         return usage('--update replaces the index description only;'
-            + ' --body, --tag, and --machine are set at creation');
+            + ' --body, --body-file, --tag, and --machine are set at creation');
+    }
+    // The file channel is refused under the engine's store signals for
+    // add-type's reason: that environment's standing grant is bounded by a
+    // granted invocation reaching the redirected store rather than the
+    // machine, and it runs the script directly, so a fleet worker has no
+    // truncating wrapper to route around in the first place.
+    if (bodyFile !== undefined && storeSignalsPresent()) {
+        return usage('--body-file reads a path the caller names, which is refused under the'
+            + ' engine store signals (KIT_MEMORY_ROOT with KIT_MEMORY_ROOT_ALLOW_DATA=1). This'
+            + ' path crosses no shell wrapper, so --body carries a body of any shape here');
     }
     // The index is a line-oriented shared record, so the description's
     // charset is closed here at the write boundary, not only its length: the
@@ -5508,9 +5860,13 @@ function cmdAddOperator(argv) {
     // nothing shared-tier is ever silently shortened.
     const description = sharedFreeText(positionals[1], SUMMARY_CAP, 'description');
     if (description === null) return;
-    if (body !== undefined && body.length > BODY_CAP) {
-        return usage('body is ' + body.length + ' characters; the cap is ' + BODY_CAP
-            + ', and shared-tier text over it is refused rather than silently cut. Shorten it and rerun');
+    // The file channel resolves where add-type resolves it, for add-type's
+    // reasons: after the argument-only checks, so a doomed command never
+    // touches the filesystem, and before the cap gate, so a body that arrived
+    // by file is held to exactly what --body is held to.
+    if (bodyFile !== undefined) {
+        body = readBodyFile(bodyFile);
+        if (body === null) return;
     }
 
     // A run's write lands in the shared tier like any other, carrying the
@@ -5541,7 +5897,34 @@ function cmdAddOperator(argv) {
     for (const line of provenanceLines()) front.push(line);
     let content = '';
     if (front.length > 0) content += '---\n' + front.join('\n') + '\n---\n';
-    content += '# ' + name + '\n\n' + (body === undefined ? description : body) + '\n';
+    const stored = body === undefined ? description : body;
+    // A record whose body holds no text is refused, and the check reads the
+    // text actually about to be written rather than the flag that supplied
+    // it: with neither --body nor --body-file, the description is the body,
+    // and a description can arrive blank on its own (an empty string, or
+    // prose the charset reduction leaves nothing of). Every route lands the
+    // same way, a heading over a blank line, which is a fact its author
+    // cannot see is missing and cannot repair afterwards. The shapes that
+    // produce one are ordinary: a shell variable that expanded to nothing, a
+    // heredoc or a redirect that wrote nothing.
+    if (!update && stored.trim() === '') {
+        return usage('the body holds no text, so there is nothing to record; a shared-tier body'
+            + ' is never written blank (with neither --body nor --body-file, the description is'
+            + ' the body)');
+    }
+    content += '# ' + name + '\n\n' + stored + '\n';
+    // The cap measures the record, not the body alone, because the record is
+    // what the reader measures: `get` reads the whole file and caps the whole
+    // file, so a body that fits with its frontmatter and heading pushed past
+    // the cap would be a shared-tier record lawfully written and never
+    // printable whole afterwards. Judging the same number on the way in is
+    // what keeps every record that exists readable end to end. Over-cap text
+    // is refused rather than cut, sharedFreeText's rule, on both channels.
+    if (content.length > BODY_CAP) {
+        return usage('the record is ' + content.length + ' characters (its body is '
+            + stored.length + '); the cap is ' + BODY_CAP + ', the whole `get` prints, and'
+            + ' shared-tier text over it is refused rather than silently cut. Shorten it and rerun');
+    }
 
     const lock = acquireLock(path.join(dir, STORE_LOCK_FILE));
     if (!lock.ok) {
@@ -5617,7 +6000,11 @@ function cmdAddOperator(argv) {
         lock.release();
     }
     warnUnregisteredTags(tags, 'recorded');
-    process.stdout.write('added ' + sanitize(name, NAME_CAP) + ' to the operator tier\n');
+    // The stored body's length rides on the success line for add-type's
+    // reason: a body cut in the shell arrives here indistinguishable from one
+    // composed short, so the count is the author's only check.
+    process.stdout.write('added ' + sanitize(name, NAME_CAP) + ' to the operator tier'
+        + ' (body ' + stored.length + ' chars)\n');
 }
 
 // memq decay-done: record that a decay pass completed, by touching the decay
