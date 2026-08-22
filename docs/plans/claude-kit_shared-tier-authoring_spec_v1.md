@@ -128,16 +128,41 @@ fires on the rooted signature and stays silent on an ordinary usage error.
 
 Model: opus
 
-Files in scope: `plugins/claude-kit/scripts/memq.js`, `test/memq.test.js`.
+Files in scope: `plugins/claude-kit/scripts/memq.js`, `test/memq.test.js`,
+`docs/security-model.md` (the shared tiers stop being write-once, which
+makes three of that document's stated invariants false),
+`docs/architecture.md` (its lock-free-appenders paragraph calls `--update` a
+description repair and says every locked rewrite leaves a backup; the widened
+repair and the delete verbs make both halves false),
+`plugins/claude-kit/skills/memory-system/SKILL.md` (four sentences state the
+shared tiers cannot be repaired or removed, which a security review rated
+Major once the code shipped the verbs; doctrine bars parking a security Major
+into a later section, so the skill's destructive-verb surface lands here and
+section 3 keeps the section-1 drift and the close-out).
 
 Implement body repair and gated delete per the Design section, under the
 existing lock, index kept consistent in the same operation. Follow the
 existing verb grammar and consent flags; do not invent a new consent style.
 
+Delete reaches the archive as well as the live record, which the Design
+section left implicit and round 2 of review made explicit. A name's live
+record and an archived record of the same name coexist legally, because the
+create path's duplicate check reads the live file only, so a delete that
+stopped at the live copy would leave `get` serving the archived shadow and
+falsify this section's own "a subsequent `get` reports absent". Under
+`--confirm-shared` a delete therefore removes the name from the tier
+entirely, archive copy and archive index line included, and an archive-only
+name is deletable rather than refused. `decay-prune` still owns archival;
+what changes is that the archive stops being a place a mistake cannot be
+reached, which is the case the Goal names.
+
 Tests, red first: repair replaces a body and the index survives; delete
 removes record and index line and a subsequent `get` reports absent; both
 refuse without their consent gate; neither touches the other tier's records;
-a delete of a nonexistent record is a named refusal, not a crash.
+a delete of a nonexistent record is a named refusal, not a crash; a
+live-plus-archived pair leaves neither; an archive-only name deletes under
+consent and is a named refusal without it, naming `--confirm-shared` rather
+than `decay-prune`.
 
 ### 3. The skill and the pass close-out
 
@@ -147,19 +172,39 @@ Locus: inline
 Files in scope:
 `plugins/claude-kit/skills/memory-system/SKILL.md`, `docs/`.
 
-Two corrections section 1 leaves for this one, both drift against the
-shipped CLI rather than new design: the `add-type` and `add-operator` rows
-in the memq reference table name neither `--body-file` nor the success
-line's stored-body count, and they state the 65536 cap as a bound on
-`--body` when the gate now measures the whole record, heading and
-frontmatter included, so a body at exactly the cap is refused. Section 1
-added the no-secrets rule in its file-channel form; the rest of the
-`--body-file` surface is this section's.
+Sections 1 and 2 between them left this section less than it was written
+for, and the reason is worth stating rather than quietly shrinking the
+brief. Section 1's drift items were the `add-type` and `add-operator` rows
+naming neither `--body-file` nor the stored-body count and stating the 65536
+cap as a bound on `--body` rather than on the whole record. Those live in the
+same two table rows that section 2 had to rewrite for its security Major, and
+splitting one table row across two sections would have shipped a row that was
+half true, so section 2 rewrote them whole.
 
-Write the skill additions per the Design section, following the
-writing-skills discipline (baseline-test any behavior-shaping wording against
-the collision gotcha in project memory: brief reviewers to read the whole
-file, not the diff). Curate docs per curating-docs at close-out.
+The skill's destructive-verb surface is no longer this section's. Four
+sentences stating that the shared tiers cannot be repaired or removed became
+false the moment section 2's code landed, a security review rated that Major,
+and doctrine bars parking a security Major into a later section, so section 2
+carries all of it: the `delete-type` and `delete-operator` rows, the widened
+`--update` with its `--confirm-shared` gate and its continued refusal of
+`--tag` and `--machine`, the delete-versus-archive distinction, the refusal of
+all three destructive verbs under the engine store signals, and the
+composition bar the Design section asks for, which is now literally true of
+the code. What is left here is the section-1 drift above, plus reading the
+whole skill once against the shipped CLI so the two passes did not leave a
+seam.
+
+What is genuinely left is a whole-file pass, and it is the part neither
+earlier section could do: two sections wrote into one skill under pressure to
+close a security finding, each seeing its own passages rather than the
+document. Read `memory-system/SKILL.md` end to end against the shipped CLI
+and fix what the two passes left: a claim in one section contradicted by a
+table row in another, a verb documented twice in different words, a pointer
+to a heading that moved. Follow the writing-skills discipline, and
+baseline-test any behavior-shaping wording against the collision gotcha in
+project memory: brief the reviewer to read the whole file, never the diff,
+because a diff review is exactly the lens that cannot see a seam between two
+passes. Then curate docs per curating-docs at close-out.
 
 ## Out of Scope
 
@@ -168,6 +213,21 @@ file, not the diff). Curate docs per curating-docs at close-out.
 - Cross-machine conflict protocols beyond git's ordinary merge behavior.
 - The `--update` description channel's own shell hazards, beyond what
   `--body-file` incidentally covers.
+
+## Standing Brief Amendments
+
+Added mid-run, and so approval drift by construction; recorded as such in the
+Chapter of the section whose review earned each entry. Every later dispatch
+brief carries these verbatim.
+
+- **Check every operator-facing message against every path that can reach it,
+  the failure paths included.** Section 2's two review rounds produced five
+  findings of this one class: a message naming a `.bak` at a throw point where
+  none was written or where the command had just removed it, a filename bound
+  at the wrong cap so a maximum-length name printed a path that does not
+  exist, and a consent refusal asserting a record and a body that may not
+  exist. Two instances would have been coincidence; five is the workflow
+  generating the defect, so the check is standing rather than three fixes.
 
 ## Chapters
 
@@ -230,6 +290,74 @@ releases `memq.js`; its repair verb is also the tool for correcting the
 stale operator memory `pwsh-absent-on-scott-claude`, which this run found
 contradicted by evidence (pwsh 7.6.5 is installed and runs). Section 3:
 inline in the main thread, since it writes under `docs/`.
+
+### Interim board 2 - 2026-08-22
+
+Written on the closure-drought trigger: three review-round adjudications on
+section 2 with no section closing.
+
+**In-flight sections.** Section 2 only. It is in its fourth implementation
+round after three full review rounds. Section 3 is unstarted and runs after
+it; both touch `memory-system/SKILL.md`, so nothing runs concurrently.
+
+**Live dispatches.** One: `implementer-opus`, the same agent resumed
+throughout so it keeps its context. Round 1 built repair and delete. Round 2
+was asked for the two Criticals plus thirteen minors. Round 3 was asked for
+three rulings (delete reaching the archived shadow, the post-commit unwind,
+the tail copy) plus thirteen minors. Round 4, dispatched now, was asked for
+three rulings (the landed-repair message, reverting two widenings, one false
+comment) plus fourteen minors, one of which is record-only.
+
+**Gate baseline.** 1129 pass / 0 fail / 0 skipped, exit 0, confirmed by the
+orchestrator running `node --test test/*.test.js` itself rather than from the
+implementer's report. The progression across this effort is 1084 (pre-effort)
+to 1099 (section 1 shipped) to 1108 to 1118 to 1129, with 0 fail at every
+point. Wall clock is roughly 200 seconds.
+
+**Rulings adopted since Chapter 1.**
+
+- Delete reaches the archived shadow. A name's live record and an archived
+  record of the same name coexist legally, because the create path's
+  duplicate check reads the live file only, so a delete stopping at the live
+  copy would leave `get` serving the archived one and falsify this section's
+  own acceptance criterion. Under `--confirm-shared` a delete now removes the
+  name from the tier entirely, and an archive-only name is a target rather
+  than a refusal.
+- The tail copy in `rewriteWithBackup` belongs to files with lawful lock-free
+  appenders and to nothing a sync pull replaces whole, so it is off for the
+  three shared-tier index writes and stays on for the journal and the usage
+  sidecars. Round 3 bounded this further: it stays on for `archiveStep` and
+  `carryArchiveIndex`, which also run for the project tier, whose `MEMORY.md`
+  does have a lawful lock-free writer in the Write tool.
+- The skill's destructive-verb surface moved into this section rather than
+  section 3, because a security review rated the four false sentences Major
+  and doctrine bars parking a security Major into a later section. Section
+  1's own drift items rode along, since they live in the same two table rows.
+- The pre-consent no-live-record check runs only without `--confirm-shared`,
+  so the locked check stays the only one under consent and its sweep stays
+  reachable. Accepted cost: a confirmed typo pays the projects-root scan.
+- An empty description is refused on the create path when a body flag is
+  present, which is a contract change this section was not asked for, taken
+  deliberately so the two channels cannot drift.
+
+**Standing Brief Amendment earned here.** Message-and-comment accuracy
+against every path that can reach them. Round 2 produced five findings of
+that class and round 3 produced six more, several created by round 2's own
+fixes. The amendment is recorded in its own section above.
+
+**Next action per section.** Section 2: await round 4, re-run the gate,
+decide whether a fourth review round is warranted, correct the known-false
+operator memory `pwsh-absent-on-scott-claude` as the section's dogfood test
+(deferred until the delete verb has been reviewed, since dogfooding runs it
+against the real remote-synced store), then close with Chapter 2 and the
+Commit-and-Push commit. Section 3: a whole-file consistency read of
+`memory-system/SKILL.md`, inline in the main thread, then curating-docs.
+
+**Not yet reviewed.** `docs/architecture.md` and
+`plugins/claude-kit/skills/memory-system/SKILL.md` were written by the
+orchestrator concurrently with round 3 and were not in that round's
+changed-file list, so no reviewer has read them. Section 3's whole-file pass
+covers the skill; the finishing docs pass covers architecture.md.
 
 ### Chapter 1 - 2026-08-21
 Completed: 1. `--body-file` and the newline hint
