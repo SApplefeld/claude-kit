@@ -317,6 +317,28 @@ brief carries these verbatim.
   narrower than the state it names. This one asks whether the answer is still
   true by the time something acts on it.
 
+- **Adding a member to a set makes every sentence that counts, enumerates, or
+  bounds that set part of the change, and replacing a drifting tally with an
+  absolute is not a fix.** Five separate Majors across three review rounds were
+  one shape: a member was added to a set some prose describes, and the sentence
+  naming the set was updated while a sentence counting it two lines away was
+  not. The delete verbs were appended to a clause that still opened "two locked
+  rewrite paths" and then enumerated three; a canary probe pair grew to five
+  while a spawn total stated as a derivation stayed at its old figure; a
+  paragraph naming the project index as a lock-free appender was added directly
+  below a colon-introduced list of the appenders that omitted it. The tell is
+  structural rather than a matter of care: a count and the list it counts are
+  two statements of one fact, so they can disagree, and prose puts them far
+  enough apart that editing one never surfaces the other. The second half is
+  earned separately and cost a Major of its own. Rewriting one such tally as
+  "every helper on the path throws when a caller states nothing" removed the
+  number and introduced a falsehood, because three helpers on that path state
+  the answer as a constant instead. A tally that drifts and an absolute that
+  overreaches fail the same way, by asserting more than the code carries. So
+  the repair for a stale count is neither a fresh count nor a universal: it is
+  the rule stated at the scope that actually carries it, with the case that
+  does not carry it named rather than generalized over.
+
 ## Chapters
 
 ### Interim board 1 - 2026-08-21
@@ -724,6 +746,81 @@ re-review, correct the known-false operator memory `pwsh-absent-on-scott-claude`
 as the section's dogfood test (held until the delete verb cleared review, since
 dogfooding runs it against the real remote-synced store), then close with
 Chapter 2 and the Commit-and-Push commit.
+
+### Interim board 7 - 2026-08-22
+
+Written under the closure-drought rule, well past its floor: review round 12, the
+targeted re-review, and the Critical-verification round were all adjudicated with
+no section closing.
+
+**In flight.** Section 2 only, now in its eighteenth implementation round after
+fourteen review rounds. Section 1 is complete; section 3 has not started.
+
+**Live dispatches.** One `implementer-opus` (`a8c0c6bcd7c886a1b`), resumed by
+message each round so it keeps its file-level context. Round 18 in progress,
+briefed as six sweeps rather than as point fixes, for the reason recorded under
+rulings below.
+
+**Gate.** Every figure the orchestrator's own run: 1084 (pre-effort) -> 1099
+(section 1, `c56a8b5`) -> ... -> 1196 -> **1202** (round 16) -> **1206** (round
+17), with 0 fail and 0 skipped throughout, exit 0. `./build.ps1` and
+`node --test test/hook-canary.test.js` (34 -> 37 -> 39 pass) re-run after every
+hook edit against the rebuilt zip.
+
+**Rulings adopted since Interim board 6.** Round 16 landed R52 through R54 and
+fifteen minors. The targeted re-review that was to close the section instead
+returned a **Critical**, rated so by the blind lens and independently found by the
+adversarial and security lenses: `archiveStep` re-asserted under the lock that a
+record still existed but never re-asked whether its archive slot was still free,
+so `fs.renameSync`, which replaces its destination on both platforms, could
+silently destroy a retired body and exit 0. That is Standing Brief Amendment 6's
+own shape, in the round that wrote Amendment 6, on the sibling half of the check
+R52 had just fixed. The decision that round 16 would be the section's last
+implementation round was overridden by it: doctrine bars parking a Critical, so
+R55 through R58 ran as round 17 and a three-lens verification confirmed the
+Critical closed on every path reaching the rename.
+
+That verification then found a **security Major**, again from all three lenses:
+round 17's exclusive-create hardening reached one of four structurally identical
+index-create writes, leaving three able to follow a planted dangling link and
+write a whole tier index, which is content emitted into every session's model
+context, outside the store while reporting success.
+
+**Why round 18 is briefed as sweeps.** Three consecutive rounds share one shape:
+R52 fixed one half of a two-part lock verdict and left the other half, which
+became R55; R55's round hardened one of four identical index writes and left
+three, which is the security Major above. Each fix was correct and each stopped at
+the site the brief named. That is Amendment 3 satisfied in the report and not in
+the code. Round 18's deliverable per item is therefore an enumeration of every
+site in the file carrying that shape, with each site's disposition including the
+ones left alone and why, rather than a fix at the named site. This is the
+fix-the-generator rule applied to the review loop itself.
+
+**Standing Brief Amendment earned since board 6.** One, the seventh: adding a
+member to a set makes every sentence that counts, enumerates or bounds that set
+part of the change, and replacing a drifting tally with an absolute is not a fix.
+It was earned by five Majors in orchestrator-written documentation across three
+rounds, and its second half cost a Major of its own, when a count-free rewrite
+replaced a stale tally with an absolute that three helpers do not satisfy.
+
+**Documentation state.** The three documents section 2 owns
+(`docs/architecture.md`, `docs/security-model.md`, `docs/fleet-integration.md`)
+took five Majors and eight Minors in the accuracy review and were rewritten in
+thirteen edits by the orchestrator, since `docs/` writes are main-thread only.
+They are deliberately left uncommitted at this boundary rather than banked with
+this entry: sweeps A, D and E change which guards exist and where, and those
+documents describe exactly that, so committing them now would bank claims round 18
+is about to falsify. They ride with Chapter 2.
+
+**What is not yet reviewed.** Round 18's sweeps, and the thirteen documentation
+edits made after the accuracy review.
+
+**Next action.** Adjudicate round 18 against its six sweep enumerations rather
+than against its fix list, re-run the three gates, re-verify the security Major's
+class is closed at every site rather than at the reported one, re-check the three
+documents against whatever the sweeps changed, correct the known-false operator
+memory `pwsh-absent-on-scott-claude` as the section's dogfood test, then close
+with Chapter 2 and the Commit-and-Push commit.
 
 ### Chapter 1 - 2026-08-21
 Completed: 1. `--body-file` and the newline hint
