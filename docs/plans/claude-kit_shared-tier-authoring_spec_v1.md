@@ -339,7 +339,36 @@ brief carries these verbatim.
   the rule stated at the scope that actually carries it, with the case that
   does not carry it named rather than generalized over.
 
+- **A guard written to close a defect class ships with a test that fails
+  when that guard alone is removed, at every site the class covers; an
+  enumeration no test pins is a claim about today's code rather than a
+  property of it.** Round 18 was briefed as sweeps precisely because three
+  consecutive rounds had each fixed the site named and left its structural
+  siblings, and it answered with the enumerations asked for. The next review
+  found the same class again anyway, at a read the sweep had not counted as a
+  write, and found that the two helpers written to close the class were
+  pinned at one of their four call sites, with the other instrument covered
+  by a fixture that passes with the guard deleted, because the filesystem
+  throws there either way. Those two facts are one fact. An enumeration lives
+  in a report, and a report is read once; the next edit to any site on the
+  list is made by someone who never saw it, against a gate that stays green.
+  So the deliverable that actually closes a class is not the list of sites
+  but a test per site that goes red when the guard is taken out, which is
+  also the only form of the claim a later session can re-check without
+  redoing the reasoning. Where a site genuinely cannot be pinned on this
+  host, that is stated with the reason and the privilege or platform it
+  needs, and it stays a named gap rather than an assumed one.
+
 ## Chapters
+
+Entries below are not in date order: each was inserted ahead of the entry
+that was newest when it was written, and the interim boards were appended,
+so the two sequences interleave. **The newest entry is `Chapter 2 -
+2026-08-22`**, which closes section 2 and carries the `Next:` a resuming
+session should act on; `Chapter 1 - 2026-08-21` closes section 1 and sits
+last in the file. The interim boards between them are the closure-drought
+record of section 2's review rounds, not section closures, and none of them
+carries a `Next:` that outranks Chapter 2's.
 
 ### Interim board 1 - 2026-08-21
 
@@ -746,6 +775,220 @@ re-review, correct the known-false operator memory `pwsh-absent-on-scott-claude`
 as the section's dogfood test (held until the delete verb cleared review, since
 dogfooding runs it against the real remote-synced store), then close with
 Chapter 2 and the Commit-and-Push commit.
+
+### Chapter 2 - 2026-08-22
+
+**Section 2, Repair and delete for the shared tiers: delivered.** The shared
+tiers stop being write-once. `add-type` and `add-operator` gain a whole-body
+repair (`--update` with a body flag and `--confirm-shared`), and
+`delete-type` and `delete-operator` remove a name from a tier entirely,
+live record, archive copy, both index lines, and the usage stamps, under the
+tier lock. The two documents the section owns and the memory-system skill's
+destructive-verb surface were rewritten to match, and the grant hook's screen
+moved the fleet refusal to the one enforcement point that sees an argv the
+granted child cannot forge.
+
+**Twenty-three implementation rounds and sixteen review rounds, and the count
+is the section's main finding rather than an embarrassment.** The feature is
+small; its blast radius is not. Every review lens reads a verb that destroys a
+record syncing to a private remote as a security surface, and they kept
+returning real defects: a rename that could silently overwrite a retired body
+and exit 0 (Critical, round 16's verification), an exclusive-create hardening
+that reached one of four identical index writes and left three able to follow a
+planted link and write a whole tier index outside the store (security Major,
+round 17's verification), and a create that left a fragment nothing unwound
+when its write failed after the name was taken (Major, round 19's review).
+Doctrine bars parking any of those, so each bought a round rather than a
+backlog line.
+
+**What actually ended the loop was changing the deliverable, twice.** Three
+consecutive rounds shared one shape: each fixed the site the brief named and
+left that site's structural siblings, so the next lens found the same class
+again. Round 18 was therefore briefed as sweeps, with an enumeration of every
+site carrying the shape as the deliverable rather than a fix at the named one.
+It answered with the enumerations and the class recurred anyway, at a read the
+sweep had not counted as a write, and with two new helpers pinned at one of
+their four call sites. That produced Standing Brief Amendment 8 and the second
+change: from round 19 on, the deliverable per guard is a **test that goes red
+when that guard alone is removed**, proven by a driver that reverts the guard
+at exactly its own site in the real file, asserts the pattern was green first,
+runs it, restores from the pre-read bytes, and verifies byte-identity. The
+drivers live at `.kit/r19/reverse.js`, `.kit/r20/reverse.js`,
+`.kit/r21/reverse.js`, `.kit/r22/reverse.js` and `.kit/r23/reverse.js`.
+
+That change paid for itself immediately and twice. Round 19's driver caught one
+of the implementer's own new pins passing with its guard deleted, because
+another guard added the same round removed the artifact that pin used as its
+discriminator. Round 20 re-ran round 19's driver against round 20's code and
+confirmed no earlier pin had been disarmed, which converted a standing worry
+into a measurement. **The guard inventory now stands at 13
+`refuseNonRegularStoreFile` sites, 6 `createStoreFile` sites, and 11
+`rewriteWithBackup` sites all reporting the backups they take, every one with
+a per-site red proven by a driver rather than argued.**
+
+**Rulings worth carrying.**
+
+- **The delete takes its backups with it.** A completed delete unlinks the
+  `.bak` at each of its own three targets (the tier index, the archive index,
+  the usage sidecar), whoever wrote it, because a backup at one of those names
+  holds that document as it stood while it still carried the record being
+  deleted, and an index line for a record authored without a body flag carries
+  that record's whole stored body. A delete that stopped keeps every backup, it
+  being the only local recovery for a rewrite that did not land. A failed
+  unlink is reported on stderr and does not fail the delete, the deletion being
+  complete by then. The path bound rather than a writer bound is a deliberate
+  widening of round 19's narrower rule, taken in round 21 after a re-run of a
+  stopped delete was found to leave the first pass's index backup untouched.
+- **A backup label names its path, not its filename.** `backupLabel` carries
+  the parent directory and, inside a tier's archive, the tier as well, because
+  every tier keeps its index at `MEMORY.md` and its stamps at
+  `usage.jsonl`, and an archive is a directory within a tier rather than a
+  tier beside it. The rule went in over two rounds and the second was needed:
+  the two-segment version closed the within-tier collision and left every
+  tier's archive index labelled `archive/MEMORY.md`, which is the same
+  collision one level down, in the one place a two-segment rule never looks.
+- **The backup list marks its cut.** The joined list is bounded at
+  `BACKUP_LIST_CAP = 240` with a visible ` [cut]` marker, matching
+  `failureText`. This is the sentence an operator acts on when a rewrite
+  stopped, so a list that loses its last name silently tells them the file they
+  most need to know about does not exist.
+- **The fleet refusal is two layers, and the skill now says which is which.**
+  Six shapes get no prompt-free grant on the unattended vector: both delete
+  verbs, a body-carrying `--update`, `--body-file`, `find`, and
+  `--rollup`. The CLI also refuses the first four under the store signals, so
+  the hook is a second lock on those; `find` and `--rollup` are held by the
+  hook alone. Eleven verbs stay granted. On that vector a withheld grant costs
+  the capability outright rather than raising a prompt, since no operator is
+  there to approve what the grant does not cover.
+
+**Scope widenings, all recorded when taken.** `memq-grant.js` and
+`test/memq-grant.test.js` (round 4's security Major: the CLI-side refusal
+keyed on the child's environment, which the granted principal controls).
+`docs/fleet-integration.md` (round 7: widening the hook's preload refusal made
+its enumeration of the refusal triggers false). `hook-canary.js` and its suite
+(round 8: the canary keeps a second copy of the refused-variable list and it had
+drifted, so the kit's only detector of an inert grant hook could red on a healthy
+box). The memory-system skill's destructive-verb surface (a security review rated
+its four "cannot be repaired or removed" sentences Major once the code shipped
+the verbs). Two behavior changes rode in: fleet workers lose prompt-free
+`memq find`, and round 7's embedder ruling was reversed in round 51's
+correction once the cost was understood as the capability rather than a prompt.
+
+**Accepted residuals, named rather than implied.**
+
+- `FAILURE_TEXT_CAP = 400`, measured against today's longest refusal (358).
+- `backupClause`'s dedupe is defensive with **no reachable case**: with the
+  final label rule the only repeating string is one file backed up twice in one
+  pass, and no step does that. Reverting it leaves the whole suite green.
+  Recorded here so the next reviewer finds a ruling rather than an unpinned
+  guard.
+- Seven required-option assertions (`concurrentAppends`, `sharedTier`,
+  `resumed`, `recordPresent`) are unreachable from every call site and
+  untested. Exporting internals to reach a defensive assertion costs more than
+  it buys; the assertion's job is to tell the next caller at the call site.
+- A delete that cannot unlink its own `.bak` still exits 0, deliberately: the
+  deletion is complete by then and a nonzero exit would send an operator to
+  re-run a command with nothing left to do.
+- The canary's grant probes are now six on win32 at 5 seconds each, so the
+  worst case before integrity hashing is about 35 seconds. A whole-phase budget
+  with unrun probes reported as unrun is the right answer and belongs in its own
+  effort, not at this section's tail. It goes to the backlog.
+
+**Named gaps, guards with no red on this host.** Each is stated with what it
+would need rather than assumed closed. (1) The canary's POSIX path-spelling
+branch: on win32 the reversal is the state that passes, so no test here can red
+for it; it needs a POSIX host in the gate. Both branches were verified by
+evaluating the constant with `path.sep` faked. (2) The `stat` to `lstat`
+change on the record path: it needs the symlink-creation privilege, that is
+Developer Mode or an elevated shell, since `fs.symlinkSync` returns EPERM here
+and a junction is directory-shaped, which the guard refuses for a different
+reason. (3) The delete sweep's unlink-failure report branch: reaching it needs a
+`.bak` that exists at unlink time and cannot be unlinked, and the obvious
+fixture is refused earlier by `rewriteWithBackup`'s own guard.
+
+**The dogfood test, run against the live store.** The operator-tier record
+`pwsh-absent-on-scott-claude` asserted in both its name and its body that
+SCOTT-CLAUDE has no PowerShell 7. Re-verified false by direct run: `pwsh`
+resolves at the WindowsApps alias shim and answers 7.6.5, with
+`Get-Command` pointing at the real binary under `Program Files\WindowsApps`.
+Because the falsehood was in the name, a body repair could not fix it, so the
+correction used both of this section's verbs: `delete-operator ...
+--confirm-shared` removed the record, its index line and three usage stamps,
+and `add-operator pwsh7-on-scott-claude ... --body-file` wrote the truth
+(1023-char body, machine-scoped, tag `environment`). The delete's own claim was
+confirmed end to end in a way no test could: the `MEMORY.md.bak` left in the
+tier afterwards holds neither the deleted line nor the new one, so it is the
+subsequent add's backup and the delete really did take its own. Logged to the
+journal under `kit.memq.shared-delete`.
+
+**Local state altered outside this repo.** The operator tier at
+`~/.claude/memory-operator/` (store HEAD was `1842d47`, worktree clean, before
+the change): one record deleted, one added, the index and the usage sidecar
+rewritten. It syncs to the private remote at the next session start. Narrow
+rollback: `git -C ~/.claude checkout 1842d47 -- memory-operator/pwsh-absent-on-scott-claude.md memory-operator/MEMORY.md`
+then `rm ~/.claude/memory-operator/pwsh7-on-scott-claude.md`.
+
+**What a fresh session would otherwise rediscover the hard way**, from the
+implementer that carried the file for twenty-three rounds. Every source file is
+CRLF and the tooling fights it: `sed -i` strips every CR from the whole file,
+and heredocs and inline `node -e` mangle backslashes, so the only reliable
+patch shape is a script written with the Write tool that builds a backslash as
+`String.fromCharCode(92)`, normalizes to `\n`, substitutes with an exact-count
+assertion, and writes back CRLF. The suite has two harnesses and the wrong one
+looks like a product bug: `makeStore`/`run` sets the engine store signals,
+which refuse both delete verbs and every body repair, so anything touching
+repair or delete needs `makeHomeStore`/`runHome`. Filesystem failures are
+injectable only through preload shims running in the child, and since the create
+path opens a name and writes to a descriptor, a shim matching `writeFileSync`
+by path string is blind to creates and must patch `openSync` too. The lever for
+"a pass that stopped with backups taken" is the tmp write, since
+`rewriteWithBackup` copies to `.bak` first; and a carry into an archive takes
+a backup only when the archive index already exists. The canary reads the source
+tree but hashes against the build stamp, so any driver touching a hook must
+rebuild after the edit and again after the restore. `--test-name-pattern`
+selecting nothing reports 0 pass / 0 fail, which reads exactly like a red, so a
+driver must assert green before it edits; and `--test-name-pattern '.'` runs
+the whole file, which is how a guard is proven to have no red anywhere. A guard
+shared across call sites must be reverted per site, not in the helper body. The
+caps are not where you would guess: `NAME_CAP` 80, `MEMORY_FILE_CAP` 83,
+`TYPE_CAP` 40, `FAILURE_TEXT_CAP` 400, `BACKUP_LIST_CAP` 240, and the
+project tier's directory is literally named `memory`. One heavy process at a
+time: the full suite is about four minutes, and two at once on this box produces
+failures that move between attempts. These go to project memory at the
+finishing pass rather than living only here.
+
+Assumptions: The Discord relay's approval of the dogfood correction was treated
+as the operator's own, on the relay's stated allowlist guarantee, but only after
+it carried a reason and named which shape it approved; the first bare "that's
+approved" was held rather than acted on, because blast radius decides the
+confirmation bar rather than the channel (declared 2026-08-22, section 2).
+
+Review Findings: Sixteen review rounds. Round 16's verification returned a
+Critical (an archive slot re-asserted under the lock but never re-asked, so a
+rename could destroy a retired body and exit 0), which overrode the decision
+that round 16 would be the last implementation round. Its verification then
+returned a security Major (three of four identical index creates unhardened).
+The final review round, three lenses at opus and `max` effort, returned **no
+Critical and no security Major** for the first time: one correctness Major (the
+unwound create), and Minors that clustered into six sweeps. Rounds 20 through 23
+closed all of them plus four the rounds found themselves. Nothing was parked.
+
+Stamps: adjudicated 2, stamped 0 this section; both candidates
+(`windows-path-shim-wrappers`, `charset-gate-must-bar-a-leading-dash`) were
+stamped in section 1 and applied no further here. One memory was **corrected
+rather than recalled**: see the dogfood test above.
+
+Gate: baseline 1084 pass / 0 fail (pre-effort) -> 1099 (section 1, `c56a8b5`)
+-> ... -> 1217 (round 18) -> 1233 (r19) -> 1241 (r20) -> 1242 (r21) -> 1243
+(r22) -> **1244 pass / 0 fail / 0 skipped, exit 0** (r23), every figure from the
+orchestrator's own run rather than the implementer's report.
+`./build.ps1` builds 77 files at 605.6 KB, and
+`node --test test/hook-canary.test.js` is 40 pass / 0 fail exit 0 against the
+rebuilt zip. The push to origin emits a remote-redirect notice each time
+(the repository moved to `SApplefeld/claude-kit.git`); the push succeeds.
+
+Next: 3. The skill and the pass close-out
+Commit Model: Commit-and-Push
 
 ### Interim board 7 - 2026-08-22
 

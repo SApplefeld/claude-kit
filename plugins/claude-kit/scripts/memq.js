@@ -10,10 +10,16 @@
 //   memq recent [--since <n>d|<n>h]
 //   memq unstamped [--since <n>d|<n>h]
 //   memq touch <name> --applied [--type|--operator]
-//   memq add-type <type> <name> "<description>" [--tag t]... [--update]
+//   memq add-type <type> <name> "<description>" [--tag t]...
 //                 [--body "..."|--body-file "<path>"]
+//   memq add-type <type> <name> "<description>" --update
+//                 [(--body "..."|--body-file "<path>") --confirm-shared]
 //   memq add-operator <name> "<description>" [--tag t]... [--machine <name>]
-//                     [--update] [--body "..."|--body-file "<path>"]
+//                     [--body "..."|--body-file "<path>"]
+//   memq add-operator <name> "<description>" --update
+//                     [(--body "..."|--body-file "<path>") --confirm-shared]
+//   memq delete-type <type> <name> --confirm-shared
+//   memq delete-operator <name> --confirm-shared
 //   memq decay-scan
 //   memq decay-prune [--rollup] [--archive <name>]... [--archive-type <name>]...
 //                    [--archive-operator <name>]... [--confirm-shared]
@@ -31,7 +37,8 @@
 // exported here.
 // `decay-prune` rewrites the project tier's sidecars and index under the
 // project's decay.lock, and the shared tiers' files, the `add-type` and
-// `add-operator` index updates included, under each tier's store.lock.
+// `add-operator` index updates and the `delete-type` and `delete-operator`
+// removals included, under each tier's store.lock.
 //
 // usage.jsonl sits beside the journal in the same directory and carries
 // used-tracking under the same append-only posture. `touch` writes the
@@ -133,14 +140,19 @@
 // maintains is the derived vector index at the store root, which
 // memory-index.js owns and can rebuild from the store at any time. The only rewriting
 // paths in the store are
-// `decay-prune` and the `add-type` and `add-operator` index updates, all
+// `decay-prune`, the `add-type` and `add-operator` writes (a body repair
+// among them), and the `delete-type` and `delete-operator` removals, all
 // under a lock and all
 // bounded: every rewrite copies the file to <file>.bak first, replaces it by
 // temp-write-then-rename rather than in place, preserves verbatim any line
 // it cannot parse, and prints what it removed; no other subcommand ever
-// rewrites or truncates a store file. Only argument/usage errors and a
+// rewrites or truncates a store file. A delete's unlink of the record, and
+// of the backup a repair left beside it, is the one operation here that
+// removes rather than rewrites: there is nothing to back up when the point
+// is that no copy remains in the tier. Only argument/usage errors and a
 // failed write exit nonzero: a failed journal write, a failed `decay-prune`
-// or an `add-type`/`add-operator`, and every `touch` or `decay-done` that
+// or an `add-type`/`add-operator`, a `delete-type`/`delete-operator` that
+// removes nothing, and every `touch` or `decay-done` that
 // does not end in a
 // written stamp, because reporting success for a record that was never
 // written is a false success. The one write held to a different rule is
@@ -226,6 +238,8 @@ const NAME_CAP = 80;       // characters of a key or memory name, at write and d
 const MEMORY_FILE_CAP = NAME_CAP + 3;   // the same cap over a memory filename, '.md' included
 const TAG_CAP = 40;        // characters of a tag, at write and display
 const TYPE_CAP = 40;       // characters of a project-type name, at write and display
+const FAILURE_TEXT_CAP = 400;   // characters of a failure's own message, in the line reporting it
+const BACKUP_LIST_CAP = 240;    // characters of the backup names a failure line offers
 // Characters of a machine name. A Windows NetBIOS name stops at 15, but the
 // store syncs across machines that may record a longer or fully-qualified
 // one, and this value rides in a frontmatter line that has to stay bounded
@@ -242,6 +256,8 @@ const BODY_FILE_READ_CAP = BODY_CAP * 4;
 const BODY_FILE_PATH_CAP = 2048;   // characters of the path --body-file may name
 const STORE_SEGMENT_CAP = 40;   // characters of a store path segment (a run id, a pinned project)
 const ARCHIVE_DIR = 'archive';            // the retired-memory subdirectory of every tier
+const MEMORY_INDEX_HEADING = '# Memory Index';             // the title every tier index carries
+const ARCHIVE_INDEX_HEADING = '# Archived Memory Index';   // and the title of every archive index
 const PENDING_DIR = 'pending';            // the run-scoped tier's parent, under the project memory dir
 const OPERATOR_DIR = 'memory-operator';   // the operator tier, one directory at the store root
 // The name column's tier prefix for an operator-tier record, the counterpart
@@ -651,16 +667,21 @@ function projectMemoryDir(cwd) {
 }
 
 // Every project directory segment the store holds, sorted, or null when the
-// projects root cannot be enumerated at all. Null rather than an empty array
-// because the two are different facts: no projects is an answer, while an
-// unreadable root is the absence of one, and a caller that treats them alike
-// reports a store it never read as empty. Each caller says what it does with
-// the null, since the right answer differs by surface.
+// projects root cannot be enumerated. Null rather than an empty array because
+// the two are different facts: no projects is an answer, while an unreadable
+// root is the absence of one, and a caller that treats them alike reports a
+// store it never read as empty. Each caller says what it does with the null,
+// since the right answer differs by surface.
+//
+// A projects root that is not there is the first of those, not the second: a
+// store synced onto a machine before any project has written to it holds no
+// projects, and that is a fact this can state. Every other code is a root that
+// exists and could not be read.
 function projectSegments() {
     try {
         return fs.readdirSync(projectsRootPath()).sort();
-    } catch {
-        return null;
+    } catch (err) {
+        return err && err.code === 'ENOENT' ? [] : null;
     }
 }
 
@@ -1021,7 +1042,7 @@ function readTagRegistry() {
         // the warning it exists to give.
         if (!err || err.code !== 'ENOENT') {
             process.stderr.write('memq: could not read tag registry: '
-                + sanitize(err && err.message ? err.message : String(err), 200) + '\n');
+                + failureText(err) + '\n');
         }
         return null;
     }
@@ -1210,7 +1231,7 @@ function readJournal(memDir) {
         // unreadable) is noted, so it cannot masquerade as "no matches".
         if (!err || err.code !== 'ENOENT') {
             process.stderr.write('memq: could not read journal: '
-                + sanitize(err && err.message ? err.message : String(err), 200) + '\n');
+                + failureText(err) + '\n');
         }
         return [];
     }
@@ -1301,7 +1322,7 @@ function readUsage(memDir, tag) {
         // cannot masquerade as "nothing was ever applied".
         if (!err || err.code !== 'ENOENT') {
             process.stderr.write('memq: could not read usage sidecar' + where + ': '
-                + sanitize(err && err.message ? err.message : String(err), 200) + '\n');
+                + failureText(err) + '\n');
             return { status: 'unreadable', stamps: [] };
         }
         return { status: 'absent', stamps: [] };
@@ -1432,6 +1453,22 @@ function sanitize(s, max) {
     return String(s).replace(/[^\x20-\x7E]|"/g, '').slice(0, max);
 }
 
+// The text of a failure, for the line that reports it.
+//
+// Wider than a display cap, and marked where it cuts. These messages are
+// sentences this module composes, and the clause that says what the store was
+// left in and what a re-run does is the last of them, so a cut lands there
+// first. At the caps a name and a tier tag can carry (NAME_CAP plus a type
+// name), the longest of them runs past 200 characters, which is why the bound
+// is wider than that. It is bounded at all because an error from the
+// filesystem arrives with a path in it and a failure line is not a place to
+// print an unbounded string, and the marker is there because a reader has to
+// be able to tell a cut sentence from one that ends where it means to.
+function failureText(err) {
+    const text = sanitize(err && err.message ? err.message : String(err), FAILURE_TEXT_CAP + 1);
+    return text.length > FAILURE_TEXT_CAP ? text.slice(0, FAILURE_TEXT_CAP) + ' [cut]' : text;
+}
+
 // Bound a free-text field at the write boundary: printable ASCII, no double
 // quote, capped, with the caller told what was reduced. Keys, tags, names,
 // and type names are closed to [\w.-] by their own gates; this is the rule
@@ -1472,13 +1509,12 @@ function boundedFreeText(value, cap, label) {
 // body): the same charset reduction, but an over-cap value is refused rather
 // than cut. The tiers earn different treatment because they fail differently.
 // A truncated journal entry is repairable by logging again; a shared-tier
-// record is final at creation (the duplicate guard refuses the name, hand
-// edits are barred because writes serialize under the tier lock), so a
-// silent cut there is damage the author cannot see at the keystroke and
-// could not repair before --update existed, and even --update restores only
-// what the author comes back to re-type. Refusal at compose time, with the
-// actual length beside the cap, is the one report the author can act on in
-// the same breath. Returns the sanitized text, or null after the usage error.
+// record is repaired only by replacing its body whole, under --update and
+// --confirm-shared, and the text that replacement covers over survives in a
+// local .bak alone. So a silent cut is damage the author cannot see at the
+// keystroke, and the repair for it restores nothing but what the author comes
+// back and re-types. Refusal at compose time, with the actual length beside
+// the cap, is the one report the author can act on in the same breath. Returns the sanitized text, or null after the usage error.
 function sharedFreeText(value, cap, label) {
     const stripped = sanitize(value, Infinity);
     if (stripped !== String(value)) {
@@ -1539,8 +1575,8 @@ function sharedFreeText(value, cap, label) {
 // markless UTF-16 decodes without complaint and only its NUL bytes give it
 // away. Everything else that is not UTF-8, a CP1252 save with a smart quote
 // in it the common case, is refused by the strict decode: an ordinary decode
-// substitutes U+FFFD silently, which would write mojibake into a record that
-// is final at creation and report success. Line endings normalize to LF,
+// substitutes U+FFFD silently, which would write mojibake into a record whose
+// only repair replaces its body whole, and report success. Line endings normalize to LF,
 // CRLF and lone CR both, because the record's own structural lines are
 // written LF and a record of mixed endings is one no diff of the synced
 // store reads cleanly, and the trailing newline an editor appends is dropped,
@@ -1591,7 +1627,7 @@ function readBodyFile(file) {
         resolved = fs.realpathSync.native(file);
     } catch (err) {
         process.stderr.write('memq: could not read ' + named + ': '
-            + sanitize(err && err.message ? err.message : String(err), 200) + '\n');
+            + failureText(err) + '\n');
         process.exitCode = 1;
         return null;
     }
@@ -1604,7 +1640,7 @@ function readBodyFile(file) {
         fd = fs.openSync(resolved, flags);
     } catch (err) {
         process.stderr.write('memq: could not read ' + named + ': '
-            + sanitize(err && err.message ? err.message : String(err), 200) + '\n');
+            + failureText(err) + '\n');
         process.exitCode = 1;
         return null;
     }
@@ -1636,7 +1672,7 @@ function readBodyFile(file) {
         raw = buf;
     } catch (err) {
         process.stderr.write('memq: could not read ' + named + ': '
-            + sanitize(err && err.message ? err.message : String(err), 200) + '\n');
+            + failureText(err) + '\n');
         process.exitCode = 1;
         return null;
     } finally {
@@ -1751,12 +1787,60 @@ function readIndexDescriptions(memDir) {
 // only lines before that closer are searched. Without the closing gate a body
 // that opens with a horizontal rule would turn prose into frontmatter.
 //
-// Every frontmatter reader goes through this walk, so the block's grammar
-// (the BOM strip, the fence gate, the line bound, the column rule) is defined
-// once and cannot drift between fields.
+// Every reader of a record's frontmatter goes through frontmatterBlock below,
+// the field readers here and the repair path's carrier alike, so the block's
+// grammar (the byte order mark, the fence gate, the line bound) is defined
+// once and cannot drift between them. The column rule is this function's own:
+// a field counts only unindented, and an indented one is reported rather than
+// read.
 const FRONTMATTER_UNREADABLE = Symbol('frontmatter unreadable');
 const FRONTMATTER_INDENTED = Symbol('frontmatter field indented');
 const FRONTMATTER_MAX_LINES = 40;
+
+// A record's text as lines, with the frontmatter block's boundaries in them:
+// the byte order mark split off, the opening fence answered, and the closing
+// fence located inside the bounded head. `bom` is what was stripped, so a
+// writer rebuilding the record can put it back. `opened` is whether the first
+// line is a fence, and `closer` is the index of the closing one, or -1 when
+// the block never closes inside the bound.
+//
+// This is the block grammar itself, and both the field reader and the repair
+// path's carrier go through it, so the two cannot come to disagree about
+// where a block ends. One of them carrying a block the other ignores, or
+// dropping one the other honors, would rewrite a record around the wrong text
+// with only a local .bak holding what was there.
+function frontmatterBlock(raw) {
+    const bom = raw.charCodeAt(0) === 0xFEFF ? '\uFEFF' : '';
+    const lines = (bom === '' ? raw : raw.slice(1)).split(/\r?\n/);
+    if (lines[0].trim() !== '---') return { bom, lines, opened: false, closer: -1 };
+    for (let i = 1; i < lines.length && i <= FRONTMATTER_MAX_LINES; i++) {
+        if (lines[i].trim() === '---') return { bom, lines, opened: true, closer: i };
+    }
+    return { bom, lines, opened: true, closer: -1 };
+}
+
+// The heading line a record already carries, or null when it carries none:
+// the first non-blank line past the frontmatter block, when that line is an
+// ATX heading. A repair rebuilds the record around it for the reason it
+// rebuilds around the carried frontmatter, that a repair corrects what a
+// record says and not what it is. Re-deriving the heading from the spelling
+// the repairing command was given would retitle a record whose name differs
+// only in case, on the filesystems where those are one file, and leave the
+// two platforms disagreeing about what the same command did.
+function recordHeading(raw) {
+    const block = frontmatterBlock(raw);
+    const start = block.opened && block.closer !== -1 ? block.closer + 1 : 0;
+    for (let i = start; i < block.lines.length; i++) {
+        if (block.lines[i].trim() === '') continue;
+        // ATX spelling as the format defines it: one to six hashes, then a
+        // space or a tab. Requiring a single space would miss '#\tTitle' and
+        // '#   Title', both of which a hand or another machine's editor
+        // writes, and missing one is not a missing heading but a retitle.
+        return /^#{1,6}[ \t]/.test(block.lines[i]) ? block.lines[i] : null;
+    }
+    return null;
+}
+
 function frontmatterField(file, name) {
     let raw;
     try {
@@ -1764,25 +1848,17 @@ function frontmatterField(file, name) {
     } catch {
         return FRONTMATTER_UNREADABLE;
     }
-    if (raw.charCodeAt(0) === 0xFEFF) raw = raw.slice(1);
-    const lines = raw.split(/\r?\n/);
-    if (lines[0].trim() !== '---') return null;
+    const block = frontmatterBlock(raw);
+    if (!block.opened || block.closer === -1) return null;
     const re = new RegExp('^' + name + ':\\s*(.*)$', 'i');
-    let closed = false;
     let found = null;
     let indented = false;
-    for (let i = 1; i < lines.length && i <= FRONTMATTER_MAX_LINES; i++) {
-        const text = lines[i].trim();
-        if (text === '---') {
-            closed = true;
-            break;
-        }
+    for (let i = 1; i < block.closer; i++) {
         if (found !== null) continue;
-        const m = re.exec(lines[i]);
+        const m = re.exec(block.lines[i]);
         if (m) found = m[1];
-        else if (re.test(text)) indented = true;
+        else if (re.test(block.lines[i].trim())) indented = true;
     }
-    if (!closed) return null;
     if (found !== null) return found;
     return indented ? FRONTMATTER_INDENTED : null;
 }
@@ -1934,10 +2010,16 @@ function usage(problem) {
         + '       memq recent [--since <n>d|<n>h]\n'
         + '       memq unstamped [--since <n>d|<n>h]\n'
         + '       memq touch <name> --applied [--type|--operator]\n'
-        + '       memq add-type <type> <name> "<description>" [--tag t]... [--update]\n'
+        + '       memq add-type <type> <name> "<description>" [--tag t]...\n'
         + '                     [--body "..."|--body-file "<path>"]\n'
+        + '       memq add-type <type> <name> "<description>" --update\n'
+        + '                     [(--body "..."|--body-file "<path>") --confirm-shared]\n'
         + '       memq add-operator <name> "<description>" [--tag t]... [--machine <name>]\n'
-        + '                         [--update] [--body "..."|--body-file "<path>"]\n'
+        + '                         [--body "..."|--body-file "<path>"]\n'
+        + '       memq add-operator <name> "<description>" --update\n'
+        + '                         [(--body "..."|--body-file "<path>") --confirm-shared]\n'
+        + '       memq delete-type <type> <name> --confirm-shared\n'
+        + '       memq delete-operator <name> --confirm-shared\n'
         + '       memq decay-scan\n'
         + '       memq decay-prune [--rollup] [--archive <name>]... [--archive-type <name>]...\n'
         + '                        [--archive-operator <name>]... [--confirm-shared]\n'
@@ -2104,10 +2186,16 @@ function cmdLog(argv) {
     if (runId !== null) entry.run = runId;
     try {
         fs.mkdirSync(memDir, { recursive: true });
-        fs.appendFileSync(path.join(memDir, JOURNAL_FILE), JSON.stringify(entry) + '\n', 'utf8');
+        // appendFileSync opens with O_APPEND and O_CREAT and follows a link,
+        // so a link at the journal's name both sends this line outside the
+        // store and creates the file it points at. This entry is the one the
+        // caller composes most of: the summary and the detail are its words.
+        const journalPath = path.join(memDir, JOURNAL_FILE);
+        refuseNonRegularStoreFile(journalPath);
+        fs.appendFileSync(journalPath, JSON.stringify(entry) + '\n', 'utf8');
     } catch (err) {
         process.stderr.write('memq: could not write journal: '
-            + sanitize(err && err.message ? err.message : String(err), 200) + '\n');
+            + failureText(err) + '\n');
         process.exitCode = 1;
         return;
     }
@@ -2472,7 +2560,7 @@ async function semanticChannel(term, tag, alreadyShown, showArchived) {
         // still degrades, because absence-or-breakage never fails a find.
         return {
             notes: ['memq: semantic search failed ('
-                + sanitize(err && err.message ? err.message : String(err), 200)
+                + failureText(err)
                 + '); serving lexical matches only'],
             hits: [],
             withheld: null
@@ -2870,7 +2958,7 @@ function printMemoryBody(file, fence) {
         if (err && err.code === 'ENOENT') return 'absent';
         process.stderr.write('memq: could not read memory \''
             + sanitize(path.basename(file), MEMORY_FILE_CAP) + '\': '
-            + sanitize(err && err.message ? err.message : String(err), 200) + '\n');
+            + failureText(err) + '\n');
         return 'error';
     }
     if (body.charCodeAt(0) === 0xFEFF) body = body.slice(1);
@@ -2915,7 +3003,13 @@ function printMemoryBody(file, fence) {
 // read it, would cost more than the lost stamp does.
 function stampRead(tierDir, file) {
     try {
-        fs.appendFileSync(path.join(tierDir, USAGE_FILE),
+        // A link at the sidecar's name would take this line outside the store,
+        // once per read, and create the file it points at. Refusing is a lost
+        // stamp, which is the same cost every other failure here carries and
+        // is why this one is silent too.
+        const usagePath = path.join(tierDir, USAGE_FILE);
+        refuseNonRegularStoreFile(usagePath);
+        fs.appendFileSync(usagePath,
             JSON.stringify({ ts: new Date().toISOString(), file: memoryFileKey(file), kind: 'read' }) + '\n',
             'utf8');
     } catch { /* the body is already served; a lost stamp never fails the read */ }
@@ -3649,7 +3743,7 @@ function recentFileNames(dir) {
     } catch (err) {
         if (err && err.code === 'ENOENT') return { status: 'absent', names: [] };
         process.stderr.write('memq: could not read memory directory: '
-            + sanitize(err && err.message ? err.message : String(err), 200) + '\n');
+            + failureText(err) + '\n');
         return { status: 'unreadable', names: [] };
     }
     return { status: 'ok', names: entries.filter(isMemoryFilename) };
@@ -4366,23 +4460,44 @@ function cmdTouch(argv) {
     }
 
     // Only a real memory file is stamped: a name with nothing behind it would
-    // otherwise put a record in the sidecar that no memory can answer for.
+    // otherwise put a record in the sidecar that no memory can answer for. A
+    // path that could not be examined is not that name, and says so: the stamp
+    // is refused either way, and only one of the two is a name the caller can
+    // fix by naming another.
+    const stampWhere = toType ? ' in the type tier' : toOperator ? ' in the operator tier' : '';
     let st = null;
-    try { st = fs.statSync(path.join(stampDir, file)); } catch { /* reported just below */ }
+    let stampCode = null;
+    try {
+        st = fs.statSync(path.join(stampDir, file));
+    } catch (err) {
+        stampCode = err && err.code ? err.code : String(err);
+    }
+    if (stampCode !== null && stampCode !== 'ENOENT') {
+        process.stderr.write('memq: \'' + sanitize(name, NAME_CAP) + '\'' + stampWhere
+            + ' could not be examined (' + sanitize(stampCode, 40) + '), so it was not'
+            + ' stamped\n');
+        process.exitCode = 1;
+        return;
+    }
     if (!st || !st.isFile()) {
         process.stderr.write('memq: no memory file named \'' + sanitize(name, NAME_CAP) + '\''
-            + (toType ? ' in the type tier' : toOperator ? ' in the operator tier' : '') + '\n');
+            + stampWhere + '\n');
         process.exitCode = 1;
         return;
     }
 
     try {
-        fs.appendFileSync(path.join(stampDir, USAGE_FILE),
+        // The sidecar's own name, asked about the way the record's was a few
+        // lines above: an append follows a link as readily as a write does,
+        // and this one lands in a file every decay and ranking read consumes.
+        const usagePath = path.join(stampDir, USAGE_FILE);
+        refuseNonRegularStoreFile(usagePath);
+        fs.appendFileSync(usagePath,
             JSON.stringify({ ts: new Date().toISOString(), file: memoryFileKey(file), kind: 'applied' }) + '\n',
             'utf8');
     } catch (err) {
         process.stderr.write('memq: could not write usage sidecar: '
-            + sanitize(err && err.message ? err.message : String(err), 200) + '\n');
+            + failureText(err) + '\n');
         process.exitCode = 1;
         return;
     }
@@ -4740,20 +4855,185 @@ function cmdDecayScan(argv) {
 // disk, never a half-written store file. The window between the tail copy and
 // the rename can still lose one concurrent append, the same single-stamp cost
 // the sidecar's readers already tolerate from lock-free writers.
-function rewriteWithBackup(filePath, origBuf, newContent) {
+//
+// The tail copy preserves lawful concurrent appends, so it belongs to the
+// files that have a lawful lock-free appender and to nothing else. It is a
+// property of neither this helper nor the file's name: the same two index
+// files are rewritten by writers in different tiers whose requirements are
+// opposite, so `options.concurrentAppends` is required and the caller, which
+// knows the tier it is writing in, states it. A wrong value here splices
+// foreign bytes into a store file and reports success, so a call site that
+// says nothing is refused rather than defaulted.
+//
+// The append-only files take `true`. The outcome journal and the usage
+// sidecars are those: `log` and the stamp hook add lines to them without
+// taking any lock, and the tail copy is what keeps such a line.
+//
+// A shared tier's usage sidecar has both kinds of writer, and takes `true`
+// anyway. It is union-merged by the store's sync, so a rebase can replace it
+// whole exactly as a pull replaces an index, but the read-stamp hook appends
+// to it on every memory read, lock-free and often, while a rebase landing
+// inside the window between this read and this rename is rare. The copy is
+// kept for the common writer, and a replacement is not mistaken for one: the
+// head check below tells the two apart, so a rebase inside that window ends
+// the pass with nothing written and the pulled file intact, and the remedy
+// is to run the command again.
+//
+// The flag answers one question, may this rewrite carry a tail, and the head
+// check answers a different one that has the same answer for every caller:
+// was the file under this pass replaced wholesale while it worked. So the
+// check runs for every rewrite and only the splice is gated. What the flag
+// still decides is what a longer file with this pass's own bytes at its head
+// means: to a `true` caller it is a lawful append to carry, and to a `false`
+// caller it is a write with no lawful author, which is dropped by the rewrite
+// exactly as it was before.
+//
+// A document with no lawful appender takes `false`, because for one of those
+// a longer file is not an append to preserve but a different file to avoid
+// splicing. A memory record is one: nothing appends to a record, so bytes
+// past the read got there by something rewriting it, and grafting that tail
+// onto a rebuilt record would put foreign bytes in a memory and report
+// success. A shared tier's MEMORY.md is another: its only lawful writers are
+// add-type, add-operator, the delete verbs, and decay-prune's archive step,
+// all in this module and all under the tier lock, while the store is a git
+// checkout once the sync repo exists and a pull writes MEMORY.md whole
+// without that lock (doctor/sync-store.ps1 single-flights on its own lock in
+// the store root and takes no tier lock). A pull landing between the read and
+// the rename would splice a byte-offset fragment of the pulled index onto the
+// rebuilt one, in the file whose lines are emitted into model context at
+// session start, and last-writer-wins over a concurrent whole-file
+// replacement is the better failure.
+//
+// The project tier's MEMORY.md is not one of those: a project memory is
+// written with the Write tool and reinstating a retired one restores its
+// index line by hand, both lock-free appends this store admits by design, so
+// a rewrite of that tier's index takes the tail copy. The archive pass
+// rewrites the index of whichever tier it is pruning, which is why it carries
+// that tier's kind down from its call site rather than reading it off a path.
+// It carries it as a required named option the whole way down, for this
+// helper's own reason: an omitted positional is undefined, undefined negates
+// to the tail copy, and the tail copy is the unsafe answer for a shared
+// tier's index, so the shape that would let a new call site pick it up
+// silently is the one refused a frame further down.
+function rewriteWithBackup(filePath, origBuf, newContent, options) {
+    if (!options || typeof options.concurrentAppends !== 'boolean') {
+        throw new Error(sanitize(path.basename(filePath), MEMORY_FILE_CAP + 16)
+            + ' was not rewritten: the call did not state whether it takes lawful'
+            + ' concurrent appends');
+    }
+    const concurrentAppends = options.concurrentAppends;
+    const bak = filePath + '.bak';
     const tmp = filePath + '.tmp.' + process.pid;
-    fs.copyFileSync(filePath, filePath + '.bak');
-    fs.writeFileSync(tmp, newContent, 'utf8');
+    // All three names this rewrite touches, asked about before any of them is
+    // read or written. Both destination names are predictable, and
+    // copyFileSync and writeFileSync each follow a link, so a symlink or
+    // junction planted at either would send a whole store file wherever it
+    // points. The target is the same question from the other side: this
+    // function dereferences it three times, at the caller's read, at the
+    // head-identity read below and at the backup copy, and a link there reads
+    // a file outside the store in as the document's own bytes, copies those
+    // bytes into the store's .bak, and leaves a regular file holding them
+    // where the link stood. The head-identity check cannot see it, because
+    // both reads go through the same link and agree. What the store then does
+    // with that content is what makes the read matter: a tier index is pushed
+    // to the private remote by the next sync and emitted line by line into
+    // every session that reads the store.
+    for (const dest of [filePath, bak, tmp]) refuseNonRegularStoreFile(dest);
+    // What a lawful append leaves behind is the bytes this pass read,
+    // unchanged, with more after them. Anything else at this path is a
+    // replacement: the whole store syncs, and a sync landing a pull writes a
+    // file whole while holding no lock this module takes. Length is not the
+    // test, on either side of it. A replacement can be longer than the read
+    // and share no prefix, and it can equally be shorter, which is what a
+    // prune on another machine produces, so a check made only where the file
+    // grew would let a pulled prune be clobbered by the document it replaced.
+    // No lawful appender shortens a file and a concurrent prune of this same
+    // file holds the lock this pass holds, so a shorter read is a pull and
+    // nothing else.
+    //
+    // A replacement ends the pass with nothing written. The alternative is to
+    // rewrite anyway, on the grounds that this pass holds the newer truth for
+    // the lines it rebuilt, but the rewrite is whole-document: it would
+    // republish a stale copy of every line it did not touch and drop whatever
+    // the pull added, which for an index is another machine's memories. The
+    // stop is transient and its remedy is the caller's own: the file on disk
+    // is the pulled one, intact, and the same command run again rebuilds from
+    // it.
+    //
+    // The read and the check come before the backup copy, so a stop here
+    // leaves the target and its .bak both as they were. Copying first would
+    // spend the single generation of .bak on the replacing bytes, losing the
+    // previous one, for a rewrite that never happened, and would hand the
+    // caller a backup to report for a file it did not rewrite.
+    const current = fs.readFileSync(filePath);
+    if (current.length < origBuf.length
+        || !current.subarray(0, origBuf.length).equals(origBuf)) {
+        const err = new Error(sanitize(path.basename(filePath), MEMORY_FILE_CAP + 16)
+            + ' was replaced while this pass was rewriting it, so nothing'
+            + ' was written; run it again against the file as it stands');
+        // Marked, because it is the one stop from here that clears itself: the
+        // file this pass read is gone and the one in its place is what a
+        // re-run reads, so a caller's failure line can say so instead of
+        // sending its reader to clear a path that is not blocked.
+        err.replaced = true;
+        throw err;
+    }
+    let tail = null;
+    if (concurrentAppends && current.length > origBuf.length) {
+        // The appended bytes are the appender's, not this pass's, so a
+        // caller that is removing something from the file gets to say
+        // what it will not carry back in.
+        tail = options.filterAppend
+            ? options.filterAppend(current.subarray(origBuf.length))
+            : current.subarray(origBuf.length);
+    }
+    fs.copyFileSync(filePath, bak);
+    // Announced here, after the copy returns, because this is the moment the
+    // backup exists: the guards above and the copy itself can all throw, and
+    // a caller told sooner would report a .bak that was never written. What
+    // it announces is the copy, never the rewrite, which can still fail after
+    // this. It is announced with the file's own path, because a caller
+    // reporting backups is reporting a set of files rather than a fact about
+    // the pass: several of the ways a rewrite stops happen before this line,
+    // so a pass that took one backup and then stopped short of a second must
+    // not send an operator looking for the second. That is the fact a caller's
+    // failure line needs: the single previous generation of this .bak is spent
+    // either way, so the file it now
+    // holds is that file as it stood just before this pass wrote to it,
+    // whether or not the rewrite that took it landed. That is one step later
+    // than the bytes checked above: where the file takes lawful concurrent
+    // appends, bytes appended between that read and this copy are in the copy
+    // too. Both are the file before this pass wrote, which is what recovery
+    // needs, and taking the copy earlier would spend the generation on a
+    // rewrite that the check can still refuse.
+    if (options.onBackup) options.onBackup(filePath);
     try {
-        const current = fs.readFileSync(filePath);
-        if (current.length > origBuf.length) {
-            fs.appendFileSync(tmp, current.subarray(origBuf.length));
-        }
+        // Inside the try, so a failed write takes its own partial file with
+        // it: a stranded tmp beside a record holds a fragment of a body that
+        // no reader lists and no later write overwrites.
+        fs.writeFileSync(tmp, newContent, 'utf8');
+        if (tail !== null && tail.length > 0) fs.appendFileSync(tmp, tail);
         fs.renameSync(tmp, filePath);
     } catch (err) {
         try { fs.unlinkSync(tmp); } catch { /* best effort: a leftover tmp is inert */ }
         throw err;
     }
+}
+
+// Put an index's kept lines into the shape every writer here leaves: a
+// heading, a blank line, then the record lines. Each branch that appends to
+// an existing index pops the document's trailing blanks first, so an index
+// holding no record lines yet would otherwise take its first one directly
+// under the title, and a file that exists holding nothing but blank lines
+// would take a record line with no heading at all while removeIndexLine
+// gives that same file a heading. One document with one shape is what keeps
+// a syncing store from churning between lawful spellings of it.
+function keepHeadingBlank(kept, heading) {
+    if (kept.length === 0) {
+        kept.push(heading, '');
+        return;
+    }
+    if (kept.every((l) => parseIndexLine(l) === null)) kept.push('');
 }
 
 // A store file as bytes plus decoded lines, or null when absent. The bytes
@@ -4772,6 +5052,143 @@ function readStoreFile(filePath) {
     return { buf, lines: text.split(/\r?\n/) };
 }
 
+// The name a backup is reported under: enough of the path to reach exactly
+// one file. In this store that is the tier and the filename, and one segment
+// more for a document that sits in a tier's archive.
+//
+// A basename alone collides in three directions at once, and the depth is
+// chosen from the store's layout rather than from the callers there happen to
+// be. Every tier keeps its index at MEMORY.md and its stamps at usage.jsonl,
+// so across the project, type and operator tiers one pass rewrites three
+// files of each name. Inside a tier, the archive keeps an index of its own,
+// which is MEMORY.md again. And an archive is a directory within a tier
+// rather than a tier beside it, so the paths this module writes to are not
+// all the same depth: stopping at the parent names every tier's archive index
+// 'archive/MEMORY.md', which is the same collision one level down, in the one
+// place a two-segment rule never looks. A reader handed one of these names is
+// going to walk it to a .bak and recover a document from it, so it has to
+// name one file and not a shape several files share. The longer name in the
+// ordinary single-tier line is the cost, paid deliberately.
+function backupLabel(filePath) {
+    const dir = path.dirname(filePath);
+    const tier = path.basename(dir) === ARCHIVE_DIR
+        ? path.basename(path.dirname(dir)) + '/' + ARCHIVE_DIR
+        : path.basename(dir);
+    return tier + '/' + path.basename(filePath);
+}
+
+// Name the backups a stopped pass took, for its failure line. The caller
+// passes what its rewrites recorded as they took each one, so an empty list
+// says no .bak of this pass exists rather than that nothing was written: a
+// rename, an unlink and a whole-file create all leave the list empty and the
+// store changed.
+// Each file once: a pass can rewrite one document twice, and a name printed
+// twice reads as two files rather than as one recovery. With a two-segment
+// label the only thing that repeats is one file, which is what this collapses.
+//
+// The list is bounded, and a cut says so, failureText's rule for the same
+// reason: this is the sentence an operator acts on when a rewrite stopped, and
+// a list that loses its last name silently tells them the file they most need
+// to know about is not there. The bound is generous for the line a pass
+// ordinarily prints, two or three names; the marker is what keeps it honest
+// for the pass that backs up a document in every tier, whose names are longer
+// since each carries the directory it sits in.
+function backupClause(names) {
+    const each = [...new Set(names)];
+    const listed = sanitize(each.join(', '), BACKUP_LIST_CAP + 1);
+    const text = listed.length > BACKUP_LIST_CAP
+        ? listed.slice(0, BACKUP_LIST_CAP) + ' [cut]'
+        : listed;
+    return (each.length === 1
+        ? 'a .bak beside ' + text + ' holds it'
+        : 'a .bak beside each of ' + text + ' holds it')
+        + ' as it stood just before this pass wrote to it';
+}
+
+// Refuse a store path that holds something other than a plain file, for a
+// write that is about to overwrite whatever is there. readStoreFile, and a
+// writeFileSync or appendFileSync opening a file the ordinary way, follow a
+// link, so a link at a store document's name reads as that document and then
+// takes the whole rewritten document to wherever it points, outside the store
+// the caller named. An overwrite has no flag that would refuse instead, the
+// way an exclusive create does, so lstat is what sees the link here rather
+// than following it. An absent path is not this check's business: the caller's
+// own read has already answered for it.
+function refuseNonRegularStoreFile(filePath) {
+    let st = null;
+    try { st = fs.lstatSync(filePath); } catch { /* absent: the caller's read answered */ }
+    if (st !== null && !st.isFile()) {
+        throw new Error(sanitize(path.basename(filePath), MEMORY_FILE_CAP + 16)
+            + ' exists and is not a regular file, so nothing was written to it');
+    }
+}
+
+// Create a store document at a name a check has just answered absent for: an
+// index a read returned null for, or a record an existence check did not find.
+//
+// Neither check can tell an absent file from a link pointing at nothing: both
+// answer absent, and a plain write would then follow the link and put a whole
+// tier index, an archive index or a record wherever it points. Two
+// instruments, for two different halves of the question. The lstat sees a
+// reparse point of either shape, a file symlink or a directory junction, and
+// refuses it in words. The exclusive flag closes the window between that look
+// and the write, which is not a theoretical window here: a sync pull writes
+// files into this store whole while holding no lock this module takes, so a
+// name that was free at the check can be a document by the time the write
+// runs, and a plain write would replace it.
+//
+// Both refusals are one state in one sentence, distinct from the state a
+// caller's own duplicate check reports: that one is a name already taken when
+// the command started, which the caller refuses in its own words before it
+// reaches here.
+//
+// The open and the write are separate calls because only this frame can tell
+// whose name it is. Once the exclusive open returns, the name is this call's
+// own: nothing else created it and nothing else may be standing at it. So a
+// write that fails after that point (a full disk, a quota, an I/O error) has
+// left a fragment at a name every caller here treats as either whole or
+// absent, and this is the only place that can remove it without the risk of
+// removing a file another writer owns. A create that throws leaves the name
+// as it found it, which is what every caller's unwind is written against.
+function createStoreFile(filePath, content) {
+    let st = null;
+    try { st = fs.lstatSync(filePath); } catch { /* absent: this is the create */ }
+    const taken = () => new Error(sanitize(path.basename(filePath), MEMORY_FILE_CAP + 16)
+        + ' was not created: nothing answered at that name a moment ago and something'
+        + ' stands there now');
+    if (st !== null) throw taken();
+    let fd;
+    try {
+        fd = fs.openSync(filePath, 'wx');
+    } catch (err) {
+        if (err && err.code === 'EEXIST') throw taken();
+        throw err;
+    }
+    // The first failure of the two is the one reported: a close that fails
+    // after a failed write says nothing the write did not already say, and a
+    // close that fails on its own is a write that may not have reached the
+    // disk, which is the same fragment. The descriptor is closed exactly once
+    // either way, because closing one twice can close a descriptor another
+    // part of this process has since opened at the same number.
+    let failure = null;
+    try {
+        fs.writeFileSync(fd, content, 'utf8');
+    } catch (err) {
+        failure = err;
+    }
+    try {
+        fs.closeSync(fd);
+    } catch (err) {
+        if (failure === null) failure = err;
+    }
+    if (failure !== null) {
+        try {
+            fs.unlinkSync(filePath);
+        } catch { /* the fragment stays, and the caller's failure line reports the throw */ }
+        throw failure;
+    }
+}
+
 // Fold the journal's expired entries, plain outcomes and earlier rollups
 // alike, into one rollup entry per key, preserving the pass/fail tally, the
 // covered date range, and the union of the entries' tags so `find --tag`
@@ -4779,7 +5196,7 @@ function readStoreFile(filePath) {
 // timestamp does not parse, and lines that are not entries at all are kept
 // verbatim. A key whose only expired line is a single earlier rollup is left
 // alone: re-rolling it would rewrite the file to remove nothing.
-function rollupStep(memDir, now, report) {
+function rollupStep(memDir, now, report, onBackup) {
     const file = path.join(memDir, JOURNAL_FILE);
     const src = readStoreFile(file);
     if (src === null) return;
@@ -4857,7 +5274,9 @@ function rollupStep(memDir, now, report) {
             + '  ' + first.slice(0, 10) + '..' + last.slice(0, 10));
     }
     const kept = items.filter((it) => it.key === null || !groups.has(it.key)).map((it) => it.line);
-    rewriteWithBackup(file, src.buf, merged.concat(kept).join('\n') + '\n');
+    // The outcome journal: `log` appends to it without taking the decay lock.
+    rewriteWithBackup(file, src.buf, merged.concat(kept).join('\n') + '\n',
+        { concurrentAppends: true, onBackup: onBackup });
 }
 
 // Prune the usage sidecar to what the decay lifecycle still reads. A file's
@@ -4877,7 +5296,7 @@ function rollupStep(memDir, now, report) {
 // rewrites nothing. `tag` labels the report lines with the tier they
 // describe ('' for the project tier), so a pass over several tiers stays
 // auditable from its output alone.
-function usageStep(memDir, report, tag) {
+function usageStep(memDir, report, tag, onBackup) {
     const file = path.join(memDir, USAGE_FILE);
     const src = readStoreFile(file);
     if (src === null) return;
@@ -4957,8 +5376,10 @@ function usageStep(memDir, report, tag) {
         }));
     }
     const keptCount = merged.length + newestRead.size + (appliedShape.size - foldFiles.length);
+    // A usage sidecar: the stamp hook appends to it without taking any lock.
     rewriteWithBackup(file, src.buf,
-        merged.concat(items.filter((it) => it.keep).map((it) => it.line)).join('\n') + '\n');
+        merged.concat(items.filter((it) => it.keep).map((it) => it.line)).join('\n') + '\n',
+        { concurrentAppends: true, onBackup: onBackup });
     report.push('usage  kept ' + keptCount + ' of ' + total + ' stamps' + tag);
 }
 
@@ -4973,15 +5394,30 @@ function usageStep(memDir, report, tag) {
 // carry be re-run without doubling the line. The write takes the same backup
 // path as every other rewrite here, under the lock the pass already holds for
 // this tier.
-function carryArchiveIndex(archiveDir, retired) {
+function carryArchiveIndex(archiveDir, retired, options) {
+    if (!options || typeof options.sharedTier !== 'boolean') {
+        throw new Error('the archive index was not carried: the call did not state whether'
+            + ' this is a shared tier');
+    }
     const indexPath = path.join(archiveDir, INDEX_FILE);
     const lines = retired.map((r) => r.line);
     const src = readStoreFile(indexPath);
     // An absent index and one holding nothing but blank lines are both the
     // archive's first line: the index is created whole with its heading, so
-    // there is nothing to back up and no index can end up header-less.
-    if (src === null || src.lines.every((l) => l.trim() === '')) {
-        fs.writeFileSync(indexPath, '# Archived Memory Index\n\n' + lines.join('\n') + '\n', 'utf8');
+    // there is nothing to back up and no index can end up header-less. The two
+    // take different instruments because they are different writes. An absent
+    // name is created, so the exclusive create answers for it. A file that read
+    // as blank is overwritten, which no exclusive create can do, so what
+    // answers there is the lstat: the read that called it blank followed any
+    // link at the name, and this write would follow it too.
+    const body = ARCHIVE_INDEX_HEADING + '\n\n' + lines.join('\n') + '\n';
+    if (src === null) {
+        createStoreFile(indexPath, body);
+        return;
+    }
+    if (src.lines.every((l) => l.trim() === '')) {
+        refuseNonRegularStoreFile(indexPath);
+        fs.writeFileSync(indexPath, body, 'utf8');
         return;
     }
     const kept = [];
@@ -4991,7 +5427,9 @@ function carryArchiveIndex(archiveDir, retired) {
         kept.push(l);
     }
     while (kept.length > 0 && kept[kept.length - 1].trim() === '') kept.pop();
-    rewriteWithBackup(indexPath, src.buf, kept.concat(lines).join('\n') + '\n');
+    keepHeadingBlank(kept, ARCHIVE_INDEX_HEADING);
+    rewriteWithBackup(indexPath, src.buf, kept.concat(lines).join('\n') + '\n',
+        { concurrentAppends: !options.sharedTier, onBackup: options.onBackup });
 }
 
 // The archive index line for one retiring memory, built from parts this pass
@@ -5020,17 +5458,271 @@ function archiveIndexLine(name, description) {
 // carry rides the pruned-line count rather than a line of its own.
 //
 // Order matters here, because no version control sits under the store. The
-// carry runs before the moves and the prune runs after them, so the state a
-// failure can leave is always one a re-run repairs: a failed carry has moved
-// nothing and pruned nothing, and a failed move leaves the tier index intact
-// beside an archive index the next attempt overwrites in place. Moving first
-// would instead leave the tier index describing memories that are no longer
-// there, with the retry refused by archiveTargetsValid and no lawful writer
-// left to repair it.
-function archiveStep(memDir, archives, report, tag) {
+// carry runs before the moves and the prune runs after them, and every state
+// a stop can leave in this tier is one this same step completes when it is
+// given these same names again. A failed carry has moved nothing and pruned
+// nothing. A stop among the moves leaves some records under archive/ and the
+// rest live, with the tier index still listing all of them. A stop at the
+// prune leaves every record moved and the index still listing them.
+//
+// That promise is about one tier, and one pass can carry names in three. A
+// tier that finished before the pass stopped elsewhere holds nothing for a
+// re-run to resume: its records are under archive/ and its index lines are
+// gone, which archiveTargetsValid reads as a name with nothing to retire and
+// refuses the whole re-run on. So a re-run after a stop carries the names of
+// the tiers that did not finish, which is what the refusals below say in
+// their own words.
+//
+// The last two are why a name already under archive/ with no live twin is a
+// pass to finish rather than an error: archiveTargetsValid admits it, and the
+// move below skips it while its index line is carried and pruned like any
+// other. Without that, a stop after the first rename would leave a shared
+// tier listing records that live under archive/, in a store where hand edits
+// are barred and this pass is the only writer that could repair it.
+//
+// Pruning before the moves would trade one stranded state for a worse one: a
+// stop among the moves would then leave records that are still live with no
+// index line, which no reader lists and no re-run of this command restores,
+// since the pass works from the index lines it finds.
+function archiveStep(memDir, archives, report, tag, options) {
+    if (!options || typeof options.sharedTier !== 'boolean') {
+        throw new Error('the archive pass did not run: the call did not state whether this'
+            + ' is a shared tier');
+    }
+    if (!(options.resumed instanceof Set)) {
+        throw new Error('the archive pass did not run: the call did not say which of these'
+            + ' names an earlier run had already moved');
+    }
     if (archives.length === 0) return;
     const names = archives.slice().sort();
     const archiveDir = path.join(memDir, ARCHIVE_DIR);
+
+    // The directory every slot check below reads through, asked about before
+    // any of them. lstat does not follow a final component but does follow
+    // every component before it, so a link standing at archive/ answers each
+    // per-name slot check about a directory outside the store: every slot
+    // reads free, mkdirSync is satisfied by what the link points at, and the
+    // renames and the archive index land there while this pass reports each
+    // name archived. The delete verbs ask this same question of this same
+    // directory before they unlink in it.
+    let archiveNode = null;
+    try {
+        archiveNode = fs.lstatSync(archiveDir);
+    } catch { /* absent: the mkdirSync below creates it */ }
+    if (archiveNode !== null && !archiveNode.isDirectory()) {
+        throw new Error(ARCHIVE_DIR + '/' + tag + ' is not a directory, so there is nowhere'
+            + ' in this tier to retire a record to; nothing in this tier was archived');
+    }
+
+    // The facts the moves and the prune below rest on, asked again here under
+    // the lock before any name is moved and before the index is read. The
+    // caller's verdicts were formed before any lock was taken, and every other
+    // lawful writer of a shared tier takes the same lock this pass holds:
+    // add-type and add-operator create a name again, delete-type and
+    // delete-operator take a name away whole, and this same pass run elsewhere
+    // retires one. So each verdict has a writer that can invalidate it in that
+    // window.
+    //
+    // Four facts are asked, two per verdict, and they are the four a rename or
+    // a prune consumes:
+    //
+    //   a name judged live is still a record (a stat that answers, for a plain
+    //   file), and its archive slot is still free (an lstat that says ENOENT);
+    //
+    //   a name judged already archived is still gone from the tier (a stat that
+    //   says ENOENT, the validator's own signature), and the archived record is
+    //   still a plain file under archive/ by lstat.
+    //
+    // Every one of them refuses rather than skips. A returned record is refused
+    // because the rename would write it over the retired one and the two are
+    // different memories; a slot that filled while this pass waited is the same
+    // collision reached from the other side, since renameSync replaces its
+    // destination and nothing would say which memory was lost. A name that has
+    // left the tier is refused because the rename would otherwise throw a bare
+    // ENOENT from inside the move loop, after other names have been carried
+    // into the archive index, with the error naming a syscall instead of the
+    // name it happened to. Skipping a name instead would leave an index line
+    // this pass had already carried describing a body that is not there.
+    //
+    // A live record's pin is asked again with them, in the validator's own
+    // terms: a pin is the store's one way to say a record is not to be
+    // retired, it is set by editing the record, and the window between the
+    // validator's read and this lock is exactly long enough for a session to
+    // set one. The retired half of the loop does not ask, for the reason the
+    // validator does not: that record is archived already, and refusing there
+    // would strand the index line an earlier run left with no lawful writer
+    // able to remove it.
+    //
+    // One thing the validator establishes is not asked again here, and this
+    // loop is not a re-run of it. The fifth fact the resume rests on, that the
+    // tier index still lists the name,
+    // is re-established by construction a few lines below, where the split of
+    // the index into kept and retiring lines is built from a read taken under
+    // this same lock; a name the index no longer lists lands in nothingLeft and
+    // is reported as having nothing to retire.
+    //
+    // The free-slot question is asked by lstat here and by a link-following
+    // stat in the validator. This is the answer the two lawful writers of a
+    // shared tier's index agree on: a link planted at an archived name is not a
+    // record to the delete verbs either, and a rename onto one would follow it
+    // out of the store. So a link there is refused in the archive slot's own
+    // words rather than reported as a retired record.
+    //
+    // Each refusal below ends with what the store was left in and what a
+    // re-run does, which is the clause an operator acts on. The caller prints
+    // it through failureText, so what a refusal has to fit in is
+    // FAILURE_TEXT_CAP with a marker past it, measured with a name at NAME_CAP
+    // and a tier tag carrying a type name at TYPE_CAP, since those are the two
+    // fields a caller's input can push out. Nothing here leans on the trailing
+    // clause to say which name it is about or which state stopped the pass.
+    //
+    // What has already been touched at this point is what the pass reported
+    // doing: with --rollup, the journal and usage rewrites for this tier have
+    // run and spent their single .bak generation. No name has moved and no
+    // index has been written, so a refusal here leaves the tier's records and
+    // both indexes exactly as this pass found them.
+    const resumed = new Set();
+    for (const name of names) {
+        const memFile = name + '.md';
+        let st = null;
+        let code = null;
+        try {
+            // lstat, so a link at a record's name is seen rather than followed.
+            // A rename moves the link and leaves its target where it is, which
+            // would put a name into archive/ pointing at a file the store does
+            // not own, readable from then on as archived shared-tier content by
+            // every project that reads this store. This is stricter than the
+            // readers of the same path, which resolve a link and serve what it
+            // points at: reading through one costs nothing, moving one moves
+            // the store's own boundary.
+            st = fs.lstatSync(path.join(memDir, memFile));
+        } catch (err) {
+            code = err && err.code ? err.code : String(err);
+        }
+        if (options.resumed.has(name)) {
+            if (code === 'ENOENT') {
+                let slot = null;
+                let slotCode = null;
+                try {
+                    slot = fs.lstatSync(path.join(archiveDir, memFile));
+                } catch (err) {
+                    slotCode = err && err.code ? err.code : String(err);
+                }
+                if (slot !== null && slot.isFile()) {
+                    resumed.add(name);
+                    continue;
+                }
+                // ENOENT is the archived record being gone. Any other code is a
+                // slot this pass could not examine, which is not the same state
+                // and is not one to state as fact in a refusal.
+                throw new Error('\'' + sanitize(name, NAME_CAP) + '\'' + tag + ' is '
+                    + (slotCode === 'ENOENT'
+                        ? 'no longer under ' + ARCHIVE_DIR + '/ either, so nothing of it is'
+                            + ' left for this pass to retire'
+                        : slotCode !== null
+                            ? 'not examinable under ' + ARCHIVE_DIR + '/ either ('
+                                + sanitize(slotCode, 40) + '), so whether anything of it is'
+                                + ' left to retire is unknown'
+                            : 'not a plain file under ' + ARCHIVE_DIR + '/, so what stands'
+                                + ' there is not a record this pass can retire')
+                    + '; nothing in this tier was archived, and a re-run'
+                    + ' without that name retires the rest');
+            }
+            throw new Error('\'' + sanitize(name, NAME_CAP) + '\'' + tag + ' is '
+                + (code === null
+                    ? 'in the tier again, so the index line is that record\'s now and this pass'
+                        + ' will not retire it over the one an earlier run archived'
+                    : 'no longer examinable (' + sanitize(code, 40) + '), so whether an earlier'
+                        + ' run already archived it cannot be established')
+                + '; nothing in this tier was archived');
+        }
+        if (code === 'ENOENT') {
+            // Two lawful writers produce this ENOENT and they want opposite
+            // re-runs. A delete verb took the name away, and a re-run without
+            // it retires the rest. Another decay pass retired it, which leaves
+            // the record under archive/ and this tier's index line still to
+            // prune: only the resume admission clears that line, and it fires
+            // only for a name this pass is given, so a re-run without the name
+            // strands the line with no lawful writer left to remove it. The
+            // slot is what tells them apart, so it is asked rather than
+            // assumed.
+            const goneSlot = path.join(archiveDir, memFile);
+            let goneNode = null;
+            let goneCode = null;
+            try {
+                goneNode = fs.lstatSync(goneSlot);
+            } catch (err) {
+                goneCode = err && err.code ? err.code : String(err);
+            }
+            if (goneNode !== null && goneNode.isFile()) {
+                throw new Error('\'' + sanitize(name, NAME_CAP) + '\'' + tag + ' was retired'
+                    + ' by another pass while this one waited for its lock; nothing in this'
+                    + ' tier was archived, and a re-run keeping that name prunes the index'
+                    + ' line it left');
+            }
+            throw new Error('\'' + sanitize(name, NAME_CAP) + '\'' + tag + ' is gone from the'
+                + ' tier: ' + (goneCode === 'ENOENT'
+                    ? 'another writer removed it after this pass validated its names'
+                    : goneCode !== null
+                        ? 'it left after this pass validated its names, and ' + ARCHIVE_DIR
+                            + '/ cannot be examined (' + sanitize(goneCode, 40) + ')'
+                        : 'it left after this pass validated its names, and what stands under '
+                            + ARCHIVE_DIR + '/ is not a record')
+                + '; nothing in this tier was archived, and a re-run without that name'
+                + ' retires the rest');
+        }
+        if (code === null && st.isFile()) {
+            // The same two verdicts the validator refuses on, in the same
+            // words: a misplaced pinned: line is not a pin to either of them,
+            // so a record carrying one is retired here as it is admitted
+            // there.
+            const pin = pinState(path.join(memDir, memFile));
+            if (pin === 'pinned' || pin === 'unknown') {
+                throw new Error('\'' + sanitize(name, NAME_CAP) + '\'' + tag + ' is '
+                    + (pin === 'pinned'
+                        ? 'pinned, set while this pass waited for its lock, and a pin is what'
+                            + ' says a record is not to be retired'
+                        : 'no longer readable, so whether it is pinned is unknown and'
+                            + ' retiring it could retire a record a pin protects')
+                    + '; nothing in this tier was archived, and a re-run without that name'
+                    + ' retires the rest');
+            }
+            const slotPath = path.join(archiveDir, memFile);
+            let slotNode = null;
+            let slotCode = null;
+            try {
+                slotNode = fs.lstatSync(slotPath);
+            } catch (err) {
+                slotCode = err && err.code ? err.code : String(err);
+            }
+            if (slotCode === 'ENOENT') continue;
+            if (slotCode !== null) {
+                throw new Error('the archive slot for \'' + sanitize(name, NAME_CAP) + '\''
+                    + tag + ' cannot be examined (' + sanitize(slotCode, 40) + '), so whether'
+                    + ' the move would write over a record already there is unknown; nothing'
+                    + ' in this tier was archived');
+            }
+            if (slotNode.isFile()) {
+                throw new Error('\'' + sanitize(name, NAME_CAP) + '\'' + tag + ' already'
+                    + ' exists in ' + ARCHIVE_DIR + '/: it was retired while this pass waited'
+                    + ' for its lock, and the two are different memories; nothing in this tier'
+                    + ' was archived, and a re-run without it retires the rest');
+            }
+            throw new Error('the archive slot for \'' + sanitize(name, NAME_CAP) + '\'' + tag
+                + ' is not a plain file, so the record cannot be moved into it; nothing in'
+                + ' this tier was archived, and a re-run without that name retires the rest');
+        }
+        // What is left here: the name is still in the tier and is not a record
+        // this pass can move. ENOENT went to the block above, which asks the
+        // archive slot before it says which writer took the name away.
+        throw new Error('\'' + sanitize(name, NAME_CAP) + '\'' + tag + ' is '
+            + (code !== null
+                ? 'no longer examinable (' + sanitize(code, 40) + '), so it is not a record'
+                    + ' this pass can move'
+                : 'no longer a plain file, so it is not a record this pass can move')
+            + '; nothing in this tier was archived, and a re-run without that name retires'
+            + ' the rest');
+    }
     fs.mkdirSync(archiveDir, { recursive: true });
 
     // The tier index, split into the lines that stay and the rebuilt lines
@@ -5055,16 +5747,141 @@ function archiveStep(memDir, archives, report, tag) {
             kept.push(line);
         }
     }
-    if (retired.size > 0) carryArchiveIndex(archiveDir, Array.from(retired.values()));
+    if (retired.size > 0) {
+        carryArchiveIndex(archiveDir, Array.from(retired.values()),
+            { sharedTier: options.sharedTier, onBackup: options.onBackup });
+    }
 
+    // The tier's entries, listed once: each record's copies are picked out of
+    // this list by name. A listing this pass cannot take is reported rather
+    // than thrown, for the reason the moves below are.
+    let entries = [];
+    try {
+        entries = fs.readdirSync(memDir);
+    } catch {
+        report.push('listing  the tier could not be listed, so it was not checked for'
+            + ' copies of these bodies to move' + tag);
+    }
+    // The names an earlier stopped run already moved, split by whether this
+    // pass has an index line of theirs to move. Both lists are reported below
+    // rather than here: a line saying an index line moved is true only once
+    // the rewrite has landed, and the rewrite is after this loop.
+    const finishing = [];
+    const nothingLeft = [];
     for (const name of names) {
-        fs.renameSync(path.join(memDir, name + '.md'), path.join(archiveDir, name + '.md'));
-        report.push('archived  ' + sanitize(name, NAME_CAP) + tag);
+        if (!resumed.has(name)) {
+            fs.renameSync(path.join(memDir, name + '.md'), path.join(archiveDir, name + '.md'));
+            report.push('archived  ' + sanitize(name, NAME_CAP) + tag);
+        } else if (retired.has(memoryFileKey(name + '.md'))) {
+            finishing.push(name);
+        } else {
+            nothingLeft.push(name);
+        }
+        // Every copy of a record's text travels with the record. A body
+        // repair leaves <name>.md.bak beside a record, and a rewrite killed
+        // between its write and its rename strands <name>.md.tmp.<pid>; both
+        // hold a body, and one left in the live tier after the record moved
+        // is a copy of a retired memory sitting where the live ones are: no
+        // reader lists it and no rewrite overwrites it, so it reads as tier
+        // content to nothing and survives every pass. Moving them keeps a
+        // record's copies beside that record wherever the record is. A move
+        // that fails is reported rather than thrown: the record itself is
+        // already where it belongs, the copy is a duplicate of a body and not
+        // the memory, and stopping the whole pass over one would leave the
+        // index lines of every later name unpruned for it. A re-run attempts
+        // it again, since the pass resumes.
+        for (const entry of entries) {
+            if (!recordCopyEntry(name + '.md', entry)) continue;
+            // Both ends of the move, asked about before it runs, and any
+            // answer but the one the move needs leaves the copy where it is
+            // and reports it kept. That is what a refused rename already
+            // reports, and for a reader it is the same outcome: the copy is
+            // still in the tier.
+            //
+            // The source by lstat, for the reason the record's own rename
+            // takes one: a rename moves a link and leaves its target where it
+            // is, which would put a name under archive/ pointing at a file the
+            // store does not own. The exposure is smaller here than for the
+            // record, since no reader opens a .bak or a .tmp and the delete
+            // sweep unlinks these names rather than following them, but it is
+            // the same move.
+            //
+            // The destination because a rename replaces what it lands on, and
+            // this destination is a name an earlier retirement of this same
+            // name can already hold: archive/<name>.md.bak is the body a
+            // repair left beside the record that retirement moved. Replacing
+            // it destroys the only copy of that body the store holds, with
+            // nothing saying so.
+            let source = null;
+            try {
+                source = fs.lstatSync(path.join(memDir, entry));
+            } catch { /* gone since the listing: the kept line below says so */ }
+            let free = false;
+            try {
+                fs.lstatSync(path.join(archiveDir, entry));
+            } catch (err) {
+                free = Boolean(err) && err.code === 'ENOENT';
+            }
+            if (source === null || !source.isFile() || !free) {
+                report.push('kept  ' + sanitize(entry, MEMORY_FILE_CAP + 16)
+                    + ' in the tier' + tag);
+                continue;
+            }
+            try {
+                fs.renameSync(path.join(memDir, entry), path.join(archiveDir, entry));
+            } catch {
+                report.push('kept  ' + sanitize(entry, MEMORY_FILE_CAP + 16)
+                    + ' in the tier' + tag);
+            }
+        }
+    }
+
+    // True as it is written: this pass found the record already retired and
+    // found no line of its own to move, which is the whole of what it did for
+    // that name.
+    for (const name of nothingLeft) {
+        report.push('nothing  ' + sanitize(name, NAME_CAP) + ' is under ' + ARCHIVE_DIR
+            + '/ already and the tier index carried no line for it' + tag);
     }
 
     if (retired.size === 0) return;
-    rewriteWithBackup(indexPath, src.buf, kept.join('\n'));
+    // The same document shape removeIndexLine leaves, because the two are
+    // writers of one file in a store that syncs: an index emptied by this
+    // pass and one emptied by a delete have to be the same bytes, and a tier
+    // index that never had a heading gets one here rather than becoming an
+    // empty file.
+    while (kept.length > 0 && kept[kept.length - 1].trim() === '') kept.pop();
+    const text = kept.length === 0
+        ? MEMORY_INDEX_HEADING + '\n\n'
+        : kept.join('\n') + (kept.some((l) => parseIndexLine(l) !== null) ? '\n' : '\n\n');
+    rewriteWithBackup(indexPath, src.buf, text,
+        { concurrentAppends: !options.sharedTier, onBackup: options.onBackup });
+    // Past the rewrite, so each line reports a write that landed.
+    for (const name of finishing) {
+        report.push('finished  ' + sanitize(name, NAME_CAP) + ' was under ' + ARCHIVE_DIR
+            + '/ already, and this pass moved the index line an earlier run left' + tag);
+    }
     report.push('index  pruned ' + pruned + ' line' + (pruned === 1 ? '' : 's') + tag);
+}
+
+// A project directory name as this module prints it. The charset is the
+// store's own segment grammar (isStorePathSegment), which is what both minters
+// of these names are bounded by: sanitizeProjectPath, which leaves letters,
+// digits, and hyphens, and a KIT_MEMORY_PROJECT pin, which is admitted at
+// that wider grammar. Closing any tighter would print 'a_b' and 'a.b' as one
+// name in the listing an operator reads while authorizing an irreversible
+// delete. A name carrying anything else was written by a hand or arrived
+// through a sync rather than being minted here, and printing one verbatim
+// would put text
+// this module did not write at column zero in memq's own voice, in the line
+// an operator reads while deciding whether to confirm a destructive act, so
+// the charset is closed on the way out. A name the store minted is unchanged
+// by this. The bound is the path bound (260, as in memDirOrNote) rather than
+// the memory-name cap, because the segment is derived from a full path and
+// two deep sibling projects truncated shorter would print as one
+// indistinguishable declarer.
+function projectLabel(segment) {
+    return sanitize(String(segment).replace(/[^A-Za-z0-9_.-]/g, '-'), 260);
 }
 
 // The store's projects that declare a given type, as a sorted list of
@@ -5077,21 +5894,18 @@ function archiveStep(memDir, archives, report, tag) {
 // because it runs across a store that may be partially synced between
 // machines: a project whose index exists but cannot be read is skipped with
 // a note, never a crash, and a projects/ root that cannot be enumerated at
-// all falls back to the one declarer this process can vouch for, the current
-// project. Declared types compare the way the filesystem compares names,
+// all answers null, which is "the list could not be established" rather than
+// a list. The callers differ on what that is worth, so each says so where it
+// asks. Declared types compare the way the filesystem compares names,
 // since two spellings of one type reach the same tier directory on a
 // case-insensitive filesystem.
-function projectsDeclaringType(type, cwd) {
+function projectsDeclaringType(type) {
     const projectsDir = projectsRootPath();
     const entries = projectSegments();
     if (entries === null) {
         process.stderr.write('memq: could not scan ' + sanitize(projectsDir, 260)
             + ' for declaring projects\n');
-        // The segment this process actually resolves, pin included: the
-        // listing is what an --archive-type decision is weighed against, so a
-        // fallback naming a cwd-derived directory the pinned store does not
-        // have would credit the decision to a project that is not in it.
-        return [sanitize(projectSegment(cwd), 260)];
+        return null;
     }
     const declaring = [];
     for (const name of entries) {
@@ -5105,24 +5919,42 @@ function projectsDeclaringType(type, cwd) {
             // counted out.
             if (err && err.code !== 'ENOENT' && err.code !== 'ENOTDIR') {
                 process.stderr.write('memq: skipping unreadable project \''
-                    + sanitize(name, 260) + '\' in the declaring-projects scan\n');
+                    + projectLabel(name) + '\' in the declaring-projects scan\n');
             }
             continue;
         }
         const declared = declaredType(raw);
-        // A project directory name is derived from a full path, so it takes
-        // the path bound (260, as in memDirOrNote), not the memory-name cap:
-        // two deep sibling projects truncated at a shorter bound would print
-        // as one indistinguishable declarer.
-        if (declared !== null && fsEq(declared, type)) declaring.push(sanitize(name, 260));
+        if (declared !== null && fsEq(declared, type)) declaring.push(projectLabel(name));
     }
     return declaring;
 }
 
-// Refuse an archive target that is not a live memory file of its tier, that
-// is pinned, or whose archive slot is already taken. Both tiers run the same
-// checks before anything mutates, so a typo cannot leave the pass half-
-// applied; `where` names the tier in the refusal.
+// Answer which of these names the archive pass may act on, and how. The
+// return is the set of names that are resumes rather than moves, or null when
+// one of them refuses the whole pass: a target that is neither a live memory
+// file of its tier nor a record an earlier stopped pass already moved, one
+// that is pinned, or one whose archive slot is taken by a different memory.
+// Both tiers run the same checks before anything mutates, so a typo cannot
+// leave the pass half-applied; `where` names the tier in the refusal.
+//
+// The per-name determination is returned rather than recomputed, because the
+// pass acts under a lock this validator runs before and a second probe would
+// be answering about a different moment than the one that was judged.
+//
+// A resume is three facts together, and each one is load-bearing. The live
+// record is absent, which is ENOENT and nothing else: any other stat failure
+// says the path could not be examined, and a directory or other node under
+// the name is not an absent record. A regular file sits under archive/ for
+// it, probed by lstat, the way every writer of that path probes it: the
+// readers resolve a link and serve what it points at, which costs nothing,
+// while moving or unlinking through one reaches a file the store does not
+// own.
+// And the tier index still lists the name, which is what a pass stopped
+// between the moves and the prune leaves behind and is the only one of the
+// three that distinguishes that state from an ordinary completed retirement.
+// Without all three, the pin check and the archive-slot refusal below would
+// be skipped for a record that is still there, and the carry would write a
+// live record's description onto a different retired record's index line.
 //
 // The pin is enforced here and not only in the scan's classification because
 // a name reaches this validator by hand, and the scan's two streams
@@ -5135,33 +5967,176 @@ function projectsDeclaringType(type, cwd) {
 // pin state cannot be read refuses on the same rule, because a target that
 // may be protected is not a target this pass can act on.
 function archiveTargetsValid(dir, names, where) {
+    // The files the tier index lists, or null when the index could not be
+    // read. Null is not an empty index: an index this pass cannot read cannot
+    // establish that a name is the leftover of a stopped run, and a resume
+    // admitted without it skips the pin and the archive-slot refusal.
+    let listed = null;
+    try {
+        const src = readStoreFile(path.join(dir, INDEX_FILE));
+        listed = new Set();
+        if (src !== null) {
+            for (const l of src.lines) {
+                const parsed = parseIndexLine(l);
+                if (parsed !== null) listed.add(memoryFileKey(parsed.file));
+            }
+        }
+    } catch {
+        listed = null;
+    }
+    const resumed = new Set();
     for (const name of names) {
-        const memPath = path.join(dir, name + '.md');
+        const memFile = name + '.md';
+        const memPath = path.join(dir, memFile);
         let st = null;
-        try { st = fs.statSync(memPath); } catch { /* reported just below */ }
-        if (!st || !st.isFile()) {
-            process.stderr.write('memq: no memory file named \'' + sanitize(name, NAME_CAP)
-                + '\'' + where + '\n');
-            return false;
+        let absent = false;
+        try {
+            // lstat, for the reason archiveStep's own re-assertion uses it: the
+            // pass moves this path rather than reading it, and a rename carries
+            // a link into archive/ while its target stays outside the store.
+            st = fs.lstatSync(memPath);
+        } catch (err) {
+            // ENOENT is the record being absent. Every other code says the
+            // path could not be examined, which is a target this pass cannot
+            // act on rather than one it may treat as already moved.
+            if (err && err.code === 'ENOENT') {
+                absent = true;
+            } else {
+                process.stderr.write('memq: \'' + sanitize(name, NAME_CAP)
+                    + '\' cannot be examined' + where + ' ('
+                    + sanitize(err && err.code ? err.code : String(err), 40)
+                    + '), so it is not a target this pass can act on\n');
+                return null;
+            }
+        }
+        if (absent) {
+            // What sits under archive/ is judged by lstat, the way the delete
+            // verbs judge the same path: this pass and those two are the only
+            // lawful writers of a shared tier's index, so a link planted at
+            // the archived name cannot be a record to one of them and not to
+            // the other. A link there would otherwise satisfy the fact this
+            // resume rests on, and the index line would be pruned for a body
+            // the store does not hold.
+            const archSlot = path.join(dir, ARCHIVE_DIR, memFile);
+            let archNode = null;
+            let archCode = null;
+            try {
+                archNode = fs.lstatSync(archSlot);
+            } catch (err) {
+                archCode = err && err.code ? err.code : String(err);
+            }
+            if (archNode === null) {
+                // ENOENT under archive/ with the record absent is a name the
+                // store does not hold, which is what the line below says. A
+                // slot that could not be examined is a different state: saying
+                // there is no such memory would assert an absence this pass did
+                // not observe.
+                if (archCode !== 'ENOENT') {
+                    process.stderr.write('memq: the archive slot for \''
+                        + sanitize(name, NAME_CAP) + '\'' + where + ' cannot be examined ('
+                        + sanitize(archCode, 40) + '), so whether an earlier run archived it'
+                        + ' cannot be established and it is not a target this pass can act'
+                        + ' on\n');
+                    return null;
+                }
+                process.stderr.write('memq: no memory file named \'' + sanitize(name, NAME_CAP)
+                    + '\'' + where + '\n');
+                return null;
+            }
+            if (!archNode.isFile()) {
+                if (!nonRecordRefusal(archSlot, name, where + ' under ' + ARCHIVE_DIR + '/',
+                    'this pass', false)) {
+                    // The slot answered a moment ago and does not now, so the
+                    // store holds nothing under this name at all, which is
+                    // what the live path says in the same situation.
+                    process.stderr.write('memq: no memory file named \''
+                        + sanitize(name, NAME_CAP) + '\'' + where + '\n');
+                }
+                return null;
+            }
+            if (listed === null) {
+                process.stderr.write('memq: \'' + sanitize(name, NAME_CAP) + '\' is under '
+                    + ARCHIVE_DIR + '/ already' + where + ' and the tier index could not be'
+                    + ' read, so whether a stopped pass left its line behind is unknown\n');
+                return null;
+            }
+            if (!listed.has(memoryFileKey(memFile))) {
+                process.stderr.write('memq: \'' + sanitize(name, NAME_CAP) + '\' is under '
+                    + ARCHIVE_DIR + '/ already' + where + ' and the tier index carries no line'
+                    + ' for it, so there is nothing to retire\n');
+                return null;
+            }
+            // The three facts hold, so this is the tail of a run that stopped
+            // between the moves and the prune. The pin is not consulted: a pin
+            // protects a live memory from being retired and this one is
+            // retired already, while refusing here would leave the stale index
+            // line with no lawful writer able to remove it.
+            resumed.add(name);
+            continue;
+        }
+        if (!st.isFile()) {
+            // What stands there rather than a bare absence, in the words the
+            // two delete verbs use for the same state: a name that answers is
+            // not a name with nothing behind it, and the remedy is to clear the
+            // path rather than to pick another name.
+            if (!nonRecordRefusal(memPath, name, where, 'this pass', false)) {
+                // The path answered a moment ago and does not now, so it is
+                // gone rather than occupied.
+                process.stderr.write('memq: no memory file named \'' + sanitize(name, NAME_CAP)
+                    + '\'' + where + '\n');
+            }
+            return null;
         }
         const pin = pinState(memPath);
         if (pin === 'pinned') {
             process.stderr.write('memq: \'' + sanitize(name, NAME_CAP) + '\' is pinned' + where
                 + '; delete its pinned: frontmatter field to retire it\n');
-            return false;
+            return null;
         }
         if (pin === 'unknown') {
             process.stderr.write('memq: \'' + sanitize(name, NAME_CAP)
                 + '\' cannot be read' + where + ', so whether it is pinned is unknown\n');
-            return false;
+            return null;
         }
-        if (fs.existsSync(path.join(dir, ARCHIVE_DIR, name + '.md'))) {
+        // The archive slot, asked about once and answered for by that one
+        // look. lstat, which is what archiveStep's own re-assertion and the
+        // delete verbs' nonRecordRefusal both use on this path: a link planted
+        // at an archived name is not a record to any writer here, and a rename
+        // onto one would follow it out of the store. Three states come out of
+        // it and each has its own answer. A plain file is a memory already
+        // retired under this name, and moving the live one onto it would
+        // replace a different memory, which renameSync does without a word.
+        // Anything else is a path to clear rather than a memory. A code other
+        // than ENOENT is a slot this pass could not look at, and a rename is
+        // not something to aim at one of those. ENOENT is the slot standing
+        // free, which is what the move needs.
+        const slot = path.join(dir, ARCHIVE_DIR, memFile);
+        let slotNode = null;
+        let slotCode = null;
+        try {
+            slotNode = fs.lstatSync(slot);
+        } catch (err) {
+            slotCode = err && err.code ? err.code : String(err);
+        }
+        if (slotCode !== null && slotCode !== 'ENOENT') {
+            process.stderr.write('memq: the archive slot for \'' + sanitize(name, NAME_CAP)
+                + '\'' + where + ' cannot be examined (' + sanitize(slotCode, 40) + '), so'
+                + ' whether the move would write over a record already there is unknown\n');
+            return null;
+        }
+        if (slotNode !== null && slotNode.isFile()) {
             process.stderr.write('memq: \'' + sanitize(name, NAME_CAP)
                 + '\' already exists in archive/' + where + '\n');
-            return false;
+            return null;
+        }
+        if (slotNode !== null) {
+            process.stderr.write('memq: the archive slot for \'' + sanitize(name, NAME_CAP)
+                + '\'' + where + ' is not a plain file, so the record cannot be moved into'
+                + ' it\n');
+            return null;
         }
     }
-    return true;
+    return resumed;
 }
 
 // memq decay-prune: the decay pass's one mutation path, and it mutates only
@@ -5198,8 +6173,17 @@ function archiveTargetsValid(dir, names, where) {
 // cannot get everything it needs refuses whole instead of half-applying the
 // project tier. Every archive name is
 // validated, deduplicated, and its source and destination checked before
-// anything mutates; every rewrite goes through rewriteWithBackup (a .bak, a
-// temp write, a concurrent-append tail copy, then a rename); and everything
+// anything mutates, and before any lock, so a refused pass has contended for
+// nothing; each fact another writer holding these same locks can change in
+// that window is asked again inside the locked step by the code that acts on
+// it, and every one of them refuses rather than skips: for a live name, that
+// it is still a record and that its archive slot is still free; for a name an
+// earlier run archived, that it is still gone from the tier and that the
+// archived body is still a plain file; and the directory all those slots sit
+// under, before any of them is read; every rewrite goes through rewriteWithBackup (a .bak, a
+// temp write, then a rename), carrying a concurrent append where the file has
+// a lawful lock-free appender and carrying none for the shared tiers' index
+// files, which a sync pull replaces whole; and everything
 // removed is printed, on the failure paths too, so the pass is auditable
 // from its output alone: a step that throws mid-pass prints what completed
 // before it, and each rewritten file keeps its .bak. The stamp hook appends
@@ -5276,16 +6260,22 @@ function cmdDecayPrune(argv) {
         return;
     }
 
-    if (!archiveTargetsValid(memDir, archives, '')) {
+    const projectResumed = archiveTargetsValid(memDir, archives, '');
+    if (projectResumed === null) {
         process.exitCode = 1;
         return;
     }
-    if (typed !== null && !archiveTargetsValid(typed.dir, typeArchives, ' in the type tier')) {
+    const typeResumed = typed === null
+        ? new Set()
+        : archiveTargetsValid(typed.dir, typeArchives, ' in the type tier');
+    if (typeResumed === null) {
         process.exitCode = 1;
         return;
     }
-    if (operator !== null
-        && !archiveTargetsValid(operator, operatorArchives, ' in the operator tier')) {
+    const operatorResumed = operator === null
+        ? new Set()
+        : archiveTargetsValid(operator, operatorArchives, ' in the operator tier');
+    if (operatorResumed === null) {
         process.exitCode = 1;
         return;
     }
@@ -5297,16 +6287,31 @@ function cmdDecayPrune(argv) {
     // more than one makes it a shared retirement, which proceeds only under
     // an explicit --confirm-shared.
     if (typeArchives.length > 0 && typed !== null) {
-        const declaring = projectsDeclaringType(typed.type, process.cwd());
-        const shown = declaring.slice(0, DECLARERS_SHOWN);
-        let line = 'memq: type \'' + sanitize(typed.type, TYPE_CAP) + '\' is declared by '
-            + declaring.length + ' project' + (declaring.length === 1 ? '' : 's');
-        if (shown.length > 0) line += ': ' + shown.join(', ');
-        if (declaring.length > shown.length) line += ', and ' + (declaring.length - shown.length) + ' more';
-        process.stderr.write(line + '\n');
-        if (declaring.length > 1 && !confirmShared) {
+        // A scan that could not be established is reported as that, and the
+        // confirmation is then required rather than waived, which is the
+        // posture delete-type takes for the same question. Substituting the
+        // one project this process can vouch for would name a count of one,
+        // and a count of one is exactly what waives the confirmation, so an
+        // unreadable projects/ would quietly buy a shared retirement the
+        // gate exists to ask about.
+        const declaring = projectsDeclaringType(typed.type);
+        if (declaring === null) {
+            process.stderr.write('memq: which projects declare type \''
+                + sanitize(typed.type, TYPE_CAP)
+                + '\' could not be established, so how far this retirement reaches is'
+                + ' unknown\n');
+        } else {
+            const shown = declaring.slice(0, DECLARERS_SHOWN);
+            let line = 'memq: type \'' + sanitize(typed.type, TYPE_CAP) + '\' is declared by '
+                + declaring.length + ' project' + (declaring.length === 1 ? '' : 's');
+            if (shown.length > 0) line += ': ' + shown.join(', ');
+            if (declaring.length > shown.length) line += ', and ' + (declaring.length - shown.length) + ' more';
+            process.stderr.write(line + '\n');
+        }
+        if ((declaring === null || declaring.length > 1) && !confirmShared) {
             process.stderr.write('memq: --archive-type retires the named memories from every project'
-                + ' above; re-run with --confirm-shared to proceed (nothing archived)\n');
+                + ' declaring the type; re-run with --confirm-shared to proceed'
+                + ' (nothing archived)\n');
             process.exitCode = 1;
             return;
         }
@@ -5371,28 +6376,44 @@ function cmdDecayPrune(argv) {
         }
     }
     const report = [];
+    // Which files this pass copied to a .bak, appended by the rewrites
+    // themselves as they take one. The failure line below names them rather
+    // than describing them: several of the ways this pass stops (a required
+    // option missing, a name whose state changed under the lock) happen before
+    // a single file is rewritten, and others stop between two rewrites, so
+    // neither "every file this pass touched has a .bak" nor "this pass wrote
+    // nothing" is a claim the pass is in a position to make. The list is what
+    // it is in a position to make.
+    const backedUp = [];
+    const noteBackup = (f) => { backedUp.push(backupLabel(f)); };
     try {
         if (rollup) {
-            rollupStep(memDir, Date.now(), report);
-            usageStep(memDir, report, '');
+            rollupStep(memDir, Date.now(), report, noteBackup);
+            usageStep(memDir, report, '', noteBackup);
         }
-        archiveStep(memDir, archives, report, '');
+        archiveStep(memDir, archives, report, '',
+            { sharedTier: false, resumed: projectResumed, onBackup: noteBackup });
         if (typeWork) {
             const tag = '  (type:' + sanitize(typed.type, TYPE_CAP) + ')';
-            if (rollup) usageStep(typed.dir, report, tag);
-            archiveStep(typed.dir, typeArchives, report, tag);
+            if (rollup) usageStep(typed.dir, report, tag, noteBackup);
+            archiveStep(typed.dir, typeArchives, report, tag,
+                { sharedTier: true, resumed: typeResumed, onBackup: noteBackup });
         }
         if (operatorWork) {
-            if (rollup) usageStep(operator, report, '  (operator)');
-            archiveStep(operator, operatorArchives, report, '  (operator)');
+            if (rollup) usageStep(operator, report, '  (operator)', noteBackup);
+            archiveStep(operator, operatorArchives, report, '  (operator)',
+                { sharedTier: true, resumed: operatorResumed, onBackup: noteBackup });
         }
     } catch (err) {
         // What completed is printed even on failure, so the caller can see
         // exactly which rewrites landed before deciding whether to retry.
         if (report.length > 0) process.stdout.write(report.join('\n') + '\n');
         process.stderr.write('memq: decay prune failed: '
-            + sanitize(err && err.message ? err.message : String(err), 200)
-            + ' (each file rewritten so far left a .bak beside it)\n');
+            + failureText(err)
+            + (backedUp.length > 0
+                ? ' (' + backupClause(backedUp) + ')'
+                : ' (this pass took no .bak, so there is none of its own to restore from;'
+                    + ' what it had already done stands in the lines above)') + '\n');
         process.exitCode = 1;
         return;
     } finally {
@@ -5406,6 +6427,374 @@ function cmdDecayPrune(argv) {
         return;
     }
     process.stdout.write(report.join('\n') + '\n');
+}
+
+// Replace the index line for one memory file with a line carrying the new
+// description, in place: the record keeps its position, because a repair is
+// not a re-insertion. A missing line (an index that drifted from the files
+// beside it) is appended instead, the same self-healing the create path
+// applies to a stale line, and an unreadable index is created whole around
+// this one line. Runs under the caller's tier lock and takes the sidecars'
+// backup path, because it is a read-modify-write over a shared file.
+//
+// `options.sharedTier` is required and states which tier's index this is, for
+// the reason rewriteWithBackup's own required option exists: the same two
+// index filenames are written by callers in tiers whose requirements are
+// opposite, the value is a per-file safety decision the call site knows and
+// this helper cannot, and a wrong one splices foreign bytes into an index and
+// reports success. A call that says nothing is refused rather than defaulted.
+function updateIndexDescription(indexPath, name, file, description, options) {
+    if (!options || typeof options.sharedTier !== 'boolean') {
+        throw new Error('the index line was not updated: the call did not state whether this'
+            + ' is a shared tier');
+    }
+    const line = '- [' + name + '](' + file + ') - ' + description;
+    const src = readStoreFile(indexPath);
+    if (src === null) {
+        // Created rather than written: this branch runs on the one read that
+        // cannot tell an absent index from a link pointing at nothing, and a
+        // tier index is content every session of every project of this type
+        // reads.
+        createStoreFile(indexPath, MEMORY_INDEX_HEADING + '\n\n' + line + '\n');
+        return;
+    }
+    // The first matching line is replaced and any later match is dropped,
+    // the create path's own self-healing for a drifted index: this function
+    // is the one lawful writer of the line, so a duplication it preserved
+    // would be preserved forever.
+    let replaced = false;
+    const kept = [];
+    for (const l of src.lines) {
+        const parsed = parseIndexLine(l);
+        if (parsed !== null && fsEq(parsed.file, file)) {
+            if (!replaced) {
+                kept.push(line);
+                replaced = true;
+            }
+            continue;
+        }
+        kept.push(l);
+    }
+    while (kept.length > 0 && kept[kept.length - 1].trim() === '') kept.pop();
+    if (!replaced) {
+        keepHeadingBlank(kept, MEMORY_INDEX_HEADING);
+        kept.push(line);
+    }
+    rewriteWithBackup(indexPath, src.buf, kept.join('\n') + '\n',
+        { concurrentAppends: !options.sharedTier, onBackup: options.onBackup });
+}
+
+// The frontmatter block a record already carries, verbatim, as text ending in
+// its closing fence and a newline, with '' for a record that carries none.
+// A body repair rebuilds the record around this block rather than around a
+// fresh one, because the block states what the record is and where it came
+// from: the tags it is found by, the machine an operator fact is scoped to,
+// the run that authored it, the date its author gave it. A repair corrects
+// what a record says, so re-deriving those from the repairing session would
+// re-attribute the record to whoever fixed a typo in it. What the block does
+// not do is hold the decay clock still: lastAliveMs takes the newest of the
+// file's mtime, its `created:` date, and its last applied stamp, and a repair
+// rewrites the file, so the clock moves to the repair whatever the carried
+// block says.
+//
+// The block read here is what every other reader of this store calls
+// frontmatter, frontmatterField's grammar: a leading '---' closed by a second
+// one inside the bounded head. Text that opens with '---' and never closes is
+// body everywhere else in this module and is body here too, which a repair
+// replaces whole. `unread` says that happened, so the caller can say so: the
+// dropped text may have been a block somebody meant, and --update writes no
+// tags and no machine scope, so an author cannot put back what went. Line
+// endings normalize to the newline every writer here emits, so a record that
+// arrived over a sync with CRLF comes back in the store's own shape rather
+// than half in each. A byte order mark
+// is the other way round: it is handed back in `bom` for the caller to write
+// ahead of the record, because every reader in this module strips one and
+// dropping it would be a byte the synced store diffs for no reader's benefit.
+function recordFrontmatter(raw) {
+    const block = frontmatterBlock(raw);
+    if (!block.opened) return { bom: block.bom, text: '', unread: false };
+    if (block.closer === -1) return { bom: block.bom, text: '', unread: true };
+    return {
+        bom: block.bom,
+        text: block.lines.slice(0, block.closer + 1).join('\n') + '\n',
+        unread: false
+    };
+}
+
+// Say that a repair is about to drop a leading '---' block it cannot read as
+// frontmatter. The text is body by this store's own grammar and a repair
+// replaces the body whole, so the write is right; what makes it worth a line
+// is that the author may have meant a block, and --update writes no tags and
+// no machine scope, so nothing here can put back a field that goes. It is
+// said before the rewrite, and it names the backup, because once the rewrite
+// lands the single-generation .bak beside the record is the only place that
+// text still exists. The backup is named as what a landed repair leaves,
+// because a rewrite that fails partway leaves the record itself still holding
+// the text and a .bak that is a copy of it rather than of a replaced body.
+//
+// The repair proceeds all the same. Refusing it would leave a record with a
+// broken fence repairable only by deleting and re-creating it, which loses
+// its applied history, so the one shape most in need of repair would be the
+// one shape with no repair path.
+function warnFrontmatterUnread(name, file) {
+    process.stderr.write('memq: \'' + sanitize(name, NAME_CAP) + '\' opens with \'---\' and no'
+        + ' closing \'---\' within ' + FRONTMATTER_MAX_LINES + ' lines, so that text is body'
+        + ' rather than frontmatter and this repair replaces it; only a closed block is carried'
+        + ' across, and a repair that lands keeps the text it replaces in '
+        + sanitize(file, MEMORY_FILE_CAP) + '.bak beside the record\n');
+}
+
+// The clause a note ends with when the thing to do about the state it names is
+// a shared-tier delete. Both delete verbs refuse outright under the engine
+// store signals, and every note carrying one of these clauses is written on a
+// path that runs under them, so naming the verb there sends a reader to a
+// command whose whole answer is a refusal. What is named instead is why
+// nothing here does it, which is a state to act on rather than a command to
+// try. `does` completes both sentences, so the two cannot describe different
+// remedies for one state.
+function sharedDeleteRemedy(deleteCommand, does) {
+    return storeSignalsPresent()
+        ? 'while this process carries the engine store signals nothing here ' + does
+            + ', because those signals refuse the shared-tier delete verbs'
+        : '`' + deleteCommand + '` ' + does;
+}
+
+// A record's text, or null with the refusal printed when the file's bytes are
+// not that text. A repair rebuilds the record around the frontmatter block the
+// file already carries and writes that block back as UTF-8, so a byte
+// sequence this decode cannot read comes back as U+FFFD: a tags:, machine:,
+// run:, or written: value changed by a command that carries them across
+// untouched, with the bytes that were there left only in a backup that never
+// syncs. The remedy named is the pair of verbs that replaces a record whole,
+// because a repair is defined by keeping everything it does not name.
+function recordText(original, name, where, deleteCommand) {
+    const text = original.toString('utf8');
+    if (Buffer.from(text, 'utf8').equals(original)) return text;
+    process.stderr.write('memq: \'' + sanitize(name, NAME_CAP) + '\'' + where + ' holds bytes'
+        + ' that are not valid UTF-8, so a repair cannot carry its frontmatter across'
+        + ' unchanged; nothing written. Replacing the record whole is what carries it: '
+        + sharedDeleteRemedy(deleteCommand,
+            'removes the record, and adding it again puts the text back') + '\n');
+    process.exitCode = 1;
+    return null;
+}
+
+// Put a repaired record back the way it was, without an in-place truncate,
+// rewriteWithBackup's rule: the original is written beside the record and
+// renamed over it, so a crash mid-unwind leaves one whole record or the
+// other, never a half-written one. It takes no backup of its own, because
+// the bytes it restores are the ones the repair's own .bak already holds.
+function restoreRecord(filePath, buf) {
+    const tmp = filePath + '.tmp.' + process.pid;
+    // The tmp name is predictable, so a symlink or junction planted at it must
+    // not pass as a place to write: the write follows the link and lands in
+    // whatever it points at, outside the store. One screen for every store
+    // document a write is about to land on, this one included, so a path that
+    // is not a plain file is refused in the same words wherever it is met.
+    refuseNonRegularStoreFile(tmp);
+    try {
+        fs.writeFileSync(tmp, buf);
+        fs.renameSync(tmp, filePath);
+    } catch (err) {
+        try { fs.unlinkSync(tmp); } catch { /* best effort: a leftover tmp is inert */ }
+        throw err;
+    }
+}
+
+// Drop every index line for one memory file, returning how many were dropped.
+// Every line for the file goes, not just the first: a drifted index carrying
+// two lines for one name would otherwise keep one pointing at a file that no
+// longer exists, and every lawful writer of this index is in this module, so
+// what it leaves behind is what stands. An absent index, or one with
+// no line for the file, is no rewrite and no backup.
+//
+// An index with no lines left ends byte-identically to what the create path
+// writes before its first line: its heading, a blank line, and nothing else.
+// One document with one spelling is what keeps a syncing store from churning
+// between two lawful shapes, and a tier emptied to a bare newline would read
+// as a corrupt index rather than an empty one. Everything else the document
+// carries is kept, gloss text included, so emptying an index of its records
+// never empties it of its prose.
+//
+// The heading a header-less index is given is the caller's, because the
+// archive keeps an index of its own and one titled as a tier index would
+// misname the directory it sits in.
+//
+// `onBackup` is handed to the rewrite, which calls it once the .bak exists,
+// so the caller learns of a backup even when the rewrite goes on to throw and
+// no count comes back.
+function removeIndexLine(indexPath, file, heading, options) {
+    if (!options || typeof options.sharedTier !== 'boolean') {
+        throw new Error('the index line was not removed: the call did not state whether this'
+            + ' is a shared tier');
+    }
+    const src = readStoreFile(indexPath);
+    if (src === null) return 0;
+    let removed = 0;
+    const kept = [];
+    for (const l of src.lines) {
+        const parsed = parseIndexLine(l);
+        if (parsed !== null && fsEq(parsed.file, file)) {
+            removed += 1;
+            continue;
+        }
+        kept.push(l);
+    }
+    if (removed === 0) return 0;
+    while (kept.length > 0 && kept[kept.length - 1].trim() === '') kept.pop();
+    const text = kept.length === 0
+        ? (heading || MEMORY_INDEX_HEADING) + '\n\n'
+        : kept.join('\n') + (kept.some((l) => parseIndexLine(l) !== null) ? '\n' : '\n\n');
+    rewriteWithBackup(indexPath, src.buf, text,
+        { concurrentAppends: !options.sharedTier, onBackup: options.onBackup });
+    return removed;
+}
+
+// The line separator this store's journals use, as bytes, for rejoining lines
+// carried through without being decoded.
+const NEWLINE = Buffer.from('\n');
+
+// Drop one memory file's read and applied stamps from a tier's usage sidecar,
+// returning how many were dropped. Stamps are matched on the key their
+// writers record them under, so two spellings of one file on a
+// case-insensitive filesystem are one record here as they are everywhere
+// else.
+//
+// A line that arrives after this pass read the file is carried through as
+// bytes, verbatim, decoded only far enough to ask whether it is a stamp for
+// the name being deleted. The body of the file, which is what this pass read
+// and rebuilt, is not bytes: it is decoded as UTF-8 and re-encoded, so a byte
+// sequence already in the file that is not valid UTF-8 is written back as the
+// replacement character. Every rewrite of every store file here does that,
+// and the store's own writers all write UTF-8.
+//
+// This is the delete path's step alone, and the archive path deliberately has
+// no equivalent: an archived memory keeps its name and its file, and `recall`
+// still reports its applied tally, so its stamps are still its own history. A
+// deleted name has no reader left, and the one thing that could pick those
+// stamps up is a later record created under the same name, which would
+// inherit an applied history it never earned and the decay thresholds that
+// history extends.
+//
+// The removal is local. The store's sync merges these sidecars with a union
+// strategy (doctor/install-memory-sync.ps1 sets merge=union over the shared
+// tiers' *.jsonl), so a machine that still holds the deleted name's lines
+// reinstates them on its first sync. What this achieves is that the machine
+// deleting a record stops counting it, and that a store never synced never
+// carries it again.
+//
+// Two writers append to this sidecar without the tier lock, by design:
+// stampRead on every read served, and `touch` for an applied stamp. Either
+// can land between this function's read and its rename, where the tail copy
+// that exists to keep such an append would carry it onto the rewrite. An
+// applied stamp is not harmless there: appliedTally counts it and lastAliveMs
+// takes its timestamp, so a later record created under this name would
+// inherit exactly the history and the deferred decay this function exists to
+// prevent. So the tail is screened by the same key test as the body of the
+// file, and no stamp for this name is carried back whatever its kind. That
+// screen is why a sidecar holding no stamp of this name is rewritten anyway:
+// the window is open for as long as the delete runs, not only for a name that
+// already had stamps in it.
+//
+// What can still outlive the record is a stamp appended after the rename,
+// which is past everything this pass can see. The name has no record left, so
+// nothing reads it but a create under the same name, and running the same
+// delete again clears it.
+function removeUsageStamps(dir, file, options) {
+    if (!options || typeof options.recordPresent !== 'boolean') {
+        throw new Error('the usage sidecar was not rewritten: the call did not state whether'
+            + ' a record stands at this name');
+    }
+    const onBackup = options.onBackup;
+    const usagePath = path.join(dir, USAGE_FILE);
+    const src = readStoreFile(usagePath);
+    if (src === null) return 0;
+    const key = memoryFileKey(file);
+    let removed = 0;
+    const kept = [];
+    for (let i = 0; i < src.lines.length; i++) {
+        const line = src.lines[i].trim();
+        if (line === '') continue;
+        let parsed = null;
+        try { parsed = JSON.parse(line); } catch { /* preserved just below */ }
+        if (!isUsageStamp(parsed)) {
+            process.stderr.write('memq: preserving unparseable usage line ' + (i + 1) + '\n');
+            kept.push(src.lines[i]);
+            continue;
+        }
+        if (memoryFileKey(parsed.file) === key) {
+            removed += 1;
+            continue;
+        }
+        kept.push(src.lines[i]);
+    }
+    // Nothing to remove and no record to remove it for: the rewrite is
+    // skipped, and it is the only case where it is. The tail screen below
+    // exists because a lock-free stamp can land while this pass runs, and the
+    // two writers of one are the read stamp, which fires on a record being
+    // served, and `touch`, which refuses a name with no record file. With
+    // neither a live record nor an archived one standing at this name, neither
+    // can produce a stamp for it, so a rewrite here would spend this file's
+    // single .bak generation and open the lost-stamp window on behalf of no
+    // stamp that can exist.
+    if (removed === 0 && !options.recordPresent) return 0;
+    // A usage sidecar: the stamp writers append to it without taking any
+    // lock, so the rewrite carries what landed during it, minus this name's
+    // own stamps. The tail is split and rejoined as bytes, never decoded
+    // whole: a decode would rewrite a byte sequence that is not valid UTF-8
+    // as U+FFFD, where this function's rule is that a line it did not write
+    // is preserved as it stands. Only a candidate line is decoded, for the
+    // parse, and a line the filter cannot parse is carried through unchanged.
+    let removedFromTail = 0;
+    const dropDeleted = (tail) => {
+        const out = [];
+        let start = 0;
+        while (start <= tail.length) {
+            let end = tail.indexOf(0x0A, start);
+            if (end === -1) end = tail.length;
+            const raw = tail.subarray(start, end);
+            const line = raw.toString('utf8').trim();
+            let drop = false;
+            if (line !== '') {
+                let parsed = null;
+                try { parsed = JSON.parse(line); } catch { /* carried below */ }
+                if (isUsageStamp(parsed) && memoryFileKey(parsed.file) === key) {
+                    drop = true;
+                    removedFromTail += 1;
+                }
+            }
+            if (!drop) out.push(raw);
+            start = end + 1;
+        }
+        const pieces = [];
+        for (const raw of out) {
+            if (pieces.length > 0) pieces.push(NEWLINE);
+            pieces.push(raw);
+        }
+        return Buffer.concat(pieces);
+    };
+    // The rewrite runs even when this name had no stamp in what was read, as
+    // long as a record stands at the name. The screen on the tail is the
+    // reason: the record files go after this step, so a lock-free read stamp
+    // or an applied stamp for this name can land while the delete is still
+    // running, and a pass that returned early here would leave it in the file
+    // for the next record created under the name to inherit. The count is of
+    // both, the stamps found in the read and the ones the screen took out of
+    // the tail, because the caller prints it as what this step removed and a
+    // stamp dropped from the tail is one of those.
+    //
+    // Two costs ride with it, both accepted. A rewrite that removes nothing
+    // still spends this file's single .bak generation, so the copy of the
+    // sidecar as it stood before the previous rewrite is gone; and it still
+    // opens the window between the tail read and the rename, in which one
+    // lock-free stamp can be lost, for a command with nothing of its own to
+    // do in this file. The stamps at stake are read counts and applied
+    // tallies, and losing one costs a decay threshold a single tick, where
+    // leaving a deleted name's stamps behind hands them to whatever is
+    // created under that name next.
+    rewriteWithBackup(usagePath, src.buf, kept.length === 0 ? '' : kept.join('\n') + '\n',
+        { concurrentAppends: true, onBackup: onBackup, filterAppend: dropDeleted });
+    return removed + removedFromTail;
 }
 
 // memq add-type: the type tier's authoring flow. A memory is written into
@@ -5428,7 +6817,8 @@ function cmdDecayPrune(argv) {
 // existing memory name is refused, never overwritten: a shared fact another
 // project may rely on is not silently replaced by a one-line command; the
 // one sanctioned rewrite is --update, which replaces the record's index
-// description under the tier lock and touches nothing else. A stale index
+// description under the tier lock, and with --body or --body-file its body
+// as well, that wider repair gated behind --confirm-shared. A stale index
 // line for the name (a file removed by hand) is dropped and replaced. The
 // description doubles as the index line and, when --body is absent, the
 // file body; prose over its cap is refused at this write boundary rather
@@ -5449,49 +6839,13 @@ function cmdDecayPrune(argv) {
 // meet the identical cap gate, so neither can accept a body the other would
 // refuse. The one environment where the file channel is refused outright is
 // the engine's fleet store, whose reasoning sits with the check below.
-//
-// Replace the index line for one memory file with a line carrying the new
-// description, in place: the record keeps its position, because a repair is
-// not a re-insertion. A missing line (an index that drifted from the files
-// beside it) is appended instead, the same self-healing the create path
-// applies to a stale line, and an unreadable index is created whole around
-// this one line. Runs under the caller's tier lock and takes the sidecars'
-// backup path, because it is a read-modify-write over a shared file.
-function updateIndexDescription(indexPath, name, file, description) {
-    const line = '- [' + name + '](' + file + ') - ' + description;
-    const src = readStoreFile(indexPath);
-    if (src === null) {
-        fs.writeFileSync(indexPath, '# Memory Index\n\n' + line + '\n', 'utf8');
-        return;
-    }
-    // The first matching line is replaced and any later match is dropped,
-    // the create path's own self-healing for a drifted index: this function
-    // is the one lawful writer of the line, so a duplication it preserved
-    // would be preserved forever.
-    let replaced = false;
-    const kept = [];
-    for (const l of src.lines) {
-        const parsed = parseIndexLine(l);
-        if (parsed !== null && fsEq(parsed.file, file)) {
-            if (!replaced) {
-                kept.push(line);
-                replaced = true;
-            }
-            continue;
-        }
-        kept.push(l);
-    }
-    while (kept.length > 0 && kept[kept.length - 1].trim() === '') kept.pop();
-    if (!replaced) kept.push(line);
-    rewriteWithBackup(indexPath, src.buf, kept.join('\n') + '\n');
-}
-
 function cmdAddType(argv) {
     const positionals = [];
     const tags = [];
     let body;
     let bodyFile;
     let update = false;
+    let confirmShared = false;
     for (let i = 0; i < argv.length; i++) {
         const a = argv[i];
         if (a === '--tag') {
@@ -5514,6 +6868,8 @@ function cmdAddType(argv) {
             bodyFile = v;
         } else if (a === '--update') {
             update = true;
+        } else if (a === '--confirm-shared') {
+            confirmShared = true;
         } else if (a.startsWith('--')) {
             return usage('unknown option ' + sanitize(a, 40));
         } else {
@@ -5541,17 +6897,55 @@ function cmdAddType(argv) {
     if (body !== undefined && bodyFile !== undefined) {
         return usage('--body and --body-file are two ways to give one body; pass one, not both');
     }
-    // --update repairs the one field that is otherwise final at creation.
-    // It stays description-only by design: an update that also rewrote the
-    // body or tags would be the overwrite path this command exists to
-    // refuse, one flag away from replacing a fact another project relies on.
-    // The exclusivity check runs before the cap gates so a refused command
-    // is refused for the flag set it carries, not for the length of a field
-    // it may never write: a cap error first would send the author to
-    // shorten a body the command was going to refuse regardless.
-    if (update && (body !== undefined || bodyFile !== undefined || tags.length > 0)) {
-        return usage('--update replaces the index description only;'
-            + ' --body, --body-file, and --tag are set at creation');
+    // --update repairs what is otherwise final at creation. Its description
+    // channel is ungated, because a one-line description is cheap to get
+    // wrong and cheap to put right. Its body channel is the correction path
+    // for the part that is otherwise unrepairable, and it carries the tier's
+    // own consent flag, because replacing a body whole is the overwrite this
+    // command otherwise refuses: with --confirm-shared it is a deliberate
+    // repair, without it, one flag away from silently replacing a fact
+    // another project relies on. Tags stay set at creation on either
+    // reading, since nothing here repairs them.
+    //
+    // Both checks run before the cap gates so a refused command is refused
+    // for the flag set it carries, not for the length of a field it may
+    // never write: a cap error first would send the author to shorten a body
+    // the command was going to refuse regardless.
+    const repair = update && (body !== undefined || bodyFile !== undefined);
+    if (update && tags.length > 0) {
+        return usage('--update sets no tags; --tag is set at creation'
+            + ' (--update replaces the index description, and with --body or'
+            + ' --body-file the record body)');
+    }
+    if (confirmShared && !repair) {
+        return usage('--confirm-shared confirms a shared-tier body repair, so it needs'
+            + ' --update with --body or --body-file');
+    }
+    // A body repair is refused outright under the engine's store signals, the
+    // pair that says this process was pointed at a fleet store deliberately.
+    // That environment carries a standing grant for
+    // `node <abspath>/memq.js ...` (hooks/memq-grant.js). That hook withholds
+    // the grant from this shape as well, so a repair reaching here in a fleet
+    // worker has already fallen through to the ordinary permission flow. The
+    // two are not redundant: the hook judges its own environment and this
+    // check judges the child's, and where the two disagree this is the half
+    // that binds, so the refusal is stated in both places rather than moved
+    // to either. The grant's accepted risk was
+    // taken over a command set whose heaviest act was retirement, which keeps
+    // the record and is reversible by hand; replacing a body whole destroys
+    // the text that was there, and the .bak that would recover it is local and
+    // unsynced (the store's sync refuses *.bak), so on a fleet worker a repair
+    // is as final as a deletion. Nothing is lost by refusing: the ungated
+    // description channel still answers there, and no worker was repairing
+    // bodies before this flag existed. It answers after the flag-set checks
+    // above, so a command doomed by the flags it carries hears that in every
+    // environment, and before the description gate and the read, so a refused
+    // command touches no filesystem.
+    if (repair && storeSignalsPresent()) {
+        return usage('a body repair replaces a shared-tier record whole, which is refused under'
+            + ' the engine store signals (KIT_MEMORY_ROOT with KIT_MEMORY_ROOT_ALLOW_DATA=1):'
+            + ' the local backup it leaves does not sync, so there is no recovery from a fleet'
+            + ' store. --update without a body still repairs the index description here');
     }
     // The file channel is refused under the engine's store signals, the pair
     // that says this process was pointed at a fleet store deliberately. That
@@ -5573,6 +6967,46 @@ function cmdAddType(argv) {
             + ' engine store signals (KIT_MEMORY_ROOT with KIT_MEMORY_ROOT_ALLOW_DATA=1). This'
             + ' path crosses no shell wrapper, so --body carries a body of any shape here');
     }
+    // The type tier is not the pending tier and this write is not routed
+    // into one: the tier a project shares with every other project of its
+    // type has its own directory, its own lock, and an index this command
+    // maintains, none of which a run-private directory can stand in for. What
+    // a run does add is provenance: the file records the run that authored it,
+    // so a reviewer of the shared tier can tell an attended session's fact
+    // from a spawned run's.
+    const dir = typeDir(type);
+    // An --update naming a record the tier does not hold is refused here,
+    // before the consent refusal and before the lock. Before the lock because
+    // acquireLock mints the tier directory as a side effect of placing the
+    // lock file, and a typo must not leave durable shared-store state behind.
+    // Before the consent refusal because being sent to re-run with a flag
+    // that then fails on the name is two rounds for one mistake, which is the
+    // order the delete verbs already take. The under-lock check below remains
+    // the authoritative one; these are the no-side-effect early exits.
+    if (update && !fs.existsSync(dir)) {
+        updateTargetMissing(dir, name, ' in type \'' + sanitize(type, TYPE_CAP) + '\'',
+            'delete-type ' + sanitize(type, TYPE_CAP) + ' ' + sanitize(name, NAME_CAP)
+            + ' --confirm-shared');
+        return;
+    }
+    if (update && updateTargetUnusable(dir, name, ' in type \'' + sanitize(type, TYPE_CAP) + '\'',
+        'delete-type ' + sanitize(type, TYPE_CAP) + ' ' + sanitize(name, NAME_CAP)
+        + ' --confirm-shared')) {
+        return;
+    }
+    // Replacing a body whole is the overwrite this command otherwise refuses,
+    // so it carries the tier's own consent flag. It answers after the checks
+    // above, which cost nothing and turn down a command that was never going
+    // to write, and before the description gate and the body read, so a
+    // caller who has not consented has nothing of theirs read.
+    if (repair && !confirmShared) {
+        process.stderr.write('memq: --update with a body replaces a record\'s body whole rather'
+            + ' than adding to it, and type \'' + sanitize(type, TYPE_CAP) + '\' is read by'
+            + ' every project that declares it; re-run with --confirm-shared to proceed'
+            + ' (nothing written)\n');
+        process.exitCode = 1;
+        return;
+    }
     // The index is a line-oriented shared record, so the description's
     // charset is closed here at the write boundary, not only its length:
     // the reduction strips newlines and control characters, which is what
@@ -5586,41 +7020,32 @@ function cmdAddType(argv) {
     // for the same reason: nothing shared-tier is ever silently shortened.
     const description = sharedFreeText(positionals[2], SUMMARY_CAP, 'description');
     if (description === null) return;
-    // The file channel resolves here, after every check that reads the
-    // arguments alone and before the cap gate the flag channel takes, so a
-    // command doomed by its arguments never touches the filesystem and a body
-    // that arrived by file is held to exactly what --body is held to.
+    // A description that holds no text writes a blank index line over the
+    // record it names, and the index is the surface a session's context is
+    // built from: a line with no description is a record no reader can tell
+    // apart from the next one. It is checked wherever the description is a
+    // field of its own, on a repair and on a create carrying a body. With
+    // neither --body nor --body-file the description is the body, and the
+    // body gate below answers that shape in the terms the caller supplied it.
+    // The flag that carries the body is what this reads, not the body, so the
+    // check holds for a body still in a file.
+    if ((update || body !== undefined || bodyFile !== undefined)
+        && description.trim() === '') {
+        return usage('the description holds no text, so the index line would be written blank;'
+            + ' a shared-tier record carries a description in the index that lists it');
+    }
+    // The file channel resolves here, after the checks that read the
+    // arguments alone and the store reads two of them take, and before the
+    // cap gate the flag channel takes: a command an argument already dooms
+    // never reads the caller's file, and a body that arrived by file is held
+    // to exactly what --body is held to. What runs ahead of it does read the
+    // store, since an --update names a record whose tier is checked first,
+    // and reads it without writing.
     if (bodyFile !== undefined) {
         body = readBodyFile(bodyFile);
         if (body === null) return;
     }
 
-    // The type tier is not the pending tier and this write is not routed
-    // into one: the tier a project shares with every other project of its
-    // type has its own directory, its own lock, and an index this command
-    // maintains, none of which a run-private directory can stand in for. What
-    // a run does add is provenance: the file records the run that authored it,
-    // so a reviewer of the shared tier can tell an attended session's fact
-    // from a spawned run's.
-    const dir = typeDir(type);
-    // In the update path an absent tier directory is refused before the
-    // lock: acquireLock mints the directory as a side effect of placing the
-    // lock file, and a refusal (a typo'd type name in a repair command) must
-    // not leave durable shared-store state behind. The under-lock file check
-    // below remains the authoritative one; this is only the no-side-effect
-    // early exit for a tier that cannot hold the record at all.
-    if (update && !fs.existsSync(dir)) {
-        process.stderr.write('memq: \'' + sanitize(name, NAME_CAP)
-            + '\' does not exist in type \'' + sanitize(type, TYPE_CAP)
-            + '\'; drop --update to create it\n');
-        process.exitCode = 1;
-        return;
-    }
-    const front = [];
-    if (tags.length > 0) front.push('tags: ' + tags.join(', '));
-    for (const line of provenanceLines()) front.push(line);
-    let content = '';
-    if (front.length > 0) content += '---\n' + front.join('\n') + '\n---\n';
     const stored = body === undefined ? description : body;
     // A record whose body holds no text is refused, and the check reads the
     // text actually about to be written rather than the flag that supplied
@@ -5630,13 +7055,25 @@ function cmdAddType(argv) {
     // same way, a heading over a blank line, which is a fact its author
     // cannot see is missing and cannot repair afterwards. The shapes that
     // produce one are ordinary: a shell variable that expanded to nothing, a
-    // heredoc or a redirect that wrote nothing.
-    if (!update && stored.trim() === '') {
+    // heredoc or a redirect that wrote nothing. A repair answers to the same
+    // rule: a body replaced by nothing is the blank record arriving one
+    // command later.
+    if ((!update || repair) && stored.trim() === '') {
         return usage('the body holds no text, so there is nothing to record; a shared-tier body'
             + ' is never written blank (with neither --body nor --body-file, the description is'
             + ' the body)');
     }
-    content += '# ' + name + '\n\n' + stored + '\n';
+    // The record the create path writes, assembled on that path alone: an
+    // --update takes none of it, so building it there would compute a
+    // frontmatter block from this session's provenance that nothing reads.
+    let content = '';
+    if (!update) {
+        const front = [];
+        if (tags.length > 0) front.push('tags: ' + tags.join(', '));
+        for (const line of provenanceLines()) front.push(line);
+        if (front.length > 0) content += '---\n' + front.join('\n') + '\n---\n';
+        content += '# ' + name + '\n\n' + stored + '\n';
+    }
     // The cap measures the record, not the body alone, because the record is
     // what the reader measures: `get` reads the whole file and caps the whole
     // file, so a body that fits with its frontmatter and heading pushed past
@@ -5644,7 +7081,17 @@ function cmdAddType(argv) {
     // printable whole afterwards. Judging the same number on the way in is
     // what keeps every record that exists readable end to end. Over-cap text
     // is refused rather than cut, sharedFreeText's rule, on both channels.
-    if (content.length > BODY_CAP) {
+    //
+    // A repair is measured under the lock instead, on the record it actually
+    // rebuilds: the frontmatter it carries across is the existing file's, not
+    // the block assembled here, and only the file holds it. So an over-cap
+    // repair is refused having already taken the tier lock and read whatever
+    // --body-file named, which costs other writers of this tier a moment of
+    // contention and this command a read it did not use. It costs nothing
+    // else: the refusal returns before any rewrite, and the finally below
+    // releases the lock. A description-only update writes no record at all,
+    // and its description is already bounded by SUMMARY_CAP.
+    if (!update && content.length > BODY_CAP) {
         return usage('the record is ' + content.length + ' characters (its body is '
             + stored.length + '); the cap is ' + BODY_CAP + ', the whole `get` prints, and'
             + ' shared-tier text over it is refused rather than silently cut. Shorten it and rerun');
@@ -5658,39 +7105,103 @@ function cmdAddType(argv) {
         return;
     }
     let fileWritten = false;
+    // The backups this command's own rewrites take, for the failure line: a
+    // stop after one of them has landed has spent that file's single .bak
+    // generation, and a caller told nothing about it does not know the copy it
+    // would recover from is the one this run wrote.
+    const backedUp = [];
+    const noteBackup = (f) => { backedUp.push(backupLabel(f)); };
+    let repaired = null;                 // the pre-repair record, for the unwind
+    let landed = false;                  // set once the update is committed
+    let shadowed = false;                // a retired record of this name, read under the lock
     try {
         // The update path first: it requires exactly the state the create
-        // path refuses. The memory file is never opened, so the repair can
-        // not disturb a body, tags, or provenance; only the tier index is
-        // rewritten, under the same lock and backup as every index rewrite.
+        // path refuses. Without a body flag the memory file is never opened,
+        // so the repair cannot disturb a body, tags, or provenance; with one
+        // the file is rebuilt around its own frontmatter, so a repair still
+        // cannot disturb tags or provenance. Either way only the description
+        // and the body move, under the same lock and backup as every other
+        // rewrite here.
         if (update) {
-            if (!fs.existsSync(path.join(dir, file))) {
-                process.stderr.write('memq: \'' + sanitize(name, NAME_CAP)
-                    + '\' does not exist in type \'' + sanitize(type, TYPE_CAP)
-                    + '\'; drop --update to create it\n');
-                process.exitCode = 1;
+            const memPath = path.join(dir, file);
+            if (updateTargetUnusable(dir, name, ' in type \'' + sanitize(type, TYPE_CAP) + '\'',
+                'delete-type ' + sanitize(type, TYPE_CAP) + ' ' + sanitize(name, NAME_CAP)
+                + ' --confirm-shared')) {
                 return;
             }
-            updateIndexDescription(typeIndexPath(type), name, file, description);
+            if (repair) {
+                const original = fs.readFileSync(memPath);
+                const text = recordText(original, name,
+                    ' in type \'' + sanitize(type, TYPE_CAP) + '\'',
+                    'delete-type ' + sanitize(type, TYPE_CAP) + ' ' + sanitize(name, NAME_CAP)
+                    + ' --confirm-shared');
+                if (text === null) return;
+                const carried = recordFrontmatter(text);
+                // The record's own heading is carried like its frontmatter,
+                // and a record that carries none is given one from the name it
+                // is filed under. A repair replaces the description and the
+                // body; what the record is titled is neither of those.
+                const heading = recordHeading(text) || ('# ' + name);
+                const record = carried.bom + carried.text + heading + '\n\n'
+                    + stored + '\n';
+                if (record.length > BODY_CAP) {
+                    return usage('the record is ' + record.length + ' characters (its body is '
+                        + stored.length + '); the cap is ' + BODY_CAP + ', the whole `get` prints,'
+                        + ' and shared-tier text over it is refused rather than silently cut.'
+                        + ' Shorten it and rerun');
+                }
+                // A record is not an append-only file, so the rewrite takes
+                // no tail copy: nothing lawful appends to a memory, and bytes
+                // that appeared past the read got there by something
+                // replacing the record whole.
+                if (carried.unread) warnFrontmatterUnread(name, file);
+                rewriteWithBackup(memPath, original, record,
+                    { concurrentAppends: false, onBackup: noteBackup });
+                repaired = original;
+            }
+            updateIndexDescription(typeIndexPath(type), name, file, description,
+                { sharedTier: true, onBackup: noteBackup });
+            // The commit point: with the index line written, the record and
+            // its description agree. Nothing past it unwinds, because putting
+            // the body back would be the split the unwind exists to prevent
+            // rather than a repair of it, and nothing past it reports a write
+            // that did not happen: what a throw from here means (a stdout
+            // write to a closed pipe, a full disk) is that an update on disk
+            // could not be reported.
+            landed = true;
             process.stdout.write('updated ' + sanitize(name, NAME_CAP)
-                + ' in type ' + sanitize(type, TYPE_CAP) + '\n');
+                + ' in type ' + sanitize(type, TYPE_CAP)
+                + (repair ? ' (body ' + stored.length + ' chars)' : '') + '\n');
             return;
         }
+        const typeWhere = ' in type \'' + sanitize(type, TYPE_CAP) + '\'';
+        // Before the duplicate check, because existsSync and writeFileSync
+        // both follow a link: a dangling symlink at this name reads as absent
+        // to the check and then takes the body to wherever it points, which
+        // is a caller-named path outside the store.
+        if (nonRecordRefusal(path.join(dir, file), name, typeWhere, 'add-type', true)) return;
         if (fs.existsSync(path.join(dir, file))) {
             process.stderr.write('memq: \'' + sanitize(name, NAME_CAP)
                 + '\' already exists in type \'' + sanitize(type, TYPE_CAP) + '\'\n');
             process.exitCode = 1;
             return;
         }
-        fs.writeFileSync(path.join(dir, file), content, 'utf8');
+        shadowed = archiveHoldsRetired(dir, name);
+        // Created rather than written, the same instrument the tier index a
+        // few lines below takes: the checks above ran before the lock this
+        // command holds could exclude a sync pull, which writes into this
+        // store whole and holds none of this module's locks.
+        createStoreFile(path.join(dir, file), content);
         fileWritten = true;
         const indexPath = typeIndexPath(type);
         const line = '- [' + name + '](' + file + ') - ' + description;
         const src = readStoreFile(indexPath);
         if (src === null) {
-            // The tier's first memory: the index is created whole, so there
-            // is nothing to back up.
-            fs.writeFileSync(indexPath, '# Memory Index\n\n' + line + '\n', 'utf8');
+            // The tier's first memory: the index is created whole, so there is
+            // nothing to back up, and created rather than written, because the
+            // read that answered absent cannot tell an absent index from a
+            // link pointing at nothing.
+            createStoreFile(indexPath, MEMORY_INDEX_HEADING + '\n\n' + line + '\n');
         } else {
             const kept = [];
             for (const l of src.lines) {
@@ -5699,10 +7210,30 @@ function cmdAddType(argv) {
                 kept.push(l);
             }
             while (kept.length > 0 && kept[kept.length - 1].trim() === '') kept.pop();
+            keepHeadingBlank(kept, MEMORY_INDEX_HEADING);
             kept.push(line);
-            rewriteWithBackup(indexPath, src.buf, kept.join('\n') + '\n');
+            rewriteWithBackup(indexPath, src.buf, kept.join('\n') + '\n',
+                { concurrentAppends: false, onBackup: noteBackup });
         }
     } catch (err) {
+        // Past the commit point the work is done and only the report of
+        // it failed, so the line says which, and says not to re-run. A
+        // re-run's first act is the backup copy, which would put the
+        // repaired body into the .bak that holds the body it replaced:
+        // the one local recovery this store has for an overwritten
+        // record, spent on a repair that already landed.
+        if (landed) {
+            process.stderr.write('memq: the update to \'' + sanitize(name, NAME_CAP)
+                + '\' in type \'' + sanitize(type, TYPE_CAP)
+                + '\' is written, its index line with it;'
+                + ' reporting it failed: '
+                + failureText(err)
+                + '. Do not re-run: the update has landed'
+                + (repair ? ', and a second repair would copy the repaired body over'
+                    + ' the .bak that holds the body it replaced' : '') + '\n');
+            process.exitCode = 1;
+            return;
+        }
         // The memory file and its index line land together or not at all. A
         // file left behind by a failed index write would be refused forever
         // by the duplicate guard, and no lawful writer of this index exists
@@ -5715,9 +7246,24 @@ function cmdAddType(argv) {
             } catch {
                 residue = '; the memory file remains without an index line';
             }
+        } else if (repaired !== null) {
+            // A repair's two writes land together or not at all, the create
+            // path's rule: the body is put back the way it was, so a failed
+            // index rewrite cannot leave a record whose description
+            // describes the body it used to have. The restore is a write
+            // beside the record and a rename over it, never an in-place
+            // truncate, so the unwind cannot itself leave a half-written
+            // record.
+            try {
+                restoreRecord(path.join(dir, file), repaired);
+            } catch {
+                residue = '; the record holds its repaired body while the index keeps the'
+                    + ' old description';
+            }
         }
         process.stderr.write('memq: could not write type memory: '
-            + sanitize(err && err.message ? err.message : String(err), 200) + residue + '\n');
+            + failureText(err) + residue
+            + (backedUp.length > 0 ? ' (' + backupClause(backedUp) + ')' : '') + '\n');
         process.exitCode = 1;
         return;
     } finally {
@@ -5734,6 +7280,11 @@ function cmdAddType(argv) {
     process.stdout.write('added ' + sanitize(name, NAME_CAP)
         + ' to type ' + sanitize(type, TYPE_CAP)
         + ' (body ' + stored.length + ' chars)\n');
+    if (shadowed) {
+        archiveShadowNote(name, ' in type \'' + sanitize(type, TYPE_CAP) + '\'',
+            'delete-type ' + sanitize(type, TYPE_CAP) + ' ' + sanitize(name, NAME_CAP)
+            + ' --confirm-shared');
+    }
 }
 
 // memq add-operator: the operator tier's authoring flow, add-type's shape
@@ -5751,7 +7302,9 @@ function cmdAddType(argv) {
 // onto a path from an argument. The first add-operator creates the directory.
 // An existing memory name is refused, never overwritten: a shared fact
 // another session may rely on is not silently replaced by a one-line
-// command; the one sanctioned rewrite is --update, add-type's rule. A stale
+// command; the one sanctioned rewrite is --update, add-type's rule, its
+// description channel ungated and its body channel behind --confirm-shared.
+// A stale
 // index line for the name (a file removed by hand) is dropped and replaced.
 // The description doubles as the index line and, when --body is absent, the
 // file body; prose over its cap is refused at this write boundary rather
@@ -5770,6 +7323,7 @@ function cmdAddOperator(argv) {
     let bodyFile;
     let machine;
     let update = false;
+    let confirmShared = false;
     for (let i = 0; i < argv.length; i++) {
         const a = argv[i];
         if (a === '--tag') {
@@ -5794,6 +7348,8 @@ function cmdAddOperator(argv) {
             machine = v;
         } else if (a === '--update') {
             update = true;
+        } else if (a === '--confirm-shared') {
+            confirmShared = true;
         } else if (a.startsWith('--')) {
             return usage('unknown option ' + sanitize(a, 40));
         } else {
@@ -5830,14 +7386,34 @@ function cmdAddOperator(argv) {
     if (body !== undefined && bodyFile !== undefined) {
         return usage('--body and --body-file are two ways to give one body; pass one, not both');
     }
-    // --update repairs the one field that is otherwise final at creation.
-    // Description-only by design, add-type's rule, and checked before the
-    // cap gates for add-type's reason: a refused command is refused for the
-    // flag set it carries, not for the length of a field it may never write.
-    if (update && (body !== undefined || bodyFile !== undefined
-        || tags.length > 0 || machine !== undefined)) {
-        return usage('--update replaces the index description only;'
-            + ' --body, --body-file, --tag, and --machine are set at creation');
+    // --update repairs what is otherwise final at creation, add-type's rule:
+    // the description channel ungated, the body channel behind the tier's own
+    // consent flag, and the fields nothing here repairs refused on either
+    // reading. Both checks run before the cap gates for add-type's reason: a
+    // refused command is refused for the flag set it carries, not for the
+    // length of a field it may never write. A machine scope sits with the
+    // tags rather than with the body, because it says what the fact is true
+    // of and a repair that silently rescoped a fact to another box would be a
+    // different fact wearing the same name.
+    const repair = update && (body !== undefined || bodyFile !== undefined);
+    if (update && (tags.length > 0 || machine !== undefined)) {
+        return usage('--update sets no tags and no machine scope; --tag and --machine are set'
+            + ' at creation (--update replaces the index description, and with --body or'
+            + ' --body-file the record body)');
+    }
+    if (confirmShared && !repair) {
+        return usage('--confirm-shared confirms a shared-tier body repair, so it needs'
+            + ' --update with --body or --body-file');
+    }
+    // A body repair is refused under the engine's store signals for add-type's
+    // reason: the standing grant there governs nothing past the script path,
+    // and a repair destroys the text it replaces with only an unsynced local
+    // backup behind it, so it is as final on a fleet worker as a deletion.
+    if (repair && storeSignalsPresent()) {
+        return usage('a body repair replaces a shared-tier record whole, which is refused under'
+            + ' the engine store signals (KIT_MEMORY_ROOT with KIT_MEMORY_ROOT_ALLOW_DATA=1):'
+            + ' the local backup it leaves does not sync, so there is no recovery from a fleet'
+            + ' store. --update without a body still repairs the index description here');
     }
     // The file channel is refused under the engine's store signals for
     // add-type's reason: that environment's standing grant is bounded by a
@@ -5848,6 +7424,35 @@ function cmdAddOperator(argv) {
         return usage('--body-file reads a path the caller names, which is refused under the'
             + ' engine store signals (KIT_MEMORY_ROOT with KIT_MEMORY_ROOT_ALLOW_DATA=1). This'
             + ' path crosses no shell wrapper, so --body carries a body of any shape here');
+    }
+    // A run's write lands in the shared tier like any other, carrying the
+    // provenance that says which run authored it, add-type's rule: the
+    // operator tier has its own directory, its own lock, and an index this
+    // command maintains, none of which a run-private directory can stand in
+    // for.
+    const dir = operatorDirPath();
+    // An --update naming a record the tier does not hold is refused before
+    // the consent refusal and before the lock, add-type's reasons: acquireLock
+    // mints the directory, and a caller sent to re-run with a consent flag
+    // that then fails on the name has paid two rounds for one mistake.
+    if (update && !fs.existsSync(dir)) {
+        updateTargetMissing(dir, name, ' in the operator tier',
+            'delete-operator ' + sanitize(name, NAME_CAP) + ' --confirm-shared');
+        return;
+    }
+    if (update && updateTargetUnusable(dir, name, ' in the operator tier',
+        'delete-operator ' + sanitize(name, NAME_CAP) + ' --confirm-shared')) {
+        return;
+    }
+    // The consent flag a body repair carries, answered where add-type answers
+    // it: after the checks that cost nothing, and before the description gate
+    // and the body read.
+    if (repair && !confirmShared) {
+        process.stderr.write('memq: --update with a body replaces a record\'s body whole rather'
+            + ' than adding to it, and the operator tier is read by every project reading this'
+            + ' store; re-run with --confirm-shared to proceed (nothing written)\n');
+        process.exitCode = 1;
+        return;
     }
     // The index is a line-oriented shared record, so the description's
     // charset is closed here at the write boundary, not only its length: the
@@ -5860,43 +7465,30 @@ function cmdAddOperator(argv) {
     // nothing shared-tier is ever silently shortened.
     const description = sharedFreeText(positionals[1], SUMMARY_CAP, 'description');
     if (description === null) return;
+    // A description that holds no text writes a blank index line over the
+    // record it names, and the index is the surface a session's context is
+    // built from: a line with no description is a record no reader can tell
+    // apart from the next one. It is checked wherever the description is a
+    // field of its own, on a repair and on a create carrying a body. With
+    // neither --body nor --body-file the description is the body, and the
+    // body gate below answers that shape in the terms the caller supplied it.
+    // The flag that carries the body is what this reads, not the body, so the
+    // check holds for a body still in a file.
+    if ((update || body !== undefined || bodyFile !== undefined)
+        && description.trim() === '') {
+        return usage('the description holds no text, so the index line would be written blank;'
+            + ' a shared-tier record carries a description in the index that lists it');
+    }
     // The file channel resolves where add-type resolves it, for add-type's
-    // reasons: after the argument-only checks, so a doomed command never
-    // touches the filesystem, and before the cap gate, so a body that arrived
-    // by file is held to exactly what --body is held to.
+    // reasons: after the argument-only checks and the store reads an --update
+    // takes, so a command an argument already dooms never reads the caller's
+    // file, and before the cap gate, so a body that arrived by file is held
+    // to exactly what --body is held to.
     if (bodyFile !== undefined) {
         body = readBodyFile(bodyFile);
         if (body === null) return;
     }
 
-    // A run's write lands in the shared tier like any other, carrying the
-    // provenance that says which run authored it, add-type's rule: the
-    // operator tier has its own directory, its own lock, and an index this
-    // command maintains, none of which a run-private directory can stand in
-    // for.
-    const dir = operatorDirPath();
-    // An absent operator directory refuses an update before the lock, for
-    // add-type's reason: acquireLock mints the directory as a side effect,
-    // and a refusal path must not leave durable shared-store state behind.
-    if (update && !fs.existsSync(dir)) {
-        process.stderr.write('memq: \'' + sanitize(name, NAME_CAP)
-            + '\' does not exist in the operator tier; drop --update to create it\n');
-        process.exitCode = 1;
-        return;
-    }
-    const front = [];
-    if (tags.length > 0) front.push('tags: ' + tags.join(', '));
-    // `machine:` scopes the fact to one box, in the inline single-line form
-    // every field of this block uses. It sits with `tags:` rather than with
-    // the provenance lines below because it describes what the fact is true
-    // of, not who wrote it: a memory the operator authored on one machine
-    // about a subject true everywhere carries no such line, and the absent
-    // field is the common case, since most operator facts are true of the
-    // operator rather than of a box.
-    if (machine !== undefined) front.push('machine: ' + machine);
-    for (const line of provenanceLines()) front.push(line);
-    let content = '';
-    if (front.length > 0) content += '---\n' + front.join('\n') + '\n---\n';
     const stored = body === undefined ? description : body;
     // A record whose body holds no text is refused, and the check reads the
     // text actually about to be written rather than the flag that supplied
@@ -5906,13 +7498,32 @@ function cmdAddOperator(argv) {
     // same way, a heading over a blank line, which is a fact its author
     // cannot see is missing and cannot repair afterwards. The shapes that
     // produce one are ordinary: a shell variable that expanded to nothing, a
-    // heredoc or a redirect that wrote nothing.
-    if (!update && stored.trim() === '') {
+    // heredoc or a redirect that wrote nothing. A repair answers to the same
+    // rule, add-type's reason: a body replaced by nothing is the blank record
+    // arriving one command later.
+    if ((!update || repair) && stored.trim() === '') {
         return usage('the body holds no text, so there is nothing to record; a shared-tier body'
             + ' is never written blank (with neither --body nor --body-file, the description is'
             + ' the body)');
     }
-    content += '# ' + name + '\n\n' + stored + '\n';
+    // The record the create path writes, assembled on that path alone,
+    // add-type's rule: an --update takes none of it.
+    let content = '';
+    if (!update) {
+        const front = [];
+        if (tags.length > 0) front.push('tags: ' + tags.join(', '));
+        // `machine:` scopes the fact to one box, in the inline single-line
+        // form every field of this block uses. It sits with `tags:` rather
+        // than with the provenance lines below because it describes what the
+        // fact is true of, not who wrote it: a memory the operator authored
+        // on one machine about a subject true everywhere carries no such
+        // line, and the absent field is the common case, since most operator
+        // facts are true of the operator rather than of a box.
+        if (machine !== undefined) front.push('machine: ' + machine);
+        for (const line of provenanceLines()) front.push(line);
+        if (front.length > 0) content += '---\n' + front.join('\n') + '\n---\n';
+        content += '# ' + name + '\n\n' + stored + '\n';
+    }
     // The cap measures the record, not the body alone, because the record is
     // what the reader measures: `get` reads the whole file and caps the whole
     // file, so a body that fits with its frontmatter and heading pushed past
@@ -5920,7 +7531,10 @@ function cmdAddOperator(argv) {
     // printable whole afterwards. Judging the same number on the way in is
     // what keeps every record that exists readable end to end. Over-cap text
     // is refused rather than cut, sharedFreeText's rule, on both channels.
-    if (content.length > BODY_CAP) {
+    // A repair is measured under the lock instead, for add-type's reason: the
+    // frontmatter it carries across is the existing file's, and only the file
+    // holds it. A description-only update writes no record at all.
+    if (!update && content.length > BODY_CAP) {
         return usage('the record is ' + content.length + ' characters (its body is '
             + stored.length + '); the cap is ' + BODY_CAP + ', the whole `get` prints, and'
             + ' shared-tier text over it is refused rather than silently cut. Shorten it and rerun');
@@ -5934,22 +7548,73 @@ function cmdAddOperator(argv) {
         return;
     }
     let fileWritten = false;
+    // The backups this command's own rewrites take, for the failure line: a
+    // stop after one of them has landed has spent that file's single .bak
+    // generation, and a caller told nothing about it does not know the copy it
+    // would recover from is the one this run wrote.
+    const backedUp = [];
+    const noteBackup = (f) => { backedUp.push(backupLabel(f)); };
+    let repaired = null;                 // the pre-repair record, for the unwind
+    let landed = false;                  // set once the update is committed
+    let shadowed = false;                // a retired record of this name, read under the lock
     try {
         // The update path first: it requires exactly the state the create
-        // path refuses. The memory file is never opened, so the repair
-        // cannot disturb a body, tags, or a machine scope; only the tier
-        // index is rewritten, under the same lock and backup as every index
-        // rewrite.
+        // path refuses. Without a body flag the memory file is never opened,
+        // so the repair cannot disturb a body, tags, or a machine scope; with
+        // one the file is rebuilt around its own frontmatter, so a repair
+        // still cannot disturb the tags or the scope. Either way only the
+        // description and the body move, under the same lock and backup as
+        // every other rewrite here.
         if (update) {
-            if (!fs.existsSync(path.join(dir, file))) {
-                process.stderr.write('memq: \'' + sanitize(name, NAME_CAP)
-                    + '\' does not exist in the operator tier; drop --update to create it\n');
-                process.exitCode = 1;
+            const memPath = path.join(dir, file);
+            if (updateTargetUnusable(dir, name, ' in the operator tier',
+                'delete-operator ' + sanitize(name, NAME_CAP) + ' --confirm-shared')) {
                 return;
             }
-            updateIndexDescription(operatorIndexPath(), name, file, description);
+            if (repair) {
+                const original = fs.readFileSync(memPath);
+                const text = recordText(original, name, ' in the operator tier',
+                    'delete-operator ' + sanitize(name, NAME_CAP) + ' --confirm-shared');
+                if (text === null) return;
+                const carried = recordFrontmatter(text);
+                // The record's own heading is carried like its frontmatter,
+                // and a record that carries none is given one from the name it
+                // is filed under. A repair replaces the description and the
+                // body; what the record is titled is neither of those.
+                const heading = recordHeading(text) || ('# ' + name);
+                const record = carried.bom + carried.text + heading + '\n\n'
+                    + stored + '\n';
+                if (record.length > BODY_CAP) {
+                    return usage('the record is ' + record.length + ' characters (its body is '
+                        + stored.length + '); the cap is ' + BODY_CAP + ', the whole `get` prints,'
+                        + ' and shared-tier text over it is refused rather than silently cut.'
+                        + ' Shorten it and rerun');
+                }
+                // A record is not an append-only file, so the rewrite takes
+                // no tail copy: nothing lawful appends to a memory, and bytes
+                // that appeared past the read got there by something
+                // replacing the record whole.
+                if (carried.unread) warnFrontmatterUnread(name, file);
+                rewriteWithBackup(memPath, original, record,
+                    { concurrentAppends: false, onBackup: noteBackup });
+                repaired = original;
+            }
+            updateIndexDescription(operatorIndexPath(), name, file, description,
+                { sharedTier: true, onBackup: noteBackup });
+            // The commit point, add-type's rule: past it the record and its
+            // description agree, so nothing unwinds and nothing reports a
+            // write that did not happen.
+            landed = true;
             process.stdout.write('updated ' + sanitize(name, NAME_CAP)
-                + ' in the operator tier\n');
+                + ' in the operator tier'
+                + (repair ? ' (body ' + stored.length + ' chars)' : '') + '\n');
+            return;
+        }
+        // Before the duplicate check, for add-type's reason: existsSync and
+        // writeFileSync both follow a link, so a dangling one at this name
+        // reads as absent and then takes the body outside the store.
+        if (nonRecordRefusal(path.join(dir, file), name, ' in the operator tier',
+            'add-operator', true)) {
             return;
         }
         if (fs.existsSync(path.join(dir, file))) {
@@ -5958,15 +7623,22 @@ function cmdAddOperator(argv) {
             process.exitCode = 1;
             return;
         }
-        fs.writeFileSync(path.join(dir, file), content, 'utf8');
+        shadowed = archiveHoldsRetired(dir, name);
+        // Created rather than written, the same instrument the tier index a
+        // few lines below takes: the checks above ran before the lock this
+        // command holds could exclude a sync pull, which writes into this
+        // store whole and holds none of this module's locks.
+        createStoreFile(path.join(dir, file), content);
         fileWritten = true;
         const indexPath = operatorIndexPath();
         const line = '- [' + name + '](' + file + ') - ' + description;
         const src = readStoreFile(indexPath);
         if (src === null) {
-            // The tier's first memory: the index is created whole, so there
-            // is nothing to back up.
-            fs.writeFileSync(indexPath, '# Memory Index\n\n' + line + '\n', 'utf8');
+            // The tier's first memory: the index is created whole, so there is
+            // nothing to back up, and created rather than written, because the
+            // read that answered absent cannot tell an absent index from a
+            // link pointing at nothing.
+            createStoreFile(indexPath, MEMORY_INDEX_HEADING + '\n\n' + line + '\n');
         } else {
             const kept = [];
             for (const l of src.lines) {
@@ -5975,10 +7647,29 @@ function cmdAddOperator(argv) {
                 kept.push(l);
             }
             while (kept.length > 0 && kept[kept.length - 1].trim() === '') kept.pop();
+            keepHeadingBlank(kept, MEMORY_INDEX_HEADING);
             kept.push(line);
-            rewriteWithBackup(indexPath, src.buf, kept.join('\n') + '\n');
+            rewriteWithBackup(indexPath, src.buf, kept.join('\n') + '\n',
+                { concurrentAppends: false, onBackup: noteBackup });
         }
     } catch (err) {
+        // Past the commit point the work is done and only the report of
+        // it failed, so the line says which, and says not to re-run. A
+        // re-run's first act is the backup copy, which would put the
+        // repaired body into the .bak that holds the body it replaced:
+        // the one local recovery this store has for an overwritten
+        // record, spent on a repair that already landed.
+        if (landed) {
+            process.stderr.write('memq: the update to \'' + sanitize(name, NAME_CAP)
+                + '\' in the operator tier is written, its index line with it;'
+                + ' reporting it failed: '
+                + failureText(err)
+                + '. Do not re-run: the update has landed'
+                + (repair ? ', and a second repair would copy the repaired body over'
+                    + ' the .bak that holds the body it replaced' : '') + '\n');
+            process.exitCode = 1;
+            return;
+        }
         // The memory file and its index line land together or not at all. A
         // file left behind by a failed index write would be refused forever
         // by the duplicate guard, and no lawful writer of this index exists
@@ -5991,9 +7682,24 @@ function cmdAddOperator(argv) {
             } catch {
                 residue = '; the memory file remains without an index line';
             }
+        } else if (repaired !== null) {
+            // A repair's two writes land together or not at all, the create
+            // path's rule: the body is put back the way it was, so a failed
+            // index rewrite cannot leave a record whose description
+            // describes the body it used to have. The restore is a write
+            // beside the record and a rename over it, never an in-place
+            // truncate, so the unwind cannot itself leave a half-written
+            // record.
+            try {
+                restoreRecord(path.join(dir, file), repaired);
+            } catch {
+                residue = '; the record holds its repaired body while the index keeps the'
+                    + ' old description';
+            }
         }
         process.stderr.write('memq: could not write operator memory: '
-            + sanitize(err && err.message ? err.message : String(err), 200) + residue + '\n');
+            + failureText(err) + residue
+            + (backedUp.length > 0 ? ' (' + backupClause(backedUp) + ')' : '') + '\n');
         process.exitCode = 1;
         return;
     } finally {
@@ -6005,6 +7711,759 @@ function cmdAddOperator(argv) {
     // composed short, so the count is the author's only check.
     process.stdout.write('added ' + sanitize(name, NAME_CAP) + ' to the operator tier'
         + ' (body ' + stored.length + ' chars)\n');
+    if (shadowed) {
+        archiveShadowNote(name, ' in the operator tier',
+            'delete-operator ' + sanitize(name, NAME_CAP) + ' --confirm-shared');
+    }
+}
+
+// memq delete-type / memq delete-operator: remove one name from a shared
+// tier, its live record and its retired copy alike, together with the index
+// lines that list them and the usage stamps that count them, in one operation
+// under the tier's store.lock. This is the path for the record that should
+// never have existed; `decay-prune`'s archive remains the path for the record
+// that was once right and has stopped being useful. The verbs stay apart on
+// that line, not on where a file sits: the reason a mistake needs deleting is
+// that it is wrong wherever it is, and a mistake left in archive/ is still
+// served by `find --archived` and still counted by `recall`. So a deletion
+// leaves no copy in the tier, and the archive is reachable rather than a
+// place a wrong record survives forever.
+//
+// What a deletion does leave is the single-generation .bak of each file it
+// rewrites, which is local and never travels (the store's sync refuses *.bak),
+// so it recovers a slip made minutes ago on this machine and nothing beyond
+// that. A store that syncs through a git repository also keeps whatever its
+// history holds, which is outside this command's reach and is the honest
+// bound on what "no copy" means here.
+//
+// Both verbs require --confirm-shared, the same consent flag a shared-tier
+// retirement takes, and require it unconditionally rather than only when the
+// reach is wide: --archive-type waives it for a type only this project
+// declares because the archived record stays readable either way, and nothing
+// removed here is readable through the store afterwards. The refusal states
+// the cost and changes nothing, so a caller who did not mean it has lost
+// nothing by asking.
+//
+// A pinned record is not refused here, unlike an archive target. A pin is the
+// decay lifecycle's override, and its escape hatch there is deleting one line
+// from the memory file, which is a hand edit no shared tier admits. Refusing
+// a pinned record here would leave it deletable by no path at all.
+function cmdDeleteType(argv) {
+    const positionals = [];
+    let confirmShared = false;
+    for (const a of argv) {
+        if (a === '--confirm-shared') confirmShared = true;
+        else if (a.startsWith('--')) return usage('unknown option ' + sanitize(a, 40));
+        else positionals.push(a);
+    }
+    if (positionals.length !== 2) {
+        return usageCount(argv, positionals, 2, 'delete-type needs <type> <name>');
+    }
+    const type = positionals[0];
+    const name = positionals[1];
+    if (!isTypeName(type)) {
+        return usage('type must be characters from [A-Za-z0-9_.-], at most ' + TYPE_CAP
+            + ', and not a path token');
+    }
+    if (!isMemoryFilename(name + '.md')) {
+        return usage('name must be characters from [A-Za-z0-9_.-], at most '
+            + (MEMORY_FILE_CAP - 3) + ', and not the memory index');
+    }
+    if (deleteRefusedByStoreSignals('delete-type')) return;
+    // An absent tier answers before the confirmation and before the lock, for
+    // add-type's reason: acquireLock mints the directory as a side effect, and
+    // a typo'd type name must not leave a shared-store directory behind.
+    const dir = typeDir(type);
+    if (!fs.existsSync(dir)) {
+        process.stderr.write('memq: no type \'' + sanitize(type, TYPE_CAP)
+            + '\' in this store, so there is nothing named \'' + sanitize(name, NAME_CAP)
+            + '\' to delete\n');
+        process.exitCode = 1;
+        return;
+    }
+    const where = ' in type \'' + sanitize(type, TYPE_CAP) + '\'';
+    // Without consent, a name with no copy in the tier answers before the
+    // cost is named and sweeps nothing on the way: a caller who mistyped a
+    // name should not be told a deletion is about to reach every project of a
+    // type, and should not pay the projects-root scan that establishes how
+    // many. It is the same no-side-effect early exit --update takes for an
+    // absent tier. Under consent this check stands down entirely, because the
+    // check inside the removal below is the authoritative one and the one
+    // that sweeps, and an answer here would reach it first and leave the
+    // sweep unreachable.
+    if (!confirmShared && noCopyPresent(dir, name, where)) {
+        process.exitCode = 1;
+        return;
+    }
+    // The cost, named the way decay-prune names it and on every path from
+    // here: every project declaring this type loses the record, so the
+    // listing is what the decision is weighed against.
+    const declaring = projectsDeclaringType(type);
+    if (declaring === null) {
+        // A scan that could not be established is reported as that, and this
+        // verb substitutes no stand-in for it: decay-prune can fall back to
+        // the one project it can vouch for because a retirement keeps the
+        // record readable, while a deletion does not, and a listing of one
+        // project would understate the reach of a removal rather than bound
+        // it.
+        process.stderr.write('memq: which projects declare type \'' + sanitize(type, TYPE_CAP)
+            + '\' could not be established, so how far this deletion reaches is unknown\n');
+    } else {
+        const shown = declaring.slice(0, DECLARERS_SHOWN);
+        let line = 'memq: type \'' + sanitize(type, TYPE_CAP) + '\' is declared by '
+            + declaring.length + ' project' + (declaring.length === 1 ? '' : 's');
+        if (shown.length > 0) line += ': ' + shown.join(', ');
+        if (declaring.length > shown.length) line += ', and ' + (declaring.length - shown.length) + ' more';
+        process.stderr.write(line + '\n');
+    }
+    if (!confirmShared) {
+        archiveOnlyNote(dir, name, where);
+        process.stderr.write('memq: delete-type removes \'' + sanitize(name, NAME_CAP)
+            + '\' from every project declaring the type and leaves no copy in the tier, the'
+            + ' archive included; re-run with --confirm-shared to proceed (nothing deleted)\n');
+        process.exitCode = 1;
+        return;
+    }
+    deleteSharedRecord(dir, typeIndexPath(type), name, where, { sharedTier: true });
+}
+
+function cmdDeleteOperator(argv) {
+    const positionals = [];
+    let confirmShared = false;
+    for (const a of argv) {
+        if (a === '--confirm-shared') confirmShared = true;
+        else if (a.startsWith('--')) return usage('unknown option ' + sanitize(a, 40));
+        else positionals.push(a);
+    }
+    if (positionals.length !== 1) {
+        return usageCount(argv, positionals, 1, 'delete-operator needs <name>');
+    }
+    const name = positionals[0];
+    if (!isMemoryFilename(name + '.md')) {
+        return usage('name must be characters from [A-Za-z0-9_.-], at most '
+            + (MEMORY_FILE_CAP - 3) + ', and not the memory index');
+    }
+    if (deleteRefusedByStoreSignals('delete-operator')) return;
+    const dir = operatorDirPath();
+    if (!fs.existsSync(dir)) {
+        process.stderr.write('memq: this store has no operator tier (no ' + OPERATOR_DIR
+            + '/ directory), so there is nothing named \'' + sanitize(name, NAME_CAP)
+            + '\' to delete\n');
+        process.exitCode = 1;
+        return;
+    }
+    const where = ' in the operator tier';
+    // Without consent a mistyped name answers here, before the tier's cost is
+    // stated, delete-type's rule; under consent the check inside the removal
+    // below is the only one, so that the sweep it carries stays reachable.
+    if (!confirmShared && noCopyPresent(dir, name, where)) {
+        process.exitCode = 1;
+        return;
+    }
+    // The operator tier's cost needs no scan to establish and admits no
+    // unshared case, decay-prune's reasoning: every project reading the store
+    // reads this tier, so naming a count of them would be a false precision.
+    process.stderr.write('memq: the operator tier is shared by every project reading this'
+        + ' store, so deleting from it deletes for all of them\n');
+    if (!confirmShared) {
+        archiveOnlyNote(dir, name, where);
+        process.stderr.write('memq: delete-operator removes \'' + sanitize(name, NAME_CAP)
+            + '\' store-wide and leaves no copy in the tier, the archive included; re-run with'
+            + ' --confirm-shared to proceed (nothing deleted)\n');
+        process.exitCode = 1;
+        return;
+    }
+    deleteSharedRecord(dir, operatorIndexPath(), name, where, { sharedTier: true });
+}
+
+// Both delete verbs are refused outright under the engine's store signals,
+// the pair that says this process was pointed at a fleet store deliberately.
+// The standing grant that environment carries for `node <abspath>/memq.js
+// ...` (hooks/memq-grant.js) withholds itself from both verbs by name, so one
+// reaching here in a fleet worker has already fallen through to the ordinary
+// permission flow. That hook judges its own environment while this check
+// judges the child's, and where the two disagree this is the half that binds,
+// which is why the refusal is stated in both places rather than moved to
+// either; the risk accepted on the grant's original terms was
+// accepted over a command set whose heaviest act was retirement, which keeps
+// the record. Destruction is a different bargain, and an overridden store
+// root is exactly where the sync repository that would hold a deleted
+// record's history may not be. Nothing is lost by refusing: neither verb
+// existed before this, so a fleet worker keeps every capability it had.
+//
+// The refusal answers after the argument checks, so a malformed command hears
+// about its arguments in every environment, and before any filesystem touch,
+// so a refused command reads nothing and mints nothing.
+function deleteRefusedByStoreSignals(verb) {
+    if (!storeSignalsPresent()) return false;
+    usage(verb + ' destroys a shared-tier record, which is refused under the engine store'
+        + ' signals (KIT_MEMORY_ROOT with KIT_MEMORY_ROOT_ALLOW_DATA=1): a delete keeps no copy'
+        + ' of the record it removes, and a redirected store may carry no history to recover'
+        + ' one from. Retire the record with decay-prune instead');
+    return true;
+}
+
+// Whether a path names a plain file, which is what every record in a tier is.
+// statSync, the same call every other reader of a record makes (listMemories,
+// the recall and decay predicates), so one physical path cannot be a record to
+// `find` and `get` and absent to the writers. What a link is instead of a
+// record is a separate question, asked by nonRecordKind on the paths that
+// write.
+//
+// False here means "no plain file answers at this path", which covers both a
+// name standing free and a path that could not be examined. That conflation is
+// the reader's own semantics and is why every caller whose false branch then
+// writes, unlinks or reports a name as empty asks nonRecordRefusal first, which
+// separates the two and refuses the second: deleteSharedRecord and
+// noCopyPresent for both of a name's paths, updateTargetUnusable for the record
+// it is about to repair, and both create paths for the name they are about to
+// take. The callers left reading this answer alone are the ones whose false
+// branch only withholds a line of prose: archiveHoldsRetired and
+// archiveShadowNote's presence question, updateTargetMissing's choice of which
+// remedy to name, and archiveOnlyNote, which runs on paths noCopyPresent has
+// just refused for.
+function regularFile(filePath) {
+    try {
+        return fs.statSync(filePath).isFile();
+    } catch {
+        return false;
+    }
+}
+
+// What a path is when it is not the plain file a record has to be, as a
+// phrase for a refusal, or null when it is a plain file or is absent.
+//
+// Only the commands that write a record ask this. Every reader takes a link
+// to a plain file as the file it points at, which is what statSync answers
+// and what keeps one path from being a record to one surface and nothing to
+// another. A write is the other case: a repair copies the record to a .bak
+// and renames a rebuild over it, and a delete unlinks it, so a link there
+// means reading a file outside the tier into the store and removing a name
+// while its target survives. Refusing names what is there instead, because
+// the one thing a caller must not be told is that nothing is.
+function nonRecordKind(filePath) {
+    let st = null;
+    try {
+        st = fs.lstatSync(filePath);
+    } catch (err) {
+        // ENOENT is the name standing free, which is not what this asks about.
+        // Every other code is a path that could not be looked at, and that is
+        // its own answer rather than the free one: every caller reads "no
+        // objection" here as leave to write the name, unlink under it, or count
+        // it as holding nothing, and a delete that took the last of those on an
+        // unexaminable path sweeps a record's index line and stamps while the
+        // record itself stays on disk, listed by nothing.
+        const code = err && err.code ? err.code : String(err);
+        return code === 'ENOENT' ? null : { phrase: null, code: sanitize(code, 40) };
+    }
+    if (st.isFile()) return null;
+    if (st.isSymbolicLink()) return { phrase: 'a symbolic link', code: null };
+    if (st.isDirectory()) return { phrase: 'a directory', code: null };
+    return { phrase: 'not a plain file', code: null };
+}
+
+// Whether the tier's archive already holds a record of this name, read under
+// the caller's lock before it writes. The create proceeds either way, because
+// a name coming back is ordinary; what it must not do is come back silently.
+// Under --update the same state is a refusal instead, because there the
+// caller believes they are editing the record that is gone.
+function archiveHoldsRetired(dir, name) {
+    return regularFile(path.join(dir, ARCHIVE_DIR, name + '.md'));
+}
+
+// Say that a tier now holds two records of one name, the one just created and
+// a retired one. The store keys usage stamps by filename, so the new record
+// inherits the retired one's read and applied history. The idle clock still
+// starts at today, since lastAliveMs takes the newest of the file's mtime,
+// its created date and its last applied stamp; what an inherited history can
+// do is defer the record's decay past that, on stamps it never earned. This
+// is emitted
+// after the create has landed, so it describes the tier as it stands: a
+// create that failed leaves the memory file unwound and no second record to
+// report.
+function archiveShadowNote(name, where, deleteCommand) {
+    process.stderr.write('memq: \'' + sanitize(name, NAME_CAP) + '\' is also retired' + where
+        + ', so the tier now holds two records of that name and the new one inherits the'
+        + ' retired one\'s usage stamps; '
+        + sharedDeleteRemedy(deleteCommand, 'removes the retired copy') + '\n');
+}
+
+// Refuse a write against a path that is not a plain file, answering whether
+// it did. `what` names the operation in the caller's own words, and
+// `creating` says whether the caller was asking for a record at this name:
+// only then is the fate of the name part of the answer. Either way the line
+// names the path to clear, because a tier bars hand edits and this is the one
+// state only a hand outside the store can resolve.
+function nonRecordRefusal(filePath, name, where, what, creating) {
+    const found = nonRecordKind(filePath);
+    if (found === null) return false;
+    if (found.code !== null) {
+        // A path that could not be examined names no remedy of its own: what
+        // stands there is unknown, so there is nothing to say to remove.
+        process.stderr.write('memq: \'' + sanitize(name, NAME_CAP) + '\'' + where
+            + ' could not be examined (' + found.code + '), so ' + what + ' will not act on'
+            + ' it: whether a record stands there is unknown, and acting on the name as if'
+            + ' nothing did is how a record survives its own deletion. Nothing was'
+            + ' changed\n');
+        process.exitCode = 1;
+        return true;
+    }
+    process.stderr.write('memq: \'' + sanitize(name, NAME_CAP) + '\'' + where + ' is '
+        + found.phrase + ', so ' + what + ' will not act on it: a tier holds records, which'
+        + ' are plain files. Nothing was changed; removing ' + sanitize(filePath, 260)
+        + ' by hand is what frees the name'
+        + (creating ? ', which until then is not a name to create' : '') + '\n');
+    process.exitCode = 1;
+    return true;
+}
+
+// Whether a name has no record left in a tier, the archive counted, with the
+// refusal already printed. A retired copy is a copy this verb removes, so it
+// is presence here rather than a different kind of absence. This is the
+// pre-consent check, so it changes nothing: a command that has not been
+// confirmed reads the tier and answers. What a confirmed command does with a
+// name that has no record is deleteSharedRecord's, under the lock.
+function noCopyPresent(dir, name, where) {
+    const file = name + '.md';
+    // The same refusal the confirmed path gives, in the same words: a name
+    // holding something that is not a record answers for what is there on
+    // whichever path the caller reaches it by, and the answer a caller must
+    // never get for one is that nothing is there.
+    if (nonRecordRefusal(path.join(dir, file), name, where, 'delete', false)
+        || nonRecordRefusal(path.join(dir, ARCHIVE_DIR, file), name,
+            where + ' under ' + ARCHIVE_DIR + '/', 'delete', false)) {
+        return true;
+    }
+    if (regularFile(path.join(dir, file))) return false;
+    if (regularFile(path.join(dir, ARCHIVE_DIR, file))) return false;
+    process.stderr.write('memq: no memory file named \'' + sanitize(name, NAME_CAP)
+        + '\'' + where + '\n');
+    // An index line outliving its record is clearable by nothing else: no
+    // reader serves the name, no writer rewrites the line, and this check is
+    // the answer an unconfirmed run gets. Naming the remedy is what keeps the
+    // caller from reading the refusal as nothing to do.
+    if (indexListsRecord(dir, file)) {
+        process.stderr.write('memq: an index still lists that name, and a confirmed run of'
+            + ' this command is what clears the line: re-run with --confirm-shared\n');
+    }
+    return true;
+}
+
+// Whether either index in a tier still carries a line for one record's file.
+// An index that cannot be read answers false: this is the remedy note on a
+// refusal path, and a read failure there is not a fact to report a remedy
+// for.
+function indexListsRecord(dir, file) {
+    for (const indexPath of [path.join(dir, INDEX_FILE),
+        path.join(dir, ARCHIVE_DIR, INDEX_FILE)]) {
+        let src = null;
+        try { src = readStoreFile(indexPath); } catch { continue; }
+        if (src === null) continue;
+        for (const line of src.lines) {
+            const parsed = parseIndexLine(line);
+            if (parsed !== null && fsEq(parsed.file, file)) return true;
+        }
+    }
+    return false;
+}
+
+// The refusal for an --update naming a record a tier does not hold live, and
+// the two situations it tells apart. A name the tier has never held is a
+// typo or a create that has not happened, and dropping --update is the whole
+// remedy. A name whose only copy is retired is not: creating a live record
+// under it leaves two records of one name in one tier, which is the shadow
+// that makes an archived mistake unreachable through the tier's own readers,
+// so the remedy named is the verb that removes the retired copy.
+// The one gate every --update passes: a target that is not a plain file is
+// refused for what it is, and one that is not there at all is refused as
+// missing. Both answers are the same on the early check and the under-lock
+// one, so the two callers cannot drift apart.
+function updateTargetUnusable(dir, name, where, deleteCommand) {
+    const memPath = path.join(dir, name + '.md');
+    // creating: false. A repair asks for the record already at this name, so
+    // the fate of the name as a place to create one is updateTargetMissing's
+    // to raise, on the path where creating is actually the remedy.
+    if (nonRecordRefusal(memPath, name, where, '--update', false)) return true;
+    if (!regularFile(memPath)) {
+        updateTargetMissing(dir, name, where, deleteCommand);
+        return true;
+    }
+    return false;
+}
+
+function updateTargetMissing(dir, name, where, deleteCommand) {
+    const file = name + '.md';
+    if (regularFile(path.join(dir, ARCHIVE_DIR, file))) {
+        process.stderr.write('memq: \'' + sanitize(name, NAME_CAP) + '\' is retired' + where
+            + ', so there is no live record to repair; adding one under the same name would'
+            + ' leave the tier holding two records of it, and '
+            + sharedDeleteRemedy(deleteCommand, 'removes the retired copy') + '\n');
+    } else {
+        process.stderr.write('memq: \'' + sanitize(name, NAME_CAP) + '\' does not exist' + where
+            + '; drop --update to create it\n');
+    }
+    process.exitCode = 1;
+}
+
+// Say, before the consent refusal states the cost, that the only copy left is
+// the retired one. A caller reaching for a delete may believe they are
+// removing a record their sessions still read, and what they would actually
+// remove is a record `find --archived` and `recall` still answer for. Under
+// consent nothing is said: the success line names both locations.
+function archiveOnlyNote(dir, name, where) {
+    const file = name + '.md';
+    if (regularFile(path.join(dir, file))) return;
+    if (!regularFile(path.join(dir, ARCHIVE_DIR, file))) return;
+    process.stderr.write('memq: \'' + sanitize(name, NAME_CAP) + '\' is already retired' + where
+        + ', so the only copy left is the archived one and that is what this removes;'
+        + ' decay-prune owns retirement, and cannot remove a record\n');
+}
+
+// Remove a file that may not be there, answering whether it was. Absence is
+// an ordinary state for every path this is called on, and any other failure
+// belongs to the caller, which is mid-operation and has to report it.
+function unlinkIfPresent(filePath) {
+    try {
+        fs.unlinkSync(filePath);
+        return true;
+    } catch (err) {
+        if (err && err.code === 'ENOENT') return false;
+        throw err;
+    }
+}
+
+// Whether one directory entry is a copy of one record's text without being
+// the record. Two shapes qualify: the single-generation .bak a repair leaves,
+// and the <file>.tmp.<pid> a rewrite or an unwind strands when it is killed
+// between the write and the rename.
+//
+// The tmp shape requires the pid, rather than any tail after .tmp., because a
+// memory name may lawfully carry dots: a-fact.md.tmp.5 is a valid name, whose
+// file a-fact.md.tmp.5.md would match a-fact's prefix. Matching it would
+// unlink another record and leave that record's index line pointing at
+// nothing, silently, since a sweep beside a record that exists names nothing.
+function recordCopyEntry(file, entry) {
+    if (entry.length <= file.length) return false;
+    // memoryFileKey, not ===: win32 reaches one physical file through every
+    // case spelling of its name, so a record renamed or deleted under one
+    // spelling has to match its own copies under another. Comparing raw would
+    // leave EF-Core.md.bak beside an archived ef-core.md, holding a readable
+    // body the pass reports as moved.
+    if (memoryFileKey(entry.slice(0, file.length)) !== memoryFileKey(file)) return false;
+    // The suffix folds on the same rule, for the same reason: on win32
+    // <name>.md.BAK and <name>.md.bak are one physical file, so a suffix
+    // compared raw would leave a readable body in the tier while the command
+    // reports the record removed or moved.
+    const tail = memoryFileKey(entry.slice(file.length));
+    return tail === '.bak' || /^\.tmp\.\d+$/.test(tail);
+}
+
+// The guard a sweep of one directory takes before anything is unlinked in it.
+// The condition it refuses is permanent rather than transient, so a caller
+// that discovered it halfway through would have spent a record's only local
+// copy of its body on the way to a stop that repeats.
+function requireCopyDirectory(dir) {
+    let st = null;
+    try { st = fs.lstatSync(dir); } catch { /* absent or unreadable: the listing answers */ }
+    if (st && !st.isDirectory()) {
+        throw new Error(sanitize(path.basename(dir), MEMORY_FILE_CAP + 16)
+            + ' is not a directory, so the copies of the record\'s text under it were'
+            + ' not removed');
+    }
+}
+
+// The entries one directory holds, for a sweep of it, or null for a directory
+// that is not there and so holds no copies: that is the ordinary state of an
+// archive/ never written to. A directory that exists and refuses to be listed
+// throws instead, because swallowing it would skip a sweep while the command
+// still reports the record deleted, leaving a readable copy of the body in the
+// tier.
+//
+// Separate from the sweep so that a caller sweeping two directories takes both
+// listings before either sweep unlinks. Both failures this returns through are
+// permanent rather than transient, and a caller that met one on the second
+// directory would have spent the first directory's copies, among them the .bak
+// holding the body a repair replaced, on the way to a stop that repeats.
+function listCopyDirectory(dir) {
+    // The directory is checked before it is listed, the guard the record path
+    // and both rewrite destinations already take: readdirSync and the unlinks
+    // that follow it all resolve a link, so a symlink or junction at this
+    // name would aim the sweep, and its unlinks, at whatever it points to.
+    // lstat, so the link is seen instead of followed. An absent path is not
+    // that check's business: the listing below answers it.
+    //
+    // This is stricter than every reader of the same directories, which reach
+    // a tier through a link without noticing one: a read through a link is a
+    // read of what it points at, while an unlink through one removes files the
+    // store does not own and cannot restore. So a store whose tier is reached
+    // by a link or a junction serves reads and archive passes as usual, and
+    // the two delete verbs alone refuse until the link is replaced by the
+    // directory itself.
+    requireCopyDirectory(dir);
+    try {
+        return fs.readdirSync(dir);
+    } catch (err) {
+        if (err && err.code === 'ENOENT') return null;
+        throw err;
+    }
+}
+
+// Remove every file in one directory that holds a copy of one record's text
+// and is not the record, from a listing of it taken before any unlink. Both shapes hold a whole body, neither is listed by
+// any reader or overwritten by any later write, and once the record is gone
+// nothing else in the store can reach either, so a delete that left one would
+// leave a readable copy of the memory it reports having removed.
+//
+// `place` names the tier for a stderr line per file, or is null where the
+// record itself is going too and the success line's count says it all.
+// `onRemoved` is called as each file goes, rather than a total returned at
+// the end, so a stop partway through still leaves the caller holding what it
+// actually removed.
+function removeRecordCopies(dir, entries, file, place, onRemoved) {
+    if (entries === null) return;
+    const took = (entry) => {
+        onRemoved();
+        if (place !== null) {
+            process.stderr.write('memq: removed a stray ' + sanitize(entry, MEMORY_FILE_CAP + 16)
+                + place + ', a copy of a record that is not there\n');
+        }
+    };
+    // The .bak by its own name as well as from the listing: it is the one
+    // copy whose name this module knows without searching, so a listing that
+    // does not show it (an entry written between the read and here) still
+    // loses it. A double count is not possible, since unlinkIfPresent answers
+    // false for a name already gone.
+    if (unlinkIfPresent(path.join(dir, file + '.bak'))) took(file + '.bak');
+    for (const entry of entries) {
+        if (recordCopyEntry(file, entry) && unlinkIfPresent(path.join(dir, entry))) took(entry);
+    }
+}
+
+// The removal both delete verbs perform, under the tier's own store.lock so
+// the records and the indexes that list them cannot be seen apart by a
+// concurrent writer. `where` names the tier in every line, refusals included.
+//
+// Every artifact a name can own goes, in both locations: the tier index line,
+// the archive index line, the usage stamps, the copies of the record's text,
+// and the record files themselves. The ones that are not the record go even
+// when no record is left, under consent and under this lock, because nothing
+// else can reach them: a shared tier bars hand edits, every reader of the
+// name refuses it, and an index line naming a file that is gone keeps
+// advertising a memory nothing can serve into every session the index is read
+// into. That sweep is reported and the command still exits nonzero, since a
+// name with no record was not a deletion.
+//
+// The steps are ordered so that every state a stop can leave is one a re-run
+// of the same command completes, which matters because this command is the
+// only repair for its own half-finished work. The copies go first, both index
+// lines second, the stamps third, and the record files last, so a stop
+// anywhere leaves a record file still there to be named again and every
+// finished step a no-op the second time through. The copies lead because a
+// failure there can be permanent rather than transient (a directory occupying
+// <name>.md.bak, a directory that refuses to be listed), and both directories
+// are listed before either sweep unlinks, so a permanent failure in either one
+// is the whole of the step and the store is left exactly as it was. An unlink
+// that throws after an earlier one landed is the transient case and is not
+// covered by that: those copies are gone, which the failure line names and a
+// re-run treats as work already done. Either is better than the same stop in the last step, which would
+// leave a record with no index line and no way to finish but the command that
+// cannot. The two record files are
+// unlinked in either order safely, because one copy left in either location
+// is a name this command still acts on. Any other order can strand something:
+// unlinking a record first leaves an index line naming a file that is gone
+// and a backup holding a previous body, in a tier whose only reader of that
+// name is this command.
+function deleteSharedRecord(dir, indexPath, name, where, options) {
+    if (!options || typeof options.sharedTier !== 'boolean') {
+        throw new Error('the record was not deleted: the call did not state whether this'
+            + ' is a shared tier');
+    }
+    const file = name + '.md';
+    const archiveDir = path.join(dir, ARCHIVE_DIR);
+    const memPath = path.join(dir, file);
+    const archPath = path.join(archiveDir, file);
+    const lock = acquireLock(path.join(dir, STORE_LOCK_FILE));
+    if (!lock.ok) {
+        process.stderr.write('memq: store locked, nothing deleted: '
+            + sanitize(lock.reason, 260) + '\n');
+        process.exitCode = 1;
+        return;
+    }
+    // What the removal actually reached, for the failure line: a stop reports
+    // the steps it took, never the steps it was going to take, and never a
+    // copy it has already removed. Every flag below is set as its step lands,
+    // because nothing on the disk afterwards can tell an artifact this command
+    // produced from one that was already there: an index .bak left by an
+    // add-type sits at the same name this pass's own would, and a name with
+    // only a stale index line reaches here with no record file to find. This
+    // list is what the failure line names, so it holds what this pass took;
+    // the sweep at the end works from the paths instead, for its own reason.
+    const done = [];
+    const backedUp = [];
+    const tookBackup = (f) => { backedUp.push(backupLabel(f)); };
+    // The copies are counted through the same channel, with the one entry
+    // they share kept in the place the first of them took.
+    let copies = 0;
+    let copiesAt = -1;
+    const tookCopy = () => {
+        copies += 1;
+        if (copiesAt === -1) {
+            copiesAt = done.length;
+            done.push('a copy of its text');
+        } else {
+            done[copiesAt] = 'copies of its text';
+        }
+    };
+    // Set once every removal step has run, which is what tells a stop that
+    // leaves work behind from one that leaves none.
+    let completed = false;
+    // The step that is running, named with the path it is working on, set as
+    // each one begins and cleared when the last has run. The failure line
+    // reads it rather than inferring from what came before: every step here
+    // can stop on a condition a re-run meets again (a path that refuses to be
+    // listed, a directory occupying <name>.md.bak, a write the filesystem
+    // refuses), so a line that promised the re-run picks up where this
+    // stopped would be promising it for conditions that stop it in the same
+    // place, and naming none of them.
+    let step = null;
+    try {
+        // A link or a directory under a record's name is refused before any
+        // step runs. Unlinking a link removes the name while its target
+        // survives, and the readers of this tier see that target as the
+        // record, so the removal this command would report is not the one it
+        // performed.
+        if (nonRecordRefusal(memPath, name, where, 'delete', false)
+            || nonRecordRefusal(archPath, name, where + ' under ' + ARCHIVE_DIR + '/',
+                'delete', false)) {
+            return;
+        }
+        const live = regularFile(memPath);
+        const archived = regularFile(archPath);
+        // With no record left the sweep names each file it takes: those are
+        // copies of a memory the tier is not otherwise reporting on, and the
+        // command is about to say it deleted nothing.
+        const place = live || archived ? null : where;
+        // Both sweeps' directories are established before either one unlinks,
+        // because the refusal is permanent: discovering it on the second
+        // sweep would leave the first sweep's unlinks done, and among them the
+        // .bak that holds the body a repair replaced, for a deletion that then
+        // stops in the same place on every re-run.
+        step = 'listing the directories the copies of its text sit in';
+        const liveEntries = listCopyDirectory(dir);
+        const archEntries = listCopyDirectory(archiveDir);
+        step = 'removing the copies of its text in ' + sanitize(dir, 260);
+        removeRecordCopies(dir, liveEntries, file, place, tookCopy);
+        step = 'removing the copies of its text in ' + sanitize(archiveDir, 260);
+        removeRecordCopies(archiveDir, archEntries, file,
+            place === null ? null : place + ' under ' + ARCHIVE_DIR + '/', tookCopy);
+        step = 'rewriting the tier index at ' + sanitize(indexPath, 260);
+        const lines = removeIndexLine(indexPath, file, MEMORY_INDEX_HEADING,
+            { sharedTier: options.sharedTier, onBackup: tookBackup });
+        if (lines > 0) done.push('index line');
+        // The archive keeps its own index, which is where a retired record's
+        // description lives once the tier index drops it, so it is a listing
+        // of this name exactly as the tier index is.
+        step = 'rewriting the archive index at '
+            + sanitize(path.join(archiveDir, INDEX_FILE), 260);
+        const archLines = removeIndexLine(path.join(archiveDir, INDEX_FILE), file,
+            ARCHIVE_INDEX_HEADING, { sharedTier: options.sharedTier, onBackup: tookBackup });
+        if (archLines > 0) done.push('archive index line');
+        step = 'rewriting the usage sidecar in ' + sanitize(dir, 260);
+        const stamps = removeUsageStamps(dir, file,
+            { onBackup: tookBackup, recordPresent: live || archived });
+        if (stamps > 0) done.push('usage stamps');
+        if (live) {
+            step = 'removing the record at ' + sanitize(memPath, 260);
+            fs.unlinkSync(memPath);
+            done.push('the record');
+        }
+        if (archived) {
+            step = 'removing the archived copy at ' + sanitize(archPath, 260);
+            fs.unlinkSync(archPath);
+            done.push('the archived copy');
+        }
+        step = null;
+        completed = true;
+        // The backups at this verb's own three documents, removed now that
+        // every removal step has landed. A .bak beside one of them holds that
+        // document as it stood while it still carried the record being
+        // deleted, and a record authored with no body flag has its whole
+        // stored body in its index line: leaving one beside the tier leaves
+        // the memory readable in a file no reader lists, no writer overwrites,
+        // and the next sync pushes to the remote, which is the state this verb
+        // exists to end.
+        //
+        // Every one of the three, not only the ones this pass wrote. A delete
+        // that stopped after its index rewrite leaves a .bak there and no
+        // index line behind it, so the re-run that completes the deletion
+        // rewrites nothing at that name and would sweep nothing, and the line
+        // holding the body would outlive a command that reported success.
+        // Whose backup it is does not change what is in it. The bound is the
+        // path rather than the writer: these three are the documents this verb
+        // exists to edit, and a .bak beside a file this verb never touches
+        // still belongs to whatever wrote it.
+        //
+        // They go only from here, because until this point they are the single
+        // local recovery for a rewrite that stopped. A removal that fails is
+        // reported and does not fail the
+        // delete: the deletion itself is complete by now, and an exit code
+        // saying otherwise would send an operator to re-run a command that has
+        // nothing left to do.
+        for (const bakPath of [indexPath, path.join(archiveDir, INDEX_FILE),
+            path.join(dir, USAGE_FILE)].map((p) => p + '.bak')) {
+            try {
+                fs.unlinkSync(bakPath);
+            } catch (err) {
+                if (!err || err.code !== 'ENOENT') {
+                    process.stderr.write('memq: '
+                        + sanitize(path.basename(bakPath), MEMORY_FILE_CAP + 16)
+                        + ' could not be removed (' + failureText(err) + '), and it holds'
+                        + ' that file as it stood before this pass rewrote it, with the'
+                        + ' deleted record still in it\n');
+                }
+            }
+        }
+        const counted = ', index lines ' + lines + ', archive index lines ' + archLines
+            + ', usage stamps ' + stamps + (copies > 0 ? ', copies removed ' + copies : '');
+        if (!live && !archived) {
+            process.stderr.write('memq: no memory file named \'' + sanitize(name, NAME_CAP)
+                + '\'' + where + '\n');
+            if (lines + archLines + stamps + copies > 0) {
+                process.stderr.write('memq: swept what was left under that name ('
+                    + counted.slice(2) + ')\n');
+            }
+            process.exitCode = 1;
+            return;
+        }
+        process.stdout.write('deleted ' + sanitize(name, NAME_CAP) + where + ' ('
+            + (live && archived ? 'record and archived copy' : live ? 'record' : 'archived copy')
+            + counted + ')\n');
+    } catch (err) {
+        // The re-run hint is owed only where a re-run has something to do. A
+        // throw from the success write happens with every removal behind it,
+        // so the deletion is complete and the same command again would report
+        // a name it no longer holds.
+        process.stderr.write('memq: could not delete the memory: '
+            + failureText(err)
+            + ' (' + (done.length === 0 ? 'nothing was removed' : 'removed: ' + done.join(', '))
+            + (backedUp.length > 0 ? '; ' + backupClause(backedUp) : '')
+            + (completed
+                ? '; the removal itself is complete, so there is nothing left to re-run'
+                : err && err.replaced
+                    ? '; the file it stopped on was replaced under this pass by a sync, so'
+                        + ' nothing was written there and the same command run again works'
+                        + ' from the file as it now stands'
+                    : step === null
+                        ? '; no step had begun, so the store is as it was and re-running the'
+                            + ' same command is safe'
+                        : '; the step that blocked was ' + step + ', and a re-run repeats the'
+                            + ' steps behind it and stops there again until what blocked it'
+                            + ' is cleared')
+            + ')\n');
+        process.exitCode = 1;
+    } finally {
+        lock.release();
+    }
 }
 
 // memq decay-done: record that a decay pass completed, by touching the decay
@@ -6021,12 +8480,17 @@ function cmdDecayDone(argv) {
         return;
     }
     try {
-        fs.writeFileSync(path.join(memDir, DECAY_STAMP_FILE),
+        // The stamp is overwritten rather than created, since its mtime is the
+        // record and the file outlives every pass, so the lstat is what keeps
+        // the write from following a link planted at the name.
+        const stampPath = path.join(memDir, DECAY_STAMP_FILE);
+        refuseNonRegularStoreFile(stampPath);
+        fs.writeFileSync(stampPath,
             'Touched by memq decay-done when a decay pass completes; the mtime is the record.\n',
             'utf8');
     } catch (err) {
         process.stderr.write('memq: could not touch decay stamp: '
-            + sanitize(err && err.message ? err.message : String(err), 200) + '\n');
+            + failureText(err) + '\n');
         process.exitCode = 1;
         return;
     }
@@ -6089,7 +8553,7 @@ function main() {
         // left to crash as an unhandled rejection.
         cmdFind(rest).catch((err) => {
             process.stderr.write('memq: find failed: '
-                + sanitize(err && err.message ? err.message : String(err), 200) + '\n');
+                + failureText(err) + '\n');
             process.exitCode = 1;
         });
     }
@@ -6100,6 +8564,8 @@ function main() {
     else if (cmd === 'touch') cmdTouch(rest);
     else if (cmd === 'add-type') cmdAddType(rest);
     else if (cmd === 'add-operator') cmdAddOperator(rest);
+    else if (cmd === 'delete-type') cmdDeleteType(rest);
+    else if (cmd === 'delete-operator') cmdDeleteOperator(rest);
     else if (cmd === 'decay-scan') cmdDecayScan(rest);
     else if (cmd === 'decay-prune') cmdDecayPrune(rest);
     else if (cmd === 'decay-done') cmdDecayDone(rest);
@@ -6112,6 +8578,7 @@ if (require.main === module) main();
 
 module.exports = {
     USAGE_FILE,
+    backupClause,
     INDEX_FILE,
     appliedTally,
     lastAliveMs,

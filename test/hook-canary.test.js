@@ -21,6 +21,19 @@ const crypto = require('crypto');
 
 const CANARY = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'hook-canary.js');
 const REAL_ROOT = path.join(__dirname, '..', 'plugins', 'claude-kit');
+
+// The absolute-path test the stub grant hooks below screen with, as source
+// text they embed, derived from the host rather than fixed. The probe composes
+// the cache's own path, which is drive-rooted on win32 and slash-rooted
+// elsewhere, so a stub screening for one spelling on a host that produces the
+// other answers no decision to every probe and the case fails on its own
+// fixture rather than on the direction it is about. A stub that accepted both
+// would be wrong the other way on win32, where the /d/ spelling is a separate
+// probe that must get no decision. Which spellings the real hook accepts is
+// its own question, asked by that probe.
+const ABS_SCRIPT_TEST = path.sep === '\\'
+    ? '/^node \\"[A-Za-z]:/'
+    : '/^node \\"\\//';
 const REAL_HOOKS = path.join(REAL_ROOT, 'hooks');
 
 // A throwaway plugin cache: the whole hooks directory, copied. The copy is
@@ -30,8 +43,8 @@ const REAL_HOOKS = path.join(REAL_ROOT, 'hooks');
 // own copy (the grant hook resolves it beside itself and grants nothing
 // else). No build stamp is copied, so the integrity probe has nothing to
 // check until a test stamps one with stampCache().
-function makeCache() {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hook-canary-cache-'));
+function makeCache(base) {
+    const dir = fs.mkdtempSync(path.join(base || os.tmpdir(), 'hook-canary-cache-'));
     fs.cpSync(REAL_HOOKS, path.join(dir, 'hooks'), { recursive: true });
     fs.mkdirSync(path.join(dir, 'scripts'), { recursive: true });
     fs.copyFileSync(path.join(REAL_ROOT, 'scripts', 'memq.js'),
@@ -138,7 +151,8 @@ function assertSilent(res, message) {
         const lines = failureLines(warning(res));
         assert.ok(!(lines.length && lines.every((l) => l.includes('integrity check'))),
             'the build stamp under plugins/claude-kit/.claude-plugin/ is stale: hooks were edited after '
-            + 'the last build, so run ./build.ps1 and re-run this suite. Integrity lines:\n'
+            + 'the last build, so run the builder for this host (./build.ps1 or ./build.sh) and '
+            + 're-run this suite. Integrity lines:\n'
             + lines.join('\n'));
     }
     assert.strictEqual(res.stdout, '', message);
@@ -315,6 +329,169 @@ test('the leash probe sets KIT_EVENTS_PATH_ALLOW alongside its own throwaway KIT
     }
 });
 
+test('a cache with no memq to grant is reported, not probed for refusals', () => {
+    // The hook loads scripts/memq.js to read the store signals before it reads
+    // a word of the command, so without that file it answers every payload
+    // with silence. Probing its refusals there would pass without exercising a
+    // single screen, and the state itself is damage: the one command this hook
+    // exists to allow cannot run at all.
+    const cache = makeCache();
+    try {
+        fs.rmSync(path.join(cache, 'scripts', 'memq.js'));
+        const res = runCanary(cache);
+        assert.strictEqual(res.status, 0);
+        const text = warning(res);
+        assert.ok(text, 'a cache whose grant can never fire must not read as healthy');
+        assertOnlyFlagged(text, [{ hook: 'memq-grant.js', probe: 'grant probes' }]);
+    } finally {
+        rmDir(cache);
+    }
+});
+
+test('a cache missing memq and holding a tampered grant hook reports both', () => {
+    // The missing-payload line names memq-grant.js while reporting on a file
+    // beside it, so it must not stand in for having checked the hook's own
+    // bytes. A partial or interrupted install is where both breakages are
+    // plausible at once, and the integrity check is the only thing that sees
+    // the second one.
+    const cache = makeCache();
+    try {
+        stampCache(cache);
+        fs.rmSync(path.join(cache, 'scripts', 'memq.js'));
+        fs.appendFileSync(hookFile(cache, 'memq-grant.js'), '// tampered\n', 'utf8');
+        const res = runCanary(cache);
+        assert.strictEqual(res.status, 0);
+        const text = warning(res);
+        assert.ok(text, 'a cache broken twice must not read as healthy');
+        assertOnlyFlagged(text, [{ hook: 'memq-grant.js', probe: 'grant probes' },
+            { hook: 'memq-grant.js', probe: 'integrity check' }]);
+    } finally {
+        rmDir(cache);
+    }
+});
+
+test('a memq-grant that lost only the metacharacter ban fails the silent probe', () => {
+    // The probe's whole value is that one screen decides it. This copy keeps
+    // the verb allowlist and drops the shell metacharacter ban, so it grants a
+    // command that runs a second command after memq. A payload whose
+    // metacharacter sits against the verb word would be refused here by the
+    // allowlist instead, and this hook would read as healthy.
+    //
+    // It keeps a drive-letter screen on the script path for the same reason
+    // every fixture here does: a copy missing two screens is flagged by two
+    // directions, and what each test asserts is that its one direction is the
+    // one that speaks.
+    const cache = makeCache();
+    try {
+        fs.writeFileSync(hookFile(cache, 'memq-grant.js'),
+            "'use strict';\n"
+            + "const fs = require('fs');\n"
+            + "let p = {};\n"
+            + "try { p = JSON.parse(fs.readFileSync(0, 'utf8') || '{}'); } catch { /* none */ }\n"
+            + "const cmd = (p.tool_input || {}).command || '';\n"
+            + "const verb = (cmd.split('\"')[2] || '').trim().split(' ')[0];\n"
+            + "const granted = ['recall', 'get', 'log', 'add-operator'];\n"
+            + "if (p.tool_name === 'Bash' && " + ABS_SCRIPT_TEST + ".test(cmd)\n"
+            + "    && granted.includes(verb) && !/--body-file|--rollup/.test(cmd)) {\n"
+            + "    process.stdout.write(JSON.stringify({ hookSpecificOutput: {\n"
+            + "        hookEventName: 'PreToolUse', permissionDecision: 'allow' } }));\n"
+            + "}\n", 'utf8');
+        const res = runCanary(cache);
+        assert.strictEqual(res.status, 0);
+        const text = warning(res);
+        assert.ok(text, 'a grant hook that allows a chained command must be loud');
+        assertOnlyFlagged(text, [{ hook: 'memq-grant.js', probe: 'silent probe' }]);
+    } finally {
+        rmDir(cache);
+    }
+});
+
+test('a memq-grant that grants a screened flag fails the flag probe', () => {
+    // A hook right about the metacharacters, the verbs and the path and wrong
+    // about the flag screens: --body-file reads a caller-named path into a
+    // store that syncs to a private remote, and no other direction here would
+    // notice its screen missing.
+    const cache = makeCache();
+    try {
+        fs.writeFileSync(hookFile(cache, 'memq-grant.js'),
+            "'use strict';\n"
+            + "const fs = require('fs');\n"
+            + "let p = {};\n"
+            + "try { p = JSON.parse(fs.readFileSync(0, 'utf8') || '{}'); } catch { /* none */ }\n"
+            + "const cmd = (p.tool_input || {}).command || '';\n"
+            + "const verb = (cmd.split('\"')[2] || '').trim().split(' ')[0];\n"
+            + "if (p.tool_name === 'Bash' && " + ABS_SCRIPT_TEST + ".test(cmd)\n"
+            + "    && !/[;&|]/.test(cmd) && verb !== 'find' && !/--rollup/.test(cmd)) {\n"
+            + "    process.stdout.write(JSON.stringify({ hookSpecificOutput: {\n"
+            + "        hookEventName: 'PreToolUse', permissionDecision: 'allow' } }));\n"
+            + "}\n", 'utf8');
+        const res = runCanary(cache);
+        assert.strictEqual(res.status, 0);
+        const text = warning(res);
+        assert.ok(text, 'a grant hook that allows --body-file must be loud');
+        assertOnlyFlagged(text, [{ hook: 'memq-grant.js', probe: 'screened flag probe' }]);
+    } finally {
+        rmDir(cache);
+    }
+});
+
+test('a cache whose memq is not a plain file says which state it is in', () => {
+    // Absent and present-as-something-else are different states, and the line
+    // is composed from the one the probe observed. A directory at that name is
+    // the reachable half of the difference: a link takes a privilege many
+    // Windows hosts withhold.
+    const cache = makeCache();
+    try {
+        fs.rmSync(path.join(cache, 'scripts', 'memq.js'));
+        fs.mkdirSync(path.join(cache, 'scripts', 'memq.js'));
+        const res = runCanary(cache);
+        assert.strictEqual(res.status, 0);
+        const text = warning(res);
+        assert.ok(text, 'a cache whose grant can never fire must not read as healthy');
+        assert.match(text, /is not a plain file, so this hook can never grant/);
+        assert.ok(!/no file at /.test(text), 'and it is not called absent: ' + text);
+    } finally {
+        rmDir(cache);
+    }
+});
+
+test('the drive-spelling probe still asks about the path on a cache path with a space', (t) => {
+    // The probe quotes the script path, so the hook under it reads one word
+    // whatever the path holds. Unquoted, a cache under a path with a space
+    // splits into words whose third is a fragment of the path, which any verb
+    // allowlist refuses: the probe would report no decision and the screens it
+    // exists to ask about would go unasked. The fixture keeps every screen but
+    // the two that read the path, so a probe that reaches them is loud.
+    if (path.sep !== '\\') return t.skip('the MSYS rewrite this direction is about is Windows-only');
+    const spaced = fs.mkdtempSync(path.join(os.tmpdir(), 'hook canary spaced '));
+    const cache = makeCache(spaced);
+    try {
+        assert.ok(cache.includes(' '), 'the cache path must hold a space: ' + cache);
+        fs.writeFileSync(hookFile(cache, 'memq-grant.js'),
+            "'use strict';\n"
+            + "const fs = require('fs');\n"
+            + "let p = {};\n"
+            + "try { p = JSON.parse(fs.readFileSync(0, 'utf8') || '{}'); } catch { /* none */ }\n"
+            + "const cmd = (p.tool_input || {}).command || '';\n"
+            + "const w = (cmd.match(/\"[^\"]*\"|[^ \\t]+/g) || [])\n"
+            + "    .map((s) => s.replace(/^\"|\"$/g, ''));\n"
+            + "const granted = ['recall', 'get', 'log', 'add-operator'];\n"
+            + "if (p.tool_name === 'Bash' && w[0] === 'node' && granted.includes(w[2])\n"
+            + "    && !/[;&|]/.test(cmd) && !/--body-file|--rollup/.test(cmd)) {\n"
+            + "    process.stdout.write(JSON.stringify({ hookSpecificOutput: {\n"
+            + "        hookEventName: 'PreToolUse', permissionDecision: 'allow' } }));\n"
+            + "}\n", 'utf8');
+        const res = runCanary(cache);
+        assert.strictEqual(res.status, 0);
+        const text = warning(res);
+        assert.ok(text, 'a grant hook with no path screen at all must be loud');
+        assertOnlyFlagged(text, [{ hook: 'memq-grant.js', probe: 'drive-spelling probe' }]);
+    } finally {
+        rmDir(cache);
+        rmDir(spaced);
+    }
+});
+
 test('a memq-grant stuck silent fails the grant probe', () => {
     // The failure mode a grant hook never announces in use: fleet workers just
     // quietly lose memq. The neutered copy drains stdin and says nothing, the
@@ -347,7 +524,19 @@ test('a memq-grant stuck at always-allow fails the silent probe (the other direc
         assert.strictEqual(res.status, 0);
         const text = warning(res);
         assert.ok(text, 'an always-allow grant hook is an open door and must be loud');
-        assertOnlyFlagged(text, [{ hook: 'memq-grant.js', probe: 'silent probe' }]);
+        // Every must-stay-silent direction catches it, and the report names
+        // each: a hook that answers allow to everything is wrong about the
+        // shell metacharacters, the withheld verbs, the screened flags and the
+        // path spellings alike. The drive-spelling direction is Windows-only,
+        // which is where that spelling is rewritten at exec.
+        const silent = [{ hook: 'memq-grant.js', probe: 'silent probe' },
+            { hook: 'memq-grant.js', probe: 'screened flag probe' },
+            { hook: 'memq-grant.js', probe: 'unlocked flag probe' },
+            { hook: 'memq-grant.js', probe: 'withheld verb probe' }];
+        if (path.sep === '\\') {
+            silent.push({ hook: 'memq-grant.js', probe: 'drive-spelling probe' });
+        }
+        assertOnlyFlagged(text, silent);
     } finally {
         rmDir(cache);
     }
@@ -706,6 +895,115 @@ test('an edited hooks.json is reported against the manifest even when it still w
         const text = warning(res);
         assert.ok(text, 'wiring that is not the built payload must not be silent');
         assertOnlyFlagged(text, [{ hook: 'hooks.json', probe: 'integrity check' }]);
+    } finally {
+        rmDir(cache);
+    }
+});
+
+test('the probe environment is built, not inherited, so ambient state cannot fail a healthy cache', () => {
+    // Everything a probed hook is given comes from the canary's own allowlist.
+    // The environment below carries every variable the grant hook has ever
+    // refused on, a store signal set to the wrong value, and ordinary noise;
+    // all of it is dropped, and the probes still answer about the hook. An
+    // inherited environment would turn any of these into a session-start
+    // warning that the kit's guards are broken on a machine where they are
+    // not, which is the false alarm this canary exists not to raise.
+    const res = runCanary(REAL_ROOT, {
+        // Valid for the node that runs the canary itself; the child must not
+        // see it, because the hook refuses a child whose code is selected for
+        // it.
+        NODE_OPTIONS: '--no-warnings',
+        NODE_PATH: path.join(os.tmpdir(), 'planted-modules'),
+        NODE_REPL_EXTERNAL_MODULE: path.join(os.tmpdir(), 'planted.js'),
+        KIT_EMBEDDER_ROOT: path.join(os.tmpdir(), 'planted-embedder'),
+        KIT_EMBEDDER_ROOT_ALLOW_CODE: '1',
+        KIT_PLUGINS_ROOT: path.join(os.tmpdir(), 'planted-plugins'),
+        // The signals the probe sets for itself, ambient and wrong: inherited,
+        // the allow signal alone would take the grant direction away.
+        KIT_MEMORY_ROOT: path.join(os.tmpdir(), 'someone-elses-store'),
+        KIT_MEMORY_ROOT_ALLOW_DATA: '0',
+        KIT_CANARY_ORDINARY_NOISE: 'an ordinary variable a shell profile might set'
+    });
+    assert.strictEqual(res.status, 0);
+    assertSilent(res, 'a healthy cache stays silent under a hostile ambient environment');
+});
+
+test('the canary loads no file out of the cache it is probing', () => {
+    // The integrity probe hashes every file in the hooks directory, and a
+    // require of one of them would execute that file in this process before
+    // the hash is taken: node --check compiles without executing, so a
+    // tampered hook passes the load check and would then get to run inside the
+    // detector. In deployment the canary and the hooks it probes are the same
+    // directory, so a relative require here is a require of the file under
+    // examination. Only node's own built-ins are loaded.
+    const src = fs.readFileSync(path.join(REAL_HOOKS, 'hook-canary.js'), 'utf8');
+    const specifiers = [];
+    for (const line of src.split(/\r?\n/)) {
+        if (/^\s*(\/\/|\*)/.test(line)) continue;
+        const m = line.match(/require\((['"])(.*?)\1\)/);
+        if (m) specifiers.push(m[2]);
+    }
+    assert.ok(specifiers.length > 0, 'the canary requires its built-ins');
+    for (const spec of specifiers) {
+        assert.ok(!spec.startsWith('.'),
+            'the canary must not require a file from the cache it probes: ' + spec);
+    }
+});
+
+test('a memq-grant that grants --rollup fails the unlocked flag probe', () => {
+    // The flag screen with nothing behind it: memq refuses --body-file and a
+    // body-carrying --update for itself under the store signals, so this hook
+    // is the second lock on those, while nothing else refuses --rollup
+    // anywhere. This copy is right about every other direction and wrong
+    // about that one, so only a probe that drives it can tell it from health.
+    const cache = makeCache();
+    try {
+        fs.writeFileSync(hookFile(cache, 'memq-grant.js'),
+            "'use strict';\n"
+            + "const fs = require('fs');\n"
+            + "let p = {};\n"
+            + "try { p = JSON.parse(fs.readFileSync(0, 'utf8') || '{}'); } catch { /* none */ }\n"
+            + "const cmd = (p.tool_input || {}).command || '';\n"
+            + "const verb = (cmd.split('\"')[2] || '').trim().split(' ')[0];\n"
+            + "if (p.tool_name === 'Bash' && " + ABS_SCRIPT_TEST + ".test(cmd)\n"
+            + "    && !/[;&|]/.test(cmd) && verb !== 'find' && !/--body-file/.test(cmd)) {\n"
+            + "    process.stdout.write(JSON.stringify({ hookSpecificOutput: {\n"
+            + "        hookEventName: 'PreToolUse', permissionDecision: 'allow' } }));\n"
+            + "}\n", 'utf8');
+        const res = runCanary(cache);
+        assert.strictEqual(res.status, 0);
+        const text = warning(res);
+        assert.ok(text, 'a grant hook that allows --rollup must be loud');
+        assertOnlyFlagged(text, [{ hook: 'memq-grant.js', probe: 'unlocked flag probe' }]);
+    } finally {
+        rmDir(cache);
+    }
+});
+
+test('a memq-grant that grants a withheld verb fails the withheld-verb probe', () => {
+    // A hook correct in both directions the other probes ask about and wrong
+    // about the argument screen: it allows the one shape and stays silent on
+    // the hostile one, so only a probe that asks about a withheld verb can
+    // tell it from health. find is the verb probed because it is the one the
+    // CLI does not also refuse for itself.
+    const cache = makeCache();
+    try {
+        fs.writeFileSync(hookFile(cache, 'memq-grant.js'),
+            "'use strict';\n"
+            + "const fs = require('fs');\n"
+            + "let p = {};\n"
+            + "try { p = JSON.parse(fs.readFileSync(0, 'utf8') || '{}'); } catch { /* none */ }\n"
+            + "const cmd = (p.tool_input || {}).command || '';\n"
+            + "if (p.tool_name === 'Bash' && " + ABS_SCRIPT_TEST + ".test(cmd)\n"
+            + "    && !/[;&|]/.test(cmd) && !/--body-file|--rollup/.test(cmd)) {\n"
+            + "    process.stdout.write(JSON.stringify({ hookSpecificOutput: {\n"
+            + "        hookEventName: 'PreToolUse', permissionDecision: 'allow' } }));\n"
+            + "}\n", 'utf8');
+        const res = runCanary(cache);
+        assert.strictEqual(res.status, 0);
+        const text = warning(res);
+        assert.ok(text, 'a grant hook that allows a withheld verb must be loud');
+        assertOnlyFlagged(text, [{ hook: 'memq-grant.js', probe: 'withheld verb probe' }]);
     } finally {
         rmDir(cache);
     }

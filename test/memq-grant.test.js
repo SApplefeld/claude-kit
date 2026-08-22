@@ -34,10 +34,12 @@ function pathKey(env) {
 // A spread copy of process.env keeps the platform's real PATH key intact; the
 // fleet variables are scrubbed so a suite run inside a fleet worker (where the
 // parent environment carries them) cannot flip the no-signal cases, and the
-// preload variables the hook refuses on are scrubbed so ambient tooling state
-// cannot flip the grant cases. The interpreter's own directory is prepended to
-// PATH so the hook's interpreter pin resolves `node` to the node running this
-// suite on any host.
+// three variables the hook refuses on are scrubbed so ambient tooling state
+// cannot flip the grant cases. Nothing else is scrubbed, so a case that wants
+// an embedder root in the environment sets one and sees what any machine
+// carrying one sees. The interpreter's own directory is prepended to PATH so
+// the hook's interpreter pin resolves `node` to the node running this suite on
+// any host.
 function baseEnv(extra) {
     const env = { ...process.env };
     for (const k of Object.keys(env)) {
@@ -123,8 +125,13 @@ test('a traversal that lands back on the real script is the real script', () => 
 test('arguments after the script path are memq argv, not node flags', () => {
     // node passes everything past the script path to the script, so a
     // flag-shaped argument here reaches memq (which validates its own input),
-    // never node itself.
-    assertGrant(runHook('node "' + MEMQ + '" --eval whatever'), 'flag-shaped memq argv');
+    // never node itself. In the verb position it is a word the allowlist has
+    // never heard of, so it withholds the grant, and past the verb it is
+    // ordinary argv that the screen leaves alone.
+    assertNoDecision(runHook('node "' + MEMQ + '" --eval whatever'),
+        'a flag-shaped word where the verb goes');
+    assertGrant(runHook('node "' + MEMQ + '" recall --eval whatever'),
+        'a flag-shaped argument after a granted verb');
 });
 
 if (WIN) {
@@ -137,11 +144,242 @@ if (WIN) {
         assertGrant(runHook('node "' + mixed + '" recall'), 'mixed separators');
     });
 
-    test('the Git-Bash drive spelling of the same path grants', () => {
+    test('the Git-Bash drive spelling gets no grant, because the runtime rewrites it at exec', () => {
+        // /d/... is what pwd prints inside the Bash tool, and it is not a
+        // spelling this hook can positively resolve. The MSYS runtime rewrites
+        // an argument in that shape when it execs the child, so what the child
+        // actually receives depends on MSYS_NO_PATHCONV and MSYS2_ARG_CONV_EXCL
+        // in the shell running the command: with the conversion on, the child
+        // gets the drive-letter path, and with it off the child gets the
+        // literal /d/... and resolves it under the current drive, at a path
+        // nothing in the kit owns. A hook that converted the spelling itself
+        // would resolve the real script and grant either way, which is one file
+        // judged and another executed. Those variables cannot be screened out
+        // of the question either, since the Bash tool's shell keeps state
+        // across calls and an earlier call can export one into the shell a
+        // later granted command runs in, where this hook cannot see it.
         const msys = '/' + MEMQ[0].toLowerCase() + MEMQ_FWD.slice(2);
-        assertGrant(runHook('node ' + msys + ' recall'), 'MSYS /d/ spelling');
+        assertNoDecision(runHook('node ' + msys + ' recall'), 'MSYS /d/ spelling');
+        assertNoDecision(runHook('node "' + msys + '" recall'), 'MSYS /d/ spelling, quoted');
+        // The drive-letter spellings of the same file are unaffected, which is
+        // what keeps the refusal a narrowing rather than a break.
+        assertGrant(runHook('node "' + MEMQ + '" recall'), 'the native spelling still grants');
+        assertGrant(runHook('node "' + MEMQ_FWD + '" recall'),
+            'the forward-slash drive spelling still grants');
     });
 }
+
+// --- tilde expansion -------------------------------------------------------
+
+test('a word beginning with a tilde gets no grant, wherever it sits', () => {
+    // Tilde expansion substitutes the caller's own HOME into the word before
+    // the child runs, so a word this hook reads as ~ reaches memq as whatever
+    // HOME holds. With HOME=delete-type, this is a delete verb in a command
+    // whose every screen here has already passed. The property that matters is
+    // the content of the word, not the count of them.
+    assertNoDecision(runHook('node "' + MEMQ + '" ~ webapp fact --confirm-shared'),
+        'a tilde in the verb position');
+    assertNoDecision(runHook('node "' + MEMQ + '" add-operator fact words ~ "a body"'),
+        'a tilde in a flag position');
+    assertNoDecision(runHook('node "' + MEMQ + '" ~/scripts/memq.js recall'),
+        'a tilde leading a path');
+    assertNoDecision(runHook('node ~ recall'), 'a tilde as the script path itself');
+});
+
+test('a tilde bash reads as literal still grants: later in a word, or quoted', () => {
+    // Bash expands a tilde only as a word's first character and only
+    // unquoted. Later in a word it is a literal, and admitting it is what
+    // keeps the splitter's word equal to the shell's: refusing one would
+    // withhold the grant over a word nothing rewrites. The traversal segment
+    // here carries the tilde mid-word and resolves away, so the path still
+    // names the real script.
+    const spelled = MEMQ_FWD.replace('scripts/memq.js', 'scripts/a~b/../memq.js');
+    assertGrant(runHook('node "' + spelled + '" recall'), 'a mid-word tilde in the path');
+    assertGrant(runHook('node "' + MEMQ + '" log a~b pass "an argument carrying one"'),
+        'a mid-word tilde in an argument');
+
+    // Quoted, it is free text wherever it sits, and ~/.claude is the phrase
+    // the kit's own prose reaches for most: a record whose description or
+    // body names the store root is ordinary subject matter, not a path the
+    // shell will rewrite.
+    assertGrant(runHook('node "' + MEMQ + '" add-operator note "~/.claude is the store root"'),
+        'a quoted leading tilde in a description');
+    assertGrant(runHook('node "' + MEMQ
+        + '" add-operator note words --body "~ is where the store lives"'),
+        'a quoted bare tilde in a body');
+
+    // One word shape bash does expand later in the word: an assignment-shaped
+    // one, after its = and after each : within it (FOO=~ reaches the child as
+    // FOO=/home/you). It grants, and the reason it can is positional: such a
+    // word begins with an identifier character and keeps everything before
+    // the tilde, so it can become neither a screened token, which are matched
+    // whole, nor the script path, which is matched by path equality.
+    assertGrant(runHook('node "' + MEMQ + '" log FOO=~ pass "an assignment-shaped argument"'),
+        'an assignment-shaped tilde');
+});
+
+// --- control bytes ---------------------------------------------------------
+
+test('a control byte anywhere in the command gets no grant', () => {
+    // Bash strips NUL from a command line outright, so a word this hook reads
+    // as delete-type\0 reaches the child as delete-type and every screen here
+    // has answered about a word the child never saw. What each of the other
+    // controls does between a shell and this splitter is unspecified rather
+    // than agreed, which is the same divergence one step less certain.
+    for (const [label, byte] of [['NUL', '\u0000'], ['SOH', '\u0001'], ['ESC', '\u001b'],
+        ['DEL', '\u007f'], ['CR', '\r'], ['LF', '\n']]) {
+        assertNoDecision(runHook('node "' + MEMQ + '" delete-operator' + byte + ' fact'),
+            label + ' inside a word');
+        assertNoDecision(runHook('node "' + MEMQ + '" recall' + byte),
+            label + ' trailing an otherwise granted command');
+    }
+    // Tab is the exception: bash splits words on it and so does the splitter,
+    // so it is a separator rather than a divergence.
+    assertGrant(runHook('node "' + MEMQ + '"\trecall'), 'a tab between words');
+});
+
+// --- the destructive verbs -------------------------------------------------
+
+test('the two delete verbs get no grant, in the otherwise granted shape', () => {
+    // A delete removes a shared-tier record outright and keeps no copy, so it
+    // is not something to run prompt-free with no operator in the loop. memq
+    // refuses it under the store signals too, so this is the second lock. It
+    // is silence rather than a deny, which leaves the ordinary permission flow
+    // to ask wherever there is someone to ask; on the unattended vector this
+    // grant serves there is not, so what the screen costs is the command.
+    assertNoDecision(runHook('node "' + MEMQ + '" delete-type webapp fact --confirm-shared'),
+        'delete-type');
+    assertNoDecision(runHook('node "' + MEMQ + '" delete-operator fact --confirm-shared'),
+        'delete-operator');
+    assertNoDecision(runHook('node "' + MEMQ + '" delete-operator fact'),
+        'delete-operator without its consent flag is refused the grant just the same');
+});
+
+test('a verb the grant does not name gets no grant, whether or not memq has it', () => {
+    // The screen is an allowlist, so the question it asks is whether the verb
+    // is one this grant covers, not whether it is one of a few named refusals.
+    // A verb memq gains later, or a word that is no verb at all, therefore
+    // arrives withheld rather than allowed by default: until this list learns
+    // it, the command falls to the ordinary permission flow, which on the
+    // unattended vector this grant serves has nobody in it, so the verb is lost
+    // there rather than prompted for.
+    for (const verb of ['sync-store', 'export', 'exec', 'md', '--recall', '']) {
+        assertNoDecision(runHook('node "' + MEMQ + '" ' + verb),
+            'an unlisted verb: ' + JSON.stringify(verb));
+    }
+    // The list's other direction: every verb it names still grants in the
+    // otherwise allowed shape, so the allowlist is not quietly costing a
+    // fleet worker something it is meant to cover.
+    for (const verb of ['log', 'get', 'recall', 'recent', 'unstamped', 'touch',
+        'add-type', 'add-operator', 'decay-scan', 'decay-prune', 'decay-done']) {
+        assertGrant(runHook('node "' + MEMQ + '" ' + verb), 'a listed verb: ' + verb);
+    }
+});
+
+test('find gets no grant, and an embedder root beside it withholds nothing else', () => {
+    // find is the one verb that loads code out of a directory the command
+    // line does not name: it requires scripts/memory-index.js, which requires
+    // an embedder package under KIT_EMBEDDER_ROOT and runs it in process. The
+    // verb is what the hook withholds, because the directory cannot be
+    // screened for: embedderRoot() falls back under os.homedir(), and HOME is
+    // set on every machine, so refusing on the presence of what selects that
+    // directory would refuse every command there is.
+    const planted = { KIT_EMBEDDER_ROOT: path.join(os.tmpdir(), 'planted-embedder'),
+        KIT_EMBEDDER_ROOT_ALLOW_CODE: '1' };
+    assertNoDecision(runHook('node "' + MEMQ + '" find a term'), 'find in a clean environment');
+    assertNoDecision(runHook('node "' + MEMQ + '" find a term', { env: { ...FLEET, ...planted } }),
+        'find under a planted embedder root');
+    // The other half: with find withheld, an embedder root in the environment
+    // selects a directory nothing granted here reaches, so it costs no other
+    // command its grant. A refusal on those variables would have taken the
+    // reads and writes a fleet worker runs on every machine that has an
+    // embedder installed.
+    assertGrant(runHook('node "' + MEMQ + '" recall', { env: { ...FLEET, ...planted } }),
+        'recall under a planted embedder root');
+    assertGrant(runHook('node "' + MEMQ + '" add-operator fact "words" --body "a body"',
+        { env: { ...FLEET, ...planted } }), 'a write under a planted embedder root');
+});
+
+test('--rollup gets no grant, while the archive flags and a bare prune keep theirs', () => {
+    // The rollup replaces every expired journal group with one tally line and
+    // drops the prose of each entry in it. Nothing in the store keeps that
+    // text: the .bak beside the file holds one generation and never syncs, so
+    // the loss is as final as a delete, which is what a prompt-free allow with
+    // no operator in the loop does not cover. memq has no second refusal for
+    // it, so this screen is the only one.
+    assertNoDecision(runHook('node "' + MEMQ + '" decay-prune --rollup'), 'the rollup alone');
+    assertNoDecision(runHook('node "' + MEMQ + '" decay-prune --rollup --archive fact'),
+        'the rollup beside an archive flag');
+    assertNoDecision(runHook('node "' + MEMQ + '" decay-prune --rollup=1'),
+        'the attached-value spelling, which the CLI answers as an unknown option');
+    // What stays granted: retirement keeps the record readable by name, and a
+    // prune that names no work is an argument error the CLI answers.
+    assertGrant(runHook('node "' + MEMQ + '" decay-prune --archive fact'),
+        'an archive flag');
+    assertGrant(runHook('node "' + MEMQ + '" decay-prune --archive-operator fact'
+        + ' --confirm-shared'), 'a shared retirement, which keeps the record');
+    assertGrant(runHook('node "' + MEMQ + '" decay-prune'), 'a bare prune');
+    // A flag that merely starts the same is not the screened one.
+    assertGrant(runHook('node "' + MEMQ + '" decay-prune --rollupwards fact'),
+        'a longer flag the screen must not swallow');
+});
+
+test('an --update carrying a body gets no grant through either body channel', () => {
+    // A body repair replaces a shared-tier record whole and keeps the text it
+    // replaces only in a local .bak, which the store's sync never carries.
+    assertNoDecision(runHook('node "' + MEMQ
+        + '" add-operator fact "words" --update --body "new body" --confirm-shared'),
+        'operator repair through --body');
+    assertNoDecision(runHook('node "' + MEMQ
+        + '" add-type webapp fact "words" --update --body-file "/tmp/b.txt" --confirm-shared'),
+        'type repair through --body-file');
+    assertNoDecision(runHook('node "' + MEMQ
+        + '" add-operator fact "words" --body "new body" --update'),
+        'the order of the two flags does not matter');
+});
+
+test('a spelling bash would expand into more words than these gets no grant', () => {
+    // Brace expansion and pathname expansion both run after this hook has read
+    // the command line and before the child sees its argv, so a word read here
+    // as one literal can reach memq as two. Both of these are the screened
+    // shapes wearing a spelling the screen alone would pass:
+    // {delete-type,--confirm-shared} is two words to bash, and --{update,body}
+    // is two more.
+    assertNoDecision(runHook('node "' + MEMQ
+        + '" {delete-type,--confirm-shared} webapp fact'), 'a braced delete verb');
+    assertNoDecision(runHook('node "' + MEMQ
+        + '" add-operator fact words --{update,body} "new body" --confirm-shared'),
+        'a braced flag pair');
+    // Pathname expansion reaches the same way, and the argument it rewrites
+    // is chosen by what happens to be on the disk.
+    assertNoDecision(runHook('node "' + MEMQ + '" add-operator fact words --body *'),
+        'a glob argument');
+    // A word beginning with ~ is refused on its own rule below: it is one
+    // word, and its content is whatever the caller set HOME to.
+    assertNoDecision(runHook('node "' + MEMQ + '" recall ~'), 'a bare tilde word');
+});
+
+test('--body-file gets no grant anywhere, not only beside --update', () => {
+    // It reads a path the caller names into the store, and under a signal
+    // divergence that store is the operator's own, which syncs to a private
+    // remote. memq refuses the flag under the store signals for that reason;
+    // the create path is the same read one command earlier.
+    assertNoDecision(runHook('node "' + MEMQ
+        + '" add-type webapp fact words --body-file /etc/hosts'), 'a create reading a file');
+    assertNoDecision(runHook('node "' + MEMQ
+        + '" add-operator fact words --body-file /etc/hosts'), 'the operator twin');
+});
+
+test('the writes a fleet worker needs are still granted', () => {
+    // The screen names three commands, not a class: an ordinary add, a
+    // description-only --update, and every read stay inside the grant.
+    assertGrant(runHook('node "' + MEMQ + '" add-operator fact "words" --body "a body"'),
+        'creating a record');
+    assertGrant(runHook('node "' + MEMQ + '" add-operator fact "words" --update'),
+        'a description-only update');
+    assertGrant(runHook('node "' + MEMQ + '" decay-prune --archive-operator fact'
+        + ' --confirm-shared'), 'retirement, which keeps the record');
+});
 
 // --- the environment gate --------------------------------------------------
 
@@ -159,7 +397,11 @@ test('the exact invocation with no signals, or half the pair, gets no grant', ()
 
 // --- the interpreter pin ---------------------------------------------------
 
-test('a module-preload variable set alongside a perfect invocation gets no grant', () => {
+test('a variable that selects code for the child gets no grant', () => {
+    // Each of these makes the child load or resolve code the command line
+    // never names, and all three are node's own. The kit's embedder root is
+    // not among them and has its own case below: the verb that would load an
+    // embedder is withheld outright, which is what bounds that directory.
     const cmd = 'node "' + MEMQ + '" recall';
     for (const [name, value] of [
         ['NODE_OPTIONS', '--require ' + MEMQ_FWD],
@@ -171,9 +413,9 @@ test('a module-preload variable set alongside a perfect invocation gets no grant
         assertNoDecision(runHook(cmd, { env: extra }), name + ' set');
     }
     // Positive control: the same invocation with the same env minus the
-    // preload variable grants, so the refusals above tested the variable and
-    // not a broken fixture.
-    assertGrant(runHook(cmd), 'positive control after the preload refusals');
+    // code-selecting variable grants, so the refusals above tested the
+    // variable and not a broken fixture.
+    assertGrant(runHook(cmd), 'positive control after the code-selection refusals');
 });
 
 test('a PATH-planted node ahead of the real interpreter gets no grant', () => {
@@ -222,6 +464,9 @@ test('an empty PATH, or one holding no node, gets no grant (unidentifiable inter
 // --- the hostile inventory -------------------------------------------------
 
 test('each banned metacharacter refuses the grant, after the path and inside quotes', () => {
+    // The executors: one of these turns one command into two, or composes the
+    // text of one, and $ and ` do it inside double quotes as well, so the ban
+    // does not ask which span they sit in.
     for (const ch of [';', '&', '|', '<', '>', '`', '$', '(', ')', '\n', '\r']) {
         const name = JSON.stringify(ch);
         assertNoDecision(runHook('node "' + MEMQ + '" recall ' + ch + ' echo pwned'),
@@ -229,6 +474,27 @@ test('each banned metacharacter refuses the grant, after the path and inside quo
         assertNoDecision(runHook('node "' + MEMQ + '" log k pass "a' + ch + 'b"'),
             name + ' inside a quoted argument');
     }
+});
+
+test('an expansion character refuses the grant unquoted, and is ordinary text quoted', () => {
+    // Bash rewrites these into a different list of words than the hook read,
+    // which is how a screened shape reaches memq wearing an unscreened
+    // spelling. It performs neither expansion inside quotes, so a quoted one
+    // is free text: a summary about a test glob, a description carrying a
+    // bracketed note. Withholding the grant from those would withhold it from
+    // ordinary writing, on a vector with no operator present to approve the
+    // fall-through.
+    for (const ch of ['{', '}', '*', '?', '[', ']']) {
+        const name = JSON.stringify(ch);
+        assertNoDecision(runHook('node "' + MEMQ + '" recall ' + ch), name + ' unquoted');
+        assertGrant(runHook('node "' + MEMQ + '" log k pass "a' + ch + 'b"'),
+            name + ' inside a quoted argument');
+    }
+    assertGrant(runHook('node "' + MEMQ
+        + '" log build.gate pass "node --test test/*.test.js is green"'),
+        'a summary naming a test glob');
+    assertGrant(runHook('node "' + MEMQ + '" add-operator fact "words [note] on it"'),
+        'a description carrying a bracketed note');
 });
 
 test('whitespace bash does not split on refuses the grant anywhere', () => {
@@ -372,4 +638,157 @@ test('another tool name, a missing command, and a broken payload get no grant', 
         input: 'not json', encoding: 'utf8', env: baseEnv(FLEET),
     });
     assertNoDecision(res, 'unparseable payload');
+});
+
+// --- the coupling between the screen and the CLI it screens ----------------
+
+// The hook screens argv positionally and by whole word: the subcommand is
+// w[2], the word right after the script path, and a screened flag is matched
+// by screensFlag, which takes the flag as a whole word or the flag followed
+// by '='. Both rest on properties of memq's own parser, and each side is
+// otherwise tested against its own literals, which is how a mismatch between
+// them stays invisible. These drive the real CLI.
+function runMemq(args) {
+    return spawnSync(process.execPath, [MEMQ].concat(args), {
+        encoding: 'utf8',
+        env: { ...process.env, KIT_MEMORY_ROOT: path.join(os.tmpdir(), 'memq-grant-coupling'),
+            KIT_MEMORY_ROOT_ALLOW_DATA: '1' },
+    });
+}
+
+test('memq loads code out of a directory in one place, and that place is find', () => {
+    // The reason find is left off the grant's verb list is that it is the only
+    // verb whose path loads code from a directory the command line does not
+    // name. That claim is about memq's source, so it is checked against the
+    // source rather than restated: one code load past the built-ins at the top
+    // of the file, inside semanticChannel, which is reached from cmdFind and
+    // nowhere else. A second one anywhere below that block, or this one moving
+    // under another verb, reds here rather than silently widening what a
+    // prompt-free allow can load.
+    const src = fs.readFileSync(MEMQ, 'utf8').split(/\r?\n/);
+    const isCode = (line) => !/^\s*(\/\/|\*)/.test(line);
+    const enclosing = (lineNo) => {
+        for (let i = lineNo - 1; i >= 0; i--) {
+            const m = src[i].match(/^(?:async )?function (\w+)/);
+            if (m) return m[1];
+        }
+        return null;
+    };
+    // The boundary is the built-in block itself, so every line after it is
+    // scanned: taking the first function declaration instead would leave the
+    // constants and the top-level statements between the two unread, and a
+    // load placed there runs on every invocation of every verb.
+    const builtin = /^const \w+ = require\('[a-z_]+'\);$/;
+    const builtins = [];
+    src.forEach((line, i) => { if (builtin.test(line.trim())) builtins.push(i + 1); });
+    assert.ok(builtins.length > 0, 'memq.js requires node built-ins at the top of the file');
+    assert.deepStrictEqual(builtins, builtins.map((_, k) => builtins[0] + k),
+        'the built-in requires are one contiguous block: ' + JSON.stringify(builtins));
+    const lastBuiltin = builtins[builtins.length - 1];
+    // Every way a line of source can bring in code the command line does not
+    // name, not require alone: a dynamic import, an indirect require built
+    // through createRequire, and the two string-to-code constructors.
+    const loads = new RegExp([
+        '\\brequire\\s*\\(', '\\bimport\\s*\\(', '\\beval\\s*\\(',
+        'new\\s+Function\\b', '\\bcreateRequire\\b'
+    ].join('|'));
+    const dynamic = [];
+    src.forEach((line, i) => {
+        if (loads.test(line) && isCode(line) && i + 1 > lastBuiltin) {
+            dynamic.push({ line: i + 1, text: line.trim() });
+        }
+    });
+    assert.strictEqual(dynamic.length, 1,
+        'exactly one code load past the top-of-file built-ins: '
+            + JSON.stringify(dynamic));
+    assert.match(dynamic[0].text, /require\('\.\/memory-index\.js'\)/);
+    assert.strictEqual(enclosing(dynamic[0].line), 'semanticChannel',
+        'the one dynamic require sits in semanticChannel');
+    const callers = [];
+    src.forEach((line, i) => {
+        if (/\bsemanticChannel\(/.test(line) && isCode(line)) {
+            const where = enclosing(i + 1);
+            if (where !== 'semanticChannel') callers.push(where);
+        }
+    });
+    assert.deepStrictEqual(callers, ['cmdFind'],
+        'semanticChannel is reached from cmdFind alone');
+});
+
+test('the granted verbs are memq\'s own dispatch minus the three withheld', () => {
+    // The list in the hook mirrors memq's subcommands by hand, and each side is
+    // otherwise tested only against its own literal, so a verb renamed in the
+    // CLI leaves both suites green while a fleet worker's command silently
+    // stops being granted and nobody is watching that session to notice. Both
+    // sides are read from source here, so the mirror is checked rather than
+    // restated: every verb memq dispatches is either granted or one of the
+    // three this grant withholds by name, and every granted verb is a verb
+    // memq dispatches.
+    const dispatched = new Set();
+    for (const m of fs.readFileSync(MEMQ, 'utf8').matchAll(/\bcmd === '([^']+)'/g)) {
+        dispatched.add(m[1]);
+    }
+    assert.ok(dispatched.size > 5, 'memq dispatches by comparing the first argument: '
+        + JSON.stringify([...dispatched]));
+
+    const hookSrc = fs.readFileSync(HOOK, 'utf8');
+    const listed = hookSrc.match(/const GRANTED_VERBS = new Set\(\[([\s\S]*?)\]\)/);
+    assert.ok(listed, 'the hook declares its verb list as a Set literal');
+    const granted = new Set([...listed[1].matchAll(/'([^']+)'/g)].map((m) => m[1]));
+
+    // The three the grant withholds, each for a reason stated in the hook: the
+    // deletes remove a shared-tier record outright, and find loads an embedder
+    // out of a directory the command line does not name.
+    const withheld = ['delete-type', 'delete-operator', 'find'];
+    assert.deepStrictEqual([...granted].sort(),
+        [...dispatched].filter((v) => !withheld.includes(v)).sort(),
+        'the granted verbs are exactly memq\'s dispatch minus ' + withheld.join(', '));
+    for (const verb of withheld) {
+        assert.ok(dispatched.has(verb), verb + ' is still a verb memq dispatches');
+        assert.ok(!granted.has(verb), verb + ' is still withheld');
+    }
+});
+
+test('memq takes its subcommand from the first argument, which is where the screen looks', () => {
+    // A global flag ahead of the verb would put the verb somewhere the screen
+    // does not read. memq has no such flag: the first argument is the
+    // subcommand, whatever it looks like.
+    for (const leading of ['--json', '-v', '--type']) {
+        const res = runMemq([leading, 'delete-operator', 'fact', '--confirm-shared']);
+        assert.strictEqual(res.status, 1, leading + ': ' + res.stdout);
+        assert.match(res.stderr, /unknown subcommand/,
+            leading + ' is read as the command, not as a flag before one: ' + res.stderr);
+    }
+});
+
+test('an attached-value flag is refused by both layers, each on its own account', () => {
+    // Two independent refusals of one spelling, pinned together because
+    // neither is evidence for the other. memq answers --flag=value with an
+    // unknown-option usage error rather than reading the file or replacing a
+    // body, and the hook withholds the grant from the same words without
+    // consulting what the CLI would do with them. Either one alone would
+    // stop the command; what the pair buys is that a parser change on one
+    // side cannot quietly make the other side's silence load-bearing.
+    for (const spelling of ['--body-file=/etc/hosts', '--body=a body', '--update=1']) {
+        const res = runMemq(['add-operator', 'fact', 'words', spelling]);
+        assert.strictEqual(res.status, 1, spelling + ': ' + res.stdout);
+        assert.match(res.stderr, /unknown option/, spelling + ': ' + res.stderr);
+    }
+    assertNoDecision(runHook('node "' + MEMQ + '" add-operator fact words --body-file=/etc/hosts'),
+        'an attached-value body file');
+    assertNoDecision(runHook('node "' + MEMQ
+        + '" add-operator fact words --update=1 --body=a body'),
+        'an attached-value repair carrying a body');
+    assertNoDecision(runHook('node "' + MEMQ
+        + '" add-operator fact words --update --body=a body'),
+        'one flag attached and one not, which is a shell word away from either');
+
+    // The '=' is part of the match, so a screen reaches its own spellings and
+    // no further: --body does not screen --body-file (that flag has its own
+    // screen), and neither screens a longer flag that merely starts the same.
+    assertGrant(runHook('node "' + MEMQ + '" add-operator fact words --body "a body"'),
+        'a body alone is still granted, which is what the repair screen needs');
+    assertGrant(runHook('node "' + MEMQ
+        + '" add-operator fact words --update --bodyguard x'),
+        'a longer flag that merely starts with a screened one is not that flag');
 });

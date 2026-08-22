@@ -332,53 +332,144 @@ function goalStopProbe(root, failures) {
     }
 }
 
+// What a probed child is given of this process's environment, by name and
+// nothing else. An allowlist rather than a subtraction, because a probe is a
+// question about the hook and every other variable in the ambient environment
+// is a way for the answer to be about the machine instead: a grant hook
+// refusing on a variable somebody's shell profile happens to set would fail
+// this probe and warn, at every session start, that the kit's guards are
+// broken when they are not. It also means this canary needs no knowledge of
+// what any hook refuses on, so it never loads a file it is about to hash.
+//
+// Each name earns its place, and the list is deliberately short. SystemRoot
+// and windir are how Windows components locate the system directory, and a
+// probe is not the place to be the one process on the machine running without
+// them. TEMP and TMP, and TMPDIR off Windows, are what os.tmpdir() reads;
+// USERPROFILE, HOMEDRIVE and HOMEPATH, and HOME off Windows, are what
+// os.homedir() reads. Neither directory is on the probed answer's path: the
+// hook resolves no store path, and the memq CLI it loads is loaded to call
+// storeSignalsPresent(), which answers from two environment variables. They
+// are kept because a child with no home and no temp directory is in a state
+// no real hook invocation is in, and a probe run there is a question about
+// how a process behaves without the machine's ordinary bearings rather than
+// about the hook. PATH
+// is deliberately absent: the probe sets it to this interpreter's own
+// directory, which is the condition the hook's interpreter pin asks about.
+const PROBE_ENV_KEEP = process.platform === 'win32'
+    ? ['SYSTEMROOT', 'WINDIR', 'TEMP', 'TMP', 'USERPROFILE', 'HOMEDRIVE', 'HOMEPATH']
+    : ['HOME', 'TMPDIR'];
+
+// Whether an ambient variable's name is one of the names above. Case is folded
+// on Windows and nowhere else, because that is where the environment itself is
+// case-insensitive: there SystemRoot and SYSTEMROOT are one variable, while on
+// a case-sensitive platform 'home' is a different variable from HOME and one
+// this list does not name, so folding there would carry through a name the
+// allowlist never admitted.
+function probeEnvKeeps(name) {
+    if (process.platform === 'win32') {
+        return PROBE_ENV_KEEP.some((k) => k.toUpperCase() === name.toUpperCase());
+    }
+    return PROBE_ENV_KEEP.includes(name);
+}
+
 // Both directions of the memq grant, judged by stdout. A grant hook that has
 // gone inert never announces itself in use (a fleet worker just quietly loses
 // memq), and one stuck at always-allow is an open door, so both directions
-// are probed like the deny guards' exit probes. The environment is
-// constructed, not inherited: the fleet-store signals point at a throwaway
-// path (the hook checks presence, never the disk), PATH is pinned to this
-// interpreter's own directory so the hook's interpreter pin resolves to the
-// node running this canary, and the preload variables the hook refuses on
-// are scrubbed so ambient state cannot fail the probe. The grant direction
-// needs the cache's own scripts/memq.js, the only command the hook can ever
-// allow; a cache without that file skips the direction rather than reporting
-// damage. The must-stay-silent direction is payload-independent and always
-// runs.
+// are probed like the deny guards' exit probes. The environment is built from
+// PROBE_ENV_KEEP rather than inherited: the fleet-store signals point at a
+// throwaway path (the hook checks presence, never the disk), PATH is pinned
+// to this interpreter's own directory so the hook's interpreter pin resolves
+// to the node running this canary, and nothing else the ambient environment
+// carries reaches the child. Every direction needs the cache's own
+// scripts/memq.js: the hook loads that file to read the store signals, and a
+// load that throws is a refusal, so on a cache without it every payload is
+// answered with silence whatever it contains. A refusal direction run there
+// proves nothing about the screen it names, because the same silence arrives
+// from a hook whose screens are all gone. That cache is reported instead of
+// probed, because a grant hook that can never grant is the inert half of what
+// these probes exist to catch: a fleet worker would quietly lose memq with
+// every guard here still reading green.
+//
+// The refusal directions are chosen so that one screen alone decides them,
+// which is what makes a failure name the screen that broke, and the Git-Bash
+// drive spelling is the one exception, named below. The hostile command
+// carries its metacharacter as a separate word, so the verb the allowlist
+// reads is an allowed one and the metacharacter ban is the only thing
+// refusing, and the withheld verb and the screened flag each ride in an
+// otherwise grantable command.
+//
+// No payload gives that property to the drive spelling, because two screens
+// read the script path: the drive-letter test, and the identity check that
+// resolves the path against this hook's own memq.js. A spelling the first
+// refuses is one the second refuses too, since resolving a drive-less path
+// names some other file, so a failure there says the pair stopped answering
+// rather than which of them did. The direction earns its place anyway: between
+// them those two are the whole of what keeps a path this process cannot
+// resolve out of a prompt-free allow. It is quoted like every other payload
+// here so that the word split is not a third answer, since unquoted, a cache
+// under a path holding a space splits into words whose third is a fragment of
+// the path, which the verb allowlist refuses while the screens under probe go
+// unasked.
 function memqGrantProbes(root, failures) {
     const file = path.join(root, 'hooks', 'memq-grant.js');
     const env = {};
     for (const k of Object.keys(process.env)) {
-        if (/^(?:PATH|NODE_OPTIONS|NODE_PATH|NODE_REPL_EXTERNAL_MODULE|KIT_MEMORY_ROOT|KIT_MEMORY_ROOT_ALLOW_DATA)$/i.test(k)) continue;
-        env[k] = process.env[k];
+        if (probeEnvKeeps(k)) env[k] = process.env[k];
     }
     env.PATH = path.dirname(process.execPath);
     env.KIT_MEMORY_ROOT = path.join(os.tmpdir(), 'kit-hook-canary-store');
     env.KIT_MEMORY_ROOT_ALLOW_DATA = '1';
     const memq = path.join(root, 'scripts', 'memq.js');
     let hasMemq = false;
-    try { hasMemq = fs.statSync(memq).isFile(); } catch { /* no grant direction to probe */ }
-    if (hasMemq) {
-        const grant = runHook(file, {
-            tool_name: 'Bash',
-            tool_input: { command: 'node "' + memq + '" recall' }
-        }, env);
-        let decision = null;
-        try { decision = JSON.parse(grant.stdout || 'null'); } catch { /* not a decision */ }
-        const allowed = decision && decision.hookSpecificOutput
-            && decision.hookSpecificOutput.permissionDecision === 'allow';
-        if (grant.status !== 0 || !allowed) {
-            failures.push({
-                hook: 'memq-grant.js',
-                label: 'grant probe (the one allowed memq invocation under the fleet signals)',
-                expected: 'a PreToolUse allow decision on stdout',
-                got: grant.stdout ? 'stdout ' + sanitize(grant.stdout) : outcome(grant)
-            });
-        }
+    // Absent, present as something other than a file, and unexaminable are
+    // three states, and the line below says which was seen rather than naming
+    // the one that is merely most likely.
+    let missing = null;
+    try {
+        hasMemq = fs.statSync(memq).isFile();
+        if (!hasMemq) missing = sanitize(memq) + ' is not a plain file';
+    } catch (err) {
+        const code = err && err.code ? err.code : String(err);
+        missing = code === 'ENOENT'
+            ? 'no file at ' + sanitize(memq)
+            : sanitize(memq) + ' could not be examined (' + sanitize(code) + ')';
+    }
+    if (!hasMemq) {
+        failures.push({
+            hook: 'memq-grant.js',
+            // The file this line is about is scripts/memq.js, not the hook it
+            // is filed under, so it does not stand in for having examined the
+            // hook: the integrity check below still hashes memq-grant.js
+            // against the build manifest. A partial or interrupted install is
+            // exactly where a missing payload file and a tampered hook are
+            // both plausible, and one must not hide the other.
+            aboutAnotherFile: true,
+            label: 'grant probes (the CLI this hook exists to allow)',
+            expected: 'the plugin\'s own scripts/memq.js in this cache',
+            got: missing + ', so this hook can never grant and none of its screens can be'
+                + ' probed'
+        });
+        return;
+    }
+    const grant = runHook(file, {
+        tool_name: 'Bash',
+        tool_input: { command: 'node "' + memq + '" recall' }
+    }, env);
+    let decision = null;
+    try { decision = JSON.parse(grant.stdout || 'null'); } catch { /* not a decision */ }
+    const allowed = decision && decision.hookSpecificOutput
+        && decision.hookSpecificOutput.permissionDecision === 'allow';
+    if (grant.status !== 0 || !allowed) {
+        failures.push({
+            hook: 'memq-grant.js',
+            label: 'grant probe (the one allowed memq invocation under the fleet signals)',
+            expected: 'a PreToolUse allow decision on stdout',
+            got: grant.stdout ? 'stdout ' + sanitize(grant.stdout) : outcome(grant)
+        });
     }
     const hostile = runHook(file, {
         tool_name: 'Bash',
-        tool_input: { command: 'node "' + memq + '" recall; echo pwned' }
+        tool_input: { command: 'node "' + memq + '" recall ; echo pwned' }
     }, env);
     if (hostile.status !== 0 || hostile.stdout !== '') {
         failures.push({
@@ -386,6 +477,84 @@ function memqGrantProbes(root, failures) {
             label: 'silent probe (a hostile command must get no decision)',
             expected: 'exit 0 and no output',
             got: hostile.stdout ? 'stdout ' + sanitize(hostile.stdout) : outcome(hostile)
+        });
+    }
+    // A screened flag, in a command whose verb and shape are otherwise
+    // granted. Three independent screens withhold three flag shapes there,
+    // and two directions are probed because they fail differently.
+    // --body-file reads a caller-named path into the store and memq refuses
+    // it under the store signals as well, so a hook that lost that screen is
+    // one lock short. --rollup discards the prose of every journal entry it
+    // folds and no other layer refuses it, so a hook that lost that one is
+    // wide open, and nothing else here would say so. The third shape, a
+    // body-carrying --update, has the same second lock in the CLI that
+    // --body-file has.
+    const flagged = runHook(file, {
+        tool_name: 'Bash',
+        tool_input: { command: 'node "' + memq + '" add-operator fact words'
+            + ' --body-file /etc/hosts' }
+    }, env);
+    if (flagged.status !== 0 || flagged.stdout !== '') {
+        failures.push({
+            hook: 'memq-grant.js',
+            label: 'screened flag probe (--body-file must get no decision)',
+            expected: 'exit 0 and no output',
+            got: flagged.stdout ? 'stdout ' + sanitize(flagged.stdout) : outcome(flagged)
+        });
+    }
+    const rollup = runHook(file, {
+        tool_name: 'Bash',
+        tool_input: { command: 'node "' + memq + '" decay-prune --rollup' }
+    }, env);
+    if (rollup.status !== 0 || rollup.stdout !== '') {
+        failures.push({
+            hook: 'memq-grant.js',
+            label: 'unlocked flag probe (--rollup must get no decision)',
+            expected: 'exit 0 and no output',
+            got: rollup.stdout ? 'stdout ' + sanitize(rollup.stdout) : outcome(rollup)
+        });
+    }
+    // The Git-Bash spelling of the same path, which the grant refuses because
+    // the MSYS runtime rewrites such an argument at exec: what the child
+    // receives depends on shell state this hook cannot see, so one written
+    // path can name two files. Windows only, since that rewrite is what the
+    // refusal is about and the spelling is an ordinary absolute path
+    // elsewhere, and only from a drive-letter root, which is the only spelling
+    // that rewrite has. A cache reached by a UNC path has no /d/ form to probe
+    // and is refused the grant outright, which the grant probe above is what
+    // reports.
+    if (path.sep === '\\' && /^[A-Za-z]:/.test(memq)) {
+        const msys = '/' + memq[0].toLowerCase() + memq.slice(2).split(path.sep).join('/');
+        const drive = runHook(file, {
+            tool_name: 'Bash',
+            tool_input: { command: 'node "' + msys + '" recall' }
+        }, env);
+        if (drive.status !== 0 || drive.stdout !== '') {
+            failures.push({
+                hook: 'memq-grant.js',
+                label: 'drive-spelling probe (the /d/ spelling must get no decision)',
+                expected: 'exit 0 and no output',
+                got: drive.stdout ? 'stdout ' + sanitize(drive.stdout) : outcome(drive)
+            });
+        }
+    }
+    // A verb the grant withholds, in a command that is otherwise the one
+    // allowed shape. find is the one probed because it is the only withheld
+    // verb the CLI does not also refuse for itself: the deletes have a second
+    // lock in memq under the store signals, and this screen is all that keeps
+    // an in-process embedder load out of a prompt-free allow. Without this
+    // direction a hook that lost its argument screen entirely still passes
+    // both probes above.
+    const withheld = runHook(file, {
+        tool_name: 'Bash',
+        tool_input: { command: 'node "' + memq + '" find a term' }
+    }, env);
+    if (withheld.status !== 0 || withheld.stdout !== '') {
+        failures.push({
+            hook: 'memq-grant.js',
+            label: 'withheld verb probe (find must get no decision)',
+            expected: 'exit 0 and no output',
+            got: withheld.stdout ? 'stdout ' + sanitize(withheld.stdout) : outcome(withheld)
         });
     }
 }
@@ -415,13 +584,16 @@ function hookManifest(root) {
 // can check, and inventing a failure from them would be the false alarm the
 // canary must never raise. A file another probe already reported is skipped too,
 // so one broken file stays one line and the report's cap keeps its budget for
-// distinct failures. Only an absent file is a failure here; any other read error
-// (a lock, a scanner holding the file open) says nothing about its contents and
-// stays silent.
+// distinct failures, which is a dedup over probes of the same file: an entry
+// flagged aboutAnotherFile names a hook in its line while reporting on a
+// different file, so it never stands in for having checked that hook's bytes.
+// Only an absent file is a failure here; any other read error (a lock, a
+// scanner holding the file open) says nothing about its contents and stays
+// silent.
 function integrityProbe(root, failures) {
     const manifest = hookManifest(root);
     if (!manifest) return;
-    const reported = new Set(failures.map((f) => f.hook));
+    const reported = new Set(failures.filter((f) => !f.aboutAnotherFile).map((f) => f.hook));
     for (const name of Object.keys(manifest)) {
         const want = manifest[name];
         if (typeof want !== 'string' || !/^\w[\w.-]*$/.test(name)) continue;
