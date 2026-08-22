@@ -300,6 +300,23 @@ brief carries these verbatim.
   safety, this one asks whether the guard's own test is narrower than the thing
   it is standing in for.
 
+- **A determination consumed under a lock must be taken under that lock, and
+  moving a check changes what is guaranteed when it runs.** The archive pass's
+  resume decision was moved out of the locked step into a validator that runs
+  before any lock, so the pass now acts under the lock on a verdict formed
+  outside it: a record legally recreated in that window is skipped by the
+  rename while its index line, now the new record's, is carried to the archive
+  and pruned, stranding a live record no reader lists. The same shape produced
+  an earlier defect from the opposite direction, when hoisting a check out of a
+  conditional made a post-rename index rewrite fallible with no way back. So
+  the question a move must answer is not whether the check is correct but what
+  held when it ran and what holds when it is used, and where those differ the
+  fact is re-asserted at the point of use rather than carried. This entry is
+  distinct from the three predicate entries above it: those ask who shares a
+  guard, whether its justification bears on safety, and whether its test is
+  narrower than the state it names. This one asks whether the answer is still
+  true by the time something acts on it.
+
 ## Chapters
 
 ### Interim board 1 - 2026-08-21
@@ -637,6 +654,76 @@ operator memory `pwsh-absent-on-scott-claude` as the section's dogfood test
 (held until now because the delete sweep's case-folding defect would have left a
 readable copy of the deleted body behind), then close with Chapter 2 and the
 Commit-and-Push commit.
+
+### Interim board 6 - 2026-08-22
+
+Written under the closure-drought rule: review rounds 11 and 12 were both
+adjudicated with no section closing.
+
+**In flight.** Section 2 only, now in its sixteenth implementation round after
+twelve review rounds. Section 1 is complete; section 3 has not started.
+
+**Live dispatches.** One `implementer-opus` (`a8c0c6bcd7c886a1b`), resumed by
+message each round so it keeps the file-level context; round 16 in progress,
+asked for three Majors (R52 to R54) and fifteen minors. Round 16 is this
+section's last implementation round by decision: the close gates on a targeted
+re-review of what it changes rather than a thirteenth full three-lens round.
+
+**Gate.** Every figure the orchestrator's own run: 1084 (pre-effort) -> 1099
+(section 1, `c56a8b5`) -> 1108 -> 1118 -> 1129 -> 1136 -> 1144 -> 1153 -> 1162
+-> 1167 -> 1175 -> 1179 -> 1186 -> 1193 -> **1196**, with 0 fail and 0 skipped
+throughout, exit 0. `./build.ps1` and `node --test test/hook-canary.test.js`
+(34 pass) re-run after every hook edit, against the rebuilt zip.
+
+**Rulings adopted since Interim board 5.** R43 through R48 landed as round 14.
+R49 closed a lock-window race two lenses found independently: the archive
+pass's resume verdict was taken before any lock and acted on under it, so a
+record legally recreated in that window was skipped by the rename while its
+index line was carried to the archive and pruned, stranding a live record no
+reader lists. The fix re-asserts the fact under the lock. The implementer
+diverged from the letter of that ruling and was right to: the orchestrator's
+instruction was to treat a returned name as a name to move, which would have
+renamed the returned record over the archived one and destroyed a body, and the
+implementer refused the pass instead, in the validator's own existing words. R50
+made the canary report a cache missing `scripts/memq.js` rather than probing it
+vacuously, since the grant hook loads memq before it reads a word of the command
+and therefore answers every payload with silence in that cache. R51 settled a
+contradiction the grant hook carried about itself: its founding premise says the
+Bash tool refuses `node <script>` on the fleet vector with no operator present,
+while four narrowings justified themselves by a fall-through "an operator can
+approve". The founding premise is the true one, so a withheld grant on that
+vector costs the capability and not a prompt. All four narrowings were re-opened
+against the true cost and all four stand; what changed is every text reasoning
+from an approval that never arrives, in the hook and in two documents. R52
+through R54 are round 16's: guard the rename direction the re-assertion left
+trusting a pre-lock verdict, gate the decay pass's backup promise on a recorded
+flag, and stop the canary's new failure key from blinding the integrity probe.
+
+**Deferred out of this plan, with receipts.** The archive carry can write a
+resumed name's description onto a different retired record's archive index line,
+reachable only when a record file is gone while its index line survives and an
+unrelated retired record already holds that name. It serves `decay-prune`'s
+carry contract rather than this plan's goal, and its damage ceiling is one
+description with no body ever confused, so it took the backlog with the sync-merge
+path named rather than a section.
+
+**Standing Brief Amendment earned here.** One, the sixth: a determination
+consumed under a lock must be taken under that lock, and moving a check changes
+what is guaranteed when it runs.
+
+**What is not yet reviewed.** Round 16's fixes, and the six documentation
+passages the orchestrator rewrote after round 12 (three stale withheld-shape
+counts, the false-prompt premise in two documents, the required-option rule in
+`architecture.md`, and two omitted refusal classes in `fleet-integration.md`).
+Four of round 11's eight Majors and one of round 12's five were defects in
+orchestrator-written documentation, which is why the targeted re-review that
+closes this section covers the prose as well as the code.
+
+**Next action.** Adjudicate round 16, re-run the three gates, run the targeted
+re-review, correct the known-false operator memory `pwsh-absent-on-scott-claude`
+as the section's dogfood test (held until the delete verb cleared review, since
+dogfooding runs it against the real remote-synced store), then close with
+Chapter 2 and the Commit-and-Push commit.
 
 ### Chapter 1 - 2026-08-21
 Completed: 1. `--body-file` and the newline hint
