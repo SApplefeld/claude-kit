@@ -13298,8 +13298,9 @@ test('a completed delete leaves no backup holding the record it removed', (t) =>
     // they stood before the removal, so each holds the line the removal just
     // took out. For a record authored without a body flag that line carries
     // the whole stored body, which would leave the deleted memory readable
-    // beside the tier, in a file no reader lists and the next sync pushes to
-    // the remote.
+    // beside the tier, in a file no reader lists and no hand may edit, cleared
+    // only if a later rewrite of that document happens to replace it. The
+    // exposure is local: the store's sync refuses *.bak.
     const store = makeHomeStore();
     try {
         if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
@@ -13343,7 +13344,8 @@ test('a delete of a name the tier does not hold spends no backup on the sidecar'
         // Written without its closing newline, which is what makes a rewrite
         // visible here: the rewrite writes its kept lines with one, and this
         // pass keeps every line it read. The backup is not the discriminator,
-        // because a completed delete sweeps the backups its own steps took.
+        // because a completed delete sweeps the backup at each of its three
+        // targets, whoever wrote it.
         fs.writeFileSync(usage,
             JSON.stringify({ ts: new Date().toISOString(), file: 'stays.md', kind: 'read' }),
             'utf8');

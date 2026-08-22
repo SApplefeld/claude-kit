@@ -185,7 +185,12 @@ Model: sonnet
 Locus: inline
 
 Files in scope:
-`plugins/claude-kit/skills/memory-system/SKILL.md`, `docs/`.
+`plugins/claude-kit/skills/memory-system/SKILL.md`, `docs/`, and, widened
+during execution with the reasons recorded in Chapter 3:
+`plugins/claude-kit/skills/finishing-work/SKILL.md`,
+`plugins/claude-kit/scripts/memq.js` (comments, plus one operator-facing
+stderr string), `test/memq.test.js` (one comment), and the repository root
+`README.md`.
 
 Sections 1 and 2 between them left this section less than it was written
 for, and the reason is worth stating rather than quietly shrinking the
@@ -363,12 +368,165 @@ brief carries these verbatim.
 
 Entries below are not in date order: each was inserted ahead of the entry
 that was newest when it was written, and the interim boards were appended,
-so the two sequences interleave. **The newest entry is `Chapter 2 -
-2026-08-22`**, which closes section 2 and carries the `Next:` a resuming
-session should act on; `Chapter 1 - 2026-08-21` closes section 1 and sits
-last in the file. The interim boards between them are the closure-drought
+so the two sequences interleave. **The newest entry is `Chapter 3 -
+2026-08-22`**, which closes section 3 and carries the `Next:` a resuming
+session should act on; `Chapter 2 - 2026-08-22` closes section 2 and
+`Chapter 1 - 2026-08-21` closes section 1, the latter sitting last in the
+file. The interim boards between them are the closure-drought
 record of section 2's review rounds, not section closures, and none of them
 carries a `Next:` that outranks Chapter 2's.
+
+### Chapter 3 - 2026-08-22
+
+**Section 3, The skill and the pass close-out: delivered.** The memory-system
+skill was read end to end against the shipped CLI, and so were the documents
+that restate what it says. What the pass was written to find, it found: seams
+between an edited passage and an unchanged neighbour, in the skill and across
+the four documents and one sibling skill that describe the same verbs.
+
+**Eight review rounds, three lenses each at opus and `max` effort.** Round 1
+returned a Critical, rounds 2 through 8 returned none. The security lens
+finished at CONCERNS with Minor findings only and recorded the direction that
+mattered: every residue claim in `docs/security-model.md` now verifies against
+the code in both directions, and the claim the base ref carried, that a
+leftover index backup reaches the private remote, was false and is corrected.
+
+**The Critical, and why a section with no code change earned one.** Round 1
+found `docs/security-model.md`'s "Not claimed" bullet still asserting that the
+delete verbs leave the tier index, archive index and usage sidecar backups in
+place, holding the removed record's index line. Section 2's round-21 widening
+had made that false, and this pass's own first edit had removed the sentence
+that justified the clause while leaving the clause. Two lenses found it
+independently. It is the exact defect this section exists for: a document
+contradicting itself across two hundred lines, where each half reads correct
+alone.
+
+**The generator, named.** Every round after the second, most of what came back
+was prose the previous round had written. The class is restatement: the same
+fact stated in five places in five wordings, so a correction lands on one and
+the other four drift. Two rounds were spent fixing sites; from round 6 the
+deliverable changed to preferring a pointer or a deletion over a new sentence,
+and where a fact had to appear twice the second site now names the first rather
+than paraphrasing it. That is the writing-skills one-owner rule, and this
+section is the evidence for why it is a rule.
+
+**Rulings worth carrying.**
+
+- **A consent flag that is invocation-wide shapes the ritual around it.**
+  `--confirm-shared` is one boolean for a whole `decay-prune` call, consumed by
+  two independent gates. An instruction to "always pass it" is mechanically
+  correct and waives the type tier's cross-project gate permanently, which is
+  the one moment a retirement reaching past this project stops for a look. The
+  kit's close-out therefore runs the two shared tiers as separate calls, with
+  `--rollup` on the project-tier call alone. That split is prose-enforced in
+  two skills with no mechanical check, and `docs/security-model.md` now says so
+  in those words.
+- **The declaring-projects scan bounds the ordinary case, not the true reach.**
+  It reads this machine's stores only and counts past a project whose index it
+  cannot read, so two declarers with one unreadable index count as one and the
+  gate waives. The skill states the gate as the code implements it rather than
+  as a guarantee. Where the scan cannot be run at all, the reach is unknown and
+  the answer is a question for the operator, never a flag supplied on the retry.
+- **A pin is the decay pass's override and binds nothing else.** No memq path
+  writes a `pinned:` field or removes one, so a shared-tier pin arrives by an
+  operator's own edit or a synced file and leaves the same way. The delete verbs
+  deliberately do not refuse a pinned record, since refusing there would leave
+  it removable by no path; but reaching for a delete to clear a pin is the wrong
+  move, because it drops the record's usage stamps and meets another machine's
+  copy as a modify/delete conflict that stalls the store's sync both ways.
+- **A shared-tier stamp removal is local hygiene.** The sidecars merge by union
+  and union cannot express a removal, so a stamp another machine still carries
+  returns at the next merge, and a later record at that name inherits it with
+  the decay extension it earned. `docs/security-model.md` already carried this;
+  the skill did not, and the skill is what a session reads before deleting.
+- **`get` resolves a run's pending tier ahead of the project tier, and three
+  surfaces earn the provenance fence**, the type and operator tiers always and
+  the project tier under a store pin. The skill named neither. Both were
+  pre-existing and both are what a whole-file read against the CLI is for.
+
+**Scope widenings, all taken deliberately and recorded here.**
+`plugins/claude-kit/skills/finishing-work/SKILL.md`: its step 7 prescribed a
+decay pass that the shipped consent gate refuses outright for any operator-tier
+archive, named no `--archive-operator` at all, told the pass to hand-edit a
+shared-tier summarize candidate in a tier that bars hand edits, and told it to
+hand-remove a `pinned:` line the same tier bars. That is the procedure this
+effort's own close-out runs. `plugins/claude-kit/scripts/memq.js`: comments
+only, plus one operator-facing stderr string. Three comments stated the
+opposite of the code they sit above, one of them the delete verbs' own header
+claiming a deletion leaves the single-generation backups it in fact sweeps, and
+the security lens rated that Major; doctrine bars parking a security Major. The
+string is the sweep's unlink-failure line, which named a bare filename two of
+its three targets share and asserted a provenance the path bound cannot
+support; it now uses `backupLabel`, the helper section 2 wrote for exactly that
+collision. `test/memq.test.js`: one comment carrying the last copy of the
+falsified sync claim. The repository root `README.md`: its memq verb list and
+memory-system blurb predate the operator tier and both verbs this plan shipped.
+
+**Deferred with the reasons, rather than silently.** Three findings are real,
+confirmed against the code, and left to the backlog with receipts: a confirmed
+delete of a name the tier does not hold spends the tier's three backup
+generations and reports none of it; the stopped-delete pin carries a dead
+assertion whose message contradicts the comment above it; and the delete's
+ordering argument does not establish the permanence it claims for a node at
+`archive/<name>.md.bak`. Each is a behavior or test-logic change to a
+destructive verb, which Standing Brief Amendment 8 says ships with a red test
+per site, and this was a documentation section that held its code edits to
+comments and one string. The first is additive reporting and the cheapest of
+the three; it is named here as an accepted residual rather than only in the
+backlog, because a reviewer asked for the adjudication to be explicit and it
+should be.
+
+**Where the pass stopped, and why.** Round 8's fixes are not re-reviewed. Seven
+rounds produced one Critical and none after it, the security lens closed at
+Minor-only, and each round's findings were increasingly the previous round's
+own prose. The finishing pass runs its own reviews over the whole changeset,
+which is the next independent look at this text, so a ninth section-level round
+would spend a lens on work a wider one is about to read. What that leaves is
+stated rather than assumed: round 8's twenty edits are gated by the suite, the
+build and the canary, and by nothing else.
+
+**Kaizen candidate, proposed rather than written.** The Standing Brief
+Amendments block is folded into dispatch briefs, so a section running
+`Locus: inline` never receives it. This section reproduced Amendment 7's exact
+class, an absolute that overreaches, four rounds running, with the amendment
+sitting unread in the same plan doc. The note would be that an inline section
+needs the amendments put in front of the orchestrator the way a dispatch puts
+them in front of an implementer. Held for Scott's nod per the capture rule.
+
+Assumptions: The docs index and the plans index are left describing an
+In Progress plan, since that is true at this commit; the finishing pass's
+curation moves both when the plan flips to Complete and archives (declared
+2026-08-22, section 3). The `docs/` index refresh was scoped to the claims this
+effort falsified rather than re-derived whole, on the ground that curating-docs
+at the close-out owns the general refresh (declared 2026-08-22, section 3).
+
+Review Findings: Eight rounds. Round 1: one Critical (the security model's
+"Not claimed" bullet contradicting its own storage section and the code), four
+Majors. Rounds 2 through 8: no Critical. Majors addressed across the rounds
+covered the falsified sync-egress rationale at four sites, the `get` precedence
+and fence omissions, the missing `--confirm-shared` gate in three surfaces, the
+pin and summarize rules for the shared tiers, the frontmatter description that
+made section 2's capability undiscoverable, and the two index files. Three
+Majors were deferred to the backlog with the justification above. Minors were
+taken where they were factual corrections and left where they were taste.
+
+Stamps: adjudicated 2, stamped 2. `skill-amendments-collide-with-neighbours`
+shaped every reviewer brief in this section (read the whole file, never the
+diff) and is the reason the round-1 Critical was reachable at all.
+`edit-script-prose-belongs-in-its-own-file` is why every fix round rode a JSON
+file read at runtime rather than a shell heredoc; the one edit that ignored it
+had its backtick-quoted flag name eaten by shell command substitution and
+needed a second pass to restore.
+
+Gate: `node --test test/*.test.js` is 1244 pass / 0 fail / 0 skipped, exit 0,
+unchanged from section 2's close and against a 1084 pre-effort baseline, every
+figure from the orchestrator's own run. `./build.ps1` builds 77 files at
+611 KB. `node --test test/hook-canary.test.js` is 40 pass / 0 fail, exit 0,
+against the rebuilt zip. No test covers the prose this section changed, which
+is why the review rounds were the gate and why the count of them is recorded.
+
+Next: finishing-work
+Commit Model: Commit-and-Push
 
 ### Interim board 1 - 2026-08-21
 

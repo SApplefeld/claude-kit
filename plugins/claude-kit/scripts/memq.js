@@ -146,8 +146,9 @@
 // bounded: every rewrite copies the file to <file>.bak first, replaces it by
 // temp-write-then-rename rather than in place, preserves verbatim any line
 // it cannot parse, and prints what it removed; no other subcommand ever
-// rewrites or truncates a store file. A delete's unlink of the record, and
-// of the backup a repair left beside it, is the one operation here that
+// rewrites or truncates a store file. A delete's unlinks, of the record, of the
+// copies of its own text beside it, and of the .bak at the tier index, the
+// archive index and the usage sidecar, are the one operation here that
 // removes rather than rewrites: there is nothing to back up when the point
 // is that no copy remains in the tier. Only argument/usage errors and a
 // failed write exit nonzero: a failed journal write, a failed `decay-prune`
@@ -1505,9 +1506,10 @@ function boundedFreeText(value, cap, label) {
     return { text: stripped, cut: false, length: stripped.length };
 }
 
-// The write gate for shared-tier prose (a type or operator description or
-// body): the same charset reduction, but an over-cap value is refused rather
-// than cut. The tiers earn different treatment because they fail differently.
+// The write gate for a shared-tier description: the same charset reduction,
+// but an over-cap value is refused rather than cut. A body takes only the
+// refuse-rather-than-cut half and never the charset reduction, being a
+// document whose punctuation is content, so it does not pass through here. The tiers earn different treatment because they fail differently.
 // A truncated journal entry is repairable by logging again; a shared-tier
 // record is repaired only by replacing its body whole, under --update and
 // --confirm-shared, and the text that replacement covers over survives in a
@@ -2878,8 +2880,9 @@ function operatorClause() {
 // a fence to name. A pin makes that false by design. One project directory
 // serves every working directory the instance runs in, so a memory written
 // while a worker was in one repository is served into a session working
-// another, which is the writer-is-not-the-reader condition the pending tier
-// is fenced for, arriving on the project tier.
+// another. That is the writer-is-not-the-reader condition the shared tiers
+// are fenced for, arriving on the project tier, which is why the pin and
+// not the tier is what earns the fence here.
 function pinClause(project) {
     return 'the pinned project store \'' + sanitize(project, STORE_SEGMENT_CAP)
         + '\', shared by every working directory this instance runs in';
@@ -2942,11 +2945,13 @@ function digestFenceLine(pinShown, typeShown, operatorShown) {
 // came from and framing what follows as data, then every body line indented
 // two spaces, the same structural fence the SessionStart hook puts around the
 // type index (an indented line is store data; only memq writes at column
-// zero). Two tiers earn it, the type tier always, because it is written by
-// other projects and synced across machines and accounts, and the project
-// tier under a pin, because the pin is what makes its writer someone other
-// than its reader. No body is ever charset-sanitized: it is a document where
-// newlines and punctuation are legitimate content, and line-level
+// zero). Three surfaces earn it: the type tier always, because it is written
+// by other projects and synced across machines and accounts; the operator
+// tier always, for that same reason one step wider, it being written by
+// every project on the machine; and the project tier under a pin, because
+// the pin is what makes its writer someone other than its reader. No body
+// is ever charset-sanitized: it is a document where newlines and
+// punctuation are legitimate content, and line-level
 // sanitization would destroy it; the fence, not the charset, is the control.
 // Every tier is capped all the same, with a note, so one oversized file
 // cannot flood the context reading it.
@@ -7729,10 +7734,14 @@ function cmdAddOperator(argv) {
 // leaves no copy in the tier, and the archive is reachable rather than a
 // place a wrong record survives forever.
 //
-// What a deletion does leave is the single-generation .bak of each file it
-// rewrites, which is local and never travels (the store's sync refuses *.bak),
-// so it recovers a slip made minutes ago on this machine and nothing beyond
-// that. A store that syncs through a git repository also keeps whatever its
+// What a completed deletion leaves locally is no copy this verb can name: the
+// closing sweep takes the .bak at each of the three documents it exists to edit,
+// whoever wrote it, so there is no recovering a slip made minutes ago on this
+// machine. Three things leave a backup- or temp-shaped copy of the removed
+// record and nothing else does: a run that stopped before the sweep, a backup
+// the sweep could not remove and reported, and a <file>.tmp.<pid> a
+// hard-killed rewrite stranded at one of those paths, which the sweep does not
+// name. A store that syncs through a git repository also keeps whatever its
 // history holds, which is outside this command's reach and is the honest
 // bound on what "no copy" means here.
 //
@@ -7801,11 +7810,14 @@ function cmdDeleteType(argv) {
     const declaring = projectsDeclaringType(type);
     if (declaring === null) {
         // A scan that could not be established is reported as that, and this
-        // verb substitutes no stand-in for it: decay-prune can fall back to
-        // the one project it can vouch for because a retirement keeps the
-        // record readable, while a deletion does not, and a listing of one
-        // project would understate the reach of a removal rather than bound
-        // it.
+        // verb substitutes no stand-in for it, which is the posture decay-prune
+        // takes on this one branch: there too an unestablished scan requires the
+        // confirmation rather than waiving it, because a count this process
+        // cannot vouch for would understate the reach of what follows rather
+        // than bound it. The parallel stops there. decay-prune waives the
+        // confirmation on a single declarer and this verb never waives it,
+        // because a retirement leaves the record readable by name and a
+        // deletion leaves nothing to read.
         process.stderr.write('memq: which projects declare type \'' + sanitize(type, TYPE_CAP)
             + '\' could not be established, so how far this deletion reaches is unknown\n');
     } else {
@@ -8389,9 +8401,17 @@ function deleteSharedRecord(dir, indexPath, name, where, options) {
         // document as it stood while it still carried the record being
         // deleted, and a record authored with no body flag has its whole
         // stored body in its index line: leaving one beside the tier leaves
-        // the memory readable in a file no reader lists, no writer overwrites,
-        // and the next sync pushes to the remote, which is the state this verb
-        // exists to end.
+        // the memory readable in a file no reader lists and no hand may edit, and
+        // which nothing clears until some later rewrite of that document happens
+        // to replace it, which is the state this verb exists to end. The
+        // exposure is local rather than an egress: the store's sync refuses
+        // *.bak, so the copy stays on the machine that made it.
+        //
+        // That reason reaches the two index backups and not the third target.
+        // A usage sidecar holds stamps rather than record text, so its .bak
+        // exposes nothing readable; it goes because a restore from it would
+        // reinstate the deleted name's stamps, which a later record at that
+        // name would inherit along with the decay extension they carry.
         //
         // Every one of the three, not only the ones this pass wrote. A delete
         // that stopped after its index rewrite leaves a .bak there and no
@@ -8416,10 +8436,12 @@ function deleteSharedRecord(dir, indexPath, name, where, options) {
             } catch (err) {
                 if (!err || err.code !== 'ENOENT') {
                     process.stderr.write('memq: '
-                        + sanitize(path.basename(bakPath), MEMORY_FILE_CAP + 16)
-                        + ' could not be removed (' + failureText(err) + '), and it holds'
-                        + ' that file as it stood before this pass rewrote it, with the'
-                        + ' deleted record still in it\n');
+                        + sanitize(backupLabel(bakPath), MEMORY_FILE_CAP + 32)
+                        + ' could not be removed (' + failureText(err) + '); if what'
+                        + ' stands there is a backup rather than something else, it'
+                        + ' holds that file as it stood before whichever pass wrote'
+                        + ' it, which may be this one and may carry the record just'
+                        + ' deleted\n');
                 }
             }
         }

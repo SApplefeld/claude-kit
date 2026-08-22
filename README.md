@@ -28,7 +28,7 @@ claude-kit/                          (repo = the marketplace)
         kit-doctor/                  Validate and repair the machine's kit install (runs the payload doctor)
         branch-hygiene/              Clean up branches and worktrees after Branch-and-PR; reap merged, recover stranded
         curating-docs/               docs/ taxonomy: plan archival, backlog pruning, indexes and cross-references
-        memory-system/               The memq store: recall at effort start, outcome journal, applied stamps, tags, decay and pinning, type tier
+        memory-system/               The memq store: recall at effort start, outcome journal, applied stamps, tags, decay and pinning, type and operator tiers, shared-tier repair and delete
         csharp-style/                C# house style + detailed reference
         sql-style/                   T-SQL house style + detailed reference
         scott-writing-style/         Document/prose style guide
@@ -81,7 +81,7 @@ claude-kit/                          (repo = the marketplace)
                                      memory write destination for a pinned or run-scoped session
       scripts/
         memq.js                      The memory-store CLI: recall (the whole store as one bounded digest, no
-                                     search term), find, get, log, touch, add-type, and the decay pass
+                                     search term), find, get, log, touch, recent, unstamped, add-type, add-operator, delete-type, delete-operator, and the decay pass
                                      (scan, prune, done) with use-extended thresholds and pinning. Inside a
                                      run an external engine spawned, reads and writes also span that run's
                                      own pending tier, which the engine adjudicates before promotion
