@@ -284,6 +284,22 @@ brief carries these verbatim.
   who else shares the thing being changed, this one asks whether the evidence
   offered for a change bears on the property that makes it safe.
 
+- **A predicate standing in for one specific state must exclude every other
+  state that satisfies it, and any guard it lets a caller skip must be re-asked
+  on the branch that skips it.** The archive pass needed to recognize one
+  state, a record an earlier stopped run had already moved, and it asked
+  `!st || !st.isFile()`, which is also true of a directory at that name and of
+  a stat that throws for any reason at all. The branch it opened skipped both
+  the pin check and the archive-collision refusal, because both sat below it,
+  so a widening meant to admit one benign case admitted several harmful ones
+  with two guards disabled. Write the predicate as the state's own signature
+  (here: a genuine ENOENT, plus the tier index still listing the name), and
+  where a branch bypasses later checks, ask them inside it rather than
+  inheriting their absence. This entry is distinct from the two above it: those
+  ask who else depends on a guard and whether its justification bears on
+  safety, this one asks whether the guard's own test is narrower than the thing
+  it is standing in for.
+
 ## Chapters
 
 ### Interim board 1 - 2026-08-21
@@ -568,6 +584,59 @@ reviewer this round, which rated one of its sentences Minor. `docs/security-mode
 and `docs/fleet-integration.md` were read by the security reviewer this round.
 The three rewrites R38 and R39 force have not been reviewed by anyone and are
 covered by the finishing docs pass.
+
+### Interim board 5 - 2026-08-22
+
+Written under the closure-drought rule: review rounds 9 and 10 were both
+adjudicated with no section closing.
+
+**In flight.** Section 2 only, now in its fourteenth implementation round after
+ten review rounds. Sections 1 complete; section 3 not started.
+
+**Live dispatches.** One `implementer-opus` (`a8c0c6bcd7c886a1b`), resumed by
+message each round so it keeps the file-level context; round 14 in progress.
+
+**Gate.** Baseline confirmed by the orchestrator's own runs at every step:
+1084 (pre-effort) -> 1099 (section 1, `c56a8b5`) -> 1108 -> 1118 -> 1129 ->
+1136 -> 1144 -> 1153 -> 1162 -> 1167 -> 1175 -> 1179 -> **1186**, with 0 fail
+and 0 skipped throughout, exit 0. `./build.ps1` and `node --test
+test/hook-canary.test.js` (33 pass) re-run after every hook edit.
+
+**Rulings adopted since Interim board 4.** R36 widened the flag screen to
+attached-value spellings. R37 removed the canary's second copy of the hook's
+refused-variable list; note for the closing Chapter that what shipped is
+stronger than this ruling asked for, since the canary now builds its probe
+environment from its own allowlist and needs no knowledge of what any hook
+refuses on, so the copy was eliminated rather than single-sourced. R38 hoisted
+the head-identity check out of the concurrent-append gate, making it run on
+every rewrite. R39 withheld `find` and reverted the embedder-variable refusal.
+R40 replaced the canary's inherited-and-filtered probe environment with a built
+one and removed the require that had made the detector load the file it hashes.
+R41 made the archive pass resumable. R42 inverted the verb screen from a
+denylist to an allowlist. R43 through R48 are round 14's, dispatched: narrow the
+resume admission to a genuine ENOENT plus a still-listed index line; compose the
+resume report line from recorded state; give the two index-rewrite helpers a
+required per-call safety option; screen `--rollup` at the grant; drop the
+Git-Bash drive spelling; and repair the dynamic-require pin, which bounded its
+scan a hundred lines past the built-ins and recognized one spelling of code
+loading.
+
+**Standing Brief Amendment earned here.** One, the fifth, on a predicate
+standing in for a state it does not exclusively describe.
+
+**What is not yet reviewed.** Round 14's fixes, and the documentation rewrites
+the orchestrator owes after them: the `decay-prune` blast-radius premise in
+`docs/security-model.md` (currently false, and contradicted by the same
+document's own later line), the count of withheld shapes carrying a CLI second
+lock, the per-call safety claim in `docs/architecture.md`, and the delete
+verb's two-sweep claim.
+
+**Next action.** Adjudicate round 14, rewrite the four documentation passages,
+decide whether an eleventh review round is warranted, correct the known-false
+operator memory `pwsh-absent-on-scott-claude` as the section's dogfood test
+(held until now because the delete sweep's case-folding defect would have left a
+readable copy of the deleted body behind), then close with Chapter 2 and the
+Commit-and-Push commit.
 
 ### Chapter 1 - 2026-08-21
 Completed: 1. `--body-file` and the newline hint
