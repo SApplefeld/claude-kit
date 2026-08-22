@@ -144,7 +144,16 @@ section 3 keeps the section-1 drift and the close-out),
 Major that the CLI-side refusal of the destructive verbs keys on the child's
 environment, which the granted principal controls; the hook is the only
 enforcement point that sees an argv the child cannot forge, and a security
-Major is never parked into a later section).
+Major is never parked into a later section),
+`docs/fleet-integration.md` (folded in at review round 7: widening the
+hook's preload refusal to the embedder pair made that document's
+enumeration of the refusal triggers false, and it is the one document an
+engine operator reads to diagnose workers that silently lost memq),
+`plugins/claude-kit/hooks/hook-canary.js` (folded in at review round 8:
+the canary keeps a second copy of the hook's refused-variable list to
+scrub its own probe environment, and the copy drifted when round 9 widened
+the original, so the kit's only detector of an inert grant hook can red on
+a healthy box).
 
 Implement body repair and gated delete per the Design section, under the
 existing lock, index kept consistent in the same operation. Follow the
@@ -480,6 +489,85 @@ inline in the main thread, then curating-docs.
 the finishing docs pass covers it. `docs/security-model.md` was read this
 round by the security reviewer, which rated two of its sentences Major and both
 are now rewritten.
+
+### Interim board 4 - 2026-08-22
+
+Written on the closure-drought trigger: review rounds 7 and 8 on section 2 both
+adjudicated with no section closing.
+
+**In-flight sections.** Section 2 only, in its twelfth implementation round after
+eight full review rounds. Section 3 is unstarted and runs after it; both touch
+`memory-system/SKILL.md`, so nothing runs concurrently.
+
+**Live dispatches.** One: `implementer-opus`, the same agent resumed throughout
+so it keeps its context. Round 10 was asked for four Majors and thirteen minors.
+Round 11 was one ruling, R36. Round 12, dispatched now, was asked for three
+rulings (R37 to R39) and eleven minors.
+
+**Gate baseline.** 1175 pass / 0 fail / 0 skipped, exit 0, confirmed by the
+orchestrator running `node --test test/*.test.js` itself rather than from the
+implementer's report, together with `./build.ps1` and
+`node --test test/hook-canary.test.js` at 30/30. The progression across this
+effort, every figure the orchestrator's own run: 1084 (pre-effort), 1099
+(section 1 shipped), 1108, 1118, 1129, 1136, 1144, 1153, 1162, 1167, 1175, with
+0 fail and 0 skipped at every point. Round 11 landed no count delta by design,
+having extended an existing pin in place rather than adding cases.
+
+**Rulings adopted since Interim board 3.**
+
+- R36. The grant hook's flag screens refuse the attached-value spelling
+  (`--body-file=<path>`) as well as the whole word. memq's own parser refuses
+  every attached-value spelling with `unknown option` at exit 1 before touching
+  a store, verified by the orchestrator's own run, so no live bypass existed and
+  no working invocation loses its grant. The widening was taken anyway under
+  Standing Brief Amendment 4: the parser's refusal is a claim about the callee,
+  while what makes the screen safe is that the hook itself withholds the grant.
+  A cross-component pin makes drift detectable; it does not make either layer
+  correct alone.
+- R37. The refused-variable list is single-sourced. `hook-canary.js` kept a
+  second copy to scrub its probe environment and drifted when the original
+  widened, which would red the kit's only detector of an inert grant hook on a
+  healthy box.
+- R38. The whole-file replacement check is hoisted out of the
+  `concurrentAppends` conditional. The flag answers whether a rewrite may carry
+  a tail; whether a sync pull replaced the file underneath is a different
+  question with the same answer for every caller. The documented
+  last-writer-wins residual on the shared-tier index writes was adjudicated when
+  removing it was expensive and now costs one `readFileSync`.
+- R39. The grant withholds `find`, and the two embedder variables leave the
+  refusal list. Refusing `KIT_EMBEDDER_ROOT` and `KIT_EMBEDDER_ROOT_ALLOW_CODE`
+  was argued as closing a prompt-free `require` of a caller-named directory, but
+  `embedderRoot()` falls back to `os.homedir()`, which reads `USERPROFILE` or
+  `HOME`: unscreened, and unscreenable, since refusing on `HOME` being set would
+  refuse everything. The embedder require is lazy and reached only from
+  `cmdFind`, so withholding that one verb closes the class outright and makes
+  the variable refusal unnecessary. Accepted cost, deliberate: a fleet worker
+  loses prompt-free semantic search and falls through to an ordinary permission
+  prompt for it, keeping `recall`, `get`, `log`, `touch` and the write verbs.
+- The blind reviewer's availability complaint against the embedder refusal, that
+  it withheld the grant from every verb while only one loads the embedder, is
+  adopted rather than rejected, and R39 is what adopts it. This reverses the
+  round-7 ruling that declined to narrow that refusal: the new fact is that
+  narrowing and hardening turn out to be the same edit.
+
+**Standing Brief Amendment earned here.** None. Rounds 10 through 12 produced no
+finding class that repeated across sections; the four standing entries already
+cover the classes this round surfaced, and three of the round-8 findings were
+caught by reviewers applying amendments 1, 3 and 4 by name.
+
+**Next action per section.** Section 2: await round 12, re-run the gate and the
+canary, rewrite the three `docs/` files that R38 and R39 make false (the
+orchestrator owns all three), decide whether a ninth review round is warranted,
+correct the known-false operator memory `pwsh-absent-on-scott-claude` as the
+section's dogfood test, then close with Chapter 2 and the Commit-and-Push
+commit. Section 3: a whole-file consistency read of `memory-system/SKILL.md`,
+inline in the main thread, then curating-docs.
+
+**Not yet reviewed.** `docs/architecture.md` was read by the adversarial
+reviewer this round, which rated one of its sentences Minor. `docs/security-model.md`
+and `docs/fleet-integration.md` were read by the security reviewer this round.
+The three rewrites R38 and R39 force have not been reviewed by anyone and are
+covered by the finishing docs pass.
 
 ### Chapter 1 - 2026-08-21
 Completed: 1. `--body-file` and the newline hint
