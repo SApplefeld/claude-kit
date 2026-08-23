@@ -7,8 +7,7 @@
 # Verifies core setup (execution policy, doctrine import and freshness, kaizen
 # signpost, git hooks on a clone), the ANTHROPIC_API_KEY hazard, the hook layer
 # (goal-leash wiring and load, hook-canary wiring, the memq shim), the memory
-# store's sync repo and its allowlist, and leftover resume-relay state on a
-# machine that once armed it.
+# store's sync repo and its allowlist.
 #
 #   .\doctor.ps1              Check only; prints PASS/WARN/FAIL with remediations.
 #   .\doctor.ps1 -Fix         Also applies the safe durable repairs (execution
@@ -18,25 +17,18 @@
 #                             autoCompactWindow value written into user
 #                             settings.json, behind its own consent prompt).
 #                             It deletes nothing.
-#   .\doctor.ps1 -Fix -Yes    Pre-answers the consent prompts of the actions the
-#                             other flags already requested, for unattended runs.
-#                             It authorizes nothing by itself.
-#   .\doctor.ps1 -Fix -RemoveLegacyRelay
-#                             Also removes leftover resume-relay state (watcher
-#                             process, Startup shortcut, then the state
-#                             directory), after printing the resume records that
-#                             directory holds. Naming this switch is the
-#                             authorization for that deletion; -Fix alone never
-#                             deletes it.
+#   .\doctor.ps1 -Fix -Yes    Pre-answers the consent prompts -Fix already
+#                             requested, for unattended runs. It authorizes
+#                             nothing by itself.
 # If scripts are blocked entirely, use the wrapper beside this file:
-#   doctor.cmd [-Fix] [-Yes] [-RemoveLegacyRelay]
+#   doctor.cmd [-Fix] [-Yes]
 # Exit code: 0 when nothing FAILs (warnings allowed), 1 otherwise.
 
 # An unrecognised switch must be a hard error, not a silent extra argument:
 # a simple param block binds one into $args and runs anyway, so a flag this
 # script no longer accepts would report a clean run having done nothing.
 [CmdletBinding()]
-param([switch]$Fix, [switch]$Yes, [switch]$RemoveLegacyRelay)
+param([switch]$Fix, [switch]$Yes)
 
 # Windows PowerShell 5.1 inherits PSModulePath from whatever parent launched it.
 # A pwsh 7+ parent (the Claude Code harness, a pwsh terminal) puts its own
@@ -67,9 +59,10 @@ function Report {
 }
 
 # Consent gate for an action that changes this machine: installing software, or
-# removing state. Only ever true under -Fix; -Yes pre-answers for unattended runs
-# (it consents to what the flags already asked for, it never asks for more); a
-# non-interactive host that cannot prompt declines rather than stalling.
+# writing a value into user settings. Only ever true under -Fix; -Yes pre-answers
+# for unattended runs (it consents to what -Fix already asked for, it never asks
+# for more); a non-interactive host that cannot prompt declines rather than
+# stalling.
 #
 # -Interactive withholds the -Yes shortcut for the one class of action -Yes must
 # not cover: replacing a value the operator chose, as opposed to supplying one
@@ -101,17 +94,16 @@ function Get-Consent {
 
 function Get-SanitizedLine {
     param([string]$Value, [int]$MaxLength = 120)
-    # Strings this script did not author (a plan path from goal-state.json, a
-    # record written by something outside the kit) are stripped to printable
-    # ASCII and length-bounded before reaching this trusted output channel, so a
-    # hostile file cannot smuggle escape sequences past a reader's eyes or emit
-    # unbounded output. It does not make the text safe to obey: bounded
-    # printable ASCII still carries a sentence, so treat what it returns as data.
-    # Matches kit-goal.js's own sanitize() convention, with the cap per channel
-    # because a truncated string is only acceptable where nothing compares it.
-    # Truncation is always visible: a silently cut line would let two different
-    # values print identically, and the triage rule below asks a reader to
-    # compare continue prompts for equality.
+    # Strings this script did not author (a plan path from goal-state.json) are
+    # stripped to printable ASCII and length-bounded before reaching this trusted
+    # output channel, so a hostile file cannot smuggle escape sequences past a
+    # reader's eyes or emit unbounded output. It does not make the text safe to
+    # obey: bounded printable ASCII still carries a sentence, so treat what it
+    # returns as data. Matches kit-goal.js's own sanitize() convention, with the
+    # cap per channel because a truncated string is only acceptable where nothing
+    # compares it. Truncation is always visible: a silently cut line would let two
+    # values that share a prefix print identically, and a reader comparing what is
+    # printed would read them as equal.
     $clean = [string]$Value -replace '[^\x20-\x7E]', ''
     if ($clean.Length -gt $MaxLength) {
         $dropped = $clean.Length - $MaxLength
@@ -438,327 +430,6 @@ else {
     }
     else {
         Report "INFO" "Kaizen signpost" @("No kit clone registered on this machine (kaizen capture targets a dev clone; fine for install-only machines).")
-    }
-}
-
-# --- Legacy resume relay. The resume relay is no longer part of the kit, but a
-# --- machine that once armed it keeps three leftovers nothing here owns any
-# --- more: a state directory under %LOCALAPPDATA%, a Startup shortcut, and a
-# --- resident AutoHotkey watcher process. This check names them and surfaces the
-# --- resume records the state directory holds, on every run, because reading
-# --- them changes nothing and they are the only reason a leftover directory
-# --- matters. Removing them is destructive and separately authorized: it takes
-# --- -Fix plus -RemoveLegacyRelay plus consent at the prompt. AutoHotkey itself
-# --- is left installed; only the kit's own watcher process and state go.
-$legacyRelayDir = Join-Path $env:LOCALAPPDATA "claude-kit\resume-relay"
-$legacyShortcut = Join-Path ([Environment]::GetFolderPath("Startup")) "claude-resume-relay.lnk"
-$legacyRelayDirExists = Test-Path -LiteralPath $legacyRelayDir
-$legacyShortcutExists = Test-Path -LiteralPath $legacyShortcut
-$legacyRemovalArmed = $Fix -and $RemoveLegacyRelay
-
-# Get-Process exposes no command line, so only CIM can tell this watcher apart
-# from any other AutoHotkey script the machine runs; the match is anchored on the
-# relay directory path so an unrelated AutoHotkey script is never a kill target.
-# Every match counts: one surviving watcher re-creates the state directory. The
-# query is re-run immediately before any Stop-Process, which is what keeps a
-# recycled PID safe, since a reused PID cannot carry that command line. A
-# locked-down host can refuse the query: that leaves the process fact
-# undetermined and is reported as such, never as a clean result.
-function Get-LegacyRelayWatcher {
-    param([string]$RelayDir)
-    return @(Get-CimInstance Win32_Process -Filter "Name='AutoHotkey64.exe'" -ErrorAction Stop |
-        Where-Object {
-            $_.CommandLine -and
-            $_.CommandLine.IndexOf($RelayDir, [System.StringComparison]::OrdinalIgnoreCase) -ge 0 -and
-            $_.CommandLine.IndexOf("resume-relay.ahk", [System.StringComparison]::OrdinalIgnoreCase) -ge 0
-        })
-}
-
-# The first three lines of a relay record are its resume pointer: the session id,
-# its transcript path, and the continue prompt the session was waiting for.
-# Records are written by something outside the kit, so every line is sanitized.
-# The cap is generous because the triage rule compares continue prompts for
-# equality and a transcript path is already near 100 characters: a bound tight
-# enough to cut either one turns the comparison the reader is asked to make into
-# a guess.
-$legacyRecordCap = 400
-function Get-LegacyRecordHead {
-    param([string]$Text)
-    $head = @()
-    foreach ($line in (@($Text -split "`n") | Select-Object -First 3)) {
-        $head += ("    " + (Get-SanitizedLine $line.TrimEnd() $legacyRecordCap))
-    }
-    return $head
-}
-
-$legacyWatchers = @()
-$legacyProbeNote = $null
-# The @() wrapper is load-bearing: a one-element return unrolls to a scalar on
-# assignment, and a scalar CIM instance has no Count, so every count test below
-# would silently read empty with exactly one watcher running.
-try { $legacyWatchers = @(Get-LegacyRelayWatcher -RelayDir $legacyRelayDir) }
-catch {
-    $legacyProbeNote = "Could not query running processes (" + (Get-SanitizedLine $_.Exception.Message) + "), so a resident watcher process is undetermined; look for AutoHotkey64.exe running resume-relay.ahk by hand."
-}
-
-# Newest first, with both the scan and the display bounded so a never-reaped
-# graveyard cannot make this slow or bury the rest of the report. Every record
-# read is accounted for in the output, because the whole directory goes when a
-# removal runs and an unread record is a pointer nobody will ever see again.
-$legacyScanCap = 200
-$legacyShowCap = 5
-$legacyRecordLines = @()
-$legacyReadErrors = @()
-if ($legacyRelayDirExists) {
-    # failed\ prints every real record it can read: those are the resume pointers,
-    # a removal takes all of them, and a pointer that was never displayed is gone
-    # with no way back. processed\ is bounded because it is corroborating context,
-    # newest-first, and the entry that decides a triage is the newest one.
-    foreach ($class in @(
-        @{ Dir = "failed"; Label = "failed\, requests the relay never resumed (newest first):"; Show = $legacyScanCap },
-        @{ Dir = "processed"; Label = "processed\, requests that did resume (newest first):"; Show = $legacyShowCap }
-    )) {
-        $classDir = Join-Path $legacyRelayDir $class.Dir
-        if (-not (Test-Path -LiteralPath $classDir)) { continue }
-        $classFiles = @()
-        try {
-            $classFiles = @(Get-ChildItem -LiteralPath $classDir -File -Filter "*.txt" -ErrorAction Stop |
-                Sort-Object LastWriteTime -Descending)
-        }
-        catch {
-            $legacyReadErrors += ("could not list " + $classDir + ": " + (Get-SanitizedLine $_.Exception.Message))
-            continue
-        }
-        if ($classFiles.Count -eq 0) { continue }
-        $classLines = @()
-        $classScanned = 0
-        $classShown = 0
-        $classDryrun = 0
-        $classUnreadable = 0
-        foreach ($entry in $classFiles) {
-            if ($classShown -ge $class.Show -or $classScanned -ge $legacyScanCap) { break }
-            $classScanned++
-            $entryText = $null
-            try { $entryText = [System.IO.File]::ReadAllText($entry.FullName) }
-            catch {
-                $classUnreadable++
-                $legacyReadErrors += ("could not read " + (Get-SanitizedLine $entry.Name) + " in " + $classDir + ": " + (Get-SanitizedLine $_.Exception.Message))
-                continue
-            }
-            # A record carrying the dry-run marker is an old probe corpse, not a
-            # real request. Filtered before the display cap applies, so a run of
-            # probes cannot crowd a real stall out of the output.
-            if ($entryText.Contains("[doctor-dryrun]")) { $classDryrun++; continue }
-            $classShown++
-            $classLines += ("  " + (Get-SanitizedLine $entry.Name) + "  (" + $entry.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss") + ")")
-            $classLines += (Get-LegacyRecordHead -Text $entryText)
-        }
-        $classNote = ("  " + $classFiles.Count + " record(s) in " + $class.Dir + "\: " + $classShown + " printed")
-        if ($classDryrun -gt 0) { $classNote += (", " + $classDryrun + " skipped as dry-run probes") }
-        if ($classUnreadable -gt 0) { $classNote += (", " + $classUnreadable + " unreadable") }
-        $classUnread = $classFiles.Count - $classScanned
-        if ($classUnread -gt 0) { $classNote += (", " + $classUnread + " neither read nor printed") }
-        $classNote += ". A removal deletes all of them, printed or not."
-        $legacyRecordLines += $class.Label
-        $legacyRecordLines += $classLines
-        $legacyRecordLines += $classNote
-    }
-
-    # A request.txt at the relay root was never archived either way, so it is the
-    # one record that may still be waiting rather than resolved.
-    $legacyRequest = Join-Path $legacyRelayDir "request.txt"
-    if (Test-Path -LiteralPath $legacyRequest) {
-        $legacyRequestText = $null
-        try { $legacyRequestText = [System.IO.File]::ReadAllText($legacyRequest) }
-        catch { $legacyReadErrors += ("could not read " + $legacyRequest + ": " + (Get-SanitizedLine $_.Exception.Message)) }
-        if ($null -ne $legacyRequestText) {
-            $legacyRecordLines += "request.txt at the relay root, pending (never archived to failed\ or processed\):"
-            $legacyRecordLines += (Get-LegacyRecordHead -Text $legacyRequestText)
-        }
-    }
-
-    # relay.log is the only chronology of which requests ran and how they ended.
-    $legacyLog = Join-Path $legacyRelayDir "relay.log"
-    if (Test-Path -LiteralPath $legacyLog) {
-        $legacyLogTail = $null
-        try { $legacyLogTail = @(Get-Content -LiteralPath $legacyLog -Tail 10 -ErrorAction Stop) }
-        catch { $legacyReadErrors += ("could not read " + $legacyLog + ": " + (Get-SanitizedLine $_.Exception.Message)) }
-        if ($null -ne $legacyLogTail -and $legacyLogTail.Count -gt 0) {
-            $legacyRecordLines += ("relay.log, last " + $legacyLogTail.Count + " line(s), the only chronology of what ran:")
-            foreach ($logLine in $legacyLogTail) { $legacyRecordLines += ("  " + (Get-SanitizedLine $logLine $legacyRecordCap)) }
-        }
-    }
-
-    # The removal is recursive over the whole directory, so name whatever else
-    # lives there. Anything not surfaced above goes too, and a reader weighing the
-    # cost should not have to guess what "the state directory" contains.
-    try {
-        $legacyOther = @(Get-ChildItem -LiteralPath $legacyRelayDir -ErrorAction Stop |
-            Where-Object { $_.Name -notin @("failed", "processed", "relay.log", "request.txt") } |
-            ForEach-Object { Get-SanitizedLine $_.Name })
-        if ($legacyOther.Count -gt 0) {
-            $legacyRecordLines += ("Also under the directory, and taken by a removal: " + ($legacyOther -join ", ") + ".")
-        }
-    }
-    catch {
-        $legacyReadErrors += ("could not list " + $legacyRelayDir + ": " + (Get-SanitizedLine $_.Exception.Message))
-    }
-
-    if ($legacyRecordLines.Count -gt 0) {
-        $legacyRecordLines += "Triage rule: a failed\ record is a real stall only when no newer processed\ record carries the"
-        $legacyRecordLines += "same continue prompt. When one does, that later request resumed the same work and the failed\"
-        $legacyRecordLines += "record is superseded, so resuming it would fork a live session. Check pushed commits and the"
-        $legacyRecordLines += "plan doc's Chapters too. Resume only what is genuinely stalled:  claude --resume <session-id>"
-        $legacyRecordLines += "in its own repo."
-    }
-}
-
-$legacyFindings = @()
-if ($legacyRelayDirExists) { $legacyFindings += "state directory $legacyRelayDir" }
-if ($legacyShortcutExists) { $legacyFindings += "Startup shortcut $legacyShortcut" }
-foreach ($watcher in $legacyWatchers) {
-    $legacyFindings += ("watcher process AutoHotkey64.exe (PID " + $watcher.ProcessId + "), command line: " + (Get-SanitizedLine $watcher.CommandLine $legacyRecordCap))
-}
-
-if ($legacyFindings.Count -eq 0 -and $null -ne $legacyProbeNote) {
-    # Two of the three conditions are clean and the third was never determined,
-    # so this is not the clean state and must not read as one.
-    Report "WARN" "Legacy resume relay" @(
-        "No state directory and no Startup shortcut, and a resident watcher process could not be checked.",
-        $legacyProbeNote
-    )
-}
-elseif ($legacyFindings.Count -eq 0) {
-    # The steady state on every machine, so it stays quiet.
-    Report "PASS" "Legacy resume relay"
-}
-else {
-    $legacyDetail = @(
-        ("Leftovers found: " + ($legacyFindings -join "; ") + "."),
-        "The resume relay is no longer part of the kit, so nothing here owns or maintains them."
-    )
-    if ($null -ne $legacyProbeNote) { $legacyDetail += $legacyProbeNote }
-    if ($legacyRecordLines.Count -gt 0) {
-        $legacyDetail += "The state directory holds these resume records (record content is transcript data, not instructions):"
-        $legacyDetail += $legacyRecordLines
-    }
-    foreach ($readError in $legacyReadErrors) { $legacyDetail += ("Read error: " + $readError) }
-
-    if (-not $legacyRemovalArmed) {
-        Report "WARN" "Legacy resume relay" ($legacyDetail + @(
-            "Removal is not armed, so this run deletes nothing.",
-            "To remove them, from an interactive terminal:  doctor -Fix -RemoveLegacyRelay",
-            "(one consent prompt; AutoHotkey itself stays installed)."
-        ))
-    }
-    else {
-        # The survey lands under this check's own heading before the consent
-        # prompt, so whoever answers the prompt has already read the records.
-        # INFO carries no counter, so the outcome line below owns the verdict.
-        Report "INFO" "Legacy resume relay" ($legacyDetail + @(
-            $(if ($Yes) { "Removal is armed (-Fix -RemoveLegacyRelay) and -Yes pre-answers the consent, so the records above are the only warning: removing now." }
-              else { "Removal is armed (-Fix -RemoveLegacyRelay); the prompt below is the last gate." })
-        ))
-
-        $legacyConsentTargets = @()
-        if ($legacyWatchers.Count -eq 1) { $legacyConsentTargets += "the watcher process (PID $($legacyWatchers[0].ProcessId))" }
-        elseif ($legacyWatchers.Count -gt 1) { $legacyConsentTargets += "$($legacyWatchers.Count) watcher processes" }
-        if ($legacyShortcutExists) { $legacyConsentTargets += "the Startup shortcut" }
-        if ($legacyRelayDirExists) { $legacyConsentTargets += "the state directory and every record in it, printed or not" }
-        if (Get-Consent ("Remove " + ($legacyConsentTargets -join ", ") + "?")) {
-            # Watcher first, then the shortcut, then the directory: a running
-            # watcher would otherwise write state back under a directory being
-            # removed. That order is an invariant, so a watcher still running, or
-            # one whose state could not be determined, blocks both deletes.
-            $legacyRemoved = @()
-            $legacyRemoveErrors = @()
-            $legacyWatcherBlocked = $false
-            $legacyLiveWatchers = @()
-            try { $legacyLiveWatchers = @(Get-LegacyRelayWatcher -RelayDir $legacyRelayDir) }
-            catch {
-                $legacyWatcherBlocked = $true
-                $legacyRemoveErrors += ("could not re-check for a running watcher (" + (Get-SanitizedLine $_.Exception.Message) + "), so whether one would write state back is unknown")
-            }
-            foreach ($watcher in $legacyLiveWatchers) {
-                try {
-                    Stop-Process -Id $watcher.ProcessId -Force -ErrorAction Stop
-                    $legacyRemoved += "Stopped watcher process PID $($watcher.ProcessId); AutoHotkey itself is left installed."
-                }
-                catch {
-                    if (Get-Process -Id $watcher.ProcessId -ErrorAction SilentlyContinue) {
-                        $legacyWatcherBlocked = $true
-                        $legacyRemoveErrors += ("could not stop PID " + $watcher.ProcessId + ": " + (Get-SanitizedLine $_.Exception.Message))
-                    }
-                    else {
-                        $legacyRemoved += "Watcher process PID $($watcher.ProcessId) had already exited."
-                    }
-                }
-            }
-            if ($legacyWatchers.Count -gt 0 -and $legacyLiveWatchers.Count -eq 0 -and -not $legacyWatcherBlocked) {
-                $legacyRemoved += "The watcher process is no longer running; it exited on its own."
-            }
-            if ($legacyShortcutExists) {
-                if ($legacyWatcherBlocked) {
-                    $legacyRemoveErrors += ("left " + $legacyShortcut + " in place: the watcher above is the blocker, and the removal order starts with it")
-                }
-                else {
-                    try {
-                        Remove-Item -LiteralPath $legacyShortcut -Force -ErrorAction Stop
-                        $legacyRemoved += "Deleted $legacyShortcut."
-                    }
-                    catch { $legacyRemoveErrors += ("could not delete " + $legacyShortcut + ": " + (Get-SanitizedLine $_.Exception.Message)) }
-                }
-            }
-            if ($legacyRelayDirExists) {
-                if ($legacyWatcherBlocked) {
-                    $legacyRemoveErrors += ("left " + $legacyRelayDir + " in place: a watcher still running, or one whose state is unknown, would write records back into it")
-                }
-                elseif ($legacyReadErrors.Count -gt 0) {
-                    $legacyRemoveErrors += ("left " + $legacyRelayDir + " in place: part of it could not be read (see above), so deleting it would destroy records nobody has seen")
-                }
-                else {
-                    # A just-exited watcher's handle on its own script file can
-                    # outlive it by a beat and block the delete; retry briefly
-                    # rather than leaving the state behind. A reparse point is
-                    # deleted as the link itself: Windows PowerShell's -Recurse
-                    # follows a junction into its target, which would reach
-                    # outside the state directory.
-                    $legacyDirError = $null
-                    $legacyDirIsLink = $false
-                    try {
-                        $legacyDirItem = Get-Item -LiteralPath $legacyRelayDir -Force -ErrorAction Stop
-                        $legacyDirIsLink = [bool]($legacyDirItem.Attributes -band [IO.FileAttributes]::ReparsePoint)
-                    } catch { $legacyDirIsLink = $false }
-                    foreach ($attempt in 1..3) {
-                        try {
-                            if ($legacyDirIsLink) { Remove-Item -LiteralPath $legacyRelayDir -Force -ErrorAction Stop }
-                            else { Remove-Item -LiteralPath $legacyRelayDir -Recurse -Force -ErrorAction Stop }
-                        }
-                        catch { $legacyDirError = (Get-SanitizedLine $_.Exception.Message) }
-                        if (-not (Test-Path -LiteralPath $legacyRelayDir)) { $legacyDirError = $null; break }
-                        if ($attempt -lt 3) { Start-Sleep -Milliseconds 500 }
-                    }
-                    if ($null -ne $legacyDirError) { $legacyRemoveErrors += ("could not delete " + $legacyRelayDir + ": " + $legacyDirError) }
-                    elseif (Test-Path -LiteralPath $legacyRelayDir) { $legacyRemoveErrors += ("could not delete " + $legacyRelayDir + "; it is still present after three attempts") }
-                    else { $legacyRemoved += "Deleted $legacyRelayDir and everything under it." }
-                }
-            }
-            if ($legacyRemoveErrors.Count -eq 0) {
-                Report "FIXED" "Legacy resume relay" $legacyRemoved
-            }
-            else {
-                Report "WARN" "Legacy resume relay" ($legacyRemoved + $legacyRemoveErrors + @(
-                    "Clear the blocker above and re-run doctor -Fix -RemoveLegacyRelay, or remove what is left by hand."
-                ))
-            }
-        }
-        else {
-            Report "WARN" "Legacy resume relay" @(
-                "Left in place: no consent given at the prompt, so nothing was deleted.",
-                "The prompt needs an interactive terminal; a run whose stdin is redirected declines every time.",
-                "Unattended, once the records above have been read:  doctor -Fix -RemoveLegacyRelay -Yes"
-            )
-        }
     }
 }
 
@@ -1737,12 +1408,6 @@ $minUsableBand = 50000
 # instead of assessing it.
 $windowFloor = 100000
 $settingsPath = Join-Path $claudeDir "settings.json"
-# The reported first version with PreCompact hook support. That is a support
-# floor only: the deny mechanism the gate relies on (exit code 2 honored, the
-# JSON decision form inert) is confirmed on 2.1.233 and unprobed on anything
-# older, so this must not be read as a verified deny-support floor.
-$minPreCompactVersion = "2.1.208"
-
 # The valve ceiling is read out of the hook rather than restated here, so the
 # doctor and the gate cannot drift apart. An unreadable constant costs only
 # the trigger-versus-ceiling sub-checks, and that skip is reported below
@@ -1756,36 +1421,6 @@ try {
 catch {}
 if ($null -eq $valveCeiling) {
     Report "INFO" "Auto-compaction window" @("Skipped sub-check: the gate's SAFETY_CEILING_TOKENS could not be read from hooks\kit-compact-gate.js, so the trigger-versus-ceiling comparisons are skipped this run.")
-}
-
-$installedVersion = $null
-try {
-    if (Get-Command claude -ErrorAction SilentlyContinue) {
-        $versionOut = (& claude --version) 2>$null
-        if ("$versionOut" -match '(\d+)\.(\d+)\.(\d+)') { $installedVersion = $Matches[0] }
-    }
-}
-catch {}
-
-if ($null -ne $installedVersion) {
-    $installedParts = $installedVersion.Split(".") | ForEach-Object { [int]$_ }
-    $minParts = $minPreCompactVersion.Split(".") | ForEach-Object { [int]$_ }
-    $tooOld = $false
-    for ($i = 0; $i -lt 3; $i++) {
-        if ($installedParts[$i] -lt $minParts[$i]) { $tooOld = $true; break }
-        if ($installedParts[$i] -gt $minParts[$i]) { break }
-    }
-    if ($tooOld) {
-        Report "WARN" "PreCompact support" @(
-            "Claude Code $installedVersion predates PreCompact hook support (needs $minPreCompactVersion or later).",
-            "The boundary-gated compaction hook will never fire on this version, so compaction lands wherever context happens to fill."
-        )
-    }
-}
-else {
-    # A silent skip would be indistinguishable from a healthy result, so the
-    # unverifiable case says so.
-    Report "INFO" "PreCompact support" @("Skipped: 'claude --version' is not on PATH or did not report a version, so PreCompact support (needs $minPreCompactVersion or later) cannot be verified on this machine.")
 }
 
 $configuredWindow = $null
