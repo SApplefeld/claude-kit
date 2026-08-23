@@ -14810,6 +14810,118 @@ test('a mutual pair supersedes nothing, while a genuine chain still nominates it
     }
 });
 
+test('a ring of three supersedes nothing, at the length no single hop can see', () => {
+    const store = makeStore();
+    try {
+        const d5 = daysAgo(5);
+        // A ring is the pair at a length no one-hop comparison reaches, and it
+        // asserts exactly as little: every member is replaced by the member
+        // before it, so none of them is the store's current answer. Reading
+        // one as a replacement nominates all three in a single scan, and a
+        // pass acting on that list leaves the fact in none of them.
+        writeMemoryFile(store, 'ring-a.md', '---\nsupersedes: ring-b\n---\n# a\n');
+        writeMemoryFile(store, 'ring-b.md', '---\nsupersedes: ring-c\n---\n# b\n');
+        writeMemoryFile(store, 'ring-c.md', '---\nsupersedes: ring-a\n---\n# c\n');
+        // The control, as the pair case carries one: a chain of the same
+        // length is not a ring, and each of its hops is a genuine
+        // replacement, so its replaced records are still nominated.
+        writeMemoryFile(store, 'chain-x.md', '# x\n');
+        writeMemoryFile(store, 'chain-y.md', '---\nsupersedes: chain-x\n---\n# y\n');
+        writeMemoryFile(store, 'chain-z.md', '---\nsupersedes: chain-y\n---\n# z\n');
+        writeMemoryFile(store, 'MEMORY.md', '# Memory Index\n\n'
+            + '- [A](ring-a.md) - the first ring member\n'
+            + '- [B](ring-b.md) - the second ring member\n'
+            + '- [C](ring-c.md) - the third ring member\n'
+            + '- [X](chain-x.md) - the oldest chain record\n'
+            + '- [Y](chain-y.md) - the middle chain record\n'
+            + '- [Z](chain-z.md) - the newest chain record\n');
+        for (const name of ['ring-a.md', 'ring-b.md', 'ring-c.md',
+            'chain-x.md', 'chain-y.md', 'chain-z.md']) {
+            setMtime(store, name, d5);
+        }
+        const columns = '  idle 5d  applied never  edited ' + dateOf(d5) + '  read never';
+
+        const scan = run(store, ['decay-scan']);
+        assert.strictEqual(scan.status, 0, scan.stderr);
+        assert.strictEqual(scan.stdout,
+            'archive  chain-x' + columns + '  superseded by chain-y\n'
+            + 'archive  chain-y' + columns + '  superseded by chain-z\n',
+            'the chain nominates its two replaced records and the ring nominates none');
+
+        const recalled = run(store, ['recall']);
+        assert.strictEqual(recalled.status, 0, recalled.stderr);
+        for (const member of ['ring-a', 'ring-b', 'ring-c']) {
+            assert.ok(!new RegExp('  ' + member + '  .*superseded').test(recalled.stdout),
+                member + ' carries no label: ' + recalled.stdout);
+        }
+        const found = run(store, ['find', 'ring', '--memories']);
+        assert.strictEqual(found.status, 0, found.stderr);
+        assert.ok(!found.stdout.includes('superseded'),
+            'and no find line labels a ring member: ' + found.stdout);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a pointer from outside a ring still labels the member it names', () => {
+    const store = makeStore();
+    try {
+        const d5 = daysAgo(5);
+        // What a ring costs is its own members' labels and nothing else. A
+        // record whose chain enters a ring but never returns to it is not on
+        // one: it asserts a replacement the store can act on, and dropping it
+        // with the ring would lose a live successor's claim to a defect two
+        // hops away from it.
+        writeMemoryFile(store, 'ring-a.md', '---\nsupersedes: ring-b\n---\n# a\n');
+        writeMemoryFile(store, 'ring-b.md', '---\nsupersedes: ring-c\n---\n# b\n');
+        writeMemoryFile(store, 'ring-c.md', '---\nsupersedes: ring-a\n---\n# c\n');
+        writeMemoryFile(store, 'outside-x.md', '---\nsupersedes: ring-a\n---\n# x\n');
+        // Two outside pointers, one sorting ahead of the ring and one behind
+        // it, because the pass settles names in the tier's own name order:
+        // the first meets the ring as an unwalked chain and the second meets
+        // it as ground already covered, and both have to keep their claim.
+        writeMemoryFile(store, 'z-outside.md', '---\nsupersedes: ring-b\n---\n# z\n');
+        writeMemoryFile(store, 'MEMORY.md', '# Memory Index\n\n'
+            + '- [A](ring-a.md) - the first ring member\n'
+            + '- [B](ring-b.md) - the second ring member\n'
+            + '- [C](ring-c.md) - the third ring member\n'
+            + '- [X](outside-x.md) - the outside record\n'
+            + '- [Z](z-outside.md) - the later outside record\n');
+        for (const name of ['ring-a.md', 'ring-b.md', 'ring-c.md',
+            'outside-x.md', 'z-outside.md']) {
+            setMtime(store, name, d5);
+        }
+        const columns = '  idle 5d  applied never  edited ' + dateOf(d5) + '  read never';
+
+        const recalled = run(store, ['recall']);
+        assert.strictEqual(recalled.status, 0, recalled.stderr);
+        assert.strictEqual(recalled.stdout,
+            'outcomes journal: 0 keys\n'
+            + 'archive: 0 records\n'
+            + 'type tier: none declared\n'
+            + 'operator tier: no memory-operator/ directory\n'
+            + 'project tier: 5 records\n'
+            + 'project  outside-x  applied never  alive 5d  the outside record\n'
+            + 'project  ring-a  applied never  alive 5d  superseded by outside-x'
+            + '  the first ring member\n'
+            + 'project  ring-b  applied never  alive 5d  superseded by z-outside'
+            + '  the second ring member\n'
+            + 'project  ring-c  applied never  alive 5d  the third ring member\n'
+            + 'project  z-outside  applied never  alive 5d  the later outside record\n',
+            'each outside pointer labels its target and no ring pointer labels anything');
+
+        // Each labeled member is nominated on the outside pointer alone, and
+        // the member no outside pointer names is not nominated at all.
+        const scan = run(store, ['decay-scan']);
+        assert.strictEqual(scan.status, 0, scan.stderr);
+        assert.strictEqual(scan.stdout,
+            'archive  ring-a' + columns + '  superseded by outside-x\n'
+            + 'archive  ring-b' + columns + '  superseded by z-outside\n');
+    } finally {
+        rmStore(store);
+    }
+});
+
 test('the same name in two tiers is two records: the label lands where the successor is', () => {
     const store = makeStore();
     try {
@@ -14868,6 +14980,53 @@ test('a label names its successors up to the cap and counts the rest', () => {
             'target-fact  []  the replaced fact  superseded by successor-five,'
             + ' successor-four, successor-one, successor-three, and 1 more\n'
             + REMINDER + '\n');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('get\'s successor note caps and counts the same way, and says how many replace the body', () => {
+    const store = makeStore();
+    try {
+        const body = '# target\n\nwas right when it was written.\n';
+        writeMemoryFile(store, 'target-fact.md', body);
+        const index = ['# Memory Index', '', '- [Target](target-fact.md) - the replaced fact'];
+        for (const n of ['one', 'two', 'three', 'four', 'five']) {
+            writeMemoryFile(store, 'successor-' + n + '.md',
+                '---\nsupersedes: target-fact\n---\n# ' + n + '\n');
+            index.push('- [' + n + '](successor-' + n + '.md) - a replacement');
+        }
+        writeMemoryFile(store, 'MEMORY.md', index.join('\n') + '\n');
+
+        // The note names four in codepoint order and counts the fifth, the
+        // cap every line carrying names from this map answers to, and the
+        // sentence agrees with the count rather than with the shown names.
+        const many = run(store, ['get', 'target-fact']);
+        assert.strictEqual(many.status, 0, many.stderr);
+        assert.strictEqual(many.stdout, body, 'a replaced fact is still served whole');
+        assert.strictEqual(many.stderr, 'memq: \'target-fact\' is superseded by'
+            + ' \'successor-five\', \'successor-four\', \'successor-one\','
+            + ' \'successor-three\', and 1 more in the same tier:'
+            + ' this body is the record they replace\n');
+
+        // Under the cap the remainder clause is absent entirely, and the
+        // plural still follows the count.
+        for (const n of ['one', 'three', 'five']) {
+            fs.unlinkSync(path.join(store.memDir, 'successor-' + n + '.md'));
+        }
+        const two = run(store, ['get', 'target-fact']);
+        assert.strictEqual(two.status, 0, two.stderr);
+        assert.strictEqual(two.stderr, 'memq: \'target-fact\' is superseded by'
+            + ' \'successor-four\', \'successor-two\' in the same tier:'
+            + ' this body is the record they replace\n');
+
+        // One successor takes the singular, the branch the plural is read
+        // against.
+        fs.unlinkSync(path.join(store.memDir, 'successor-four.md'));
+        const one = run(store, ['get', 'target-fact']);
+        assert.strictEqual(one.status, 0, one.stderr);
+        assert.strictEqual(one.stderr, 'memq: \'target-fact\' is superseded by'
+            + ' \'successor-two\' in the same tier: this body is the record it replaces\n');
     } finally {
         rmStore(store);
     }
@@ -15256,6 +15415,42 @@ test('a pointer that would close a mutual pair is refused, naming both records',
         // sequence of replacements and stays writable.
         assert.strictEqual(runHome(store, ['add-operator', 'newer-op', 'the newer op',
             '--supersedes', 'new-op']).status, 0);
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+test('a target whose frontmatter cannot be read is refused, not admitted as pointing nowhere', (t) => {
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        // The pair check asks what the target already supersedes, and a read
+        // that fails answers 'nothing' in the same shape a record with no
+        // pointer does. Admitting the write on that answer is the module's
+        // one forbidden move on an unreadable path: it would close the exact
+        // pair this gate exists to refuse, on evidence nobody has.
+        const typeDir = typeDirPath(store, 'ptype');
+        assert.strictEqual(runHome(store,
+            ['add-type', 'ptype', 'live-fact', 'the live fact']).status, 0);
+        const indexBefore = fs.readFileSync(path.join(typeDir, 'MEMORY.md'), 'utf8');
+
+        const blind = runHome(store, ['add-type', 'ptype', 'new-fact', 'the new fact',
+            '--supersedes', 'live-fact'],
+        { NODE_OPTIONS: refuseFileReadPreload(store.proj, 'live-fact.md') });
+        assert.strictEqual(blind.status, 1, blind.stdout);
+        assert.match(blind.stderr,
+            /'live-fact' in type 'ptype' could not be read, so --supersedes will not name it/);
+        assert.match(blind.stderr, /whether it already supersedes 'new-fact' is unknown/);
+        assert.ok(!/usage: memq/.test(blind.stderr), blind.stderr);
+        assert.ok(!fs.existsSync(path.join(typeDir, 'new-fact.md')), 'nothing was written');
+        assert.strictEqual(fs.readFileSync(path.join(typeDir, 'MEMORY.md'), 'utf8'), indexBefore);
+
+        // The known-answer control: the same command against the same target
+        // with the read working is admitted, so the refusal is about the
+        // failed read and not about the target.
+        const ok = runHome(store, ['add-type', 'ptype', 'new-fact', 'the new fact',
+            '--supersedes', 'live-fact']);
+        assert.strictEqual(ok.status, 0, ok.stderr);
     } finally {
         rmHomeStore(store);
     }

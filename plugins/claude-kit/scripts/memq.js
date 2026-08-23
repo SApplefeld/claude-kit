@@ -1994,6 +1994,43 @@ function supersedesName(value) {
     return isMemoryFilename(name + '.md') ? name : null;
 }
 
+// The names sitting on a cycle of a tier's pointer graph, given that graph as
+// a name-to-target map. A record carries at most one `supersedes:` value, so
+// the graph is functional: every name has one way out, a walk from any name
+// is a single path, and that path either runs out at a name holding no
+// pointer or closes back on a name it already passed. Cycles cannot share a
+// name, and each name needs walking once, so the whole answer is one pass
+// with a position map: the suffix of the walk from the repeat to its end is
+// the cycle, and every name on the walk is settled either way. That bound is
+// what a hand-written store earns rather than assumes, since nothing stops a
+// file from being one link of a chain thousands long, and it is why the walk
+// is a loop rather than a recursion. No file is opened here: the map holds
+// every pointer the listing already read.
+function cycleKeys(pointsAt) {
+    const onCycle = new Set();
+    const settled = new Set();
+    for (const start of pointsAt.keys()) {
+        if (settled.has(start)) continue;
+        const walk = [];
+        const stepOf = new Map();
+        let at = start;
+        // Stop at a name already settled by an earlier walk: its own cycle
+        // membership is decided, and this walk reaching it says nothing about
+        // this walk's names, which is the case of a pointer into a ring from
+        // outside one.
+        while (at !== undefined && !settled.has(at) && !stepOf.has(at)) {
+            stepOf.set(at, walk.length);
+            walk.push(at);
+            at = pointsAt.get(at);
+        }
+        if (at !== undefined && stepOf.has(at)) {
+            for (let i = stepOf.get(at); i < walk.length; i++) onCycle.add(walk[i]);
+        }
+        for (const key of walk) settled.add(key);
+    }
+    return onCycle;
+}
+
 // One tier's inverse of that pointer: `successors`, each superseded name
 // keyed the way the platform's filesystem compares it, to the names of the
 // live records pointing at it in the tier's own name order, and `names`,
@@ -2018,14 +2055,16 @@ function supersedesName(value) {
 // A's label names B and B's names C, so a reader follows a chain a hop at a
 // time rather than being handed an endpoint the store never asserted.
 //
-// A cycle is dropped, on both of the two shapes a pointer can make one: a
-// mutual pair each naming the other, and a record naming itself, which is
-// that pair with one file playing both halves. Neither says a record has
-// been replaced, and the cost of reading them as if they did is not a
-// mislabel but a store that loses a fact: one scan nominates both halves of
-// a pair for archive, and a pass acting on that list leaves the fact in
-// neither. A longer chain is not a cycle and keeps its labels, because each
-// hop of one is a genuine replacement.
+// A cycle is dropped whole, at every length: a record naming itself, a
+// mutual pair each naming the other, a ring of any size. None of them says a
+// record has been replaced, since every member is replaced by the member
+// before it and so none of them is the store's current answer, and the cost
+// of reading one as if it did is not a mislabel but a store that loses a
+// fact: one scan nominates every member for archive, and a pass acting on
+// that list leaves the fact in none of them. A pointer from outside a ring
+// into it is not on a cycle and still labels the member it names, and a chain
+// that never closes keeps every label it makes, because each hop of one is a
+// genuine replacement.
 function supersededSuccessors(memories) {
     const names = new Set();
     const records = [];
@@ -2039,12 +2078,14 @@ function supersededSuccessors(memories) {
     }
     const pointsAt = new Map();
     for (const r of records) pointsAt.set(r.key, r.target);
+    const onCycle = cycleKeys(pointsAt);
     const successors = new Map();
     for (const r of records) {
-        // One test covers both cycle shapes: a record naming itself is the
-        // pair where the two halves are one file, and its target points back
-        // at it by being it.
-        if (pointsAt.get(r.target) === r.key) continue;
+        // A record on a cycle asserts no replacement, so it contributes no
+        // label. Membership is the whole test: a record whose chain runs into
+        // a ring without returning to it is not a member and its pointer
+        // stands.
+        if (onCycle.has(r.key)) continue;
         const at = successors.get(r.target);
         if (at === undefined) successors.set(r.target, [r.name]);
         else at.push(r.name);
@@ -2091,8 +2132,17 @@ function supersededBy(map, name, archived) {
 function supersededLabel(map, name, archived) {
     const successors = supersededBy(map, name, archived);
     if (successors === null) return '';
+    return '  superseded by ' + supersededNaming(successors, (n) => sanitize(n, NAME_CAP));
+}
+
+// The cap and the counted remainder every surface naming successors shares,
+// `render` being how that surface spells one name. The rule is one rule and
+// so lives in one place: a line and a note disagreeing about how many names
+// they print, or about the wording of the count, would be two accounts of the
+// same tier.
+function supersededNaming(successors, render) {
     const shown = successors.slice(0, SUPERSEDED_SHOWN);
-    return '  superseded by ' + shown.map((n) => sanitize(n, NAME_CAP)).join(', ')
+    return shown.map(render).join(', ')
         + (successors.length > shown.length
             ? ', and ' + (successors.length - shown.length) + ' more' : '');
 }
@@ -3404,12 +3454,10 @@ function cmdGet(argv) {
                         supersededSuccessors(listMemories(rung.supersedesIn)),
                         target, rung.retiredIn !== null);
                     if (successors !== null) {
-                        const shown = successors.slice(0, SUPERSEDED_SHOWN);
                         process.stderr.write('memq: \'' + sanitize(target, NAME_CAP)
                             + '\' is superseded by '
-                            + shown.map((n) => '\'' + sanitize(n, NAME_CAP) + '\'').join(', ')
-                            + (successors.length > shown.length
-                                ? ', and ' + (successors.length - shown.length) + ' more' : '')
+                            + supersededNaming(successors,
+                                (n) => '\'' + sanitize(n, NAME_CAP) + '\'')
                             + ' in the same tier: this body is the record '
                             + (successors.length === 1 ? 'it replaces' : 'they replace') + '\n');
                     }
@@ -8510,11 +8558,20 @@ function archiveShadowNote(name, where, deleteCommand) {
 // off supersededSuccessors, which keys by target: in the state this refuses,
 // the target is the pointer-holder and the name being written is what carries
 // a label. The check is one hop, and it closes the pair rather than the ring:
-// a longer loop, A to B to C to A, is reachable through delete and recreate
-// and would need a walk of the tier this gate does not make. The readers do
-// not catch it either, their own guard being one hop as well, so a ring keeps
-// every label it makes and nominates all of its members. That is the known
-// gap this gate leaves, not a case handed to a layer that handles it.
+// a longer loop, A to B to C to A, is reachable through delete and recreate,
+// and catching one here would cost a walk of the tier's records this gate
+// does not make, bounded anyway by the same lock-free read the paragraph
+// below names. So a longer ring is mintable, through that sequence or through
+// hand-written frontmatter, and it costs nothing: the readers drop every
+// member of a cycle at any length, so a minted ring labels nothing and
+// nominates nothing. The pair is what the one hop buys, and what it buys
+// there is real, because dropping that cycle costs the record being written
+// the label its target's pointer is about to give it.
+//
+// A target whose frontmatter cannot be read is refused rather than treated as
+// pointing nowhere. A failed read and a record with no pointer answer the
+// same way here, and admitting on that answer would close the very pair this
+// gate refuses, on evidence nobody has.
 //
 // What this gate guards is the value as its author typed it, not the tier as
 // it will stand at the write. Every read here is lock-free, so a concurrent
@@ -8547,7 +8604,17 @@ function supersedesTargetRefusal(dir, name, target, where) {
         process.exitCode = 1;
         return true;
     }
-    const back = supersedesName(frontmatterField(targetPath, 'supersedes'));
+    const field = frontmatterField(targetPath, 'supersedes');
+    if (field === FRONTMATTER_UNREADABLE) {
+        process.stderr.write('memq: \'' + sanitize(target, NAME_CAP) + '\'' + where
+            + ' could not be read, so --supersedes will not name it: whether it already'
+            + ' supersedes \'' + sanitize(name, NAME_CAP) + '\' is unknown, and writing the'
+            + ' pointer on that unknown is how the pair every reader drops gets closed.'
+            + ' Nothing was written\n');
+        process.exitCode = 1;
+        return true;
+    }
+    const back = supersedesName(field);
     if (back !== null && memoryFileKey(back + '.md') === memoryFileKey(name + '.md')) {
         process.stderr.write('memq: \'' + sanitize(target, NAME_CAP) + '\' already supersedes \''
             + sanitize(name, NAME_CAP) + '\'' + where + ', so a pointer back at it would leave'

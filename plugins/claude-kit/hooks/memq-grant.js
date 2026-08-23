@@ -469,7 +469,10 @@ function grantable(p) {
     // which is granted and prints it by name, and demote in one further
     // command exactly the records the operator marked as the ones not to
     // touch. Withholding here is what keeps the pin the boundary it is on
-    // every other granted path.
+    // every other granted path of the CLI. A worker's own file tools write
+    // the field by hand without meeting this screen at all, which is the
+    // residual the security model records against the destination block
+    // rather than one a command screen can close.
     if (screensFlag(w, '--supersedes')) return false;
     // --rollup is withheld on how much it destroys, not on where the copy
     // goes: it replaces each expired journal group with one synthetic tally
