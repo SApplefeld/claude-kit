@@ -410,17 +410,19 @@ function grantable(p) {
     if (!samePath(path.resolve(target), MEMQ)) return false;
 
     // The grant covers what a fleet worker needs, which is not everything the
-    // CLI can do. Four of the shapes it withholds are ones memq itself also
+    // CLI can do. Five of the shapes it withholds are ones memq itself also
     // refuses under the store signals, so for those this screen is a second
     // lock: the two delete verbs, which remove a shared-tier record outright;
     // an --update carrying a body, which replaces one whole and keeps the text
-    // it replaces only in a local .bak the sync never carries; and --body-file
-    // anywhere, which reads a caller-named path into the store. Two more are
-    // withheld here alone, with no second layer behind them: find, which loads
-    // an embedder out of a directory the command line does not name, and
-    // --rollup, which discards prose no copy survives. None of the six belongs
-    // in a prompt-free allow with no operator in the loop, and the two with no
-    // second lock are the ones a later edit here would silently free.
+    // it replaces only in a local .bak the sync never carries; --body-file
+    // anywhere, which reads a caller-named path into the store; and
+    // --supersedes, which demotes and labels a record no pin protects from it.
+    // Two more are withheld here alone, with no second layer behind them:
+    // find, which loads an embedder out of a directory the command line does
+    // not name, and --rollup, which discards prose no copy survives. None of
+    // the seven belongs in a prompt-free allow with no operator in the loop,
+    // and the two with no second lock are the ones a later edit here would
+    // silently free.
     //
     // This screen is the second lock rather than a move of the first: the CLI
     // evaluates those signals in the child process, this hook evaluates them
@@ -452,14 +454,34 @@ function grantable(p) {
     if (!GRANTED_VERBS.has(w[2])) return false;
     if (screensFlag(w, '--body-file')) return false;
     if (screensFlag(w, '--update') && screensFlag(w, '--body')) return false;
+    // --supersedes is withheld on which records it can reach, not on how much
+    // it does to one. A pin is the operator's own exemption, and every other
+    // way this grant lets a worker push a record down the store's answers
+    // stops at one: archiveTargetsValid refuses a pinned name outright, so
+    // the granted archive flags cannot touch an exempted record, and the
+    // decay pass the scan feeds is bound by the same pin. This flag is not.
+    // Its target is any live record of the tier, pinned or not, and what the
+    // pointer then buys is a rank demotion in the semantic channel plus a
+    // label on every surface that reads the name. So a worker with no
+    // operator in the loop could read the pinned population off decay-scan,
+    // which is granted and prints it by name, and demote in one further
+    // command exactly the records the operator marked as the ones not to
+    // touch. Withholding here is what keeps the pin the boundary it is on
+    // every other granted path.
+    if (screensFlag(w, '--supersedes')) return false;
     // --rollup is withheld on how much it destroys, not on where the copy
     // goes: it replaces each expired journal group with one synthetic tally
     // line and drops the prose of every entry in that group, which is the
     // shape the delete verbs are withheld for. The granted writes bounded the
     // same way are bounded far tighter: a description-only --update rewrites
     // one index line and leaves the record it describes untouched, and
-    // archiving is demotion, with the record still readable by name. So a
-    // bare decay-prune and the archive flags stay granted.
+    // archiving is demotion, refused against a pinned record, with the record
+    // still readable by name afterwards. What bounds it is that pair, the
+    // reversibility and the pin, rather than the demotion class alone: a
+    // demotion no pin can stop is not bounded by this comparison, which is
+    // why --supersedes is screened above rather than read as archiving's
+    // lighter cousin. So a bare decay-prune and the archive flags stay
+    // granted.
     //
     // The cost is real and deliberate: the kit's own close-out runs
     // decay-prune --rollup, and a fleet worker reaching that step loses the

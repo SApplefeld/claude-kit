@@ -11,11 +11,11 @@
 //   memq unstamped [--since <n>d|<n>h]
 //   memq touch <name> --applied [--type|--operator]
 //   memq add-type <type> <name> "<description>" [--tag t]...
-//                 [--body "..."|--body-file "<path>"]
+//                 [--supersedes <name>] [--body "..."|--body-file "<path>"]
 //   memq add-type <type> <name> "<description>" --update
 //                 [(--body "..."|--body-file "<path>") --confirm-shared]
 //   memq add-operator <name> "<description>" [--tag t]... [--machine <name>]
-//                     [--body "..."|--body-file "<path>"]
+//                     [--supersedes <name>] [--body "..."|--body-file "<path>"]
 //   memq add-operator <name> "<description>" --update
 //                     [(--body "..."|--body-file "<path>") --confirm-shared]
 //   memq delete-type <type> <name> --confirm-shared
@@ -1981,9 +1981,13 @@ function pinState(file) {
 // no record here rather than being cut down to whichever one a looser parse
 // happened to take. Absence is the safe answer to every doubt because of
 // what the pointer costs: a label and a rank demotion, never a decision
-// about whether a record lives. Today the field is hand-written frontmatter,
-// like `tags:` and `pinned:`, so this reader is the only gate between what a
-// file says and what a line claims.
+// about whether a record lives. The project tier's field is hand-written
+// frontmatter, like `tags:` and `pinned:`, so for that tier this reader is
+// the only gate between what a file says and what a line claims. The two
+// shared tiers have a second: --supersedes writes the field there, holding
+// its value to this same grammar and its target to a live record of the
+// tier, so what a hand can still write into those files is what a sync from
+// another machine or an edit outside the store's own verbs left.
 function supersedesName(value) {
     if (typeof value !== 'string') return null;
     const name = value.trim();
@@ -2181,11 +2185,11 @@ function usage(problem) {
         + '       memq unstamped [--since <n>d|<n>h]\n'
         + '       memq touch <name> --applied [--type|--operator]\n'
         + '       memq add-type <type> <name> "<description>" [--tag t]...\n'
-        + '                     [--body "..."|--body-file "<path>"]\n'
+        + '                     [--supersedes <name>] [--body "..."|--body-file "<path>"]\n'
         + '       memq add-type <type> <name> "<description>" --update\n'
         + '                     [(--body "..."|--body-file "<path>") --confirm-shared]\n'
         + '       memq add-operator <name> "<description>" [--tag t]... [--machine <name>]\n'
-        + '                         [--body "..."|--body-file "<path>"]\n'
+        + '                         [--supersedes <name>] [--body "..."|--body-file "<path>"]\n'
         + '       memq add-operator <name> "<description>" --update\n'
         + '                         [(--body "..."|--body-file "<path>") --confirm-shared]\n'
         + '       memq delete-type <type> <name> --confirm-shared\n'
@@ -6844,7 +6848,8 @@ function updateIndexDescription(indexPath, name, file, description, options) {
 // body everywhere else in this module and is body here too, which a repair
 // replaces whole. `unread` says that happened, so the caller can say so: the
 // dropped text may have been a block somebody meant, and --update writes no
-// tags and no machine scope, so an author cannot put back what went. Line
+// tags, no machine scope and no supersedes pointer, so an author cannot put
+// back what went. Line
 // endings normalize to the newline every writer here emits, so a record that
 // arrived over a sync with CRLF comes back in the store's own shape rather
 // than half in each. A byte order mark
@@ -6865,8 +6870,9 @@ function recordFrontmatter(raw) {
 // Say that a repair is about to drop a leading '---' block it cannot read as
 // frontmatter. The text is body by this store's own grammar and a repair
 // replaces the body whole, so the write is right; what makes it worth a line
-// is that the author may have meant a block, and --update writes no tags and
-// no machine scope, so nothing here can put back a field that goes. It is
+// is that the author may have meant a block, and --update writes no tags, no
+// machine scope and no supersedes pointer, so nothing here can put back a
+// field that goes. It is
 // said before the rewrite, and it names the backup, because once the rewrite
 // lands the single-generation .bak beside the record is the only place that
 // text still exists. The backup is named as what a landed repair leaves,
@@ -7180,11 +7186,22 @@ function removeUsageStamps(dir, file, options) {
 // meet the identical cap gate, so neither can accept a body the other would
 // refuse. The one environment where the file channel is refused outright is
 // the engine's fleet store, whose reasoning sits with the check below.
+//
+// --supersedes names the record this one replaces, writing a
+// `supersedes: <name>` line into the frontmatter. It is the store's remedy
+// for the record that was right when it was written and has been overtaken,
+// where a delete is the remedy for the never-true one and a body repair for
+// the wrong one: the older fact keeps its record, and the successor's
+// pointer is what labels it, demotes it in search and nominates it to the
+// next decay pass. The name has to be one the tier holds live, checked while
+// the author is still here, because a pointer naming nothing is inert at
+// read time and so costs a silent miss rather than an error.
 function cmdAddType(argv) {
     const positionals = [];
     const tags = [];
     let body;
     let bodyFile;
+    let supersedes;
     let update = false;
     let confirmShared = false;
     for (let i = 0; i < argv.length; i++) {
@@ -7207,6 +7224,14 @@ function cmdAddType(argv) {
             if (v === undefined || v.startsWith('--')) return usage('--body-file needs a value');
             if (bodyFile !== undefined) return usage('--body-file is given once');
             bodyFile = v;
+        } else if (a === '--supersedes') {
+            const v = argv[++i];
+            if (v === undefined || v.startsWith('--')) return usage('--supersedes needs a value');
+            // One pointer, given once, --body's rule: a record replaces one
+            // record here, and a repeat that quietly kept the last value
+            // would drop a claim about the store without a word.
+            if (supersedes !== undefined) return usage('--supersedes is given once');
+            supersedes = v;
         } else if (a === '--update') {
             update = true;
         } else if (a === '--confirm-shared') {
@@ -7235,6 +7260,20 @@ function cmdAddType(argv) {
             return usage('tag must be characters from [A-Za-z0-9_.-], at most ' + TAG_CAP);
         }
     }
+    // A supersedes target is a record name, so it answers the grammar every
+    // record name answers at creation, and it answers it before the tier is
+    // asked whether it holds one: a value no record could be called is a
+    // malformed pointer rather than a missing record, and the author fixes a
+    // different thing in each case. It is also the grammar the reader admits,
+    // so a pointer written here is one the read surfaces can resolve rather
+    // than a line that parses to nothing on the way back out. The charset is
+    // closed for the reason the machine scope closes it: this value lands in
+    // a line-oriented frontmatter block and would otherwise forge further
+    // fields around itself.
+    if (supersedes !== undefined && !isMemoryFilename(supersedes + '.md')) {
+        return usage('supersedes must name a record: characters from [A-Za-z0-9_.-], at most '
+            + (MEMORY_FILE_CAP - 3) + ', and not the memory index');
+    }
     if (body !== undefined && bodyFile !== undefined) {
         return usage('--body and --body-file are two ways to give one body; pass one, not both');
     }
@@ -7245,18 +7284,21 @@ function cmdAddType(argv) {
     // own consent flag, because replacing a body whole is the overwrite this
     // command otherwise refuses: with --confirm-shared it is a deliberate
     // repair, without it, one flag away from silently replacing a fact
-    // another project relies on. Tags stay set at creation on either
-    // reading, since nothing here repairs them.
+    // another project relies on. Tags and a supersedes pointer stay set at
+    // creation on either reading, since nothing here repairs them: a record
+    // needing a different pointer is a delete and a fresh write, because a
+    // pointer changed under a repair would move a claim about which of two
+    // facts the store answers with while the description says nothing of it.
     //
     // Both checks run before the cap gates so a refused command is refused
     // for the flag set it carries, not for the length of a field it may
     // never write: a cap error first would send the author to shorten a body
     // the command was going to refuse regardless.
     const repair = update && (body !== undefined || bodyFile !== undefined);
-    if (update && tags.length > 0) {
-        return usage('--update sets no tags; --tag is set at creation'
-            + ' (--update replaces the index description, and with --body or'
-            + ' --body-file the record body)');
+    if (update && (tags.length > 0 || supersedes !== undefined)) {
+        return usage('--update sets no tags and no supersedes pointer; --tag and --supersedes'
+            + ' are set at creation (--update replaces the index description, and with --body'
+            + ' or --body-file the record body)');
     }
     if (confirmShared && !repair) {
         return usage('--confirm-shared confirms a shared-tier body repair, so it needs'
@@ -7308,6 +7350,29 @@ function cmdAddType(argv) {
             + ' engine store signals (KIT_MEMORY_ROOT with KIT_MEMORY_ROOT_ALLOW_DATA=1). This'
             + ' path crosses no shell wrapper, so --body carries a body of any shape here');
     }
+    // A pointer is refused under the same signals, and on what it can reach
+    // rather than on what it does. Every other way this store lets an
+    // unattended run push a record down its answers stops at a pin:
+    // archiveTargetsValid refuses a pinned name outright, so the retirement
+    // flags cannot touch a record the operator exempted, and the decay pass
+    // is bound by the same field. This flag is not, by section design: a
+    // pinned record superseded by a live successor is labeled, deliberately,
+    // because the pointer is evidence a pin does not answer. That is the
+    // right call with an author present and the wrong one with nobody in the
+    // loop, where a run can read the pinned population off decay-scan and
+    // demote exactly the records the pin marked. The hook withholds the
+    // grant from this flag as well, and the two are not redundant: the hook
+    // judges its own environment and this check judges the child's, and
+    // where they disagree this is the half that binds. Nothing is lost by
+    // refusing: the record still lands, carrying every other field, and the
+    // pointer is one attended command later.
+    if (supersedes !== undefined && storeSignalsPresent()) {
+        return usage('--supersedes demotes and labels a record this store still serves, which'
+            + ' is refused under the engine store signals (KIT_MEMORY_ROOT with'
+            + ' KIT_MEMORY_ROOT_ALLOW_DATA=1): no pin bounds which record a pointer may name,'
+            + ' so the retirement flags\' pin exemption does not bound this one. The record'
+            + ' still lands without it');
+    }
     // The type tier is not the pending tier and this write is not routed
     // into one: the tier a project shares with every other project of its
     // type has its own directory, its own lock, and an index this command
@@ -7333,6 +7398,15 @@ function cmdAddType(argv) {
     if (update && updateTargetUnusable(dir, name, ' in type \'' + sanitize(type, TYPE_CAP) + '\'',
         'delete-type ' + sanitize(type, TYPE_CAP) + ' ' + sanitize(name, NAME_CAP)
         + ' --confirm-shared')) {
+        return;
+    }
+    // The pointer's target is checked here, in the company of the other
+    // reads that answer before the lock: acquireLock mints the tier
+    // directory as a side effect, and a typo must not leave durable shared
+    // state behind. It reads at most two paths, one on the answer that lets
+    // the write through, and writes nothing on any of them.
+    if (supersedes !== undefined && supersedesTargetRefusal(dir, name, supersedes,
+        ' in type \'' + sanitize(type, TYPE_CAP) + '\'')) {
         return;
     }
     // Replacing a body whole is the overwrite this command otherwise refuses,
@@ -7411,6 +7485,12 @@ function cmdAddType(argv) {
     if (!update) {
         const front = [];
         if (tags.length > 0) front.push('tags: ' + tags.join(', '));
+        // `supersedes:` sits with `tags:` rather than with the provenance
+        // lines below because it describes the record's standing, not who
+        // wrote it: what it says is that the store holds a newer answer than
+        // this record's predecessor, which is a fact about the tier that
+        // outlives the session that noticed it.
+        if (supersedes !== undefined) front.push('supersedes: ' + supersedes);
         for (const line of provenanceLines()) front.push(line);
         if (front.length > 0) content += '---\n' + front.join('\n') + '\n---\n';
         content += '# ' + name + '\n\n' + stored + '\n';
@@ -7458,9 +7538,10 @@ function cmdAddType(argv) {
     try {
         // The update path first: it requires exactly the state the create
         // path refuses. Without a body flag the memory file is never opened,
-        // so the repair cannot disturb a body, tags, or provenance; with one
-        // the file is rebuilt around its own frontmatter, so a repair still
-        // cannot disturb tags or provenance. Either way only the description
+        // so the repair cannot disturb a body, tags, a supersedes pointer or
+        // provenance; with one the file is rebuilt around its own
+        // frontmatter, so a repair still cannot disturb any of the three
+        // fields it does not write. Either way only the description
         // and the body move, under the same lock and backup as every other
         // rewrite here.
         if (update) {
@@ -7618,9 +7699,16 @@ function cmdAddType(argv) {
     // wrong. A count the author can compare against what they composed is the
     // whole signal available, and it costs one number on a line they already
     // read.
+    //
+    // The pointer rides beside the count when the record carries one: it is
+    // a claim about a second record, made in a flag and readable afterwards
+    // only inside the file, so the line that reports the write is where its
+    // author sees which name it landed against.
     process.stdout.write('added ' + sanitize(name, NAME_CAP)
         + ' to type ' + sanitize(type, TYPE_CAP)
-        + ' (body ' + stored.length + ' chars)\n');
+        + ' (body ' + stored.length + ' chars'
+        + (supersedes === undefined ? '' : ', superseding ' + sanitize(supersedes, NAME_CAP))
+        + ')\n');
     if (shadowed) {
         archiveShadowNote(name, ' in type \'' + sanitize(type, TYPE_CAP) + '\'',
             'delete-type ' + sanitize(type, TYPE_CAP) + ' ' + sanitize(name, NAME_CAP)
@@ -7657,12 +7745,16 @@ function cmdAddType(argv) {
 // fact, which is why there is no fourth tier for one: such a fact syncs and
 // stays readable on every machine, labelled rather than withheld, because a
 // session working that box remotely wants exactly the facts about it.
+//
+// --supersedes names the live record of this tier that this one replaces,
+// add-type's flag under add-type's rule and for add-type's reasons.
 function cmdAddOperator(argv) {
     const positionals = [];
     const tags = [];
     let body;
     let bodyFile;
     let machine;
+    let supersedes;
     let update = false;
     let confirmShared = false;
     for (let i = 0; i < argv.length; i++) {
@@ -7686,7 +7778,19 @@ function cmdAddOperator(argv) {
         } else if (a === '--machine') {
             const v = argv[++i];
             if (v === undefined || v.startsWith('--')) return usage('--machine needs a value');
+            // One scope, given once, the rule every single-value flag here
+            // takes: a fact is true of one box, and a repeat that kept the
+            // last value would file it against a box the author did not mean
+            // and say nothing about the one they did.
+            if (machine !== undefined) return usage('--machine is given once');
             machine = v;
+        } else if (a === '--supersedes') {
+            const v = argv[++i];
+            if (v === undefined || v.startsWith('--')) return usage('--supersedes needs a value');
+            // One pointer, given once, add-type's rule: a repeat that quietly
+            // kept the last value would drop a claim about the store.
+            if (supersedes !== undefined) return usage('--supersedes is given once');
+            supersedes = v;
         } else if (a === '--update') {
             update = true;
         } else if (a === '--confirm-shared') {
@@ -7724,6 +7828,15 @@ function cmdAddOperator(argv) {
     if (machine !== undefined && (!/^[\w.-]+$/.test(machine) || machine.length > MACHINE_CAP)) {
         return usage('machine must be characters from [A-Za-z0-9_.-], at most ' + MACHINE_CAP);
     }
+    // A supersedes target answers the record-name grammar before the tier is
+    // asked whether it holds one, add-type's rule and its reasons: a value no
+    // record could be called is a malformed pointer rather than a missing
+    // record, the reader admits exactly this grammar, and the charset closed
+    // here is what keeps the value from forging further frontmatter fields.
+    if (supersedes !== undefined && !isMemoryFilename(supersedes + '.md')) {
+        return usage('supersedes must name a record: characters from [A-Za-z0-9_.-], at most '
+            + (MEMORY_FILE_CAP - 3) + ', and not the memory index');
+    }
     if (body !== undefined && bodyFile !== undefined) {
         return usage('--body and --body-file are two ways to give one body; pass one, not both');
     }
@@ -7735,12 +7848,14 @@ function cmdAddOperator(argv) {
     // length of a field it may never write. A machine scope sits with the
     // tags rather than with the body, because it says what the fact is true
     // of and a repair that silently rescoped a fact to another box would be a
-    // different fact wearing the same name.
+    // different fact wearing the same name. A supersedes pointer is refused
+    // on the same reading, add-type's reason: it says which of two records
+    // the store answers with, which a description repair says nothing of.
     const repair = update && (body !== undefined || bodyFile !== undefined);
-    if (update && (tags.length > 0 || machine !== undefined)) {
-        return usage('--update sets no tags and no machine scope; --tag and --machine are set'
-            + ' at creation (--update replaces the index description, and with --body or'
-            + ' --body-file the record body)');
+    if (update && (tags.length > 0 || machine !== undefined || supersedes !== undefined)) {
+        return usage('--update sets no tags, no machine scope and no supersedes pointer;'
+            + ' --tag, --machine and --supersedes are set at creation (--update replaces the'
+            + ' index description, and with --body or --body-file the record body)');
     }
     if (confirmShared && !repair) {
         return usage('--confirm-shared confirms a shared-tier body repair, so it needs'
@@ -7766,6 +7881,18 @@ function cmdAddOperator(argv) {
             + ' engine store signals (KIT_MEMORY_ROOT with KIT_MEMORY_ROOT_ALLOW_DATA=1). This'
             + ' path crosses no shell wrapper, so --body carries a body of any shape here');
     }
+    // A pointer is refused under the same signals for add-type's reason: the
+    // pin that bounds every other demotion an unattended run can reach here,
+    // the retirement flags included, does not bound which record a pointer
+    // may name. The hook withholds the grant from the flag as well, and this
+    // is the half that binds where the two environments disagree.
+    if (supersedes !== undefined && storeSignalsPresent()) {
+        return usage('--supersedes demotes and labels a record this store still serves, which'
+            + ' is refused under the engine store signals (KIT_MEMORY_ROOT with'
+            + ' KIT_MEMORY_ROOT_ALLOW_DATA=1): no pin bounds which record a pointer may name,'
+            + ' so the retirement flags\' pin exemption does not bound this one. The record'
+            + ' still lands without it');
+    }
     // A run's write lands in the shared tier like any other, carrying the
     // provenance that says which run authored it, add-type's rule: the
     // operator tier has its own directory, its own lock, and an index this
@@ -7783,6 +7910,13 @@ function cmdAddOperator(argv) {
     }
     if (update && updateTargetUnusable(dir, name, ' in the operator tier',
         'delete-operator ' + sanitize(name, NAME_CAP) + ' --confirm-shared')) {
+        return;
+    }
+    // The pointer's target is checked among the reads that answer before the
+    // lock, add-type's reason: acquireLock mints the tier directory, and a
+    // typo must not leave durable shared state behind.
+    if (supersedes !== undefined && supersedesTargetRefusal(dir, name, supersedes,
+        ' in the operator tier')) {
         return;
     }
     // The consent flag a body repair carries, answered where add-type answers
@@ -7861,6 +7995,12 @@ function cmdAddOperator(argv) {
         // line, and the absent field is the common case, since most operator
         // facts are true of the operator rather than of a box.
         if (machine !== undefined) front.push('machine: ' + machine);
+        // `supersedes:` sits here for the same reason the scope above does:
+        // it describes the record's standing rather than its authorship,
+        // saying that the store holds a newer answer than this record's
+        // predecessor, which stays true of the tier long after the session
+        // that wrote it.
+        if (supersedes !== undefined) front.push('supersedes: ' + supersedes);
         for (const line of provenanceLines()) front.push(line);
         if (front.length > 0) content += '---\n' + front.join('\n') + '\n---\n';
         content += '# ' + name + '\n\n' + stored + '\n';
@@ -7901,9 +8041,10 @@ function cmdAddOperator(argv) {
     try {
         // The update path first: it requires exactly the state the create
         // path refuses. Without a body flag the memory file is never opened,
-        // so the repair cannot disturb a body, tags, or a machine scope; with
-        // one the file is rebuilt around its own frontmatter, so a repair
-        // still cannot disturb the tags or the scope. Either way only the
+        // so the repair cannot disturb a body, tags, a machine scope or a
+        // supersedes pointer; with one the file is rebuilt around its own
+        // frontmatter, so a repair still cannot disturb the tags, the scope
+        // or the pointer. Either way only the
         // description and the body move, under the same lock and backup as
         // every other rewrite here.
         if (update) {
@@ -8049,9 +8190,13 @@ function cmdAddOperator(argv) {
     warnUnregisteredTags(tags, 'recorded');
     // The stored body's length rides on the success line for add-type's
     // reason: a body cut in the shell arrives here indistinguishable from one
-    // composed short, so the count is the author's only check.
+    // composed short, so the count is the author's only check. The pointer
+    // rides beside it for add-type's reason: the line that reports the write
+    // is where its author sees the claim it makes about a second record.
     process.stdout.write('added ' + sanitize(name, NAME_CAP) + ' to the operator tier'
-        + ' (body ' + stored.length + ' chars)\n');
+        + ' (body ' + stored.length + ' chars'
+        + (supersedes === undefined ? '' : ', superseding ' + sanitize(supersedes, NAME_CAP))
+        + ')\n');
     if (shadowed) {
         archiveShadowNote(name, ' in the operator tier',
             'delete-operator ' + sanitize(name, NAME_CAP) + ' --confirm-shared');
@@ -8264,7 +8409,8 @@ function deleteRefusedByStoreSignals(verb) {
 // writes, unlinks or reports a name as empty asks nonRecordRefusal first, which
 // separates the two and refuses the second: deleteSharedRecord and
 // noCopyPresent for both of a name's paths, updateTargetUnusable for the record
-// it is about to repair, and both create paths for the name they are about to
+// it is about to repair, supersedesTargetRefusal for the record a pointer
+// names, and both create paths for the name they are about to
 // take. The callers left reading this answer alone are the ones whose false
 // branch only withholds a line of prose: archiveHoldsRetired and
 // archiveShadowNote's presence question, updateTargetMissing's choice of which
@@ -8310,11 +8456,15 @@ function nonRecordKind(filePath) {
     return { phrase: 'not a plain file', code: null };
 }
 
-// Whether the tier's archive already holds a record of this name, read under
-// the caller's lock before it writes. The create proceeds either way, because
-// a name coming back is ordinary; what it must not do is come back silently.
-// Under --update the same state is a refusal instead, because there the
-// caller believes they are editing the record that is gone.
+// Whether the tier's archive already holds a record of this name. The create
+// paths read it under the lock they are about to write with: the create
+// proceeds either way, because a name coming back is ordinary, and what it
+// must not do is come back silently. Under --update the same state is a
+// refusal instead, because there the caller believes they are editing the
+// record that is gone. The pointer gate reads it lock-free, which it may
+// because both of its answers only withhold: a refusal writes nothing, and
+// the answer that lets a write through is about a second record the write
+// never touches.
 function archiveHoldsRetired(dir, name) {
     return regularFile(path.join(dir, ARCHIVE_DIR, name + '.md'));
 }
@@ -8334,6 +8484,75 @@ function archiveShadowNote(name, where, deleteCommand) {
         + ', so the tier now holds two records of that name and the new one inherits the'
         + ' retired one\'s usage stamps; '
         + sharedDeleteRemedy(deleteCommand, 'removes the retired copy') + '\n');
+}
+
+// The gate a --supersedes target answers before the record naming it is
+// written: true refuses the command and says why, and neither answer writes
+// anything. It is the typo guard, and this is the only moment one can be
+// caught, because a pointer naming nothing is inert at read time: no reader
+// ever looks the missing name up, so the record ships claiming to replace
+// something and no surface ever says otherwise. The author is here now.
+//
+// A name only the tier's archive holds is refused on its own terms rather
+// than as an absence, because the two are different mistakes. What the
+// pointer asserts is that a live record replaces an older one, and a retired
+// record is already out of the answers the store gives, so nothing about it
+// needs replacing; an author who meant the live name needs to hear which
+// half of the tier answered rather than being told the name does not exist
+// where they can see that it does.
+//
+// The pair a pointer would close is refused with them. Where the target
+// already supersedes the name being written, the two records name each
+// other, and a cycle asserts no replacement, so the readers drop it whole:
+// the new pointer would be inert and the target would lose the label and the
+// archive nomination it carries now, which is a fact lost rather than a
+// mislabel. The check is one hop, and it closes the pair rather than the
+// ring: a longer loop, A to B to C to A, is reachable through delete and
+// recreate and would need a walk of the tier this gate does not make, so the
+// readers' own cycle rule stays the answer for it.
+//
+// What this gate guards is the value as its author typed it, not the tier as
+// it will stand at the write. Every read here is lock-free, so a concurrent
+// delete can retire the target afterwards and leave the dangling pointer the
+// read surfaces already treat as inert. That is the bound of the claim: a
+// typo caught while the author can still fix it.
+//
+// The presence answers come from regularFile and archiveHoldsRetired, which
+// both conflate an absent name with a path that could not be examined, so
+// nonRecordRefusal answers first. This caller's false branch reports a name
+// as empty, which is the half of that rule that decides the question: the
+// one thing a caller must not be told is that nothing is there.
+function supersedesTargetRefusal(dir, name, target, where) {
+    const targetPath = path.join(dir, target + '.md');
+    // creating: false. This name is one a record has to already stand at, so
+    // its fate as a place to create one is no part of the answer; the create
+    // path raises that about the name it is taking.
+    if (nonRecordRefusal(targetPath, target, where, '--supersedes', false)) return true;
+    if (!regularFile(targetPath)) {
+        if (archiveHoldsRetired(dir, target)) {
+            process.stderr.write('memq: \'' + sanitize(target, NAME_CAP) + '\' is retired'
+                + where + ' rather than live, so --supersedes will not name it: a pointer says'
+                + ' a live record replaces an older one, and a retired record is already out'
+                + ' of the store\'s answers. Nothing was written\n');
+        } else {
+            process.stderr.write('memq: \'' + sanitize(target, NAME_CAP) + '\' is no record'
+                + where + ', so --supersedes will not name it: a pointer names the live record'
+                + ' this one replaces. Nothing was written\n');
+        }
+        process.exitCode = 1;
+        return true;
+    }
+    const back = supersedesName(frontmatterField(targetPath, 'supersedes'));
+    if (back !== null && memoryFileKey(back + '.md') === memoryFileKey(name + '.md')) {
+        process.stderr.write('memq: \'' + sanitize(target, NAME_CAP) + '\' already supersedes \''
+            + sanitize(name, NAME_CAP) + '\'' + where + ', so a pointer back at it would leave'
+            + ' the two naming each other: a pair asserts no replacement, so every reader drops'
+            + ' both halves and \'' + sanitize(target, NAME_CAP) + '\' loses the label and the'
+            + ' archive nomination it carries now. Nothing was written\n');
+        process.exitCode = 1;
+        return true;
+    }
+    return false;
 }
 
 // Refuse a write against a path that is not a plain file, answering whether

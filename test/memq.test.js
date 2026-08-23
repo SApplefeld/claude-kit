@@ -6688,21 +6688,28 @@ test('--update refuses the fields it does not repair, and refuses a body without
         assert.strictEqual(run(store, ['add-operator', 'a-fact', 'a description']).status, 0);
         // The fields nothing here repairs are refused on either reading of
         // --update, consent flag or not: a tag or a machine scope arriving
-        // with a repair would be a different fact wearing the same name.
-        for (const extra of [['--tag', 'sql'], ['--machine', 'BOX']]) {
+        // with a repair would be a different fact wearing the same name, and
+        // a supersedes pointer would move which of two records the store
+        // answers with while the description says nothing of it. This is the
+        // table for that field set, so a field added to the create path
+        // without a refusal here fails on the entry it is missing.
+        for (const extra of [['--tag', 'sql'], ['--machine', 'BOX'],
+            ['--supersedes', 'a-fact']]) {
             for (const consent of [[], ['--confirm-shared']]) {
                 const args = ['add-operator', 'a-fact', 'new words', '--update']
                     .concat(extra, consent);
                 const res = run(store, args);
                 assert.strictEqual(res.status, 1, extra[0] + ' alongside --update is refused');
-                assert.match(res.stderr, /--update sets no tags and no machine scope/);
+                assert.match(res.stderr,
+                    /--update sets no tags, no machine scope and no supersedes pointer/);
             }
         }
         for (const consent of [[], ['--confirm-shared']]) {
             const typeSide = run(store,
                 ['add-type', 'ptype', 'a-fact', 'words', '--update', '--tag', 'sql'].concat(consent));
             assert.strictEqual(typeSide.status, 1, '--tag alongside --update is refused on add-type');
-            assert.match(typeSide.stderr, /--update sets no tags; --tag is set at creation/);
+            assert.match(typeSide.stderr,
+                /--update sets no tags and no supersedes pointer; --tag and --supersedes are set/);
         }
 
         // A doomed command is refused for its flag set rather than for the
@@ -10850,6 +10857,14 @@ test('a machine name outside the identifier charset is refused with nothing writ
         const noValue = run(store, ['add-operator', 'a-fact', 'desc', '--machine', '--tag']);
         assert.notStrictEqual(noValue.status, 0);
         assert.match(noValue.stderr, /--machine needs a value/);
+        // And a second scope is refused rather than quietly replacing the
+        // first: a fact is true of one box, so the last value winning would
+        // file it against a box the author did not name.
+        const twice = run(store, ['add-operator', 'a-fact', 'desc',
+            '--machine', 'BOX', '--machine', 'OTHER']);
+        assert.notStrictEqual(twice.status, 0);
+        assert.match(twice.stderr, /--machine is given once/);
+        assert.ok(!fs.existsSync(path.join(dir, 'a-fact.md')), 'nothing was written');
         assert.ok(!fs.existsSync(path.join(dir, 'MEMORY.md')),
             'no refused add ever mints the tier index');
 
@@ -14925,5 +14940,397 @@ test('a fan-in demotes its target once, a flag rather than a sum', () => {
     } finally {
         rmFakeEmbedder(emb);
         rmStore(store);
+    }
+});
+
+// The authoring flag. --supersedes on the two write verbs is where a pointer
+// comes from, and the write is the only moment its target can be checked: a
+// pointer naming nothing is inert on every read surface, so a typo the write
+// admits is a record claiming a replacement no reader ever mentions.
+//
+// Most of the group is home-redirected, which is the shape this suite uses
+// for a flag the engine store signals refuse: the pointer is one of those,
+// so a case that wrote one under KIT_MEMORY_ROOT would be asserting against
+// the refusal rather than the write. The cases that stay on the signalled
+// store are the ones whose subject is a refusal that answers ahead of that
+// one, and the case that pins the signal refusal itself.
+
+test('--supersedes writes the pointer beside the tags and reports it on the success line', (t) => {
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        assert.strictEqual(runHome(store,
+            ['add-type', 'ptype', 'old-fact', 'the old fact']).status, 0);
+        const res = runHome(store, ['add-type', 'ptype', 'new-fact', 'the new fact',
+            '--tag', 'gotcha', '--supersedes', 'old-fact']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        // The pointer rides on the line that reports the write, because the
+        // claim it makes about a second record is otherwise readable only
+        // inside the file.
+        assert.strictEqual(res.stdout,
+            'added new-fact to type ptype (body 12 chars, superseding old-fact)\n');
+        assert.strictEqual(
+            fs.readFileSync(path.join(typeDirPath(store, 'ptype'), 'new-fact.md'), 'utf8'),
+            '---\ntags: gotcha\nsupersedes: old-fact\n---\n# new-fact\n\nthe new fact\n');
+
+        // The operator tier's own field order: what the fact is true of and
+        // what standing it has sit together, ahead of the provenance lines.
+        assert.strictEqual(runHome(store,
+            ['add-operator', 'old-op', 'the old op fact']).status, 0);
+        const op = runHome(store, ['add-operator', 'new-op', 'the new op fact',
+            '--tag', 'gotcha', '--machine', 'BOX', '--supersedes', 'old-op']);
+        assert.strictEqual(op.status, 0, op.stderr);
+        assert.strictEqual(op.stdout,
+            'added new-op to the operator tier (body 15 chars, superseding old-op)\n');
+        assert.strictEqual(fs.readFileSync(path.join(operatorDirPath(store), 'new-op.md'), 'utf8'),
+            '---\ntags: gotcha\nmachine: BOX\nsupersedes: old-op\n---\n'
+            + '# new-op\n\nthe new op fact\n');
+
+        // No flag, no line, and no clause on the success line: a record that
+        // replaces nothing says nothing.
+        const plain = runHome(store, ['add-operator', 'plain-op', 'true on its own']);
+        assert.strictEqual(plain.status, 0, plain.stderr);
+        assert.strictEqual(plain.stdout,
+            'added plain-op to the operator tier (body 15 chars)\n');
+        assert.strictEqual(fs.readFileSync(path.join(operatorDirPath(store), 'plain-op.md'), 'utf8'),
+            '# plain-op\n\ntrue on its own\n');
+
+        // The pointer the writer lands is the one the reader resolves, which
+        // is the whole point of writing it: the two grammars agree or the
+        // field is a line nothing reads.
+        const got = runHome(store, ['get', 'old-op']);
+        assert.strictEqual(got.status, 0, got.stderr);
+        assert.match(got.stderr, /'old-op' is superseded by 'new-op'/);
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+test('--update refuses a supersedes pointer on both verbs, with nothing written', () => {
+    const store = makeStore();
+    try {
+        assert.strictEqual(run(store, ['add-operator', 'a-fact', 'a description']).status, 0);
+        assert.strictEqual(run(store, ['add-type', 'ptype', 'a-fact', 'a description']).status, 0);
+        const opDir = operatorDirPath(store);
+        const typeDir = typeDirPath(store, 'ptype');
+        const files = [path.join(opDir, 'a-fact.md'), path.join(opDir, 'MEMORY.md'),
+            path.join(typeDir, 'a-fact.md'), path.join(typeDir, 'MEMORY.md')];
+        const before = files.map((f) => fs.readFileSync(f, 'utf8'));
+
+        // The flag set is judged before the store is read and before the
+        // engine store signals are consulted, so this case runs on the
+        // signalled store deliberately: the pointer names no record at all,
+        // and the refusal is still the one about --update.
+        for (const consent of [[], ['--confirm-shared']]) {
+            const op = run(store, ['add-operator', 'a-fact', 'new words', '--update',
+                '--supersedes', 'ghost-name'].concat(consent));
+            assert.strictEqual(op.status, 1, '--supersedes alongside --update is refused');
+            assert.match(op.stderr,
+                /--update sets no tags, no machine scope and no supersedes pointer/);
+            assert.ok(!/ghost-name/.test(op.stderr), 'the flag set is judged before the tier');
+            const ty = run(store, ['add-type', 'ptype', 'a-fact', 'new words', '--update',
+                '--supersedes', 'ghost-name'].concat(consent));
+            assert.strictEqual(ty.status, 1, '--supersedes alongside --update is refused');
+            assert.match(ty.stderr, /--update sets no tags and no supersedes pointer/);
+            assert.ok(!/ghost-name/.test(ty.stderr), 'the flag set is judged before the tier');
+        }
+
+        assert.deepStrictEqual(files.map((f) => fs.readFileSync(f, 'utf8')), before,
+            'a refused repair leaves both tiers byte-identical');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('--supersedes is refused under the engine store signals, and the record still lands', () => {
+    const store = makeStore();
+    try {
+        // The signalled store is the fleet worker's environment, where no
+        // operator is in the loop. A pointer demotes and labels a record the
+        // store still serves and no pin bounds which record it may name,
+        // while every other demotion reachable here stops at a pinned record,
+        // so the flag is refused where the archive flags are granted. The
+        // grant hook withholds the same flag; this is the half that binds in
+        // the child.
+        assert.strictEqual(run(store, ['add-type', 'ptype', 'live-fact', 'the live fact']).status, 0);
+        assert.strictEqual(run(store, ['add-operator', 'live-op', 'the live op']).status, 0);
+        const typeDir = typeDirPath(store, 'ptype');
+        const opDir = operatorDirPath(store);
+
+        const ty = run(store, ['add-type', 'ptype', 'new-fact', 'the new fact',
+            '--supersedes', 'live-fact']);
+        assert.strictEqual(ty.status, 1, ty.stdout);
+        assert.match(ty.stderr, /--supersedes demotes and labels a record this store still serves/);
+        assert.match(ty.stderr, /refused under the engine store signals/);
+        assert.ok(!fs.existsSync(path.join(typeDir, 'new-fact.md')), 'nothing was written');
+
+        const op = run(store, ['add-operator', 'new-op', 'the new op', '--supersedes', 'live-op']);
+        assert.strictEqual(op.status, 1, op.stdout);
+        assert.match(op.stderr, /refused under the engine store signals/);
+        assert.ok(!fs.existsSync(path.join(opDir, 'new-op.md')), 'nothing was written');
+
+        // A pinned target is the case the refusal exists for, and it is
+        // refused for the same reason as any other: the gate never asks
+        // whether the target is pinned, which is exactly why the flag cannot
+        // be granted prompt-free.
+        fs.writeFileSync(path.join(typeDir, 'live-fact.md'),
+            '---\npinned: 2026-07-01\n---\n# live-fact\n\nthe live fact\n', 'utf8');
+        const pinned = run(store, ['add-type', 'ptype', 'newer-fact', 'the newer fact',
+            '--supersedes', 'live-fact']);
+        assert.strictEqual(pinned.status, 1, pinned.stdout);
+        assert.match(pinned.stderr, /refused under the engine store signals/);
+
+        // Nothing else is lost: the record lands here without the flag, so
+        // the refusal costs the pointer rather than the write.
+        const without = run(store, ['add-type', 'ptype', 'new-fact', 'the new fact']);
+        assert.strictEqual(without.status, 0, without.stderr);
+        assert.strictEqual(fs.readFileSync(path.join(typeDir, 'new-fact.md'), 'utf8'),
+            '# new-fact\n\nthe new fact\n');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('--supersedes refuses a name no live record holds, and a retired name on its own terms', (t) => {
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        assert.strictEqual(runHome(store,
+            ['add-type', 'ptype', 'live-fact', 'the live fact']).status, 0);
+        const typeDir = typeDirPath(store, 'ptype');
+        const indexBefore = fs.readFileSync(path.join(typeDir, 'MEMORY.md'), 'utf8');
+
+        const dangling = runHome(store, ['add-type', 'ptype', 'new-fact', 'the new fact',
+            '--supersedes', 'no-such-fact']);
+        assert.strictEqual(dangling.status, 1, dangling.stdout);
+        assert.match(dangling.stderr,
+            /'no-such-fact' is no record in type 'ptype', so --supersedes will not name it/);
+        // One line, the channel every refusal that had to read the store
+        // takes: a caller who named a bad target is told about the target,
+        // not handed the whole banner.
+        assert.ok(!/usage: memq/.test(dangling.stderr), dangling.stderr);
+        assert.ok(!fs.existsSync(path.join(typeDir, 'new-fact.md')), 'nothing was written');
+        assert.strictEqual(fs.readFileSync(path.join(typeDir, 'MEMORY.md'), 'utf8'), indexBefore);
+
+        // A name only the archive holds is a different mistake and gets a
+        // different sentence: that record is out of the store's answers
+        // already, so there is nothing about it left for a successor to
+        // replace.
+        fs.mkdirSync(path.join(typeDir, 'archive'), { recursive: true });
+        fs.writeFileSync(path.join(typeDir, 'archive', 'retired-fact.md'),
+            '# retired-fact\n\nwas useful once\n', 'utf8');
+        const retired = runHome(store, ['add-type', 'ptype', 'newer-fact', 'the newer fact',
+            '--supersedes', 'retired-fact']);
+        assert.strictEqual(retired.status, 1, retired.stdout);
+        assert.match(retired.stderr,
+            /'retired-fact' is retired in type 'ptype' rather than live/);
+        assert.ok(!fs.existsSync(path.join(typeDir, 'newer-fact.md')), 'nothing was written');
+        assert.strictEqual(fs.readFileSync(path.join(typeDir, 'MEMORY.md'), 'utf8'), indexBefore);
+
+        // A path that is not a plain file is refused for what it is rather
+        // than reported as an absence: 'no plain file here' covers a free
+        // name and a path that could not be examined alike, and a caller must
+        // never be told that nothing stands where something does.
+        fs.mkdirSync(path.join(typeDir, 'directory-fact.md'), { recursive: true });
+        const notRecord = runHome(store, ['add-type', 'ptype', 'other-fact', 'the other fact',
+            '--supersedes', 'directory-fact']);
+        assert.strictEqual(notRecord.status, 1, notRecord.stdout);
+        assert.match(notRecord.stderr,
+            /'directory-fact' in type 'ptype' is a directory, so --supersedes will not act on it/);
+        assert.ok(!/is no record/.test(notRecord.stderr),
+            'a name something stands at is never reported empty: ' + notRecord.stderr);
+        assert.ok(!fs.existsSync(path.join(typeDir, 'other-fact.md')), 'nothing was written');
+
+        // Same tier only, the Approach's own line: the operator tier does not
+        // hold this name, and a type tier of this store holding it changes
+        // nothing. A gate searching every tier would pass here.
+        const crossTier = runHome(store, ['add-operator', 'op-fact', 'an operator fact',
+            '--supersedes', 'live-fact']);
+        assert.strictEqual(crossTier.status, 1, crossTier.stdout);
+        assert.match(crossTier.stderr,
+            /'live-fact' is no record in the operator tier, so --supersedes will not name it/);
+        assert.ok(!fs.existsSync(path.join(operatorDirPath(store), 'op-fact.md')),
+            'nothing was written');
+        assert.ok(!fs.existsSync(operatorDirPath(store)),
+            'a refusal answering before the lock mints no tier directory');
+
+        // The known-answer control: the live name this tier does hold is
+        // admitted, so the gate is refusing the target and not the flag.
+        const ok = runHome(store, ['add-type', 'ptype', 'good-fact', 'the good fact',
+            '--supersedes', 'live-fact']);
+        assert.strictEqual(ok.status, 0, ok.stderr);
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+test('a supersedes target outside the record-name grammar is refused as a name, not as a miss', () => {
+    const store = makeStore();
+    try {
+        assert.strictEqual(run(store, ['add-type', 'ptype', 'live-fact', 'the live fact']).status, 0);
+        const typeDir = typeDirPath(store, 'ptype');
+        // A pointer is a record name, so a value no record could be called is
+        // a malformed pointer rather than a missing record. The newline case
+        // matters most: the value lands in a line-oriented block and would
+        // otherwise forge frontmatter fields around itself. '..' and 'MEMORY'
+        // are the path token and the index, refused wherever a name is. The
+        // grammar answers ahead of the store and ahead of the store signals,
+        // which is why this case runs on the signalled store.
+        for (const bad of ['has space', 'new\nline', 'quote"d', 'slash/ed', 'back\\slash',
+            '..', 'MEMORY', 'n'.repeat(200), '']) {
+            const res = run(store, ['add-type', 'ptype', 'new-fact', 'the new fact',
+                '--supersedes', bad]);
+            assert.strictEqual(res.status, 1, JSON.stringify(bad));
+            assert.match(res.stderr, /supersedes must name a record/);
+            assert.ok(!/is no record|store signals/.test(res.stderr),
+                'a malformed name is a grammar error, never a tier answer: ' + JSON.stringify(bad));
+            assert.ok(!fs.existsSync(path.join(typeDir, 'new-fact.md')),
+                'nothing was written for ' + JSON.stringify(bad));
+        }
+
+        // A flag with no value at all is the swallowed-flag refusal every
+        // other option here answers to, and a second pointer is refused
+        // rather than quietly replacing the first.
+        const noValue = run(store, ['add-type', 'ptype', 'new-fact', 'desc',
+            '--supersedes', '--tag']);
+        assert.strictEqual(noValue.status, 1);
+        assert.match(noValue.stderr, /--supersedes needs a value/);
+        const twice = run(store, ['add-type', 'ptype', 'new-fact', 'desc',
+            '--supersedes', 'live-fact', '--supersedes', 'live-fact']);
+        assert.strictEqual(twice.status, 1);
+        assert.match(twice.stderr, /--supersedes is given once/);
+        assert.ok(!fs.existsSync(path.join(typeDir, 'new-fact.md')), 'nothing was written');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a pointer that would close a mutual pair is refused, naming both records', (t) => {
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        // The reachable sequence: a record is superseded, then deleted, then
+        // written again pointing back at its own successor. A pair each
+        // naming the other asserts no replacement, so every read surface
+        // drops both halves, which would cost the surviving record the label
+        // and the archive nomination it carries now. That is a fact lost
+        // rather than a mislabel, so the write is refused.
+        const typeDir = typeDirPath(store, 'ptype');
+        assert.strictEqual(runHome(store,
+            ['add-type', 'ptype', 'first-fact', 'the first fact']).status, 0);
+        assert.strictEqual(runHome(store, ['add-type', 'ptype', 'second-fact', 'the second fact',
+            '--supersedes', 'first-fact']).status, 0);
+        assert.strictEqual(runHome(store,
+            ['delete-type', 'ptype', 'first-fact', '--confirm-shared']).status, 0);
+
+        const cycle = runHome(store, ['add-type', 'ptype', 'first-fact', 'the first fact again',
+            '--supersedes', 'second-fact']);
+        assert.strictEqual(cycle.status, 1, cycle.stdout);
+        assert.match(cycle.stderr,
+            /'second-fact' already supersedes 'first-fact' in type 'ptype'/);
+        assert.match(cycle.stderr, /loses the label and the archive nomination it carries now/);
+        assert.ok(!fs.existsSync(path.join(typeDir, 'first-fact.md')), 'nothing was written');
+
+        // The record still lands without the pointer, so what the refusal
+        // costs is the claim rather than the fact.
+        assert.strictEqual(runHome(store,
+            ['add-type', 'ptype', 'first-fact', 'the first fact again']).status, 0);
+
+        // The operator tier answers the same way.
+        const opDir = operatorDirPath(store);
+        assert.strictEqual(runHome(store, ['add-operator', 'old-op', 'the old op']).status, 0);
+        assert.strictEqual(runHome(store, ['add-operator', 'new-op', 'the new op',
+            '--supersedes', 'old-op']).status, 0);
+        assert.strictEqual(runHome(store,
+            ['delete-operator', 'old-op', '--confirm-shared']).status, 0);
+        const opCycle = runHome(store, ['add-operator', 'old-op', 'the old op again',
+            '--supersedes', 'new-op']);
+        assert.strictEqual(opCycle.status, 1, opCycle.stdout);
+        assert.match(opCycle.stderr,
+            /'new-op' already supersedes 'old-op' in the operator tier/);
+        assert.ok(!fs.existsSync(path.join(opDir, 'old-op.md')), 'nothing was written');
+
+        // One hop, and the pair rather than the ring: a chain is a genuine
+        // sequence of replacements and stays writable.
+        assert.strictEqual(runHome(store, ['add-operator', 'newer-op', 'the newer op',
+            '--supersedes', 'new-op']).status, 0);
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+test('a supersedes pointer survives a gated body repair verbatim', (t) => {
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        // A repair rebuilds a record around its own frontmatter, so the
+        // pointer travels with the tags and the scope: a successor repaired
+        // once still says which record it replaced.
+        const opDir = operatorDirPath(store);
+        assert.strictEqual(runHome(store, ['add-operator', 'old-fact', 'the old fact']).status, 0);
+        assert.strictEqual(runHome(store, ['add-operator', 'new-fact', 'first words',
+            '--tag', 'sql', '--machine', 'BOX', '--supersedes', 'old-fact',
+            '--body', 'first body']).status, 0);
+        const op = runHome(store, ['add-operator', 'new-fact', 'second words', '--update',
+            '--body', 'second body', '--confirm-shared']);
+        assert.strictEqual(op.status, 0, op.stderr);
+        assert.strictEqual(fs.readFileSync(path.join(opDir, 'new-fact.md'), 'utf8'),
+            '---\ntags: sql\nmachine: BOX\nsupersedes: old-fact\n---\n'
+            + '# new-fact\n\nsecond body\n');
+
+        const typeDir = typeDirPath(store, 'ptype');
+        assert.strictEqual(runHome(store,
+            ['add-type', 'ptype', 'old-fact', 'the old fact']).status, 0);
+        assert.strictEqual(runHome(store, ['add-type', 'ptype', 'new-fact', 'first words',
+            '--supersedes', 'old-fact', '--body', 'first body']).status, 0);
+        const ty = runHome(store, ['add-type', 'ptype', 'new-fact', 'second words', '--update',
+            '--body', 'second body', '--confirm-shared']);
+        assert.strictEqual(ty.status, 0, ty.stderr);
+        assert.strictEqual(fs.readFileSync(path.join(typeDir, 'new-fact.md'), 'utf8'),
+            '---\nsupersedes: old-fact\n---\n# new-fact\n\nsecond body\n');
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+test('the cmd.exe wrapper carries --supersedes through to the written pointer', {
+    skip: process.platform === 'win32' ? false : 'the memq.cmd wrapper is a win32 shape'
+}, (t) => {
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        // A wrapper of the installed memq.cmd's shape, for the reason the
+        // body-channel cases give: what a wrapper does to a command line
+        // happens in cmd.exe, above node, so an argv built in this process
+        // would prove nothing about the path a PATH invocation takes.
+        const wrapper = path.join(store.proj, 'memq.cmd');
+        fs.writeFileSync(wrapper,
+            '@echo off\r\n"' + process.execPath + '" "' + MEMQ + '" %*\r\n', 'utf8');
+        const viaCmd = (payload) => spawnSync('cmd.exe',
+            ['/d', '/s', '/c', '""' + wrapper + '" ' + payload + '"'], {
+                cwd: store.proj,
+                encoding: 'utf8',
+                windowsVerbatimArguments: true,
+                env: homeEnv(store)
+            });
+
+        const seed = viaCmd('add-operator old-fact "the old fact"');
+        assert.strictEqual(seed.status, 0, seed.stdout + seed.stderr);
+        const res = viaCmd('add-operator new-fact "the new fact" --supersedes old-fact');
+        assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+        assert.strictEqual(fs.readFileSync(path.join(operatorDirPath(store), 'new-fact.md'), 'utf8'),
+            '---\nsupersedes: old-fact\n---\n# new-fact\n\nthe new fact\n');
+        assert.strictEqual(res.stdout,
+            'added new-fact to the operator tier (body 12 chars, superseding old-fact)\n');
+
+        // A refusal crosses the same hop intact: the target reaches the gate
+        // as the one word the caller typed rather than as a wrapper's
+        // leftovers.
+        const bad = viaCmd('add-operator newer-fact "the newer fact" --supersedes no-such-fact');
+        assert.strictEqual(bad.status, 1, bad.stdout);
+        assert.match(bad.stderr,
+            /'no-such-fact' is no record in the operator tier, so --supersedes will not name it/);
+    } finally {
+        rmHomeStore(store);
     }
 });

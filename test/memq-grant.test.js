@@ -359,6 +359,34 @@ test('a spelling bash would expand into more words than these gets no grant', ()
     assertNoDecision(runHook('node "' + MEMQ + '" recall ~'), 'a bare tilde word');
 });
 
+test('--supersedes gets no grant on either write verb, while the write itself keeps one', () => {
+    // A pointer demotes a record in the semantic channel and labels it on
+    // every surface that reads the name, and nothing bounds which record it
+    // may name: the gate that writes it never asks whether the target is
+    // pinned. Every other demotion this grant admits does stop there, the
+    // archive flags included, so a worker with no operator in the loop could
+    // read the pinned population off the granted decay-scan and demote in one
+    // further command exactly the records the pin exempted. memq refuses the
+    // flag under the store signals for the same reason; this screen is the
+    // second lock.
+    assertNoDecision(runHook('node "' + MEMQ
+        + '" add-type webapp fact words --supersedes older'), 'a type-tier pointer');
+    assertNoDecision(runHook('node "' + MEMQ
+        + '" add-operator fact words --supersedes older'), 'the operator twin');
+    assertNoDecision(runHook('node "' + MEMQ
+        + '" add-operator fact words --supersedes=older'),
+        'the attached-value spelling, which the CLI answers as an unknown option');
+    // What stays granted is the write: a record still lands from a fleet
+    // worker, carrying every field but the pointer.
+    assertGrant(runHook('node "' + MEMQ + '" add-operator fact "words" --tag gotcha'),
+        'an ordinary create');
+    assertGrant(runHook('node "' + MEMQ + '" add-operator fact "words" --machine BOX'),
+        'a machine scope, which claims nothing about a second record');
+    // A flag that merely starts the same is not the screened one.
+    assertGrant(runHook('node "' + MEMQ + '" add-operator fact words --supersedeswise x'),
+        'a longer flag the screen must not swallow');
+});
+
 test('--body-file gets no grant anywhere, not only beside --update', () => {
     // It reads a path the caller names into the store, and under a signal
     // divergence that store is the operator's own, which syncs to a private
