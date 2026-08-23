@@ -154,3 +154,60 @@ test('the liveness bullets defer to finishing-work in each copy', () => {
         }
     }
 });
+
+// Same green-passing deletion path as the liveness pin above, one step further
+// out, and it has two ends. The outline bullet keeps only the principle and
+// routes every language anchor to the style skill that owns that language's
+// idioms. Four surfaces carry the rule with it: executing-work's approach read
+// names the doctrine bullet outright, and the three non-haiku implementer
+// charters restate it locally and route to the same style skills, because a
+// subagent inherits the doctrine only where the machine's CLAUDE.md carries
+// the kit import. A symmetric deletion at either end passes the whole-body
+// identity check while the chain goes quiet, so both ends are asserted: the
+// bullet routes, the routed-to sections exist, and the four surfaces still
+// carry their clause.
+test('the outline bullet routes to the style skills in each copy', () => {
+    const lead = '- **When you are hunting for something in a large file';
+    for (const [label, body] of [['skill body', skillBody()], ['doctrine mirror', mirrorBody()]]) {
+        const lines = body.split(/\r?\n/).filter((l) => l.startsWith(lead));
+        assert.strictEqual(lines.length, 1,
+            'expected exactly one outline bullet in the ' + label);
+        for (const skill of ['csharp-style', 'sql-style']) {
+            assert.ok(lines[0].includes('skills/' + skill + '/SKILL.md'),
+                'the outline bullet in the ' + label + ' must route to ' + skill
+                + ' by path, because the bullet carries no language anchors of '
+                + 'its own and that skill is where they live');
+        }
+    }
+});
+
+test('the style skills the outline bullet routes to still carry a recipe', () => {
+    for (const skill of ['csharp-style', 'sql-style']) {
+        const p = path.join(__dirname, '..', 'plugins', 'claude-kit', 'skills',
+            skill, 'SKILL.md');
+        assert.ok(fs.existsSync(p), skill + ' is routed to by the doctrine\'s '
+            + 'outline bullet and must exist');
+        assert.match(fs.readFileSync(p, 'utf8'), /^## Outlining a large file$/m,
+            skill + ' must carry its Outlining section: the doctrine points at '
+            + 'it by path and carries no anchors of its own, so deleting the '
+            + 'section leaves that pointer aimed at nothing');
+    }
+});
+
+test('the surfaces that defer to the outline bullet still say so', () => {
+    const deferring = [
+        [['agents', 'implementer-sonnet.md'], /hunting for one thing in a file past roughly 1,000 lines/],
+        [['agents', 'implementer-opus.md'], /hunting for one thing in a file past roughly 1,000 lines/],
+        [['agents', 'implementer-fable.md'], /hunting for one thing in a file past roughly 1,000 lines/],
+        [['skills', 'executing-work', 'SKILL.md'], /rule on hunting in a large file/],
+    ];
+    for (const [parts, phrase] of deferring) {
+        const p = path.join(__dirname, '..', 'plugins', 'claude-kit', ...parts);
+        const body = fs.readFileSync(p, 'utf8');
+        assert.match(body, phrase, parts.join('/') + ' must still carry its '
+            + 'outline clause. Matched on the clause\'s own phrase rather than '
+            + 'the bare word outline, which any later unrelated mention would '
+            + 'satisfy: a deletion here breaks the chain from the far end while '
+            + 'the identity check stays green');
+    }
+});
