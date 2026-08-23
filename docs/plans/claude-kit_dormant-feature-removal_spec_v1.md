@@ -96,6 +96,7 @@ None.
 
 ## Related
 
+- `../archive/claude-kit_process-rule-repairs_spec_v1.md` (its section 4 generalized this plan's three absence-grep gates into the doctrine's positive-control rule, which this plan's Approach now carries locally as an instance).
 - `../archive/claude-kit_stop-failure-recovery_spec_v1.md` (what shipped; its :187 records the supersession this plan acts on).
 - `../archive/claude-kit_compaction-unwind_spec_v1.md` (removed the relay; the cleanup block this plan removes was its transitional hygiene).
 - `../archive/claude-kit_compact-session-removal_spec_v1.md` (the kit's removal-effort precedent; verified orphan-free 2026-08-22).

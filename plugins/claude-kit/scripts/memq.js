@@ -517,7 +517,7 @@ function resolveWorktreeMainRoot(cwd) {
 // note a successful resolution can owe the operator.
 //
 // Project directory names preserve case while the handshake compares paths the
-// way the filesystem does, so a pointer spelling the main root 'd:/eleoscore'
+// way the filesystem does, so a pointer spelling the main root 'd:/someproject'
 // would otherwise mint a third store beside the main session's own
 // process.cwd() derivation: the volume's own spelling is the one both agree
 // on. Only win32 folds, since names are case-sensitive elsewhere and resolving
