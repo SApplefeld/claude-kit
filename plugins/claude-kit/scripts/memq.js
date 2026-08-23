@@ -269,6 +269,11 @@ const DECAY_STAMP_FILE = 'decay-stamp';   // mtime records when a decay pass las
 const STORE_LOCK_FILE = 'store.lock';     // per-shared-tier lock over every rewrite of its files
 const DECLARERS_SHOWN = 10;   // declaring-project names listed before the remainder is counted
 const PINNED_SHOWN = 10;      // pinned memories listed by decay-scan before the remainder is counted
+// Successors named in a superseded record's label before the remainder is
+// counted. Lower than the block enumerations above because this one rides
+// inside a line that already carries columns and free text, where ten names
+// at the name cap would bury what the line is about.
+const SUPERSEDED_SHOWN = 4;
 const RECALL_MAX_LINES = 200;           // total lines `recall` emits before tier-ordered truncation
 const RECENT_MAX_LINES = 200;           // total lines `recent` emits before surface-ordered truncation
 const ARCHIVE_INDEX_READ_CAP = 65536;   // bytes of the archive index `recall` reads, a fixed-size prefix
@@ -287,8 +292,10 @@ const ROLLUP_AFTER_DAYS = 30;      // journal entry age before it is a rollup ca
 // the index; the constants here are find's own display and ranking policy.
 //
 // The blend is similarity + SEMANTIC_APPLIED_BOOST per distinct applied day
-// (capped) minus SEMANTIC_ARCHIVE_DEMOTION for a retired record, and the
-// proportions come from the model's measured scale rather than invention:
+// (capped), minus SEMANTIC_ARCHIVE_DEMOTION for a retired record and
+// SEMANTIC_SUPERSEDED_DEMOTION for one a live record of its own tier
+// supersedes, and the proportions come from the model's measured scale
+// rather than invention:
 // the known-answer control for this model scores a paraphrase at about 0.26
 // against an unrelated sentence's -0.01, so meaningful similarity
 // differences live in tenths. The applied boost tops out at one such tenth,
@@ -296,7 +303,13 @@ const ROLLUP_AFTER_DAYS = 30;      // journal entry age before it is a rollup ca
 // unrelated record past a related one. The archive demotion is the same
 // single step down: an equally similar live record always outranks its
 // retired twin, while a retired record that is clearly the best match still
-// surfaces. The floor gates on raw similarity before the blend, because it
+// surfaces. The supersession demotion is that same step, for the same
+// reason at a different moment in a record's life: a record a live one
+// replaces ranks below an equally similar record nothing replaces, and still
+// surfaces when it is clearly the best match. The two are independent facts
+// about a record and each takes its own step, so a record both retired and
+// superseded carries both. The floor gates on raw similarity before the
+// blend, because it
 // asks a different question (is this related at all) than the blend does
 // (which related record first): a boosted or demoted score must never move
 // a record across the admission line.
@@ -313,6 +326,7 @@ const SEMANTIC_FLOOR = 0.1;            // similarity below which a neighbor is n
 const SEMANTIC_APPLIED_BOOST = 0.01;   // rank added per distinct applied day
 const SEMANTIC_BOOST_CAP_DAYS = 10;    // days the boost counts, so no tally can outweigh meaning
 const SEMANTIC_ARCHIVE_DEMOTION = 0.1; // rank subtracted from a retired record
+const SEMANTIC_SUPERSEDED_DEMOTION = 0.1; // rank subtracted from a superseded record
 
 // The store root this process reads and writes under.
 //
@@ -1849,13 +1863,11 @@ function recordHeading(raw) {
     return null;
 }
 
-function frontmatterField(file, name) {
-    let raw;
-    try {
-        raw = fs.readFileSync(file, 'utf8');
-    } catch {
-        return FRONTMATTER_UNREADABLE;
-    }
+// The same field read from a record's text already in hand, for a walk that
+// has read the file for its own reasons and must not read it again. Every
+// answer above except FRONTMATTER_UNREADABLE, which is the read's answer and
+// so belongs to the caller that did the reading.
+function frontmatterValue(raw, name) {
     const block = frontmatterBlock(raw);
     if (!block.opened || block.closer === -1) return null;
     const re = new RegExp('^' + name + ':\\s*(.*)$', 'i');
@@ -1871,12 +1883,28 @@ function frontmatterField(file, name) {
     return indented ? FRONTMATTER_INDENTED : null;
 }
 
+function frontmatterField(file, name) {
+    let raw;
+    try {
+        raw = fs.readFileSync(file, 'utf8');
+    } catch {
+        return FRONTMATTER_UNREADABLE;
+    }
+    return frontmatterValue(raw, name);
+}
+
 // Tags from the frontmatter, comma/space separated. Anything short of a
 // top-level value is no tags: a tag is a search aid, so a file that could not
 // be read or a key nested under another costs a match rather than a decision,
 // and neither is worth a standing note on every scan.
 function readFrontmatterTags(file) {
-    const value = frontmatterField(file, 'tags');
+    return frontmatterTags(frontmatterField(file, 'tags'));
+}
+
+// The same split over a value already read, for a walk holding the record's
+// text: one read answers every field the walk needs, and the parse is over
+// lines in memory.
+function frontmatterTags(value) {
     if (typeof value !== 'string') return [];
     return value.split(/[,\s]+/).filter((t) => t !== '');
 }
@@ -1939,9 +1967,136 @@ function pinState(file) {
     return value === null ? 'unpinned' : 'pinned';
 }
 
+// The `supersedes:` value read as the name of the record it replaces, or
+// null when it is not one name this store can act on. The field rides on the
+// successor and points back, so the file holding the pointer is never the
+// file the pointer is about: a fact that was right when written and has been
+// overtaken is not rewritten to say so.
+//
+// Anything short of a top-level single name is no pointer. An unreadable
+// file, a key nested under the one above it (the column rule the field
+// readers report), and a value that is not one record name all read as
+// absence, and the value is held to isMemoryFilename, the store's own
+// definition of what may be named. So a hand-written list of two names names
+// no record here rather than being cut down to whichever one a looser parse
+// happened to take. Absence is the safe answer to every doubt because of
+// what the pointer costs: a label and a rank demotion, never a decision
+// about whether a record lives. Today the field is hand-written frontmatter,
+// like `tags:` and `pinned:`, so this reader is the only gate between what a
+// file says and what a line claims.
+function supersedesName(value) {
+    if (typeof value !== 'string') return null;
+    const name = value.trim();
+    return isMemoryFilename(name + '.md') ? name : null;
+}
+
+// One tier's inverse of that pointer: `successors`, each superseded name
+// keyed the way the platform's filesystem compares it, to the names of the
+// live records pointing at it in the tier's own name order, and `names`,
+// every name the live tier holds. Every surface that labels or demotes
+// builds this once per invocation.
+//
+// It is built over a tier's listMemories result rather than over its
+// directory, and holds no I/O of its own, so a surface that already lists a
+// tier pays nothing to label it and one that does not pays exactly one
+// listing. That is the whole cost story: a per-record open is the expensive
+// step in every walk this file makes, and it is spent once per record here.
+//
+// Live successors of one tier, and nothing else. The listing is a tier
+// directory's own, which never descends into archive/, so a successor that
+// has itself been retired or deleted stops labeling its target, because what
+// justifies the label is that a live record replaces this one. The lookups are that
+// tier's own records and its archive's: a pointer whose target is archived
+// still labels the archived copy, and a pointer whose target is absent
+// entirely is inert, since no reader ever looks the missing name up.
+//
+// Each pointer resolves one hop. Where B supersedes A and C supersedes B,
+// A's label names B and B's names C, so a reader follows a chain a hop at a
+// time rather than being handed an endpoint the store never asserted.
+//
+// A cycle is dropped, on both of the two shapes a pointer can make one: a
+// mutual pair each naming the other, and a record naming itself, which is
+// that pair with one file playing both halves. Neither says a record has
+// been replaced, and the cost of reading them as if they did is not a
+// mislabel but a store that loses a fact: one scan nominates both halves of
+// a pair for archive, and a pass acting on that list leaves the fact in
+// neither. A longer chain is not a cycle and keeps its labels, because each
+// hop of one is a genuine replacement.
+function supersededSuccessors(memories) {
+    const names = new Set();
+    const records = [];
+    // listMemories is already in name order, in codepoint order, so a label
+    // never depends on filesystem enumeration order.
+    for (const m of memories) {
+        const key = memoryFileKey(m.name + '.md');
+        names.add(key);
+        if (m.supersedes === null) continue;
+        records.push({ name: m.name, key, target: memoryFileKey(m.supersedes + '.md') });
+    }
+    const pointsAt = new Map();
+    for (const r of records) pointsAt.set(r.key, r.target);
+    const successors = new Map();
+    for (const r of records) {
+        // One test covers both cycle shapes: a record naming itself is the
+        // pair where the two halves are one file, and its target points back
+        // at it by being it.
+        if (pointsAt.get(r.target) === r.key) continue;
+        const at = successors.get(r.target);
+        if (at === undefined) successors.set(r.target, [r.name]);
+        else at.push(r.name);
+    }
+    return { successors, names };
+}
+
+// The answer for a tier this command has not resolved, and the shape a
+// caller can hold before it knows whether the tier exists.
+function emptySupersedes() {
+    return { successors: new Map(), names: new Set() };
+}
+
+// The live records superseding one name, or null for a name none supersedes.
+// Several is a fan-in, several live records each replacing one older one,
+// and it is a flag rather than a sum: the pointing records are named, in the
+// listing's name order, and the rank demotion the name earns is one step
+// whatever the count.
+//
+// `archived` says the name is being asked about an archived copy, which is
+// where the two records behind one name part company. A tier can hold both a
+// live record and a retired one of the same name, the state a prune leaves
+// when the archive slot was already taken, and there the pointer is about
+// the live record: it named a name, the live record is what the tier serves
+// under that name, and the retired file is a different record the store
+// never said anything about. So an archived copy shadowed by a live record
+// of its name takes no label, while an archived record whose name the tier
+// no longer holds keeps one.
+function supersededBy(map, name, archived) {
+    const key = memoryFileKey(name + '.md');
+    if (archived && map.names.has(key)) return null;
+    const successors = map.successors.get(key);
+    return successors === undefined ? null : successors;
+}
+
+// The label a superseded record's line carries, or '' for a record no live
+// record replaces. Names print at the store's own name cap: they come from
+// frontmatter, which is hand-editable, and they ride into lines every other
+// surface bounds the same way. Past SUPERSEDED_SHOWN the rest are counted
+// rather than printed, the rule every other enumeration here follows, so one
+// line cannot grow with the tier. Each surface places the label among its
+// own tokens rather than inside a description, so free text is never split
+// by it.
+function supersededLabel(map, name, archived) {
+    const successors = supersededBy(map, name, archived);
+    if (successors === null) return '';
+    const shown = successors.slice(0, SUPERSEDED_SHOWN);
+    return '  superseded by ' + shown.map((n) => sanitize(n, NAME_CAP)).join(', ')
+        + (successors.length > shown.length
+            ? ', and ' + (successors.length - shown.length) + ' more' : '');
+}
+
 // The file-per-fact memories in a memory dir, the entries isMemoryFilename
 // admits. Name is the filename without extension, description comes from the
-// index line for that file, tags from the file's own frontmatter. Sorted
+// index line for that file, tags and the supersedes pointer from the file's
+// own frontmatter, read once for both. Sorted
 // ascending by name in codepoint order, so output never depends on filesystem
 // enumeration order.
 function listMemories(memDir) {
@@ -1958,10 +2113,17 @@ function listMemories(memDir) {
         let st = null;
         try { st = fs.statSync(path.join(memDir, f)); } catch { /* unreadable: skip */ }
         if (!st || !st.isFile()) continue;
+        // One read per record answers every frontmatter question this listing
+        // carries. A file that cannot be read is still a record, and still
+        // occupies its name; what it loses is the fields, which is what a
+        // record with no frontmatter block has anyway.
+        let raw = null;
+        try { raw = fs.readFileSync(path.join(memDir, f), 'utf8'); } catch { /* fields absent */ }
         memories.push({
             name: f.slice(0, -3),
             description: descriptions.get(f) || '',
-            tags: readFrontmatterTags(path.join(memDir, f))
+            tags: raw === null ? [] : frontmatterTags(frontmatterValue(raw, 'tags')),
+            supersedes: raw === null ? null : supersedesName(frontmatterValue(raw, 'supersedes'))
         });
     }
     memories.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
@@ -2423,8 +2585,18 @@ async function cmdFind(argv) {
         // shape; only the trailing label differs. tier and storeSegment are
         // the identity the semantic index records for the same file, or null
         // for the pending tier, which the index deliberately does not hold.
-        const memoryLines = (dir, label, tier, storeSegment) => {
-            for (const m of listMemories(dir)) {
+        //
+        // The supersession map is that tier's own, inverted from the same
+        // listing these lines are drawn from, so labeling a tier costs no
+        // read the listing has not already made. `labelSupersedes` is false
+        // for the pending tier: a pending record awaits an adjudication
+        // verdict that decides whether it ever reaches a tier at all, and
+        // this command leaves that tier's semantics to the engine that owns
+        // them.
+        const memoryLines = (dir, label, tier, storeSegment, labelSupersedes) => {
+            const memories = listMemories(dir);
+            const supersedes = labelSupersedes ? supersededSuccessors(memories) : null;
+            for (const m of memories) {
                 if (!m.name.toLowerCase().includes(needle)
                     && !m.description.toLowerCase().includes(needle)) continue;
                 if (tag !== null && !m.tags.includes(tag)) continue;
@@ -2434,7 +2606,8 @@ async function cmdFind(argv) {
                 // without bound.
                 lines.push(sanitize(m.name, NAME_CAP)
                     + '  [' + m.tags.slice(0, MAX_TAGS).map((t) => sanitize(t, TAG_CAP)).join(',') + ']'
-                    + '  ' + sanitize(m.description, SUMMARY_CAP) + label);
+                    + '  ' + sanitize(m.description, SUMMARY_CAP) + label
+                    + (supersedes === null ? '' : supersededLabel(supersedes, m.name, false)));
                 reachableTiers.add(tier === null ? 'pending' : tier);
                 if (tier !== null) {
                     lexicalShown.add(recordIdentity(storeSegment, tier, m.name));
@@ -2443,13 +2616,16 @@ async function cmdFind(argv) {
         };
         const pendingDir = pendingDirFor(process.cwd());
         const labeled = typed !== null || operator !== null || pendingDir !== null;
-        if (pendingDir !== null) memoryLines(pendingDir, '  (pending)', null, null);
-        memoryLines(memDir, labeled ? '  (project)' : '', 'project', projectSegment(process.cwd()));
+        if (pendingDir !== null) memoryLines(pendingDir, '  (pending)', null, null, false);
+        memoryLines(memDir, labeled ? '  (project)' : '', 'project',
+            projectSegment(process.cwd()), true);
         if (typed !== null) {
             memoryLines(typed.dir, '  (type:' + sanitize(typed.type, TYPE_CAP) + ')',
-                'type', typed.type);
+                'type', typed.type, true);
         }
-        if (operator !== null) memoryLines(operator, '  (operator)', 'operator', OPERATOR_LABEL);
+        if (operator !== null) {
+            memoryLines(operator, '  (operator)', 'operator', OPERATOR_LABEL, true);
+        }
     }
 
     const semanticLines = [];
@@ -2521,20 +2697,45 @@ function liveTierOf(tier) {
     return tier;
 }
 
+// One live tier instance's directory, from the identity the semantic index
+// records for a hit. Both per-tier caches below resolve through it, so the
+// tally a hit is ranked by and the supersession map it is labeled by can
+// never be read out of two different tiers.
+function liveTierDir(liveTier, store) {
+    return liveTier === 'project' ? projectMemoryDirFor(store)
+        : liveTier === 'type' ? typeDir(store)
+            : operatorDirPath();
+}
+
 // The applied tally for one tier instance, cached per directory because
 // several hits commonly share a tier and the sidecar read is the expensive
 // step. appliedTally is the store's single reader of applied evidence, so
 // the ranking boost counts exactly the distinct days the decay clock counts.
 function tallyForTier(cache, liveTier, store) {
-    const dir = liveTier === 'project' ? projectMemoryDirFor(store)
-        : liveTier === 'type' ? typeDir(store)
-            : operatorDirPath();
+    const dir = liveTierDir(liveTier, store);
     let tally = cache.get(dir);
     if (tally === undefined) {
         tally = appliedTally(readUsage(dir).stamps);
         cache.set(dir, tally);
     }
     return tally;
+}
+
+// One tier instance's supersession map, cached per directory. The cache
+// matters more here than the tally's does: a tally is one sidecar read for a
+// tier, while this walk is a directory listing plus one read per live record
+// of it, and the whole ranking commonly holds several hits of one tier. The
+// map is built from the live tier whatever the hit's own tier, so an
+// archived hit is labeled by the live records that replace it, which is
+// where such a pointer can be.
+function supersedesForTier(cache, liveTier, store) {
+    const dir = liveTierDir(liveTier, store);
+    let map = cache.get(dir);
+    if (map === undefined) {
+        map = supersededSuccessors(listMemories(dir));
+        cache.set(dir, map);
+    }
+    return map;
 }
 
 // The semantic half of `find`, answered as displayable hits plus stderr
@@ -2622,6 +2823,7 @@ async function semanticChannel(term, tag, alreadyShown, showArchived) {
 
     // Admission and ranking, per the blend constants above.
     const tallies = new Map();
+    const supersedes = new Map();
     const localMachine = os.hostname();
     const admitted = [];
     for (const h of result.hits) {
@@ -2661,6 +2863,15 @@ async function semanticChannel(term, tag, alreadyShown, showArchived) {
             && machineName.toLowerCase() !== localMachine.toLowerCase();
         const applied = tallyForTier(tallies, liveTierOf(h.tier), h.store)
             .get(memoryFileKey(h.name + '.md'));
+        // Whether a live record of this hit's own tier replaces it. The line
+        // carries the bare fact rather than the successor's name, the
+        // retirement token's shape: this channel is deliberately names,
+        // labels, and numbers, and a hit it spans several stores to reach is
+        // an address to fetch, not a place to unfold a second record's name.
+        // `get` on the name is where the successor is named.
+        const superseded = supersededBy(
+            supersedesForTier(supersedes, liveTierOf(h.tier), h.store),
+            h.name, h.archived === true) !== null;
         // Two different numbers come out of the same tally, and only one of
         // them is allowed to touch rank. `days` feeds the boost and stays
         // capped at SEMANTIC_BOOST_CAP_DAYS, the existing rule that a tally
@@ -2675,12 +2886,14 @@ async function semanticChannel(term, tag, alreadyShown, showArchived) {
             tier: h.tier,
             store: h.store,
             archived: h.archived === true,
+            superseded,
             score: h.score,
             appliedDays: applied === undefined ? 0 : applied.distinctDays,
             appliedLastMs: applied === undefined ? null : applied.lastMs,
             machine: foreign ? machineName : null,
             rank: h.score + SEMANTIC_APPLIED_BOOST * days
-                - (h.archived === true ? SEMANTIC_ARCHIVE_DEMOTION : 0),
+                - (h.archived === true ? SEMANTIC_ARCHIVE_DEMOTION : 0)
+                - (superseded ? SEMANTIC_SUPERSEDED_DEMOTION : 0),
             tierOrder: mi.TIERS.indexOf(h.tier)
         });
     }
@@ -2736,7 +2949,8 @@ async function semanticChannel(term, tag, alreadyShown, showArchived) {
 
 // One displayed line per semantic hit, indented under the channel's fence:
 // name, similarity, tier-and-store provenance, then the retirement, the
-// foreign-machine, and the applied labels where they hold. Deliberately no
+// supersession, the foreign-machine, and the applied labels where they hold.
+// Deliberately no
 // description and no body. A name in this store is a fact-bearing phrase
 // (memories are named for what they teach, not numbered), so a name plus
 // provenance is already an answer, and holding the channel to names and
@@ -2758,6 +2972,7 @@ function semanticHitLine(h, now) {
         label = 'operator';
     }
     if (h.archived) label += ', retired';
+    if (h.superseded) label += ', superseded';
     let line = '  ' + sanitize(h.name, NAME_CAP) + '  ' + h.score.toFixed(2)
         + '  (' + label + ')';
     if (h.machine !== null) line += '  machine:' + sanitize(h.machine, MACHINE_CAP);
@@ -3042,7 +3257,11 @@ function stampRead(tierDir, file) {
 // because a marker on a different stream would fence nothing. An
 // archived hit prints under its own tier's posture, raw or fenced, with the
 // retirement noted on stderr: what the note carries is the record that the
-// fact was retired, which is about the hit rather than part of it. Every
+// fact was retired, which is about the hit rather than part of it. A record
+// a live record of its own tier supersedes answers here in full and takes a
+// second such note naming its successor: a replaced fact is still evidence
+// of what was true, and this is the surface that says where the current
+// answer lives. Every
 // memory-file hit appends a read stamp to the tier it resolved from, an
 // archive hit included; a journal-key hit stamps nothing, because the sidecar
 // records memories, not keys. Nothing missing is an error: only
@@ -3085,7 +3304,9 @@ function cmdGet(argv) {
     // The rungs are walked in the precedence above, each carrying where to
     // look, the provenance fence its body prints under (null for content the
     // reading session owns), the tier its read stamp belongs to, and the tier
-    // named when the hit is a retired record. One walk over one table, so no rung
+    // named when the hit is a retired record, and the live tier whose records
+    // may supersede this one (null for the pending tier, whose semantics stay
+    // the adjudicating engine's). One walk over one table, so no rung
     // can drift from its siblings in how it labels, stamps, or stops. Only
     // true absence falls through, never a read failure.
     if (isMemoryFilename(target + '.md')) {
@@ -3106,24 +3327,30 @@ function cmdGet(argv) {
         // archive rung: nothing retires a pending memory, since the decay
         // pass exempts the tier entirely.
         if (pendingDir !== null) {
-            rungs.push({ dir: pendingDir, fence: null, stampDir: pendingDir, retiredIn: null });
+            rungs.push({
+                dir: pendingDir, fence: null, stampDir: pendingDir,
+                retiredIn: null, supersedesIn: null
+            });
         }
-        rungs.push({ dir: memDir, fence: projectFence, stampDir: memDir, retiredIn: null });
+        rungs.push({
+            dir: memDir, fence: projectFence, stampDir: memDir,
+            retiredIn: null, supersedesIn: memDir
+        });
         if (typed !== null) {
             rungs.push({
                 dir: typed.dir, fence: typeFenceLine(typed.type),
-                stampDir: typed.dir, retiredIn: null
+                stampDir: typed.dir, retiredIn: null, supersedesIn: typed.dir
             });
         }
         if (operator !== null) {
             rungs.push({
                 dir: operator, fence: operatorFenceLine(),
-                stampDir: operator, retiredIn: null
+                stampDir: operator, retiredIn: null, supersedesIn: operator
             });
         }
         rungs.push({
             dir: path.join(memDir, ARCHIVE_DIR), fence: projectFence,
-            stampDir: memDir, retiredIn: 'the project tier'
+            stampDir: memDir, retiredIn: 'the project tier', supersedesIn: memDir
         });
         if (typed !== null) {
             // A retired body keeps the provenance fence a live one gets: the
@@ -3131,13 +3358,13 @@ function cmdGet(argv) {
             // change.
             rungs.push({
                 dir: path.join(typed.dir, ARCHIVE_DIR), fence: typeFenceLine(typed.type),
-                stampDir: typed.dir, retiredIn: 'the type tier'
+                stampDir: typed.dir, retiredIn: 'the type tier', supersedesIn: typed.dir
             });
         }
         if (operator !== null) {
             rungs.push({
                 dir: path.join(operator, ARCHIVE_DIR), fence: operatorFenceLine(),
-                stampDir: operator, retiredIn: 'the operator tier'
+                stampDir: operator, retiredIn: 'the operator tier', supersedesIn: operator
             });
         }
         for (const rung of rungs) {
@@ -3153,6 +3380,35 @@ function cmdGet(argv) {
                     process.stderr.write('memq: \'' + sanitize(target, NAME_CAP)
                         + '\' is archived: this body comes from ' + rung.retiredIn + '\'s archive/,'
                         + ' where a decay pass retired it\n');
+                }
+                // The successor note rides the same channel for the same
+                // reason, and it is built only once a body has printed, so
+                // no tier is walked for a record this run never served. The
+                // body is served either way: a replaced fact is still
+                // evidence of what was true, and what the note carries is
+                // where the current answer lives. A pending rung has no
+                // supersession map, so a pending body is unlabeled.
+                //
+                // Answering for one name costs a listing of the tier that
+                // held it, one read per record: the pointer lives on the
+                // successor, so nothing short of the tier's own records can
+                // say whether a successor exists. That is why it is spent
+                // last, on the one tier that answered, and only for a body
+                // this run actually served.
+                if (rung.supersedesIn !== null) {
+                    const successors = supersededBy(
+                        supersededSuccessors(listMemories(rung.supersedesIn)),
+                        target, rung.retiredIn !== null);
+                    if (successors !== null) {
+                        const shown = successors.slice(0, SUPERSEDED_SHOWN);
+                        process.stderr.write('memq: \'' + sanitize(target, NAME_CAP)
+                            + '\' is superseded by '
+                            + shown.map((n) => '\'' + sanitize(n, NAME_CAP) + '\'').join(', ')
+                            + (successors.length > shown.length
+                                ? ', and ' + (successors.length - shown.length) + ' more' : '')
+                            + ' in the same tier: this body is the record '
+                            + (successors.length === 1 ? 'it replaces' : 'they replace') + '\n');
+                    }
                 }
                 // The stamp lands in the tier the rung belongs to, which for
                 // an archive rung is the tier above it: nothing reads a
@@ -3251,9 +3507,9 @@ function byLastAlive(a, b) {
 // caller shows the description is the caller's call: it costs budget, and it
 // is worth spending only where the digest is the reader's first sight of the
 // record.
-function recallTierRecords(dir, tally) {
+function recallTierRecords(dir, tally, memories) {
     const records = [];
-    for (const m of listMemories(dir)) {
+    for (const m of memories) {
         const memPath = path.join(dir, m.name + '.md');
         let st = null;
         try { st = fs.statSync(memPath); } catch { continue; }
@@ -3281,9 +3537,12 @@ function recallTierRecords(dir, tally) {
 // the label itself. The tally is the owning
 // tier's sidecar, where an archived memory's applied history still lives
 // after retirement, so the clock here is the same one the file answered to
-// while it was live. Records return unordered, because the archive surface
-// spans every tier and the caller owns the one sort across them.
-function recallArchiveRecords(archiveDir, tally, label, tag) {
+// while it was live. `supersedes` is the owning tier's map for the same
+// reason the tally is that tier's: a pointer written by a live record still
+// labels the archived copy of what it replaced. Records return unordered,
+// because the archive surface spans every tier and the caller owns the one
+// sort across them.
+function recallArchiveRecords(archiveDir, tally, label, tag, supersedes) {
     let files;
     try { files = fs.readdirSync(archiveDir); } catch { return []; }
     const descriptions = readArchiveDescriptions(archiveDir, tag);
@@ -3297,6 +3556,7 @@ function recallArchiveRecords(archiveDir, tally, label, tag) {
         records.push({
             name: label === '' ? f.slice(0, -3) : label + '/' + f.slice(0, -3),
             fenced: label !== '',
+            superseded: supersededLabel(supersedes, f.slice(0, -3), true),
             tags: readFrontmatterTags(memPath),
             description: descriptions.get(f) || '',
             aliveMs: lastAliveMs(st.mtimeMs, readFrontmatterCreated(memPath),
@@ -3425,6 +3685,15 @@ function recallDigest(surfaces, maxLines) {
 //     (pinned, the same shape indented under the fence above)
 //   pending  <name>  applied <n>d distinct|never|unknown  alive <age>
 //
+// A record a live record of its own tier supersedes carries a
+// 'superseded by <name>' label after its alive column, and a fan-in names its
+// live successors in name order, up to SUPERSEDED_SHOWN with the rest
+// counted. An archived record takes the label too, unless the live tier still
+// holds its name, where the pointer is about the record the tier serves under
+// that name rather than the retired file. The label is read from the
+// successors' frontmatter at digest time, the same per-record read
+// listMemories spends on tags, so no index line anywhere carries it.
+//
 // The pending block is present only inside a run, and it holds the records
 // of the one directory this process's own run id resolves: no other run's
 // directory is enumerated or read, so the coverage line's count is a claim
@@ -3502,6 +3771,12 @@ function cmdRecall(argv) {
     const projectUsage = readUsage(memDir);
     const projectTally = appliedTally(projectUsage.stamps);
     const projectUnread = projectUsage.status === 'unreadable';
+    // One walk of each tier's live records answers the whole digest, its
+    // archive surface included: the label is derived from frontmatter at
+    // digest time, one read per record beside the one listMemories spends on
+    // that record's tags, and the index lines are untouched by any of it.
+    const projectMemories = listMemories(memDir);
+    const projectSupersedes = supersededSuccessors(projectMemories);
     // A project line always carries its description, whether pinned or not:
     // this digest is the only place a reader sees these records, and a bare
     // name is little to judge a memory by. It rides last, where a journal
@@ -3511,12 +3786,13 @@ function cmdRecall(argv) {
     // reduces to '', and one written as spaces survives the reduction intact,
     // so testing the raw string would let either through as a trailing
     // separator with nothing legible after it.
-    const projectLines = recallTierRecords(memDir, projectTally)
+    const projectLines = recallTierRecords(memDir, projectTally, projectMemories)
         .map((r) => {
             const desc = sanitize(r.description, SUMMARY_CAP).trim();
             return projectIndent + 'project  ' + sanitize(r.name, NAME_CAP)
                 + '  ' + recallAppliedColumn(r.applied, projectUnread)
                 + '  alive ' + recallAgeColumn(r.aliveMs, now)
+                + supersededLabel(projectSupersedes, r.name, false)
                 + (desc === '' ? '' : '  ' + desc);
         });
 
@@ -3524,14 +3800,18 @@ function cmdRecall(argv) {
     let typeCoverage;
     let typeLines = [];
     let typeTally = new Map();
+    let typeSupersedes = emptySupersedes();
     if (typed !== null) {
         const typeUsage = readUsage(typed.dir);
         typeTally = appliedTally(typeUsage.stamps);
+        const typeMemories = listMemories(typed.dir);
+        typeSupersedes = supersededSuccessors(typeMemories);
         const typeUnread = typeUsage.status === 'unreadable';
-        typeLines = recallTierRecords(typed.dir, typeTally)
+        typeLines = recallTierRecords(typed.dir, typeTally, typeMemories)
             .map((r) => '  type  ' + sanitize(r.name, NAME_CAP)
                 + '  ' + recallAppliedColumn(r.applied, typeUnread)
-                + '  alive ' + recallAgeColumn(r.aliveMs, now));
+                + '  alive ' + recallAgeColumn(r.aliveMs, now)
+                + supersededLabel(typeSupersedes, r.name, false));
         typeCoverage = 'type tier (' + sanitize(typed.type, TYPE_CAP) + '): '
             + typeLines.length + ' record' + (typeLines.length === 1 ? '' : 's');
     } else {
@@ -3555,14 +3835,18 @@ function cmdRecall(argv) {
     let operatorCoverage = 'operator tier: no ' + OPERATOR_DIR + '/ directory';
     let operatorLines = [];
     let operatorTally = new Map();
+    let operatorSupersedes = emptySupersedes();
     if (operator !== null) {
         const operatorUsage = readUsage(operator);
         operatorTally = appliedTally(operatorUsage.stamps);
+        const operatorMemories = listMemories(operator);
+        operatorSupersedes = supersededSuccessors(operatorMemories);
         const operatorUnread = operatorUsage.status === 'unreadable';
-        operatorLines = recallTierRecords(operator, operatorTally)
+        operatorLines = recallTierRecords(operator, operatorTally, operatorMemories)
             .map((r) => '  operator  ' + sanitize(r.name, NAME_CAP)
                 + '  ' + recallAppliedColumn(r.applied, operatorUnread)
-                + '  alive ' + recallAgeColumn(r.aliveMs, now));
+                + '  alive ' + recallAgeColumn(r.aliveMs, now)
+                + supersededLabel(operatorSupersedes, r.name, false));
         operatorCoverage = 'operator tier: ' + operatorLines.length + ' record'
             + (operatorLines.length === 1 ? '' : 's');
     }
@@ -3576,13 +3860,14 @@ function cmdRecall(argv) {
     // Each tier's archive is read as its own list, because the directory a
     // cut remainder names below is a per-tier fact: a record's own fenced flag
     // says how it prints, not which of the shared tiers it retired from.
-    const projectArchive = recallArchiveRecords(path.join(memDir, ARCHIVE_DIR), projectTally, '', '');
+    const projectArchive = recallArchiveRecords(path.join(memDir, ARCHIVE_DIR), projectTally, '', '',
+        projectSupersedes);
     const typeArchive = typed === null ? []
         : recallArchiveRecords(path.join(typed.dir, ARCHIVE_DIR), typeTally, typed.type,
-            '  (type:' + sanitize(typed.type, TYPE_CAP) + ')');
+            '  (type:' + sanitize(typed.type, TYPE_CAP) + ')', typeSupersedes);
     const operatorArchive = operator === null ? []
         : recallArchiveRecords(path.join(operator, ARCHIVE_DIR), operatorTally, OPERATOR_LABEL,
-            '  (operator)');
+            '  (operator)', operatorSupersedes);
     const archiveRecords = projectArchive.concat(typeArchive, operatorArchive);
     archiveRecords.sort(byLastAlive);
     // `fenced` on a record marks the type side, which is what the archive
@@ -3593,7 +3878,7 @@ function cmdRecall(argv) {
         .map((r) => (r.fenced ? '  ' : projectIndent) + 'archive  ' + sanitize(r.name, TYPE_CAP + 1 + NAME_CAP)
             + '  [' + r.tags.slice(0, MAX_TAGS).map((t) => sanitize(t, TAG_CAP)).join(',') + ']'
             + '  ' + sanitize(r.description, DETAIL_CAP)
-            + '  alive ' + recallAgeColumn(r.aliveMs, now));
+            + '  alive ' + recallAgeColumn(r.aliveMs, now) + r.superseded);
 
     // The archive's narrowing move differs from the others because `find`
     // deliberately does not reach retired records. It names the tier archive
@@ -3651,7 +3936,7 @@ function cmdRecall(argv) {
         const pendingUsage = readUsage(pendingDir);
         const pendingTally = appliedTally(pendingUsage.stamps);
         const pendingUnread = pendingUsage.status === 'unreadable';
-        const pendingLines = recallTierRecords(pendingDir, pendingTally)
+        const pendingLines = recallTierRecords(pendingDir, pendingTally, listMemories(pendingDir))
             .map((r) => 'pending  ' + sanitize(r.name, NAME_CAP)
                 + '  ' + recallAppliedColumn(r.applied, pendingUnread)
                 + '  alive ' + recallAgeColumn(r.aliveMs, now));
@@ -4551,6 +4836,16 @@ function cmdTouch(argv) {
 // preserve the tally; an existing rollup entry is decay-prune's own artifact
 // and is never a candidate again.
 //
+// A memory a live record of its own tier supersedes is an archive candidate
+// whatever its idle age, with 'superseded by <name>' closing its line as the
+// evidence. It is a nomination like every other line here: the pass's
+// judgment step decides what is retired, and a pointer a model wrote costs a
+// candidacy rather than a retirement. A pin outranks it, so a pinned record
+// a successor names is listed as pinned and nominated by nothing, its line
+// still carrying the pointer for the reviewer that block is for. A tier
+// whose usage sidecar could not be read outranks it too, with no candidate
+// of any class.
+//
 // A memory carrying a `pinned:` frontmatter field is a candidate of neither
 // class whatever its idle age. It is listed in the pinned block instead, and
 // while the field is in the file `decay-prune` refuses to archive it. The
@@ -4589,9 +4884,12 @@ function cmdTouch(argv) {
 // here describe the same bytes.
 //
 // A tier whose sidecar could not be read yields pinned lines and no
-// candidates. Nominating on evidence known to be unread would flag a heavily
-// used memory for archive on a zero the scan knows is false, while the pinned
-// listing depends on no evidence at all: it comes from the memory files
+// candidates of any class. Nominating on evidence known to be unread would
+// flag a heavily used memory for archive on a zero the scan knows is false,
+// and that holds for a supersession pointer too: the pointer is sound
+// evidence, but the pass reading it is blind on this tier, and a candidate
+// list is acted on as a whole. The pinned listing depends on no evidence at
+// all: it comes from the memory files
 // themselves, and a pin that vanishes from the report the moment a sidecar
 // goes unreadable is a standing exemption nobody can review. Its evidence
 // columns read 'unknown' rather than 'never', because the tier's stamps were
@@ -4606,6 +4904,10 @@ function tierDecayCandidates(dir, label, now, usage, summarize, archive, pinned)
     // is decided on the parsed time, never a lexical string compare, so two
     // valid spellings of one moment cannot disagree about which is later.
     const appliedByFile = appliedTally(stamps);
+    // One listing of the tier serves both the walk below and the inverse of
+    // its records' pointers, so no record is opened twice in a scan.
+    const memories = listMemories(dir);
+    const supersedes = supersededSuccessors(memories);
     // Keyed by memoryFileKey like the tally, because the lookups below use
     // that derivation: a raw key would drop a synced mixed-case read from
     // the evidence column.
@@ -4618,7 +4920,7 @@ function tierDecayCandidates(dir, label, now, usage, summarize, archive, pinned)
         if (prev === undefined || ms > prev.ms) lastRead.set(fileKey, { ms, ts: u.ts });
     }
 
-    for (const mem of listMemories(dir)) {
+    for (const mem of memories) {
         const file = mem.name + '.md';
         const memPath = path.join(dir, file);
         const key = memoryFileKey(file);
@@ -4696,6 +4998,12 @@ function tierDecayCandidates(dir, label, now, usage, summarize, archive, pinned)
             + (created === null ? '' : '  created ' + dateColumn(created))
             + '  edited ' + dateColumn(st.mtimeMs)
             + '  read ' + (evidenceUnread ? 'unknown' : read === undefined ? 'never' : isoDate(read.ts));
+        // A live record of this tier replacing this one is evidence about the
+        // memory, so it rides on the line whatever class the memory lands in.
+        // The pinned block is where it earns its place twice over: a standing
+        // exemption over a record something has already replaced is the line
+        // a reviewer of that block most needs to see.
+        const supersededHere = supersededLabel(supersedes, mem.name, false);
         // A pin is listed at every scan whatever the memory's idle age or the
         // state of the tier's evidence, and it is decided before any of it:
         // the population living under a standing exemption is exactly what a
@@ -4703,7 +5011,29 @@ function tierDecayCandidates(dir, label, now, usage, summarize, archive, pinned)
         // the clock or the sidecar would drop pins in precisely the
         // conditions that make a store hard to reason about.
         if (pin === 'pinned') {
-            pinned.push('pinned  ' + line);
+            pinned.push('pinned  ' + line + supersededHere);
+            continue;
+        }
+        // A superseded record is an archive candidate whatever its idle
+        // clock, the pointer being the evidence the line already carries.
+        // The clock includes the extension a record's applied days earn it,
+        // so a heavily used record a fresher one replaces is nominated too:
+        // what the extension buys is time for a fact still in use, and this
+        // pointer says the store has a newer answer to the same question.
+        // It stays a nomination, the class every other line here is: the
+        // pass's judgment step picks what to retire, and nothing in a scan
+        // moves a file.
+        //
+        // Two things still outrank it, in this order. The pin, decided above,
+        // because a standing exemption granted by judgment is not something a
+        // model-written pointer overturns. Then evidence the scan could not
+        // read: a tier whose sidecar failed to open is a tier this pass knows
+        // nothing about, and nominating there would put a record on a
+        // candidate list built partly from a zero the scan knows is false.
+        // That gate is about the pass's own blindness rather than about the
+        // record, so it holds over every nomination this walk makes.
+        if (supersededHere !== '' && !evidenceUnread) {
+            archive.push('archive  ' + line + supersededHere);
             continue;
         }
         // The finite guard mirrors the session hook's: a reference time no
@@ -8618,6 +8948,7 @@ module.exports = {
     recentDigest,
     withheldLine,
     SEMANTIC_SHOWN,
+    SEMANTIC_SUPERSEDED_DEMOTION,
     parseSince,
     ARCHIVE_DIR,
     OPERATOR_LABEL,
