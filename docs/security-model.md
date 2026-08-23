@@ -193,6 +193,7 @@ A second class of memq argument takes the same refusal, on a different reason. T
 - Agent identity comes from the hook payload's subagent-type field; a call the guard cannot positively attribute to a governed agent is allowed.
 - `docs-write-guard` covers the Write/Edit tools exactly and shell writes heuristically; an exotic write (python, `sed -i`, `Copy-Item`, a variable-assembled path) is out of its reach and is caught, if at all, by the Stop-scan backstop. When the payload carries a cwd, its `docs/` match is contained against the git root above that cwd, so a path outside the session's project tree (a session scratchpad, a fixture repo) is out of scope; without a cwd, or for a target unresolvable before the shell runs (a variable, a home-relative path), the shape-only match stands and over-reaches in the false-deny direction.
 - `pr-docs-guard` carries a residual false-deny: a payload cwd resolving to a different checkout that is both dirty and parked on a non-default branch still denies.
+- The guards' case tables under `test/` are the lists their authors wrote rather than a proof of coverage, and two of them read as exhaustive without being so: `docs-write-guard`'s redirect heuristic and `merged-pr-push-guard`'s push detector each carry named misses no case in those files exercises. `docs/backlog.md` enumerates them. They sit inside the heuristic-with-a-Stop-scan-backstop risk this section already accepts rather than adding a new one.
 
 **Compensating controls, and the gap each cannot see:**
 

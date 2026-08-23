@@ -7,7 +7,8 @@
 # Verifies core setup (execution policy, doctrine import and freshness, kaizen
 # signpost, git hooks on a clone), the ANTHROPIC_API_KEY hazard, the hook layer
 # (goal-leash wiring and load, hook-canary wiring, the memq shim), the memory
-# store's sync repo and its allowlist.
+# store's sync repo and its allowlist, the embedder behind semantic memory
+# search, the goal state file's exposure, and the auto-compaction window.
 #
 #   .\doctor.ps1              Check only; prints PASS/WARN/FAIL with remediations.
 #   .\doctor.ps1 -Fix         Also applies the safe durable repairs (execution
