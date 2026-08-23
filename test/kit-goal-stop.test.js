@@ -1936,9 +1936,9 @@ test('a failed advance write re-blocks rather than releasing, and the next stop 
         const out = JSON.parse(res.stdout);
         assert.strictEqual(out.decision, 'block', 'a failed advance must not release the session');
         // The reason must not assert a state change that did not land: the
-        // state file, the compaction gate, and the stop-failure watcher all
-        // still name the finished plan, so the session must not be told the
-        // current plan already moved.
+        // state file and the compaction gate both still name the finished
+        // plan, so the session must not be told the current plan already
+        // moved.
         assert.ok(out.reason.includes('could not be recorded'), 'the reason says the advance did not land');
         assert.ok(!out.reason.includes('the leash has advanced'), 'the reason claims no advance');
         assert.ok(!out.reason.includes('the current plan is now'), 'the reason claims no new current plan');

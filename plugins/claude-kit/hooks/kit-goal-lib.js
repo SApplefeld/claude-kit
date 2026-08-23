@@ -329,10 +329,9 @@ function armGoal(cwd, planArgs, bind) {
     const boundSession = bindable ? requested.sessionId : null;
 
     const state = {
-        // The current plan of the queue. Every other reader of this file
-        // (the compaction gate, the stop-failure watcher) answers to this
-        // field and to boundSession, so both keep their meaning as the queue
-        // advances: plan is what is being worked now.
+        // The current plan of the queue. Every other reader of this state
+        // answers to this field and to boundSession, so both keep their
+        // meaning as the queue advances: plan is what is being worked now.
         plan: queue[0],
         condition: composeCondition(queue[0], queue, 0),
         armedAt: new Date().toISOString(),

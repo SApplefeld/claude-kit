@@ -495,8 +495,8 @@ test('armGoal arms an ordered queue from several plans, with the first as the cu
 
         const state = readGoal(repo);
         // plan and boundSession keep their pre-queue meanings (current plan,
-        // leash holder): the compaction gate and the stop-failure watcher read
-        // exactly that pair and must keep working against a queued state.
+        // leash holder): the compaction gate reads exactly that pair and
+        // must keep working against a queued state.
         assert.strictEqual(state.plan, 'docs/plans/a.md');
         assert.strictEqual(state.boundSession, null);
         assert.deepStrictEqual(state.queue, ['docs/plans/a.md', 'docs/plans/b.md', 'docs/plans/c.md']);
