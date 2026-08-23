@@ -480,7 +480,7 @@ function memqGrantProbes(root, failures) {
         });
     }
     // A screened flag, in a command whose verb and shape are otherwise
-    // granted. Three independent screens withhold three flag shapes there,
+    // granted. Four independent screens withhold four flag shapes there,
     // and two directions are probed because they fail differently.
     // --body-file reads a caller-named path into the store and memq refuses
     // it under the store signals as well, so a hook that lost that screen is
@@ -488,7 +488,10 @@ function memqGrantProbes(root, failures) {
     // folds and no other layer refuses it, so a hook that lost that one is
     // wide open, and nothing else here would say so. The third shape, a
     // body-carrying --update, has the same second lock in the CLI that
-    // --body-file has.
+    // --body-file has, and so does the fourth, --supersedes, which is why
+    // neither is probed here: a hook regression on either degrades to that
+    // lock rather than to nothing, which is the property the two probed
+    // shapes divide on.
     const flagged = runHook(file, {
         tool_name: 'Bash',
         tool_input: { command: 'node "' + memq + '" add-operator fact words'

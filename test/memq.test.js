@@ -15212,8 +15212,9 @@ test('a pointer that would close a mutual pair is refused, naming both records',
         // The reachable sequence: a record is superseded, then deleted, then
         // written again pointing back at its own successor. A pair each
         // naming the other asserts no replacement, so every read surface
-        // drops both halves, which would cost the surviving record the label
-        // and the archive nomination it carries now. That is a fact lost
+        // drops both halves, which costs the record being written the label
+        // and the archive nomination the survivor would have given it. That
+        // is a fact lost
         // rather than a mislabel, so the write is refused.
         const typeDir = typeDirPath(store, 'ptype');
         assert.strictEqual(runHome(store,
@@ -15228,7 +15229,8 @@ test('a pointer that would close a mutual pair is refused, naming both records',
         assert.strictEqual(cycle.status, 1, cycle.stdout);
         assert.match(cycle.stderr,
             /'second-fact' already supersedes 'first-fact' in type 'ptype'/);
-        assert.match(cycle.stderr, /loses the label and the archive nomination it carries now/);
+        assert.match(cycle.stderr,
+            /the label and the archive nomination 'second-fact' would give 'first-fact' go with them/);
         assert.ok(!fs.existsSync(path.join(typeDir, 'first-fact.md')), 'nothing was written');
 
         // The record still lands without the pointer, so what the refusal

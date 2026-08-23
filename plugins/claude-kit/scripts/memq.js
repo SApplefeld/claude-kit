@@ -8504,12 +8504,17 @@ function archiveShadowNote(name, where, deleteCommand) {
 // The pair a pointer would close is refused with them. Where the target
 // already supersedes the name being written, the two records name each
 // other, and a cycle asserts no replacement, so the readers drop it whole:
-// the new pointer would be inert and the target would lose the label and the
-// archive nomination it carries now, which is a fact lost rather than a
-// mislabel. The check is one hop, and it closes the pair rather than the
-// ring: a longer loop, A to B to C to A, is reachable through delete and
-// recreate and would need a walk of the tier this gate does not make, so the
-// readers' own cycle rule stays the answer for it.
+// the new pointer would be inert and the record being written would lose the
+// label and the archive nomination the target's existing pointer is about to
+// give it, which is a fact lost rather than a mislabel. Read the direction
+// off supersededSuccessors, which keys by target: in the state this refuses,
+// the target is the pointer-holder and the name being written is what carries
+// a label. The check is one hop, and it closes the pair rather than the ring:
+// a longer loop, A to B to C to A, is reachable through delete and recreate
+// and would need a walk of the tier this gate does not make. The readers do
+// not catch it either, their own guard being one hop as well, so a ring keeps
+// every label it makes and nominates all of its members. That is the known
+// gap this gate leaves, not a case handed to a layer that handles it.
 //
 // What this gate guards is the value as its author typed it, not the tier as
 // it will stand at the write. Every read here is lock-free, so a concurrent
@@ -8547,8 +8552,9 @@ function supersedesTargetRefusal(dir, name, target, where) {
         process.stderr.write('memq: \'' + sanitize(target, NAME_CAP) + '\' already supersedes \''
             + sanitize(name, NAME_CAP) + '\'' + where + ', so a pointer back at it would leave'
             + ' the two naming each other: a pair asserts no replacement, so every reader drops'
-            + ' both halves and \'' + sanitize(target, NAME_CAP) + '\' loses the label and the'
-            + ' archive nomination it carries now. Nothing was written\n');
+            + ' both halves, and the label and the archive nomination \''
+            + sanitize(target, NAME_CAP) + '\' would give \'' + sanitize(name, NAME_CAP)
+            + '\' go with them. Nothing was written\n');
         process.exitCode = 1;
         return true;
     }

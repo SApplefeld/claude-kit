@@ -42,15 +42,17 @@
 //     of the verbs this grant is meant to cover, and every other word there
 //     withholds it. Left out of that list are delete-type and delete-operator,
 //     which remove a shared-tier record outright, and find, which is the only
-//     verb that loads an embedder. Three flag shapes are refused wherever in
+//     verb that loads an embedder. Four flag shapes are refused wherever in
 //     the command they sit, since that is where a flag can appear:
 //     --body-file, which reads a caller-named path into the store; --update
-//     carrying --body, which replaces a shared record's body whole; and
-//     --rollup, which folds every expired journal entry's prose into a tally
-//     and keeps the text in a single local .bak the sync never carries. memq
-//     refuses the deletes, the body-file and the body-carrying update under
-//     the store signals as well, so those four are a second lock rather than
-//     the only one; find and --rollup are withheld here alone. What a
+//     carrying --body, which replaces a shared record's body whole;
+//     --supersedes, which demotes and labels a record no pin protects from
+//     it; and --rollup, which folds every expired journal entry's prose into
+//     a tally and keeps the text in a single local .bak the sync never
+//     carries. memq refuses the deletes, the body-file, the body-carrying
+//     update and the supersedes pointer under the store signals as well, so
+//     those five are a second lock rather than the only one; find and
+//     --rollup are withheld here alone. What a
 //     withheld grant costs on this vector is the capability itself: no
 //     operator is watching a fleet worker's session, so the command does not
 //     run rather than waiting for an approval. Each withholding below is
