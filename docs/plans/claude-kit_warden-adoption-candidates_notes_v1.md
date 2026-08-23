@@ -1,7 +1,17 @@
 # Warden-AI adoption candidates
 
-Status: Not Started
+Status: Dispositioned 2026-08-22
 Kind: Candidate bank, not an executable spec
+
+## Dispositions (decided 2026-08-22)
+
+All five candidates were adjudicated with the operator on 2026-08-22, grounded in probes of the two codebases the kit actually serves (`D:\Neuro-Evolution-Operations` and `D:\Temp\ASR.Eleos`):
+
+- **Candidate 1 (AST-aware read modes): adopted in the cheap shape.** An outline-first reading rule, regex over declarations and region/banner labels, no parser, no index, no dependency. Ships in `claude-kit_process-rule-repairs_spec_v1.md` section 3, carrying three pattern refinements from the ASR probe and two guardrails (an outline never proves absence; a thin outline or an auto-generated header means read directly). The expensive indexed shape is not adopted.
+- **Candidate 2 (impact analysis): parked for the foreseeable future.** The NEO probe is the evidence: every architecturally interesting edge there crosses a string or runtime boundary a syntactic graph cannot see (1,118 stored-proc name strings with zero syntactic edges into 557 proc files; 233 interfaces wired by ~270 Autofac registrations including an ordering-dependent default; 45 hosted workers; SignalR string channels; ~200 route strings; Roslyn scripts whose callers live in the tenant database). A syntactic call graph answers "no callers" at exactly those boundaries, which reads as dead code, the silent-wrong direction. Graphify's own edge census on NEO quantifies the ceiling: syntactic calls are 15 percent of edges. Meanwhile plain grep answers the same questions in one hop because the house conventions make names globally unique. Un-park only with a convention-aware cross-boundary resolver design (proc-name, route-string, container-binding), which is a different tool than the one Warden demonstrates.
+- **Candidate 3 (supersedes field): adopted.** Ships as `claude-kit_memory-supersedes_spec_v1.md`; the open questions below are settled in that spec's Approach.
+- **Candidate 4 (net-of-overhead measurement): declined.** The operator's call: not worth a study or a build at this time. The 2026-07-31 constants-tuning backlog item keeps its own evidence triggers and is unaffected.
+- **Candidate 5 (never-worse invariant): the test-now half retired, the invariant banked.** Settled analytically: the `recall`/`recent` digests deliberately exceed a tiny store's size because a stated empty surface is the product, so retrofitting the invariant as a test would fail on correct behavior. The invariant rides as a parked backlog item to be written into whichever spec first adds a real summarizer.
 
 This document deliberately carries neither of the two shapes that make a plan dispatchable: it has no sections-of-work block and no commit-model header. Nothing here is designed enough to dispatch, and those two absences are what keep the plan parsers (the kit's SessionStart recovery scan and the external engine's) from reading this as work in flight. Supplying them is what turns a candidate into a spec, and that happens through the `brainstorming` skill, one spec per candidate rather than one spec over all five. The two header names are spelled without their colons throughout this document for the same reason: above the first `##` heading is exactly where a parser looks for them, so writing them in their literal form here would plant the token it hunts for.
 
@@ -132,3 +142,5 @@ The evaluation was a read of the repository at commit `2a3e85d` (2026-08-21) plu
 ## Related
 
 - `../archive/claude-kit_shared-tier-authoring_spec_v1.md` gave the shared memory tiers their repair and delete verbs, which is the surface candidate 3 extends and the reason its framing changed: with delete in place, superseding is the remaining case rather than the whole problem.
+- `claude-kit_memory-supersedes_spec_v1.md` is candidate 3 as an executable spec.
+- `claude-kit_process-rule-repairs_spec_v1.md` section 3 is candidate 1's cheap shape as an executable section, and its Approach carries the three-codebase probe evidence behind both that adoption and candidate 2's park.
