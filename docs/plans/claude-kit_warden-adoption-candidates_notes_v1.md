@@ -3,7 +3,7 @@
 Status: Not Started
 Kind: Candidate bank, not an executable spec
 
-This document carries no `## Sections of Work` block and no `Commit Model:` header, and both absences are deliberate. Nothing here is designed enough to dispatch, and their absence is what keeps the two plan parsers (the kit's SessionStart recovery scan and the external engine's `PlanDocParser`) from reading this as work in flight. Adding either is what turns a candidate into a spec, and that happens through the `brainstorming` skill, one spec per candidate rather than one spec over all five.
+This document deliberately carries neither of the two shapes that make a plan dispatchable: it has no sections-of-work block and no commit-model header. Nothing here is designed enough to dispatch, and those two absences are what keep the plan parsers (the kit's SessionStart recovery scan and the external engine's) from reading this as work in flight. Supplying them is what turns a candidate into a spec, and that happens through the `brainstorming` skill, one spec per candidate rather than one spec over all five. The two header names are spelled without their colons throughout this document for the same reason: above the first `##` heading is exactly where a parser looks for them, so writing them in their literal form here would plant the token it hunts for.
 
 Five design ideas, surfaced on 2026-08-22 by reading Warden-AI, a third-party context layer for AI coding agents, and comparing it against the kit. The evaluation's verdict on the tool was do not adopt; these five are what the reading was worth. Each entry states what the idea is, why it applies to this kit, what Warden does as a reference implementation, its likely size and blast radius, and the questions a brainstorm has to settle before it can become a spec. None of them is designed, none is committed to, and any of them may be retired on evidence.
 
@@ -22,7 +22,7 @@ Its license is PolyForm Shield 1.0.0, which permits use and modification but for
 
 ## The candidates
 
-### 1. AST-aware read modes for large files
+### Candidate 1: AST-aware read modes for large files
 
 **What it is.** A way to read a large source file for less than the cost of the whole thing: a symbol list (signatures only), a structural outline, one named symbol with its body, or the imports alone.
 
@@ -38,7 +38,7 @@ Its license is PolyForm Shield 1.0.0, which permits use and modification but for
 - Is an index needed at all, or is parse-on-demand fast enough for one file at a time?
 - What does this add over the Read tool's own offset and limit parameters, which already slice a file by line? The answer is presumably "you have to know which lines first", but a spec should say so rather than assume it.
 
-### 2. Impact analysis before a refactor
+### Candidate 2: impact analysis before a refactor
 
 **What it is.** A query answering "what depends on this file" and "who calls this function", asked before a change rather than discovered after one.
 
@@ -53,7 +53,7 @@ Its license is PolyForm Shield 1.0.0, which permits use and modification but for
 - Would a wrong answer be worse than no answer? A call graph blind to dynamic dispatch, reflection, or a name assembled at runtime reports "no callers" for something with callers, which is the silent direction and the one the kit's own conventions treat as a defect class.
 - Does this belong in a skill's procedure (run the query at the point the doctrine asks the question) or as a tool a session reaches for on its own judgment?
 
-### 3. An explicit `supersedes:` field on memory frontmatter
+### Candidate 3: an explicit `supersedes:` field on memory frontmatter
 
 **What it is.** A frontmatter pointer on a new memory naming the record it replaces, so `recall` and `find` demote the old record the moment the new one lands rather than waiting for it to age out.
 
@@ -70,7 +70,7 @@ Its license is PolyForm Shield 1.0.0, which permits use and modification but for
 - How is it authored in the shared tiers, where hand-editing is barred and everything goes through the CLI? It would need a `--supersedes <name>` flag on `add-type` and `add-operator`, which puts it inside the locked write rather than beside it.
 - Does a superseded record still answer `get` by name? It should, on the same reasoning archive does: a fact that has been replaced is still evidence about what was true.
 
-### 4. Net-of-overhead measurement of the kit's own context cost
+### Candidate 4: net-of-overhead measurement of the kit's own context cost
 
 **What it is.** A count of what the kit's automatic emissions cost a session: the SessionStart blocks (plan recovery, memory index, backlog, goal notice), the doctrine, the output style, and the `recall` and `recent` digests.
 
@@ -86,7 +86,7 @@ Its license is PolyForm Shield 1.0.0, which permits use and modification but for
 - Per session or per emission? Per emission is what tunes a cap. Per session is what answers "is the kit expensive", which is a different question with a different audience.
 - Where would a live figure land: a `memq` subcommand, a doctor line, or nowhere at all?
 
-### 5. A never-worse invariant on anything the kit reduces
+### Candidate 5: a never-worse invariant on anything the kit reduces
 
 **What it is.** A rule that a reduction step never emits more than it consumed, and ships the original when it would.
 
