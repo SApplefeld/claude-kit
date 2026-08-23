@@ -128,3 +128,29 @@ test('the chapter-close bullet names the compaction checkpoint in each copy', ()
             + 'and so cannot follow a pointer to it');
     }
 });
+
+// The two liveness bullets defer their whole operative content to
+// finishing-work: the wedge hallmark, the cadence, and the windows all live
+// there, and standing-watch:69 makes a committed pointer back at the doctrine
+// for the probe habit. Whole-body identity would pass with either bullet
+// deleted from BOTH copies, leaving that pointer aimed at nothing and the
+// always-on layer silent on the one rule that keeps a session from killing a
+// working agent. The deferral is what earns the pin: a rule carrying its own
+// content fails visibly when deleted, where this one fails by going quiet.
+test('the liveness bullets defer to finishing-work in each copy', () => {
+    const leads = [
+        '- **Probe a dispatched agent with a message',
+        '- **No completion notification is not a stall signal',
+    ];
+    for (const [label, body] of [['skill body', skillBody()], ['doctrine mirror', mirrorBody()]]) {
+        for (const lead of leads) {
+            const lines = body.split(/\r?\n/).filter((l) => l.startsWith(lead));
+            assert.strictEqual(lines.length, 1,
+                'expected exactly one bullet leading "' + lead + '" in the ' + label);
+            assert.ok(lines[0].includes('finishing-work'),
+                'the bullet leading "' + lead + '" in the ' + label + ' must name '
+                + 'finishing-work as the owner of the wedge hallmark it defers to, '
+                + 'because the bullet carries none of that rule\'s content itself');
+        }
+    }
+});
