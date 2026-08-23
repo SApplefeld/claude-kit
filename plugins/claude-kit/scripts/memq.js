@@ -1619,10 +1619,14 @@ function readBodyFile(file) {
     // a local-looking path that is a symlink or a directory junction onto a
     // share reaches the same outbound connection the spelling check exists to
     // prevent. So the link chain is resolved first and the same rule applied
-    // to what it lands on, and the resolved path is what gets opened, leaving
-    // no second resolution between the check and the read. A drive letter
-    // mapped to a share is the residual: Z:\ is indistinguishable from a
-    // local root at this layer.
+    // to what it lands on, and the resolved path is what gets opened. The
+    // open resolves links again on its own (there is no per-component
+    // O_NOFOLLOW here), so a component swapped to a link after the check
+    // still reaches its target as the open itself; the check narrows that
+    // window rather than closing it, and the fstat after the open refuses
+    // anything that is not a regular file. A drive letter mapped to a share
+    // is the other residual: Z:\ is indistinguishable from a local root at
+    // this layer.
     let resolved;
     try {
         // The native resolver, because the JS one cannot read an
