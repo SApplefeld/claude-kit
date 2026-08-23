@@ -1,0 +1,134 @@
+# Warden-AI adoption candidates
+
+Status: Not Started
+Kind: Candidate bank, not an executable spec
+
+This document carries no `## Sections of Work` block and no `Commit Model:` header, and both absences are deliberate. Nothing here is designed enough to dispatch, and their absence is what keeps the two plan parsers (the kit's SessionStart recovery scan and the external engine's `PlanDocParser`) from reading this as work in flight. Adding either is what turns a candidate into a spec, and that happens through the `brainstorming` skill, one spec per candidate rather than one spec over all five.
+
+Five design ideas, surfaced on 2026-08-22 by reading Warden-AI, a third-party context layer for AI coding agents, and comparing it against the kit. The evaluation's verdict on the tool was do not adopt; these five are what the reading was worth. Each entry states what the idea is, why it applies to this kit, what Warden does as a reference implementation, its likely size and blast radius, and the questions a brainstorm has to settle before it can become a spec. None of them is designed, none is committed to, and any of them may be retired on evidence.
+
+## Why the tool itself was declined
+
+Warden-AI (`github.com/rynald0cst0ltziam/Warden-AI`, version 0.7.1 at the time of reading) is a local MCP server offering 32 tools: it prunes tool output before the agent sees it, indexes code with tree-sitter, stores memories in SQLite with hybrid keyword and semantic search, and writes a session handoff. It overlaps the kit across memory, recall, outcome tracking, and handoff, and in every one of those the kit's design is the more deliberate one (three synced tiers against one per-checkout database, applied stamps distinguished from reads, a similarity floor, fenced shared content, and a plan doc as the handoff rather than a log digest). It beats the kit in exactly one area, code intelligence, which is candidates 1 and 2 below.
+
+Four reasons it was declined, recorded so the decision is not re-litigated from the README alone:
+
+- **Its installer rewrites shared surfaces.** `warden init` appends an 18 KB managed block to the home `CLAUDE.md` and to the project's, writes `mcpServers` and a permissions entry into `~/.claude.json`, installs PreToolUse hooks into the project's `.claude/settings.json` that block the built-in Read and Grep tools with exit code 2, and compresses the rules files in place. `npm install -g warden-ai` runs all of it through a postinstall script with output suppressed.
+- **Its response-compression rules contradict the kit's register.** The block it appends instructs every session toward sentence fragments, dropped articles, no explanation sections, and one word where one word will do. The kit's output style is re-asserted after every tool result, so the two would fight for the length of every session.
+- **Its shell tool sits outside every kit guard.** The four PreToolUse guards match `Bash` and `PowerShell`; `warden_run_command` is an `execSync` call reachable under an MCP tool name none of them see. Adopting it would mean extending four guards for a tool the kit did not ask for.
+- **It is young and its compression is lossier than advertised.** First commit 2026-08-03, 72 commits, one author. Its own compressor damaged its own shipped rules files (the filler-word list in its repo now reads as a row of empty strings, and its layer numbering skips from 4 to 7 mid-document). Its grep pruner corrupted Windows paths on the first real input given to it, because a preprocessing step does a global string replace of the longest common path prefix and the repository name appeared twice in the path. Its "verified compression" guarantee is real but narrower than the README implies: the guard proves every kept line is a verbatim line of the input, and cannot speak to whether the right lines were kept.
+
+Its license is PolyForm Shield 1.0.0, which permits use and modification but forbids providing a product that competes with it, defined broadly. Ideas are outside copyright entirely, so a clean-room implementation of anything below is unencumbered; lifting its code into a kit that is shared with others would not be.
+
+## The candidates
+
+### 1. AST-aware read modes for large files
+
+**What it is.** A way to read a large source file for less than the cost of the whole thing: a symbol list (signatures only), a structural outline, one named symbol with its body, or the imports alone.
+
+**Why here.** This is the kit's one genuine capability gap against Warden, and the only idea on this list that saves context directly rather than improving a record. Today the kit has nothing between reading a whole file and grepping for a line. Its own `memq.js` is 8,649 lines; the gap is the difference between spending a large fraction of a context window on one file and spending a page on its shape.
+
+**Warden's version.** tree-sitter WASM grammars (no native compilation, 30+ languages including C#), an index of symbols, imports, and call sites in SQLite, and five read modes over it. Its fallback when no index exists is worth as much as the index for this purpose: a regex over lines opening with `function`, `class`, `def`, `interface`, `type`, `enum`, `struct`, `impl`, `fn`, `const`, `public`, `private`, `protected`, or `static`, kept verbatim so the output is always a subset of the file.
+
+**Size and blast radius.** Two shapes with very different costs. The cheap one is a skill rule and no code at all: for a file over N lines, read its symbol list first, built by a regex outline. The expensive one is a `memq`-style zero-dependency CLI wrapping tree-sitter WASM with its own index, which is a real effort carrying a real optional dependency; the semantic embedder is the precedent for how the kit handles one (installed outside the plugin, degrades loudly rather than silently when absent).
+
+**Open questions.**
+- Regex outline or real parse? The regex covers C#, TypeScript, and Python adequately and needs nothing installed. A parse is what candidate 2 requires, so the answer here decides whether candidate 2 exists.
+- Where would it live: a new CLI beside `memq`, or inside it? `memq` is a memory tool and a code index is a different subject, but a second CLI is a second shim, a second doctor section, and a second thing to keep installed.
+- Is an index needed at all, or is parse-on-demand fast enough for one file at a time?
+- What does this add over the Read tool's own offset and limit parameters, which already slice a file by line? The answer is presumably "you have to know which lines first", but a spec should say so rather than assume it.
+
+### 2. Impact analysis before a refactor
+
+**What it is.** A query answering "what depends on this file" and "who calls this function", asked before a change rather than discovered after one.
+
+**Why here.** The doctrine already asks exactly this question ("Before you call a change safe, name what still speaks the old contract"), and the current answer is a grep plus a judgment. A call-graph query is the mechanical form of the same question. It would also feed the scout sweep that derives a section's files in scope during brainstorming, where the current answer is likewise a grep.
+
+**Warden's version.** `warden_impact(filePath)` returns dependent and caller counts with a risk label, `warden_call_graph(function)` returns callers and callees, and `warden_dead_code()` returns symbols with no callers.
+
+**Size and blast radius.** This rides entirely on candidate 1's index and has no independent existence: without a parse-based index there is no call graph. If candidate 1 lands as a regex outline, this one does not land.
+
+**Open questions.**
+- Is a call graph over this repository (Node hooks plus one large CLI) worth its build cost, or is the real target the C# and T-SQL work where the house style lives and where a refactor's blast radius is genuinely hard to see?
+- Would a wrong answer be worse than no answer? A call graph blind to dynamic dispatch, reflection, or a name assembled at runtime reports "no callers" for something with callers, which is the silent direction and the one the kit's own conventions treat as a defect class.
+- Does this belong in a skill's procedure (run the query at the point the doctrine asks the question) or as a tool a session reaches for on its own judgment?
+
+### 3. An explicit `supersedes:` field on memory frontmatter
+
+**What it is.** A frontmatter pointer on a new memory naming the record it replaces, so `recall` and `find` demote the old record the moment the new one lands rather than waiting for it to age out.
+
+**Why here, and what changed underneath it.** The shared-tier authoring effort (`../archive/claude-kit_shared-tier-authoring_spec_v1.md`, delivered 2026-08-22) gave both shared tiers a whole-body repair and a true delete, so a record that was *wrong* now has two remedies. Superseding is neither of them. The case it covers is the record that was right when written and is stale now, which is precisely the case delete is wrong for: the memory-system skill draws that line itself, delete for the record that was never true, archive for the one that was once right and has stopped earning its place. Today that case is a fresh record beside an old one that keeps answering recall for 60 idle days plus its applied-stamp extension, which at the cap runs to 425 days. Both records are live, both are surfaced, and they disagree. `memq` has no such field today: its frontmatter walk reads `pinned:`, `created:`, `tags:`, `machine:`, and run provenance, and the two occurrences of the word "supersede" in the CLI are prose in comments.
+
+**Warden's version.** A `supersedes_id` column and a `warden_memory_supersede(oldId, newId)` verb that sets the old record's status so it drops out of recall.
+
+**Size and blast radius.** Small, and the smallest of the five. One optional frontmatter field on a walk that already exists, one demotion rule in the two read paths, and a decision about what the decay pass does with a superseded record.
+
+**Open questions.**
+- Demote, retire, or merely label? Superseding could archive the old record at once, rank it below its successor, or only annotate it in the digest. Archiving on a pointer written by a model is the one with a real failure mode.
+- Which record carries the field? The new one pointing back is the file-per-fact answer, since the old file is not being rewritten. Warden writes both directions.
+- What happens when the superseded record lives in a different tier, or on a machine that has not synced yet? The index lines merge by union across machines, which cannot express a removal.
+- How is it authored in the shared tiers, where hand-editing is barred and everything goes through the CLI? It would need a `--supersedes <name>` flag on `add-type` and `add-operator`, which puts it inside the locked write rather than beside it.
+- Does a superseded record still answer `get` by name? It should, on the same reasoning archive does: a fact that has been replaced is still evidence about what was true.
+
+### 4. Net-of-overhead measurement of the kit's own context cost
+
+**What it is.** A count of what the kit's automatic emissions cost a session: the SessionStart blocks (plan recovery, memory index, backlog, goal notice), the doctrine, the output style, and the `recall` and `recent` digests.
+
+**Why here.** The kit spends context on every session and has never measured what it spends. The compaction gate reads consumption from the transcript's `usage` blocks, but that measures the whole session rather than the kit's share of it. Two things want the number this would produce. The 2026-07-31 backlog item on tuning memq's invented constants is the direct one: both digest budgets and both recall caps were seeded by judgment with zero observations behind them, and that item is explicitly waiting on evidence. The second is any future judgment about whether a session-start block earns its place, which today can only be argued rather than priced.
+
+**Warden's version.** A decisions table recording tokens saved and processing time per call, reported as gross savings minus its own overhead. Its counter is a lexical approximation and it says so plainly; its `HONEST-NUMBERS.md`, which enumerates what its benchmark does not prove, is worth reading as a model for publishing a self-measured figure.
+
+**Size and blast radius.** Small to medium, and it changes no behavior, so it can ship and be judged without touching what it measures.
+
+**Open questions.**
+- What counts the tokens? A lexical approximation is cheap, dependency-free, and consistent with itself, which is all a tuning signal needs. A real tokenizer is a dependency for a number nobody is billed on.
+- Is this an instrument or a study? `tools/transcript-study/` already exists and the transcripts already carry the emissions, so this may be a one-off analysis rather than a feature. That is the first question to settle, because it decides whether anything ships at all.
+- Per session or per emission? Per emission is what tunes a cap. Per session is what answers "is the kit expensive", which is a different question with a different audience.
+- Where would a live figure land: a `memq` subcommand, a doctor line, or nowhere at all?
+
+### 5. A never-worse invariant on anything the kit reduces
+
+**What it is.** A rule that a reduction step never emits more than it consumed, and ships the original when it would.
+
+**Why here.** The kit summarizes nothing today: the native summarizer runs unmodified and the compaction gate only schedules when it fires. So this is an invariant banked ahead of the surface it governs, which is the cheap moment to decide it. The failure it prevents is real and easy to miss: a reduction that adds its own annotations costs more than passing the input through whenever the input is small enough, and nothing notices, because the output still looks reduced.
+
+**Warden's version.** A `neverWorse` check beside its trust guard: if the pruned output estimates larger than the raw, the raw ships.
+
+**Size and blast radius.** Trivial as code, and the point of banking it is that it is worth a test rather than a comment.
+
+**Open questions.**
+- Is there anything to apply it to before the kit gains a summarizer? Two surfaces already reduce: the `recall` and `recent` digests, whose line budgets and per-record framing could in principle exceed the store they summarize on a very small store. Whether that is reachable is a five-minute check and would decide whether this rides as a test now or as a rule written into whichever spec first adds a summarizer.
+
+## Ruled out, and why
+
+Recorded so these are not re-proposed from the same README:
+
+- **Warden's response-compression rules.** Antithetical to the kit's register, and the mechanism (a word list applied by regex) damages meaning: on a copy of the doctrine it turned list labels `(a)` into `()` and the set literal `{a,b}` into `{, b}`.
+- **The MCP proxy and lazy tool loading.** Claude Code loads tool schemas on demand natively, so the layer is redundant here.
+- **The self-reported outcome watchdog.** An agent grading its own pruning and auto-reverting rules on that self-report is not evidence; the kit's outcome journal already records what happened when a session acted, written to a bar the memory-system skill states.
+- **SQLite as the memory store.** A step backward from file-per-fact markdown: not diffable, not syncable across machines by the existing mechanism, and opaque to every tool the kit already has.
+- **Its session handoff.** A digest of memory titles, task outcomes, and files touched, with no intent, no decision rationale, and no next step. A plan doc Chapter carries more in a paragraph.
+
+## What a brainstorm settles first
+
+Three cross-cutting decisions come before any of these becomes a spec:
+
+1. **Candidates 1 and 2 are one effort or none.** Impact analysis has no existence without the parse-based index that only the expensive shape of candidate 1 builds. So the real fork is a cheap regex outline that ships candidate 1 alone, or an indexed effort that ships both and carries a dependency.
+2. **Which codebase is the target.** These were surfaced while reading a TypeScript repository and evaluated against this one. The house style is C# and T-SQL, and that is where a refactor's blast radius is hardest to see by eye. An effort aimed at this repository and one aimed at that work are different specs with different acceptance checks.
+3. **Sequence.** Candidate 3 is the smallest, the most self-contained, and sits on a surface that was rebuilt this month, so it is the natural first. Candidate 5 is nearly free and may be a test rather than an effort. Candidate 4 answers whether the kit's own emissions are worth what they cost, which is a question that gets more useful the longer it goes unasked, and its first move is a study rather than a build.
+
+## Evidence
+
+The evaluation was a read of the repository at commit `2a3e85d` (2026-08-21) plus these runs, all in a session scratchpad with the home directory redirected so nothing touched real machine state. `warden init` was deliberately never run; everything stated about the installer is read from its source.
+
+- Installer behavior: `src/cli/index.ts` (init steps), `src/cli/register.ts` (`~/.claude.json`, MCP registration), `src/cli/rules.ts` (project and global `CLAUDE.md`), `src/cli/hooks.ts` and `src/cli/index.ts` (the `hook redirect` handler and its exit code 2), `bin/postinstall.cjs`.
+- Compression: `src/compress/index.ts` (levels and word lists), `src/output/index.ts` (the shipped rules template). Verified by a dry run over a copy of the doctrine, which reported a 10 percent reduction and produced the damage quoted above.
+- Pruning and the guard: `src/pruner/guard.ts`, `src/pruner/index.ts` (the guard compares against a preprocessed copy, not the raw input), `src/pruner/preprocess.ts` (the path-shortening global replace), `src/pruner/modules/grep.ts`, `src/pruner/modules/fileread.ts` (read modes and the regex fallback). Verified by pruning a 569-line grep of this repository, which reported 94 percent savings and emitted corrupted paths under a passing guard.
+- Code intelligence: `src/index/parser.ts` (language table, C# at the `.cs` entry), `src/index/indexer.ts`, `src/index/graph.ts`.
+- Memory: `src/memory/index.ts` (hybrid search, reciprocal rank fusion, no similarity floor), `src/memory/embeddings.ts`, `src/store/sqlite.ts` (schema).
+- Its test suite: 562 of 568 passing with embeddings disabled; 21 of 22 in the semantic file once the model was installed, the remaining failure being its own test asserting that an unrelated query returns nothing, which fails because the vector channel has no floor.
+- Kit side: `docs/architecture.md`, `docs/security-model.md` (guard matchers and the agent access model), `plugins/claude-kit/hooks/hooks.json`, `plugins/claude-kit/skills/memory-system/SKILL.md` (decay thresholds, the delete-versus-archive line, CLI-only shared-tier authoring), `plugins/claude-kit/scripts/memq.js` (frontmatter walk), `docs/backlog.md` (the 2026-07-31 constants item).
+
+## Related
+
+- `../archive/claude-kit_shared-tier-authoring_spec_v1.md` gave the shared memory tiers their repair and delete verbs, which is the surface candidate 3 extends and the reason its framing changed: with delete in place, superseding is the remaining case rather than the whole problem.
