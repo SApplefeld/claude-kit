@@ -1509,14 +1509,16 @@ function boundedFreeText(value, cap, label) {
 // The write gate for a shared-tier description: the same charset reduction,
 // but an over-cap value is refused rather than cut. A body takes only the
 // refuse-rather-than-cut half and never the charset reduction, being a
-// document whose punctuation is content, so it does not pass through here. The tiers earn different treatment because they fail differently.
+// document whose punctuation is content, so it does not pass through here.
+// The tiers earn different treatment because they fail differently.
 // A truncated journal entry is repairable by logging again; a shared-tier
 // record is repaired only by replacing its body whole, under --update and
 // --confirm-shared, and the text that replacement covers over survives in a
 // local .bak alone. So a silent cut is damage the author cannot see at the
 // keystroke, and the repair for it restores nothing but what the author comes
 // back and re-types. Refusal at compose time, with the actual length beside
-// the cap, is the one report the author can act on in the same breath. Returns the sanitized text, or null after the usage error.
+// the cap, is the one report the author can act on in the same breath.
+// Returns the sanitized text, or null after the usage error.
 function sharedFreeText(value, cap, label) {
     const stripped = sanitize(value, Infinity);
     if (stripped !== String(value)) {
@@ -8221,8 +8223,9 @@ function listCopyDirectory(dir) {
 }
 
 // Remove every file in one directory that holds a copy of one record's text
-// and is not the record, from a listing of it taken before any unlink. Both shapes hold a whole body, neither is listed by
-// any reader or overwritten by any later write, and once the record is gone
+// and is not the record, from a listing of it taken before any unlink. Both
+// shapes hold a whole body, neither is listed by any reader or overwritten by
+// any later write, and once the record is gone
 // nothing else in the store can reach either, so a delete that left one would
 // leave a readable copy of the memory it reports having removed.
 //
@@ -8273,13 +8276,16 @@ function removeRecordCopies(dir, entries, file, place, onRemoved) {
 // finished step a no-op the second time through. The copies lead because a
 // failure there can be permanent rather than transient (a directory occupying
 // <name>.md.bak, a directory that refuses to be listed), and both directories
-// are listed before either sweep unlinks, so a permanent failure in either one
-// is the whole of the step and the store is left exactly as it was. An unlink
-// that throws after an earlier one landed is the transient case and is not
-// covered by that: those copies are gone, which the failure line names and a
-// re-run treats as work already done. Either is better than the same stop in the last step, which would
-// leave a record with no index line and no way to finish but the command that
-// cannot. The two record files are
+// are listed before either sweep unlinks, so a directory standing where one of
+// them should be stops the step with the store exactly as it was. That listing
+// checks the directories and not the backup paths inside them, so the other
+// permanent case, a directory at <name>.md.bak itself, is not caught by it: it
+// throws on the archive sweep, after the live sweep has already spent the
+// record's own .bak. An unlink that throws after an earlier one landed is the
+// transient case: those copies are gone, which the failure line names and a
+// re-run treats as work already done. Either is better than the same stop in
+// the last step, which would leave a record with no index line and no way to
+// finish but the command that cannot. The two record files are
 // unlinked in either order safely, because one copy left in either location
 // is a name this command still acts on. Any other order can strand something:
 // unlinking a record first leaves an index line naming a file that is gone

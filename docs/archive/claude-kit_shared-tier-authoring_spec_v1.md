@@ -1,6 +1,6 @@
 # Shared-tier authoring: a correction path, and a body input that survives shells
 
-Status: In Progress
+Status: Complete
 Commit Model: Commit-and-Push
 Created: 2026-08-21
 
@@ -100,6 +100,13 @@ bar: what a shared-tier write no longer is, is one-way.
   preserved. The root-cause step in Section 1 re-derives the newline failure
   rather than trusting a remembered mechanism (declared 2026-08-21).
 - Line references were read at base commit `8857aae`.
+
+## Related
+
+- `docs/archive/memq-input-contract_plan_v1.md` shipped the description-only
+  `--update` this plan widens into a whole-body repair.
+- `docs/archive/claude-kit_synced-semantic-memory_spec_v2.md` created the
+  operator tier that this plan gives a repair and a delete path.
 
 ## Sections of Work
 
@@ -368,13 +375,165 @@ brief carries these verbatim.
 
 Entries below are not in date order: each was inserted ahead of the entry
 that was newest when it was written, and the interim boards were appended,
-so the two sequences interleave. **The newest entry is `Chapter 3 -
-2026-08-22`**, which closes section 3 and carries the `Next:` a resuming
-session should act on; `Chapter 2 - 2026-08-22` closes section 2 and
-`Chapter 1 - 2026-08-21` closes section 1, the latter sitting last in the
-file. The interim boards between them are the closure-drought
+so the two sequences interleave. **The newest entry is `Chapter 4 -
+2026-08-22`**, which closes the whole effort and carries its final gate;
+`Chapter 3 - 2026-08-22` closes section 3, `Chapter 2 - 2026-08-22` closes
+section 2, and `Chapter 1 - 2026-08-21` closes section 1, the last of those
+sitting last in the file. The interim boards between them are the closure-drought
 record of section 2's review rounds, not section closures, and none of them
 carries a `Next:` that outranks Chapter 2's.
+
+### Chapter 4 - 2026-08-22
+
+**The whole-effort finishing pass: delivered, and the plan is Complete.** QA
+verification, a whole-changeset security review, a whole-changeset adversarial
+review, a whole-document-set prose review, and docs curation all ran over
+`6a6d966..ae2c70a` plus the fix round this Chapter records. The code came
+through clean; the prose did not, and the failures clustered exactly where
+Chapter 3 said they would.
+
+**The finishing gate ran twice, because the first round never started.** Three
+reviewers dispatched at the `fable` override sat for 4.7 hours reporting
+`running` with 0-byte transcripts. The cause is account Fable-limit
+exhaustion mid-run, which does not kill a dispatch: it wedges it waiting on a
+usage-credit authorization that never comes, and `TaskOutput` reports
+`running` throughout, identically to a healthy long run. Transcript byte
+growth is the only discriminator, and local CPU is not one, the agents being
+API-bound. They were stopped and re-dispatched through the compensated route
+the finishing-work unavailability rule defines: `Workflow`'s `agent()` at
+`model: 'opus'`, `effort: 'max'`, naming the scoped `agentType`. That is a
+**compensation, not a bare fallback**: a tier down with the effort climbed to
+cover it, run at `claude-opus-5`, confirmed from the run's own progress
+record. The gate did not run at Fable, and the honest statement is that
+re-running it where Fable is reachable would be worth something.
+
+**The compensated round paid for itself.** Security returned **no Critical and
+no Major**, four Minors, and killed seven of the eight leads it was given with
+evidence, including a hand-run of the grant hook's tokenizer against real Git
+Bash word splitting. The adversarial and prose lenses returned
+CHANGES_REQUIRED. Nearly every finding landed on section 3's round-8 edits,
+the twenty this doc recorded as "gated by the suite, the build and the canary,
+and by nothing else". That recorded gap was the defect's address.
+
+**The Critical, and it was this effort's own.** `finishing-work/SKILL.md`
+told a close-out that a shared tier bars the hand edit removing a `pinned:`
+line, so "the only way past a pin is `delete-type`/`delete-operator` plus a
+fresh write". `memory-system/SKILL.md` says in as many words not to reach for
+a delete to clear a pin, and the CLI's own refusal string
+(`memq.js:6097-6098`) says to delete the `pinned:` frontmatter field. Both
+skill passages were written in section 3, in one pass. It is the exact seam
+that section existed to find, reproduced by the section itself, in a procedure
+this very close-out executes: running it would have dropped a record's usage
+stamps and met another machine's copy as a modify/delete conflict.
+
+**Nine further Majors fixed, each confirmed against the code before acting.**
+A false account of what a stopped delete leaves (the steps run copies, tier
+index, archive index, stamps, record files, so a late stop leaves a record no
+index lists). An undocumented consequence of the repair verb:
+`updateIndexDescription` runs unconditionally on the `--update` path
+(`memq.js:7167`, `:7607`), so every body repair also rewrites the index line
+from the mandatory description positional. A rule in two skills saying any
+other doctor WARN means its probes never ran, when `doctor.ps1:1338` reports
+an unanswerable probe as **FAIL** and three WARN branches sit after the
+probes-read-clean gate: as written it would stop a close-out push on a store
+whose allowlist is proven. A locked-rewrite enumeration omitting `--update`.
+An "only that surface" absolute over a channel that also guards path text,
+file shape and size. A comment claiming a delete's directory listing makes a
+`.bak` collision harmless, when `requireCopyDirectory` lstats the directories
+and never the backup paths inside them. Two terms the primary deliverable
+conditions behavior on, the engine store signals and the pending tier, used
+before they were defined and in the pending tier's case never defined at all.
+Plus three unreflowed comment lines, one at 141 columns, which returned
+`memq.js` to its base over-100 profile of 49.
+
+**Two false counts in this document's own Chapters, corrected.** Chapter 2's
+guard inventory claimed 13 `refuseNonRegularStoreFile` sites; there are 7 call
+sites guarding 9 paths, and 13 is 7+6, the `createStoreFile` figure
+double-counted. It was wrong when written, and it verified wrong at `752dbce`
+too. Chapter 3 said three findings went to the backlog; four did, and the
+fourth was in no part of this doc. Chapter 3's build figure of 611 KB could
+not be reproduced: `ae2c70a` builds at 609.5 KB, twice, on a clean tree.
+Amendment 7's own class, surviving in the Chapters that name it.
+
+**Docs curation returned four drift items, every one `Class: deviation`, and
+zero mistakes**, so nothing stopped. The curator restated the canary's grant
+probe set (six on Windows, five elsewhere, each screen named) where two
+documents had it at two of six; carried the repair's index-description
+rewrite into `architecture.md`; and gave that document its first account of
+the two body channels. Its `CLAIMS SWEPT` block checked thirteen claims across
+the library and found the rest clean. One drift item corrected this doc's own
+premise rather than the docs: the grant hook did not **move** the fleet
+refusal out of the CLI, it added a second lock beside one the CLI keeps
+(`memq.js:6935-6938` says so in its own words), and Chapter 2's opening
+sentence is amended to match.
+
+**Four findings routed to `docs/backlog.md` rather than fixed**, each with its
+reason: the surviving restatements of three facts across three-or-more sites
+(all currently in agreement, so the cost lands on the next correction); the
+question of whether a description-only `--update` should keep its prompt-free
+fleet grant, which is a behavior change and so owes a per-site red under
+Amendment 8; a test whose title outruns its assertion; and the prose-review
+tell findings, which are a rewrite of two documents rather than a correction
+and none of which is false. Five stale `memq.js` line anchors already in the
+backlog were repointed, since this effort widened the drift by seven lines.
+
+**A shipped capability is not yet live on this machine.** The `memq` name on
+PATH resolves the kit doctor's shim, which runs the plugin's **installed**
+copy under `plugins/cache/`, not the working tree. So `memq add-operator
+--confirm-shared` refuses with `unknown option` here even though the tree
+implements it, and the two memory corrections below had to be run as `node
+plugins/claude-kit/scripts/memq.js`. The verbs go live on a plugin reinstall,
+not on a build. Banked as an operator-tier memory.
+
+Assumptions: The two kaizen notes' text is the full evidence base and the
+failing invocations were not preserved, so the root cause was re-derived by
+live probe rather than trusted from the note's "Git Bash wrapper" framing,
+which the probe disproved (declared 2026-08-21, section 1). The Discord
+relay's approval of the dogfood correction was treated as the operator's own,
+on the relay's stated allowlist guarantee, but only after it carried a reason
+and named which shape it approved; the first bare "that's approved" was held
+rather than acted on, because blast radius decides the confirmation bar rather
+than the channel (declared 2026-08-22, section 2). The docs index and the
+plans index are left describing an In Progress plan, since that is true at
+this commit; the finishing pass's curation moves both when the plan flips to
+Complete and archives (declared 2026-08-22, section 3). The `docs/` index
+refresh was scoped to the claims this effort falsified rather than re-derived
+whole, on the ground that curating-docs at the close-out owns the general
+refresh (declared 2026-08-22, section 3). The finishing fix round was not
+itself re-reviewed: every edit in it was prescribed by a reviewer and verified
+against the code before it was made, and the docs curator read the same
+documents fresh afterwards, but no adversarial lens has read the fix round's
+own diff (declared 2026-08-22, finishing pass).
+
+Review Findings: One round at opus/`max` after the wedged Fable round.
+Security: no Critical, no Major, four Minors, all taken as prose corrections.
+Adversarial: CHANGES_REQUIRED, four Majors and seven Minors. Prose: one
+Critical, nine Majors, ten Minors. Fixed: the Critical, all Majors bearing on
+what the code does, and every Minor that was a factual correction. Deferred
+with reasons to the backlog: four. Nothing was parked.
+
+Stamps: adjudicated 2, stamped 2 (`fable-limit-can-exhaust-mid-run`, which
+shaped the wedge diagnosis; `kit-project-memory-does-not-resolve-from-current-checkout`,
+which located the decay-stamp predicate outside the checkout). Both were also
+**corrected in the same turn**, being contradicted by this session's own
+evidence: the first said exhaustion kills a dispatch when it wedges one, and
+the second said the current checkout's store held no memory directory when it
+now holds three records. Two memories added: the memq suite's two store
+harnesses (project tier) and the shim-runs-the-installed-plugin trap (operator
+tier). Two outcomes logged. The decay pass was **not due** and was not run:
+`~/.claude/projects/D--claude-kit/memory/decay-stamp` is one day old against a
+14-day threshold.
+
+Gate: `node --test test/*.test.js` is **1244 pass / 0 fail / 0 skipped, exit
+0**, unchanged across the fix round and against a 1084 pre-effort baseline.
+`node --test test/hook-canary.test.js` is **40 pass / 0 fail, exit 0** against
+the rebuilt zip. `./build.ps1` builds 77 files at 610.2 KB after the fix round
+(609.5 KB at `ae2c70a`). Every figure from this session's own run rather than
+from a report; the QA verifier independently reproduced all three and mapped
+12 of 12 acceptance criteria across sections 1 and 2 to named passing tests.
+
+Next: none, the effort is complete
+Commit Model: Commit-and-Push
 
 ### Chapter 3 - 2026-08-22
 
@@ -462,13 +621,14 @@ collision. `test/memq.test.js`: one comment carrying the last copy of the
 falsified sync claim. The repository root `README.md`: its memq verb list and
 memory-system blurb predate the operator tier and both verbs this plan shipped.
 
-**Deferred with the reasons, rather than silently.** Three findings are real,
+**Deferred with the reasons, rather than silently.** Four findings are real,
 confirmed against the code, and left to the backlog with receipts: a confirmed
 delete of a name the tier does not hold spends the tier's three backup
 generations and reports none of it; the stopped-delete pin carries a dead
-assertion whose message contradicts the comment above it; and the delete's
+assertion whose message contradicts the comment above it; the delete's
 ordering argument does not establish the permanence it claims for a node at
-`archive/<name>.md.bak`. Each is a behavior or test-logic change to a
+`archive/<name>.md.bak`; and the closing sweep reaches those three `.bak`
+paths but not a stranded `<index>.tmp.<pid>` beside them. Each is a behavior or test-logic change to a
 destructive verb, which Standing Brief Amendment 8 says ships with a red test
 per site, and this was a documentation section that held its code edits to
 comments and one string. The first is additive reporting and the cheapest of
@@ -506,7 +666,7 @@ Majors. Rounds 2 through 8: no Critical. Majors addressed across the rounds
 covered the falsified sync-egress rationale at four sites, the `get` precedence
 and fence omissions, the missing `--confirm-shared` gate in three surfaces, the
 pin and summarize rules for the shared tiers, the frontmatter description that
-made section 2's capability undiscoverable, and the two index files. Three
+made section 2's capability undiscoverable, and the two index files. Four
 Majors were deferred to the backlog with the justification above. Minors were
 taken where they were factual corrections and left where they were taste.
 
@@ -521,7 +681,7 @@ needed a second pass to restore.
 Gate: `node --test test/*.test.js` is 1244 pass / 0 fail / 0 skipped, exit 0,
 unchanged from section 2's close and against a 1084 pre-effort baseline, every
 figure from the orchestrator's own run. `./build.ps1` builds 77 files at
-611 KB. `node --test test/hook-canary.test.js` is 40 pass / 0 fail, exit 0,
+609.5 KB. `node --test test/hook-canary.test.js` is 40 pass / 0 fail, exit 0,
 against the rebuilt zip. No test covers the prose this section changed, which
 is why the review rounds were the gate and why the count of them is recorded.
 
@@ -943,8 +1103,8 @@ repair (`--update` with a body flag and `--confirm-shared`), and
 live record, archive copy, both index lines, and the usage stamps, under the
 tier lock. The two documents the section owns and the memory-system skill's
 destructive-verb surface were rewritten to match, and the grant hook's screen
-moved the fleet refusal to the one enforcement point that sees an argv the
-granted child cannot forge.
+added a second lock on the fleet refusal at the one enforcement point that sees
+an argv the granted child cannot forge, the CLI keeping its own.
 
 **Twenty-three implementation rounds and sixteen review rounds, and the count
 is the section's main finding rather than an embarrassment.** The feature is
@@ -979,10 +1139,10 @@ of the implementer's own new pins passing with its guard deleted, because
 another guard added the same round removed the artifact that pin used as its
 discriminator. Round 20 re-ran round 19's driver against round 20's code and
 confirmed no earlier pin had been disarmed, which converted a standing worry
-into a measurement. **The guard inventory now stands at 13
-`refuseNonRegularStoreFile` sites, 6 `createStoreFile` sites, and 11
-`rewriteWithBackup` sites all reporting the backups they take, every one with
-a per-site red proven by a driver rather than argued.**
+into a measurement. **The guard inventory now stands at 7
+`refuseNonRegularStoreFile` call sites guarding 9 paths, 6 `createStoreFile`
+sites, and 11 `rewriteWithBackup` sites all reporting the backups they take,
+every one with a per-site red proven by a driver rather than argued.**
 
 **Rulings worth carrying.**
 
