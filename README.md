@@ -63,9 +63,6 @@ claude-kit/                          (repo = the marketplace)
         chapter-boundary-nudge.js    PostToolUse nudge that puts the boundary steps in front of a leashed
                                      run when it appends a Chapter to a plan doc, so the checkpoint the
                                      compaction gate waits on gets opened
-        stop-failure-log.js          StopFailure hook: records an API-error turn death to .kit/ and decides
-                                     nothing, so the watcher script can resume an unattended run that the
-                                     Stop leash never saw die
         docs-write-guard.js          Denies non-curator subagent writes into docs/
         stop-docs-hygiene.js         Stop-time docs-library backstop
         pr-docs-guard.js             Requires the docs work committed before the PR goes up
@@ -86,31 +83,17 @@ claude-kit/                          (repo = the marketplace)
                                      run an external engine spawned, reads and writes also span that run's
                                      own pending tier, which the engine adjudicates before promotion
         memq-shim.js                 Resolves the installed payload's memq.js so the PATH wrappers stay stable
-        stop-failure-watcher.ps1     Scheduled-task pass that reads the stop-failure marker and resumes a
-                                     leashed unattended run that died on a retryable API failure. Owns every
-                                     decision the logger hook refuses: scope, retryability, incident budget,
-                                     and whether a resume is already in flight
       doctor/
         install-memq-shim.ps1        Installs the per-shell memq wrappers onto PATH (run by the doctor)
         install-memory-sync.ps1      Memory-sync allowlist, state, and initialization (run by the doctor)
         install-embedder.ps1         Embedder probe, install, and index health (run by the doctor)
-        install-stop-failure-watcher.ps1
-                                     Registers/unregisters the stop-failure watcher's scheduled task (run by
-                                     the doctor under -Fix plus the named switch; pins the task's instance
-                                     and time-limit policy and verifies them by read-back)
         install-compact-window.ps1   Writes autoCompactWindow into user settings.json (run by the doctor
                                      under -Fix; backs up, verifies, and aborts rather than clobbering)
         doctor.ps1                   The kit doctor (ships with the plugin, so installed machines have it):
                                      policy, ANTHROPIC_API_KEY hazard, doctrine import + freshness, signpost,
                                      hooks (goal leash wiring and load, hook canary wiring, the memq shim),
-                                     memory sync, the embedder, the auto-compaction window (and whether the
-                                     installed Claude Code supports PreCompact), the stop-failure watcher's
-                                     scheduled task, and any leftover resume-relay state a machine still
-                                     carries. Flags: -Fix, -Yes (pre-answers prompts), -RemoveLegacyRelay
-                                     and -UnregisterStopFailureWatcher (the two destructive actions, each
-                                     needing its own switch on top of -Fix), and -RegisterStopFailureWatcher
-                                     (opt-in either way, so a bare -Fix neither installs a resume daemon
-                                     nor nags about one). Under -Fix the
+                                     memory sync, the embedder, and the auto-compaction window. Flags:
+                                     -Fix and -Yes (pre-answers prompts). Under -Fix the
                                      auto-compaction check offers to write your user settings.json, the
                                      only change it makes to harness config.
         doctor.cmd                   Execution-policy-proof wrapper (a fresh Windows box blocks .ps1 by default)
@@ -151,7 +134,7 @@ The catalog at `.claude-plugin/marketplace.json` points to the plugin with `"sou
    - Claude Code (once per machine): add `@claude-kit-doctrine.md` to `~/.claude/CLAUDE.md`. The `doctrine-refresh` hook rewrites that imported file from the installed skill each session, so the doctrine loads always-on and stays current; the hook offers to add the line if it is missing.
    - Cowork / Chat (once per account): add to your account personal preferences: `Before any non-trivial task, consult the operating-instructions skill.` Plugins cannot write account preferences and Cowork/Chat do not read `~/.claude`, so this one line is the only manual step there.
 
-7. Verify the machine (Windows): run the doctor. On a clone, `.\doctor.cmd` from the repo root; on an install-only machine, `/claude-kit:kit-doctor` in any session (the doctor ships inside the plugin payload), or the payload path directly: `<plugin cache>\doctor\doctor.cmd`. One pass covers execution policy, the `ANTHROPIC_API_KEY` hazard, the doctrine import and content freshness, the kaizen signpost, git hooks, the goal-leash and hook-canary wiring, the memq shim, and any leftover resume-relay state the machine still carries. `-Fix` applies the safe durable repairs (`-Yes` pre-answers prompts for unattended runs). Removing the leftover relay state is the doctor's one destructive action and needs its own switch, `-Fix -RemoveLegacyRelay`, which surfaces every stalled-session resume pointer before it deletes anything and leaves AutoHotkey installed.
+7. Verify the machine (Windows): run the doctor. On a clone, `.\doctor.cmd` from the repo root; on an install-only machine, `/claude-kit:kit-doctor` in any session (the doctor ships inside the plugin payload), or the payload path directly: `<plugin cache>\doctor\doctor.cmd`. One pass covers execution policy, the `ANTHROPIC_API_KEY` hazard, the doctrine import and content freshness, the kaizen signpost, git hooks, the goal-leash and hook-canary wiring, the memq shim, memory sync, the embedder, and the auto-compaction window. `-Fix` applies the safe durable repairs (`-Yes` pre-answers prompts for unattended runs); it deletes nothing.
 
 Updating. Commit and push here first. The plugin's version is the git commit SHA (`plugin.json` omits `version`), so every commit is a new version with no version bumping. How you pull that update differs by surface, and the surfaces are SEPARATE installs:
 
@@ -180,7 +163,7 @@ The kit summarizes nothing itself; the native summarizer runs unmodified. It nev
 
 The same hook keeps the backlog from rotting. In any project holding a `docs/backlog.md`, session start reports how many active items it carries, the oldest one's parked date and its age in days, and how many carry no date at all, injecting those figures and never an item's text. Anything older than 90 days is named, with its date, for a promote/retire/keep call at the next close-out.
 
-`/kit-goal docs/plans/<plan>.md` arms a project-scoped completion leash for a run in one line, enforced by a deterministic Stop hook (no LLM evaluator) whose state lives in `.kit/` and so outlives a session boundary, unlike native `/goal`, whose state is bound to the transcript. The hook enforces on session identity, and native compaction preserves the session id, so an armed run rides its own auto-compactions with the leash intact; re-arming is the one-line recovery if a run ever resumes under a new session. The hook allows a stop only when the plan is Complete or archived, or the last message leads with `BLOCKED:`; otherwise it blocks with a reason naming the plan. Clear an armed goal with `/kit-goal clear`.
+`/kit-goal docs/plans/<plan>.md` arms a project-scoped completion leash for a run in one line, enforced by a deterministic Stop hook (no LLM evaluator) whose state lives in `.kit/` and so outlives a session boundary, unlike native `/goal`, whose state is bound to the transcript. The hook enforces on session identity, and native compaction preserves the session id, so an armed run rides its own auto-compactions with the leash intact; re-arming is the one-line recovery if a run ever resumes under a new session. The hook allows a stop only when the plan is Complete or archived, or the last message leads with `BLOCKED:` or with `WAITING:` naming dispatched work still running; otherwise it blocks with a reason naming the plan. One arming carries an ordered queue of plans, and a terminal state on any but the last advances the leash instead of releasing it. Clear an armed goal with `/kit-goal clear`.
 
 ## MODEL TIERING
 
