@@ -451,9 +451,19 @@ guard inventory claimed 13 `refuseNonRegularStoreFile` sites; there are 7 call
 sites guarding 9 paths, and 13 is 7+6, the `createStoreFile` figure
 double-counted. It was wrong when written, and it verified wrong at `752dbce`
 too. Chapter 3 said three findings went to the backlog; four did, and the
-fourth was in no part of this doc. Chapter 3's build figure of 611 KB could
-not be reproduced: `ae2c70a` builds at 609.5 KB, twice, on a clean tree.
-Amendment 7's own class, surviving in the Chapters that name it.
+fourth was in no part of this doc. Amendment 7's own class, surviving in the Chapters that name it.
+
+A third correction in that pass was itself wrong and is withdrawn here.
+Chapter 3's build figure of 611 KB was read as unreproducible, on two clean
+builds reading 609.5 KB, and amended. The real cause is the host: `./build.ps1`
+writes 611.7 KB under pwsh 7 and 610.2 KB under Windows PowerShell 5.1 at this
+commit, deterministic in each and about 1.5 KB apart, the two shipping
+different zip writers. The pre-commit hook prefers pwsh
+(`.githooks/pre-commit:33`), which is where every Chapter's figure came from,
+and the verification runs used `powershell`. So the original figure was right
+and the amendment compared two hosts and called it drift. Chapter 3 now names
+both figures with their hosts. The commit that carried the bad amendment,
+`d7499c8`, states it in its message, which is why it is stated again here.
 
 **Docs curation returned four drift items, every one `Class: deviation`, and
 zero mistakes**, so nothing stopped. The curator restated the canary's grant
@@ -527,8 +537,8 @@ tier). Two outcomes logged. The decay pass was **not due** and was not run:
 Gate: `node --test test/*.test.js` is **1244 pass / 0 fail / 0 skipped, exit
 0**, unchanged across the fix round and against a 1084 pre-effort baseline.
 `node --test test/hook-canary.test.js` is **40 pass / 0 fail, exit 0** against
-the rebuilt zip. `./build.ps1` builds 77 files at 610.2 KB after the fix round
-(609.5 KB at `ae2c70a`). Every figure from this session's own run rather than
+the rebuilt zip. `./build.ps1` builds 77 files, 611.7 KB under pwsh 7 and 610.2 KB under
+Windows PowerShell 5.1, both measured after the fix round. Every figure from this session's own run rather than
 from a report; the QA verifier independently reproduced all three and mapped
 12 of 12 acceptance criteria across sections 1 and 2 to named passing tests.
 
@@ -681,7 +691,10 @@ needed a second pass to restore.
 Gate: `node --test test/*.test.js` is 1244 pass / 0 fail / 0 skipped, exit 0,
 unchanged from section 2's close and against a 1084 pre-effort baseline, every
 figure from the orchestrator's own run. `./build.ps1` builds 77 files at
-609.5 KB. `node --test test/hook-canary.test.js` is 40 pass / 0 fail, exit 0,
+611 KB under pwsh 7, which is the host the pre-commit hook prefers, and at
+609.5 KB under Windows PowerShell 5.1. The two hosts ship different zip
+writers, so the figure differs by about 1.5 KB between them and is
+deterministic within each. `node --test test/hook-canary.test.js` is 40 pass / 0 fail, exit 0,
 against the rebuilt zip. No test covers the prose this section changed, which
 is why the review rounds were the gate and why the count of them is recorded.
 
