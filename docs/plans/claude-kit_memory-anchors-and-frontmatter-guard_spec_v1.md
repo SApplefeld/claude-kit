@@ -4,7 +4,7 @@ Status: Draft
 Commit Model: Commit-and-Push
 Created: 2026-08-23
 
-Flip `Status:` to `In Progress` to execute. Session model: Opus, in a clean session opened in the kit repo, queued behind `claude-kit_verification-artifacts_spec_v1.md`. Every section dispatches per executing-work. Anchors below are as of commit `f6444e0`; re-locate by content.
+Flip `Status:` to `In Progress` to execute. Session model: Opus, in a clean session opened in the kit repo, queued behind `claude-kit_verification-artifacts_spec_v1.md` and `claude-kit_compaction-deferral-signal_spec_v1.md`, in that order, because this plan's code sections carry the long review rounds the compaction plan protects. Every section dispatches per executing-work. Anchors below are as of commit `f6444e0`; re-locate by content.
 
 ## Goal
 
