@@ -1680,12 +1680,14 @@ test('the frontmatter grammar decides the pin: top level pins, indented is repor
     try {
         const d400 = daysAgo(400);
         writeMemoryFile(store, 'top-level.md', '---\npinned: 2026-07-01\n---\n# t\n');
-        // Indented: a key nested under the one above it, so it does not pin,
-        // and this memory is classified like any other. The note is the whole
-        // difference between that and silence, because somebody wrote a pin
-        // into this file and would otherwise watch it age out still carrying
-        // one.
-        writeMemoryFile(store, 'indented.md', '---\nmetadata:\n  pinned: 2026-07-01\n---\n# i\n');
+        // Indented under a key other than metadata:, so it does not pin, and
+        // this memory is classified like any other. metadata: is the one map
+        // whose members are the author's own keys, because that is where the
+        // harness moves a top-level key it rewrites; under any other key a
+        // nested field is a different key. The note is the whole difference
+        // between that and silence, because somebody wrote a pin into this
+        // file and would otherwise watch it age out still carrying one.
+        writeMemoryFile(store, 'indented.md', '---\nprovenance:\n  pinned: 2026-07-01\n---\n# i\n');
         // Unterminated: a body that opens with a horizontal rule is prose,
         // so the field is not frontmatter at all: no pin, and nothing to
         // report about a line nobody wrote as a field.
@@ -1707,8 +1709,9 @@ test('the frontmatter grammar decides the pin: top level pins, indented is repor
             + 'archive  unterminated' + oldLine);
         assert.strictEqual(res.stderr,
             'memq: usage evidence: none (no usage.jsonl)\n'
-            + 'memq: indented has an indented pinned: field, which does not pin it;'
-            + ' move it to the frontmatter block\'s top level\n'
+            + 'memq: indented has a pinned: field under another key, which does not pin it;'
+            + ' write it at the frontmatter block\'s top level, where it pins whether or not'
+            + ' the harness then moves it under metadata:\n'
             + 'memq: pinned: 1 memory exempt from decay\n'
             + 'memq: pinned  top-level' + oldLine);
     } finally {
@@ -1716,23 +1719,571 @@ test('the frontmatter grammar decides the pin: top level pins, indented is repor
     }
 });
 
-test('a tags key nested under another is not promoted to the top-level field', () => {
+// One of the frontmatter shapes Claude Code rewrites a memory file into: the
+// author's keys relocated into a column-0 metadata: map with keys of the
+// harness's own beside them, over an empty name:. `fields` are the author's
+// own lines, in the order the fixture wants them.
+//
+// What this reproduces is the map, which is the whole of what the reader keys
+// on. It does not stand for the harness's output generally: the added key set
+// varies by harness version and by feature, the majority of records on a real
+// machine carry a populated name: and a top-level description: instead of this
+// variant's empty one (harnessNamed below is that shape), and real records are
+// CRLF where this is LF. Each of those differences has its own case, because a
+// helper that claimed to be the shape would put every one of them beyond
+// testing.
+function harnessShaped(fields, body) {
+    // The trailing space after `metadata:` is the harness's own output, kept
+    // here because it is what a real record on disk carries: a map recogniser
+    // that demanded a bare key would pass every fixture and fail every file.
+    return '---\nname: ""\nmetadata: \n'
+        + fields.map((f) => '  ' + f + '\n').join('')
+        + '  node_type: memory\n'
+        + '  originSessionId: ' + FIXTURE_SESSION_ID + '\n'
+        + '  modified: 2026-08-23T10:11:12.345Z\n'
+        + '---\n' + body;
+}
+
+// A session id shaped like the harness's own and belonging to no session. The
+// fixtures need the field's shape and never its value, and a real id pasted
+// here would be a live identifier of one machine's session committed into a
+// repository that syncs.
+const FIXTURE_SESSION_ID = '00000000-0000-4000-8000-000000000000';
+
+// The variant most records on a real machine carry: the same column-0
+// metadata: map, with the record's own name at the top level, a description:
+// beside it, and a type: among the harness's keys. Nothing in the reader tests
+// for any of those, which is what this fixture exists to keep true: the
+// promotion is the map's doing, so a harness that adds a key or fills a
+// different one changes nothing here.
+function harnessNamed(name, fields, body) {
+    return '---\nname: ' + name + '\ndescription: a record the harness named\nmetadata:\n'
+        + fields.map((f) => '  ' + f + '\n').join('')
+        + '  type: memory\n'
+        + '  node_type: memory\n'
+        + '  originSessionId: ' + FIXTURE_SESSION_ID + '\n'
+        + '---\n' + body;
+}
+
+test('a tags key nested under metadata is the author\'s own key and is read', () => {
     const store = makeStore();
     try {
-        // Memories the harness writes carry node_type and type nested under
-        // metadata:, so nesting means something in this format: a nested
-        // tags: is a different key, not a top-level one written loosely.
-        writeMemoryFile(store, 'nested-tags.md', '---\nname: nested-tags\nmetadata: \n'
-            + '  node_type: memory\n  tags: "environment, powershell"\n---\n\nbody\n');
+        // On Claude Code a Write into a project's memory directory is
+        // rewritten in the same second into this shape, every top-level key
+        // the author typed moving under metadata:. So a tags: found there is
+        // the line the author wrote, and reading it is reading the file as it
+        // says.
+        writeMemoryFile(store, 'nested-tags.md',
+            harnessShaped(['tags: gotcha, environment'], '\nbody\n'));
         const res = run(store, ['find', 'nested-tags', '--memories']);
         assert.strictEqual(res.status, 0, res.stderr);
-        assert.strictEqual(res.stdout, 'nested-tags  []  \n' + REMINDER + '\n',
-            'the nested key contributes no tags, and no note is printed for one');
+        assert.strictEqual(res.stdout, 'nested-tags  [gotcha,environment]  \n' + REMINDER + '\n',
+            'the key the harness moved under metadata: carries the record\'s tags');
         // stderr carries only find's standing embedder-absence line here,
-        // never a note about the nested key.
+        // never a note about the placement.
         assert.doesNotMatch(res.stderr, /tag/);
     } finally {
         rmStore(store);
+    }
+});
+
+test('a tags key nested under any other key is not', () => {
+    const store = makeStore();
+    try {
+        // Nothing relocates a key under provenance:, so a tags: found there is
+        // a different key rather than the author's own written loosely, and
+        // promoting it would read the file as saying something it does not
+        // say. A missed tag costs a search match rather than a decision, so
+        // the miss is silent.
+        writeMemoryFile(store, 'other-tags.md', '---\nname: other-tags\nprovenance:\n'
+            + '  node_type: memory\n  tags: environment, powershell\n---\n\nbody\n');
+        const res = run(store, ['find', 'other-tags', '--memories']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout, 'other-tags  []  \n' + REMINDER + '\n',
+            'the nested key contributes no tags, and no note is printed for one');
+        assert.doesNotMatch(res.stderr, /tag/);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a top-level field outranks the same field under metadata', () => {
+    const store = makeStore();
+    try {
+        // Both placements in one file, disagreeing. A top-level line on a
+        // harness-shaped record can only have been written after the rewrite,
+        // by the CLI or by a hand working outside the Write tool, so it is the
+        // newer intent and it wins.
+        writeMemoryFile(store, 'both-tags.md',
+            '---\nname: ""\ntags: newer\nmetadata:\n  tags: older\n'
+            + '  node_type: memory\n---\n\nbody\n');
+        const res = run(store, ['find', 'both-tags', '--memories']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout, 'both-tags  [newer]  \n' + REMINDER + '\n',
+            'the top-level value is the answer and the nested one is not consulted');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a metadata map that is not at column 0 promotes nothing', () => {
+    const store = makeStore();
+    try {
+        // The map is recognised by shape, and its shape is a column-0
+        // metadata: line. A metadata: sitting under something else is itself a
+        // nested key, so what hangs below it is two levels from the author's
+        // own line and reads as absence.
+        writeMemoryFile(store, 'deep-metadata.md', '---\nname: ""\nprovenance:\n'
+            + '  metadata:\n    tags: gotcha\n---\n\nbody\n');
+        // Deeper nesting inside a real map is not a member of it either: the
+        // members are the lines at the first member's indentation, and nothing
+        // below them.
+        writeMemoryFile(store, 'deep-member.md', '---\nname: ""\nmetadata:\n'
+            + '  node_type: memory\n  origin:\n    tags: gotcha\n---\n\nbody\n');
+        const res = run(store, ['find', 'deep', '--memories']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout,
+            'deep-member  []  \ndeep-metadata  []  \n' + REMINDER + '\n',
+            'neither shape is the map whose members are the author\'s own keys');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a metadata key carrying its own value is a field, not the map', () => {
+    const store = makeStore();
+    try {
+        // The harness writes metadata: bare, as the key a map hangs from. A
+        // metadata: holding a scalar is an ordinary field somebody wrote, so
+        // what sits indented below it is nested under a plain key and reads as
+        // absence, exactly as it would under any other name.
+        writeMemoryFile(store, 'scalar-metadata.md', '---\nname: ""\nmetadata: some note\n'
+            + '  tags: gotcha\n---\n\nbody\n');
+        const res = run(store, ['find', 'scalar-metadata', '--memories']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout, 'scalar-metadata  []  \n' + REMINDER + '\n',
+            'a scalar-valued metadata: opens no map, so the key below it is not promoted');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a pinned field the harness moved under metadata pins, silently', () => {
+    const store = makeStore();
+    try {
+        const d400 = daysAgo(400);
+        writeMemoryFile(store, 'nested-pin.md',
+            harnessShaped(['pinned: 2026-07-01'], '# n\n'));
+        // The control: the same field under any other key still does not pin,
+        // and the scan still names the memory, so the pin above is the
+        // metadata: carve-out and not a reader that stopped caring about
+        // placement.
+        writeMemoryFile(store, 'other-pin.md',
+            '---\nprovenance:\n  pinned: 2026-07-01\n---\n# o\n');
+        for (const name of ['nested-pin.md', 'other-pin.md']) setMtime(store, name, d400);
+
+        const res = run(store, ['decay-scan']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        const oldLine = '  idle 400d  applied never  edited ' + dateOf(d400) + '  read never\n';
+        assert.strictEqual(res.stdout, 'archive  other-pin' + oldLine);
+        assert.strictEqual(res.stderr,
+            'memq: usage evidence: none (no usage.jsonl)\n'
+            + 'memq: other-pin has a pinned: field under another key, which does not pin it;'
+            + ' write it at the frontmatter block\'s top level, where it pins whether or not'
+            + ' the harness then moves it under metadata:\n'
+            + 'memq: pinned: 1 memory exempt from decay\n'
+            + 'memq: pinned  nested-pin' + oldLine,
+            'the metadata-nested pin is an ordinary pin, reported as nothing else');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('the decay clock takes a created date the harness moved under metadata', () => {
+    const store = makeStore();
+    try {
+        const d90 = daysAgo(90);
+        writeMemoryFile(store, 'kept-by-nested.md',
+            harnessShaped(['created: ' + dateOf(daysAgo(5))], '# k\n'));
+        setMtime(store, 'kept-by-nested.md', d90);
+        // The control: the same date under any other key is not the author's
+        // key, so the old mtime stands alone and the record flags without a
+        // created column on its line.
+        writeMemoryFile(store, 'old-by-other.md',
+            '---\nprovenance:\n  created: ' + dateOf(daysAgo(5)) + '\n---\n# o\n');
+        setMtime(store, 'old-by-other.md', d90);
+
+        const res = run(store, ['decay-scan']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout,
+            'archive  old-by-other  idle 90d  applied never  edited ' + dateOf(d90)
+            + '  read never\n',
+            'the nested date defers decay and the one under another key does not');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('find --tag matches a tag the harness moved under metadata', () => {
+    const store = makeStore();
+    try {
+        writeMemoryFile(store, 'nested-tagged.md', harnessShaped(['tags: sql'], '# n\n'));
+        writeMemoryFile(store, 'nested-plain.md', harnessShaped(['created: 2026-07-01'], '# p\n'));
+
+        const res = run(store, ['find', 'nested', '--tag', 'sql']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /nested-tagged/);
+        assert.ok(!res.stdout.includes('nested-plain'), 'an untagged memory is filtered out');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('--tag matches every tag of a multi-value scalar the harness quoted', () => {
+    const store = makeStore();
+    try {
+        // The harness quotes a scalar it would otherwise emit as ambiguous
+        // YAML, so a one-tag record arrives bare and a two-tag record arrives
+        // wrapped. Both are the author's own line, so both have to filter, and
+        // the second tag of the pair has to filter as surely as the first: a
+        // strip that only reached the opening quote would match `convention`
+        // and lose `gotcha`.
+        writeMemoryFile(store, 'quoted-tags.md',
+            harnessShaped(['tags: "gotcha, convention"'], '# q\n'));
+        // Single quotes are the serializer's other spelling and decode the
+        // same way.
+        writeMemoryFile(store, 'single-tags.md',
+            harnessShaped(["tags: 'gotcha, sql'"], '# s\n'));
+        writeMemoryFile(store, 'bare-tags.md', harnessShaped(['tags: gotcha'], '# b\n'));
+        // The control: a record carrying none of the tags under test, named so
+        // the term reaches it, so a filter that stopped filtering is caught
+        // here rather than passing.
+        writeMemoryFile(store, 'mongo-tags.md', harnessShaped(['tags: mongo'], '# m\n'));
+
+        // Every name here carries the search term, so what the filter drops is
+        // the tag's doing and never the term's.
+        for (const [tag, expected] of [
+            ['gotcha', ['bare-tags', 'quoted-tags', 'single-tags']],
+            ['convention', ['quoted-tags']],
+            ['sql', ['single-tags']],
+            ['mongo', ['mongo-tags']]
+        ]) {
+            const res = run(store, ['find', 'tags', '--tag', tag, '--memories']);
+            assert.strictEqual(res.status, 0, res.stderr);
+            const names = res.stdout.split('\n')
+                .filter((l) => l !== '' && !l.startsWith('memq:'))
+                .map((l) => l.split('  ')[0])
+                .sort();
+            assert.deepStrictEqual(names, expected,
+                'the quotes are the serializer\'s, not the value\'s, for --tag ' + tag);
+        }
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('the displayed tags of a quoted scalar are the tags it filters on', () => {
+    const store = makeStore();
+    try {
+        // The display path sanitizes a quote character away while the filters
+        // compare the value they were given, so a record can print a tag it
+        // does not match on. Pinning both surfaces against one fixture is what
+        // keeps the line from lying about the filter.
+        writeMemoryFile(store, 'shown-tags.md',
+            harnessShaped(['tags: "gotcha, convention"'], '# s\n'));
+        const shown = run(store, ['find', 'shown-tags', '--memories']);
+        assert.strictEqual(shown.status, 0, shown.stderr);
+        assert.strictEqual(shown.stdout, 'shown-tags  [gotcha,convention]  \n' + REMINDER + '\n');
+        const filtered = run(store, ['find', 'shown-tags', '--tag', 'convention', '--memories']);
+        assert.strictEqual(filtered.stdout, shown.stdout,
+            'every tag the line shows is a tag the record answers --tag on');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a quote that is not a matching surrounding pair is the value\'s own text', () => {
+    const store = makeStore();
+    try {
+        // The strip takes one surrounding pair and grows into no more of a
+        // parser than that. A quote that opens nothing, and a pair with
+        // another of its own kind inside it (which a serializer would have
+        // escaped rather than left bare), are values this reader hands back
+        // whole instead of half-decoding.
+        writeMemoryFile(store, 'stray-quote.md', harnessShaped(['tags: goth"cha'], '# s\n'));
+        writeMemoryFile(store, 'inner-quote.md',
+            harnessShaped(['tags: "a"b"c"'], '# i\n'));
+        writeMemoryFile(store, 'lead-quote.md', harnessShaped(['tags: "unclosed'], '# l\n'));
+
+        const res = run(store, ['find', 'quote', '--memories']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        // The display drops every quote character, so these three lines look
+        // alike whatever the value holds. That is exactly why the filter
+        // assertion below is the one that says what was kept.
+        assert.strictEqual(res.stdout,
+            'inner-quote  [abc]  \n'
+            + 'lead-quote  [unclosed]  \n'
+            + 'stray-quote  [gothcha]  \n'
+            + REMINDER + '\n');
+        // The filter sees the same text the display sanitized, so a tag naming
+        // the stripped spelling is the one that matches.
+        const hit = run(store, ['find', 'inner-quote', '--tag', '"a"b"c"', '--memories']);
+        assert.strictEqual(hit.status, 0, hit.stderr);
+        assert.match(hit.stdout, /inner-quote/,
+            'the value kept its quotes, so the tag carrying them is the one that matches');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a top-level value keeps the quotes the author typed', () => {
+    const store = makeStore();
+    try {
+        // The asymmetry the two placements rest on: nothing rewrote a
+        // top-level line, so a quote there is the author's text rather than a
+        // serializer's wrapper, and the reader that strips one out of the map
+        // leaves this one alone.
+        writeMemoryFile(store, 'top-quoted.md',
+            '---\ntags: "gotcha, convention"\nmetadata:\n  node_type: memory\n---\n# t\n');
+        const res = run(store, ['find', 'top-quoted', '--memories']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout, 'top-quoted  [gotcha,convention]  \n' + REMINDER + '\n',
+            'the display sanitizes the quote characters off either way');
+        // The split runs on the comma, so the author's opening quote rides on
+        // the first tag and the closing one on the last.
+        const asTyped = run(store, ['find', 'top-quoted', '--tag', '"gotcha', '--memories']);
+        assert.match(asTyped.stdout, /top-quoted/,
+            'the quote rode into the value, so the tag carrying it is the one that matches');
+        const stripped = run(store, ['find', 'top-quoted', '--tag', 'gotcha', '--memories']);
+        assert.ok(!stripped.stdout.includes('top-quoted'),
+            'a top-level value is not unquoted, so the bare tag is not what it holds');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a field indented with whitespace no space or tab is still reported misplaced', () => {
+    const store = makeStore();
+    try {
+        const d400 = daysAgo(400);
+        // A no-break space indents this line to every eye and to the trim the
+        // misplacement check runs. The indent the walk measures has to agree
+        // with it, or a line like this reads as column 0, matches the
+        // top-level pattern on neither side, and ages out of the store still
+        // carrying a pin nobody was told about. The character is built rather
+        // than typed so the source stays ASCII: a raw one an editor normalized
+        // to a space would leave this case green while testing nothing.
+        const nbsp = String.fromCharCode(0xA0);
+        writeMemoryFile(store, 'nbsp-pin.md',
+            '---\nprovenance:\n' + nbsp + nbsp + 'pinned: 2026-07-01\n---\n# n\n');
+        setMtime(store, 'nbsp-pin.md', d400);
+        // The control: an ordinary two-space indent under the same key, whose
+        // report is the one this fixture has to match.
+        writeMemoryFile(store, 'space-pin.md',
+            '---\nprovenance:\n  pinned: 2026-07-01\n---\n# s\n');
+        setMtime(store, 'space-pin.md', d400);
+
+        const res = run(store, ['decay-scan']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        const oldLine = '  idle 400d  applied never  edited ' + dateOf(d400) + '  read never\n';
+        assert.strictEqual(res.stdout, 'archive  nbsp-pin' + oldLine + 'archive  space-pin' + oldLine);
+        assert.match(res.stderr, /^memq: nbsp-pin has a pinned: field under another key/m,
+            'the exotic indent is reported exactly as the ordinary one is');
+        assert.match(res.stderr, /^memq: space-pin has a pinned: field under another key/m);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a blank line inside the map neither ends it nor is read as a field', () => {
+    const store = makeStore();
+    try {
+        // The blank-line guard runs before the indent is measured, so a blank
+        // line carrying no key cannot end the map at itself and drop the
+        // members below it.
+        writeMemoryFile(store, 'blank-inside.md',
+            '---\nname: ""\nmetadata: \n  node_type: memory\n\n  tags: gotcha\n---\n# b\n');
+        const res = run(store, ['find', 'blank-inside', '--memories']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout, 'blank-inside  [gotcha]  \n' + REMINDER + '\n',
+            'the member below the blank line is still a member');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('the harness variant that names the record reads exactly as the empty-name one does', () => {
+    const store = makeStore();
+    try {
+        const d400 = daysAgo(400);
+        // Most records on a real machine are this variant: a populated name:,
+        // a top-level description:, and a type: among the harness's own keys.
+        // The reader tests for none of them, and this fixture is what keeps
+        // that true, so a harness that adds a key or fills a different one is
+        // caught here rather than by a store that quietly stops matching.
+        writeMemoryFile(store, 'named-variant.md',
+            harnessNamed('named-variant', ['tags: gotcha, convention', 'pinned: 2026-07-01'],
+                '# n\n'));
+        setMtime(store, 'named-variant.md', d400);
+        // The control: the same two fields in the empty-name variant, whose
+        // answers this one has to match.
+        writeMemoryFile(store, 'empty-name.md',
+            harnessShaped(['tags: gotcha, convention', 'pinned: 2026-07-01'], '# e\n'));
+        setMtime(store, 'empty-name.md', d400);
+
+        const tagged = run(store, ['find', 'variant', '--tag', 'convention', '--memories']);
+        assert.strictEqual(tagged.status, 0, tagged.stderr);
+        assert.strictEqual(tagged.stdout, 'named-variant  [gotcha,convention]  \n' + REMINDER + '\n',
+            'the author\'s tags are read out of the map whatever sits beside them in it');
+
+        const scan = run(store, ['decay-scan']);
+        assert.strictEqual(scan.status, 0, scan.stderr);
+        assert.strictEqual(scan.stdout, '', 'both variants pin, so neither is a candidate');
+        const oldLine = '  idle 400d  applied never  edited ' + dateOf(d400) + '  read never\n';
+        assert.strictEqual(scan.stderr,
+            'memq: usage evidence: none (no usage.jsonl)\n'
+            + 'memq: pinned: 2 memories exempt from decay\n'
+            + 'memq: pinned  empty-name' + oldLine
+            + 'memq: pinned  named-variant' + oldLine
+            + 'memq: no decay candidates\n');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a harness record with CRLF line endings reads the same as one with LF', () => {
+    const store = makeStore();
+    try {
+        // Real harness-written records are CRLF on this platform. The block
+        // walk splits on either ending, so this costs nothing to support and
+        // everything to have wrong, and the claim is worth a fixture rather
+        // than a comment.
+        writeMemoryFile(store, 'crlf-record.md',
+            harnessShaped(['tags: gotcha'], '# c\n').replace(/\n/g, '\r\n'));
+        writeMemoryFile(store, 'lf-record.md', harnessShaped(['tags: gotcha'], '# l\n'));
+
+        const res = run(store, ['find', 'record', '--tag', 'gotcha', '--memories']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout,
+            'crlf-record  [gotcha]  \nlf-record  [gotcha]  \n' + REMINDER + '\n',
+            'the line ending is not part of the grammar');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a field line ending in a Unicode line separator is reported, never silently absent', () => {
+    const store = makeStore();
+    try {
+        const d400 = daysAgo(400);
+        // U+2028 and U+2029 are the two characters the value pattern's `.`
+        // excludes and String.trim() strips, so a line carrying one matches on
+        // exactly one of the two sides. The trimmed side is the one that
+        // speaks, and it has to: this reader owes a report on a pin it cannot
+        // read, and the memory below is one somebody meant to protect.
+        const ls = String.fromCharCode(0x2028);
+        const ps = String.fromCharCode(0x2029);
+        writeMemoryFile(store, 'ls-pin.md', '---\npinned: 2026-07-01' + ls + '\n---\n# l\n');
+        setMtime(store, 'ls-pin.md', d400);
+        writeMemoryFile(store, 'ps-pin.md', '---\npinned: 2026-07-01' + ps + '\n---\n# p\n');
+        setMtime(store, 'ps-pin.md', d400);
+        // The same character inside the harness's map, where the member branch
+        // has its own early exit to fall out of.
+        writeMemoryFile(store, 'ls-nested.md',
+            harnessShaped(['pinned: 2026-07-01' + ls], '# n\n'));
+        setMtime(store, 'ls-nested.md', d400);
+        // The control: the same field with an ordinary ending pins outright,
+        // so a report below is the separator's doing and not the fixture's.
+        writeMemoryFile(store, 'plain-pin.md', '---\npinned: 2026-07-01\n---\n# c\n');
+        setMtime(store, 'plain-pin.md', d400);
+
+        const res = run(store, ['decay-scan']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        for (const name of ['ls-pin', 'ps-pin', 'ls-nested']) {
+            assert.match(res.stderr,
+                new RegExp('^memq: ' + name + ' has a pinned: field under another key', 'm'),
+                name + ' is named rather than aged out in silence');
+        }
+        assert.match(res.stderr, /^memq: pinned: 1 memory exempt from decay$/m,
+            'the control pins and the three separator cases do not');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('the frontmatter budget is 34 author lines past the harness\'s five, and a late fence darkens the whole block', () => {
+    const store = makeStore();
+    try {
+        const d400 = daysAgo(400);
+        // The opener sits on line 0 and the walk accepts a closer at index 40,
+        // so indices 1 through 39 are field lines: 39 of them, of which the
+        // harness spends five, leaving 34.
+        const harness = ['name: ""', 'metadata: ', '  node_type: memory',
+            '  originSessionId: ' + FIXTURE_SESSION_ID, '  modified: 2026-08-23T10:11:12.345Z'];
+        const author = (n) => Array.from({ length: n }, (_, i) => '  filler' + i + ': x');
+        // 5 harness lines + 34 author lines = 39, closer at index 40.
+        writeMemoryFile(store, 'at-budget.md',
+            '---\n' + harness.concat(author(33), ['  pinned: 2026-07-01']).join('\n')
+            + '\n---\n# a\n');
+        setMtime(store, 'at-budget.md', d400);
+        // One line more and the closer falls at index 41, outside the bound.
+        // The whole block goes dark then, not just the overflow: the pin below
+        // sits on the fourth line of the block and is read as absent all the
+        // same, with no note, because there is no frontmatter here to report a
+        // misplacement in.
+        writeMemoryFile(store, 'over-budget.md',
+            '---\n' + ['name: ""', 'metadata: ', '  pinned: 2026-07-01',
+                '  node_type: memory', '  originSessionId: ' + FIXTURE_SESSION_ID,
+                '  modified: 2026-08-23T10:11:12.345Z'].concat(author(34)).join('\n')
+            + '\n---\n# o\n');
+        setMtime(store, 'over-budget.md', d400);
+
+        const res = run(store, ['decay-scan']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        const oldLine = '  idle 400d  applied never  edited ' + dateOf(d400) + '  read never\n';
+        assert.strictEqual(res.stdout, 'archive  over-budget' + oldLine,
+            'the record whose fence fell past the bound carries no readable pin');
+        assert.strictEqual(res.stderr,
+            'memq: usage evidence: none (no usage.jsonl)\n'
+            + 'memq: pinned: 1 memory exempt from decay\n'
+            + 'memq: pinned  at-budget' + oldLine,
+            'the last line inside the budget pins, and the overflow says nothing at all');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The pin on the reader itself. Both placements are read because one function
+// answers every field question, so a later reader that builds its own
+// top-level regex, or a call site that stops going through this function,
+// silently restores the defect where every hand-written project-tier field is
+// inert. Source inspection is what catches that: a behavioral test only
+// covers the fields something already reads.
+test('one frontmatter key regex, and every field call site goes through the shared reader', () => {
+    const source = fs.readFileSync(MEMQ, 'utf8');
+    // Every RegExp construction in the file, not the one spelling the current
+    // reader happens to use. A drifted reader is written by whoever writes it,
+    // so `new RegExp('^' + key ...)`, a template literal, or a regex literal
+    // would all slip a spelling-specific count. memq.js builds exactly one
+    // RegExp today, which is what makes the strong form affordable: it costs a
+    // deliberate line of explanation to add a second, which is the moment to
+    // ask whether the new one reads both placements.
+    const built = source.match(/new RegExp\(/g) || [];
+    assert.strictEqual(built.length, 1,
+        'the frontmatter key regex belongs in exactly one place, so the metadata: carve-out'
+        + ' reaches every field; memq.js constructs ' + built.length + ' RegExps');
+    for (const site of [
+        "frontmatterValue(raw, 'tags')",
+        "frontmatterValue(raw, 'supersedes')",
+        "frontmatterField(file, 'tags')",
+        "frontmatterField(file, 'created')",
+        "frontmatterField(file, 'pinned')",
+        "frontmatterField(file, 'machine')",
+        "frontmatterField(targetPath, 'supersedes')"
+    ]) {
+        assert.ok(source.includes(site),
+            'a frontmatter field no longer resolves through the shared reader:'
+            + ' memq.js has no ' + site);
     }
 });
 
@@ -11068,6 +11619,47 @@ test('a semantic hit whose machine field names another box is labeled; the local
     }
 });
 
+test('a machine field the harness moved under metadata still labels the hit', () => {
+    const store = makeStore();
+    const emb = makeFakeEmbedder();
+    try {
+        // The project tier, because that is the only tier the harness rewrites:
+        // a memory-operator/ record is written through the CLI and keeps its
+        // top-level shape, so a harness-shaped fixture planted there would be
+        // testing a combination no store can hold. The label itself is read per
+        // hit rather than per tier, so a project-tier record carrying the field
+        // is labeled exactly as a shared-tier one is.
+        writeMemoryFile(store, 'meta-note.md',
+            harnessShaped(['machine: far-off-box'], 'zebra quantum on another box\n'));
+        // The control: the same field under any other key is a different key,
+        // so it puts no label on a search line, which is also what keeps a
+        // synced file's stray nesting from labeling a hit.
+        writeMemoryFile(store, 'other-note.md',
+            '---\nprovenance:\n  machine: far-off-box\n---\nzebra quantum under another key\n');
+        // The tier the field belongs to, in the shape that tier actually
+        // holds, so the placement change is shown to have cost the original
+        // path nothing.
+        plantAt(store, ['memory-operator'], 'op-note',
+            '---\nmachine: far-off-box\n---\nzebra quantum from the operator tier\n');
+
+        const res = run(store, ['find', 'zebra quantum'], withEmbedder(emb));
+        assert.strictEqual(res.status, 0, res.stderr);
+        const hits = semanticBlockLines(res.stdout);
+        assert.ok(hits !== null, res.stdout);
+        const meta = hits.find((l) => l.includes('  meta-note  '));
+        const other = hits.find((l) => l.includes('  other-note  '));
+        const op = hits.find((l) => l.includes('  op-note  '));
+        assert.ok(meta !== undefined && other !== undefined && op !== undefined,
+            JSON.stringify(hits));
+        assert.ok(meta.includes('machine:far-off-box'), meta);
+        assert.ok(op.includes('machine:far-off-box'), op);
+        assert.ok(!other.includes('machine:'), 'a key under another map labels nothing: ' + other);
+    } finally {
+        rmFakeEmbedder(emb);
+        rmStore(store);
+    }
+});
+
 test('an archived record is demoted below its equally similar live twin and labeled retired', () => {
     const store = makeStore();
     const emb = makeFakeEmbedder();
@@ -14298,12 +14890,12 @@ test('the supersedes grammar decides the pointer: top level points, indented doe
             'pair-target.md', 'two-names.md'];
         writeMemoryFile(store, 'top-target.md', '# t\n');
         writeMemoryFile(store, 'top-level.md', '---\nsupersedes: top-target\n---\n# s\n');
-        // Indented: a key nested under the one above it, which this format
-        // uses for something else, so it points at nothing and the record it
-        // names is classified like any other.
+        // Indented under a key other than metadata:, which this format uses
+        // for something else, so it points at nothing and the record it names
+        // is classified like any other.
         writeMemoryFile(store, 'nested-target.md', '# n\n');
         writeMemoryFile(store, 'indented.md',
-            '---\nmetadata:\n  supersedes: nested-target\n---\n# i\n');
+            '---\nprovenance:\n  supersedes: nested-target\n---\n# i\n');
         // Two names is not one name: v1 is a single same-tier pointer, so a
         // list names no record rather than being cut down to whichever half a
         // looser parse would take.
@@ -14319,7 +14911,42 @@ test('the supersedes grammar decides the pointer: top level points, indented doe
         assert.strictEqual(res.stdout, 'archive  top-target  idle 5d  applied never  edited '
             + dateOf(d5) + '  read never  superseded by top-level\n');
         assert.strictEqual(res.stderr, 'memq: usage evidence: none (no usage.jsonl)\n',
-            'a pointer that reads as absence is silent, as a nested tags: is');
+            'a pointer that reads as absence is silent, as a tags: under another key is');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a supersedes pointer the harness moved under metadata labels its target', () => {
+    const store = makeStore();
+    try {
+        const d5 = daysAgo(5);
+        // The project tier authors this field by hand, with the Write tool,
+        // so on Claude Code the pointer lands under metadata: every time. A
+        // reader that stopped there would make the whole feature inert in the
+        // one tier that has no CLI writing it.
+        writeMemoryFile(store, 'meta-target.md', '# t\n');
+        writeMemoryFile(store, 'meta-successor.md',
+            harnessShaped(['supersedes: meta-target'], '# s\n'));
+        // The control: the same pointer under any other key names nothing, so
+        // its target sits on no list and the label above comes from the
+        // metadata: carve-out.
+        writeMemoryFile(store, 'other-target.md', '# o\n');
+        writeMemoryFile(store, 'other-successor.md',
+            '---\nprovenance:\n  supersedes: other-target\n---\n# os\n');
+        for (const name of ['meta-target.md', 'meta-successor.md', 'other-target.md',
+            'other-successor.md']) {
+            setMtime(store, name, d5);
+        }
+
+        // Five idle days is far below every threshold, so an archive line here
+        // comes from a pointer and from nothing else.
+        const res = run(store, ['decay-scan']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout, 'archive  meta-target  idle 5d  applied never  edited '
+            + dateOf(d5) + '  read never  superseded by meta-successor\n');
+        assert.strictEqual(res.stderr, 'memq: usage evidence: none (no usage.jsonl)\n',
+            'a pointer read where the harness put it is an ordinary pointer, reported as nothing else');
     } finally {
         rmStore(store);
     }

@@ -1792,18 +1792,47 @@ function readIndexDescriptions(memDir) {
 // Returns the named field's raw value, or one of three answers that are not
 // a value: null when the file has no such field, FRONTMATTER_UNREADABLE when
 // the file itself could not be read, and FRONTMATTER_INDENTED when the only
-// line carrying the field is indented. Callers that only want a value treat
-// all three as absence; a caller whose field decides whether to act on a
-// memory tells them apart, because "no such field", "I could not look", and
-// "it is written where it does not count" justify different decisions.
+// line carrying the field sits outside the two placements below. Callers that
+// only want a value treat all three as absence; a caller whose field decides
+// whether to act on a memory tells them apart, because "no such field", "I
+// could not look", and "it is written where it does not count" justify
+// different decisions.
 //
-// Only the inline single-line form at the block's top level is read. An
-// indented line is a key nested under the one above it, a distinction this
-// format uses (memories written by the harness carry node_type and type
-// nested under metadata:), so promoting a nested key to the top-level field
-// would read the file as saying something it does not say. Reporting the
-// placement instead lets the one caller that cannot afford a silent miss say
-// so out loud.
+// Only the inline single-line form is read, and it is read at two placements.
+// The first is the block's top level. The second is inside a column-0
+// `metadata:` map, because on Claude Code a Write into a project's memory
+// directory is rewritten in the same second into the harness's own frontmatter
+// shape: the author's top-level keys are relocated into that map, and keys of
+// the harness's own are added beside them, among them `type:`, `node_type:`,
+// `originSessionId:` and `modified:`. At the top level it leaves either an
+// empty `name:` or the record's name with a `description:` beside it. That
+// added set varies by harness version and by which of its memory features
+// wrote the record, so none of those keys is a marker to test for: the
+// promotion rule keys on the map's shape and on nothing else, which is what
+// makes it hold across the variants rather than across the one a probe
+// happened to produce.
+//
+// A field sitting in that map is the author's own line relocated, so reading
+// it is reading the file as it says. It is the author's line as a serializer
+// re-emitted it, though, not byte for byte: the harness quotes some scalars it
+// would otherwise write as ambiguous YAML, so a promoted value gives up one
+// surrounding pair of quotes on the way out (unquoteScalar below). A top-level
+// value gives up nothing, nothing having rewritten it. Where both placements
+// carry the field the top-level value wins, for the same reason: a top-level
+// line on a harness-shaped file can only have been written after the rewrite,
+// by the CLI or by a hand working outside the Write tool, and so is the newer
+// intent.
+//
+// The map is recognised by shape: a `metadata:` line at column 0 carrying no
+// value of its own, inside the block, its members the following lines indented
+// by the first of them, ending at the next column-0 line or at the closing
+// fence. Nothing else is promoted. A `metadata:` that is not at column 0 is
+// itself a nested key rather than the map, a line whose indentation is not
+// equal to the member indentation is not a member of it, and under any other
+// key nothing relocates a field, so a key found there is a different key and
+// promoting it would read the file as saying something it does not say.
+// Reporting the placement instead lets the one caller that cannot afford a
+// silent miss say so out loud.
 //
 // The block must be closed by a second '---' within the bounded head, and
 // only lines before that closer are searched. Without the closing gate a body
@@ -1812,9 +1841,9 @@ function readIndexDescriptions(memDir) {
 // Every reader of a record's frontmatter goes through frontmatterBlock below,
 // the field readers here and the repair path's carrier alike, so the block's
 // grammar (the byte order mark, the fence gate, the line bound) is defined
-// once and cannot drift between them. The column rule is this function's own:
-// a field counts only unindented, and an indented one is reported rather than
-// read.
+// once and cannot drift between them. The placement rule is this function's
+// own: a field counts at the two placements above, and one found anywhere
+// else in the block is reported rather than read.
 const FRONTMATTER_UNREADABLE = Symbol('frontmatter unreadable');
 const FRONTMATTER_INDENTED = Symbol('frontmatter field indented');
 const FRONTMATTER_MAX_LINES = 40;
@@ -1863,6 +1892,55 @@ function recordHeading(raw) {
     return null;
 }
 
+// The one construction of a frontmatter key's matcher, the inline form's
+// `key: value` with the value as whatever follows on that line, matched
+// case-insensitively. It is built here and nowhere else so that every field
+// this file asks about is answered at the same placements: a second matcher
+// somewhere is how one field silently goes back to being read at the top level
+// alone, which on this harness makes that field inert in every hand-written
+// record.
+function frontmatterKeyRegex(name) {
+    return new RegExp('^' + name + ':\\s*(.*)$', 'i');
+}
+
+// The harness map's own key, built once. It is the same matcher every field
+// gets, asked of a constant name, and every frontmatter read tests a line
+// against it, twice per record in the listing walk, so recompiling it per call
+// buys nothing. It goes through the one constructor above rather than being
+// spelled as its own literal, so the file still holds exactly one place where
+// a frontmatter key's matcher is made.
+const FRONTMATTER_MAP_KEY = frontmatterKeyRegex('metadata');
+
+// One matching surrounding pair of quotes taken off a value promoted out of
+// the harness's map. The harness's serializer quotes a scalar exactly where
+// leaving it bare would be ambiguous YAML, so `tags: gotcha` arrives as it was
+// typed while `tags: "gotcha, convention"` arrives wrapped, and a reader that
+// compared the wrapped text would miss every multi-value field. It would miss
+// it invisibly, too: the display path sanitizes quote characters away, so the
+// line would show a tag the filter behind it does not match.
+//
+// Only a promoted value passes through here. A top-level line is what the
+// author typed with nothing rewriting it, so a quote there is their own text
+// and stays in the value. That is the same asymmetry that makes the top-level
+// value win where both placements carry the field: one of the two has a
+// serializer between the author and the bytes, and the other does not.
+//
+// One pair, and no more of a parser than that. Nothing inside is unescaped:
+// what this decodes is a single-line scalar a serializer wrote, and an
+// unescaper is a parser this file has no call to grow. The pair has to
+// surround the whole value with no bare quote of its own kind inside it, which
+// is what a serializer emits, so a stray quote and a value carrying escaped
+// ones are both handed back whole rather than half-decoded.
+function unquoteScalar(value) {
+    const v = value.trim();
+    if (v.length < 2) return value;
+    const q = v.charAt(0);
+    if (q !== '"' && q !== '\'') return value;
+    if (v.charAt(v.length - 1) !== q) return value;
+    const inner = v.slice(1, -1);
+    return inner.indexOf(q) === -1 ? inner : value;
+}
+
 // The same field read from a record's text already in hand, for a walk that
 // has read the file for its own reasons and must not read it again. Every
 // answer above except FRONTMATTER_UNREADABLE, which is the read's answer and
@@ -1870,16 +1948,62 @@ function recordHeading(raw) {
 function frontmatterValue(raw, name) {
     const block = frontmatterBlock(raw);
     if (!block.opened || block.closer === -1) return null;
-    const re = new RegExp('^' + name + ':\\s*(.*)$', 'i');
+    const re = frontmatterKeyRegex(name);
     let found = null;
+    let nested = null;
     let indented = false;
+    // Where the walk stands relative to the harness's map: inside it or not,
+    // and once inside, the indentation its first member line set, null until
+    // that line arrives.
+    let inMap = false;
+    let memberIndent = null;
     for (let i = 1; i < block.closer; i++) {
-        if (found !== null) continue;
-        const m = re.exec(block.lines[i]);
-        if (m) found = m[1];
-        else if (re.test(block.lines[i].trim())) indented = true;
+        const line = block.lines[i];
+        // A blank line neither ends the map nor joins it. Reading one as a
+        // column-0 line would end the map at a line carrying no key, which is
+        // not what a blank line inside a block says.
+        if (line.trim() === '') continue;
+        // The same whitespace class the misplacement check below trims. A
+        // narrower one here would read a line indented with something exotic
+        // as column 0, where it matches no top-level key either, so the field
+        // would report plain absence and a pin written on such a line would
+        // age out with nothing said about it.
+        const indent = /^\s*/.exec(line)[0];
+        if (indent === '') {
+            // Every column-0 line ends whatever map was open and opens one
+            // only when it is the harness's own key carrying no value of its
+            // own. A `metadata:` holding a scalar is a field rather than a
+            // map, and letting one open a map would promote the keys under it,
+            // which is the silent read this placement rule exists to refuse.
+            const mm = FRONTMATTER_MAP_KEY.exec(line);
+            inMap = mm !== null && mm[1].trim() === '';
+            memberIndent = null;
+            const m = re.exec(line);
+            if (m) {
+                if (found === null) found = m[1];
+                continue;
+            }
+        } else if (inMap) {
+            if (memberIndent === null) memberIndent = indent;
+            if (indent === memberIndent) {
+                const m = re.exec(line.slice(indent.length));
+                if (m) {
+                    if (nested === null) nested = unquoteScalar(m[1]);
+                    continue;
+                }
+            }
+        }
+        // Reached by every line neither placement took, and deliberately also
+        // by a line at one of them whose own match failed. The value pattern
+        // is built from `.`, which excludes the line separators U+2028 and
+        // U+2029, while the trim here strips them, so a field whose line ends
+        // in one matches only on this side. Letting such a line fall out as
+        // plain absence would lose a pin in silence, which is the one answer
+        // this reader owes a report instead.
+        if (re.test(line.trim())) indented = true;
     }
     if (found !== null) return found;
+    if (nested !== null) return nested;
     return indented ? FRONTMATTER_INDENTED : null;
 }
 
@@ -1893,10 +2017,11 @@ function frontmatterField(file, name) {
     return frontmatterValue(raw, name);
 }
 
-// Tags from the frontmatter, comma/space separated. Anything short of a
-// top-level value is no tags: a tag is a search aid, so a file that could not
-// be read or a key nested under another costs a match rather than a decision,
-// and neither is worth a standing note on every scan.
+// Tags from the frontmatter, comma/space separated. Anything short of a value
+// at one of the two placements is no tags: a tag is a search aid, so a file
+// that could not be read or a key nested under something other than the
+// harness's `metadata:` map costs a match rather than a decision, and neither
+// is worth a standing note on every scan.
 function readFrontmatterTags(file) {
     return frontmatterTags(frontmatterField(file, 'tags'));
 }
@@ -1938,12 +2063,12 @@ function lastAliveMs(mtimeMs, createdMs, applied) {
 }
 
 // A memory's pin state: 'pinned', 'unpinned', 'unknown' when the file could
-// not be read, or 'misplaced' when the field is there but indented, which
-// does not pin. The `pinned:` frontmatter field is the judgment override
-// that keeps a memory out of every decay class and refuses a prune that names
-// it. Presence is the pin: the field's value records the date the judgment
-// was made and is never parsed, so a hand-typed date that is malformed, or
-// omitted entirely, still pins.
+// not be read, or 'misplaced' when the field is there but under a key other
+// than the harness's `metadata:` map, which does not pin. The `pinned:`
+// frontmatter field is the judgment override that keeps a memory out of every
+// decay class and refuses a prune that names it. Presence is the pin: the
+// field's value records the date the judgment was made and is never parsed, so
+// a hand-typed date that is malformed, or omitted entirely, still pins.
 //
 // The failure directions are not symmetric, which is why a doubt reads as
 // 'unknown' rather than as no pin. Failing to honor a pin silently ages out a
@@ -1954,12 +2079,14 @@ function lastAliveMs(mtimeMs, createdMs, applied) {
 // than disappearing. Unlike `created:`, this field can only defer decay,
 // never hasten it, which is why it needs no value it can be wrong about.
 //
-// That asymmetry is also why an indented field is its own answer rather than
-// plain absence. A nested key does not pin, because nesting means something
-// in this format, but the memory it was written into is one somebody meant to
-// protect: the scan says so instead of aging it out in silence. Tags and
-// created dates get no such report, because a nested one costs a search hit
-// rather than a memory.
+// That asymmetry is also why a misplaced field is its own answer rather than
+// plain absence. A `pinned:` inside the harness's `metadata:` map is the
+// author's own line relocated and pins like any other, since that is where a
+// hand-written top-level field lands here. Under any other key nesting means
+// something in this format, so a field there does not pin, and the memory it
+// was written into is still one somebody meant to protect: the scan says so
+// instead of aging it out in silence. Tags and created dates get no such
+// report, because a miss there costs a search hit rather than a memory.
 function pinState(file) {
     const value = frontmatterField(file, 'pinned');
     if (value === FRONTMATTER_UNREADABLE) return 'unknown';
@@ -1973,21 +2100,21 @@ function pinState(file) {
 // file the pointer is about: a fact that was right when written and has been
 // overtaken is not rewritten to say so.
 //
-// Anything short of a top-level single name is no pointer. An unreadable
-// file, a key nested under the one above it (the column rule the field
-// readers report), and a value that is not one record name all read as
-// absence, and the value is held to isMemoryFilename, the store's own
-// definition of what may be named. So a hand-written list of two names names
-// no record here rather than being cut down to whichever one a looser parse
-// happened to take. Absence is the safe answer to every doubt because of
-// what the pointer costs: a label and a rank demotion, never a decision
-// about whether a record lives. The project tier's field is hand-written
-// frontmatter, like `tags:` and `pinned:`, so for that tier this reader is
-// the only gate between what a file says and what a line claims. The two
-// shared tiers have a second: --supersedes writes the field there, holding
-// its value to this same grammar and its target to a live record of the
-// tier, so what a hand can still write into those files is what a sync from
-// another machine or an edit outside the store's own verbs left.
+// Anything short of a single name at one of the two placements is no pointer.
+// An unreadable file, a key nested under something other than the harness's
+// `metadata:` map (the placement rule the field readers report), and a value
+// that is not one record name all read as absence, and the value is held to
+// isMemoryFilename, the store's own definition of what may be named. So a
+// hand-written list of two names names no record here rather than being cut
+// down to whichever one a looser parse happened to take. Absence is the safe
+// answer to every doubt because of what the pointer costs: a label and a rank
+// demotion, never a decision about whether a record lives. The project tier's
+// field is hand-written frontmatter, like `tags:` and `pinned:`, so for that
+// tier this reader is the only gate between what a file says and what a line
+// claims. The two shared tiers have a second: --supersedes writes the field
+// there, holding its value to this same grammar and its target to a live
+// record of the tier, so what a hand can still write into those files is what
+// a sync from another machine or an edit outside the store's own verbs left.
 function supersedesName(value) {
     if (typeof value !== 'string') return null;
     const name = value.trim();
@@ -4901,8 +5028,9 @@ function cmdTouch(argv) {
 // A memory carrying a `pinned:` frontmatter field is a candidate of neither
 // class whatever its idle age. It is listed in the pinned block instead, and
 // while the field is in the file `decay-prune` refuses to archive it. The
-// field counts at the frontmatter block's top level only; an indented one
-// does not pin, and the scan says so rather than letting it pass for a pin.
+// field counts at the frontmatter block's top level and inside the harness's
+// `metadata:` map; under any other key it does not pin, and the scan says so
+// rather than letting it pass for a pin.
 //
 // listMemories enumerates direct children of the memory dir only, so nothing
 // under memory/archive/ or memory/pending/ is a candidate: the pending tier
@@ -4993,15 +5121,21 @@ function tierDecayCandidates(dir, label, now, usage, summarize, archive, pinned)
                 + ' cannot be read, so whether it is pinned is unknown: not classified\n');
             continue;
         }
-        // An indented pinned: field is a key nested under the one above it,
-        // so it does not pin, and this memory is classified like any other.
-        // The note is the whole difference between that and the silence it
-        // replaces: somebody wrote a pin into this file, and without a word
-        // here the memory ages out of the store still carrying it.
+        // A pinned: field under a key other than the harness's `metadata:` map
+        // is a key nested under the one above it, so it does not pin, and this
+        // memory is classified like any other. The note is the whole
+        // difference between that and the silence it replaces: somebody wrote
+        // a pin into this file, and without a word here the memory ages out of
+        // the store still carrying it. The remedy names the top level rather
+        // than the map, because the top level is where a hand writes the field
+        // and the map is where the harness puts it; telling an operator to
+        // write it under `metadata:` would be telling them to do the rewrite's
+        // job by hand.
         if (pin === 'misplaced') {
             process.stderr.write('memq: ' + shown
-                + ' has an indented pinned: field, which does not pin it;'
-                + ' move it to the frontmatter block\'s top level\n');
+                + ' has a pinned: field under another key, which does not pin it;'
+                + ' write it at the frontmatter block\'s top level, where it pins whether'
+                + ' or not the harness then moves it under metadata:\n');
         }
         const refMs = lastAliveMs(st.mtimeMs, created, applied);
         // A reference time later than now (a clock skew, a hand-written stamp

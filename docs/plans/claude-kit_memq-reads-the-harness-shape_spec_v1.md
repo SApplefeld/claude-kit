@@ -1,6 +1,6 @@
 # memq reads its fields where the harness puts them
 
-Status: Draft
+Status: In Progress
 Commit Model: Commit-and-Push
 Created: 2026-08-23
 
@@ -55,7 +55,7 @@ Acceptance:
 - The skill passages read as above, and the operator memory exists (`memq find "rewritten"` returns it).
 - `docs/architecture.md`'s description of the memory grammar, where it has one, follows through the finishing pass's curator; name it in the Chapter.
 
-Files in scope: `plugins/claude-kit/scripts/memq.js`, `test/memq.test.js`, `plugins/claude-kit/skills/memory-system/SKILL.md`, the operator memory tier (CLI-authored).
+Files in scope: `plugins/claude-kit/scripts/memq.js`, `test/memq.test.js`, `plugins/claude-kit/skills/memory-system/SKILL.md`, `docs/security-model.md` (folded in at the section review: the memq-grant paragraph presented the `--supersedes` withholding as the control over creating a demotion pointer without saying that both locks bound the CLI verb and not the frontmatter field, a gap this section widens by making a hand-written project-tier pointer live), the operator memory tier (CLI-authored).
 
 ## Related
 
@@ -64,3 +64,13 @@ Files in scope: `plugins/claude-kit/scripts/memq.js`, `test/memq.test.js`, `plug
 - `docs/archive/claude-kit_memory-supersedes_spec_v1.md` and `docs/archive/claude-kit_automemory-off_spec_v1.md`, per the Evidence.
 
 ## Chapters
+### Chapter 1 - 2026-08-23
+Completed: 1. Both placements read, the test flipped, the skill corrected, the fact banked
+Implemented By: implementer-opus (one dispatch, two fix rounds on the same agent); main session took the `docs/` writes (security-model, backlog, this doc) under the docs routing override
+Metrics: 2 review rounds (adversarial + blind + security, all at opus/max via Workflow since an opus-tier section leaves the reviewers no headroom); NEEDS_CONTEXT 0; escalations 0; consults 0
+Decisions / Surprises: The plan's `Status:` header read `Draft` at arming and was normalized to `In Progress`, the only value besides `Complete` the kit's tooling reads. The harness quotes *some* ambiguous scalars and not others, which the spec did not know: a real record carries `tags: "gotcha, convention"`, and the pre-fix reader split that into `"gotcha` and `convention"`, so `--tag gotcha` returned four of five records while the display path printed the tags correctly, because `sanitize` strips quotes on the way to the screen. Ruling: the unquote belongs in `frontmatterValue`'s nested branch, where the harness shape is decoded, not in `frontmatterTags`, which would fix tags alone and leave `supersedes:`, `created:` and `machine:` broken the day one of them needs quoting. Top-level values are taken verbatim, nothing having rewritten them. Second surprise: our description of the harness shape was wrong. `name: ""` over `node_type`/`originSessionId`/`modified` is the minority variant (26 of 292 harness-shaped records on this machine, measured over all 391 by both the reviewer and me independently); the majority carries the record's name with a top-level `description:`. The added key set varies by harness version and feature, so the promotion rule keys on the map's shape and on no marker key, and the operator memory says the same. Third: the frontmatter budget is 34 author lines, not 35, and overrunning it is total rather than partial, since a fence past the bound leaves no block at all and every field goes dark with no scan note.
+Assumptions: A column-0 `metadata:` carrying a scalar value is a field rather than the map, so it opens no map and promotes nothing (declared 2026-08-23, section 1; route (b), low-blast and reversible: the alternative would promote keys under an author's own `metadata: something` line, which is the silent read the placement rule exists to refuse). Earned its green under a control probe.
+Review Findings: Critical 1, fixed: the quoted-scalar miss above, confirmed live before acting and verified by the acceptance count moving 4 to 5. Major 4, all fixed: the 34-line budget and the whole-block-goes-dark wording in SKILL.md; the source pin strengthened to count every `new RegExp(` rather than one spelling, control-probed with a different spelling; the top-level-quotes asymmetry and the non-uniform quoting stated in SKILL.md; a U+2028/U+2029 regression I introduced, where a line whose own match failed fell out as plain absence instead of reporting misplacement, restoring base `d8c8177`'s reach. Minor, fixed: `metaRe` hoisted to a module constant; the test fixture's `originSessionId` was this session's live id and is now synthetic; the harness-shaped fixture moved from the operator tier to the project tier, the only tier the harness rewrites. Two findings routed out of scope to `docs/backlog.md`: the frontmatter read has no size bound (whole-file read to consult 40 lines, pre-existing), and whether the harness rewrites the pending tier's provenance keys. One surface folded in: `docs/security-model.md`, whose memq-grant paragraph presented the `--supersedes` withholding as the control over creating a demotion pointer without saying both locks bind the CLI verb and not the frontmatter field, a gap this section widens by making a hand-written project-tier pointer live.
+Stamps: adjudicated 7, stamped 5 (`suite-baseline-is-not-zero-fail`, `test-suite-invocation`, and the operator-tier `claude-kit-hook-edits-need-a-build-stamp-refresh`, `memq-shim-runs-the-installed-plugin-not-the-tree`, `claude-code-rewrites-memory-frontmatter-into-metadata`); 2 skipped as read-but-not-steering.
+Next: finishing-work
+Commit Model: Commit-and-Push
