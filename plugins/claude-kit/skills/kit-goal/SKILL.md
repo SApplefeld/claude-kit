@@ -53,7 +53,7 @@ The same state feeds a status-line widget, `scripts/kit-goal-statusline.js`, whi
 🎯 <plan> · Sections: <done>/<total> (Next §N) · Plans: <i>/<n>
 ```
 
-Sections are counted from the armed plan doc by the machine contract (a `### N.` heading under `## Sections of Work` is complete when a Chapter's first `Completed:` line registers it), the pointer is the last Chapter's `Next:` line, and the Plans segment appears only for a queue. The doctor installs its launcher at `~/.claude/bin/kit-statusline.js`; a status-line tool that runs shell commands (ccstatusline's Custom Command widget, for one) is wired with `node "%USERPROFILE%\.claude\bin\kit-statusline.js"` and receives the widget's output on every status-line refresh.
+Sections are counted from the armed plan doc by the machine contract (a `### N.` heading under `## Sections of Work` is complete when a Chapter's first `Completed:` line registers it), the pointer is the last Chapter's `Next:` line, and the Plans segment appears only for a queue. The doctor installs its launcher at `~/.claude/bin/kit-statusline.js`; a status-line tool that runs shell commands (ccstatusline's Custom Command widget, for one) is wired with `node "<absolute path to ~/.claude>/bin/kit-statusline.js"` (the literal path, since the tool's own shell decides whether a variable such as `%USERPROFILE%` or `$HOME` expands) and receives the widget's output on every status-line refresh. The launcher prints nothing, with exit 0, when the installed payload predates the widget; updating the plugin is what brings the widget in, and the doctor's `-Fix` only copies the launcher.
 
 ## How the leash holds
 
