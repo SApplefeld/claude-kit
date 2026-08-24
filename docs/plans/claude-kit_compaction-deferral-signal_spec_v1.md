@@ -80,7 +80,7 @@ The reminder names the hook; states that the compaction gate has held N auto-com
 
 Tests, red first, in a new `test/compact-deferral-nudge.test.js` on `chapter-boundary-nudge.test.js`'s harness: fires once with the two integers under an open episode; silent with no episode; silent with a matching checkpoint open; silent for a subagent payload; silent on the wrong session; silent under the engine marker; silent for an uncovered tool; a second call inside the interval is silent and one past it fires; `nudgedAt` is written; a damaged lib degrades to silence.
 
-Files in scope: `plugins/claude-kit/hooks/compact-deferral-nudge.js` (new), `plugins/claude-kit/hooks/hooks.json`, `plugins/claude-kit/hooks/kit-compact-lib.js` (the `nudgedAt` writer), `test/compact-deferral-nudge.test.js` (new).
+Files in scope: `plugins/claude-kit/hooks/compact-deferral-nudge.js` (new), `plugins/claude-kit/hooks/hooks.json`, `plugins/claude-kit/hooks/kit-compact-lib.js` (the `nudgedAt` writer), `test/compact-deferral-nudge.test.js` (new), `README.md` (the hook inventory line, folded in from this section's review).
 
 ### 4. The prose, the reminders, and the docs
 
@@ -90,9 +90,9 @@ Model: opus
 
 Baseline test per writing-skills on the finishing-work paragraph and the executing-work drought wording: a scenario brief of a finishing pass with a security review returning after 40 minutes while the gate has held eleven offers; before the change, the pass proceeds to the next step and compacts at the valve; after, it writes the interim board and opens the checkpoint before the next dispatch.
 
-`docs/backlog.md` (main thread, docs/): the cadence item (:113) is dispositioned as reopened-and-answered by this plan, with the diagnosing run as the observation that reopened it; the finishing-boundary item (:115) as resolved by this plan; the turn-it-on item (:71) stays operator-only and gains one sentence naming `.kit/compact-gate.jsonl` as the scrollback it asked for. `docs/architecture.md` and `docs/security-model.md` follow through the finishing pass's curator: the two new `.kit/` files beside the checkpoint's accepted-risk paragraph (the state file steers a checkpoint's `pendingOffer` and the nudge's firing, both of which degrade to the status quo when forged), the nudge in the hook list, the `.kit/goal-state.json` reader count, the log's bound, and the freshness control's own description, which both documents still state as a single short window (`docs/security-model.md`:217 and :231, `docs/architecture.md`:75) where it is now two bounds selected by a corroborated flag. Name them in this section's Chapter so the curator finds them.
+`docs/backlog.md` (main thread, docs/): the cadence item (:113) is dispositioned as reopened-and-answered by this plan, with the diagnosing run as the observation that reopened it; the finishing-boundary item (:115) as resolved by this plan; the turn-it-on item (:71) stays operator-only and gains one sentence naming `.kit/compact-gate.jsonl` as the scrollback it asked for. `docs/architecture.md` and `docs/security-model.md` are written in this section rather than left to the finishing pass's curator, since a doc correction named only in prose depends on the curator reaching a file no list names: the two new `.kit/` files beside the checkpoint's accepted-risk paragraph (the state file steers a checkpoint's `pendingOffer` and the nudge's firing, both of which degrade to the status quo when forged), the nudge in the hook list, the `.kit/goal-state.json` reader count, the log's bound, and the freshness control's own description, which both documents still state as a single short window (`docs/security-model.md`:217 and :231, `docs/architecture.md`:75) where it is now two bounds selected by a corroborated flag. Name them in this section's Chapter so the curator finds them.
 
-Files in scope: `plugins/claude-kit/skills/executing-work/SKILL.md`, `plugins/claude-kit/skills/finishing-work/SKILL.md`, `plugins/claude-kit/hooks/kit-goal-stop.js`, `test/kit-goal-stop.test.js`, `docs/backlog.md`.
+Files in scope: `plugins/claude-kit/skills/executing-work/SKILL.md`, `plugins/claude-kit/skills/finishing-work/SKILL.md`, `plugins/claude-kit/hooks/kit-goal-stop.js`, `test/kit-goal-stop.test.js`, `docs/backlog.md`, `docs/security-model.md`, `docs/architecture.md`.
 
 ### 5. The doctor sees every file the gate leaves in .kit/
 
@@ -118,7 +118,7 @@ Give `readGoal` the same preamble the two hardened readers use, reusing the exis
 
 Tests, red first, in `test/kit-goal-lib.test.js`: a non-regular file at the goal state path reads as absent rather than blocking or throwing; an oversized one reads as absent; a valid state still round-trips; a link pre-planted at the temp path fails the write rather than being followed; the write's `{ ok: false, reason }` shape is unchanged on refusal. Where a kind cannot be staged on this box, say so and call it unproven rather than claiming coverage.
 
-Files in scope: `plugins/claude-kit/hooks/kit-goal-lib.js`, `test/kit-goal-lib.test.js`.
+Files in scope: `plugins/claude-kit/hooks/kit-goal-lib.js`, `test/kit-goal-lib.test.js`, `test/kit-goal-stop.test.js` (folded in during execution: its bind-write-failure helper forced its failure by pre-creating the deterministic `.tmp.<pid>` path, which the unpredictable temp name makes unnameable from the parent, so the helper was re-pointed at a writeFileSync-refusing preload mirroring the one already in that file).
 
 ## Related
 
@@ -216,3 +216,45 @@ Stamps: adjudicated 0, stamped 0; `memq unstamped --since 12h` returned zero rec
 
 Next: 3. The deferral nudge (it shares `kit-compact-lib.js` with this section, so it could not run beside it; Section 6 follows, then Section 4 inline. Sections 3, 6 and 4 all edit hook files, and a hook edit invalidates the manifest `build.ps1` regenerates, so they run serially rather than in parallel whatever their file sets)
 Commit Model: Commit-and-Push
+
+### Interim board 1 - 2026-08-24
+
+Written under the closure-drought rule: two consecutive review-round adjudications (Section 3 rounds 1 and 2) closed no section, so the run's state is recorded here rather than held in context.
+
+**Sections in flight**
+
+- **Section 3, the deferral nudge.** Implemented, reviewed twice, in its round-2 fix round. Round 1: 0 Criticals, 3 Majors + 8 Minors adversarial, 2 Majors + 6 Minors security, 5 Majors + 5 Minors blind. Round 2: 0 Criticals, 3 Majors + 7 Minors adversarial, security returned a CLEAR verdict at 0 Majors + 5 Minors, 3 Majors + 6 Minors blind. Two rounds with no Critical means the tier-escalation ladder does not fire; no escalation, no consult.
+- **Section 6, the goal state reader and writer.** Implemented and in its first review round. Ran concurrently with Section 3's round-2 review rather than after it: the two file sets are disjoint, and the serialization constraint recorded in Chapter 3 binds two *implementers* racing `build.ps1` and the manifest, not an implementer running beside read-only reviewers who build nothing.
+
+**Live dispatches**
+
+- `implementer-opus`, resumed on Section 3, working `.kit/orch-r7/s3-round2-fixes.md`: drop guard 5's transcript half, add the stamp's compare-and-set, correct four false or inverted statements in load-bearing text, add four direct tests for `recordEpisodeNudge`, and eleven Minors. Gains `test/kit-compact-gate.test.js` this round, since that suite owns the library.
+- Three reviewers at opus with effort `max`, over Section 6's three files, dispatched through `Workflow`'s `agent()` because the Agent tool takes a model override but has no effort parameter and an opus reviewer over an opus-tier section has no headroom to spend.
+
+**Gate baseline, all re-run by the orchestrator from node's own exit code rather than taken from a report**
+
+compact-deferral-nudge 33/33, kit-compact-gate 159/159, hook-canary 40/40, kit-goal-stop 94/94, kit-goal-lib 75/75 (was 69 before Section 6), chapter-boundary-nudge 26/26, every one EXIT=0. Zero regressions against the recorded baselines.
+
+**Rulings adopted since Chapter 3**
+
+- **Section 6 commits before Section 3**, though Section 3 was implemented first. Section 3's hook calls `readGoal` after every covered tool return, and Section 6 is what hardens `readGoal`, so committing Section 3 first would push the hot-path caller to origin ahead of the hardened reader. A security Major never parks, and the ordering is what keeps it from parking.
+- **Section 6's helpers are local copies, not imports.** `kit-compact-lib.js`:36 already destructures `normalizePlanArg` from `kit-goal-lib.js` at module load, so the reverse require is a genuine cycle that hands one module a half-built exports object depending on which hook is the entry point. Two spellings of an lstat is the cheaper failure than a load-order-dependent `undefined`.
+- **Guard 5's transcript half is dropped**, reversing a round-1 decision of the orchestrator's own. It was added as an additive stand-down; it is not additive, because its only possible failure direction is silence, and the two values it compares come from different producers (`kit-goal.js` composes the path, the claim-point binds store the harness's verbatim one) whose spellings can differ by short name, substituted drive, or symlinked home.
+- **The stamp gains a compare-and-set**, reversing the round-1 refusal of a lock. The refusal stands for what it refused, a lock against duplicate emissions. The new finding is a different defect: a stamp landing across a valve or illegible allow restores an episode that allow just cleared, so a stale checkpoint regains the 24-hour lease instead of ten minutes and admits a mid-chapter compaction, which is the outcome the gate exists to prevent. Implemented as a re-read before the rename, failing closed to no-stamp.
+- **Two round-1 refusals still stand**, re-affirmed by the round-2 implementer against the code: no freshness bound on `episode.lastDeniedAt` (it advances only at an assistant turn, so the long tool call this hook serves leaves it stale by construction and a minutes-scale bound would silence the primary case), and no lock on the nudge interval (taken as honesty in the header instead, which now claims once per interval per tool batch).
+
+**Scope changes recorded**
+
+- Section 3's `Files in scope` gained `README.md` (the hook inventory line, from its round-1 review).
+- Section 4's `Files in scope` gained `docs/security-model.md` and `docs/architecture.md`, and its prose now says they are written in that section rather than left to the finishing pass's curator, since a doc correction named only in prose depends on the curator reaching a file no list names.
+- Section 6's `Files in scope` gained `test/kit-goal-stop.test.js`, folded in during execution: its bind-write-failure helper forced the failure by pre-creating the deterministic temp path, which the unpredictable name makes unnameable from the parent. The helper was re-pointed at a preload that refuses the write, mirroring the pattern already in that file.
+
+**Routed out of this plan**
+
+The agent-identity key list is now spelled four times across `readonly-agent-guard.js`, `docs-write-guard.js`, `chapter-boundary-nudge.js` and the new nudge, and the two PostToolUse nudges read it two different ways (truthiness against key presence). That is a real single-source finding and none of those files but the new one is in any section of this plan, so it leaves the plan rather than being folded.
+
+**Next action per section**
+
+- Section 3: await the fix round, re-run all six gates independently, capture the mutation evidence, then round 3 of review.
+- Section 6: await the review round, adjudicate, fix if needed, then close and commit **before** Section 3.
+- Section 4: not started, inline in the main thread, blocked behind both. Its two `SKILL.md` files are also a sibling session's dirty files, so its staging must re-read them immediately before `git add` and hold the add while they carry foreign content.
