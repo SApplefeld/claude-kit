@@ -2263,8 +2263,11 @@ test('one frontmatter key regex, and every field call site goes through the shar
     const source = fs.readFileSync(MEMQ, 'utf8');
     // Every RegExp construction in the file, not the one spelling the current
     // reader happens to use. A drifted reader is written by whoever writes it,
-    // so `new RegExp('^' + key ...)`, a template literal, or a regex literal
-    // would all slip a spelling-specific count. memq.js builds exactly one
+    // so `new RegExp('^' + key ...)` or a template literal would both slip a
+    // spelling-specific count. What this count still does not reach is a reader
+    // written as a regex literal, which constructs no RegExp and increments
+    // nothing; the call-site assertions below catch an existing field switching
+    // away from the shared reader, not a new literal-based one. memq.js builds exactly one
     // RegExp today, which is what makes the strong form affordable: it costs a
     // deliberate line of explanation to add a second, which is the moment to
     // ask whether the new one reads both placements.

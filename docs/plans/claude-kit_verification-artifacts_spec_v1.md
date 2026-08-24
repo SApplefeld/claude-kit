@@ -178,6 +178,7 @@ Files in scope: `kaizen/notes-NEO-CLAUDE.md`, `kaizen/notes-SCOTT-CLAUDE.md`, th
 
 - `docs/archive/claude-kit_reviewer-effort-compensation_spec_v1.md` (commit `e2752d1`): the round that wrote "read the model the round actually ran at" without naming the artifact.
 - Commit `d66c58d` (wedge hallmark): the rule Section 2 corrects on the never-started shape and otherwise leaves standing.
+- `docs/archive/claude-kit_memq-reads-the-harness-shape_spec_v1.md` (commit `eecf17c`): this plan's after-query section writes a `supersedes:` pointer by hand at the close-out, and that round is what made a hand-written project-tier pointer readable at all.
 - `docs/backlog.md`, the effort-dials item: the frontmatter `effort` pins and the Workflow route for reviewer effort, which the compensation route in the rule depends on.
 
 ## Chapters
