@@ -8,7 +8,7 @@
 # signpost, git hooks on a clone), the ANTHROPIC_API_KEY hazard, the hook layer
 # (goal-leash wiring and load, hook-canary wiring, the memq shim), the memory
 # store's sync repo and its allowlist, the embedder behind semantic memory
-# search, the goal state file's exposure, and the auto-compaction window.
+# search, the .kit/ state directory's exposure, and the auto-compaction window.
 #
 #   .\doctor.ps1              Check only; prints PASS/WARN/FAIL with remediations.
 #   .\doctor.ps1 -Fix         Also applies the safe durable repairs (execution
@@ -1318,54 +1318,61 @@ else {
     Report "INFO" "Kit goal state" @("Skipped (installed plugin cache, not a repo clone; no specific repo to inspect).")
 }
 
-# --- Goal state exposure. The goal state file carries plan paths, and every
-# --- armed session's SessionStart notice reads them back into its context; a
-# --- queue makes that payload several times what a single plan did. The
-# --- posture that keeps it safe is the file staying machine-local, which is a
-# --- property of the consuming repository rather than one the kit can impose,
-# --- so this checks the property instead of assuming it. It sits deliberately
+# --- .kit/ exposure. The kit's project-local state lives in .kit/, and every
+# --- file it holds is machine-local by intent: goal-state.json carries plan
+# --- paths that every armed session's SessionStart notice reads back into its
+# --- context, compact-gate.json carries the gate's newest verdict, and
+# --- compact-gate.jsonl carries a session id and a timeline of the run's work,
+# --- one line per decision. The posture that keeps all of it safe is the
+# --- directory staying out of git, which is a property of the consuming
+# --- repository rather than one the kit can impose, so this checks the whole
+# --- directory instead of assuming it or naming one file. It sits deliberately
 # --- outside the $isClone gate above: $repoRoot is derived from where this
 # --- script lives, so it only ever names the kit's own checkout, whose
 # --- .gitignore already covers .kit/, while the exposure exists in whatever
 # --- project a goal was armed in. The inspected project is the directory the
-# --- doctor was launched from: goal state is project-local, so the
-# --- operator runs the doctor from the project.
-$goalExposureDir = (Get-Location).Path
-$goalExposurePath = Join-Path $goalExposureDir ".kit\goal-state.json"
-if (-not (Test-Path -LiteralPath $goalExposurePath)) {
-    Report "INFO" "Kit goal state exposure" @("No goal state file in $goalExposureDir; nothing to expose.")
+# --- doctor was launched from: this state is project-local, so the operator
+# --- runs the doctor from the project.
+$kitStateDir = (Get-Location).Path
+$kitStatePath = Join-Path $kitStateDir ".kit"
+if (-not (Test-Path -LiteralPath $kitStatePath)) {
+    Report "INFO" "Kit state directory exposure" @("No .kit directory in $kitStateDir; nothing to expose.")
 }
 elseif (-not (Get-Command git -ErrorAction SilentlyContinue)) {
     # Reported rather than skipped silently, so an absent check cannot read as
     # a passing one.
-    Report "INFO" "Kit goal state exposure" @("Skipped (git is not on PATH, so tracked and ignored status cannot be read).")
+    Report "INFO" "Kit state directory exposure" @("Skipped (git is not on PATH, so tracked and ignored status cannot be read).")
 }
 else {
-    & git -C $goalExposureDir rev-parse --is-inside-work-tree 2>$null | Out-Null
+    & git -C $kitStateDir rev-parse --is-inside-work-tree 2>$null | Out-Null
     if ($LASTEXITCODE -ne 0) {
-        Report "PASS" "Kit goal state exposure" @("$goalExposureDir is not a git working tree, so the goal state cannot be committed from here.")
+        Report "PASS" "Kit state directory exposure" @("$kitStateDir is not a git working tree, so .kit/ cannot be committed from here.")
     }
     else {
         # Order matters: git stops reporting a path as ignored once it is
         # tracked, so the tracked case must be tested first or it renders as
-        # merely unignored and understates the damage.
-        $goalTracked = (& git -C $goalExposureDir ls-files -- ".kit/goal-state.json")
-        & git -C $goalExposureDir check-ignore -q -- ".kit/goal-state.json"
-        $goalIgnored = ($LASTEXITCODE -eq 0)
-        if ($goalTracked) {
-            Report "WARN" "Kit goal state exposure" @(
-                "$goalExposurePath is tracked by git, so its plan paths are in this repo's history and reach every clone.",
-                "Fix: git rm --cached .kit/goal-state.json, then add .kit/ to this repo's .gitignore."
-            )
+        # merely unignored and understates the damage. A repository can also
+        # ignore .kit/ and still track a file inside it (git add -f), so the
+        # two readings are taken over the same directory rather than one
+        # standing in for the other.
+        $kitTracked = @(& git -C $kitStateDir ls-files -- ".kit")
+        & git -C $kitStateDir check-ignore -q -- ".kit"
+        $kitIgnored = ($LASTEXITCODE -eq 0)
+        if ($kitTracked.Count -gt 0) {
+            Report "WARN" "Kit state directory exposure" (@(
+                "$($kitTracked.Count) path(s) under $kitStatePath are tracked by git, so their contents are in this repo's history and reach every clone:"
+            ) + ($kitTracked | ForEach-Object { "  $_" }) + @(
+                "Fix: git rm --cached each path above, then add .kit/ to this repo's .gitignore."
+            ))
         }
-        elseif (-not $goalIgnored) {
-            Report "WARN" "Kit goal state exposure" @(
-                "$goalExposurePath is neither tracked nor ignored, so the next 'git add -A' commits it and its plan paths reach every clone.",
+        elseif (-not $kitIgnored) {
+            Report "WARN" "Kit state directory exposure" @(
+                "$kitStatePath is neither tracked nor ignored, so the next 'git add -A' commits it and this repo's kit state reaches every clone.",
                 "Fix: add .kit/ to this repo's .gitignore."
             )
         }
         else {
-            Report "PASS" "Kit goal state exposure" @("Goal state is gitignored in $goalExposureDir, so its plan paths stay on this machine.")
+            Report "PASS" "Kit state directory exposure" @("$kitStatePath is gitignored, so this repo's kit state stays on this machine.")
         }
     }
 }

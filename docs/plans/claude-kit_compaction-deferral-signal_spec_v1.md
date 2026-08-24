@@ -143,3 +143,26 @@ Unproven, named as such: `regularFileSize`'s ENOENT-only change (no portable way
 
 Next: 2. A checkpoint opened under a pending offer waits for it
 Commit Model: Commit-and-Push
+
+### Chapter 2 - 2026-08-24
+Completed: 5. The doctor sees every file the gate leaves in .kit/
+Implemented By: implementer-opus, dispatched in parallel with Section 2 (the two file sets are disjoint: this section writes only `doctor.ps1`).
+Metrics: review rounds 0 (see below); NEEDS_CONTEXT 0; escalations 0; consultations 0; DONE_WITH_CONCERNS returned with three naming and scoping calls, all adjudicated by the orchestrator.
+Gates: no test file covers `doctor.ps1`, so the hand-run acceptance matrix is the whole gate. Eight scratch repos, each built under the session scratchpad outside the repo, every git invocation given an explicit `-C <scratch>` so no git write command ran with the kit tree as cwd or target. The control case was proved in the required direction: a repo whose `.kit/` is gitignored but which force-added `.kit/compact-gate.jsonl` reported **PASS before the change and WARN naming that path after**. The orchestrator rebuilt that case and re-ran it independently after adjudicating the rename, confirming the WARN, the named path, and the remedy line.
+
+Decisions / Surprises:
+
+- **This section is approval drift and was appended mid-run**, surfaced by Section 1's security review. Chapter 1 records why it became its own section rather than being folded in: it needed acceptance criteria Section 1 did not carry.
+- **The probe now reads the `.kit` directory rather than the literal `.kit/goal-state.json`.** Both `git ls-files` and `git check-ignore` are taken over the directory, with the existing order preserved (tracked read before ignored) for the reason the original comment gives: git stops reporting a path as ignored once it is tracked. The comment gains one sentence for the case this section exists for, which the single-file probe could not see at all: a repo can ignore `.kit/` and still track a file inside it with `git add -f`.
+- **Check renamed to "Kit state directory exposure"** across all six call sites. The implementer proposed "Kit .kit/ exposure", flagged its own awkwardness, and was right to: the sibling checks read "Kit goal hook" and "Kit goal state", so "Kit .kit/" stutters against them. The new name drops the "goal state" claim the section exists to drop, and every message body still names the directory literally.
+- **The remedy line no longer hardcodes a filename.** It reads "git rm --cached each path above" with one indented detail line per tracked path. The alternative reading, interpolating every found path into a single command, was considered and rejected: it is unwieldy past a few files, and the detail lines already carry them.
+- **No cap on the listed paths, deliberately.** A repo tracking a large `.kit/` is exactly the alarming case, so truncating the list would quiet the loudest signal. Truncation is speculative logic the spec did not ask for.
+- **The "nothing to expose" INFO shape moved from keying on the goal-state file to keying on the directory,** which follows from widening the probe but is a wording change the section's five named acceptance cases did not cover. Verified by a sixth scratch case.
+- **Two of the implementer's early acceptance batches ran the doctor with the kit tree as its working directory,** through a shell quoting bug that collapsed the scratch path. The doctor ran read-only with no `-Fix`, performed no writes, and the orchestrator confirmed the tree afterward: `doctor.ps1` was the only file changed by this section and the concurrent efforts' files were untouched. Naming it because a diagnostic that inspected the wrong tree is worth knowing about even when it wrote nothing.
+
+Review Findings: none. This section changes one PowerShell diagnostic with no test coverage and no runtime reach into the gate's decision path, and its whole gate is a hand-run matrix whose control was proved red-then-green and independently re-run by the orchestrator. The finishing pass's whole-changeset security and adversarial reviews cover it.
+
+Unproven, named as such: `git ls-files` output quoting for non-ASCII or unusual filenames, which `core.quotepath` would render escaped in the WARN list. Not exercised, and no such filename exists among the kit's own `.kit/` files.
+
+Next: 2. A checkpoint opened under a pending offer waits for it (dispatched in parallel with this section and still in flight at this Chapter's write; Section 3 follows it, sharing `kit-compact-lib.js`, then Section 4 inline)
+Commit Model: Commit-and-Push
