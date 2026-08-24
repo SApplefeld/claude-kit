@@ -1,0 +1,111 @@
+# Memory anchors and the frontmatter guard: a memory can say when its file moved, and a hand-written record is checked at the Write
+
+Status: Draft
+Commit Model: Commit-and-Push
+Created: 2026-08-23
+
+Flip `Status:` to `In Progress` to execute. Session model: Opus, in a clean session opened in the kit repo, queued behind `claude-kit_verification-artifacts_spec_v1.md`. Every section dispatches per executing-work. Anchors below are as of commit `f6444e0`; re-locate by content.
+
+## Goal
+
+The project memory tier has two gaps that the same week's reading surfaced. A memory about a file cannot say whether that file has changed since the memory was written, so a record that was true of `WorkerSpawner.cs` in July answers `recall` in September with nothing marking it unverified; and a project-tier record is authored with the Write tool under no validation at all, so a hand-written `supersedes:` naming a record that does not exist, a `tags:` list in the YAML form memq silently reads as no tags, or an indented `pinned:` that pins nothing, all land without a word. When this plan is done:
+
+- A project memory can carry `anchors: <path>@<sha>, <path>@<sha>`: repo-relative paths at the git blob SHA of their content when the memory was written or last re-anchored. `memq anchor <name> <path>...` writes the line, computing the hashes so no 40-hex value is ever typed by hand.
+- `memq decay-scan` reports a `DRIFT` block naming every live project memory whose anchored file has changed or gone, as a nomination beside summarize and archive, never as a retirement. `memq get <name>` prints each anchor's state. The SessionStart hook says how many project memories anchor changed files, as one integer, when there are any.
+- A PreToolUse guard validates the frontmatter of a project-tier memory at the Write (and at an Edit that touches the block), refusing with the fix named: a `supersedes:` naming no live same-tier record, an `anchors:` entry that does not parse or escapes the project, list-form `tags:`, an indented top-level key, a malformed `pinned:` or `created:` date. The same guard refuses the Write tool on the two shared tiers, which the memory-system skill already says are CLI-authored only.
+- The memory-system skill documents both, and the kit's architecture and security docs follow through the finishing pass.
+
+## Approach
+
+The design decisions, settled 2026-08-23 in the reviewing session, each with its reason:
+
+- **An anchor is a whole file at its git blob SHA.** The hash is the one git itself computes (`git hash-object <path>` reproduces it), so a reader can verify an anchor by hand, it works on uncommitted content, and it needs no git process at check time. Whole file rather than a line range because a memory is about a file's contract, and any edit to the file is a reason to re-read it; whitespace-only drift is accepted as the price of a hash a human can check.
+- **Drift nominates; it never retires.** A changed file does not make the memory wrong, it makes it unverified, and the store's posture since decay shipped is that the scan reports and the operator decides. The remedies on a DRIFT line are re-read, then `memq anchor` again (still true), a fresh record with `supersedes:` (overtaken), or a hand correction (wrong); a DRIFT line alone never deletes. Prior art read this week (memspec) inferred relations between records lexically and had to drain the result; a hash the operator set is the only inference here.
+- **Project tier only in v1.** An anchor needs a project root to resolve against and a tree to hash; the type and operator tiers have neither. Shared-tier anchors would need a repo reference per entry, which is the cross-tier question the supersedes round deferred for the same reason.
+- **The writer is a CLI verb that touches one line.** The project tier is Write-tool authored, and stays so for bodies; but a 40-hex value typed by hand is exactly the error the field cannot survive, so `memq anchor` computes and writes the `anchors:` line and nothing else. `decay-prune`'s archive move is the precedent for the CLI touching a project-tier file. The rewrite moves the file's mtime, which `lastAliveMs` counts as a sign of life; that is correct (anchoring is a verification act) and is stated in the skill.
+- **The fleet grant withholds `anchor`.** Anchoring rewrites a record in the shared priors, an authoring act on state a fleet worker's writes are otherwise quarantined from; the grant's verb allowlist does not gain it, and a test pins the withholding as the existing withheld shapes are pinned.
+- **Three read surfaces in v1, and not `recall` or `find`.** `decay-scan` (the pass where nominations are adjudicated), `get` (the moment of use), and the SessionStart count line (discovery, integer-only under the hook's provenance bound). Labeling every `recall` and `find` line would hash every anchored file on every read at every effort start; with the anchor count unknown that cost is not yet justified, and the count line is what tells us when it is. Revisit once anchored records exist.
+- **Decay is orthogonal.** A drifted anchor moves no idle clock and no threshold; drift is its own class, and a pinned record still reports drift, since the pin exempts a record from retirement, not from being unverified.
+- **The guard imports memq's readers rather than re-parsing.** Two parsers of one grammar drift; memq already guards `main()` behind `require.main === module` and exports a symbol table, so the frontmatter readers join the exports and the hook requires them. A cross-component pin is then structural rather than a test.
+- **The guard denies only what is certain and fails open on everything else,** on the kit's guard posture (`docs-write-guard.js`, `readonly-agent-guard.js`): a missing target file, an unparseable payload, an unresolvable root, all allow. A dangling `supersedes:` is certain (the file is absent); a list-form `tags:` is certain (memq reads it as none); an indented key is certain (memq reads it as absent). The shared-tier refusal applies to every writer, the main session included, because the rule it enforces is "never the Write tool", not "not by subagents".
+- **`supersedes:` is checked in exact casing.** The backlog records that a variant-case pointer passes the CLI's typo guard on Windows and goes inert on a case-sensitive checkout, and asks for canonicalization at write time. The guard is a write-time check, so it refuses a target that exists only under a different casing and names the exact filename, which is the same fix at the hand-written door.
+- **Declined, with the reason recorded so it is not re-derived.** A `verified:` witness date: the file's mtime and its applied stamps already carry "still true" evidence into the idle clock, and `memq anchor` re-run is the anchored record's re-verification, so a third witness would duplicate two. A stored supersede reason: the successor's own body is the reason, and a field beside it would be a second place to say the same thing. Both are one-line additions if a real need appears.
+
+## Evidence
+
+- The hand-written pointer gap: `plugins/claude-kit/skills/memory-system/SKILL.md:146-154` ("A hand-written pointer gets none of the CLI's six refusals, so it is the one place a dangling pointer can be minted"), and :104 (the YAML list form of `tags:` "silently reads as no tags at all"), and :184 (an indented `pinned:` does not pin).
+- memq surfaces at `f6444e0`, `plugins/claude-kit/scripts/memq.js`: `frontmatterBlock` :1834, `frontmatterValue` :1870, `frontmatterField` :1886 (the grammar to mirror, indented-is-not-the-field), `readFrontmatterTags` :1900, `readFrontmatterCreated` :1918, `lastAliveMs` :1933, `pinState` :1963, `supersededSuccessors` :2068, `cmdGet` :3323, `tierDecayCandidates` :4949, `cmdDecayScan` :5130, `cmdDecayPrune` :6585, `recordFrontmatter` :6907, `main` :9154, `require.main` guard :9231, `module.exports` :9233 (exports `memoryRoot`, `worktreeMainRoot`, `projectsRootPath`, `projectMemoryDirFor`, `projectMemoryDir`, `tierDirFor`, `typesRootPath`, `operatorDirPath`, `isMemoryFilename`, `acquireLock`, `listMemories`, and not the frontmatter readers).
+- Hook registration and the sibling shape: `plugins/claude-kit/hooks/hooks.json` PreToolUse `Write|Edit|MultiEdit|Bash|PowerShell` runs `docs-write-guard.js`; that guard's header states the fail-open posture; `test/docs-write-guard.test.js` is the spawned-child harness to mirror. `hooks/memq-grant.js` states the verb allowlist and the withheld flags (`--body-file`, `--update` with a body, `--supersedes`, `--rollup`). `hooks/memory-session.js` emits the project index and carries "no store-controlled strings, only integers" for its nudges. `hooks/hook-canary.js` probes the installed guards at session start.
+- Prior art, read 2026-08-23 from a clone of `siimvene/memspec` (not a dependency; the idea only): `src/anchors.ts` `blobSha` = sha1 over `blob <len>\0` + content; `src/verify.ts` on mismatch prints "NEEDS REVIEW" and "Memory left untouched"; `src/reconcile.ts` re-points a renamed anchor only when the moved blob is byte-identical. The known blob SHA of the bytes `hello\n` is `ce013625030ba8dba906f756967f9e9ca394464a`, usable as a fixed test vector.
+- The kit's suite: `node --test test/*.test.js`, zero-fail on an idle box except one intermittent memq-shim test, about four minutes (project memory); capture the wall clock beside the counts.
+
+## Sections of Work
+
+### 1. The `anchors:` field: grammar, readers, blob hash, states, exports
+
+Model: opus
+
+The field: `anchors: <path>@<sha>, <path>@<sha>` on one line at the top level of the frontmatter block that opens on the file's first line, the same line discipline as `tags:`. A path is forward-slashed and relative to the project's main root (`worktreeMainRoot`), with no leading slash or drive letter and no `.` or `..` segment; a sha is 40 lowercase hex. In `memq.js`: `readFrontmatterAnchors(file)` mirroring `readFrontmatterTags` and `frontmatterField`'s grammar (an indented `anchors:` is not the field; the list form reads as none); `parseAnchors(value)` returning entries or naming the first malformed one; `blobSha(absPath)` computing sha1 over `blob <len>\0` plus the file's bytes, null for a missing path or a non-file; `anchorStates(file, root)` returning per entry `{path, recorded, current, state}` with `state` one of `fresh`, `changed`, `missing`, `unreadable` (a path that escapes the root, or an entry that does not parse), never throwing. Add these, and the existing `frontmatterBlock`, `frontmatterValue`, `frontmatterField`, `readFrontmatterTags`, `readFrontmatterCreated`, and `pinState`, to `module.exports`.
+
+Tests, red first, in `test/memq.test.js`: the grammar (top-level reads, indented does not, list form reads as none, a malformed entry is named); `blobSha` of the bytes `hello\n` equals `ce013625030ba8dba906f756967f9e9ca394464a`; `anchorStates` for fresh, changed, missing, and an escaping path; the exports are present.
+
+Files in scope: `plugins/claude-kit/scripts/memq.js`, `test/memq.test.js`.
+
+### 2. `memq anchor <name> <path>...`, and the grant that withholds it
+
+Model: opus
+
+The verb resolves `<name>` in the project memory directory of the cwd's project (the same resolution `get` uses), refuses `--type` and `--operator` with the v1 reason, and refuses when no project root resolves from cwd. Each path is resolved against the main root and refused, naming it, when it is outside the root, missing, a directory, absolute, or carries a `..` segment; one refusal writes nothing. It computes the blob SHAs, merges them into the existing `anchors:` line per path (a fresh SHA replaces the old one, existing order kept, new paths appended), creates a frontmatter block (`---`, the line, `---`) at the top when the file has none, and otherwise rewrites only that line; the write is temp-and-rename under the store lock (`acquireLock`), and the body's bytes are unchanged. It prints the resulting line. Removing an entry is a hand edit in v1; no `--drop`.
+
+The grant: `memq-grant.js`'s verb allowlist does not gain `anchor`; a test in the grant's test file pins the withholding in the deny direction, the way the withheld flag shapes are pinned.
+
+Tests, red first: merge semantics (replace, keep order, append); the body byte-identical before and after (buffer compare); each refusal with its message; block creation on a file without one; the lock held during the write; the grant withholding.
+
+Files in scope: `plugins/claude-kit/scripts/memq.js`, `plugins/claude-kit/hooks/memq-grant.js` (comment naming the withheld verb, where the allowlist's comment enumerates them), `test/memq.test.js`, `test/memq-grant.test.js`.
+
+### 3. Three read surfaces: the DRIFT block, the `get` line, the session count
+
+Model: opus
+
+`memq decay-scan` gains a `DRIFT` block after its existing blocks, in the scan's own output style: one line per live project-tier record with at least one `changed` or `missing` anchor, `<name>  changed: <path>[, <path>]  missing: <path>[, <path>]`, pinned records included, and the scan's no-candidates wording when there are none. No `decay-prune` flag acts on the block. Only anchored paths are hashed.
+
+`memq get <name>` prints, after the body, one line per anchor: `anchors: <path> fresh`, `... changed (recorded <sha7>, now <sha7>)`, `... missing`, or `... unreadable`; and `anchors: not checked (no project root in cwd)` when memq runs outside a project.
+
+`hooks/memory-session.js` emits, after the project index block, one line when the count is positive: `<N> project memories anchor files that have changed since they were written; memq decay-scan lists them.` The count is the only store-derived value on the line (the hook's provenance bound). It reads the frontmatter block of each project-tier record (bounded to the block), hashes only anchored paths, and is silent on any error or when no root resolves. Under a pinned or run-scoped store it reads that store's project tier.
+
+Tests, red first: the DRIFT block against a fixture with one changed and one missing anchor and a pinned drifted record; the `get` lines for each state and the no-root line; the session line present at N=1 and absent at N=0 and on a broken store, on `test/memory-session.test.js`'s fixture patterns.
+
+Files in scope: `plugins/claude-kit/scripts/memq.js`, `plugins/claude-kit/hooks/memory-session.js`, `test/memq.test.js`, `test/memory-session.test.js`.
+
+### 4. The frontmatter guard
+
+Model: opus
+
+New `hooks/memory-frontmatter-guard.js`, PreToolUse on `Write|Edit|MultiEdit`, registered in `hooks.json` beside `docs-write-guard.js`. Scope: the target's directory is a memory tier directory, resolved through memq's exported root helpers (the project tier under `projectsRootPath()` or an engine store's `projects/<pin>/memory/`, the shared tiers under `typesRootPath()/<type>/` and `operatorDirPath()`), honoring the same `KIT_MEMORY_ROOT` override memq honors so a test can point it at a temporary store; the filename satisfies `isMemoryFilename`. `MEMORY.md`, `decay-stamp`, sidecars, and `archive/` are out of scope and allow.
+
+Shared tier: deny every Write, Edit, and MultiEdit, for every writer including the main session, with one stderr line naming `memq add-type ... --update` or `memq add-operator ... --update`.
+
+Project tier: compute the resulting content (Write: `content`; Edit: the file on disk with `old_string` replaced by `new_string`, honoring `replace_all`; MultiEdit: the edits applied in order). If the result has no frontmatter block, or the block's text equals the block on disk, allow without validation. Otherwise validate through memq's exported readers and refuse, exit 2 with one stderr line naming the rule and the fix, on any of: a `supersedes:` naming no `<name>.md` in the same directory in exact casing (a target that exists only under another casing is refused naming the exact filename; a target found only under `archive/` is refused naming the live-successor rule; the file's own name is refused); an `anchors:` entry `parseAnchors` rejects, or, where a project root resolves from the payload cwd, a path that escapes it; a `tags:` line with no inline value followed by `- ` lines; a `pinned:`, `supersedes:`, `anchors:`, or `tags:` key indented under another key; a `pinned:` or `created:` value that is not `YYYY-MM-DD`. Everything else allows, and any parse error, unreadable file, unresolvable root, or unknown payload allows.
+
+Canary: one probe block in `hooks/hook-canary.js` in the deny direction (a Write payload for a fixture project-tier path carrying a dangling `supersedes:`), on the shape of the existing probes; the probe-count figures the canary's comment and `docs/security-model.md` carry move with it (the doc through the curator).
+
+Tests, red first, in a new `test/memory-frontmatter-guard.test.js` on `docs-write-guard.test.js`'s harness (spawned child, exit code, stderr), with a temporary store: each deny rule with its reason text; a clean record allows with empty stderr; an Edit that leaves the block unchanged allows; out-of-scope files allow; the shared-tier deny for the main session and for a subagent; a malformed payload allows.
+
+Files in scope: `plugins/claude-kit/hooks/memory-frontmatter-guard.js` (new), `plugins/claude-kit/hooks/hooks.json`, `plugins/claude-kit/hooks/hook-canary.js`, `test/memory-frontmatter-guard.test.js` (new), `test/hook-canary.test.js` where it pins probe counts.
+
+### 5. The skill documents both
+
+Model: opus
+
+`skills/memory-system/SKILL.md`: an `anchors:` section modeled on the `machine:` and `supersedes:` sections (the grammar, the verb, the three surfaces, the v1 limits, and what a DRIFT line means: the memory is unverified, not wrong; re-read the file, then re-anchor, supersede, or correct; never delete on drift alone); the `anchor` row in the verb table; a guard section stating the rules a project-tier Write now meets and that the shared tiers refuse the Write tool mechanically. Follow writing-skills; baseline-test the DRIFT wording (a session handed a DRIFT line must re-read before acting and must not delete on the line alone). `docs/architecture.md` (the hook list, the memq verb) and `docs/security-model.md` (the guard's deny rules and fail-open posture, the grant's withheld verb, the canary's probe count) follow through the finishing pass's curator; name them in this section's Chapter so the curator finds them.
+
+Files in scope: `plugins/claude-kit/skills/memory-system/SKILL.md`.
+
+## Related
+
+- `docs/plans/claude-kit_verification-artifacts_spec_v1.md`: queued ahead of this plan in the same Opus session.
+- `docs/archive/claude-kit_memory-supersedes_spec_v1.md`: the pointer grammar and the six refusals this plan mirrors, and the same-tier-only v1 reasoning.
+- `docs/backlog.md`, "A `--supersedes` target named in variant case writes a pointer that goes inert off Windows": the guard's exact-casing check is that fix at the hand-written door; the CLI-side canonicalization stays its own item.
+- `docs/backlog.md`, "Give the `memq-grant` `--supersedes` screen a canary probe": this plan adds a canary probe for the new guard, not for the grant screen; that item stands.
+
+## Chapters
