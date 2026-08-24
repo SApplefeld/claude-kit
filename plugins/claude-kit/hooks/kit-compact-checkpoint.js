@@ -24,8 +24,47 @@ const fs = require('fs');
 const { readGoal } = require('./kit-goal-lib.js');
 const {
     checkpointPath, readCheckpoint, writeCheckpoint, clearCheckpoint, checkpointMatches,
-    readGateStateResult, gateEpisodeOpen, episodePhrase, wholeMinutesSince
+    readGateStateResult, gateEpisodeOpen, pendingOfferCorroborated, checkpointOwner,
+    episodePhrase, wholeMinutesSince,
+    CHECKPOINT_MAX_AGE_MS, CHECKPOINT_PENDING_MAX_AGE_MS
 } = require('./kit-compact-lib.js');
+
+// The two age bounds as an operator reads them, derived from the constants
+// rather than written out so a sentence here cannot drift from the rule it
+// describes. The rounding is exact only while the constants stay whole minutes
+// and whole hours respectively: a 90-minute pending bound would print as "2
+// hours" against a rule enforcing one and a half, so a change to either
+// constant that leaves whole units is what keeps these honest.
+const ORDINARY_MINUTES = Math.round(CHECKPOINT_MAX_AGE_MS / (60 * 1000));
+const PENDING_HOURS = Math.round(CHECKPOINT_PENDING_MAX_AGE_MS / (60 * 60 * 1000));
+
+// What the gate's state says about this goal's binding, as the three facts the
+// report and the open need. Read once per call, so a single call cannot
+// contradict itself.
+//
+//   readable  the state file could be read at all. A file locked by a scanner
+//             is not an absent one, and every surface here takes the
+//             conservative bound either way, but only an answered question may
+//             be printed as an answer.
+//   held      a deferral episode owned by this binding is open now. This is
+//             what `open` records, because a record written now cannot predate
+//             a hold that is already standing.
+//   state     the state itself, for the corroboration test the match rule
+//             needs, which additionally requires the episode to predate the
+//             record on disk (pendingOfferCorroborated owns that whole rule).
+//
+// The owner is checkpointOwner's, which answers with an explicit null for an
+// unbound goal rather than undefined, for the reason stated there.
+function pendingHold(cwd, goal) {
+    const owner = checkpointOwner(goal);
+    const result = readGateStateResult(cwd);
+    return {
+        readable: result.ok,
+        held: result.ok && gateEpisodeOpen(result.state, Date.now(), owner) !== null,
+        state: result.state,
+        owner
+    };
+}
 
 // Repo-controlled strings (a plan path, a timestamp read back from disk) are
 // sanitized to printable ASCII and length-capped before they reach
@@ -54,13 +93,39 @@ function cmdOpen() {
     // open still succeeds because the binding is claimed at a stop or at an
     // auto-compaction offer, either of which may simply not have happened yet
     // in an unusual arming order.
-    const result = writeCheckpoint(process.cwd(), goal.plan, goal.boundSession);
+    // Whether an auto-compaction offer is already being held is recorded in the
+    // checkpoint, because it is one of the two facts that decide which age
+    // bound the gate holds it to (see CHECKPOINT_MAX_AGE_MS in the lib; the
+    // other is corroboration at the moment the gate decides). The gate's own
+    // decision state is where the fact lives: an open deferral episode is a
+    // recorded deny with no allow after it, and past the trigger the harness
+    // re-offers every assistant turn, so the offers recur until one is allowed.
+    const hold = pendingHold(process.cwd(), goal);
+    const result = writeCheckpoint(process.cwd(), goal.plan, goal.boundSession, hold.held);
     if (result.ok) {
         // File-derived values print indented, never at column zero, keeping
         // sanitized untrusted data visually subordinate in a channel a model
-        // reads.
+        // reads. Which of the two checkpoints was opened is stated, because the
+        // two behave differently for the rest of their lives: one waits for an
+        // offer that is already pending, the other ages out in minutes. Both
+        // durations come from the constants, so neither sentence can promise
+        // what the rule does not do.
         process.stdout.write('  compact checkpoint open for ' + sanitize(result.plan)
-            + ' (the next auto-compaction lands here)\n');
+            + (hold.held
+                ? ' (the compaction gate is holding offers, so this waits for the next one rather than'
+                    + ' aging out in ' + ORDINARY_MINUTES + ' minutes: for as long as the gate keeps'
+                    + ' deferring, and never past ' + PENDING_HOURS + ' hours)'
+                : ' (the next auto-compaction lands here)')
+            + '\n');
+        // A state file that could not be read is not an absent one, and the
+        // bound taken above is the conservative one either way. Saying so is
+        // what keeps the confident sentence above from being the whole story:
+        // an operator who expected a held offer learns the question went
+        // unanswered rather than being told there was no hold.
+        if (!hold.readable) {
+            process.stdout.write('the compaction gate state could not be read, so this checkpoint records no'
+                + ' pending offer and keeps the ' + ORDINARY_MINUTES + '-minute bound\n');
+        }
         process.exitCode = 0;
     } else {
         process.stderr.write('kit-compact-checkpoint: ' + sanitize(result.reason) + '\n');
@@ -93,9 +158,44 @@ const ABSENT_REASONS = {
     'wrong-plan': 'does not match the armed goal, so the gate treats it as absent',
     'wrong-session': 'bound to a different session than the armed goal, so the gate treats it as absent',
     'no-timestamp': 'its opened timestamp is missing or unreadable, so the gate treats it as absent',
-    'expired': 'expired (past the checkpoint age bound), so the gate treats it as absent',
     'future': 'its opened timestamp is in the future, so the gate treats it as absent'
 };
+
+// Why a record carrying the pending-offer flag was judged by the ordinary bound
+// anyway, as a clause. Null when it was not, so a caller says nothing.
+//
+// Three things send a flagged record to the short bound, and an operator
+// debugging a boundary that went unhonored needs to know which. The wording is
+// scoped to this session's binding on purpose: the gate-state report two lines
+// below answers the unscoped question (is this PROJECT holding offers), and
+// without the qualifier the two lines read as a contradiction when a bystander
+// is being held and this binding is not.
+function shortBoundBecause(cp, hold, corroborated) {
+    if (cp.pendingOffer !== true || corroborated) return null;
+    if (!hold.readable) {
+        return 'the compaction gate state could not be read, so the longer bound could not be confirmed';
+    }
+    if (hold.held) {
+        return 'the hold now standing began after this checkpoint opened, so it does not vouch for it';
+    }
+    return 'no offer is being held for this session\'s binding, so the longer bound does not apply';
+}
+
+// Why an EXPIRED checkpoint expired, which is the one reason code with more
+// than one story behind it: three different fixtures print the same word, and
+// the one an operator is debugging (a boundary that should have been honored
+// and was not) is the middle one. So the sentence names the bound that actually
+// applied and, where they differ, why it was not the other. This is the only
+// producer of an expired message, so the two spellings cannot drift.
+function expiredReason(cp, hold, corroborated) {
+    if (corroborated) {
+        return 'expired (opened under a pending offer, and past even the ' + PENDING_HOURS
+            + '-hour bound for one), so the gate treats it as absent';
+    }
+    const why = shortBoundBecause(cp, hold, corroborated);
+    return 'expired (past the ' + ORDINARY_MINUTES + '-minute checkpoint age bound)'
+        + (why === null ? '' : ': ' + why) + ', so the gate treats it as absent';
+}
 
 // The checkpoint half of the status report: whether one is open, and why the
 // gate would ignore it if it is.
@@ -125,9 +225,29 @@ function reportCheckpoint(cwd) {
     // the reason: the file exists but gates nothing, which status alone would
     // misreport. The verdict comes from the same checkpointMatches rule the
     // gate itself decides by, so this report cannot drift from the gate.
-    const verdict = checkpointMatches(cp, readGoal(cwd), Date.now());
+    const goal = readGoal(cwd);
+    const hold = pendingHold(cwd, goal);
+    // The same corroboration the gate applies, from the same predicate, so this
+    // report cannot describe a checkpoint the gate would judge differently.
+    const corroborated = pendingOfferCorroborated(cp, hold.state, Date.now(), hold.owner);
+    const verdict = checkpointMatches(cp, goal, Date.now(), corroborated);
     if (!verdict.ok) {
-        line += ' - ' + (ABSENT_REASONS[verdict.reason] || 'the gate treats it as absent');
+        line += ' - ' + (verdict.reason === 'expired'
+            ? expiredReason(cp, hold, corroborated)
+            : (ABSENT_REASONS[verdict.reason] || 'the gate treats it as absent'));
+    } else {
+        // A live checkpoint stands on one of two age bounds, and an operator
+        // asking why one is still honored an hour in (or why another died in
+        // minutes) is asking which. The flag alone does not answer it, so the
+        // clause names the bound that actually applies and, for a flagged
+        // record on the short one, why.
+        const why = shortBoundBecause(cp, hold, corroborated);
+        if (corroborated) {
+            line += ' - the gate honors it: offers are being held, so it waits for the pending one';
+        } else {
+            line += ' - the gate honors it, within the ordinary checkpoint age bound'
+                + (why === null ? '' : '; ' + why);
+        }
     }
     process.stdout.write(line + '\n');
 }

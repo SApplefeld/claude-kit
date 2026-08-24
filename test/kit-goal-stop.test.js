@@ -2509,6 +2509,126 @@ test('a queue advance rewrites a matching open compaction checkpoint to the new 
     }
 });
 
+// An open deferral episode owned by the given session, written into the gate's
+// state file: the live hold the advance re-derives its pending-offer flag from.
+// The newest denial is a minute old, so the episode is open; sinceMsAgo dates
+// when the hold began, which must predate any record it vouches for.
+function holdOffersFor(repo, session, sinceMsAgo) {
+    const now = Date.now();
+    const minuteAgo = new Date(now - 60 * 1000).toISOString();
+    writeFile(path.join(repo, '.kit', 'compact-gate.json'), JSON.stringify({
+        lastDecision: null,
+        episode: {
+            session,
+            since: new Date(now - (sinceMsAgo === undefined ? 60 * 1000 : sinceMsAgo)).toISOString(),
+            denials: 3,
+            lastDeniedAt: minuteAgo,
+            nudgedAt: null
+        },
+        lastAllow: null
+    }, null, 2) + '\n');
+}
+
+test('the queue advance re-derives the pending-offer flag from the live gate state', () => {
+    // The rewrite re-dates openedAt, so copying a stored true would renew the
+    // long age bound at every advance: a queue of N plans could carry one
+    // never-consumed boundary for N days, and a day-stale checkpoint could
+    // follow an advance onto a NEW plan where only a ten-minute-old one could
+    // before. Asking the same question `open` asks, at the moment of the
+    // advance, makes the renewal conditional on a hold genuinely standing.
+    //
+    // Each case is the stored flag against the live state, including the
+    // absent-key shape an older kit wrote. The stored value never decides.
+    const cases = [
+        { stored: true, hold: null, expected: false, what: 'a stored hold that no longer stands is dropped' },
+        { stored: false, hold: 'sess-queue', expected: true, what: 'a live hold is picked up' },
+        { stored: undefined, hold: 'sess-queue', expected: true, what: 'an older three-field record is read live' },
+        { stored: undefined, hold: null, expected: false, what: 'and stays false with no hold' },
+        { stored: true, hold: 'sess-other', expected: false, what: 'another session\'s hold does not count' }
+    ];
+    for (const c of cases) {
+        const { repo, plans, transcript, local } = armedQueueRepo(['Closed the final chapter.'], ['Status: Complete']);
+        try {
+            assert.strictEqual(bindSession(repo, 'sess-queue').ok, true);
+            if (c.stored === undefined) {
+                // The pre-flag shape, hand-written: three fields, no key.
+                writeFile(checkpointPath(repo), JSON.stringify({
+                    plan: plans[0], boundSession: 'sess-queue', openedAt: new Date().toISOString()
+                }) + '\n');
+                assert.ok(!('pendingOffer' in readCheckpoint(repo)), 'setup: the key is absent');
+            } else {
+                assert.strictEqual(writeCheckpoint(repo, plans[0], 'sess-queue', c.stored).ok, true);
+                assert.strictEqual(readCheckpoint(repo).pendingOffer, c.stored, 'setup: the flag is on disk');
+            }
+            if (c.hold) holdOffersFor(repo, c.hold);
+            runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-queue' }, local);
+            assert.strictEqual(readState(repo).plan, plans[1], 'setup: the advance landed');
+            const cp = readCheckpoint(repo);
+            assert.strictEqual(cp.plan, plans[1], 'the checkpoint followed the advance: ' + c.what);
+            assert.strictEqual(cp.pendingOffer, c.expected, c.what);
+        } finally {
+            rmDir(repo);
+            rmDir(local);
+        }
+    }
+});
+
+test('an advance on the claim path uses the binding it just took, not the stale snapshot', () => {
+    // The goal is read once at the top of the hook, and the claim path binds
+    // this session to it a few lines later. Everything below reads the binding
+    // from that snapshot: the checkpoint match rule compares the goal's bound
+    // session against the record's, and the advance scopes its deferral-episode
+    // question to it. Leaving the snapshot unrefreshed answers both with null
+    // on the one path where this session has just claimed the goal, so a
+    // checkpoint the run legitimately owns reads wrong-session and the largest
+    // boundary in the run strands. The PreCompact gate refreshes at the same
+    // point after its own bind.
+    //
+    // No bindSession here: the transcript's arming invocation is what claims
+    // it, which is the whole point of the fixture.
+    const { repo, plans, transcript, local } = armedQueueRepo(['Closed the final chapter.'], ['Status: Complete']);
+    try {
+        assert.strictEqual(readState(repo).boundSession, null, 'setup: the goal starts unbound');
+        assert.strictEqual(writeCheckpoint(repo, plans[0], 'sess-queue', false).ok, true);
+        runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-queue' }, local);
+        assert.strictEqual(readState(repo).boundSession, 'sess-queue', 'setup: the claim bound the goal');
+        assert.strictEqual(readState(repo).plan, plans[1], 'setup: the advance landed');
+        assert.strictEqual(readCheckpoint(repo).plan, plans[1],
+            'the checkpoint follows the advance on the path that just claimed the binding');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('a checkpoint only the long bound keeps alive still follows the advance', () => {
+    // What the fourth argument to the match rule buys, and the only shape that
+    // exercises it: every other advance case writes a checkpoint seconds old,
+    // which matches on the ten-minute leg whatever is passed. The real sequence
+    // is a chapter close, `open` under a hold, a 70-minute dispatch, the plan
+    // flipped Complete, and the stop. Without the argument this checkpoint
+    // reads expired at the advance, is not rewritten, and the largest boundary
+    // in the run strands as wrong-plan.
+    const { repo, plans, transcript, local } = armedQueueRepo(['Closed the final chapter.'], ['Status: Complete']);
+    try {
+        assert.strictEqual(bindSession(repo, 'sess-queue').ok, true);
+        const openedAt = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+        writeFile(checkpointPath(repo), JSON.stringify({
+            plan: plans[0], boundSession: 'sess-queue', openedAt, pendingOffer: true
+        }) + '\n');
+        // The hold predates the record, which is what makes it corroborating.
+        holdOffersFor(repo, 'sess-queue', 61 * 60 * 1000);
+        runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-queue' }, local);
+        assert.strictEqual(readState(repo).plan, plans[1], 'setup: the advance landed');
+        const cp = readCheckpoint(repo);
+        assert.strictEqual(cp.plan, plans[1], 'an hour-old corroborated checkpoint follows the advance');
+        assert.strictEqual(cp.pendingOffer, true, 'and the hold still standing is recorded');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
 test('the advance leaves a non-matching checkpoint alone and creates none when none is open', () => {
     // Only a checkpoint the match rule already honors against the pre-advance
     // goal (same plan, same bound session, fresh) follows the advance: an

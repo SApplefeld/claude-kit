@@ -30,7 +30,7 @@ const { armGoal, bindSession, readGoal } = require('../plugins/claude-kit/hooks/
 const {
     checkpointPath, writeCheckpoint, automationInEffect, stripLocalCommandOutput,
     commandArgsSpans, readTranscriptCapped, userCommandArgsClaimPlan,
-    gateStatePath, gateLogPath, gateEpisodeOpen
+    gateStatePath, gateLogPath, gateEpisodeOpen, pendingOfferCorroborated, checkpointOwner
 } = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
 
 // The session id the fixtures bind the goal to; payloads default to it so the
@@ -151,10 +151,12 @@ function readRefusingGatePreload(dir) {
 }
 
 // Run the checkpoint CLI in the given repo (the CLI reads process.cwd()).
-function runCli(args, cwd) {
+// extraEnv carries a preload for the cases that need the CLI's own filesystem
+// reads to fail in a shape no fixture can stage.
+function runCli(args, cwd, extraEnv) {
     return spawnSync(process.execPath, [CLI, ...args], {
         cwd,
-        env: scrubEngineEnv({ ...process.env }),
+        env: { ...scrubEngineEnv({ ...process.env }), ...(extraEnv || {}) },
         encoding: 'utf8'
     });
 }
@@ -256,10 +258,14 @@ function gatePayload(repo, transcript, overrides) {
 // which deferral fired, so each assert also pins the OTHER note's absence.
 const DENY_NOTE = 'kit-compact-gate: auto-compaction deferred to the next chapter close or interim board entry';
 const INTERACTIVE_NOTE = 'kit-compact-gate: auto-compaction deferred to the context safety ceiling';
-// A distinctive fragment of the boundary note's skipped-checkpoint
-// diagnostic, pinned separately so a regression that drops the diagnostic
-// sentences (while leaving the lead intact) still fails this suite.
-const DIAGNOSTIC_FRAGMENT = 'boundary checkpoint was likely never opened';
+// Distinctive fragments of the boundary note's still-firing diagnostic, pinned
+// separately so a regression that drops the diagnostic sentences (while leaving
+// the lead intact) still fails this suite. There are two causes now, and both
+// are pinned: a checkpoint that was never opened, and one that was opened and
+// is no longer honored, which is the case this section's corroboration rule
+// created and the one an operator has no other way to guess at.
+const DIAGNOSTIC_FRAGMENT = 'boundary checkpoint was never opened';
+const DIAGNOSTIC_UNCORROBORATED = 'no deferral episode vouches for';
 
 function assertDeny(res) {
     assert.strictEqual(res.status, 2, 'expected deny (exit 2); stderr: ' + res.stderr);
@@ -270,6 +276,8 @@ function assertDeny(res) {
     // note must not claim otherwise.
     assert.ok(!res.stderr.includes('rest of the session'), 'boundary note must not claim a permanent hold; stderr: ' + res.stderr);
     assert.ok(res.stderr.includes(DIAGNOSTIC_FRAGMENT), 'boundary note must carry the skipped-checkpoint diagnostic; stderr: ' + res.stderr);
+    assert.ok(res.stderr.includes(DIAGNOSTIC_UNCORROBORATED),
+        'boundary note must also name the uncorroborated-checkpoint cause; stderr: ' + res.stderr);
     // The remedy names a command the operator is meant to run, and the gate
     // ships as a plugin into every project, so the path must be the hook's own
     // absolute location rather than a repo-relative one that resolves only
@@ -1035,11 +1043,42 @@ test('gate: checkpoint with no boundSession field (older format) reads as absent
 // force a visible double-edit.
 const MAX_AGE_MS = 10 * 60 * 1000;
 
+// The shipped pending-offer age bound, duplicated as a pin for the same reason
+// MAX_AGE_MS is: the two legs are a pair, and moving either constant must be a
+// visible double-edit. Both sides of this one are pinned at plus and minus a
+// minute, exactly as MAX_AGE_MS is, so a value anywhere else fails a case here
+// instead of passing silently.
+const PENDING_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+// An open deferral episode belonging to the given session: the corroboration
+// the long age leg needs. The newest denial is always a minute old, so the
+// episode is open by gateEpisodeOpen's idle bound; sinceMsAgo dates when the
+// hold BEGAN, which is the half the corroboration compares against the
+// checkpoint's openedAt. A hold must predate the record it vouches for, so
+// every fixture pairing this with an aged checkpoint passes an age older than
+// the record's; the default minute suits a record written now.
+//
+// Without this the pending fixtures below take the ten-minute leg, which is
+// what makes each of these cases a pair rather than a single reading.
+function openEpisodeFor(repo, session, sinceMsAgo) {
+    const now = Date.now();
+    writeEpisode(repo, {
+        session,
+        since: new Date(now - (sinceMsAgo === undefined ? 60 * 1000 : sinceMsAgo)).toISOString(),
+        denials: 4,
+        lastDeniedAt: new Date(now - 60 * 1000).toISOString(),
+        nudgedAt: null
+    });
+}
+
 // Hand-write a plan-and-session-matching checkpoint with an arbitrary
 // openedAt value (or none), isolating the freshness leg of the match.
-function writeCheckpointAt(repo, planRel, openedAt) {
+// pendingOffer is written only when given, so the default fixture is the
+// three-field shape the kit wrote before the flag existed.
+function writeCheckpointAt(repo, planRel, openedAt, pendingOffer) {
     const record = { plan: planRel, boundSession: SESSION };
     if (openedAt !== undefined) record.openedAt = openedAt;
+    if (pendingOffer !== undefined) record.pendingOffer = pendingOffer;
     writeFile(checkpointPath(repo), JSON.stringify(record) + '\n');
 }
 
@@ -1110,6 +1149,393 @@ test('gate: checkpoint a few seconds in the future (clock skew) still matches: a
         writeCheckpointAt(repo, planRel, new Date(Date.now() + 30 * 1000).toISOString());
         assertAllow(runGate(gatePayload(repo, transcript)));
         assert.ok(!fs.existsSync(checkpointPath(repo)), 'within-skew checkpoint consumed');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+// ---------------------------------------------------------------------------
+// The pending-offer leg of the freshness rule
+// (docs/plans/claude-kit_compaction-deferral-signal_spec_v1.md, section 2).
+//
+// A checkpoint opened while the gate was already holding offers is honored far
+// past the ten-minute bound, because the only thing between it and its offer is
+// the tool call in flight. A checkpoint opened with no offer pending keeps the
+// ten-minute bound, which is what retires the below-trigger leftover.
+//
+// The long leg takes TWO facts, and the cases below vary each independently:
+// the record's own flag, and corroboration that a hold is still standing at the
+// moment the gate decides. The flag alone must never buy the long bound, since
+// an offer can be spent by a route this gate never sees (its PreCompact matcher
+// is auto-only, so a manual /compact neither consumes the checkpoint nor ends
+// the episode), which leaves the flag behind outliving the hold it describes.
+// ---------------------------------------------------------------------------
+
+test('gate: a pending-offer checkpoint an hour old is honored: allow AND consume', () => {
+    const { repo, planRel, transcript } = armedRepo();
+    try {
+        openEpisodeFor(repo, SESSION, 61 * 60 * 1000);
+        writeCheckpointAt(repo, planRel, new Date(Date.now() - 60 * 60 * 1000).toISOString(), true);
+        assertAllow(runGate(gatePayload(repo, transcript)));
+        assert.ok(!fs.existsSync(checkpointPath(repo)), 'the pending checkpoint is consumed');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a pending-offer checkpoint just inside the sanity bound is honored', () => {
+    // The other side of PENDING_MAX_AGE_MS, a minute inside it, so the constant
+    // is pinned from both directions rather than only from far away.
+    const { repo, planRel, transcript } = armedRepo();
+    try {
+        openEpisodeFor(repo, SESSION, PENDING_MAX_AGE_MS);
+        const opened = new Date(Date.now() - (PENDING_MAX_AGE_MS - 60 * 1000)).toISOString();
+        writeCheckpointAt(repo, planRel, opened, true);
+        assertAllow(runGate(gatePayload(repo, transcript)));
+        assert.ok(!fs.existsSync(checkpointPath(repo)), 'consumed just inside the bound');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a pending flag with no hold standing now gets the ten-minute bound, not a day', () => {
+    // The lease this leg must not mint. An episode is not the same fact as an
+    // offer pending right now: a manual /compact spends the offer without ever
+    // running this gate, so the flag can outlive its hold. Honoring the flag
+    // alone would give an hour-old checkpoint a full day of life and land the
+    // compaction mid-chapter, which is the placement the age bound exists to
+    // prevent. Same fixture as the honored case above, minus the episode.
+    const { repo, planRel, transcript } = armedRepo();
+    try {
+        writeCheckpointAt(repo, planRel, new Date(Date.now() - 60 * 60 * 1000).toISOString(), true);
+        assert.ok(!fs.existsSync(gateStateFile(repo)), 'setup: no episode is open');
+        assertDeny(runGate(gatePayload(repo, transcript)));
+        assert.ok(fs.existsSync(checkpointPath(repo)), 'an uncorroborated pending checkpoint is not consumed');
+        const first = readState(repo).lastDecision;
+        assert.strictEqual(first.reason, 'expired', 'and it expired on the short bound');
+        // The reason code alone cannot tell this expiry from an ordinary
+        // leftover aging out, and they mean different things to whoever reads
+        // the log: this one is a boundary the operator really did open,
+        // discarded for want of a standing hold. The pair of fields is what
+        // separates them.
+        assert.strictEqual(first.checkpoint.pendingOffer, true, 'the record claimed a pending offer');
+        assert.strictEqual(first.checkpoint.corroborated, false, 'and nothing vouched for it');
+
+        // The second offer is the one that matters, and a single-offer case is
+        // green against the defect it is meant to catch. The deny above wrote
+        // an episode owned by this very session, so a corroboration that asked
+        // only "is an episode open" would now be satisfied by the gate's own
+        // denial and honor the checkpoint it just rejected, one turn later. The
+        // record is never consumed on a deny, so it is still sitting there.
+        assertDeny(runGate(gatePayload(repo, transcript)));
+        assert.ok(fs.existsSync(checkpointPath(repo)), 'still not consumed on the offer after the deny');
+        const state = readState(repo);
+        assert.strictEqual(state.lastDecision.reason, 'expired', 'the second offer expires too');
+        assert.strictEqual(state.episode.denials, 2, 'setup: the denial that could self-corroborate landed');
+
+        // And it does not become eligible by waiting: an extending deny keeps
+        // the standing episode's `since`, so the episode stays younger than the
+        // record however many offers arrive.
+        assertDeny(runGate(gatePayload(repo, transcript)));
+        assert.ok(fs.existsSync(checkpointPath(repo)), 'and not on the third either');
+        assert.strictEqual(readState(repo).episode.denials, 3, 'the episode extended rather than restarting');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a pending checkpoint dies when its episode goes idle', () => {
+    // The real ceiling on the long leg is not CHECKPOINT_PENDING_MAX_AGE_MS but
+    // the life of the episode that corroborates it: gateEpisodeOpen retires a
+    // hold whose newest denial has aged past GATE_EPISODE_MAX_IDLE_MS, and a
+    // checkpoint with nothing left to vouch for it drops to the ten-minute
+    // bound. That coupling is the reason a tool call outrunning the idle window
+    // still loses its boundary, and nothing else pins it: the constants live in
+    // different sections and a change to the episode bound would move this
+    // behaviour silently.
+    //
+    // The pair differs only in the age of the newest denial. Both episodes are
+    // owned by this session and both began before the record.
+    const openedAt = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
+    const since = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
+
+    const live = armedRepo();
+    try {
+        writeEpisode(live.repo, {
+            session: SESSION, since, denials: 7,
+            lastDeniedAt: new Date(Date.now() - 60 * 1000).toISOString(),
+            nudgedAt: null
+        });
+        writeCheckpointAt(live.repo, live.planRel, openedAt, true);
+        assertAllow(runGate(gatePayload(live.repo, live.transcript)));
+        assert.ok(!fs.existsSync(checkpointPath(live.repo)), 'a standing hold still honors it');
+    } finally {
+        rmDir(live.repo);
+    }
+
+    const idle = armedRepo();
+    try {
+        writeEpisode(idle.repo, {
+            session: SESSION, since, denials: 7,
+            // Past the four-hour idle bound, which is the only change.
+            lastDeniedAt: new Date(Date.now() - (4 * 60 * 60 * 1000 + 60 * 1000)).toISOString(),
+            nudgedAt: null
+        });
+        writeCheckpointAt(idle.repo, idle.planRel, openedAt, true);
+        assertDeny(runGate(gatePayload(idle.repo, idle.transcript)));
+        assert.ok(fs.existsSync(checkpointPath(idle.repo)), 'and an idle one does not');
+        assert.strictEqual(readState(idle.repo).lastDecision.reason, 'expired',
+            'the checkpoint dies with its episode');
+    } finally {
+        rmDir(idle.repo);
+    }
+});
+
+test('gate: a refused gate state costs a legitimate boundary rather than admitting one', () => {
+    // The decision path's own refused-state case, which the CLI has a pin for
+    // and this did not. The state file is present and would corroborate, but
+    // the reader refuses it, so the long leg is unavailable and a real boundary
+    // is discarded. That is the conservative direction and the cost is one
+    // mistimed compaction; what must never happen is the opposite reading.
+    const { repo, planRel, transcript } = armedRepo();
+    const shimDir = makeDir('kit-compact-gate-shim-');
+    try {
+        openEpisodeFor(repo, SESSION, 61 * 60 * 1000);
+        writeCheckpointAt(repo, planRel, new Date(Date.now() - 60 * 60 * 1000).toISOString(), true);
+        const res = runGate(gatePayload(repo, transcript),
+            { NODE_OPTIONS: symlinkReportingPreload(shimDir, 'compact-gate.json') });
+        assertDeny(res);
+        assert.ok(fs.existsSync(checkpointPath(repo)), 'the boundary is not consumed on a refused read');
+    } finally {
+        rmDir(shimDir);
+        rmDir(repo);
+    }
+});
+
+test('gate: a hold that predates the checkpoint corroborates it; the same hold minted after does not', () => {
+    // The discriminating pair for the predating test, differing only in when
+    // the episode began relative to the record. Both are open, owned, and well
+    // inside the idle bound.
+    const openedAt = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const minuteAgo = new Date(Date.now() - 60 * 1000).toISOString();
+
+    const before = armedRepo();
+    try {
+        writeEpisode(before.repo, {
+            session: SESSION,
+            since: new Date(Date.now() - 90 * 60 * 1000).toISOString(),
+            denials: 6,
+            lastDeniedAt: minuteAgo,
+            nudgedAt: null
+        });
+        writeCheckpointAt(before.repo, before.planRel, openedAt, true);
+        assertAllow(runGate(gatePayload(before.repo, before.transcript)));
+        assert.ok(!fs.existsSync(checkpointPath(before.repo)),
+            'a hold older than the record vouches for it');
+    } finally {
+        rmDir(before.repo);
+    }
+
+    const after = armedRepo();
+    try {
+        writeEpisode(after.repo, {
+            session: SESSION,
+            since: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+            denials: 6,
+            lastDeniedAt: minuteAgo,
+            nudgedAt: null
+        });
+        writeCheckpointAt(after.repo, after.planRel, openedAt, true);
+        assertDeny(runGate(gatePayload(after.repo, after.transcript)));
+        assert.strictEqual(readState(after.repo).lastDecision.reason, 'expired',
+            'a hold that began after the record does not vouch for it');
+    } finally {
+        rmDir(after.repo);
+    }
+});
+
+test('gate: another session\'s hold does not corroborate this boundary\'s pending flag', () => {
+    // The ownership leg of the corroboration, which is what keeps a bystander's
+    // deferral from extending the leashed run's checkpoint.
+    //
+    // The foreign episode must PREDATE the record, or this case never reaches
+    // the ownership question at all: a hold younger than the checkpoint is
+    // rejected by the predating leg first, and the deny would stand whether or
+    // not the owner were checked. Sixty-one minutes against a sixty-minute
+    // record leaves ownership as the only thing that can produce the deny.
+    const { repo, planRel, transcript } = armedRepo();
+    try {
+        openEpisodeFor(repo, 'ses-99998888-dddd-eeee-ffff-777766665555', 61 * 60 * 1000);
+        writeCheckpointAt(repo, planRel, new Date(Date.now() - 60 * 60 * 1000).toISOString(), true);
+        assertDeny(runGate(gatePayload(repo, transcript)));
+        assert.strictEqual(readState(repo).lastDecision.reason, 'expired',
+            'a foreign hold is not this run\'s pending offer');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: an uncorroboratable checkpoint without the flag expires at eleven minutes: deny', () => {
+    // What this discriminates is the FLAG, with everything else held equal to a
+    // record that would be honored: a hold is standing, owned by this session,
+    // and older than the record, so corroboration is available and only the
+    // absent flag sends this to the ten-minute leg. Without that episode the
+    // case would deny whatever the flag said, and would be pinning nothing.
+    const { repo, planRel, transcript } = armedRepo();
+    try {
+        openEpisodeFor(repo, SESSION, 12 * 60 * 1000);
+        writeCheckpointAt(repo, planRel, new Date(Date.now() - 11 * 60 * 1000).toISOString(), false);
+        assertDeny(runGate(gatePayload(repo, transcript)));
+        assert.ok(fs.existsSync(checkpointPath(repo)), 'an expired checkpoint is not consumed');
+        const d = readState(repo).lastDecision;
+        assert.strictEqual(d.reason, 'expired', 'the deny is the age bound, not some other mismatch');
+        assert.strictEqual(d.checkpoint.pendingOffer, false, 'and the record shows which kind it met');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a pending-offer checkpoint past the sanity bound expires: deny', () => {
+    // The pending leg is generous, not unbounded: a record that survived a day
+    // was not left by a tool call, and honoring it forever would let one
+    // hand-made file admit a compaction at any point in any later session.
+    const { repo, planRel, transcript } = armedRepo();
+    try {
+        // The hold predates the record, so the long leg is genuinely in play
+        // and the deny below is the sanity cap firing rather than the short
+        // bound standing in for it.
+        openEpisodeFor(repo, SESSION, PENDING_MAX_AGE_MS + 2 * 60 * 1000);
+        const opened = new Date(Date.now() - (PENDING_MAX_AGE_MS + 60 * 1000)).toISOString();
+        writeCheckpointAt(repo, planRel, opened, true);
+        assertDeny(runGate(gatePayload(repo, transcript)));
+        assert.ok(fs.existsSync(checkpointPath(repo)), 'an expired checkpoint is not consumed');
+        const d = readState(repo).lastDecision;
+        assert.strictEqual(d.reason, 'expired',
+            'the sanity bound reports the same expiry as the short leg');
+        // The third expiry story, and the record separates it from the other
+        // two: the flag was vouched for, and the cap fired anyway.
+        assert.strictEqual(d.checkpoint.corroborated, true, 'a standing hold did vouch for this one');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a future-dated pending-offer checkpoint reads as future, not honored', () => {
+    // The skew check binds both legs. Without it on this one, a forward clock
+    // adjustment (or a hand-edited file) would mint a checkpoint whose age
+    // never reaches any bound at all.
+    const { repo, planRel, transcript } = armedRepo();
+    try {
+        openEpisodeFor(repo, SESSION);
+        writeCheckpointAt(repo, planRel, new Date(Date.now() + 60 * 60 * 1000).toISOString(), true);
+        assertDeny(runGate(gatePayload(repo, transcript)));
+        assert.ok(fs.existsSync(checkpointPath(repo)), 'a future checkpoint is not consumed');
+        assert.strictEqual(readState(repo).lastDecision.reason, 'future',
+            'the future reason wins over the pending leg');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: an older three-field checkpoint keeps the ten-minute bound exactly', () => {
+    // Records written before the flag existed carry no pendingOffer key, and
+    // reading an absent key as pending would give every one of them the long
+    // bound. Every repo here stages a hold that is standing, owned, and older
+    // than its record, so corroboration is available and the ONLY thing that
+    // can send these to the short leg is how the missing key is read. Without
+    // that episode the stale case denies whatever the key means, which is a
+    // case that cannot fail on the reading it names.
+    const fresh = armedRepo();
+    try {
+        openEpisodeFor(fresh.repo, SESSION, 6 * 60 * 1000);
+        writeCheckpointAt(fresh.repo, fresh.planRel, new Date(Date.now() - 5 * 60 * 1000).toISOString());
+        const cp = JSON.parse(fs.readFileSync(checkpointPath(fresh.repo), 'utf8'));
+        assert.ok(!('pendingOffer' in cp), 'setup: the fixture is the three-field shape');
+        assertAllow(runGate(gatePayload(fresh.repo, fresh.transcript)));
+        assert.ok(!fs.existsSync(checkpointPath(fresh.repo)), 'inside ten minutes it still matches');
+    } finally {
+        rmDir(fresh.repo);
+    }
+
+    const stale = armedRepo();
+    try {
+        openEpisodeFor(stale.repo, SESSION, 12 * 60 * 1000);
+        writeCheckpointAt(stale.repo, stale.planRel, new Date(Date.now() - 11 * 60 * 1000).toISOString());
+        assertDeny(runGate(gatePayload(stale.repo, stale.transcript)));
+        assert.strictEqual(readState(stale.repo).lastDecision.reason, 'expired',
+            'and outside ten minutes it is expired, not carried by the pending leg');
+    } finally {
+        rmDir(stale.repo);
+    }
+
+    // The control for the true-only reading: a hand-edited record carrying a
+    // truthy value of another shape is not a pending record. Same fixture as
+    // the stale case, so only the value's shape differs.
+    for (const truthy of [1, 'true']) {
+        const odd = armedRepo();
+        try {
+            openEpisodeFor(odd.repo, SESSION, 12 * 60 * 1000);
+            writeCheckpointAt(odd.repo, odd.planRel,
+                new Date(Date.now() - 11 * 60 * 1000).toISOString(), truthy);
+            assertDeny(runGate(gatePayload(odd.repo, odd.transcript)));
+            assert.strictEqual(readState(odd.repo).lastDecision.reason, 'expired',
+                'a truthy ' + JSON.stringify(truthy) + ' is not the flag');
+        } finally {
+            rmDir(odd.repo);
+        }
+    }
+});
+
+// ---------------------------------------------------------------------------
+// What the checkpoint reader will open at all.
+//
+// The reader runs on two paths where blocking is unrecoverable: this gate,
+// before any verdict is emitted, and the goal-leash Stop hook while it holds a
+// stop. So the path must be a regular file of sane size before it is opened.
+// Both fixtures below are discriminating: each is a checkpoint the match rule
+// would otherwise honor and consume, so only the guard produces the deny.
+// ---------------------------------------------------------------------------
+
+test('gate: a checkpoint path reported as a symlink is not read, though reading it would succeed', () => {
+    // A file symlink cannot be created on this platform without a privilege the
+    // suite must not require, and a junction can only point at a directory,
+    // where the read fails at the OS level whether or not the guard exists (so
+    // it is not a control). This shim discriminates: the path is an ordinary,
+    // perfectly readable, MATCHING checkpoint, and only fs.lstatSync says
+    // otherwise. Without the kind check the gate allows and consumes it.
+    const { repo, planRel, transcript } = armedRepo();
+    const shimDir = makeDir('kit-compact-gate-shim-');
+    try {
+        writeCheckpoint(repo, planRel, SESSION, false);
+        const res = runGate(gatePayload(repo, transcript),
+            { NODE_OPTIONS: symlinkReportingPreload(shimDir, 'compact-checkpoint.json') });
+        assertDeny(res);
+        assert.ok(fs.existsSync(checkpointPath(repo)), 'a refused path is not consumed either');
+        assert.strictEqual(readState(repo).lastDecision.reason, 'no-checkpoint',
+            'the refused file reads as absent, not as a mismatch');
+    } finally {
+        rmDir(shimDir);
+        rmDir(repo);
+    }
+});
+
+test('gate: an oversized checkpoint file is not read whole', () => {
+    // Same discrimination by size: a matching checkpoint padded past the read
+    // cap. Without the cap this parses and is honored; with it the file reads
+    // as absent and the gate denies.
+    const { repo, planRel, transcript } = armedRepo();
+    try {
+        writeFile(checkpointPath(repo), JSON.stringify({
+            plan: planRel,
+            boundSession: SESSION,
+            openedAt: new Date().toISOString(),
+            pendingOffer: false,
+            padding: 'x'.repeat(128 * 1024)
+        }) + '\n');
+        assertDeny(runGate(gatePayload(repo, transcript)));
+        assert.ok(fs.existsSync(checkpointPath(repo)), 'an unread checkpoint is not consumed');
+        assert.strictEqual(readState(repo).lastDecision.reason, 'no-checkpoint',
+            'the oversized file reads as absent');
     } finally {
         rmDir(repo);
     }
@@ -1219,6 +1645,210 @@ test('cli: open with an unparseable goal state refuses', () => {
         const res = runCli(['open'], repo);
         assert.strictEqual(res.status, 1, 'open refuses');
         assert.ok(!fs.existsSync(checkpointPath(repo)), 'nothing written');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+function openedCheckpoint(repo) {
+    return JSON.parse(fs.readFileSync(checkpointPath(repo), 'utf8'));
+}
+
+test('cli: open under the leash\'s own deferral episode records a pending offer and says so', () => {
+    const { repo } = armedRepo();
+    try {
+        openEpisodeFor(repo, SESSION);
+        const res = runCli(['open'], repo);
+        assert.strictEqual(res.status, 0, 'open succeeds; stderr: ' + res.stderr);
+        assert.strictEqual(openedCheckpoint(repo).pendingOffer, true, 'the pending offer is recorded');
+        assert.ok(res.stdout.includes('holding offers'), 'and named to the reader: ' + res.stdout);
+        // What the checkpoint actually gets is the life of the hold, capped by
+        // the sanity bound, not the sanity bound flatly: the episode behind it
+        // goes idle first. The sentence must not promise the cap.
+        assert.ok(res.stdout.includes('for as long as the gate keeps deferring'),
+            'the real bound is the hold, not the cap: ' + res.stdout);
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('cli: open with no episode open records no pending offer', () => {
+    const { repo } = armedRepo();
+    try {
+        const res = runCli(['open'], repo);
+        assert.strictEqual(res.status, 0, 'open succeeds; stderr: ' + res.stderr);
+        assert.strictEqual(openedCheckpoint(repo).pendingOffer, false, 'the ordinary boundary');
+        assert.ok(res.stdout.includes('the next auto-compaction lands here'),
+            'and the ordinary sentence: ' + res.stdout);
+        assert.ok(!res.stdout.includes('holding offers'), 'not the pending one: ' + res.stdout);
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('cli: an episode another session is held under is not this boundary\'s pending offer', () => {
+    // The ownership leg. A bystander's hold says nothing about whether an offer
+    // is waiting for the leashed run's boundary, and reading it as one would
+    // mint a day-long checkpoint out of another session's deferral.
+    const { repo } = armedRepo();
+    try {
+        openEpisodeFor(repo, 'ses-99998888-dddd-eeee-ffff-777766665555');
+        assert.strictEqual(runCli(['open'], repo).status, 0);
+        assert.strictEqual(openedCheckpoint(repo).pendingOffer, false,
+            'another session\'s episode is not read as this one\'s');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('cli: an unbound goal records no pending offer whatever episode stands', () => {
+    // An unbound goal asks about an explicit null owner, which matches nothing.
+    // That is the right answer rather than a missed one: the checkpoint it
+    // writes records boundSession null, which the gate never matches, so no
+    // offer can ever consume it.
+    const { repo } = armedRepo({ unbound: true });
+    try {
+        openEpisodeFor(repo, SESSION);
+        assert.strictEqual(runCli(['open'], repo).status, 0);
+        const cp = openedCheckpoint(repo);
+        assert.strictEqual(cp.boundSession, null, 'setup: the goal is unbound');
+        assert.strictEqual(cp.pendingOffer, false, 'and an unconsumable checkpoint claims no pending offer');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('cli: open says so when the gate state could not be read', () => {
+    // A refused state file is not an absent one. The conservative bound is
+    // taken either way, but the report must not print the confident sentence
+    // alone: an operator who expected a held offer has to learn the question
+    // went unanswered rather than being told there was no hold.
+    const { repo } = armedRepo();
+    const shimDir = makeDir('kit-compact-gate-shim-');
+    try {
+        openEpisodeFor(repo, SESSION);
+        const res = runCli(['open'], repo,
+            { NODE_OPTIONS: symlinkReportingPreload(shimDir, 'compact-gate.json') });
+        assert.strictEqual(res.status, 0, 'the open still succeeds; stderr: ' + res.stderr);
+        assert.strictEqual(openedCheckpoint(repo).pendingOffer, false, 'the conservative bound is taken');
+        assert.ok(res.stdout.includes('could not be read'), 'and the refusal is stated: ' + res.stdout);
+    } finally {
+        rmDir(shimDir);
+        rmDir(repo);
+    }
+});
+
+test('cli: status names the leg a live checkpoint stands on', () => {
+    const { repo, planRel } = armedRepo();
+    const checkpointLine = () => runCli(['status'], repo).stdout.split('\n')[0];
+    try {
+        openEpisodeFor(repo, SESSION, 61 * 60 * 1000);
+        writeCheckpointAt(repo, planRel, new Date(Date.now() - 60 * 60 * 1000).toISOString(), true);
+        let line = checkpointLine();
+        assert.ok(line.includes('the gate honors it'), 'an hour-old pending checkpoint is live: ' + line);
+        assert.ok(line.includes('offers are being held'), 'and its leg is named: ' + line);
+
+        writeCheckpointAt(repo, planRel, new Date(Date.now() - 60 * 1000).toISOString(), false);
+        line = checkpointLine();
+        assert.ok(line.includes('within the ordinary checkpoint age bound'),
+            'a non-pending checkpoint names the other leg: ' + line);
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('cli: status never claims a checkpoint waits for an offer it also says is not held', () => {
+    // The two halves of one report have to agree. Reading the file's flag alone
+    // would print "it waits for the pending one" directly above "no deferral
+    // episode is open", which is the contradiction the live check removes.
+    const { repo, planRel } = armedRepo();
+    try {
+        writeCheckpointAt(repo, planRel, new Date(Date.now() - 60 * 1000).toISOString(), true);
+        const out = runCli(['status'], repo).stdout;
+        const line = out.split('\n')[0];
+        assert.ok(out.includes('no deferral episode is open'), 'setup: no hold stands: ' + out);
+        // The LIVE branch is pinned, not just the phrase: the expired branch
+        // explains the same fact in the same words, so a regression that let
+        // this fixture expire would otherwise keep the case green.
+        assert.ok(line.includes('the gate honors it'), 'setup: the checkpoint is live: ' + line);
+        assert.ok(!line.includes('expired'), 'and not expired: ' + line);
+        assert.ok(!line.includes('waits for the pending one'), 'nothing claims a hold does: ' + line);
+        assert.ok(line.includes('no offer is being held for this session\'s binding'),
+            'the flag on the file is explained, scoped to the binding: ' + line);
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('cli: status does not assert a hold it could not check', () => {
+    // The report must not answer a question it says elsewhere it could not
+    // determine. With the state file refused, the checkpoint line says the
+    // longer bound could not be confirmed rather than claiming no offer is
+    // being held, and the gate-state line beside it says the file is
+    // unreadable.
+    const { repo, planRel } = armedRepo();
+    const shimDir = makeDir('kit-compact-gate-shim-');
+    try {
+        writeCheckpointAt(repo, planRel, new Date(Date.now() - 11 * 60 * 1000).toISOString(), true);
+        openEpisodeFor(repo, SESSION, 12 * 60 * 1000);
+        const out = runCli(['status'], repo,
+            { NODE_OPTIONS: symlinkReportingPreload(shimDir, 'compact-gate.json') }).stdout;
+        const line = out.split('\n')[0];
+        assert.ok(line.includes('could not be read'), 'the refusal is stated: ' + line);
+        assert.ok(!line.includes('no offer is being held'), 'and no hold is asserted: ' + line);
+        assert.ok(out.includes('present but unreadable'), 'the gate-state half agrees: ' + out);
+    } finally {
+        rmDir(shimDir);
+        rmDir(repo);
+    }
+});
+
+test('cli: status distinguishes the three ways a checkpoint expires', () => {
+    // One reason code, three stories. The middle one is what an operator is
+    // debugging when a boundary they opened was not honored, and printing the
+    // same sentence for all three is what hides it.
+    const { repo, planRel } = armedRepo();
+    // Every case asserts the line is the EXPIRED one as well as which sentence
+    // it carries: the honored branches speak about the same two bounds in
+    // similar words, so a phrase assertion alone can be satisfied by a
+    // checkpoint that never expired at all.
+    const expiredLine = (where) => {
+        const line = runCli(['status'], repo).stdout.split('\n')[0];
+        assert.ok(line.includes('expired'), where + ': the checkpoint is expired: ' + line);
+        return line;
+    };
+    try {
+        writeCheckpointAt(repo, planRel, new Date(Date.now() - 11 * 60 * 1000).toISOString(), false);
+        let line = expiredLine('no flag');
+        assert.ok(line.includes('minute checkpoint age bound'), 'the ordinary bound names itself: ' + line);
+
+        writeCheckpointAt(repo, planRel, new Date(Date.now() - 11 * 60 * 1000).toISOString(), true);
+        line = expiredLine('flag, no hold');
+        assert.ok(line.includes('no offer is being held for this session\'s binding'),
+            'a pending flag with no hold says which bound applied and why: ' + line);
+
+        // A hold that began after the record: open and owned, but it vouches
+        // for nothing, and saying only "no offer is being held" would be false
+        // with an episode sitting right there in the same report.
+        openEpisodeFor(repo, SESSION);
+        writeCheckpointAt(repo, planRel, new Date(Date.now() - 11 * 60 * 1000).toISOString(), true);
+        line = expiredLine('flag, younger hold');
+        assert.ok(line.includes('began after this checkpoint opened'),
+            'a hold minted after the record is named as such: ' + line);
+
+        // Corroborated, and past even the long bound.
+        const old = new Date(Date.now() - (PENDING_MAX_AGE_MS + 60 * 1000)).toISOString();
+        writeEpisode(repo, {
+            session: SESSION,
+            since: new Date(Date.now() - (PENDING_MAX_AGE_MS + 2 * 60 * 1000)).toISOString(),
+            denials: 9,
+            lastDeniedAt: new Date(Date.now() - 60 * 1000).toISOString(),
+            nudgedAt: null
+        });
+        writeCheckpointAt(repo, planRel, old, true);
+        line = expiredLine('flag, hold, past the long bound');
+        assert.ok(line.includes('hour bound for one'),
+            'and a corroborated one names the long bound it outlived: ' + line);
     } finally {
         rmDir(repo);
     }
@@ -2482,11 +3112,17 @@ test('gate: a boundary deny records the checkpoint mismatch reason and the recor
 });
 
 test('gate: the record carries a checkpoint pendingOffer flag both ways', () => {
-    // pendingOffer has no writer in the shipped kit yet (writeCheckpoint stores
-    // plan, boundSession and openedAt), so both states are staged by hand here:
-    // an assertion driven only by the absent field would pass on a read that had
-    // been deleted or inverted.
-    const stale = () => new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    // All three states are staged by hand rather than through the CLI: the
+    // writer produces true or false from the gate state, never the absent key,
+    // and an assertion driven only by what the writer emits would leave the
+    // absent-key reading (every checkpoint an older kit wrote) unpinned.
+    // Old enough that no leg could honor any of the three, which is what makes
+    // the deny this case reads its record from reachable in all of them.
+    // armedRepo stages no gate state, so the flagged fixture is uncorroborated
+    // and would expire on the short leg at any age past ten minutes; the age
+    // here also clears the long leg, so the fixture does not depend on which
+    // leg applies. What is being read is the recorded flag, not the bound.
+    const stale = () => new Date(Date.now() - (PENDING_MAX_AGE_MS + 60 * 60 * 1000)).toISOString();
     for (const [written, expected] of [[true, true], [false, false], [undefined, false]]) {
         const { repo, planRel, transcript } = armedRepo();
         try {
@@ -2782,6 +3418,31 @@ test('gate: a planted count renders as an integer, never in exponential notation
         assert.ok(/held \d+ offers over \d+ minutes?\b/.test(status.stdout), 'digits only: ' + status.stdout);
     } finally {
         rmDir(repo);
+    }
+
+    // The DURATION comes from the same user-writable file and needs the same
+    // bound: `since` is a timestamp, so a planted one at the floor of the type
+    // renders a twelve-figure minute count (144 billion) that no operator can
+    // read as an elapsed duration. Both integers in the phrase are clamped by
+    // one helper. The fixture is the extreme date deliberately: an ordinary
+    // absurd one (the year 1696, about 174 million minutes) sits UNDER the
+    // clamp and would pass with the clamp removed.
+    const planted = armedRepo();
+    try {
+        writeEpisode(planted.repo, {
+            session: SESSION,
+            since: new Date(-8640000000000000).toISOString(),
+            denials: 4,
+            lastDeniedAt: new Date(Date.now() - 60 * 1000).toISOString(),
+            nudgedAt: null
+        });
+        const res = runGate(gatePayload(planted.repo, planted.transcript));
+        assertDeny(res);
+        const minutes = /held \d+ offers over (\d+) minutes?\b/.exec(res.stderr);
+        assert.ok(minutes, 'the phrase still renders: ' + res.stderr);
+        assert.ok(Number(minutes[1]) <= 1000000000, 'the duration is clamped too: ' + minutes[1]);
+    } finally {
+        rmDir(planted.repo);
     }
 });
 
@@ -3113,6 +3774,41 @@ test('lib: gateEpisodeOpen decides open, stale, future-skewed and foreign (unit 
         'an unowned episode is not open, even to a listing');
     assert.strictEqual(gateEpisodeOpen(episode({ session: null }), at, SESSION), null,
         'nor to the session that would otherwise own it');
+});
+
+test('lib: pendingOfferCorroborated reads an omitted owner as no corroboration (unit level)', () => {
+    // The two defaults in this API point opposite ways, and only a unit case can
+    // reach the difference: every shipped caller passes a string or an explicit
+    // null. gateEpisodeOpen treats an omitted session as "any episode counts",
+    // which is right for a human listing and wrong for a decision, and this
+    // predicate feeds decisions. A fourth caller that omits the argument must
+    // get the fail-safe answer, not a bystander's hold granting the long bound.
+    const at = Date.parse('2026-08-24T12:00:00.000Z');
+    const state = {
+        episode: {
+            session: 'ses-someone-else',
+            since: new Date(at - 90 * 60 * 1000).toISOString(),
+            denials: 3,
+            lastDeniedAt: new Date(at - 60 * 1000).toISOString(),
+            nudgedAt: null
+        }
+    };
+    const cp = { pendingOffer: true, openedAt: new Date(at - 60 * 60 * 1000).toISOString() };
+
+    assert.strictEqual(pendingOfferCorroborated(cp, state, at), false,
+        'an omitted owner is not corroboration');
+    assert.strictEqual(pendingOfferCorroborated(cp, state, at, undefined), false,
+        'and neither is an explicit undefined');
+    assert.strictEqual(pendingOfferCorroborated(cp, state, at, null), false,
+        'an unbound goal corroborates nothing');
+    assert.strictEqual(pendingOfferCorroborated(cp, state, at, 'ses-someone-else'), true,
+        'the owning session is what corroborates');
+    // checkpointOwner is what every shipped caller derives that value with, and
+    // it never produces undefined.
+    assert.strictEqual(checkpointOwner({ boundSession: 'ses-x' }), 'ses-x');
+    assert.strictEqual(checkpointOwner({ boundSession: '' }), null, 'an empty binding is no binding');
+    assert.strictEqual(checkpointOwner({}), null, 'an unbound goal answers null, never undefined');
+    assert.strictEqual(checkpointOwner(null), null, 'and so does no goal at all');
 });
 
 test('gate: a half-written episode reads as no episode at all', () => {

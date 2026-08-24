@@ -98,10 +98,10 @@
 //      bind, matching the one the advance carries, is backlogged.
 //   5. No boundary checkpoint is open. A checkpoint matches only when its
 //      recorded plan equals the armed goal's plan, its recorded boundSession
-//      equals the goal's current boundSession, AND it is fresh (opened within
-//      CHECKPOINT_MAX_AGE_MS, which lives with the shared match rule in
-//      kit-compact-lib.js); anything else is treated as absent. The plan
-//      match retires a stale file from a prior run, and the session match
+//      equals the goal's current boundSession, AND it is fresh (the shared
+//      match rule and its age bounds live in kit-compact-lib.js); anything
+//      else is treated as absent. The plan match retires a stale file from a
+//      prior run, and the session match
 //      retires an orphan from a crashed run: a checkpoint written just before
 //      a crash names the same plan, but the resumed session re-binds under a
 //      new id, so the orphan must not open the gate for its first mid-chapter
@@ -113,13 +113,25 @@
 //      would otherwise sit open until the NEXT chapter crossed the trigger
 //      mid-section and be honored there, landing the compaction mid-chapter
 //      (the exact placement the gate exists to prevent) on every cycle after
-//      the first. A boundary reached above the trigger needs only seconds:
-//      past the trigger the harness re-offers a compaction every assistant
-//      turn, so a real boundary checkpoint is consumed almost immediately and
-//      the age bound never touches it. A checkpoint with no boundSession
-//      field or no legible openedAt (written by an older version, or
-//      hand-made) is a mismatch, the fail-open-toward-status-quo direction.
-//      When a MATCHING checkpoint is
+//      the first. That ordinary leftover is what the ten-minute bound
+//      retires. Freshness has a second leg for the case the first one cuts
+//      too short: a boundary declared while this gate was ALREADY holding
+//      offers has one waiting for it, with only the tool call in flight
+//      between the two, and that call can run for an hour or more, so such a
+//      checkpoint is judged by a bound of hours instead. The long leg is
+//      never granted on the file's say-so: this gate passes what its own
+//      recorded state says at the moment it decides, and
+//      pendingOfferCorroborated in kit-compact-lib.js is the rule that reads
+//      it. An uncorroborated pending flag falls back to the short bound. One
+//      consequence belongs here rather than there, because it is about this
+//      hook's own sequence: the FIRST boundary after the context crosses the
+//      trigger takes ten minutes like any other, since no episode exists
+//      until this gate has denied once, and the CLI reads that same absence
+//      at the open and writes the flag false, so the record does not claim a
+//      hold either. The leg engages from the first deny onward. A checkpoint
+//      with no boundSession field or no legible openedAt (written by an
+//      older version, or hand-made) is a mismatch, the
+//      fail-open-toward-status-quo direction. When a MATCHING checkpoint is
 //      open the hook allows and consumes (deletes) it before exiting, so the
 //      next mid-chapter attempt is denied again: consumption is single-shot,
 //      and it happens only on this checkpoint-driven allow. Allowing for any
@@ -176,7 +188,8 @@ const { readGoal, bindSession } = require('./kit-goal-lib.js');
 const {
     readCheckpoint, clearCheckpoint, checkpointMatches, sameSessionId,
     transcriptShowsAutomation, userCommandArgsClaimPlan,
-    recordGateDecision, projectGateEpisode, episodePhrase
+    recordGateDecision, projectGateEpisode, episodePhrase,
+    readGateState, pendingOfferCorroborated, checkpointOwner
 } = require('./kit-compact-lib.js');
 
 // The deferral ceiling, in consumed tokens, shared by both deny paths: the
@@ -374,8 +387,23 @@ function latestConsumedTokens(transcriptPath) {
 // Clause 6: the safety valve. Illegible reads allow rather than denying blind.
 function boundaryVerdict(cwd, goal, transcriptPath) {
     const cp = readCheckpoint(cwd);
-    const checkpoint = checkpointFacts(cp);
-    const match = checkpointMatches(cp, goal, Date.now());
+    // Whether a flagged checkpoint is vouched for by a standing, owned,
+    // predating deferral episode: pendingOfferCorroborated owns that rule and
+    // the reasons for each of its three legs. A state that cannot be read
+    // yields no episode and so the short bound, the conservative direction.
+    //
+    // The state read is deliberately NOT eager. The dominant case here is
+    // mid-chapter with no checkpoint at all, or one carrying no flag, where the
+    // predicate answers on its first line without looking at the state; hoisting
+    // the read into the argument would put an lstat plus a full file read on the
+    // pre-verdict path of every offer, which is the path this hook keeps clear.
+    const now = Date.now();
+    const owner = checkpointOwner(goal);
+    const pendingCorroborated = (cp && cp.pendingOffer === true)
+        ? pendingOfferCorroborated(cp, readGateState(cwd), now, owner)
+        : false;
+    const checkpoint = checkpointFacts(cp, pendingCorroborated);
+    const match = checkpointMatches(cp, goal, now, pendingCorroborated);
     if (match.ok) {
         clearCheckpoint(cwd); // best-effort: a failed delete degrades to an open gate, never a wedged run
         return { verdict: 'allow', reason: 'checkpoint', checkpoint };
@@ -397,16 +425,22 @@ function boundaryVerdict(cwd, goal, transcriptPath) {
 // already pending. Null when no legible record was there at all. The values are
 // recorded, never acted on; the match rule alone decides.
 //
-// Nothing writes pendingOffer yet: writeCheckpoint stores plan, boundSession
-// and openedAt, so the field is absent on every checkpoint the kit produces
-// today and reads false. It is read here so that the record shows which kind of
-// boundary a deny met once the checkpoint CLI starts setting it.
-function checkpointFacts(cp) {
+// The checkpoint CLI sets pendingOffer at the open, from the gate's own
+// recorded state, and the pair of it and `corroborated` selects the age bound
+// the match rule holds the record to. Both are recorded because they are what
+// makes an expiry legible afterwards: a deny reports reason 'expired' for an
+// ordinary below-trigger leftover aging out, for a real boundary discarded
+// because no standing hold vouched for its flag, and for the outer sanity cap,
+// and only these two fields tell those apart in the log. The pendingOffer field
+// is absent on a checkpoint an older kit wrote, which reads false, exactly as
+// the match rule reads it.
+function checkpointFacts(cp, corroborated) {
     if (!cp || typeof cp !== 'object' || Array.isArray(cp)) return null;
     const opened = typeof cp.openedAt === 'string' ? Date.parse(cp.openedAt) : NaN;
     return {
         ageSeconds: Number.isFinite(opened) ? Math.round((Date.now() - opened) / 1000) : null,
-        pendingOffer: cp.pendingOffer === true
+        pendingOffer: cp.pendingOffer === true,
+        corroborated: corroborated === true
     };
 }
 
@@ -532,7 +566,9 @@ const BOUNDARY_NOTE = 'kit-compact-gate: auto-compaction deferred to the next ch
     + 'The hold runs until that boundary or the context safety valve fires near the token limit, whichever '
     + 'comes first; a skipped boundary costs a compaction landing at the worst point in the section, never a '
     + 'wedged run. Repeating for many turns within one section is expected. If it is still firing after a '
-    + 'Chapter has closed, the boundary checkpoint was likely never opened: prompt the session to close its '
+    + 'Chapter has closed, either the boundary checkpoint was never opened or the one that was opened is no '
+    + 'longer honored (an expired one, or one whose pending-offer flag no deferral episode vouches for): '
+    + 'prompt the session to close its '
     + 'boundary, or check yourself from the project directory with node "' + CHECKPOINT_CLI
     + '" status and open one at a true boundary with node "' + CHECKPOINT_CLI + '" open.';
 const INTERACTIVE_NOTE = 'kit-compact-gate: auto-compaction deferred to the context safety ceiling; '

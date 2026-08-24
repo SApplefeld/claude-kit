@@ -40,31 +40,76 @@ function checkpointPath(cwd) {
     return path.join(cwd, '.kit', 'compact-checkpoint.json');
 }
 
-// How long an open checkpoint stays honorable. A checkpoint opened at a
-// boundary that is already past the compaction trigger is consumed within
-// seconds (the harness re-offers a compaction every assistant turn once past
-// the trigger), so ten minutes is generous for the case that matters. A
-// checkpoint opened BELOW the trigger has no offer to catch and must age out
-// instead: honoring it later, when the next chapter crosses the trigger
-// mid-section, would land the compaction mid-chapter, which is the exact
-// placement the gate exists to prevent, and self-sustainingly so (the landed
-// compaction resets consumption, the next boundary opens another
-// below-trigger checkpoint, and the cycle repeats). When the bound misfires,
-// the cost is one mid-chapter compaction, the pre-gate status quo, so the
-// failure direction stays fail-open.
+// How long an open checkpoint stays honorable. There are two bounds, and which
+// one applies is decided by the checkpoint's own pendingOffer flag, because the
+// two kinds of checkpoint fail in opposite directions.
 //
-// The floor on this value is a long dispatched tool call: a chapter close
-// followed immediately by a multi-minute implementer run delays the next
-// assistant turn, and therefore the next compaction offer, past the open.
-// Implementers have run 6 to 12 minutes, so a bound much under ten minutes
-// would start discarding boundaries that were about to be honored. The
-// ceiling on it is how long a below-trigger checkpoint can linger before the
-// next chapter crosses the trigger, which at the recommended trigger the
-// doctor derives is far longer than either number. That figure is deliberately
-// not restated here: the doctor computes every displayed number from its own
-// window and reserve values, and a copy in this comment would strand the
-// moment either changes.
+// The TEN-MINUTE leg governs a checkpoint opened with no offer pending, which
+// is a boundary reached BELOW the compaction trigger. It has no offer to catch
+// and must age out: honoring it later, when the next chapter crosses the
+// trigger mid-section, would land the compaction mid-chapter, which is the
+// exact placement the gate exists to prevent, and self-sustainingly so (the
+// landed compaction resets consumption, the next boundary opens another
+// below-trigger checkpoint, and the cycle repeats). The floor on the value is a
+// long dispatched tool call: a chapter close followed immediately by a
+// multi-minute implementer run delays the next assistant turn, and therefore
+// the next compaction offer, past the open, so a bound much under ten minutes
+// would start discarding boundaries that were about to be honored. The ceiling
+// on it is how long a below-trigger checkpoint can linger before the next
+// chapter crosses the trigger, which at the recommended trigger the doctor
+// derives is far longer than either number. That figure is deliberately not
+// restated here: the doctor computes every displayed number from its own window
+// and reserve values, and a copy in this comment would strand the moment either
+// changes.
+//
+// The PENDING leg governs a checkpoint opened while the gate was already
+// holding auto-compaction offers, which the checkpoint CLI reads from the
+// gate's own state at the open. That boundary has an offer waiting for it, and
+// the only thing between the two is the current tool call: past the trigger the
+// harness re-offers every assistant turn, so the checkpoint is consumed at the
+// first turn after the call returns, with nothing else having run in between.
+// The ten-minute leg is the wrong bound for it, and measurably so: dispatched
+// implementer and reviewer steps have run 22, 27, 67 and 73 minutes, each of
+// which discards a boundary that was about to be honored and lands the
+// compaction mid-chapter instead.
+//
+// Twenty-four hours is an outer sanity cap, not the operational window. What
+// actually ends the long leg first is the deferral episode that corroborates
+// it: pendingOfferCorroborated needs an OPEN episode, and gateEpisodeOpen
+// retires one whose newest denial has aged past GATE_EPISODE_MAX_IDLE_MS, four
+// hours. lastDeniedAt advances only on a denial, which happens only at an
+// assistant turn, and during the long tool call this leg exists to cover there
+// are no turns. So a call outrunning four hours retires the episode and drops
+// its checkpoint back to ten minutes. Four hours is the honest ceiling, and the
+// measured steps above sit roughly three times inside it rather than an order
+// of magnitude. The cap earns its place on the other axis: it bounds a
+// hand-made or clock-skewed record that no episode would otherwise retire, and
+// the future-skew check below applies to this leg exactly as it does to the
+// other.
+//
+// The flag alone never buys the long leg, and neither does an episode alone:
+// the hold must also be owned by this binding and must predate the record.
+// pendingOfferCorroborated states why each of those is required.
+//
+// One residue that corroboration does not close, named rather than engineered
+// away: ANY compaction that lands without clearing the episode leaves a hold
+// standing that no longer has an offer behind it. Two produce it. A manual
+// /compact is never seen at all (the PreCompact matcher is auto-only, so the
+// gate does not run). And an allow whose payload carries no session id does run
+// but cannot clear the episode, because clearing is scoped to the allower and a
+// record with no session owns nothing. In both, an episode that genuinely
+// predates a later record vouches for it, so a boundary opened in that shadow
+// takes the long leg with nothing waiting for it, and if the context re-crosses
+// the trigger before the episode goes idle, one compaction lands mid-chapter.
+// The discriminator that would close it, whether a compaction landed by some
+// other route, is not observable to a hook that either never ran or never
+// learned whose turn it was. The cost is bounded at one mistimed compaction,
+// which is the pre-gate status quo.
+//
+// When either bound misfires the cost is one mid-chapter compaction, the
+// pre-gate status quo, so the failure direction stays fail-open.
 const CHECKPOINT_MAX_AGE_MS = 10 * 60 * 1000;
+const CHECKPOINT_PENDING_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 // Skew allowance for a checkpoint whose openedAt sits in the future: a small
 // clock adjustment between the write and the read is tolerated, but a far-
@@ -89,9 +134,24 @@ function sameSessionId(a, b) {
 // status report uses the reason to say why a checkpoint on disk gates
 // nothing. A checkpoint counts only when its recorded plan equals the armed
 // goal's plan, its recorded boundSession equals the goal's current
-// boundSession, and its openedAt is fresh (parseable, within
-// CHECKPOINT_MAX_AGE_MS of nowMs, and no further than
-// CHECKPOINT_FUTURE_SKEW_MS into the future).
+// boundSession, and its openedAt is fresh (parseable, within the age bound that
+// applies to it, and no further than CHECKPOINT_FUTURE_SKEW_MS into the
+// future).
+//
+// Which age bound applies takes TWO facts, not one. The record's own
+// pendingOffer flag says an offer was being held when the boundary was
+// declared; pendingCorroborated says a hold that predates the record is still
+// standing at the moment of the decision. Both must be true for the long bound;
+// otherwise the ten-minute bound applies. Callers get the second from
+// pendingOfferCorroborated, which owns the rule and the reasons the flag alone
+// cannot carry it.
+//
+// This rule stays pure: it is told the answer rather than reading any state, so
+// the CLI's report and the gate's decision cannot diverge on it. An absent or
+// non-true pendingCorroborated falls back to the ten-minute bound, which is the
+// fail-safe direction and is deliberate: a caller that forgets the argument, or
+// cannot read the state to answer it, narrows the window rather than widening
+// it.
 //
 // Returns { ok:true, reason:null } on a match, else { ok:false, reason } with
 // reason naming the first failed clause in evaluation order:
@@ -101,12 +161,16 @@ function sameSessionId(a, b) {
 //   'wrong-session'  the bound sessions differ (an orphan from a crashed run,
 //                    or an unbound side on either record)
 //   'no-timestamp'   openedAt is missing or does not parse as a date
-//   'expired'        openedAt is older than CHECKPOINT_MAX_AGE_MS
+//   'expired'        openedAt is older than the bound that applied:
+//                    CHECKPOINT_PENDING_MAX_AGE_MS when the record claims
+//                    pendingOffer AND the caller corroborates that offers are
+//                    still being held, CHECKPOINT_MAX_AGE_MS in every other
+//                    case, an uncorroborated pending record included
 //   'future'         openedAt is beyond the future skew allowance
 // Never throws on JSON-derived input: every access is guarded and Date.parse
 // returns NaN on garbage. nowMs exists so a caller can pin the clock; an
 // absent or illegible value means the current time.
-function checkpointMatches(cp, goal, nowMs) {
+function checkpointMatches(cp, goal, nowMs, pendingCorroborated) {
     const now = (typeof nowMs === 'number' && Number.isFinite(nowMs)) ? nowMs : Date.now();
     if (!cp || typeof cp !== 'object' || typeof cp.plan !== 'string') {
         return { ok: false, reason: 'no-checkpoint' };
@@ -120,27 +184,94 @@ function checkpointMatches(cp, goal, nowMs) {
     const opened = Date.parse(cp.openedAt);
     if (!Number.isFinite(opened)) return { ok: false, reason: 'no-timestamp' };
     const age = now - opened;
-    if (age > CHECKPOINT_MAX_AGE_MS) return { ok: false, reason: 'expired' };
+    // Both legs are tested for a literal true, so an older three-field record,
+    // a hand-edited one carrying a truthy value of some other shape, and a
+    // caller that passed nothing all take the ten-minute leg.
+    const maxAge = (cp.pendingOffer === true && pendingCorroborated === true)
+        ? CHECKPOINT_PENDING_MAX_AGE_MS
+        : CHECKPOINT_MAX_AGE_MS;
+    if (age > maxAge) return { ok: false, reason: 'expired' };
     if (age < -CHECKPOINT_FUTURE_SKEW_MS) return { ok: false, reason: 'future' };
     return { ok: true, reason: null };
 }
 
+// The size of the REGULAR file at this path: 0 when nothing is there, and null
+// when the path cannot be safely written through, either because something
+// other than a regular file is sitting on it (a symlink or junction, a
+// directory, a FIFO) or because its kind could not be determined at all. The
+// check is an lstat, so a link is judged as a link rather than as whatever it
+// points at.
+//
+// Only ENOENT reads as "nothing there, go ahead". Every other lstat failure
+// (EACCES, EPERM, EBUSY: a permission, a lock, a scanner holding the file) is
+// an unknown answer, and answering an unknown with the go-ahead value is the
+// mistake readGateStateResult exists to avoid. It matters concretely here:
+// endsOnLineBoundary reads this, and a zero from a transient failure would tell
+// it the log ends on a line boundary without a byte having been read, producing
+// exactly the fused record its guard exists to prevent.
+function regularFileSize(target) {
+    let st;
+    try {
+        st = fs.lstatSync(target);
+    } catch (err) {
+        return (err && err.code === 'ENOENT') ? 0 : null;
+    }
+    return st.isFile() ? st.size : null;
+}
+
+// The checkpoint's read cap. The writer produces four short fields, a couple of
+// hundred bytes, and never grows. Anything past 64 KB is not something this
+// wrote, and reading it whole on a hook path that runs before any verdict is
+// emitted is cost with nothing to gain.
+const CHECKPOINT_MAX_BYTES = 64 * 1024;
+
 // Read and parse the checkpoint file. Returns the parsed object, or null if
-// the file is absent, unreadable, or not valid JSON. The content is untrusted
-// data (the file is user-writable): callers compare its plan against the armed
-// goal's and must never surface its values unsanitized.
+// the file is absent, refused, unreadable, or not valid JSON. The content is
+// untrusted data (the file is user-writable): callers compare its plan against
+// the armed goal's and must never surface its values unsanitized.
+//
+// The path must be a regular file of sane size before it is opened, judged by
+// regularFileSize's lstat, which is the same preamble the gate-state reader
+// applies and is here for the same reason: both of this function's callers run
+// on paths where blocking is not recoverable. The PreCompact gate reads the
+// checkpoint before any verdict is emitted, and the goal-leash Stop hook reads
+// it while holding a stop. A FIFO planted at THIS path would block either
+// inside readFileSync forever, where no try/catch can rescue it, and a link
+// would be followed into whatever it names. Being an lstat, the check judges a
+// link as a link rather than as its target.
+//
+// What this covers is this one path, and nothing else those callers touch. It
+// narrows rather than closes even here, since the open below re-resolves the
+// path, the same honest account the readers beside it give of their own; and
+// the callers reach other files by other readers, each of which answers for
+// itself. A path is safe because the reader that opens it checks, so this
+// comment claims that guard and no more.
 function readCheckpoint(cwd) {
     try {
-        const raw = fs.readFileSync(checkpointPath(cwd), 'utf8');
-        return JSON.parse(raw);
+        const target = checkpointPath(cwd);
+        const size = regularFileSize(target);
+        if (size === null || size > CHECKPOINT_MAX_BYTES) return null;
+        return JSON.parse(fs.readFileSync(target, 'utf8'));
     } catch {
         return null;
     }
 }
 
+// The temporary path an atomic write renames from, shared by every writer in
+// this file. The pid keeps two writers off one name; the random suffix keeps
+// the name from being predictable, because a link pre-planted at a guessable
+// tmp path would be followed by the write that creates it. The exclusive flag
+// each caller passes at the open is the actual defense (a pre-planted path
+// fails the create outright); the unguessable name is what keeps an attacker
+// from winning that race repeatedly.
+function atomicTmpPath(target) {
+    return target + '.tmp.' + process.pid + '.' + crypto.randomBytes(6).toString('hex');
+}
+
 // Write the checkpoint atomically (tmp file + rename), recording the plan it
-// belongs to and the session the goal is currently bound to. Returns
-// { ok:true, plan } or { ok:false, reason }; never throws.
+// belongs to, the session the goal is currently bound to, and whether an
+// auto-compaction offer was already being held when the boundary was declared.
+// Returns { ok:true, plan } or { ok:false, reason }; never throws.
 //
 // The plan path is validated through kit-goal-lib's normalizePlanArg, the same
 // gate every stored plan path passes: it rejects control characters and any
@@ -159,20 +290,17 @@ function readCheckpoint(cwd) {
 // length, no control characters); null is stored as null (an unbound goal),
 // which the gate likewise never matches.
 //
+// pendingOffer records whether an auto-compaction offer was already being held
+// when this boundary was declared, which is one of the two facts that select
+// the age bound the match rule holds the record to (see CHECKPOINT_MAX_AGE_MS;
+// the other is corroboration at the moment of the decision). Every caller reads
+// it from the gate's own decision state at the moment it writes. Anything other
+// than true stores false, so a caller with no answer records the conservative
+// one.
+//
 // The tmp name is unique per writer and unpredictable (see atomicTmpPath), and
 // a failed rename unlinks its tmp so orphans do not accumulate in .kit/.
-// The temporary path an atomic write renames from, shared by every writer in
-// this file. The pid keeps two writers off one name; the random suffix keeps
-// the name from being predictable, because a link pre-planted at a guessable
-// tmp path would be followed by the write that creates it. The exclusive flag
-// each caller passes at the open is the actual defense (a pre-planted path
-// fails the create outright); the unguessable name is what keeps an attacker
-// from winning that race repeatedly.
-function atomicTmpPath(target) {
-    return target + '.tmp.' + process.pid + '.' + crypto.randomBytes(6).toString('hex');
-}
-
-function writeCheckpoint(cwd, planRel, boundSession) {
+function writeCheckpoint(cwd, planRel, boundSession, pendingOffer) {
     const normalized = normalizePlanArg(cwd, planRel);
     if (normalized === null) {
         return { ok: false, reason: 'plan path is invalid or outside the repo' };
@@ -186,7 +314,12 @@ function writeCheckpoint(cwd, planRel, boundSession) {
         session = boundSession;
     }
     const cp = checkpointPath(cwd);
-    const state = { plan: normalized, boundSession: session, openedAt: new Date().toISOString() };
+    const state = {
+        plan: normalized,
+        boundSession: session,
+        openedAt: new Date().toISOString(),
+        pendingOffer: pendingOffer === true
+    };
     try {
         fs.mkdirSync(path.dirname(cp), { recursive: true });
         const tmp = atomicTmpPath(cp);
@@ -328,8 +461,15 @@ const GATE_LOG_KEEP_BYTES = 1 * 1024 * 1024;
 // in another project, which is where a stale "held 16 offers over 1387 minutes"
 // would read as a missed boundary and push an operator into forcing a
 // checkpoint open mid-chapter, the exact mis-scheduling the gate exists to
-// prevent. This is deliberately not CHECKPOINT_MAX_AGE_MS: that bound answers
-// how long a declared boundary stays honorable, a different question.
+// prevent.
+//
+// This value also bounds how long a declared boundary stays honorable, which it
+// did not when it was first written. The long checkpoint age leg needs a
+// standing episode to corroborate it (see pendingOfferCorroborated), and this
+// is what retires one, so a pending checkpoint dies when its episode goes idle
+// here, well before CHECKPOINT_PENDING_MAX_AGE_MS caps it. The two constants
+// answer different questions and are deliberately separate, but they are no
+// longer independent: shortening this one shortens the pending leg with it.
 const GATE_EPISODE_MAX_IDLE_MS = 4 * 60 * 60 * 1000;
 
 // The verdicts a record may carry, and the only values recordGateDecision
@@ -391,7 +531,16 @@ function gateRecord(value) {
         checkpoint = {
             ageSeconds: (typeof cp.ageSeconds === 'number' && Number.isFinite(cp.ageSeconds))
                 ? Math.round(cp.ageSeconds) : null,
-            pendingOffer: cp.pendingOffer === true
+            pendingOffer: cp.pendingOffer === true,
+            // Whether the flag was vouched for at the moment of the decision.
+            // Without it the log cannot tell the three expiries apart, and they
+            // mean different things to whoever reads it: an ordinary
+            // below-trigger leftover aging out, a boundary the operator really
+            // did open being discarded for want of a standing hold, and the
+            // outer sanity cap firing. The middle one is the defect this
+            // section exists to make visible, and it reads as either of the
+            // others without this field.
+            corroborated: cp.corroborated === true
         };
     }
     const reason = gateText(value.reason);
@@ -480,6 +629,78 @@ function gateEpisodeOpen(state, nowMs, sessionId) {
     return episode;
 }
 
+// The session a checkpoint question is scoped to, from an armed goal: its bound
+// session, or an explicit null when it has none.
+//
+// Null and undefined are different answers downstream, which is the whole
+// reason this exists rather than reading goal.boundSession at each site. An
+// explicit null is a session id that matches nothing, so an unbound goal
+// corroborates nothing, which is right: its checkpoint records boundSession
+// null and the gate never matches one. Undefined, passed to gateEpisodeOpen,
+// means "any open episode counts", so a bystander's hold would answer a
+// question about this run's boundary. Three callers need that distinction
+// (the PreCompact gate, the checkpoint CLI, and the goal-leash Stop hook's
+// queue advance), and three hand-written copies of it is how one of them
+// silently ends up asking the wrong question.
+function checkpointOwner(goal) {
+    return (goal && typeof goal.boundSession === 'string' && goal.boundSession !== '')
+        ? goal.boundSession
+        : null;
+}
+
+// Does a standing deferral episode corroborate this checkpoint's pendingOffer
+// flag? This is the second of the two facts checkpointMatches needs before it
+// grants the long age bound, and it is single-sourced here because all three
+// callers of the match rule (the PreCompact gate, the checkpoint CLI's status
+// report, and the goal-leash Stop hook's queue advance) must answer it
+// identically.
+//
+// Three things must hold. The record must claim the flag. An episode must be
+// open for the given owner, which is gateEpisodeOpen's question, including its
+// idle and future-skew bounds. And the episode must PREDATE the record.
+//
+// That last test is what keeps the gate from corroborating itself. A boundary
+// deny writes an episode owned by the denying session, dated at the deny. So
+// without it: an offer arrives against a six-hour-old pending checkpoint, is
+// denied on the short leg (no episode yet), and that denial's own record mints
+// an episode; the next offer, one assistant turn later, reads that episode,
+// corroborates, and honors the very checkpoint just rejected. The record is
+// never consumed on a deny, so it is still sitting there to be honored. Since
+// an extending deny keeps the standing episode's `since`, an episode minted
+// this way stays too young forever rather than aging into eligibility.
+//
+// A real deferral is unaffected: the deny comes first, the boundary is declared
+// after it, and the record's openedAt is therefore later than the episode's
+// since. Equal timestamps count as predating, since a record opened in the same
+// millisecond as a denial is the legitimate ordering at its limit.
+//
+// Both timestamps must parse. A NaN on either side yields NOT corroborated
+// rather than a silent true, which is the fail-safe direction: an unparseable
+// openedAt already fails checkpointMatches upstream, and gateEpisode refuses an
+// episode whose since does not parse, so neither is reachable through this
+// file's own writers, and the guard costs one comparison.
+//
+// An undefined owner is NOT corroboration, and that is worth stating because
+// gateEpisodeOpen reads the same value the other way: there, omitting the
+// argument asks whether any session is held, which is what a human running
+// status wants. Here the answer feeds a decision, and the two defaults in this
+// API would otherwise point in opposite directions, with checkpointMatches
+// reading a missing argument as not corroborated (fail-safe) and this one
+// turning it into a bystander's hold granting the long lease (fail-open). Every
+// caller today passes a string or an explicit null; this keeps the next one
+// from inheriting the permissive reading by omission. Use checkpointOwner to
+// derive the value from a goal.
+function pendingOfferCorroborated(cp, state, nowMs, ownerSessionId) {
+    if (!cp || typeof cp !== 'object' || cp.pendingOffer !== true) return false;
+    if (ownerSessionId === undefined) return false;
+    const episode = gateEpisodeOpen(state, nowMs, ownerSessionId);
+    if (!episode) return false;
+    const since = Date.parse(episode.since);
+    const opened = typeof cp.openedAt === 'string' ? Date.parse(cp.openedAt) : NaN;
+    if (!Number.isFinite(since) || !Number.isFinite(opened)) return false;
+    return since <= opened;
+}
+
 // Whole minutes between an ISO timestamp and now, or null when it does not
 // parse. Negative ages (a clock adjustment, a hand-edited file) floor at zero:
 // every surface that reports one states it as an elapsed duration, and a
@@ -501,9 +722,17 @@ function countPhrase(n, singular) {
 // operator reading both should not have to reconcile two phrasings. Two integers and nothing else, which is what
 // keeps a user-writable state file off those channels. Null when the episode's
 // age cannot be read, so a caller says nothing rather than guessing.
+//
+// BOTH integers are clamped by the same helper, and for the same reason. The
+// count comes from a user-writable file and so does the timestamp the duration
+// is measured from: a `since` of the year 1 renders a nine-figure minute count,
+// and a date near the floor of the type renders a twelve-figure one, neither of
+// which an operator can read as a duration. The clamp bounds what reaches those
+// two channels without misreporting any real episode, since a genuine hold is
+// minutes to hours and nothing near the bound.
 function episodePhrase(episode, nowMs) {
     if (!episode) return null;
-    const minutes = wholeMinutesSince(episode.since, nowMs);
+    const minutes = gateCount(wholeMinutesSince(episode.since, nowMs));
     if (minutes === null) return null;
     return 'held ' + countPhrase(episode.denials, 'offer') + ' over ' + countPhrase(minutes, 'minute');
 }
@@ -686,30 +915,6 @@ function projectGateEpisode(cwd, decision) {
     } catch {
         return null;
     }
-}
-
-// The size of the REGULAR file at this path: 0 when nothing is there, and null
-// when the path cannot be safely written through, either because something
-// other than a regular file is sitting on it (a symlink or junction, a
-// directory, a FIFO) or because its kind could not be determined at all. The
-// check is an lstat, so a link is judged as a link rather than as whatever it
-// points at.
-//
-// Only ENOENT reads as "nothing there, go ahead". Every other lstat failure
-// (EACCES, EPERM, EBUSY: a permission, a lock, a scanner holding the file) is
-// an unknown answer, and answering an unknown with the go-ahead value is the
-// mistake readGateStateResult exists to avoid. It matters concretely here:
-// endsOnLineBoundary reads this, and a zero from a transient failure would tell
-// it the log ends on a line boundary without a byte having been read, producing
-// exactly the fused record its guard exists to prevent.
-function regularFileSize(target) {
-    let st;
-    try {
-        st = fs.lstatSync(target);
-    } catch (err) {
-        return (err && err.code === 'ENOENT') ? 0 : null;
-    }
-    return st.isFile() ? st.size : null;
 }
 
 // Write JSON atomically (tmp file plus rename), on writeCheckpoint's discipline
@@ -1411,9 +1616,10 @@ function transcriptShowsAutomation(transcriptPath) {
 module.exports = {
     checkpointPath, readCheckpoint, writeCheckpoint, clearCheckpoint,
     checkpointMatches, sameSessionId,
-    CHECKPOINT_MAX_AGE_MS, CHECKPOINT_FUTURE_SKEW_MS,
+    CHECKPOINT_MAX_AGE_MS, CHECKPOINT_PENDING_MAX_AGE_MS, CHECKPOINT_FUTURE_SKEW_MS,
     gateStatePath, gateLogPath, readGateState, readGateStateResult, recordGateDecision,
-    gateEpisodeOpen, projectGateEpisode, episodePhrase, wholeMinutesSince,
+    gateEpisodeOpen, pendingOfferCorroborated, checkpointOwner,
+    projectGateEpisode, episodePhrase, wholeMinutesSince,
     readTranscriptCapped, stripLocalCommandOutput, commandArgsSpans,
     userCommandArgsClaimPlan,
     automationInEffect, transcriptShowsAutomation

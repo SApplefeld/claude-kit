@@ -96,7 +96,8 @@ const {
 const {
     readTranscriptCapped, stripLocalCommandOutput, sameSessionId,
     userCommandArgsClaimPlan,
-    readCheckpoint, writeCheckpoint, checkpointMatches
+    readCheckpoint, writeCheckpoint, checkpointMatches,
+    readGateState, gateEpisodeOpen, pendingOfferCorroborated, checkpointOwner
 } = require('./kit-compact-lib.js');
 
 function readStdin() {
@@ -384,13 +385,42 @@ function advanceAndHold(cwd, goal, sessionId, entry) {
         // plan, same bound session, fresh) is rewritten to the new current
         // plan, re-dated to the advance, which is when the next plan's
         // boundary actually occurs; anything else on disk is left alone.
+        //
+        // The pending-offer flag is re-derived here from the gate's live state
+        // rather than copied from the record being replaced, because the write
+        // re-dates openedAt: copying a stored true would renew the long age
+        // bound at every advance, so a queue of plans could carry one
+        // never-consumed boundary for as many days as it has entries. Asking
+        // the same question `open` asks, and asking it now, makes the renewal
+        // conditional on a hold that is genuinely standing: with no episode
+        // owned by this binding, the rewritten checkpoint goes back under the
+        // ten-minute bound, which is right, because there is no offer waiting
+        // for it. The owner is an explicit null when the goal is unbound, never
+        // undefined, which would ask whether ANY session is held.
+        //
         // Best-effort on every branch: a failed rewrite degrades to the
         // checkpoint reading wrong-plan (a denied compaction, the status
         // quo), and the checkpoint is never part of this hook's verdict.
         try {
+            const owner = checkpointOwner(goal);
+            const now = Date.now();
             const cp = readCheckpoint(cwd);
-            if (cp && checkpointMatches(cp, goal).ok) {
-                writeCheckpoint(cwd, moved.plan, goal.boundSession);
+            const state = readGateState(cwd);
+            // Two questions, one read of the state, and they are not the same
+            // question. Whether the EXISTING record still matches is the gate's
+            // own corroboration: a hold owned by this binding, open now, and
+            // older than that record. Whether the REWRITTEN record carries the
+            // flag is `open`'s question instead, whether a hold is standing at
+            // all, because the rewrite dates the new record now and any open
+            // episode therefore predates it. Asking the corroboration question
+            // of the new record would make its flag depend on the old record's,
+            // which is the copying this re-derivation exists to avoid: a
+            // boundary opened before the gate began deferring would never pick
+            // up the hold that started afterwards.
+            const corroborated = pendingOfferCorroborated(cp, state, now, owner);
+            const holding = gateEpisodeOpen(state, now, owner) !== null;
+            if (cp && checkpointMatches(cp, goal, now, corroborated).ok) {
+                writeCheckpoint(cwd, moved.plan, goal.boundSession, holding);
             }
         } catch { /* the checkpoint is best-effort observability for the gate */ }
     }
@@ -475,6 +505,15 @@ function main() {
         // The transcript path rides along, recorded as the liveness hint another
         // session reads at its session start.
         bindSession(cwd, sessionId, transcriptPath);
+        // The snapshot read above still says unbound, and everything below it
+        // reads the binding from that snapshot rather than from disk: the
+        // checkpoint match rule compares the goal's bound session against the
+        // record's, and the queue advance scopes its deferral-episode question
+        // to it. Leaving the snapshot stale answers both with null on the one
+        // path where this session has just claimed the goal. The PreCompact
+        // gate refreshes it at exactly this point after its own bind, for the
+        // same reason.
+        goal.boundSession = sessionId;
     } else {
         return;
     }
