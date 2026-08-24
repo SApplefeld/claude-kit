@@ -194,6 +194,129 @@ test('the style skills the outline bullet routes to still carry a recipe', () =>
     }
 });
 
+// The three pins below cover one drift class rather than three deletions: an
+// amendment correct in itself falsifies an unchanged sentence in a file the
+// changeset never opened, so no diff shows the falsification and every review
+// lens reading the diff is blind to it. Each pin reads only the copies that
+// make the claim, never the whole tree, so a document that quotes a retired
+// phrasing while explaining it stays green.
+
+// finishing-work states the never-started condition on the transcript's own
+// assistant-line counts, because a transcript holding only the harness's
+// <synthetic> placeholder satisfies a bare "no turn at all" literally while
+// being the shape that rule routes to its own re-dispatch. Every copy that
+// describes the first-turn reading therefore names the shape and defers the
+// condition, and this pin is what makes the withdrawn spelling loud wherever
+// it reappears.
+//
+// The match is anchored on the condition's own noun phrase rather than on the
+// verb that introduces it. The verb is the part that varies (took, taken,
+// takes, holding), so a tense-bound pattern goes quiet on the next spelling of
+// the same claim, and an interposed noun ("no transcript turn at all") is that
+// claim too. The bounded word run is what keeps the phrase a phrase: it spans
+// the qualifiers a writer puts between "no" and "turn" without reaching across
+// a sentence to pair an unrelated "no" with an unrelated "at all".
+test('no copy spells the first-turn condition as a bare absence of turns', () => {
+    const withdrawn = /no (?:[\w-]+ ){0,3}turns? at all/i;
+    const describing = [
+        ['home/claude-kit-doctrine.md', MIRROR],
+        ['plugins/claude-kit/skills/operating-instructions/SKILL.md', SKILL],
+        ['plugins/claude-kit/skills/finishing-work/SKILL.md',
+            path.join(__dirname, '..', 'plugins', 'claude-kit', 'skills',
+                'finishing-work', 'SKILL.md')],
+        ['plugins/claude-kit/skills/executing-work/SKILL.md',
+            path.join(__dirname, '..', 'plugins', 'claude-kit', 'skills',
+                'executing-work', 'SKILL.md')],
+    ];
+    for (const [label, p] of describing) {
+        const lines = fs.readFileSync(p, 'utf8').split(/\r?\n/);
+        lines.forEach((line, i) => {
+            const hit = line.match(withdrawn);
+            if (!hit) return;
+            // The matched text rides in the message rather than one fixed
+            // spelling of it, so the report names the phrase actually on the
+            // line whichever variant the pattern caught.
+            assert.fail(label + ':' + (i + 1) + ' states the first-turn condition '
+                + 'as "' + hit[0] + '", which a transcript holding only the '
+                + '<synthetic> placeholder satisfies literally; name the '
+                + 'never-started shape and defer the condition to finishing-work\'s '
+                + 'unavailability rule instead');
+        });
+    }
+});
+
+// The doctrine's probe bullet carries no window of its own, which is what
+// keeps it from drifting out of step with finishing-work's figures, and the
+// deferral has to name the right owner: the growth window is the class's,
+// while the window a first-turn reading earns is set by the dispatch's shape
+// and is shared by every class. A bullet that sends a first-turn-earned probe
+// to the class's probe window reads as correct and points at the wrong figure.
+test('the probe bullet defers its first-turn probe window to the dispatch shape in each copy', () => {
+    const copies = [
+        ['plugins/claude-kit/skills/operating-instructions/SKILL.md', skillBody()],
+        ['home/claude-kit-doctrine.md', mirrorBody()],
+    ];
+    const lead = '- **Probe a dispatched agent with a message';
+    for (const [label, body] of copies) {
+        const lines = body.split(/\r?\n/).filter((l) => l.startsWith(lead));
+        assert.strictEqual(lines.length, 1,
+            'expected exactly one probe bullet in ' + label);
+        assert.ok(!/class'?s probe window/i.test(lines[0]),
+            'the probe bullet in ' + label + ' sends the reader to "the '
+            + 'class\'s probe window", which is the window a growth reading earns; '
+            + 'the window a first-turn reading earns is the one the dispatch\'s '
+            + 'shape sets, and finishing-work owns both');
+        assert.match(lines[0], /probe window[^.;]{0,40}shape sets/,
+            'the probe bullet in ' + label + ' must defer its probe window to '
+            + 'the dispatch\'s shape, since the bullet carries no window of its own');
+    }
+});
+
+// The unavailability rule concludes a fact about the gate (this gate could not
+// be run at this tier in this environment) rather than about the model, since
+// first-turn latency is correlated across a dispatch and its retry and two
+// closed windows cannot separate an exhausted allotment from a brownout. The
+// skills that route on that conclusion restate it in one clause each, so a
+// clause still spelling it as a model being unreachable asserts what its own
+// destination rule refuses to conclude. Scoped to the routing line at each
+// site, because finishing-work and executing-work both discuss reachability
+// elsewhere in prose that is true as written.
+test('the hand-off copies route on the gate-level conclusion, not on a model being unreachable', () => {
+    // The list is the consult skill alone. Three further routing lines make the
+    // same hand-off and belong here too, named by their own text because their
+    // line numbers move: executing-work's two, carrying "is confirmed per
+    // finishing-work's unavailability rule" and "Unavailability is confirmed and
+    // recorded per finishing-work's unavailability rule", and finishing-work's
+    // final-adversarial-review dispatch line, which sets the review's model. All
+    // three spell the conclusion as a model being unreachable in the committed
+    // tree, so they join this list with the amendment that rewrites them and not
+    // before: a pin reading them now is red at every checked-out state, which is
+    // worth less than no pin at all.
+    const sites = [
+        [['skills', 'consult', 'SKILL.md'], /the stand-in is Opus at `max`/],
+    ];
+    for (const [parts, locator] of sites) {
+        const label = 'plugins/claude-kit/' + parts.join('/');
+        const p = path.join(__dirname, '..', 'plugins', 'claude-kit', ...parts);
+        const lines = fs.readFileSync(p, 'utf8').split(/\r?\n/);
+        const hits = lines
+            .map((line, i) => [line, i + 1])
+            .filter(([line]) => locator.test(line));
+        assert.strictEqual(hits.length, 1, 'expected exactly one line matching '
+            + locator + ' in ' + label + '; the pin below reads that line, so a '
+            + 'reworded or duplicated route leaves the conclusion unpinned');
+        const [line, lineNo] = hits[0];
+        assert.ok(!/unreachable/i.test(line), label + ':' + lineNo + ' routes on a '
+            + 'model being "unreachable", which the unavailability rule declines to '
+            + 'conclude: two closed windows establish only that this gate could not '
+            + 'be run at this tier in this environment');
+        assert.match(line, /(?:could not|cannot) be run at (?:the|its) fable tier/,
+            label + ':' + lineNo + ' must state the rule\'s own conclusion, that '
+            + 'the gate could not be run at its fable tier here, since it carries '
+            + 'none of that rule\'s evidence itself');
+    }
+});
+
 test('the surfaces that defer to the outline bullet still say so', () => {
     const deferring = [
         [['agents', 'implementer-sonnet.md'], /hunting for one thing in a file past roughly 1,000 lines/],
