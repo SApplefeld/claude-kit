@@ -83,8 +83,14 @@ claude-kit/                          (repo = the marketplace)
                                      run an external engine spawned, reads and writes also span that run's
                                      own pending tier, which the engine adjudicates before promotion
         memq-shim.js                 Resolves the installed payload's memq.js so the PATH wrappers stay stable
+        kit-goal-statusline.js       Status-line widget: the armed /kit-goal plan, sections complete of
+                                     total with the last Chapter's Next pointer, and queue position
+        kit-statusline.js            Launcher for the widget, installed to ~/.claude/bin by the doctor;
+                                     resolves the payload through memq-shim.js so the status-line
+                                     setting survives kit updates
       doctor/
-        install-memq-shim.ps1        Installs the per-shell memq wrappers onto PATH (run by the doctor)
+        install-memq-shim.ps1        Installs the per-shell memq wrappers onto PATH and the status-line
+                                     launcher (run by the doctor)
         install-memory-sync.ps1      Memory-sync allowlist, state, and initialization (run by the doctor)
         install-embedder.ps1         Embedder probe, install, and index health (run by the doctor)
         install-compact-window.ps1   Writes autoCompactWindow into user settings.json (run by the doctor

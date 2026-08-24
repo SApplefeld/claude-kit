@@ -9,13 +9,17 @@
 # resolved from the environment here. This file defines functions only;
 # dot-sourcing it runs nothing and writes nothing.
 #
-# An install is four files in <ClaudeDir>\bin: memq-shim.js (a byte copy of
+# An install is five files in <ClaudeDir>\bin: memq-shim.js (a byte copy of
 # the payload's scripts\memq-shim.js, which holds all the cache resolution
-# logic) and three wrappers that delegate to it, one per shell that resolves
+# logic), three wrappers that delegate to it, one per shell that resolves
 # a command differently: memq.ps1 for PowerShell, memq.cmd for cmd, and an
-# extensionless memq for Git Bash. Each wrapper's exact text is defined once
-# here and used by both the writer and the integrity check, so the check
-# cannot drift from what the installer writes.
+# extensionless memq for Git Bash, and kit-statusline.js (a byte copy of the
+# payload's scripts\kit-statusline.js, the status-line widget launcher, which
+# resolves the payload through the shim beside it and is run by full path
+# from a status-line tool's settings, so it needs no wrapper). Each wrapper's
+# exact text is defined once here and used by both the writer and the
+# integrity check, so the check cannot drift from what the installer writes;
+# each .js copy is checked byte-for-byte against the payload's own.
 #
 # Three wrappers rather than one because the shells disagree about both
 # resolution and argument passing. PowerShell searches for .ps1 by its own
@@ -35,9 +39,14 @@
 # read half and the membership predicate do live here, so the doctor's writer
 # and this file's diagnosis answer "is that directory on PATH" identically.
 
-# The four files an install consists of.
+# The five files an install consists of.
 function Get-MemqShimFileNames {
-    return @("memq-shim.js", "memq.ps1", "memq.cmd", "memq")
+    return @("memq-shim.js", "memq.ps1", "memq.cmd", "memq", "kit-statusline.js")
+}
+
+# The .js files that are byte copies of the payload's scripts\<name>.
+function Get-MemqShimCopiedFileNames {
+    return @("memq-shim.js", "kit-statusline.js")
 }
 
 # The PowerShell wrapper, and the one a PowerShell caller actually reaches.
@@ -108,14 +117,18 @@ function Install-MemqShim {
         [Parameter(Mandatory = $true)][string]$PluginRoot,
         [Parameter(Mandatory = $true)][string]$ClaudeDir
     )
-    $shimSource = Join-Path $PluginRoot "scripts\memq-shim.js"
-    if (-not (Test-Path -LiteralPath $shimSource)) {
-        return @{ Ok = $false; Notes = @("memq-shim.js not found at $shimSource; this plugin payload is incomplete.") }
+    foreach ($name in (Get-MemqShimCopiedFileNames)) {
+        $source = Join-Path $PluginRoot "scripts\$name"
+        if (-not (Test-Path -LiteralPath $source)) {
+            return @{ Ok = $false; Notes = @("$name not found at $source; this plugin payload is incomplete.") }
+        }
     }
     $binDir = Join-Path $ClaudeDir "bin"
     try {
         New-Item -ItemType Directory -Force -Path $binDir | Out-Null
-        Copy-Item -LiteralPath $shimSource -Destination (Join-Path $binDir "memq-shim.js") -Force
+        foreach ($name in (Get-MemqShimCopiedFileNames)) {
+            Copy-Item -LiteralPath (Join-Path $PluginRoot "scripts\$name") -Destination (Join-Path $binDir $name) -Force
+        }
         $utf8 = New-Object System.Text.UTF8Encoding($false)
         [System.IO.File]::WriteAllText((Join-Path $binDir "memq.ps1"), (Get-MemqPs1WrapperText), $utf8)
         [System.IO.File]::WriteAllText((Join-Path $binDir "memq.cmd"), (Get-MemqCmdWrapperText), $utf8)
@@ -124,7 +137,7 @@ function Install-MemqShim {
     catch {
         return @{ Ok = $false; Notes = @("Could not install into ${binDir}: $($_.Exception.Message)") }
     }
-    return @{ Ok = $true; BinDir = $binDir; Notes = @("Installed memq-shim.js and the memq.ps1, memq.cmd, and memq (sh) wrappers to $binDir.") }
+    return @{ Ok = $true; BinDir = $binDir; Notes = @("Installed memq-shim.js, the memq.ps1, memq.cmd, and memq (sh) wrappers, and kit-statusline.js to $binDir.") }
 }
 
 # The installed shim's state, as data for the caller to report on: which files
@@ -170,8 +183,8 @@ function Get-MemqShimStatus {
             $status.Missing += $name
             continue
         }
-        if ($name -eq "memq-shim.js") {
-            $payloadCopy = Join-Path $PluginRoot "scripts\memq-shim.js"
+        if ((Get-MemqShimCopiedFileNames) -contains $name) {
+            $payloadCopy = Join-Path $PluginRoot "scripts\$name"
             if (-not (Test-Path -LiteralPath $payloadCopy -PathType Leaf)) { continue }
             if ((Get-FileHash -LiteralPath $installed -Algorithm SHA256).Hash -ne
                 (Get-FileHash -LiteralPath $payloadCopy -Algorithm SHA256).Hash) {

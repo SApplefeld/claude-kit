@@ -487,17 +487,18 @@ test('the status check reports a content-swapped shim as stale, which is what ma
         assert.deepStrictEqual(clean.Stale, []);
         assert.strictEqual(clean.Resolves, true);
 
-        // All three files are present and every one of them runs, so a smoke
+        // All files are present and every one of them runs, so a smoke
         // test alone still reads healthy. Content is what catches it: a
-        // resolver whose bytes are not this payload's, and a wrapper edited
-        // to call something else.
+        // resolver whose bytes are not this payload's, a wrapper edited
+        // to call something else, and a launcher whose bytes drifted.
         fs.appendFileSync(path.join(binDir, 'memq-shim.js'), '\n// swapped\n');
         fs.writeFileSync(path.join(binDir, 'memq.cmd'),
             '@echo off\r\nnode "%~dp0other.js" %*\r\n', 'utf8');
         fs.writeFileSync(path.join(binDir, 'memq.ps1'),
             '& node (Join-Path $PSScriptRoot \'other.js\') @args\r\n', 'utf8');
+        fs.appendFileSync(path.join(binDir, 'kit-statusline.js'), '\n// swapped\n');
         const swapped = statusOf(claudeDir, { pluginsRoot: root });
-        assert.deepStrictEqual(swapped.Stale.sort(), ['memq-shim.js', 'memq.cmd', 'memq.ps1']);
+        assert.deepStrictEqual(swapped.Stale.sort(), ['kit-statusline.js', 'memq-shim.js', 'memq.cmd', 'memq.ps1']);
         assert.strictEqual(swapped.Resolves, true, 'the swapped copy still runs, which is the point');
 
         // A reinstall is the repair, and it is what -Fix now runs on a stale
