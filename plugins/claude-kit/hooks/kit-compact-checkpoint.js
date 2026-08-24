@@ -4,7 +4,7 @@
 // Subcommands:
 //   kit-compact-checkpoint.js open     open a checkpoint for the armed plan
 //   kit-compact-checkpoint.js clear    remove any open checkpoint
-//   kit-compact-checkpoint.js status   report whether a checkpoint is open
+//   kit-compact-checkpoint.js status   report the checkpoint and the gate state
 //
 // Invoked by the executing-work chapter-close ritual after a Chapter is
 // appended and the section's commit model has been honored. An open checkpoint
@@ -22,7 +22,10 @@
 
 const fs = require('fs');
 const { readGoal } = require('./kit-goal-lib.js');
-const { checkpointPath, readCheckpoint, writeCheckpoint, clearCheckpoint, checkpointMatches } = require('./kit-compact-lib.js');
+const {
+    checkpointPath, readCheckpoint, writeCheckpoint, clearCheckpoint, checkpointMatches,
+    readGateStateResult, gateEpisodeOpen, episodePhrase, wholeMinutesSince
+} = require('./kit-compact-lib.js');
 
 // Repo-controlled strings (a plan path, a timestamp read back from disk) are
 // sanitized to printable ASCII and length-capped before they reach
@@ -94,8 +97,9 @@ const ABSENT_REASONS = {
     'future': 'its opened timestamp is in the future, so the gate treats it as absent'
 };
 
-function cmdStatus() {
-    const cwd = process.cwd();
+// The checkpoint half of the status report: whether one is open, and why the
+// gate would ignore it if it is.
+function reportCheckpoint(cwd) {
     const cp = readCheckpoint(cwd);
     if (!cp || typeof cp.plan !== 'string') {
         // readCheckpoint answers null for a genuinely absent file AND for one
@@ -108,7 +112,6 @@ function cmdStatus() {
         process.stdout.write(fileExists
             ? 'an illegible checkpoint file is present (the gate treats it as absent); clear removes it\n'
             : 'no compact checkpoint is open\n');
-        process.exitCode = 0;
         return;
     }
     // File-derived values print indented, never at column zero (see cmdOpen).
@@ -127,6 +130,66 @@ function cmdStatus() {
         line += ' - ' + (ABSENT_REASONS[verdict.reason] || 'the gate treats it as absent');
     }
     process.stdout.write(line + '\n');
+}
+
+// The compaction gate's own record: what it decided last, and whether it is
+// currently holding auto-compaction offers back. An operator reads this to tell
+// a gate that is working (a short episode mid-section) from a boundary that was
+// never opened (a long one), which is the question the state file exists to
+// answer; the full history is the .jsonl log beside it.
+//
+// The two halves are reported independently: a state file whose newest decision
+// is illegible can still hold a live episode, and that episode is the half an
+// operator acts on. The open-episode test and the phrasing of its two integers
+// are the lib's (gateEpisodeOpen, episodePhrase), shared with the gate's own
+// note so the two surfaces cannot disagree about one episode.
+//
+// One reading to expect: an episode belongs to the leashed run, so a project
+// holding a hands-on session with no goal armed reports its last decision but
+// no episode. The deferral is real and the .jsonl log carries every offer of
+// it; the aggregate is the leash's alone.
+//
+// No session id is passed to gateEpisodeOpen, deliberately: an operator running
+// status is asking whether this project is holding offers at all, not whether
+// any particular session owns the hold. A decision-shaped question would pass
+// the armed goal's boundSession instead, since acting on another session's hold
+// is the mistake the argument exists to prevent.
+function reportGateState(cwd) {
+    const result = readGateStateResult(cwd);
+    if (!result.ok) {
+        // A state file the reader refuses is not an absent one, and reporting
+        // it as absent would describe a project recording nothing as a fresh
+        // one. The two refusals that reach here (a path that is not a regular
+        // file, and one past the read cap) never resolve on their own, so the
+        // gate records nothing until someone removes the file: it is worth
+        // naming, exactly as reportCheckpoint names its own illegible case.
+        process.stdout.write('the compaction gate state file is present but unreadable, so the gate is'
+            + ' recording nothing; removing .kit/compact-gate.json lets the next decision rebuild it\n');
+        return;
+    }
+    const state = result.state;
+    const last = state && state.lastDecision;
+    if (!last) {
+        process.stdout.write('the compaction gate has recorded no decisions in this project\n');
+    } else {
+        // File-derived values print indented, never at column zero (see cmdOpen).
+        let line = '  last compaction gate decision: ' + sanitize(last.verdict);
+        if (last.reason) line += ' (' + sanitize(last.reason) + ')';
+        const age = wholeMinutesSince(last.at);
+        if (age !== null) line += ', ' + age + (age === 1 ? ' minute ago' : ' minutes ago');
+        process.stdout.write(line + '\n');
+    }
+
+    const phrase = episodePhrase(gateEpisodeOpen(state));
+    process.stdout.write(phrase === null
+        ? 'no deferral episode is open\n'
+        : '  the compaction gate has ' + phrase + ' since this deferral episode opened\n');
+}
+
+function cmdStatus() {
+    const cwd = process.cwd();
+    reportCheckpoint(cwd);
+    reportGateState(cwd);
     process.exitCode = 0;
 }
 

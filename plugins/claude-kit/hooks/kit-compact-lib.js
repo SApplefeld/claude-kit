@@ -12,6 +12,11 @@
 // (checkpointMatches, with its age constants) here is what keeps the writer,
 // the gate, and the status report from drifting apart.
 //
+// The gate's decision record (.kit/compact-gate.json and its .jsonl log) is
+// here for the same single-sourcing reason: the gate writes it and the
+// checkpoint CLI's status report reads it, so its paths and its shape belong in
+// one place.
+//
 // The transcript helpers (readTranscriptCapped, stripLocalCommandOutput, and
 // the automation detection) live here for the same reason: the goal-leash Stop
 // hook (kit-goal-stop.js) and the PreCompact gate both read transcript text
@@ -27,6 +32,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { normalizePlanArg } = require('./kit-goal-lib.js');
 
 // Path to the checkpoint file for a given repo root.
@@ -153,9 +159,19 @@ function readCheckpoint(cwd) {
 // length, no control characters); null is stored as null (an unbound goal),
 // which the gate likewise never matches.
 //
-// The tmp name carries this process's pid so two writers never collide on the
-// same tmp path, and a failed rename unlinks its tmp so orphans do not
-// accumulate in .kit/.
+// The tmp name is unique per writer and unpredictable (see atomicTmpPath), and
+// a failed rename unlinks its tmp so orphans do not accumulate in .kit/.
+// The temporary path an atomic write renames from, shared by every writer in
+// this file. The pid keeps two writers off one name; the random suffix keeps
+// the name from being predictable, because a link pre-planted at a guessable
+// tmp path would be followed by the write that creates it. The exclusive flag
+// each caller passes at the open is the actual defense (a pre-planted path
+// fails the create outright); the unguessable name is what keeps an attacker
+// from winning that race repeatedly.
+function atomicTmpPath(target) {
+    return target + '.tmp.' + process.pid + '.' + crypto.randomBytes(6).toString('hex');
+}
+
 function writeCheckpoint(cwd, planRel, boundSession) {
     const normalized = normalizePlanArg(cwd, planRel);
     if (normalized === null) {
@@ -173,9 +189,9 @@ function writeCheckpoint(cwd, planRel, boundSession) {
     const state = { plan: normalized, boundSession: session, openedAt: new Date().toISOString() };
     try {
         fs.mkdirSync(path.dirname(cp), { recursive: true });
-        const tmp = cp + '.tmp.' + process.pid;
+        const tmp = atomicTmpPath(cp);
         try {
-            fs.writeFileSync(tmp, JSON.stringify(state, null, 2) + '\n', 'utf8');
+            fs.writeFileSync(tmp, JSON.stringify(state, null, 2) + '\n', { encoding: 'utf8', flag: 'wx' });
             fs.renameSync(tmp, cp);
         } catch (err) {
             try { fs.unlinkSync(tmp); } catch { /* nothing to remove, or it is the unwritable path itself */ }
@@ -207,6 +223,674 @@ function clearCheckpoint(cwd) {
             cleared: false,
             reason: 'could not clear checkpoint: ' + (err && err.message ? err.message : String(err))
         };
+    }
+}
+
+// ---------------------------------------------------------------------------
+// The gate's decision record.
+//
+// The PreCompact gate takes a verdict on every auto-compaction offer and, until
+// it writes one down, leaves no trace: a run held for a whole section, a
+// checkpoint that expired seconds before the agent returned, and a safety-valve
+// fire are indistinguishable afterwards. Two project-local files under .kit/
+// carry that record. The STATE (compact-gate.json) is the newest decision plus
+// the deferral episode currently standing, read by the checkpoint CLI's status
+// report; it is rewritten in place, so it stays one small file. The LOG (compact-gate.jsonl) is append-only, one JSON line per
+// decision, and is what an operator reads to answer "how often, and why" across
+// a whole run.
+//
+// Both are written after the verdict is already announced (the gate sets its
+// exit code and writes its note first) and neither can change it:
+// recordGateDecision swallows every failure and returns nothing a caller could
+// branch on, so a full disk or a read-only .kit degrades to a gate that decides
+// exactly as it did before, silently. That asymmetry is deliberate. The record
+// is diagnostic; the verdict is the product. The ordering matters as much as
+// the swallowing: a path that could block (a FIFO planted at either file)
+// cannot delay a verdict that has already been emitted.
+//
+// The record is written only in a project that is ALREADY kit-governed: an
+// existing .kit/ directory is the precondition, and neither the directory nor
+// its parents are ever created here. The gate runs on every auto-compaction
+// offer on the machine, including in repositories that have nothing to do with
+// the kit, and creating an untracked directory of session ids and token
+// readings in someone's unrelated checkout is a cost the diagnostic does not
+// earn. An armed project always has .kit/goal-state.json, so the record stays
+// complete exactly where the feature is for.
+//
+// Both files must be regular files, and .kit/ itself must be a real directory
+// rather than a link to one. A symlink, junction, or FIFO planted at any of the
+// three is refused rather than followed: appending through a link writes into
+// its target on every assistant turn, trimming through one lands a megabyte of
+// an arbitrary readable file inside .kit/, and a FIFO blocks a read or a write
+// forever where no try/catch can rescue it. Each check is an lstat, so a link
+// is judged as a link rather than as whatever it points at.
+//
+// A HARDLINK is the member of that class these checks admit: it is a regular
+// file and passes, so a hardlink planted at either path receives the record's
+// writes. That is left open on purpose, matching the posture the kit already
+// takes for its goal-event sink, and the exposure is bounded by what lands
+// there: this file's own JSON, in a project the actor can already write to.
+//
+// Those checks NARROW the window rather than closing it, the same honest
+// account readTranscriptCapped gives of its own isFile() check: the path is
+// re-resolved by the open that follows, so a swap landing between the two is
+// still possible. Closing it needs a single open plus an fstat on the
+// descriptor, a restructure this diagnostic does not earn, and what rides
+// through the residual window is well-formed JSON appended to a path the actor
+// already controls. The temporary files both writers rename through are created
+// exclusively (O_EXCL) under an unpredictable name, so the one path an attacker
+// could otherwise pre-plant is not guessable and would fail the open anyway.
+//
+// Every value stored here that came from outside (the harness's session id, the
+// checkpoint file's own contents, and a prior state file, which is user-writable
+// like every other file under .kit/) is rebuilt field by field on the way in and
+// on the way out, so neither a forged state file nor an odd payload can grow the
+// file without bound or push control characters into an operator's terminal.
+// ---------------------------------------------------------------------------
+
+// Path to the gate's decision state for a given repo root.
+function gateStatePath(cwd) {
+    return path.join(cwd, '.kit', 'compact-gate.json');
+}
+
+// Path to the gate's append-only decision log for a given repo root.
+function gateLogPath(cwd) {
+    return path.join(cwd, '.kit', 'compact-gate.jsonl');
+}
+
+// The log's bound. A decision line runs a few hundred bytes and the gate fires
+// at most once per assistant turn, so 2 MB is months of dense use; past it the
+// writer keeps the newest 1 MB and drops the rest. Trimming to half the cap
+// rather than to the cap itself is what keeps the rewrite rare: at a 1-byte
+// margin every subsequent append would rewrite the whole file.
+const GATE_LOG_MAX_BYTES = 2 * 1024 * 1024;
+const GATE_LOG_KEEP_BYTES = 1 * 1024 * 1024;
+
+// How long a deferral episode stands without a new denial before a reader
+// treats it as finished rather than as the hold currently in force.
+//
+// The episode's whole claim is about right now: "the gate is holding offers,
+// and has been for M minutes" is what makes an operator or a nudge act. Nothing
+// on disk marks the end of one, because the events that end an episode without
+// an allow reaching this file leave no trace to write: a manual /compact (the
+// PreCompact matcher is auto-only, so the gate never runs), a session that
+// simply ends, an offer that never comes again. So the newest denial's age is
+// the only evidence of whether the hold is still real, and past this window the
+// count is history rather than state.
+//
+// The floor is the longest gap there can be between two denials of one genuine
+// episode, which is one assistant turn, which is the longest tool call a
+// session makes: dispatched implementer and reviewer runs have been measured at
+// 22, 27, 67 and 73 minutes. Four hours clears the longest of those by better
+// than three times, so no real hold is ever cut short. The ceiling is that a
+// count must not survive a break long enough to make it a different working
+// session: four hours does not survive a night, a morning off, or a day spent
+// in another project, which is where a stale "held 16 offers over 1387 minutes"
+// would read as a missed boundary and push an operator into forcing a
+// checkpoint open mid-chapter, the exact mis-scheduling the gate exists to
+// prevent. This is deliberately not CHECKPOINT_MAX_AGE_MS: that bound answers
+// how long a declared boundary stays honorable, a different question.
+const GATE_EPISODE_MAX_IDLE_MS = 4 * 60 * 60 * 1000;
+
+// The verdicts a record may carry, and the only values recordGateDecision
+// accepts: an unrecognized verdict is not written at all, because a state file
+// the CLI and the nudge read has to be legible to both.
+const GATE_VERDICTS = ['allow', 'deny-boundary', 'deny-interactive'];
+
+// The reasons a record may carry: the gate clause that decided, plus the
+// checkpoint match rule's own codes, which are what a boundary deny reports.
+// The vocabulary is closed and this library is the only thing that writes it,
+// so a value outside it came from a hand-edited state file rather than from the
+// gate. Reason reaches the CLI's status report, a channel a model reads, and
+// the charset and length caps alone would let arbitrary prose through; checking
+// the value against the list it is drawn from costs nothing and bounds it to
+// this file's own words.
+const GATE_REASONS = [
+    'not-auto', 'external-engine', 'no-session', 'no-goal', 'bystander',
+    'automation', 'checkpoint', 'valve', 'illegible',
+    'no-checkpoint', 'wrong-plan', 'wrong-session', 'no-timestamp', 'expired', 'future'
+];
+
+// A string safe to store and to print back: printable ASCII, length-capped,
+// null for anything else (an empty string included, which reads as absent
+// everywhere here). Applied to every string field on the way in and again on
+// the way out, so a state file hand-edited between the two still cannot carry
+// control characters into a terminal or megabytes into the next write.
+function gateText(value) {
+    if (typeof value !== 'string') return null;
+    const clean = value.replace(/[^\x20-\x7E]/g, '').slice(0, 128);
+    return clean === '' ? null : clean;
+}
+
+// A count safe to store and to print back: a non-negative integer, clamped.
+// The clamp is what keeps the "two integers and nothing else" bound the stderr
+// note and the status report claim: a planted denials of 1e308 is a finite
+// number, and JavaScript renders it as "1e+308", which is neither an integer
+// nor anything an operator can read as a count of offers. A billion is past
+// every real reading (offers are counted per assistant turn, tokens per
+// context) and still renders in full digits.
+const GATE_COUNT_MAX = 1000000000;
+
+function gateCount(value) {
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return null;
+    return Math.min(Math.floor(value), GATE_COUNT_MAX);
+}
+
+// Rebuild a decision record from an arbitrary object, or null when it is not
+// one. The shape is the whole contract between the gate (writer) and the CLI
+// and nudge (readers): `at` when it was taken, `verdict`, `reason` naming the
+// clause that decided, `consumed` the token reading behind it or null,
+// `checkpoint` the facts of the checkpoint file that was on disk or null, and
+// `session` the harness's id for the compacting session.
+function gateRecord(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    if (!GATE_VERDICTS.includes(value.verdict)) return null;
+    let checkpoint = null;
+    const cp = value.checkpoint;
+    if (cp && typeof cp === 'object' && !Array.isArray(cp)) {
+        checkpoint = {
+            ageSeconds: (typeof cp.ageSeconds === 'number' && Number.isFinite(cp.ageSeconds))
+                ? Math.round(cp.ageSeconds) : null,
+            pendingOffer: cp.pendingOffer === true
+        };
+    }
+    const reason = gateText(value.reason);
+    return {
+        at: gateText(value.at),
+        verdict: value.verdict,
+        reason: GATE_REASONS.includes(reason) ? reason : null,
+        consumed: gateCount(value.consumed),
+        checkpoint,
+        session: gateText(value.session)
+    };
+}
+
+// Rebuild a deferral episode: the run of denials standing with no allow after
+// it. `session` is the session being held, `since` dates the first denial,
+// `denials` counts them, `lastDeniedAt` dates the newest, and `nudgedAt` is when
+// the deferral nudge last spoke, so it can hold its interval across processes.
+//
+// Null unless the episode is genuinely open, which means every field an episode
+// is read FOR is legible: an owning session, a count of at least one, and two
+// timestamps that parse. A half-written or hand-edited record ({} being the
+// easy case) reads as no episode rather than as an open one holding zero offers
+// since no time at all, so no consumer has to re-derive openness with a guard
+// of its own.
+//
+// The session requirement is what keeps an unownable episode off the disk: every
+// writer here records one, so a record without it is hand-made or from an older
+// version, and honoring it would let a record nobody can clear hold the single
+// slot for its whole idle window.
+//
+// nothing writes nudgedAt today. It is carried through every rebuild so that a
+// writer has one place to land.
+function gateEpisode(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const session = gateText(value.session);
+    const since = gateText(value.since);
+    const lastDeniedAt = gateText(value.lastDeniedAt);
+    const denials = gateCount(value.denials) || 0;
+    if (!session) return null;
+    if (denials < 1) return null;
+    if (!since || !Number.isFinite(Date.parse(since))) return null;
+    if (!lastDeniedAt || !Number.isFinite(Date.parse(lastDeniedAt))) return null;
+    return {
+        session,
+        since,
+        denials,
+        lastDeniedAt,
+        nudgedAt: gateText(value.nudgedAt)
+    };
+}
+
+// The deferral episode a state has open RIGHT NOW, or null: the one predicate
+// for that question, so no reader has to re-derive it. Its readers are the
+// gate's stderr note and the checkpoint CLI's status report. An episode whose
+// newest denial has aged past GATE_EPISODE_MAX_IDLE_MS is finished, not open.
+// nowMs exists so a caller can pin the clock; an absent or illegible value
+// means the current time.
+//
+// sessionId is optional and answers a different question than omitting it does.
+// Supplied, an episode belonging to any other session reads as NOT open, which
+// is what every decision-shaped question wants: one session must never act on
+// a hold another session is under. Omitted, any open episode counts, which is
+// what a human reading `status` wants, since the question there is whether this
+// project is holding offers at all. An explicit null is a session id that
+// exists and matches nothing, not an omission: a decision carrying no session
+// id can own no episode.
+//
+// The gate's note supplies the deciding session's id; status omits it. A caller
+// asking whether to act on a hold supplies one, and an unbound goal supplies an
+// explicit null, which matches nothing.
+function gateEpisodeOpen(state, nowMs, sessionId) {
+    const episode = state ? gateEpisode(state.episode) : null;
+    if (!episode) return null;
+    const now = (typeof nowMs === 'number' && Number.isFinite(nowMs)) ? nowMs : Date.now();
+    const last = Date.parse(episode.lastDeniedAt);
+    if (now - last > GATE_EPISODE_MAX_IDLE_MS) return null;
+    // The other direction needs a bound too, and for the reason the checkpoint
+    // rule already states: a denial dated into the future (a hand-edited file, a
+    // restored VM snapshot, a backward clock correction) has a negative age that
+    // no idle bound can ever exceed, so the episode would stand forever while
+    // reporting itself as zero minutes old. The same skew allowance the
+    // checkpoint uses applies here, rather than a second constant answering the
+    // same question.
+    if (last - now > CHECKPOINT_FUTURE_SKEW_MS) return null;
+    if (sessionId !== undefined && !sameSessionId(episode.session, sessionId)) return null;
+    return episode;
+}
+
+// Whole minutes between an ISO timestamp and now, or null when it does not
+// parse. Negative ages (a clock adjustment, a hand-edited file) floor at zero:
+// every surface that reports one states it as an elapsed duration, and a
+// negative duration is not a thing an operator can act on.
+function wholeMinutesSince(iso, nowMs) {
+    const at = typeof iso === 'string' ? Date.parse(iso) : NaN;
+    if (!Number.isFinite(at)) return null;
+    const now = (typeof nowMs === 'number' && Number.isFinite(nowMs)) ? nowMs : Date.now();
+    return Math.max(0, Math.floor((now - at) / 60000));
+}
+
+function countPhrase(n, singular) {
+    return n + ' ' + singular + (n === 1 ? '' : 's');
+}
+
+// "held 3 offers over 12 minutes": the count of offers held in this episode and
+// its age, as one phrase, single-sourced because two surfaces report the same
+// two integers (the gate's stderr note and the checkpoint CLI's status) and an
+// operator reading both should not have to reconcile two phrasings. Two integers and nothing else, which is what
+// keeps a user-writable state file off those channels. Null when the episode's
+// age cannot be read, so a caller says nothing rather than guessing.
+function episodePhrase(episode, nowMs) {
+    if (!episode) return null;
+    const minutes = wholeMinutesSince(episode.since, nowMs);
+    if (minutes === null) return null;
+    return 'held ' + countPhrase(episode.denials, 'offer') + ' over ' + countPhrase(minutes, 'minute');
+}
+
+// The state file's read cap. The writer produces a few hundred bytes and never
+// grows: it holds two records and one episode, each rebuilt field by field with
+// capped strings. Anything past a quarter megabyte is not something this wrote,
+// and reading it whole on a per-offer hook path is cost with nothing to gain.
+const GATE_STATE_MAX_BYTES = 256 * 1024;
+
+// Read the gate state, distinguishing a file that is not there from one that
+// cannot be read right now. Returns { ok, state }:
+//
+//   { ok: true,  state }        legible, rebuilt (state is null when the file is
+//                               absent, unparseable, or not an object: none of
+//                               those carries an episode to lose)
+//   { ok: false, state: null }  the answer is unknown, so no caller may act as
+//                               though the file were absent
+//
+// The distinction is load-bearing on the write path. A file locked by an
+// indexer or an antivirus scanner (EBUSY, EPERM) is not an absent file, and
+// treating it as one would rewrite a live episode as a fresh count of one,
+// destroying exactly the reading this record exists to produce. The gate's note
+// wants the same distinction: it says nothing rather than reporting a projected
+// count of one on the fiftieth deny of a section.
+//
+// The refusal legs come first and cover this file's own hazards: a non-regular
+// path (a FIFO here blocks the read forever, with no verdict emitted, since
+// every caller of this runs on the gate's critical path) and an oversized one.
+function readGateStateResult(cwd) {
+    const target = gateStatePath(cwd);
+    let st;
+    try {
+        st = fs.lstatSync(target);
+    } catch (err) {
+        if (err && err.code === 'ENOENT') return { ok: true, state: null };
+        return { ok: false, state: null };
+    }
+    if (!st.isFile() || st.size > GATE_STATE_MAX_BYTES) return { ok: false, state: null };
+    let raw;
+    try {
+        raw = fs.readFileSync(target, 'utf8');
+    } catch (err) {
+        if (err && err.code === 'ENOENT') return { ok: true, state: null };
+        return { ok: false, state: null };
+    }
+    let parsed;
+    try { parsed = JSON.parse(raw); } catch { return { ok: true, state: null }; }
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return { ok: true, state: null };
+    return {
+        ok: true,
+        state: {
+            lastDecision: gateRecord(parsed.lastDecision),
+            episode: gateEpisode(parsed.episode),
+            lastAllow: gateRecord(parsed.lastAllow)
+        }
+    };
+}
+
+// The gate state, or null when it is absent, refused, unreadable, or not JSON.
+// The reading surfaces take this shape because they act the same way on all
+// four: a null state and a state whose fields are null both mean no decision
+// recorded and no episode open. A caller that must not confuse "not there" with
+// "cannot tell" takes readGateStateResult instead.
+function readGateState(cwd) {
+    return readGateStateResult(cwd).state;
+}
+
+// The state that follows a prior state and a new record. Pure: it writes
+// nothing, so the gate can project the episode its note will report before it
+// attempts the write that stores it.
+//
+// The episode belongs to the LEASH, not to whichever session denied last, and
+// that is what makes one slot enough. The two deny classes have disjoint
+// producers: a boundary deny is reachable only behind the gate's own
+// armed-and-bound test (or the bind-claim that immediately follows it), so only
+// the bound session can produce one and it always carries a session id, while
+// an interactive deny is the only deny on the bystander and nothing-armed
+// fall-through. So:
+//
+//   deny-boundary     extends the standing episode when it owns it, and
+//                     otherwise opens a fresh one at one. Replacing a foreign
+//                     incumbent is right on this path rather than harmful: the
+//                     binding is exclusive, so a foreign owner here can only be
+//                     a dead binding (a crash, then a re-arm), never a rival.
+//   deny-interactive  records the decision and carries the standing episode
+//                     through untouched. A bystander, or a project with nothing
+//                     armed, never opens, extends, inflates, or destroys one.
+//   allow             clears the episode only when the allower owns it. An
+//                     allow lands a compaction in the allower's own context;
+//                     a bystander's compaction says nothing about the offers
+//                     the bound session is still being denied.
+//
+// A decision carrying no session id never opens or extends an episode. The
+// partition above makes that unreachable on the boundary path, and the rule
+// stays as a floor so no unownable record can reach the disk.
+//
+// What this costs, taken deliberately: an interactive hold has no episode
+// aggregate. In a project holding a hands-on session, status reports the last
+// decision's recency but no count and no duration, and says no episode is open.
+// The .jsonl log still carries every one of those denials.
+//
+// The one contention left: two sessions whose transcripts both claim the same
+// unbound goal (the superseded-arming window the gate's header documents) can
+// alternate boundary denies and reset each other's count. It is self-limiting,
+// because each offer re-reads the goal and whichever bind landed last takes the
+// boundary path; the tell is a note whose count never grows during a run you
+// believe is singly leashed. Every failure direction here is an UNDERCOUNT,
+// which degrades to the pre-plan status quo (a compaction landing mid-chapter),
+// never to a checkpoint honored longer than it should be.
+//
+// So an open episode means "this session has been denied, with no allow since,
+// recently", which is the pending-offer signal the checkpoint rule and the
+// nudge read: past the compaction trigger the harness re-offers every assistant
+// turn, so once a deny has landed the offers recur until one is allowed.
+function nextGateState(prior, record) {
+    const lastAllow = prior ? gateRecord(prior.lastAllow) : null;
+    const standing = gateEpisodeOpen(prior, Date.parse(record.at));
+    const mine = !!standing && sameSessionId(standing.session, record.session);
+    if (record.verdict === 'allow') {
+        return {
+            lastDecision: record,
+            episode: mine ? null : standing,
+            lastAllow: record
+        };
+    }
+    if (record.verdict === 'deny-boundary' && record.session) {
+        if (mine) {
+            return {
+                lastDecision: record,
+                episode: {
+                    session: standing.session,
+                    since: standing.since,
+                    denials: standing.denials + 1,
+                    lastDeniedAt: record.at,
+                    nudgedAt: standing.nudgedAt
+                },
+                lastAllow
+            };
+        }
+        return {
+            lastDecision: record,
+            episode: {
+                session: record.session,
+                since: record.at,
+                denials: 1,
+                lastDeniedAt: record.at,
+                nudgedAt: null
+            },
+            lastAllow
+        };
+    }
+    // An interactive deny, or the session-less boundary deny the partition
+    // makes unreachable: the decision is recorded and the slot is left alone.
+    return { lastDecision: record, episode: standing, lastAllow };
+}
+
+// The episode this decision's OWN session will stand under once the decision is
+// recorded, computed without writing anything. The gate's note has to report
+// the hold including the decision it is announcing, and it has to be composed
+// before the write is attempted, so a write that fails, or blocks, cannot make
+// the note report a prior state as if it were current.
+//
+// Null when there will be no open episode belonging to this session, and null
+// whenever the record cannot land at all (gateRecordTargets owns that whole
+// set: an unreadable state, a refused path, an unwritable file). Projecting
+// over a state that will never advance is what produces a fresh count of one on
+// the fiftieth deny of a section, a stuck number that reads exactly like the
+// mechanism working, and it puts two operator-facing surfaces in contradiction:
+// stderr claiming a hold that status says was never recorded.
+function projectGateEpisode(cwd, decision) {
+    try {
+        const record = gateRecord(decision);
+        if (!record) return null;
+        record.at = new Date().toISOString();
+        const targets = gateRecordTargets(cwd);
+        if (!targets.ok) return null;
+        const at = Date.parse(record.at);
+        return gateEpisodeOpen(nextGateState(targets.prior, record), at, record.session);
+    } catch {
+        return null;
+    }
+}
+
+// The size of the REGULAR file at this path: 0 when nothing is there, and null
+// when the path cannot be safely written through, either because something
+// other than a regular file is sitting on it (a symlink or junction, a
+// directory, a FIFO) or because its kind could not be determined at all. The
+// check is an lstat, so a link is judged as a link rather than as whatever it
+// points at.
+//
+// Only ENOENT reads as "nothing there, go ahead". Every other lstat failure
+// (EACCES, EPERM, EBUSY: a permission, a lock, a scanner holding the file) is
+// an unknown answer, and answering an unknown with the go-ahead value is the
+// mistake readGateStateResult exists to avoid. It matters concretely here:
+// endsOnLineBoundary reads this, and a zero from a transient failure would tell
+// it the log ends on a line boundary without a byte having been read, producing
+// exactly the fused record its guard exists to prevent.
+function regularFileSize(target) {
+    let st;
+    try {
+        st = fs.lstatSync(target);
+    } catch (err) {
+        return (err && err.code === 'ENOENT') ? 0 : null;
+    }
+    return st.isFile() ? st.size : null;
+}
+
+// Write JSON atomically (tmp file plus rename), on writeCheckpoint's discipline
+// and for the same reasons: a failed rename unlinks its tmp so orphans do not
+// accumulate in .kit/. The containing directory is a precondition, never
+// created here (see the section header). Throws on failure; the one caller
+// catches.
+function writeJsonAtomic(target, value) {
+    const tmp = atomicTmpPath(target);
+    try {
+        fs.writeFileSync(tmp, JSON.stringify(value, null, 2) + '\n', { encoding: 'utf8', flag: 'wx' });
+        fs.renameSync(tmp, target);
+    } catch (err) {
+        try { fs.unlinkSync(tmp); } catch { /* nothing to remove, or it is the unwritable path itself */ }
+        throw err;
+    }
+}
+
+// Read `length` bytes from `position`, looping until the buffer is full or the
+// file ends: a single readSync may legally return fewer bytes than asked for,
+// and treating a short read as the whole tail would cut the NEWEST line in half
+// and then append onto the fragment.
+function readFully(fd, position, length) {
+    const buf = Buffer.alloc(length);
+    let filled = 0;
+    while (filled < length) {
+        const n = fs.readSync(fd, buf, filled, length - filled, position + filled);
+        if (n <= 0) break;
+        filled += n;
+    }
+    return buf.toString('utf8', 0, filled);
+}
+
+// Rewrite the log to its newest GATE_LOG_KEEP_BYTES. The tail is taken at a
+// byte offset, which lands mid-line and possibly mid-character, so everything
+// up to and including the first newline is discarded: what survives is whole
+// lines only, which is what lets a reader parse every line it finds. The
+// rewrite goes through a tmp file and a rename, so a failure leaves the old log
+// intact rather than truncated.
+//
+// A rewrite that would keep NOTHING is refused: the file is left exactly as it
+// is. That is the degenerate case of a line longer than the keep bound, which
+// nothing here writes but a hand-edited or foreign file can hold, and it
+// arrives in two shapes: a tail with no line break in it at all, and one whose
+// only break is the terminator at its very end. Both would trade the whole log
+// for an empty file, and an oversized log is a far smaller problem than a
+// destroyed one. The append that follows still lands.
+function trimGateLog(logPath, size) {
+    const fd = fs.openSync(logPath, 'r');
+    let text;
+    try {
+        text = readFully(fd, size - GATE_LOG_KEEP_BYTES, GATE_LOG_KEEP_BYTES);
+    } finally {
+        try { fs.closeSync(fd); } catch { /* already closed */ }
+    }
+    const nl = text.indexOf('\n');
+    const kept = nl === -1 ? '' : text.slice(nl + 1);
+    if (kept === '') return;
+    const tmp = atomicTmpPath(logPath);
+    try {
+        fs.writeFileSync(tmp, kept, { encoding: 'utf8', flag: 'wx' });
+        fs.renameSync(tmp, logPath);
+    } catch (err) {
+        try { fs.unlinkSync(tmp); } catch { /* nothing to remove, or it is the unwritable path itself */ }
+        throw err;
+    }
+}
+
+// Is this path writable, or absent? Absent is fine: the write creates it. Any
+// other refusal (a read-only file, a permission, a lock) is not, and is the
+// case a caller must be able to see BEFORE it promises anything about a record
+// landing.
+function writableOrAbsent(target) {
+    try {
+        fs.accessSync(target, fs.constants.W_OK);
+        return true;
+    } catch (err) {
+        return !!(err && err.code === 'ENOENT');
+    }
+}
+
+// Everything that must hold before a decision can be recorded, in one place,
+// because two callers need the same answer: the writer, which refuses to write,
+// and the projection behind the gate's stderr note, which refuses to promise a
+// count that will never be stored. Split, they drift, and the drift has a
+// specific shape: the note reporting "held 1 offer over 0 minutes" on the fifth
+// deny and the five hundredth, because the state never advanced and each
+// projection re-derived the same first step from the same unchanged file. A
+// stuck number reads exactly like a mechanism working.
+//
+// Returns { ok:true, statePath, logPath, logSize, prior } or { ok:false }.
+//
+// It cannot promise the write will succeed, only that nothing already known
+// stops it: a disk that fills between here and the rename still throws, and
+// that residual is caught and swallowed like any other. What it does cover is
+// every condition that PERSISTS across offers, which is the set that turns one
+// wrong sentence into the same wrong sentence forever.
+function gateRecordTargets(cwd) {
+    try {
+        const kit = path.join(cwd, '.kit');
+        let dir;
+        try { dir = fs.lstatSync(kit); } catch { return { ok: false }; }
+        if (!dir.isDirectory() || !writableOrAbsent(kit)) return { ok: false };
+        const statePath = gateStatePath(cwd);
+        const logPath = gateLogPath(cwd);
+        if (regularFileSize(statePath) === null || !writableOrAbsent(statePath)) return { ok: false };
+        const logSize = regularFileSize(logPath);
+        if (logSize === null || !writableOrAbsent(logPath)) return { ok: false };
+        const prior = readGateStateResult(cwd);
+        if (!prior.ok) return { ok: false };
+        return { ok: true, statePath, logPath, logSize, prior: prior.state };
+    } catch {
+        return { ok: false };
+    }
+}
+
+// Record one gate decision: rewrite the state and append one line to the log.
+//
+// Returns nothing, and that is the design rather than an omission. The gate
+// calls this once its verdict is already announced, and a caller able to see
+// whether the write landed is a caller able to decide differently because of
+// it; the record must never be in a position to move a compaction. Every
+// failure is swallowed for the same reason, so an unwritable .kit/ leaves the
+// verdict, the exit code, and the stderr note exactly as they would have been.
+//
+// Every refusal is gateRecordTargets', shared with the projection behind the
+// gate's note so the two cannot disagree about whether a record can land.
+//
+// The state is authoritative and the log is the journal. The state is written
+// first, and a refusal or a failure there abandons the line too, so the log
+// never counts a denial the state does not know about. The reverse is NOT
+// guarded: once the state has advanced, a throw from the trim or the append
+// loses that line, so the log can undercount what the state has counted. That
+// asymmetry is deliberate, and this is the direction to prefer, because an
+// operator reading the log to answer "how often" can survive a missing line,
+// while a state that disagrees with its own journal about an open episode is
+// what every consumer decides from.
+//
+// Concurrency: two gate processes in one project both read a count and both
+// write its successor, so a denial can be lost from the count as well as from
+// the log. There is no lock. The single-writer reality (one bound session
+// producing boundary denies) makes it rare, the failure is an undercount, and a
+// diagnostic does not earn a lock file.
+function recordGateDecision(cwd, decision) {
+    try {
+        const record = gateRecord(decision);
+        if (!record) return;
+        // The writer stamps the time, never the caller: `at` is what every age
+        // in the status report and the deferral note is measured from, so it
+        // has to come from one clock rather than from a value passed in.
+        record.at = new Date().toISOString();
+
+        const targets = gateRecordTargets(cwd);
+        if (!targets.ok) return;
+        const { statePath, logPath, logSize, prior } = targets;
+
+        writeJsonAtomic(statePath, nextGateState(prior, record));
+        if (logSize > GATE_LOG_MAX_BYTES) trimGateLog(logPath, logSize);
+        // One append of one line: a line is written whole or not at all, so a
+        // reader never meets a half-written record. A log that does not already
+        // end on a line boundary (hand-edited, or truncated by a crash) gets the
+        // break first, so the append cannot fuse two records into one line that
+        // parses as neither.
+        const prefix = endsOnLineBoundary(logPath) ? '' : '\n';
+        fs.appendFileSync(logPath, prefix + JSON.stringify(record) + '\n', 'utf8');
+    } catch { /* diagnostic only: a decision that cannot be recorded is still taken */ }
+}
+
+// Does this file end on a line boundary? True for an empty or absent file,
+// which needs no separator. Reads the final byte alone: the answer is one byte
+// long and the file can be megabytes.
+function endsOnLineBoundary(target) {
+    const size = regularFileSize(target);
+    if (size === null || size === 0) return true;
+    const fd = fs.openSync(target, 'r');
+    try {
+        const buf = Buffer.alloc(1);
+        const read = fs.readSync(fd, buf, 0, 1, size - 1);
+        return read !== 1 || buf[0] === 0x0A;
+    } finally {
+        try { fs.closeSync(fd); } catch { /* already closed */ }
     }
 }
 
@@ -728,6 +1412,8 @@ module.exports = {
     checkpointPath, readCheckpoint, writeCheckpoint, clearCheckpoint,
     checkpointMatches, sameSessionId,
     CHECKPOINT_MAX_AGE_MS, CHECKPOINT_FUTURE_SKEW_MS,
+    gateStatePath, gateLogPath, readGateState, readGateStateResult, recordGateDecision,
+    gateEpisodeOpen, projectGateEpisode, episodePhrase, wholeMinutesSince,
     readTranscriptCapped, stripLocalCommandOutput, commandArgsSpans,
     userCommandArgsClaimPlan,
     automationInEffect, transcriptShowsAutomation

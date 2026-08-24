@@ -37,7 +37,23 @@
 // it out of a model's context is to print none of it. Each deny path writes
 // its own string to stderr, carrying no data from any input (the one composed
 // value is this hook's own install directory, see CHECKPOINT_CLI), distinct
-// per deferral kind so a transcript reader can tell which one fired.
+// per deferral kind so a transcript reader can tell which one fired. The
+// boundary note also carries two integers off the gate's own decision state,
+// the count of offers held in this deferral episode and its age in whole
+// minutes; integers only, so a hand-edited state file has no string it can put
+// on that channel.
+//
+// Every verdict is recorded, after the fact and never affecting it: a state
+// file and an append-only log under the project's .kit/, both owned by
+// kit-compact-lib.js (recordGateDecision). Without them a deferral leaves no
+// trace at all, so a run held for a whole section, a checkpoint that expired
+// seconds before its offer arrived, and a valve fire are indistinguishable
+// afterwards, and "this keeps happening" cannot be measured. The write is the
+// last thing the entry point below does, in its own try and returning nothing,
+// so no failure in it can change a verdict or an exit code; what keeps it from
+// DELAYING one is that every path it touches is refused unless it is a regular
+// file (a blocking read or write is the only way a diagnostic could wedge a
+// run, and the entry point below says where that guard sits).
 //
 // The gate is a three-state classifier evaluated per offer, cheapest check
 // first, with two deny states. The BOUNDARY deny holds an armed-and-bound
@@ -159,7 +175,8 @@ const fs = require('fs');
 const { readGoal, bindSession } = require('./kit-goal-lib.js');
 const {
     readCheckpoint, clearCheckpoint, checkpointMatches, sameSessionId,
-    transcriptShowsAutomation, userCommandArgsClaimPlan
+    transcriptShowsAutomation, userCommandArgsClaimPlan,
+    recordGateDecision, projectGateEpisode, episodePhrase
 } = require('./kit-compact-lib.js');
 
 // The deferral ceiling, in consumed tokens, shared by both deny paths: the
@@ -357,36 +374,84 @@ function latestConsumedTokens(transcriptPath) {
 // Clause 6: the safety valve. Illegible reads allow rather than denying blind.
 function boundaryVerdict(cwd, goal, transcriptPath) {
     const cp = readCheckpoint(cwd);
-    if (checkpointMatches(cp, goal, Date.now()).ok) {
+    const checkpoint = checkpointFacts(cp);
+    const match = checkpointMatches(cp, goal, Date.now());
+    if (match.ok) {
         clearCheckpoint(cwd); // best-effort: a failed delete degrades to an open gate, never a wedged run
-        return 'allow';
+        return { verdict: 'allow', reason: 'checkpoint', checkpoint };
     }
 
     const consumed = latestConsumedTokens(transcriptPath);
-    if (consumed === null || consumed >= SAFETY_CEILING_TOKENS) return 'allow';
+    if (consumed === null) return { verdict: 'allow', reason: 'illegible', consumed: null, checkpoint };
+    if (consumed >= SAFETY_CEILING_TOKENS) return { verdict: 'allow', reason: 'valve', consumed, checkpoint };
 
-    return 'deny-boundary';
+    // The deny's reason is the checkpoint rule's own verdict on whatever was on
+    // disk ('no-checkpoint' for the ordinary mid-chapter case, 'expired' for a
+    // boundary whose offer arrived too late, and so on), which is what makes a
+    // run of denials in the log readable after the fact.
+    return { verdict: 'deny-boundary', reason: match.reason, consumed, checkpoint };
 }
 
-// Decide the verdict: 'allow', 'deny-boundary' (the armed-and-bound run held
-// mid-chapter), or 'deny-interactive' (a hands-on session held below the
-// ceiling). The clauses run cheapest first (see the header for why each
-// exists), and only the checkpoint-driven allow consumes the checkpoint.
-// Never throws on its own account; the entry-point wrapper turns any escape,
-// including an unrecognized return value, into an allow.
+// What the decision record keeps about the checkpoint file that was on disk:
+// how old it was, and whether it claims to have been opened while an offer was
+// already pending. Null when no legible record was there at all. The values are
+// recorded, never acted on; the match rule alone decides.
+//
+// Nothing writes pendingOffer yet: writeCheckpoint stores plan, boundSession
+// and openedAt, so the field is absent on every checkpoint the kit produces
+// today and reads false. It is read here so that the record shows which kind of
+// boundary a deny met once the checkpoint CLI starts setting it.
+function checkpointFacts(cp) {
+    if (!cp || typeof cp !== 'object' || Array.isArray(cp)) return null;
+    const opened = typeof cp.openedAt === 'string' ? Date.parse(cp.openedAt) : NaN;
+    return {
+        ageSeconds: Number.isFinite(opened) ? Math.round((Date.now() - opened) / 1000) : null,
+        pendingOffer: cp.pendingOffer === true
+    };
+}
+
+// Decide the verdict, as a decision object: `verdict` is 'allow',
+// 'deny-boundary' (the armed-and-bound run held mid-chapter) or
+// 'deny-interactive' (a hands-on session held below the ceiling), `reason`
+// names the clause that decided, and `cwd`, `session`, `consumed` and
+// `checkpoint` carry what that clause read. The clauses run cheapest first (see
+// the header for why each exists), and only the checkpoint-driven allow
+// consumes the checkpoint.
+//
+// The reason and the readings exist for the decision record alone: nothing here
+// branches on them, and the entry-point wrapper reads `verdict` and nothing
+// else to pick the exit code. Never throws on its own account; that wrapper
+// turns any escape, and any return value it does not recognize, into an allow.
 function main() {
     let payload;
-    try { payload = JSON.parse(readStdin() || '{}'); } catch { return 'allow'; }
-    if (!payload || typeof payload !== 'object') return 'allow';
-
-    // Clause 1: only the auto trigger is ever gated.
-    if (payload.trigger !== 'auto') return 'allow';
-
-    // Clause 2: external-engine workers are fresh per section; stand down.
-    if (process.env.KIT_EXTERNAL_ENGINE === '1') return 'allow';
+    try { payload = JSON.parse(readStdin() || '{}'); } catch { return { verdict: 'allow' }; }
+    if (!payload || typeof payload !== 'object') return { verdict: 'allow' };
 
     const cwd = payload.cwd || process.cwd();
     const transcriptPath = payload.transcript_path || payload.transcriptPath;
+    const sessionId = payload.session_id || payload.sessionId;
+    // The project the decision is RECORDED against is the payload's cwd alone,
+    // never the fallback the clauses read from. A payload that does not parse,
+    // or that omits its cwd, names no project: recording under process.cwd()
+    // would scatter records into whatever directory the harness happened to
+    // spawn this hook from. A decision carrying no cwd is simply not recorded,
+    // and the clauses below still read the fallback, so no verdict changes.
+    const recordCwd = (typeof payload.cwd === 'string' && payload.cwd !== '') ? payload.cwd : null;
+    // Every decision below carries the project and the session it was taken
+    // for, which is what the record is keyed on; the clause supplies the rest.
+    function decide(clause) {
+        return {
+            reason: null, consumed: null, checkpoint: null,
+            cwd: recordCwd, session: sessionId,
+            ...clause
+        };
+    }
+
+    // Clause 1: only the auto trigger is ever gated.
+    if (payload.trigger !== 'auto') return decide({ verdict: 'allow', reason: 'not-auto' });
+
+    // Clause 2: external-engine workers are fresh per section; stand down.
+    if (process.env.KIT_EXTERNAL_ENGINE === '1') return decide({ verdict: 'allow', reason: 'external-engine' });
 
     // Clauses 3 and 4: an armed goal held by THIS session, whether already
     // bound to it or claimed here from its transcript, takes the
@@ -395,7 +460,6 @@ function main() {
     // goal at all, falls through to the interactive path.
     const goal = readGoal(cwd);
     const armed = !!(goal && typeof goal.plan === 'string' && goal.plan !== '');
-    const sessionId = payload.session_id || payload.sessionId;
     // An armed goal beside a payload carrying no session id is ambiguous: the
     // harness normally always sends session_id, so its absence is an anomaly,
     // not evidence of a bystander, and the offer may belong to the bound
@@ -404,9 +468,9 @@ function main() {
     // reach the checkpoint compare only through a String() coercion, so the
     // shape is checked here rather than relied on downstream. Ambiguity
     // allows rather than risking an interactive deny against the bound run.
-    if (armed && (typeof sessionId !== 'string' || !sessionId)) return 'allow';
+    if (armed && (typeof sessionId !== 'string' || !sessionId)) return decide({ verdict: 'allow', reason: 'no-session' });
     if (armed && sameSessionId(goal.boundSession, sessionId)) {
-        return boundaryVerdict(cwd, goal, transcriptPath);
+        return decide(boundaryVerdict(cwd, goal, transcriptPath));
     }
     // An unbound goal whose arming command this session's transcript shows the
     // user typing is this run: claim the binding now, so the gate reaches a
@@ -418,7 +482,7 @@ function main() {
     if (armed && !goal.boundSession && userCommandArgsClaimPlan(transcriptPath, goal.plan)) {
         bindSession(cwd, sessionId, transcriptPath);
         goal.boundSession = sessionId;
-        return boundaryVerdict(cwd, goal, transcriptPath);
+        return decide(boundaryVerdict(cwd, goal, transcriptPath));
     }
 
     // The interactive path (see the header): no kit goal covers this session,
@@ -427,10 +491,14 @@ function main() {
     // governs. Neither instrument in effect: a hands-on session, deferred to
     // the same ceiling the valve enforces, under the same illegible-reading
     // allow. No checkpoint is touched on this path.
-    if (transcriptShowsAutomation(transcriptPath)) return 'allow';
+    if (transcriptShowsAutomation(transcriptPath)) return decide({ verdict: 'allow', reason: 'automation' });
     const consumed = latestConsumedTokens(transcriptPath);
-    if (consumed === null || consumed >= SAFETY_CEILING_TOKENS) return 'allow';
-    return 'deny-interactive';
+    if (consumed === null) return decide({ verdict: 'allow', reason: 'illegible' });
+    if (consumed >= SAFETY_CEILING_TOKENS) return decide({ verdict: 'allow', reason: 'valve', consumed });
+    // The deny's reason is why this session took the interactive path at all:
+    // nothing is armed in the project, or what is armed belongs to another
+    // session. The two read very differently in a log.
+    return decide({ verdict: 'deny-interactive', reason: armed ? 'bystander' : 'no-goal', consumed });
 }
 
 // Run as the PreCompact hook only when invoked directly, so a require() of
@@ -466,22 +534,66 @@ const BOUNDARY_NOTE = 'kit-compact-gate: auto-compaction deferred to the next ch
     + 'wedged run. Repeating for many turns within one section is expected. If it is still firing after a '
     + 'Chapter has closed, the boundary checkpoint was likely never opened: prompt the session to close its '
     + 'boundary, or check yourself from the project directory with node "' + CHECKPOINT_CLI
-    + '" status and open one at a true boundary with node "' + CHECKPOINT_CLI + '" open.\n';
+    + '" status and open one at a true boundary with node "' + CHECKPOINT_CLI + '" open.';
 const INTERACTIVE_NOTE = 'kit-compact-gate: auto-compaction deferred to the context safety ceiling; '
-    + 'this is the kit holding compaction out of an interactive session, not an error. Keep working.\n';
+    + 'this is the kit holding compaction out of an interactive session, not an error. Keep working.';
+
+// How long the gate has been holding this run back, as a sentence for the
+// boundary note: the count of offers held and the whole minutes since the first
+// of them. That turns a note the operator has seen twenty times into a reading
+// they can act on ("this has been going for an hour" is a missed boundary; "two
+// offers over one minute" is the mechanism working).
+//
+// The figures come from projecting the state forward over this decision rather
+// than from re-reading the file, so the sentence reports the hold including the
+// deny it is announcing, and a write that fails or never runs cannot make it
+// report an older reading as if it were current.
+//
+// Two integers and nothing else, on the same provenance bound the notes
+// themselves hold: the state file is user-writable, so no string out of it ever
+// reaches stderr. No episode, or one whose age cannot be read, yields no
+// sentence rather than a guessed one.
+function episodeNote(cwd, decision) {
+    if (!cwd) return '';
+    const phrase = episodePhrase(projectGateEpisode(cwd, decision));
+    return phrase === null ? '' : ' The gate has ' + phrase + ' in this deferral episode.';
+}
 
 if (require.main === module) {
-    let verdict = 'allow';
-    try { verdict = main(); } catch { verdict = 'allow'; }
-    const note = verdict === 'deny-boundary' ? BOUNDARY_NOTE
-        : verdict === 'deny-interactive' ? INTERACTIVE_NOTE
-        : null;
+    let decision = null;
+    try { decision = main(); } catch { /* any escape allows, per the fail-open posture */ }
+    if (!decision || typeof decision !== 'object') decision = { verdict: 'allow' };
+
+    let note = null;
+    if (decision.verdict === 'deny-boundary') {
+        note = BOUNDARY_NOTE;
+        try { note += episodeNote(decision.cwd, decision); } catch { /* the figures are best-effort */ }
+    } else if (decision.verdict === 'deny-interactive') {
+        note = INTERACTIVE_NOTE;
+    }
     if (note) {
         try {
-            process.stderr.write(note);
+            process.stderr.write(note + '\n');
         } catch { /* the note is best-effort; the exit code is the verdict */ }
         process.exitCode = 2;
     } else {
         process.exitCode = 0;
+    }
+
+    // The record comes last, once the note has been written and the exit code
+    // set, so no failure of it can CHANGE either one; it runs inside its own
+    // try for the same reason, and a decision naming no project (an unreadable
+    // payload) is not recorded at all.
+    //
+    // Delaying is the part the ordering alone does not cover, for the note as
+    // much as for the exit code. Setting process.exitCode emits nothing (the
+    // harness reads the verdict only when this process exits), and the note is
+    // queued rather than guaranteed written: Node's stdio is synchronous for
+    // pipes on Windows and Linux but asynchronous for pipes on macOS and for
+    // TTYs on Windows, so on those it drains at exit alongside the exit code.
+    // What rules out a delay to either is that every path the record touches is
+    // lstat-refused unless it is a regular file.
+    if (typeof decision.cwd === 'string' && decision.cwd !== '') {
+        try { recordGateDecision(decision.cwd, decision); } catch { /* diagnostic only */ }
     }
 }
