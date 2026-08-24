@@ -46,6 +46,12 @@ Read on 2026-08-23 at `1b6ce4b`:
 - The diagnosing session's report, relayed by the operator on 2026-08-23: measured step durations 22, 27, 67 and 73 minutes; three adjudications with no board; an earlier compaction had truncated the executing-work body mid-step-1; the cause ranking above. Its Avenue 2 (a correctly opened checkpoint expiring before the next agent returns) was inferred from the constant, not observed, because nothing records an expiry; Section 1 is what makes it observable.
 - The kit's suite: `node --test test/*.test.js`, zero-fail on an idle box except one intermittent memq-shim test, about four minutes (project memory); `test/kit-compact-gate.test.js` holds 106 cases on a spawned-child harness with a temp repo per case.
 
+## Standing Brief Amendments
+
+Binding on every section opened after the amendment, dispatched or inline. Added mid-run and recorded as the approval drift they are.
+
+- **A doc, README or inventory line that states a rate, frequency or bound quotes the code's own stated bound rather than paraphrasing it (added 2026-08-24, from Section 3's rounds 2 and 3).** Two rounds running, all three lenses caught `README.md`'s hook inventory line promising a bound the hook does not hold: first "once per deferral episode" against a hook that re-fires every 30 minutes, then "at most once every 30 minutes" against a hook whose own header says the guarantee is once per interval *per tool batch*, because parallel returns all read the rate-limit field before any of them writes it. The class is not carelessness: the summary line gets written from what the feature is for, and drifts to the more flattering claim each time it is rewritten. So the rule is mechanical rather than a call for care. Find the bound in the source, quote its qualifiers, and where the qualifier will not fit the line, drop the frequency claim rather than shortening it into a promise.
+
 ## Sections of Work
 
 ### 1. The gate records every decision
@@ -114,11 +120,11 @@ Surfaced by Section 2's round-2 review and appended on 2026-08-24, so this secti
 
 `readGoal` (`hooks/kit-goal-lib.js`:122-129) is a bare `fs.readFileSync` with no `lstat`, no kind check, and no size cap, and `kit-compact-gate.js` calls it before both hardened readers on the pre-verdict path, so the blocking hazard Sections 1 and 2 closed in the gate state file and the checkpoint is still open one call upstream in the same hook. A non-regular file planted at `.kit/goal-state.json` blocks the PreCompact hook inside `readFileSync` with no verdict emitted, which is the wedged-run outcome the gate's whole design refuses; `kit-goal-stop.js` reaches the same call while holding a stop. `writeState` (:138-152) composes a fully predictable `<path>.tmp.<pid>` and writes it with the default flag, which follows an existing link, one file away from the writers that use an exclusive-create flag and a random suffix precisely to close that.
 
-Give `readGoal` the same preamble the two hardened readers use, reusing the existing helpers rather than a second spelling, with a cap sized for a goal state file. Give `writeState` the exclusive-create flag and an unpredictable temp name, matching `writeCheckpoint`. Both are fail-open: a refused read yields the same null an absent file yields today, and a refused write returns the same `{ ok: false, reason }` shape.
+Give `readGoal` the same preamble the two hardened readers use, with a cap sized for a goal state file. The helpers are local copies in `kit-goal-lib.js` rather than imports: `kit-compact-lib.js` destructures `normalizePlanArg` from this module at load time, so the reverse require is a cycle that hands one module a half-built exports object depending on which hook is the entry point, and the three helpers are not exported in any case. The two spellings carry a mirror obligation stated at the local copies. Give `writeState` the exclusive-create flag and an unpredictable temp name, matching `writeCheckpoint`. Both are fail-open: a refused read yields the same null an absent file yields today, and a refused write returns the same `{ ok: false, reason }` shape.
 
 Tests, red first, in `test/kit-goal-lib.test.js`: a non-regular file at the goal state path reads as absent rather than blocking or throwing; an oversized one reads as absent; a valid state still round-trips; a link pre-planted at the temp path fails the write rather than being followed; the write's `{ ok: false, reason }` shape is unchanged on refusal. Where a kind cannot be staged on this box, say so and call it unproven rather than claiming coverage.
 
-Files in scope: `plugins/claude-kit/hooks/kit-goal-lib.js`, `test/kit-goal-lib.test.js`, `test/kit-goal-stop.test.js` (folded in during execution: its bind-write-failure helper forced its failure by pre-creating the deterministic `.tmp.<pid>` path, which the unpredictable temp name makes unnameable from the parent, so the helper was re-pointed at a writeFileSync-refusing preload mirroring the one already in that file).
+Files in scope: `plugins/claude-kit/hooks/kit-goal-lib.js`, `test/kit-goal-lib.test.js`, `plugins/claude-kit/scripts/kit-goal-statusline.js`, `test/kit-goal-statusline.test.js` (both folded in from this section's review: the status-line widget is a second reader of the same goal state file, taking the raw stored plan path to an unguarded read with no path re-validation, no kind check and no cap, and printing it unsanitized, which is a security Major and so is fixed before this section closes rather than parked), `plugins/claude-kit/hooks/kit-goal-stop.js` and `test/kit-goal-stop.test.js` (the hook folded in from this section's round-2 review: hardening `planHead` with an lstat made a non-regular plan path read as absent, while the hook's own `planFileIsGone` answers the same question with `fs.accessSync`, which follows links, so the two disagreed and the branch fell through to silence, leaving the leash armed while every stop was allowed; the pair is fixed together. The test file was folded in earlier during execution: its bind-write-failure helper forced its failure by pre-creating the deterministic `.tmp.<pid>` path, which the unpredictable temp name makes unnameable from the parent, so the helper was re-pointed at a writeFileSync-refusing preload mirroring the one already in that file).
 
 ## Related
 
@@ -258,3 +264,54 @@ The agent-identity key list is now spelled four times across `readonly-agent-gua
 - Section 3: await the fix round, re-run all six gates independently, capture the mutation evidence, then round 3 of review.
 - Section 6: await the review round, adjudicate, fix if needed, then close and commit **before** Section 3.
 - Section 4: not started, inline in the main thread, blocked behind both. Its two `SKILL.md` files are also a sibling session's dirty files, so its staging must re-read them immediately before `git add` and hold the add while they carry foreign content.
+
+### Interim board 2 - 2026-08-24
+
+Three further review-round adjudications (Section 3 round 3, Section 6 rounds 1 and 2) closed no section, so the state moves to the doc again.
+
+**Sections in flight**
+
+- **Section 3, the deferral nudge.** Three review rounds, all zero Criticals, density falling (adversarial 3M/8m, 3M/7m, 1M/5m; security 2M/6m, 0M/5m, 0M/6m; blind 5M/5m, 3M/6m, 2M/5m). Round-3 fixes landed; no fourth round, on the reasoning recorded below. Holds its commit until Section 6 lands.
+- **Section 6, the goal state reader and writer.** Two review rounds, both zero Criticals. In its round-2 fix round now.
+
+**Live dispatches**
+
+- Section 3's implementer has returned. It pinned the silent paths against a state write, corrected the gate journal's section header for its second record class and second writer, moved the temp cleanup off an errno onto the fact of creation, folded the decision fields into the compare-and-set fingerprint, and took eight further Minors.
+- `implementer-opus` on Section 6, working `.kit/orch-r7/s6-round2-fixes.md`: the `planHead` regression below, the status line's unsanitized second segment, the mirror obligation's other half, the quadratic plan parse, and eleven Minors.
+
+**Gate baseline**
+
+Whole repo, run by the orchestrator from node's own exit code rather than taken from any report: **30 suites, 1406 passing, 0 failing, every exit code 0.** Section 3's round-3 tree then measured compact-deferral-nudge 33/33, kit-compact-gate 166/166 and chapter-boundary-nudge 26/26, all exit 0.
+
+`hook-canary` is RED at 37/3 as this entry is written, and the cause is named rather than suspected: the suite's own assertion reads that the build stamp under `plugins/claude-kit/.claude-plugin/` is stale because hooks were edited after the last build. Two sections edited hook files in the same window and each rebuilds for itself, so the manifest describes one tree and the worktree is another. It is contention, not a regression, and the remedy is one build once the second section stops editing. Nothing may rebuild while that implementer is live, since it races its own build. Section 3 therefore stands verified on three of its four suites, with the canary owed a re-run after the next build.
+
+**Rulings and findings since Interim board 1**
+
+- **A hardening this run authorized silently disarmed the leash, and is being fixed at the pair.** Giving `planHead` the lstat preamble was right about the blocking hazard and wrong about its callers. `regularFileSize` is an lstat, so a link or directory at the armed plan path is refused and `planHead` reports the plan absent; the Stop hook's absent branch then asks `planFileIsGone`, which is `fs.accessSync` and follows links, so it succeeds and the branch falls through to silence. The goal stays armed while every stop is allowed, with no event, no block and a status line still showing the marker. Two functions answering the same question with different link semantics is why it hid. `plugins/claude-kit/hooks/kit-goal-stop.js` is folded into Section 6 so the pair is fixed together.
+- **A security Major widened Section 6 twice rather than being parked.** The status-line widget was a second, unhardened reader of the goal state, taking the raw stored plan path to an unguarded read and printing it unsanitized; the follow-up round found its other rendered segment escaping the sanitizer entirely with an unbounded digit run from the plan doc. A security finding of Major weight is fixed before its section closes whatever its scope, and that rule rather than convenience is what moved the file list.
+- **The mirror obligation between the two atomic writers proved itself.** Both copies gated their temp cleanup on an EEXIST errno; the reviewers showed that infers "this process did not create the file" from a code that also covers post-create failures. One copy moved to a created-flag gate while the other section's review was still running, and the review of the second copy caught the divergence by reading the obligation. Both now gate on the fact of creation.
+- **A false rate claim recurred, so the generator was fixed rather than the line.** `README.md`'s hook inventory line promised a bound the hook does not hold, twice, in successive rounds and with a different wrong bound each time. The `## Standing Brief Amendments` block above `## Sections of Work` now carries the rule that a stated rate quotes the code's own bound with its qualifier, and drops the frequency claim rather than shortening it where the qualifier will not fit.
+- **The plan-doc parse is quadratic in chapters times sections**, measured at 1881 ms on a 1 MB document, in a widget the harness respawns continuously from repo-carried data. The byte cap this run added bounds the read and not the work, so the parse is being indexed rather than the cap re-tuned.
+- **An orchestrator dispatch leaked intent into a blind review brief.** A fourth "standing property" opened "One more, specific to this diff", which fails the blind lens's own property test on its face (would this sentence read identically for every diff in this repository?). The reviewer flagged it and located the subject independently, so the round stands, but the brief should not have carried it.
+
+**Scope changes since Interim board 1**
+
+- Section 6 gained `plugins/claude-kit/scripts/kit-goal-statusline.js` and `test/kit-goal-statusline.test.js` (the security Major above), then `plugins/claude-kit/hooks/kit-goal-stop.js` (the `planHead` pair).
+- Section 6's prose was corrected: it claimed the helpers reuse the existing ones, which the local copies deliberately do not, and it now carries the require-cycle reasoning and the mirror obligation.
+- The plan gained its `## Standing Brief Amendments` block.
+
+**Routed out of this plan since Interim board 1**
+
+To `docs/backlog.md`: the doctor reporting an oversized goal state as a healthy armed goal while every hook reads it as absent; and the agent-identity key list spelled four times across four hooks with two different read semantics.
+
+To Section 4's documentation pass: `docs/security-model.md`'s reader enumeration and its `openSync` sentence, both accurate only once Section 6 lands; the `.kit` parent-component symlink residual, as a documented residual rather than a code change; and the deferral nudge's new status as a writer of both `.kit/` files, where the security model currently describes that hook class as output-only.
+
+**Unproven, carried forward**
+
+Guard 3's premise, that a PostToolUse payload for a tool call inside a dispatched agent carries a truthy agent-identity key, is still unverified from the tree; the repo's cited evidence covers PreToolUse only. Every hand-built fixture passes either way, and the new journal line cannot discriminate, since one nudge record per interval is what a healthy run and the failure both produce. The probe that would settle it is one live capture of a subagent's PostToolUse payload. The guard's fail direction is documented rather than coded around.
+
+**Next action per section**
+
+- Section 3: reviewed three times, every round zero Criticals, and the round-3 findings were one test-coverage Major and Minors that were almost all documentation accuracy. A fourth round is not earned: the marginal Critical rate has gone to zero and the finishing pass reviews the whole changeset with fresh eyes anyway. Chapter and commit follow Section 6.
+- Section 6: await the fix round, re-run the gates, then round 3, then close and commit **before** Section 3.
+- Section 4: not started, inline, blocked behind both, and its doc scope has grown four items this run.
