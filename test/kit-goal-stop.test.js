@@ -268,6 +268,273 @@ test('goal armed, plan file deleted (archived): empty stdout AND goal auto-clear
     }
 });
 
+test('an unusable plan path does not pre-empt a genuine BLOCKED: release', () => {
+    // The release clauses run before the unusable path is reported. A run that
+    // leads with a true blocker must release on that path exactly as it would
+    // with a readable plan doc: holding it instead would trap an unattended run
+    // against the harness's consecutive-block cap, with a reason offering only
+    // remedies (restore the file, /kit-goal clear) that nobody is there to
+    // perform.
+    const { repo, planRel, transcript, local } = armedRepo([
+        'BLOCKED: this needs a decision only Scott can make.'
+    ]);
+    try {
+        fs.rmSync(path.join(repo, planRel));
+        fs.mkdirSync(path.join(repo, planRel), { recursive: true });
+        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-b' }, local);
+        assert.strictEqual(res.status, 0);
+        assert.strictEqual(res.stdout, '', 'the blocker releases the stop, unusable plan path or not');
+        // An empty stdout on its own is every early allow, the one that returns
+        // before the release clauses are reached included, so it cannot tell a
+        // clause-(b) release from the unusable path never being carried past the
+        // absent branch at all. The event is what only clause (b) emits.
+        const events = readEvents(local);
+        assert.deepStrictEqual(events.map((e) => e.event), ['goal-blocked'],
+            'clause (b) is what ran: ' + JSON.stringify(events));
+        assert.strictEqual(events[0].plan, planRel, 'and it names the plan: ' + JSON.stringify(events[0]));
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('an unusable plan path does not pre-empt a WAITING: park either', () => {
+    const { repo, planRel, transcript, local } = armedRepo([
+        'WAITING: three reviewers are still running.'
+    ]);
+    try {
+        fs.rmSync(path.join(repo, planRel));
+        fs.mkdirSync(path.join(repo, planRel), { recursive: true });
+        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-w' }, local);
+        assert.strictEqual(res.status, 0);
+        assert.strictEqual(res.stdout, '', 'a parked session stays parked');
+        assert.ok(fs.existsSync(path.join(repo, '.kit', 'goal-state.json')),
+            'and the leash is still armed, which is what a park means');
+        // A park emits nothing and writes nothing, so its allow is
+        // indistinguishable from an unusable path that was never carried past
+        // the absent branch. The control is the same repo with the park taken
+        // away: the unusable path must then hold the stop and name itself. A
+        // build that dropped the unusable-path feature allows both runs and this
+        // second one goes red.
+        writeTranscript(transcript, planRel, ['Still working through it.']);
+        const control = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-w' }, local);
+        assert.strictEqual(control.status, 0);
+        assert.notStrictEqual(control.stdout, '', 'without the park the same path is held');
+        assert.match(JSON.parse(control.stdout).reason, /does not hold a plan file any reader can resolve/);
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('goal armed, a non-regular path at the plan file: the stop is held and named, never silently allowed', () => {
+    // The kind check that keeps a FIFO from blocking this hook also refuses a
+    // directory, a link and a junction, and planHead reports all of them the
+    // way it reports an absent plan. fs.accessSync, which follows links and
+    // succeeds on a directory, would answer "present" for exactly those paths,
+    // and the branch would then take no action at all: every stop allowed, the
+    // goal still armed, nothing reported anywhere. The two questions answer to
+    // one lstat rule instead, and this case is what pins that.
+    const { repo, planRel, transcript, local } = armedRepo(['Still going.']);
+    try {
+        fs.rmSync(path.join(repo, planRel));
+        fs.mkdirSync(path.join(repo, planRel), { recursive: true });
+        const res = runHook({ cwd: repo, transcript_path: transcript }, local);
+        assert.strictEqual(res.status, 0);
+        assert.notStrictEqual(res.stdout, '', 'a plan path that can never be read must not pass in silence');
+        const out = JSON.parse(res.stdout);
+        assert.strictEqual(out.decision, 'block');
+        assert.match(out.reason, /does not hold a plan file/, out.reason);
+        assert.ok(out.reason.includes(planRel), 'the reason names the path: ' + out.reason);
+        assert.ok(fs.existsSync(path.join(repo, '.kit', 'goal-state.json')),
+            'the leash stays armed: an unreadable kind is not an archived plan');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('goal armed, a directory-junction at the plan file is refused the same way a directory is', () => {
+    // A junction is the link kind this box creates without privilege; a file
+    // symlink needs one it lacks, so that kind stays unproven. libuv reports
+    // both reparse tags as a link, so the junction drives the same branch.
+    const { repo, planRel, transcript, local } = armedRepo(['Still going.']);
+    try {
+        const target = path.join(repo, 'link-target');
+        fs.mkdirSync(target, { recursive: true });
+        fs.rmSync(path.join(repo, planRel));
+        fs.symlinkSync(target, path.join(repo, planRel), 'junction');
+        const res = runHook({ cwd: repo, transcript_path: transcript }, local);
+        assert.strictEqual(res.status, 0);
+        const out = JSON.parse(res.stdout);
+        assert.strictEqual(out.decision, 'block');
+        assert.match(out.reason, /does not hold a plan file/, out.reason);
+        assert.ok(fs.existsSync(path.join(repo, '.kit', 'goal-state.json')), 'the leash stays armed');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+// The three transcript states that make the last turn unreadable, each paired
+// with an unusable plan path. The release clauses read the transcript before
+// the unusable path is reported, and that read throws on all three, so an
+// uncaught throw would reach the hook's top-level catch and allow the stop:
+// the leash would then permit every stop while still reporting itself armed,
+// which is the one outcome the hold exists to prevent. On such a path no
+// release clause can ever be evaluated and the plan can never reach Complete,
+// so the hold is the only honest answer left.
+// The binding is set directly rather than claimed from the transcript: the
+// claim reads the transcript too, so an unbound goal with an unreadable one
+// allows at that earlier point and never reaches the clauses under test. A
+// bound session is also the live shape, since a leash enforcing at all has
+// claimed its session at an earlier stop.
+for (const variant of [
+    { name: 'a transcript path naming a missing file', payload: (repo, tx) => ({ cwd: repo, transcript_path: tx + '.absent', session_id: 'sess-hold' }) },
+    { name: 'a payload carrying no transcript_path at all', payload: (repo) => ({ cwd: repo, session_id: 'sess-hold' }) },
+    { name: 'a transcript whose final line is a partial JSON entry', payload: (repo, tx) => ({ cwd: repo, transcript_path: tx, session_id: 'sess-hold' }), partial: true }
+]) {
+    test('an unusable plan path holds the stop when the transcript cannot be read: ' + variant.name, () => {
+        const { repo, planRel, transcript, local } = armedRepo(['Still going.']);
+        try {
+            assert.strictEqual(bindSession(repo, 'sess-hold').ok, true, 'setup: the leash is bound');
+            fs.rmSync(path.join(repo, planRel));
+            fs.mkdirSync(path.join(repo, planRel), { recursive: true });
+            if (variant.partial) {
+                fs.appendFileSync(transcript,
+                    '{"type":"assistant","message":{"role":"assistant","content":[{"type":"te');
+            }
+            const res = runHook(variant.payload(repo, transcript), local);
+            assert.strictEqual(res.status, 0);
+            assert.notStrictEqual(res.stdout, '',
+                'an unreadable transcript must not turn the hold into a silent allow');
+            const out = JSON.parse(res.stdout);
+            assert.strictEqual(out.decision, 'block');
+            assert.match(out.reason, /does not hold a plan file/, out.reason);
+            assert.ok(out.reason.includes(planRel), 'the reason names the path: ' + out.reason);
+            assert.ok(fs.existsSync(path.join(repo, '.kit', 'goal-state.json')), 'the leash stays armed');
+        } finally {
+            rmDir(repo);
+            rmDir(local);
+        }
+    });
+}
+
+test('an unreadable transcript on a usable plan path still allows the stop', () => {
+    // The leg the hold must not break. A missing or half-written transcript on a
+    // plan doc that reads fine is transient: the run can still make progress, and
+    // the fail-open is what keeps a hook bug from trapping a session.
+    const { repo, transcript, local } = armedRepo(['Still going.']);
+    try {
+        const res = runHook({ cwd: repo, transcript_path: transcript + '.absent' }, local);
+        assert.strictEqual(res.status, 0);
+        assert.strictEqual(res.stdout, '', 'a transient read failure allows, as it always has');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+// Make the plan path's lstat fail with a chosen code inside the spawned hook.
+// Neither code this drives can be staged as a real fixture on this box: a
+// regular file standing where a parent directory belongs reports ENOENT here
+// rather than ENOTDIR (staged and observed), and a symlink cycle needs a
+// privilege the suite must not require. The shim narrows to the plan path so
+// every other lstat the hook takes, the goal state's included, is untouched.
+function lstatFailingPreload(dir, code) {
+    const shim = path.join(dir, 'lstat-' + code.toLowerCase() + '.js');
+    writeFile(shim, [
+        "'use strict';",
+        "const fs = require('fs');",
+        'const realLstatSync = fs.lstatSync;',
+        'fs.lstatSync = function (target) {',
+        "    if (String(target).replace(/\\\\/g, '/').endsWith('docs/plans/example.md')) {",
+        "        const err = new Error('" + code + ": staged by the fixture, lstat');",
+        "        err.code = '" + code + "';",
+        '        throw err;',
+        '    }',
+        '    return realLstatSync.apply(fs, arguments);',
+        '};'
+    ].join('\n') + '\n');
+    return '--require "' + shim.replace(/\\/g, '/') + '"';
+}
+
+// Report the plan path as a symlink over the ordinary regular file that is
+// really there. A file symlink needs a privilege this box lacks (fs.symlinkSync
+// returns EPERM), so this is what puts the link kind in front of the hook;
+// realpathSync is left alone, so the link resolves for real, to a regular file
+// inside the repo, which is what a linked plan doc looks like once resolved.
+function linkReportingPreload(dir) {
+    const shim = path.join(dir, 'report-link.js');
+    writeFile(shim, [
+        "'use strict';",
+        "const fs = require('fs');",
+        'const realLstatSync = fs.lstatSync;',
+        'fs.lstatSync = function (target) {',
+        '    const st = realLstatSync.apply(fs, arguments);',
+        "    if (String(target).replace(/\\\\/g, '/').endsWith('docs/plans/example.md')) {",
+        '        return {',
+        '            size: st.size,',
+        '            isFile: () => false,',
+        '            isDirectory: () => false,',
+        '            isSymbolicLink: () => true',
+        '        };',
+        '    }',
+        '    return st;',
+        '};'
+    ].join('\n') + '\n');
+    return '--require "' + shim.replace(/\\/g, '/') + '"';
+}
+
+test('a plan doc reached through a link inside the repo is read as a plan doc, not held', () => {
+    // The kind check that refuses a directory or a FIFO must not refuse the one
+    // non-regular kind that resolves to a readable plan doc. Refusing it leaves
+    // the leash holding every stop over a plan the operator can open by hand,
+    // until the harness's consecutive-block cap fires. The plan is Complete, so
+    // reading it through the link is what releases the leash: an unread one
+    // holds instead, which is the failure this pins.
+    const { repo, transcript, local } = armedRepo(['Still going.'], 'Status: Complete');
+    try {
+        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-link' }, local,
+            { NODE_OPTIONS: linkReportingPreload(local) });
+        assert.strictEqual(res.status, 0, 'exit 0: a nonzero exit would mean the preload itself failed to load');
+        assert.strictEqual(res.stdout, '', 'the Complete plan releases the stop: ' + res.stdout);
+        assert.ok(!fs.existsSync(path.join(repo, '.kit', 'goal-state.json')),
+            'and the goal auto-cleared, which only a read of the linked plan can do');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+for (const code of ['ENOTDIR', 'ELOOP', 'ENAMETOOLONG']) {
+    test('a plan path whose lstat fails ' + code + ' holds the stop rather than allowing it forever', () => {
+        // All three codes are as permanent as a directory sitting at the path: a
+        // regular file standing where a parent directory belongs (ENOTDIR), a
+        // symlink cycle above the final component (ELOOP), and a path no
+        // filesystem call will accept (ENAMETOOLONG). Nothing about waiting
+        // turns any of them into a readable plan doc, so routing them to the
+        // transient bucket is a leash that allows every stop while still
+        // reporting itself armed.
+        const { repo, planRel, transcript, local } = armedRepo(['Still going.']);
+        try {
+            assert.strictEqual(bindSession(repo, 'sess-kind').ok, true, 'setup: the leash is bound');
+            const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-kind' }, local,
+                { NODE_OPTIONS: lstatFailingPreload(local, code) });
+            assert.strictEqual(res.status, 0, 'exit 0: a nonzero exit would mean the preload itself failed to load');
+            assert.notStrictEqual(res.stdout, '', code + ' is determinate, so it must not pass in silence');
+            const out = JSON.parse(res.stdout);
+            assert.strictEqual(out.decision, 'block');
+            assert.match(out.reason, /does not hold a plan file/, out.reason);
+            assert.ok(out.reason.includes(planRel), 'the reason names the path: ' + out.reason);
+            assert.ok(fs.existsSync(path.join(repo, '.kit', 'goal-state.json')), 'the leash stays armed');
+        } finally {
+            rmDir(repo);
+            rmDir(local);
+        }
+    });
+}
+
 test('goal armed, last assistant turn leads with BLOCKED: empty stdout (allow); only the last turn counts', () => {
     // An earlier turn without BLOCKED proves the scan reads the LAST assistant
     // turn, not the first match.
@@ -927,24 +1194,24 @@ test('an embedded same-name close tag inside CLI output cannot expose a followin
     }
 });
 
-// Spawn the hook and, before writing its stdin, synchronously occupy the exact
-// tmp path bindSession will try to write to (goal-state.json.tmp.<the child's
-// own pid>) with a directory, so that specific write fails. readStdin() blocks
-// the child on a synchronous read until stdin is written and closed, so the
-// child cannot reach its write step before this obstruction is in place: this
-// is deterministic, not timing-dependent, and (unlike a bare spawnSync, whose
-// pid is only known after the child has already finished) works because
-// spawn() exposes the child's pid immediately.
+// Spawn the hook with writeRefusingPreload (defined below, beside its other
+// user) in place, so the atomic write bindSession attempts fails inside the
+// child. That preload refuses by path prefix, which is what this case needs:
+// the temp name carries a random suffix (see atomicTmpPath in kit-goal-lib.js,
+// whose point is that the name cannot be guessed from outside the writing
+// process), so no parent can occupy the exact path its child is about to
+// create. The refusal is installed before the hook module runs, so it is
+// deterministic rather than timing-dependent.
 function runHookForcingBindWriteFailure(repo, payload, extraEnv) {
     const env = {
         ...scrubRunEnv({ ...process.env }),
         KIT_GOAL_STOP_RETRY_MS: '0',
         KIT_EVENTS_PATH: eventsPath(repo),
         KIT_EVENTS_PATH_ALLOW: '1',
+        NODE_OPTIONS: writeRefusingPreload(repo),
         ...(extraEnv || {})
     };
     const child = spawn(process.execPath, [HOOK], { env });
-    fs.mkdirSync(path.join(repo, '.kit', 'goal-state.json.tmp.' + child.pid), { recursive: true });
     let stdout = '';
     child.stdout.on('data', (d) => { stdout += d; });
     const closed = new Promise((resolve) => child.on('close', (status) => resolve(status)));
@@ -960,6 +1227,7 @@ test('a bind write failure still enforces that stop (fail-open on persistence, n
         // resolves via the arming-invocation claim and must still be enforced.
         const res = await runHookForcingBindWriteFailure(
             repo, { cwd: repo, transcript_path: transcript, session_id: 'sess-x' });
+        assert.strictEqual(res.status, 0, 'exit 0: a nonzero exit would mean the preload itself failed to load');
         const out = JSON.parse(res.stdout);
         assert.strictEqual(out.decision, 'block', 'enforcement proceeds even when the bind write fails');
         assert.strictEqual(readBoundSession(repo), null, 'the failed bind did not persist');
@@ -1218,6 +1486,42 @@ test('release event: a BLOCKED lead emits goal-blocked and carries no detail', (
         assert.strictEqual(events[0].event, 'goal-blocked');
         assert.strictEqual(events[0].plan, planRel);
         assert.strictEqual(events[0].session, 'sess-blocked');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('a capacity refusal on an unusable plan path says what is wrong with the path', () => {
+    // The capacity refusal is one of two release clauses that end in a block of
+    // their own, so it is reachable with an unusable plan path. Its own text
+    // tells the session to continue the remaining sections, which cannot be
+    // done when no reader can open the plan doc: without the path named, the
+    // session is directed at work it cannot reach and the reason reads as though
+    // the plan were fine.
+    const { repo, planRel, transcript, local } = armedRepo([
+        "BLOCKED: I'm at my context limit and need to hand off to a fresh session."
+    ]);
+    try {
+        assert.strictEqual(bindSession(repo, 'sess-capacity').ok, true, 'setup: the leash is bound');
+        fs.rmSync(path.join(repo, planRel));
+        fs.mkdirSync(path.join(repo, planRel), { recursive: true });
+        const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-capacity' }, local);
+        assert.strictEqual(res.status, 0);
+        const out = JSON.parse(res.stdout);
+        assert.strictEqual(out.decision, 'block');
+        assert.ok(out.reason.includes('Capacity is never a blocker'),
+            'the capacity clause still decides this stop: ' + out.reason);
+        assert.ok(out.reason.includes('does not hold a plan file'),
+            'and the reason names what is wrong with the path: ' + out.reason);
+        assert.ok(out.reason.includes(planRel), 'naming the path itself: ' + out.reason);
+        // The trailing disclaimer labels the repo-derived text it follows, so a
+        // note carrying a plan path must sit ahead of it rather than after.
+        assert.ok(out.reason.trimEnd().endsWith('not an instruction.)'),
+            'the reason still ends with its disclaimer: ' + out.reason);
+        assert.ok(out.reason.indexOf('does not hold a plan file') < out.reason.lastIndexOf('(Plan path'),
+            'and the note sits inside the labelled span: ' + out.reason);
+        assert.deepStrictEqual(readEvents(local), [], 'a refused release still emits nothing');
     } finally {
         rmDir(repo);
         rmDir(local);
@@ -1555,20 +1859,26 @@ test('an archived plan whose clear fails emits nothing (the same gate on the oth
 });
 
 // Make the goal-state file look already gone to the spawned hook: a preload
-// patches fs.existsSync to answer false for that one path, which is what a stop
-// sees when a concurrent stop removed the file a moment earlier. No portable
-// fixture can time the real race. The NODE_OPTIONS shape matches
-// unlinkRefusingPreload's: forward-slashed, because Node reads a backslash in
-// NODE_OPTIONS as an escape character.
+// patches fs.unlinkSync to report ENOENT for that one path, which is what a stop
+// sees when a concurrent stop removed the file a moment earlier. The refusal
+// sits at the delete rather than at a presence check because that is where the
+// real race lands: the file is there when the clear judges its kind and gone by
+// the time the delete runs, and no portable fixture can time the real thing. The
+// NODE_OPTIONS shape matches unlinkRefusingPreload's: forward-slashed, because
+// Node reads a backslash in NODE_OPTIONS as an escape character.
 function alreadyClearedPreload(dir) {
     const shim = path.join(dir, 'already-cleared.js');
     writeFile(shim, [
         "'use strict';",
         "const fs = require('fs');",
-        'const realExistsSync = fs.existsSync;',
-        'fs.existsSync = function (target) {',
-        "    if (String(target).endsWith('goal-state.json')) return false;",
-        '    return realExistsSync.apply(fs, arguments);',
+        'const realUnlinkSync = fs.unlinkSync;',
+        'fs.unlinkSync = function (target) {',
+        "    if (String(target).endsWith('goal-state.json')) {",
+        "        const err = new Error('ENOENT: no such file or directory, unlink');",
+        "        err.code = 'ENOENT';",
+        '        throw err;',
+        '    }',
+        '    return realUnlinkSync.apply(fs, arguments);',
         '};'
     ].join('\n') + '\n');
     return '--require "' + shim.replace(/\\/g, '/') + '"';
@@ -1900,23 +2210,30 @@ test('the arming claim records the binding session AND its transcript path', () 
 });
 
 // Make the goal-state write fail inside the spawned hook: a preload patches
-// fs.writeFileSync to refuse the atomic write's tmp file, standing in for a
-// write the OS declines (a permission, a full disk), which no portable fixture
-// can stage here. The NODE_OPTIONS shape matches the other preloads':
-// forward-slashed, because Node reads a backslash in NODE_OPTIONS as an escape.
+// fs.openSync to refuse the atomic write's tmp file, standing in for a write the
+// OS declines (a permission, a full disk), which no portable fixture can stage
+// here. The open is the syscall that sees the path, since the writer creates by
+// path and then writes to the descriptor. The NODE_OPTIONS shape matches the
+// other preloads': forward-slashed, because Node reads a backslash in
+// NODE_OPTIONS as an escape.
 function writeRefusingPreload(dir) {
     const shim = path.join(dir, 'refuse-state-write.js');
     writeFile(shim, [
         "'use strict';",
         "const fs = require('fs');",
-        'const realWriteFileSync = fs.writeFileSync;',
-        'fs.writeFileSync = function (target) {',
+        '// The atomic write opens its temp file by path and then writes to the',
+        '// descriptor, so the path is visible at the open and not at the write.',
+        '// Refusing the open is what stands in for a write the OS declines. A',
+        '// writer that went back to writing by path would need the same refusal on',
+        '// fs.writeFileSync.',
+        'const realOpenSync = fs.openSync;',
+        'fs.openSync = function (target) {',
         "    if (String(target).includes('goal-state.json.tmp')) {",
         "        const err = new Error('EPERM: the fixture refuses this write');",
         "        err.code = 'EPERM';",
         '        throw err;',
         '    }',
-        '    return realWriteFileSync.apply(fs, arguments);',
+        '    return realOpenSync.apply(fs, arguments);',
         '};'
     ].join('\n') + '\n');
     return '--require "' + shim.replace(/\\/g, '/') + '"';
@@ -1958,6 +2275,59 @@ test('a failed advance write re-blocks rather than releasing, and the next stop 
         const events = readEvents(local);
         assert.strictEqual(events.length, 1, 'the finished plan is reported once, on the write that landed');
         assert.strictEqual(events[0].plan, plans[0]);
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('a spent lead on an unusable plan path says what is wrong with the path', () => {
+    // The other release clause that ends in a block: a spent lead holds with a
+    // reason telling the session to read the current plan in full. Once the
+    // advance has moved the leash onto a path no reader can open, that
+    // direction cannot be followed, so the reason has to say so.
+    const repo = makeDir('kit-goal-stop-repo-');
+    const local = makeDir('kit-goal-stop-local-');
+    const plans = ['docs/plans/first.md', 'docs/plans/second.md'];
+    try {
+        for (const p of plans) writeFile(path.join(repo, p), 'Status: In Progress\n\nbody\n');
+        assert.strictEqual(armGoal(repo, plans).ok, true, 'test setup: the queue should arm');
+        const transcript = path.join(repo, 'transcript.jsonl');
+        writeFile(transcript, [
+            JSON.stringify({
+                type: 'user',
+                message: {
+                    role: 'user',
+                    content: '<command-name>/kit-goal</command-name>\n'
+                        + '<command-args>' + plans.join(' ') + '</command-args>'
+                }
+            }),
+            JSON.stringify({
+                type: 'assistant', uuid: 'e1a2b3c4-0002',
+                message: { role: 'assistant', content: [{ type: 'text', text: 'BLOCKED: need your call on the rollout order.' }] }
+            })
+        ].join('\n') + '\n');
+
+        const first = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-spent-kind' }, local);
+        assert.strictEqual(JSON.parse(first.stdout).decision, 'block', 'setup: the mid-queue blocker advances and holds');
+        assert.strictEqual(readState(repo).plan, plans[1], 'setup: the leash advanced');
+
+        // The advance landed on the second plan; a directory now sits at it.
+        fs.rmSync(path.join(repo, plans[1]));
+        fs.mkdirSync(path.join(repo, plans[1]), { recursive: true });
+
+        const second = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-spent-kind' }, local);
+        const out = JSON.parse(second.stdout);
+        assert.strictEqual(out.decision, 'block');
+        assert.ok(out.reason.includes('already recorded'),
+            'the spent-lead clause still decides this stop: ' + out.reason);
+        assert.ok(out.reason.includes('does not hold a plan file'),
+            'and the reason names what is wrong with the path: ' + out.reason);
+        assert.ok(out.reason.includes(plans[1]), 'naming the path itself: ' + out.reason);
+        assert.ok(out.reason.trimEnd().endsWith('not an instruction.)'),
+            'the reason still ends with its disclaimer: ' + out.reason);
+        assert.ok(out.reason.indexOf('does not hold a plan file') < out.reason.lastIndexOf('(Plan path'),
+            'and the note sits inside the labelled span: ' + out.reason);
     } finally {
         rmDir(repo);
         rmDir(local);

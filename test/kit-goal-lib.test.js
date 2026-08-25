@@ -84,6 +84,42 @@ function writePlan(repo, relPath, contents) {
     fs.writeFileSync(full, contents, 'utf8');
 }
 
+// The names of any atomic-write temp files left behind in the repo's .kit/, or
+// null when the directory could not be read at all. The tmp name carries a
+// random suffix, so no test can name the file it expects to be absent; what a
+// test can still assert is that the directory holds none of them, which is the
+// property that matters (an orphan accumulating in .kit/). The null is what
+// keeps "no leftovers" apart from "could not look": every caller compares
+// against [], so a directory that cannot be read fails the assertion instead of
+// reading as clean.
+function tmpLeftovers(repo) {
+    const prefix = path.basename(goalPath(repo)) + '.tmp.';
+    try {
+        return fs.readdirSync(path.dirname(goalPath(repo))).filter((name) => name.startsWith(prefix));
+    } catch {
+        return null;
+    }
+}
+
+// The temp path writeState will use for its next write in this process, made
+// predictable by pinning crypto.randomBytes for the duration of fn. The
+// production name is deliberately unguessable, which is exactly what puts the
+// exclusive-create flag's behavior out of a test's reach; pinning the one source
+// of that unpredictability is what lets a case pre-plant something at the path
+// the write is about to create. The library and this file share the one crypto
+// module object, so the patch reaches the library's call.
+function withPinnedTmpPath(repo, fn) {
+    const crypto = require('crypto');
+    const realRandomBytes = crypto.randomBytes;
+    const suffix = 'aabbccddeeff';
+    crypto.randomBytes = () => Buffer.from(suffix, 'hex');
+    try {
+        return fn(goalPath(repo) + '.tmp.' + process.pid + '.' + suffix);
+    } finally {
+        crypto.randomBytes = realRandomBytes;
+    }
+}
+
 test('armGoal success writes goal-state.json with the exact schema', () => {
     const repo = makeRepo();
     try {
@@ -113,15 +149,16 @@ test('armGoal success writes goal-state.json with the exact schema', () => {
     }
 });
 
-test('armGoal writes atomically: no leftover .tmp.<pid> file after success', () => {
+test('armGoal writes atomically: no leftover temp file after success', () => {
     const repo = makeRepo();
     try {
         writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
         const result = armGoal(repo, 'docs/plans/foo.md');
         assert.strictEqual(result.ok, true);
         assert.ok(fs.existsSync(goalPath(repo)));
-        // armGoal runs in this same process, so its tmp name is deterministic here.
-        assert.ok(!fs.existsSync(goalPath(repo) + '.tmp.' + process.pid));
+        // The tmp name is unpredictable by design, so the check reads the
+        // directory rather than naming the file it expects to be gone.
+        assert.deepStrictEqual(tmpLeftovers(repo), []);
     } finally {
         rmRepo(repo);
     }
@@ -134,6 +171,354 @@ test('armGoal rejects a missing plan file', () => {
         assert.strictEqual(result.ok, false);
         assert.match(result.reason, /not found/i);
         assert.ok(!fs.existsSync(goalPath(repo)), 'no state file should be written on rejection');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('armGoal names an unusable plan path rather than calling it missing', () => {
+    const repo = makeRepo();
+    try {
+        // planHead answers the same 'no' for an absent path and for one holding
+        // something no reader can open, so the arm has to ask the kind question
+        // itself. 'plan not found' about a path that plainly exists sends the
+        // operator looking for a file that is right where they left it.
+        fs.mkdirSync(path.join(repo, 'docs', 'plans', 'foo.md'), { recursive: true });
+        const result = armGoal(repo, 'docs/plans/foo.md');
+        assert.strictEqual(result.ok, false, 'a directory is not a plan doc');
+        assert.ok(/does not hold a plan file/.test(result.reason),
+            'the reason names what is wrong: ' + result.reason);
+        assert.ok(!/not found/.test(result.reason),
+            'and does not claim the path is missing: ' + result.reason);
+        assert.ok(result.reason.includes('docs/plans/foo.md'),
+            'and names the path: ' + result.reason);
+
+        // The absent case keeps its own wording, which is the leg this must not
+        // break.
+        const missing = armGoal(repo, 'docs/plans/absent.md');
+        assert.strictEqual(missing.ok, false);
+        assert.ok(/plan not found/.test(missing.reason), missing.reason);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('armGoal tells a locked plan doc apart from one that is missing or is not a plan file', () => {
+    // The third leg of the same question. An antivirus or an indexer holding an
+    // ordinary plan doc makes the lstat fail without saying anything about the
+    // path's kind, and reporting that as 'does not hold a plan file' sends the
+    // operator to fix a file that is perfectly fine and readable a second later.
+    const repo = makeRepo();
+    const realLstatSync = fs.lstatSync;
+    try {
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
+        const full = path.join(repo, 'docs', 'plans', 'foo.md');
+        fs.lstatSync = function (target) {
+            if (String(target) === full) {
+                const err = new Error('EBUSY: resource busy or locked, lstat');
+                err.code = 'EBUSY';
+                throw err;
+            }
+            return realLstatSync.apply(fs, arguments);
+        };
+        const result = armGoal(repo, 'docs/plans/foo.md');
+        fs.lstatSync = realLstatSync;
+        assert.strictEqual(result.ok, false, 'a plan doc that cannot be read is not armed');
+        assert.ok(/could not be read right now/.test(result.reason),
+            'the refusal names the transient state: ' + result.reason);
+        assert.ok(!/does not hold a plan file/.test(result.reason),
+            'and does not blame the path kind: ' + result.reason);
+        assert.ok(!/not found/.test(result.reason),
+            'nor call a file that is right there missing: ' + result.reason);
+    } finally {
+        fs.lstatSync = realLstatSync;
+        rmRepo(repo);
+    }
+});
+
+for (const code of ['ENOTDIR', 'ENAMETOOLONG']) {
+    test('armGoal reports a ' + code + ' plan path as determinate, not as something to retry', () => {
+        // The other two legs of one classification. A regular file standing
+        // where a parent directory belongs (ENOTDIR) and a path no filesystem
+        // call accepts (ENAMETOOLONG) are as settled as a directory sitting at
+        // the path: no lock produces either and waiting resolves neither, so
+        // telling the operator to try again names a condition that never lifts.
+        const repo = makeRepo();
+        const realLstatSync = fs.lstatSync;
+        try {
+            writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
+            const full = path.join(repo, 'docs', 'plans', 'foo.md');
+            fs.lstatSync = function (target) {
+                if (String(target) === full) {
+                    const err = new Error(code + ': staged by the fixture, lstat');
+                    err.code = code;
+                    throw err;
+                }
+                return realLstatSync.apply(fs, arguments);
+            };
+            const result = armGoal(repo, 'docs/plans/foo.md');
+            fs.lstatSync = realLstatSync;
+            assert.strictEqual(result.ok, false, code + ' is not armable');
+            assert.ok(/does not hold a plan file/.test(result.reason),
+                'the refusal names the determinate state: ' + result.reason);
+            assert.ok(!/could not be read right now/.test(result.reason),
+                'and does not invite a retry that can never work: ' + result.reason);
+        } finally {
+            fs.lstatSync = realLstatSync;
+            rmRepo(repo);
+        }
+    });
+}
+
+// Stage a symlink at an existing regular file's path by making lstat report one
+// over it. fs.symlinkSync refuses a file link on this box with EPERM (a
+// junction, the directory case, is creatable and is staged for real below), so
+// this is what puts the link kind in front of the readers. realpathSync is left
+// real unless a case shims it: over an ordinary file it resolves to that file,
+// which is what a link to an in-repo plan doc looks like once resolved.
+// Returns the restore function.
+function reportAsLink(full) {
+    const realLstatSync = fs.lstatSync;
+    fs.lstatSync = function (target) {
+        const st = realLstatSync.apply(fs, arguments);
+        if (String(target) === full) {
+            return {
+                size: st.size,
+                isFile: () => false,
+                isDirectory: () => false,
+                isSymbolicLink: () => true
+            };
+        }
+        return st;
+    };
+    return () => { fs.lstatSync = realLstatSync; };
+}
+
+// Point a staged link's resolution somewhere else: at another real path, or at a
+// throw for a link that dangles. Returns the restore function.
+function resolveLinkTo(full, resolved) {
+    const realRealpathSync = fs.realpathSync;
+    fs.realpathSync = function (target) {
+        if (String(target) === full) {
+            if (resolved === null) {
+                const err = new Error('ENOENT: staged by the fixture, realpath');
+                err.code = 'ENOENT';
+                throw err;
+            }
+            return resolved;
+        }
+        return realRealpathSync.apply(fs, arguments);
+    };
+    return () => { fs.realpathSync = realRealpathSync; };
+}
+
+test('a plan doc reached through a link inside the repo arms and reads its Status', () => {
+    // The one non-regular kind that is genuinely readable. Refusing it leaves a
+    // checkout that links a plan doc unable to arm at all, and a goal already
+    // armed over such a path holding every stop for the life of the run.
+    const repo = makeRepo();
+    let restore = () => {};
+    try {
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n\nbody\n');
+        const full = path.join(repo, 'docs', 'plans', 'foo.md');
+        restore = reportAsLink(full);
+        const head = planHead(repo, 'docs/plans/foo.md');
+        const armed = armGoal(repo, 'docs/plans/foo.md');
+        restore();
+        assert.deepStrictEqual(head, { exists: true, status: 'in progress' },
+            'the linked plan doc is read, Status header included');
+        assert.strictEqual(armed.ok, true, 'and it arms: ' + armed.reason);
+    } finally {
+        restore();
+        rmRepo(repo);
+    }
+});
+
+test('a plan-path link resolving outside the repo is refused', () => {
+    // The containment rule normalizePlanArg applies to a plan argument, applied
+    // to what the link actually resolves to. The target is a real, readable,
+    // regular file, so containment is the only thing refusing it: without that
+    // leg the case would arm.
+    const repo = makeRepo();
+    const outside = makeRepo();
+    let restoreLstat = () => {};
+    let restoreReal = () => {};
+    try {
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
+        writePlan(outside, 'elsewhere.md', 'Status: In Progress\n');
+        const full = path.join(repo, 'docs', 'plans', 'foo.md');
+        restoreLstat = reportAsLink(full);
+        restoreReal = resolveLinkTo(full, path.join(outside, 'elsewhere.md'));
+        const head = planHead(repo, 'docs/plans/foo.md');
+        const armed = armGoal(repo, 'docs/plans/foo.md');
+        restoreLstat();
+        restoreReal();
+        assert.strictEqual(head.exists, false, 'a link out of the repo is not a plan doc');
+        assert.strictEqual(armed.ok, false, 'and it does not arm');
+        assert.ok(/does not hold a plan file/.test(armed.reason), armed.reason);
+    } finally {
+        restoreLstat();
+        restoreReal();
+        rmRepo(repo);
+        rmRepo(outside);
+    }
+});
+
+test('a plan-path link that dangles is refused', () => {
+    const repo = makeRepo();
+    let restoreLstat = () => {};
+    let restoreReal = () => {};
+    try {
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
+        const full = path.join(repo, 'docs', 'plans', 'foo.md');
+        restoreLstat = reportAsLink(full);
+        restoreReal = resolveLinkTo(full, null);
+        const head = planHead(repo, 'docs/plans/foo.md');
+        const armed = armGoal(repo, 'docs/plans/foo.md');
+        restoreLstat();
+        restoreReal();
+        assert.strictEqual(head.exists, false, 'a link resolving to nothing is not a plan doc');
+        assert.strictEqual(armed.ok, false, 'and it does not arm');
+        assert.ok(/does not hold a plan file/.test(armed.reason), armed.reason);
+    } finally {
+        restoreLstat();
+        restoreReal();
+        rmRepo(repo);
+    }
+});
+
+test('a directory junction at the plan path is still refused', () => {
+    // The kinds the refusal was written for keep it. A junction is the link kind
+    // this box creates without privilege, so this one is staged for real rather
+    // than reported; it resolves to a directory, which no reader can open as a
+    // plan doc.
+    const repo = makeRepo();
+    try {
+        const target = path.join(repo, 'link-target');
+        fs.mkdirSync(target, { recursive: true });
+        fs.mkdirSync(path.join(repo, 'docs', 'plans'), { recursive: true });
+        fs.symlinkSync(target, path.join(repo, 'docs', 'plans', 'foo.md'), 'junction');
+        assert.strictEqual(planHead(repo, 'docs/plans/foo.md').exists, false,
+            'a junction resolves to a directory, which is not a plan doc');
+        const armed = armGoal(repo, 'docs/plans/foo.md');
+        assert.strictEqual(armed.ok, false, 'and it does not arm');
+        assert.ok(/does not hold a plan file/.test(armed.reason), armed.reason);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('clearGoal treats a goal-state path that can never resolve as nothing armed', () => {
+    // The same three-way classification armGoal takes, at the writer's own
+    // question. A determinate errno means nothing is at the path and nothing can
+    // be, so there is no release to report and no lock to wait out; only an
+    // unknown answer (a lock, a permission) is a failed clear, because that is
+    // the one where the file may be sitting there still.
+    const repo = makeRepo();
+    const realLstatSync = fs.lstatSync;
+    try {
+        fs.lstatSync = function (target) {
+            if (String(target).endsWith('goal-state.json')) {
+                const err = new Error('ENOTDIR: staged by the fixture, lstat');
+                err.code = 'ENOTDIR';
+                throw err;
+            }
+            return realLstatSync.apply(fs, arguments);
+        };
+        const result = clearGoal(repo);
+        fs.lstatSync = realLstatSync;
+        assert.deepStrictEqual(result, { ok: true, cleared: false },
+            'nothing is armed, and nothing failed');
+    } finally {
+        fs.lstatSync = realLstatSync;
+        rmRepo(repo);
+    }
+});
+
+test('the goal CLI names an oversized goal-state file instead of reporting plain absence', () => {
+    // Every reader refuses a state file past the bound, so status and clear both
+    // report no goal armed over one. Saying only that describes a file that is
+    // sitting right there, that a hand wrote, as absence.
+    const repo = makeRepo();
+    try {
+        fs.mkdirSync(path.dirname(goalPath(repo)), { recursive: true });
+        fs.writeFileSync(goalPath(repo), JSON.stringify({ pad: 'x'.repeat(70 * 1024) }), 'utf8');
+        const res = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(res.status, 0);
+        assert.ok(res.stdout.includes('no kit goal armed'), res.stdout);
+        assert.ok(res.stdout.includes('past the 65536-byte bound'),
+            'status names the bound the file is past: ' + res.stdout);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('the goal CLI names a non-goal file at the goal-state path instead of reporting plain absence', () => {
+    // clear and status both answer 'nothing armed' for a path no reader reads as
+    // a goal, which is right about the leash and silent about the thing sitting
+    // there that a later arm will fail on with a raw rename errno. A junction is
+    // the link kind this box creates without privilege; a file symlink needs one
+    // it lacks, so that kind stays unproven.
+    const repo = makeRepo();
+    try {
+        const target = path.join(repo, 'link-target');
+        fs.mkdirSync(target, { recursive: true });
+        fs.mkdirSync(path.dirname(goalPath(repo)), { recursive: true });
+        fs.symlinkSync(target, goalPath(repo), 'junction');
+
+        const status = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(status.status, 0);
+        assert.ok(status.stdout.includes('no kit goal armed'), status.stdout);
+        assert.ok(status.stdout.includes('is at .kit/goal-state.json'),
+            'status names what is at the path: ' + status.stdout);
+
+        const cleared = spawnSync(process.execPath, [CLI, 'clear'], { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(cleared.status, 0);
+        assert.ok(cleared.stdout.includes('no kit goal was armed'), cleared.stdout);
+        assert.ok(cleared.stdout.includes('moved aside by hand'),
+            'and clear names a remedy that works: ' + cleared.stdout);
+        assert.ok(fs.lstatSync(goalPath(repo)).isSymbolicLink(), 'neither command touched it');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('the goal CLI does not claim the leash is armed when a failed clear could not prove it', () => {
+    // The lstat leg fires with existence unproven, and while a lock stands every
+    // reader treats the leash as absent, so it is not enforcing either. The
+    // conservative half is the exit code and the refusal to report a release;
+    // asserting that the goal is still armed is a certainty this leg does not
+    // have.
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
+        assert.strictEqual(armGoal(repo, 'docs/plans/foo.md').ok, true, 'setup: a real goal state');
+        const shim = path.join(repo, 'lock-goal-state.js');
+        fs.writeFileSync(shim, [
+            "'use strict';",
+            "const fs = require('fs');",
+            'const realLstatSync = fs.lstatSync;',
+            'fs.lstatSync = function (target) {',
+            "    if (String(target).endsWith('goal-state.json')) {",
+            "        const err = new Error('EBUSY: resource busy or locked, lstat');",
+            "        err.code = 'EBUSY';",
+            '        throw err;',
+            '    }',
+            '    return realLstatSync.apply(fs, arguments);',
+            '};'
+        ].join('\n') + '\n', 'utf8');
+        const res = spawnSync(process.execPath, [CLI, 'clear'], {
+            cwd: repo,
+            encoding: 'utf8',
+            env: { ...process.env, NODE_OPTIONS: '--require "' + shim.replace(/\\/g, '/') + '"' }
+        });
+        assert.strictEqual(res.status, 1, 'a clear that released nothing exits nonzero');
+        assert.ok(res.stderr.includes('could not clear'), res.stderr);
+        assert.ok(res.stderr.includes('nothing was released'),
+            'the message states what is known: ' + res.stderr);
+        assert.ok(!res.stderr.includes('still armed'),
+            'and not what it could not check: ' + res.stderr);
+        assert.ok(fs.existsSync(goalPath(repo)), 'the file is untouched');
     } finally {
         rmRepo(repo);
     }
@@ -243,16 +628,200 @@ test('clearGoal removes the file and is a no-op when absent', () => {
 });
 
 test('clearGoal reports a failed delete as ok:false, never as "nothing was armed"', () => {
-    // A directory occupying the goal-state path makes unlinkSync fail, standing
-    // in for any delete failure (e.g. permissions). The caller must be able to
-    // distinguish "still armed and enforcing" from "nothing to clear".
+    // A delete the OS declines (a permission, a lock) on a goal state that is
+    // really there. The caller must be able to distinguish "still armed and
+    // enforcing" from "nothing to clear". The refusal is staged on the syscall
+    // because no portable fixture makes a real one here, and because the kind of
+    // thing at the path is now a separate question (see the case below).
     const repo = makeRepo();
+    const realUnlinkSync = fs.unlinkSync;
     try {
-        fs.mkdirSync(goalPath(repo), { recursive: true });
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
+        assert.strictEqual(armGoal(repo, 'docs/plans/foo.md').ok, true, 'setup: a real goal state');
+        fs.unlinkSync = function () {
+            const err = new Error('EPERM: operation not permitted, unlink');
+            err.code = 'EPERM';
+            throw err;
+        };
         const result = clearGoal(repo);
+        fs.unlinkSync = realUnlinkSync;
         assert.strictEqual(result.ok, false);
         assert.strictEqual(result.cleared, false);
         assert.ok(result.reason && result.reason.includes('could not clear'));
+        assert.ok(fs.existsSync(goalPath(repo)), 'and the goal is still armed');
+    } finally {
+        fs.unlinkSync = realUnlinkSync;
+        rmRepo(repo);
+    }
+});
+
+test('a close that fails after a good write is a failed write, not a silent success', () => {
+    // The close is where an OS reports a write it deferred: a network volume, a
+    // quota. Swallowing it unconditionally publishes the rename over a file
+    // whose bytes may never have landed, and returns ok:true, so the CLI prints
+    // 'kit goal armed' over a torn state every reader will then read as truth.
+    // Only a close reached with an error already in flight is swallowed, which
+    // the case below pins.
+    const repo = makeRepo();
+    const realCloseSync = fs.closeSync;
+    try {
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
+        let closed = 0;
+        fs.closeSync = function (fd) {
+            closed += 1;
+            realCloseSync.call(fs, fd);
+            const err = new Error('EIO: i/o error, close');
+            err.code = 'EIO';
+            throw err;
+        };
+        const result = armGoal(repo, 'docs/plans/foo.md');
+        fs.closeSync = realCloseSync;
+        assert.ok(closed > 0, 'setup: the write reached its close');
+        assert.strictEqual(result.ok, false, 'a write whose close failed is not a write that succeeded');
+        assert.ok(/EIO/.test(result.reason), 'and the reason names it: ' + result.reason);
+        assert.ok(!fs.existsSync(goalPath(repo)), 'nothing is published');
+        assert.deepStrictEqual(tmpLeftovers(repo), [], 'and the temp is cleaned up');
+    } finally {
+        fs.closeSync = realCloseSync;
+        rmRepo(repo);
+    }
+});
+
+test('a write failure survives a close that throws on the way out', () => {
+    // The close sits in a finally that runs while the write's error is in
+    // flight. Unguarded, a throwing close replaces that error, so the caller is
+    // told the descriptor could not be closed rather than that the disk is full,
+    // and the cause is gone from the reason the operator reads.
+    const repo = makeRepo();
+    const realWriteFileSync = fs.writeFileSync;
+    const realCloseSync = fs.closeSync;
+    try {
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
+        fs.writeFileSync = function (target) {
+            if (typeof target === 'number') {
+                const err = new Error('ENOSPC: no space left on device, write');
+                err.code = 'ENOSPC';
+                throw err;
+            }
+            return realWriteFileSync.apply(fs, arguments);
+        };
+        fs.closeSync = function () {
+            const err = new Error('EIO: i/o error, close');
+            err.code = 'EIO';
+            throw err;
+        };
+        const result = armGoal(repo, 'docs/plans/foo.md');
+        fs.writeFileSync = realWriteFileSync;
+        fs.closeSync = realCloseSync;
+        assert.strictEqual(result.ok, false);
+        assert.ok(/ENOSPC/.test(result.reason),
+            'the reason names the failure that caused this: ' + result.reason);
+        assert.ok(!/EIO/.test(result.reason),
+            'and not the close that ran on the way out: ' + result.reason);
+    } finally {
+        fs.writeFileSync = realWriteFileSync;
+        fs.closeSync = realCloseSync;
+        rmRepo(repo);
+    }
+});
+
+test('clearGoal reports a locked goal state as a failed clear, never as nothing armed', () => {
+    // An lstat that fails for a reason other than ENOENT means the file is
+    // there and its kind could not be read: on this platform an antivirus or an
+    // indexer holding it reports EACCES or EBUSY. Answering 'nothing armed'
+    // there makes the CLI print that no goal was armed and exit 0 while the
+    // leash is still on disk, still armed, and still blocking every stop once
+    // the lock lifts. The refusal is staged on the syscall because no portable
+    // fixture makes a real one here.
+    const repo = makeRepo();
+    const realLstatSync = fs.lstatSync;
+    try {
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
+        assert.strictEqual(armGoal(repo, 'docs/plans/foo.md').ok, true, 'setup: a real goal state');
+        fs.lstatSync = function (target) {
+            if (String(target) === goalPath(repo)) {
+                const err = new Error('EACCES: permission denied, lstat');
+                err.code = 'EACCES';
+                throw err;
+            }
+            return realLstatSync.apply(fs, arguments);
+        };
+        const result = clearGoal(repo);
+        fs.lstatSync = realLstatSync;
+        assert.strictEqual(result.ok, false, 'a leash that could not be read is not a leash released');
+        assert.strictEqual(result.cleared, false);
+        assert.ok(result.reason && result.reason.includes('could not clear'), result.reason);
+        assert.ok(fs.existsSync(goalPath(repo)), 'the file is still there');
+        assert.ok(readGoal(repo) && readGoal(repo).plan === 'docs/plans/foo.md',
+            'and every reader still reads it as armed');
+    } finally {
+        fs.lstatSync = realLstatSync;
+        rmRepo(repo);
+    }
+});
+
+test('clearGoal removes a zero-length goal state and reports it cleared', () => {
+    // A zero-byte goal-state.json is a regular file: no reader can parse it, and
+    // treating it as nothing armed leaves a file the CLI can never remove.
+    const repo = makeRepo();
+    try {
+        fs.mkdirSync(path.dirname(goalPath(repo)), { recursive: true });
+        fs.writeFileSync(goalPath(repo), '', 'utf8');
+        const result = clearGoal(repo);
+        assert.strictEqual(result.ok, true);
+        assert.strictEqual(result.cleared, true, 'a file was removed, so the clear says so');
+        assert.ok(!fs.existsSync(goalPath(repo)), 'and the file is gone');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('a sweep passes over a link parked at a temp name rather than following or removing it', () => {
+    // The sweep reclaims abandoned temp files by age, and everything it removes
+    // it removes by path. A junction planted at a temp name is not an abandoned
+    // write: unlinking it would delete a link the repository put there, and
+    // following it would reach whatever it points at. The kind guard is what
+    // stops both, and only the age gate was covered before.
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
+        const target = path.join(repo, 'link-target');
+        fs.mkdirSync(target, { recursive: true });
+        fs.writeFileSync(path.join(target, 'kept.txt'), 'kept\n', 'utf8');
+        fs.mkdirSync(path.dirname(goalPath(repo)), { recursive: true });
+        // A directory junction, the link kind this box creates without privilege;
+        // a file symlink needs one it lacks, so that kind stays unproven here.
+        const parked = goalPath(repo) + '.tmp.999999.deadbeefcafe';
+        fs.symlinkSync(target, parked, 'junction');
+        const old = Date.now() - 60 * 60 * 1000;
+        fs.lutimesSync(parked, new Date(old), new Date(old));
+
+        assert.strictEqual(armGoal(repo, 'docs/plans/foo.md').ok, true, 'the write sweeps as it goes');
+        assert.ok(fs.lstatSync(parked).isSymbolicLink(), 'the parked link survives the sweep');
+        assert.ok(fs.existsSync(path.join(target, 'kept.txt')), 'and what it points at is untouched');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('clearGoal judges the goal-state path by the same kind rule every reader uses', () => {
+    const repo = makeRepo();
+    try {
+        // fs.existsSync follows a link, so a clear built on it would report "kit
+        // goal cleared" for a path readGoal reads as no goal at all. Both answer
+        // "nothing armed" now, and the path is left as it was: there is no
+        // release to report, and what sits there is not this function's to
+        // delete.
+        const target = path.join(repo, 'link-target');
+        fs.mkdirSync(target, { recursive: true });
+        fs.mkdirSync(path.dirname(goalPath(repo)), { recursive: true });
+        fs.symlinkSync(target, goalPath(repo), 'junction');
+        assert.strictEqual(readGoal(repo), null, 'setup: every reader sees no armed goal');
+
+        const result = clearGoal(repo);
+        assert.strictEqual(result.ok, true);
+        assert.strictEqual(result.cleared, false, 'nothing was armed, so nothing was released');
+        assert.ok(fs.lstatSync(goalPath(repo)).isSymbolicLink(), 'and the planted path is left where it is');
     } finally {
         rmRepo(repo);
     }
@@ -339,7 +908,7 @@ test('armGoal re-arms idempotently over an existing goal state', () => {
         // destination), leaving no stale .tmp and the newest plan recorded.
         assert.strictEqual(armGoal(repo, 'docs/plans/second.md').ok, true);
         assert.strictEqual(readGoal(repo).plan, 'docs/plans/second.md');
-        assert.ok(!fs.existsSync(goalPath(repo) + '.tmp'));
+        assert.deepStrictEqual(tmpLeftovers(repo), [], 'no stale tmp survives a re-arm');
     } finally {
         rmRepo(repo);
     }
@@ -373,8 +942,7 @@ test('bindSession binds an armed goal, and re-arming resets the binding to null'
 
         assert.strictEqual(bindSession(repo, 'sess-1').ok, true);
         assert.strictEqual(readGoal(repo).boundSession, 'sess-1');
-        // bindSession runs in this same process, so its tmp name is deterministic here.
-        assert.ok(!fs.existsSync(goalPath(repo) + '.tmp.' + process.pid), 'no leftover tmp after an atomic bind');
+        assert.deepStrictEqual(tmpLeftovers(repo), [], 'no leftover tmp after an atomic bind');
 
         // Re-arming without a usable bind (the crash-recovery rebind
         // opportunity) resets the binding so the successor session can claim
@@ -413,19 +981,21 @@ test('bindSession rejects an unusable session id and never throws', () => {
 });
 
 test('bindSession reports a failed write as ok:false and leaves the prior binding intact', () => {
-    // A directory occupying the exact tmp path (this call runs in-process, so
-    // its pid-suffixed name is deterministic here) makes the atomic write fail,
-    // standing in for any filesystem failure. The caller (the hook) still
+    // A directory occupying the tmp path the next write will take (pinned here,
+    // since the production name carries a random suffix) makes the atomic write
+    // fail, standing in for any filesystem failure. The caller (the hook) still
     // enforces the stop; the binding just does not persist until a later stop.
     const repo = makeRepo();
     try {
         writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
         armGoal(repo, 'docs/plans/foo.md');
-        fs.mkdirSync(goalPath(repo) + '.tmp.' + process.pid, { recursive: true });
-        const result = bindSession(repo, 'sess-1');
-        assert.strictEqual(result.ok, false);
-        assert.ok(result.reason && result.reason.includes('could not write'));
-        assert.strictEqual(readGoal(repo).boundSession, null, 'the prior binding is unchanged by a failed write');
+        withPinnedTmpPath(repo, (tmp) => {
+            fs.mkdirSync(tmp, { recursive: true });
+            const result = bindSession(repo, 'sess-1');
+            assert.strictEqual(result.ok, false);
+            assert.ok(result.reason && result.reason.includes('could not write'));
+            assert.strictEqual(readGoal(repo).boundSession, null, 'the prior binding is unchanged by a failed write');
+        });
     } finally {
         rmRepo(repo);
     }
@@ -636,7 +1206,7 @@ test('advanceGoal moves to the next plan, records the outcome, and preserves the
         assert.strictEqual(state.history[0].outcome, 'complete');
         assert.ok(!Number.isNaN(Date.parse(state.history[0].at)));
         assert.ok(!('note' in state.history[0]), 'no note is recorded when none was given');
-        assert.ok(!fs.existsSync(goalPath(repo) + '.tmp.' + process.pid), 'the advance is one atomic rewrite');
+        assert.deepStrictEqual(tmpLeftovers(repo), [], 'the advance is one atomic rewrite');
     } finally {
         rmRepo(repo);
     }
@@ -712,15 +1282,19 @@ test('advanceGoal refuses an unusable outcome, an unarmed repo, and a failed wri
         assert.strictEqual(advanceGoal(repo).ok, false, 'a missing outcome is refused');
         assert.strictEqual(readGoal(repo).plan, 'docs/plans/a.md', 'a refused advance leaves the leash where it was');
 
-        // A directory occupying the deterministic in-process tmp path makes the
+        // A directory occupying the tmp path the next write will take (pinned
+        // here, since the production name carries a random suffix) makes the
         // atomic write fail. The hook re-runs the same terminal clause at its
         // next stop, so a failed advance must report failure rather than pass
         // for a release.
-        fs.mkdirSync(goalPath(repo) + '.tmp.' + process.pid, { recursive: true });
-        const result = advanceGoal(repo, { outcome: 'complete' });
-        assert.strictEqual(result.ok, false);
-        assert.ok(result.reason.includes('could not write'));
-        assert.strictEqual(readGoal(repo).plan, 'docs/plans/a.md', 'the leash stays on the finished plan for the retry');
+        withPinnedTmpPath(repo, (tmp) => {
+            fs.mkdirSync(tmp, { recursive: true });
+            const result = advanceGoal(repo, { outcome: 'complete' });
+            assert.strictEqual(result.ok, false);
+            assert.ok(result.reason.includes('could not write'));
+            assert.strictEqual(readGoal(repo).plan, 'docs/plans/a.md',
+                'the leash stays on the finished plan for the retry');
+        });
     } finally {
         rmRepo(repo);
     }
@@ -1297,7 +1871,7 @@ test('writeState unlinks its tmp file when the rename fails', () => {
         const result = armGoal(repo, 'docs/plans/foo.md');
         assert.strictEqual(result.ok, false);
         assert.ok(result.reason.includes('could not write'));
-        assert.ok(!fs.existsSync(goalPath(repo) + '.tmp.' + process.pid), 'no orphan tmp after a failed rename');
+        assert.deepStrictEqual(tmpLeftovers(repo), [], 'no orphan tmp after a failed rename');
     } finally {
         rmRepo(repo);
     }
@@ -1545,7 +2119,7 @@ test('armGoal binds the arming session when the session id and its transcript ar
         assert.deepStrictEqual(Object.keys(readGoal(repo)).sort(),
             ['armedAt', 'boundSession', 'boundTranscript', 'condition', 'history', 'plan', 'queue', 'queueIndex'],
             'the state shape is unchanged by the bind');
-        assert.ok(!fs.existsSync(goalPath(repo) + '.tmp.' + process.pid), 'the bound arm is one atomic write');
+        assert.deepStrictEqual(tmpLeftovers(repo), [], 'the bound arm is one atomic write');
 
         // Uppercase is the same shape: the gate is case-insensitive, and the
         // value is stored exactly as given so it compares against the session
@@ -1961,4 +2535,431 @@ test('emitGoalEvent adds a run field only for a KIT_RUN_ID that memq\'s isRunId 
             else process.env.KIT_RUN_ID = prior;
         }
     });
+});
+
+// Count the calls fs.readFileSync takes for the duration of fn, which is what
+// discriminates a path refused before the open from one whose open merely
+// happened to fail. The blocking hazard readGoal's preamble exists to close is
+// a read that never returns, so "did not open it" is the property under test,
+// not "returned null": a directory returns null through the catch either way.
+function countingReads(fn) {
+    const realReadFileSync = fs.readFileSync;
+    let reads = 0;
+    fs.readFileSync = function (...args) {
+        reads += 1;
+        return realReadFileSync.apply(fs, args);
+    };
+    try {
+        return fn(() => reads);
+    } finally {
+        fs.readFileSync = realReadFileSync;
+    }
+}
+
+test('readGoal refuses a non-regular goal-state path without opening it', () => {
+    // A directory at the path is the kind this box can stage. The kinds that
+    // carry the real hazard, a FIFO and a file symlink, cannot be created here
+    // (Windows has no mkfifo, and fs.symlinkSync returns EPERM without
+    // privilege), so they are unproven rather than covered; all three fail the
+    // same isFile() leg, which is what this exercises.
+    const repo = makeRepo();
+    try {
+        fs.mkdirSync(goalPath(repo), { recursive: true });
+        countingReads((reads) => {
+            assert.strictEqual(readGoal(repo), null, 'a non-regular goal-state path reads as absent');
+            assert.strictEqual(reads(), 0, 'the path is refused before the open a FIFO would block inside');
+        });
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('readGoal refuses a link planted at the goal-state path without following it', () => {
+    const repo = makeRepo();
+    try {
+        const target = path.join(repo, 'link-target');
+        fs.mkdirSync(target, { recursive: true });
+        fs.writeFileSync(path.join(target, 'kept.txt'), 'kept\n', 'utf8');
+        fs.mkdirSync(path.dirname(goalPath(repo)), { recursive: true });
+        // A directory junction is the link kind this box creates without
+        // privilege; a file symlink needs one, so that kind stays unproven.
+        // The lstat judges either as a link rather than as its target.
+        fs.symlinkSync(target, goalPath(repo), 'junction');
+        countingReads((reads) => {
+            assert.strictEqual(readGoal(repo), null, 'a link at the goal-state path reads as absent');
+            assert.strictEqual(reads(), 0, 'the link is refused before the open, so it is never followed');
+        });
+        assert.ok(fs.existsSync(path.join(target, 'kept.txt')), 'the link target is untouched');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('readGoal refuses an oversized goal-state file and still reads a large one under the cap', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
+        const base = {
+            plan: 'docs/plans/foo.md', condition: 'c', armedAt: '2026-08-16T00:00:00.000Z',
+            boundSession: null, boundTranscript: null,
+            queue: ['docs/plans/foo.md'], queueIndex: 0, history: []
+        };
+        const write = (padBytes) => {
+            fs.mkdirSync(path.dirname(goalPath(repo)), { recursive: true });
+            fs.writeFileSync(goalPath(repo),
+                JSON.stringify({ ...base, pad: 'x'.repeat(padBytes) }) + '\n', 'utf8');
+        };
+
+        // Valid JSON either way, so the cap is the only thing that can refuse
+        // it: a reader with no cap parses both and hands back a state.
+        write(64 * 1024);
+        assert.ok(fs.statSync(goalPath(repo)).size > 64 * 1024, 'setup: the file is past the cap');
+        assert.strictEqual(readGoal(repo), null, 'a goal-state file past the cap reads as absent');
+
+        write(1024);
+        const state = readGoal(repo);
+        assert.ok(state, 'a state well under the cap still reads');
+        assert.strictEqual(state.plan, 'docs/plans/foo.md');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('a valid goal state still round-trips through writeState and readGoal', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
+        writePlan(repo, 'docs/plans/b.md', 'Status: In Progress\n');
+        const armed = armGoal(repo, ['docs/plans/a.md', 'docs/plans/b.md'],
+            { sessionId: SID, transcriptPath: path.join(repo, 'transcript.jsonl') });
+        assert.strictEqual(armed.ok, true);
+        const state = readGoal(repo);
+        assert.strictEqual(state.plan, 'docs/plans/a.md');
+        assert.deepStrictEqual(state.queue, ['docs/plans/a.md', 'docs/plans/b.md']);
+        assert.strictEqual(state.boundSession, SID, 'the exclusive-create write stores the binding unchanged');
+        assert.deepStrictEqual(tmpLeftovers(repo), [], 'and leaves no temp file behind');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('writeState refuses a file pre-planted at its temp path instead of writing through it', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
+        fs.mkdirSync(path.dirname(goalPath(repo)), { recursive: true });
+        withPinnedTmpPath(repo, (tmp) => {
+            fs.writeFileSync(tmp, 'planted\n', 'utf8');
+            const result = armGoal(repo, 'docs/plans/foo.md');
+            // Without the exclusive-create flag this write would overwrite the
+            // planted path and rename it into place, arming successfully; with
+            // it the create fails and the arm is refused.
+            assert.strictEqual(result.ok, false, 'an occupied temp path fails the create');
+            assert.deepStrictEqual(Object.keys(result), ['ok', 'reason'], 'the refusal shape is unchanged');
+            assert.ok(result.reason.startsWith('could not write goal state: '),
+                'the reason keeps its prefix: ' + result.reason);
+            assert.ok(!fs.existsSync(goalPath(repo)), 'and nothing lands at the goal-state path');
+            // The cleanup deletes the tmp path on a failure, but an EEXIST says
+            // this process did not create that file, so it must survive: a
+            // delete on this leg would be an aimed delete of someone else's
+            // file at a path this process merely guessed at.
+            assert.ok(fs.existsSync(tmp), 'a file this process did not create is left where it was');
+            assert.strictEqual(fs.readFileSync(tmp, 'utf8'), 'planted\n', 'and is left as it was');
+        });
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+// Count the opens fs.openSync takes for the duration of fn, the openSync twin of
+// countingReads above: planHead opens rather than reads, and the property under
+// test is that a refused path is never opened at all.
+function countingOpens(fn) {
+    const realOpenSync = fs.openSync;
+    let opens = 0;
+    fs.openSync = function (...args) {
+        opens += 1;
+        return realOpenSync.apply(fs, args);
+    };
+    try {
+        return fn(() => opens);
+    } finally {
+        fs.openSync = realOpenSync;
+    }
+}
+
+test('planHead refuses a non-regular plan path without opening it', () => {
+    const repo = makeRepo();
+    try {
+        // The plan path comes from the goal-state file and is only ever
+        // re-validated as a PATH (inside the repo, no control characters),
+        // never as a kind, so a FIFO at a well-formed in-repo plan path passes
+        // every check above this one and blocks a POSIX open until a writer
+        // appears, with the Stop hook holding a stop. A directory and a
+        // junction are the kinds this box can stage; all three fail the same
+        // isFile() branch.
+        fs.mkdirSync(path.join(repo, 'docs', 'plans', 'adir.md'), { recursive: true });
+        const linkTarget = path.join(repo, 'link-target');
+        fs.mkdirSync(linkTarget, { recursive: true });
+        fs.symlinkSync(linkTarget, path.join(repo, 'docs', 'plans', 'alink.md'), 'junction');
+        countingOpens((opens) => {
+            for (const rel of ['docs/plans/adir.md', 'docs/plans/alink.md']) {
+                assert.deepStrictEqual(planHead(repo, rel), { exists: false, status: 'unknown' },
+                    rel + ' reads as an unopenable plan');
+            }
+            assert.strictEqual(opens(), 0, 'neither path is opened, which is what a FIFO would block inside');
+        });
+
+        // The ordinary path still opens and classifies.
+        writePlan(repo, 'docs/plans/real.md', 'Status: In Progress\n');
+        assert.deepStrictEqual(planHead(repo, 'docs/plans/real.md'), { exists: true, status: 'in progress' });
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('armGoal refuses a queue whose own advances would outgrow the goal state file', () => {
+    const repo = makeRepo();
+    try {
+        // Each advance appends a history record, so a queue armed just under the
+        // writer's bound would cross it while running: the write would refuse
+        // deterministically and the Stop hook would block at every stop with an
+        // advance it can never record, which no retry clears. The room every
+        // record this queue can produce is reserved at arm time instead, where a
+        // person is present to read the refusal.
+        const name = (i) => 'docs/plans/p' + String(i).padStart(4, '0') + 'x'.repeat(70) + '.md';
+        const many = [];
+        for (let i = 0; i < 200; i += 1) {
+            writePlan(repo, name(i), 'Status: In Progress\n');
+            many.push(name(i));
+        }
+
+        const small = armGoal(repo, many.slice(0, 40));
+        assert.strictEqual(small.ok, true, 'a queue whose whole life fits is armed');
+        assert.ok(fs.statSync(goalPath(repo)).size < 64 * 1024, 'setup: that state is under the cap');
+        assert.ok(readGoal(repo), 'and it reads back');
+
+        // 200 of these paths arm to well under the cap and would cross it only
+        // through their own advances, so this case answers to the reserved
+        // headroom and not to the writer's plain size refusal.
+        const big = armGoal(repo, many);
+        assert.strictEqual(big.ok, false, 'a queue that cannot finish inside the bound is refused');
+        assert.deepStrictEqual(Object.keys(big), ['ok', 'reason'], 'the refusal shape is unchanged');
+        assert.ok(/queue is too long: 200 plans/.test(big.reason),
+            'the refusal names the queue rather than a byte count: ' + big.reason);
+        assert.ok(!/could not write goal state/.test(big.reason),
+            'and it is the arm-time reservation refusing, not the write: ' + big.reason);
+        assert.strictEqual(readGoal(repo).queue.length, 40, 'the refused arm left the armed state untouched');
+        assert.deepStrictEqual(tmpLeftovers(repo), [], 'and wrote no tmp at all');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('a rename reporting EEXIST still removes the tmp this process created', () => {
+    const repo = makeRepo();
+    const realRenameSync = fs.renameSync;
+    try {
+        // POSIX rename() reports EEXIST or ENOTEMPTY when the destination is a
+        // non-empty directory, and the catch below the write spans both the
+        // exclusive create and the rename. A cleanup gated on the error code
+        // rather than on who made the file would read that EEXIST as "the file
+        // was already there", skip the unlink, and orphan a full copy of the
+        // goal state, boundSession and boundTranscript included, under a new
+        // random name on every retry. This box reports EPERM for that rename
+        // (confirmed by staging one), so the code is what is staged here rather
+        // than the directory that would produce it elsewhere.
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
+        fs.renameSync = function () {
+            const err = new Error('EEXIST: file already exists, rename');
+            err.code = 'EEXIST';
+            throw err;
+        };
+        const result = armGoal(repo, 'docs/plans/foo.md');
+        assert.strictEqual(result.ok, false, 'the failed rename is reported');
+        assert.ok(result.reason.startsWith('could not write goal state: '), result.reason);
+        fs.renameSync = realRenameSync;
+        assert.deepStrictEqual(tmpLeftovers(repo), [],
+            'the tmp this process created is removed whatever code the failure carried');
+    } finally {
+        fs.renameSync = realRenameSync;
+        rmRepo(repo);
+    }
+});
+
+test('a write that fails after the create leaves no temp file behind', () => {
+    const repo = makeRepo();
+    const realWriteFileSync = fs.writeFileSync;
+    try {
+        // The unlink is gated on a flag that has to mean "this process created
+        // the file". A create and a write spelled as one call cannot set that
+        // flag between them, so a failure part-way through the write leg
+        // (ENOSPC, EDQUOT, EIO) skips the cleanup and strands a partial copy of
+        // the goal state, boundSession and boundTranscript included, under a
+        // name no later run can recognize. Staged both ways here: a write given
+        // an fd fails outright, and a write given a path creates the file first
+        // and then fails, which is the shape a single-call spelling takes.
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
+        fs.writeFileSync = function (target, data, options) {
+            if (typeof target === 'string' && /goal-state\.json\.tmp\./.test(target)) {
+                realWriteFileSync.call(fs, target, '', options);
+            }
+            const err = new Error('ENOSPC: no space left on device, write');
+            err.code = 'ENOSPC';
+            throw err;
+        };
+        const result = armGoal(repo, 'docs/plans/foo.md');
+        fs.writeFileSync = realWriteFileSync;
+        assert.strictEqual(result.ok, false, 'the failed write is reported');
+        assert.ok(result.reason.startsWith('could not write goal state: '), result.reason);
+        assert.ok(!fs.existsSync(goalPath(repo)), 'nothing lands at the goal-state path');
+        assert.deepStrictEqual(tmpLeftovers(repo), [],
+            'and the file the create made is removed rather than orphaned');
+    } finally {
+        fs.writeFileSync = realWriteFileSync;
+        rmRepo(repo);
+    }
+});
+
+test('a write sweeps temp files a killed writer abandoned, and leaves fresh ones alone', () => {
+    const repo = makeRepo();
+    try {
+        // Cleanup inside writeState covers every failure it can catch. A process
+        // killed between the create and the rename catches nothing, and the
+        // random suffix means no later run can recognize that file by name, so
+        // age is the only signal left. A fresh one belongs to a writer that may
+        // still be mid-write, so it stays.
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
+        fs.mkdirSync(path.dirname(goalPath(repo)), { recursive: true });
+        const stale = goalPath(repo) + '.tmp.999999.deadbeefcafe';
+        const fresh = goalPath(repo) + '.tmp.999998.cafedeadbeef';
+        fs.writeFileSync(stale, 'abandoned\n', 'utf8');
+        fs.writeFileSync(fresh, 'in flight\n', 'utf8');
+        const old = Date.now() - 30 * 60 * 1000;
+        fs.utimesSync(stale, new Date(old), new Date(old));
+
+        assert.strictEqual(armGoal(repo, 'docs/plans/foo.md').ok, true);
+        assert.deepStrictEqual(tmpLeftovers(repo), [path.basename(fresh)],
+            'the aged orphan is reclaimed and the recent one is left where it is');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('a queue armed at the reservation edge runs every advance without a refusal', () => {
+    const repo = makeRepo();
+    try {
+        // The reservation's whole claim is that a state which arms can also
+        // finish. This drives the largest queue that arms all the way to its
+        // last plan, with every growing field at its worst case: a bind writing
+        // a full-length session id and transcript, and every advance recording a
+        // blocked outcome whose note and lead key are all quote characters, each
+        // of which JSON-escapes to two bytes. A single refusal anywhere in here
+        // is the permanent trap the guard exists to prevent, since the Stop hook
+        // retries that same write at every stop.
+        const name = (i) => 'docs/plans/p' + String(i).padStart(4, '0') + 'x'.repeat(70) + '.md';
+        const many = [];
+        for (let i = 0; i < 200; i += 1) {
+            writePlan(repo, name(i), 'Status: In Progress\n');
+            many.push(name(i));
+        }
+
+        // Binary search for the edge rather than hardcoding it, so the case
+        // still sits on the boundary if the reservation is ever re-tuned.
+        let fits = 1;
+        let over = many.length + 1;
+        while (over - fits > 1) {
+            const mid = Math.floor((fits + over) / 2);
+            if (armGoal(repo, many.slice(0, mid)).ok) fits = mid;
+            else over = mid;
+        }
+        assert.ok(fits > 1 && fits < many.length, 'setup: the edge is inside the fixture: ' + fits);
+        assert.strictEqual(armGoal(repo, many.slice(0, fits)).ok, true, 'the edge queue arms');
+
+        assert.strictEqual(bindSession(repo, '"'.repeat(128), 'C:/' + '"'.repeat(509)).ok, true,
+            'a bind writes its two fields onto the edge state');
+
+        for (let step = 1; step < fits; step += 1) {
+            const advanced = advanceGoal(repo, {
+                outcome: 'blocked', note: '"'.repeat(120), leadKey: '"'.repeat(128)
+            });
+            assert.strictEqual(advanced.ok, true, 'advance ' + step + ' of ' + (fits - 1)
+                + ' must not be refused: ' + (advanced.reason || ''));
+            assert.strictEqual(advanced.advanced, true, 'and it moves the leash');
+        }
+
+        const state = readGoal(repo);
+        assert.ok(state, 'the finished state is still inside the reader cap');
+        assert.strictEqual(state.plan, many[fits - 1], 'the leash reached the last plan of the queue');
+        assert.strictEqual(state.history.length, fits - 1, 'with one record per advance');
+        assert.ok(fs.statSync(goalPath(repo)).size <= 64 * 1024,
+            'peak size ' + fs.statSync(goalPath(repo)).size + ' bytes stayed inside the bound');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('writeState refuses to produce a state past the cap its readers enforce', () => {
+    const repo = makeRepo();
+    try {
+        // A hand-written state (a repository can carry one) sized just inside
+        // the reader's cap, so the binding a stop adds is what crosses it.
+        // Without the same bound at the write the file would land, the CLI would
+        // report the goal armed, and every reader would then answer "no goal
+        // armed" with no error anywhere in between, which is what a bound
+        // enforced on one side only produces.
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
+        const base = {
+            plan: 'docs/plans/foo.md', condition: 'c', armedAt: '2026-08-16T00:00:00.000Z',
+            boundSession: null, boundTranscript: null,
+            queue: ['docs/plans/foo.md'], queueIndex: 0, history: []
+        };
+        const pad = 64 * 1024 - Buffer.byteLength(JSON.stringify({ ...base, pad: '' }, null, 2) + '\n', 'utf8') - 200;
+        fs.mkdirSync(path.dirname(goalPath(repo)), { recursive: true });
+        fs.writeFileSync(goalPath(repo), JSON.stringify({ ...base, pad: 'x'.repeat(pad) }, null, 2) + '\n', 'utf8');
+        const before = fs.readFileSync(goalPath(repo), 'utf8');
+        assert.ok(readGoal(repo), 'setup: the state is still inside the reader cap');
+
+        const result = bindSession(repo, 'x'.repeat(128), 'C:/' + 'y'.repeat(500) + '.jsonl');
+        assert.strictEqual(result.ok, false, 'the binding would cross the cap, so the write is refused');
+        assert.deepStrictEqual(Object.keys(result), ['ok', 'reason'], 'the refusal shape is unchanged');
+        assert.ok(result.reason.startsWith('could not write goal state: '),
+            'the reason keeps its prefix: ' + result.reason);
+        assert.ok(/past the 65536-byte bound/.test(result.reason), 'and names the bound: ' + result.reason);
+        assert.strictEqual(fs.readFileSync(goalPath(repo), 'utf8'), before, 'the file on disk is untouched');
+        assert.deepStrictEqual(tmpLeftovers(repo), [], 'and no tmp was written');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('writeState refuses a link pre-planted at its temp path rather than following it', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
+        fs.mkdirSync(path.dirname(goalPath(repo)), { recursive: true });
+        const target = path.join(repo, 'link-target');
+        fs.mkdirSync(target, { recursive: true });
+        fs.writeFileSync(path.join(target, 'kept.txt'), 'kept\n', 'utf8');
+        withPinnedTmpPath(repo, (tmp) => {
+            // A directory junction, the link kind this box creates without
+            // privilege; a file symlink needs one it lacks. There is no lstat
+            // on the write path, so what refuses this is the exclusive-create
+            // flag alone, and the error code is what tells the two refusals
+            // apart: EEXIST is the flag declining an occupied path, where a
+            // write with no flag reaches the open and fails EISDIR on the
+            // directory behind the junction.
+            fs.symlinkSync(target, tmp, 'junction');
+            const result = armGoal(repo, 'docs/plans/foo.md');
+            assert.strictEqual(result.ok, false, 'an occupied temp path fails the create');
+            assert.ok(result.reason.startsWith('could not write goal state: '),
+                'the reason keeps its prefix: ' + result.reason);
+            assert.ok(result.reason.includes('EEXIST'),
+                'the flag refused it, rather than the open failing on the link target: ' + result.reason);
+            assert.ok(!fs.existsSync(goalPath(repo)), 'and nothing lands at the goal-state path');
+            assert.ok(fs.existsSync(path.join(target, 'kept.txt')), 'the link target is untouched');
+        });
+    } finally {
+        rmRepo(repo);
+    }
 });

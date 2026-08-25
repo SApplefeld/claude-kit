@@ -28,7 +28,8 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const {
-    armGoal, clearGoal, readGoal, planHead, lastActivePhrase, isSessionIdShaped
+    armGoal, clearGoal, readGoal, planHead, lastActivePhrase, isSessionIdShaped, goalPath,
+    planPathState, pathErrnoClass, GOAL_STATE_MAX_BYTES
 } = require('./kit-goal-lib.js');
 
 // Repo-controlled strings (a plan path) are sanitized to printable ASCII and
@@ -120,18 +121,77 @@ function cmdArm(planArgs) {
     }
 }
 
+// What is at the goal-state path: 'file', 'oversized' (a regular file past the
+// bound every reader of it enforces), 'other' (something that is not a regular
+// file), 'unresolvable' (a path that can never resolve to a file),
+// 'unreadable' (a kind that could not be read at all) or 'absent'. The kind rule
+// every reader of that file applies, plus the size cap they apply with it, asked
+// here so the two surfaces that would otherwise print plain absence do not say
+// "nothing armed" about a path with something sitting at it that a later arm will
+// fail on with a raw errno. The errno split is pathErrnoClass's, the rule every
+// caller of this question in the kit answers to.
+function goalPathKind(cwd) {
+    let st;
+    try {
+        st = fs.lstatSync(goalPath(cwd));
+    } catch (err) {
+        const cls = pathErrnoClass(err && err.code);
+        if (cls === 'absent') return 'absent';
+        return cls === 'determinate' ? 'unresolvable' : 'unreadable';
+    }
+    if (!st.isFile()) return 'other';
+    return st.size > GOAL_STATE_MAX_BYTES ? 'oversized' : 'file';
+}
+
+// The sentence the two absence-reporting surfaces add when the goal-state path
+// holds something no reader reads as a goal, or when its kind could not be read.
+// Empty for the ordinary absent and regular-file cases.
+function goalPathNote(kind) {
+    if (kind === 'other') {
+        return ' (something that is not a goal-state file is at .kit/goal-state.json;'
+            + ' no reader treats it as a goal, and arming over it will fail until it is'
+            + ' moved aside by hand)';
+    }
+    if (kind === 'oversized') {
+        return ' (.kit/goal-state.json is past the ' + GOAL_STATE_MAX_BYTES + '-byte bound every'
+            + ' reader of this file enforces, so no reader treats it as a goal; clear it and arm'
+            + ' again)';
+    }
+    if (kind === 'unresolvable') {
+        return ' (.kit/goal-state.json cannot resolve to a file at all, so nothing is armed and'
+            + ' arming will fail until the path above it is a directory again)';
+    }
+    if (kind === 'unreadable') {
+        return ' (.kit/goal-state.json could not be read right now, so whether anything is'
+            + ' there is unknown; try again once whatever holds it lets go)';
+    }
+    return '';
+}
+
 function cmdClear() {
-    const result = clearGoal(process.cwd());
+    const cwd = process.cwd();
+    const result = clearGoal(cwd);
     if (!result.ok) {
-        // The state file exists but could not be deleted: the leash is still
-        // armed and enforcing, so this must not read as a successful clear.
-        process.stderr.write('kit-goal: ' + sanitize(result.reason) + ' (the goal is still armed)\n');
+        // Nothing was removed, so this must not read as a successful clear. What
+        // is left behind is not asserted: the lstat leg fires with existence
+        // unproven, and while a lock stands every reader treats the leash as
+        // absent, so the goal is not necessarily enforcing either.
+        process.stderr.write('kit-goal: ' + sanitize(result.reason) + ' (nothing was released)\n');
         process.exitCode = 1;
         return;
     }
-    process.stdout.write((result.cleared ? 'kit goal cleared' : 'no kit goal was armed') + '\n');
+    if (result.cleared) {
+        process.stdout.write('kit goal cleared\n');
+    } else {
+        process.stdout.write('no kit goal was armed' + goalPathNote(goalPathKind(cwd)) + '\n');
+    }
     process.exitCode = 0;
 }
+
+// How each state a queued plan path can be in prints in the queue rendering.
+// 'missing' keeps its meaning (the plan is not there, which is what archiving a
+// finished plan produces and what the leash advances on).
+const QUEUE_TOKENS = { gone: 'missing', unusable: 'unusable', unreadable: 'unreadable' };
 
 function cmdStatus() {
     const cwd = process.cwd();
@@ -143,7 +203,7 @@ function cmdStatus() {
     // look. Only a state with a plan is normalized, so every field below is
     // guaranteed present past this guard.
     if (!state || typeof state.plan !== 'string' || state.plan === '') {
-        process.stdout.write('no kit goal armed\n');
+        process.stdout.write('no kit goal armed' + goalPathNote(goalPathKind(cwd)) + '\n');
         process.exitCode = 0;
         return;
     }
@@ -171,7 +231,14 @@ function cmdStatus() {
     const window = state.queue.slice(state.queueIndex, state.queueIndex + 5);
     window.forEach((plan, i) => {
         const head = planHead(cwd, plan);
-        const status = head.exists ? head.status : 'missing';
+        // planHead answers the same 'no' for three states, and this is the
+        // surface an operator reads first when debugging an armed queue, so the
+        // three get three tokens rather than all printing as missing: a
+        // directory, a junction or a link out of the repo at a queued plan path
+        // is not the same problem as a plan that was archived, and a locked one
+        // is neither. The classification is planPathState's, the one every
+        // reader of a plan path here answers to.
+        const status = head.exists ? head.status : QUEUE_TOKENS[planPathState(cwd, plan)];
         out.push('  ' + (i === 0 ? '>' : ' ') + ' ' + sanitize(plan) + ' [' + status + ']');
     });
     const more = state.queue.length - state.queueIndex - window.length;
