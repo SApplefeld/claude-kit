@@ -26,8 +26,9 @@ The `curating-docs` skill owns the mechanics: it archives a plan when it complet
 
 ## Active plans
 
-Three plan documents sit in `plans/`. `plans/README.md` carries each one's full description and the go state of its header; the running order of the armed three rides in their own entries.
+Four plan documents sit in `plans/`. `plans/README.md` carries each one's full description and the go state of its header; the running order of the armed plans rides in their own entries.
 
+- **`plans/claude-kit_kaizen-batch_spec_v1.md`** (In Progress, outside the armed running order) applies the peer-messaging experiment's kaizen slate: amendment routing to reviewer briefs, the peer-sessions post-ship amendment, six doctrine amendments, four authoring lines, the `memq unstamped` empty-versus-clean split, the docs-curator counted-claim sweep, and statusline load tolerance.
 - **`plans/claude-kit_verification-artifacts_spec_v1.md`** (In Progress, third in the armed running order) answers three kaizen notes as one lesson: a rule that demands a verification names where the fact is readable.
 - **`plans/claude-kit_memory-anchors-and-frontmatter-guard_spec_v1.md`** (Draft, second in the armed running order) gives a project memory an `anchors:` field so it can say when the file it is about has changed, and adds a PreToolUse guard that validates hand-written memory frontmatter at the Write.
 - **`plans/claude-kit_warden-adoption-candidates_notes_v1.md`** is the candidate bank the two adopted specs grew from, header marked Dispositioned 2026-08-22: five design ideas from evaluating Warden-AI, each now carrying its disposition and the evidence (including the NEO probe that parked impact analysis), so nothing is re-proposed from the same README. It remains deliberately non-executable.
