@@ -36,7 +36,7 @@ The spec/plan path in docs/plans/, and the project root. Read the spec (includin
    - **Justifications.** When a change makes a stated reason false, every conclusion resting on that reason moves with it, wherever it lives. A control the change renders structurally inert is the costly case, because the document still credits it.
    - **Renamed identifiers, paths, and flags.** A stale path is the most expensive miss, since it sends an outside reader to a directory that does not exist.
 
-   Search for the old name, the old number, and the number words around whatever changed. Name every claim you swept in the `CLAIMS SWEPT` block, drift or no drift.
+   Search for the old name and the old path around whatever changed, for a renamed identifier or a moved file. A counted or enumerated claim takes two passes, not one, because most of these claims name no set at all: "seven bullets", "the third section", "the last item" state only a count or a position, giving a search keyed on the change's own vocabulary nothing to land on. Run the first pass unconditionally: hunt digits, number-words, and ordinals across the curated docs with no anchor. That pass is what catches a bare count, since a bare count describes the changed set without naming it. Where the enumerated set does carry a name, add a second pass keyed on that name, hunting the same digits, number-words, and ordinals near it. Neither pass replaces the other; a changeset that resizes a named set can falsify both a bare count and a name-anchored one. Name every claim you swept in the `CLAIMS SWEPT` block, drift or no drift.
 
 4. **Check library hygiene** (read-only; you flag, the main session fixes in close-out). Note any plan in `docs/plans/` whose header reads `Status: Complete` yet still sits there unarchived, and any missing cross-reference between this effort's plan and the related or superseded plans it should point at. You may refresh the `docs/README.md` index, which lives under docs/ and is not a plan doc, but never move a plan or edit a plan's header: that touches the plan file, which is outside your charter. The `curating-docs` skill owns the moves.
 
@@ -48,6 +48,7 @@ DOCS UPDATED:
 
 CLAIMS SWEPT: (REQUIRED - one line per claim this change falsified, even when the sweep found nothing)
 - "<the claim as the library states it>" - searched: <terms> - <clean | drift in [Dn]>
+- for a counted or ordinal claim (a count, an enumeration, a positional reference): "<the claim>" - searched: <digits/number-words/ordinals across the curated docs, plus set name + digits/number-words/ordinals where the set is named> - <clean | drift in [Dn]>
 
 CLAIMS SWEPT: NONE - this change falsified no stated claim  (only when that is literally true)
 

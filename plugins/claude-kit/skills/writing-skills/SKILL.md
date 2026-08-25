@@ -44,6 +44,15 @@ Three rules govern any rule you write, not just the four forms above:
 - **Exemption clauses do not scope.** "This limit excludes code blocks" still suppresses code blocks. If part of the output must be exempt, restructure so the rule cannot reach it.
 - **Close every enumeration with its class.** A list of instances (a rationalization table, a blocker set, an antipattern list) reads as exhaustive the moment it ships, so an unlisted variant presents itself as licensed. State the class the instances belong to right where the list ends ("the table is instances, not the boundary"; "the set is closed"), so a novel variant meets the rule even though no row names it.
 
+## State facts the reader can check and correct
+
+The rules above govern the form of a rule. These two govern the facts a rule stands on, which go stale on their own schedule and take the rule with them.
+
+- **When two framings of one fact are both true, ship the one the reader can verify from where they sit.** "`memq recall` returns the whole memory store as one bounded digest" and "the memory store is available in bulk" are the same fact, but only the first names something the reader can run and watch happen. A framing the reader cannot check is one they take on trust, and a rule taken on trust is one they cannot repair: when the fact underneath it moves, the reader has no way to notice, so they keep obeying a rule that now describes nothing. Name the file, the command, the observable event, or the artifact the fact lives in, and pick the framing that makes it findable.
+- **A fact base drawn from observed instances states its lists as open unless the contract closes them.** Closure comes from the contract (a schema, an enum, a validated surface with a published shape), never from the sample agreeing with itself. This is the enumeration rule's failure in the fact layer rather than the rule layer, and it hides differently: an enumeration extracted from a single fully-observed sample reads as exhaustive to whoever wrote it, because every field it lists really was present and nothing contradicted it. The reader then branches on a field's absence as if absence carried meaning, and that branch is wrong for every instance the sample never contained. So write the list as open and say what would close it, or cite the contract that already does.
+
+Those two are instances rather than the boundary. The class is any fact a rule rests on that the reader cannot check for themselves or cannot see the edges of, and a new way of putting a fact out of the reader's reach meets the rule even though neither bullet names it.
+
 ## Know it works before you trust it
 
 A skill you wrote and never tested is a guess. The honest test is to watch an agent's behavior with and without the wording:
