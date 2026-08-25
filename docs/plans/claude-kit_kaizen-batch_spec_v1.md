@@ -101,3 +101,25 @@ Tests: at minimum, lock the stale-but-drawn fallback in both directions (healthy
 
 ## Chapters
 
+### Interim board 1 - 2026-08-25
+
+In-flight sections and their stage. §1 implemented and in review (fable pair dispatched, both live). §2, §4, §6 implemented, round 1 adjudicated below, fixes not yet dispatched. §3 implementing at fable. §5 and §7 not started; §5 waits on the pull-rebase its Execution shape requires.
+
+Live dispatches and what each was asked. `implementer-fable` on §3, the six doctrine amendments byte-identical across both copies, with the byte-identity proof required mechanically rather than by eye. `adversarial-reviewer` and `blind-reviewer` on §1 at fable, the adversarial one asked to judge the blind side's cleanliness as its central safety property and to rule on the implementer's four declared judgment calls.
+
+Gate baseline. 1456 pass / 1456 tests / 0 fail, exit 0, captured on the clean worktree at 434ccc3 before the first edit. Four implementer runs have each re-run the suite and matched it exactly; wall clock ranged 402s to 487s across those runs, which is contention from concurrent sessions rather than a result.
+
+Rulings adopted since the last boundary, from round 1 over §2, §4 and §6. The round returned no Critical. Seven Majors survive adjudication and are the fix round's content.
+
+- §2, both lenses independently: the added wedge-probe mechanism asserts the idle notice "never fires", which this same file's contract line denies, since the subscription reports its own 12-hour expiry rather than going silent. Adopted; the true objection is timing rather than impossibility, so the fix states that nothing fires while the agent is wedged and the subscription's only output is an expiry report three orders of magnitude past the twelve-minute probe window. This is the round's one corroborated finding, and it is the first live instance of the cross-lens rule §4 adds.
+- §2, adversarial: both new sentences landed inside `## Etiquette`, which the Scope section explicitly excludes from reaching your own dispatches, so the receiver-half rule does not cover an orchestrator re-checking its own reviewer's cited claim, the highest-traffic case it was written for. Adopted; the receiver half moves to `## Standing of an inbound message`.
+- §4, adversarial and blind converging on the same sentence: the goal-coverage addition asserts that an unowned Goal claim "goes unnoticed until finishing reads the Goal against what shipped", and no such downstream check exists (confirmed by grep across finishing-work, executing-work, curating-docs, qa-verifier and adversarial-reviewer). Adopted as a false claim in a shipped document.
+- §4, both lenses: the addition offers two dispositions for an unowned Goal claim, and a claim deliverable only by an operator action fits neither, since brainstorming bars writing a section Claude cannot close. Adopted; `## Operator Verification` becomes the third legitimate home, mirroring how the surface check accepts `## Out of Scope`.
+- §4, adversarial: the corroboration rule's "they run in parallel" is false for the qa-verifier and the docs-curator, which finishing-work runs serially. Adopted; the claim is scoped to same-round dispatches.
+- §4, adversarial: the corroboration rule's independence premise is broken by the kit's own Standing Brief Amendments mechanism, which can point two lenses at one defect class, and the rule's own disqualifier cannot catch it because the kit calls that framing not-contamination. Adopted; shared standing-brief content is named as an independence breaker regardless.
+- §6, both lenses: the replacement search key is conditioned on adjacency to the set's name, and the block's own worked examples ("seven bullets", "the third section") carry no set name, so the prescribed key cannot find the very claims the rule exists to catch. Adopted; both keys ship, an unconditional number-word pass and the set-name-anchored pass.
+
+Minors recorded and deferred to the fix round where trivial: the writing-skills addition ships a two-item enumeration with no class close, which that same file forbids seven lines above; its `memq recall` example drops the "bounded" qualifier its owning site keeps; the docs-curator `counted-claim` token has no reader.
+
+Next action per section. §1: await its review pair, then adjudicate. §2, §4, §6: dispatch one fix round carrying the seven adopted Majors. §3: await the implementer. §5, §7: dispatch after §3 closes, §5 behind its pull-rebase.
+
