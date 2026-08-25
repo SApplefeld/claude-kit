@@ -7361,6 +7361,35 @@ function seedTierUsage(dir, lines) {
     fs.writeFileSync(path.join(dir, 'usage.jsonl'), lines.map((l) => l + '\n').join(''), 'utf8');
 }
 
+// The report-level verdict, the line that closes an unstamped run with no hits
+// in it. The spellings are pinned here rather than spelled out at each use, so
+// a case asserts which one it expects and the wording itself is stated once.
+// Which one prints follows cmdUnstamped's branch structure rather than a fixed
+// list: a count of records carrying a read stamp closes with the clean-sweep
+// clause only when every reading came back whole, and with the hidden-hit
+// warning when evidence was lost, whole (an unreadable sidecar or listing) or
+// in part (a sidecar line the reader skipped), the usage-side loss also
+// flooring the count; a zero is stated as an untracked window when the usage
+// evidence read whole, and as an uncountable one when usage evidence was
+// itself the loss. What separates them is load-bearing in both directions:
+// the strong zero claims an untracked window, which only usage evidence read
+// whole can support, and the clean-sweep clause needs every reading whole,
+// because any of these losses can hide a record awaiting a stamp.
+const NO_STAMP = 'memq: no read stamp in the last 1d, so these zeros are an absence of'
+    + ' evidence rather than a clean sweep: no read reached the tracker this window,'
+    + ' this run\'s included; the memory-system skill names the readers that leave none';
+const NO_STAMP_UNREAD = 'memq: usage evidence went unread, in whole or in part, and no'
+    + ' read stamp was counted in the last 1d: these zeros are an absence of evidence,'
+    + ' not a clean sweep';
+const SWEPT_ONE = 'memq: 1 record carries a read stamp in the last 1d and no live record is'
+    + ' awaiting one; a shared sidecar cannot say whose reads those were, or which of them'
+    + ' a boundary already adjudicated';
+const HIDDEN_LISTING_ONE = 'memq: 1 record carries a read stamp in the last 1d, and a record'
+    + ' listing went unread, so a record awaiting a stamp may be hidden from this report';
+const HIDDEN_SIDECAR_ONE = 'memq: 1 record carries a read stamp in the last 1d, and usage'
+    + ' evidence went unread, in whole or in part, so a record awaiting a stamp may be'
+    + ' hidden from this report and that count is a floor';
+
 test('unstamped reports a read with no applied stamp beside it, and the window edge decides', () => {
     const store = makeStore();
     try {
@@ -7569,8 +7598,14 @@ test('a read-stamped record that has since been archived is skipped, never named
 
         const res = run(store, ['unstamped']);
         assert.strictEqual(res.status, 0, res.stderr);
+        // The verdict counts the read stamp that is still in the sidecar, so
+        // the report is not an absence of evidence: what removed the line was
+        // liveness. The claim it makes beside that count is scoped to live
+        // records for the same reason, this record being read, unapplied, and
+        // past anything `touch` can do about it.
         assert.strictEqual(res.stdout,
-            'project tier: 0 records read but not applied in the last 1d\n',
+            'project tier: 0 records read but not applied in the last 1d\n'
+            + SWEPT_ONE + '\n',
             'touch refuses an archived record, so naming one would teach an invocation that errors');
         assert.ok(!res.stdout.includes('retired'), 'the archived name is nowhere in the output');
     } finally {
@@ -7589,6 +7624,8 @@ test('the journal, MEMORY.md, and the pending tier are all outside unstamped\'s 
         // writer in the store can produce one: the sidecar's own shape gate
         // refuses MEMORY.md, so the sweep never sees it and says so as a
         // malformed line rather than silently listing an unstampable file.
+        // The skip also floors the tier's count below, because a skipped line
+        // is evidence that went unread, whatever this fixture knows it held.
         seedUsage(store, [
             readStamp('proj-fact.md', hoursAgo(2)),
             JSON.stringify({ ts: hoursAgo(2).toISOString(), file: 'MEMORY.md', kind: 'read' })
@@ -7607,7 +7644,8 @@ test('the journal, MEMORY.md, and the pending tier are all outside unstamped\'s 
         // indistinguishable and neither would name the file to go fix.
         assert.match(res.stderr, /^memq: skipping malformed usage line 2 in the project tier$/m);
         assert.strictEqual(res.stdout,
-            'project tier: 1 record read but not applied in the last 1d\n'
+            'project tier: 1 record read but not applied in the last 1d;'
+            + ' evidence unread, so this count is a floor\n'
             + 'project  proj-fact  read 2h\n'
             + REMINDER + '\n');
         assert.ok(!res.stdout.includes('in.key'), 'the journal has no applied concept to diff');
@@ -7633,14 +7671,17 @@ test('unstamped states every tier zero, notes an absent store, and refuses a bad
 
         // Every tier this project reaches states its zero, and with nothing to
         // adjudicate the reminder is withheld: it teaches an invocation, and
-        // there is no name here to give it.
+        // there is no name here to give it. The verdict closes in its place,
+        // and over a store with no read stamp in the window it reports an
+        // absence of evidence rather than a clean sweep.
         const empty = run(store, ['unstamped']);
         assert.strictEqual(empty.status, 0, empty.stderr);
         assert.strictEqual(empty.stderr, '');
         assert.strictEqual(empty.stdout,
             'project tier: 0 records read but not applied in the last 1d\n'
             + 'type tier (webapp): 0 records read but not applied in the last 1d\n'
-            + 'operator tier: 0 records read but not applied in the last 1d\n');
+            + 'operator tier: 0 records read but not applied in the last 1d\n'
+            + NO_STAMP + '\n');
 
         for (const bad of ['0d', '00h', '01d', '7', '7 days', '1.5d', '-1d', '1w', 'd',
             '1234567d', '1D', 'today']) {
@@ -7741,9 +7782,18 @@ test('an unreadable sidecar makes a tier\'s unstamped count a floor rather than 
         // a hit requires a read stamp and an unreadable sidecar yields no
         // stamps at all. So the count is a floor, and the tier that lost its
         // evidence is the one that says so.
+        // The verdict reads the same loss one level up. Its strong zero, the
+        // one claiming nothing reached the tracker, rests on a sidecar that
+        // was actually read, so a refused sidecar takes that claim away: the
+        // line leads with the loss instead, and the reader is pointed at the
+        // error on stderr rather than at their own reading habits.
+        // The whole-stdout equality also proves what NO_STAMP_UNREAD omits:
+        // the untracked-reader pointer, withheld where the file rather than
+        // the habit was the loss.
         assert.strictEqual(res.stdout,
             'project tier: 0 records read but not applied in the last 1d;'
-            + ' evidence unread, so this count is a floor\n');
+            + ' evidence unread, so this count is a floor\n'
+            + NO_STAMP_UNREAD + '\n');
 
         // The control: the same store read normally reports the record, so the
         // floor above is a refused read rather than a tier with nothing in it.
@@ -7758,10 +7808,11 @@ test('an unreadable sidecar makes a tier\'s unstamped count a floor rather than 
     }
 });
 
-// A tier fails to be read whole in two independent ways, and only one of them
-// is the sidecar. These two lock the other: the records listing. Both would
-// pass green under a floor that keyed on the sidecar's status alone, which is
-// what makes them worth writing separately from the case above.
+// A tier's evidence is lost in three shapes, and only one of them is the
+// whole sidecar: the record listing can be refused whole, and a single
+// sidecar line can go unread inside a file that reads. This test locks the
+// listing, the torn-line test below locks the line, and both would pass
+// green under a floor keyed on the sidecar read's status alone.
 test('a tier whose record listing cannot be read reports a floor, not a clean sweep', () => {
     const store = makeStore();
     try {
@@ -7774,9 +7825,18 @@ test('a tier whose record listing cannot be read reports a floor, not a clean sw
         const res = run(store, ['unstamped'],
             { NODE_OPTIONS: refuseMemoryListingPreload(store.root) });
         assert.strictEqual(res.status, 0, 'a lost listing never fails the sweep');
+        // The verdict carries the loss the other way round from the sidecar
+        // case. The sidecar reads, so the stamp is counted; the listing does
+        // not, so the records that stamp could have raised were never
+        // enumerated, and the clause claiming no live record is awaiting a
+        // stamp is exactly what this loss makes false. The whole-stdout
+        // equality proves that clause absent, and the control below proves the
+        // hidden hit real: it names the record this line would otherwise have
+        // declared clean.
         assert.strictEqual(res.stdout,
             'project tier: 0 records read but not applied in the last 1d;'
-            + ' evidence unread, so this count is a floor\n');
+            + ' evidence unread, so this count is a floor\n'
+            + HIDDEN_LISTING_ONE + '\n');
 
         // The control proves the fixture would otherwise have produced a hit,
         // so the floor above is the refused listing and not an empty tier.
@@ -7785,6 +7845,234 @@ test('a tier whose record listing cannot be read reports a floor, not a clean sw
             'project tier: 1 record read but not applied in the last 1d\n'
             + 'project  proj-fact  read 2h\n'
             + REMINDER + '\n');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The sidecar half of refuseUsageReadPreload, scoped to the project tier: only
+// a usage.jsonl under projects/ is refused, so a shared tier's sidecar still
+// reads. This is what makes a mixed report reachable, one tier's stamps lost
+// while another tier's count them, where the store-wide refusal pins the
+// whole report's count at zero.
+function refuseProjectUsageReadPreload(dir) {
+    const shim = path.join(dir, 'refuse-project-usage-read.js');
+    fs.writeFileSync(shim, [
+        "'use strict';",
+        "const fs = require('fs');",
+        'const realReadFileSync = fs.readFileSync;',
+        'fs.readFileSync = function (target) {',
+        "    const p = String(target).replace(/\\\\/g, '/');",
+        "    if (p.endsWith('usage.jsonl') && p.includes('/projects/')) {",
+        "        const err = new Error('EACCES: the fixture refuses this read');",
+        "        err.code = 'EACCES';",
+        '        throw err;',
+        '    }',
+        '    return realReadFileSync.apply(fs, arguments);',
+        '};'
+    ].join('\n') + '\n', 'utf8');
+    return '--require "' + shim.replace(/\\/g, '/') + '"';
+}
+
+// A lost sidecar beside a swept tier that counted: the one shape where the
+// report carries a count and a sidecar loss at once, since within a single
+// tier the loss that empties the stamps empties the count with them. The
+// count comes from the operator tier, whose window holds a read already
+// adjudicated; the lost sidecar is the project tier's, hiding the hit the
+// control proves is there. A verdict that closed its count with the
+// clean-sweep clause here would declare that hidden record adjudicated.
+test('a lost sidecar beside a counted tier withholds the clean-sweep clause', () => {
+    const store = makeStore();
+    try {
+        writeMemoryFile(store, 'proj-fact.md', '# p\n');
+        seedUsage(store, [readStamp('proj-fact.md', hoursAgo(2))]);
+        writeOperatorMemory(store, 'op-fact.md', '# o\n');
+        seedTierUsage(operatorDirPath(store), [
+            readStamp('op-fact.md', hoursAgo(3)),
+            appliedStamp('op-fact.md', hoursAgo(2))
+        ]);
+
+        const res = run(store, ['unstamped'],
+            { NODE_OPTIONS: refuseProjectUsageReadPreload(store.root) });
+        assert.strictEqual(res.status, 0, 'a lost sidecar never fails the sweep');
+        assert.match(res.stderr, /could not read usage sidecar in the project tier/);
+        // The negative runs ahead of the equality so the defect it guards has
+        // a check that names it: a clean-sweep clause over a report with a
+        // lost sidecar is exactly what must not print.
+        assert.ok(!res.stdout.includes('awaiting one'),
+            'a report with a lost sidecar never claims no record is awaiting a stamp');
+        assert.strictEqual(res.stdout,
+            'project tier: 0 records read but not applied in the last 1d;'
+            + ' evidence unread, so this count is a floor\n'
+            + 'operator tier: 0 records read but not applied in the last 1d\n'
+            + HIDDEN_SIDECAR_ONE + '\n');
+
+        // The control proves the hidden hit: the same store with every
+        // sidecar readable names the record the verdict above says may be
+        // hidden, and the count the lost run called a floor rises.
+        const control = run(store, ['unstamped']);
+        assert.strictEqual(control.status, 0, control.stderr);
+        assert.strictEqual(control.stdout,
+            'project tier: 1 record read but not applied in the last 1d\n'
+            + 'project  proj-fact  read 2h\n'
+            + 'operator tier: 0 records read but not applied in the last 1d\n'
+            + REMINDER + '\n');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The third loss shape, and the only one a plain file write can plant: a
+// malformed line inside a sidecar that otherwise reads. The shared reader
+// skips it with a note and still reports 'ok', so a floor keyed on that
+// status alone would let a torn line buy the strong zero and the clean-sweep
+// clause over evidence that went partly unread, and the skipped line is
+// exactly where a torn read or applied append could be hiding a record
+// awaiting a stamp. No preload shim here, unlike the two whole-surface
+// cases: a torn append is a state the sidecar's own lock-free writers can
+// leave behind.
+test('a torn sidecar line floors the count and withholds the strong zero and the clean sweep', () => {
+    const store = makeStore();
+    try {
+        writeMemoryFile(store, 'proj-fact.md', '# p\n');
+
+        // The torn line alone: nothing was counted, and the zero must read
+        // as an absence of evidence, never as the strong zero, whose
+        // untracked-window claim only usage evidence read whole can support.
+        seedUsage(store, ['{"ts":"2026-08-25T0']);
+        const torn = run(store, ['unstamped']);
+        assert.strictEqual(torn.status, 0, torn.stderr);
+        assert.match(torn.stderr, /^memq: skipping malformed usage line 1 in the project tier$/m);
+        assert.ok(!torn.stdout.includes('no read reached the tracker'),
+            'a partly unread sidecar cannot support the untracked-window claim');
+        assert.strictEqual(torn.stdout,
+            'project tier: 0 records read but not applied in the last 1d;'
+            + ' evidence unread, so this count is a floor\n'
+            + NO_STAMP_UNREAD + '\n');
+
+        // The same torn line beside an adjudicated in-window read: the report
+        // carries a count now, and what the skip must withhold is the
+        // clean-sweep clause.
+        seedUsage(store, [
+            readStamp('proj-fact.md', hoursAgo(3)),
+            appliedStamp('proj-fact.md', hoursAgo(2)),
+            '{"ts":"2026-08-25T0'
+        ]);
+        const counted = run(store, ['unstamped']);
+        assert.strictEqual(counted.status, 0, counted.stderr);
+        assert.match(counted.stderr, /^memq: skipping malformed usage line 3 in the project tier$/m);
+        assert.ok(!counted.stdout.includes('awaiting one'),
+            'a report with a torn line never claims no record is awaiting a stamp');
+        assert.strictEqual(counted.stdout,
+            'project tier: 0 records read but not applied in the last 1d;'
+            + ' evidence unread, so this count is a floor\n'
+            + HIDDEN_SIDECAR_ONE + '\n');
+
+        // The control: the same store minus the torn line, and the clean-sweep
+        // clause returns, so what withheld it above is the skip and nothing
+        // else.
+        seedUsage(store, [
+            readStamp('proj-fact.md', hoursAgo(3)),
+            appliedStamp('proj-fact.md', hoursAgo(2))
+        ]);
+        const control2 = run(store, ['unstamped']);
+        assert.strictEqual(control2.status, 0, control2.stderr);
+        assert.strictEqual(control2.stderr, '');
+        assert.strictEqual(control2.stdout,
+            'project tier: 0 records read but not applied in the last 1d\n'
+            + SWEPT_ONE + '\n');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// An absent project store is not a lost listing. readMemDirOrNote hands the
+// nonexistent project path back whenever the operator tier exists, so every
+// project without a store of its own sweeps an absent directory on every run;
+// a verdict that warned of hidden hits there would warn forever, about a
+// store holding no records to hide. The tier line still calls its zero a
+// floor, that being the sweep question (this store was never found), while
+// the verdict answers the hiding question: absence holds nothing to hide, so
+// a count over readable surfaces keeps its clean-sweep clause.
+test('an absent project store does not turn the counted verdict into a hidden-hit warning', () => {
+    const store = makeStore();
+    try {
+        writeOperatorMemory(store, 'op-fact.md', '# o\n');
+        seedTierUsage(operatorDirPath(store), [
+            readStamp('op-fact.md', hoursAgo(3)),
+            appliedStamp('op-fact.md', hoursAgo(2))
+        ]);
+
+        const res = run(store, ['unstamped']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stderr, /no memory directory at/);
+        assert.ok(!res.stdout.includes('may be hidden'),
+            'an absent store holds no records, so nothing warns of a hidden one');
+        assert.strictEqual(res.stdout,
+            'project tier: 0 records read but not applied in the last 1d;'
+            + ' evidence unread, so this count is a floor\n'
+            + 'operator tier: 0 records read but not applied in the last 1d\n'
+            + SWEPT_ONE + '\n');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The two zero reports the verdict exists to separate, driven over one store
+// that changes in one respect between the runs. The other cases each pin one
+// reading against a fixture built for it; this one is what makes the
+// difference attributable to the read evidence and to nothing else, since
+// every tier line above the verdict is byte-identical across the pair.
+//
+// It also pins the unit. The count is distinct records, not stamps, and the
+// units disagree here by design: five stamps sit in the window, three of them
+// reads over two files, and the pinned line says 2. A reader counting read
+// stamps prints 3 and a reader counting every stamp prints 5.
+test('a window nothing read reads differently from one whose reads were all stamped', () => {
+    const store = makeStore();
+    try {
+        writeMemoryFile(store, 'proj-fact.md', '# p\n');
+        writeMemoryFile(store, 'other-fact.md', '# o\n');
+
+        // No evidence: the records exist and the sidecar reads cleanly, so
+        // nothing here is a lost surface. There is simply no stamp, which is
+        // what a session that opened its memories with cat leaves behind.
+        const untracked = run(store, ['unstamped']);
+        assert.strictEqual(untracked.status, 0, untracked.stderr);
+        assert.strictEqual(untracked.stderr, '');
+        assert.strictEqual(untracked.stdout,
+            'project tier: 0 records read but not applied in the last 1d\n'
+            + NO_STAMP + '\n');
+
+        // Evidence, and nothing live awaiting a stamp: the same store and the
+        // same records, now with reads and applied stamps over both. One file
+        // carries two reads, so the count states the records it means rather
+        // than the stamps it read.
+        seedUsage(store, [
+            readStamp('proj-fact.md', hoursAgo(5)),
+            appliedStamp('proj-fact.md', hoursAgo(4)),
+            readStamp('other-fact.md', hoursAgo(6)),
+            readStamp('other-fact.md', hoursAgo(5)),
+            appliedStamp('other-fact.md', hoursAgo(4))
+        ]);
+        const swept = run(store, ['unstamped']);
+        assert.strictEqual(swept.status, 0, swept.stderr);
+        assert.strictEqual(swept.stderr, '');
+        assert.strictEqual(swept.stdout,
+            'project tier: 0 records read but not applied in the last 1d\n'
+            + 'memq: 2 records carry a read stamp in the last 1d and no live record is'
+            + ' awaiting one; a shared sidecar cannot say whose reads those were, or which'
+            + ' of them a boundary already adjudicated\n');
+        assert.strictEqual(swept.stdout.split('\n')[0], untracked.stdout.split('\n')[0],
+            'the tier line is identical in both states, so the verdict carries the whole difference');
+
+        // A stamp outside the window is no evidence for that window: the
+        // report is back to its strong zero, over a sidecar full of stamps.
+        const narrow = run(store, ['unstamped', '--since', '1h']);
+        assert.strictEqual(narrow.status, 0, narrow.stderr);
+        assert.strictEqual(narrow.stdout,
+            'project tier: 0 records read but not applied in the last 1h\n'
+            + NO_STAMP.replace('last 1d', 'last 1h') + '\n');
     } finally {
         rmStore(store);
     }

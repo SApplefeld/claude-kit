@@ -1340,7 +1340,12 @@ function isUsageStamp(v) {
 // different meanings: a store where nothing was ever applied, and a lost or
 // unreadable sidecar that would silently zero every memory's applied
 // evidence. The standing evidence line decay-scan prints needs the reason,
-// and a bare [] here would erase it.
+// and a bare [] here would erase it. `skipped` counts the malformed lines the
+// read passed over (0 on a clean read), because the status alone cannot carry
+// a partial loss: a read that skipped a line still reports 'ok', its
+// surviving stamps all real, and a caller whose claim rests on having read
+// the evidence whole needs the skips beside the status rather than inferred
+// from a stderr stream it cannot see.
 // `tag` is the optional tier suffix a note about this read carries, the same
 // convention readArchiveDescriptions takes. A caller reading one sidecar needs
 // none: there is only one file the note could be about. A caller reading
@@ -1360,11 +1365,12 @@ function readUsage(memDir, tag) {
         if (!err || err.code !== 'ENOENT') {
             process.stderr.write('memq: could not read usage sidecar' + where + ': '
                 + failureText(err) + '\n');
-            return { status: 'unreadable', stamps: [] };
+            return { status: 'unreadable', stamps: [], skipped: 0 };
         }
-        return { status: 'absent', stamps: [] };
+        return { status: 'absent', stamps: [], skipped: 0 };
     }
     const stamps = [];
+    let skipped = 0;
     const lines = raw.replace(/^\uFEFF/, '').split(/\r?\n/);
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
@@ -1373,11 +1379,12 @@ function readUsage(memDir, tag) {
         try { parsed = JSON.parse(line); } catch { /* reported just below */ }
         if (!isUsageStamp(parsed)) {
             process.stderr.write('memq: skipping malformed usage line ' + (i + 1) + where + '\n');
+            skipped += 1;
             continue;
         }
         stamps.push(parsed);
     }
-    return { status: 'ok', stamps };
+    return { status: 'ok', stamps, skipped };
 }
 
 // The distinct-day applied tally per memory file, over stamps readUsage
@@ -5070,44 +5077,64 @@ function cmdRecent(argv) {
 // runs, which says nothing about when the memory was used. That is the reading
 // `recent` gives the same record.
 //
-// Candidates come from listMemories, so only records live in the tier can be
-// hits and a read-stamped file since archived drops out. That is the stamp
-// reminder's rule reaching one command further: `touch` refuses an archived
-// record, and a list that named one would teach an invocation that errors,
-// which trains sessions off the stamp instead of onto it. listMemories also
-// carries the tier index's description, so the liveness question and the line's
-// last column are one read.
+// Candidates come from the tier's own record listing, so only records live in
+// the tier can be hits and a read-stamped file since archived drops out (the
+// archive is another directory, which this listing never walks). That is the
+// stamp reminder's rule reaching one command further: `touch` refuses an
+// archived record, and a list that named one would teach an invocation that
+// errors, which trains sessions off the stamp instead of onto it. The listing
+// is the same status-carrying reading the reachability question below is
+// asked through, deliberately one reading for both: candidates drawn from a
+// second enumeration could disagree with the one whose loss is flagged, and a
+// record falling into that gap would vanish from the hits with no flag
+// raised. Descriptions come from the tier index read directly, whose loss can
+// only blank a line's last column, never remove the line.
 //
 // `unread` rides alongside because an empty list has two meanings, readUsage's
-// own rule over the same failure. A tier whose sidecar could not be read
-// yields no stamps at all, and a hit requires a read stamp, so a whole-surface
-// loss can only hide hits and never manufacture one: the count is a floor, and
-// the coverage line says so. The flag is that whole-surface question and not a
-// per-line one, because readUsage skips a malformed line with its own note and
-// still reports 'ok'. A torn applied append beside an intact read line can
-// therefore raise a hit that was already adjudicated, without raising the
-// floor. That is the tolerance the sidecar's lock-free appends are built on,
-// and it lands in the cheap direction: one extra recognition question, against
-// the missed stamp a stricter reader would cost.
+// own rule over the same failure. Lost evidence can only hide hits and never
+// manufacture one, since a hit requires a read stamp: the count is a floor,
+// and the coverage line says so. The flag covers the partial loss as well as
+// the whole-surface one, because readUsage skips a malformed line with its own
+// note and still reports 'ok', and the skipped line is exactly where a torn
+// read or applied append could be hiding evidence: the skip count rides the
+// same flags an unreadable sidecar sets. That keeps the sidecar's lock-free
+// append tolerance (the read still yields every intact stamp) while refusing
+// the claim the skip undercuts, and it lands in the cheap direction: one
+// extra recognition question, against the missed stamp a stricter reader
+// would cost.
+//
+// `reads` rides alongside for the other empty-list meaning, the one no tier can
+// answer alone: a zero built on a window where nothing recorded a read at all
+// is a report with no coverage behind it, and the caller folds every tier's
+// count into one verdict rather than stating it per tier. It is evidence about
+// the sidecars rather than about the running session, because a read stamp
+// carries a file and a timestamp and no writer, and every tier here is shared:
+// the project tier between a checkout and its worktrees, the type and operator
+// tiers across every project on the machine, and the store syncing across
+// machines besides.
 function unstampedTierHits(dir, from, tag) {
-    // Two independent readings can fail, and a zero built on either one is a
-    // claim this command cannot make. The sidecar carries the read stamps a
-    // hit requires; the listing carries the live records a hit is drawn from.
-    // Lose either and every hit that tier owed silently becomes no hit at
-    // all, which reads as an adjudicated-clean tier and is the expensive
-    // direction: a missed applied ages a load-bearing memory toward the
-    // archive, while a false one costs a single recognition question. So the
-    // floor keys on the tier's whole reachability, not the sidecar alone.
-    // listMemories answers an unreadable directory and an absent one the same
-    // way, with an empty list, so the reachability question is asked through
-    // recentFileNames, the store's one listing reader that reports how the
-    // read went, rather than inferred from a list that cannot tell the two
-    // apart. An absent directory counts as unreached for the same reason: a
-    // project whose store this run never found (the operator-tier case, where
-    // the project path is handed back regardless) has no records to sweep,
-    // and a bare zero there is a claim about a store that is not there.
+    // Three readings are everything this sweep consumes for a tier, and a
+    // zero built on a failure in the first two is a claim this command
+    // cannot make. The sidecar carries the read stamps a hit requires; the
+    // listing carries the live records a hit is drawn from, and it is also
+    // where the candidates below come from, so what is reachable and what is
+    // a candidate cannot disagree. Lose either, whole or in part, and every
+    // hit that tier owed silently becomes no hit at all, which reads as an
+    // adjudicated-clean tier and is the expensive direction: a missed
+    // applied ages a load-bearing memory toward the archive, while a false
+    // one costs a single recognition question. The third reading, the tier
+    // index's descriptions, carries no flag because its loss can only blank
+    // a description, never hide a hit. The listing is read through
+    // recentFileNames, the store's listing reader that reports how the read
+    // went, so an unreadable directory and an absent one stay told apart. An
+    // absent directory counts as unreached on the per-tier line for its own
+    // reason: a project whose store this run never found (the operator-tier
+    // case, where the project path is handed back regardless) has no records
+    // to sweep, and a bare zero there is a claim about a store that is not
+    // there.
     const listing = recentFileNames(dir);
     const usage = readUsage(dir, tag);
+    const descriptions = readIndexDescriptions(dir);
     const lastRead = new Map();
     const applied = new Set();
     for (const s of usage.stamps) {
@@ -5128,14 +5155,52 @@ function unstampedTierHits(dir, from, tag) {
     // read, which is the nagging that trains sessions to skim the list, and
     // the list only works while every line on it is a real question.
     const hits = [];
-    for (const m of listMemories(dir)) {
-        const key = memoryFileKey(m.name + '.md');
+    for (const f of listing.names) {
+        const key = memoryFileKey(f);
         const readMs = lastRead.get(key);
         if (readMs === undefined || applied.has(key)) continue;
-        hits.push({ name: m.name, description: m.description, ms: readMs });
+        hits.push({ name: f.slice(0, -3), description: descriptions.get(f) || '', ms: readMs });
     }
     hits.sort((a, b) => b.ms - a.ms || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
-    return { hits, unread: usage.status === 'unreadable' || listing.status !== 'ok' };
+    // `reads` is how many distinct records of this tier carried a read stamp
+    // inside the window, before liveness or applied evidence removes any of
+    // them. Records rather than stamps, so a file read four times counts once,
+    // and counted from the sidecar rather than from the hits, so a record read
+    // and since archived still counts: the question it answers is whether
+    // anything recorded a read in this tier at all, and the archived record's
+    // stamp is proof that something did.
+    //
+    // Either loss hides hits, because a hit needs both surfaces: the read
+    // stamp comes from the sidecar and the live record from the listing, and
+    // each loss removes one of the two. Lost usage evidence takes this tier's
+    // hits and its `reads` down together, whether the whole sidecar went
+    // unread or one skipped line did: the same loss hides the hits and floors
+    // the count. A lost listing removes the candidate records while the
+    // stamps still count, so it hides hits and leaves `reads` intact. The
+    // losses are returned apart because the caller says different things over
+    // them: only the usage-side loss makes the report's count a floor, while
+    // either loss forbids the clause that no record is awaiting a stamp.
+    //
+    // The loss flags key on 'unreadable' and the skip count, never on
+    // absence, where `unread` also folds an absent listing in, and the
+    // difference is what an absence proves. An absent sidecar is a tier
+    // nothing ever stamped and an absent directory holds no records, so an
+    // absence has nothing to hide; it is the ordinary empty state,
+    // recentFileNames' own reading of it. The shape that makes this matter is
+    // a project with no store of its own on a machine with an operator tier,
+    // where readMemDirOrNote hands the nonexistent project path back: a
+    // verdict that warned of hidden hits there would warn on every run in
+    // that project, and a standing false alarm trains its reader off the
+    // line. `unread` keeps the absent listing because the per-tier line asks
+    // a different question, whether this tier was actually swept, and a store
+    // this run never found was not.
+    return {
+        hits,
+        reads: lastRead.size,
+        lostStamps: usage.status === 'unreadable' || usage.skipped > 0,
+        lostListing: listing.status === 'unreadable',
+        unread: usage.status === 'unreadable' || usage.skipped > 0 || listing.status !== 'ok'
+    };
 }
 
 // memq unstamped: the memories this project's sessions opened inside a window
@@ -5158,7 +5223,20 @@ function unstampedTierHits(dir, from, tag) {
 //     type  <name>  read <age>  <description>
 //   operator tier: <n> records read but not applied in the last <window>
 //     operator  <name>  read <age>  <description>
+//   memq: <the read-evidence verdict, only when no tier raised a hit>
 //   memq: act on one? memq touch <name> --applied (...)
+//
+// The verdict and the reminder are alternatives rather than a pair: one speaks
+// when the report has nothing to adjudicate and the other when it has
+// something, so exactly one of them closes any output with a tier line in it.
+// Which verdict prints turns on two questions asked in order: whether any
+// record carried a read stamp inside the window, and whether any of the
+// evidence went unread, a usage sidecar or a record listing lost whole or a
+// sidecar line the reader skipped. With a count, the verdict states it and
+// closes with the clean-sweep clause when nothing went unread, or with the
+// loss and the hidden-hit warning it forces when something did; with no
+// count, it states the untracked window, unless lost usage evidence sits
+// under the zero itself, in which case it leads with the loss.
 //
 // Every tier this project reaches contributes: the project tier, the declared
 // type tier, and the operator tier, each stating its count even at zero,
@@ -5260,6 +5338,9 @@ function cmdUnstamped(argv) {
     // the first such line is being written.
     const blocks = [];
     const reachable = new Set();
+    let reads = 0;
+    let lostStamps = false;
+    let lostListing = false;
     for (const tier of tiers) {
         const found = unstampedTierHits(tier.dir, from, tier.reminder);
         const lines = found.hits.map((hit) => {
@@ -5274,6 +5355,9 @@ function cmdUnstamped(argv) {
                 + (desc === '' ? '' : '  ' + desc);
         });
         if (lines.length > 0) reachable.add(tier.reminder);
+        reads += found.reads;
+        lostStamps = lostStamps || found.lostStamps;
+        lostListing = lostListing || found.lostListing;
         blocks.push({
             tier,
             lines,
@@ -5312,6 +5396,81 @@ function cmdUnstamped(argv) {
             }
             out.push(line);
         }
+    }
+    // A report with no hits leaves a question its tier lines cannot answer,
+    // the same failure the per-tier floor answers one level down: a window
+    // whose reads were every one adjudicated and a window nothing recorded a
+    // read in leave identical zeros on those lines. The verdict states the
+    // read evidence behind the zeros to tell them apart, once for the whole
+    // report rather than per tier, because a store nothing stamped leaves
+    // every tier at zero at once and three repetitions of that would read as
+    // three findings.
+    //
+    // The expensive direction is a report with no evidence behind it reading as
+    // a clean sweep, because that reading is acted on: the boundary closes its
+    // adjudication with nothing adjudicated, and the memories that earned an
+    // applied stamp age toward the archive unstamped. A window with evidence
+    // behind it, told the size of that evidence, costs one glance at a count
+    // instead.
+    //
+    // The two directions carry different force, and the wording is what keeps
+    // them apart. A zero is sound in the strong direction: no read stamp in
+    // any swept tier contains this run's own absence, so nothing this run read
+    // was tracked, and that branch says so. A count is weaker than it looks in
+    // the other: a stamp names a file and a time and no writer, and these
+    // sidecars are shared by construction, so a nonzero count can be another
+    // session's read, a worktree's, or an earlier read inside the same window
+    // that was adjudicated at the last boundary. It is therefore stated as
+    // evidence that names what it cannot say, never as a verdict on this run.
+    //
+    // The two losses are read apart, but not because only one of them can
+    // hide a hit: either can, since a hit needs a read stamp from the sidecar
+    // and a live record from the listing, and each loss removes one of the
+    // two. What differs is what else each takes. Lost usage evidence, the
+    // whole sidecar or one skipped line of it, takes the report's count down
+    // with the hits it hides, the same removal doing both, so its branches
+    // call the count a floor and, where nothing was counted at all, cannot
+    // claim an untracked window and lead with the loss instead; the wording
+    // says the evidence went unread in whole or in part, because from a skip
+    // count alone the report cannot tell a torn line from a lost file and
+    // claims no more than the reading supports. A lost listing is whole by
+    // construction (a directory lists or it does not) and leaves the count
+    // standing while the records it would have raised go unenumerated. Under
+    // either loss the clause saying no live record is awaiting a stamp is
+    // unsafe, so the verdict withholds it and says a hit may be hidden, which
+    // is the per-tier floor line's own reading rather than a contradiction of
+    // it.
+    if (reachable.size === 0) {
+        let verdict;
+        if (reads > 0) {
+            let close;
+            if (lostStamps || lostListing) {
+                const lost = lostStamps && lostListing
+                    ? 'usage evidence and a record listing went unread, in whole or in part,'
+                    : lostStamps ? 'usage evidence went unread, in whole or in part,'
+                        : 'a record listing went unread,';
+                close = ', and ' + lost + ' so a record awaiting a stamp'
+                    + ' may be hidden from this report'
+                    + (lostStamps ? ' and that count is a floor' : '');
+            } else {
+                close = ' and no live record is awaiting one; a shared sidecar cannot'
+                    + ' say whose reads those were, or which of them a boundary already'
+                    + ' adjudicated';
+            }
+            verdict = 'memq: ' + reads + ' record' + (reads === 1 ? '' : 's')
+                + (reads === 1 ? ' carries' : ' carry') + ' a read stamp in the last '
+                + window.label + close;
+        } else if (lostStamps) {
+            verdict = 'memq: usage evidence went unread, in whole or in part, and no read'
+                + ' stamp was counted in the last ' + window.label
+                + ': these zeros are an absence of evidence, not a clean sweep';
+        } else {
+            verdict = 'memq: no read stamp in the last ' + window.label
+                + ', so these zeros are an absence of evidence rather than a clean sweep:'
+                + ' no read reached the tracker this window, this run\'s included;'
+                + ' the memory-system skill names the readers that leave none';
+        }
+        out.push(verdict);
     }
     // Every hit is a live record of a tier this working directory resolves, so
     // every hit is one `touch` can stamp: the reminder names the flags this
