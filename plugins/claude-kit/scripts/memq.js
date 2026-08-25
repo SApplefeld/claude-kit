@@ -279,6 +279,17 @@ const RECENT_MAX_LINES = 200;           // total lines `recent` emits before sur
 const ARCHIVE_INDEX_READ_CAP = 65536;   // bytes of the archive index `recall` reads, a fixed-size prefix
 const GIT_POINTER_READ_CAP = 4096;      // bytes read from a .git pointer file, which git writes as one line
 const GIT_POINTER_PATH_CAP = 2048;      // characters of a path a .git pointer file may name
+const ANCHOR_PATH_CAP = 256;            // characters of the path an anchors: entry names
+const ANCHOR_ENTRIES_MAX = 32;          // anchors read from one record's line
+// Characters of one anchors: entry, the path cap plus the separator and the
+// 40-hex sha. Past it no entry can parse, so the length answers before the
+// pattern and the display reduction run over a line of unbounded store text.
+const ANCHOR_ENTRY_CAP = ANCHOR_PATH_CAP + 41;
+// Characters of the whole anchors: value. The line is one field of a
+// hand-written record, and the split that reads it allocates a piece per
+// comma, so the value is bounded before that runs rather than after.
+const ANCHOR_VALUE_CAP = (ANCHOR_ENTRY_CAP + 2) * ANCHOR_ENTRIES_MAX;
+const ANCHOR_READ_CAP = 4194304;        // bytes of an anchored file hashed; a larger one is unchecked
 const DAY_MS = 86400000;
 const HOUR_MS = 3600000;
 const MAX_DATE_MS = 8.64e15;   // the widest moment Date can render, either side of the epoch
@@ -777,7 +788,18 @@ function decayStampPath(cwd) {
 // error deep inside a session.
 const RESERVED_DEVICE_STEMS = new Set(['CON', 'PRN', 'AUX', 'NUL',
     'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9',
-    'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9']);
+    'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9',
+    'CONIN$', 'CONOUT$']);
+
+// Whether a path segment names a win32 device rather than a file. The
+// extension does not matter: `COM1.txt` is the device, and so is a
+// segment sitting under any directory. One predicate over the one set,
+// for the same reason the set is one: two spellings of this rule drift,
+// and the drift stays invisible until a name one admits and the other
+// refuses reaches a filesystem call.
+function isReservedDeviceSegment(seg) {
+    return RESERVED_DEVICE_STEMS.has(seg.split('.')[0].toUpperCase());
+}
 
 // The store's definition of a name usable as one path segment inside it: an
 // identifier from the same closed charset as keys, tags, and type names,
@@ -801,7 +823,7 @@ function isStorePathSegment(v) {
     if (typeof v !== 'string' || v === '' || v.length > STORE_SEGMENT_CAP) return false;
     if (!/^[\w.-]+$/.test(v)) return false;
     if (/^\.+$/.test(v) || v.endsWith('.')) return false;
-    return !RESERVED_DEVICE_STEMS.has(v.split('.')[0].toUpperCase());
+    return !isReservedDeviceSegment(v);
 }
 
 // The store's definition of a valid run id: the segment grammar under the name
@@ -2045,6 +2067,468 @@ function readFrontmatterCreated(file) {
     if (typeof value !== 'string') return null;
     const ms = Date.parse(value.trim());
     return Number.isFinite(ms) ? ms : null;
+}
+
+// Characters that carry no visible mark of their own and so cannot be shown
+// to a reader: the C0 and C1 control ranges, the zero-width and bidirectional
+// formatting controls, and the byte order mark. An anchor's path is quoted
+// back on a refusal line and printed on a drift line, and text that renders
+// as something other than what it says is the whole hazard those lines have.
+// Visible characters outside ASCII are not this class and are admitted.
+// The double quote rides in the same expression: it is what the display
+// gate strips, and the path grammar refuses exactly what that gate would
+// remove, so both jobs ask one expression rather than two that drift. The
+// `g` flag is what the strip needs; `search` reads it without leaving
+// `lastIndex` behind, which `test` on a global expression would.
+const ANCHOR_INVISIBLE = /[\u0000-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF"]/g;
+
+// Whether a string is an anchor's path: forward-slashed and relative to the
+// project's root, bounded, and free of the shapes that would make the path
+// mean something other than the file it names. The grammar sits here rather
+// than at the resolve, because the path is joined onto a root, opened, and
+// printed on a report line.
+//
+// What is barred, and why each one: a leading slash and a `..` segment (they
+// name a file outside the project); a backslash and a colon (a separator, a
+// drive letter, and an NTFS alternate data stream each spell a file the
+// walk below would not recognise as the path it read); an `@` (the entry's
+// own separator, so a second one is a refusal rather than a second reading);
+// a double quote (this file's display gate strips it, so a path carrying one
+// could not be quoted back as written, and the quote is the character that
+// ends a quoted region on a cmd.exe command line); `* ? < > |`, which are not
+// filename characters on win32 at all and are refused rather than left to
+// fail at the open; a win32 reserved device segment, since `<root>/COM1`
+// names the device from any directory; a dots-only or trailing-dot segment,
+// which win32 collapses to a different name than the one written; and every
+// whitespace and invisible character, which a reader of a report line cannot
+// see and so cannot check.
+//
+// Characters outside ASCII are admitted, letters and marks alike: a repository
+// with a non-English filename is an ordinary repository, and refusing
+// `src/Übersicht.cs` would cost that file the feature to buy nothing at the
+// refusal line. What that admits is a v1 limit worth stating: a name can be
+// spelled in more than one normalization form, so a record written on a
+// filesystem that stores NFD and one written on a filesystem that stores NFC
+// carry different bytes for one file. Windows and macOS resolve either form
+// to the same file; ext4 and its siblings do not, so on Linux an anchor
+// written under the other form reads `missing`. Nothing here normalizes,
+// since normalizing the recorded text would make the anchor name a file the
+// author did not write.
+//
+// The comma is barred as a writer-side rule and only as one: it is the line's
+// own separator, so the split runs before any path exists and this refusal
+// cannot change how an already-written line reads. What it does is close the
+// doors a comma can be written through, which are the verb that writes the
+// field and the guard that screens a hand-written one, both of which are
+// specified to hold a path to this function.
+//
+// The space bar costs a real file: `docs/my notes.md` cannot be anchored in
+// v1. A space is admitted by the display gate and invisible at either end of
+// a path, so a refusal line quoting `docs/a .md` and one quoting `docs/a.md`
+// read alike, and the entry a stray space produced would be indistinguishable
+// from the entry the author meant. A refusal names the entry, so the cost is
+// a message rather than a wrong answer.
+//
+// A non-string answers false rather than throwing. This is a gate, and it is
+// exported so that a caller holding an unvalidated value asks it rather than
+// re-spelling the rule.
+function isAnchorPath(value) {
+    if (typeof value !== 'string') return false;
+    if (value.length === 0 || value.length > ANCHOR_PATH_CAP) return false;
+    if (/\s/.test(value) || value.search(ANCHOR_INVISIBLE) !== -1) return false;
+    if (/[\\:@,*?<>|]/.test(value)) return false;
+    return value.split('/').every((s) => s !== '' && !/^\.+$/.test(s)
+        && !s.endsWith('.') && !isReservedDeviceSegment(s));
+}
+
+// A refused entry reduced to what may be shown, with each reduction named.
+// The text is store text bound for a report line, so it is bounded and
+// stripped of what cannot be displayed, and the two reductions are named
+// apart: a stripped entry can read exactly like a valid one (a hand-written
+// `"src/a.js@<sha>"` loses only its quotes), so a refusal that marked the
+// reduction without saying which one it was would quote back text a reader
+// has no reason to doubt. `fault` names what the entry was refused for, since
+// the text alone often looks fine.
+function anchorRefusalText(entry, fault) {
+    const cut = entry.length > ANCHOR_ENTRY_CAP;
+    const head = cut ? entry.slice(0, ANCHOR_ENTRY_CAP) : entry;
+    const shown = head.replace(ANCHOR_INVISIBLE, '');
+    const notes = [];
+    if (shown !== head) notes.push('characters removed for display');
+    if (cut) notes.push('shown to ' + ANCHOR_ENTRY_CAP + ' characters');
+    notes.push(fault);
+    return shown + ' [' + notes.join('; ') + ']';
+}
+
+// The `anchors:` value read as its entries, or null when the value is not one
+// this can read at all. The value is one line of comma-separated
+// `<path>@<sha>`, the path as above and the sha the 40 lowercase hex of that
+// file's git blob name.
+//
+// What is readable is stated as an allowlist: a string, or null for the field
+// being absent. Everything else is null, 'not checked'. The two frontmatter
+// sentinels arrive here as symbols and that is what they answer with, and so
+// would a third one added later, which a list of the two known symbols would
+// have admitted as a record with nothing to report. That answer is the one a
+// drift surface must never give for a record nobody could read, so the
+// unknown value is the one refused rather than the known ones.
+//
+// Every entry is read, and the answer keeps them in the line's order.
+// A refusal does not end the parse, because the entries after a typo are
+// anchors the record still carries and a reader that stopped would report the
+// record as checked while part of what it anchors was never looked at:
+//
+//   items      every entry in order, each `{text, path, sha}`, with `path`
+//              and `sha` null on one the grammar refused
+//   entries    the items that parsed, for a caller that only checks anchors
+//   bad        the refused items' text, for a caller naming one refusal
+//   truncated  whether the line carried more than this reads
+//
+// The truncation is a property of the line rather than an entry of it, which
+// is why it is a flag here.
+//
+// Short of an unreadable value the answer separates a clean parse from a
+// refused entry without an exception, because every caller is on a read path
+// that reports rather than fails.
+function parseAnchors(value) {
+    if (value !== null && typeof value !== 'string') return null;
+    const items = [];
+    let truncated = false;
+    if (typeof value === 'string') {
+        // The line is one field of a hand-written record and has no length
+        // this file can assume, and the split allocates a piece per comma, so
+        // the cap answers before it. A line cut here loses its last piece
+        // whole rather than a partial one, which would otherwise be split
+        // text presented as an entry the record does not carry.
+        const pieces = value.slice(0, ANCHOR_VALUE_CAP).split(',');
+        if (value.length > ANCHOR_VALUE_CAP) {
+            pieces.pop();
+            truncated = true;
+        }
+        for (const piece of pieces) {
+            const entry = piece.trim();
+            if (entry === '') continue;
+            if (items.length >= ANCHOR_ENTRIES_MAX) {
+                truncated = true;
+                break;
+            }
+            if (entry.length > ANCHOR_ENTRY_CAP) {
+                items.push({
+                    text: anchorRefusalText(entry, 'longer than an entry can be'),
+                    path: null,
+                    sha: null
+                });
+                continue;
+            }
+            const m = /^(.+)@([0-9a-f]{40})$/.exec(entry);
+            if (m === null) {
+                items.push({
+                    text: anchorRefusalText(entry, 'not <path>@<40 hex>'),
+                    path: null,
+                    sha: null
+                });
+                continue;
+            }
+            if (!isAnchorPath(m[1])) {
+                items.push({
+                    text: anchorRefusalText(entry, 'the path is not one an anchor may name'),
+                    path: null,
+                    sha: null
+                });
+                continue;
+            }
+            items.push({ text: entry, path: m[1], sha: m[2] });
+        }
+    }
+    return {
+        items,
+        entries: items.filter((it) => it.path !== null),
+        bad: items.filter((it) => it.path === null).map((it) => it.text),
+        truncated
+    };
+}
+
+// The anchors in a record's text, for a walk that already holds it, or null
+// when the record says nothing this can read.
+//
+// One of the not-checked answers lives in the block rather than in the value:
+// a record whose fence opens and never closes inside the reader's line bound
+// has a frontmatter block nobody could read, and `frontmatterValue` reports
+// that as the plain absence an ordinary record without the field gives. So
+// the block is consulted here, and this pairing is what a reader of the field
+// is meant to call rather than pairing `frontmatterValue` with `parseAnchors`
+// itself. A record carrying no fence at all is the other case and reads as no
+// anchors, since a record with no frontmatter definitely names none.
+//
+// Text that is not text is null, not a throw: this is the reader a validating
+// caller reaches for while holding a payload it has not checked, and such a
+// caller has no better answer to an exception than the one it would have
+// given for an unreadable record.
+function frontmatterAnchors(raw) {
+    if (typeof raw !== 'string') return null;
+    const block = frontmatterBlock(raw);
+    if (block.opened && block.closer === -1) return null;
+    return parseAnchors(frontmatterValue(raw, 'anchors'));
+}
+
+// The same answer for a record on disk, and null for one that could not be
+// read at all.
+//
+// Both causes of null, here and in the two readers below, are one value
+// rather than two. `pinState` keeps its own apart, answering 'unknown' for an
+// unreadable file and 'misplaced' for a field under the wrong key, because a
+// misplaced pin is a state somebody should repair and the scan says so. An
+// anchor's not-checked answer drives a report line that says the record is
+// unverified, and that line is the same line whichever cause produced it, so
+// the causes merge here and a surface that wants to tell them apart asks the
+// readers it already has.
+function readFrontmatterAnchors(file) {
+    let raw;
+    try {
+        raw = fs.readFileSync(file, 'utf8');
+    } catch {
+        return null;
+    }
+    return frontmatterAnchors(raw);
+}
+
+// The directory an anchor's path resolves against, or null when there is
+// none to resolve against.
+//
+// It is derived from the working directory exactly as the project tier's own
+// directory is: the main checkout when cwd is a linked worktree, and cwd
+// itself otherwise. Reaching for `worktreeMainRoot` directly is the mistake
+// this exists to prevent, since that function answers null for an ordinary
+// checkout, which is most of them, and null is not a root.
+//
+// Deriving it the store's way has a consequence worth stating: inside a
+// linked worktree the records come from the main checkout's store, and their
+// anchors hash the main checkout's files, not the ones under the worktree
+// being worked in. That is the coherent pairing rather than an oversight,
+// since one shared record hashing a different tree per worktree would report
+// drift that is only ever about which directory a session opened in. What it
+// costs is that anchors are not a check on a worktree's own edits.
+//
+// Under a pinned store there is no root at all. A pin names the project
+// directory the store reads and writes, which is an answer about the instance
+// rather than about the filesystem, so the records come from a tier that has
+// no relationship to this working directory; resolving their anchors against
+// cwd would hash whatever sits there and report every anchored file in that
+// store as deleted. An unusable pin is the same answer, since the throw it
+// raises is about a store that cannot be resolved either.
+function anchorRoot(cwd) {
+    if (typeof cwd !== 'string' || cwd === '') return null;
+    let pinned;
+    try {
+        pinned = pinnedProjectSegment();
+    } catch {
+        return null;
+    }
+    if (pinned !== null) return null;
+    const main = worktreeMainRoot(cwd);
+    return main === null ? String(cwd) : main;
+}
+
+// The git blob name of a file's bytes: sha1 over the header `blob <len>\0`
+// and then the file's own bytes, which is what `git hash-object --no-filters`
+// prints for the same file. Null for a path that is missing, is not a file,
+// is larger than this reads, changed size while it was read, or could not be
+// hashed, since every caller of this is a report line rather than a decision.
+// The digest is inside the same guard: a Node built in FIPS mode refuses sha1
+// outright, and a drift report is not a surface that may throw.
+//
+// The file is opened once and everything after that is asked of the
+// descriptor, the shape `--body-file` and `readGitPointer` both take here:
+// the kind check and the size gate are about the file that was opened rather
+// than about a name that can be swapped between the check and the read, and
+// the second fstat catches a file still being written, whose bytes would hash
+// to a value matching nothing. Off win32 the open refuses a symbolic link and
+// is non-blocking: the caller has already established that the name was not a
+// link when it looked, and the flag is what keeps a swap in the window
+// between that look and this open from being followed, while the fifo a
+// planted name could otherwise point at would block the open forever.
+//
+// The bytes are hashed as they sit on disk and never decoded to text. A
+// decode would fold a CRLF file and its LF twin onto one hash, and an anchor
+// whose hash cannot tell two different files apart records nothing. Two
+// consequences follow and both are the design rather than defects of it: at
+// the command line the flag matters, since under a configured clean filter a
+// bare `git hash-object` names the normalized content while this names the
+// file; and a record anchored on a checkout with one line ending reports its
+// text anchors `changed` on a checkout with the other, because those working
+// trees do hold different bytes.
+function blobSha(absPath) {
+    const flags = process.platform === 'win32'
+        ? fs.constants.O_RDONLY
+        : fs.constants.O_RDONLY | (fs.constants.O_NONBLOCK || 0) | (fs.constants.O_NOFOLLOW || 0);
+    let fd;
+    try {
+        fd = fs.openSync(absPath, flags);
+    } catch {
+        return null;
+    }
+    try {
+        const st = fs.fstatSync(fd);
+        if (!st.isFile() || st.size > ANCHOR_READ_CAP) return null;
+        const buf = Buffer.alloc(st.size);
+        let read = 0;
+        while (read < buf.length) {
+            const n = fs.readSync(fd, buf, read, buf.length - read, read);
+            if (n === 0) break;
+            read += n;
+        }
+        const after = fs.fstatSync(fd);
+        if (read < st.size || after.size !== st.size) return null;
+        return crypto.createHash('sha1')
+            .update(Buffer.from('blob ' + buf.length + '\0', 'latin1'))
+            .update(buf)
+            .digest('hex');
+    } catch {
+        return null;
+    } finally {
+        fs.closeSync(fd);
+    }
+}
+
+// One anchor's state now, against a root already resolved to its real path.
+//
+// The path is walked one segment at a time and every segment is judged before
+// the next one is joined, on `lstat`, which reports the link itself rather
+// than what it points at. Nothing here ever resolves a link. The path comes
+// out of a record's text, and a link planted anywhere under the root would
+// otherwise decide where the resolution lands: on win32 a target under
+// \\host\share makes the open an outbound SMB connection that authenticates
+// as the logged-in account, so resolving the link to find out whether it is
+// honest is the operation being guarded against. A containment test cannot
+// stand in for this, because it runs on the result. `resolveWorktreeMainRoot`
+// judges a planted pointer the same way and for the same reason.
+//
+// What that costs is stated rather than hidden: an anchor whose path runs
+// through a symbolic link or a junction inside the project reads `unreadable`
+// rather than being followed to the file it names. That is a refusal a report
+// line carries, not a wrong answer, and it is the safe direction.
+//
+// The distinction the four states carry is between a file that changed and a
+// check that did not happen, so only a path with nothing at it is `missing`.
+// A permission refusal, a directory where a file was, a path running through
+// a file, a link, and a file past the read cap are all `unreadable`, since
+// reporting one of those as a deletion is the most alarming word in this
+// vocabulary for a cause that is not one. Walking the segments settles that
+// consistently across platforms too, where an error code does not: a path
+// running through a file answers ENOENT on win32 and ENOTDIR elsewhere.
+function anchorEntryState(rootReal, entry) {
+    const parts = entry.path.split('/');
+    const full = path.join(rootReal, ...parts);
+    // The grammar admits no segment that could climb out, so this holds
+    // whenever the grammar did; it stands with the walk rather than in place
+    // of it, and answers for a path built some other way.
+    const prefix = rootReal.endsWith(path.sep) ? rootReal : rootReal + path.sep;
+    if (!full.startsWith(prefix)) return { current: null, state: 'unreadable' };
+    let at = rootReal;
+    for (let i = 0; i < parts.length; i++) {
+        at = path.join(at, parts[i]);
+        let st;
+        try {
+            st = fs.lstatSync(at);
+        } catch (err) {
+            const code = err !== null && typeof err === 'object' ? err.code : null;
+            return code === 'ENOENT'
+                ? { current: null, state: 'missing' }
+                : { current: null, state: 'unreadable' };
+        }
+        if (st.isSymbolicLink()) return { current: null, state: 'unreadable' };
+        const last = i === parts.length - 1;
+        if (!last && !st.isDirectory()) return { current: null, state: 'unreadable' };
+        if (last && !st.isFile()) return { current: null, state: 'unreadable' };
+    }
+    const current = blobSha(full);
+    if (current === null) return { current: null, state: 'unreadable' };
+    return { current, state: current === entry.sha ? 'fresh' : 'changed' };
+}
+
+// The state of each anchor in an already-parsed `anchors:` value, in the
+// line's own order, as `{path, entry, recorded, current, state}` per entry, or
+// null when the anchors could not be checked at all.
+//
+// Null and the empty array are different answers and no caller may conflate
+// them: null is 'not checked', which a parse that is not one and a root that
+// is not an existing absolute directory both produce, and `[]` is 'checked,
+// and the record anchors nothing'. Reporting an unusable root as a list of
+// `missing` entries would announce every anchored file in the store as
+// deleted for a cause that is about the caller's cwd.
+//
+// `state` is one of 'fresh' (the file still hashes to what was recorded),
+// 'changed' (it does not), 'missing' (nothing is at the path), or
+// 'unreadable' (an entry the grammar refused, or a check that could not be
+// made). `entry` always carries text a report can print and `path` is a path
+// only where one was read, so a report prints the path where there is one and
+// quotes the entry where there is not, and never finds a null where it
+// expected something to show.
+//
+// A line carrying more than the parse reads ends in one further row, the only
+// one bearing `truncated: true`, standing for the entries that were never
+// looked at: `unreadable` is what they are, since a check that did not happen
+// is not a clean one, and its `entry` says so in words. It rides in the list
+// rather than beside it because both entry points answer with the list alone,
+// and a caller of the file-reading form would otherwise have no way to learn
+// the line was cut.
+//
+// Like the file-reading form below, this answers rather than throwing for any
+// input: it is the form a caller holding a record's text calls, and that
+// caller is on the same report path.
+function anchorStatesFrom(parsed, root) {
+    try {
+        if (parsed === null || typeof parsed !== 'object' || !Array.isArray(parsed.items)) return null;
+        if (typeof root !== 'string' || root === '' || !path.isAbsolute(root)) return null;
+        let rootReal;
+        try {
+            if (!fs.statSync(root).isDirectory()) return null;
+            rootReal = fs.realpathSync(root);
+        } catch {
+            return null;
+        }
+        const states = parsed.items.map((item) => {
+            if (item.path === null) {
+                return { path: null, entry: item.text, recorded: null, current: null, state: 'unreadable' };
+            }
+            const got = anchorEntryState(rootReal, item);
+            return {
+                path: item.path,
+                entry: item.text,
+                recorded: item.sha,
+                current: got.current,
+                state: got.state
+            };
+        });
+        if (parsed.truncated) {
+            states.push({
+                path: null,
+                entry: 'the rest of the line is unread past ' + ANCHOR_ENTRIES_MAX + ' entries',
+                recorded: null,
+                current: null,
+                state: 'unreadable',
+                truncated: true
+            });
+        }
+        return states;
+    } catch {
+        return null;
+    }
+}
+
+// The same answer for a record on disk, the convenience form: null when the
+// anchors could not be checked, and one entry per anchor otherwise.
+//
+// This never throws, for any input. It is a report line's reader, over a
+// record whose frontmatter a hand wrote, so a record with no field, a file
+// that cannot be read, and a root that did not resolve each have an answer
+// here rather than an exception at a caller that has no better one.
+function anchorStates(file, root) {
+    try {
+        return anchorStatesFrom(readFrontmatterAnchors(file), root);
+    } catch {
+        return null;
+    }
 }
 
 // The last sign of life of a memory file: the newest of its mtime (an edit
@@ -9370,6 +9854,28 @@ module.exports = {
     INDEX_FILE,
     appliedTally,
     lastAliveMs,
+    frontmatterBlock,
+    frontmatterValue,
+    frontmatterField,
+    readFrontmatterTags,
+    frontmatterTags,
+    supersedesName,
+    readFrontmatterCreated,
+    frontmatterAnchors,
+    readFrontmatterAnchors,
+    parseAnchors,
+    blobSha,
+    isAnchorPath,
+    ANCHOR_PATH_CAP,
+    ANCHOR_ENTRIES_MAX,
+    ANCHOR_READ_CAP,
+    ANCHOR_ENTRY_CAP,
+    anchorStatesFrom,
+    anchorStates,
+    anchorRoot,
+    pinState,
+    FRONTMATTER_INDENTED,
+    FRONTMATTER_UNREADABLE,
     recallDigest,
     recentDigest,
     withheldLine,

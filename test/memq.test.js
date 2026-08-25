@@ -1868,6 +1868,747 @@ test('a metadata key carrying its own value is a field, not the map', () => {
     }
 });
 
+// The blob SHA git computes over the six bytes `hello\n`, spelled here
+// rather than derived so the state cases hold a recorded value no
+// implementation detail of blobSha can move.
+const HELLO_SHA = 'ce013625030ba8dba906f756967f9e9ca394464a';
+const OTHER_SHA = 'b'.repeat(40);
+
+// A project directory holding the anchor targets these cases resolve, and the
+// root they resolve against. Separate from the store so a case can point an
+// anchor at a path outside the root and mean it.
+function makeAnchorTree() {
+    const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'memq-anchor-')));
+    fs.mkdirSync(path.join(root, 'src'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'src', 'a.js'), Buffer.from('hello\n', 'latin1'));
+    fs.writeFileSync(path.join(root, 'src', 'b.js'), Buffer.from('hello\n', 'latin1'));
+    return root;
+}
+
+// One parsed anchor, as parseAnchors reports it in its ordered list.
+function anchorItem(p, sha) {
+    return { text: p + '@' + sha, path: p, sha };
+}
+
+test('an anchors key nested under metadata is the author\'s own key and is read', () => {
+    const store = makeStore();
+    try {
+        // The same relocation every hand-written top-level key gets on this
+        // harness, so an anchors: found under the map is the line the author
+        // wrote and the entries it carries are the record's anchors.
+        writeMemoryFile(store, 'nested-anchors.md',
+            harnessShaped(['anchors: "src/a.js@' + HELLO_SHA + '"'], '\nbody\n'));
+        const got = memq.readFrontmatterAnchors(path.join(store.memDir, 'nested-anchors.md'));
+        assert.deepStrictEqual(got.entries, [anchorItem('src/a.js', HELLO_SHA)]);
+        assert.deepStrictEqual(got.bad, []);
+        assert.strictEqual(got.truncated, false);
+
+        // A top-level line is the same field with nothing between the author
+        // and the bytes, and it reads the same.
+        writeMemoryFile(store, 'top-anchors.md',
+            '---\nname: ""\nanchors: src/a.js@' + HELLO_SHA + ', lib/b.js@' + OTHER_SHA
+            + '\n---\n\nbody\n');
+        const top = memq.readFrontmatterAnchors(path.join(store.memDir, 'top-anchors.md'));
+        assert.deepStrictEqual(top.items,
+            [anchorItem('src/a.js', HELLO_SHA), anchorItem('lib/b.js', OTHER_SHA)]);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a record that could not be read as saying anything about anchors is not a record with none', () => {
+    const store = makeStore();
+    const root = makeAnchorTree();
+    try {
+        // Nothing relocates a key under provenance:, so an anchors: found
+        // there is not the field. The record still meant to anchor something,
+        // and answering 'no anchors' would report it as checked and clean,
+        // which is the one answer a drift surface must never give for a
+        // record nobody could read.
+        writeMemoryFile(store, 'other-anchors.md', '---\nname: other-anchors\nprovenance:\n'
+            + '  node_type: memory\n  anchors: src/a.js@' + HELLO_SHA + '\n---\n\nbody\n');
+        assert.strictEqual(memq.readFrontmatterAnchors(path.join(store.memDir, 'other-anchors.md')), null);
+        assert.strictEqual(memq.anchorStates(path.join(store.memDir, 'other-anchors.md'), root), null);
+
+        // An unreadable file is the same answer, and for the same reason.
+        assert.strictEqual(memq.readFrontmatterAnchors(path.join(store.memDir, 'no-such.md')), null);
+        assert.strictEqual(memq.anchorStates(path.join(store.memDir, 'no-such.md'), root), null);
+
+        // A fence that opens and never closes inside the reader's line bound
+        // is a block nobody could read, which frontmatterValue reports as the
+        // same plain absence an ordinary record without the field gives. The
+        // block is consulted so that the two do not share an answer, and a
+        // block running past the bound reads the same way.
+        const unterminated = '---\nname: ""\nanchors: src/a.js@' + HELLO_SHA + '\nstill open\n';
+        writeMemoryFile(store, 'unterminated.md', unterminated);
+        assert.strictEqual(memq.frontmatterAnchors(unterminated), null);
+        assert.strictEqual(memq.readFrontmatterAnchors(path.join(store.memDir, 'unterminated.md')), null);
+        assert.strictEqual(memq.anchorStates(path.join(store.memDir, 'unterminated.md'), root), null);
+        const past = '---\n' + 'filler: x\n'.repeat(60) + 'anchors: src/a.js@'
+            + HELLO_SHA + '\n---\n';
+        assert.strictEqual(memq.frontmatterAnchors(past), null);
+
+        // A record carrying no fence at all is the other case: it definitely
+        // names no anchor, so it is checked and clean.
+        assert.deepStrictEqual(memq.frontmatterAnchors('# plain\n\nbody\n').items, []);
+
+        // The sentinels answer at the value door too, not only at the file
+        // door above it: a walk holding a record's text composes the two
+        // directly, and that composition is what the read surfaces copy.
+        assert.strictEqual(memq.parseAnchors(memq.FRONTMATTER_UNREADABLE), null);
+        assert.strictEqual(memq.parseAnchors(memq.FRONTMATTER_INDENTED), null);
+        const misplaced = '---\nname: x\nprovenance:\n  anchors: src/a.js@' + HELLO_SHA + '\n---\n';
+        assert.strictEqual(memq.parseAnchors(memq.frontmatterValue(misplaced, 'anchors')), null);
+        assert.strictEqual(memq.anchorStatesFrom(
+            memq.parseAnchors(memq.frontmatterValue(misplaced, 'anchors')), root), null);
+
+        // The contrast that gives those two their meaning: a record that read
+        // fine and carries no anchors is checked, and answers the empty list.
+        writeMemoryFile(store, 'plain.md', '---\nname: ""\ntags: a\n---\n\nbody\n');
+        assert.deepStrictEqual(memq.readFrontmatterAnchors(path.join(store.memDir, 'plain.md')).items, []);
+        assert.deepStrictEqual(memq.anchorStates(path.join(store.memDir, 'plain.md'), root), []);
+    } finally {
+        fs.rmSync(root, { recursive: true, force: true });
+        rmStore(store);
+    }
+});
+
+test('the list form of anchors: reads as no anchors', () => {
+    const store = makeStore();
+    try {
+        // The field is one line, the discipline tags: already has. A YAML
+        // list leaves the key carrying no value of its own, and the item
+        // lines below it are not the field.
+        writeMemoryFile(store, 'list-anchors.md', '---\nname: ""\nanchors:\n'
+            + '  - src/a.js@' + HELLO_SHA + '\n---\n\nbody\n');
+        assert.deepStrictEqual(memq.readFrontmatterAnchors(path.join(store.memDir, 'list-anchors.md')).items,
+            []);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('parseAnchors reads past a refused entry, in order, and names every one it refused', () => {
+    const good = 'src/a.js@' + HELLO_SHA;
+    const tail = 'lib/c.js@' + 'c'.repeat(40);
+    const clean = memq.parseAnchors(good + ', ' + tail);
+    assert.deepStrictEqual(clean.items,
+        [anchorItem('src/a.js', HELLO_SHA), anchorItem('lib/c.js', 'c'.repeat(40))]);
+    assert.deepStrictEqual(clean.bad, []);
+    assert.strictEqual(clean.truncated, false);
+    // A field that is absent or carries nothing is checked and clean, and
+    // those are the only two readable shapes besides a value: what is
+    // readable is an allowlist, so a value of some other type, a sentinel
+    // this file adds later included, is not checked rather than clean.
+    for (const empty of ['', '   ', ',,', null]) {
+        assert.deepStrictEqual(memq.parseAnchors(empty).items, [], String(empty) + ' carries no entry');
+    }
+    for (const unreadable of [undefined, 7, {}, [], Symbol('a third sentinel'), () => 'x']) {
+        assert.strictEqual(memq.parseAnchors(unreadable), null, String(unreadable) + ' is not readable');
+    }
+
+    // Each shape the grammar refuses, named back as the author wrote it so a
+    // refusal can quote the entry rather than the whole line. The entry after
+    // it is still read, and the refusal keeps its place in the line: a
+    // surface saying which anchor it means counts the same positions the
+    // author wrote.
+    // Each shape the grammar refuses, with the fault the refusal names, so
+    // a reader of the line learns why rather than only that. The entry text
+    // is quoted back as written where nothing had to be reduced.
+    const notEntry = 'not <path>@<40 hex>';
+    const notPath = 'the path is not one an anchor may name';
+    const rejected = [
+        ['src/a.js', notEntry],
+        ['src/a.js@' + 'a'.repeat(39), notEntry],
+        ['src/a.js@' + 'A'.repeat(40), notEntry],
+        ['/src/a.js@' + HELLO_SHA, notPath],
+        ['C:/src/a.js@' + HELLO_SHA, notPath],
+        ['README.md::$DATA@' + HELLO_SHA, notPath],
+        ['src\\a.js@' + HELLO_SHA, notPath],
+        ['../src/a.js@' + HELLO_SHA, notPath],
+        ['src/./a.js@' + HELLO_SHA, notPath],
+        ['src//a.js@' + HELLO_SHA, notPath],
+        ['@' + HELLO_SHA, notEntry],
+        ['src/a.js @' + HELLO_SHA, notPath],
+        ['src/a b.js@' + HELLO_SHA, notPath],
+        ['src/a.js@' + HELLO_SHA + '@' + HELLO_SHA, notPath],
+        ['src/COM1@' + HELLO_SHA, notPath],
+        ['src/CONIN$/a.js@' + HELLO_SHA, notPath],
+        ['src/.../a.js@' + HELLO_SHA, notPath],
+        ['src/a./b.js@' + HELLO_SHA, notPath]
+    ];
+    for (const [entry, fault] of rejected) {
+        const got = memq.parseAnchors(good + ', ' + entry + ', ' + tail);
+        assert.deepStrictEqual(got.items, [
+            anchorItem('src/a.js', HELLO_SHA),
+            { text: entry + ' [' + fault + ']', path: null, sha: null },
+            anchorItem('lib/c.js', 'c'.repeat(40))
+        ], entry + ' is refused in its own place, and the entry after it is still read');
+        assert.deepStrictEqual(got.bad, [entry + ' [' + fault + ']']);
+    }
+
+    // A path in a language the repository is written in is a path. Refusing
+    // one would cost the file the feature and say nothing about why.
+    const nonAscii = memq.parseAnchors('src/\u00dcbersicht.cs@' + HELLO_SHA);
+    assert.deepStrictEqual(nonAscii.entries.map((e) => e.path), ['src/\u00dcbersicht.cs']);
+    assert.deepStrictEqual(nonAscii.bad, []);
+
+    // The comma is the line's separator, so a path may not carry one and
+    // isAnchorPath refuses one that does. That closes the doors a comma can
+    // be written through (the verb that writes the field and the guard that
+    // screens a hand-written one, both of which refuse through this grammar),
+    // and it cannot change how a line that arrives some other way reads: the
+    // split runs before any path exists, so such a line is two entries by the
+    // grammar's own reading, a refusal and an anchor on a path the author did
+    // not write as one. That is pinned here as what it is, rather than left
+    // to look like a check that holds.
+    assert.strictEqual(memq.isAnchorPath('src/a,b.js'), false);
+    const comma = memq.parseAnchors('src/a,b.js@' + HELLO_SHA);
+    assert.deepStrictEqual(comma.bad, ['src/a [' + notEntry + ']']);
+    assert.deepStrictEqual(comma.entries.map((e) => e.path), ['b.js']);
+
+    // Two refusals are two names, in the order the line carries them.
+    assert.deepStrictEqual(memq.parseAnchors('one, ' + good + ', two').bad,
+        ['one [' + notEntry + ']', 'two [' + notEntry + ']']);
+
+    // Refused text is store text bound for a report line, so it leaves here
+    // reduced to what may be printed and marked where the reduction changed
+    // it: quoting back text that reads valid would name something the record
+    // does not say.
+    assert.deepStrictEqual(memq.parseAnchors('a\u001b[31mb"c\u0007').bad,
+        ['a[31mbc [characters removed for display; ' + notEntry + ']']);
+
+    // The two reductions are different facts and are named apart. A quoted
+    // line loses only its quotes, so the text left reads exactly like a valid
+    // entry: without the stripping note a reader has no reason to doubt it.
+    assert.deepStrictEqual(memq.parseAnchors('"' + good + '"').bad,
+        [good + ' [characters removed for display; ' + notEntry + ']']);
+    assert.deepStrictEqual(memq.parseAnchors('src/a\u200bb.js@' + HELLO_SHA).bad,
+        ['src/ab.js@' + HELLO_SHA + ' [characters removed for display; ' + notPath + ']']);
+
+    // Length is shown against the entry's own cap, so a refused entry with a
+    // long path is not reported cut with its sha truncated away when nothing
+    // exceeded that cap.
+    const atCap = 'x'.repeat(249) + '*/y.js@' + HELLO_SHA;
+    assert.strictEqual(memq.parseAnchors(atCap).bad[0], atCap + ' [' + notPath + ']');
+    const long = memq.parseAnchors(good + ', ' + 'x'.repeat(400) + '@' + HELLO_SHA + ', ' + tail);
+    assert.strictEqual(long.entries.length, 2);
+    assert.strictEqual(long.bad.length, 1);
+    assert.strictEqual(long.bad[0], 'x'.repeat(memq.ANCHOR_ENTRY_CAP)
+        + ' [shown to ' + memq.ANCHOR_ENTRY_CAP + ' characters; longer than an entry can be]');
+
+    // The whole value is capped before the split that reads it, and the cut
+    // is reported rather than the partial piece it lands in.
+    const overlong = memq.parseAnchors((good + ', ').repeat(400));
+    assert.strictEqual(overlong.truncated, true);
+    assert.ok(overlong.entries.every((e) => e.path === 'src/a.js'),
+        'no piece cut in half is presented as an entry the record carries');
+
+    // One record's line asks for one bounded amount of work. The cut is a
+    // property of the line rather than an entry of it, so it rides as a flag
+    // and no caller finds a sentence where it expected a path.
+    const many = Array.from({ length: 40 }, (_, i) => 'src/f' + i + '.js@' + HELLO_SHA).join(', ');
+    const capped = memq.parseAnchors(many);
+    assert.strictEqual(capped.items.length, 32);
+    assert.deepStrictEqual(capped.bad, []);
+    assert.strictEqual(capped.truncated, true);
+});
+
+test('isAnchorPath is the one grammar, exported so the writer refuses through it', () => {
+    assert.ok(memq.isAnchorPath('src/a.js'));
+    assert.ok(memq.isAnchorPath('a.js'));
+    // The shape a writer produces by the obvious route: path.relative answers
+    // with the platform separator, and an entry written that way would be
+    // refused by every reader forever.
+    assert.strictEqual(path.relative(path.join('D:', 'p'), path.join('D:', 'p', 'src', 'a.js')),
+        process.platform === 'win32' ? 'src\\a.js' : 'src/a.js');
+    // A non-string is refused rather than thrown at: the export exists for a
+    // writer holding an argument it was never given.
+    for (const bad of [undefined, null, 7, {}, ['a.js']]) {
+        assert.strictEqual(memq.isAnchorPath(bad), false, String(bad) + ' is not an anchor path');
+    }
+    // A win32 device name maps to the device from any directory, so resolving
+    // one opens a serial port instead of reading a file, and the wildcard and
+    // redirect set is not filename text on that platform and is shell syntax
+    // wherever a path is echoed into one.
+    // Characters outside ASCII are ordinary path characters and are admitted,
+    // since a repository with a non-English filename is an ordinary
+    // repository. What stays barred is what a reader of a report line cannot
+    // see: whitespace, the control ranges, and the zero-width and
+    // bidirectional formatting controls.
+    for (const good of ['caf\u00e9.js', 'src/\u00dcbersicht.cs', '\u65e5\u672c\u8a9e/a.js',
+        'src/na\u00efve.md', '\u00e9\u0301.js']) {
+        assert.ok(memq.isAnchorPath(good), JSON.stringify(good) + ' is an anchor path');
+    }
+    for (const bad of ['src\\a.js', '/src/a.js', 'C:/a.js', '../a.js', './a.js', 'a//b.js',
+        'a,b.js', 'a@b.js', 'a"b.js', 'a b.js', '', 'x'.repeat(257),
+        'NUL', 'nul', 'src/COM1', 'src/lpt9.txt', 'CON', 'aux', 'PRN',
+        'src/CONIN$', 'CONOUT$.txt', 'src/.../a.js', 'src/a./b.js', 'a.',
+        'a\u00a0b.js', 'a\u200bb.js', 'a\u202eb.js', 'a\ufeffb.js', 'a\u0001b.js',
+        'a*.js', 'a?.js', 'a<b.js', 'a>b.js', 'a|b.js']) {
+        assert.strictEqual(memq.isAnchorPath(bad), false, JSON.stringify(bad) + ' is not an anchor path');
+    }
+});
+
+test('blobSha is git\'s own hash over a file\'s literal bytes, null for anything that is not one', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'memq-blob-'));
+    try {
+        // git hash-object --no-filters over these exact bytes. Written as a
+        // buffer so the fixture is LF on every platform: a CRLF file hashes
+        // to something else, which would read as a bug in the hash.
+        const file = path.join(dir, 'hello.txt');
+        fs.writeFileSync(file, Buffer.from('hello\n', 'latin1'));
+        assert.strictEqual(memq.blobSha(file), HELLO_SHA);
+
+        // The bytes are hashed as they sit, never decoded: a CRLF file is a
+        // different blob, exactly as git reports it with the clean filter off.
+        const crlf = path.join(dir, 'hello-crlf.txt');
+        fs.writeFileSync(crlf, Buffer.from('hello\r\n', 'latin1'));
+        assert.notStrictEqual(memq.blobSha(crlf), HELLO_SHA);
+
+        assert.strictEqual(memq.blobSha(path.join(dir, 'absent.txt')), null);
+        assert.strictEqual(memq.blobSha(dir), null);
+        assert.strictEqual(memq.blobSha(undefined), null);
+
+        // The path comes out of a record's text, so the read is bounded: a
+        // file past the cap is not hashed at all, rather than hashed over a
+        // prefix that would answer 'changed' for it forever.
+        const huge = path.join(dir, 'huge.bin');
+        fs.writeFileSync(huge, Buffer.alloc(4194305));
+        assert.strictEqual(memq.blobSha(huge), null);
+    } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
+});
+
+// Patch fstatSync in the child so that one of the two fstats blobSha takes
+// on its open descriptor disagrees with the bytes it can read: 'first'
+// inflates the size gate, which comes up short at the read, and 'second'
+// inflates the re-check, which is the file that grew while it was read. The
+// race is the whole reason blobSha reads through a descriptor, so it is
+// proved the way the suite proves its other fs-layer faults, in a spawned
+// child rather than by patching this process.
+function growingFstatPreload(dir, which) {
+    const shim = path.join(dir, 'grow-' + which + '.js');
+    fs.writeFileSync(shim, [
+        "'use strict';",
+        "const fs = require('fs');",
+        'const realFstatSync = fs.fstatSync;',
+        'let calls = 0;',
+        'fs.fstatSync = function () {',
+        '    const st = realFstatSync.apply(fs, arguments);',
+        '    calls += 1;',
+        '    if (calls === ' + (which === 'first' ? '1' : '2') + ') {',
+        '        return { isFile: () => st.isFile(), isDirectory: () => st.isDirectory(),',
+        '            size: st.size + 10 };',
+        '    }',
+        '    return st;',
+        '};'
+    ].join('\n') + '\n', 'utf8');
+    return '--require "' + shim.replace(/\\/g, '/') + '"';
+}
+
+test('blobSha answers null when the descriptor and the bytes disagree, rather than hashing a partial file', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'memq-grow-'));
+    try {
+        const file = path.join(dir, 'hello.txt');
+        fs.writeFileSync(file, Buffer.from('hello\n', 'latin1'));
+        const script = 'const m = require(' + JSON.stringify(MEMQ) + ');'
+            + 'process.stdout.write(String(m.blobSha(' + JSON.stringify(file) + ')));';
+        const run = (extra) => spawnSync(process.execPath, ['-e', script], {
+            encoding: 'utf8',
+            env: { ...scrubRunEnv({ ...process.env }), ...(extra || {}) }
+        });
+
+        // The control: unpatched, the same child hashes the file, so a null
+        // below is the injected fault and not a broken spawn.
+        const control = run();
+        assert.strictEqual(control.status, 0, control.stderr);
+        assert.strictEqual(control.stdout, HELLO_SHA);
+
+        // Short read: the size gate says more than the file will give.
+        const short = run({ NODE_OPTIONS: growingFstatPreload(dir, 'first') });
+        assert.strictEqual(short.status, 0, short.stderr);
+        assert.strictEqual(short.stdout, 'null');
+
+        // Grew while read: the second fstat disagrees with the first, which
+        // is what a file still being written answers. Hashing it would record
+        // a value matching no state that file was ever in.
+        const grew = run({ NODE_OPTIONS: growingFstatPreload(dir, 'second') });
+        assert.strictEqual(grew.status, 0, grew.stderr);
+        assert.strictEqual(grew.stdout, 'null');
+    } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
+});
+
+test('a non-string reaching a reader that takes text is not checked, and never throws', () => {
+    const store = makeStore();
+    const root = makeAnchorTree();
+    try {
+        // The guard this plan builds validates a Write payload through these
+        // readers while holding content it has not checked, and its own
+        // contract is that an unknown payload allows. A reader that raised
+        // here would make that contract unkeepable.
+        for (const notText of [undefined, null, 7, {}, [], Buffer.from('x'), () => 'x']) {
+            assert.strictEqual(memq.frontmatterAnchors(notText), null,
+                'frontmatterAnchors(' + String(notText) + ')');
+            assert.strictEqual(memq.readFrontmatterAnchors(notText), null,
+                'readFrontmatterAnchors(' + String(notText) + ')');
+            assert.strictEqual(memq.anchorStates(notText, root), null,
+                'anchorStates(' + String(notText) + ')');
+            assert.strictEqual(memq.anchorStatesFrom(notText, root), null,
+                'anchorStatesFrom(' + String(notText) + ')');
+            assert.strictEqual(memq.isAnchorPath(notText), false,
+                'isAnchorPath(' + String(notText) + ')');
+
+            // The root derivation answers a path, so a value that is not
+            // one has to answer null rather than the string that value
+            // prints as: `String(7)` is a relative path, and a relative
+            // path reads exactly like a root this had found.
+            assert.strictEqual(memq.anchorRoot(notText), null,
+                'anchorRoot(' + String(notText) + ')');
+        }
+
+        // A parse-shaped object carrying an item that is not one: the
+        // in-memory form is a report path too, so it answers rather than
+        // letting the throw out.
+        assert.strictEqual(memq.anchorStatesFrom({ items: [null] }, root), null);
+        assert.strictEqual(memq.anchorStatesFrom({ items: [{ path: 'a.js', sha: null }] }, root).length, 1);
+    } finally {
+        fs.rmSync(root, { recursive: true, force: true });
+        rmStore(store);
+    }
+});
+
+test('anchorStates reports each anchor fresh, changed, missing, or unreadable, and never throws', () => {
+    const store = makeStore();
+    const root = makeAnchorTree();
+    try {
+        writeMemoryFile(store, 'anchored.md', '---\nname: ""\nanchors: src/a.js@' + HELLO_SHA
+            + ', src/b.js@' + OTHER_SHA + ', src/gone.js@' + 'c'.repeat(40)
+            + ', ../outside.js@' + 'd'.repeat(40) + '\n---\n\nbody\n');
+        const file = path.join(store.memDir, 'anchored.md');
+        assert.deepStrictEqual(memq.anchorStates(file, root), [
+            {
+                path: 'src/a.js', entry: 'src/a.js@' + HELLO_SHA,
+                recorded: HELLO_SHA, current: HELLO_SHA, state: 'fresh'
+            },
+            {
+                path: 'src/b.js', entry: 'src/b.js@' + OTHER_SHA,
+                recorded: OTHER_SHA, current: HELLO_SHA, state: 'changed'
+            },
+            {
+                path: 'src/gone.js', entry: 'src/gone.js@' + 'c'.repeat(40),
+                recorded: 'c'.repeat(40), current: null, state: 'missing'
+            },
+            // The refused entry keeps its place and its text, and carries no
+            // path: a report quotes it rather than printing it where a path
+            // belongs.
+            {
+                path: null,
+                entry: '../outside.js@' + 'd'.repeat(40)
+                    + ' [the path is not one an anchor may name]',
+                recorded: null, current: null, state: 'unreadable'
+            }
+        ]);
+
+        // Only a path with nothing at it is a deletion. A directory where a
+        // file was is a check that did not happen, and calling it 'missing'
+        // would report the store's most alarming state for a cause that is
+        // not one. The read cap and a permission refusal take the same route.
+        // A path running through a file is the same answer on every
+        // platform: the resolve reports it as ENOENT on win32 and ENOTDIR
+        // elsewhere, so the state is settled by asking which parent segment
+        // is not a directory rather than by the error code.
+        writeMemoryFile(store, 'odd.md', '---\nname: ""\nanchors: src@' + HELLO_SHA
+            + ', src/a.js/nested.js@' + HELLO_SHA + '\n---\n\nbody\n');
+        assert.deepStrictEqual(memq.anchorStates(path.join(store.memDir, 'odd.md'), root), [
+            { path: 'src', entry: 'src@' + HELLO_SHA, recorded: HELLO_SHA, current: null, state: 'unreadable' },
+            {
+                path: 'src/a.js/nested.js', entry: 'src/a.js/nested.js@' + HELLO_SHA,
+                recorded: HELLO_SHA, current: null, state: 'unreadable'
+            }
+        ]);
+
+        assert.strictEqual(memq.anchorStates(undefined, undefined), null);
+    } finally {
+        fs.rmSync(root, { recursive: true, force: true });
+        rmStore(store);
+    }
+});
+
+test('a root or a parse that cannot be checked answers null, never a store full of missing files', () => {
+    const store = makeStore();
+    const root = makeAnchorTree();
+    try {
+        writeMemoryFile(store, 'anchored.md',
+            '---\nname: ""\nanchors: src/a.js@' + HELLO_SHA + '\n---\n\nbody\n');
+        const file = path.join(store.memDir, 'anchored.md');
+
+        // The control: against the real root the same record checks.
+        assert.deepStrictEqual(memq.anchorStates(file, root), [{
+            path: 'src/a.js', entry: 'src/a.js@' + HELLO_SHA,
+            recorded: HELLO_SHA, current: HELLO_SHA, state: 'fresh'
+        }]);
+
+        // worktreeMainRoot answers null for an ordinary checkout, which is
+        // most of them, so null is the value a surface reaching for the wrong
+        // root will hand in. Every unusable root is 'not checked': answering
+        // a list of 'missing' would report every anchored file in the store
+        // as deleted over the caller's own cwd.
+        for (const bad of [null, undefined, '', 'src', 42,
+            path.join(root, 'no-such-dir'), path.join(root, 'src', 'a.js')]) {
+            assert.strictEqual(memq.anchorStates(file, bad), null, String(bad) + ' is not a root');
+        }
+
+        // And a parse that is not one, on the surface whose whole contract is
+        // that it never throws.
+        for (const bad of [undefined, null, 'src/a.js@' + HELLO_SHA, {}, { items: 'no' }]) {
+            assert.strictEqual(memq.anchorStatesFrom(bad, root), null, 'not a parse: ' + String(bad));
+        }
+    } finally {
+        fs.rmSync(root, { recursive: true, force: true });
+        rmStore(store);
+    }
+});
+
+test('a line cut at the entry cap says so through both state forms, never as a clean list', () => {
+    const store = makeStore();
+    const root = makeAnchorTree();
+    try {
+        // The entries past the cap were never looked at, so a list of the
+        // first 32 with nothing else said is a partial check wearing the
+        // value of a complete one. The cut rides as one further state, the
+        // only one carrying truncated, and both entry points hand it out:
+        // the file-reading form holds no parse of its own for a caller to
+        // consult.
+        const line = Array.from({ length: 40 },
+            (_, i) => 'src/f' + i + '.js@' + HELLO_SHA).join(', ');
+        writeMemoryFile(store, 'many.md', '---\nname: ""\nanchors: ' + line + '\n---\n\nbody\n');
+        const states = memq.anchorStates(path.join(store.memDir, 'many.md'), root);
+        assert.strictEqual(states.length, 33);
+        assert.deepStrictEqual(states[32], {
+            path: null,
+            entry: 'the rest of the line is unread past ' + memq.ANCHOR_ENTRIES_MAX + ' entries',
+            recorded: null, current: null, state: 'unreadable', truncated: true
+        });
+        assert.ok(states.every((st) => typeof st.entry === 'string' && st.entry !== ''),
+            'every row carries text a report can print, the cut row included');
+        assert.strictEqual(states.filter((st) => st.truncated === true).length, 1,
+            'the cut is one state and the checked anchors carry no such flag');
+        assert.deepStrictEqual(
+            memq.anchorStatesFrom(memq.parseAnchors(line), root), states);
+
+        // The control: one entry under the cap is a complete check, and
+        // nothing in the list says otherwise.
+        const short = Array.from({ length: 32 },
+            (_, i) => 'src/f' + i + '.js@' + HELLO_SHA).join(', ');
+        const full = memq.anchorStatesFrom(memq.parseAnchors(short), root);
+        assert.strictEqual(full.length, 32);
+        assert.deepStrictEqual(full.filter((st) => st.truncated === true), []);
+    } finally {
+        fs.rmSync(root, { recursive: true, force: true });
+        rmStore(store);
+    }
+});
+
+test('an anchor reaching out of the root through a junction is unreadable, not fresh', (t) => {
+    const root = makeAnchorTree();
+    const outside = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'memq-outside-')));
+    try {
+        fs.writeFileSync(path.join(outside, 'secret.js'), Buffer.from('hello\n', 'latin1'));
+        try {
+            fs.symlinkSync(outside, path.join(root, 'link'), 'junction');
+        } catch (err) {
+            t.skip('this box refuses a junction: ' + err.code);
+            return;
+        }
+        // The resolve is lexical and the read is not: a link inside the root
+        // naming a directory outside it would otherwise be hashed, and a file
+        // the project does not hold would report fresh against a hash a
+        // record carries.
+        const parsed = memq.parseAnchors('link/secret.js@' + HELLO_SHA);
+        assert.deepStrictEqual(memq.anchorStatesFrom(parsed, root), [{
+            path: 'link/secret.js', entry: 'link/secret.js@' + HELLO_SHA,
+            recorded: HELLO_SHA, current: null, state: 'unreadable'
+        }]);
+    } finally {
+        fs.rmSync(path.join(root, 'link'), { recursive: true, force: true });
+        fs.rmSync(root, { recursive: true, force: true });
+        fs.rmSync(outside, { recursive: true, force: true });
+    }
+});
+
+test('a link inside the root is judged and never resolved, even where its target is a project file', (t) => {
+    const root = makeAnchorTree();
+    try {
+        // The link's target is an ordinary file of this project, so following
+        // it would land inside the root and every containment test would pass.
+        // That is the point: containment runs on the result, so it cannot be
+        // what decides whether to resolve. A path out of a record's text is
+        // judged segment by segment on lstat instead, and a link is refused
+        // where it is found rather than followed to see where it goes. What
+        // makes that worth the refusal is the target this fixture is not: on
+        // win32 a link to \\host\share turns the resolution into an outbound
+        // SMB connection that authenticates as the logged-in account.
+        try {
+            fs.symlinkSync(path.join(root, 'src'), path.join(root, 'alias'), 'junction');
+        } catch (err) {
+            t.skip('this box refuses a junction: ' + err.code);
+            return;
+        }
+        const states = memq.anchorStatesFrom(memq.parseAnchors('alias/a.js@' + HELLO_SHA), root);
+        assert.deepStrictEqual(states, [{
+            path: 'alias/a.js', entry: 'alias/a.js@' + HELLO_SHA,
+            recorded: HELLO_SHA, current: null, state: 'unreadable'
+        }], 'the link is not followed, so the anchor is unchecked rather than fresh');
+
+        // The control: the same file by its own path is checked and fresh, so
+        // the refusal above is the link and not the file.
+        assert.deepStrictEqual(
+            memq.anchorStatesFrom(memq.parseAnchors('src/a.js@' + HELLO_SHA), root),
+            [{
+                path: 'src/a.js', entry: 'src/a.js@' + HELLO_SHA,
+                recorded: HELLO_SHA, current: HELLO_SHA, state: 'fresh'
+            }]);
+    } finally {
+        fs.rmSync(path.join(root, 'alias'), { recursive: true, force: true });
+        fs.rmSync(root, { recursive: true, force: true });
+    }
+});
+
+test('a volume root is a root: containment takes the separator it already ends with', (t) => {
+    // A checkout at a drive root realpaths to `D:\`, and a prefix built by
+    // appending a second separator would put every file in the volume outside
+    // its own root, reporting a whole store unreadable.
+    const volume = path.parse(fs.realpathSync(os.tmpdir())).root;
+    const file = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'memq-vol-')));
+    try {
+        fs.writeFileSync(path.join(file, 'a.js'), Buffer.from('hello\n', 'latin1'));
+        const rel = path.relative(volume, path.join(file, 'a.js')).split(path.sep).join('/');
+        if (!memq.isAnchorPath(rel)) {
+            t.skip('this box\'s temp path is not spellable as an anchor: ' + rel);
+            return;
+        }
+        const states = memq.anchorStatesFrom(memq.parseAnchors(rel + '@' + HELLO_SHA), volume);
+        assert.deepStrictEqual(states,
+            [{ path: rel, entry: rel + '@' + HELLO_SHA, recorded: HELLO_SHA, current: HELLO_SHA, state: 'fresh' }]);
+    } finally {
+        fs.rmSync(file, { recursive: true, force: true });
+    }
+});
+
+test('anchorStatesFrom checks a parse a walk already holds, and anchorRoot is the one root derivation', () => {
+    const store = makeStore();
+    const root = makeAnchorTree();
+    try {
+        const raw = '---\nname: ""\nanchors: src/a.js@' + HELLO_SHA + '\n---\n\nbody\n';
+        writeMemoryFile(store, 'anchored.md', raw);
+        // A walk holding the record's text checks its anchors without a
+        // second open, and answers what the file-reading form answers. This
+        // is the composition the read surfaces copy, which is why it is the
+        // one that carries every not-checked answer.
+        assert.deepStrictEqual(
+            memq.anchorStatesFrom(memq.frontmatterAnchors(raw), root),
+            memq.anchorStates(path.join(store.memDir, 'anchored.md'), root));
+
+        // An ordinary checkout has no worktree link, so the root is the
+        // working directory itself. anchorRoot reads the environment for a
+        // store pin, so the assertions that it answers a root and that a
+        // record checks against it live in the spawned case below, where the
+        // environment is the suite's rather than whatever ran it.
+        assert.strictEqual(memq.worktreeMainRoot(root), null);
+    } finally {
+        fs.rmSync(root, { recursive: true, force: true });
+        rmStore(store);
+    }
+});
+
+test('a pinned store has no anchor root at all, and an unusable pin is the same answer', () => {
+    // A pin names the project directory the store reads and writes, so its
+    // records have no relationship to this working directory. Resolving their
+    // anchors against cwd would hash whatever sits there and report every
+    // anchored file in that store as deleted, and cwd is a perfectly good
+    // absolute directory, so no later guard would catch it.
+    //
+    // Spawned rather than set here, because the pin is read from the
+    // environment and no test in this file mutates this process's.
+    const store = makeStore();
+    try {
+        const script = 'const m = require(' + JSON.stringify(MEMQ) + ');'
+            + 'process.stdout.write(JSON.stringify([m.anchorRoot(process.cwd()), process.cwd()]));';
+        const pinned = spawnSync(process.execPath, ['-e', script], {
+            cwd: store.proj, encoding: 'utf8', env: childEnv(store, { KIT_MEMORY_PROJECT: 'pinned-one' })
+        });
+        assert.strictEqual(pinned.status, 0, pinned.stderr);
+        assert.strictEqual(JSON.parse(pinned.stdout)[0], null);
+
+        // An unusable pin resolves no store either, and the throw it raises
+        // is not an answer a read surface may pass on.
+        const broken = spawnSync(process.execPath, ['-e', script], {
+            cwd: store.proj, encoding: 'utf8', env: childEnv(store, { KIT_MEMORY_PROJECT: '../escape' })
+        });
+        assert.strictEqual(broken.status, 0, broken.stderr);
+        assert.strictEqual(JSON.parse(broken.stdout)[0], null);
+
+        // The control, same spawn with no pin: the working directory is the
+        // root, so the null above is the pin's doing and not the spawn's.
+        const plain = spawnSync(process.execPath, ['-e', script], {
+            cwd: store.proj, encoding: 'utf8', env: childEnv(store)
+        });
+        assert.strictEqual(plain.status, 0, plain.stderr);
+        const [gotRoot, childCwd] = JSON.parse(plain.stdout);
+        assert.strictEqual(gotRoot, childCwd);
+
+        // And with that root in hand a record checks, so the derivation
+        // feeds the reader rather than only answering a string. Spawned for
+        // the same reason as the rest of this case: this process may itself
+        // be running under a store pin.
+        writeMemoryFile(store, 'anchored.md',
+            '---\nname: ""\nanchors: a.js@' + HELLO_SHA + '\n---\n\nbody\n');
+        fs.writeFileSync(path.join(store.proj, 'a.js'), Buffer.from('hello\n', 'latin1'));
+        const checked = spawnSync(process.execPath, ['-e',
+            'const m = require(' + JSON.stringify(MEMQ) + ');'
+            + 'process.stdout.write(JSON.stringify(m.anchorStates('
+            + JSON.stringify(path.join(store.memDir, 'anchored.md'))
+            + ', m.anchorRoot(process.cwd()))));'], {
+            cwd: store.proj, encoding: 'utf8', env: childEnv(store)
+        });
+        assert.strictEqual(checked.status, 0, checked.stderr);
+        assert.deepStrictEqual(JSON.parse(checked.stdout), [{
+            path: 'a.js', entry: 'a.js@' + HELLO_SHA,
+            recorded: HELLO_SHA, current: HELLO_SHA, state: 'fresh'
+        }]);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('the frontmatter readers are exported, so the guard validates through memq and not a second parser', () => {
+    for (const name of ['frontmatterBlock', 'frontmatterValue', 'frontmatterField',
+        'readFrontmatterTags', 'frontmatterTags', 'readFrontmatterCreated', 'pinState',
+        'supersedesName', 'frontmatterAnchors', 'readFrontmatterAnchors', 'parseAnchors',
+        'isAnchorPath', 'blobSha', 'anchorStates', 'anchorStatesFrom', 'anchorRoot']) {
+        assert.strictEqual(typeof memq[name], 'function', name + ' is exported');
+    }
+    // The bounds a refusal names. A writer spelling 32 or 256 of its own is
+    // how a message comes to state a limit the reader does not enforce.
+    assert.strictEqual(memq.ANCHOR_PATH_CAP, 256);
+    assert.strictEqual(memq.ANCHOR_ENTRIES_MAX, 32);
+    assert.strictEqual(memq.ANCHOR_READ_CAP, 4194304);
+    // The two answers a field read gives that are neither a value nor
+    // absence. A guard denies on one and allows on the other, so it needs
+    // them by identity rather than by re-deriving what they mean.
+    for (const name of ['FRONTMATTER_INDENTED', 'FRONTMATTER_UNREADABLE']) {
+        assert.strictEqual(typeof memq[name], 'symbol', name + ' is exported');
+    }
+    assert.strictEqual(memq.frontmatterValue('---\nx:\n  pinned: 2026-01-01\n---\n', 'pinned'),
+        memq.FRONTMATTER_INDENTED);
+    assert.strictEqual(memq.frontmatterField(path.join(os.tmpdir(), 'no-such-memq-record.md'), 'pinned'),
+        memq.FRONTMATTER_UNREADABLE);
+});
+
 test('a pinned field the harness moved under metadata pins, silently', () => {
     const store = makeStore();
     try {
@@ -2282,6 +3023,7 @@ test('one frontmatter key regex, and every field call site goes through the shar
         "frontmatterField(file, 'created')",
         "frontmatterField(file, 'pinned')",
         "frontmatterField(file, 'machine')",
+        "frontmatterValue(raw, 'anchors')",
         "frontmatterField(targetPath, 'supersedes')"
     ]) {
         assert.ok(source.includes(site),
