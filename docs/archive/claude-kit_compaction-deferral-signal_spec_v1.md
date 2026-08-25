@@ -1,6 +1,6 @@
 # Compaction deferral becomes a signal: the gate records, a pending offer keeps its checkpoint, and a hook carries the interim rule
 
-Status: In Progress
+Status: Complete
 Commit Model: Commit-and-Push
 Created: 2026-08-23
 
@@ -135,7 +135,7 @@ Files in scope: `plugins/claude-kit/hooks/kit-goal-lib.js`, `test/kit-goal-lib.t
 - `docs/archive/claude-kit_boundary-gated-compaction_spec_v1.md`: built the gate and the checkpoint; its rationale for the age bound is kept and given a second leg here.
 - `docs/archive/claude-kit_compaction-window-retune_spec_v1.md`: the 285,000 trigger, 800,000 ceiling and ten-minute bound as re-tuned on 2026-08-15; this plan changes none of the three numbers.
 - `docs/archive/claude-kit_boundary-cadence-and-spec-scope_spec_v1.md`: the interim board and the drought rule; this plan is the reopening its backlog item named.
-- `docs/plans/claude-kit_verification-artifacts_spec_v1.md` (queued ahead) and `docs/plans/claude-kit_memory-anchors-and-frontmatter-guard_spec_v1.md` (queued behind).
+- `docs/plans/claude-kit_memory-anchors-and-frontmatter-guard_spec_v1.md` and `docs/plans/claude-kit_verification-artifacts_spec_v1.md`, second and third in the armed queue this plan led. The verification-artifacts plan shares two skill files with this one, which is why Chapter 6 records a blob-staged commit: this plan's paragraphs went to main while that plan's sections on the same files were still mid-review in the shared worktree.
 
 ## Chapters
 
@@ -452,4 +452,42 @@ Unproven, named as such: the writing-skills baseline test for the finishing-work
 Stamps: adjudicated 0, stamped 0. `memq unstamped --since 4h`, covering this section's whole span including the review round, returned zero records in both tiers.
 
 Next: finishing-work.
+Commit Model: Commit-and-Push
+### Chapter 7 - 2026-08-25
+Completed: finishing-work, the whole-effort pass. All six Sections of Work were already closed; this Chapter closes the effort.
+Implemented By: main session, orchestrating a `qa-verifier`, a `security-reviewer` and an `adversarial-reviewer` (both reviewers at fable, effort `high`, the default this skill sets for a session running below fable), and a `docs-curator`. Fix work inline, since the changeset it touched writes under `docs/`.
+Base ref: `ec71784acfe3c1c009c25fec64ebd90e2ef4dce0`, derived as the commit model's own rule requires: the parent of `2a5e9e7`, the earliest commit whose diff against the plan doc adds a `### Chapter ` line. Cross-checked against the union of the six sections' `Files in scope:` lines, and every listing entry outside that union fell in a class the rule names as expected: the plan doc itself, the docs index, three sibling commits that landed after the base (`590d9cc`, `3db65f2`, `686c7fd`), a peer session's untracked plan doc, and the concurrent verification-artifacts effort's uncommitted files.
+Metrics: gates run 1 (QA), review rounds 1 (security + adversarial, in parallel, both at fable `high`), curation passes 1; Criticals 0; Majors 1; Minors 9 across the two lenses.
+Gates: whole repo re-run by the orchestrator from node's own per-suite exit codes after every fix: **30 suites, 1472 passing, 0 failing, every exit code 0**, against the recorded baseline of 30 / 1471 / 0. The delta is +1 and it is exactly the clamp regression test this pass added (`kit-compact-gate` 182 to 183); no other suite's count moved.
+Assumptions: none beyond those Chapter 1 declared.
+
+Decisions / Surprises:
+
+- **QA verified every acceptance bullet across all six sections and returned PASS**, with one criterion left UNVERIFIABLE for an environmental reason rather than a defect: the verifier could not hand-run Section 5's five-case scratch-repo matrix, because `readonly-agent-guard.js` denied it `git init` even under a gitignored scratch path outside the repo. That is the guard doing its job to a read-only agent. Chapter 2 records the same matrix run by the orchestrator, whose control case proved PASS-before and WARN-after with the named path, so the criterion is covered by a reading this pass did not itself repeat.
+
+- **The one Major was a false statement in the curated backlog, and this plan wrote it.** The finishing-boundary item closed by saying the rule's text lands in `finishing-work/SKILL.md` in the same delivery as the verification-artifacts plan's sections on that file, which is the plan that owns it. That was true of the intent at the time it was written and false of the commit that carried it: `d6a4753` delivered the paragraph itself, by the blob-staging route Chapter 6 records, precisely so it would not wait on the sibling plan. A session reading the library would have concluded the rule was not yet on main and was someone else's to ship. Corrected to what the commit actually did.
+
+- **Both reviewers found the same unclamped integer independently**, which is the signal worth acting on: the status surface prints the last gate decision's age as a raw `wholeMinutesSince`, while `episodePhrase` routes both of its own integers through `gateCount` under a stated one-rule bound. `at` comes out of a file anyone with the checkout can write. Fixed, `gateCount` exported for it, and pinned red-first: with the clamp removed the forged record renders `144029794034`, and with it in place `1000000000`. The twelve-digit figure the reviewers estimated is exactly what the probe produced.
+
+- **The pin that went red was pinning the sentence the fix was correcting.** `reportGateState` called an oversized state file "present but unreadable" where its sibling `reportCheckpoint` says "past the size the reader accepts" for the same leg; a file refused on size is legible, so the first wording is wrong as well as divergent. The existing test pinned the wrong wording verbatim. It now pins the shared spelling and adds a negative assertion that the misleading one has not come back, so the pin holds the invariant rather than the string.
+
+- **One Minor was a real contradiction of a rule the file states about itself.** `planFileSize` collapses every link-resolution failure to `null`, and `planPathState` mapped that `null` to `unusable`, which holds every stop forever, even where the failure was a transient errno that `pathErrnoClass` classifies as fail-open two hundred lines above. The fix splits the resolution into a shared `resolvePlanLink` reporting both the size and the errno class, so `planFileSize`'s contract is unchanged for its other callers and `planPathState` gets the distinction it needs. A dangling link is deliberately mapped to the determinate side rather than to `pathErrnoClass`'s `absent`, because something is at the path; it just cannot be opened.
+
+- **Two findings were left as recorded residuals rather than fixed, and both are now stated in the code and the security model.** The gate's decision writer has no compare-and-set, so a bystander session's `deny-interactive` can restore an episode a valve allow just cleared, which is the same inversion the nudge stamp's compare-and-set exists to close, reached through the other writer. The code comment that claimed every failure direction there is an undercount was true of the contention it was written about and false of this one; it now says so. The exposure needs two gate processes in one project within milliseconds and its cost is the ceiling every other residual here already accepts, so the hardening is parked with its reasoning rather than taken during a finishing pass.
+
+- **The docs curator returned five drift items, all `deviation`, no `mistake`,** so no item took the run-stopping read. Every one carries the pre-change-state-not-read marker its charter mandates, so each rides here as an unverified pre-change claim rather than as a verified one: the doctor's `.kit/` probe description, the external-engine stand-down roster (seven hooks to eight), the goal-state reader count in the index (seven to nine, where the security model already read nine), both indexes' status and running order for this plan, and the status-line widget's absence from `architecture.md`, which predates this changeset and is not this effort's to close.
+
+- **One statement in the curator's own output was false and was corrected before it shipped.** It described the verification-artifacts plan as running concurrently in a sibling session. It is not: it is third in this run's own armed queue, and its uncommitted files in the shared checkout are the residue of the session that preceded this one. Two ordering sentences inside the same entries were stale in the same direction and were corrected with it. This is the cost of the dispatch brief describing that plan as a concurrent effort in order to fence the curator off its files: the fence worked and the framing leaked into the prose.
+
+- **A peer session in this repository challenged two claims I had made to it, and it was right on both.** I had told it that this run's third plan edits a bullet under the fan-out section of the doctrine, colliding with its own append there, and that a third generated copy of the doctrine must be edited to keep the parity gate green. Re-checked at the commit rather than from the plan doc's prose: `6628175`'s only hunk sits at line 157, under the environment-and-tooling section, eleven lines and one heading away from the section it appends to; and `doctrine-parity.test.js` defines exactly two paths, so no test reads the generated copy at all. Both of my claims came from a sentence in the sibling plan's own Chapter 3 that says the parity test reads all three copies, which is false. Recorded here because the sibling plan is not this one's to edit.
+
+- **The same exchange retired a follow-up that plan's Chapters still carry as open.** Its Section 7 follow-up, the probe bullet naming a twelve-minute window where a first-turn-earned probe takes five, landed at `42599a6`: the bullet now defers to the dispatch's shape and names no figure, and the bare-absence-of-turns phrasing is gone. Its Chapters, which say it is held rather than fixed, are stale.
+
+Review Findings: 0 Criticals. 1 Major (the false delivery-state sentence in the backlog), fixed. 9 Minors across the two lenses, of which five were fixed (the oversized wording divergence, the unclamped age, the transient-errno classification, the doctor's unsanitized tracked-path print, the overclaiming undercount comment) and four recorded rather than fixed: the bare-CLI-filename item widened to name the finishing-work paragraph as a third site the original wording did not enumerate; the status-line widget's interim-board parse quirk, latent with no live plan shape producing it; the decision writer's missing compare-and-set; and the deferral nudge's guard-3 premise, which the plan already declares and which only a live capture of a subagent's PostToolUse payload can settle.
+
+Unproven, named as such: the `resolvePlanLink` transient-errno split is unpinned by a test, because reaching it needs a symlinked plan doc and `fs.symlinkSync` requires a privilege this box does not grant an ordinary process, which is the same limit Chapter 4 already declared for the goal-state reader's link cases. The branch's determinate half is exercised by the existing suite; the transient half is reasoned from `pathErrnoClass`, not observed. And the whole-effort claim that no regression was introduced rests on per-suite exit codes and counts, which cannot see what the suite does not exercise: nothing here was gated on a real auto-compaction offer arriving from the harness during this pass.
+
+Stamps: adjudicated 1, stamped 1. `memq unstamped --since 8h` returned zero records in both tiers, and `git-hash-object-applies-clean-filters` (operator tier) was stamped applied, since its account of hash-object's eol conversion is what made writing LF the right move in the blob-staging work Chapter 6 records.
+
+Next: none. The effort is complete.
 Commit Model: Commit-and-Push
