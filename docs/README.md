@@ -26,11 +26,12 @@ The `curating-docs` skill owns the mechanics: it archives a plan when it complet
 
 ## Active plans
 
-Four executable specs are open, in one running order. `plans/README.md` carries each one's full description and the go state of its header.
+Five specs are open. `plans/README.md` carries each one's full description and the go state of its header; the running order of the armed three rides in their own entries.
 
 - **`plans/claude-kit_verification-artifacts_spec_v1.md`** (first) answers three kaizen notes as one lesson: a rule that demands a verification names where the fact is readable.
 - **`plans/claude-kit_compaction-deferral-signal_spec_v1.md`** (second) makes the PreCompact gate record every decision, keeps a checkpoint opened during a deferral episode until it is consumed, and puts the interim-board rule in front of the model at a tool return.
 - **`plans/claude-kit_memory-anchors-and-frontmatter-guard_spec_v1.md`** (third) gives a project memory an `anchors:` field so it can say when the file it is about has changed, and adds a PreToolUse guard that validates hand-written memory frontmatter at the Write.
+- **`plans/claude-kit_peer-sessions-skill_spec_v1.md`** (awaiting operator approval, outside the armed running order) adds a skill teaching sessions the cross-session messaging surface (`ListAgents`, `SendMessage`) and the house rules for it, plus a deferring doctrine bullet shipped with its own parity presence pin.
 - **`plans/claude-kit_warden-adoption-candidates_notes_v1.md`** is the candidate bank the two adopted specs grew from, header marked Dispositioned 2026-08-22: five design ideas from evaluating Warden-AI, each now carrying its disposition and the evidence (including the NEO probe that parked impact analysis), so nothing is re-proposed from the same README. It remains deliberately non-executable.
 
 Everything else is in `archive/`.
