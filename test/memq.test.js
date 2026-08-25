@@ -1267,26 +1267,64 @@ test('a memory under memory/archive/ is never re-flagged, even though its stamps
     }
 });
 
-test('a malformed usage line is skipped with a note, later stamps still count, and the file is never rewritten', () => {
+test('a malformed usage line is skipped with a note, and no read path rewrites the file', () => {
     const store = makeStore();
     try {
-        // Idle far past the widest threshold a tally can buy, so the stamp
-        // after the damage is the only thing that can keep this memory off
-        // the list.
+        // Idle far past the widest threshold a tally can buy. With a
+        // skipped line in the sidecar the tier nominates nothing at all,
+        // so the memory's absence from the list is the suppression; what
+        // this case pins is that the damage costs a note and the tier's
+        // candidates, never the scan itself, and that the read leaves the
+        // file byte-identical.
         writeMemoryFile(store, 'guarded.md', '# g\n');
         setMtime(store, 'guarded.md', daysAgo(500));
         // The valid applied stamp sits after the damage: one torn append
-        // costs its own line, never the pass.
+        // costs its own line, never the stamps around it, which the
+        // unstamped and prune fixtures pin from their own sides.
         seedUsage(store, ['{ this is not json', appliedStamp('guarded.md', daysAgo(5))]);
         const before = fs.readFileSync(usagePath(store), 'utf8');
 
         const res = run(store, ['decay-scan']);
         assert.strictEqual(res.status, 0, 'a damaged sidecar never fails the scan');
         assert.match(res.stderr, /skipping malformed usage line 1/);
-        assert.ok(!res.stdout.includes('guarded'), 'the stamp after the damage still resets the clock');
+        assert.ok(!res.stdout.includes('guarded'), 'a tier with a skipped line nominates nothing');
         assert.match(res.stderr, /no decay candidates/);
         assert.strictEqual(fs.readFileSync(usagePath(store), 'utf8'), before,
             'the sidecar is never rewritten or truncated');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a skipped sidecar line suppresses a tier\'s candidates: a torn applied append buys no archive nomination', () => {
+    const store = makeStore();
+    try {
+        writeMemoryFile(store, 'load-bearing.md', '# l\n');
+        setMtime(store, 'load-bearing.md', daysAgo(500));
+        // The sidecar's only line is the torn front of an applied append,
+        // the state the file's lock-free writers can leave behind. The
+        // reader skips it and reports the skip, so the scan holds a tally
+        // it knows is partial: nominating on it would flag this memory for
+        // archive on evidence the scan itself reported unread, which is
+        // the expensive direction, since a candidate list is acted on
+        // whole and a false never-applied ages a load-bearing memory out
+        // of the store.
+        seedUsage(store, ['{"ts":"2026-08-01T10:00:00.000Z","file":"load-bearing.md","kind":"appl']);
+
+        const res = run(store, ['decay-scan']);
+        assert.strictEqual(res.status, 0, 'a torn line never fails the scan');
+        assert.match(res.stderr, /skipping malformed usage line 1/);
+        assert.strictEqual(res.stdout, '',
+            'no candidate of any class from a tier whose evidence went partly unread');
+        assert.match(res.stderr, /1 malformed line skipped; candidates suppressed for this tier/);
+
+        // The control: the same store with the sidecar readable whole
+        // nominates, so the empty list above is the suppression and not a
+        // memory that was never due.
+        seedUsage(store, []);
+        const control = run(store, ['decay-scan']);
+        assert.strictEqual(control.status, 0, control.stderr);
+        assert.match(control.stdout, /^archive {2}load-bearing {2}idle 500d {2}applied never/m);
     } finally {
         rmStore(store);
     }
@@ -3198,7 +3236,7 @@ test('a memory the prune cannot read to check for a pin is refused rather than m
     }
 });
 
-test('a usage stamp whose ts does not parse is malformed and cannot displace the genuine newest stamp', () => {
+test('a usage stamp whose ts does not parse is malformed: skipped with a note, and the tier nominates nothing', () => {
     const store = makeStore();
     try {
         const d90 = daysAgo(90);
@@ -3207,8 +3245,12 @@ test('a usage stamp whose ts does not parse is malformed and cannot displace the
         writeMemoryFile(store, 'doomed.md', '# d\n');
         setMtime(store, 'doomed.md', d90);
         // "zzz" sorts above any ISO timestamp, so a lexical newest-stamp pick
-        // would elect it, drop the genuine applied stamp on parse, and
-        // promote the live memory to an archive candidate.
+        // would elect it and drop the genuine applied stamp on parse. The
+        // shape gate refuses the stamp at read instead, which makes it a
+        // skipped line, and a skipped line is evidence unread: the tier
+        // nominates nothing, the idle memory the garbage stamps name
+        // included, rather than computing candidates over a tally the
+        // reader reported partial.
         seedUsage(store, [
             appliedStamp('live.md', daysAgo(5)),
             '{"ts":"zzz","file":"live.md","kind":"applied"}',
@@ -3219,11 +3261,9 @@ test('a usage stamp whose ts does not parse is malformed and cannot displace the
         assert.strictEqual(res.status, 0, res.stderr);
         assert.match(res.stderr, /skipping malformed usage line 2/);
         assert.match(res.stderr, /skipping malformed usage line 3/);
-        assert.ok(!res.stdout.includes('live'), 'the genuine applied stamp still resets the clock');
-        // The other direction: a garbage stamp alone is no sign of life, so
-        // the idle memory it names is still flagged.
-        assert.strictEqual(res.stdout,
-            'archive  doomed  idle 90d  applied never  edited ' + dateOf(d90) + '  read never\n');
+        assert.strictEqual(res.stdout, '',
+            'two skipped lines are evidence unread, so neither memory is nominated');
+        assert.match(res.stderr, /2 malformed lines skipped; candidates suppressed for this tier/);
     } finally {
         rmStore(store);
     }
@@ -3442,6 +3482,67 @@ test('a bare --archive moves only what it names: the journal and usage sidecars 
             'no .bak was minted for a file the pass did not rewrite');
         assert.ok(!fs.existsSync(usagePath(store) + '.bak'),
             'no .bak was minted for a file the pass did not rewrite');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The torn line's one exit, pinned in both directions: preserved by default,
+// removed only when asked. A malformed line is preserved by every read and
+// every default rewrite, and hand-editing the sidecar is banned, so without
+// an explicit exit one torn append floors the tier's coverage on every
+// future run; the exit is a delete, so it rides the flag that names it,
+// under the rewrite's own .bak, with each removal said and counted.
+test('decay-prune preserves a malformed usage line by default and removes it only under --drop-malformed', () => {
+    const store = makeStore();
+    try {
+        const d40 = daysAgo(40);
+        const d10 = daysAgo(10);
+        writeMemoryFile(store, 'stay.md', '# s\n');
+        const torn = '{"ts":"2026-08-25T0';
+        seedUsage(store, [
+            appliedStamp('stay.md', d40),
+            torn,
+            appliedStamp('stay.md', d10)
+        ]);
+
+        // Preserved by default: the rollup rewrites around the line it
+        // cannot parse and says so.
+        const kept = run(store, ['decay-prune', '--rollup']);
+        assert.strictEqual(kept.status, 0, kept.stderr);
+        assert.match(kept.stderr, /preserving unparseable usage line 2/);
+        assert.strictEqual(kept.stdout, 'usage  kept 1 of 2 stamps\n');
+        assert.ok(fs.readFileSync(usagePath(store), 'utf8').includes(torn),
+            'the malformed line survives the default rewrite');
+
+        // The flag rides the pass that rewrites the sidecar, never a pass
+        // of its own: alone it is an argument error, not a silent no-op.
+        const alone = run(store, ['decay-prune', '--drop-malformed']);
+        assert.strictEqual(alone.status, 1);
+        assert.match(alone.stderr, /--drop-malformed[^\n]*--rollup/);
+        assert.ok(fs.readFileSync(usagePath(store), 'utf8').includes(torn),
+            'a refused pass removes nothing');
+
+        // Asked for, the removal happens, each line is said on stderr, the
+        // report counts it, and the .bak keeps the pre-drop bytes: a
+        // delete leaves an audit trail and one generation of way back.
+        const before = fs.readFileSync(usagePath(store), 'utf8');
+        const dropped = run(store, ['decay-prune', '--rollup', '--drop-malformed']);
+        assert.strictEqual(dropped.status, 0, dropped.stderr);
+        assert.match(dropped.stderr, /removing unparseable usage line 2/);
+        assert.strictEqual(dropped.stdout,
+            'usage  kept 1 of 1 stamps\nusage  dropped 1 malformed line\n');
+        assert.ok(!fs.readFileSync(usagePath(store), 'utf8').includes(torn),
+            'the malformed line left the sidecar');
+        assert.strictEqual(fs.readFileSync(usagePath(store) + '.bak', 'utf8'), before,
+            'the .bak keeps the bytes the drop removed');
+
+        // What the exit exists to restore: the scan's candidate suppression
+        // lifts once the sidecar reads whole.
+        const rescanned = run(store, ['decay-scan']);
+        assert.strictEqual(rescanned.status, 0, rescanned.stderr);
+        assert.doesNotMatch(rescanned.stderr, /candidates suppressed/);
+        assert.match(rescanned.stderr, /^memq: usage evidence: 1 stamp across 1 file$/m);
     } finally {
         rmStore(store);
     }
@@ -3816,8 +3917,8 @@ test('a rollup whose day count exceeds its own covered range is malformed: skipp
         setMtime(store, 'guarded.md', d90);
         // 9 distinct days cannot fit a two-day range: a forged count would
         // inflate the tally past any evidence the record could hold, so the
-        // shape gate refuses it and the newest-stamp posture applies: it is
-        // no sign of life.
+        // shape gate refuses it, and the refusal makes it a skipped line,
+        // which the scan treats as evidence unread.
         const forged = JSON.stringify({
             ts: '2026-01-02T00:00:00.000Z', file: 'guarded.md', kind: 'applied-rollup',
             distinctDays: 9, firstApplied: '2026-01-01T00:00:00.000Z',
@@ -3828,8 +3929,9 @@ test('a rollup whose day count exceeds its own covered range is malformed: skipp
         const scanned = run(store, ['decay-scan']);
         assert.strictEqual(scanned.status, 0, scanned.stderr);
         assert.match(scanned.stderr, /skipping malformed usage line 1/);
-        assert.match(scanned.stdout, /^archive  guarded  idle 90d  applied never/m,
-            'a refused rollup is no sign of life');
+        assert.strictEqual(scanned.stdout, '',
+            'a refused rollup is a skipped line, and a skipped line suppresses the tier\'s candidates');
+        assert.match(scanned.stderr, /candidates suppressed for this tier/);
 
         const pruned = run(store, ['decay-prune', '--rollup']);
         assert.strictEqual(pruned.status, 0, pruned.stderr);
@@ -5588,6 +5690,28 @@ test('recall says applied unknown over a sidecar it failed to read, and the cloc
         assert.strictEqual(unreadable.status, 0, 'a lost sidecar never fails the digest');
         assert.match(unreadable.stderr, /could not read usage sidecar/);
         assert.match(unreadable.stdout, /^project  guarded  applied unknown  alive 12d$/m);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('recall says applied unknown over a sidecar that skipped a line, the refusal a lost sidecar gets', () => {
+    const store = makeStore();
+    try {
+        writeMemoryFile(store, 'guarded.md', '# g\n');
+        setMtime(store, 'guarded.md', daysAgo(12));
+        // A torn line beside a valid stamp: the stamps that read still feed
+        // the alive clock, and what the skip takes away is the claim to a
+        // complete tally, so the applied column refuses it while the alive
+        // column keeps the evidence actually read. A column keyed on the
+        // sidecar read's status alone prints 'applied 1d distinct' here,
+        // a completeness claim over stamps the reader said it lost.
+        seedUsage(store, [appliedStamp('guarded.md', daysAgo(2)), '{ torn']);
+
+        const res = run(store, ['recall']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stderr, /skipping malformed usage line 2/);
+        assert.match(res.stdout, /^project  guarded  applied unknown  alive 2d$/m);
     } finally {
         rmStore(store);
     }
@@ -7376,8 +7500,9 @@ function seedTierUsage(dir, lines) {
 // whole can support, and the clean-sweep clause needs every reading whole,
 // because any of these losses can hide a record awaiting a stamp.
 const NO_STAMP = 'memq: no read stamp in the last 1d, so these zeros are an absence of'
-    + ' evidence rather than a clean sweep: no read reached the tracker this window,'
-    + ' this run\'s included; the memory-system skill names the readers that leave none';
+    + ' evidence rather than a clean sweep: no read reached a swept tier\'s tracker'
+    + ' this window, this run\'s included; the memory-system skill names the readers'
+    + ' that leave none there';
 const NO_STAMP_UNREAD = 'memq: usage evidence went unread, in whole or in part, and no'
     + ' read stamp was counted in the last 1d: these zeros are an absence of evidence,'
     + ' not a clean sweep';
@@ -7608,6 +7733,53 @@ test('a read-stamped record that has since been archived is skipped, never named
             + SWEPT_ONE + '\n',
             'touch refuses an archived record, so naming one would teach an invocation that errors');
         assert.ok(!res.stdout.includes('retired'), 'the archived name is nowhere in the output');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The candidate screen, pinned in both directions. unstamped draws its hits
+// from a names-only listing, so a non-file whose name answers the store's
+// filename predicate would otherwise be raised as a hit naming a record
+// `touch` then refuses. The screen's two failure directions cost
+// differently, which is why it must fail open: a non-file raised as a hit is
+// one false recognition question, while a screen that dropped a candidate on
+// a failed stat would silently hide a record awaiting a stamp, the loss
+// shape the report's own flags exist to prevent.
+test('the unstamped candidate screen refuses a non-file and keeps a candidate whose stat failed', () => {
+    const store = makeStore();
+    try {
+        writeMemoryFile(store, 'real.md', '# r\n');
+        // A directory whose name answers the filename predicate, the one
+        // non-file shape a names-only listing admits, with a read stamp
+        // planted for it exactly as for the record beside it.
+        fs.mkdirSync(path.join(store.memDir, 'fake-dir.md'));
+        seedUsage(store, [
+            readStamp('real.md', hoursAgo(2)),
+            readStamp('fake-dir.md', hoursAgo(3))
+        ]);
+
+        const res = run(store, ['unstamped']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stderr, '', 'the screen skips a non-file without a note');
+        assert.strictEqual(res.stdout,
+            'project tier: 1 record read but not applied in the last 1d\n'
+            + 'project  real  read 2h\n'
+            + REMINDER + '\n',
+            'a directory is never a hit, and the record beside it still is');
+
+        // The direction that bounds the screen: a candidate whose stat
+        // throws stays on the list, so the screen can add a false question
+        // and can never hide a hit. The preload (shared with the prune's
+        // unexaminable-target cases below) refuses the record's exact path.
+        const blind = run(store, ['unstamped'],
+            { NODE_OPTIONS: refuseStatPreload(store.root, path.join(store.memDir, 'real.md')) });
+        assert.strictEqual(blind.status, 0, blind.stderr);
+        assert.strictEqual(blind.stdout,
+            'project tier: 1 record read but not applied in the last 1d\n'
+            + 'project  real  read 2h\n'
+            + REMINDER + '\n',
+            'a failed stat keeps the candidate rather than silently dropping it');
     } finally {
         rmStore(store);
     }
@@ -7943,7 +8115,7 @@ test('a torn sidecar line floors the count and withholds the strong zero and the
         const torn = run(store, ['unstamped']);
         assert.strictEqual(torn.status, 0, torn.stderr);
         assert.match(torn.stderr, /^memq: skipping malformed usage line 1 in the project tier$/m);
-        assert.ok(!torn.stdout.includes('no read reached the tracker'),
+        assert.ok(!torn.stdout.includes('no read reached'),
             'a partly unread sidecar cannot support the untracked-window claim');
         assert.strictEqual(torn.stdout,
             'project tier: 0 records read but not applied in the last 1d;'

@@ -2863,8 +2863,9 @@ function usage(problem) {
         + '       memq delete-type <type> <name> --confirm-shared\n'
         + '       memq delete-operator <name> --confirm-shared\n'
         + '       memq decay-scan\n'
-        + '       memq decay-prune [--rollup] [--archive <name>]... [--archive-type <name>]...\n'
-        + '                        [--archive-operator <name>]... [--confirm-shared]\n'
+        + '       memq decay-prune [--rollup [--drop-malformed]] [--archive <name>]...\n'
+        + '                        [--archive-type <name>]... [--archive-operator <name>]...\n'
+        + '                        [--confirm-shared]\n'
         + '       memq decay-done\n');
     process.exitCode = 1;
 }
@@ -4141,10 +4142,12 @@ function readArchiveDescriptions(archiveDir, tag) {
 
 // The applied column of a recall line, from the tier's evidence as readUsage
 // reported it: the distinct-day tally when there is one, 'never' when the
-// evidence was read and holds none, and 'unknown' when the sidecar exists
-// but could not be read, because a line claiming a memory was never applied
-// is a claim this command cannot make over stamps it failed to read, the
-// scan's own rule.
+// evidence was read whole and holds none, and 'unknown' when the sidecar
+// exists but was not read whole, the file unreadable or a malformed line
+// skipped inside it, because a tally over stamps the reader reported lost is
+// a completeness claim this command cannot make, the scan's own rule. The
+// alive column still keeps whatever applied evidence did read: the skip
+// takes away the claim to a whole tally, never the stamps around it.
 function recallAppliedColumn(applied, evidenceUnread) {
     if (evidenceUnread) return 'applied unknown';
     if (applied === undefined) return 'applied never';
@@ -4440,7 +4443,7 @@ function cmdRecall(argv) {
     // its archive, whose files' applied history lives in that same sidecar.
     const projectUsage = readUsage(memDir);
     const projectTally = appliedTally(projectUsage.stamps);
-    const projectUnread = projectUsage.status === 'unreadable';
+    const projectUnread = projectUsage.status === 'unreadable' || projectUsage.skipped > 0;
     // One walk of each tier's live records answers the whole digest, its
     // archive surface included: the label is derived from frontmatter at
     // digest time, one read per record beside the one listMemories spends on
@@ -4476,7 +4479,7 @@ function cmdRecall(argv) {
         typeTally = appliedTally(typeUsage.stamps);
         const typeMemories = listMemories(typed.dir);
         typeSupersedes = supersededSuccessors(typeMemories);
-        const typeUnread = typeUsage.status === 'unreadable';
+        const typeUnread = typeUsage.status === 'unreadable' || typeUsage.skipped > 0;
         typeLines = recallTierRecords(typed.dir, typeTally, typeMemories)
             .map((r) => '  type  ' + sanitize(r.name, NAME_CAP)
                 + '  ' + recallAppliedColumn(r.applied, typeUnread)
@@ -4511,7 +4514,7 @@ function cmdRecall(argv) {
         operatorTally = appliedTally(operatorUsage.stamps);
         const operatorMemories = listMemories(operator);
         operatorSupersedes = supersededSuccessors(operatorMemories);
-        const operatorUnread = operatorUsage.status === 'unreadable';
+        const operatorUnread = operatorUsage.status === 'unreadable' || operatorUsage.skipped > 0;
         operatorLines = recallTierRecords(operator, operatorTally, operatorMemories)
             .map((r) => '  operator  ' + sanitize(r.name, NAME_CAP)
                 + '  ' + recallAppliedColumn(r.applied, operatorUnread)
@@ -4605,7 +4608,7 @@ function cmdRecall(argv) {
     if (pendingDir !== null) {
         const pendingUsage = readUsage(pendingDir);
         const pendingTally = appliedTally(pendingUsage.stamps);
-        const pendingUnread = pendingUsage.status === 'unreadable';
+        const pendingUnread = pendingUsage.status === 'unreadable' || pendingUsage.skipped > 0;
         const pendingLines = recallTierRecords(pendingDir, pendingTally, listMemories(pendingDir))
             .map((r) => 'pending  ' + sanitize(r.name, NAME_CAP)
                 + '  ' + recallAppliedColumn(r.applied, pendingUnread)
@@ -5113,9 +5116,10 @@ function cmdRecent(argv) {
 // tiers across every project on the machine, and the store syncing across
 // machines besides.
 function unstampedTierHits(dir, from, tag) {
-    // Three readings are everything this sweep consumes for a tier, and a
-    // zero built on a failure in the first two is a claim this command
-    // cannot make. The sidecar carries the read stamps a hit requires; the
+    // Three readings feed this sweep for a tier, plus a per-candidate stat
+    // the hits loop owns, and a zero built on a failure in the first two is
+    // a claim this command cannot make. The sidecar carries the read stamps
+    // a hit requires; the
     // listing carries the live records a hit is drawn from, and it is also
     // where the candidates below come from, so what is reachable and what is
     // a candidate cannot disagree. Lose either, whole or in part, and every
@@ -5124,7 +5128,8 @@ function unstampedTierHits(dir, from, tag) {
     // applied ages a load-bearing memory toward the archive, while a false
     // one costs a single recognition question. The third reading, the tier
     // index's descriptions, carries no flag because its loss can only blank
-    // a description, never hide a hit. The listing is read through
+    // a description, never hide a hit; the stat carries none because it
+    // fails open, so it too can never hide one. The listing is read through
     // recentFileNames, the store's listing reader that reports how the read
     // went, so an unreadable directory and an absent one stay told apart. An
     // absent directory counts as unreached on the per-tier line for its own
@@ -5159,6 +5164,18 @@ function unstampedTierHits(dir, from, tag) {
         const key = memoryFileKey(f);
         const readMs = lastRead.get(key);
         if (readMs === undefined || applied.has(key)) continue;
+        // The listing is names alone, so a directory that answers the store's
+        // filename predicate would land here; a hit is a record `touch` can
+        // stamp, and a non-file is not one. The screen stats only actual
+        // candidates and fails open: a name whose stat throws stays a hit,
+        // because this list's costs are asymmetric (a false line is one
+        // recognition question, a hidden one is a stamp never adjudicated),
+        // so the screen may add a question and can never remove one. That
+        // fail-open is also what keeps the stat from widening the loss flags
+        // above: it cannot zero anything, so it owes no flag.
+        let st = null;
+        try { st = fs.statSync(path.join(dir, f)); } catch { /* fail-open: kept */ }
+        if (st !== null && !st.isFile()) continue;
         hits.push({ name: f.slice(0, -3), description: descriptions.get(f) || '', ms: readMs });
     }
     hits.sort((a, b) => b.ms - a.ms || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
@@ -5242,11 +5259,13 @@ function unstampedTierHits(dir, from, tag) {
 // type tier, and the operator tier, each stating its count even at zero,
 // because a tier with nothing to adjudicate is a stated fact rather than a
 // silent absence. A reader that spanned the project tier alone would report the
-// shared tiers as clean, which is this store's known failure shape. Three
+// shared tiers as clean, which is this store's known failure shape. Four
 // surfaces are deliberately out of the domain: journal keys, which have no
-// applied concept at all; MEMORY.md, which the stamp hook never records; and
+// applied concept at all; MEMORY.md, which the stamp hook never records;
 // the pending tier, whose records `touch` cannot stamp, so a line naming one
-// would again teach an invocation that errors.
+// would again teach an invocation that errors; and any archived record,
+// which `touch` refuses for having left its tier, kept out here by drawing
+// hits from the tier's live listing alone.
 //
 // There is no line budget here, unlike `recall` and `recent`. Those digest
 // whole surfaces of unbounded size; this reports a diff over the read stamps of
@@ -5414,9 +5433,14 @@ function cmdUnstamped(argv) {
     // instead.
     //
     // The two directions carry different force, and the wording is what keeps
-    // them apart. A zero is sound in the strong direction: no read stamp in
-    // any swept tier contains this run's own absence, so nothing this run read
-    // was tracked, and that branch says so. A count is weaker than it looks in
+    // them apart. A zero is sound in the strong direction, scoped to the
+    // swept tiers: no read stamp in any of them contains this run's own
+    // absence, so nothing this run read landed in a swept tier's tracker, and
+    // that branch says exactly that. It claims nothing about trackers the
+    // sweep does not read, because one exists: a `memq get` inside a run
+    // whose name the pending tier answers stamps the pending sidecar, so "no
+    // read reached the tracker" unqualified would be false on that path. A
+    // count is weaker than it looks in
     // the other: a stamp names a file and a time and no writer, and these
     // sidecars are shared by construction, so a nonzero count can be another
     // session's read, a worktree's, or an earlier read inside the same window
@@ -5467,8 +5491,8 @@ function cmdUnstamped(argv) {
         } else {
             verdict = 'memq: no read stamp in the last ' + window.label
                 + ', so these zeros are an absence of evidence rather than a clean sweep:'
-                + ' no read reached the tracker this window, this run\'s included;'
-                + ' the memory-system skill names the readers that leave none';
+                + ' no read reached a swept tier\'s tracker this window, this run\'s included;'
+                + ' the memory-system skill names the readers that leave none there';
         }
         out.push(verdict);
     }
@@ -5665,8 +5689,8 @@ function cmdTouch(argv) {
 // candidacy rather than a retirement. A pin outranks it, so a pinned record
 // a successor names is listed as pinned and nominated by nothing, its line
 // still carrying the pointer for the reviewer that block is for. A tier
-// whose usage sidecar could not be read outranks it too, with no candidate
-// of any class.
+// whose usage sidecar was not read whole, unreadable or with a malformed
+// line skipped, outranks it too, with no candidate of any class.
 //
 // A memory carrying a `pinned:` frontmatter field is a candidate of neither
 // class whatever its idle age. It is listed in the pinned block instead, and
@@ -5706,20 +5730,25 @@ function cmdTouch(argv) {
 // returned it, read once by the caller so the evidence line and the lines
 // here describe the same bytes.
 //
-// A tier whose sidecar could not be read yields pinned lines and no
-// candidates of any class. Nominating on evidence known to be unread would
-// flag a heavily used memory for archive on a zero the scan knows is false,
-// and that holds for a supersession pointer too: the pointer is sound
+// A tier whose sidecar was not read whole, the file unreadable or a
+// malformed line skipped inside it, yields pinned lines and no candidates of
+// any class. Nominating on evidence known to be unread would flag a heavily
+// used memory for archive on a zero the scan knows is false, and the skipped
+// line is the same loss at line grain: a torn applied append is exactly
+// where a memory's applied evidence can be hiding, so the surviving stamps
+// are real and the tally over them is one the scan half knows is partial.
+// That holds for a supersession pointer too: the pointer is sound
 // evidence, but the pass reading it is blind on this tier, and a candidate
 // list is acted on as a whole. The pinned listing depends on no evidence at
 // all: it comes from the memory files
 // themselves, and a pin that vanishes from the report the moment a sidecar
 // goes unreadable is a standing exemption nobody can review. Its evidence
 // columns read 'unknown' rather than 'never', because the tier's stamps were
-// not read and a line that says otherwise is a claim the scan cannot make.
+// not read whole and a line that says otherwise is a claim the scan cannot
+// make.
 function tierDecayCandidates(dir, label, now, usage, summarize, archive, pinned) {
     const stamps = usage.stamps;
-    const evidenceUnread = usage.status === 'unreadable';
+    const evidenceUnread = usage.status === 'unreadable' || usage.skipped > 0;
     // Applied evidence comes from the shared tally, the same computation
     // decay-prune's fold writes back into the sidecar, so a pruned store
     // gives a memory exactly the clock its raw stamps did. Read stamps stay
@@ -5856,11 +5885,12 @@ function tierDecayCandidates(dir, label, now, usage, summarize, archive, pinned)
         // Two things still outrank it, in this order. The pin, decided above,
         // because a standing exemption granted by judgment is not something a
         // model-written pointer overturns. Then evidence the scan could not
-        // read: a tier whose sidecar failed to open is a tier this pass knows
-        // nothing about, and nominating there would put a record on a
-        // candidate list built partly from a zero the scan knows is false.
-        // That gate is about the pass's own blindness rather than about the
-        // record, so it holds over every nomination this walk makes.
+        // read whole: a tier whose sidecar failed to open, or dropped a line
+        // at the shape gate, is a tier this pass is at least partly blind on,
+        // and nominating there would put a record on a candidate list built
+        // partly from a zero the scan knows may be false. That gate is about
+        // the pass's own blindness rather than about the record, so it holds
+        // over every nomination this walk makes.
         if (supersededHere !== '' && !evidenceUnread) {
             archive.push('archive  ' + line + supersededHere);
             continue;
@@ -5900,6 +5930,17 @@ function usageEvidenceLine(usage, tag) {
         for (const u of usage.stamps) files.add(u.file);
         body = usage.stamps.length + ' stamp' + (usage.stamps.length === 1 ? '' : 's')
             + ' across ' + files.size + ' file' + (files.size === 1 ? '' : 's');
+        // A skipped line is the same loss as an unreadable sidecar at line
+        // grain, so it carries the same consequence in the same place: the
+        // surviving stamps are counted above, and the suppression clause says
+        // why they still buy no candidates. A clean read (the ordinary case)
+        // appends nothing. The exit is decay-prune's --drop-malformed, under
+        // the rewrite the flag rides.
+        if (usage.skipped > 0) {
+            body += '; ' + usage.skipped + ' malformed line'
+                + (usage.skipped === 1 ? '' : 's')
+                + ' skipped; candidates suppressed for this tier';
+        }
     }
     process.stderr.write('memq: usage evidence: ' + body + tag + '\n');
 }
@@ -5911,11 +5952,11 @@ function cmdDecayScan(argv) {
     const now = Date.now();
 
     // Each tier is walked with its evidence exactly as readUsage reported it:
-    // a sidecar that exists but could not be read suppresses that tier's
-    // candidates inside the walk (nominating on a zero the scan knows is
-    // false is the failure it guards) while its pinned memories are still
-    // listed, since a pin is read from the memory file and owes the sidecar
-    // nothing.
+    // a sidecar that exists but could not be read, or that dropped a line at
+    // the shape gate, suppresses that tier's candidates inside the walk
+    // (nominating on a zero the scan knows may be false is the failure it
+    // guards) while its pinned memories are still listed, since a pin is read
+    // from the memory file and owes the sidecar nothing.
     const summarize = [];
     const archive = [];
     const pinned = [];
@@ -6462,11 +6503,17 @@ function rollupStep(memDir, now, report, onBackup) {
 // re-serialized timestamps, a counted integer), so every field is bounded at
 // this write boundary by construction. The sidecar grows on every memory
 // Read, so this is where the pass reclaims that growth; unparseable lines
-// are preserved, never deleted, and a pass in which nothing would change
-// rewrites nothing. `tag` labels the report lines with the tier they
-// describe ('' for the project tier), so a pass over several tiers stays
-// auditable from its output alone.
-function usageStep(memDir, report, tag, onBackup) {
+// are preserved by default, and a pass in which nothing would change
+// rewrites nothing. `dropMalformed` is the one sanctioned exit for such a
+// line: every read path preserves it and hand-editing the sidecar is
+// banned, so without one a single torn append suppresses the tier's decay
+// candidates on every future run. The exit is a delete, so it rides this
+// rewrite's own .bak, says each removed line on stderr where the default
+// says each preserved one, and counts the removals in the report. `tag`
+// labels the report lines with the tier they describe ('' for the project
+// tier), so a pass over several tiers stays auditable from its output
+// alone.
+function usageStep(memDir, report, tag, onBackup, dropMalformed) {
     const file = path.join(memDir, USAGE_FILE);
     const src = readStoreFile(file);
     if (src === null) return;
@@ -6476,14 +6523,20 @@ function usageStep(memDir, report, tag, onBackup) {
     const appliedShape = new Map();    // file -> {raw, rollups, idxs}
     let total = 0;
     let readCount = 0;
+    let droppedMalformed = 0;
     for (let i = 0; i < src.lines.length; i++) {
         const line = src.lines[i].trim();
         if (line === '') continue;
         let parsed = null;
         try { parsed = JSON.parse(line); } catch { /* preserved just below */ }
         if (!isUsageStamp(parsed)) {
-            process.stderr.write('memq: preserving unparseable usage line ' + (i + 1) + '\n');
-            items.push({ line, keep: true });
+            if (dropMalformed) {
+                process.stderr.write('memq: removing unparseable usage line ' + (i + 1) + '\n');
+                droppedMalformed += 1;
+            } else {
+                process.stderr.write('memq: preserving unparseable usage line ' + (i + 1) + '\n');
+                items.push({ line, keep: true });
+            }
             continue;
         }
         total += 1;
@@ -6527,7 +6580,10 @@ function usageStep(memDir, report, tag, onBackup) {
             foldFiles.push(f);
         }
     }
-    if (foldFiles.length === 0 && readCount === newestRead.size) return;
+    // A removal is a change on its own: a sidecar whose stamps are already
+    // pruned to shape still gets its rewrite when a malformed line is
+    // leaving, or the drop the caller asked for would silently not happen.
+    if (foldFiles.length === 0 && readCount === newestRead.size && droppedMalformed === 0) return;
 
     // The merged rollups lead the file (they are its oldest history) in
     // sorted file-key order; every kept line follows in its original order,
@@ -6551,6 +6607,10 @@ function usageStep(memDir, report, tag, onBackup) {
         merged.concat(items.filter((it) => it.keep).map((it) => it.line)).join('\n') + '\n',
         { concurrentAppends: true, onBackup: onBackup });
     report.push('usage  kept ' + keptCount + ' of ' + total + ' stamps' + tag);
+    if (droppedMalformed > 0) {
+        report.push('usage  dropped ' + droppedMalformed + ' malformed line'
+            + (droppedMalformed === 1 ? '' : 's') + tag);
+    }
 }
 
 // Carry retiring index lines into the archive's own index, the file that
@@ -7318,9 +7378,14 @@ function archiveTargetsValid(dir, names, where) {
 // because the rollup discards the expired entries' prose for a tally, in a
 // store with no version control and a single-generation .bak, so it runs
 // only when the full pass asks for it, never as a side effect of an archive
-// move. At least one flag is required: a prune asked to do nothing is an
-// argument error, not a silent no-op. The summarize edit stays a hand edit
-// because it is a judgment over prose, not a mechanical rewrite.
+// move. --drop-malformed rides --rollup and removes the malformed usage
+// lines that rewrite otherwise preserves, the one sanctioned exit for a torn
+// line (usageStep owns the reasons); it is behind its own flag on the same
+// ground as the rollup, a delete of bytes no copy but the .bak survives, and
+// preserving stays the default. At least one flag is required: a prune asked
+// to do nothing is an argument error, not a silent no-op. The summarize edit
+// stays a hand edit because it is a judgment over prose, not a mechanical
+// rewrite.
 //
 // A shared-tier retirement is a cross-project act: the tier is shared, so a
 // move to archive/ removes the memory from every project's copy of it, not
@@ -7364,11 +7429,14 @@ function cmdDecayPrune(argv) {
     const typeArchives = [];
     const operatorArchives = [];
     let rollup = false;
+    let dropMalformed = false;
     let confirmShared = false;
     for (let i = 0; i < argv.length; i++) {
         const a = argv[i];
         if (a === '--rollup') {
             rollup = true;
+        } else if (a === '--drop-malformed') {
+            dropMalformed = true;
         } else if (a === '--confirm-shared') {
             confirmShared = true;
         } else if (a === '--archive' || a === '--archive-type' || a === '--archive-operator') {
@@ -7382,9 +7450,18 @@ function cmdDecayPrune(argv) {
                 : a === '--archive-type' ? typeArchives : operatorArchives).push(v);
         } else if (a.startsWith('--')) return usage('unknown option ' + sanitize(a, 40));
         else {
-            return usage('decay-prune takes only --rollup, --archive, --archive-type,'
-                + ' --archive-operator, and --confirm-shared options');
+            return usage('decay-prune takes only --rollup, --drop-malformed, --archive,'
+                + ' --archive-type, --archive-operator, and --confirm-shared options');
         }
+    }
+    // The flag rides the pass that rewrites the sidecars, never a pass of
+    // its own: alone it would be a rewrite nothing else asked for, and a
+    // silent no-op would read as a drop that happened. Checked before the
+    // no-work refusal below so a caller who gave only this flag is told what
+    // it rides on rather than that they asked for nothing.
+    if (dropMalformed && !rollup) {
+        return usage('--drop-malformed removes the malformed usage lines the rollup rewrite'
+            + ' preserves, so it needs --rollup');
     }
     if (!rollup && archives.length === 0 && typeArchives.length === 0
         && operatorArchives.length === 0) {
@@ -7559,18 +7636,18 @@ function cmdDecayPrune(argv) {
     try {
         if (rollup) {
             rollupStep(memDir, Date.now(), report, noteBackup);
-            usageStep(memDir, report, '', noteBackup);
+            usageStep(memDir, report, '', noteBackup, dropMalformed);
         }
         archiveStep(memDir, archives, report, '',
             { sharedTier: false, resumed: projectResumed, onBackup: noteBackup });
         if (typeWork) {
             const tag = '  (type:' + sanitize(typed.type, TYPE_CAP) + ')';
-            if (rollup) usageStep(typed.dir, report, tag, noteBackup);
+            if (rollup) usageStep(typed.dir, report, tag, noteBackup, dropMalformed);
             archiveStep(typed.dir, typeArchives, report, tag,
                 { sharedTier: true, resumed: typeResumed, onBackup: noteBackup });
         }
         if (operatorWork) {
-            if (rollup) usageStep(operator, report, '  (operator)', noteBackup);
+            if (rollup) usageStep(operator, report, '  (operator)', noteBackup, dropMalformed);
             archiveStep(operator, operatorArchives, report, '  (operator)',
                 { sharedTier: true, resumed: operatorResumed, onBackup: noteBackup });
         }
