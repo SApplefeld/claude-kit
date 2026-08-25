@@ -1361,7 +1361,7 @@ else {
         if ($kitTracked.Count -gt 0) {
             Report "WARN" "Kit state directory exposure" (@(
                 "$($kitTracked.Count) path(s) under $kitStatePath are tracked by git, so their contents are in this repo's history and reach every clone:"
-            ) + ($kitTracked | ForEach-Object { "  $_" }) + @(
+            ) + ($kitTracked | ForEach-Object { "  " + (Get-SanitizedLine $_ 200) }) + @(
                 "Fix: git rm --cached each path above, then add .kit/ to this repo's .gitignore."
             ))
         }

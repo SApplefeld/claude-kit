@@ -242,13 +242,30 @@ function planFileSize(cwd, planRel) {
         return (err && err.code === 'ENOENT') ? 0 : null;
     }
     if (st.isFile()) return st.size;
+    return resolvePlanLink(cwd, full).size;
+}
+
+// The link-resolution half of planFileSize's rule, spelled once so the two
+// questions asked of it cannot answer differently: the size when the link
+// resolves, inside the repo, to a regular file, and otherwise how the refusal
+// was reached. planFileSize takes the size and discards the rest, which is why
+// its contract is unchanged by this split; planPathState needs the rest, because
+// a refusal it must hold a stop over forever and one that may clear on its own
+// look identical from a bare null.
+//
+// A dangling link raises ENOENT from realpathSync, which pathErrnoClass calls
+// 'absent'. That is the wrong word here and is mapped to a determinate refusal
+// instead: something IS at the plan path, it simply cannot be opened as a plan
+// doc, and it will not start being openable without a hand fixing it.
+function resolvePlanLink(cwd, full) {
     try {
         const real = fs.realpathSync(full);
-        if (normalizePlanArg(fs.realpathSync(cwd), real) === null) return null;
+        if (normalizePlanArg(fs.realpathSync(cwd), real) === null) return { size: null, cls: 'determinate' };
         const st = fs.statSync(real);
-        return st.isFile() ? st.size : null;
-    } catch {
-        return null;
+        return st.isFile() ? { size: st.size, cls: null } : { size: null, cls: 'determinate' };
+    } catch (err) {
+        const cls = pathErrnoClass(err && err.code);
+        return { size: null, cls: cls === 'transient' ? 'transient' : 'determinate' };
     }
 }
 
@@ -288,8 +305,14 @@ function planPathState(cwd, planRel) {
     if (st.isFile()) return 'unreadable';
     // A non-regular kind that resolves to an in-repo regular file is a plan doc
     // planHead reads, so reaching here over one means the read failed rather
-    // than the kind, which is the transient answer.
-    return planFileSize(cwd, planRel) === null ? 'unusable' : 'unreadable';
+    // than the kind, which is the transient answer. A resolution that did not
+    // finish splits the same way the lstat above splits: a transient errno
+    // (a scanner holding the target, a descriptor exhaustion) says nothing
+    // permanent about the path and fails open, where the determinate refusals
+    // (out of the repo, dangling, cyclic, not a regular file) hold the stop.
+    const link = resolvePlanLink(cwd, path.join(cwd, planRel));
+    if (link.size !== null) return 'unreadable';
+    return link.cls === 'transient' ? 'unreadable' : 'unusable';
 }
 
 // The goal state's read cap. The writer produces a plan path, the armed queue of
