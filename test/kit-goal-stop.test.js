@@ -178,6 +178,19 @@ test('goal armed, transcript names plan, In Progress, no BLOCKED: block', () => 
             "the block reason restates the user's per-run parallelization request");
         assert.ok(out.reason.includes('kit-compact-checkpoint.js open'),
             'the standard hold reason names the boundary checkpoint command');
+        assert.ok(out.reason.includes('holding auto-compaction offers and this turn is at a clean point'),
+            'the standard hold names the interim-board case beside the Chapter case: a run whose '
+            + 'review rounds close no section produces no Chapter, so a Chapter-only condition is '
+            + 'silent for exactly the run the gate has been holding longest');
+        assert.ok(out.reason.includes('where no section has closed, an interim board entry'),
+            'and it names the entry that opens that boundary, not only the condition');
+        assert.ok(out.reason.indexOf('run the memory sweep') < out.reason.indexOf('commit model'),
+            'the boundary steps are named in executing-work\'s own order: the sweep and the '
+            + 'Chapter precede honoring the commit model, since the commit carries the Chapter. '
+            + 'A directive that put the commit first would have the section committed before its '
+            + 'Chapter exists, leaving the Chapter dirty and outside its own commit');
+        assert.ok(out.reason.indexOf('commit model') < out.reason.indexOf('kit-compact-checkpoint.js open'),
+            'and the checkpoint opens last of all');
     } finally {
         rmDir(repo);
         rmDir(local);
@@ -1545,6 +1558,9 @@ test('a capacity-shaped BLOCKED reason releases nothing: block, no event', () =>
             'the block quotes the contract clause it is enforcing');
         assert.ok(out.reason.includes('kit-compact-checkpoint.js open'),
             'the capacity-shaped refusal names the boundary checkpoint command');
+        assert.ok(out.reason.includes('holding auto-compaction offers and this turn is at a clean point'),
+            'the capacity-shaped refusal carries the same two-case boundary directive as the '
+            + 'standard hold, since both are built from the one shared constant');
         assert.deepStrictEqual(readEvents(local), [], 'a refused release emits nothing');
     } finally {
         rmDir(repo);
@@ -1946,6 +1962,10 @@ test('queue, current plan Complete with a plan remaining: advance, one goal-comp
             + 'an already-matching checkpoint, so a plan that never opened one advances with none');
         assert.ok(out.reason.includes(plans[0] + "'s commit model was honored"),
             'the boundary guidance names the just-finished plan, not the one now current');
+        assert.ok(!out.reason.includes('holding auto-compaction offers and this turn is at a clean point'),
+            'the advance asks its own narrower question and does NOT take the shared boundary '
+            + 'directive: without this pin, interpolating BOUNDARY_DIRECTIVE here would leave the '
+            + 'suite green and the comment claiming the advance declines it would have no control');
 
         const state = readState(repo);
         assert.strictEqual(state.plan, plans[1], 'plan moves to the next in the queue');
@@ -2399,6 +2419,9 @@ test('an unchanged transcript across two stops advances once: the second stop ho
         assert.ok(!out.reason.includes('kit-compact-checkpoint.js open'),
             'the spent hold carries no boundary guidance: the advance that produced this key '
             + 'already delivered it, and no new work has happened since (the lead is provably stale)');
+        assert.ok(!out.reason.includes('holding auto-compaction offers and this turn is at a clean point'),
+            'and the interim-board case is withheld with it: both halves come from the one '
+            + 'shared directive, so neither can leak onto this path without the other');
         state = readState(repo);
         assert.strictEqual(state.plan, plans[1], 'the leash did not move again');
         assert.strictEqual(state.history.length, 1, 'no second outcome was recorded');
