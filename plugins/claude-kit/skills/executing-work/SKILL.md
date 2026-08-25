@@ -253,7 +253,9 @@ For each Section of Work, in order (sections run concurrently only where the dis
 
    Before writing the Chapter, run `memq unstamped --since <n>d` (or `<n>h`; the flag takes a duration, never a date) over a window covering the section's span, which is the elapsed time since the previous Chapter, else the 1d default. It lists the memories this stretch's sessions opened and never reported applying. Walk the list and, for each, either stamp it (`memq touch <name> --applied`, with `--type` or `--operator` where the hit's tier needs it) or skip it, then record the outcome in the Chapter's `Stamps:` field. Stamp on the generous bar the memory-system skill owns: did it plausibly steer what you did, and when in doubt, stamp.
 
-   This runs at every section boundary rather than waiting for the close-out, because the judgment is only cheap while it is fresh: a compaction or a session handoff can land between Chapters, and by the close-out of a long run nobody can say which of forty records changed a decision. The trivially-small section that skips its reviews does not skip this; the command is one line and the answer is a recognition question over a list the machine already built.
+   **A report is not a swept boundary on its own, listed or empty.** The memory-system skill owns how to read one, its verdict, its per-tier floors, the count across the swept tiers behind them, and the hand walk a window is owed when the report cannot cover it; read it there rather than from a second copy here. What this step owes is the routing: where that reading leaves a window owed a hand walk, take it before the Chapter is written, and say so on the `Stamps:` line, naming the window, why the report could not cover it and what the walk found. A bare count over a report that could not see reads to the next session exactly like a boundary that swept and found nothing.
+
+   This runs at every section boundary rather than waiting for the close-out, because the judgment is only cheap while it is fresh: a compaction or a session handoff can land between Chapters, and by the close-out of a long run nobody can say which of forty records changed a decision. The trivially-small section that skips its reviews does not skip this; the command is one line, and where the list is all the window owes, the answer is a recognition question over a list the machine already built.
 
    **Do not widen the window past the previous Chapter, on the theory that more is safer.** Widening pulls applied stamps into range as well as reads, so an earlier section's stamp on a record this section freshly read masks it, and the new use is never asked about. A wider window returns a shorter list, and the records it drops are exactly the ones a boundary sweep exists to catch.
 
@@ -312,7 +314,7 @@ Metrics: <review rounds; NEEDS_CONTEXT count; escalations; consults <n>>
 Decisions / Surprises: <anything resolved or discovered; "none" is acceptable>
 Assumptions: <the declared-assumption entries recorded during this section; "none" is acceptable>
 Review Findings: <Critical/Major addressed; Majors justified; Minors noted>
-Stamps: <adjudicated N, stamped M; "none surfaced" is acceptable>
+Stamps: <adjudicated N, stamped M; "none surfaced" is acceptable where the report covered the window; one it could not cover says so, why, and what the hand walk found>
 Next: <next section, or "finishing-work">
 Commit Model: <Review-Only | Branch-and-PR | Commit-and-Push>
 ```
