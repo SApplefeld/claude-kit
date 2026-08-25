@@ -30,7 +30,8 @@ const { armGoal, bindSession, readGoal } = require('../plugins/claude-kit/hooks/
 const {
     checkpointPath, writeCheckpoint, automationInEffect, stripLocalCommandOutput,
     commandArgsSpans, readTranscriptCapped, userCommandArgsClaimPlan,
-    gateStatePath, gateLogPath, gateEpisodeOpen, pendingOfferCorroborated, checkpointOwner
+    gateStatePath, gateLogPath, gateEpisodeOpen, pendingOfferCorroborated, checkpointOwner,
+    recordEpisodeNudge, recordGateDecision, readCheckpoint, clearCheckpoint
 } = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
 
 // The session id the fixtures bind the goal to; payloads default to it so the
@@ -77,24 +78,32 @@ function runGate(payload, extraEnv) {
     });
 }
 
-// Make the goal-state write fail inside the spawned gate: a preload patches
-// fs.writeFileSync to refuse the atomic write's tmp file, standing in for a
-// write the OS declines (a permission, a full disk), which no portable fixture
-// can stage here. The NODE_OPTIONS shape matches the other preloads':
-// forward-slashed, because Node reads a backslash in NODE_OPTIONS as an escape.
+// Make the goal-state write fail inside the spawned gate: a preload refuses the
+// atomic write's tmp file at fs.openSync, standing in for a write the OS
+// declines (a permission, a full disk), which no portable fixture can stage
+// here. The open is the syscall that sees the path: the writer creates the tmp
+// file with fs.openSync and writes to the descriptor, so a shim watching
+// fs.writeFileSync sees a number rather than a path and lets the write through,
+// which reads as a passing refusal rather than as a broken fixture. The
+// NODE_OPTIONS shape matches the other preloads': forward-slashed, because Node
+// reads a backslash in NODE_OPTIONS as an escape.
 function writeRefusingPreload(dir) {
     const shim = path.join(dir, 'refuse-state-write.js');
     writeFile(shim, [
         "'use strict';",
         "const fs = require('fs');",
-        'const realWriteFileSync = fs.writeFileSync;',
-        'fs.writeFileSync = function (target) {',
+        'const realOpenSync = fs.openSync;',
+        '// The writer creates its temp file by path and writes to the descriptor,',
+        '// so refusing the open is what stands in for a write the OS declines. A',
+        '// writer that went back to writing by path would need the same refusal on',
+        '// fs.writeFileSync.',
+        'fs.openSync = function (target) {',
         "    if (String(target).includes('goal-state.json.tmp')) {",
         "        const err = new Error('EPERM: the fixture refuses this write');",
         "        err.code = 'EPERM';",
         '        throw err;',
         '    }',
-        '    return realWriteFileSync.apply(fs, arguments);',
+        '    return realOpenSync.apply(fs, arguments);',
         '};'
     ].join('\n') + '\n');
     return '--require "' + shim.replace(/\\/g, '/') + '"';
@@ -129,22 +138,46 @@ function symlinkReportingPreload(dir, basename) {
     return '--require "' + shim.replace(/\\/g, '/') + '"';
 }
 
-// Make the gate's state read fail with a lock-shaped error (EPERM), the shape
-// an antivirus scanner or a search indexer produces on a file that is very much
-// present. Absent and locked must not read alike.
-function readRefusingGatePreload(dir) {
-    const shim = path.join(dir, 'refuse-gate-read.js');
+// Make a .kit file's read fail with a lock-shaped error (EPERM), the shape an
+// antivirus scanner or a search indexer produces on a file that is very much
+// present. Absent and locked must not read alike. basename picks the file, so
+// the gate state and the checkpoint are staged by one fixture; the lstat is left
+// alone, which is the whole point of the case: it succeeds and reports an
+// ordinary regular file, so a reporter re-asking with its own syscall cannot see
+// this refusal at all.
+function readRefusingPreload(dir, basename) {
+    const shim = path.join(dir, 'refuse-read-' + basename + '.js');
     writeFile(shim, [
         "'use strict';",
         "const fs = require('fs');",
         'const realReadFileSync = fs.readFileSync;',
         'fs.readFileSync = function (target) {',
-        "    if (String(target).endsWith('compact-gate.json')) {",
+        '    if (String(target).endsWith(' + JSON.stringify(basename) + ')) {',
         "        const err = new Error('EPERM: the fixture refuses this read');",
         "        err.code = 'EPERM';",
         '        throw err;',
         '    }',
         '    return realReadFileSync.apply(fs, arguments);',
+        '};'
+    ].join('\n') + '\n');
+    return '--require "' + shim.replace(/\\/g, '/') + '"';
+}
+
+// Make a .kit file's lstat fail with the same lock-shaped error, the one refusal
+// leg that leaves even the path's kind unknown.
+function lstatRefusingPreload(dir, basename) {
+    const shim = path.join(dir, 'refuse-lstat-' + basename + '.js');
+    writeFile(shim, [
+        "'use strict';",
+        "const fs = require('fs');",
+        'const realLstatSync = fs.lstatSync;',
+        'fs.lstatSync = function (target) {',
+        '    if (String(target).endsWith(' + JSON.stringify(basename) + ')) {',
+        "        const err = new Error('EPERM: the fixture refuses this lstat');",
+        "        err.code = 'EPERM';",
+        '        throw err;',
+        '    }',
+        '    return realLstatSync.apply(fs, arguments);',
         '};'
     ].join('\n') + '\n');
     return '--require "' + shim.replace(/\\/g, '/') + '"';
@@ -1796,7 +1829,15 @@ test('cli: status does not assert a hold it could not check', () => {
         const line = out.split('\n')[0];
         assert.ok(line.includes('could not be read'), 'the refusal is stated: ' + line);
         assert.ok(!line.includes('no offer is being held'), 'and no hold is asserted: ' + line);
-        assert.ok(out.includes('present but unreadable'), 'the gate-state half agrees: ' + out);
+        // The fixture stages a link at the state path, so the gate-state half
+        // names that kind and the remedy that works on it: a delete cannot
+        // remove what is there, and removing the file is advice for the
+        // ordinary illegible-file case rather than for this one.
+        assert.ok(out.includes('is sitting at\n.kit/compact-gate.json') || out.includes('sitting at .kit/compact-gate.json'),
+            'the gate-state half names what is at the path: ' + out);
+        assert.ok(out.includes('move it aside by hand'), 'with a remedy that works: ' + out);
+        assert.ok(!out.includes('removing .kit/compact-gate.json lets'),
+            'and not one that does not: ' + out);
     } finally {
         rmDir(shimDir);
         rmDir(repo);
@@ -1938,6 +1979,224 @@ test('cli: status names each state the gate ignores, and the gate agrees on the 
         assertAllow(runGate(payload()));
         out = statusLine();
         assert.ok(out.includes('no compact checkpoint'), 'consumed: ' + out);
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('lib: a checkpoint write whose close fails after a good write reports the failure', () => {
+    // The pin for this file's copy of the split guard. All three writers here
+    // spell it the same way, and three untested copies of a corrected error path
+    // is how the next divergence gets in. The close is where a deferred write
+    // error surfaces on a network or quota-backed volume: swallowed, the rename
+    // publishes a file whose bytes may never have landed and the caller is told
+    // the checkpoint is open.
+    const { repo, planRel } = armedRepo();
+    const realCloseSync = fs.closeSync;
+    try {
+        let closed = 0;
+        fs.closeSync = function (fd) {
+            closed += 1;
+            realCloseSync.call(fs, fd);
+            const err = new Error('EIO: i/o error, close');
+            err.code = 'EIO';
+            throw err;
+        };
+        const wrote = writeCheckpoint(repo, planRel, SESSION, false);
+        fs.closeSync = realCloseSync;
+        assert.ok(closed > 0, 'setup: the write reached its close');
+        assert.strictEqual(wrote.ok, false, 'a write whose close failed is not a write that succeeded');
+        assert.ok(/EIO/.test(wrote.reason), 'and the reason names it: ' + wrote.reason);
+        assert.ok(!fs.existsSync(checkpointPath(repo)), 'nothing is published');
+        assert.deepStrictEqual(tmpOrphans(repo), [], 'and the temp is cleaned up');
+    } finally {
+        fs.closeSync = realCloseSync;
+        rmDir(repo);
+    }
+});
+
+test('lib: clearCheckpoint reports a locked checkpoint path rather than none open', () => {
+    // The analogue of clearGoal's leg, and nothing covered it. An lstat that
+    // fails for any reason but ENOENT leaves existence unproven, so answering
+    // 'none open' tells the caller a checkpoint was consumed or was never there,
+    // over a file that is still sitting on disk.
+    const { repo } = armedRepo();
+    const realLstatSync = fs.lstatSync;
+    try {
+        fs.lstatSync = function (target) {
+            if (String(target) === checkpointPath(repo)) {
+                const err = new Error('EBUSY: resource busy or locked, lstat');
+                err.code = 'EBUSY';
+                throw err;
+            }
+            return realLstatSync.apply(fs, arguments);
+        };
+        const cleared = clearCheckpoint(repo);
+        fs.lstatSync = realLstatSync;
+        assert.strictEqual(cleared.ok, false, 'a path that could not be read is not a path cleared');
+        assert.strictEqual(cleared.cleared, false);
+        assert.ok(/could not clear checkpoint/.test(cleared.reason), cleared.reason);
+    } finally {
+        fs.lstatSync = realLstatSync;
+        rmDir(repo);
+    }
+});
+
+test('lib: a checkpoint path that can never resolve reports none open, not a failed clear', () => {
+    // The twin of clearGoal's own leg, on the same classification. A determinate
+    // errno says nothing is at the path and nothing can be, so there is no
+    // checkpoint to consume and nothing to wait out; only a transient code
+    // (a lock, a permission) leaves existence unproven and is a failed clear.
+    const { repo } = armedRepo();
+    const realLstatSync = fs.lstatSync;
+    try {
+        fs.lstatSync = function (target) {
+            if (String(target) === checkpointPath(repo)) {
+                const err = new Error('ENOTDIR: staged by the fixture, lstat');
+                err.code = 'ENOTDIR';
+                throw err;
+            }
+            return realLstatSync.apply(fs, arguments);
+        };
+        const cleared = clearCheckpoint(repo);
+        fs.lstatSync = realLstatSync;
+        assert.deepStrictEqual(cleared, { ok: true, cleared: false },
+            'nothing is open, and nothing failed');
+    } finally {
+        fs.lstatSync = realLstatSync;
+        rmDir(repo);
+    }
+});
+
+test('cli: a clear that could not prove the checkpoint is there does not assert that it is', () => {
+    // The CLI half of the same leg, and the twin of the goal CLI's own wording.
+    // With the lstat refused, existence is unproven: the file may be sitting
+    // there and it may have been consumed a moment ago, so the honest report is
+    // that nothing was cleared, not that a checkpoint is still open and still
+    // admitting the next compaction.
+    const { repo, planRel } = armedRepo();
+    const shimDir = makeDir('kit-compact-gate-shim-');
+    try {
+        writeCheckpointAt(repo, planRel, new Date().toISOString(), false);
+        const res = runCli(['clear'], repo,
+            { NODE_OPTIONS: lstatRefusingPreload(shimDir, 'compact-checkpoint.json') });
+        assert.strictEqual(res.status, 1, 'a clear that released nothing exits nonzero');
+        assert.ok(res.stderr.includes('could not clear checkpoint'), res.stderr);
+        assert.ok(res.stderr.includes('nothing was cleared'),
+            'and reports only what it knows: ' + res.stderr);
+        assert.ok(!res.stderr.includes('is still open'),
+            'never asserting an existence it could not read: ' + res.stderr);
+    } finally {
+        rmDir(shimDir);
+        rmDir(repo);
+    }
+});
+
+test('lib: a checkpoint the gate consumes mid-clear reports none open, not a failure', () => {
+    // The gate consumes a matching checkpoint on its own path, so a clear can
+    // find the file at the kind check and gone at the unlink. Nothing was
+    // cleared here and the consumer that removed it is the one that acted, so
+    // this is the 'none open' answer rather than an error the CLI exits 1 over.
+    const { repo, planRel } = armedRepo();
+    const realUnlinkSync = fs.unlinkSync;
+    try {
+        assert.strictEqual(writeCheckpoint(repo, planRel, SESSION, false).ok, true, 'setup');
+        fs.unlinkSync = function (target) {
+            if (String(target) === checkpointPath(repo)) {
+                const err = new Error('ENOENT: no such file or directory, unlink');
+                err.code = 'ENOENT';
+                throw err;
+            }
+            return realUnlinkSync.apply(fs, arguments);
+        };
+        const cleared = clearCheckpoint(repo);
+        fs.unlinkSync = realUnlinkSync;
+        assert.strictEqual(cleared.ok, true, 'a path already gone is not a failed clear');
+        assert.strictEqual(cleared.cleared, false, 'and nothing was cleared here');
+    } finally {
+        fs.unlinkSync = realUnlinkSync;
+        rmDir(repo);
+    }
+});
+
+test('lib: a log whose size goes unreadable between the check and the append still gets its separator', () => {
+    // endsOnLineBoundary re-reads the path its caller already sized, so a lock
+    // arriving in that window makes the size unknown. Answering an unknown with
+    // 'ends on a boundary' appends with no separator and fuses two records into
+    // one line that parses as neither; a spare blank line costs nothing.
+    const repo = makeDir('kit-compact-gate-repo-');
+    const realLstatSync = fs.lstatSync;
+    try {
+        writeFile(gateLogFile(repo), 'not-a-record-and-no-trailing-break');
+        let seen = 0;
+        fs.lstatSync = function (target) {
+            if (String(target) === gateLogFile(repo)) {
+                seen += 1;
+                if (seen > 1) {
+                    const err = new Error('EBUSY: resource busy or locked, lstat');
+                    err.code = 'EBUSY';
+                    throw err;
+                }
+            }
+            return realLstatSync.apply(fs, arguments);
+        };
+        recordGateDecision(repo, {
+            verdict: 'deny-boundary', reason: 'no-checkpoint', consumed: 50000, session: SESSION
+        });
+        fs.lstatSync = realLstatSync;
+        assert.ok(seen > 1, 'setup: the size was read again after the first check');
+        const lines = fs.readFileSync(gateLogFile(repo), 'utf8').split('\n');
+        assert.strictEqual(lines[0], 'not-a-record-and-no-trailing-break',
+            'the record did not fuse onto the line that was already there');
+        assert.ok(lines.slice(1).some((l) => l.includes('deny-boundary')),
+            'and the record landed on a line of its own: ' + JSON.stringify(lines.slice(1, 3)));
+    } finally {
+        fs.lstatSync = realLstatSync;
+        rmDir(repo);
+    }
+});
+
+test('lib: clearCheckpoint judges the checkpoint path by the same kind rule readCheckpoint uses', () => {
+    // fs.existsSync follows a link, so a clear built on it unlinks a junction
+    // the repository parked at this path and reports a checkpoint consumed,
+    // while the gate and status both read that same path as no checkpoint open.
+    // One path, two answers, and the surface that speaks is the one that is
+    // wrong. A junction is the link kind this box creates without privilege; a
+    // file symlink needs one it lacks, so that kind stays unproven here.
+    const { repo } = armedRepo();
+    try {
+        const target = path.join(repo, 'link-target');
+        fs.mkdirSync(target, { recursive: true });
+        fs.mkdirSync(path.dirname(checkpointPath(repo)), { recursive: true });
+        fs.symlinkSync(target, checkpointPath(repo), 'junction');
+        assert.strictEqual(readCheckpoint(repo), null, 'setup: no reader sees a checkpoint here');
+
+        const cleared = clearCheckpoint(repo);
+        assert.strictEqual(cleared.ok, true);
+        assert.strictEqual(cleared.cleared, false, 'nothing was open, so nothing was consumed');
+        assert.ok(fs.lstatSync(checkpointPath(repo)).isSymbolicLink(),
+            'and the planted path is left where it is');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('cli: status over a non-file at the checkpoint path names a remedy that works', () => {
+    // The message is the operator's instruction. Over a directory, clear's
+    // unlink cannot remove the path, so offering clear as the remedy sends them
+    // to a command that fails and leaves them where they started.
+    const { repo } = armedRepo();
+    try {
+        fs.mkdirSync(checkpointPath(repo), { recursive: true });
+        const res = runCli(['status'], repo);
+        assert.strictEqual(res.status, 0);
+        assert.ok(res.stdout.includes('not a checkpoint file'),
+            'status names what is at the path: ' + res.stdout);
+        assert.ok(res.stdout.includes('clear cannot remove it'),
+            'and does not offer a remedy that fails: ' + res.stdout);
+        assert.ok(!res.stdout.includes('no compact checkpoint is open'),
+            'nor reports absence over a path with something at it: ' + res.stdout);
+        assert.ok(fs.existsSync(checkpointPath(repo)), 'and status changed nothing');
     } finally {
         rmDir(repo);
     }
@@ -3251,7 +3510,7 @@ test('gate: a state file that cannot be read is not overwritten, and reports no 
         const before = fs.readFileSync(gateStateFile(repo), 'utf8');
 
         const res = runGate(gatePayload(repo, transcript),
-            { NODE_OPTIONS: readRefusingGatePreload(shimDir) });
+            { NODE_OPTIONS: readRefusingPreload(shimDir, 'compact-gate.json') });
         assertDeny(res);
         assert.ok(!res.stderr.includes('held'),
             'no figures are guessed over an unreadable state: ' + res.stderr);
@@ -3279,9 +3538,106 @@ test('gate: an oversized state file is refused rather than read whole', () => {
         const status = runCli(['status'], repo);
         assert.ok(status.stdout.includes('present but unreadable'),
             'status names the refused file: ' + status.stdout);
-        assert.ok(status.stdout.includes('compact-gate.json'), 'and the remedy: ' + status.stdout);
+        assert.ok(status.stdout.includes('removing .kit/compact-gate.json lets'),
+            'and gives the removal advice, which is right for the one permanent leg: ' + status.stdout);
         assert.ok(!status.stdout.includes('recorded no decisions'),
             'never reported as an absent record: ' + status.stdout);
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('cli: status does not tell an operator to delete a gate state file a lock is holding', () => {
+    // The removal advice discards the standing deferral episode and the
+    // corroboration that selects the checkpoint's long bound, so it is only ever
+    // right for a refusal that will not resolve on its own. A read refused by a
+    // scanner is the opposite case, and it is the one leg a reporter re-asking
+    // with its own lstat cannot see at all: the lstat succeeds and reports an
+    // ordinary regular file. The classification therefore comes from the
+    // reader's own refusal.
+    const { repo } = armedRepo();
+    const shimDir = makeDir('kit-compact-gate-shim-');
+    try {
+        openEpisodeFor(repo, SESSION, 30 * 60 * 1000);
+        const out = runCli(['status'], repo,
+            { NODE_OPTIONS: readRefusingPreload(shimDir, 'compact-gate.json') }).stdout;
+        assert.ok(out.includes('cannot be read right now'), 'the refusal is stated as transient: ' + out);
+        assert.ok(!out.includes('removing .kit/compact-gate.json lets'),
+            'and nothing invites the operator to delete the live episode: ' + out);
+        assert.ok(!out.includes('recorded no decisions'), 'nor reads as an empty record: ' + out);
+        assert.ok(fs.existsSync(gateStateFile(repo)), 'the state file is untouched');
+    } finally {
+        rmDir(shimDir);
+        rmDir(repo);
+    }
+});
+
+test('cli: status reports a gate state file whose own kind cannot be read as unreadable, not as present-but-illegible', () => {
+    // The leg where even the lstat fails. Nothing is known about the path, so
+    // neither the removal advice nor a claim about what is sitting there can be
+    // printed over it.
+    const { repo } = armedRepo();
+    const shimDir = makeDir('kit-compact-gate-shim-');
+    try {
+        openEpisodeFor(repo, SESSION, 30 * 60 * 1000);
+        const out = runCli(['status'], repo,
+            { NODE_OPTIONS: lstatRefusingPreload(shimDir, 'compact-gate.json') }).stdout;
+        assert.ok(out.includes('cannot be read right now'), 'the refusal is stated as transient: ' + out);
+        assert.ok(!out.includes('removing .kit/compact-gate.json lets'), 'with no removal advice: ' + out);
+        assert.ok(!out.includes('is sitting at'), 'and no claim about what is there: ' + out);
+    } finally {
+        rmDir(shimDir);
+        rmDir(repo);
+    }
+});
+
+test('cli: status reports no gate state at all as a project recording nothing yet', () => {
+    // The plain absent case keeps the plain message: nothing is at the path, so
+    // there is no refusal to describe and no remedy to offer.
+    const { repo } = armedRepo();
+    try {
+        assert.ok(!fs.existsSync(gateStateFile(repo)), 'setup: no state file');
+        const out = runCli(['status'], repo).stdout;
+        assert.ok(out.includes('recorded no decisions'), 'absence reads as absence: ' + out);
+        assert.ok(!out.includes('unreadable'), 'and asserts nothing about a path with nothing at it: ' + out);
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('cli: status does not tell an operator that clear removes a checkpoint a lock is holding', () => {
+    // The checkpoint side of the same rule. readCheckpoint answers null for a
+    // refused read exactly as it does for an illegible file, and the report used
+    // to promise that clear removes it, over a file whose read is failing this
+    // second and whose content may be perfectly good.
+    const { repo, planRel } = armedRepo();
+    const shimDir = makeDir('kit-compact-gate-shim-');
+    try {
+        writeCheckpointAt(repo, planRel, new Date().toISOString(), false);
+        const out = runCli(['status'], repo,
+            { NODE_OPTIONS: readRefusingPreload(shimDir, 'compact-checkpoint.json') }).stdout;
+        assert.ok(out.includes('cannot be read right now'), 'the refusal is stated as transient: ' + out);
+        assert.ok(!out.includes('clear removes it'), 'with no promise a clear would keep: ' + out);
+        assert.ok(!out.includes('no compact checkpoint is open'), 'and no false absence: ' + out);
+    } finally {
+        rmDir(shimDir);
+        rmDir(repo);
+    }
+});
+
+test('cli: status names an oversized checkpoint file and offers the clear that does remove it', () => {
+    // The permanent leg on the checkpoint side. The file is a regular file, so
+    // clear unlinks it, and the condition never lifts on its own.
+    const { repo, planRel } = armedRepo();
+    try {
+        writeFile(checkpointPath(repo), JSON.stringify({
+            plan: planRel, boundSession: SESSION, openedAt: new Date().toISOString(),
+            pendingOffer: false, padding: 'x'.repeat(128 * 1024)
+        }) + '\n');
+        const out = runCli(['status'], repo).stdout;
+        assert.ok(out.includes('clear removes it'), 'the remedy that works is offered: ' + out);
+        assert.ok(!out.includes('cannot be read right now'), 'and the leg is not called transient: ' + out);
+        assert.ok(!out.includes('no compact checkpoint is open'), 'nor absent: ' + out);
     } finally {
         rmDir(repo);
     }
@@ -3872,6 +4228,354 @@ test('cli: status renders the last gate decision and the open deferral episode',
         assert.ok(res.stdout.includes('no decisions'), 'the illegible decision is reported as none: ' + res.stdout);
         assert.ok(res.stdout.includes('held 4 offers over 5 minutes'), 'the episode is still reported: ' + res.stdout);
     } finally {
+        rmDir(repo);
+    }
+});
+
+// ---------------------------------------------------------------------------
+// recordEpisodeNudge, directly. The deferral nudge reaches this function only
+// through its own guards, which already answer most of these questions, so
+// every refusal leg below is unreachable from an end-to-end fixture: delete one
+// and the hook suite stays green. They are asserted here, where the library
+// lives, because a refusal no test can see is indistinguishable from one that
+// was removed, and a second caller lands on them next.
+// ---------------------------------------------------------------------------
+
+// A state file carrying an episode staged from the given overrides, and the
+// bytes it holds, so a case can prove nothing was written rather than proving
+// only that the parsed shape still looks right.
+function stageNudgeState(repo, episode) {
+    const state = {
+        lastDecision: {
+            at: new Date(Date.now() - 60 * 1000).toISOString(),
+            verdict: 'deny-boundary',
+            reason: 'no-checkpoint',
+            consumed: 50000,
+            checkpoint: null,
+            session: SESSION
+        },
+        episode,
+        lastAllow: null
+    };
+    writeFile(gateStateFile(repo), JSON.stringify(state, null, 2) + '\n');
+    return fs.readFileSync(gateStateFile(repo), 'utf8');
+}
+
+// The episode the stamp accepts: denied a minute ago, opened 45 minutes ago.
+function openNudgeEpisode(overrides) {
+    return {
+        session: SESSION,
+        since: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
+        denials: 7,
+        lastDeniedAt: new Date(Date.now() - 60 * 1000).toISOString(),
+        nudgedAt: null,
+        ...(overrides || {})
+    };
+}
+
+test('lib: the nudge stamp refuses a state with no episode open', () => {
+    const repo = makeDir('kit-compact-gate-repo-');
+    try {
+        const before = stageNudgeState(repo, null);
+        assert.strictEqual(recordEpisodeNudge(repo, SESSION, Date.now()), false,
+            'no episode is no rate limit to stamp, and the caller emits nothing');
+        assert.strictEqual(fs.readFileSync(gateStateFile(repo), 'utf8'), before,
+            'the state file is untouched, so no episode is minted');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('lib: the nudge stamp refuses an episode idle past the gate bound', () => {
+    // A finished episode must never be resurrected by a stamp: the reading
+    // every consumer decides from is whether a hold stands right now.
+    const repo = makeDir('kit-compact-gate-repo-');
+    try {
+        const stale = new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString();
+        const before = stageNudgeState(repo, openNudgeEpisode({ lastDeniedAt: stale }));
+        assert.strictEqual(recordEpisodeNudge(repo, SESSION, Date.now()), false,
+            'five hours idle is past the four-hour bound');
+        assert.strictEqual(fs.readFileSync(gateStateFile(repo), 'utf8'), before,
+            'the finished episode is left exactly as it was');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('lib: the nudge stamp refuses an episode belonging to another session', () => {
+    // gateEpisodeOpen reads a missing owner as "any open episode counts",
+    // which is right for a human running status and wrong for a writer: it
+    // would let one session's nudge consume another session's interval.
+    const repo = makeDir('kit-compact-gate-repo-');
+    try {
+        const before = stageNudgeState(repo, openNudgeEpisode());
+        assert.strictEqual(recordEpisodeNudge(repo, 'ses-99998888-dead-beef-0000-111122223333', Date.now()), false,
+            'a foreign session owns no part of this hold');
+        assert.strictEqual(fs.readFileSync(gateStateFile(repo), 'utf8'), before,
+            'the other session\'s episode is untouched');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('lib: the nudge stamp refuses an unusable session id', () => {
+    // An empty string is not a session id, and it must not be read as an
+    // omission: the two answers point in opposite directions here.
+    const repo = makeDir('kit-compact-gate-repo-');
+    try {
+        const before = stageNudgeState(repo, openNudgeEpisode());
+        for (const bad of ['', null, undefined, 42]) {
+            assert.strictEqual(recordEpisodeNudge(repo, bad, Date.now()), false,
+                'not a session id: ' + JSON.stringify(bad));
+        }
+        assert.strictEqual(fs.readFileSync(gateStateFile(repo), 'utf8'), before,
+            'nothing was written on any of those paths');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('lib: the nudge stamp aborts when a gate write lands under it', () => {
+    // The damaging interleaving, staged: an allow at the valve clears the
+    // episode without consuming the checkpoint, and a stamp whose read
+    // predates it would write the episode back with its original `since`.
+    // pendingOfferCorroborated would then vouch for the standing checkpoint
+    // again and checkpointMatches would grant it the 24-hour bound instead of
+    // ten minutes, admitting a compaction against a boundary declared hours
+    // earlier. The seam is the exclusive create of the stamp's tmp file: the
+    // gate write lands from there, which is after the stamp has read its basis
+    // and before the compare-and-set re-reads, the window that check closes.
+    // The create is the seam rather than the content write because the writer
+    // creates by path and then writes to the descriptor, so the path is visible
+    // at the open alone.
+    const repo = makeDir('kit-compact-gate-repo-');
+    const realWrite = fs.writeFileSync;
+    const realOpen = fs.openSync;
+    try {
+        stageNudgeState(repo, openNudgeEpisode());
+        let interfered = false;
+        fs.openSync = function (target, ...rest) {
+            const out = realOpen.call(fs, target, ...rest);
+            if (!interfered && String(target).startsWith(gateStateFile(repo) + '.tmp.')) {
+                interfered = true;
+                const cleared = JSON.parse(fs.readFileSync(gateStateFile(repo), 'utf8'));
+                cleared.episode = null;
+                cleared.lastDecision = {
+                    at: new Date().toISOString(),
+                    verdict: 'allow',
+                    reason: 'valve',
+                    consumed: 900000,
+                    checkpoint: null,
+                    session: SESSION
+                };
+                realWrite.call(fs, gateStateFile(repo), JSON.stringify(cleared, null, 2) + '\n', 'utf8');
+            }
+            return out;
+        };
+        const stamped = recordEpisodeNudge(repo, SESSION, Date.now());
+        fs.openSync = realOpen;
+        assert.strictEqual(interfered, true, "test setup: the gate write must land inside the stamp's window");
+        assert.strictEqual(stamped, false, 'the stamp fails closed, and the caller emits nothing');
+        const after = readState(repo);
+        assert.strictEqual(after.episode, null, 'the allow\'s cleared episode stands: no resurrection');
+        assert.strictEqual(after.lastDecision.verdict, 'allow', 'the gate\'s own decision is not clobbered');
+        const orphans = fs.readdirSync(path.join(repo, '.kit'))
+            .filter((name) => name.startsWith('compact-gate.json.tmp.'));
+        assert.deepStrictEqual(orphans, [], 'the abandoned write leaves no tmp behind');
+    } finally {
+        fs.writeFileSync = realWrite;
+        fs.openSync = realOpen;
+        rmDir(repo);
+    }
+});
+
+// Fail the write leg of one atomic writer after its exclusive create has
+// succeeded, which is what a full disk, a quota or an IO error does. Returns a
+// restore function. Both spellings of the write are covered: a descriptor
+// belonging to a temp path this shim watched being created, and the path
+// itself, which is created first and then refused so the caller is left with
+// exactly the orphan a single create-and-write call would leave. matchTmp
+// takes the target path and says whether it is the temp file under test, so
+// one writer can be failed while the writers around it run normally.
+function failWriteAfterCreate(matchTmp) {
+    const realOpenSync = fs.openSync;
+    const realWriteFileSync = fs.writeFileSync;
+    const watched = new Set();
+    const enospc = () => {
+        const err = new Error('ENOSPC: no space left on device, write');
+        err.code = 'ENOSPC';
+        return err;
+    };
+    fs.openSync = function (target, ...rest) {
+        const fd = realOpenSync.call(fs, target, ...rest);
+        if (matchTmp(String(target))) watched.add(fd);
+        return fd;
+    };
+    fs.writeFileSync = function (target, data, options) {
+        if (typeof target === 'number' && watched.has(target)) throw enospc();
+        if (typeof target === 'string' && matchTmp(target)) {
+            realWriteFileSync.call(fs, target, '', options);
+            throw enospc();
+        }
+        return realWriteFileSync.apply(fs, arguments);
+    };
+    return function restore() {
+        fs.openSync = realOpenSync;
+        fs.writeFileSync = realWriteFileSync;
+    };
+}
+
+// The temp files any of this library's atomic writers left behind in .kit.
+function tmpOrphans(repo) {
+    return fs.readdirSync(path.join(repo, '.kit')).filter((name) => name.includes('.tmp.'));
+}
+
+test('lib: a checkpoint write that fails after its create leaves no temp behind', () => {
+    // The unlink is gated on a flag meaning "this writer created the file".
+    // Spelled as one create-and-write call the flag cannot be set between the
+    // two legs, so a failure part-way through the write skips the cleanup and
+    // strands a partial checkpoint under a random name no later run can
+    // recognize. There is no sweep in this library, so every retry adds one.
+    const { repo, planRel } = armedRepo();
+    const restore = failWriteAfterCreate((p) => p.startsWith(checkpointPath(repo) + '.tmp.'));
+    try {
+        const wrote = writeCheckpoint(repo, planRel, SESSION, false);
+        restore();
+        assert.strictEqual(wrote.ok, false, 'the failed write is reported');
+        assert.ok(/ENOSPC/.test(wrote.reason), 'and it fails for that reason: ' + wrote.reason);
+        assert.ok(!fs.existsSync(checkpointPath(repo)), 'no checkpoint was published');
+        assert.deepStrictEqual(tmpOrphans(repo), [],
+            'and the file the create made is removed rather than orphaned');
+    } finally {
+        restore();
+        rmDir(repo);
+    }
+});
+
+test('lib: a gate-state write that fails after its create leaves no temp behind', () => {
+    // Same gate, the writer every gate decision and every nudge stamp goes
+    // through. Its temp holds the whole state file: session ids, the decision
+    // history and the open episode.
+    const repo = makeDir('kit-compact-gate-repo-');
+    const restore = failWriteAfterCreate((p) => p.startsWith(gateStateFile(repo) + '.tmp.'));
+    try {
+        stageNudgeState(repo, openNudgeEpisode());
+        const before = fs.readFileSync(gateStateFile(repo), 'utf8');
+        const stamped = recordEpisodeNudge(repo, SESSION, Date.now());
+        restore();
+        assert.strictEqual(stamped, false, 'the stamp fails closed');
+        assert.strictEqual(fs.readFileSync(gateStateFile(repo), 'utf8'), before,
+            'the published state is untouched');
+        assert.deepStrictEqual(tmpOrphans(repo), [],
+            'and the file the create made is removed rather than orphaned');
+    } finally {
+        restore();
+        rmDir(repo);
+    }
+});
+
+test('lib: a log trim that fails after its create leaves no temp behind', () => {
+    // The third writer, and the one with the most to strand: its temp holds
+    // the newest megabyte of the gate journal, which carries session ids and a
+    // work timeline per line, and .kit need not be gitignored in a consuming
+    // repo. The state write ahead of it is left alone so the trim is what the
+    // failure reaches.
+    const repo = makeDir('kit-compact-gate-repo-');
+    const restore = failWriteAfterCreate((p) => p.startsWith(gateLogFile(repo) + '.tmp.'));
+    try {
+        const filler = [];
+        for (let i = 0; i < 2200; i++) {
+            filler.push(JSON.stringify({ i, pad: 'x'.repeat(980) }));
+        }
+        writeFile(gateLogFile(repo), filler.join('\n') + '\n');
+        assert.ok(fs.statSync(gateLogFile(repo)).size > 2 * 1024 * 1024, 'setup: the log is over the cap');
+        recordGateDecision(repo, {
+            verdict: 'deny-boundary', reason: 'no-checkpoint', consumed: 50000, session: SESSION
+        });
+        restore();
+        assert.ok(fs.statSync(gateLogFile(repo)).size > 2 * 1024 * 1024,
+            'the failed trim leaves the log as it found it');
+        assert.deepStrictEqual(tmpOrphans(repo), [],
+            'and the file the create made is removed rather than orphaned');
+    } finally {
+        restore();
+        rmDir(repo);
+    }
+});
+
+test('lib: an atomic write refused by an occupied temp path deletes nothing', () => {
+    // Every atomic writer in the library creates its temp file exclusively and
+    // unlinks it when the write or the rename fails. An occupied path is the
+    // one failure where the file is not the writer's to remove: the create
+    // never happened, so the unlink would land on somebody else's file. The
+    // temp name carries six CSPRNG bytes, so nothing can aim this in practice,
+    // which is exactly why the name and this gate are two independent defenses
+    // and why the seam here is a pinned randomBytes rather than a guess.
+    const crypto = require('crypto');
+    const { repo, planRel } = armedRepo();
+    const realBytes = crypto.randomBytes;
+    try {
+        crypto.randomBytes = () => Buffer.from('aabbccddeeff', 'hex');
+        const planted = checkpointPath(repo) + '.tmp.' + process.pid + '.aabbccddeeff';
+        writeFile(planted, 'not the writer\'s file\n');
+
+        const wrote = writeCheckpoint(repo, planRel, SESSION, false);
+        assert.strictEqual(wrote.ok, false, 'the exclusive create fails on an occupied path');
+        assert.ok(/EEXIST/.test(wrote.reason), 'and it fails for that reason: ' + wrote.reason);
+        assert.strictEqual(fs.readFileSync(planted, 'utf8'), 'not the writer\'s file\n',
+            'the occupying file survives the refused write, contents and all');
+        assert.ok(!fs.existsSync(checkpointPath(repo)), 'and no checkpoint was published');
+    } finally {
+        crypto.randomBytes = realBytes;
+        rmDir(repo);
+    }
+});
+
+test('lib: the nudge stamp discriminates two decisions stamped in one millisecond', () => {
+    // The compare-and-set compares more than the decision timestamp, and this
+    // is the case that needs it: a deny-interactive carries the episode through
+    // untouched, so the only field that moves is `at`, and `at` is an ISO
+    // string at millisecond resolution. Two distinct decisions inside one
+    // millisecond would fingerprint identically on the timestamp alone, and the
+    // stamp would write its read-time state over the newer decision.
+    const repo = makeDir('kit-compact-gate-repo-');
+    const realWrite = fs.writeFileSync;
+    const realOpen = fs.openSync;
+    try {
+        stageNudgeState(repo, openNudgeEpisode());
+        const frozenAt = readState(repo).lastDecision.at;
+        let interfered = false;
+        // The seam is the tmp file's exclusive create, for the reason the case
+        // above gives: the writer creates by path and writes to the descriptor.
+        fs.openSync = function (target, ...rest) {
+            const out = realOpen.call(fs, target, ...rest);
+            if (!interfered && String(target).startsWith(gateStateFile(repo) + '.tmp.')) {
+                interfered = true;
+                const newer = JSON.parse(fs.readFileSync(gateStateFile(repo), 'utf8'));
+                // Same millisecond, different decision: only the verdict, the
+                // reason and the deciding session move.
+                newer.lastDecision = {
+                    at: frozenAt,
+                    verdict: 'deny-interactive',
+                    reason: 'automation',
+                    consumed: 90000,
+                    checkpoint: null,
+                    session: 'ses-77776666-cccc-dddd-eeee-888899990000'
+                };
+                realWrite.call(fs, gateStateFile(repo), JSON.stringify(newer, null, 2) + '\n', 'utf8');
+            }
+            return out;
+        };
+        const stamped = recordEpisodeNudge(repo, SESSION, Date.now());
+        fs.openSync = realOpen;
+        assert.strictEqual(interfered, true, 'test setup: the decision must land inside the window');
+        assert.strictEqual(stamped, false, 'a same-millisecond decision is still a decision to preserve');
+        const after = readState(repo);
+        assert.strictEqual(after.lastDecision.verdict, 'deny-interactive', 'the newer decision survives');
+        assert.strictEqual(after.episode.nudgedAt, null, 'and no stamp was written over it');
+    } finally {
+        fs.writeFileSync = realWrite;
+        fs.openSync = realOpen;
         rmDir(repo);
     }
 });

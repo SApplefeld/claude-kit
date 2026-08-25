@@ -20,10 +20,9 @@
 
 'use strict';
 
-const fs = require('fs');
 const { readGoal } = require('./kit-goal-lib.js');
 const {
-    checkpointPath, readCheckpoint, writeCheckpoint, clearCheckpoint, checkpointMatches,
+    readCheckpointResult, writeCheckpoint, clearCheckpoint, checkpointMatches,
     readGateStateResult, gateEpisodeOpen, pendingOfferCorroborated, checkpointOwner,
     episodePhrase, wholeMinutesSince,
     CHECKPOINT_MAX_AGE_MS, CHECKPOINT_PENDING_MAX_AGE_MS
@@ -136,10 +135,12 @@ function cmdOpen() {
 function cmdClear() {
     const result = clearCheckpoint(process.cwd());
     if (!result.ok) {
-        // The file exists but could not be deleted: the checkpoint is still
-        // open and will admit the next auto-compaction, so this must not read
-        // as a successful clear.
-        process.stderr.write('kit-compact-checkpoint: ' + sanitize(result.reason) + ' (the checkpoint is still open)\n');
+        // Nothing was removed, so this must not read as a successful clear. What
+        // is left behind is not asserted: the lstat leg fires with existence
+        // unproven, and while a lock stands every reader treats the path as
+        // absent, so the checkpoint is not necessarily open either. This is the
+        // goal CLI's own wording at the same leg of the same question.
+        process.stderr.write('kit-compact-checkpoint: ' + sanitize(result.reason) + ' (nothing was cleared)\n');
         process.exitCode = 1;
         return;
     }
@@ -200,18 +201,42 @@ function expiredReason(cp, hold, corroborated) {
 // The checkpoint half of the status report: whether one is open, and why the
 // gate would ignore it if it is.
 function reportCheckpoint(cwd) {
-    const cp = readCheckpoint(cwd);
+    const read = readCheckpointResult(cwd);
+    const cp = read.cp;
     if (!cp || typeof cp.plan !== 'string') {
-        // readCheckpoint answers null for a genuinely absent file AND for one
-        // that exists but did not parse (or carries no plan). The gate treats
-        // both as absent, but only one of them is a garbage file worth
-        // knowing about, so status distinguishes them rather than reporting
-        // absence over a file that is sitting right there.
-        let fileExists = false;
-        try { fileExists = fs.existsSync(checkpointPath(cwd)); } catch { /* report plain absence */ }
-        process.stdout.write(fileExists
-            ? 'an illegible checkpoint file is present (the gate treats it as absent); clear removes it\n'
-            : 'no compact checkpoint is open\n');
+        // The read answers with no checkpoint for a genuinely absent file, for
+        // one that exists and did not parse, and for three refusals. The gate
+        // treats all of them as absent, but an operator does not: each names a
+        // different remedy, so status prints the one that works rather than
+        // reporting absence over a file that is sitting right there.
+        //
+        // Which leg it was comes from the reader itself rather than from a second
+        // lstat here. An lstat asked afterwards cannot see the 'unreadable' leg
+        // at all: it succeeds and reports an ordinary regular file, so the report
+        // would call a locked checkpoint illegible and promise a clear that is
+        // failing for the same reason the read did.
+        const reason = cp === null ? read.reason : 'illegible';
+        if (reason === 'illegible') {
+            process.stdout.write('an illegible checkpoint file is present (the gate treats it as absent); clear removes it\n');
+        } else if (reason === 'oversized') {
+            // A regular file, so clear unlinks it, and past the read cap, so it
+            // never becomes legible on its own.
+            process.stdout.write('a checkpoint file past the size the reader accepts is present '
+                + '(the gate treats it as absent); clear removes it\n');
+        } else if (reason === 'kind') {
+            process.stdout.write('something that is not a checkpoint file is sitting at the checkpoint path '
+                + '(the gate treats it as absent); clear cannot remove it, so move it aside by hand\n');
+        } else if (reason === 'unreadable' || reason === 'lstat') {
+            // Scoped to now: a lock lifts, and a checkpoint the gate ignores this
+            // second can be the one it honors the next. Saying none is in effect
+            // either way would be the same false absence this report exists to
+            // stop printing, and naming a remedy over it would name one that
+            // fails for the reason the read already failed.
+            process.stdout.write('the checkpoint path cannot be read right now, so the gate treats '
+                + 'it as absent while that lasts\n');
+        } else {
+            process.stdout.write('no compact checkpoint is open\n');
+        }
         return;
     }
     // File-derived values print indented, never at column zero (see cmdOpen).
@@ -277,14 +302,31 @@ function reportCheckpoint(cwd) {
 function reportGateState(cwd) {
     const result = readGateStateResult(cwd);
     if (!result.ok) {
-        // A state file the reader refuses is not an absent one, and reporting
-        // it as absent would describe a project recording nothing as a fresh
-        // one. The two refusals that reach here (a path that is not a regular
-        // file, and one past the read cap) never resolve on their own, so the
-        // gate records nothing until someone removes the file: it is worth
-        // naming, exactly as reportCheckpoint names its own illegible case.
-        process.stdout.write('the compaction gate state file is present but unreadable, so the gate is'
-            + ' recording nothing; removing .kit/compact-gate.json lets the next decision rebuild it\n');
+        // A state file the reader refuses is not an absent one, and reporting it
+        // as absent would describe a project recording nothing as a fresh one.
+        // The refusal legs do not all mean the same thing, though, and the
+        // message names a remedy: removing the file discards the standing
+        // deferral episode and the corroboration that selects the checkpoint's
+        // long bound, so it is advice worth giving over a file that will never
+        // resolve and worth withholding over a scanner's lock that lifts in
+        // seconds.
+        //
+        // Which leg it was comes from the reader's own refusal, the way
+        // reportCheckpoint takes its own. Re-asking with an lstat here cannot see
+        // the leg where the read was refused: that lstat succeeds and reports an
+        // ordinary regular file, so the destructive advice would print over
+        // exactly the transient case it is withheld for.
+        if (result.reason === 'oversized') {
+            process.stdout.write('the compaction gate state file is present but unreadable, so the gate is'
+                + ' recording nothing; removing .kit/compact-gate.json lets the next decision rebuild it\n');
+        } else if (result.reason === 'kind') {
+            process.stdout.write('something that is not the gate state file is sitting at '
+                + '.kit/compact-gate.json, so the gate is recording nothing; move it aside by hand '
+                + '(a delete cannot remove it)\n');
+        } else {
+            process.stdout.write('the compaction gate state file cannot be read right now, so the gate '
+                + 'is recording nothing while that lasts; try again once whatever holds it lets go\n');
+        }
         return;
     }
     const state = result.state;

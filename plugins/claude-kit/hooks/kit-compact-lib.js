@@ -33,7 +33,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { normalizePlanArg } = require('./kit-goal-lib.js');
+const { normalizePlanArg, pathErrnoClass } = require('./kit-goal-lib.js');
 
 // Path to the checkpoint file for a given repo root.
 function checkpointPath(cwd) {
@@ -205,10 +205,10 @@ function checkpointMatches(cp, goal, nowMs, pendingCorroborated) {
 // Only ENOENT reads as "nothing there, go ahead". Every other lstat failure
 // (EACCES, EPERM, EBUSY: a permission, a lock, a scanner holding the file) is
 // an unknown answer, and answering an unknown with the go-ahead value is the
-// mistake readGateStateResult exists to avoid. It matters concretely here:
-// endsOnLineBoundary reads this, and a zero from a transient failure would tell
-// it the log ends on a line boundary without a byte having been read, producing
-// exactly the fused record its guard exists to prevent.
+// mistake readGateStateResult exists to avoid. Every caller decides what an
+// unknown means for itself: endsOnLineBoundary turns this null into false, its
+// own fail-safe, so a transient failure yields a spare blank line rather than
+// the fused record a go-ahead answer would produce.
 function regularFileSize(target) {
     let st;
     try {
@@ -231,11 +231,15 @@ const CHECKPOINT_MAX_BYTES = 64 * 1024;
 // the armed goal's and must never surface its values unsanitized.
 //
 // The path must be a regular file of sane size before it is opened, judged by
-// regularFileSize's lstat, which is the same preamble the gate-state reader
-// applies and is here for the same reason: both of this function's callers run
+// an lstat, which is the same preamble the gate-state reader
+// applies and is here for the same reason: three of this function's callers run
 // on paths where blocking is not recoverable. The PreCompact gate reads the
-// checkpoint before any verdict is emitted, and the goal-leash Stop hook reads
-// it while holding a stop. A FIFO planted at THIS path would block either
+// checkpoint before any verdict is emitted, the goal-leash Stop hook reads it
+// while holding a stop, and the deferral nudge reads it inside the tool loop,
+// on a covered tool return while a deferral episode stands, which is the most
+// frequent of the three. (The checkpoint CLI is the fourth caller and the only
+// one a human is waiting on.)
+// A FIFO planted at THIS path would block any of them
 // inside readFileSync forever, where no try/catch can rescue it, and a link
 // would be followed into whatever it names. Being an lstat, the check judges a
 // link as a link rather than as its target.
@@ -248,12 +252,51 @@ const CHECKPOINT_MAX_BYTES = 64 * 1024;
 // comment claims that guard and no more.
 function readCheckpoint(cwd) {
     try {
-        const target = checkpointPath(cwd);
-        const size = regularFileSize(target);
-        if (size === null || size > CHECKPOINT_MAX_BYTES) return null;
-        return JSON.parse(fs.readFileSync(target, 'utf8'));
+        return readCheckpointResult(cwd).cp;
     } catch {
         return null;
+    }
+}
+
+// The same read, with why it produced no checkpoint. Returns { ok, cp, reason }:
+//
+//   { ok: true,  cp }                     a parsed checkpoint
+//   { ok: true,  cp: null, 'absent' }     nothing is at the path
+//   { ok: true,  cp: null, 'illegible' }  a regular file that is not JSON
+//   { ok: false, cp: null, 'kind' }       something that is not a regular file
+//   { ok: false, cp: null, 'oversized' }  a regular file past the read cap
+//   { ok: false, cp: null, 'unreadable' } the read itself was refused
+//   { ok: false, cp: null, 'lstat' }      the path's own kind could not be read
+//
+// The gate and the two hooks take readCheckpoint above, because all seven mean
+// the same thing to them: no checkpoint gates anything. The status report takes
+// this, because the seven do not mean the same thing to an operator, and because
+// the reasons an operator acts on differently cannot be recovered by re-asking
+// with a second syscall: an lstat run afterwards reports an ordinary regular
+// file for the 'unreadable' leg, which is how a locked file comes to be
+// described as illegible and offered a remedy that will fail.
+function readCheckpointResult(cwd) {
+    const target = checkpointPath(cwd);
+    let st;
+    try {
+        st = fs.lstatSync(target);
+    } catch (err) {
+        if (err && err.code === 'ENOENT') return { ok: true, cp: null, reason: 'absent' };
+        return { ok: false, cp: null, reason: 'lstat' };
+    }
+    if (!st.isFile()) return { ok: false, cp: null, reason: 'kind' };
+    if (st.size > CHECKPOINT_MAX_BYTES) return { ok: false, cp: null, reason: 'oversized' };
+    let raw;
+    try {
+        raw = fs.readFileSync(target, 'utf8');
+    } catch (err) {
+        if (err && err.code === 'ENOENT') return { ok: true, cp: null, reason: 'absent' };
+        return { ok: false, cp: null, reason: 'unreadable' };
+    }
+    try {
+        return { ok: true, cp: JSON.parse(raw), reason: null };
+    } catch {
+        return { ok: true, cp: null, reason: 'illegible' };
     }
 }
 
@@ -264,6 +307,18 @@ function readCheckpoint(cwd) {
 // each caller passes at the open is the actual defense (a pre-planted path
 // fails the create outright); the unguessable name is what keeps an attacker
 // from winning that race repeatedly.
+//
+// The unguessable name carries a second property, and it is load-bearing: the
+// writers unlink their tmp on failure, so a name an attacker could predict
+// would let them aim that unlink at a file of their choosing inside .kit/.
+// Each writer therefore gates its cleanup on whether its own exclusive create
+// returned, not on the errno of whatever failed: a create refused because the
+// path was occupied deletes nothing, while every failure after a create that
+// did return removes the file this writer made. Reading an errno instead would
+// rest on a platform mapping, and a post-create failure reporting EEXIST would
+// leak the temp file. The two defenses are independent: making this name
+// predictable again, for testability or anything else, reopens an aimed delete
+// that nothing else here would catch.
 function atomicTmpPath(target) {
     return target + '.tmp.' + process.pid + '.' + crypto.randomBytes(6).toString('hex');
 }
@@ -299,7 +354,9 @@ function atomicTmpPath(target) {
 // one.
 //
 // The tmp name is unique per writer and unpredictable (see atomicTmpPath), and
-// a failed rename unlinks its tmp so orphans do not accumulate in .kit/.
+// a failed write or rename unlinks the tmp this writer created, so orphans do
+// not accumulate in .kit/; a create that never returned made no file, so
+// nothing is unlinked on that path.
 function writeCheckpoint(cwd, planRel, boundSession, pendingOffer) {
     const normalized = normalizePlanArg(cwd, planRel);
     if (normalized === null) {
@@ -323,11 +380,42 @@ function writeCheckpoint(cwd, planRel, boundSession, pendingOffer) {
     try {
         fs.mkdirSync(path.dirname(cp), { recursive: true });
         const tmp = atomicTmpPath(cp);
+        let created = false;
         try {
-            fs.writeFileSync(tmp, JSON.stringify(state, null, 2) + '\n', { encoding: 'utf8', flag: 'wx' });
+            // The create is its own call so the flag below can mean what it says.
+            // A single writeFileSync carrying the exclusive flag creates, writes
+            // and closes together, so a failure in its write leg (a full disk, a
+            // quota, an IO error) leaves the flag false with the file already on
+            // disk, and the cleanup then skips the partial file it exists to
+            // remove. The same split is in kit-goal-lib.js's writeState.
+            const fd = fs.openSync(tmp, 'wx');
+            created = true;
+            let wrote = false;
+            try {
+                fs.writeFileSync(fd, JSON.stringify(state, null, 2) + '\n', 'utf8');
+                wrote = true;
+            } finally {
+                // The close is reached in two states and the flag tells them
+                // apart. With the write already failed, a throwing close would
+                // replace the error in flight and the reason would name the close
+                // rather than the cause, so it is swallowed. With the write
+                // returned, the close is the last point at which the OS can report
+                // a deferred write error (a network volume, a quota), so it throws:
+                // swallowing it would publish a torn file and report success.
+                try {
+                    fs.closeSync(fd);
+                } catch (closeErr) {
+                    if (wrote) throw closeErr;
+                }
+            }
             fs.renameSync(tmp, cp);
         } catch (err) {
-            try { fs.unlinkSync(tmp); } catch { /* nothing to remove, or it is the unwritable path itself */ }
+            // Only a file this writer created is this writer's to remove. The flag
+            // is set the moment the exclusive create returns, and a path that
+            // create failed on belongs to somebody else (see atomicTmpPath).
+            if (created) {
+                try { fs.unlinkSync(tmp); } catch { /* nothing to remove, or it is the unwritable path itself */ }
+            }
             throw err;
         }
     } catch (err) {
@@ -338,19 +426,47 @@ function writeCheckpoint(cwd, planRel, boundSession, pendingOffer) {
 
 // Delete the checkpoint file if present. Returns { ok:true, cleared:true } when
 // a file was removed, { ok:true, cleared:false } when none was open, and
-// { ok:false, cleared:false, reason } when the file exists but the delete
-// failed. Never throws. The gate calls this to consume a matching checkpoint;
-// a failed delete there degrades to the gate standing open (compaction lands
-// mid-chapter, the pre-gate status quo), never to a wedged session.
+// { ok:false, cleared:false, reason } when a file is there and the delete failed
+// or its kind could not be read. Never throws. The gate calls this to consume a
+// matching checkpoint; a failed delete there degrades to the gate standing open
+// (compaction lands mid-chapter, the pre-gate status quo), never to a wedged
+// session.
+//
+// Presence is judged by the same lstat kind rule readCheckpoint applies, not by
+// fs.existsSync, which follows a link: a junction or a link at this path reads
+// as no checkpoint open to the gate and to status, so a clear that followed it
+// would report a checkpoint consumed that nothing ever read as open. A failed
+// lstat is routed by pathErrnoClass, the classification clearGoal takes at the
+// same leg of the same question: a determinate code means nothing is at the path
+// and nothing can be, so there is nothing to clear and nothing to wait out,
+// while a transient one is a failed clear, because reporting a locked file as
+// absent tells the caller a thing was released that is still sitting there.
 function clearCheckpoint(cwd) {
     const cp = checkpointPath(cwd);
     try {
-        if (!fs.existsSync(cp)) {
+        let st;
+        try {
+            st = fs.lstatSync(cp);
+        } catch (err) {
+            if (pathErrnoClass(err && err.code) !== 'transient') {
+                return { ok: true, cleared: false };
+            }
+            throw err;
+        }
+        if (!st.isFile()) {
             return { ok: true, cleared: false };
         }
         fs.unlinkSync(cp);
         return { ok: true, cleared: true };
     } catch (err) {
+        // A delete that finds nothing there is the gate having consumed the
+        // checkpoint between the kind check above and this call: nothing was
+        // cleared here, and the consumer that removed it is the one that acted.
+        // It is the "none open" answer, not a failed clear, which is what
+        // clearGoal's own racing-ENOENT leg says about the same shape.
+        if (err && err.code === 'ENOENT') {
+            return { ok: true, cleared: false };
+        }
         return {
             ok: false,
             cleared: false,
@@ -368,18 +484,31 @@ function clearCheckpoint(cwd) {
 // fire are indistinguishable afterwards. Two project-local files under .kit/
 // carry that record. The STATE (compact-gate.json) is the newest decision plus
 // the deferral episode currently standing, read by the checkpoint CLI's status
-// report; it is rewritten in place, so it stays one small file. The LOG (compact-gate.jsonl) is append-only, one JSON line per
-// decision, and is what an operator reads to answer "how often, and why" across
-// a whole run.
+// report; it is rewritten in place, so it stays one small file. The LOG
+// (compact-gate.jsonl) is append-only and is what an operator reads to answer
+// "how often, and why" across a whole run.
 //
-// Both are written after the verdict is already announced (the gate sets its
-// exit code and writes its note first) and neither can change it:
-// recordGateDecision swallows every failure and returns nothing a caller could
-// branch on, so a full disk or a read-only .kit degrades to a gate that decides
-// exactly as it did before, silently. That asymmetry is deliberate. The record
-// is diagnostic; the verdict is the product. The ordering matters as much as
-// the swallowing: a path that could block (a FIFO planted at either file)
-// cannot delay a verdict that has already been emitted.
+// Each file has TWO writers and the log carries TWO record classes. The gate
+// records a decision (recordGateDecision, from the PreCompact hook); the
+// deferral nudge stamps the episode and journals that it spoke
+// (recordEpisodeNudge, from the tool loop). A decision line carries `verdict`
+// and a nudge line carries `event`, which is how a reader partitions the log
+// without guessing. A consumer folding every line through gateRecord() sees
+// only decisions, since that rebuilder returns null for a record with no
+// recognized verdict: that is a correct decision-only reading, not a whole-log
+// one.
+//
+// Both files are written after the verdict, or after the emission decision, is
+// already made, and a failure to write cannot change it. recordGateDecision
+// swallows every failure and returns nothing a caller branches on, so a full
+// disk or a read-only .kit degrades to a gate that decides exactly as it did
+// before, silently. The nudge is the one exception and it is deliberate: its
+// `nudgedAt` is not diagnostic, it IS the interval, and its stamp is the only
+// cross-process carrier that interval has, so recordEpisodeNudge returns a
+// boolean its caller gates the emission on, and a failed stamp yields silence.
+// The journal line stays diagnostic on both writers. The ordering matters as
+// much as the swallowing: a path that could block (a FIFO planted at either
+// file) cannot delay a verdict that has already been emitted.
 //
 // The record is written only in a project that is ALREADY kit-governed: an
 // existing .kit/ directory is the precondition, and neither the directory nor
@@ -414,6 +543,15 @@ function clearCheckpoint(cwd) {
 // exclusively (O_EXCL) under an unpredictable name, so the one path an attacker
 // could otherwise pre-plant is not guessable and would fail the open anyway.
 //
+// That acceptance now has to cover a caller in the TOOL LOOP as well as the
+// PreCompact one, since the nudge journals from there and a stalled tool loop
+// is the one failure that hook must never cause. It still holds, on a narrower
+// argument. Reaching the window needs a hostile writer already inside .kit/ in
+// this project, racing a path that opens for a few microseconds per fire; the
+// blocking shapes are refused by the lstat legs above; and the harness's own
+// hook timeout bounds anything that does slip through, so the worst case is one
+// dropped journal line or one timed-out hook process, never a wedged loop.
+//
 // Every value stored here that came from outside (the harness's session id, the
 // checkpoint file's own contents, and a prior state file, which is user-writable
 // like every other file under .kit/) is rebuilt field by field on the way in and
@@ -431,9 +569,11 @@ function gateLogPath(cwd) {
     return path.join(cwd, '.kit', 'compact-gate.jsonl');
 }
 
-// The log's bound. A decision line runs a few hundred bytes and the gate fires
-// at most once per assistant turn, so 2 MB is months of dense use; past it the
-// writer keeps the newest 1 MB and drops the rest. Trimming to half the cap
+// The log's bound. Both record classes run a few hundred bytes or less, and
+// both writers are rare: the gate fires at most once per assistant turn, and
+// the nudge at most once per NUDGE_INTERVAL_MS per tool batch while a hold
+// stands. Their sum is still well inside 2 MB for months of dense use; past it
+// the writer keeps the newest 1 MB and drops the rest. Trimming to half the cap
 // rather than to the cap itself is what keeps the rewrite rare: at a 1-byte
 // margin every subsequent append would rewrite the whole file.
 const GATE_LOG_MAX_BYTES = 2 * 1024 * 1024;
@@ -571,8 +711,12 @@ function gateRecord(value) {
 // version, and honoring it would let a record nobody can clear hold the single
 // slot for its whole idle window.
 //
-// nothing writes nudgedAt today. It is carried through every rebuild so that a
-// writer has one place to land.
+// nudgedAt is stamped by recordEpisodeNudge below, the one writer of a nudgedAt
+// VALUE (nextGateState carries the field through on an extension and nulls it
+// when a fresh boundary deny opens an episode), and read by the deferral nudge
+// hook, which uses it as the cross-process carrier for its own interval. It is
+// carried through every rebuild so a hold spoken to once is not spoken to again
+// on the next tool return.
 function gateEpisode(value) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
     const session = gateText(value.session);
@@ -594,7 +738,8 @@ function gateEpisode(value) {
 
 // The deferral episode a state has open RIGHT NOW, or null: the one predicate
 // for that question, so no reader has to re-derive it. Its readers are the
-// gate's stderr note and the checkpoint CLI's status report. An episode whose
+// gate's stderr note, the checkpoint CLI's status report and hold test, the
+// Stop hook's queue advance, and the deferral nudge's own guard. An episode whose
 // newest denial has aged past GATE_EPISODE_MAX_IDLE_MS is finished, not open.
 // nowMs exists so a caller can pin the clock; an absent or illegible value
 // means the current time.
@@ -638,10 +783,10 @@ function gateEpisodeOpen(state, nowMs, sessionId) {
 // corroborates nothing, which is right: its checkpoint records boundSession
 // null and the gate never matches one. Undefined, passed to gateEpisodeOpen,
 // means "any open episode counts", so a bystander's hold would answer a
-// question about this run's boundary. Three callers need that distinction
-// (the PreCompact gate, the checkpoint CLI, and the goal-leash Stop hook's
-// queue advance), and three hand-written copies of it is how one of them
-// silently ends up asking the wrong question.
+// question about this run's boundary. Four callers need that distinction
+// (the PreCompact gate, the checkpoint CLI, the goal-leash Stop hook's queue
+// advance, and the deferral nudge), and four hand-written copies of it is how
+// one of them silently ends up asking the wrong question.
 function checkpointOwner(goal) {
     return (goal && typeof goal.boundSession === 'string' && goal.boundSession !== '')
         ? goal.boundSession
@@ -650,10 +795,10 @@ function checkpointOwner(goal) {
 
 // Does a standing deferral episode corroborate this checkpoint's pendingOffer
 // flag? This is the second of the two facts checkpointMatches needs before it
-// grants the long age bound, and it is single-sourced here because all three
+// grants the long age bound, and it is single-sourced here because all four
 // callers of the match rule (the PreCompact gate, the checkpoint CLI's status
-// report, and the goal-leash Stop hook's queue advance) must answer it
-// identically.
+// report, the goal-leash Stop hook's queue advance, and the deferral nudge's
+// guard 7) must answer it identically.
 //
 // Three things must hold. The record must claim the flag. An episode must be
 // open for the given owner, which is gateEpisodeOpen's question, including its
@@ -719,9 +864,10 @@ function countPhrase(n, singular) {
 // "held 3 offers over 12 minutes": the count of offers held in this episode and
 // its age, as one phrase, single-sourced because two surfaces report the same
 // two integers (the gate's stderr note and the checkpoint CLI's status) and an
-// operator reading both should not have to reconcile two phrasings. Two integers and nothing else, which is what
-// keeps a user-writable state file off those channels. Null when the episode's
-// age cannot be read, so a caller says nothing rather than guessing.
+// operator reading both should not have to reconcile two phrasings. Two
+// integers and nothing else, which is what keeps a user-writable state file off
+// those channels. Null when the episode's age cannot be read, so a caller says
+// nothing rather than guessing.
 //
 // BOTH integers are clamped by the same helper, and for the same reason. The
 // count comes from a user-writable file and so does the timestamp the duration
@@ -744,13 +890,24 @@ function episodePhrase(episode, nowMs) {
 const GATE_STATE_MAX_BYTES = 256 * 1024;
 
 // Read the gate state, distinguishing a file that is not there from one that
-// cannot be read right now. Returns { ok, state }:
+// cannot be read right now. Returns { ok, state, reason }:
 //
 //   { ok: true,  state }        legible, rebuilt (state is null when the file is
 //                               absent, unparseable, or not an object: none of
 //                               those carries an episode to lose)
 //   { ok: false, state: null }  the answer is unknown, so no caller may act as
 //                               though the file were absent
+//
+// reason names which refusal produced an { ok: false }: 'kind' (something that is
+// not a regular file), 'oversized' (past the read cap), 'unreadable' (the read
+// itself was refused) or 'lstat' (the path's own kind could not be read). Every
+// decision path treats the four alike; the status report does not, because the
+// remedy it prints differs by leg and only one of the four is permanent. The
+// reason is carried out of here rather than re-derived because it cannot be
+// re-derived: an lstat run afterwards succeeds and reports an ordinary regular
+// file for the 'unreadable' leg, so a reporter re-asking that way describes a
+// scanner's lock as a corrupt file and tells the operator to delete the standing
+// deferral episode.
 //
 // The distinction is load-bearing on the write path. A file locked by an
 // indexer or an antivirus scanner (EBUSY, EPERM) is not an absent file, and
@@ -769,15 +926,16 @@ function readGateStateResult(cwd) {
         st = fs.lstatSync(target);
     } catch (err) {
         if (err && err.code === 'ENOENT') return { ok: true, state: null };
-        return { ok: false, state: null };
+        return { ok: false, state: null, reason: 'lstat' };
     }
-    if (!st.isFile() || st.size > GATE_STATE_MAX_BYTES) return { ok: false, state: null };
+    if (!st.isFile()) return { ok: false, state: null, reason: 'kind' };
+    if (st.size > GATE_STATE_MAX_BYTES) return { ok: false, state: null, reason: 'oversized' };
     let raw;
     try {
         raw = fs.readFileSync(target, 'utf8');
     } catch (err) {
         if (err && err.code === 'ENOENT') return { ok: true, state: null };
-        return { ok: false, state: null };
+        return { ok: false, state: null, reason: 'unreadable' };
     }
     let parsed;
     try { parsed = JSON.parse(raw); } catch { return { ok: true, state: null }; }
@@ -920,17 +1078,87 @@ function projectGateEpisode(cwd, decision) {
 // Write JSON atomically (tmp file plus rename), on writeCheckpoint's discipline
 // and for the same reasons: a failed rename unlinks its tmp so orphans do not
 // accumulate in .kit/. The containing directory is a precondition, never
-// created here (see the section header). Throws on failure; the one caller
-// catches.
-function writeJsonAtomic(target, value) {
+// created here (see the section header). Throws on failure; both callers, the
+// decision recorder and the nudge stamp, catch.
+//
+// verifyBeforeRename is optional and runs in the last moment before the rename,
+// with the tmp file already written: returning false abandons the write and
+// unlinks the tmp, and this function returns false rather than throwing. It sits
+// here rather than in the caller because this is the only point where "still
+// true" and "now published" are adjacent; a check the caller ran before calling
+// would leave the whole tmp write inside the window it is trying to close.
+function writeJsonAtomic(target, value, verifyBeforeRename) {
     const tmp = atomicTmpPath(target);
+    let created = false;
     try {
-        fs.writeFileSync(tmp, JSON.stringify(value, null, 2) + '\n', { encoding: 'utf8', flag: 'wx' });
+        // Create and write are separate calls so created can mean "the exclusive
+        // create returned": spelled as one call, a failure in the write leg
+        // leaves the flag false with the file already on disk and the cleanup
+        // below skips it.
+        const fd = fs.openSync(tmp, 'wx');
+        created = true;
+        let wrote = false;
+        try {
+            fs.writeFileSync(fd, JSON.stringify(value, null, 2) + '\n', 'utf8');
+            wrote = true;
+        } finally {
+            // Swallowed while the write's own error is in flight, rethrown once
+            // the write has returned: at that point the close is where a deferred
+            // write error surfaces, and dropping it publishes a torn file behind a
+            // success. Same split as writeCheckpoint's.
+            try {
+                fs.closeSync(fd);
+            } catch (closeErr) {
+                if (wrote) throw closeErr;
+            }
+        }
+        if (typeof verifyBeforeRename === 'function' && verifyBeforeRename() !== true) {
+            try { fs.unlinkSync(tmp); } catch { /* nothing to remove */ }
+            return false;
+        }
         fs.renameSync(tmp, target);
+        return true;
     } catch (err) {
-        try { fs.unlinkSync(tmp); } catch { /* nothing to remove, or it is the unwritable path itself */ }
+        // Only what this writer created is this writer's to remove (see
+        // atomicTmpPath).
+        if (created) {
+            try { fs.unlinkSync(tmp); } catch { /* nothing to remove, or it is the unwritable path itself */ }
+        }
         throw err;
     }
+}
+
+// The gate-owned part of a state, as one comparable string: the newest
+// decision's timestamp and the episode identity the gate maintains. nudgedAt is
+// deliberately absent, since that field is the nudge's own and a concurrent
+// nudge overwriting it costs nothing.
+//
+// This exists for the stamp's compare-and-set. Every gate write goes through
+// nextGateState, which rebuilds lastDecision from a record whose `at` this
+// writer stamps at write time, and an episode is only ever opened, extended or
+// replaced with a new lastDeniedAt or denials, so a gate write between two reads
+// moves one of these in the ordinary case. `at` alone would not be enough: it is
+// an ISO string at millisecond resolution, and a deny-interactive carries the
+// episode through untouched, so two distinct decisions inside one millisecond
+// would fingerprint identically. The decision's verdict, reason and session ride
+// along, which narrows that case rather than closing it: the tuple leaves out
+// consumed, the checkpoint block and lastAllow, so two deny-interactive
+// decisions in one millisecond carrying the same reason and session still
+// fingerprint the same. What that costs is one unstamped nudge, which is the
+// undercount this file prefers everywhere.
+function gateOwnedFingerprint(state) {
+    const decision = state ? state.lastDecision : null;
+    const episode = state ? state.episode : null;
+    return JSON.stringify([
+        decision ? decision.at : null,
+        decision ? decision.verdict : null,
+        decision ? decision.reason : null,
+        decision ? decision.session : null,
+        episode ? episode.session : null,
+        episode ? episode.since : null,
+        episode ? episode.denials : null,
+        episode ? episode.lastDeniedAt : null
+    ]);
 }
 
 // Read `length` bytes from `position`, looping until the buffer is full or the
@@ -974,11 +1202,38 @@ function trimGateLog(logPath, size) {
     const kept = nl === -1 ? '' : text.slice(nl + 1);
     if (kept === '') return;
     const tmp = atomicTmpPath(logPath);
+    let created = false;
     try {
-        fs.writeFileSync(tmp, kept, { encoding: 'utf8', flag: 'wx' });
+        // Create and write are separate calls so created can mean "the exclusive
+        // create returned": spelled as one call, a failure in the write leg
+        // leaves the flag false with the file already on disk and the cleanup
+        // below skips it, stranding up to a megabyte of trimmed gate journal.
+        const outFd = fs.openSync(tmp, 'wx');
+        created = true;
+        let wrote = false;
+        try {
+            fs.writeFileSync(outFd, kept, 'utf8');
+            wrote = true;
+        } finally {
+            // Swallowed while the write's own error is in flight, rethrown once
+            // the write has returned: at that point the close is where a deferred
+            // write error surfaces, and dropping it publishes a torn log behind a
+            // success. Same split as writeCheckpoint's. The descriptor is named
+            // apart from the read descriptor above it, since a leaked or
+            // mis-closed one is this writer's own failure mode.
+            try {
+                fs.closeSync(outFd);
+            } catch (closeErr) {
+                if (wrote) throw closeErr;
+            }
+        }
         fs.renameSync(tmp, logPath);
     } catch (err) {
-        try { fs.unlinkSync(tmp); } catch { /* nothing to remove, or it is the unwritable path itself */ }
+        // Only what this writer created is this writer's to remove (see
+        // atomicTmpPath).
+        if (created) {
+            try { fs.unlinkSync(tmp); } catch { /* nothing to remove, or it is the unwritable path itself */ }
+        }
         throw err;
     }
 }
@@ -996,14 +1251,44 @@ function writableOrAbsent(target) {
     }
 }
 
-// Everything that must hold before a decision can be recorded, in one place,
-// because two callers need the same answer: the writer, which refuses to write,
-// and the projection behind the gate's stderr note, which refuses to promise a
-// count that will never be stored. Split, they drift, and the drift has a
-// specific shape: the note reporting "held 1 offer over 0 minutes" on the fifth
-// deny and the five hundredth, because the state never advanced and each
-// projection re-derived the same first step from the same unchanged file. A
-// stuck number reads exactly like a mechanism working.
+// Everything that must hold before the gate STATE can be rewritten: the directory
+// exists and is writable, the state path is a regular file this process may write,
+// and the state as it stands right now is legible.
+//
+// Returns { ok:true, statePath, prior } or { ok:false }.
+//
+// It is its own function because two writers need different amounts of it and
+// neither may spell it by hand. The decision recorder also appends to the log, so
+// it takes this plus the log legs (gateRecordTargets below). The deferral nudge
+// stamps the state and then appends one journal line best-effort, after the fact
+// and answering for its own path, so the log legs are not its preconditions at
+// all: gating the stamp on the log would make a locked or read-only .jsonl
+// silently disable the nudge's interval, and the nudge would then repeat after
+// every covered tool return for the life of the episode.
+function gateStateTarget(cwd) {
+    try {
+        const kit = path.join(cwd, '.kit');
+        let dir;
+        try { dir = fs.lstatSync(kit); } catch { return { ok: false }; }
+        if (!dir.isDirectory() || !writableOrAbsent(kit)) return { ok: false };
+        const statePath = gateStatePath(cwd);
+        if (regularFileSize(statePath) === null || !writableOrAbsent(statePath)) return { ok: false };
+        const prior = readGateStateResult(cwd);
+        if (!prior.ok) return { ok: false };
+        return { ok: true, statePath, prior: prior.state };
+    } catch {
+        return { ok: false };
+    }
+}
+
+// Everything that must hold before a DECISION can be recorded: the state legs
+// above plus the log the recorder appends to. Two callers need this full answer:
+// the writer, which refuses to write, and the projection behind the gate's stderr
+// note, which refuses to promise a count that will never be stored. Split, they
+// drift, and the drift has a specific shape: the note reporting "held 1 offer
+// over 0 minutes" on the fifth deny and the five hundredth, because the state
+// never advanced and each projection re-derived the same first step from the
+// same unchanged file. A stuck number reads exactly like a mechanism working.
 //
 // Returns { ok:true, statePath, logPath, logSize, prior } or { ok:false }.
 //
@@ -1014,18 +1299,12 @@ function writableOrAbsent(target) {
 // wrong sentence into the same wrong sentence forever.
 function gateRecordTargets(cwd) {
     try {
-        const kit = path.join(cwd, '.kit');
-        let dir;
-        try { dir = fs.lstatSync(kit); } catch { return { ok: false }; }
-        if (!dir.isDirectory() || !writableOrAbsent(kit)) return { ok: false };
-        const statePath = gateStatePath(cwd);
+        const state = gateStateTarget(cwd);
+        if (!state.ok) return { ok: false };
         const logPath = gateLogPath(cwd);
-        if (regularFileSize(statePath) === null || !writableOrAbsent(statePath)) return { ok: false };
         const logSize = regularFileSize(logPath);
         if (logSize === null || !writableOrAbsent(logPath)) return { ok: false };
-        const prior = readGateStateResult(cwd);
-        if (!prior.ok) return { ok: false };
-        return { ok: true, statePath, logPath, logSize, prior: prior.state };
+        return { ok: true, statePath: state.statePath, logPath, logSize, prior: state.prior };
     } catch {
         return { ok: false };
     }
@@ -1055,9 +1334,29 @@ function gateRecordTargets(cwd) {
 //
 // Concurrency: two gate processes in one project both read a count and both
 // write its successor, so a denial can be lost from the count as well as from
-// the log. There is no lock. The single-writer reality (one bound session
-// producing boundary denies) makes it rare, the failure is an undercount, and a
-// diagnostic does not earn a lock file.
+// the log. There is no lock. The failure is an undercount, and a diagnostic does
+// not earn a lock file. The log has the matching residual: a trim keeps the tail
+// ending at a size read moments earlier and renames the result over the file, so
+// a line appended in between is dropped. The nudge is now a second trimmer, so
+// two writers can reach that path rather than one. Same conclusion, same reason.
+//
+// The state has a second writer, recordEpisodeNudge, and it can fire more often
+// than this one, though not on every tool return: it is behind an open episode
+// and behind its own interval, so its ceiling is one write per NUDGE_INTERVAL_MS
+// per tool batch while a hold stands. It carries the last decision and the last
+// allow through verbatim, so a gate write landing between its read and its
+// rename would be clobbered. Its compare-and-set narrows that window to the
+// rename itself rather than closing it, and what it does catch leaves an
+// unstamped nudge (a silence) rather than a lost denial. The residual direction
+// is the same undercount this file already prefers everywhere: the count reads
+// low, the episode stays open, and nothing is honored longer than it should be.
+//
+// This writer has no compare-and-set of its own, and the other direction is the
+// residual: its read-modify-write carries the episode through from its own
+// earlier read, so a decision whose read predates a nudge's rename writes the
+// pre-stamp nudgedAt back and that episode loses its interval. The whole cost is
+// one extra nudge on the next tool return, which is why this stays a stated
+// residual rather than a second lock on the path the gate decides from.
 function recordGateDecision(cwd, decision) {
     try {
         const record = gateRecord(decision);
@@ -1083,12 +1382,147 @@ function recordGateDecision(cwd, decision) {
     } catch { /* diagnostic only: a decision that cannot be recorded is still taken */ }
 }
 
+// Stamp the deferral nudge's clock onto the open episode. This is the one writer
+// of a nudgedAt VALUE, the field nextGateState carries through on an extension
+// and nulls when a fresh boundary deny opens an episode. It is called by
+// compact-deferral-nudge.js BEFORE it emits and gates that emission: the hook
+// speaks only when this returns true (see the boolean below). The stamp is what
+// makes the nudge's interval survive the separate hook processes that enforce
+// it, since each tool return runs a fresh process and the episode record is the
+// only place a "last spoke at" can live between them.
+//
+// Nothing is written unless an episode is genuinely open for this owner, which
+// is gateEpisodeOpen's question including its idle and future-skew bounds, so a
+// nudge can neither resurrect a finished episode nor mint one no denial
+// produced. An owner that is not a usable session id writes nothing either:
+// gateEpisodeOpen reads a missing argument as "any open episode counts", which
+// is the right default for a human running status and the wrong one for a
+// writer, since it would let one session's nudge stamp another's hold.
+//
+// Every other field is carried through untouched, `since` above all. An
+// episode's start is preserved across every extension, so a stamp that re-dated
+// it would shorten the age both operator-facing surfaces report and would move
+// the predate comparison pendingOfferCorroborated turns on.
+//
+// Returns true when the stamp is on disk and false on every other path, and never
+// throws. The boolean is the whole point: this field is not diagnostic, it IS the
+// nudge's rate limit, and the only cross-process carrier the interval has. A
+// caller that emitted without it would have no rate limit at all, so the hook
+// emits only when this returns true. Silence is the pre-hook status quo; an
+// unbounded repeat into a context already past the compaction trigger is worse
+// than that status quo, so the failure direction is silence.
+//
+// The refusal preconditions are gateStateTarget's, shared with the recorder rather
+// than spelled a second time: .kit/ must already exist (nothing here creates it),
+// the state file must be a regular file this process may write, and the state must
+// be legible right now. The log legs are deliberately NOT among them, even though
+// this writer does append one journal line: that line comes after the stamp and
+// answers for its own path, so a locked or read-only log costs a log line and never
+// the interval.
+//
+// The written object is derived from what was read rather than enumerated field by
+// field, so the state's shape is single-sourced at readGateStateResult for this
+// writer exactly as it is for the recorder: a field added there rides through here
+// untouched instead of being dropped by a stale literal.
+//
+// The write carries a compare-and-set over the gate-owned fields, re-read in the
+// last moment before the rename. It NARROWS the window to the rename itself and
+// closes nothing: the re-read and the rename are adjacent statements, so a gate
+// write landing in that gap is still clobbered. It is not a general lock either,
+// and the interval race across a parallel tool batch is deliberately uncovered
+// (the hook header states that bound). What it narrows is a real inversion of
+// this file's own rule that nothing is honored longer than it should be. An
+// allow at the valve, or on an illegible reading, clears the episode without
+// consuming the checkpoint, since the gate consumes only on a match. A stamp
+// whose read predates that allow would write the episode back, with its original
+// `since`; pendingOfferCorroborated would vouch for the standing checkpoint
+// again, checkpointMatches would grant it the 24-hour bound instead of ten
+// minutes, and a compaction would land against a boundary declared hours
+// earlier, mid-chapter. Failing closed here costs one silent nudge.
+//
+// After the stamp lands, one line goes to the log, best-effort and outside every
+// precondition above. An operator asking whether the mechanism spoke can then
+// tell a nudge that never fired from one that fired five times and was ignored,
+// which is the question the plan puts to that log. It is kept outside the stamp
+// preconditions on purpose: a locked or read-only .jsonl must never be able to
+// disable the interval, which is what the state-only precondition split buys.
+//
+// toolName is the tool whose return triggered the nudge, carried into the record
+// for one reading it makes possible: the nudge is delivered per context, while
+// the interval lives on one shared episode, so a run whose nudge lines are all
+// Bash while the main session's covered returns are predominantly Agent and
+// TaskOutput is a dispatched agent consuming the interval the main session
+// needed. A bare count cannot show that. It is a signal to read, not a proof.
+function recordEpisodeNudge(cwd, sessionId, nowMs, toolName) {
+    let stampedAt = null;
+    try {
+        if (typeof sessionId !== 'string' || sessionId === '') return false;
+        const at = (typeof nowMs === 'number' && Number.isFinite(nowMs)) ? nowMs : Date.now();
+        const target = gateStateTarget(cwd);
+        if (!target.ok) return false;
+        const prior = target.prior;
+        const episode = gateEpisodeOpen(prior, at, sessionId);
+        if (!episode) return false;
+        const basis = gateOwnedFingerprint(prior);
+        const iso = new Date(at).toISOString();
+        const landed = writeJsonAtomic(target.statePath, {
+            ...prior,
+            episode: { ...episode, nudgedAt: iso }
+        }, () => {
+            const current = readGateStateResult(cwd);
+            return current.ok && gateOwnedFingerprint(current.state) === basis;
+        });
+        if (!landed) return false;
+        stampedAt = iso;
+    } catch { /* an unstamped episode is a silent one: the caller emits nothing */ }
+    if (stampedAt === null) return false;
+    logEpisodeNudge(cwd, sessionId, stampedAt, toolName);
+    return true;
+}
+
+// One journal line for a nudge that fired. Never throws and returns nothing.
+// It answers for the log file itself, which must be a regular file this process
+// can write, and applies the same trim bound and line-boundary discipline the
+// decision recorder uses, so a reader still meets whole lines only. What it
+// does not re-check is the .kit directory leg (a real directory rather than a
+// link to one): that is established by gateStateTarget, which the single caller
+// runs first on the same repo, and this function is written for that caller
+// rather than as a standalone entry point.
+//
+// The record is distinguishable from a decision by shape rather than by absence:
+// it carries `event` where a decision carries `verdict`, so a reader folding the
+// log can partition it without guessing. Three fields of provenance and nothing
+// else: the time, the session the hold belongs to, and the tool whose return
+// triggered it. Each is rebuilt through gateText, so a forged or odd value
+// cannot push control characters into an operator's terminal or grow the line.
+function logEpisodeNudge(cwd, sessionId, atIso, toolName) {
+    try {
+        const logPath = gateLogPath(cwd);
+        const logSize = regularFileSize(logPath);
+        if (logSize === null || !writableOrAbsent(logPath)) return;
+        if (logSize > GATE_LOG_MAX_BYTES) trimGateLog(logPath, logSize);
+        const record = {
+            at: atIso,
+            event: 'nudge',
+            session: gateText(sessionId),
+            tool: gateText(toolName)
+        };
+        const prefix = endsOnLineBoundary(logPath) ? '' : '\n';
+        fs.appendFileSync(logPath, prefix + JSON.stringify(record) + '\n', 'utf8');
+    } catch { /* the journal is diagnostic: a line that cannot be written is dropped */ }
+}
+
 // Does this file end on a line boundary? True for an empty or absent file,
-// which needs no separator. Reads the final byte alone: the answer is one byte
+// which needs no separator. False when the answer cannot be established: a
+// path whose kind or size could not be read (regularFileSize's null) gets the
+// fail-safe answer rather than the go-ahead one, since a spare blank line in
+// the journal costs nothing while a fused record parses as neither of the two
+// records it ran together. Reads the final byte alone: the answer is one byte
 // long and the file can be megabytes.
 function endsOnLineBoundary(target) {
     const size = regularFileSize(target);
-    if (size === null || size === 0) return true;
+    if (size === null) return false;
+    if (size === 0) return true;
     const fd = fs.openSync(target, 'r');
     try {
         const buf = Buffer.alloc(1);
@@ -1614,11 +2048,11 @@ function transcriptShowsAutomation(transcriptPath) {
 }
 
 module.exports = {
-    checkpointPath, readCheckpoint, writeCheckpoint, clearCheckpoint,
+    checkpointPath, readCheckpoint, readCheckpointResult, writeCheckpoint, clearCheckpoint,
     checkpointMatches, sameSessionId,
     CHECKPOINT_MAX_AGE_MS, CHECKPOINT_PENDING_MAX_AGE_MS, CHECKPOINT_FUTURE_SKEW_MS,
     gateStatePath, gateLogPath, readGateState, readGateStateResult, recordGateDecision,
-    gateEpisodeOpen, pendingOfferCorroborated, checkpointOwner,
+    gateEpisodeOpen, pendingOfferCorroborated, checkpointOwner, recordEpisodeNudge,
     projectGateEpisode, episodePhrase, wholeMinutesSince,
     readTranscriptCapped, stripLocalCommandOutput, commandArgsSpans,
     userCommandArgsClaimPlan,

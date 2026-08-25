@@ -63,6 +63,9 @@ claude-kit/                          (repo = the marketplace)
         chapter-boundary-nudge.js    PostToolUse nudge that puts the boundary steps in front of a leashed
                                      run when it appends a Chapter to a plan doc, so the checkpoint the
                                      compaction gate waits on gets opened
+        compact-deferral-nudge.js    PostToolUse nudge that tells a leashed run the compaction gate is
+                                     holding auto-compaction offers, and names the boundary steps that
+                                     let one land, at most once per 30-minute interval per tool batch
         docs-write-guard.js          Denies non-curator subagent writes into docs/
         stop-docs-hygiene.js         Stop-time docs-library backstop
         pr-docs-guard.js             Requires the docs work committed before the PR goes up
