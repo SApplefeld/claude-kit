@@ -83,12 +83,23 @@ Acceptance: red-first for the new test file; full suite matches baseline plus th
 Files in scope: the two scripts, `test/kit-goal-statusline.test.js`, new `test/kit-statusline.test.js`.
 Tests: at minimum, lock the stale-but-drawn fallback in both directions (healthy path renders fresh; induced failure renders the cached line, not blank), since a silent blank under load is the reported failure.
 
+### 8. The claim-marking set's enforcement surfaces
+Model: opus
+
+Appended 2026-08-25 during section 3's review round, which is approval drift and is recorded as such in that section's Chapter. Section 3(f) adds a third claim-marking state, `reported`, for a claim that is well-sourced on a peer session's surfaces and unverifiable on yours. Both review lenses independently found that the surfaces enforcing the marking rule still state the set as two members, and the one that bites is the send-gate checklist question "Can a reader separate what you confirmed from what you inferred?", because a session executing that question as written has no home for a reported claim and collapses it into inferred, which is exactly the mis-aimed repair 3(f) warns against. Two neighbouring sentences carry the same two-member framing: the register bullet's "legible about confirmed versus inferred" and the journal-layer sentence's "confirmed-versus-inferred marking". All three sit inside the `KIT-REGISTER-CORE` region, so each edit lands byte-identically in three copies: `home/claude-kit-doctrine.md`, `plugins/claude-kit/skills/operating-instructions/SKILL.md`, and `plugins/claude-kit/output-styles/kit.md`. Keep the edits minimal and keep the checklist question one line; it is the most-read line in the doctrine.
+
+Deliberately NOT swept, recorded here so the omission reads as a decision: the subagent charters and skill fields that define confirmed-versus-inferred for their own reports (`skills/executing-work/SKILL.md`'s Dispatch Brief field, `agents/consultant.md`, `agents/security-reviewer.md`, and the four implementer charters). A dispatched agent marks claims about code it read itself and never receives a peer session's claim, so two states is the complete set for that audience and a third would be scope creep, not consistency.
+
+Acceptance: all three surfaces name the third state; `node --test test/doctrine-parity.test.js` and `test/output-style-parity.test.js` both green, with the pinned `KIT-REGISTER-CORE` region byte-identical across all three copies; full suite matches baseline.
+Files in scope: `home/claude-kit-doctrine.md`, `plugins/claude-kit/skills/operating-instructions/SKILL.md`, `plugins/claude-kit/output-styles/kit.md`.
+Tests: the two parity suites are the mechanical gate and they fail loudly on any byte divergence; no new test is owed.
+
 ## Out of Scope
 
 - The kit-goal queue and worktree semantics cluster (replace-only arming, arm-where-you-run, arm-on-receipt, worktree CLI resolution, the session-start shared-worktree warning): promoted to its own future design effort; banked in `docs/backlog.md`.
 - The coordination-ledger design (coordination has no durable spine): parked in `docs/backlog.md` with the coordinator brainstorm as its signal.
 - Teaching the worktree guard to allow in-worktree read-only compounds: parked with the kit-goal cluster; §3(a) ships the doctrine exception instead.
-- `output-styles/kit.md` and the `KIT-REGISTER-CORE` region: untouched by design.
+- `output-styles/kit.md` and the `KIT-REGISTER-CORE` region: untouched by sections 1 through 7 by design. Section 8, appended mid-run, is the one deliberate exception, and it exists because section 3(f)'s third claim-marking state has its enforcement question inside that region.
 - The plugin-cache update on each machine (operator action, as always).
 
 ## Assumptions
@@ -172,5 +183,19 @@ Assumptions: none beyond the plan's design-time set.
 Review Findings: 0 Critical. 1 Major addressed (the unfindable search key). 1 Minor addressed (the `counted-claim` token had no reader anywhere in the plugin). Deviation from the spec, recorded rather than silently reconciled: the spec asked for the token to be added to the `CLAIMS SWEPT` field contract; the implementer dropped it and instead added a dedicated output-format line for a counted or ordinal claim, naming both search passes. I accepted the deviation because it delivers the spec's intent (a counted-claim sweep is visibly named as such in the block) through a field a reader actually consumes, rather than through a marker token nothing reads. Design intent is unchanged, so this is recorded here rather than raised.
 Stamps: adjudicated 1, stamped 1 (shared with Chapter 1's sweep).
 Next: 3. Doctrine amendments (its review round is in flight), then the appended section covering the three-state marking surfaces, then 5 and 7
+Commit Model: Commit-and-Push (executed as Branch-and-PR first-green commits on the worktree branch)
+
+### Chapter 5 - 2026-08-25
+Completed: 3. Doctrine amendments, byte-identical in both copies
+Implemented By: implementer-fable (initial build and fix round, no escalation)
+Metrics: review rounds 1; NEEDS_CONTEXT 0; escalations 0; consults 0
+Decisions / Surprises: this round is the one where the two lenses contradicted each other on a checkable fact, and settling it mattered more than either verdict. The adversarial lens rated amendment (d)'s causal clause a Major, holding that no gate in this codebase reads the real build stamp and that the hook canary's tests only ever fabricate a temporary one. The blind lens held the opposite. I read the file rather than counting votes: `test/hook-canary.test.js:22-23` sets `REAL_ROOT` to the repository's own `plugins/claude-kit`, and the test at `:180-185` runs the canary against that real root asserting exit 0 and silence, so a stale in-tree stamp does redden the suite. The adversarial lens had reasoned from the fixture helpers alone and never found that test, which is an absence concluded from a check that never spoke, the failure mode the kit's own make-the-test-earn-its-green rule names. The finding was refuted with the receipt and the implementer was told not to act on it, then re-confirmed the refutation independently. The blind lens's own low-confidence Minor about an unsourced timing figure was refuted the other way, by the adversarial lens citing the kaizen note's 212.7s versus 461s.
+  Two findings were corroborated across both lenses with no contact, which under the rule section 4 shipped this same run outranks either lens's severity rating. The stamp "matches neither parent" claim was false: the stamp matches the parent it was built from, and what it no longer matches is the merged tree. And amendment (f) introduced a third claim-marking state into a bullet whose own lead still declared the two-member set exhaustive three sentences earlier.
+  The implementer also corrected a project memory of mine with evidence rather than accepting it: the worktree isolation guard does not refuse compound commands as a class, and it confirmed three compound shapes passing the screen in this very session. The memory is rewritten to state the shapes actually observed on each side and to call the boundary unknown, which is what it is.
+Assumptions: none beyond the plan's design-time set.
+Review Findings: 0 Critical. 2 Majors addressed, both cross-lens corroborated (the false parent-matching claim; the bullet's own lead contradicting the three-state set it introduces). 1 Major refuted with receipts and recorded above. 5 Minors addressed (the liveness prohibition overshooting into the positive reading; an unverifiable superlative about implicit staging; a false exclusivity claim about the byte comparison; "by construction" overstating an unverifiability the same sentence's repair denies, plus the seam it opened with the neighbouring prose-summary rule; and, folded, the readiness-wait bullet colliding with the worktree exception two bullets below it). 1 Minor refuted with receipts. The out-of-file surfaces still stating the two-member set were handed back rather than fixed, and are section 8's subject.
+Review Method Note: the round's dash sweep was run with a control, a repo file known to contain the character, so the clean result is a proven silence rather than a broken pattern.
+Stamps: adjudicated 0, none surfaced (the boundary sweep returned zero unstamped records in both tiers; the run's one applied record was stamped at the previous boundary). One memory corrected rather than stamped, as recorded above.
+Next: 8. The claim-marking set's enforcement surfaces (appended this run under the out-of-scope route), then 7, then 5 behind its pull-rebase
 Commit Model: Commit-and-Push (executed as Branch-and-PR first-green commits on the worktree branch)
 
