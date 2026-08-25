@@ -23,6 +23,7 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
 
 const SKILL = path.join(__dirname, '..', 'plugins', 'claude-kit', 'skills',
     'operating-instructions', 'SKILL.md');
@@ -211,9 +212,10 @@ test('the peer-sessions bullet is present once in each copy and identical', () =
     assert.strictEqual(inMirror[0], inSkill[0]);
     // Presence alone closes only half the gap: the half where the bullet
     // vanishes. A bullet still present but pointing at a skill that was
-    // renamed, deleted, or never committed leaves the always-on layer aiming
-    // at nothing with the suite green, so the far end is pinned too, the way
-    // the outline bullet's pin asserts its own routed-to skills.
+    // renamed, deleted, emptied to a stub, or never committed leaves the
+    // always-on layer aiming at nothing with the suite green, so the far end
+    // is pinned too, the way the outline bullet's pin asserts its own
+    // routed-to skills.
     assert.ok(inSkill[0].includes('`peer-sessions` skill'),
         'the peer-sessions bullet no longer names the skill it defers to');
     const target = path.join(__dirname, '..', 'plugins', 'claude-kit',
@@ -221,6 +223,29 @@ test('the peer-sessions bullet is present once in each copy and identical', () =
     assert.ok(fs.existsSync(target),
         'the peer-sessions bullet defers to a skill that is not on disk: '
         + 'plugins/claude-kit/skills/peer-sessions/SKILL.md');
+    // Existence is the weaker sibling of the outline pin, which asserts
+    // routed-to content rather than a routed-to file. The bullet defers three
+    // named things, so all three are pinned: a stub passing existence would
+    // otherwise satisfy a pointer that promises contracts, patterns, and
+    // etiquette.
+    const body = fs.readFileSync(target, 'utf8');
+    for (const heading of [/^## The messaging surface$/m,
+        /^## The four sanctioned patterns$/m, /^## Etiquette$/m]) {
+        assert.match(body, heading, 'the peer-sessions bullet defers to the '
+            + 'skill\'s contracts, sanctioned patterns, and etiquette, so '
+            + 'deleting one of those sections leaves the pointer promising '
+            + 'what the skill no longer carries: ' + heading);
+    }
+    // existsSync reads the working tree, which is the one place the file is
+    // guaranteed to sit on the machine that just wrote it. The failure this
+    // pin was added for is a commit that omits the new directory, and that
+    // commit is authored on exactly that machine, so tracking is asserted
+    // against the index rather than the disk. Without this the red fires only
+    // on some later fresh checkout, and this repo runs no CI to be that
+    // checkout.
+    execFileSync('git', ['ls-files', '--error-unmatch', '--',
+        'plugins/claude-kit/skills/peer-sessions/SKILL.md'],
+        { cwd: path.join(__dirname, '..'), stdio: 'pipe' });
 });
 
 // The three pins below cover one drift class rather than three deletions: an
