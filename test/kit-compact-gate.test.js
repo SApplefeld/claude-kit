@@ -3536,8 +3536,14 @@ test('gate: an oversized state file is refused rather than read whole', () => {
         // fresh one: an oversized or non-regular state file never resolves on
         // its own, so the remedy is named.
         const status = runCli(['status'], repo);
-        assert.ok(status.stdout.includes('present but unreadable'),
+        assert.ok(status.stdout.includes('past the size the reader accepts'),
             'status names the refused file: ' + status.stdout);
+        // Pinned on the shared spelling rather than on this leg's own words. The
+        // checkpoint reporter refuses an oversized file with the same sentence,
+        // and a file refused on size is legible rather than unreadable, so the
+        // two must not drift back into describing one refusal two ways.
+        assert.ok(!status.stdout.includes('present but unreadable'),
+            'and does not call a legible-but-refused file unreadable: ' + status.stdout);
         assert.ok(status.stdout.includes('removing .kit/compact-gate.json lets'),
             'and gives the removal advice, which is right for the one permanent leg: ' + status.stdout);
         assert.ok(!status.stdout.includes('recorded no decisions'),
@@ -4184,6 +4190,32 @@ test('gate: a half-written episode reads as no episode at all', () => {
         writeEpisode(repo, {});
         assertDeny(runGate(gatePayload(repo, transcript)));
         assert.strictEqual(readState(repo).episode.denials, 1);
+    } finally {
+        rmDir(repo);
+    }
+});
+
+// The state file is writable by anyone with the checkout, so `at` is hostile
+// input on a surface a model reads. episodePhrase clamps both of its own
+// integers for that reason; the last-decision age is the third figure on the
+// same line and takes the same clamp. Red before the fix: the raw difference
+// from Date.parse's floor renders as a twelve-digit minute count.
+test('cli: status clamps a forged last-decision age like the episode figures', () => {
+    const { repo, transcript } = armedRepo();
+    try {
+        assertDeny(runGate(gatePayload(repo, transcript)));
+        const state = JSON.parse(fs.readFileSync(gateStateFile(repo), 'utf8'));
+        state.lastDecision.at = new Date(-8640000000000000).toISOString();
+        fs.writeFileSync(gateStateFile(repo), JSON.stringify(state));
+
+        const res = runCli(['status'], repo);
+        assert.strictEqual(res.status, 0, 'status still runs; stderr: ' + res.stderr);
+        const m = res.stdout.match(/, (\d+) minutes? ago/);
+        assert.ok(m, 'the age still renders: ' + res.stdout);
+        assert.ok(Number(m[1]) <= 1e9,
+            'and is clamped to the same bound gateCount applies to the episode figures, '
+            + 'rather than printing the raw difference: ' + m[1]);
+        assert.ok(!res.stdout.includes('undefined'), res.stdout);
     } finally {
         rmDir(repo);
     }

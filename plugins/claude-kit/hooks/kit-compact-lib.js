@@ -998,9 +998,20 @@ function readGateState(cwd) {
 // alternate boundary denies and reset each other's count. It is self-limiting,
 // because each offer re-reads the goal and whichever bind landed last takes the
 // boundary path; the tell is a note whose count never grows during a run you
-// believe is singly leashed. Every failure direction here is an UNDERCOUNT,
-// which degrades to the pre-plan status quo (a compaction landing mid-chapter),
-// never to a checkpoint honored longer than it should be.
+// believe is singly leashed. That contention's failure direction is an
+// UNDERCOUNT, which degrades to the pre-plan status quo (a compaction landing
+// mid-chapter), never to a checkpoint honored longer than it should be.
+//
+// One direction does run the other way, and it is stated rather than claimed
+// away. This writer has no compare-and-set, unlike the nudge stamp, so a
+// bystander session's deny-interactive carries `standing` through from a read
+// taken before the bound session's allow, and writing it back restores the
+// episode that allow had just cleared. A pending checkpoint the allow left
+// standing is then vouched for once more. It needs two gate processes in the
+// same project inside the same few milliseconds, and its cost is bounded by the
+// same one-mistimed-compaction ceiling as everything else here, so it is carried
+// as a residual rather than closed; the fix, if it is ever worth its complexity,
+// is the gateOwnedFingerprint verify the nudge stamp already uses.
 //
 // So an open episode means "this session has been denied, with no allow since,
 // recently", which is the pending-offer signal the checkpoint rule and the
@@ -2053,7 +2064,7 @@ module.exports = {
     CHECKPOINT_MAX_AGE_MS, CHECKPOINT_PENDING_MAX_AGE_MS, CHECKPOINT_FUTURE_SKEW_MS,
     gateStatePath, gateLogPath, readGateState, readGateStateResult, recordGateDecision,
     gateEpisodeOpen, pendingOfferCorroborated, checkpointOwner, recordEpisodeNudge,
-    projectGateEpisode, episodePhrase, wholeMinutesSince,
+    projectGateEpisode, episodePhrase, wholeMinutesSince, gateCount,
     readTranscriptCapped, stripLocalCommandOutput, commandArgsSpans,
     userCommandArgsClaimPlan,
     automationInEffect, transcriptShowsAutomation

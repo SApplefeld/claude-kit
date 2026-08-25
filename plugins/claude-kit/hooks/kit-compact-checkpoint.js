@@ -24,7 +24,7 @@ const { readGoal } = require('./kit-goal-lib.js');
 const {
     readCheckpointResult, writeCheckpoint, clearCheckpoint, checkpointMatches,
     readGateStateResult, gateEpisodeOpen, pendingOfferCorroborated, checkpointOwner,
-    episodePhrase, wholeMinutesSince,
+    episodePhrase, wholeMinutesSince, gateCount,
     CHECKPOINT_MAX_AGE_MS, CHECKPOINT_PENDING_MAX_AGE_MS
 } = require('./kit-compact-lib.js');
 
@@ -317,8 +317,13 @@ function reportGateState(cwd) {
         // ordinary regular file, so the destructive advice would print over
         // exactly the transient case it is withheld for.
         if (result.reason === 'oversized') {
-            process.stdout.write('the compaction gate state file is present but unreadable, so the gate is'
-                + ' recording nothing; removing .kit/compact-gate.json lets the next decision rebuild it\n');
+            // Worded as reportCheckpoint words its own oversized leg: the file
+            // is legible and was refused on size, which is not the same fact as
+            // a read that failed, and one refusal answered two ways is what the
+            // shared-spelling rule exists to stop.
+            process.stdout.write('a compaction gate state file past the size the reader accepts is present, '
+                + 'so the gate is recording nothing; removing .kit/compact-gate.json lets the next '
+                + 'decision rebuild it\n');
         } else if (result.reason === 'kind') {
             process.stdout.write('something that is not the gate state file is sitting at '
                 + '.kit/compact-gate.json, so the gate is recording nothing; move it aside by hand '
@@ -337,7 +342,10 @@ function reportGateState(cwd) {
         // File-derived values print indented, never at column zero (see cmdOpen).
         let line = '  last compaction gate decision: ' + sanitize(last.verdict);
         if (last.reason) line += ' (' + sanitize(last.reason) + ')';
-        const age = wholeMinutesSince(last.at);
+        // Clamped exactly as episodePhrase clamps its own two integers: `at`
+        // comes out of a file anyone can write, and an unclamped one renders a
+        // twelve-digit minute count on a surface a model reads.
+        const age = gateCount(wholeMinutesSince(last.at));
         if (age !== null) line += ', ' + age + (age === 1 ? ' minute ago' : ' minutes ago');
         process.stdout.write(line + '\n');
     }
