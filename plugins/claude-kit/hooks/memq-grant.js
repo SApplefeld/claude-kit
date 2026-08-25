@@ -215,10 +215,19 @@ const ESCAPED_QUOTE = /\\["']/;
 const PRELOAD_ENV = ['NODE_OPTIONS', 'NODE_PATH', 'NODE_REPL_EXTERNAL_MODULE'];
 
 // The verbs a prompt-free allow covers, which is memq's own subcommand list
-// minus the three this grant does not extend to. memq dispatches log, find,
-// get, recall, recent, unstamped, touch, add-type, add-operator, delete-type,
-// delete-operator, decay-scan, decay-prune and decay-done, and the three
-// absent here are the two deletes and find.
+// minus the four this grant does not extend to. memq dispatches log, find,
+// get, recall, recent, unstamped, touch, anchor, add-type, add-operator,
+// delete-type, delete-operator, decay-scan, decay-prune and decay-done, and
+// the four absent here are the two deletes, find, and anchor.
+//
+// anchor is the fourth, and it is withheld on what it authors rather than on
+// what it destroys: it rewrites a record of the project tier in place, at a
+// name the command line gives it. What the rewritten line buys is a claim
+// about which files the memory is about and at which bytes, so a worker could
+// re-anchor a record onto whatever the tree holds now and every drift surface
+// would then report that memory as verified when nobody read it. The CLI has
+// no second refusal for the verb, since it is the operator's own, so this
+// screen is the only one.
 //
 // An allowlist rather than a denylist, because the two fail in opposite
 // directions: a verb added to the CLI later is not covered until this list
@@ -419,12 +428,14 @@ function grantable(p) {
     // it replaces only in a local .bak the sync never carries; --body-file
     // anywhere, which reads a caller-named path into the store; and
     // --supersedes, which demotes and labels a record no pin protects from it.
-    // Two more are withheld here alone, with no second layer behind them:
+    // Three more are withheld here alone, with no second layer behind them:
     // find, which loads an embedder out of a directory the command line does
-    // not name, and --rollup, which discards prose no copy survives. None of
-    // the seven belongs in a prompt-free allow with no operator in the loop,
-    // and the two with no second lock are the ones a later edit here would
-    // silently free.
+    // not name; --rollup, which discards prose no copy survives; and anchor,
+    // which rewrites a project-tier record in place and with it the claim
+    // every drift surface reads about which files that memory is still true
+    // of. None of the eight belongs in a prompt-free allow with no operator
+    // in the loop, and the three with no second lock are the ones a later
+    // edit here would silently free.
     //
     // This screen is the second lock rather than a move of the first: the CLI
     // evaluates those signals in the child process, this hook evaluates them
