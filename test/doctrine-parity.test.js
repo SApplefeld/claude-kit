@@ -194,6 +194,35 @@ test('the style skills the outline bullet routes to still carry a recipe', () =>
     }
 });
 
+// The peer-sessions bullet defers its whole operative content to the
+// peer-sessions skill (it names the contracts, patterns, and etiquette rather
+// than restating them), which is exactly the class whose deletion the
+// whole-body parity test above cannot catch: a symmetric deletion from both
+// copies would pass identity while leaving the standing rule unstated. The
+// presence pin closes that gap.
+test('the peer-sessions bullet is present once in each copy and identical', () => {
+    const lead = '- **Peer sessions are a coordination surface, not a record.**';
+    const inSkill = skillBody().split('\n').filter((l) => l.startsWith(lead));
+    const inMirror = mirrorBody().split('\n').filter((l) => l.startsWith(lead));
+    assert.strictEqual(inSkill.length, 1,
+        'expected exactly one peer-sessions bullet in the skill body');
+    assert.strictEqual(inMirror.length, 1,
+        'expected exactly one peer-sessions bullet in the doctrine mirror');
+    assert.strictEqual(inMirror[0], inSkill[0]);
+    // Presence alone closes only half the gap: the half where the bullet
+    // vanishes. A bullet still present but pointing at a skill that was
+    // renamed, deleted, or never committed leaves the always-on layer aiming
+    // at nothing with the suite green, so the far end is pinned too, the way
+    // the outline bullet's pin asserts its own routed-to skills.
+    assert.ok(inSkill[0].includes('`peer-sessions` skill'),
+        'the peer-sessions bullet no longer names the skill it defers to');
+    const target = path.join(__dirname, '..', 'plugins', 'claude-kit',
+        'skills', 'peer-sessions', 'SKILL.md');
+    assert.ok(fs.existsSync(target),
+        'the peer-sessions bullet defers to a skill that is not on disk: '
+        + 'plugins/claude-kit/skills/peer-sessions/SKILL.md');
+});
+
 // The three pins below cover one drift class rather than three deletions: an
 // amendment correct in itself falsifies an unchanged sentence in a file the
 // changeset never opened, so no diff shows the falsification and every review

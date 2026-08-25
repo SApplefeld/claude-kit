@@ -24,6 +24,7 @@ claude-kit/                          (repo = the marketplace)
         design-council/              Opt-in multi-lens pressure-test for a hard-to-reverse design fork
         cold/                        Neutral evidence-first lens for non-code judgment calls
         consult/                     Fresh-context single-judge ruling on a question a stuck run cannot settle
+        peer-sessions/               Discover and message live peer sessions: tool contracts, sanctioned patterns, etiquette
         kit-goal/                    /kit-goal <plan> arms a deterministic project-scoped completion leash
         kit-doctor/                  Validate and repair the machine's kit install (runs the payload doctor)
         branch-hygiene/              Clean up branches and worktrees after Branch-and-PR; reap merged, recover stranded
