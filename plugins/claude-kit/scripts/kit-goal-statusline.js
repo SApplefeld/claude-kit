@@ -36,8 +36,9 @@
 // section. A plan doc that is missing, unreadable, not a regular file, or past
 // the read cap drops the Sections segment and keeps the rest.
 //
-// Loaded as a module (the test suite) this only exports its internals; run
-// as a CLI it reads stdin and prints.
+// Loaded as a module (the launcher and the test suite) this only exports its
+// internals, among them the render entry scripts/kit-statusline.js calls
+// in-process; run as a CLI it reads stdin and prints.
 
 'use strict';
 
@@ -78,6 +79,17 @@ function goalLib() {
     }
 }
 
+// The goal-state file this widget renders from, or null when this payload does
+// not carry the library that owns that path. The launcher keys its render cache
+// on this file's modification time, and asks for the path here rather than
+// joining one of its own, so the two cannot disagree about where the state
+// lives.
+function goalStatePath(cwd) {
+    const lib = goalLib();
+    if (!lib || typeof lib.goalPath !== 'function') return null;
+    return lib.goalPath(cwd);
+}
+
 // The armed goal state, or null when none is armed, the file is unreadable, or
 // the library that reads it is not there.
 function readGoalState(cwd) {
@@ -105,7 +117,15 @@ function readGoalState(cwd) {
 // selectors all render as nothing and all survive this. They are a display
 // oddity in a plan name rather than a way to act on a terminal, which is what
 // this class is drawn against.
-const UNSAFE_FOR_TERMINAL = /[\x00-\x1F\x7F-\x9F\u061C\u200B-\u200F\u2028\u2029\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF\uD800-\uDFFF]/g;
+// The list is written once, as the body of a character class, because two
+// regexes are built from it: the one below, which every segment goes through,
+// and the line-level one beside safeLine, which differs in exactly one place and
+// says so there. Two spellings of this list would be two answers to what may
+// reach a terminal.
+const UNSAFE_BMP_CLASS = '\\x00-\\x1F\\x7F-\\x9F\\u061C\\u200B-\\u200F\\u2028\\u2029'
+    + '\\u202A-\\u202E\\u2060-\\u2064\\u2066-\\u2069\\uFEFF';
+
+const UNSAFE_FOR_TERMINAL = new RegExp('[' + UNSAFE_BMP_CLASS + '\\uD800-\\uDFFF]', 'g');
 
 // Text this widget is about to print, rendered safe for the operator's terminal
 // and capped. Both segments below carry file-derived content: the plan name
@@ -127,6 +147,44 @@ const UNSAFE_FOR_TERMINAL = /[\x00-\x1F\x7F-\x9F\u061C\u200B-\u200F\u2028\u2029\
 function safeSegment(value) {
     const cleaned = String(value).replace(UNSAFE_FOR_TERMINAL, '').slice(0, 120);
     return cleaned === '' ? '(unprintable)' : cleaned;
+}
+
+// The cap on a whole line. The widest line renderState can build is the marker
+// and its space plus three segments at safeSegment's 120-character cap, joined
+// by two separators, which is 369 characters, so this holds every line this
+// widget produces and bounds one that came from anywhere else.
+const LINE_MAX_CHARS = 400;
+
+// A whole status line rendered safe for the operator's terminal, through the
+// same character list as the segments above rather than a second spelling of it.
+// The launcher prints its render cache through this: that cache is a file inside
+// a repository, so its line is file-derived exactly as the segments are, and it
+// arrives already joined, which is why it is capped as a line rather than re-run
+// through the segment cap.
+//
+// One difference from the segment rule, and it is why this regex is built rather
+// than shared: a surrogate PAIR survives here, and only a lone surrogate is
+// removed. The marker this widget opens every line with is an astral character,
+// so a line held to the segment rule would come back with its marker stripped.
+// What the surrogate leg is for is still covered: a lone surrogate would leave
+// this process as invalid UTF-8, and both halves of the pattern below refuse
+// one. An astral character that is not the marker rides through, which is a
+// display oddity in a plan name rather than a way to act on a terminal.
+//
+// A line that sanitizes away entirely comes back empty, and empty is what the
+// launcher prints for nothing armed, so there is no placeholder here: a blank
+// segment is the right answer for a cached line with nothing printable left in
+// it, where safeSegment's placeholder exists to keep a joined line from
+// rendering a bare marker with a doubled separator after it.
+const UNSAFE_FOR_TERMINAL_LINE = new RegExp('[' + UNSAFE_BMP_CLASS + ']'
+    + '|[\\uD800-\\uDBFF](?![\\uDC00-\\uDFFF])|(?<![\\uD800-\\uDBFF])[\\uDC00-\\uDFFF]', 'g');
+
+function safeLine(value) {
+    const cleaned = String(value).replace(UNSAFE_FOR_TERMINAL_LINE, '').slice(0, LINE_MAX_CHARS);
+    // The cap counts UTF-16 units, so it can fall between the halves of a pair
+    // this rule just admitted and leave the high half alone at the end, which is
+    // the invalid UTF-8 the lone-surrogate legs above refuse.
+    return /[\uD800-\uDBFF]$/.test(cleaned) ? cleaned.slice(0, -1) : cleaned;
 }
 
 // The cap on the plan doc this widget reads whole. A plan doc is prose with a
@@ -156,6 +214,41 @@ function planText(cwd, planRel) {
     if (size === null || size > PLAN_MAX_BYTES) return null;
     try {
         return fs.readFileSync(path.join(cwd, planRel), 'utf8');
+    } catch {
+        return null;
+    }
+}
+
+// The modification time of the armed plan doc, or null when there is no regular
+// file to read one from. This is the launcher's cache key for that doc, and it
+// lives here, beside the read it keys, for two reasons.
+//
+// It is taken BEFORE the read, in renderState below, so the time stored with a
+// line is never newer than the text that line was rendered from. Taken after,
+// a write landing between the read and the stat would store the post-write time
+// beside the pre-write line, and the key would then match forever: the stale
+// count would stay on screen until the next write to the doc. Taken first, that
+// same race stores a time older than the text, the key misses at the next
+// refresh, and the cost is one re-render.
+//
+// It also applies the containment rule every reader of a stored plan path in
+// this codebase applies, through the library's own normalizer rather than a
+// second spelling of it, because the launcher calls this with the path out of
+// its cache file, which is repo-carried and hand-editable: a value naming
+// something outside the project is refused rather than stat'ed.
+//
+// The stat follows links, unlike the lstat kind checks around it. planFileSize,
+// which the read below goes through, resolves a link that lands on a regular
+// file inside the project rather than refusing it, so keying on the link's own
+// time would hold a stale count while the doc it names moved. Nothing is opened
+// through this stat: what it produces is a number for a cache key.
+function planKeyMtime(cwd, planRel) {
+    const lib = goalLib();
+    if (!lib || typeof lib.normalizePlanArg !== 'function') return null;
+    if (typeof planRel !== 'string' || lib.normalizePlanArg(cwd, planRel) === null) return null;
+    try {
+        const st = fs.statSync(path.join(cwd, planRel));
+        return st.isFile() ? st.mtimeMs : null;
     } catch {
         return null;
     }
@@ -277,12 +370,22 @@ function sectionProgress(text) {
     return { done: done.size, total: sections.length, pointer };
 }
 
-// The widget line for a cwd, or '' when nothing is armed there.
-function render(cwd) {
+// The widget line for a cwd together with the plan doc it was rendered from and
+// that doc's modification time: { line, plan, planMtimeMs }. With nothing armed
+// the line is empty, the plan is null and the time is null; otherwise plan is the
+// armed plan doc's path as stored, whether or not that doc was readable, since a
+// doc that appears later changes the line, and planMtimeMs is null for the same
+// unreadable doc. The launcher caches the line and re-renders when either of the
+// two files it was rendered from changes, so it needs the plan the line
+// describes, and taking both from the same render costs one stat and cannot name
+// a different plan, or a later moment, than the line does.
+function renderState(cwd) {
     const state = readGoalState(cwd);
-    if (!state) return '';
+    if (!state) return { line: '', plan: null, planMtimeMs: null };
     const parts = [MARKER + ' ' + safeSegment(path.basename(state.plan).replace(/\.md$/i, ''))];
 
+    // Before the read, never after it: see planKeyMtime.
+    const planMtimeMs = planKeyMtime(cwd, state.plan);
     const text = planText(cwd, state.plan);
     const progress = text === null ? null : sectionProgress(text);
     if (progress) {
@@ -296,7 +399,12 @@ function render(cwd) {
     if (Array.isArray(state.queue) && state.queue.length > 1 && Number.isInteger(state.queueIndex)) {
         parts.push(safeSegment(LABEL_PLANS + ': ' + (state.queueIndex + 1) + '/' + state.queue.length));
     }
-    return parts.join(' · ');
+    return { line: parts.join(' · '), plan: state.plan, planMtimeMs };
+}
+
+// The widget line for a cwd, or '' when nothing is armed there.
+function render(cwd) {
+    return renderState(cwd).line;
 }
 
 function main() {
@@ -322,4 +430,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { cwdFromInput, parsePlan, sectionProgress, pointerFrom, render, PLAN_MAX_BYTES };
+module.exports = { cwdFromInput, goalStatePath, planKeyMtime, parsePlan, safeLine, sectionProgress, pointerFrom, render, renderState, PLAN_MAX_BYTES };

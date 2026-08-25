@@ -119,12 +119,14 @@ For each Section of Work, in order (sections run concurrently only where the dis
        (a shared stash, another session's worktree files, a process holding
        binaries) and the operations that state puts off-limits (a bare
        `git stash`, a reset or checkout reaching beyond its own files)
-     - Every load-bearing technical assertion you make marked confirmed or
-       inferred: a confirmed one names its evidence (file:line, the command you
-       ran), an inferred one says so and says to verify it before relying on it.
-       An unmarked assertion reads as settled fact and gets obeyed instead of
-       checked, which is how a wrong premise in a brief becomes a wrong
-       implementation that passes its own gate
+     - Every load-bearing technical assertion you make marked confirmed,
+       inferred, or reported: a confirmed one names its evidence (file:line, the
+       command you ran), an inferred one says so and says to verify it before
+       relying on it, and a reported one names the peer session it came from and
+       says the same, since what a peer reported is no more checkable from the
+       agent's seat than from yours. An unmarked assertion reads as settled
+       fact and gets obeyed instead of checked, which is how a wrong premise in a
+       brief becomes a wrong implementation that passes its own gate
      - Workaround bar: a workaround needing a paragraph to justify means fix the
        code or escalate
      - When returning NEEDS_CONTEXT on a hard question, state it consult-shaped:
