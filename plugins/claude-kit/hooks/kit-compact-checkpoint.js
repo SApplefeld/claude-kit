@@ -37,7 +37,7 @@
 
 'use strict';
 
-const { readGoal } = require('./kit-goal-lib.js');
+const { readGoal, recordExecutionTree } = require('./kit-goal-lib.js');
 const {
     readCheckpointResult, writeCheckpoint, clearCheckpoint, checkpointMatches,
     readGateStateResult, gateEpisodeOpen, pendingOfferCorroborated, checkpointOwner,
@@ -185,6 +185,15 @@ function cmdOpen() {
             process.stdout.write('the compaction gate state could not be read, so this checkpoint records no'
                 + ' pending offer and keeps the ' + ORDINARY_MINUTES + '-minute bound\n');
         }
+        // A boundary opened from a linked worktree records that tree in the
+        // goal state, and one opened from the resolved checkout drops any
+        // standing record (recordExecutionTree is the field's ONLY writer, and
+        // this is its one call site): display surfaces then prefer the
+        // executing tree's copy of the plan doc for progress. The field is
+        // display-trust only and the record is best-effort, so a failure here
+        // costs a possibly stale Sections count, never the checkpoint just
+        // opened.
+        recordExecutionTree(process.cwd());
         process.exitCode = 0;
     } else {
         process.stderr.write('kit-compact-checkpoint: ' + sanitize(result.reason) + '\n');

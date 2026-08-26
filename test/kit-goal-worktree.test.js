@@ -35,7 +35,7 @@ const GATE = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-c
 const STOP_HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-goal-stop.js');
 
 const {
-    goalPath, readGoal, armGoal, bindSession, clearGoal
+    goalPath, readGoal, armGoal, bindSession, clearGoal, planDisplayRoot, recordExecutionTree
 } = require('../plugins/claude-kit/hooks/kit-goal-lib.js');
 const {
     checkpointPath, writeCheckpoint, recordEpisodeNudge
@@ -832,6 +832,418 @@ test('stop: a plan gone from both trees still advances mid-queue and releases on
         assert.strictEqual(events.length, 2, 'one event per finished plan: ' + JSON.stringify(events));
         assert.ok(events.every((e) => e.detail === 'plan-archived'),
             'both are archive releases: ' + JSON.stringify(events));
+    } finally {
+        rmWorktree(w);
+        rmDir(eventsRoot);
+    }
+});
+
+// ---------------------------------------------------------------------------
+// The plan doc's live copy: a chapter boundary opened from a worktree records
+// the execution tree in the goal state (the checkpoint CLI is the field's one
+// writer), and the statusline's Sections segment prefers that tree's copy of
+// the plan doc, since the live copy sits on the executing branch while the
+// checkout holding the state may carry a stale one. The field is display
+// trust only, and the guard case pins that nothing leash-deciding reads it.
+// ---------------------------------------------------------------------------
+
+const widget = require('../plugins/claude-kit/scripts/kit-goal-statusline.js');
+const WIDGET_SCRIPT = path.join(__dirname, '..', 'plugins', 'claude-kit', 'scripts', 'kit-goal-statusline.js');
+
+// Run the statusline widget as its own process against a cwd, the way the
+// harness runs it at every refresh. The display-note cases below need a child
+// because the resolution notes are once-per-process and write to stderr, so an
+// in-process render would both spend the flags and write into the runner.
+function runWidget(cwd) {
+    return spawnSync(process.execPath, [WIDGET_SCRIPT], {
+        input: JSON.stringify({ cwd }), encoding: 'utf8', env: childEnv()
+    });
+}
+
+// A plan doc with three sections and the given Chapters tail: the Sections
+// count is what tells two copies of one doc apart.
+function writeSectionedPlan(root, chapters) {
+    writeFile(path.join(root, PLAN_REL), [
+        '# Example',
+        'Status: In Progress',
+        '',
+        '## Sections of Work',
+        '',
+        '### 1. First',
+        '',
+        '### 2. Second',
+        '',
+        '### 3. Third',
+        '',
+        '## Chapters',
+        ''
+    ].concat(chapters).join('\n') + '\n');
+}
+
+const ONE_DONE = ['### Chapter 1', 'Completed: 1. First', 'Next: 2. Second'];
+const TWO_DONE = ONE_DONE.concat(['### Chapter 2', 'Completed: 2. Second', 'Next: 3. Third']);
+const STALE_LINE = '\u{1F3AF} example · Sections: 1/3 (Next §2)';
+const LIVE_LINE = '\u{1F3AF} example · Sections: 2/3 (Next §3)';
+
+// Plant an execution tree by hand in a checkout's state file. The field's
+// threat model is a hand edit, so these fixtures write it the same way.
+function injectTree(root, value) {
+    const gp = ownGoalPath(root);
+    const raw = JSON.parse(fs.readFileSync(gp, 'utf8'));
+    raw.executionTree = value;
+    fs.writeFileSync(gp, JSON.stringify(raw), 'utf8');
+}
+
+test('a boundary opened from a worktree records the execution tree, and the statusline counts that tree\'s copy', () => {
+    const w = makeWorktree();
+    try {
+        // The captured shape: the main checkout carries a stale copy of the
+        // plan doc while the executing branch, checked out in the worktree, is
+        // a chapter further along.
+        writeSectionedPlan(w.main, ONE_DONE);
+        writeSectionedPlan(w.tree, TWO_DONE);
+        // Distinct modification times, so the cache-key assertion below can
+        // tell whose copy produced the number.
+        const older = new Date(Date.now() - 60000);
+        fs.utimesSync(path.join(w.main, PLAN_REL), older, older);
+        assert.strictEqual(armGoal(w.main, PLAN_REL).ok, true, 'setup: arm in the main checkout');
+
+        const opened = runCheckpointCli(['open'], w.tree);
+        assert.strictEqual(opened.status, 0, 'open succeeds from the worktree; stderr: ' + opened.stderr);
+        const state = readGoal(w.main);
+        assert.strictEqual(state.executionTree, w.tree,
+            'the boundary recorded the worktree as the execution tree');
+
+        // Rendered from the main checkout, which is where the observed defect
+        // lay: that renderer's goal state is right while its checkout's doc
+        // copy is behind.
+        assert.strictEqual(widget.render(w.main), LIVE_LINE,
+            'the Sections count comes from the execution tree\'s copy');
+
+        // The cache key moves with the same copy the text was read from: keyed
+        // on the stale copy, a cached line would stand for as long as that copy
+        // stands still, which for a doc living on the executing branch is
+        // indefinitely.
+        assert.strictEqual(widget.planKeyMtime(w.main, PLAN_REL),
+            fs.statSync(path.join(w.tree, PLAN_REL)).mtimeMs,
+            'the render-cache key is the execution tree copy\'s mtime');
+    } finally {
+        rmWorktree(w);
+    }
+});
+
+test('a recorded tree that no longer holds the plan doc falls back to the checkout\'s copy', () => {
+    const w = makeWorktree();
+    try {
+        writeSectionedPlan(w.main, ONE_DONE);
+        writeSectionedPlan(w.tree, TWO_DONE);
+        assert.strictEqual(armGoal(w.main, PLAN_REL).ok, true, 'setup: arm in the main checkout');
+        assert.strictEqual(runCheckpointCli(['open'], w.tree).status, 0, 'setup: record the tree');
+        fs.rmSync(path.join(w.tree, PLAN_REL));
+
+        assert.strictEqual(widget.render(w.main), STALE_LINE,
+            'the checkout\'s own copy is what renders');
+        assert.strictEqual(typeof readGoal(w.main).executionTree, 'string',
+            'the fallback is the reader\'s judgment, not a drop: the record stands');
+    } finally {
+        rmWorktree(w);
+    }
+});
+
+test('a tree copy past the widget\'s read cap falls back to the checkout\'s copy instead of dropping the segment', () => {
+    const w = makeWorktree();
+    try {
+        // The read cap rides into the root election itself: a tree copy the
+        // widget could never read whole is a tree that cannot be trusted, so
+        // the checkout's readable copy renders. Elected instead, the text read
+        // would refuse the oversized copy and the line would drop its Sections
+        // segment entirely, with a readable copy sitting right there.
+        writeSectionedPlan(w.main, ONE_DONE);
+        writeSectionedPlan(w.tree, TWO_DONE);
+        const older = new Date(Date.now() - 60000);
+        fs.utimesSync(path.join(w.main, PLAN_REL), older, older);
+        assert.strictEqual(armGoal(w.main, PLAN_REL).ok, true, 'setup: arm in the main checkout');
+        assert.strictEqual(runCheckpointCli(['open'], w.tree).status, 0, 'setup: record the tree');
+        fs.appendFileSync(path.join(w.tree, PLAN_REL), 'x'.repeat(widget.PLAN_MAX_BYTES));
+
+        assert.strictEqual(widget.render(w.main), STALE_LINE,
+            'the checkout\'s copy renders, Sections segment intact');
+        // The cache key follows the same election, so the line above and the
+        // key it is stored under describe one copy.
+        assert.strictEqual(widget.planKeyMtime(w.main, PLAN_REL),
+            fs.statSync(path.join(w.main, PLAN_REL)).mtimeMs,
+            'the render-cache key is the checkout copy\'s mtime');
+    } finally {
+        rmWorktree(w);
+    }
+});
+
+test('the display probe resolves the recorded tree in silence: no repair note, no orphan note', () => {
+    // The resolution notes speak about where goal state is read, which a
+    // display probe over a recorded execution tree never decides, and the
+    // widget is a fresh process at every status-line refresh, so a note fired
+    // from this path would repaint on every refresh. Both notes are pinned
+    // silent here: the handshake note over the post-prune shape (the tree and
+    // its .git pointer survive while the main checkout's administrative
+    // directory is gone), and the orphan note over a held handshake whose tree
+    // carries a leftover goal-state file of its own.
+    const pruned = makeWorktree({ name: 'sil' });
+    const orphaned = makeWorktree({ name: 'silorph' });
+    try {
+        writeSectionedPlan(pruned.main, ONE_DONE);
+        writeSectionedPlan(pruned.tree, TWO_DONE);
+        assert.strictEqual(armGoal(pruned.main, PLAN_REL).ok, true, 'setup: arm in the main checkout');
+        assert.strictEqual(runCheckpointCli(['open'], pruned.tree).status, 0, 'setup: record the tree');
+        rmDir(pruned.gitdir);
+        const broken = runWidget(pruned.main);
+        assert.strictEqual(broken.status, 0, broken.stderr);
+        assert.strictEqual(broken.stdout, STALE_LINE, 'the broken handshake falls back to the checkout\'s copy');
+        assert.strictEqual(broken.stderr, '',
+            'no worktree-repair note fires from the display fallback');
+
+        writeSectionedPlan(orphaned.main, ONE_DONE);
+        writeSectionedPlan(orphaned.tree, TWO_DONE);
+        assert.strictEqual(armGoal(orphaned.main, PLAN_REL).ok, true, 'setup: arm in the main checkout');
+        assert.strictEqual(runCheckpointCli(['open'], orphaned.tree).status, 0, 'setup: record the tree');
+        writeFile(ownGoalPath(orphaned.tree), '{}\n');
+        const held = runWidget(orphaned.main);
+        assert.strictEqual(held.status, 0, held.stderr);
+        assert.strictEqual(held.stdout, LIVE_LINE, 'the held handshake still elects the tree\'s copy');
+        assert.strictEqual(held.stderr, '',
+            'no orphan note fires from the display probe');
+    } finally {
+        rmWorktree(pruned);
+        rmWorktree(orphaned);
+    }
+});
+
+test('a main checkout reached through a junction spelling still elects the recorded tree\'s copy', {
+    skip: process.platform === 'win32' ? false : 'junctions are a win32 shape'
+}, () => {
+    // The accepted main arrives folded to the volume's own spelling, while
+    // goalRoot answers an ordinary checkout with the caller's literal cwd, so
+    // the election folds the cwd side the same way before comparing the two.
+    // Unfolded, a cwd spelled through an 8.3 segment, a junction, or a subst
+    // drive would miss the compare and silently keep the stale copy, which is
+    // the display defect the election exists to fix. The junction is the one
+    // of those spellings this suite can mint without privilege.
+    const w = makeWorktree({ name: 'fold' });
+    const linkParent = fs.mkdtempSync(path.join(WORKTREE_TMP, 'kit-goal-fold-'));
+    const link = path.join(linkParent, 'via');
+    try {
+        fs.symlinkSync(w.main, link, 'junction');
+        writeSectionedPlan(w.main, ONE_DONE);
+        writeSectionedPlan(w.tree, TWO_DONE);
+        assert.strictEqual(armGoal(w.main, PLAN_REL).ok, true, 'setup: arm in the main checkout');
+        assert.strictEqual(runCheckpointCli(['open'], w.tree).status, 0, 'setup: record the tree');
+        assert.strictEqual(widget.render(link), LIVE_LINE,
+            'the junction spelling of the checkout still elects the tree\'s copy');
+    } finally {
+        rmDir(linkParent);
+        rmWorktree(w);
+    }
+});
+
+test('the execution-tree screen runs before the first filesystem touch at the recorded value', {
+    skip: process.platform === 'win32' ? false : 'UNC and device paths are a win32 shape'
+}, () => {
+    // The discriminating fixture, the pointer-screen positional case retold
+    // for the display field: the recorded value spells a genuinely resolvable
+    // worktree through the \\?\ device namespace, whose root starts with two
+    // separators exactly as a UNC path's does, so it takes the same screen.
+    // The administrative back-pointer is rewired so the handshake closes
+    // THROUGH that spelling, and the tree holds the plan doc, so a resolver
+    // that touched the target before screening it would find everything in
+    // order and elect the tree. The state is written with no plan at all,
+    // because that is the shape readGoal's normalize returns unscreened (its
+    // early return keeps every field as the file spelled it), and the
+    // launcher's stateless probe hands planDisplayRoot exactly such a state:
+    // the re-screen inside planDisplayRoot is the one screen the value meets
+    // on that path.
+    // The spy on the fs entry points is what makes the pin positional rather
+    // than observational: a screen merely relocated below the first touch
+    // would still answer cwd, but the touch it allowed is recorded and fails
+    // the second assertion.
+    const w = makeWorktree({ name: 'screen' });
+    try {
+        const devTree = '\\\\?\\' + w.tree;
+        fs.writeFileSync(path.join(w.gitdir, 'gitdir'), path.join(devTree, '.git') + '\n', 'utf8');
+        writeSectionedPlan(w.tree, TWO_DONE);
+        assert.ok(fs.statSync(path.join(devTree, PLAN_REL)).isFile(),
+            'fixture: the plan doc is reachable through the exact device spelling the field uses');
+        writeFile(ownGoalPath(w.main), JSON.stringify({ executionTree: devTree }));
+
+        const touched = [];
+        const spied = ['statSync', 'lstatSync', 'openSync'];
+        const real = {};
+        for (const name of spied) real[name] = fs[name];
+        try {
+            for (const name of spied) {
+                fs[name] = function (...args) {
+                    if (typeof args[0] === 'string' && args[0].startsWith('\\\\?\\')) {
+                        touched.push(name + ' ' + args[0]);
+                    }
+                    return real[name].apply(fs, args);
+                };
+            }
+            assert.strictEqual(planDisplayRoot(w.main, PLAN_REL), w.main,
+                'the screened value is refused and the display falls back to the cwd');
+        } finally {
+            for (const name of spied) fs[name] = real[name];
+        }
+        assert.deepStrictEqual(touched, [],
+            'no filesystem call reached the device-spelled value: the screen ran before the first touch');
+    } finally {
+        rmWorktree(w);
+    }
+});
+
+test('a recorded tree that is gone entirely falls back to the checkout\'s copy', () => {
+    const main = fs.mkdtempSync(path.join(WORKTREE_TMP, 'kit-goal-extree-'));
+    try {
+        writeSectionedPlan(main, ONE_DONE);
+        assert.strictEqual(armGoal(main, PLAN_REL).ok, true, 'setup: arm');
+        injectTree(main, path.join(WORKTREE_TMP, 'kit-goal-vanished-' + process.pid));
+        assert.strictEqual(widget.render(main), STALE_LINE);
+    } finally {
+        rmDir(main);
+    }
+});
+
+test('a directory that is not a worktree of this repository cannot claim to be the execution tree', () => {
+    const main = fs.mkdtempSync(path.join(WORKTREE_TMP, 'kit-goal-exmain-'));
+    const foreignDir = fs.mkdtempSync(path.join(WORKTREE_TMP, 'kit-goal-exforeign-'));
+    const otherRepo = makeWorktree({ name: 'exother' });
+    try {
+        // The value is an absolute path out of a hand-editable file, so it is
+        // held to what it claims to be before anything under it is opened: a
+        // linked worktree of THIS repository, proven by the same two-way
+        // handshake goal-state resolution trusts. A plain directory holding a
+        // further-along copy fails it, and so does a genuine worktree of some
+        // other repository, whose handshake closes but lands on the wrong
+        // root.
+        writeSectionedPlan(main, ONE_DONE);
+        writeSectionedPlan(foreignDir, TWO_DONE);
+        writeSectionedPlan(otherRepo.tree, TWO_DONE);
+        assert.strictEqual(armGoal(main, PLAN_REL).ok, true, 'setup: arm');
+
+        injectTree(main, foreignDir);
+        assert.strictEqual(widget.render(main), STALE_LINE,
+            'a plain directory is refused however plausible its copy');
+
+        injectTree(main, otherRepo.tree);
+        assert.strictEqual(widget.render(main), STALE_LINE,
+            'a worktree of another repository is refused on the root it resolves to');
+    } finally {
+        rmDir(main);
+        rmDir(foreignDir);
+        rmWorktree(otherRepo);
+    }
+});
+
+test('recordExecutionTree refuses when the goal advances between its decision read and its write base', () => {
+    // The compare-and-swap advanceGoal and appendGoal take over the same
+    // window: a checkpoint open racing a Stop-hook advance must not re-attach
+    // the finished plan's tree to the advanced state, which would undo the
+    // delete advanceGoal performs so that a stale tree path cannot outlive
+    // the plan it described. The race is driven at the one seam both reads
+    // share: the second read of the state file is intercepted and the file
+    // swapped for the advanced shape first, which is exactly what a Stop-hook
+    // advance landing in the window does.
+    const NEXT_REL = 'docs/plans/next.md';
+    const w = makeWorktree({ name: 'cas' });
+    try {
+        writePlanDoc(w.main);
+        writeFile(path.join(w.main, NEXT_REL), 'Status: In Progress\n\nbody\n');
+        assert.strictEqual(armGoal(w.main, [PLAN_REL, NEXT_REL]).ok, true, 'setup: arm a two-plan queue');
+        const gp = goalPath(w.tree);
+        assert.strictEqual(gp, ownGoalPath(w.main), 'setup: the worktree resolves the main checkout\'s state');
+
+        const realRead = fs.readFileSync;
+        const advance = () => {
+            const raw = JSON.parse(realRead(gp, 'utf8'));
+            raw.queueIndex = 1;
+            raw.plan = raw.queue[1];
+            fs.writeFileSync(gp, JSON.stringify(raw), 'utf8');
+        };
+        let reads = 0;
+        let result;
+        try {
+            fs.readFileSync = function (...args) {
+                if (typeof args[0] === 'string' && args[0] === gp) {
+                    reads += 1;
+                    if (reads === 2) advance();
+                }
+                return realRead.apply(fs, args);
+            };
+            result = recordExecutionTree(w.tree);
+        } finally {
+            fs.readFileSync = realRead;
+        }
+        assert.strictEqual(reads, 2, 'fixture: the record took its decision read and its write-base read');
+        assert.strictEqual(result.ok, false, 'the record refuses rather than writing over the advance');
+        assert.match(result.reason, /goal state changed/, result.reason);
+        const after = JSON.parse(fs.readFileSync(gp, 'utf8'));
+        assert.strictEqual(after.plan, NEXT_REL, 'the advance stands');
+        assert.ok(!('executionTree' in after),
+            'the finished plan\'s tree was not re-attached to the state that replaced it');
+    } finally {
+        rmWorktree(w);
+    }
+});
+
+test('a boundary opened from the resolved checkout itself drops the recorded tree', () => {
+    const w = makeWorktree();
+    try {
+        writePlanDoc(w.main);
+        assert.strictEqual(armGoal(w.main, PLAN_REL).ok, true, 'setup: arm in the main checkout');
+        assert.strictEqual(runCheckpointCli(['open'], w.tree).status, 0,
+            'setup: a worktree boundary records the tree');
+        assert.strictEqual(typeof readGoal(w.main).executionTree, 'string', 'setup: the record stands');
+
+        assert.strictEqual(runCheckpointCli(['open'], w.main).status, 0, 'a main-checkout boundary succeeds');
+        assert.ok(!('executionTree' in readGoal(w.main)),
+            'the field holds the latest boundary\'s observation, and that observation is the checkout itself');
+    } finally {
+        rmWorktree(w);
+    }
+});
+
+test('the leash decides nothing from the execution tree: a Complete copy there neither advances nor releases', () => {
+    const w = makeWorktree();
+    const eventsRoot = fs.mkdtempSync(path.join(WORKTREE_TMP, 'kit-goal-exev-'));
+    try {
+        // The field's one consumer is display. If anything leash-deciding ever
+        // resolved the plan doc through it, this fixture is the burn: the
+        // recorded tree's copy reads Complete while the checkout's own reads
+        // In Progress, so a redirected planHead would release or advance a
+        // leash whose plan is still open.
+        writePlanDoc(w.main);
+        writeFile(path.join(w.tree, PLAN_REL), 'Status: Complete\n\nbody\n');
+        assert.strictEqual(armGoal(w.main, PLAN_REL).ok, true, 'setup: arm in the main checkout');
+        assert.strictEqual(bindSession(w.main, SESSION).ok, true, 'setup: bind the leash holder');
+        assert.strictEqual(runCheckpointCli(['open'], w.tree).status, 0, 'setup: record the tree');
+        assert.strictEqual(typeof readGoal(w.main).executionTree, 'string', 'setup: the record stands');
+
+        const transcript = path.join(w.main, 'transcript.jsonl');
+        writeStopTranscript(transcript, PLAN_REL, ['Working on it.']);
+        const res = runStopHook(w.main, transcript, eventsRoot);
+        assert.strictEqual(res.status, 0, res.stderr);
+        const out = JSON.parse(res.stdout);
+        assert.strictEqual(out.decision, 'block',
+            'the stop is held on the checkout copy\'s In Progress, the field unread');
+        const after = readGoal(w.main);
+        assert.ok(after && after.plan === PLAN_REL, 'the leash was neither cleared nor advanced');
+        assert.deepStrictEqual(readStopEvents(eventsRoot), [], 'no release or archive event');
+
+        // The compaction gate is equally deaf to it: a below-ceiling offer
+        // from the leash holder still takes the boundary deny with the field
+        // present.
+        const usage = path.join(w.main, 'usage.jsonl');
+        writeUsageTranscript(usage, 50000);
+        const gate = runGate(gatePayload(w.main, usage));
+        assert.strictEqual(gate.status, 2, 'boundary deny; stderr: ' + gate.stderr);
+        assert.ok(gate.stderr.includes(DENY_NOTE), 'the boundary note fires: ' + gate.stderr);
     } finally {
         rmWorktree(w);
         rmDir(eventsRoot);
