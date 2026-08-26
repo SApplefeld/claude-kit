@@ -230,7 +230,7 @@ test('the peer-sessions bullet is present once in each copy and identical', () =
     // etiquette.
     const body = fs.readFileSync(target, 'utf8');
     for (const heading of [/^## The messaging surface$/m,
-        /^## The four sanctioned patterns$/m, /^## Etiquette$/m]) {
+        /^## The sanctioned patterns$/m, /^## Etiquette$/m]) {
         assert.match(body, heading, 'the peer-sessions bullet defers to the '
             + 'skill\'s contracts, sanctioned patterns, and etiquette, so '
             + 'deleting one of those sections leaves the pointer promising '
