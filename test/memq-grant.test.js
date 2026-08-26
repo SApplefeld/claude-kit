@@ -713,6 +713,16 @@ test('memq loads code out of a directory in one place, and that place is find', 
     // nowhere else. A second one anywhere below that block, or this one moving
     // under another verb, reds here rather than silently widening what a
     // prompt-free allow can load.
+    //
+    // One named exception rides in the same contiguous top-of-file block as
+    // the node built-ins: the require of hooks/kit-network-lib.js, a
+    // fixed, kit-shipped sibling of a few lines holding nothing but the
+    // network-share predicate (Standing Amendment 2), re-exported under
+    // memq's own name below. It is not a load from a directory the command
+    // line names, the property this test polices, so it is pinned by its
+    // exact spelling rather than by the generic built-in pattern: a
+    // relative require of anything else at this position, or this one
+    // moving, reds here exactly as a second dynamic load would.
     const src = fs.readFileSync(MEMQ, 'utf8').split(/\r?\n/);
     const isCode = (line) => !/^\s*(\/\/|\*)/.test(line);
     const enclosing = (lineNo) => {
@@ -726,12 +736,17 @@ test('memq loads code out of a directory in one place, and that place is find', 
     // scanned: taking the first function declaration instead would leave the
     // constants and the top-level statements between the two unread, and a
     // load placed there runs on every invocation of every verb.
+    const NETWORK_LIB_LINE = 'const { namesNetworkShare } = require(\'../hooks/kit-network-lib.js\');';
     const builtin = /^const \w+ = require\('[a-z_]+'\);$/;
     const builtins = [];
-    src.forEach((line, i) => { if (builtin.test(line.trim())) builtins.push(i + 1); });
+    src.forEach((line, i) => {
+        const trimmed = line.trim();
+        if (builtin.test(trimmed) || trimmed === NETWORK_LIB_LINE) builtins.push(i + 1);
+    });
     assert.ok(builtins.length > 0, 'memq.js requires node built-ins at the top of the file');
     assert.deepStrictEqual(builtins, builtins.map((_, k) => builtins[0] + k),
-        'the built-in requires are one contiguous block: ' + JSON.stringify(builtins));
+        'the built-in requires plus the one named kit-network-lib.js exception are one '
+            + 'contiguous block: ' + JSON.stringify(builtins));
     const lastBuiltin = builtins[builtins.length - 1];
     // Every way a line of source can bring in code the command line does not
     // name, not require alone: a dynamic import, an indirect require built

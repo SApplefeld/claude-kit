@@ -26,10 +26,9 @@
 // says. Three rules are spelled here because memq decides none of them: the
 // house date form a `pinned:` or `created:` value takes, the `- ` item that
 // follows a `tags:` key carrying no inline value, and the position of the
-// opening fence. A fourth is spelled here although memq does decide it: which
-// named tier a placed directory is (tierOf below) re-spells the three tier
-// shapes locally, and Section 7 of the plan replaces that spelling with
-// memq's exported answer.
+// opening fence. Which named tier a placed directory is (tierOf below) is
+// memq's own answer too, memq.tierNameFor, rather than a local re-spelling of
+// the three tier shapes.
 //
 // SAFETY: this hook can BLOCK a tool call, so it fails OPEN. Any parse error,
 // unreadable file, unresolvable root, target it cannot place, or payload shape
@@ -109,12 +108,12 @@
 //     memoryRoot() is os.homedir() plus .claude absent an honored override, so
 //     where the profile is redirected onto a mapped drive letter the store
 //     root itself sits on a network-backed volume: underStoreRoot answers
-//     true for targets
-//     there, the //-prefixed screen does not fire on a drive-letter spelling,
-//     and the resolver runs on that volume. Deciding whether a path is
-//     network-backed is Section 7 of the plan's network predicate to
-//     single-source, and this guard is one of that section's four named
-//     callers; nothing here re-spells the question.
+//     true for targets there, memq.namesNetworkShare does not fire on a
+//     drive-letter spelling (it answers only the UNC and //server forms), and
+//     the resolver runs on that volume. This guard is one of four callers
+//     that single-source that predicate in scripts/memq.js; nothing here
+//     re-spells the question, and widening it to a drive-letter spelling is
+//     not this guard's to decide.
 //   - An admin-share UNC host is folded only when it matches one of the five
 //     spellings isLocalHost compares against (localhost, 127.0.0.1, ::1, .,
 //     and whatever os.hostname() reports). Any other spelling of this same
@@ -446,11 +445,14 @@ function targetPath(input, cwd) {
 // spelling of the same connection no lexical screen catches. Confining the
 // resolver to in-store targets keeps it out of every other .md write on the
 // machine; a target that reaches the store only through an alias of the root
-// itself is placed by its written spelling or not at all.
+// itself is placed by its written spelling or not at all. The UNC- and
+// device-rooted screen is `memq.namesNetworkShare`, single-sourced in
+// scripts/memq.js (Standing Amendment 2), memq's own answer to the same
+// question rather than a second regex on the leading separators.
 function placeTarget(memq, file) {
     const lexical = memq.tierDirFor(file);
     if (lexical !== null) return { file, dir: lexical };
-    if (/^[\\/]{2}/.test(file) || !underStoreRoot(memq, file)) return null;
+    if (memq.namesNetworkShare(file) || !underStoreRoot(memq, file)) return null;
     try {
         const dir = path.dirname(file);
         const real = fs.realpathSync.native(dir);
@@ -476,14 +478,14 @@ function underStoreRoot(memq, file) {
 }
 
 // Which tier a memory directory is, or null for a directory that is none of
-// them. memq.tierDirFor answers only the three tier shapes (a project's
-// memory/, a type directory, the operator directory), so a caller that placed
-// the file with it reaches this holding one of them.
+// them. memq.tierDirFor answers only whether a file's directory is a tier
+// directory, so naming which tier calls memq.tierNameFor rather than
+// re-spelling the three shapes locally (Standing Amendment 2): were memq's
+// own shapes to move, a local re-spelling here would still place the file
+// while answering null about it, and a shared-tier write would be allowed in
+// silence rather than refused, which is the fail-open drift this call closes.
 function tierOf(memq, dir) {
-    if (samePath(dir, memq.operatorDirPath())) return 'operator';
-    if (samePath(path.dirname(dir), memq.typesRootPath())) return 'type';
-    if (samePath(path.dirname(path.dirname(dir)), memq.projectsRootPath())) return 'project';
-    return null;
+    return memq.tierNameFor(dir);
 }
 
 // The CLI verb that authors the tier this write was aimed at, named on the
@@ -842,6 +844,27 @@ function frontmatterFault(memq, text, block, dir, file, cwd) {
         // synchronous walk against the payload's working directory, and this
         // hook sits in front of a tool call, so a record that anchors nothing
         // pays none of it.
+        //
+        // A working directory naming a network share is refused before that
+        // walk (memq.anchorRoot's own worktreeMainRoot) ever runs: this guard
+        // stalls the operator's own tool call rather than losing a hook's
+        // stdout, which is the costliest of the four callers that
+        // single-source memq.namesNetworkShare (Standing Amendment 2).
+        //
+        // cwd is legitimately null here (main() sets it at the top when the
+        // payload carries no working directory at all), and
+        // namesNetworkShare's own fail-closed type guard answers true for
+        // any non-string, refusal being the right direction for that
+        // predicate's own callers generally. It is the wrong direction for
+        // this one: a call with no cwd has no working directory to name a
+        // network share, and anchorRoot(null) already answers the accurate
+        // "no project root resolves" cause below, so the type check here
+        // routes a null cwd to that branch instead of asserting a network
+        // share this call never had one of.
+        if (typeof cwd === 'string' && memq.namesNetworkShare(cwd)) {
+            return { cause: 'this call\'s working directory names a network share, so this '
+                + 'record\'s anchor paths were not checked against one' };
+        }
         const root = memq.anchorRoot(cwd);
         if (typeof root !== 'string' || root === '') {
             return { cause: 'no project root resolves from this call\'s working directory, so this '
@@ -1073,8 +1096,29 @@ function main() {
     // leaves this guard inert through the catch around main(), which is the
     // allow direction, instead of ending the process on an unhandled throw.
     // Every screen below is memq's own judgment, so none of it can move above
-    // this line.
+    // this line, memq.namesNetworkShare included.
     const memq = require(MEMQ);
+
+    // tierDirFor, tierNameFor and namesNetworkShare are this section's own
+    // additions, so a plugin cache carrying an older memq.js can supply an
+    // isMemoryFilename that works while lacking any of the three.
+    // namesNetworkShare belongs in this same gate rather than a separate one:
+    // placeTarget below calls it, and placeTarget runs
+    // before placedTier is ever set (placedTier = 'memory' is the line right
+    // after it), so a throw out of a missing namesNetworkShare reaches the
+    // outer catch around main() with placedTier still null, and notChecked
+    // never runs there either - the exact silent-allow this gate exists to
+    // close, left open for its own sibling symbol. Checked here, before any
+    // of the three is called, so an export skew is told apart from a deny
+    // that ran and found nothing, the same way memory-session.js's
+    // DRIFT_MEMQ_SYMBOLS tells a skewed memq apart from a clean drift answer.
+    if (typeof memq.tierDirFor !== 'function' || typeof memq.tierNameFor !== 'function'
+            || typeof memq.namesNetworkShare !== 'function') {
+        placedTier = 'memory';
+        notChecked('memq\'s tierDirFor, tierNameFor and namesNetworkShare symbols are not all '
+            + 'there, which a version skew between this guard and its cached memq.js can cause');
+        return;
+    }
 
     if (!memq.isMemoryFilename(path.basename(target))) return;    // MEMORY.md, decay-stamp, a sidecar
     const site = placeTarget(memq, target);

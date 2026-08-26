@@ -503,6 +503,21 @@ test('the share predicate refuses both network forms and nothing else', () => {
     assert.strictEqual(namesNetworkShare('repo/sub'), false, 'a relative path');
 });
 
+test('the share predicate fails closed on a non-string, refusing rather than answering clean', () => {
+    // A non-string cwd names no path at all, so there is no text to run the
+    // leading-separator check against; the predicate answers true for it (fix
+    // round 2, m9) rather than false, because a caller that cannot walk this
+    // value safely either is the one this predicate exists to protect, and
+    // answering false here would tell that caller cwd was fine to open when
+    // the truth is there was no cwd to judge. Line 486 above already proves
+    // this end to end (a 42 payload cwd produces the hook's own silence); this
+    // pins the predicate's own return value directly, for every shape a
+    // caller could pass that is not a string.
+    assert.strictEqual(namesNetworkShare(null), true, 'null');
+    assert.strictEqual(namesNetworkShare(undefined), true, 'undefined');
+    assert.strictEqual(namesNetworkShare(42), true, 'a number');
+});
+
 test('a cwd naming a network share stands down without touching it', () => {
     // An unreachable UNC share blocks a filesystem open for the SMB timeout,
     // and this hook runs after every shell command, so the goal read must never
@@ -630,6 +645,26 @@ test('a kit library that will not load leaves the hook silent rather than throwi
                 NODE_OPTIONS: requireRefusingPreload(repo, lib)
             }), 'damaged ' + lib);
         }
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('a require failure for kit-network-lib.js refuses the call rather than answering clean', () => {
+    // Guard 4's require failure answers true (refuse), not false: false is
+    // the checked-and-clean value, and a damaged cache that cannot even
+    // supply this small module is not evidence the working directory is
+    // safe to open. The discriminator is this repo's fixture, the full FIRE
+    // state (every later guard passes on its own): the fail-open direction
+    // this guards against would let guard 4 pass through and the hook would
+    // FIRE here; the fail-closed fix keeps it silent, exactly like the two
+    // libraries above whose own failure silences the hook for a different
+    // reason (the feature cannot run at all without them).
+    const repo = makeRepo();
+    try {
+        assertSilent(runHook(firePayload(repo), {
+            NODE_OPTIONS: requireRefusingPreload(repo, 'kit-network-lib.js')
+        }), 'damaged kit-network-lib.js');
     } finally {
         rmDir(repo);
     }
@@ -817,4 +852,89 @@ test('the runnable command clause is dropped when the installed path fails the g
             'the rest of the reminder still names the tool to run');
         assert.ok(guarded.includes('held 7 offers over 45 minutes'), 'the hold is still reported');
     }
+});
+
+// Source-inspection pin, on the pattern 'one frontmatter key regex, and every
+// field call site goes through the shared reader' in test/memq.test.js
+// already uses: a behavioral test only proves these callers currently agree,
+// not that a later edit cannot reintroduce a second spelling. The canonical
+// definition lives in hooks/kit-network-lib.js, a module of a few lines
+// holding namesNetworkShare and nothing else (Standing Amendment 2, folded
+// from Section 7's own review: scripts/memq.js is 11,880 lines and a hot
+// hook path such as this file's guard 4 cannot afford to pay its parse cost
+// just to answer this one question, measured at 8.7-11.4ms warm). memq.js
+// requires that module (a named exception to its own dynamic-load surface,
+// pinned separately by test/memq-grant.test.js as a fixed kit-shipped
+// sibling rather than a load from a directory the command line names) and
+// re-exports the predicate under its own name, so hooks/memory-session.js
+// and hooks/memory-frontmatter-guard.js, which already hold memq for other
+// reasons, keep calling memq.namesNetworkShare unchanged. This file and
+// hooks/chapter-boundary-nudge.js, which do not otherwise need memq, require
+// hooks/kit-network-lib.js directly instead; this file's own namesNetworkShare
+// is a delegating wrapper, legitimate re-export rather than a second spelling
+// of the rule. hooks/kit-goal-lib.js carries its own independent copy of the
+// underlying leading-separator test for a different subject, a stored
+// transcript path rather than a working directory, so it is a ruled
+// exclusion (Section 7's spec) rather than a gap this pin should close.
+test('namesNetworkShare is spelled once, in kit-network-lib.js, and every other '
+    + 'Section 7 file calls it rather than re-deriving the answer', () => {
+    const NETWORK_LIB = path.join(
+        __dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-network-lib.js');
+    const OTHER_FILES = {
+        'scripts/memq.js':
+            path.join(__dirname, '..', 'plugins', 'claude-kit', 'scripts', 'memq.js'),
+        'hooks/compact-deferral-nudge.js': HOOK,
+        'hooks/chapter-boundary-nudge.js':
+            path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'chapter-boundary-nudge.js'),
+        'hooks/memory-session.js':
+            path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'memory-session.js'),
+        'hooks/memory-frontmatter-guard.js':
+            path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'memory-frontmatter-guard.js')
+    };
+    const sources = {
+        'hooks/kit-network-lib.js': fs.readFileSync(NETWORK_LIB, 'utf8')
+    };
+    for (const [label, file] of Object.entries(OTHER_FILES)) {
+        sources[label] = fs.readFileSync(file, 'utf8');
+    }
+
+    // The predicate's own body, spelled once, in kit-network-lib.js alone. A
+    // RegExp literal rather than a string so this pin cannot be defeated by
+    // rewrapping the same characters in different quotes; JS source carries
+    // this exact substring wherever the leading-separator test is inlined
+    // rather than delegated.
+    const bodySpelling = /\[\\\\\/\]\{2\}\/\.test\(/;
+    const spelledIn = Object.entries(sources).filter(([, src]) => bodySpelling.test(src)).map(([l]) => l);
+    assert.deepStrictEqual(spelledIn, ['hooks/kit-network-lib.js'],
+        'the leading-separator test must be spelled in exactly hooks/kit-network-lib.js among '
+        + 'the files this section touches, got: ' + JSON.stringify(spelledIn));
+
+    // memq.js requires the module at the top of the file and re-exports it
+    // under its own name, never re-testing the leading separators itself.
+    assert.match(sources['scripts/memq.js'],
+        /const \{ namesNetworkShare \} = require\('\.\.\/hooks\/kit-network-lib\.js'\);/,
+        'scripts/memq.js must require kit-network-lib.js rather than re-deriving the answer');
+
+    // memory-session.js and memory-frontmatter-guard.js call it through the
+    // memq module they already hold, never as a bare local call: a bare call
+    // in either file would mean a local function of the same name shadowing
+    // the shared one.
+    for (const label of ['hooks/memory-session.js', 'hooks/memory-frontmatter-guard.js']) {
+        assert.match(sources[label], /memq\.namesNetworkShare\(/,
+            label + ' must call memq.namesNetworkShare through the memq module it already holds');
+    }
+
+    // This file and chapter-boundary-nudge.js require kit-network-lib.js
+    // directly for the answer rather than answering the question themselves:
+    // their own namesNetworkShare declarations (this file's a named wrapper,
+    // chapter-boundary-nudge.js's a destructured local) are legitimate
+    // re-export/re-binding rather than a second spelling of the rule.
+    assert.match(sources['hooks/compact-deferral-nudge.js'],
+        /require\('\.\/kit-network-lib\.js'\)\.namesNetworkShare\(cwd\)/,
+        'compact-deferral-nudge.js must delegate to kit-network-lib.js\'s export rather than '
+        + 're-deriving it');
+    assert.match(sources['hooks/chapter-boundary-nudge.js'],
+        /\(\{ namesNetworkShare \} = require\('\.\/kit-network-lib\.js'\)\)/,
+        'chapter-boundary-nudge.js must delegate to kit-network-lib.js\'s export rather than '
+        + 're-deriving it');
 });

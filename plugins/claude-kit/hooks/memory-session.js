@@ -31,9 +31,10 @@
 // reason, that nothing could be said: a memq that will not load or whose
 // export table a version skew has moved, which is detected by checking the
 // symbols before calling them rather than inferred from a throw. Every other
-// could-not-check answers in words, a tier that could not be examined and a
-// check that threw each in a fixed sentence of its own, because a session
-// that heard nothing would take an unchecked tier for a clean one.
+// could-not-check answers in words, a tier that could not be examined, a
+// working directory naming a network share, and a check that threw, each in
+// a fixed sentence of its own, because a session that heard nothing would
+// take an unchecked tier for a clean one.
 //
 // The whole pass is bounded, both halves of it: DRIFT_RECORDS_CAP records
 // examined, DRIFT_ENTRIES_CAP anchors walked whatever each costs, and
@@ -397,7 +398,18 @@ const DRIFT_MEMQ_SYMBOLS = ['anchorRoot', 'projectMemoryDir', 'tierAnchorDrift']
 // The two could-not-check answers, this file's own fixed words: no count, no
 // name, nothing from the store. The first names a tier that is there and
 // could not be examined, which the scan can explain; the second names the
-// check itself failing, which it cannot.
+// check itself failing, which the scan cannot explain either.
+//
+// A working directory naming a network share gets no sentence of its own
+// here, and needs none, because this digest's own
+// anchorRoot(cwd) call answers a pin before it ever touches cwd's filesystem
+// shape, so a pinned session with a network-shaped cwd was never at risk of
+// the hang the sentence described, and this digest's only caller, main()'s
+// final else branch, is reached only after the top-level stand-down has
+// already refused the one state that was at risk (no pin and a network
+// share). No path from main() into driftNudge can carry a network cwd that
+// anchorRoot has not already answered with the ordinary pin silence below,
+// so the sentence had no reachable state left to describe.
 const DRIFT_TIER_UNEXAMINABLE = 'This project\'s memories could not be checked '
     + 'against the files they anchor, because its memory directory could not be '
     + 'examined; memq decay-scan says why.';
@@ -432,15 +444,17 @@ const DRIFT_CHECK_FAILED = 'This project\'s memories could not be checked agains
 //
 // A whole pass that could not run gets its own fixed sentence for the same
 // reason: the tier is there and could not be examined, and a session told
-// nothing would read that as a clean tier. So does a throw out of any of
-// the memq calls below, which is why the gate above them checks the symbols
-// this uses before calling any of them: with the skew case detected rather
-// than inferred, a throw is no longer ambiguous evidence of a memq that
-// will not load, and answering it with silence would be the clean answer
-// for a check that failed.
+// nothing would read that as a clean tier. So does a throw out of any of the
+// memq calls below, which is why the gate above them checks the symbols this
+// uses before calling any of them: with the skew case detected rather than
+// inferred, a throw is no longer ambiguous evidence of a memq that will not
+// load, and answering it with silence would be the clean answer for a check
+// that failed.
 //
 // Silence, then, means one of three things and each is a nothing-to-say:
-// every count zero, a store pin, or a memq whose symbols are not there.
+// every count zero, a store pin (including one whose cwd also names a
+// network share, since the pin resolves before cwd's shape is ever
+// consulted), or a memq whose symbols are not there.
 //
 // A run-scoped session is not a special case: a run id adds a pending tier
 // and leaves the project tier where the working directory puts it, so the
@@ -451,6 +465,19 @@ function driftNudge(cwd, memq) {
         if (typeof memq[symbol] !== 'function') return null;
     }
     try {
+        // anchorRoot answers the pin before it ever touches cwd's filesystem
+        // shape (pinnedProjectSegment is checked first, and worktreeMainRoot
+        // is reached only when no pin is set), so a pinned session is safe to
+        // resolve here regardless of whether cwd names a network share.
+        // Checking namesNetworkShare ahead of anchorRoot would answer a state
+        // that cannot arise: a pin closes that door before worktreeMainRoot is
+        // ever reached, so no pinned session's network-shaped cwd needs a
+        // network cause. This
+        // digest's only caller, main()'s final else branch, is reached only
+        // when the top-level stand-down has already ruled out the one state
+        // where cwd itself would be walked (no pin and a network share), so
+        // root === null here means only "no root resolves" (no pin and no
+        // git worktree, or an unusable pin), never a hang risk.
         const root = memq.anchorRoot(cwd);
         if (root === null) return null;
         const memDir = memq.projectMemoryDir(cwd);
@@ -662,7 +689,27 @@ function syncFallbackText(dirty, ahead, behind) {
 // fixed literal from this file (the reason text is a map lookup with a fixed
 // fallback); nothing git prints, nothing the state file holds, no path,
 // branch name, or remote URL, ever rides it.
-function syncNudge(memq) {
+//
+// `source` gates the whole function to the two SessionStart sources this
+// hook ran on before this section widened hooks.json's matcher to add
+// `compact`: `startup` and `resume`. Widening the matcher was a deliberate
+// fix for a real false-clean (the drift line and the memory index going
+// silent on a compacted session, this session among the instances it
+// fixed), but this function is a different kind of block: docs/security-model.md
+// records the detached commit-and-push as happening at the next session
+// start, and every auto-compaction is now a session start this function can
+// reach. Gating here, ahead of every git subprocess this function runs to
+// decide whether to spawn (not only the spawn itself), keeps that spawn's
+// trigger where the security model already describes it while letting the
+// drift line and the index block ride the wider matcher. A `source` this
+// function cannot read as exactly 'startup' or 'resume' (absent, non-string,
+// 'compact', 'clear', or any other value) takes the same branch as
+// 'compact': the spawn is the outward, irreversible-ish action this gate
+// exists to contain, so an unreadable source answers the question the
+// conservative way for that action, never the permissive one
+// session-start.js's own benign text nudge defaults to.
+function syncNudge(source, memq) {
+    if (source !== 'startup' && source !== 'resume') return null;
     const root = memq.memoryRoot();
     let hasGit = false;
     try { hasGit = fs.statSync(path.join(root, '.git')).isDirectory(); } catch { hasGit = false; }
@@ -964,6 +1011,23 @@ function typeIndexBlock(cwd, memq) {
 const RUN_VARIABLE = 'a run id (KIT_RUN_ID)';
 const PIN_VARIABLE = 'a memory-store pin (KIT_MEMORY_PROJECT)';
 
+// A different subject than standDownBlock's two callers: not a variable the
+// kit cannot honor, but the working directory shape itself. Every block
+// main() would otherwise run first (decayNudge, typeIndexBlock,
+// runScopedBlock, projectMemoryBlock, driftNudge) resolves the project
+// memory directory from cwd through memq.projectMemoryDir or memq.anchorRoot,
+// either of which walks cwd synchronously (worktreeMainRoot's fs.statSync)
+// whenever no store pin is set. This hook has no timeout entry in
+// hooks.json, so a hang on any of those doors costs the whole of this hook's
+// stdout rather than one line of it.
+const NETWORK_CWD_STAND_DOWN = 'Kit memory stand-down: this session\'s working directory names a '
+    + 'network share, and no memory-store pin (KIT_MEMORY_PROJECT) is in effect to resolve a memory '
+    + 'directory another way, so every block below would derive one from the working directory '
+    + 'itself, which risks a synchronous open hanging for the SMB timeout on an unreachable host '
+    + 'rather than failing fast. Write no memory files this session, in the project memory '
+    + 'directory or anywhere else, and do not add a line to MEMORY.md or edit it: there is no '
+    + 'directory this session can safely resolve. Report the condition instead.';
+
 function standDownBlock(variable, why) {
     return 'Kit memory stand-down: this session carries ' + variable + ' that the kit cannot '
         + 'honor, because ' + why + '. Write no memory files this session, in the '
@@ -1212,6 +1276,7 @@ function main() {
     try { payload = JSON.parse(readStdin() || '{}'); } catch { /* malformed: defaults */ }
     if (typeof payload !== 'object' || payload === null) payload = {};
     const cwd = typeof payload.cwd === 'string' && payload.cwd !== '' ? payload.cwd : process.cwd();
+    const source = typeof payload.source === 'string' ? payload.source : null;
 
     // Required inside main() so a damaged plugin cache that cannot supply the
     // store's rules leaves the hook inert (the outer catch owns the failure)
@@ -1233,6 +1298,42 @@ function main() {
         blocks.push(standDownBlock(PIN_VARIABLE, 'the value is not usable as a directory name '
             + '(it must be characters from [A-Za-z0-9_.-], bounded, and not a path token or a '
             + 'reserved device name), so no memory directory resolves for this session at all'));
+    } else if (memq.pinnedProjectSegment() === null && typeof memq.namesNetworkShare === 'function'
+            && memq.namesNetworkShare(cwd)) {
+        // No pin is active, so every block below would walk cwd itself (see
+        // NETWORK_CWD_STAND_DOWN); under an active pin none of them touches
+        // cwd at all (projectSegment resolves the pin before ever reaching
+        // worktreeMainRoot), so that case takes the ordinary path below.
+        //
+        // namesNetworkShare is this section's own addition, checked for
+        // presence here the same way DRIFT_MEMQ_SYMBOLS checks its own three
+        // symbols before driftNudge calls any of them: an installed cache
+        // still carrying a pre-Section-7 memq.js lacks the export, and
+        // without this guard that throws past this branch to the outer
+        // catch, which silences this whole hook (no decay nudge, no type
+        // index, no destination line, no sync trigger) rather than the one
+        // line the skew previously cost. Missing the export routes to the
+        // ordinary branch below instead, where driftNudge's own resolution
+        // through anchorRoot answers null for an unusable pin, degrading one
+        // line rather than the whole hook (a plain skew, memq missing
+        // DRIFT_MEMQ_SYMBOLS' own three exports, is degraded the same way by
+        // that separate check).
+        blocks.push(NETWORK_CWD_STAND_DOWN);
+        // syncNudge and embedderNudge touch neither cwd nor anything this
+        // stand-down exists to protect: syncNudge's root is
+        // memq.memoryRoot(), which reads only KIT_MEMORY_ROOT/the home
+        // directory, and embedderNudge reads only the embedder install
+        // state. Standing the whole hook down here would silence both
+        // alongside the cwd-derived blocks they have nothing to do with,
+        // including the automatic-sync alarm embedderNudge's sibling
+        // carries (the "automatic sync is standing down" line, built to
+        // fire even when nothing is pending), which would otherwise go
+        // quiet for every unpinned network session. So they run here too,
+        // same as the ordinary branch below.
+        const sync = syncNudge(source, memq);
+        if (sync !== null) blocks.push(sync);
+        const embedder = embedderNudge();
+        if (embedder !== null) blocks.push(embedder);
     } else {
         const nudge = decayNudge(cwd, memq);
         if (nudge !== null) blocks.push(nudge);
@@ -1262,7 +1363,7 @@ function main() {
             // ordinary and pinned sessions the rest of this branch already
             // speaks to: a fleet of run-scoped workers each spawning a sync
             // would be contention with no owner.
-            const sync = syncNudge(memq);
+            const sync = syncNudge(source, memq);
             if (sync !== null) blocks.push(sync);
             // Gated on the same branch, for the same reason: see
             // embedderNudge's own comment.

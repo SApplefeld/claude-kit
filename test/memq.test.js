@@ -876,6 +876,34 @@ test('tierDirFor resolves both tiers and only their direct children', () => {
     }
 });
 
+// tierNameFor answers which tier a directory tierDirFor placed names, on the
+// same three shapes (Standing Amendment 2: memory-frontmatter-guard.js's
+// tierOf calls this rather than re-deriving the shapes locally). Every case
+// here is a directory tierDirFor's own cases above name as a tier, plus the
+// operator tier, so the two functions cannot answer about two different sets
+// of shapes.
+test('tierNameFor answers which of the three tiers a directory is', () => {
+    const root = memq.memoryRoot();
+    const projMem = path.join(root, 'projects', 'D--repo-p', 'memory');
+    const typeDir = path.join(root, 'memory-types', 'nextjs');
+    const opDir = path.join(root, 'memory-operator');
+    const cases = [
+        [projMem, 'project', 'the project tier'],
+        [typeDir, 'type', 'the type tier'],
+        [opDir, 'operator', 'the operator tier'],
+        [path.join(projMem, 'archive'), null, 'a directory below a tier dir, not the tier itself'],
+        [path.join(root, 'projects', 'D--repo-p'), null, 'a project dir but not its memory'],
+        [path.join(root, 'memory-types'), null, 'the types root, not a type dir'],
+        [root, null, 'the store root itself'],
+        [path.join(os.tmpdir(), 'elsewhere'), null, 'outside the store'],
+        ['', null, 'an empty string'],
+        [undefined, null, 'a non-string']
+    ];
+    for (const [input, expected, label] of cases) {
+        assert.strictEqual(memq.tierNameFor(input), expected, label);
+    }
+});
+
 test('a failed usage-sidecar write exits nonzero: an unwritten stamp is never reported as done', () => {
     const store = makeStore();
     try {
@@ -2847,6 +2875,131 @@ test('get says a pinned store checked no anchors, and stays silent for a record 
     }
 });
 
+// anchorReport answers the pin cause for a pinned session whether or not
+// cwd names a network share: under a pin, anchorRoot(cwd) answers null
+// before it ever touches cwd's filesystem shape, so the network share
+// plays no part in why no root resolved, and naming it instead would
+// prescribe a remedy that cannot work (moving off the share changes
+// nothing while the pin stands, Standing Amendments 6 and 7). This asserts
+// pinned+network reads exactly as pinned+local.
+//
+// The network-shaped cwd is a real, locally reachable administrative-share
+// path (localUncPath), so this case costs no SMB timeout to prove. That
+// spelling resolves only on win32, and only with local-admin rights on this
+// machine (the C$-style share); off win32 the path is not this machine's
+// own directory and the case fails for an environment reason rather than a
+// code one.
+test('get names the pin cause for a pinned session whether or not cwd names a network share',
+    { skip: process.platform !== 'win32' ? 'an admin-share UNC path is a win32 shape'
+        : localUncPathAvailable() ? false : 'administrative shares are not reachable on this machine' },
+    () => {
+    const store = makeStore();
+    const memDir = pinnedMemDir(store, PIN);
+    try {
+        fs.mkdirSync(memDir, { recursive: true });
+        const body = '---\nname: ""\nanchors: src/a.js@' + HELLO_SHA + '\n---\n\n# a\n';
+        fs.writeFileSync(path.join(memDir, 'anchored.md'), body, 'utf8');
+
+        const networked = runFrom(store, localUncPath(store.proj), ['get', 'anchored'],
+            { KIT_MEMORY_PROJECT: PIN });
+        assert.strictEqual(networked.status, 0, networked.stderr);
+        assert.ok(networked.stdout.endsWith('anchors: not checked (a store pin is in effect, so no'
+            + ' root is derived from this working directory)\n'),
+            'the pin cause, not the network cause:\n' + networked.stdout);
+
+        // The control: the same fixture, the same pin, an ordinary local
+        // cwd. Only cwd's shape differs, and this proves the two now answer
+        // identically rather than the network case losing the pin answer.
+        const local = runFrom(store, store.proj, ['get', 'anchored'], { KIT_MEMORY_PROJECT: PIN });
+        assert.strictEqual(local.status, 0, local.stderr);
+        assert.strictEqual(local.stdout, networked.stdout,
+            'a network-shaped cwd changes nothing under a pin:\nlocal:\n' + local.stdout
+                + '\nnetworked:\n' + networked.stdout);
+    } finally {
+        rmStore(store);
+    }
+});
+
+// Standing Amendment 7's cell table for get: every state the emitting path
+// admits, each cell's exit code and its answer's own first (and here only)
+// not-checked line.
+//
+//   unpinned + local     ordinary: the anchor's own state line (ANCHOR_CAUSE
+//                        does not apply; ready fixture below reads 'fresh')
+//   unpinned + network   the hoist ahead of readMemDirOrNote: exit 0,
+//                        stderr names the network share, stdout empty
+//   pinned   + local     the pin cause: exit 0, stdout ends 'a store pin is
+//                        in effect, so no root is derived...'
+//   pinned   + network   the same pin cause, byte-identical to the cell
+//                        above: the pin is the whole account of why no root
+//                        was derived, and the working directory's shape
+//                        adds nothing to it
+test("get's four cwd/pin cells: exit code and first not-checked line",
+    { skip: process.platform !== 'win32' ? 'an admin-share UNC path is a win32 shape'
+        : localUncPathAvailable() ? false : 'administrative shares are not reachable on this machine' },
+    () => {
+    const store = makeStore();
+    const pinnedDir = pinnedMemDir(store, PIN);
+    try {
+        const body = '---\nname: ""\nanchors: src/a.js@' + HELLO_SHA + '\n---\n\n# a\n';
+        fs.mkdirSync(store.memDir, { recursive: true });
+        fs.writeFileSync(path.join(store.memDir, 'anchored.md'), body, 'utf8');
+        fs.mkdirSync(pinnedDir, { recursive: true });
+        fs.writeFileSync(path.join(pinnedDir, 'anchored.md'), body, 'utf8');
+        fs.mkdirSync(path.join(store.proj, 'src'), { recursive: true });
+        fs.writeFileSync(path.join(store.proj, 'src', 'a.js'), Buffer.from('hello\n', 'latin1'));
+
+        const unpinnedLocal = run(store, ['get', 'anchored']);
+        assert.strictEqual(unpinnedLocal.status, 0, unpinnedLocal.stderr);
+        assert.ok(unpinnedLocal.stdout.endsWith('anchors: src/a.js fresh\n'),
+            'unpinned+local: an ordinary fresh answer:\n' + unpinnedLocal.stdout);
+
+        const unpinnedNetwork = runFrom(store, localUncPath(store.proj), ['get', 'anchored'], {});
+        assert.strictEqual(unpinnedNetwork.status, 0, unpinnedNetwork.stderr);
+        assert.strictEqual(unpinnedNetwork.stdout, '');
+        assert.strictEqual(unpinnedNetwork.stderr, 'memq: this call\'s working directory names a '
+            + 'network share, so its project memory directory was not resolved (a synchronous walk '
+            + 'under it risks hanging for the SMB timeout on an unreachable host); nothing to report\n');
+
+        const pinnedLocal = runFrom(store, store.proj, ['get', 'anchored'], { KIT_MEMORY_PROJECT: PIN });
+        assert.strictEqual(pinnedLocal.status, 0, pinnedLocal.stderr);
+        assert.ok(pinnedLocal.stdout.endsWith('anchors: not checked (a store pin is in effect, so no'
+            + ' root is derived from this working directory)\n'));
+
+        const pinnedNetwork = runFrom(store, localUncPath(store.proj), ['get', 'anchored'],
+            { KIT_MEMORY_PROJECT: PIN });
+        assert.strictEqual(pinnedNetwork.status, 0, pinnedNetwork.stderr);
+        assert.strictEqual(pinnedNetwork.stdout, pinnedLocal.stdout,
+            'pinned+network is byte-identical to pinned+local');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// Every other network test above pins KIT_MEMORY_PROJECT, which routes
+// project-tier resolution off the pin and never touches cwd's filesystem
+// shape at all, so none of those cases exercise the hoist below. This is
+// the unpinned control: no KIT_MEMORY_PROJECT, an ordinary reachable
+// directory spelled through the same administrative-share UNC form
+// localUncPath uses elsewhere, so the case is fast and deterministic
+// rather than paying a real SMB timeout, while still reading as
+// network-shaped to namesNetworkShare's leading-separator test exactly as
+// an unreachable share would.
+test('get stands the whole command down for an unpinned network working directory, before its '
+        + 'project memory directory is ever resolved', () => {
+    const store = makeStore();
+    try {
+        const res = runFrom(store, localUncPath(store.proj), ['get', 'anything'], {});
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout, '');
+        assert.strictEqual(res.stderr, 'memq: this call\'s working directory names a network '
+            + 'share, so its project memory directory was not resolved (a synchronous walk under '
+            + 'it risks hanging for the SMB timeout on an unreachable host); nothing to report\n');
+    } finally {
+        rmStore(store);
+    }
+});
+
 test('recall marks a drifted record, leaves a fresh one plain, and carries both labels at once', () => {
     const store = makeStore();
     try {
@@ -2927,6 +3080,247 @@ test('recall carries no drift token under a store pin, where no root resolves', 
     } finally {
         rmStore(store);
         try { fs.rmSync(projB, { recursive: true, force: true }); } catch { /* best effort */ }
+    }
+});
+
+// recall's project-tier drift line answers the pin cause for a pinned
+// session whether or not cwd names a network share: anchorRoot(cwd)
+// answers null for a pin before it ever touches cwd's filesystem shape, so
+// the share plays no part in why no root resolved, and naming it instead
+// would prescribe a remedy (move off the share) that cannot work while the
+// pin stands (Standing Amendments 6 and 7). This asserts pinned+network
+// reads exactly as pinned+local.
+//
+// The pin is what keeps this fixture's own store resolution off cwd
+// (Section 3's existing behavior); localUncPath is what keeps the child
+// fast rather than costing a real SMB timeout to prove it. That spelling
+// resolves only on win32, and only with local-admin rights on this machine
+// (the C$-style share); off win32 the path is not this machine's own
+// directory and the case fails for an environment reason rather than a
+// code one.
+test('recall names the pin cause for a pinned session whether or not cwd names a network share',
+    { skip: process.platform !== 'win32' ? 'an admin-share UNC path is a win32 shape'
+        : localUncPathAvailable() ? false : 'administrative shares are not reachable on this machine' },
+    () => {
+    const store = makeStore();
+    const memDir = pinnedMemDir(store, PIN);
+    try {
+        fs.mkdirSync(memDir, { recursive: true });
+        fs.writeFileSync(path.join(memDir, 'drifted.md'),
+            '---\nname: ""\nanchors: src/a.js@' + OTHER_SHA + '\n---\n\n# d\n', 'utf8');
+
+        const network = runFrom(store, localUncPath(store.proj), ['recall'], { KIT_MEMORY_PROJECT: PIN });
+        assert.strictEqual(network.status, 0, network.stderr);
+        assert.ok(!network.stdout.includes('[drift'), 'no token under either cause:\n' + network.stdout);
+        assert.match(network.stdout,
+            /^project tier: .*, anchors not checked \(a store pin is in effect, so no root is derived from this working directory\)$/m,
+            'the pin cause, not the network cause:\n' + network.stdout);
+        assert.ok(!network.stdout.includes('names a network share'),
+            'the network cause must not also appear:\n' + network.stdout);
+
+        // The control: the same fixture, the same pin, an ordinary local
+        // cwd. Only cwd's shape differs, and this proves the two now answer
+        // identically.
+        const local = runFrom(store, store.proj, ['recall'], { KIT_MEMORY_PROJECT: PIN });
+        assert.strictEqual(local.status, 0, local.stderr);
+        assert.strictEqual(local.stdout, network.stdout,
+            'a network-shaped cwd changes nothing under a pin:\nlocal:\n' + local.stdout
+                + '\nnetworked:\n' + network.stdout);
+    } finally {
+        rmStore(store);
+    }
+});
+
+// Standing Amendment 7's cell table for recall: every state the emitting
+// path admits, each cell's exit code and its project-tier line's own
+// not-checked clause (or its absence).
+//
+//   unpinned + local     ordinary: a live drifted record earns a [drift]
+//                        token, no not-checked clause at all
+//   unpinned + network   the hoist ahead of readMemDirOrNote: exit 0,
+//                        stderr names the network share, stdout empty
+//   pinned   + local     the pin cause on the coverage line
+//   pinned   + network   the same pin cause, byte-identical to the cell
+//                        above: the pin is the whole account of why no root
+//                        was derived, and the working directory's shape
+//                        adds nothing to it
+test("recall's four cwd/pin cells: exit code and first not-checked line",
+    { skip: process.platform !== 'win32' ? 'an admin-share UNC path is a win32 shape'
+        : localUncPathAvailable() ? false : 'administrative shares are not reachable on this machine' },
+    () => {
+    const store = makeStore();
+    const pinnedDir = pinnedMemDir(store, PIN);
+    try {
+        fs.mkdirSync(path.join(store.proj, 'src'), { recursive: true });
+        fs.writeFileSync(path.join(store.proj, 'src', 'a.js'), Buffer.from('hello\n', 'latin1'));
+        writeMemoryFile(store, 'drifted.md',
+            '---\nname: ""\nanchors: src/a.js@' + OTHER_SHA + '\n---\n\n# d\n');
+        fs.mkdirSync(pinnedDir, { recursive: true });
+        fs.writeFileSync(path.join(pinnedDir, 'pinned.md'), '---\nname: ""\n---\n\n# p\n', 'utf8');
+
+        const unpinnedLocal = run(store, ['recall']);
+        assert.strictEqual(unpinnedLocal.status, 0, unpinnedLocal.stderr);
+        assert.match(unpinnedLocal.stdout, /project  drifted  .*\[drift\]/,
+            'unpinned+local: an ordinary drift token, no not-checked clause:\n' + unpinnedLocal.stdout);
+        assert.ok(!unpinnedLocal.stdout.includes('not checked'),
+            'no not-checked clause on the ordinary case:\n' + unpinnedLocal.stdout);
+
+        const unpinnedNetwork = runFrom(store, localUncPath(store.proj), ['recall'], {});
+        assert.strictEqual(unpinnedNetwork.status, 0, unpinnedNetwork.stderr);
+        assert.strictEqual(unpinnedNetwork.stdout, '');
+        assert.strictEqual(unpinnedNetwork.stderr, 'memq: this call\'s working directory names a '
+            + 'network share, so its project memory directory was not resolved (a synchronous walk '
+            + 'under it risks hanging for the SMB timeout on an unreachable host); nothing to recall\n');
+
+        const pinnedLocal = runFrom(store, store.proj, ['recall'], { KIT_MEMORY_PROJECT: PIN });
+        assert.strictEqual(pinnedLocal.status, 0, pinnedLocal.stderr);
+        assert.match(pinnedLocal.stdout,
+            /^project tier: .*, anchors not checked \(a store pin is in effect, so no root is derived from this working directory\)$/m);
+
+        const pinnedNetwork = runFrom(store, localUncPath(store.proj), ['recall'], { KIT_MEMORY_PROJECT: PIN });
+        assert.strictEqual(pinnedNetwork.status, 0, pinnedNetwork.stderr);
+        assert.strictEqual(pinnedNetwork.stdout, pinnedLocal.stdout,
+            'pinned+network is byte-identical to pinned+local');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// decay-scan's drift block answers the pin cause for a pinned session
+// whether or not cwd names a network share: anchorRoot(cwd) answers null
+// for a pin before it ever touches cwd's filesystem shape, so the share
+// plays no part in why no root resolved, and naming it instead would
+// prescribe a remedy (move off the share) that cannot work while the pin
+// stands (Standing Amendments 6 and 7). This asserts pinned+network reads
+// exactly as pinned+local.
+//
+// localUncPath's admin-share spelling resolves only on win32, and only with
+// local-admin rights on this machine (the C$-style share); off win32 the
+// path is not this machine's own directory and the case fails for an
+// environment reason rather than a code one.
+test("decay-scan's drift block names the pin cause for a pinned session whether or not cwd "
+    + 'names a network share',
+    { skip: process.platform !== 'win32' ? 'an admin-share UNC path is a win32 shape'
+        : localUncPathAvailable() ? false : 'administrative shares are not reachable on this machine' },
+    () => {
+    const store = makeStore();
+    const memDir = pinnedMemDir(store, PIN);
+    try {
+        fs.mkdirSync(memDir, { recursive: true });
+        fs.writeFileSync(path.join(memDir, 'anchored.md'),
+            '---\nname: ""\nanchors: src/a.js@' + HELLO_SHA + '\n---\n\n# a\n', 'utf8');
+
+        const network = runFrom(store, localUncPath(store.proj), ['decay-scan'], { KIT_MEMORY_PROJECT: PIN });
+        assert.strictEqual(network.status, 0, network.stderr);
+        assert.ok(network.stderr.includes('memq: anchor drift (project tier): not checked (a store'
+            + ' pin is in effect, so no root is derived from this working directory)\n'),
+            'the pin cause is named:\n' + network.stderr);
+        assert.ok(!network.stderr.includes('names a network share'),
+            'the network cause must not also appear:\n' + network.stderr);
+        assert.ok(!network.stderr.includes(NO_DRIFT), 'not checked is never the clean answer:\n'
+            + network.stderr);
+
+        // Control: the same fixture, the same pin, an ordinary local cwd.
+        // Only cwd's shape differs, and this proves the two now answer
+        // identically.
+        const local = run(store, ['decay-scan'], { KIT_MEMORY_PROJECT: PIN });
+        assert.strictEqual(local.status, 0, local.stderr);
+        assert.strictEqual(local.stderr, network.stderr,
+            'a network-shaped cwd changes nothing under a pin:\nlocal:\n' + local.stderr
+                + '\nnetworked:\n' + network.stderr);
+    } finally {
+        rmStore(store);
+    }
+});
+
+// Standing Amendment 7's cell table for decay-scan: every state the
+// emitting path admits, each cell's exit code and its drift block's own
+// not-checked clause (or its absence).
+//
+//   unpinned + local     ordinary: a fresh anchor earns the clean answer,
+//                        NO_DRIFT, no not-checked clause at all
+//   unpinned + network   the hoist ahead of readMemDirOrNote: exit 0,
+//                        stderr names the network share, nothing else
+//                        written
+//   pinned   + local     the pin cause in the drift block
+//   pinned   + network   the same pin cause, byte-identical to the cell
+//                        above: the pin is the whole account of why no root
+//                        was derived, and the working directory's shape
+//                        adds nothing to it
+test("decay-scan's four cwd/pin cells: exit code and first not-checked line",
+    { skip: process.platform !== 'win32' ? 'an admin-share UNC path is a win32 shape'
+        : localUncPathAvailable() ? false : 'administrative shares are not reachable on this machine' },
+    () => {
+    const store = makeStore();
+    const pinnedDir = pinnedMemDir(store, PIN);
+    try {
+        fs.mkdirSync(path.join(store.proj, 'src'), { recursive: true });
+        fs.writeFileSync(path.join(store.proj, 'src', 'a.js'), Buffer.from('hello\n', 'latin1'));
+        writeMemoryFile(store, 'anchored.md',
+            '---\nname: ""\nanchors: src/a.js@' + HELLO_SHA + '\n---\n\n# a\n');
+        fs.mkdirSync(pinnedDir, { recursive: true });
+        fs.writeFileSync(path.join(pinnedDir, 'pinned.md'), '---\nname: ""\n---\n\n# p\n', 'utf8');
+
+        const unpinnedLocal = run(store, ['decay-scan']);
+        assert.strictEqual(unpinnedLocal.status, 0, unpinnedLocal.stderr);
+        assert.ok(unpinnedLocal.stderr.includes(NO_DRIFT),
+            'unpinned+local: the clean answer among decay-scan\'s other lines:\n' + unpinnedLocal.stderr);
+        assert.ok(!unpinnedLocal.stderr.includes('not checked'),
+            'no not-checked clause on the ordinary case:\n' + unpinnedLocal.stderr);
+
+        const unpinnedNetwork = runFrom(store, localUncPath(store.proj), ['decay-scan'], {});
+        assert.strictEqual(unpinnedNetwork.status, 0, unpinnedNetwork.stderr);
+        assert.strictEqual(unpinnedNetwork.stdout, '');
+        assert.strictEqual(unpinnedNetwork.stderr, 'memq: this call\'s working directory names a '
+            + 'network share, so its project memory directory was not resolved (a synchronous walk '
+            + 'under it risks hanging for the SMB timeout on an unreachable host); nothing to scan\n');
+
+        const pinnedLocal = run(store, ['decay-scan'], { KIT_MEMORY_PROJECT: PIN });
+        assert.strictEqual(pinnedLocal.status, 0, pinnedLocal.stderr);
+        assert.ok(pinnedLocal.stderr.includes('memq: anchor drift (project tier): not checked (a '
+            + 'store pin is in effect, so no root is derived from this working directory)\n'));
+
+        const pinnedNetwork = runFrom(store, localUncPath(store.proj), ['decay-scan'], { KIT_MEMORY_PROJECT: PIN });
+        assert.strictEqual(pinnedNetwork.status, 0, pinnedNetwork.stderr);
+        assert.strictEqual(pinnedNetwork.stderr, pinnedLocal.stderr,
+            'pinned+network is byte-identical to pinned+local');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The unpinned sibling of the two pinned cases above: no KIT_MEMORY_PROJECT,
+// so the hoist ahead of readMemDirOrNote fires on cwd's shape alone and the
+// digest never reaches its ordinary empty-store answer.
+test('recall stands the whole digest down for an unpinned network working directory', () => {
+    const store = makeStore();
+    try {
+        const res = runFrom(store, localUncPath(store.proj), ['recall'], {});
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout, '');
+        assert.strictEqual(res.stderr, 'memq: this call\'s working directory names a network '
+            + 'share, so its project memory directory was not resolved (a synchronous walk under '
+            + 'it risks hanging for the SMB timeout on an unreachable host); nothing to recall\n');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The unpinned sibling of the two pinned cases above, same shape as
+// recall's: no KIT_MEMORY_PROJECT, so the hoist ahead of readMemDirOrNote
+// fires on cwd's shape alone and the scan never reaches 'memq: no anchor
+// drift (project tier)'.
+test('decay-scan stands the whole command down for an unpinned network working directory', () => {
+    const store = makeStore();
+    try {
+        const res = runFrom(store, localUncPath(store.proj), ['decay-scan'], {});
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout, '');
+        assert.strictEqual(res.stderr, 'memq: this call\'s working directory names a network '
+            + 'share, so its project memory directory was not resolved (a synchronous walk under '
+            + 'it risks hanging for the SMB timeout on an unreachable host); nothing to scan\n');
+    } finally {
+        rmStore(store);
     }
 });
 
@@ -3447,6 +3841,8 @@ test('the drift block tells its three not-checked causes apart, and counts a bud
     // line), so the budget branch of this renderer is reachable from a test
     // alone. Deleting it instead would leave the next caller that passes
     // limits with a report that drops what it never reached.
+    // The second argument is consulted only when drift is null, so it is
+    // undefined in every case below where drift carries a real report.
     const rendered = memq.driftBlock({
         drifted: [], unverified: [], unexamined: 2,
         unchecked: [
@@ -3454,7 +3850,7 @@ test('the drift block tells its three not-checked causes apart, and counts a bud
             { name: 'b-root', cause: 'root' },
             { name: 'c-file', cause: 'file' }
         ]
-    }, false);
+    }, undefined);
     assert.strictEqual(rendered,
         'memq: anchor drift (project tier): 3 records whose anchors could not be read,'
         + ' 2 records a read budget stopped this pass short of\n'
@@ -3473,23 +3869,41 @@ test('the drift block tells its three not-checked causes apart, and counts a bud
             unreadable: ['lib'], truncated: true, budgeted: ['z.js']
         }],
         unverified: [], unchecked: [], unexamined: 0
-    }, false);
+    }, undefined);
     assert.strictEqual(both.split('\n')[0],
         'memq: anchor drift (project tier): 1 memory anchoring a file that changed '
         + 'or is gone, 1 record whose anchored file could not be examined, '
         + '1 record where ' + memq.ANCHOR_TRUNCATED_TEXT + ', '
         + '1 record with an anchor a read budget stopped this pass short of');
 
-    // The two tier-level doors, which no report may render as an empty block.
-    assert.strictEqual(memq.driftBlock(null, true),
+    // The two causes cmdDecayScan resolves (a network-shaped cwd reaching
+    // this door is always a pinned one, which the pin cause already covers
+    // correctly, so no third cause exists to resolve), plus an arbitrary
+    // third string proving the renderer itself decides nothing about the
+    // text it is handed: the caller resolves which cause applies and hands
+    // driftBlock the resolved text directly.
+    assert.strictEqual(memq.driftBlock(null,
+        'a store pin is in effect, so no root is derived from this working directory'),
         'memq: anchor drift (project tier): not checked (a store pin is in effect, so no'
         + ' root is derived from this working directory)\n');
-    assert.strictEqual(memq.driftBlock(null, false),
+    assert.strictEqual(memq.driftBlock(null, 'this tier could not be examined'),
+        'memq: anchor drift (project tier): not checked (this tier could not be examined)\n');
+    assert.strictEqual(memq.driftBlock(null, 'a caller-resolved sentence unrelated to any named cause'),
+        'memq: anchor drift (project tier): not checked (a caller-resolved sentence unrelated to '
+        + 'any named cause)\n');
+
+    // An omitted or non-string cause does not render as literal text ('not
+    // checked (undefined)'): it falls back to the tier-unexamined cause, the
+    // same one an omitted cause already means for the failed-listing state
+    // the doc comment above names.
+    assert.strictEqual(memq.driftBlock(null, undefined),
+        'memq: anchor drift (project tier): not checked (this tier could not be examined)\n');
+    assert.strictEqual(memq.driftBlock(null, 42),
         'memq: anchor drift (project tier): not checked (this tier could not be examined)\n');
 
     // And the clean answer, which none of the above may borrow.
     assert.strictEqual(memq.driftBlock(
-        { drifted: [], unverified: [], unchecked: [], unexamined: 0 }, false), NO_DRIFT);
+        { drifted: [], unverified: [], unchecked: [], unexamined: 0 }, undefined), NO_DRIFT);
 });
 
 test('a hash that answered null still charges the bytes it read to a caller\'s meter', () => {
@@ -4146,6 +4560,14 @@ test('decay-prune refuses to archive a pinned memory, and deleting the field let
         assert.strictEqual(refused.stdout, '', 'a refused pass has nothing to report');
         assert.match(refused.stderr,
             /'pinned-keep' is pinned; delete its pinned: frontmatter field to retire it/);
+        // The project tier gets no writer clause: memory-frontmatter-guard.js
+        // refuses only certain frontmatter defects there, and removing a
+        // pinned: line entirely trips none of them, so this session's own
+        // Write and Edit tools can still make this edit. The clause naming
+        // which writer still can is true only where the guard denies the
+        // edit outright, which is the shared tiers alone.
+        assert.ok(!refused.stderr.includes('only the operator\'s editor'),
+            'the project tier keeps the plain sentence: ' + refused.stderr);
         assert.ok(fs.existsSync(path.join(store.memDir, 'pinned-keep.md')), 'the memory did not move');
         assert.strictEqual(fs.readFileSync(path.join(store.memDir, 'MEMORY.md'), 'utf8'), indexBefore);
 
@@ -5337,6 +5759,15 @@ test('the pinned count spans both tiers and a type-tier pin carries its tier lab
         assert.strictEqual(refused.stdout, '');
         assert.match(refused.stderr,
             /'shared-pin' is pinned in the type tier; delete its pinned: frontmatter field to retire it/);
+        // A shared tier gets the writer clause: memory-frontmatter-guard.js
+        // denies every Write, Edit and MultiEdit against this tier
+        // unconditionally, the pinned: field included, so the edit this
+        // sentence names has no route through this session's own tools
+        // anymore, only through the operator directly (not "the operator's
+        // editor or a shell": an unattended worker has a shell too, and this
+        // refusal should not hand it a route the shared-tier boundary means
+        // to hold).
+        assert.match(refused.stderr, /only the operator can still do/);
         assert.ok(fs.existsSync(path.join(dir, 'shared-pin.md')), 'the shared memory did not move');
     } finally {
         rmStore(store);
@@ -7371,6 +7802,32 @@ function runFrom(store, cwd, args, extra) {
     return spawnSync(process.execPath, [MEMQ].concat(args), {
         cwd, encoding: 'utf8', env: childEnv(store, extra)
     });
+}
+
+// The administrative-share spelling of a directory this machine already
+// owns: \\<hostname>\<drive>$\<rest>. It answers namesNetworkShare's leading
+// separators exactly as a real UNC path does, so a caller that walks it
+// takes the same code path an unreachable share would, but the walk itself
+// resolves over this machine's own loopback rather than a real network hop,
+// which is what keeps a case built on it fast rather than costing the SMB
+// timeout an unreachable address would.
+function localUncPath(dir) {
+    const resolved = path.resolve(dir);
+    return '\\\\' + os.hostname() + '\\' + resolved[0] + '$' + resolved.slice(2);
+}
+
+// A control-earns-its-silence probe: administrative shares are a machine
+// setting, not a win32 guarantee, and a machine with them disabled makes
+// localUncPath's own spelling resolve to nothing. Without this probe every
+// localUncPath test reads that state as a code failure (spawnSync cannot
+// start the child at a cwd that does not resolve, so `status` comes back
+// null and the assert reports a launch failure) rather than the environment
+// condition it actually is. os.tmpdir() is always this machine's own
+// directory, so a stat against its admin-share spelling is a direct, cheap
+// read of whether the share is reachable at all, with nothing about a
+// test's own fixture riding on the answer.
+function localUncPathAvailable() {
+    return process.platform === 'win32' && fs.existsSync(localUncPath(os.tmpdir()));
 }
 
 function projectDirNames(store) {
@@ -12612,6 +13069,7 @@ test('an operator-tier pin is listed with its tier label and refuses the retirem
         assert.strictEqual(refused.stdout, '');
         assert.match(refused.stderr,
             /'op-pin' is pinned in the operator tier; delete its pinned: frontmatter field to retire it/);
+        assert.match(refused.stderr, /only the operator can still do/);
         assert.ok(fs.existsSync(path.join(operatorDirPath(store), 'op-pin.md')), 'the memory did not move');
     } finally {
         rmStore(store);
@@ -18458,6 +18916,138 @@ test('a store pinned to another project has no root to anchor against, and says 
         assert.match(res.stderr, /this store is pinned \(KIT_MEMORY_PROJECT\), so its records were not chosen by this working directory/);
         assert.ok(fs.readFileSync(path.join(pinnedMem, 'fact.md')).equals(before),
             'the pinned store\'s record is untouched');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// cmdAnchor's pin refusal answers for a pinned session whether or not cwd
+// names a network share: anchorRoot(cwd) answers null for a pin before it
+// ever touches cwd's filesystem shape, so the share plays no part in why
+// no root resolved, and naming it instead would tell the operator to move
+// off the share and re-run, a remedy that cannot work while the pin stands
+// (Standing Amendments 6 and 7). This asserts pinned+network reads exactly
+// as pinned+local: the same pin refusal, nothing written.
+//
+// localUncPath's admin-share spelling resolves only on win32, and only with
+// local-admin rights on this machine (the C$-style share); off win32 the
+// path is not this machine's own directory and the case fails for an
+// environment reason rather than a code one.
+test('anchor refuses with the pin cause for a pinned session whether or not cwd names a '
+    + 'network share, and writes nothing either way',
+    { skip: process.platform !== 'win32' ? 'an admin-share UNC path is a win32 shape'
+        : localUncPathAvailable() ? false : 'administrative shares are not reachable on this machine' },
+    () => {
+    const store = makeStore();
+    const memDir = pinnedMemDir(store, PIN);
+    try {
+        fs.mkdirSync(memDir, { recursive: true });
+        fs.writeFileSync(path.join(memDir, 'fact.md'), '---\nname: ""\n---\n\nbody\n', 'utf8');
+        const before = fs.readFileSync(path.join(memDir, 'fact.md'));
+
+        const res = runFrom(store, localUncPath(store.proj), ['anchor', 'fact', 'src/a.js'],
+            { KIT_MEMORY_PROJECT: PIN });
+        assert.strictEqual(res.status, 1, res.stdout);
+        assert.strictEqual(res.stdout, '');
+        assert.match(res.stderr,
+            /this store is pinned \(KIT_MEMORY_PROJECT\), so its records were not chosen by this working directory/);
+        assert.ok(!res.stderr.includes('names a network share'),
+            'the network cause must not also appear:\n' + res.stderr);
+        assert.ok(fs.readFileSync(path.join(memDir, 'fact.md')).equals(before),
+            'the record is untouched');
+
+        // The control: the same fixture, the same pin, an ordinary local
+        // cwd. Only cwd's shape differs, and this proves the two now answer
+        // identically.
+        const local = run(store, ['anchor', 'fact', 'src/a.js'], { KIT_MEMORY_PROJECT: PIN });
+        assert.strictEqual(local.status, 1, local.stdout);
+        assert.strictEqual(local.stderr, res.stderr,
+            'a network-shaped cwd changes nothing under a pin:\nlocal:\n' + local.stderr
+                + '\nnetworked:\n' + res.stderr);
+    } finally {
+        rmStore(store);
+    }
+});
+
+// Standing Amendment 7's cell table for anchor: every state the emitting
+// path admits, each cell's exit code and its own first line of output (the
+// written line on success, the refusal's leading clause otherwise).
+//
+//   unpinned + local     ordinary: the write succeeds, exit 0, the written
+//                        anchors: line on stdout
+//   unpinned + network   the hoisted gate ahead of memDirOrNote: exit 1,
+//                        nothing written, stderr names the network share
+//   pinned   + local     the pin refusal, exit 1, nothing written
+//   pinned   + network   the same pin refusal, byte-identical to the cell
+//                        above: the pin is the whole account of why no root
+//                        was derived, and the working directory's shape
+//                        adds nothing to it
+test("anchor's four cwd/pin cells: exit code and first line of output",
+    { skip: process.platform !== 'win32' ? 'an admin-share UNC path is a win32 shape'
+        : localUncPathAvailable() ? false : 'administrative shares are not reachable on this machine' },
+    () => {
+    const store = makeStore();
+    const pinnedDir = pinnedMemDir(store, PIN);
+    try {
+        seedAnchorTargets(store);
+        writeMemoryFile(store, 'fact.md', '---\nname: ""\n---\n\n# Fact\n\nbody\n');
+        fs.mkdirSync(pinnedDir, { recursive: true });
+        fs.writeFileSync(path.join(pinnedDir, 'fact.md'), '---\nname: ""\n---\n\nbody\n', 'utf8');
+        const pinnedBefore = fs.readFileSync(path.join(pinnedDir, 'fact.md'));
+
+        const unpinnedLocal = run(store, ['anchor', 'fact', 'src/a.js']);
+        assert.strictEqual(unpinnedLocal.status, 0, unpinnedLocal.stderr);
+        assert.strictEqual(unpinnedLocal.stdout, 'anchors: src/a.js@' + HELLO_SHA + '\n',
+            'unpinned+local: the write succeeds and prints the line it wrote:\n' + unpinnedLocal.stdout);
+
+        const unpinnedNetwork = runFrom(store, localUncPath(store.proj), ['anchor', 'fact', 'src/b.js'], {});
+        assert.strictEqual(unpinnedNetwork.status, 1);
+        assert.strictEqual(unpinnedNetwork.stdout, '');
+        assert.strictEqual(unpinnedNetwork.stderr, 'memq: this call\'s working directory names a network '
+            + 'share, so no root was derived for an anchor path to be relative to (a synchronous '
+            + 'walk under it risks hanging for the SMB timeout on an unreachable host, the same '
+            + 'walk memDirOrNote\'s own resolution of the project memory directory would '
+            + 'otherwise take next); there is no route to run this command from a network '
+            + 'working directory, so nothing was written\n');
+
+        const pinnedLocal = run(store, ['anchor', 'fact', 'src/a.js'], { KIT_MEMORY_PROJECT: PIN });
+        assert.strictEqual(pinnedLocal.status, 1, pinnedLocal.stdout);
+        assert.strictEqual(pinnedLocal.stdout, '');
+        assert.match(pinnedLocal.stderr,
+            /this store is pinned \(KIT_MEMORY_PROJECT\), so its records were not chosen by this working directory/);
+
+        const pinnedNetwork = runFrom(store, localUncPath(store.proj), ['anchor', 'fact', 'src/a.js'],
+            { KIT_MEMORY_PROJECT: PIN });
+        assert.strictEqual(pinnedNetwork.status, 1, pinnedNetwork.stdout);
+        assert.strictEqual(pinnedNetwork.stdout, '');
+        assert.strictEqual(pinnedNetwork.stderr, pinnedLocal.stderr,
+            'pinned+network is byte-identical to pinned+local');
+        assert.ok(fs.readFileSync(path.join(pinnedDir, 'fact.md')).equals(pinnedBefore),
+            'neither pinned cell wrote anything');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The unpinned sibling of the pinned case above: no KIT_MEMORY_PROJECT, so
+// this reaches the hoisted gate ahead of memDirOrNote rather than the
+// pin refusal further down (which the pinned case above exercises); the
+// hoisted message's own extra clause naming memDirOrNote's walk by name is
+// what tells the two apart.
+test('anchor stands down for an unpinned network working directory, before memDirOrNote ever runs',
+    () => {
+    const store = makeStore();
+    try {
+        seedAnchorTargets(store);
+        const res = runFrom(store, localUncPath(store.proj), ['anchor', 'fact', 'src/a.js'], {});
+        assert.strictEqual(res.status, 1);
+        assert.strictEqual(res.stdout, '');
+        assert.strictEqual(res.stderr, 'memq: this call\'s working directory names a network '
+            + 'share, so no root was derived for an anchor path to be relative to (a synchronous '
+            + 'walk under it risks hanging for the SMB timeout on an unreachable host, the same '
+            + 'walk memDirOrNote\'s own resolution of the project memory directory would '
+            + 'otherwise take next); there is no route to run this command from a network '
+            + 'working directory, so nothing was written\n');
     } finally {
         rmStore(store);
     }

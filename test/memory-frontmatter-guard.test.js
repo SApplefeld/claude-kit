@@ -59,6 +59,34 @@ function rmStore(store) {
     fs.rmSync(store.base, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
 }
 
+// The administrative-share spelling of a directory this machine already
+// owns: \\<hostname>\<drive>$\<rest>. namesNetworkShare reads its leading
+// separators exactly as it would a real UNC path, so a case built on it takes
+// the guard's network branch without the SMB timeout an unreachable address
+// would cost, since the walk resolves over this machine's own loopback.
+function localUncPath(dir) {
+    const resolved = path.resolve(dir);
+    return '\\\\' + os.hostname() + '\\' + resolved[0] + '$' + resolved.slice(2);
+}
+
+// A control-earns-its-silence probe (fix round 3, m11): administrative shares
+// are a machine setting, not a win32 guarantee, and a machine with them
+// disabled makes localUncPath's own spelling resolve to nothing. Without this
+// probe the one test below built on it read that state as a code failure
+// (spawnSync cannot start the child at a cwd that does not resolve, so
+// `status` comes back null and the assert reports a launch failure) rather
+// than the environment condition it actually is.
+function localUncPathAvailable() {
+    return process.platform === 'win32' && fs.existsSync(localUncPath(os.tmpdir()));
+}
+
+// Narrower than WIN32_ONLY above: this test's fixture needs the local
+// administrative share reachable, not merely a win32 host, so it earns its
+// own skip condition rather than sharing WIN32_ONLY with tests that only
+// need a win32 path spelling.
+const UNC_SHARE_ONLY = { skip: process.platform !== 'win32' ? 'a win32 path spelling'
+    : localUncPathAvailable() ? false : 'administrative shares are not reachable on this machine' };
+
 function runGuard(store, payload, raw, envExtra) {
     const env = {
         ...process.env,
@@ -761,6 +789,59 @@ test('an anchored record with no project root to resolve against is allowed and 
     } finally { rmStore(store); }
 });
 
+test('an anchored record with a network working directory is allowed and names the network cause, '
+    + 'not the pin cause', UNC_SHARE_ONLY, () => {
+    // The payload's cwd is a real, reachable directory on this machine
+    // spelled through its administrative-share UNC form
+    // (\\<hostname>\<drive>$\<rest>), so namesNetworkShare reads it exactly
+    // as it would an unreachable share, without this case costing an SMB
+    // timeout to prove it: this guard sits in front of every Write, Edit and
+    // MultiEdit on a memory path, so a stray real walk here would stall the
+    // suite's own tool call rather than merely one test. The admin-share
+    // spelling this builds resolves only on win32, and only with local-admin
+    // rights on this machine (the C$-style share); off win32, or without
+    // them, the path is not the local directory it names and the case would
+    // fail for an environment reason rather than a code one.
+    const store = makeStore();
+    try {
+        const target = path.join(store.project, 'new-record.md');
+        const anchored = record(['anchors: src/a.js@' + SHA]);
+
+        // Control: the same record, the same target, an ordinary local cwd.
+        // Nothing here is pinned, so anchorRoot resolves against store.repo
+        // and the lexical containment check passes; this is the checked and
+        // clean answer the not-checked one below must never share a value
+        // with.
+        assertAllow(runGuard(store, writeTo(store, target, anchored)),
+            'the same record with an ordinary local cwd is checked and clean');
+
+        const networked = writeTo(store, target, anchored);
+        networked.cwd = localUncPath(store.repo);
+        assertNotChecked(runGuard(store, networked),
+            /this call's working directory names a network share/);
+    } finally { rmStore(store); }
+});
+
+// Fix round 3, M1: namesNetworkShare's own fail-closed type guard (m9, round
+// 2) answers true for any non-string, and cwd is legitimately null here when
+// the payload carries no working directory at all (main() sets it that way
+// at the top). Before the type guard, a null cwd fell through to
+// memq.anchorRoot(null), which answers null, and the accurate "no project
+// root resolves" cause below. After it, a null cwd was misread as naming a
+// network share, a call that never had a working directory being told it
+// named a share it does not have. The fix routes a non-string cwd around
+// the network check entirely, back to anchorRoot's own answer.
+test('an anchored record whose payload carries no working directory names the rootless cause, '
+    + 'not the network cause', () => {
+    const store = makeStore();
+    try {
+        const target = path.join(store.project, 'new-record.md');
+        const anchored = record(['anchors: src/a.js@' + SHA]);
+        const noCwd = { tool_name: 'Write', tool_input: { file_path: target, content: anchored } };
+        assertNotChecked(runGuard(store, noCwd), /no project root resolves/);
+    } finally { rmStore(store); }
+});
+
 test('a tier whose records cannot be listed is allowed and says it checked nothing', () => {
     // A listing that fails for any reason but "the directory is not there" says
     // nothing about whether the pointer's target exists, so the pointer is not
@@ -1107,6 +1188,65 @@ test('a throw between placing a shared-tier target and refusing it is allowed an
             /the check itself failed/);
         assert.match(text, /type-tier/, 'the line names the shared tier: ' + text);
         assert.match(text, /shared-tier rule/, 'and says which rule went unapplied: ' + text);
+        assertDeny(runGuard(store, writeTo(store, target, CLEAN)), /memq add-type/,
+            'the untrapped control still refuses the tier');
+    } finally { rmStore(store); }
+});
+
+test("tierOf names the tier memq's own tierNameFor answers, so a shape memq moves is a shape "
+    + 'the guard follows', () => {
+    // Standing Amendment 2: tierOf used to re-spell the three tier shapes
+    // locally, which drifts fail-open (were memq's own shapes to move,
+    // tierDirFor would still place the file while a local re-derivation
+    // answered null, allowing a shared-tier write in silence). Patching
+    // memq.tierNameFor alone, with tierDirFor and every other reader real,
+    // proves the guard's own answer is memq's rather than a second copy: a
+    // guard that still re-derived the tier locally would ignore this patch
+    // and refuse with the type-tier fix regardless.
+    const store = makeStore();
+    try {
+        const target = path.join(store.type, 'a-type-record.md');
+        const env = memqTrap(store, "memq.tierNameFor = () => 'operator';");
+        assertDeny(runGuard(store, writeTo(store, target, CLEAN), undefined, env),
+            /memq add-operator/,
+            'the guard names the operator fix once memq answers operator for this directory');
+        // The control: the same target, the real tierNameFor, names the type
+        // fix instead, so the line above is memq's patched answer moving the
+        // guard's own rather than a guard that always says operator.
+        assertDeny(runGuard(store, writeTo(store, target, CLEAN)), /memq add-type/,
+            'the untrapped control names the type fix');
+    } finally { rmStore(store); }
+});
+
+// tierDirFor, tierNameFor and namesNetworkShare are this section's own
+// additions, so a cached memq.js from before they existed can supply
+// isMemoryFilename (older, unrelated) while lacking any of the three. Unlike
+// the throwing-function case above (still typeof 'function', still caught by
+// the outer catch with placedTier left null, and rightly silent for a target
+// that was never going to be judged), a MISSING export is checked for before
+// any of the three is called at all, so a shared-tier target that would
+// otherwise deny gets a Not checked line instead of vanishing into the same
+// silence the throwing case earns for a target outside the store.
+// namesNetworkShare joined this gate in fix round 3 (M3): placeTarget calls
+// it and runs before placedTier is ever set, so a missing namesNetworkShare
+// used to reach the outer catch with placedTier still null, the exact
+// silent-allow this test's own sibling case (dropping tierDirFor or
+// tierNameFor) was written to catch, left open for this one symbol.
+test("a memq missing tierDirFor, tierNameFor or namesNetworkShare is reported rather than "
+    + 'silently allowed', () => {
+    const store = makeStore();
+    try {
+        const target = path.join(store.type, 'a-type-record.md');
+        for (const dropped of ['tierDirFor', 'tierNameFor', 'namesNetworkShare']) {
+            const res = runGuard(store, writeTo(store, target, CLEAN), undefined,
+                { NODE_OPTIONS: memqMissingExportPreload(store.base, dropped) });
+            assertNotChecked(res,
+                /tierDirFor, tierNameFor and namesNetworkShare symbols are not all there/,
+                'a memq missing ' + dropped + ' is reported: ' + res.stdout + res.stderr);
+        }
+        // The control: the same target, memq whole, still denies the
+        // shared-tier write, so the three lines above are the missing export
+        // and not the fixture going quiet for some other reason.
         assertDeny(runGuard(store, writeTo(store, target, CLEAN)), /memq add-type/,
             'the untrapped control still refuses the tier');
     } finally { rmStore(store); }

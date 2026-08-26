@@ -225,7 +225,25 @@
 // carries the reasoning and the trust boundary); every other shape, including
 // a submodule's, keeps the working directory's own derivation.
 //
-// Node core modules only, CommonJS, zero dependencies, UTF-8 throughout.
+// Node core modules only, CommonJS, UTF-8 throughout, with one named
+// exception: hooks/kit-network-lib.js, a module of a few lines holding
+// namesNetworkShare and nothing else, required below alongside the built-ins
+// and re-exported under this file's own name. Every consumer inside this
+// file already holds this module at no extra cost once required here, and
+// requiring it here rather than duplicating its one expression is what keeps
+// the leading-separator test single-sourced (Standing Amendment 2) between
+// this file and the hooks that ask the same question without needing memq
+// for anything else. test/memq-grant.test.js pins this file to exactly this
+// one contiguous top-of-file requires block plus the one dynamic code load
+// inside semanticChannel; this line is the former, not the latter, because
+// its target is a fixed, kit-shipped sibling rather than a directory the
+// command line names. This is a load-time coupling this file did not carry
+// before this section: a require failure for hooks/kit-network-lib.js (an
+// install missing that file, a hand-edited plugin cache) throws before any
+// of this file's own code runs, refusing every verb rather than only the
+// ones that call namesNetworkShare, where before this section the whole
+// file loaded on Node's own built-ins alone and no sibling file's absence
+// could take it down.
 
 'use strict';
 
@@ -233,6 +251,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
+const { namesNetworkShare } = require('../hooks/kit-network-lib.js');
 
 const JOURNAL_FILE = 'outcomes.jsonl';
 const USAGE_FILE = 'usage.jsonl';
@@ -845,18 +864,42 @@ function memoryFileKey(name) {
 // memory/archive/, say) has been retired from that tier, and a record written
 // beside it would land in a sidecar no reader of the tier ever opens: a write
 // that can never be read.
+// The tier shape a path relative to the store root matches: 'project'
+// (projects/<name>/memory), 'type' (memory-types/<type>), 'operator'
+// (memory-operator), or null for a relative path matching none of them.
+// tierDirFor and tierNameFor both decide the three shapes through this one
+// function, so whether a directory is a tier and which tier it is cannot
+// answer from two different spellings of the same three shapes.
+function tierShapeName(rel) {
+    const parts = rel.split(/[\\/]/);
+    if (parts[0] === '..') return null;
+    if (parts.length === 3 && fsEq(parts[0], 'projects') && fsEq(parts[2], 'memory')) return 'project';
+    if (parts.length === 2 && fsEq(parts[0], 'memory-types')) return 'type';
+    if (parts.length === 1 && fsEq(parts[0], OPERATOR_DIR)) return 'operator';
+    return null;
+}
+
 function tierDirFor(filePath) {
     const dir = path.dirname(path.resolve(filePath));
     // A relative path that is empty, absolute (another drive), or climbing out
     // of the root means the file is not under the store at all.
     const rel = path.relative(memoryRoot(), dir);
     if (rel === '' || path.isAbsolute(rel)) return null;
-    const parts = rel.split(/[\\/]/);
-    if (parts[0] === '..') return null;
-    if (parts.length === 3 && fsEq(parts[0], 'projects') && fsEq(parts[2], 'memory')) return dir;
-    if (parts.length === 2 && fsEq(parts[0], 'memory-types')) return dir;
-    if (parts.length === 1 && fsEq(parts[0], OPERATOR_DIR)) return dir;
-    return null;
+    return tierShapeName(rel) === null ? null : dir;
+}
+
+// Which of the three tiers a directory names, or null for one that names none
+// of them: tierDirFor answers only whether a file's directory is a tier
+// directory, so a caller naming the tier in a message calls this rather than
+// re-spelling the three shapes locally. `dir` is expected to be exactly the
+// value tierDirFor itself would return for a file inside it, so the two
+// answers walk the same relative path against the same root and cannot
+// disagree about where memq's own shapes moved to.
+function tierNameFor(dir) {
+    if (typeof dir !== 'string' || dir === '') return null;
+    const rel = path.relative(memoryRoot(), dir);
+    if (rel === '' || path.isAbsolute(rel)) return null;
+    return tierShapeName(rel);
 }
 
 // Where a project's decay stamp sits. `decay-done` touches it and the
@@ -4767,6 +4810,35 @@ const ANCHOR_ROOTLESS_PIN = 'a store pin is in effect, so no root is derived'
     + ' from this working directory';
 const ANCHOR_TIER_UNEXAMINED = 'this tier could not be examined';
 
+// A working directory naming a network share is not a distinct whole-tier
+// cause here, because it cannot reach this code without a store pin also
+// being in effect: cmdGet, cmdRecall, cmdDecayScan and cmdAnchor each hoist
+// a refusal above this point that fires whenever
+// pinnedProjectSegment() === null && namesNetworkShare(cwd), so a
+// network-shaped cwd reaching any of the four checks below the hoist is
+// always a pinned one, and anchorRoot(cwd) already answers null for a pin
+// before it ever touches cwd's filesystem shape. The pin cause
+// (ANCHOR_ROOTLESS_PIN) is the whole account of why no root is derived for
+// that cell; naming the network share there instead would tell a pinned
+// operator on a UNC path to move off the share and re-run, a remedy that
+// cannot work, since the pin is what leaves no root either way (Standing
+// Amendments 6 and 7). `memq anchor` is a different shape from the other
+// three: it authors the record's anchors: line rather than reporting on
+// it, so on a pin it refuses outright (exit 1, nothing written) rather
+// than answering not-checked, in its own stderr sentence a few lines below
+// in cmdAnchor.
+
+// namesNetworkShare itself (Standing Amendment 2, the UNC and //server forms
+// a synchronous open can hang on) is defined once, in hooks/kit-network-lib.js,
+// required alongside this file's built-ins and re-exported under this name
+// below: see the header comment near the top of this file for why it lives
+// there rather than as a local function, and module.exports for the
+// re-export. hooks/memory-session.js's drift pass and
+// hooks/memory-frontmatter-guard.js both already hold this module and call
+// this export directly; hooks/compact-deferral-nudge.js and
+// hooks/chapter-boundary-nudge.js, which do not otherwise need memq, require
+// hooks/kit-network-lib.js directly instead.
+
 // What a coverage line says about a tier whose anchors this digest never
 // resolves. It is the same fact `get` states per record, in the same words
 // after the subject: an anchor is a path under a project root at the bytes
@@ -4867,7 +4939,21 @@ function anchorReport(file, raw, sharedTier) {
         return 'anchors: not checked (' + ANCHOR_CAUSE.frontmatter + ')\n';
     }
     if (parsed.items.length === 0 && !parsed.truncated) return '';
-    const root = anchorRoot(process.cwd());
+    // This door calls anchorRoot(cwd) directly rather than checking
+    // namesNetworkShare(cwd) first, because cmdGet's own hoist above already
+    // refuses whenever pinnedProjectSegment() === null &&
+    // namesNetworkShare(cwd), so this door is reached only when that refusal
+    // did not fire: a pin is set, or cwd is not network-shaped, or both.
+    // namesNetworkShare(cwd) can only be true here alongside a pin, and
+    // under a pin anchorRoot(cwd) already returns null before it ever
+    // touches cwd's filesystem shape (pinnedProjectSegment is checked
+    // first), so the pin cause below is the whole account for that cell.
+    // Naming the network share there instead would tell a pinned operator
+    // on a UNC path to move off the share and re-run, a remedy that cannot
+    // work, since the pin, not the share, is what leaves no root either way
+    // (Standing Amendments 6 and 7).
+    const cwd = process.cwd();
+    const root = anchorRoot(cwd);
     if (root === null) {
         return 'anchors: not checked (' + ANCHOR_ROOTLESS_PIN + ')\n';
     }
@@ -4919,6 +5005,21 @@ function anchorReport(file, raw, sharedTier) {
 function cmdGet(argv) {
     if (argv.length !== 1 || argv[0].startsWith('--')) return usage('get needs one <key|name>');
     const target = argv[0];
+    // This hoist sits ahead of readMemDirOrNote(): that call's own first
+    // statement, projectMemoryDir(process.cwd()), reaches
+    // worktreeMainRoot's fs.statSync(cwd/.git) whenever no pin is set, the
+    // walk that hangs for the SMB timeout on an unreachable host. A pin
+    // answers projectSegment before worktreeMainRoot is ever reached, so
+    // only an unpinned network cwd rides that walk; a pinned one reaches
+    // readMemDirOrNote safely and lands on anchorReport's own
+    // anchorRoot(cwd) call further below, which the pin cause covers
+    // directly for a pinned session whose cwd also names a share.
+    if (pinnedProjectSegment() === null && namesNetworkShare(process.cwd())) {
+        process.stderr.write('memq: this call\'s working directory names a network share, so its '
+            + 'project memory directory was not resolved (a synchronous walk under it risks '
+            + 'hanging for the SMB timeout on an unreachable host); nothing to report\n');
+        return;
+    }
     const memDir = readMemDirOrNote();
     if (memDir === null) return;
 
@@ -5429,6 +5530,22 @@ const ARCHIVE_ANCHOR_CLAUSE = ', anchors not checked (this digest does not check
 // nonzero.
 function cmdRecall(argv) {
     if (argv.length > 0) return usage('recall takes no arguments');
+    // This hoist sits ahead of readMemDirOrNote(): that call's own first
+    // statement, projectMemoryDir(process.cwd()), reaches
+    // worktreeMainRoot's fs.statSync(cwd/.git) whenever no pin is set, the
+    // walk that hangs for the SMB timeout on an unreachable host. A pin
+    // answers projectSegment before worktreeMainRoot is ever reached, so
+    // only an unpinned network cwd rides that walk; a pinned one reaches
+    // readMemDirOrNote safely and lands on this digest's own
+    // anchorRoot(cwd) call further below, which the pin cause covers
+    // directly for a pinned session whose cwd also names a share. This
+    // digest is the effort-start read a hang there would cost most.
+    if (pinnedProjectSegment() === null && namesNetworkShare(process.cwd())) {
+        process.stderr.write('memq: this call\'s working directory names a network share, so its '
+            + 'project memory directory was not resolved (a synchronous walk under it risks '
+            + 'hanging for the SMB timeout on an unreachable host); nothing to recall\n');
+        return;
+    }
     const memDir = readMemDirOrNote();
     if (memDir === null) return;
     const now = Date.now();
@@ -5477,7 +5594,24 @@ function cmdRecall(argv) {
     // It is a distinct token rather than silence, because neither of those is
     // a record whose anchors are fresh, and this digest is where an effort's
     // first read of the tier happens.
-    const projectRoot = anchorRoot(process.cwd());
+    //
+    // anchorRoot(cwd) is called directly here rather than behind a
+    // namesNetworkShare(cwd) check, because cmdRecall's own hoist above
+    // refuses whenever pinnedProjectSegment() === null &&
+    // namesNetworkShare(cwd), so a network-shaped cwd reaching this line is
+    // always a pinned one, and anchorRoot(cwd) already answers null for a
+    // pin before it ever touches cwd's filesystem shape
+    // (pinnedProjectSegment is checked first). So anchorRoot(cwd) is safe to
+    // call directly in every state this line can be reached in,
+    // network-shaped or not, and its own null answer is what gates
+    // tierAnchorDrift, which returns null on a null root without walking
+    // anything, pinned at test/memq.test.js:3392. A separate network branch
+    // ahead of anchorRoot would name the wrong cause for the only cell it
+    // could reach here: a network-shaped cwd is always a pinned one at this
+    // point, never an unpinned one a remedy of moving off the share could
+    // fix (Standing Amendments 6 and 7).
+    const recallCwd = process.cwd();
+    const projectRoot = anchorRoot(recallCwd);
     const projectDrift = tierAnchorDrift(memDir, projectMemories, projectRoot);
     const driftedNames = new Set(projectDrift === null ? [] : projectDrift.drifted.map((r) => r.name));
     const uncheckedAnchors = new Set(projectDrift === null ? []
@@ -6847,6 +6981,30 @@ function cmdAnchor(argv) {
             + (MEMORY_FILE_CAP - 3) + ', and not the memory index');
     }
 
+    // This hoist sits ahead of memDirOrNote(): that call's own first
+    // statement is projectMemoryDir(process.cwd()), which reaches
+    // worktreeMainRoot's fs.statSync(cwd/.git) whenever no pin is set, the
+    // walk that hangs for the SMB timeout on an unreachable host. A pin
+    // answers projectSegment before worktreeMainRoot is ever reached, so it
+    // is specifically an unpinned network cwd that rides that walk; a
+    // pinned one reaches memDirOrNote safely and lands on this function's
+    // own anchorRoot(cwd) call below instead, which the pin refusal there
+    // covers directly for a pinned session whose cwd also happens to name a
+    // share. This command authors the record's own anchors: line, so
+    // proceeding into a hang here risks losing an interruptible foreground
+    // wait rather than merely a report.
+    const cwd = process.cwd();
+    if (pinnedProjectSegment() === null && namesNetworkShare(cwd)) {
+        process.stderr.write('memq: this call\'s working directory names a network share, so no '
+            + 'root was derived for an anchor path to be relative to (a synchronous walk under '
+            + 'it risks hanging for the SMB timeout on an unreachable host, the same walk '
+            + 'memDirOrNote\'s own resolution of the project memory directory would otherwise '
+            + 'take next); there is no route to run this command from a network working '
+            + 'directory, so nothing was written\n');
+        process.exitCode = 1;
+        return;
+    }
+
     const memDir = memDirOrNote();
     if (memDir === null) {
         process.exitCode = 1;
@@ -6857,7 +7015,22 @@ function cmdAnchor(argv) {
     // all, since a pin names the project directory the store reads and says
     // nothing about this working directory, while a root that is derived and
     // then found to be no directory is a different report.
-    const root = anchorRoot(process.cwd());
+    //
+    // anchorRoot(cwd) is called directly here rather than behind a second
+    // namesNetworkShare(cwd) check: the hoisted gate above this function
+    // already refuses whenever pinnedProjectSegment() === null &&
+    // namesNetworkShare(cwd), so a network-shaped cwd reaching this line is
+    // always a pinned one, and under a pin, anchorRoot(cwd) already returns
+    // null before it ever touches cwd's filesystem shape
+    // (pinnedProjectSegment is checked first). The pin message below
+    // already covers this cell correctly, and it is the message that names
+    // a working remedy; a check naming the network share instead would
+    // tell a pinned operator on a UNC path to move off the share and
+    // re-run, which cannot work, since the pin, not the share, is what
+    // leaves no root either way (Standing Amendments 6 and 7). anchorRoot
+    // is safe to call directly in every state this line can be reached in,
+    // network-shaped or not, so no separate check is needed ahead of it.
+    const root = anchorRoot(cwd);
     if (root === null) {
         // A pin is in effect, which is all this knows. Which project it names
         // is not asked here and naming one would be a claim rather than a
@@ -7402,10 +7575,16 @@ function driftPathList(paths) {
 // More states than two, and the block never lets one stand in for another.
 // `drift` being null is 'not checked' for the whole tier, and it says so
 // rather than printing an empty block a reader would take for a clean store.
-// `rootless` is what tells the two causes of that answer apart: with no root
-// the usual reason is an honored store pin, and with one the tier itself
-// could not be examined, which is the wording because a listing that failed
-// and a walk that threw both arrive here and only the first is a listing.
+// `notCheckedCause` is the caller's own resolved text for that answer, one of
+// ANCHOR_ROOTLESS_PIN or ANCHOR_TIER_UNEXAMINED, decided by the caller
+// because only the caller knows why: a listing that failed and a walk that
+// threw both arrive here as ANCHOR_TIER_UNEXAMINED, and a root that did not
+// resolve (a store pin, the only way this caller's own root comes back null)
+// as ANCHOR_ROOTLESS_PIN. This function takes whatever string a caller
+// hands it, so a third resolved cause is not a contract this renderer
+// enforces: cmdDecayScan resolves only these two, since its own hoist
+// ahead of this call leaves no state where a working directory naming a
+// network share is a cause distinct from a store pin.
 // An empty report is the scan's no-candidates wording. Otherwise the population is counted and then listed,
 // the pinned block's shape, with pinned records among them (a pin exempts a
 // record from retirement, not from being unverified) and with the records
@@ -7419,11 +7598,17 @@ function driftPathList(paths) {
 // and unverified alike, because a drifted record carries those same three
 // fields: a heading counted over one list while the lines came from two
 // would have a reader counting one population and reading another.
-function driftBlock(drift, rootless) {
+function driftBlock(drift, notCheckedCause) {
     if (drift === null) {
-        return 'memq: anchor drift (project tier): not checked ('
-            + (rootless ? ANCHOR_ROOTLESS_PIN : ANCHOR_TIER_UNEXAMINED)
-            + ')\n';
+        // notCheckedCause is caller-supplied text, not a boolean flag: a caller
+        // that forgot to resolve one (or passed a non-string by accident) would
+        // otherwise render 'not checked (undefined)' rather than fail loud or
+        // fall back to a real cause. ANCHOR_TIER_UNEXAMINED is the right default
+        // for an omitted argument because it is the cause the doc comment above
+        // already assigns to "a listing that failed" without more specific
+        // information, which is exactly the state an unresolved cause is in.
+        const cause = typeof notCheckedCause === 'string' ? notCheckedCause : ANCHOR_TIER_UNEXAMINED;
+        return 'memq: anchor drift (project tier): not checked (' + cause + ')\n';
     }
     const counts = [];
     if (drift.drifted.length > 0) {
@@ -7482,6 +7667,21 @@ function driftBlock(drift, rootless) {
 
 function cmdDecayScan(argv) {
     if (argv.length > 0) return usage('decay-scan takes no arguments');
+    // This hoist sits ahead of readMemDirOrNote(): that call's own first
+    // statement, projectMemoryDir(process.cwd()), reaches
+    // worktreeMainRoot's fs.statSync(cwd/.git) whenever no pin is set, the
+    // walk that hangs for the SMB timeout on an unreachable host. A pin
+    // answers projectSegment before worktreeMainRoot is ever reached, so
+    // only an unpinned network cwd rides that walk; a pinned one reaches
+    // readMemDirOrNote safely and lands on this scan's own anchorRoot(cwd)
+    // call further below, which the pin cause covers directly for a pinned
+    // session whose cwd also names a share.
+    if (pinnedProjectSegment() === null && namesNetworkShare(process.cwd())) {
+        process.stderr.write('memq: this call\'s working directory names a network share, so its '
+            + 'project memory directory was not resolved (a synchronous walk under it risks '
+            + 'hanging for the SMB timeout on an unreachable host); nothing to scan\n');
+        return;
+    }
     const memDir = readMemDirOrNote();
     if (memDir === null) return;
     const now = Date.now();
@@ -7570,9 +7770,28 @@ function cmdDecayScan(argv) {
     // off the listing taken above rather than a second one, and hashes only
     // the paths a record anchors, so a store holding no anchors costs this
     // block the frontmatter that listing already read and nothing else.
-    const anchorsRoot = anchorRoot(process.cwd());
+    //
+    // anchorRoot(cwd) is called directly here rather than behind a
+    // namesNetworkShare(cwd) check that would keep tierAnchorDrift's
+    // per-segment lstats off a network share's filesystem shape.
+    // cmdDecayScan's own hoist above refuses whenever
+    // pinnedProjectSegment() === null && namesNetworkShare(cwd), so a
+    // network-shaped cwd reaching this line is always a pinned one, and
+    // anchorRoot(cwd) already answers null for a pin before it ever touches
+    // cwd's filesystem shape (pinnedProjectSegment is checked first). So
+    // anchorRoot(cwd) is safe to call directly in every state this line can
+    // be reached in, network-shaped or not, and its own null answer is what
+    // gates tierAnchorDrift, which returns null on a null root without
+    // walking anything, pinned at test/memq.test.js:3392. A separate
+    // network branch ahead of anchorRoot would name the wrong cause for the
+    // only cell it could reach here: a network-shaped cwd is always a
+    // pinned one at this point, never an unpinned one a remedy of moving
+    // off the share could fix (Standing Amendments 6 and 7).
+    const scanCwd = process.cwd();
+    const anchorsRoot = anchorRoot(scanCwd);
     process.stderr.write(driftBlock(
-        tierAnchorDrift(memDir, projectMemories, anchorsRoot), anchorsRoot === null));
+        tierAnchorDrift(memDir, projectMemories, anchorsRoot),
+        anchorsRoot === null ? ANCHOR_ROOTLESS_PIN : ANCHOR_TIER_UNEXAMINED));
 
     // Journal entries past the rollup age, tallied per key with the evidence
     // range. An entry whose timestamp does not parse has no age, so it is
@@ -8888,8 +9107,28 @@ function archiveTargetsValid(dir, names, where, sharedTier) {
         }
         const pin = pinState(memPath);
         if (pin === 'pinned') {
+            // The edit is still true of the operator's own hand on this
+            // store: only a shared-tier record now has no route to it
+            // through this session's own write tools, since
+            // memory-frontmatter-guard.js denies every Write, Edit and
+            // MultiEdit on a shared tier unconditionally, the pinned field
+            // included, whoever is writing. A project-tier record has no
+            // such rule against removing a field a write's resulting
+            // frontmatter simply no longer carries, so the clause names the
+            // route this session's own tools lost rather than claiming none
+            // of them ever had it. Named as the operator alone, not "the
+            // operator's editor or a shell": an unattended worker reading
+            // this refusal has a shell, and naming one as a route still open
+            // would hand a how-to for the boundary this refusal exists to
+            // hold, to the reader least entitled to use it.
             process.stderr.write('memq: \'' + sanitize(name, NAME_CAP) + '\' is pinned' + where
-                + '; delete its pinned: frontmatter field to retire it\n');
+                + '; delete its pinned: frontmatter field to retire it'
+                + (sharedTier
+                    ? ', which only the operator can still do: the frontmatter guard refuses '
+                        + 'that edit through this session\'s own Write, Edit and MultiEdit '
+                        + 'tools on a shared tier'
+                    : '')
+                + '\n');
             return null;
         }
         if (pin === 'unknown') {
@@ -11709,6 +11948,7 @@ module.exports = {
     anchorStatesFrom,
     anchorStates,
     anchorRoot,
+    namesNetworkShare,
     tierAnchorDrift,
     driftBlock,
     pinState,
@@ -11739,6 +11979,7 @@ module.exports = {
     isMemoryFilename,
     memoryFileKey,
     tierDirFor,
+    tierNameFor,
     isRunId,
     storeSignalsPresent,
     pendingDirFor,

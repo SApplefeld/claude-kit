@@ -26,14 +26,15 @@ The `curating-docs` skill owns the mechanics: it archives a plan when it complet
 
 ## Active plans
 
-Seven plan documents sit in `plans/`. `plans/README.md` carries each one's full description and the go state of its header; the running order of the armed plans rides in their own entries.
+Eight plan documents sit in `plans/`. `plans/README.md` carries each one's full description and the go state of its header; the running order of the armed plans rides in their own entries.
 
 - **`plans/claude-kit_coordinator-and-roles_spec_v1.md`** (In Progress, executor unassigned, self-authorizing via its Dispatch Authorization section) codifies session roles as stewardship seams and creates the machine-coordinator skill with its committed ledger.
 - **`plans/claude-kit_session-roles_notes_v1.md`** (Notes, non-executable) banks the session-roles design dialogue's fact base, positions, and open questions, with the pointer map to the peer-messaging experiment's durable records.
 - **`plans/claude-kit_dispatch-authority_spec_v1.md`** (In Progress, queued behind the kaizen batch) codifies artifact-borne dispatch authority (a plan's inert authorization section is the arming grant), `--append` queue semantics with arming provenance, arm-on-receipt, arm-where-you-run, and a session-start warning when another live session shares the checkout.
 - **`plans/claude-kit_kaizen-batch_spec_v1.md`** (In Progress, outside the armed running order) applies the peer-messaging experiment's kaizen slate: amendment routing to reviewer briefs, the peer-sessions post-ship amendment, six doctrine amendments, four authoring lines, the `memq unstamped` empty-versus-clean split, the docs-curator counted-claim sweep, and statusline load tolerance.
 - **`plans/claude-kit_verification-artifacts_spec_v1.md`** (In Progress, third in the armed running order) answers three kaizen notes as one lesson: a rule that demands a verification names where the fact is readable.
-- **`plans/claude-kit_memory-anchors-and-frontmatter-guard_spec_v1.md`** (Draft, second in the armed running order) gives a project memory an `anchors:` field so it can say when the file it is about has changed, and adds a PreToolUse guard that validates hand-written memory frontmatter at the Write.
+- **`plans/claude-kit_memory-anchors-and-frontmatter-guard_spec_v1.md`** (In Progress, second in the armed running order) gives a project memory an `anchors:` field so it can say when the file it is about has changed, and adds a PreToolUse guard that validates hand-written memory frontmatter at the Write.
+- **`plans/claude-kit_memq-network-cwd-resolver_spec_v1.md`** (In Progress, unqueued) makes the memory CLI refuse a network working directory at the seven verbs that still walk it, rather than hanging for the SMB timeout before it can say anything. It is the handoff the anchors plan's Section 7 named: that section fixed the same defect at four of the eleven affected verbs and deliberately left the shared resolver alone.
 - **`plans/claude-kit_warden-adoption-candidates_notes_v1.md`** is the candidate bank the two adopted specs grew from, header marked Dispositioned 2026-08-22: five design ideas from evaluating Warden-AI, each now carrying its disposition and the evidence (including the NEO probe that parked impact analysis), so nothing is re-proposed from the same README. It remains deliberately non-executable.
 
 Everything else is in `archive/`.
