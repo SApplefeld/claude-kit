@@ -7,7 +7,8 @@
 // hand-written `supersedes:` naming a record that does not exist, a `tags:`
 // list in the YAML form memq reads as no tags at all, an indented `pinned:`
 // that pins nothing, a malformed date, an `anchors:` entry outside the grammar,
-// and a frontmatter fence that never closes or never starts on line 1 all land
+// and a frontmatter fence that does not close inside the line bound memq reads
+// a block within, or that never starts on line 1, all land
 // with nothing said. This is the write-door check for those, and it is the only
 // surface that sees a record before it exists. The two shared tiers
 // (memory-types/, memory-operator/) are CLI-authored by the rule the
@@ -179,13 +180,15 @@ const QUOTE_CAP = 120;
 // and taken as a head from the front, which is what memq's own readHead does
 // (scripts/memq.js :465) at this same size. The store reads a record through
 // two kinds of door and the head is what reconciles them. The capped ones go
-// through readHead at FRONTMATTER_READ_CAP: readFrontmatterAnchors (:2527)
-// and listMemories (:3419). The uncapped ones go through frontmatterField
-// (:2209), which reads the whole file with fs.readFileSync, and that is the
-// door for readFrontmatterTags (:2225), readFrontmatterCreated (:2243),
-// pinState (:3201), the machine: read (:4164) and the back-pointer read in
-// supersedesTargetRefusal (:10783), which is the --supersedes screen
-// cmdAddType and cmdAddOperator run.
+// through readHead at FRONTMATTER_READ_CAP: readFrontmatterAnchors (:2665)
+// and listMemories (:3551). The uncapped ones go through frontmatterField
+// (:2334), which reads the whole file with fs.readFileSync, and that is the
+// door for readFrontmatterTags (:2355), readFrontmatterCreated (:2380),
+// pinState (:3356), the machine: read (:4350), the back-pointer read in
+// supersedesTargetRefusal (:11013), which is the --supersedes screen
+// cmdAddType and cmdAddOperator run, and readFrontmatterUnclosedRepair
+// (:2124), which names a record's repair and so has to see the record the
+// state it explains was decided from.
 //
 // So a block that closes before the head's last line is the block every one of
 // those readers sees, capped and uncapped alike, and its fields are judged in
@@ -195,7 +198,7 @@ const QUOTE_CAP = 120;
 // carrying either is not judged at all, taking the not-checked line instead
 // because what it declares depends on which reader looks. One is a block that
 // does not close inside the head: the capped readers never see it close and
-// read every field inside as absent, while the uncapped ones close it and read
+// read no field inside it at all, while the uncapped ones close it and read
 // the fields. The other is a block whose closing fence is the head's own last
 // line, which only a cut record can be, since the cut falls by byte count and
 // not at a line end: the `---` the head ends on may be the front of a line
@@ -206,7 +209,7 @@ const QUOTE_CAP = 120;
 // multiplies the text cannot grow an unbounded string inside a hook that runs
 // in front of every write.
 //
-// The value duplicates memq's FRONTMATTER_READ_CAP (:1975) rather than
+// The value duplicates memq's FRONTMATTER_READ_CAP (:1991) rather than
 // importing it, because memq does not export that constant: the duplication
 // is an accepted residual of this section, and a change to memq's cap has to
 // be made here too.
@@ -484,16 +487,22 @@ function tierOf(memq, dir) {
 }
 
 // The CLI verb that authors the tier this write was aimed at, named on the
-// refusal so the fix is in the line that blocks. The type segment is store text
-// on its way onto that line, so it is named only when it is a name memq would
-// accept (a bounded [\w.-] word) and stands as a placeholder otherwise: the
-// directory comes out of the payload's own path, and a deny's stderr reaches
-// the model as the harness's reason for blocking the call.
+// refusal so the fix is in the line that blocks. What comes back is the verb
+// and its positionals, with no flags: the flags are what decide whether the
+// command creates a record, rewrites its index description or replaces its
+// body, and the refusal builds each of those forms off this one stem, because
+// they are different commands to run and they change different things.
+//
+// The type segment is store text on its way onto that line, so it is named
+// only when it is a name memq would accept (a bounded [\w.-] word) and stands
+// as a placeholder otherwise: the directory comes out of the payload's own
+// path, and a deny's stderr reaches the model as the harness's reason for
+// blocking the call.
 function sharedTierFix(memq, tier, dir) {
-    if (tier === 'operator') return 'memq add-operator <name> <summary> --update';
+    if (tier === 'operator') return 'memq add-operator <name> "<description>"';
     const segment = path.basename(dir);
     const named = memq.isTypeName(segment) ? quoted(memq, segment) : '<type>';
-    return 'memq add-type ' + named + ' <name> <summary> --update';
+    return 'memq add-type ' + named + ' <name> "<description>"';
 }
 
 // Store text on its way onto a line, reduced to what a line can carry with
@@ -756,11 +765,38 @@ function fenceIsLate(block) {
 // would read (or fail to read) exactly this way.
 function frontmatterFault(memq, text, block, dir, file, cwd) {
     if (memq.frontmatterUnclosed(block)) {
+        // The repair is memq's own, because there are two shapes of this
+        // state and they take opposite instructions: a block whose closing
+        // fence stands past the line bound is closed already, and telling its
+        // author to add a fence would close it early and drop the fields
+        // below the new one, the pinned: among them, into the body. A record
+        // reaching here is on the project tier, the shared tiers having been
+        // denied above, so the repair is one this session's write tools can
+        // make.
+        // The shape-specific instruction is memq's, and a failure to get it
+        // degrades this deny rather than losing it. Everything else on this
+        // path is a string literal that cannot throw; this one call is the
+        // only way the sentence can fail to build, and a throw here would
+        // reach the outer catch, which answers not-checked and exits 0, so
+        // a record the store cannot read would land because a message could
+        // not be written. The fallback names the property both repairs
+        // establish rather than either instruction, so a degraded line is
+        // less specific and never wrong about which shape is in front of it.
+        let repair = null;
+        try {
+            repair = memq.frontmatterUnclosedRepair(block, false);
+        } catch {
+            repair = null;
+        }
         return {
-            fault: 'Its frontmatter block opens on the first line and never closes inside the line '
-                + 'bound memq reads a block within, so every field inside it reads as absent: a '
-                + 'pinned: there pins nothing and a supersedes: there points nowhere. Close the '
-                + 'block with a --- line inside that bound.'
+            fault: 'Its frontmatter block opens on the first line and does not close inside the '
+                + 'line bound memq reads a block within, so no field inside it is read: a '
+                + 'supersedes: there points nowhere, and a pinned: there does not pin, it leaves '
+                + 'every pass that reads the record unable to say whether it is pinned. To fix '
+                + 'it, ' + (typeof repair === 'string' && repair !== ''
+                    ? repair
+                    : 'make its frontmatter block close inside that bound, keeping every field '
+                        + 'the record is to carry above the closing line') + '.'
         };
     }
     if (fenceIsLate(block)) {
@@ -1060,12 +1096,46 @@ function main() {
     placedTier = tier;
 
     if (tier !== 'project') {
+        // Three forms rather than one, because the write this refuses could
+        // have been any of three things and each takes a different command:
+        // creating a record, changing an existing record's index
+        // description, and changing an existing record's body. Naming one
+        // of them sends the other two authors to a command that refuses or,
+        // worse, to one that exits 0 having never opened the record: a bare
+        // --update against a record that is not there refuses and says to
+        // drop the flag, and against one that is there it rewrites the index
+        // line alone, so an author with a body watches it go nowhere.
+        // Creating is the form a blocked write most often wanted, these
+        // tiers having no hand-edit path for a record to exist by.
+        //
+        // The body form is gated on the engine store signals because memq
+        // refuses a shared-tier body repair while they are set, which is the
+        // environment a fleet worker runs in and the one where this guard's
+        // shared tiers are the redirected store. Under them that operation
+        // has no route at all, and the line says so rather than naming a
+        // command that exits 1: the other two forms still run there, so the
+        // deny always names a way to do what can be done.
+        const fix = sharedTierFix(memq, tier, site.dir);
+        const bodyRoute = memq.storeSignalsPresent()
+            ? 'there is no route from this process: it carries the engine store signals, and '
+                + 'memq refuses a shared-tier body repair under them, because the .bak such a '
+                + 'repair leaves behind does not sync.'
+            : fix + ' --update --body "<text>" --confirm-shared, which replaces the body and '
+                + 'carries the record\'s frontmatter across, leaving the text it replaced in a '
+                + '.bak beside the record. That keeps every pinned:, tags: and supersedes: '
+                + 'line, with one exception: where the record opens with --- and has no '
+                + 'closing --- within 40 lines, memq counts that text as body rather than '
+                + 'frontmatter, so the new body replaces it and the fields written inside it '
+                + 'go with it.';
         say('Blocked: the ' + tier + ' memory tier is authored by memq, never by the Write, Edit '
             + 'or MultiEdit tools, whoever is writing. A hand-written record there misses the '
-            + 'CLI\'s refusals and its index line. Use ' + sharedTierFix(memq, tier, site.dir)
-            + ' instead. Note that --update carries the record\'s existing frontmatter across '
-            + 'verbatim, so it neither adds nor removes a pinned: line; the memory-system '
-            + 'skill\'s pinning section says how a pin is set and revoked.');
+            + 'CLI\'s refusals and its index line. Three forms author it, one per thing a write '
+            + 'can be doing. To create a record that does not exist yet: ' + fix + ' with no '
+            + '--update, and --body "<text>" for its body. To change an existing record\'s '
+            + 'index description: ' + fix + ' --update, which never opens the record file, so '
+            + 'its body and its frontmatter stay byte for byte as they are. To change an '
+            + 'existing record\'s body: ' + bodyRoute + ' The memory-system skill\'s pinning '
+            + 'section says how a pin is set and revoked.');
         process.exit(2);       // deny
     }
 
@@ -1086,8 +1156,8 @@ function main() {
         // capped and uncapped readers can disagree about either, so no verdict
         // here would be about the record the store will read. The first is a
         // block that does not close inside the head: the capped readers never
-        // see it close and read every field in it as absent, and the uncapped
-        // ones close it and read them. The second is a block whose closing
+        // see it close and read no field in it at all, while the uncapped
+        // ones close it and read the fields. The second is a block whose closing
         // fence is the head's own last line, because the cut lands where the
         // byte count puts it rather than at a line end: that line may run on
         // past the cut (`--- not-a-fence`) and close nothing, which is what

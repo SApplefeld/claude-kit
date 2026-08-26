@@ -1895,14 +1895,16 @@ function readIndexDescriptions(memDir) {
 //   tags: a, b
 //   created: 2026-07-01
 //   ---
-// Returns the named field's raw value, or one of three answers that are not
-// a value: null when the file has no such field, FRONTMATTER_UNREADABLE when
-// the file itself could not be read, and FRONTMATTER_INDENTED when the only
-// line carrying the field sits outside the two placements below. Callers that
-// only want a value treat all three as absence; a caller whose field decides
-// whether to act on a memory tells them apart, because "no such field", "I
-// could not look", and "it is written where it does not count" justify
-// different decisions.
+// Returns the named field's raw value, or one of the answers that are not a
+// value: null when the file has no such field, FRONTMATTER_UNREADABLE when the
+// file itself could not be read, FRONTMATTER_UNCLOSED when the block opened on
+// the first line and never closed inside the line bound, and
+// FRONTMATTER_INDENTED when the only line carrying the field sits outside the
+// two placements below. Callers that only want a value treat them all as
+// absence; a caller whose field decides whether to act on a memory tells them
+// apart, because "no such field", "I could not look", "the block never closed,
+// so any field in it is unread", and "it is written where it does not count"
+// justify different decisions.
 //
 // Only the inline single-line form is read, and it is read at two placements.
 // The first is the block's top level. The second is inside a column-0
@@ -1952,6 +1954,18 @@ function readIndexDescriptions(memDir) {
 // else in the block is reported rather than read.
 const FRONTMATTER_UNREADABLE = Symbol('frontmatter unreadable');
 const FRONTMATTER_INDENTED = Symbol('frontmatter field indented');
+// The answer for a record whose block opened on its first line and never
+// closed inside FRONTMATTER_MAX_LINES. It is not null, because null is what a
+// record that was read and declares no such field gives, and these two are
+// different statements: the first record may declare the field anywhere inside
+// the block and no reader can say, while the second definitely does not
+// declare it. Sharing one value is what lets a `pinned:` inside an unclosed
+// block read as no pin at all, with nothing anywhere saying the record could
+// not be read. `frontmatterUnclosed` answers the same question from a block a
+// caller already holds; this sentinel is how the answer reaches a caller
+// holding only the value, which `frontmatterValue` is, having dropped the
+// block.
+const FRONTMATTER_UNCLOSED = Symbol('frontmatter block unclosed');
 const FRONTMATTER_MAX_LINES = 40;
 
 // The most of a memory file any frontmatter read takes, at every door that
@@ -1962,8 +1976,10 @@ const FRONTMATTER_MAX_LINES = 40;
 //
 // The cost, paid by a record whose frontmatter does not close inside it:
 // the record reads as one whose frontmatter could not be read, so its
-// anchors, tags and supersedes are all not-checked rather than wrong,
-// which is the direction every answer on this surface takes. Where the
+// anchors read as not-checked, its pin as 'unclosed' at `pinState`, and its
+// tags and its supersedes pointer as absent, that last pair being the
+// ruling those two readers take for every answer that is not a value,
+// since a miss there costs a search match rather than a memory. Where the
 // line sits: the widest line the anchor grammar admits is ANCHOR_ENTRIES_MAX
 // entries of ANCHOR_ENTRY_CAP characters, 9,504 of them, and this is nearly
 // seven times that, so an ordinary record is nowhere near it.
@@ -2010,6 +2026,110 @@ function frontmatterBlock(raw) {
 // one door is admitted at another.
 function frontmatterUnclosed(block) {
     return block.opened && block.closer === -1;
+}
+
+// Which of the two shapes a block that never closed has, because they need
+// opposite repairs and one of the two repairs destroys a record it is given
+// to the wrong one. 'past-bound' is a closing fence standing later in the
+// text than the reader looks; 'no-closer' is no closing fence anywhere in
+// the text at all; null is a block that is not this class, which is a block
+// that closed inside the bound and a record that opens no block alike, since
+// neither has anything to repair.
+//
+// The bound is where `frontmatterBlock` stopped: it examines indices 1
+// through FRONTMATTER_MAX_LINES, so a fence at any later index is one it
+// never looked at. The answer is about the text handed in and nothing else,
+// so a caller holding part of a record gets an answer about that part: the
+// file-reading wrapper below hands in the whole record for that reason,
+// because the state it explains was decided from the whole record too.
+//
+// A record whose whole text is `---` is 'no-closer' and not a third thing:
+// it opens a block and closes none, which is what the class says.
+function frontmatterUnclosedShape(block) {
+    if (!frontmatterUnclosed(block)) return null;
+    for (let i = FRONTMATTER_MAX_LINES + 1; i < block.lines.length; i++) {
+        if (block.lines[i].trim() === '---') return 'past-bound';
+    }
+    return 'no-closer';
+}
+
+// The repair to name for a record whose frontmatter block did not close.
+// Every door that names this repair calls this function or the file-reading
+// wrapper below it, so a grep for the two names finds all of them; each says
+// it about a record it is refusing, declining to classify, or refusing to
+// write into.
+//
+// The shape decides the instruction, and telling the shapes apart is the
+// whole point. A block whose fence sits past the bound is closed already,
+// just not where a reader looks, so telling its author to add a fence is
+// destructive advice: the new fence closes the block early, every line below
+// it becomes body, and a pinned: among those lines then reads as no pin at
+// all. A block with no fence anywhere needs one added inside the bound. Both
+// instructions carry the same preservation clause, because both of them are
+// satisfiable by deleting the record's own fields: a fence inserted above a
+// field drops that field into the body, and a block shortened from the tail
+// takes the fields at its end with it, which for a past-bound record is
+// where its fields are.
+//
+// The tier decides the rest. The frontmatter guard refuses Write, Edit and
+// MultiEdit on the type and operator tiers for every writer, and this module
+// states that those tiers have no hand-edit path at all, their writers taking
+// the tier's store.lock, which nothing outside this module takes. So the
+// shared-tier repair names the one authoring route there is, the tier's own
+// --update with a body, and names what it costs: that path rebuilds the
+// record around the new body and the frontmatter it could read, and an
+// unread block is not frontmatter it could read, so the block and every
+// field in it go, with the record's previous text left in the .bak the
+// rewrite drops beside it.
+function frontmatterUnclosedRepair(block, sharedTier) {
+    const shape = block === null ? null : frontmatterUnclosedShape(block);
+    const fix = shape === 'past-bound'
+        ? 'shorten the block so its closing --- sits inside the first '
+            + FRONTMATTER_MAX_LINES + ' lines'
+        : shape === 'no-closer'
+            ? 'close the block with a --- line inside the first ' + FRONTMATTER_MAX_LINES
+                + ' lines'
+            // Both shapes at once, for a caller that could not tell them
+            // apart. It is one statement rather than a merge of two: the
+            // property both repairs establish is that the block closes where
+            // a reader looks, and a caller here has no reading that says
+            // which way it does not.
+            : 'make its frontmatter block close inside the first ' + FRONTMATTER_MAX_LINES
+                + ' lines';
+    return fix + ', keeping every field the record is to carry above that line' + (sharedTier
+        ? '. A record on a shared tier is not writable through the Write, Edit or MultiEdit'
+            + ' tools and has no hand-edit path, so the repair route is memq add-type <type>'
+            + ' <name> "<description>" --update --body "<text>" --confirm-shared, or'
+            + ' add-operator without the type: that rewrites the record around the new body'
+            + ' and drops the unread block with every field in it, leaving the record\'s'
+            + ' previous text in a .bak beside it'
+        : '');
+}
+
+// The same answer for a record on disk, for the doors that hold a path and a
+// pin state rather than the record's text.
+//
+// The whole record is read, uncapped, because that is the read the state
+// being explained was decided by: `pinState` goes through `frontmatterField`,
+// which reads the file whole, so a record whose fence stands past a capped
+// head would be called unclosed by the caller and 'no-closer' by this
+// function, which is the one pairing that prints the fence-adding advice to
+// the record it damages. The two reads are the same read instead.
+//
+// Where this read cannot say which shape the record has, it names what both
+// repairs establish. Two inputs reach that: a file it could not read back,
+// and a record that closes its block now, which is a record something
+// rewrote between the caller's reading and this one. Both are one statement,
+// that this look cannot tell the shapes apart, rather than two collapsed.
+function readFrontmatterUnclosedRepair(file, sharedTier) {
+    let raw = null;
+    try {
+        raw = fs.readFileSync(file, 'utf8');
+    } catch {
+        raw = null;
+    }
+    return frontmatterUnclosedRepair(typeof raw === 'string' ? frontmatterBlock(raw) : null,
+        sharedTier);
 }
 
 // The heading line a record already carries, or null when it carries none:
@@ -2120,7 +2240,12 @@ function frontmatterSite(raw, name) {
         };
     }
     const block = frontmatterBlock(raw);
-    if (frontmatterUnclosed(block)) return { block, value: null, line: -1 };
+    // A block that opened and never closed is its own answer, and a record
+    // with no fence at all is plain absence. The second definitely declares no
+    // fields; the first may declare any of them on a line this reader is not
+    // entitled to read, since without the closing gate a body that opens with
+    // a horizontal rule would turn prose into frontmatter.
+    if (frontmatterUnclosed(block)) return { block, value: FRONTMATTER_UNCLOSED, line: -1 };
     if (!block.opened) return { block, value: null, line: -1 };
     const re = frontmatterKeyRegex(name);
     let found = null;
@@ -2217,10 +2342,16 @@ function frontmatterField(file, name) {
 }
 
 // Tags from the frontmatter, comma/space separated. Anything short of a value
-// at one of the two placements is no tags: a tag is a search aid, so a file
-// that could not be read or a key nested under something other than the
-// harness's `metadata:` map costs a match rather than a decision, and neither
-// is worth a standing note on every scan.
+// at one of the two placements is no tags, which is the ruling for every
+// answer the field reader gives that is not a value: a file that could not be
+// read, a block that opened and never closed, and a key nested under something
+// other than the harness's `metadata:` map. A tag is a search aid, so each of
+// those costs a match rather than a decision, and none is worth a standing
+// note on every scan. Where the difference is acted on instead, it is acted
+// on by a door about to decide the record's fate or write into it: `pinState`
+// reports its own answer for an unreadable block and the three passes reading
+// it stop, the `--supersedes` target check refuses the pointer, the anchor
+// writer refuses the line, and a repair drops the unread text and says so.
 function readFrontmatterTags(file) {
     return frontmatterTags(frontmatterField(file, 'tags'));
 }
@@ -2239,6 +2370,13 @@ function frontmatterTags(value) {
 // is an author-asserted sign of life: it can defer decay when file times
 // understate a memory's recency, and it can never age a memory faster than
 // its mtime shows, because the max means the freshest evidence always wins.
+//
+// That direction is why every answer that is not a value reads as null here,
+// a block that opened and never closed among them: what such a record loses
+// is a deferral it might have been entitled to, while its mtime and its
+// applied stamps still speak for it. The same silence about `pinned:` would
+// age out a memory somebody protected, which is why that reader tells the
+// answers apart and this one does not.
 function readFrontmatterCreated(file) {
     const value = frontmatterField(file, 'created');
     if (typeof value !== 'string') return null;
@@ -2404,9 +2542,9 @@ function anchorRefusalText(entry, fault) {
 // file's git blob name.
 //
 // What is readable is stated as an allowlist: a string, or null for the field
-// being absent. Everything else is null, 'not checked'. The two frontmatter
+// being absent. Everything else is null, 'not checked'. The frontmatter
 // sentinels arrive here as symbols and that is what they answer with, and so
-// would a third one added later, which a list of the two known symbols would
+// would another one added later, which a list of the known symbols would
 // have admitted as a record with nothing to report. That answer is the one a
 // drift surface must never give for a record nobody could read, so the
 // unknown value is the one refused rather than the known ones.
@@ -2489,14 +2627,16 @@ function parseAnchors(value) {
 // The anchors in a record's text, for a walk that already holds it, or null
 // when the record says nothing this can read.
 //
-// One of the not-checked answers lives in the block rather than in the value:
-// a record whose fence opens and never closes inside the reader's line bound
-// has a frontmatter block nobody could read, and `frontmatterValue` reports
-// that as the plain absence an ordinary record without the field gives. So
-// the block is consulted here, and this pairing is what a reader of the field
-// is meant to call rather than pairing `frontmatterValue` with `parseAnchors`
-// itself. A record carrying no fence at all is the other case and reads as no
-// anchors, since a record with no frontmatter definitely names none.
+// A record whose fence opens and never closes inside the reader's line bound
+// has a frontmatter block nobody could read, and it is answered here from the
+// block rather than from the value: this reader's null then states the record
+// is unchecked on its own terms, whatever a value reader hands back for such a
+// record and whatever `parseAnchors` makes of it. The two answers agree
+// today, `frontmatterValue` giving FRONTMATTER_UNCLOSED and `parseAnchors`
+// giving null for every value that is not a string or null; asking the block
+// is what keeps this door's answer from depending on that. A record carrying
+// no fence at all is the other case and reads as no anchors, since a record
+// with no frontmatter definitely names none.
 //
 // Text that is not text is null, not a throw: this is the reader a validating
 // caller reaches for while holding a payload it has not checked, and such a
@@ -2515,8 +2655,9 @@ function frontmatterAnchors(raw) {
 //
 // Both causes of null, here and in the two readers below, are one value
 // rather than two. `pinState` keeps its own apart, answering 'unknown' for an
-// unreadable file and 'misplaced' for a field under the wrong key, because a
-// misplaced pin is a state somebody should repair and the scan says so. An
+// unreadable file, 'unclosed' for a block that never closed and 'misplaced'
+// for a field under the wrong key, because each of those is a state somebody
+// should repair and the scan says so for each of them. An
 // anchor's not-checked answer drives a report line that says the record is
 // unverified, and that line is the same line whichever cause produced it, so
 // the causes merge here and a surface that wants to tell them apart asks the
@@ -3173,7 +3314,9 @@ function lastAliveMs(mtimeMs, createdMs, applied) {
 }
 
 // A memory's pin state: 'pinned', 'unpinned', 'unknown' when the file could
-// not be read, or 'misplaced' when the field is there but under a key other
+// not be read, 'unclosed' when its frontmatter block opened on the first line
+// and never closed inside the reader's line bound, so no field inside it was
+// read, or 'misplaced' when the field is there but under a key other
 // than the harness's `metadata:` map, which does not pin. The `pinned:`
 // frontmatter field is the judgment override that keeps a memory out of every
 // decay class and refuses a prune that names it. Presence is the pin: the
@@ -3197,9 +3340,23 @@ function lastAliveMs(mtimeMs, createdMs, applied) {
 // was written into is still one somebody meant to protect: the scan says so
 // instead of aging it out in silence. Tags and created dates get no such
 // report, because a miss there costs a search hit rather than a memory.
+//
+// An unclosed block is a third state and not either of those two, because it
+// is the one that says nothing about the pin at all. A misplaced field is a
+// definite answer: the line is there, it is under a key nesting means
+// something under, and it does not pin, so the record is classified like any
+// other and the note is what keeps the author's intent visible. A block that
+// did not close hides whether a pin exists, so the classification itself is
+// what stops. It is not 'unknown' either, because that is a file this pass
+// could not open, which may be a permission or a race and is nothing anyone
+// wrote into the record, while this is text in the record with a repair in
+// the record. The callers print the state, so one value for both would put a
+// sentence naming an unreadable file in front of an operator whose file read
+// perfectly well.
 function pinState(file) {
     const value = frontmatterField(file, 'pinned');
     if (value === FRONTMATTER_UNREADABLE) return 'unknown';
+    if (value === FRONTMATTER_UNCLOSED) return 'unclosed';
     if (value === FRONTMATTER_INDENTED) return 'misplaced';
     return value === null ? 'unpinned' : 'pinned';
 }
@@ -3420,6 +3577,25 @@ function listMemories(memDir) {
         memories.push({
             name: f.slice(0, -3),
             description: descriptions.get(f) || '',
+            // Both fields take the ruling their own readers take: every
+            // answer that is not a value, a block that opened and never
+            // closed among them, reads as no tags and no pointer. A missing
+            // tag costs a search hit, and a pointer nobody could read costs
+            // the successor's label and an archive nomination for the record
+            // it would have named, which is the direction that leaves a
+            // record in the store rather than taking one out of it. The
+            // anchors field below carries the not-checked answer to the
+            // surfaces that report one, which are the drift block, `get` and
+            // `recall`'s project-tier lines. The other walks over this
+            // listing say nothing about the record either way, which is the
+            // labelling this store deliberately does not carry there: `find`
+            // reads the names, the tags, the descriptions and this very
+            // supersedes field, which it inverts to label a hit as superseded,
+            // `unstamped` reads names and descriptions, and `recall`'s pending
+            // lines read names. So the pointer an unread record does not
+            // yield costs its target that label at `find` and the archive
+            // nomination the decay pass would have made from it, both in the
+            // direction that leaves a record in the store.
             tags: raw === null ? [] : frontmatterTags(frontmatterValue(raw, 'tags')),
             supersedes: raw === null ? null : supersedesName(frontmatterValue(raw, 'supersedes')),
             // The record's anchors as this one read saw them, null for a
@@ -4157,7 +4333,17 @@ async function semanticChannel(term, tag, alreadyShown, showArchived) {
         // caller never opened, and the label's whole job (is this fact from
         // another box) is answered completely by a charset-closed
         // identifier, so a value the writer would have refused carries
-        // nothing worth preserving. Machine names compare case-insensitively
+        // nothing worth preserving. Every answer that is not a value takes
+        // that same path and labels nothing, a block that opened and never
+        // closed among them, and that costs more than a missing tag does: no
+        // filter anywhere reads this field, so its whole effect is this label,
+        // and a record scoped to another box inside an unread block shows a
+        // hit line a reader takes for a local fact. It is left unlabelled all
+        // the same, because the label asserts where a fact came from and a
+        // record this could not read supports no such assertion; what answers
+        // for the record is `pinState` and the drift surfaces, which say the
+        // record could not be read rather than saying something about its
+        // scope. Machine names compare case-insensitively
         // on every platform, the NetBIOS and DNS rule, and the local name is
         // resolved at runtime so no machine's build hard-codes another's
         // answer.
@@ -6435,9 +6621,12 @@ function anchorRecord(memPath, name, where, computed) {
     // for this text with a parse rather than with null.
     const site = frontmatterSite(text, 'anchors');
     if (frontmatterUnclosed(site.block)) {
-        process.stderr.write('memq: ' + shown + ' opens a frontmatter block that never closes'
-            + ' within ' + FRONTMATTER_MAX_LINES + ' lines, so no reader can read its fields;'
-            + ' close the block with a --- line and rerun (nothing written)\n');
+        // The verb writes to the project tier only, so the repair is one the
+        // session's own write tools can make.
+        process.stderr.write('memq: ' + shown + ' opens a frontmatter block that does not close'
+            + ' inside the first ' + FRONTMATTER_MAX_LINES + ' lines, so no reader can read its'
+            + ' fields; ' + frontmatterUnclosedRepair(site.block, false)
+            + ', then rerun (nothing written)\n');
         process.exitCode = 1;
         return null;
     }
@@ -6553,10 +6742,14 @@ function anchorRecord(memPath, name, where, computed) {
     // line count is the case that made it necessary. A block whose closing
     // fence already sits at the reader's last line has that fence pushed one
     // line past the bound by the inserted line, after which `frontmatterBlock`
-    // answers `closer: -1`, `pinState` answers 'unpinned' (its
-    // checked-and-clean value, so a protected record becomes a decay
-    // candidate with nothing said), and the anchors this pass wrote read as
-    // nothing. The check is the post-condition rather than the line count,
+    // answers `closer: -1` and every field of the record goes unread: the
+    // anchors this pass just wrote read as nothing, the tags and the
+    // supersedes pointer read as absent, and the pin reads as 'unclosed',
+    // which takes the record out of the decay pass's classification entirely. The
+    // record is not silently retired for it, `pinState` having its own answer
+    // for this shape, but a write whose whole purpose is to make a record
+    // report drift would have made it unreadable instead. The check is the
+    // post-condition rather than the line count,
     // because the value cap and any later bound produce the same surprise
     // from a different direction.
     //
@@ -6573,8 +6766,9 @@ function anchorRecord(memPath, name, where, computed) {
             + (readBack === null
                 ? 'its frontmatter block ends at the last line a reader reads ('
                     + FRONTMATTER_MAX_LINES + '), so one more line in it closes nothing and'
-                    + ' every field of the record goes unread, a pinned: field included.'
-                    + ' Shorten the block and rerun'
+                    + ' every field of the record goes unread, a pinned: field included. To'
+                    + ' make room, ' + frontmatterUnclosedRepair(frontmatterBlock(rewritten),
+                        false) + ', then rerun'
                 : 'the anchors: line reads back as something else')
             + ' (nothing written)\n');
         process.exitCode = 1;
@@ -6953,7 +7147,8 @@ function cmdAnchor(argv) {
 // goes unreadable is a standing exemption nobody can review. Its evidence
 // columns read 'unknown' rather than 'never', because the tier's stamps were
 // not read and a line that says otherwise is a claim the scan cannot make.
-function tierDecayCandidates(dir, label, now, usage, summarize, archive, pinned, memories) {
+function tierDecayCandidates(dir, label, now, usage, summarize, archive, pinned, memories,
+    sharedTier) {
     const stamps = usage.stamps;
     const evidenceUnread = usage.status === 'unreadable';
     // Applied evidence comes from the shared tally, the same computation
@@ -7001,6 +7196,26 @@ function tierDecayCandidates(dir, label, now, usage, summarize, archive, pinned,
         if (pin === 'unknown') {
             process.stderr.write('memq: ' + shown
                 + ' cannot be read, so whether it is pinned is unknown: not classified\n');
+            continue;
+        }
+        // A frontmatter block that does not close inside the bound puts this
+        // pass in the same position: the file is there and readable, and no
+        // field inside the block is read, the pinned: among them, so a memory
+        // somebody protected would go on a candidate list on the strength of
+        // a pin nobody could see. It is its own note rather than the one
+        // above, because the repair is a line of the record's own text rather
+        // than whatever made a file unopenable, and the repair is asked for
+        // rather than spelled here: which one this record needs depends on
+        // the shape of its block and on whether its tier admits the Write
+        // tool at all. The tier arrives as its own argument rather than being
+        // read off the display label, so the passes and the repair cannot
+        // come to disagree about which tier a record is on.
+        if (pin === 'unclosed') {
+            process.stderr.write('memq: ' + shown
+                + ' opens a frontmatter block that does not close inside the first '
+                + FRONTMATTER_MAX_LINES + ' lines, so no field inside it is read and whether'
+                + ' it is pinned is unknown: not classified; '
+                + readFrontmatterUnclosedRepair(memPath, sharedTier) + '\n');
             continue;
         }
         // A pinned: field under a key other than the harness's `metadata:` map
@@ -7286,20 +7501,20 @@ function cmdDecayScan(argv) {
     const projectUsage = readUsage(memDir);
     usageEvidenceLine(projectUsage, '');
     tierDecayCandidates(memDir, '', now, projectUsage, summarize, archive, pinned,
-        projectMemories);
+        projectMemories, false);
     const typed = typedTierOrNull(process.cwd());
     if (typed !== null) {
         const typeUsage = readUsage(typed.dir);
         usageEvidenceLine(typeUsage, '  (type:' + sanitize(typed.type, TYPE_CAP) + ')');
         tierDecayCandidates(typed.dir, typed.type, now, typeUsage, summarize, archive, pinned,
-            listMemories(typed.dir));
+            listMemories(typed.dir), true);
     }
     const operator = operatorTierOrNull();
     if (operator !== null) {
         const operatorUsage = readUsage(operator);
         usageEvidenceLine(operatorUsage, '  (operator)');
         tierDecayCandidates(operator, OPERATOR_LABEL, now, operatorUsage, summarize, archive,
-            pinned, listMemories(operator));
+            pinned, listMemories(operator), true);
     }
 
     // The pinned population, counted and then listed, on every scan that
@@ -8241,18 +8456,33 @@ function archiveStep(memDir, archives, report, tag, options) {
                 + ' retires the rest');
         }
         if (code === null && st.isFile()) {
-            // The same two verdicts the validator refuses on, in the same
-            // words: a misplaced pinned: line is not a pin to either of them,
-            // so a record carrying one is retired here as it is admitted
-            // there.
+            // The same verdicts the validator refuses on, for the same
+            // reasons: a misplaced pinned: line is not a pin to either of them, so a
+            // record carrying one is retired here as it is admitted there,
+            // while a pin nobody could read stops the retirement at both
+            // doors whichever of the two reasons made it unreadable.
             const pin = pinState(path.join(memDir, memFile));
-            if (pin === 'pinned' || pin === 'unknown') {
+            if (pin === 'pinned' || pin === 'unknown' || pin === 'unclosed') {
                 throw new Error('\'' + sanitize(name, NAME_CAP) + '\'' + tag + ' is '
                     + (pin === 'pinned'
                         ? 'pinned, set while this pass waited for its lock, and a pin is what'
                             + ' says a record is not to be retired'
-                        : 'no longer readable, so whether it is pinned is unknown and'
-                            + ' retiring it could retire a record a pin protects')
+                        : pin === 'unknown'
+                            ? 'no longer readable, so whether it is pinned is unknown and'
+                                + ' retiring it could retire a record a pin protects'
+                            // The repair this record needs is named by the
+                            // validator and by the scan, which is where an
+                            // operator arrives next: this message travels
+                            // through failureText's FAILURE_TEXT_CAP, and a
+                            // repair sentence spliced in here pushes the
+                            // re-run instruction past the cut, which costs
+                            // the reader the one thing only this message
+                            // says. Nothing was written to the record, so
+                            // the next command over says the rest.
+                            : 'no longer closing the frontmatter block it opens inside the'
+                                + ' first ' + FRONTMATTER_MAX_LINES + ' lines, so no field'
+                                + ' inside it is read, whether it is pinned is unknown and'
+                                + ' retiring it could retire a record a pin protects')
                     + '; nothing in this tier was archived, and a re-run without that name'
                     + ' retires the rest');
             }
@@ -8535,7 +8765,7 @@ function projectsDeclaringType(type) {
 // whose escape hatch is deleting one line from the memory file. A file whose
 // pin state cannot be read refuses on the same rule, because a target that
 // may be protected is not a target this pass can act on.
-function archiveTargetsValid(dir, names, where) {
+function archiveTargetsValid(dir, names, where, sharedTier) {
     // The files the tier index lists, or null when the index could not be
     // read. Null is not an empty index: an index this pass cannot read cannot
     // establish that a name is the leftover of a stopped run, and a resume
@@ -8665,6 +8895,22 @@ function archiveTargetsValid(dir, names, where) {
         if (pin === 'unknown') {
             process.stderr.write('memq: \'' + sanitize(name, NAME_CAP)
                 + '\' cannot be read' + where + ', so whether it is pinned is unknown\n');
+            return null;
+        }
+        // A record whose block does not close inside the bound has no field
+        // any reader reads, its pinned: among them, so this pass is in the
+        // same position as it is for a file it could not open and stops for
+        // the same reason. The sentence names the block rather than the file,
+        // because this file read perfectly well and the repair is a line of
+        // its own text. The tier is this validator's own argument, stated by
+        // the caller that knows it rather than inferred from the label it
+        // prints.
+        if (pin === 'unclosed') {
+            process.stderr.write('memq: \'' + sanitize(name, NAME_CAP)
+                + '\' opens a frontmatter block that does not close inside the first '
+                + FRONTMATTER_MAX_LINES + ' lines' + where + ', so no field inside it is read'
+                + ' and whether it is pinned is unknown; '
+                + readFrontmatterUnclosedRepair(memPath, sharedTier) + '. Then rerun\n');
             return null;
         }
         // The archive slot, asked about once and answered for by that one
@@ -8829,21 +9075,21 @@ function cmdDecayPrune(argv) {
         return;
     }
 
-    const projectResumed = archiveTargetsValid(memDir, archives, '');
+    const projectResumed = archiveTargetsValid(memDir, archives, '', false);
     if (projectResumed === null) {
         process.exitCode = 1;
         return;
     }
     const typeResumed = typed === null
         ? new Set()
-        : archiveTargetsValid(typed.dir, typeArchives, ' in the type tier');
+        : archiveTargetsValid(typed.dir, typeArchives, ' in the type tier', true);
     if (typeResumed === null) {
         process.exitCode = 1;
         return;
     }
     const operatorResumed = operator === null
         ? new Set()
-        : archiveTargetsValid(operator, operatorArchives, ' in the operator tier');
+        : archiveTargetsValid(operator, operatorArchives, ' in the operator tier', true);
     if (operatorResumed === null) {
         process.exitCode = 1;
         return;
@@ -9068,9 +9314,13 @@ function updateIndexDescription(indexPath, name, file, description, options) {
 //
 // The block read here is what every other reader of this store calls
 // frontmatter, frontmatterField's grammar: a leading '---' closed by a second
-// one inside the bounded head. Text that opens with '---' and never closes is
-// body everywhere else in this module and is body here too, which a repair
-// replaces whole. `unread` says that happened, so the caller can say so: the
+// one inside the bounded head. Text that opens with '---' and never closes
+// carries no field any reader in this module reads, and is body here, which a
+// repair replaces whole. It is the one door that acts on that state by
+// writing rather than by stopping: `pinState` reports it and the passes
+// reading that stop, the anchor writer and the `--supersedes` check refuse,
+// and a repair proceeds, because refusing here would leave the shape most in
+// need of repair with no repair path. `unread` says that happened, so the caller can say so: the
 // dropped text may have been a block somebody meant, and --update writes no
 // tags, no machine scope and no supersedes pointer, so an author cannot put
 // back what went. Line
@@ -10790,6 +11040,30 @@ function supersedesTargetRefusal(dir, name, target, where) {
         process.exitCode = 1;
         return true;
     }
+    // The target's own frontmatter block opening and never closing is the
+    // same unknown reached a different way: the file read, and no field
+    // inside the block is read, so the target's supersedes: is a line
+    // this cannot see rather than a line that is not there. Reading it as no
+    // pointer is what would write the second half of a mutual pair, on the
+    // evidence of a record nobody could read. The sentence names the block,
+    // since the repair is a --- line in the target rather than whatever
+    // makes a file unreadable.
+    if (field === FRONTMATTER_UNCLOSED) {
+        // Both callers of this refusal are shared-tier verbs, add-type and
+        // add-operator, so the repair is named for a tier whose records the
+        // Write, Edit and MultiEdit tools refuse.
+        process.stderr.write('memq: \'' + sanitize(target, NAME_CAP) + '\'' + where
+            + ' opens a frontmatter block that does not close inside the first '
+            + FRONTMATTER_MAX_LINES
+            + ' lines, so --supersedes will not name it: no field inside that block is read,'
+            + ' so whether it already supersedes \'' + sanitize(name, NAME_CAP)
+            + '\' is unknown, and writing the pointer on that unknown is how the pair every'
+            + ' reader drops gets closed. To repair that record, '
+            + readFrontmatterUnclosedRepair(targetPath, true)
+            + '. Nothing was written\n');
+        process.exitCode = 1;
+        return true;
+    }
     const back = supersedesName(field);
     if (back !== null && memoryFileKey(back + '.md') === memoryFileKey(name + '.md')) {
         process.stderr.write('memq: \'' + sanitize(target, NAME_CAP) + '\' already supersedes \''
@@ -11440,6 +11714,10 @@ module.exports = {
     pinState,
     FRONTMATTER_INDENTED,
     FRONTMATTER_UNREADABLE,
+    FRONTMATTER_UNCLOSED,
+    frontmatterUnclosedShape,
+    frontmatterUnclosedRepair,
+    readFrontmatterUnclosedRepair,
     recallDigest,
     recentDigest,
     withheldLine,

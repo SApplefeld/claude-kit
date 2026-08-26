@@ -1693,7 +1693,7 @@ test('two scans of a store carrying pinned and extended memories are byte-identi
     }
 });
 
-test('the frontmatter grammar decides the pin: top level pins, indented is reported, unterminated and past-the-window are neither', () => {
+test('the frontmatter grammar decides the pin: top level pins, indented is reported, and a block that never closes is classified not at all', () => {
     const store = makeStore();
     try {
         const d400 = daysAgo(400);
@@ -1706,12 +1706,14 @@ test('the frontmatter grammar decides the pin: top level pins, indented is repor
         // between that and silence, because somebody wrote a pin into this
         // file and would otherwise watch it age out still carrying one.
         writeMemoryFile(store, 'indented.md', '---\nprovenance:\n  pinned: 2026-07-01\n---\n# i\n');
-        // Unterminated: a body that opens with a horizontal rule is prose,
-        // so the field is not frontmatter at all: no pin, and nothing to
-        // report about a line nobody wrote as a field.
+        // Unterminated: the fence opens on the first line and never closes,
+        // so no reader is entitled to any line inside it, this one included.
+        // The line may be a pin or may be prose, and the pass says which
+        // question it could not answer rather than classifying on a guess.
         writeMemoryFile(store, 'unterminated.md', '---\n# u\n\npinned: 2026-07-01\n\nbody\n');
         // Past the bounded head: neither the field nor the closing fence
-        // below it is frontmatter this walk sees.
+        // below it is frontmatter this walk sees, so the block reads as one
+        // that never closes and the record is unclassified for that reason.
         writeMemoryFile(store, 'faraway.md',
             '---\n' + 'filler: x\n'.repeat(45) + 'pinned: 2026-07-01\n---\n# f\n');
         for (const name of ['top-level.md', 'indented.md', 'unterminated.md', 'faraway.md']) {
@@ -1721,15 +1723,26 @@ test('the frontmatter grammar decides the pin: top level pins, indented is repor
         const res = run(store, ['decay-scan']);
         assert.strictEqual(res.status, 0, res.stderr);
         const oldLine = '  idle 400d  applied never  edited ' + dateOf(d400) + '  read never\n';
-        assert.strictEqual(res.stdout,
-            'archive  faraway' + oldLine
-            + 'archive  indented' + oldLine
-            + 'archive  unterminated' + oldLine);
+        // One cause, two repairs, and the pairing is the point: a record whose
+        // fence stands past the bound is closed already, so telling it to add
+        // a fence would close the block early and drop the pinned: below the
+        // new fence into the body, retiring the record this state protects.
+        const notClassified = ' opens a frontmatter block that does not close inside the first'
+            + ' 40 lines, so no field inside it is read and whether it is pinned is unknown:'
+            + ' not classified; ';
+        const addFence = 'close the block with a --- line inside the first 40 lines, keeping'
+            + ' every field the record is to carry above that line\n';
+        const shorten = 'shorten the block so its closing --- sits inside the first 40 lines,'
+            + ' keeping every field the record is to carry above that line\n';
+        assert.strictEqual(res.stdout, 'archive  indented' + oldLine,
+            'only the record whose block reads is classified');
         assert.strictEqual(res.stderr,
             'memq: usage evidence: none (no usage.jsonl)\n'
+            + 'memq: faraway' + notClassified + shorten
             + 'memq: indented has a pinned: field under another key, which does not pin it;'
             + ' write it at the frontmatter block\'s top level, where it pins whether or not'
             + ' the harness then moves it under metadata:\n'
+            + 'memq: unterminated' + notClassified + addFence
             + 'memq: pinned: 1 memory exempt from decay\n'
             + 'memq: pinned  top-level' + oldLine
             + 'memq: anchor drift (project tier): 2 records whose anchors could not be read\n'
@@ -1957,10 +1970,10 @@ test('a record that could not be read as saying anything about anchors is not a 
         assert.strictEqual(memq.anchorStates(path.join(store.memDir, 'no-such.md'), root), null);
 
         // A fence that opens and never closes inside the reader's line bound
-        // is a block nobody could read, which frontmatterValue reports as the
-        // same plain absence an ordinary record without the field gives. The
-        // block is consulted so that the two do not share an answer, and a
-        // block running past the bound reads the same way.
+        // is a block nobody could read. This reader consults the block, and
+        // the value reader answers FRONTMATTER_UNCLOSED, so neither can give
+        // the answer a record without the field gives; a block running past
+        // the bound reads the same way.
         const unterminated = '---\nname: ""\nanchors: src/a.js@' + HELLO_SHA + '\nstill open\n';
         writeMemoryFile(store, 'unterminated.md', unterminated);
         assert.strictEqual(memq.frontmatterAnchors(unterminated), null);
@@ -2620,7 +2633,15 @@ test('the frontmatter readers are exported, so the guard validates through memq 
         'readFrontmatterTags', 'frontmatterTags', 'readFrontmatterCreated', 'pinState',
         'supersedesName', 'frontmatterAnchors', 'readFrontmatterAnchors', 'parseAnchors',
         'isAnchorPath', 'blobSha', 'anchorStates', 'anchorStatesFrom', 'anchorRoot',
-        'tierAnchorDrift', 'driftBlock']) {
+        'tierAnchorDrift', 'driftBlock',
+        // The unread-block grammar and the repair it decides. The guard calls
+        // frontmatterUnclosedRepair for the refusal it writes, so the store's
+        // rule about which repair a record needs is stated once and the write
+        // door and the read doors cannot come apart on it; the shape it
+        // branches on and the file-reading wrapper are exported beside it for
+        // the doors in memq.js and for any later reader of this state.
+        'frontmatterUnclosedShape', 'frontmatterUnclosedRepair',
+        'readFrontmatterUnclosedRepair']) {
         assert.strictEqual(typeof memq[name], 'function', name + ' is exported');
     }
     // The bounds a refusal names. A writer spelling 32 or 256 of its own is
@@ -2628,10 +2649,12 @@ test('the frontmatter readers are exported, so the guard validates through memq 
     assert.strictEqual(memq.ANCHOR_PATH_CAP, 256);
     assert.strictEqual(memq.ANCHOR_ENTRIES_MAX, 32);
     assert.strictEqual(memq.ANCHOR_READ_CAP, 4194304);
-    // The two answers a field read gives that are neither a value nor
-    // absence. A guard denies on one and allows on the other, so it needs
-    // them by identity rather than by re-deriving what they mean.
-    for (const name of ['FRONTMATTER_INDENTED', 'FRONTMATTER_UNREADABLE']) {
+    // The answers a field read gives that are neither a value nor absence.
+    // They are exported because a caller that must tell them apart has to do
+    // it by identity rather than by re-deriving what they mean: the guard
+    // compares against FRONTMATTER_INDENTED for its placement refusal, and
+    // memq's own pin and pointer doors compare against all three.
+    for (const name of ['FRONTMATTER_INDENTED', 'FRONTMATTER_UNREADABLE', 'FRONTMATTER_UNCLOSED']) {
         assert.strictEqual(typeof memq[name], 'symbol', name + ' is exported');
     }
     assert.strictEqual(memq.frontmatterValue('---\nx:\n  pinned: 2026-01-01\n---\n', 'pinned'),
@@ -3872,8 +3895,9 @@ test('the frontmatter budget is 34 author lines past the harness\'s five, and a 
         // One line more and the closer falls at index 41, outside the bound.
         // The whole block goes dark then, not just the overflow: the pin below
         // sits on the fourth line of the block and is read as absent all the
-        // same, with no note, because there is no frontmatter here to report a
-        // misplacement in.
+        // same. What the record gets for it is the answer a block that never
+        // closes gets anywhere, since that is what this one is to every
+        // reader: it is not classified, and the pass says so.
         writeMemoryFile(store, 'over-budget.md',
             '---\n' + ['name: ""', 'metadata: ', '  pinned: 2026-07-01',
                 '  node_type: memory', '  originSessionId: ' + FIXTURE_SESSION_ID,
@@ -3884,16 +3908,25 @@ test('the frontmatter budget is 34 author lines past the harness\'s five, and a 
         const res = run(store, ['decay-scan']);
         assert.strictEqual(res.status, 0, res.stderr);
         const oldLine = '  idle 400d  applied never  edited ' + dateOf(d400) + '  read never\n';
-        assert.strictEqual(res.stdout, 'archive  over-budget' + oldLine,
-            'the record whose fence fell past the bound carries no readable pin');
+        assert.strictEqual(res.stdout, '',
+            'the record whose fence fell past the bound is a candidate for nothing');
         assert.strictEqual(res.stderr,
             'memq: usage evidence: none (no usage.jsonl)\n'
+            // The fence is there, one line past where a reader stops, so the
+            // repair named is the one that does not drop the pinned: line
+            // into the body.
+            + 'memq: over-budget opens a frontmatter block that does not close inside the'
+            + ' first 40 lines, so no field inside it is read and whether it is pinned is'
+            + ' unknown: not classified; shorten the block so its closing --- sits inside'
+            + ' the first 40 lines, keeping every field the record is to carry above that'
+            + ' line\n'
             + 'memq: pinned: 1 memory exempt from decay\n'
             + 'memq: pinned  at-budget' + oldLine
             + 'memq: anchor drift (project tier): 1 record whose anchors could not be read\n'
-            + 'memq: drift  over-budget  not checked (this record\'s frontmatter could not be read)\n',
-            'the last line inside the budget pins, the overflow pins nothing, and the drift '
-            + 'block is the one surface that says the record could not be read at all');
+            + 'memq: drift  over-budget  not checked (this record\'s frontmatter could not be read)\n'
+            + 'memq: no decay candidates\n',
+            'the last line inside the budget pins, and the overflow is read as a block that'
+            + ' never closes at both the pin door and the anchors one');
     } finally {
         rmStore(store);
     }
@@ -4004,6 +4037,43 @@ test('a memory whose file cannot be read is never nominated: its pin state is un
         const control = run(store, ['decay-scan']);
         assert.strictEqual(control.status, 0, control.stderr);
         assert.match(control.stdout, /^archive  protected  /m);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a memory whose frontmatter block never closes is never nominated, and the scan says which repair', () => {
+    const store = makeStore();
+    try {
+        const d400 = daysAgo(400);
+        // The pin is inside a block that opens on the first line and never
+        // closes, which is the shape every field reader answers nothing for.
+        // Nominating this record would archive a memory somebody protected on
+        // the strength of a pin no reader could see.
+        writeMemoryFile(store, 'protected.md', '---\npinned: 2026-01-01\n# p\n');
+        writeMemoryFile(store, 'ordinary.md', '# o\n');
+        for (const name of ['protected.md', 'ordinary.md']) setMtime(store, name, d400);
+
+        const scan = run(store, ['decay-scan']);
+        assert.strictEqual(scan.status, 0, 'an unreadable block never fails the scan');
+        assert.match(scan.stderr,
+            /^memq: protected opens a frontmatter block that does not close inside the first 40 lines, so no field inside it is read and whether it is pinned is unknown: not classified; close the block with a --- line inside the first 40 lines, keeping every field the record is to carry above that line$/m);
+        assert.ok(!/^archive  protected  /m.test(scan.stdout),
+            'a record whose pin nobody could read is not a candidate: ' + scan.stdout);
+        assert.strictEqual(scan.stdout,
+            'archive  ordinary  idle 400d  applied never  edited ' + dateOf(d400) + '  read never\n',
+            'the readable memory is still classified');
+
+        // The control: the same text with the block closed reads as pinned,
+        // so the note above is the missing fence and not the fixture. A
+        // pinned record is out of the candidate list too, and silently,
+        // which is what makes the note the whole difference between them.
+        writeMemoryFile(store, 'protected.md', '---\npinned: 2026-01-01\n---\n# p\n');
+        setMtime(store, 'protected.md', d400);
+        const closed = run(store, ['decay-scan']);
+        assert.strictEqual(closed.status, 0, closed.stderr);
+        assert.ok(!/does not close inside/.test(closed.stderr), closed.stderr);
+        assert.ok(!/^archive  protected  /m.test(closed.stdout), closed.stdout);
     } finally {
         rmStore(store);
     }
@@ -10137,9 +10207,9 @@ test('a repair that cannot read a leading --- block says so on the record it rew
         if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
         assert.strictEqual(runHome(store, ['add-operator', 'u-fact', 'first words']).status, 0);
         const opFile = path.join(operatorDirPath(store), 'u-fact.md');
-        // A block with no closing fence is body by this store's grammar, so
-        // every reader here already treats it as body and a repair replaces
-        // it. What earns a line is that the author may have meant a block,
+        // A block with no closing fence carries no field any reader here
+        // reads, and a repair, unlike the doors that refuse on that state,
+        // replaces it. What earns a line is that the author may have meant a block,
         // and --update writes no tags and no machine scope, so nothing can
         // put back a field that goes this way.
         fs.writeFileSync(opFile, '---\ntags: sql\nmachine: BOX\n# u-fact\n\nthe body\n', 'utf8');
@@ -15128,6 +15198,43 @@ test('a pin set while the pass waits for its lock stops the retirement', () => {
     }
 });
 
+test('a block that stops closing while the pass waits for its lock stops the retirement too', () => {
+    // The same window, entered by the other route: a record readable and
+    // unpinned when the pass validated its names, and by the time the pass
+    // holds its lock carrying a block no reader can read. Whether a pin sits
+    // inside that block is exactly what nobody can say, so this is the state
+    // the re-assertion exists to stop on, and the last guard before a rename.
+    const store = makeStore();
+    try {
+        writeMemoryFile(store, 'go.md', '# go\n');
+        writeMemoryFile(store, 'MEMORY.md', '# Memory Index\n\n- [go](go.md) - retiring\n');
+        const unreadableBody = '---\npinned: 2026-01-01\n# go\n';
+
+        const res = run(store, ['decay-prune', '--archive', 'go'], {
+            NODE_OPTIONS: pinAtLockPreload(store.root, 'decay.lock',
+                path.join(store.memDir, 'go.md'), unreadableBody)
+        });
+        assert.strictEqual(res.status, 1, res.stdout);
+        assert.match(res.stderr,
+            /'go' is no longer closing the frontmatter block it opens inside the first 40 lines/);
+        assert.match(res.stderr,
+            /whether it is pinned is unknown and retiring it could retire a record a pin protects/);
+        // The re-run instruction survives the failure line's own cap, which
+        // is why this message names the state and leaves the repair to the
+        // validator and the scan: it is the only line that says the pass
+        // stopped and how to finish it.
+        assert.match(res.stderr, /a re-run without that name retires the rest/);
+        assert.ok(!/\[cut\]/.test(res.stderr), 'the line is not cut: ' + res.stderr);
+
+        assert.strictEqual(fs.readFileSync(path.join(store.memDir, 'go.md'), 'utf8'),
+            unreadableBody, 'the record is still in the tier, unread block and all');
+        assert.ok(!fs.existsSync(path.join(store.memDir, 'archive', 'go.md')),
+            'and nothing was moved');
+    } finally {
+        rmStore(store);
+    }
+});
+
 test('an archive slot that fills while the pass waits for its lock is refused by name', () => {
     // The other half of the verdict this pass forms before it locks: the slot
     // was free when the names were validated, and the writers that can fill it
@@ -16188,25 +16295,65 @@ test('a repair keeps a record\'s byte order mark, and its frontmatter with it', 
     }
 });
 
-test('an unclosed frontmatter block is body to the field reader and to a repair alike', () => {
+test('a record whose whole text is a fence is unread rather than empty, and neither pass acts on it', () => {
+    // What a truncated write leaves: an opening fence and nothing after it.
+    // It opens a block and closes none, so it is the unread state and not an
+    // empty record, and the two passes that could remove it stop. The cost of
+    // reading it as empty would be the same as for any other unread record,
+    // since a pinned: line is exactly what the truncated write may have cut.
+    const store = makeStore();
+    try {
+        writeMemoryFile(store, 'stub.md', '---\n');
+        writeMemoryFile(store, 'MEMORY.md', '# Memory Index\n\n- [stub](stub.md) - truncated\n');
+        setMtime(store, 'stub.md', daysAgo(400));
+        assert.strictEqual(memq.pinState(path.join(store.memDir, 'stub.md')), 'unclosed');
+
+        const scan = run(store, ['decay-scan']);
+        assert.strictEqual(scan.status, 0, scan.stderr);
+        assert.ok(!/^archive  stub/m.test(scan.stdout),
+            'a record nobody could read is not a candidate: ' + scan.stdout);
+        assert.match(scan.stderr,
+            /^memq: stub opens a frontmatter block that does not close inside the first 40 lines/m);
+
+        const prune = run(store, ['decay-prune', '--archive', 'stub']);
+        assert.strictEqual(prune.status, 1, prune.stdout);
+        assert.match(prune.stderr, /'stub' opens a frontmatter block that does not close/);
+        assert.ok(fs.existsSync(path.join(store.memDir, 'stub.md')), 'the record did not move');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a retirement stops at a block that does not close, and names the repair its shape needs', () => {
     // One walk answers where a block ends, for every reader of one. Two walks
     // that disagreed would let a field govern a decision while the repair
     // that rewrites the record treats the same text as body and drops it.
+    // What each does with that one answer differs, and the difference is the
+    // asymmetry the pin carries: the repair has a record in front of it and
+    // carries no block, while the retirement is about to remove a record
+    // whose pinned: it could not read, so it stops instead.
     const store = makeStore();
     try {
         writeMemoryFile(store, 'MEMORY.md', '# Memory Index\n\n- [Open](open.md) - unclosed\n');
         // The closing fence sits past the bound the block grammar reads to,
         // so this is text that opens with a fence and closes nowhere the
-        // walk can see: body, by the one rule both readers take.
+        // walk can see.
         writeMemoryFile(store, 'open.md', '---\npinned: 2026-07-01\n'
             + 'filler: x\n'.repeat(41) + '---\n# open\n\nbody text\n');
 
-        // The field reader: no closing fence inside the bound, so pinned: is
-        // body and the prune is not refused by it.
+        const refused = run(store, ['decay-prune', '--archive', 'open']);
+        assert.strictEqual(refused.status, 1, refused.stdout);
+        assert.match(refused.stderr,
+            /'open' opens a frontmatter block that does not close inside the first 40 lines.*whether it is pinned is unknown; shorten the block so its closing --- sits inside the first 40 lines, keeping every field the record is to carry above that line\. Then rerun/);
+        assert.ok(fs.existsSync(path.join(store.memDir, 'open.md')), 'the memory did not move');
+
+        // The control: the same record with its fence inside the bound and no
+        // pin in it retires normally, so the refusal above is the boundary
+        // and not the name or the store.
+        writeMemoryFile(store, 'open.md', '---\ntags: alpha\n---\n# open\n\nbody text\n');
         const archived = run(store, ['decay-prune', '--archive', 'open']);
         assert.strictEqual(archived.status, 0, archived.stderr);
         assert.match(archived.stdout, /^archived {2}open$/m);
-        assert.ok(!/is pinned/.test(archived.stderr), archived.stderr);
     } finally {
         rmStore(store);
     }
@@ -17776,6 +17923,48 @@ test('a target whose frontmatter cannot be read is refused, not admitted as poin
     }
 });
 
+test('a target whose frontmatter block never closes is refused, not admitted as pointing nowhere', (t) => {
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        // The target's own supersedes: sits inside a block that never closes,
+        // where no reader reads it. Taking that silence for 'points nowhere'
+        // writes the second half of the mutual pair every reader drops, on
+        // the evidence of a record nobody could read.
+        const typeDir = typeDirPath(store, 'ptype');
+        assert.strictEqual(runHome(store,
+            ['add-type', 'ptype', 'live-fact', 'the live fact']).status, 0);
+        const target = path.join(typeDir, 'live-fact.md');
+        const indexBefore = fs.readFileSync(path.join(typeDir, 'MEMORY.md'), 'utf8');
+        fs.writeFileSync(target, '---\nsupersedes: new-fact\n# the live fact\n', 'utf8');
+
+        const blind = runHome(store, ['add-type', 'ptype', 'new-fact', 'the new fact',
+            '--supersedes', 'live-fact']);
+        assert.strictEqual(blind.status, 1, blind.stdout);
+        assert.match(blind.stderr,
+            /'live-fact' in type 'ptype' opens a frontmatter block that does not close inside the first 40 lines, so --supersedes will not name it/);
+        // The repair is one the session can actually perform on a shared
+        // tier, where the frontmatter guard refuses the three write tools.
+        assert.match(blind.stderr,
+            /To repair that record, close the block with a --- line inside the first 40 lines, keeping every field the record is to carry above that line\. A record on a shared tier is not writable through the Write, Edit or MultiEdit tools and has no hand-edit path, so the repair route is memq add-type <type> <name> "<description>" --update --body "<text>" --confirm-shared, or add-operator without the type: that rewrites the record around the new body and drops the unread block with every field in it, leaving the record's previous text in a \.bak beside it\./);
+        assert.match(blind.stderr, /whether it already supersedes 'new-fact' is unknown/);
+        assert.ok(!/could not be read/.test(blind.stderr),
+            'the file read perfectly well, and the repair is a line of its text: ' + blind.stderr);
+        assert.ok(!fs.existsSync(path.join(typeDir, 'new-fact.md')), 'nothing was written');
+        assert.strictEqual(fs.readFileSync(path.join(typeDir, 'MEMORY.md'), 'utf8'), indexBefore);
+
+        // The known-answer control: the same pointer at the same target with
+        // its block closed is admitted, so the refusal is the missing fence
+        // rather than the target or the pointer.
+        fs.writeFileSync(target, '---\nsupersedes: some-older\n---\n# the live fact\n', 'utf8');
+        const ok = runHome(store, ['add-type', 'ptype', 'new-fact', 'the new fact',
+            '--supersedes', 'live-fact']);
+        assert.strictEqual(ok.status, 0, ok.stderr);
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
 test('a supersedes pointer survives a gated body repair verbatim', (t) => {
     const store = makeHomeStore();
     try {
@@ -18102,10 +18291,18 @@ test('a record nothing could read is refused rather than written into', () => {
         // whole job is to report drift and which no surface can check, with
         // nothing anywhere saying why.
         const cases = [
+            // The two shapes of a block that does not close inside the bound,
+            // paired here because they take opposite repairs: the first has
+            // no fence to find, and the second has one standing past where a
+            // reader looks, so telling the second to add a fence would close
+            // its block early and turn the fields below the new fence into
+            // body. This verb writes to the project tier, whose records the
+            // session's own write tools may edit, so neither names another
+            // writer.
             ['unterminated.md', '---\nname: ""\nno closing fence here\n',
-                /opens a frontmatter block that never closes within 40 lines/],
+                /opens a frontmatter block that does not close inside the first 40 lines, so no reader can read its fields; close the block with a --- line inside the first 40 lines, keeping every field the record is to carry above that line, then rerun/],
             ['past-bound.md', '---\n' + 'filler: x\n'.repeat(60) + '---\n\nbody\n',
-                /opens a frontmatter block that never closes within 40 lines/],
+                /opens a frontmatter block that does not close inside the first 40 lines, so no reader can read its fields; shorten the block so its closing --- sits inside the first 40 lines, keeping every field the record is to carry above that line, then rerun/],
             ['misplaced.md', '---\nname: x\nprovenance:\n  anchors: src/a.js@' + HELLO_SHA
                 + '\n---\n\nbody\n',
                 /has an anchors: field under a key other than the harness's metadata: map/],
@@ -18303,7 +18500,8 @@ test('frontmatterSite reports the line a field was read off, and answers for tex
     assert.strictEqual(noBlock.block.opened, false);
 
     const unclosed = memq.frontmatterSite('---\nanchors: a.js@x\nbody\n', 'anchors');
-    assert.strictEqual(unclosed.value, null);
+    assert.strictEqual(unclosed.value, memq.FRONTMATTER_UNCLOSED,
+        'a block that never closed is its own answer, not the null a record without the field gives');
     assert.strictEqual(unclosed.line, -1);
     assert.strictEqual(memq.frontmatterUnclosed(unclosed.block), true,
         'an opened block with no closer is the case a writer must refuse rather than write into');
@@ -18323,6 +18521,212 @@ test('frontmatterSite reports the line a field was read off, and answers for tex
         assert.strictEqual(got.line, -1, String(raw));
         assert.deepStrictEqual(got.block, { bom: '', lines: [], opened: false, closer: -1 },
             String(raw) + ': the block is the empty one, so a caller reading it finds no field');
+    }
+});
+
+// The two shapes a block that does not close inside the bound takes, and the
+// repair each is given. They are asserted against each other in one test
+// because the failure this pins is not a wrong string, it is the two shapes
+// sharing one repair: the fence-adding advice, given to a record whose fence
+// stands past the bound, closes its block early and drops every field below
+// the new fence into the body, which retires the record the state protects.
+test('the two shapes of a block that does not close take opposite repairs, and the tier decides who may make one', () => {
+    const closed = memq.frontmatterBlock('---\nname: ""\n---\n# body\n');
+    const noCloser = memq.frontmatterBlock('---\npinned: 2026-01-01\n# body\n');
+    const pastBound = memq.frontmatterBlock('---\n' + 'filler: x\n'.repeat(45)
+        + 'pinned: 2026-01-01\n---\n# body\n');
+
+    assert.deepStrictEqual(
+        [memq.frontmatterUnclosedShape(noCloser), memq.frontmatterUnclosedShape(pastBound)],
+        ['no-closer', 'past-bound'],
+        'the shapes are told apart, which is what keeps one repair off the other record');
+    // Everything that is not this class answers null, and the degenerate
+    // records answer for themselves rather than falling into a third state:
+    // a record whose whole text is a fence opens a block and closes none.
+    for (const raw of ['---\nname: ""\n---\n', '# just a body\n', '', '\n']) {
+        assert.strictEqual(memq.frontmatterUnclosedShape(memq.frontmatterBlock(raw)), null,
+            JSON.stringify(raw) + ' has no unclosed block to repair');
+    }
+    for (const raw of ['---', '---\n']) {
+        assert.strictEqual(memq.frontmatterUnclosedShape(memq.frontmatterBlock(raw)), 'no-closer',
+            JSON.stringify(raw) + ': a record that is only a fence opens a block and closes none');
+    }
+    assert.strictEqual(memq.frontmatterUnclosedShape(closed), null);
+
+    // One preservation clause on both instructions, because both of them are
+    // satisfiable by deleting the fields they exist to save: a fence inserted
+    // above a field drops it into the body, and a block shortened from the
+    // tail takes the fields at its end, which is where a past-bound record's
+    // fields are.
+    const keep = ', keeping every field the record is to carry above that line';
+    const add = 'close the block with a --- line inside the first 40 lines' + keep;
+    const shorten = 'shorten the block so its closing --- sits inside the first 40 lines' + keep;
+    assert.strictEqual(memq.frontmatterUnclosedRepair(noCloser, false), add);
+    assert.strictEqual(memq.frontmatterUnclosedRepair(pastBound, false), shorten,
+        'a record whose fence stands past the bound is never told to add one');
+
+    // The shared tiers name the writers that are open there, because the
+    // frontmatter guard refuses Write, Edit and MultiEdit on both of them
+    // whoever is writing, so an unqualified 'edit the record' is a dead end.
+    // The exact flag set, because a remedy naming a command that does not run
+    // is worse than none: --confirm-shared without a body flag is a usage
+    // error, and a bare --update never opens the record at all, so it leaves
+    // the unread block exactly where it was.
+    const sharedClause = '. A record on a shared tier is not writable through the Write, Edit or'
+        + ' MultiEdit tools and has no hand-edit path, so the repair route is memq add-type'
+        + ' <type> <name> "<description>" --update --body "<text>" --confirm-shared, or'
+        + ' add-operator without the type: that rewrites the record around the new body and'
+        + ' drops the unread block with every field in it, leaving the record\'s previous text'
+        + ' in a .bak beside it';
+    assert.strictEqual(memq.frontmatterUnclosedRepair(noCloser, true), add + sharedClause);
+    assert.strictEqual(memq.frontmatterUnclosedRepair(pastBound, true), shorten + sharedClause);
+
+    // A caller that cannot see the shape names what both repairs establish,
+    // rather than guessing at one of them.
+    const both = 'make its frontmatter block close inside the first 40 lines' + keep;
+    assert.strictEqual(memq.frontmatterUnclosedRepair(null, false), both);
+    assert.strictEqual(
+        memq.readFrontmatterUnclosedRepair(path.join(os.tmpdir(), 'no-such-memq-record.md'), false),
+        both, 'a record this could not read back is told what both repairs have in common');
+});
+
+test('the repair reads the record the pin state was decided from, not a capped head of it', () => {
+    // The two reads have to be one read. `pinState` goes through
+    // frontmatterField, which reads the whole file, so a record whose closing
+    // fence stands past a 64 KB head is 'unclosed' to it and its fence is
+    // real. A repair helper reading only the head would find no fence at all
+    // and print the fence-adding instruction, which for this record closes the
+    // block early and drops the fields below the new fence, the pinned: among
+    // them, into the body: the exact damage the shape branch exists to
+    // prevent, arriving through the unit the answer was measured in.
+    const store = makeStore();
+    try {
+        const filler = 'filler: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n';
+        const pastCap = '---\n' + filler.repeat(Math.ceil(70000 / filler.length))
+            + 'pinned: 2026-01-01\n---\n# past the cap\n';
+        assert.ok(Buffer.byteLength(pastCap, 'utf8') > 65536,
+            'the fixture must run past the read cap the capped doors take');
+        writeMemoryFile(store, 'wide.md', pastCap);
+        const file = path.join(store.memDir, 'wide.md');
+
+        assert.strictEqual(memq.pinState(file), 'unclosed',
+            'the state being explained: no reader sees this block close inside the line bound');
+        assert.match(memq.readFrontmatterUnclosedRepair(file, false),
+            /^shorten the block so its closing --- sits inside the first 40 lines/,
+            'and the repair named is the one for a record whose fence exists');
+        assert.ok(!/close the block with a --- line/
+            .test(memq.readFrontmatterUnclosedRepair(file, false)),
+            'never the instruction that would drop this record\'s pinned: into the body');
+
+        // The control: the same shape inside the cap answers the same way, so
+        // the assertion above is about the record and not about its size.
+        const small = '---\n' + filler.repeat(45) + 'pinned: 2026-01-01\n---\n# small\n';
+        writeMemoryFile(store, 'narrow.md', small);
+        assert.match(memq.readFrontmatterUnclosedRepair(path.join(store.memDir, 'narrow.md'), false),
+            /^shorten the block/);
+    } finally {
+        rmStore(store);
+    }
+});
+
+// Every field reader against a record whose fence never closes, each answer
+// paired in one assertion with the same reader's answer for a record that was
+// read and declares none of the fields. The pairing is the point: the defect
+// this pins is the two answers being one value, so an assertion naming only
+// the not-checked answer would pass again the day they collapse back
+// together. Where the two answers are deliberately the same value, the pair
+// records that ruling rather than a distinction.
+test('a record whose frontmatter never closes is told apart from one that declares no fields', () => {
+    const store = makeStore();
+    try {
+        // Every field memq reads, inside a block that opens on line 0 and has
+        // no closing fence: a reader is entitled to none of them.
+        const unclosedRaw = [
+            '---',
+            'pinned: 2026-01-01',
+            'tags: alpha, beta',
+            'created: 2026-01-01',
+            'supersedes: older-record',
+            'machine: somebox',
+            'anchors: src/a.js@' + 'a'.repeat(40),
+            '# the body, with the fence never closed',
+            ''
+        ].join('\n');
+        // The control: a block that opens and closes, declaring none of them.
+        const cleanRaw = '---\nname: ""\n---\n# the body\n';
+        writeMemoryFile(store, 'unclosed.md', unclosedRaw);
+        writeMemoryFile(store, 'clean.md', cleanRaw);
+        const unclosedFile = path.join(store.memDir, 'unclosed.md');
+        const cleanFile = path.join(store.memDir, 'clean.md');
+
+        // The sentinel is its own value. A guard or a reader tells the
+        // not-checked answers apart by identity, so sharing one with another
+        // sentinel would merge two states as surely as sharing null does.
+        assert.strictEqual(typeof memq.FRONTMATTER_UNCLOSED, 'symbol');
+        for (const other of [memq.FRONTMATTER_UNREADABLE, memq.FRONTMATTER_INDENTED, null]) {
+            assert.notStrictEqual(memq.FRONTMATTER_UNCLOSED, other,
+                'the unclosed answer is distinct from every other answer that is not a value');
+        }
+
+        for (const field of ['pinned', 'tags', 'created', 'supersedes', 'machine', 'anchors']) {
+            assert.deepStrictEqual(
+                [memq.frontmatterValue(unclosedRaw, field), memq.frontmatterValue(cleanRaw, field)],
+                [memq.FRONTMATTER_UNCLOSED, null],
+                field + ': the unclosed record and the clean one answer differently');
+            assert.deepStrictEqual(
+                [memq.frontmatterSite(unclosedRaw, field).value,
+                    memq.frontmatterSite(cleanRaw, field).value],
+                [memq.FRONTMATTER_UNCLOSED, null],
+                field + ': the same at the door that reports the line as well as the value');
+            assert.deepStrictEqual(
+                [memq.frontmatterField(unclosedFile, field), memq.frontmatterField(cleanFile, field)],
+                [memq.FRONTMATTER_UNCLOSED, null],
+                field + ': the same at the door that reads the file');
+        }
+
+        // The block rides on the answer as it always did, so a caller that
+        // reads `block` rather than `value` is unaffected by the sentinel.
+        const site = memq.frontmatterSite(unclosedRaw, 'pinned');
+        assert.strictEqual(site.line, -1, 'the value came off no line this reader may read');
+        assert.strictEqual(site.block.opened, true);
+        assert.strictEqual(site.block.closer, -1);
+        assert.strictEqual(site.block.lines[1], 'pinned: 2026-01-01');
+        assert.strictEqual(memq.frontmatterUnclosed(site.block), true);
+
+        // The field whose miss costs a memory rather than a search hit. A
+        // record nobody could read is not an unpinned one, and it is not the
+        // unreadable file either, whose repair is nothing in the record.
+        assert.deepStrictEqual([memq.pinState(unclosedFile), memq.pinState(cleanFile)],
+            ['unclosed', 'unpinned'],
+            'an unclosed block is its own pin state, and never the clean record\'s');
+        for (const other of ['pinned', 'unpinned', 'unknown', 'misplaced']) {
+            assert.notStrictEqual(memq.pinState(unclosedFile), other);
+        }
+
+        // The anchors reader Section 1 built already separated the two, and
+        // still does: null for the record nobody could read, a parse for the
+        // record that reads and anchors nothing.
+        assert.strictEqual(memq.frontmatterAnchors(unclosedRaw), null);
+        assert.strictEqual(memq.readFrontmatterAnchors(unclosedFile), null);
+        assert.deepStrictEqual(memq.frontmatterAnchors(cleanRaw).entries, []);
+        assert.deepStrictEqual(memq.readFrontmatterAnchors(cleanFile).entries, []);
+
+        // The readers ruled to keep the answer they give, because a miss
+        // there costs a search match or a deferral rather than a decision
+        // about whether a memory survives. The pair states that ruling: these
+        // two records are meant to answer alike here.
+        assert.deepStrictEqual(
+            [memq.readFrontmatterTags(unclosedFile), memq.readFrontmatterTags(cleanFile)],
+            [[], []], 'an unreadable block costs a tag match, which is this reader\'s ruling');
+        assert.deepStrictEqual(
+            [memq.readFrontmatterCreated(unclosedFile), memq.readFrontmatterCreated(cleanFile)],
+            [null, null], 'a created: nobody could read costs a deferral, never an aging');
+        assert.deepStrictEqual(
+            [memq.supersedesName(memq.frontmatterValue(unclosedRaw, 'supersedes')),
+                memq.supersedesName(memq.frontmatterValue(cleanRaw, 'supersedes'))],
+            [null, null], 'a pointer nobody could read names no record to act on');
+    } finally {
+        rmStore(store);
     }
 });
 

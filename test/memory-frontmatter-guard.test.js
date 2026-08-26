@@ -376,14 +376,119 @@ test('a pinned: value that is not the house date form is denied, and a valueless
     } finally { rmStore(store); }
 });
 
+// Load the guard's memq with one export missing, the version-skew shape: an
+// installed memq older than a hook that calls into it. The guard requires
+// memq by path, so the interception is at the module loader rather than at
+// the file.
+function memqMissingExportPreload(dir, name) {
+    const shim = path.join(dir, 'drop-export.js');
+    fs.writeFileSync(shim, [
+        "'use strict';",
+        "const Module = require('module');",
+        'const drop = ' + JSON.stringify(name) + ';',
+        'const realLoad = Module._load;',
+        'Module._load = function (request) {',
+        '    const loaded = realLoad.apply(Module, arguments);',
+        "    if (/memq\\.js$/.test(String(request)) && loaded && typeof loaded === 'object'",
+        '        && drop in loaded) {',
+        '        const copy = {};',
+        '        for (const k of Object.keys(loaded)) copy[k] = loaded[k];',
+        '        delete copy[drop];',
+        '        return copy;',
+        '    }',
+        '    return loaded;',
+        '};'
+    ].join('\n') + '\n', 'utf8');
+    return '--require "' + shim.replace(/\\/g, '/') + '"';
+}
+
+// A deny that has to build its remedy from another module can fail to build
+// it, and this guard's failure envelope answers a throw with the not-checked
+// allow. That is the right posture for a check that did not run and the wrong
+// one for a check that ran, refused, and then could not phrase itself: the
+// record lands. So the remedy is composed defensively, and what a failure
+// costs is the shape-specific instruction rather than the refusal.
+test('a deny whose remedy cannot be built stays a deny, with a less specific instruction', () => {
+    const store = makeStore();
+    try {
+        const target = path.join(store.project, 'new-record.md');
+        const unclosed = ['---', 'pinned: 2026-08-25', '', '# A record', 'body', ''].join('\n');
+        const res = runGuard(store, writeTo(store, target, unclosed), undefined,
+            { NODE_OPTIONS: memqMissingExportPreload(store.base, 'frontmatterUnclosedRepair') });
+        assertDeny(res, /does not close inside the line bound/,
+            'the refusal survives a remedy that could not be built');
+        assert.match(res.stderr, /make its frontmatter block close inside that bound/,
+            'and degrades to what both repairs establish: ' + res.stderr);
+
+        // The control: the same payload with the export present gets the
+        // shape-specific instruction, so the line above is the missing export
+        // and not the fixture.
+        const whole = runGuard(store, writeTo(store, target, unclosed));
+        assert.match(whole.stderr, /close the block with a --- line inside the first 40 lines/,
+            'the shape-specific instruction is what a healthy load gives: ' + whole.stderr);
+    } finally { rmStore(store); }
+});
 test('a frontmatter block that opens and never closes is denied', () => {
     const store = makeStore();
     try {
         const target = path.join(store.project, 'new-record.md');
         const unclosed = ['---', 'pinned: 2026-08-25', '', '# A record', 'body', ''].join('\n');
-        assertDeny(runGuard(store, writeTo(store, target, unclosed)), /never closes/);
+        assertDeny(runGuard(store, writeTo(store, target, unclosed)),
+            /does not close inside the line bound/);
         assertAllow(runGuard(store, writeTo(store, target, record(['pinned: 2026-08-25']))),
             'the same fields inside a closed block');
+    } finally { rmStore(store); }
+});
+
+// The deny that told an author to do the damage the deny exists to prevent.
+// A record whose closing fence stands past memq's line bound is already
+// closed, just not where a reader looks, so a writer complying with 'add a
+// --- line inside the bound' closes the block early, drops the pinned: below
+// the new fence into the body, and lands a record this guard then allows and
+// the store reads as unpinned and decayable. The two shapes are refused with
+// the instruction each one needs, and the instruction is memq's, so the
+// store's own repair rule and this guard's cannot come apart.
+test('the deny names the repair the record\'s own shape needs, and never the one that drops its fields', () => {
+    const store = makeStore();
+    try {
+        const target = path.join(store.project, 'new-record.md');
+        // A fence at index 42, past the bound of 40: closed, and not where a
+        // reader looks.
+        const pastBound = ['---', ...Array.from({ length: 40 }, (_, i) => 'filler' + i + ': x'),
+            'pinned: 2026-08-25', '---', '', '# A record', ''].join('\n');
+        const past = runGuard(store, writeTo(store, target, pastBound));
+        assertDeny(past, /shorten the block so its closing --- sits inside the first 40 lines/,
+            'a record whose fence is past the bound is told to shorten it');
+        assert.ok(!/close the block with a --- line/.test(past.stderr),
+            'and is never told to add a fence, which would drop its pinned: into the body: '
+            + past.stderr);
+
+        // No fence anywhere: the other shape, and the other instruction.
+        const noCloser = ['---', 'pinned: 2026-08-25', '', '# A record', 'body', ''].join('\n');
+        const none = runGuard(store, writeTo(store, target, noCloser));
+        assertDeny(none, /close the block with a --- line inside the first 40 lines/,
+            'a record with no fence at all is told to add one');
+        assert.ok(!/shorten the block/.test(none.stderr), none.stderr);
+
+        // Both carry the preservation clause, because both instructions are
+        // satisfiable by deleting the fields they exist to save.
+        for (const res of [past, none]) {
+            assert.match(res.stderr, /keeping every field the record is to carry above that line/);
+        }
+        // A deny names a way through, so following it exactly lands the write:
+        // the past-bound record with its fence moved inside the bound and its
+        // pinned: still above that fence is allowed, which is the whole test
+        // of a remedy.
+        const shortened = ['---', ...Array.from({ length: 37 }, (_, i) => 'filler' + i + ': x'),
+            'pinned: 2026-08-25', '---', '', '# A record', ''].join('\n');
+        assertAllow(runGuard(store, writeTo(store, target, shortened)),
+            'the past-bound record repaired the way its deny said to');
+        // The claim the deny used to make about what such a record's pinned:
+        // does. It does not pin, and it does not read as absent either: the
+        // passes stop instead, which is what the sentence now says.
+        for (const res of [past, none]) {
+            assert.ok(!/reads as absent/.test(res.stderr), res.stderr);
+        }
     } finally { rmStore(store); }
 });
 
@@ -686,12 +791,18 @@ test('both shared tiers refuse every write tool, main session included', () => {
                 const res = runGuard(store, writeTo(store, tier.file, CLEAN, agent));
                 assertDeny(res, tier.fix, 'expected a deny for agent ' + agent);
                 assert.match(res.stderr, /never by the Write, Edit or MultiEdit tools/);
-                // The remedy the line names cannot add or remove a pinned:
-                // line (--update carries the existing frontmatter across
-                // verbatim), and the refusal says so unconditionally rather
-                // than naming a no-op as the fix for that one operation.
-                assert.match(res.stderr, /neither adds nor removes a pinned:/,
-                    'the refusal owns the one operation --update cannot perform: ' + res.stderr);
+                // One form per thing a blocked write could have been doing.
+                // Creating is the modal case, these tiers having no
+                // hand-edit path for a record to exist by, and every named
+                // form carries --update refuses it outright.
+                assert.match(res.stderr,
+                    /To create a record that does not exist yet: memq add-\S+ [^:]*with no --update/,
+                    'the create form is named: ' + res.stderr);
+                assert.match(res.stderr,
+                    /--update, which never opens the record file/,
+                    'the description form is named for what it changes: ' + res.stderr);
+                assert.match(res.stderr, /To change an existing record's body:/,
+                    'and the body case is addressed at all: ' + res.stderr);
                 assert.match(res.stderr, /memory-system skill/,
                     'and points at where the pinning moves live: ' + res.stderr);
             }
@@ -708,6 +819,96 @@ test('both shared tiers refuse every write tool, main session included', () => {
             }), tier.fix, 'a MultiEdit on a shared tier is refused too');
         }
     } finally { rmStore(store); }
+});
+
+// A store the guard resolves without the engine store signals: the redirect
+// those signals perform, performed by the home directory instead. It is what
+// lets one test run the deny in both of the environments its emitting path
+// admits, which is the whole subject below.
+function makeHomeStore() {
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'mfg-home-'));
+    const root = path.join(base, '.claude');
+    const project = path.join(root, 'projects', 'proj', 'memory');
+    const type = path.join(root, 'memory-types', 'webapp');
+    const operator = path.join(root, 'memory-operator');
+    const repo = path.join(base, 'repo');
+    for (const dir of [path.join(project, 'archive'), type, operator, repo]) {
+        fs.mkdirSync(dir, { recursive: true });
+    }
+    let rootReal = root;
+    try { rootReal = fs.realpathSync.native(root); } catch { /* the lexical root stands */ }
+    return { base, root, rootReal, project, type, operator, repo, home: base };
+}
+
+// Run the guard with the signals unset and the store found through the home
+// directory, the other of the two environments the shared-tier deny can be
+// emitted in.
+function runGuardUnsignalled(store, payload) {
+    return runGuard(store, payload, undefined, {
+        KIT_MEMORY_ROOT: null,
+        KIT_MEMORY_ROOT_ALLOW_DATA: null,
+        HOME: store.home,
+        USERPROFILE: store.home
+    });
+}
+
+// The deny's routes, measured against what memq actually does with them.
+// Every form named here was run in both environments and against both target
+// states before it was written down: creating works in both; the
+// description-only --update works in both and never opens the record file;
+// the body repair works only where the engine store signals are absent, memq
+// refusing it under them because the .bak it leaves does not sync. So under
+// the signals a body change has no route at all, and the line says that
+// rather than naming a command that exits 1 in the environment it is read in.
+test('the shared-tier deny names the create form, and the body form only where memq will run it', () => {
+    const signalled = makeStore();
+    const unsignalled = makeHomeStore();
+    try {
+        for (const [store, run] of [[signalled, runGuard], [unsignalled, runGuardUnsignalled]]) {
+            const res = run(store, writeTo(store, path.join(store.type, 'fresh.md'), CLEAN));
+            assertDeny(res, /memq add-type webapp/,
+                'the deny still lands in both environments; stderr=' + res.stderr);
+            // The create form, which is the one a blocked write most often
+            // wanted and the one no --update form can perform.
+            assert.match(res.stderr, /with no --update, and --body "<text>" for its body/,
+                'the create form is named in both environments: ' + res.stderr);
+            assert.match(res.stderr, /--update, which never opens the record file/,
+                'and so is the description form: ' + res.stderr);
+        }
+
+        // Under the signals the body repair is refused by memq itself, so the
+        // line names no command for it and says why.
+        const under = runGuard(signalled,
+            writeTo(signalled, path.join(signalled.type, 'fresh.md'), CLEAN));
+        assert.match(under.stderr,
+            /To change an existing record's body: there is no route from this process/,
+            'the cell with no working remedy says so: ' + under.stderr);
+        assert.match(under.stderr, /refuses a shared-tier body repair under them/);
+        assert.ok(!/--confirm-shared/.test(under.stderr),
+            'and names no command that would exit 1 here: ' + under.stderr);
+
+        // Without them the body repair runs, and the line names it with what
+        // it keeps and the one shape that defeats that.
+        const without = runGuardUnsignalled(unsignalled,
+            writeTo(unsignalled, path.join(unsignalled.type, 'fresh.md'), CLEAN));
+        assert.match(without.stderr,
+            /--update --body "<text>" --confirm-shared, which replaces the body/,
+            'the body form is named where it runs: ' + without.stderr);
+        assert.match(without.stderr, /keeps every pinned:, tags: and supersedes: line/);
+        // The exception, in wording true of both shapes of an unread block.
+        // 'never closes' would be false of a record whose fence stands past
+        // the bound, and that record's author, reading it as not about them,
+        // takes the body route and loses the block.
+        assert.match(without.stderr,
+            /opens with --- and has no closing --- within 40 lines/,
+            'the exception is true of both shapes: ' + without.stderr);
+        assert.ok(!/never closes/.test(without.stderr),
+            'and never spells it in the way that is false for a past-bound block: '
+            + without.stderr);
+    } finally {
+        rmStore(signalled);
+        rmStore(unsignalled);
+    }
 });
 
 test('the shared-tier refusal quotes no text the payload chose', () => {
@@ -1038,7 +1239,8 @@ test('a body-only edit to a record whose fence never closes is refused, and the 
             tool_name: 'Edit',
             cwd: store.repo,
             tool_input: { file_path: target, old_string: 'old body', new_string: 'new body' }
-        }), /never closes/, 'a body edit that leaves the fence open is refused');
+        }), /does not close inside the line bound/,
+        'a body edit that leaves the fence open is refused');
         assertAllow(runGuard(store, {
             tool_name: 'Edit',
             cwd: store.repo,
@@ -1626,9 +1828,11 @@ test('an edit landing exactly on the byte cap is judged, and the Write door answ
             tool_name: 'Edit',
             cwd: store.repo,
             tool_input: { file_path: target, old_string: 'MARK', new_string: replacement }
-        }), /never closes/, 'the edit door judges a result that is whole');
+        }), /does not close inside the line bound/,
+        'the edit door judges a result that is whole');
         assertDeny(runGuard(store, writeTo(store, path.join(store.project, 'written.md'), whole)),
-            /never closes/, 'and the write door answers the same on the same bytes');
+            /does not close inside the line bound/,
+            'and the write door answers the same on the same bytes');
         // The control: one byte more is genuinely past the cap, so what the
         // store reads is a head and the record is not judged.
         fs.writeFileSync(target, base + 'MARK' + 'c', 'utf8');
