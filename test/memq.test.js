@@ -3523,13 +3523,19 @@ test('decay-prune preserves a malformed usage line by default and removes it onl
         assert.ok(fs.readFileSync(usagePath(store), 'utf8').includes(torn),
             'a refused pass removes nothing');
 
-        // Asked for, the removal happens, each line is said on stderr, the
-        // report counts it, and the .bak keeps the pre-drop bytes: a
-        // delete leaves an audit trail and one generation of way back.
+        // Asked for, the removal happens, the counts print before any line
+        // is removed, each line is said on stderr, the report counts it,
+        // and the .bak keeps the pre-drop bytes: a delete leaves an audit
+        // trail and one generation of way back. The count line leading the
+        // removal notes is the ordinary partial-drop shape: valid stamps
+        // survive, so the total-wipe refusal pinned below must stay silent.
         const before = fs.readFileSync(usagePath(store), 'utf8');
         const dropped = run(store, ['decay-prune', '--rollup', '--drop-malformed']);
         assert.strictEqual(dropped.status, 0, dropped.stderr);
-        assert.match(dropped.stderr, /removing unparseable usage line 2/);
+        assert.match(dropped.stderr,
+            /dropping 1 malformed line from a sidecar holding 1 valid stamp[\s\S]*removing unparseable usage line 2/,
+            'the per-tier counts precede the removal notes');
+        assert.doesNotMatch(dropped.stderr, /--drop-malformed refused/);
         assert.strictEqual(dropped.stdout,
             'usage  kept 1 of 1 stamps\nusage  dropped 1 malformed line\n');
         assert.ok(!fs.readFileSync(usagePath(store), 'utf8').includes(torn),
@@ -3543,6 +3549,70 @@ test('decay-prune preserves a malformed usage line by default and removes it onl
         assert.strictEqual(rescanned.status, 0, rescanned.stderr);
         assert.doesNotMatch(rescanned.stderr, /candidates suppressed/);
         assert.match(rescanned.stderr, /^memq: usage evidence: 1 stamp across 1 file$/m);
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The drop's one refusal, pinned in both directions against the partial
+// drop above. The motivating case for the flag is a sidecar another
+// machine's newer memq wrote in a stamp shape this one does not parse, and
+// that same case is where the flag is most dangerous: every non-blank line
+// fails the gate, so the drop would rewrite the tier's whole usage evidence
+// to an empty file behind a single .bak generation the next rollup
+// overwrites. A drop that would leave no valid stamp is refused for that
+// tier alone, named on stderr, with the file untouched byte for byte.
+test('--drop-malformed refuses the tier it would empty and leaves the sidecar byte-identical', () => {
+    const store = makeStore();
+    try {
+        writeMemoryFile(store, 'stay.md', '# s\n');
+        seedUsage(store, [
+            '{"ts":"2026-08-25T00:00:00.000Z","file":"stay.md","kind":"future-shape","weight":3}',
+            '{"ts":"2026-08-25T0'
+        ]);
+        const before = fs.readFileSync(usagePath(store), 'utf8');
+        const res = run(store, ['decay-prune', '--rollup', '--drop-malformed']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stderr,
+            /--drop-malformed refused: no valid stamp would survive it \(2 malformed lines, 0 parsed\)/,
+            'the refusal names what it refused and why');
+        assert.doesNotMatch(res.stderr, /removing unparseable usage line/,
+            'no removal note prints for a refused tier');
+        assert.strictEqual(fs.readFileSync(usagePath(store), 'utf8'), before,
+            'the refused sidecar is byte-identical');
+        assert.ok(!fs.existsSync(usagePath(store) + '.bak'),
+            'a refused drop rewrites nothing, so it spends no .bak generation');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The refusal stands down for one tier and nothing else: the tier whose
+// sidecar still holds a valid stamp takes its drop in the same pass. The
+// operator tier is the shared tier every project on the machine reads, the
+// tier the motivating sync case lands in, so it plays the wiped side.
+test('a refused tier does not abort the drop in a tier where valid stamps survive', () => {
+    const store = makeStore();
+    try {
+        writeMemoryFile(store, 'proj.md', '# p\n');
+        seedUsage(store, [appliedStamp('proj.md', daysAgo(40)), '{"torn]']);
+        seedTierUsage(operatorDirPath(store), ['{"also torn]']);
+        const opBefore = fs.readFileSync(path.join(operatorDirPath(store), 'usage.jsonl'), 'utf8');
+
+        const res = run(store, ['decay-prune', '--rollup', '--drop-malformed']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stderr, /dropping 1 malformed line from a sidecar holding 1 valid stamp\n/,
+            'the project tier drop proceeds with its counts said first');
+        assert.match(res.stderr, /--drop-malformed refused[^\n]*\(1 malformed line, 0 parsed\)[^\n]*\(operator\)/,
+            'the operator tier refusal names its tier');
+        assert.match(res.stdout, /usage  dropped 1 malformed line\n/,
+            'the report counts the one drop that happened');
+        assert.doesNotMatch(res.stdout, /\(operator\)/,
+            'no operator-tier rewrite reached the report');
+        assert.strictEqual(fs.readFileSync(path.join(operatorDirPath(store), 'usage.jsonl'), 'utf8'),
+            opBefore, 'the refused operator sidecar is byte-identical');
+        assert.ok(!fs.readFileSync(usagePath(store), 'utf8').includes('{"torn]'),
+            'the project tier\'s malformed line left the sidecar');
     } finally {
         rmStore(store);
     }
@@ -3633,6 +3703,36 @@ test('decay-prune safety: the lock gates the pass, a concurrent append survives,
         const after = fs.readFileSync(usagePath(store), 'utf8');
         assert.ok(after.includes(marker), 'the concurrent append was carried into the rewrite');
         assert.ok(!fs.existsSync(lockPath), 'the lock was released');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The drop screens the lines the pass read and never the concurrent-append
+// tail, because those bytes are the appender's and may hold a lawful stamp
+// still being written mid-append. So a malformed line landing in the window
+// between the read and the rename survives a drop, and the report's dropped
+// line must say its screen did not cover it rather than read as a
+// whole-file guarantee; the drop test above pins the other direction, the
+// unqualified line, by exact stdout equality on a rewrite with no
+// concurrent append.
+test('a malformed line appended during the drop rewrite is carried, and the report says so', () => {
+    const store = makeStore();
+    try {
+        writeMemoryFile(store, 'stay.md', '# s\n');
+        const preRead = '{"pre-read torn line]';
+        seedUsage(store, [appliedStamp('stay.md', daysAgo(40)), preRead]);
+        const midRewrite = '{"mid-rewrite torn line]';
+        const res = run(store, ['decay-prune', '--rollup', '--drop-malformed'],
+            { NODE_OPTIONS: appendDuringBackupPreload(store.root, midRewrite) });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout,
+            /^usage {2}dropped 1 malformed line; a concurrent append rode through unscreened$/m,
+            'the dropped line is qualified rather than a whole-file claim');
+        const after = fs.readFileSync(usagePath(store), 'utf8');
+        assert.ok(!after.includes(preRead), 'the line the pass read was dropped');
+        assert.ok(after.includes(midRewrite),
+            'the appended bytes are the appender\'s and rode through verbatim');
     } finally {
         rmStore(store);
     }
@@ -7302,11 +7402,39 @@ test('an unreadable sidecar makes the applied counts a floor rather than a claim
         assert.strictEqual(res.status, 0, 'a lost sidecar never fails the digest');
         assert.match(res.stderr, /could not read usage sidecar/);
         assert.match(res.stdout,
-            /^applied stamps: 0 in the last 1d, 0 read stamps; evidence unread in \(project\), so these counts are a floor$/m);
+            /^applied stamps: 0 in the last 1d, 0 read stamps; evidence unread, in whole or in part, in \(project\), so these counts are a floor$/m);
 
         // The control: the same store with the sidecar readable reports the
         // stamp, so the case above is a refused read rather than a fixture
         // with nothing in it.
+        const control = run(store, ['recent']);
+        assert.strictEqual(control.status, 0, control.stderr);
+        assert.match(control.stdout, /^applied stamps: 1 in the last 1d, 0 read stamps$/m);
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The partial loss carries the same flag as the whole one, readUsage's own
+// contract: a skipped line still reports 'ok' with every surviving stamp
+// real, and the skip is exactly where a torn applied append could be hiding
+// a stamp, so a coverage line printed unqualified over that read would be a
+// whole-tally claim the read itself reported partial.
+test('a skipped sidecar line floors the applied counts the way an unreadable sidecar does', () => {
+    const store = makeStore();
+    try {
+        seedUsage(store, [appliedStamp('a-fact.md', hoursAgo(2)), '{"ts":"2026-08-25T0']);
+        const res = run(store, ['recent']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stderr, /skipping malformed usage line 2/);
+        // The surviving stamp still counts, and the clause reads true for a
+        // loss of one line: the evidence went unread in part, not in whole.
+        assert.match(res.stdout,
+            /^applied stamps: 1 in the last 1d, 0 read stamps; evidence unread, in whole or in part, in \(project\), so these counts are a floor$/m);
+
+        // The control the healthy path pins: with the torn line gone the
+        // same store reports the same count with no floor clause behind it.
+        seedUsage(store, [appliedStamp('a-fact.md', hoursAgo(2))]);
         const control = run(store, ['recent']);
         assert.strictEqual(control.status, 0, control.stderr);
         assert.match(control.stdout, /^applied stamps: 1 in the last 1d, 0 read stamps$/m);
@@ -7780,6 +7908,12 @@ test('the unstamped candidate screen refuses a non-file and keeps a candidate wh
             + 'project  real  read 2h\n'
             + REMINDER + '\n',
             'a failed stat keeps the candidate rather than silently dropping it');
+        // The output above is byte-identical to the healthy run's, because
+        // the screen's catch is deliberately silent, so only the shim's own
+        // marker separates a fail-open that fired from a shim that never
+        // matched the path and exercised nothing.
+        assert.ok(fs.existsSync(refuseStatFiredMarker(store.root, path.join(store.memDir, 'real.md'))),
+            'the shim actually refused the stat this pin is about');
     } finally {
         rmStore(store);
     }
@@ -14154,6 +14288,18 @@ test('an archive pass stopped after the move is finished by running it again', (
 // it is reading one, and a fixture that answered only one of them would leave
 // the other reading a healthy path. Only that one path is affected, so
 // everything else in the pass runs as it does on a healthy store.
+// Where the shim above records that it actually fired. The fail-open paths
+// it exists to exercise are deliberately silent (the screen swallows the
+// error and keeps the candidate), so a blind run's output is byte-identical
+// whether the shim refused the stat or never matched the path at all; a
+// mis-scoped shim would leave such a pin green while testing nothing. A
+// case whose expected output does not change under the shim asserts this
+// marker too, so shim-engaged and shim-inert are told apart.
+function refuseStatFiredMarker(dir, target) {
+    return path.join(dir, 'refuse-stat-'
+        + path.basename(target).replace(/[^A-Za-z0-9]/g, '') + '.fired');
+}
+
 function refuseStatPreload(dir, target) {
     const shim = path.join(dir, 'refuse-stat-'
         + path.basename(target).replace(/[^A-Za-z0-9]/g, '') + '.js');
@@ -14162,11 +14308,13 @@ function refuseStatPreload(dir, target) {
         "const fs = require('fs');",
         "const path = require('path');",
         'const guarded = ' + JSON.stringify(path.resolve(target).toLowerCase()) + ';',
+        'const marker = ' + JSON.stringify(refuseStatFiredMarker(dir, target)) + ';',
         'const realStatSync = fs.statSync;',
         'const realLstatSync = fs.lstatSync;',
         "const refused = (p) => typeof p === 'string'",
         '    && path.resolve(p).toLowerCase() === guarded;',
         'const refuse = () => {',
+        "    fs.writeFileSync(marker, 'fired\\n', 'utf8');",
         "    const err = new Error('EACCES: the fixture refuses this stat');",
         "    err.code = 'EACCES';",
         '    throw err;',

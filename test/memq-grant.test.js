@@ -324,6 +324,28 @@ test('--rollup gets no grant, while the archive flags and a bare prune keep thei
         'a longer flag the screen must not swallow');
 });
 
+test('--drop-malformed gets no grant of its own, not only through the --rollup it rides', () => {
+    // The flag deletes sidecar lines behind one .bak generation. The CLI
+    // couples it to --rollup, which the hook screens above, so no granted
+    // command reaches it today; the screen pinned here is the hook's own
+    // lock on the delete, the one that still withholds it if that coupling
+    // is ever loosened in the CLI for ergonomics. The verb layer is an
+    // allowlist and the flag layer a denylist, so a destructive flag left
+    // off the denylist would arrive granted the day the coupling moved.
+    assertNoDecision(runHook('node "' + MEMQ + '" decay-prune --rollup --drop-malformed'),
+        'the documented spelling, which the --rollup screen also withholds');
+    assertNoDecision(runHook('node "' + MEMQ + '" decay-prune --drop-malformed'),
+        'the flag alone, today a CLI argument error, screened here regardless');
+    assertNoDecision(runHook('node "' + MEMQ + '" decay-prune --drop-malformed=1'),
+        'the attached-value spelling, which the CLI answers as an unknown option');
+    // A flag that merely starts the same is not the screened one, and the
+    // bare prune keeps its grant beside the new screen.
+    assertGrant(runHook('node "' + MEMQ + '" decay-prune --drop-malformedish fact'),
+        'a longer flag the screen must not swallow');
+    assertGrant(runHook('node "' + MEMQ + '" decay-prune --archive fact'),
+        'an archive flag is untouched by the widened screen');
+});
+
 test('an --update carrying a body gets no grant through either body channel', () => {
     // A body repair replaces a shared-tier record whole and keeps the text it
     // replaces only in a local .bak, which the store's sync never carries.

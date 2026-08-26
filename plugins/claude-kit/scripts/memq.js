@@ -1333,7 +1333,15 @@ function isUsageStamp(v) {
 // and the file is never rewritten or truncated. That tolerance is
 // load-bearing, not defensive habit: it is what lets the type-tier sidecar's
 // writers append lock-free from different projects, since a torn append
-// costs one stamp rather than a failed pass.
+// costs one stamp rather than a failed pass at the moment it happens. A
+// torn line that persists costs more than that stamp: every read preserves
+// it, so until decay-prune's --drop-malformed removes it, each run's
+// decay-scan suppresses the tier's candidates, recall's applied columns
+// read unknown, and the coverage counts are floors, the tier-rule and
+// evidence-line comments beside tierDecayCandidates and usageEvidenceLine
+// owning the reasons. The tolerance still holds: paying that standing cost
+// is the readers' shared refusal to claim a whole tally over evidence they
+// know they failed to read, never a reason to fail the read itself.
 //
 // The result carries how the read went alongside the stamps ('ok', 'absent',
 // or 'unreadable', stamps always a list), because an empty list has two very
@@ -1351,9 +1359,10 @@ function isUsageStamp(v) {
 // none: there is only one file the note could be about. A caller reading
 // several in one pass wants it, because two bare "line 2" notes from different
 // tiers are indistinguishable and neither names the file to go fix. Only
-// `unstamped` passes one today; the other multi-sidecar readers (`recall`,
-// `recent`, `decay-scan`) still emit the ambiguous form, so tagging them is
-// available work rather than a rule they are breaking.
+// `unstamped` and `decay-scan` pass one today; the other multi-sidecar
+// readers (`recall`, `recent`, and `find` through its per-tier tally) still
+// emit the ambiguous form, so tagging them is available work rather than a
+// rule they are breaking.
 function readUsage(memDir, tag) {
     const where = tag === undefined || tag === '' ? '' : ' in the ' + tag + ' tier';
     let raw;
@@ -3384,6 +3393,10 @@ function liveTierDir(liveTier, store) {
 // several hits commonly share a tier and the sidecar read is the expensive
 // step. appliedTally is the store's single reader of applied evidence, so
 // the ranking boost counts exactly the distinct days the decay clock counts.
+// The read's status and skip count are deliberately dropped: this tally
+// feeds a soft ranking boost, where lost evidence can under-weight a hit's
+// order and never hide the hit, so the whole-tally claim the skip-aware
+// readers refuse to make is not one a rank order makes.
 function tallyForTier(cache, liveTier, store) {
     const dir = liveTierDir(liveTier, store);
     let tally = cache.get(dir);
@@ -4959,13 +4972,17 @@ function cmdRecent(argv) {
 
     // Applied stamps across the tiers, one line per stamp, with a rollup
     // counting as the one record it is and dated by the last application it
-    // folded. Read stamps leave the count and nothing else.
+    // folded. Read stamps leave the count and nothing else. A tier's loss
+    // flag covers the partial loss beside the whole-surface one, readUsage's
+    // own contract: a skipped line still reports 'ok' with every surviving
+    // stamp real, and the skip is exactly where a stamp could be hiding, so
+    // the counts over what did read are a floor either way.
     const appliedRecords = [];
     const unread = [];
     let reads = 0;
     for (const tier of tiers) {
         const usage = readUsage(tier.dir);
-        if (usage.status === 'unreadable') unread.push(tier.label);
+        if (usage.status === 'unreadable' || usage.skipped > 0) unread.push(tier.label);
         for (const s of usage.stamps) {
             const ms = s.kind === 'applied-rollup' ? Date.parse(s.lastApplied) : Date.parse(s.ts);
             if (!(ms >= from)) continue;
@@ -5027,7 +5044,8 @@ function cmdRecent(argv) {
             coverage: 'applied stamps: ' + appliedLines.length + ' in the last ' + window.label
                 + ', ' + reads + ' read stamp' + (reads === 1 ? '' : 's')
                 + (unread.length === 0 ? ''
-                    : '; evidence unread in ' + unread.join(' and ') + ', so these counts are a floor'),
+                    : '; evidence unread, in whole or in part, in ' + unread.join(' and ')
+                        + ', so these counts are a floor'),
             lines: appliedLines,
             narrow
         },
@@ -5172,7 +5190,12 @@ function unstampedTierHits(dir, from, tag) {
         // recognition question, a hidden one is a stamp never adjudicated),
         // so the screen may add a question and can never remove one. That
         // fail-open is also what keeps the stat from widening the loss flags
-        // above: it cannot zero anything, so it owes no flag.
+        // above: it cannot zero anything, so it owes no flag. listMemories
+        // answers the same stat question with the opposite polarity,
+        // dropping a record it cannot examine; the divergence is known, each
+        // side priced by its own consumers' costs, and the store's wider
+        // stat-failure-reads-as-absence question is parked in
+        // docs/backlog.md rather than settled at either screen.
         let st = null;
         try { st = fs.statSync(path.join(dir, f)); } catch { /* fail-open: kept */ }
         if (st !== null && !st.isFile()) continue;
@@ -5960,18 +5983,22 @@ function cmdDecayScan(argv) {
     const summarize = [];
     const archive = [];
     const pinned = [];
-    const projectUsage = readUsage(memDir);
+    // Each read carries its tier tag, unstamped's own convention, because
+    // the suppression clause on the evidence line sends an operator to
+    // remove the exact malformed line the read noted, and three bare
+    // "line 2" notes from three sidecars name no file to go fix.
+    const projectUsage = readUsage(memDir, 'project');
     usageEvidenceLine(projectUsage, '');
     tierDecayCandidates(memDir, '', now, projectUsage, summarize, archive, pinned);
     const typed = typedTierOrNull(process.cwd());
     if (typed !== null) {
-        const typeUsage = readUsage(typed.dir);
+        const typeUsage = readUsage(typed.dir, 'type');
         usageEvidenceLine(typeUsage, '  (type:' + sanitize(typed.type, TYPE_CAP) + ')');
         tierDecayCandidates(typed.dir, typed.type, now, typeUsage, summarize, archive, pinned);
     }
     const operator = operatorTierOrNull();
     if (operator !== null) {
-        const operatorUsage = readUsage(operator);
+        const operatorUsage = readUsage(operator, 'operator');
         usageEvidenceLine(operatorUsage, '  (operator)');
         tierDecayCandidates(operator, OPERATOR_LABEL, now, operatorUsage, summarize, archive, pinned);
     }
@@ -6229,6 +6256,11 @@ function rewriteWithBackup(filePath, origBuf, newContent, options) {
         try { fs.unlinkSync(tmp); } catch { /* best effort: a leftover tmp is inert */ }
         throw err;
     }
+    // How many appended bytes the rewrite carried in verbatim, 0 where none
+    // were. The tail is the appender's and is never screened here, so a
+    // caller whose rewrite removed lines by a rule can say its rule did not
+    // cover these bytes rather than reporting a whole-file claim.
+    return tail === null ? 0 : tail.length;
 }
 
 // Put an index's kept lines into the shape every writer here leaves: a
@@ -6508,11 +6540,21 @@ function rollupStep(memDir, now, report, onBackup) {
 // line: every read path preserves it and hand-editing the sidecar is
 // banned, so without one a single torn append suppresses the tier's decay
 // candidates on every future run. The exit is a delete, so it rides this
-// rewrite's own .bak, says each removed line on stderr where the default
-// says each preserved one, and counts the removals in the report. `tag`
-// labels the report lines with the tier they describe ('' for the project
-// tier), so a pass over several tiers stays auditable from its output
-// alone.
+// rewrite's own .bak, states its counts on stderr before the rewrite that
+// removes anything (so the audit trail exists even where the rewrite then
+// fails), says each removed line on stderr where the default says each
+// preserved one, and counts the removals in the report. The one shape it
+// refuses is a drop that would remove every non-blank line of a tier's
+// sidecar: no valid stamp surviving means the flag would empty the tier's
+// whole usage evidence, which is the motivating case's own input (a sidecar
+// written entirely in a stamp shape this memq does not parse, synced in
+// from a newer one), and that is evidence to investigate rather than bytes
+// to reclaim, with only a single-generation .bak behind the delete. The
+// refusal preserves the lines, leaves the file unrewritten, says so on
+// stderr, and stands down for this tier alone, so the rest of the pass and
+// the other tiers proceed as asked. `tag` labels the report and stderr
+// lines with the tier they describe ('' for the project tier), so a pass
+// over several tiers stays auditable from its output alone.
 function usageStep(memDir, report, tag, onBackup, dropMalformed) {
     const file = path.join(memDir, USAGE_FILE);
     const src = readStoreFile(file);
@@ -6521,6 +6563,7 @@ function usageStep(memDir, report, tag, onBackup, dropMalformed) {
     const stamps = [];                 // parsed stamps, the fold's tally input
     const newestRead = new Map();      // file -> {ms, idx}
     const appliedShape = new Map();    // file -> {raw, rollups, idxs}
+    const malformed = [];              // {idx, lineNo}, disposed of after the walk
     let total = 0;
     let readCount = 0;
     let droppedMalformed = 0;
@@ -6528,15 +6571,14 @@ function usageStep(memDir, report, tag, onBackup, dropMalformed) {
         const line = src.lines[i].trim();
         if (line === '') continue;
         let parsed = null;
-        try { parsed = JSON.parse(line); } catch { /* preserved just below */ }
+        try { parsed = JSON.parse(line); } catch { /* disposed of after the walk */ }
         if (!isUsageStamp(parsed)) {
-            if (dropMalformed) {
-                process.stderr.write('memq: removing unparseable usage line ' + (i + 1) + '\n');
-                droppedMalformed += 1;
-            } else {
-                process.stderr.write('memq: preserving unparseable usage line ' + (i + 1) + '\n');
-                items.push({ line, keep: true });
-            }
+            // Held in place rather than judged here, because the drop's
+            // total-wipe refusal needs the whole file's stamp count, which
+            // the walk has only once it ends. The keep flag starts at the
+            // caller's answer and the refusal below flips it back.
+            malformed.push({ idx: items.length, lineNo: i + 1 });
+            items.push({ line, keep: !dropMalformed });
             continue;
         }
         total += 1;
@@ -6564,6 +6606,34 @@ function usageStep(memDir, report, tag, onBackup, dropMalformed) {
             s.idxs.push(idx);
         }
     }
+    // The malformed lines' disposal, in file order either way. A preserve
+    // notes each line; a drop is refused whole where no valid stamp would
+    // survive it, since removing every non-blank line of the sidecar empties
+    // the tier's usage evidence behind one .bak generation, and a sidecar in
+    // that state is a question to investigate rather than growth to reclaim;
+    // otherwise the counts print first, before anything is removed, so the
+    // delete's audit trail does not depend on the rewrite below landing.
+    if (!dropMalformed) {
+        for (const m of malformed) {
+            process.stderr.write('memq: preserving unparseable usage line ' + m.lineNo + tag + '\n');
+        }
+    } else if (malformed.length > 0 && total === 0) {
+        for (const m of malformed) items[m.idx].keep = true;
+        process.stderr.write('memq: --drop-malformed refused: no valid stamp would survive it'
+            + ' (' + malformed.length + ' malformed line' + (malformed.length === 1 ? '' : 's')
+            + ', 0 parsed), so the drop would empty this tier\'s usage evidence;'
+            + (malformed.length === 1 ? ' the line is' : ' the lines are')
+            + ' preserved and the sidecar is unchanged' + tag + '\n');
+    } else if (malformed.length > 0) {
+        process.stderr.write('memq: dropping ' + malformed.length + ' malformed line'
+            + (malformed.length === 1 ? '' : 's') + ' from a sidecar holding ' + total
+            + ' valid stamp' + (total === 1 ? '' : 's') + tag + '\n');
+        for (const m of malformed) {
+            process.stderr.write('memq: removing unparseable usage line ' + m.lineNo + tag + '\n');
+        }
+        droppedMalformed = malformed.length;
+    }
+
     for (const v of newestRead.values()) items[v.idx].keep = true;
 
     // A file's applied evidence folds when there is anything to fold: a raw
@@ -6603,13 +6673,19 @@ function usageStep(memDir, report, tag, onBackup, dropMalformed) {
     }
     const keptCount = merged.length + newestRead.size + (appliedShape.size - foldFiles.length);
     // A usage sidecar: the stamp hook appends to it without taking any lock.
-    rewriteWithBackup(file, src.buf,
+    const splicedTail = rewriteWithBackup(file, src.buf,
         merged.concat(items.filter((it) => it.keep).map((it) => it.line)).join('\n') + '\n',
         { concurrentAppends: true, onBackup: onBackup });
     report.push('usage  kept ' + keptCount + ' of ' + total + ' stamps' + tag);
     if (droppedMalformed > 0) {
+        // The drop screened the lines this pass read and nothing else: a
+        // concurrent append lands in the rewrite verbatim through the tail
+        // copy, because those bytes are the appender's and may hold a lawful
+        // stamp still being written, so where one rode through, the report
+        // line says so rather than reading as a whole-file guarantee.
         report.push('usage  dropped ' + droppedMalformed + ' malformed line'
-            + (droppedMalformed === 1 ? '' : 's') + tag);
+            + (droppedMalformed === 1 ? '' : 's')
+            + (splicedTail > 0 ? '; a concurrent append rode through unscreened' : '') + tag);
     }
 }
 
