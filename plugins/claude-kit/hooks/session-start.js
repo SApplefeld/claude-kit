@@ -342,17 +342,20 @@ function summarizeSiblingSessions(sessionId, transcriptPath) {
         for (let seen = 0; seen < SIBLING_SCAN_MAX_ENTRIES; seen += 1) {
             const entry = handle.readSync();
             if (entry === null) break;
-            // Every filter that judges a NAME runs before the stat, so the
-            // ceiling above bounds the syscalls rather than the candidates. The
-            // store keeps a per-session subdirectory beside each transcript, so
-            // most of what a long-lived project lists here is discarded, and a
-            // ceiling applied to the listing instead would spend the whole
-            // budget on entries that were never going to count and miss a live
-            // sibling sitting behind them. The listing is read incrementally
-            // rather than through readdirSync for the reason sweepStaleTmp in
-            // kit-goal-lib.js states: readdirSync materializes the whole
-            // directory before the first entry can be judged, so a ceiling on
-            // the loop alone would bound nothing.
+            // The ceiling above bounds the entries this loop READS, filtered or
+            // not, and it is sized far above what any realistic transcript store
+            // holds so the filters have room to discard: the store keeps a
+            // per-session subdirectory beside each transcript, so most of what a
+            // long-lived project lists here counts against the budget and never
+            // counts as a sibling. Lowering it toward the number of transcripts
+            // a project has is what would miss a live sibling sitting behind
+            // them. Every filter that judges a NAME runs before the stat, so
+            // what a discarded entry costs is a directory entry rather than a
+            // syscall. The listing is read incrementally rather than through
+            // readdirSync for the reason sweepStaleTmp in kit-goal-lib.js
+            // states: readdirSync materializes the whole directory before the
+            // first entry can be judged, so a ceiling on the loop alone would
+            // bound nothing.
             const name = entry.name;
             if (!name.toLowerCase().endsWith('.jsonl')) continue;
             const stem = name.slice(0, -6);

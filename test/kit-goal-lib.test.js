@@ -32,7 +32,8 @@ const {
     composeCondition,
     planHead,
     emitGoalEvent,
-    lastActivePhrase
+    lastActivePhrase,
+    safeForAuthorization
 } = require('../plugins/claude-kit/hooks/kit-goal-lib.js');
 
 const CLI = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-goal.js');
@@ -3184,6 +3185,14 @@ test('a recorded authorization sentence is screened to printable ASCII and cappe
         assert.strictEqual(recorded.length, 320, 'capped: ' + recorded);
         assert.ok(!/[^\x20-\x7E]/.test(recorded), 'printable ASCII only: ' + JSON.stringify(recorded));
         assert.ok(recorded.startsWith('Authorized by [31mthe operator '), JSON.stringify(recorded));
+        assert.ok(recorded.endsWith(' ...[truncated]'),
+            'the cut is marked, so what was stored does not read as the whole claim: ' + recorded);
+        // The stored value is screened again on every read, so the round trip
+        // through the state file is where the screen's idempotency actually has
+        // to hold: a mark the next read cut off would be a silent truncation one
+        // read later.
+        assert.strictEqual(readGoal(repo).authorizations['docs/plans/a.md'], recorded,
+            'a second read of the same file records the same marked value');
         assert.strictEqual(readGoal(repo).authorizations['docs/plans/empty.md'], null,
             'a heading with no sentence under it records as none rather than as an empty quote');
     } finally {
@@ -3303,6 +3312,11 @@ test('appendGoal refuses an append whose state moved under it, leaving the advan
         assert.strictEqual(advanced, true, 'the concurrent advance ran');
         assert.strictEqual(result.ok, false, 'the append refuses rather than writing a stale snapshot');
         assert.match(result.reason, /goal state changed/);
+        // The CLI prints a refusal through a 120-character screen sized for a
+        // path, so a longer reason reaches the operator cut mid-sentence and
+        // loses the tail that says what to do about it.
+        assert.ok(result.reason.length <= 120,
+            'the refusal survives that screen whole: ' + result.reason.length + ' characters');
         const state = readGoal(repo);
         assert.strictEqual(state.plan, 'docs/plans/b.md', 'the advance still stands');
         assert.strictEqual(state.queueIndex, 1);
@@ -3388,6 +3402,195 @@ test('CLI arm --append extends the queue, reports it, and reads back through sta
         assert.strictEqual(orphan.status, 1);
         assert.match(orphan.stderr, /no goal is armed/);
         assert.ok(!fs.existsSync(goalPath(repo)), 'nothing was armed by the refusal');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+// An append and a bind are two writers over one file, and each one's read is
+// separated from its write by real work: the append opens a plan doc per path it
+// was given, and the bind is driven from a Stop hook that reached it through its
+// own reads. Whichever lands second must not carry the other's field back to
+// what it was, which is what writing a whole stale snapshot does. Both
+// directions are driven in the order the race produces rather than by threading:
+// the foreign write fires from inside a filesystem call the function under test
+// makes between its own read and its own write.
+test('appendGoal preserves a bind that landed while it was validating', () => {
+    const repo = makeRepo();
+    const realOpen = fs.openSync;
+    const transcript = path.join(repo, 'transcript.jsonl');
+    try {
+        for (const name of ['a', 'b', 'c']) {
+            writePlan(repo, 'docs/plans/' + name + '.md', 'Status: In Progress\n');
+        }
+        assert.strictEqual(armGoal(repo, ['docs/plans/a.md', 'docs/plans/b.md']).ok, true);
+        assert.strictEqual(readGoal(repo).boundSession, null, 'the arm carried no bind');
+
+        // The claim lands where a real one would: the goal was armed unbound and
+        // the leashed session's first stop claims it while the append is still
+        // opening the plan doc it was asked to add.
+        let bound = false;
+        fs.openSync = (target, ...rest) => {
+            if (!bound && String(target).endsWith('c.md')) {
+                bound = true;
+                assert.strictEqual(bindSession(repo, SID, transcript).ok, true);
+            }
+            return realOpen(target, ...rest);
+        };
+        const result = appendGoal(repo, ['docs/plans/c.md']);
+        fs.openSync = realOpen;
+
+        assert.strictEqual(bound, true, 'the concurrent bind ran');
+        assert.strictEqual(result.ok, true, result.reason);
+        const state = readGoal(repo);
+        assert.strictEqual(state.boundSession, SID,
+            'the bind stands: an append writing its own snapshot back unbinds the leash, and the next '
+            + 'session to stop, a bystander included, claims it');
+        assert.strictEqual(state.boundTranscript, transcript);
+        assert.deepStrictEqual(state.queue, ['docs/plans/a.md', 'docs/plans/b.md', 'docs/plans/c.md'],
+            'and the append itself still landed');
+        assert.strictEqual(state.condition, composeCondition(state.plan, state.queue, state.queueIndex));
+        assert.ok(Object.prototype.hasOwnProperty.call(state.authorizations, 'docs/plans/c.md'),
+            'including the appended plan\'s authorization entry');
+        assert.deepStrictEqual(tmpLeftovers(repo), []);
+    } finally {
+        fs.openSync = realOpen;
+        rmRepo(repo);
+    }
+});
+
+test('bindSession preserves an append that landed after it read the state', () => {
+    const repo = makeRepo();
+    const realReadFile = fs.readFileSync;
+    const transcript = path.join(repo, 'transcript.jsonl');
+    try {
+        for (const name of ['a', 'b', 'c']) {
+            writePlan(repo, 'docs/plans/' + name + '.md', 'Status: In Progress\n');
+        }
+        assert.strictEqual(armGoal(repo, ['docs/plans/a.md', 'docs/plans/b.md']).ok, true);
+
+        // The append lands where an operator's really does: after the bind has
+        // read the state it is deciding from, which is the read the state file
+        // is parsed out of.
+        let appended = false;
+        fs.readFileSync = (target, ...rest) => {
+            const body = realReadFile(target, ...rest);
+            if (!appended && String(target).endsWith('goal-state.json')) {
+                appended = true;
+                assert.strictEqual(appendGoal(repo, ['docs/plans/c.md']).ok, true);
+            }
+            return body;
+        };
+        const result = bindSession(repo, SID, transcript);
+        fs.readFileSync = realReadFile;
+
+        assert.strictEqual(appended, true, 'the concurrent append ran');
+        assert.strictEqual(result.ok, true, result.reason);
+        const state = readGoal(repo);
+        assert.deepStrictEqual(state.queue, ['docs/plans/a.md', 'docs/plans/b.md', 'docs/plans/c.md'],
+            'the appended plan stands: a bind writing its own snapshot back drops an armed plan silently');
+        assert.match(state.condition, /docs\/plans\/c\.md/, 'and the condition still names it');
+        assert.ok(Object.prototype.hasOwnProperty.call(state.authorizations, 'docs/plans/c.md'));
+        assert.strictEqual(state.boundSession, SID, 'and the bind itself still landed');
+        assert.strictEqual(state.boundTranscript, transcript);
+        assert.deepStrictEqual(tmpLeftovers(repo), []);
+    } finally {
+        fs.readFileSync = realReadFile;
+        rmRepo(repo);
+    }
+});
+
+// A cut sentence reads as a whole one, which is the hazard the cap's own
+// derivation names, so the cut is marked where a reader sees it. The screen is
+// re-applied to the stored value on every read, so a marked value has to survive
+// a second screening unchanged: a marker the next read cuts off turns a marked
+// truncation back into a silent one.
+test('an authorization past the cap is marked as cut, and the mark survives a re-screen', () => {
+    const once = safeForAuthorization('A'.repeat(400));
+    assert.strictEqual(once.length, 320, 'the cap is the whole value, marker included: ' + once.length);
+    assert.ok(once.endsWith(' ...[truncated]'), 'the cut is visible: ' + JSON.stringify(once.slice(-20)));
+    assert.strictEqual(safeForAuthorization(once), once, 'screening the stored value again changes nothing');
+
+    const short = safeForAuthorization('Authorized by the operator.');
+    assert.strictEqual(short, 'Authorized by the operator.', 'a value inside the cap is untouched');
+});
+
+// The scan reads a bounded head of the plan doc, so a section whose heading sits
+// inside that window can still have its first sentence run past it. Recording
+// what the buffer happened to hold stores a fragment as the plan's whole claim,
+// and both the security model and the kit-goal skill state that a section past
+// the window records as none rather than as a partial sentence.
+test('an authorization sentence straddling the scan window records as none', () => {
+    const repo = makeRepo();
+    try {
+        // AUTHORIZATION_SCAN_MAX_BYTES in kit-goal-lib.js, restated here because
+        // it is not exported. The fixture asserts its own geometry below rather
+        // than trusting the arithmetic.
+        const scan = 16 * 1024;
+        const heading = '## Dispatch Authorization\n\n';
+        const opening = 'Authorized by the operator in a sentence whose terminator sits well past '
+            + 'the end of the scan window, ' + 'and on it runs, '.repeat(20);
+        const pad = 'Status: In Progress\n\n' + 'x'.repeat(scan - 200) + '\n\n';
+
+        const straddle = pad + heading + opening + 'so it ends here.\n';
+        const bodyAt = straddle.indexOf(heading) + heading.length;
+        assert.ok(straddle.indexOf(heading) < scan, 'the heading sits inside the scan window');
+        assert.ok(bodyAt < scan, 'and so does the start of its body');
+        assert.ok(straddle.indexOf('.', bodyAt) > scan, 'while the sentence terminator falls beyond it');
+        writePlan(repo, 'docs/plans/straddle.md', straddle);
+
+        // The control: the same geometry with the terminator brought inside the
+        // window, so a null above is the straddle and not a fixture the scan
+        // could no longer find.
+        const inside = pad + heading + 'Authorized by the operator. ' + opening + 'and it ends here.\n';
+        assert.ok(inside.indexOf('.', inside.indexOf(heading)) < scan);
+        writePlan(repo, 'docs/plans/inside.md', inside);
+
+        // A body with no terminator at all inside a plan doc the scan read whole
+        // is the section's own single line rather than a fragment, so it records.
+        writePlan(repo, 'docs/plans/short.md',
+            'Status: In Progress\n\n## Dispatch Authorization\n\nAuthorized by the operator\n');
+
+        assert.strictEqual(armGoal(repo, ['docs/plans/straddle.md', 'docs/plans/inside.md',
+            'docs/plans/short.md']).ok, true);
+        const recorded = readGoal(repo).authorizations;
+        assert.strictEqual(recorded['docs/plans/straddle.md'], null,
+            'a sentence the scan could not see the end of is no claim: ' + recorded['docs/plans/straddle.md']);
+        assert.strictEqual(recorded['docs/plans/inside.md'], 'Authorized by the operator.');
+        assert.strictEqual(recorded['docs/plans/short.md'], 'Authorized by the operator');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+// What makes a body a fragment is that nobody saw its end, and a following
+// heading is exactly the evidence that somebody did: the section ended inside
+// the window, so what it holds is the whole of it whatever its punctuation. A
+// plan doc past the scan window is otherwise ordinary, and refusing every
+// terminator-less section in one would drop a grant the plan really made.
+test('a terminator-less section closed by a heading inside the window still records', () => {
+    const repo = makeRepo();
+    try {
+        // AUTHORIZATION_SCAN_MAX_BYTES in kit-goal-lib.js, restated because it
+        // is not exported.
+        const scan = 16 * 1024;
+        const heading = '## Dispatch Authorization\n\n';
+        const line = 'Authorized by the operator with no full stop\n\n';
+        const doc = 'Status: In Progress\n\n' + 'x'.repeat(scan - 400) + '\n\n'
+            + heading + line + '## Goal\n\n' + 'y'.repeat(2000) + '\n';
+
+        const bodyAt = doc.indexOf(heading) + heading.length;
+        assert.ok(doc.indexOf(heading) < scan, 'the heading sits inside the scan window');
+        assert.ok(doc.indexOf('## Goal') < scan, 'and so does the heading that closes its body');
+        assert.strictEqual(doc.slice(bodyAt, doc.indexOf('## Goal')).search(/[.!?](\s|$)/), -1,
+            'the body carries no sentence terminator');
+        assert.ok(Buffer.byteLength(doc, 'utf8') > scan, 'while the doc itself runs past the window');
+        writePlan(repo, 'docs/plans/closed.md', doc);
+
+        assert.strictEqual(armGoal(repo, ['docs/plans/closed.md']).ok, true);
+        assert.strictEqual(readGoal(repo).authorizations['docs/plans/closed.md'],
+            'Authorized by the operator with no full stop',
+            'the section ended inside the window, so its line is the whole claim rather than a fragment');
     } finally {
         rmRepo(repo);
     }

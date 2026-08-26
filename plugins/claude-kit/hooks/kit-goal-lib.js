@@ -741,8 +741,26 @@ function maskFencedRegions(text) {
 // Every scan is a bounded search or a literal replace rather than a pattern
 // spanning the untrusted text, so a plan doc cannot cost this more than its own
 // length. The masked text is what every search runs against, including the
-// sentence itself, so a fence opening the section reads as nothing printable
-// under the heading rather than as a quoted code block.
+// sentence itself, so a section whose body is only a fence reads as nothing
+// printable under the heading rather than as a quoted code block.
+//
+// truncated says whether text is a cut head of the plan doc rather than the
+// whole of it, which its caller knows and this function cannot see. It answers
+// one question: whether the end of the body in hand is the end the plan wrote.
+// Three things have to hold at once for the answer to be no. The text is cut, no
+// heading follows the section inside it, and the body carries no sentence
+// terminator, which together say the body ran to the window's edge and its end
+// is simply unseen. Such a body is a fragment, and recording it would store part
+// of a sentence as the plan's whole claim, exactly what the storage cap's own
+// mark exists to prevent one step later, so it records nothing.
+//
+// A following heading is what settles the ordinary case, because it is the
+// evidence that the section ended inside the window: the body is bounded by
+// something the scan actually saw, so it is whole whatever its punctuation, and
+// a terminator-less line there is the section's own claim rather than a cut one.
+// A plan doc past the scan window is otherwise ordinary, and refusing every
+// terminator-less section in one would drop grants those plans really made. The
+// same reasoning covers a plan doc read whole, where nothing was cut at all.
 //
 // safeForAuthorization is what screens it: the same printable-ASCII rule every
 // other caller-supplied string stored in this file answers to, at its own cap,
@@ -752,7 +770,7 @@ function maskFencedRegions(text) {
 // entering a model's context does not), and the strictness is what this value
 // earns: it is untrusted file content on its way into a state file several
 // surfaces print.
-function authorizationSentence(text) {
+function authorizationSentence(text, truncated) {
     const scanned = maskFencedRegions(text);
     const heading = AUTHORIZATION_HEADING.exec(scanned);
     if (heading === null) return null;
@@ -764,6 +782,7 @@ function authorizationSentence(text) {
     body = body.replace(/^\s+/, '');
     if (body === '') return null;
     const stop = body.search(/[.!?](\s|$)/);
+    if (stop === -1 && next === -1 && truncated) return null;
     const sentence = (stop === -1 ? body : body.slice(0, stop + 1)).replace(/\s+/g, ' ').trim();
     const safe = safeForAuthorization(sentence);
     return safe === '' ? null : safe;
@@ -795,7 +814,11 @@ function planAuthorization(cwd, planRel) {
         const bytes = fs.readSync(fd, buf, 0, AUTHORIZATION_SCAN_MAX_BYTES, 0);
         let head = buf.toString('utf8', 0, bytes);
         if (head.charCodeAt(0) === 0xFEFF) head = head.slice(1);
-        return authorizationSentence(head);
+        // A read that filled the buffer is a plan doc with more of itself past
+        // the window, so what the scan holds may end mid-sentence. This is the
+        // only place that fact is known, and authorizationSentence needs it to
+        // tell a section's own short line from a sentence cut by the window.
+        return authorizationSentence(head, bytes === AUTHORIZATION_SCAN_MAX_BYTES);
     } catch {
         return null;
     } finally {
@@ -889,8 +912,24 @@ function safeForReason(value) {
 // differ.
 const AUTHORIZATION_MAX_CHARS = 320;
 
+// What a value cut by the cap ends in, so a reader sees the cut. A sentence
+// stopped at the cap and stored bare reads as the whole claim, which is the
+// failure the cap's own derivation names one line up: a claim that is judged
+// whole and is not is worse than none at all.
+//
+// The mark is written INSIDE the cap, replacing the last of the content rather
+// than being added past it, so a marked value measures exactly
+// AUTHORIZATION_MAX_CHARS. That is what keeps the screen idempotent, which it
+// has to be: normalizeAuthorizations re-applies it to the stored value on every
+// read of the state file, and a mark the next read cut off would turn a marked
+// truncation back into a silent one.
+const AUTHORIZATION_TRUNCATION_MARK = ' ...[truncated]';
+
 function safeForAuthorization(value) {
-    return String(value).replace(/[^\x20-\x7E]/g, '').slice(0, AUTHORIZATION_MAX_CHARS);
+    const printable = String(value).replace(/[^\x20-\x7E]/g, '');
+    if (printable.length <= AUTHORIZATION_MAX_CHARS) return printable;
+    return printable.slice(0, AUTHORIZATION_MAX_CHARS - AUTHORIZATION_TRUNCATION_MARK.length)
+        + AUTHORIZATION_TRUNCATION_MARK;
 }
 
 // The key two plan paths are compared as for the purpose of deciding whether a
@@ -1141,20 +1180,30 @@ function armGoal(cwd, planArgs, bind) {
 // invocation before anything is written, so a partial append cannot reach the
 // state file.
 //
-// The write is guarded by a compare-and-swap against the state this call
-// decided from, in the spirit of the one advanceGoal takes from its caller.
-// This is a read-modify-write over a file another process writes: an append is
-// typed into whatever shell is at hand while the leashed session runs, and its
-// validation opens a plan doc per path, so a Stop hook's advance has a real
-// window to land in between. Written blind, the append would put its own
-// pre-advance snapshot back: queueIndex and plan would walk back to the finished
-// plan and the advance's history record would be gone, with the run then working
-// a plan it already closed. So the state is re-read immediately before the write
-// and the append is refused unless the progress markers it read are still the
-// ones on disk. armedAt alone would not do it, because an advance preserves
-// armedAt by design (it is half of advanceGoal's own guard); the position, the
-// current plan, the queue length and the history length are what an advance
-// moves.
+// The write is guarded by a compare-and-swap against the state this call decided
+// from, in the spirit of the one advanceGoal takes from its caller. This is a
+// read-modify-write over a file another process writes: an append is typed into
+// whatever shell is at hand while the leashed session runs, and its validation
+// opens a plan doc per path, so a Stop hook's advance or bind has a real window
+// to land in between. Written blind, the append would put its own pre-advance
+// snapshot back: queueIndex and plan would walk back to the finished plan and
+// the advance's history record would be gone, with the run then working a plan
+// it already closed. So the state is re-read immediately before the write and
+// the append is refused unless the progress markers it read are still the ones
+// on disk. armedAt alone would not do it, because an advance preserves armedAt
+// by design (it is half of advanceGoal's own guard); the position, the current
+// plan, the queue length and the history length are what an advance moves.
+//
+// What is written is that re-read state with the append applied to it, never the
+// snapshot the validation ran against. The compare answers for the fields it
+// names and for nothing else, and a state carries fields an append has no
+// opinion about: a stop claiming an unbound leash writes boundSession and
+// boundTranscript, and a blocked advance writes the blockedAdvance pair. Writing
+// the snapshot back would revert every one of them, for the whole width of the
+// call rather than for the narrow window below, and an unbound leash is how a
+// bystander session comes to claim a goal already being worked. Rebasing keeps
+// them because it keeps whatever the re-read holds, a field added later
+// included, where a compare widened to name them is a list that goes stale.
 //
 // The residual is the window between that re-read and the rename, which no
 // unlocked writer here closes: a writer landing inside it still wins last, the
@@ -1177,8 +1226,8 @@ function appendGoal(cwd, planArgs) {
         return { ok: false, reason: 'no goal is armed, so there is no queue to append to' };
     }
 
-    // The progress this append was decided from, captured before anything below
-    // mutates the state object.
+    // The progress this append was decided from, which the re-read below is
+    // compared against.
     const decidedFrom = {
         armedAt: state.armedAt,
         plan: state.plan,
@@ -1200,18 +1249,12 @@ function appendGoal(cwd, planArgs) {
         appended.push(rel);
     }
 
+    // Derived ahead of the re-read because deriving one opens a plan doc, and
+    // the re-read's whole value is that nothing slow sits between it and the
+    // write.
+    const added = Object.create(null);
     for (const rel of appended) {
-        state.authorizations[rel] = planAuthorization(cwd, rel);
-    }
-    state.queue = state.queue.concat(appended);
-    state.condition = composeCondition(state.plan, state.queue, state.queueIndex);
-    if (!queueFits(state)) {
-        return {
-            ok: false,
-            reason: 'the armed queue is too long: ' + state.queue.length + ' plans and the records their '
-                + 'advances would add do not fit the goal state file. Append fewer plans, and queue the rest '
-                + 'when they come up.'
-        };
+        added[rel] = planAuthorization(cwd, rel);
     }
 
     const now = readGoal(cwd);
@@ -1220,15 +1263,31 @@ function appendGoal(cwd, planArgs) {
         || now.history.length !== decidedFrom.historyLength) {
         return {
             ok: false,
-            reason: 'goal state changed while this append was being validated, so nothing was appended: '
-                + 'the leash moved, was re-armed, or was cleared. Read the state and append again.'
+            reason: 'goal state changed while this append was validated, so nothing was appended. '
+                + 'Read the state and append again.'
         };
     }
 
-    const written = writeState(cwd, state);
+    for (const rel of appended) {
+        now.authorizations[rel] = added[rel];
+    }
+    now.queue = now.queue.concat(appended);
+    now.condition = composeCondition(now.plan, now.queue, now.queueIndex);
+    // Judged on the object that is about to be written, so the answer is about
+    // the state that will exist rather than about a snapshot of it.
+    if (!queueFits(now)) {
+        return {
+            ok: false,
+            reason: 'the armed queue is too long: ' + now.queue.length + ' plans and the records their '
+                + 'advances would add do not fit the goal state file. Append fewer plans, and queue the rest '
+                + 'when they come up.'
+        };
+    }
+
+    const written = writeState(cwd, now);
     if (!written.ok) return written;
 
-    return { ok: true, plan: state.plan, queue: state.queue, appended, boundSession: state.boundSession };
+    return { ok: true, plan: now.plan, queue: now.queue, appended, boundSession: now.boundSession };
 }
 
 // Record the current plan's outcome and move the leash to the next plan in the
@@ -1345,6 +1404,16 @@ function advanceGoal(cwd, outcomeEntry) {
 // depends on this write succeeding: a failed bind still leashes the current
 // stop and is retried at the next one.
 //
+// The two binding fields are set on a state re-read immediately before the
+// write, never on the state the caller's decision was made from, because
+// everything else in the file belongs to another writer: an append typed while
+// this session runs grows the queue and the authorization map, and writing an
+// older whole snapshot over it drops an armed plan with no trace that it was
+// ever queued. Only the fields this function owns are set, so what the re-read
+// holds is what is written for every other field. The residual is the window
+// between that re-read and the rename, which the last-writer-wins posture above
+// covers.
+//
 // transcriptPath is optional: the binding session's transcript, recorded as
 // boundTranscript so another session can read a liveness hint from its mtime.
 // It travels with the binding, so a bind that carries no usable path clears
@@ -1360,9 +1429,17 @@ function bindSession(cwd, sessionId, transcriptPath) {
     if (!state || !state.plan) {
         return { ok: false, reason: 'no goal is armed' };
     }
-    state.boundSession = sessionId;
-    state.boundTranscript = validTranscript(transcriptPath) ? transcriptPath : null;
-    const written = writeState(cwd, state);
+    // The base for the write is a second read taken here rather than the one the
+    // gate above answered from, so the fields this function does not own are the
+    // newest ones on disk. A goal cleared or made unreadable in between is
+    // refused rather than resurrected from the older copy.
+    const now = readGoal(cwd);
+    if (!now || !now.plan) {
+        return { ok: false, reason: 'no goal is armed' };
+    }
+    now.boundSession = sessionId;
+    now.boundTranscript = validTranscript(transcriptPath) ? transcriptPath : null;
+    const written = writeState(cwd, now);
     if (!written.ok) return written;
     return { ok: true };
 }

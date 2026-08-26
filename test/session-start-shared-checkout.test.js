@@ -204,10 +204,10 @@ test('a live sibling is found past the entries a crowded store lists ahead of it
     const f = fixture();
     try {
         // The store keeps a per-session subdirectory beside each transcript, so
-        // a long-lived project lists far more entries than it holds
-        // transcripts. Those entries are discarded by the filters, so they must
-        // not spend the scan's budget: a sibling behind hundreds of them is the
-        // case the advisory exists for.
+        // a long-lived project lists far more entries than it holds transcripts.
+        // Those entries count against the scan's entry ceiling and are then
+        // discarded, so the ceiling has to sit far above them: a sibling behind
+        // hundreds of them is the case the advisory exists for.
         for (let i = 0; i < 300; i++) {
             fs.mkdirSync(path.join(f.transcripts, `0000-session-noise-${String(i).padStart(4, '0')}`));
         }
