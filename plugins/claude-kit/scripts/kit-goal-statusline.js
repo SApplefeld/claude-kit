@@ -179,14 +179,56 @@ function queuePositionFor(cwd, state) {
         // should show, the exact silent-drop outcome this reader exists to
         // prevent). None of the three may be trusted from a call this widget
         // cannot itself verify.
+        //
+        // Both positions are also required to name an entry of THIS queue,
+        // because the segment does more than arithmetic with them: it indexes
+        // the queue at each, and a position past the end hands planBaseName an
+        // undefined path, which throws out of path.basename and takes the
+        // whole line with it. The library clamps both into the queue by its own
+        // contract, and this reader exists precisely because that contract is
+        // one it cannot verify from here.
+        const length = Array.isArray(state.queue) ? state.queue.length : 0;
         if (!pos || !Number.isInteger(pos.index) || !Number.isInteger(pos.stored)
-            || typeof pos.positional !== 'boolean') {
+            || typeof pos.positional !== 'boolean'
+            || pos.index < 0 || pos.index >= length
+            || pos.stored < 0 || pos.stored >= length) {
             return null;
         }
         return pos;
     } catch {
         return null;
     }
+}
+
+// Whether a position walk read exactly the one plan doc the launcher's cache
+// key stats, and so whether a line carrying that position may be stored under
+// that key. The key is the modification time of planRel under root (see
+// planKeyMtime), so a walk that read a second tree's copy, a plan's archived
+// copy, or any entry other than that one has put something into the line that
+// no key built from those two files can ever notice changing.
+//
+// The walk's own record is what is read (queuePosition's consulted), never a
+// list of the symptoms a wider walk produces: a healed position, an
+// unresolvable one and a cross-tree vote are three of those symptoms, and
+// enumerating them leaves the next input the walk learns to read uncovered.
+//
+// A record that is missing or not the shape this reader recognizes answers no.
+// That is the safe direction here and the opposite of the launcher's own
+// default for a missing cacheable field: the launcher's default is about an
+// older WIDGET, which never derived a position from a second file at all,
+// while this reader is holding an answer from a library it cannot vouch for.
+//
+// The roots are compared as written, the same strict compare queueEntryState
+// makes between the walk's two trees. The keyed root is planDisplayRoot's
+// answer, which is either this cwd verbatim or the recorded execution tree
+// verbatim, and the walk's roots are this cwd and goalRoot(cwd), so the
+// healthy case matches exactly and a doc counted from a recorded tree the walk
+// never opened does not. Two spellings of one directory read as different and
+// cost a re-render, which is the direction that cannot serve a stale line.
+function walkStayedOnKeyedDoc(pos, root, planRel) {
+    if (!Array.isArray(pos.consulted) || pos.consulted.length !== 1) return false;
+    const only = pos.consulted[0];
+    return !!only && typeof only === 'object' && only.root === root && only.rel === planRel;
 }
 
 // The base name a plan path renders as: the file name with its extension
@@ -539,16 +581,25 @@ function sectionProgress(text) {
 // later changes the line, and planMtimeMs is null for the same unreadable
 // doc.
 //
-// cacheable is false exactly when the Plans segment named a position derived
-// from a plan doc other than the armed plan's own: a corrected position
-// (queuePositionFor's healed > 0) reads an archived sibling of the armed
-// plan, and an unresolvable one keeps naming an entry whose doc this walk
-// could not find in any tree. Neither of those docs' modification times is in
-// the launcher's cache key, so a line built from one could go stale in a way
-// the key can never detect, and the launcher must not store it. Every other
-// render, a healthy Plans segment and one with no Plans segment at all alike,
-// is cacheable: the goal state and the armed plan doc are the only inputs
-// that can move it, and both are already keyed on.
+// cacheable is false whenever a rendered Plans segment came from a walk that
+// read anything other than the single plan doc the launcher's key stats. That
+// key holds one plan path and one modification time, taken at one root
+// (planKeyMtime, above), while the position walk behind the segment reads as
+// many files as the queue and the trees give it: both this cwd and the main
+// checkout for a worktree session, a plan's archived copy when nothing stands
+// at its plans path, and every entry it advances through. A line built from
+// any of those could go stale with the keyed file untouched, and the launcher
+// would then serve it forever, so the walk's own record of what it read
+// (queuePosition's consulted) is compared against the keyed pair and anything
+// wider is refused. The comparison is on the pairs the walk reports rather
+// than on the symptoms a wider walk happens to produce, because the symptom
+// list goes out of date the moment the walk learns to read another input.
+//
+// The healthy case still caches, and is the common one: a single tree whose
+// armed plan stands live at its own plans path is one file read, at the root
+// the key was taken from, and the walk stops there. A render with no Plans
+// segment at all caches too, since nothing outside the two keyed files
+// reached the line.
 //
 // The launcher caches the line and re-renders when either of the two files it
 // was rendered from changes, for every render this field marks cacheable, so
@@ -600,7 +651,7 @@ function renderState(cwd) {
     if (pos) {
         if (pos.positional) {
             parts.push(safeSegment(plansSegmentText(state, pos)));
-            if (pos.healed > 0 || pos.unresolvable) cacheable = false;
+            if (!walkStayedOnKeyedDoc(pos, docRoot, state.plan)) cacheable = false;
         }
     } else if (Array.isArray(state.queue) && state.queue.length > 1 && Number.isInteger(state.queueIndex)) {
         parts.push(safeSegment(LABEL_PLANS + ': ' + (state.queueIndex + 1) + '/' + state.queue.length));

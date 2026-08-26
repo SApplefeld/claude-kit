@@ -30,18 +30,18 @@
 // opened here, and it is stat'ed only when it names something inside the
 // project; anything else unexpected in the file simply misses and re-renders.
 //
-// Not every render is written there. The widget's Plans segment can name a
-// position derived from a plan doc other than the two files above (an
-// archived sibling of the armed plan, on a corrected position, or one this
-// walk could not resolve at all), and neither of those other docs'
-// modification times sits in the key: a doc archived after such a line was
-// cached would leave both stats unchanged and this launcher would serve that
-// stale line forever. The widget answers whether a render is safe to cache
-// (renderState's cacheable field), and this launcher honors that answer at
-// every write, so a corrected or unresolvable Plans segment is never stored
-// and so never served from here; only a render the widget itself vouches for
-// reaches this file. A payload whose renderState predates the field is read
-// as cacheable, the two-mtime behavior this cache always had.
+// Not every render is written there. The widget's Plans segment names a
+// position walked over the plan docs themselves, and that walk reads whatever
+// the queue and the checkouts give it: a second tree's copy of an entry for a
+// worktree session, an entry's archived copy, and every entry it advances
+// through. None of those files is one of the two this key stats, so a line
+// built from one would leave both stats unchanged while going stale, and this
+// launcher would serve it forever. The widget answers whether a render is safe
+// to cache (renderState's cacheable field, which compares what the walk
+// reports it read against the one doc this key covers), and this launcher
+// honors that answer at every write, so only a render the widget itself
+// vouches for reaches this file. A payload whose renderState predates the
+// field is read as cacheable, the two-mtime behavior this cache always had.
 //
 // Blank output is the widget's own "nothing armed" answer, so this launcher
 // prints nothing on the failures a status line cannot act on either (no
@@ -258,10 +258,13 @@ function cacheIsCurrent(widget, cwd, cached, goalMtimeMs) {
 // until the next arm or advance. Nothing stored is better than a key that
 // cannot detect the change the key exists for.
 //
-// state.cacheable false is the same rule reaching a third input: a corrected
-// or unresolvable Plans segment reads a plan doc the two stat targets above
-// do not cover, so no key built from them can ever notice that doc changing,
-// and the line must not be stored under one that cannot. A payload whose
+// state.cacheable false is the same rule reaching the other plan docs a
+// render can read: a Plans position walked over a second tree's copy, over an
+// archived copy, or over a further queue entry rests on a doc the two stat
+// targets above do not cover, so no key built from them can ever notice that
+// doc changing, and the line must not be stored under one that cannot. Which
+// docs a render actually read is the widget's own answer, taken from the
+// walk's report rather than guessed at from the line here. A payload whose
 // renderState predates the field carries no cacheable property at all, and a
 // missing flag reads as cacheable, the two-file rule this cache always had:
 // an older widget paired with a newer launcher behaves exactly as it did

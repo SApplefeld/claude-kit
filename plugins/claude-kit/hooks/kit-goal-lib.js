@@ -1188,6 +1188,27 @@ function planReadsTerminal(head) {
     return row !== null && row[1].trim().toLowerCase() === 'complete';
 }
 
+// Note a path a position walk is about to read, on the walk's own record of
+// what it consulted, when a caller asked for that record.
+//
+// The record exists for a caller that caches a render keyed on ONE plan doc
+// and must know whether the position in it came from anywhere else: the walk
+// crosses two trees for a worktree session, falls through to a plan's archived
+// copy, and advances through finished entries, and none of those other files
+// is in such a key. Reported rather than re-derived, because a caller that
+// re-derived it would be spelling this file's branch rules a second time and
+// the two spellings would part at the next input this walk learns to read.
+//
+// A pair is recorded where the read happens rather than where a branch is
+// chosen, so a path a branch considered and never opened is not in the record.
+// The list is bounded by the walk itself: each scanned queue entry reads at
+// most two paths, the plans path and the archived copy, in at most two trees,
+// so QUEUE_POSITION_MAX_SCAN x 2 x 2 pairs. It is one pair long for the
+// healthy single-tree case that dominates.
+function recordConsulted(consulted, root, rel) {
+    if (Array.isArray(consulted)) consulted.push({ root, rel });
+}
+
 // What one checkout's filesystem says about a queued plan entry:
 //
 //   'complete'  the doc's own header reads terminal, or the doc has moved to
@@ -1205,8 +1226,15 @@ function planReadsTerminal(head) {
 // It is evidence of neither finished nor missing, so every caller here reads
 // it as an entry that is present and unfinished, the direction that
 // under-reports progress rather than reporting past live work. Never throws.
-function treeEntryState(root, planRel) {
+//
+// consulted is the optional record every path this reading actually opened is
+// noted in (recordConsulted states what it is for). It is written to rather
+// than returned because the paths are read at two depths here, the plans path
+// and the archived copy, and a caller that had to infer which of them ran
+// would be re-deriving this function's own branches.
+function treeEntryState(root, planRel, consulted) {
     try {
+        recordConsulted(consulted, root, planRel);
         const head = planHeadText(root, planRel);
         if (head.exists) {
             if (head.text === null) return 'unknown';
@@ -1218,6 +1246,7 @@ function treeEntryState(root, planRel) {
         if (planPathState(root, planRel) !== 'gone') return 'unknown';
         const filed = archivePathFor(root, planRel);
         if (filed === null) return 'absent';
+        recordConsulted(consulted, root, filed);
         // planFileSize answers 0 for an absent path and null for one that
         // cannot be read as a plan doc. A zero-byte file standing at the
         // archive path answers 0 too and so reads as absent: it is
@@ -1279,13 +1308,17 @@ function treeEntryState(root, planRel) {
 // only under-reports progress, where an operator can see it. Unresolvable
 // takes the same agreement rule, so an entry standing in either tree is
 // reported from that tree rather than as missing. Never throws.
-function queueEntryState(cwd, planRel) {
+//
+// consulted is the walk's optional record of the paths actually read, passed
+// through to the per-tree readings that do the reading. The early return above
+// it opens nothing and so records nothing.
+function queueEntryState(cwd, planRel, consulted) {
     if (normalizePlanArg(cwd, planRel) !== planRel) {
         return { state: 'unresolvable', cause: 'unreadable-path' };
     }
     const root = goalRoot(cwd);
-    const here = treeEntryState(cwd, planRel);
-    const votes = root === cwd ? [here] : [here, treeEntryState(root, planRel)];
+    const here = treeEntryState(cwd, planRel, consulted);
+    const votes = root === cwd ? [here] : [here, treeEntryState(root, planRel, consulted)];
     if (votes.every((v) => v === 'complete')) return { state: 'complete', cause: null };
     if (votes.every((v) => v === 'absent')) {
         return {
@@ -1329,7 +1362,8 @@ const QUEUE_POSITION_MAX_SCAN = 16;
 // position behind the leash's own would re-open work the operator decided to
 // leave. Reading forward can only ever agree with the leash or catch it up.
 //
-// Returns { index, stored, healed, positional, unresolvable, cause, finished }:
+// Returns { index, stored, healed, positional, unresolvable, cause, finished,
+// consulted }:
 //
 //   index         the position to report
 //   stored        the stored index the walk started from, clamped into the
@@ -1352,6 +1386,12 @@ const QUEUE_POSITION_MAX_SCAN = 16;
 //                 session's next stop rather than advancing, so a surface that
 //                 reported the position alone would describe work remaining
 //                 where none does
+//   consulted     every { root, rel } pair this walk actually read, in the
+//                 order it read them, so a surface caching a render keyed on
+//                 one plan doc can tell whether the position in it came from
+//                 anywhere else (recordConsulted states the whole rule and the
+//                 bound). A walk that threw keeps the pairs it had already
+//                 read, since it did read them
 //
 // An unresolvable entry stops the walk and keeps its position, never being
 // skipped: skipping it would renumber the queue around a plan whose absence is
@@ -1362,6 +1402,7 @@ function queuePosition(cwd, state) {
     let index = 0;
     let entry = null;
     let positional = false;
+    const consulted = [];
     try {
         if (!state || typeof state.plan !== 'string' || state.plan === '') {
             return empty();
@@ -1374,7 +1415,7 @@ function queuePosition(cwd, state) {
         index = stored;
         const last = queue.length - 1;
         for (let scanned = 0; scanned < QUEUE_POSITION_MAX_SCAN; scanned++) {
-            entry = queueEntryState(cwd, queue[index]);
+            entry = queueEntryState(cwd, queue[index], consulted);
             if (entry.state !== 'complete' || index === last) break;
             index++;
             entry = null;
@@ -1393,15 +1434,17 @@ function queuePosition(cwd, state) {
         positional,
         unresolvable: entry !== null && entry.state === 'unresolvable',
         cause: entry !== null && entry.state === 'unresolvable' ? entry.cause : null,
-        finished: entry !== null && entry.state === 'complete'
+        finished: entry !== null && entry.state === 'complete',
+        consulted
     };
 }
 
-// The answer for a state carrying no queue to have a position in.
+// The answer for a state carrying no queue to have a position in. Nothing was
+// read to reach it, so its record of consulted paths is empty.
 function empty() {
     return {
         index: 0, stored: 0, healed: 0, positional: false,
-        unresolvable: false, cause: null, finished: false
+        unresolvable: false, cause: null, finished: false, consulted: []
     };
 }
 

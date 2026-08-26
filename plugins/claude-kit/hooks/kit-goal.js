@@ -37,7 +37,8 @@ const path = require('path');
 const os = require('os');
 const {
     armGoal, appendGoal, clearGoal, readGoal, planStatusReadings, lastActivePhrase, isSessionIdShaped,
-    goalPath, planPathState, pathErrnoClass, safeForAuthorization, queuePosition, GOAL_STATE_MAX_BYTES
+    goalPath, goalRoot, planPathState, pathErrnoClass, safeForAuthorization, queuePosition,
+    GOAL_STATE_MAX_BYTES
 } = require('./kit-goal-lib.js');
 
 // Repo-controlled strings (a plan path) are sanitized to printable ASCII and
@@ -332,6 +333,15 @@ function cmdStatus() {
     // so the token an entry prints and the position walked above cannot be
     // taken from different reads of the same row.
     let divergent = false;
+    // Whether the entry AT the reported position prints as missing while the
+    // position line above reports it pending, which the second note after the
+    // window explains. The tokens read THIS working directory alone, while the
+    // position walk requires every tree to agree, so in a worktree an entry
+    // present only in the main checkout the goal state lives in prints
+    // [missing] directly beneath a position that still counts it as work to do.
+    // The main checkout is asked only in that narrow case, and only to keep the
+    // note from claiming a presence nothing checked.
+    let wrongTree = false;
     window.forEach((plan, i) => {
         const head = planStatusReadings(cwd, plan);
         if (head.exists && head.status === 'complete' && !head.terminal) divergent = true;
@@ -343,6 +353,10 @@ function cmdStatus() {
         // is neither. The classification is planPathState's, the one every
         // reader of a plan path here answers to.
         const status = head.exists ? head.status : QUEUE_TOKENS[planPathState(cwd, plan)];
+        if (i === 0 && status === QUEUE_TOKENS.gone && !position.unresolvable && !position.finished) {
+            const root = goalRoot(cwd);
+            wrongTree = root !== cwd && planPathState(root, plan) !== 'gone';
+        }
         // The authorization each plan recorded when it was queued, printed on
         // both directions rather than only when one is present: an audit trail
         // that showed nothing for a plan carrying no authorization would read
@@ -370,6 +384,12 @@ function cmdStatus() {
             + ' trailing text after Complete still finishes a plan; the queue position above reads the'
             + ' frozen plan-doc contract instead, under which it does not, so an entry can be complete'
             + ' to the leash and current to this report)');
+    }
+    if (wrongTree) {
+        out.push('  (the [missing] token above is this working directory\'s reading alone; the doc is'
+            + ' still present in the main checkout this goal state lives in, so the position above'
+            + ' counts the plan pending. Bring it onto this tree\'s branch, or land its archival in'
+            + ' the main checkout, so both trees agree)');
     }
 
     if (state.history.length > 0) {

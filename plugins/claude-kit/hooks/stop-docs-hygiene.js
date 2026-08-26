@@ -22,6 +22,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { planHeadText } = require('./kit-goal-lib.js');
 
 function readStdin() {
     try { return fs.readFileSync(0, 'utf8'); } catch { return ''; }
@@ -39,21 +40,27 @@ function findCompletedUnarchived(cwd) {
             .slice(0, 50);
         for (const file of entries) {
             try {
-                const fd = fs.openSync(path.join(plansDir, file), 'r');
-                const buf = Buffer.alloc(2048);
-                const bytes = fs.readSync(fd, buf, 0, 2048, 0);
-                fs.closeSync(fd);
-                let head = buf.toString('utf8', 0, bytes);
-                if (head.charCodeAt(0) === 0xFEFF) head = head.slice(1);
+                // The head read goes through kit-goal-lib's planHeadText, which
+                // applies the shared kind-and-size rule before it opens
+                // anything: a directory entry is judged by an lstat first, and
+                // only a regular file (or a link resolving in-repo to one) is
+                // opened. Opened directly, a FIFO named anything.md in a
+                // cloned repo's docs/plans/ blocks the open until a writer
+                // appears, with no try able to rescue it, and this hook runs at
+                // every turn end, so that clone's session would wedge at every
+                // stop. The window is the same 2 KB of header, and the BOM
+                // strip and the decode are the shared reader's too.
+                const head = planHeadText(cwd, 'docs/plans/' + file);
+                if (!head.exists || head.text === null) continue;
                 // Classify from the Status header only: anchored to a line start
                 // (m flag) so body prose cannot match, and the value must sit on
                 // the same line as the header ([^\S\r\n]* is horizontal whitespace
                 // only, never a newline), so a bare "Status:" line above a line
                 // beginning "complete" or "in progress" does not misclassify the
                 // plan. A leading UTF-8 BOM (PowerShell Set-Content writes one) is
-                // stripped above so the anchor sees the header. The header sits on
-                // its own line near the top by convention.
-                if (/^status:[^\S\r\n]*complete/im.test(head) && !/^status:[^\S\r\n]*in[^\S\r\n]*progress/im.test(head)) {
+                // stripped by the shared reader so the anchor sees the header. The
+                // header sits on its own line near the top by convention.
+                if (/^status:[^\S\r\n]*complete/im.test(head.text) && !/^status:[^\S\r\n]*in[^\S\r\n]*progress/im.test(head.text)) {
                     files.push(file.replace(/[^\x20-\x7E]/g, '').slice(0, 120));
                 }
             } catch { /* skip unreadable */ }
@@ -69,14 +76,17 @@ function findCompletedUnarchived(cwd) {
 // whose project or topic name embeds a word the SCRATCH_NAME set matches.
 function hasPlanHeaderContract(full) {
     try {
-        const fd = fs.openSync(full, 'r');
-        const buf = Buffer.alloc(2048);
-        const bytes = fs.readSync(fd, buf, 0, 2048, 0);
-        fs.closeSync(fd);
-        let head = buf.toString('utf8', 0, bytes);
-        if (head.charCodeAt(0) === 0xFEFF) head = head.slice(1);
-        return /^status:[^\S\r\n]*\S/im.test(head)
-            && /^commit[^\S\r\n]+model:[^\S\r\n]*\S/im.test(head);
+        // The same shared kind-and-size reader the plans scan above goes
+        // through, for the same reason: the walk that reaches here reports
+        // directory entries by kind alone, and a FIFO with a scratch-matching
+        // name would block a bare open until a writer appeared, holding every
+        // turn end in that checkout. planHeadText resolves its path from a root
+        // and a relative path, so the file's own directory is the root here and
+        // its name is the path, which joins back to exactly this file.
+        const head = planHeadText(path.dirname(full), path.basename(full));
+        if (!head.exists || head.text === null) return false;
+        return /^status:[^\S\r\n]*\S/im.test(head.text)
+            && /^commit[^\S\r\n]+model:[^\S\r\n]*\S/im.test(head.text);
     } catch {
         return false;
     }

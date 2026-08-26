@@ -409,9 +409,104 @@ test('a healthy render reports itself cacheable', () => {
         arm(dir, { plan: PLAN_REL, queue: [PLAN_REL, 'docs/plans/other_spec_v1.md'], queueIndex: 0 });
         plan(dir, ['### Chapter 1', 'Completed: 1. First thing', 'Next: 2. Second thing']);
         const result = renderState(dir);
+        // The common case the cacheability rule must never cost: one tree, the
+        // armed plan live at its own plans path, so the position walk opens
+        // that one keyed file and stops. The line is asserted alongside the
+        // flag because a render that dropped the Plans segment altogether
+        // would also be cacheable, and would pass a bare flag assertion while
+        // proving nothing about a walk that ran.
+        assert.strictEqual(result.line,
+            '\u{1F3AF} widget_spec_v1 · Sections: 1/3 (Next §2) · Plans: 1/2');
         assert.strictEqual(result.cacheable, true);
     } finally {
         rmDir(dir);
+    }
+});
+
+test('a finished position read out of the archive is uncacheable, though nothing was healed', () => {
+    const dir = makeRepo();
+    try {
+        const { renderState } = require(WIDGET);
+        // The stored index already names the last entry, so the walk corrects
+        // nothing (healed is 0) and the old symptom list would have called
+        // this line cacheable. It is not: the entry was settled from
+        // a_spec_v1.md's ARCHIVED copy, a file the launcher's key never stats,
+        // and the key's own plan doc is not even there to produce a time. A
+        // later edit to that archived copy, or its removal, would leave both
+        // stats unchanged and the "(all complete)" line on screen forever.
+        planAt(dir, 'docs/plans/x_spec_v1.md', 'In Progress');
+        archiveAt(dir, 'docs/plans/a_spec_v1.md', 'Complete');
+        arm(dir, {
+            plan: 'docs/plans/a_spec_v1.md',
+            queue: ['docs/plans/x_spec_v1.md', 'docs/plans/a_spec_v1.md'],
+            queueIndex: 1
+        });
+        const result = renderState(dir);
+        assert.strictEqual(result.line, '\u{1F3AF} a_spec_v1 · Plans: 2/2 (all complete)');
+        assert.strictEqual(result.planMtimeMs, null,
+            'setup: the armed plan does not stand at its plans path, so there is no key time');
+        assert.strictEqual(result.cacheable, false,
+            'a position settled from an archived copy may not be cached under a key that cannot see it');
+    } finally {
+        rmDir(dir);
+    }
+});
+
+// A main checkout plus a worktree wired to it, mirroring makeWorktree in
+// kit-goal-worktree.test.js: the same on-disk shape the goal family's resolver
+// reads, built here because this file's cases need a worktree render and that
+// builder is local to its own suite. The fixtures sit under the canonical
+// spelling of the temp root for that builder's reason: this machine's TEMP can
+// be an 8.3 short path, and an accepted main root is folded to the volume's own
+// spelling on win32.
+const WORKTREE_TMP = process.platform === 'win32' ? fs.realpathSync.native(os.tmpdir()) : os.tmpdir();
+
+function makeWorktree() {
+    const main = fs.mkdtempSync(path.join(WORKTREE_TMP, 'kit-statusline-main-'));
+    const tree = fs.mkdtempSync(path.join(WORKTREE_TMP, 'kit-statusline-tree-'));
+    for (const root of [main, tree]) {
+        fs.mkdirSync(path.join(root, '.kit'), { recursive: true });
+        fs.mkdirSync(path.join(root, 'docs', 'plans'), { recursive: true });
+    }
+    const gitdir = path.join(main, '.git', 'worktrees', 'wt');
+    fs.mkdirSync(gitdir, { recursive: true });
+    fs.writeFileSync(path.join(gitdir, 'commondir'), '../..\n', 'utf8');
+    fs.writeFileSync(path.join(gitdir, 'gitdir'), path.join(tree, '.git') + '\n', 'utf8');
+    fs.writeFileSync(path.join(tree, '.git'), 'gitdir: ' + gitdir + '\n', 'utf8');
+    return { main, tree };
+}
+
+test('a worktree render is uncacheable even with a healthy, uncorrected position', () => {
+    const { main, tree } = makeWorktree();
+    try {
+        const { renderState } = require(WIDGET);
+        // The defect this rule closes, in its own target state. The position
+        // walk asks BOTH trees about the current entry (queueEntryState's
+        // agreement rule), and only this tree's copy is in the launcher's key.
+        // Nothing is corrected here, so a rule reading the correction symptoms
+        // alone calls this cacheable: the widget then serves "Plans: 1/2" from
+        // the cache while a merge flipping the MAIN checkout's copy to Complete
+        // moves the position to 2/2 everywhere else, which is exactly the
+        // three-surfaces-disagree state the derived position exists to prevent.
+        planAt(tree, 'docs/plans/a_spec_v1.md', 'In Progress');
+        planAt(main, 'docs/plans/a_spec_v1.md', 'In Progress');
+        planAt(tree, 'docs/plans/b_spec_v1.md', 'In Progress');
+        planAt(main, 'docs/plans/b_spec_v1.md', 'In Progress');
+        // The goal state lives in the main checkout, which is what makes this
+        // a worktree session rather than two unrelated repositories.
+        arm(main, {
+            plan: 'docs/plans/a_spec_v1.md',
+            queue: ['docs/plans/a_spec_v1.md', 'docs/plans/b_spec_v1.md'],
+            queueIndex: 0
+        });
+        const result = renderState(tree);
+        assert.match(result.line, /Plans: 1\/2$/,
+            'setup: the walk ran and reported the uncorrected position: ' + result.line);
+        assert.strictEqual(result.cacheable, false,
+            'a position that consulted the main checkout may not be cached on this tree\'s copy alone');
+    } finally {
+        rmDir(main);
+        rmDir(tree);
     }
 });
 
@@ -540,6 +635,39 @@ test('a queuePosition answer with a non-integer index falls back to the stored i
         assert.strictEqual(res.status, 0, res.stderr);
         assert.strictEqual(res.stdout, '\u{1F3AF} widget_spec_v1 · Sections: 1/3 (Next §2) · Plans: 1/2',
             'the malformed answer is rejected rather than printing "Plans: NaN/2"');
+    } finally {
+        rmDir(dir);
+        rmDir(root);
+    }
+});
+
+test('a queuePosition answer naming an entry past the end of the queue falls back to the stored index', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kit-statusline-badpos3-'));
+    const dir = makeRepo();
+    try {
+        const entry = path.join(root, 'scripts');
+        const hooksDir = path.join(root, 'hooks');
+        fs.mkdirSync(entry, { recursive: true });
+        fs.mkdirSync(hooksDir, { recursive: true });
+        fs.copyFileSync(WIDGET, path.join(entry, 'kit-goal-statusline.js'));
+        // An integer index is not enough: the segment INDEXES the queue at it,
+        // and a position past the end hands an undefined path to
+        // path.basename, which throws and takes the whole line with it. So the
+        // widget renders nothing at all, on a queue it has every input needed
+        // to describe. The library clamps both positions into the queue by its
+        // own contract; this reader validates the answer because that contract
+        // is one it cannot verify from here.
+        stubQueuePosition(hooksDir,
+            '{ index: 5, stored: 0, healed: 5, positional: true, unresolvable: false, cause: null,'
+            + ' finished: false, consulted: [] }');
+
+        arm(dir, { plan: PLAN_REL, queue: [PLAN_REL, 'docs/plans/other_spec_v1.md'], queueIndex: 0 });
+        plan(dir, ['### Chapter 1', 'Completed: 1. First thing', 'Next: 2. Second thing']);
+        const res = spawnSync(process.execPath, [path.join(entry, 'kit-goal-statusline.js')],
+            { input: JSON.stringify({ cwd: dir }), encoding: 'utf8' });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout, '\u{1F3AF} widget_spec_v1 · Sections: 1/3 (Next §2) · Plans: 1/2',
+            'an out-of-range position is rejected and the stored index answers, with the line intact');
     } finally {
         rmDir(dir);
         rmDir(root);
@@ -1025,6 +1153,74 @@ function statusPosition(stdout) {
     const m = /queue: plan (\d+) of (\d+),/.exec(stdout);
     return m ? { index: Number(m[1]), total: Number(m[2]) } : null;
 }
+
+// The same disagreement one screen down: `kit-goal.js status` prints its
+// per-entry tokens from THIS working directory alone while the position line
+// above them requires every tree to agree, so a worktree missing a plan the
+// main checkout still holds prints [missing] under a position that counts the
+// plan pending. The case lives beside the cross-surface pin above because it
+// is the same subject, two readings of one queue that a reader has no way to
+// part, and this file already drives `kit-goal.js status` for it.
+function worktreeState() {
+    return {
+        plan: 'docs/plans/a_spec_v1.md',
+        condition: 'wrong-tree token fixture',
+        armedAt: '2026-08-16T00:00:00.000Z',
+        boundSession: null,
+        boundTranscript: null,
+        queue: ['docs/plans/a_spec_v1.md', 'docs/plans/b_spec_v1.md'],
+        queueIndex: 0,
+        history: []
+    };
+}
+
+test('`kit-goal.js status` ties a [missing] token to the position that still counts the plan pending', () => {
+    const { main, tree } = makeWorktree();
+    try {
+        // Present on main, unmerged here: the entry is absent in this working
+        // directory and live in the checkout the goal state lives in, so the
+        // agreement rule reports it pending while this tree's own token reads
+        // missing. Unlabelled, the two lines read as a contradiction.
+        planAt(main, 'docs/plans/a_spec_v1.md', 'In Progress');
+        planAt(main, 'docs/plans/b_spec_v1.md', 'In Progress');
+        planAt(tree, 'docs/plans/b_spec_v1.md', 'In Progress');
+        arm(main, worktreeState());
+
+        const res = runGoalStatus(tree);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /queue: plan 1 of 2, docs\/plans\/a_spec_v1\.md/,
+            'setup: the position still counts the plan pending: ' + res.stdout);
+        assert.match(res.stdout, /> docs\/plans\/a_spec_v1\.md \[missing\]/,
+            'setup: this tree reads the entry as missing: ' + res.stdout);
+        assert.match(res.stdout, /still present in the main checkout this goal state lives in/,
+            'the two readings on one screen are tied together');
+    } finally {
+        rmDir(main);
+        rmDir(tree);
+    }
+});
+
+test('a queue entry missing from both trees keeps the plain unresolvable wording', () => {
+    const { main, tree } = makeWorktree();
+    try {
+        // The control that keeps the note from being unconditional: with the
+        // doc absent in BOTH trees there is no second reading to explain, the
+        // entry is unresolvable rather than pending, and the existing
+        // unresolvable clause is the whole story.
+        planAt(main, 'docs/plans/b_spec_v1.md', 'In Progress');
+        planAt(tree, 'docs/plans/b_spec_v1.md', 'In Progress');
+        arm(main, worktreeState());
+
+        const res = runGoalStatus(tree);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /unresolvable: the doc for this plan is in neither/);
+        assert.doesNotMatch(res.stdout, /still present in the main checkout this goal state lives in/,
+            'nothing is present in the main checkout, so nothing claims it is');
+    } finally {
+        rmDir(main);
+        rmDir(tree);
+    }
+});
 
 test('the widget, the SessionStart advisory and `kit-goal.js status` agree on the queue position, defect and healthy alike', () => {
     // The defect state: queueIndex frozen on a_spec_v1, which is Complete and

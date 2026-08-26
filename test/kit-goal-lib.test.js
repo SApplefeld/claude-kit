@@ -3765,6 +3765,17 @@ function statusStdout(repo) {
     return res.stdout;
 }
 
+// The position's reported fields with its record of the paths the walk read
+// set aside, for the cases below that pin every field at once. That record
+// (consulted) holds absolute fixture paths, so folding it into these compares
+// would make each of them restate the temp directory it built; the pairs in it
+// are asserted on their own, where they are the subject rather than noise.
+function positionFields(cwd, state) {
+    const { consulted, ...fields } = queuePosition(cwd, state);
+    assert.ok(Array.isArray(consulted), 'every answer carries a record of what the walk read');
+    return fields;
+}
+
 test('a plan archived with no stop to advance the leash still reports the truthful queue position', () => {
     const repo = makeRepo();
     try {
@@ -3852,7 +3863,7 @@ test('a healthy queue reports the stored position and says nothing about it', ()
         assert.match(out, /queue: plan 1 of 2/);
         assert.doesNotMatch(out, /stored position/, 'nothing to correct is nothing to say');
         assert.doesNotMatch(out, /unresolvable/);
-        assert.deepStrictEqual(queuePosition(repo, readGoal(repo)), {
+        assert.deepStrictEqual(positionFields(repo, readGoal(repo)), {
             index: 0, stored: 0, healed: 0, positional: true,
             unresolvable: false, cause: null, finished: false
         });
@@ -3904,7 +3915,7 @@ test('the position walk never moves behind the stored index', () => {
         // already decided to move past.
         assert.strictEqual(advanceGoal(repo, { outcome: 'blocked' }).advanced, true);
         assert.strictEqual(readGoal(repo).queueIndex, 1);
-        assert.deepStrictEqual(queuePosition(repo, readGoal(repo)), {
+        assert.deepStrictEqual(positionFields(repo, readGoal(repo)), {
             index: 1, stored: 1, healed: 0, positional: true,
             unresolvable: false, cause: null, finished: false
         }, 'the walk reads forward from the stored index, never behind it');
@@ -3926,7 +3937,7 @@ test('a doc filed in the archive without reading terminal does not finish its qu
         writePlan(repo, 'docs/archive/a.md', '# A\n\nStatus: In Progress\n\n## Chapters\n');
         fs.rmSync(path.join(repo, 'docs', 'plans', 'a.md'));
 
-        assert.deepStrictEqual(queuePosition(repo, readGoal(repo)), {
+        assert.deepStrictEqual(positionFields(repo, readGoal(repo)), {
             index: 0, stored: 0, healed: 0, positional: true,
             unresolvable: false, cause: null, finished: false
         }, 'a non-terminal archived copy is no record of a finished plan');
@@ -3978,15 +3989,17 @@ test('a queue entry that does not round-trip the plan-path normalizer is unresol
         // on its own terms whatever hands it a state, and what it must never do
         // is stat and open a path outside the repository.
         const traversing = 'docs/plans/../../../../evil.md';
-        const position = queuePosition(repo, {
+        const state = {
             plan: traversing,
             queue: [traversing, 'docs/plans/b.md'],
             queueIndex: 0
-        });
-        assert.deepStrictEqual(position, {
+        };
+        assert.deepStrictEqual(positionFields(repo, state), {
             index: 0, stored: 0, healed: 0, positional: true,
             unresolvable: true, cause: 'unreadable-path', finished: false
         }, 'an entry that escapes the repo is resolved against no tree and never skipped past');
+        assert.deepStrictEqual(queuePosition(repo, state).consulted, [],
+            'a path refused before any tree is asked leaves nothing on the record of what was read');
     } finally {
         rmRepo(repo);
     }
@@ -4049,11 +4062,48 @@ test('a queue longer than the position walk\'s scan bound reports where the evid
         assert.strictEqual(armGoal(repo, names.map((n) => 'docs/plans/' + n)).ok, true);
         for (const name of names) closeOutIntoArchive(repo, name);
 
-        assert.deepStrictEqual(queuePosition(repo, readGoal(repo)), {
+        assert.deepStrictEqual(positionFields(repo, readGoal(repo)), {
             index: 16, stored: 0, healed: 16, positional: true,
             unresolvable: false, cause: null, finished: false
         });
         assert.match(statusStdout(repo), /queue: plan 17 of 18, docs\/plans\/p16\.md/);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('the position walk reports the plan docs it read, one for a healthy queue', () => {
+    const repo = makeRepo();
+    try {
+        armTwoPlans(repo);
+        // The record a caching surface acts on: the armed plan stands live at
+        // its own plans path in the only tree there is, so the walk opens that
+        // one file and stops. Anything wider than this pair is a position a
+        // key over that one file cannot keep fresh.
+        assert.deepStrictEqual(queuePosition(repo, readGoal(repo)).consulted,
+            [{ root: repo, rel: 'docs/plans/a.md' }]);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('the position walk reports the archived copy and the entry it advanced onto', () => {
+    const repo = makeRepo();
+    try {
+        armTwoPlans(repo);
+        closeOutIntoArchive(repo, 'a.md');
+        const position = queuePosition(repo, readGoal(repo));
+        assert.strictEqual(position.index, 1, 'setup: the finished first entry is walked past');
+        // Both files the walk actually opened past the armed plan's own path
+        // are on the record, in the order it opened them: the archived copy
+        // that settled the first entry, and the second entry's own doc. Neither
+        // is in any key built from the armed plan alone, which is the whole
+        // reason the record exists.
+        assert.deepStrictEqual(position.consulted, [
+            { root: repo, rel: 'docs/plans/a.md' },
+            { root: repo, rel: 'docs/archive/a.md' },
+            { root: repo, rel: 'docs/plans/b.md' }
+        ]);
     } finally {
         rmRepo(repo);
     }
