@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // SessionStart hook: compaction/startup recovery, plus a kit-repo kaizen nudge,
-// a docs-library hygiene nudge, an armed-goal notice, and a backlog block
-// (any project with a docs/backlog.md).
+// a docs-library hygiene nudge, an armed-goal notice, a backlog block
+// (any project with a docs/backlog.md), and a shared-checkout advisory when
+// another session of this project has written a transcript recently.
 // Scans docs/plans/ for in-progress plan docs and injects an instruction to
 // re-read them (including Chapters) before any work proceeds. Fires on
 // startup, resume, and (critically) after compaction.
@@ -16,9 +17,26 @@
 'use strict';
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
-const { readGoal, lastActivePhrase } = require('./kit-goal-lib.js');
+const { readGoal, lastActivePhrase, isSessionIdShaped } = require('./kit-goal-lib.js');
 const { sameSessionId } = require('./kit-compact-lib.js');
+
+// How recently another session's transcript must have been written for that
+// session to count as possibly live. Seeded rather than derived: nothing here
+// measures how long a real session goes between transcript writes, and a
+// window is only ever a proxy for liveness, so ten minutes is set wide enough
+// to cover a long turn and tuned later on evidence, as the store's other
+// constants are.
+const SHARED_CHECKOUT_WINDOW_MS = 10 * 60 * 1000;
+
+// How many directory entries the sibling-session scan may examine. The store
+// holds one transcript plus one subdirectory per session of a project, kept for
+// as long as the harness keeps history, so a project worked for months lists
+// entries in the hundreds; this ceiling sits far above that so the scan reaches
+// a live sibling rather than stopping short of one, and exists only so a
+// directory someone has filled cannot turn session start into an unbounded walk.
+const SIBLING_SCAN_MAX_ENTRIES = 4096;
 
 // Read Hook Input from stdin.
 function readStdin() {
@@ -258,6 +276,121 @@ function composeGoalBlock(goal, sessionId) {
         + ` Reminder, not a blocker. ${provenance}`;
 }
 
+// The directory the harness keeps this session's transcript in, or null when
+// it cannot be identified. The harness writes each session's transcript as
+// <sessionId>.jsonl inside one directory per project path, so that directory
+// holds every session of this checkout and nothing else identifies it.
+//
+// The payload's own transcript_path is the first source and needs no search:
+// its directory is this session's by construction, and the file name must be
+// this session's id for it to be taken (a payload naming another session's
+// file identifies no directory of ours). Where the payload carries no path,
+// the fallback locates <sessionId>.jsonl under the harness's transcript store,
+// as the /kit-goal CLI's own lookup does. That fallback is a scan across
+// project directories, and a scan can land in another project's: here the
+// probe is this session's own id, so a wrong landing needs a second local
+// project holding a transcript file of that exact id, and the cost of one is a
+// hint line about the wrong checkout rather than any action.
+//
+// Any failure returns null (never throws).
+function ownTranscriptDir(sessionId, transcriptPath) {
+    try {
+        if (typeof transcriptPath === 'string' && transcriptPath !== '') {
+            const name = path.basename(transcriptPath);
+            const stem = name.toLowerCase().endsWith('.jsonl') ? name.slice(0, -6) : null;
+            return stem && sameSessionId(stem, sessionId) ? path.dirname(transcriptPath) : null;
+        }
+        const root = path.join(os.homedir(), '.claude', 'projects');
+        for (const entry of fs.readdirSync(root)) {
+            const candidate = path.join(root, entry, sessionId + '.jsonl');
+            try {
+                if (fs.statSync(candidate).isFile()) return path.join(root, entry);
+            } catch { /* no transcript of this session in that project directory */ }
+        }
+        return null;
+    } catch {
+        return null;
+    }
+}
+
+// How many OTHER sessions of this checkout have written a transcript inside
+// the recency window, and how long ago the most recent of them wrote, or null
+// when none has. Recency is the whole signal: a transcript file outlives the
+// session that wrote it, so age is all that separates a session that may be
+// live from one that ended weeks ago.
+//
+// Only regular .jsonl files count (the store also keeps a per-session
+// subdirectory), and this session's own transcript is excluded through
+// sameSessionId, the comparison rule the goal notice and the Stop hook share,
+// so a mixed-case id cannot make a session report itself as a sibling. No
+// transcript is opened and no name or path leaves this function: a count and
+// an age are the whole result.
+//
+// Any failure returns null (never throws).
+function summarizeSiblingSessions(sessionId, transcriptPath) {
+    if (!isSessionIdShaped(sessionId)) return null;
+    const dir = ownTranscriptDir(sessionId, transcriptPath);
+    if (!dir) return null;
+
+    const cutoff = Date.now() - SHARED_CHECKOUT_WINDOW_MS;
+    let count = 0;
+    let newestPath = null;
+    let newestMs = null;
+    let handle = null;
+    try {
+        handle = fs.opendirSync(dir);
+        for (let seen = 0; seen < SIBLING_SCAN_MAX_ENTRIES; seen += 1) {
+            const entry = handle.readSync();
+            if (entry === null) break;
+            // Every filter that judges a NAME runs before the stat, so the
+            // ceiling above bounds the syscalls rather than the candidates. The
+            // store keeps a per-session subdirectory beside each transcript, so
+            // most of what a long-lived project lists here is discarded, and a
+            // ceiling applied to the listing instead would spend the whole
+            // budget on entries that were never going to count and miss a live
+            // sibling sitting behind them. The listing is read incrementally
+            // rather than through readdirSync for the reason sweepStaleTmp in
+            // kit-goal-lib.js states: readdirSync materializes the whole
+            // directory before the first entry can be judged, so a ceiling on
+            // the loop alone would bound nothing.
+            const name = entry.name;
+            if (!name.toLowerCase().endsWith('.jsonl')) continue;
+            const stem = name.slice(0, -6);
+            // A file named exactly '.jsonl' has an empty stem, and sameSessionId
+            // answers false for an empty side (that is the treat-as-absent
+            // handling an unbound goal needs), so without this the stray file
+            // would count as another session of this checkout.
+            if (stem === '' || sameSessionId(stem, sessionId)) continue;
+            if (!entry.isFile()) continue;
+            const file = path.join(dir, name);
+            let mtimeMs;
+            try {
+                mtimeMs = fs.statSync(file).mtimeMs;
+            } catch {
+                continue;
+            }
+            if (!Number.isFinite(mtimeMs) || mtimeMs < cutoff) continue;
+            count++;
+            if (newestMs === null || mtimeMs > newestMs) {
+                newestMs = mtimeMs;
+                newestPath = file;
+            }
+        }
+    } catch {
+        return null;
+    } finally {
+        if (handle) {
+            try { handle.closeSync(); } catch { /* already closed, or never opened cleanly */ }
+        }
+    }
+
+    if (count === 0) return null;
+    // The liveness phrase is single-sourced in kit-goal-lib (lastActivePhrase),
+    // the same one the armed-goal notice and the CLI status report render, so
+    // the three surfaces cannot answer the same mtime differently.
+    return { count, phrase: lastActivePhrase(newestPath) };
+}
+
 function main() {
     // Parse Hook Payload.
     let payload = {};
@@ -352,6 +485,17 @@ function main() {
         // Never let the backlog check break recovery or the session.
     }
 
+    // Shared-checkout detection is additive and must never affect plan
+    // recovery. Two sessions in one working tree overwrite each other's edits
+    // with no signal from git, and the sessions cannot see each other, so the
+    // one place the overlap is visible is the transcript store.
+    let siblings = null;
+    try {
+        siblings = summarizeSiblingSessions(payload.session_id, payload.transcript_path);
+    } catch {
+        // Never let the sibling check break recovery or the session.
+    }
+
     // A compaction drops everything a tool call had loaded into context: skill
     // bodies brought in by the Skill tool and deferred tool schemas brought in
     // by ToolSearch go with the summarized turns, while the doctrine and this
@@ -372,7 +516,8 @@ function main() {
         : null;
 
     // Emit Additional Context.
-    if (!reload && activePlans.length === 0 && kaizenCount === 0 && completedUnarchived === 0 && !goalBlock && !backlog) return;
+    if (!reload && activePlans.length === 0 && kaizenCount === 0 && completedUnarchived === 0 && !goalBlock
+        && !backlog && !siblings) return;
 
     const blocks = [];
 
@@ -415,6 +560,18 @@ function main() {
             ? `; oldest dated ${backlog.oldestIso} (${backlog.ageDays} days ago)${undatedClause}`
             : ', none dated';
         blocks.push(`docs/backlog.md holds ${backlog.count} active item(s)${oldestClause}. If any bear on this session's work, read the backlog and say so; items older than 90 days get a promote/retire/keep call at the close-out. Reminder, not a blocker.`);
+    }
+
+    if (siblings) {
+        const windowMinutes = SHARED_CHECKOUT_WINDOW_MS / 60000;
+        const recent = siblings.phrase ? `, the most recent ${siblings.phrase}` : '';
+        blocks.push(`As a hint and not a verdict, ${siblings.count} other session(s) of this project wrote a`
+            + ` transcript within the last ${windowMinutes} minutes${recent}, so another session may be live in`
+            + ` this same working tree. A file mtime is not proof of a live session, and a different checkout`
+            + ` whose path maps to the same transcript directory would look the same from here. If one is live,`
+            + ` two sessions are editing one tree: coordinate before touching shared files (the plan doc is the`
+            + ` usual collision), stage only what this session changed, and prefer a separate git worktree for`
+            + ` concurrent work. Reminder, not a blocker.`);
     }
 
     process.stdout.write(JSON.stringify({

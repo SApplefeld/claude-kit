@@ -1665,6 +1665,12 @@ test('cli: open with no goal armed refuses and writes nothing', () => {
         const res = runCli(['open'], repo);
         assert.strictEqual(res.status, 1, 'open refuses');
         assert.ok(res.stderr.includes('no kit goal is armed'), 'refusal states the reason');
+        // The goal family resolves its state from the current directory, so the
+        // shape this refusal is most often seen in is a goal armed in the other
+        // checkout of a worktree pair. The hint names that case, which is what
+        // makes the refusal self-explaining rather than a puzzle.
+        assert.ok(res.stderr.includes('another checkout'), 'the hint names the worktree case: ' + res.stderr);
+        assert.ok(res.stderr.includes('arm where you run'), 'and says what to do about it: ' + res.stderr);
         assert.ok(!fs.existsSync(checkpointPath(repo)), 'nothing written');
     } finally {
         rmDir(repo);

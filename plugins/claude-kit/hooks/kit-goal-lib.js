@@ -113,7 +113,52 @@ function normalizeState(cwd, state) {
     }
     if (!Array.isArray(state.history)) state.history = [];
     if (!validTranscript(state.boundTranscript)) state.boundTranscript = null;
+    state.authorizations = normalizeAuthorizations(state.authorizations, state.queue);
     return state;
+}
+
+// The authorization map as every reader may rely on it: an object with NO
+// prototype, keyed by the plan paths the queue actually holds, each value either
+// a printable-ASCII sentence within safeForAuthorization's cap or null for none
+// recorded. Anything else (absent, an array, a scalar, a hand-edited value
+// carrying escape sequences or padded to kilobytes) is repaired here rather than
+// propagated, matching the repair the queue and the history already get on every
+// read.
+//
+// The value is quoted plan-doc content, so it is re-screened at read and not
+// only at write: it is written back verbatim by every advance and bind, and it
+// reaches a terminal through the CLI's status report, so a hand edit that never
+// went through the writer must not survive one round trip into the file the
+// readers trust. A string with nothing printable left in it records as none,
+// since an empty quote asserts a section that said nothing.
+//
+// The keys answer to the same rule: this is the one field keyed by untrusted,
+// hand-editable strings, and it is both built and read by key. So the map is
+// walked from the queue rather than from the file's own key list, which does
+// three things at once. It prunes a key naming no queued plan, so a hand edit
+// cannot park a claim about a plan this state does not carry and a plan dropped
+// by a re-arm does not leave its authorization behind. It re-validates the keys
+// against the containment rule, since every queue entry has already round-tripped
+// normalizePlanArg above. And it reads each entry as an OWN property, which
+// matters because a plain object answers a key it never recorded with whatever
+// Object.prototype carries under that name: a plan path of 'toString' would
+// otherwise render a native function as the authorization that plan recorded.
+// The absent prototype closes that direction for every later reader too, none of
+// which can know the key it is about to look up came from a file.
+function normalizeAuthorizations(value, queue) {
+    const clean = Object.create(null);
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return clean;
+    for (const rel of queue) {
+        if (!Object.prototype.hasOwnProperty.call(value, rel)) continue;
+        const entry = value[rel];
+        if (typeof entry !== 'string') {
+            clean[rel] = null;
+            continue;
+        }
+        const safe = safeForAuthorization(entry);
+        clean[rel] = safe === '' ? null : safe;
+    }
+    return clean;
 }
 
 // The kind-and-size preamble the hardened readers in kit-compact-lib.js apply,
@@ -317,10 +362,12 @@ function planPathState(cwd, planRel) {
 
 // The goal state's read cap. The writer produces a plan path, the armed queue of
 // plan paths, one condition sentence, a bound session id, a transcript path
-// capped at TRANSCRIPT_MAX, and one short history entry per finished plan: a few
-// kilobytes for the largest queue anyone arms. Anything past 64 KB is not
-// something this wrote, and reading it whole on the paths readGoal runs on is
-// cost with nothing to gain.
+// capped at TRANSCRIPT_MAX, one authorization entry per queued plan holding a
+// sentence capped at AUTHORIZATION_MAX_CHARS (the largest per-plan contributor
+// of the lot), and one short history entry per finished plan: a few kilobytes
+// for the largest queue anyone arms. Anything past 64 KB is not something this
+// wrote, and reading it whole on the paths readGoal runs on is cost with nothing
+// to gain.
 const GOAL_STATE_MAX_BYTES = 64 * 1024;
 
 // Read and parse the goal-state file, normalized to the current shape (see
@@ -609,6 +656,153 @@ function planHead(cwd, planRel) {
     }
 }
 
+// How much of a plan doc the authorization scan reads. A Dispatch Authorization
+// section sits in a plan's front matter, above the sections of work, but the
+// header, the goal and the approach can precede it, so the window is far wider
+// than planHead's 2 KB Status window and still a fixed bound rather than the
+// whole file: this read happens once per plan at arm time, and a plan doc is
+// prose no reader of this file ever needs whole.
+const AUTHORIZATION_SCAN_MAX_BYTES = 16 * 1024;
+
+// The Dispatch Authorization heading, anchored to a line start so body prose
+// naming the section cannot match, with the value required to be the whole line
+// ([^\S\r\n] is horizontal whitespace only, never a newline).
+const AUTHORIZATION_HEADING = /^##[^\S\r\n]*Dispatch Authorization[^\S\r\n]*$/im;
+
+// The sections-of-work heading, which bounds where an authorization may be
+// asserted. The section is front matter: a plan states who authorized arming it
+// above the work, and a heading of this name below the sections is prose about
+// the format rather than a claim. Any heading level matches, since the level a
+// plan writes its sections at is a formatting choice and the ordering is the
+// point.
+const SECTIONS_HEADING = /^#{1,6}[^\S\r\n]*Sections of Work[^\S\r\n]*$/im;
+
+// A heading line, as the section body's terminator. It matches exactly what
+// AUTHORIZATION_HEADING matches structurally, hashes then optional horizontal
+// whitespace then content, because the two answer the same question about the
+// same syntax: where they disagreed about a heading written with no space after
+// its hashes, the body ran on past the next heading and the FOLLOWING section's
+// first sentence was recorded as this plan's authorization, a claim the plan
+// never made. The content character excludes '#' so a rule line of seven or more
+// hashes, which is no heading, does not read as one.
+const HEADING_LINE = /^#{1,6}[^\S\r\n]*[^\s#]/m;
+
+// An opening or closing code fence, allowing markdown's three spaces of indent.
+const FENCE_LINE = /^ {0,3}(`{3,}|~{3,})/;
+
+// The text with every fenced code block's content replaced by spaces, one
+// character for one character so every offset and line break is where it was.
+//
+// A plan doc that ILLUSTRATES the authorization format carries the heading
+// inside a fence, and a purely lexical match reads that illustration as the
+// plan's own claim: the state file then records an authorization the plan never
+// asserted, and every surface that prints it presents it as one. Masking rather
+// than skipping keeps the rest of this function's arithmetic unchanged.
+//
+// A fence opened and never closed inside the scan window masks everything after
+// it. That is the conservative direction: what is inside an unterminated fence
+// cannot be told from what follows it, and an authorization is a claim worth
+// refusing when its context is unreadable.
+function maskFencedRegions(text) {
+    let fence = null;
+    return text.split('\n').map((line) => {
+        const open = FENCE_LINE.exec(line);
+        if (fence === null) {
+            if (open === null) return line;
+            fence = open[1];
+            return ' '.repeat(line.length);
+        }
+        if (open !== null && open[1][0] === fence[0] && open[1].length >= fence.length) fence = null;
+        return ' '.repeat(line.length);
+    }).join('\n');
+}
+
+// The first sentence of a plan doc's Dispatch Authorization section, screened
+// for storage, or null when the plan carries no such section or nothing
+// printable under it.
+//
+// The sentence is the plan's own claim about who authorized arming it, and it is
+// stored as provenance rather than as a credential: nothing here authenticates
+// the writer, and the file's content is taken at its word for the audit trail
+// the status report and the doctor surface. Git history is what makes the claim
+// traceable.
+//
+// The heading is matched structurally rather than lexically: it must sit outside
+// every fenced code block (see maskFencedRegions) and above the plan's sections
+// of work. Both conditions exist for one reason: a plan doc that shows what the
+// section looks like, in a fence or in a section about the format, asserts
+// nothing, and recording its example would put a grant in the state file that no
+// plan ever made.
+//
+// The section body runs to the next heading of any level, its first sentence
+// ends at the first period, question mark or exclamation mark followed by
+// whitespace or the end of the body, and the whitespace inside it is flattened,
+// because the stored value is a single line in a file whose readers print it.
+// Every scan is a bounded search or a literal replace rather than a pattern
+// spanning the untrusted text, so a plan doc cannot cost this more than its own
+// length. The masked text is what every search runs against, including the
+// sentence itself, so a fence opening the section reads as nothing printable
+// under the heading rather than as a quoted code block.
+//
+// safeForAuthorization is what screens it: the same printable-ASCII rule every
+// other caller-supplied string stored in this file answers to, at its own cap,
+// which that constant states its reason for. It is the stricter of the two
+// screens in the kit (the status line's terminal sanitizer admits ordinary
+// non-ASCII text, which a name shown to a person needs and a quoted sentence
+// entering a model's context does not), and the strictness is what this value
+// earns: it is untrusted file content on its way into a state file several
+// surfaces print.
+function authorizationSentence(text) {
+    const scanned = maskFencedRegions(text);
+    const heading = AUTHORIZATION_HEADING.exec(scanned);
+    if (heading === null) return null;
+    const sections = SECTIONS_HEADING.exec(scanned);
+    if (sections !== null && sections.index < heading.index) return null;
+    let body = scanned.slice(heading.index + heading[0].length);
+    const next = body.search(HEADING_LINE);
+    if (next !== -1) body = body.slice(0, next);
+    body = body.replace(/^\s+/, '');
+    if (body === '') return null;
+    const stop = body.search(/[.!?](\s|$)/);
+    const sentence = (stop === -1 ? body : body.slice(0, stop + 1)).replace(/\s+/g, ' ').trim();
+    const safe = safeForAuthorization(sentence);
+    return safe === '' ? null : safe;
+}
+
+// The authorization provenance recorded for a plan at the moment it is queued,
+// or null when the plan records none. Every failure to read the plan answers
+// null too: the field is an audit trail, and a plan that could not be read for
+// it has recorded no authorization, which is exactly what null says. The arm
+// itself is refused elsewhere over an unreadable plan, so a null here never
+// stands in for a plan the caller was told was fine.
+//
+// The open is guarded by planFileSize's kind rule, as every read of a plan path
+// in this file is, so a FIFO or a link out of the repo at a queued plan path is
+// refused before any open. The read is spelled here rather than shared with
+// planHead because the two answer differently to a read that fails: planHead
+// reports the file present with an unknown status, where an unread section is
+// simply no authorization.
+function planAuthorization(cwd, planRel) {
+    if (planFileSize(cwd, planRel) === null) return null;
+    let fd;
+    try {
+        fd = fs.openSync(path.join(cwd, planRel), 'r');
+    } catch {
+        return null;
+    }
+    try {
+        const buf = Buffer.alloc(AUTHORIZATION_SCAN_MAX_BYTES);
+        const bytes = fs.readSync(fd, buf, 0, AUTHORIZATION_SCAN_MAX_BYTES, 0);
+        let head = buf.toString('utf8', 0, bytes);
+        if (head.charCodeAt(0) === 0xFEFF) head = head.slice(1);
+        return authorizationSentence(head);
+    } catch {
+        return null;
+    } finally {
+        try { fs.closeSync(fd); } catch { /* already closed or invalid */ }
+    }
+}
+
 // The single source of the canonical goal condition text. planRel is the
 // repo-relative forward-slash plan path already validated by armGoal. This
 // text is descriptive: it is surfaced for a human reading goal-state.json. The
@@ -678,6 +872,116 @@ function safeForReason(value) {
     return String(value).replace(/[^\x20-\x7E]/g, '').slice(0, 120);
 }
 
+// The room an authorization sentence gets, which is deliberately not
+// safeForReason's. That cap is sized for a path named inside an error line,
+// where 120 characters is generous; an authorization sentence is prose written
+// to be read, and the sentences plans actually carry run past 120 (the first
+// plan to carry one records 268 characters, quoting the operator's own words).
+// A sentence cut mid-clause is worse than none, because it reads as whole: the
+// value's entire job is to let a reader judge a claim about who authorized
+// arming, and half a claim cannot be judged. 320 leaves headroom above the
+// observed length without inviting a paragraph.
+//
+// Nothing else changes: the printable-ASCII rule is the same one, and this is
+// still the stricter of the kit's two screens, since the status line's terminal
+// sanitizer admits ordinary non-ASCII where a quoted sentence entering a
+// model's context does not. The cap is what differs, because the two values
+// differ.
+const AUTHORIZATION_MAX_CHARS = 320;
+
+function safeForAuthorization(value) {
+    return String(value).replace(/[^\x20-\x7E]/g, '').slice(0, AUTHORIZATION_MAX_CHARS);
+}
+
+// The key two plan paths are compared as for the purpose of deciding whether a
+// queue already holds one. Case-folded on Windows, where the filesystem is
+// case-insensitive and two casings of one path name one file: a queue holding
+// both would advance past the plan once and stall on the repeat, which is the
+// shape both duplicate refusals exist to stop. One definition, so an arm and an
+// append cannot disagree about what a duplicate is.
+function queueKey(rel) {
+    return process.platform === 'win32' ? rel.toLowerCase() : rel;
+}
+
+// One plan argument validated for a queue, as { ok:true, rel } or
+// { ok:false, reason }. Shared by arming and appending, so a path that cannot
+// enter a queue one way cannot enter it the other: the containment rule, the
+// three unreadable states parted by planPathState, and the refusal of a plan
+// already Complete are one rule at one site.
+function validatePlanArg(cwd, arg) {
+    const rel = normalizePlanArg(cwd, arg);
+    if (rel === null) {
+        return { ok: false, reason: 'plan path is invalid or outside the repo: ' + safeForReason(arg) };
+    }
+    const head = planHead(cwd, rel);
+    if (!head.exists) {
+        // planHead answers the same 'no' for three states an operator would act
+        // on differently: nothing is at the path, something that is not a plan
+        // doc is at it, or the path is there and could not be read right now (a
+        // scanner or an indexer holding it, which lifts on its own).
+        // planPathState parts them by the shared rule, and these are its three
+        // wordings: reporting a locked plan doc as one that does not hold a plan
+        // file sends the operator to fix a file that is fine, and reporting a
+        // path that can never resolve as one to retry names a condition no
+        // amount of waiting resolves.
+        const state = planPathState(cwd, rel);
+        if (state === 'gone') {
+            return { ok: false, reason: 'plan not found: ' + rel };
+        }
+        if (state === 'unusable') {
+            return { ok: false, reason: 'plan path does not hold a plan file: ' + rel };
+        }
+        return { ok: false, reason: 'plan path could not be read right now: ' + rel };
+    }
+    if (head.status === 'complete') {
+        return { ok: false, reason: 'plan is already Complete: ' + rel };
+    }
+    return { ok: true, rel };
+}
+
+// Whether a queue's own progress fits the writer's bound, judged on the state
+// about to be written plus room for every record that queue can still produce.
+//
+// Each advance appends a history record while the condition's remaining tail
+// sheds one path, a net growth, so a queue that fits exactly today crosses the
+// bound on an advance: writeState would then refuse deterministically, the Stop
+// hook would block at every stop reporting that the advance could not be
+// recorded, and the run could neither advance nor release without a manual
+// clear. That failure is permanent rather than degrading, so the room is
+// reserved at the one moment a person is present to read the refusal, which is
+// the arm or the append that grows the queue.
+//
+// Every term is counted in BYTES, the unit the budget is in: a path is measured
+// with Buffer.byteLength and doubled, because JSON escapes a quote or a
+// backslash in a filename to two bytes each, and the same doubling is already
+// inside HISTORY_RECORD_MAX_BYTES for the note. The fields a bind or a blocked
+// advance add after the arm are reserved once in POST_ARM_MAX_BYTES, which
+// states its own derivation; the one such field that carries a plan path,
+// blockedAdvancePlan, is reserved here instead, against the longest path in the
+// queue, because that is where the paths are measured.
+//
+// The reservation runs where a queue grows, so a queue armed before it existed
+// carries none: such a state reads back fine under the cap and can still meet
+// writeState's refusal on a later advance. That takes a standing queue in the
+// low hundreds of plans, a bound rather than a figure because the count follows
+// the plan paths' own lengths and the blockers the advances record. Such a state
+// predates the authorization map too, so it reads back with an empty one and its
+// growth is the history records alone; a state arming a queue today carries a
+// recorded sentence per plan, which queueFits measures as part of the serialized
+// state below. The recovery is /kit-goal clear followed by a fresh arm, which the
+// refusal's own wording points at.
+function queueFits(state) {
+    let reserved = POST_ARM_MAX_BYTES;
+    let longest = 0;
+    for (const rel of state.queue) {
+        const bytes = Buffer.byteLength(rel, 'utf8');
+        reserved += 2 * bytes + HISTORY_RECORD_MAX_BYTES;
+        if (bytes > longest) longest = bytes;
+    }
+    reserved += 2 * longest;
+    return Buffer.byteLength(JSON.stringify(state, null, 2) + '\n', 'utf8') + reserved <= GOAL_STATE_MAX_BYTES;
+}
+
 // Validate the plan arguments, then write the goal-state file atomically.
 // planArgs is one plan path or an ordered array of them (the armed queue).
 //
@@ -710,6 +1014,11 @@ function safeForReason(value) {
 // { ok:false, reason } on any failure: a bad path, a missing or Complete plan,
 // a duplicate, or an unexpected filesystem error, which is caught and reported
 // rather than thrown. This keeps the whole exported surface non-throwing.
+//
+// dropped rides on the success result: the plans a previously armed queue still
+// had ahead of it that this queue does not name, which the caller warns about.
+// Arming replaces the queue rather than growing it, and appendGoal below is the
+// spelling that grows one.
 function armGoal(cwd, planArgs, bind) {
     const args = Array.isArray(planArgs) ? planArgs : [planArgs];
     if (args.length === 0) {
@@ -718,43 +1027,21 @@ function armGoal(cwd, planArgs, bind) {
 
     const queue = [];
     const seen = new Set();
+    // No prototype, for the reason normalizeAuthorizations states: the keys are
+    // plan paths, and a repository is free to hold a plan named after one of
+    // Object.prototype's own members. Assigning '__proto__' on a plain object
+    // invokes the prototype setter rather than recording a key, so the entry for
+    // such a plan would simply never be written.
+    const authorizations = Object.create(null);
     for (const arg of args) {
-        const rel = normalizePlanArg(cwd, arg);
-        if (rel === null) {
-            return { ok: false, reason: 'plan path is invalid or outside the repo: ' + safeForReason(arg) };
-        }
-        // The dedupe key is case-folded on Windows, where the filesystem is
-        // case-insensitive and two casings of one path name one file: a queue
-        // holding both would advance past the plan once and stall on the
-        // repeat, the exact shape this refusal exists to stop.
-        const dupKey = process.platform === 'win32' ? rel.toLowerCase() : rel;
-        if (seen.has(dupKey)) {
+        const checked = validatePlanArg(cwd, arg);
+        if (!checked.ok) return checked;
+        const rel = checked.rel;
+        if (seen.has(queueKey(rel))) {
             return { ok: false, reason: 'plan appears twice in the queue: ' + rel };
         }
-        seen.add(dupKey);
-        const head = planHead(cwd, rel);
-        if (!head.exists) {
-            // planHead answers the same 'no' for three states an operator would
-            // act on differently: nothing is at the path, something that is not a
-            // plan doc is at it, or the path is there and could not be read right
-            // now (a scanner or an indexer holding it, which lifts on its own).
-            // planPathState parts them by the shared rule, and these are its
-            // three wordings: reporting a locked plan doc as one that does not
-            // hold a plan file sends the operator to fix a file that is fine, and
-            // reporting a path that can never resolve as one to retry names a
-            // condition no amount of waiting resolves.
-            const state = planPathState(cwd, rel);
-            if (state === 'gone') {
-                return { ok: false, reason: 'plan not found: ' + rel };
-            }
-            if (state === 'unusable') {
-                return { ok: false, reason: 'plan path does not hold a plan file: ' + rel };
-            }
-            return { ok: false, reason: 'plan path could not be read right now: ' + rel };
-        }
-        if (head.status === 'complete') {
-            return { ok: false, reason: 'plan is already Complete: ' + rel };
-        }
+        seen.add(queueKey(rel));
+        authorizations[rel] = planAuthorization(cwd, rel);
         queue.push(rel);
     }
 
@@ -790,43 +1077,19 @@ function armGoal(cwd, planArgs, bind) {
         queueIndex: 0,
         // One entry per finished plan: { plan, outcome, at } and, for a
         // blocked plan, the recorded blocker.
-        history: []
+        history: [],
+        // What each queued plan doc says about who authorized arming it: the
+        // first sentence of its Dispatch Authorization section, or null where it
+        // carries none. Derived from the artifact at the moment the plan is
+        // queued, never asserted by the caller, and asserted rather than
+        // authenticated: it is the provenance trail a status report or the
+        // doctor can surface, and it grants nothing.
+        authorizations
     };
 
     // Refuse a queue whose own progress would grow the state past the writer's
-    // bound. Each advance appends a history record while the condition's
-    // remaining tail sheds one path, a net growth, so a queue armed just under
-    // the bound crosses it on an advance: writeState would then refuse
-    // deterministically, the Stop hook would block at every stop reporting that
-    // the advance could not be recorded, and the run could neither advance nor
-    // release without a manual clear. That failure is permanent rather than
-    // degrading, so the room for every record this queue can produce is
-    // reserved here, at the one moment a person is present to read the refusal.
-    //
-    // Every term is counted in BYTES, the unit the budget is in: a path is
-    // measured with Buffer.byteLength and doubled, because JSON escapes a quote
-    // or a backslash in a filename to two bytes each, and the same doubling is
-    // already inside HISTORY_RECORD_MAX_BYTES for the note. The fields a bind or
-    // a blocked advance add after the arm are reserved once in
-    // POST_ARM_MAX_BYTES, which states its own derivation; the one such field
-    // that carries a plan path, blockedAdvancePlan, is reserved here instead,
-    // against the longest path in this queue, because that is where the paths are
-    // measured.
-    //
-    // The reservation runs at arm time only, so a queue armed before it existed
-    // carries none: such a state reads back fine under the cap and can still meet
-    // writeState's refusal on a later advance. Reaching that needs a standing
-    // queue of roughly 150 plans, and the recovery is /kit-goal clear followed by
-    // a fresh arm, which the refusal's own wording points at.
-    let reserved = POST_ARM_MAX_BYTES;
-    let longest = 0;
-    for (const rel of queue) {
-        const bytes = Buffer.byteLength(rel, 'utf8');
-        reserved += 2 * bytes + HISTORY_RECORD_MAX_BYTES;
-        if (bytes > longest) longest = bytes;
-    }
-    reserved += 2 * longest;
-    if (Buffer.byteLength(JSON.stringify(state, null, 2) + '\n', 'utf8') + reserved > GOAL_STATE_MAX_BYTES) {
+    // bound. queueFits states the whole derivation.
+    if (!queueFits(state)) {
         return {
             ok: false,
             reason: 'the armed queue is too long: ' + queue.length + ' plans and the records their '
@@ -835,10 +1098,137 @@ function armGoal(cwd, planArgs, bind) {
         };
     }
 
+    // What this arm takes off the leash: the plans still ahead of the current
+    // position in whatever was armed before, minus the ones this queue names
+    // again. Arming replaces the queue outright, which is the compatible
+    // behavior and stays so, and the one thing standing between an operator and
+    // a plan that quietly stopped being armed is the caller naming these. Plans
+    // behind the current position are not dropped: the leash finished them.
+    const dropped = [];
+    const prior = readGoal(cwd);
+    if (prior && typeof prior.plan === 'string' && prior.plan !== '') {
+        const kept = new Set(queue.map(queueKey));
+        for (const rel of prior.queue.slice(prior.queueIndex)) {
+            if (!kept.has(queueKey(rel))) dropped.push(rel);
+        }
+    }
+
     const written = writeState(cwd, state);
     if (!written.ok) return written;
 
-    return { ok: true, plan: queue[0], queue, boundSession };
+    return { ok: true, plan: queue[0], queue, boundSession, dropped };
+}
+
+// Append plans to the armed queue under the binding it already carries, in one
+// atomic rewrite: the new paths land at the end of the queue, the current plan
+// and queueIndex do not move, the condition is recomposed so it names what is
+// now still to come, and boundSession, boundTranscript, armedAt and the history
+// are preserved untouched.
+//
+// Preserving armedAt is load-bearing rather than tidy: it is half of
+// advanceGoal's compare-and-swap, so an append that refreshed it would make
+// every advance decided from a snapshot older than the append refuse, and a run
+// whose queue grew mid-flight would stop advancing. Preserving the binding is
+// the other half of the point: a plan handed to a running session is appended
+// from whatever shell is at hand, and re-deriving the binding there would move
+// the leash to that shell.
+//
+// Every path is validated exactly as arming validates it, and a duplicate is
+// refused for the reason arming refuses one: a queue that visits a plan twice
+// would advance past it the first time and stall the second. A path already
+// anywhere in the queue counts, the finished positions included, and so does a
+// repeat among the appended paths themselves. Any failure refuses the whole
+// invocation before anything is written, so a partial append cannot reach the
+// state file.
+//
+// The write is guarded by a compare-and-swap against the state this call
+// decided from, in the spirit of the one advanceGoal takes from its caller.
+// This is a read-modify-write over a file another process writes: an append is
+// typed into whatever shell is at hand while the leashed session runs, and its
+// validation opens a plan doc per path, so a Stop hook's advance has a real
+// window to land in between. Written blind, the append would put its own
+// pre-advance snapshot back: queueIndex and plan would walk back to the finished
+// plan and the advance's history record would be gone, with the run then working
+// a plan it already closed. So the state is re-read immediately before the write
+// and the append is refused unless the progress markers it read are still the
+// ones on disk. armedAt alone would not do it, because an advance preserves
+// armedAt by design (it is half of advanceGoal's own guard); the position, the
+// current plan, the queue length and the history length are what an advance
+// moves.
+//
+// The residual is the window between that re-read and the rename, which no
+// unlocked writer here closes: a writer landing inside it still wins last, the
+// same last-writer-wins posture bindSession states for its own rewrite. What the
+// guard converts is the ordinary case, from a silent revert into a refusal the
+// operator reads and retries.
+//
+// Returns { ok:true, plan, queue, appended, boundSession } on success, where
+// plan is the unchanged current plan and appended is what this call added, or
+// { ok:false, reason } when no goal is armed, a path fails, a duplicate is
+// named, the grown queue would not fit, the state moved under the append, or
+// the write fails. Never throws.
+function appendGoal(cwd, planArgs) {
+    const args = Array.isArray(planArgs) ? planArgs : [planArgs];
+    if (args.length === 0) {
+        return { ok: false, reason: 'no plan path given' };
+    }
+    const state = readGoal(cwd);
+    if (!state || typeof state.plan !== 'string' || state.plan === '') {
+        return { ok: false, reason: 'no goal is armed, so there is no queue to append to' };
+    }
+
+    // The progress this append was decided from, captured before anything below
+    // mutates the state object.
+    const decidedFrom = {
+        armedAt: state.armedAt,
+        plan: state.plan,
+        queueIndex: state.queueIndex,
+        queueLength: state.queue.length,
+        historyLength: state.history.length
+    };
+
+    const seen = new Set(state.queue.map(queueKey));
+    const appended = [];
+    for (const arg of args) {
+        const checked = validatePlanArg(cwd, arg);
+        if (!checked.ok) return checked;
+        const rel = checked.rel;
+        if (seen.has(queueKey(rel))) {
+            return { ok: false, reason: 'plan is already in the armed queue: ' + rel };
+        }
+        seen.add(queueKey(rel));
+        appended.push(rel);
+    }
+
+    for (const rel of appended) {
+        state.authorizations[rel] = planAuthorization(cwd, rel);
+    }
+    state.queue = state.queue.concat(appended);
+    state.condition = composeCondition(state.plan, state.queue, state.queueIndex);
+    if (!queueFits(state)) {
+        return {
+            ok: false,
+            reason: 'the armed queue is too long: ' + state.queue.length + ' plans and the records their '
+                + 'advances would add do not fit the goal state file. Append fewer plans, and queue the rest '
+                + 'when they come up.'
+        };
+    }
+
+    const now = readGoal(cwd);
+    if (!now || now.armedAt !== decidedFrom.armedAt || now.plan !== decidedFrom.plan
+        || now.queueIndex !== decidedFrom.queueIndex || now.queue.length !== decidedFrom.queueLength
+        || now.history.length !== decidedFrom.historyLength) {
+        return {
+            ok: false,
+            reason: 'goal state changed while this append was being validated, so nothing was appended: '
+                + 'the leash moved, was re-armed, or was cleared. Read the state and append again.'
+        };
+    }
+
+    const written = writeState(cwd, state);
+    if (!written.ok) return written;
+
+    return { ok: true, plan: state.plan, queue: state.queue, appended, boundSession: state.boundSession };
 }
 
 // Record the current plan's outcome and move the leash to the next plan in the
@@ -1226,4 +1616,7 @@ function emitGoalEvent(details) {
 // (planPathState), and the CLI prints a token per queued plan (planPathState).
 // Each must answer to the one rule rather than to a spelling of its own.
 // GOAL_STATE_MAX_BYTES rides along for the CLI's report of a state file past it.
-module.exports = { goalPath, readGoal, armGoal, advanceGoal, bindSession, clearGoal, composeCondition, planHead, emitGoalEvent, normalizePlanArg, lastActivePhrase, isSessionIdShaped, planFileSize, planPathState, pathErrnoClass, GOAL_STATE_MAX_BYTES };
+// safeForAuthorization rides along for the same single-rule reason: the CLI
+// prints the stored sentence, and a printer applying a shorter cap than the store
+// hands a reader half a claim and presents it as the whole recorded one.
+module.exports = { goalPath, readGoal, armGoal, appendGoal, advanceGoal, bindSession, clearGoal, composeCondition, planHead, emitGoalEvent, normalizePlanArg, lastActivePhrase, isSessionIdShaped, planFileSize, planPathState, pathErrnoClass, safeForAuthorization, GOAL_STATE_MAX_BYTES };

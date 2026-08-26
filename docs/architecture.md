@@ -171,6 +171,20 @@ A semantic hit line states usage as two tokens, `applied x4, last 25h`. The coun
 
 The `memory-system` skill owns the operating rules; this section owns the shape.
 
+## Dispatch authority
+
+A plan doc can carry its own arming grant. A `## Dispatch Authorization` section in a plan's front matter records who authorized the work, when, and which sessions the grant covers, with "any session holding this plan" as the default scope. A session handed such a plan arms it without a confirmation round-trip, because the committed document is the grant and the message that delivered it is only a pointer to one.
+
+The mark is provenance, not credential. On a single-principal machine the section narrows an honest writer without authenticating one, and git history is its trail. Nothing here stops a malicious local writer, exactly as no kit guard does.
+
+The section is inert to the machine contract. The plan-doc header and the shapes an external engine parses are a frozen v1 contract, and `## Dispatch Authorization` sits outside all of them, as `## Assumptions` does. It belongs above `## Sections of Work` and never inside it, since a `##` heading inside that block ends the block early and silently drops every later section from the parse.
+
+`/kit-goal` records what it read. At arm time the CLI scans the head of each armed plan for the heading and stores that section's first sentence, screened to printable ASCII and capped, in an `authorizations` map in the goal state keyed by plan path; a plan carrying no such section records none. The value is quoted file content taken at its word, re-screened on every read as well as at the write because the readers print it, and surfaced by the `/kit-goal` status report. It is an audit trail rather than a check: nothing consults it to decide whether an arm may proceed.
+
+Queues grow rather than mutate. `--append` adds plans to an armed queue under the existing binding and refuses atomically when any named plan already sits in the queue, so a partial append cannot happen. The bare replace form is unchanged for compatibility and warns on stderr when it drops a non-empty queue, naming what it dropped, since a silently dropped armed plan is the expensive failure. The size bound is measured against the real serialized state rather than an estimate, so a queue too long to write is refused rather than truncated.
+
+Arming happens where the run happens. The goal family resolves its state from the current working directory, which is what lets two leashed runs coexist in one repository, one per worktree. A plan handed to a session in a worktree cut before that plan's commit is unreachable to the receiving CLI however real the plan is at origin, so the arm waits for the next safe tree advance rather than failing; the handoff stays pending on the sender's side until the receiver acknowledges the arm.
+
 ## Goal release events
 
 A `/kit-goal` leash release leaves a machine-readable line in `~/.claude/kit-events.jsonl`, so an outside notification layer watches one well-known path instead of parsing transcripts. Transport is not the kit's job; the kit's deliverable is the file and its contract.

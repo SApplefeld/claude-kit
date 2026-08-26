@@ -25,11 +25,35 @@ The result names the binding. An arm run inside the session that should hold the
 
 Arming a queue is all-or-nothing: every path is validated before anything is written, and one bad path refuses the whole arm naming the offender. A partial queue would be the silent-failure shape, a run that looks armed for four plans and is armed for two.
 
+`--append` grows an armed queue instead of replacing it:
+
+```
+node <plugin-root>/hooks/kit-goal.js arm --append <plan path>...
+```
+
+The flag may sit at any argument position. The named plans join the queue behind whatever is already in it, under the existing binding, so the leash does not move and the plan in flight keeps running. It is all-or-nothing on the same terms as an arm: a path already anywhere in the queue, or repeated among the arguments, refuses the whole invocation naming the duplicate and leaves the queue byte-identical. It refuses when nothing is armed at all, since there is then no queue to append to, so a first arming is always the bare form.
+
+The bare form still replaces the queue, which is what a re-arm is for, and it warns on stderr when the replacement drops a non-empty queue, naming every plan path it dropped. A replace that drops nothing says nothing, so a warning always means work left the queue and is worth reading before the next step.
+
 ## What arming requests
 
 Arming is the user's own act (the `/kit-goal` invocation is user-typed), and it carries the user's request for the run: reduce wall-clock time by parallelizing the plan's work, running simultaneously whatever the sections and their gates allow, via subagent dispatch and via Workflows. For this run's parallelization, that is the per-run request an injected `Do not use workflows or deep-research unless the user requested it` line waits on, read the same way the operating-instructions dispatch bullet reads the Agent-tool line: the instruction prohibits unrequested use, and the arming is the request. The authority is the arming act, not this skill's text, so nothing here widens the doctrine's standing grant. The scope is executing the armed plan: deep-research, and any Workflow use beyond parallelizing this run's work, still needs asking. The canonical condition text carries the same request, so it rides with the goal state across a session swap, and the Stop hook's enforcement block restates it at the point of action.
 
 Arming is also approval. An armed plan is approved as written by the arming act itself: the invocation is user-typed, so it carries the same authority as a typed "proceed", and a run under an armed leash never waits for a separate approval message and never reads the plan's `Status:` header as evidence approval is missing. A `Status:` value the kit does not define does not gate arming; executing-work owns the run-start step that normalizes it.
+
+## Dispatch Authorization
+
+A plan doc can carry its arming authority in a `## Dispatch Authorization` section: who authorized the run, when, and which sessions the grant covers, with "any session holding this plan" as the default scope. The committed section is the durable grant, so a plan that arrives by peer message arms under it with no confirmation round-trip, once the receiver has traced the grant to the operator. The peer-sessions skill owns that trace, the standing of the message itself, and the reply states, and it is not optional: a section is prose a writer supplies, so a receiver that arms on its presence alone lets whoever wrote the plan widen its leash.
+
+Write the section so the CLI can record it. It stores the section's **first sentence**, flattened to one line, stripped to printable ASCII and capped, read from the head of the file only, so put the grant's essential claim in that first sentence rather than spreading it over three, and keep the section above `## Sections of Work` where the placement rule already puts it. A section past the scan window, or one whose heading carries anything after the title, records as none rather than as a partial quote, and `status` then reports the plan as carrying no authorization at all. The record is an audit trail: nothing consults it to decide whether an arm may proceed, and a plan with no section arms exactly as before.
+
+An arm made on a section carries what a typed arming carries, and it carries it from the artifact rather than from the keystroke. The two paragraphs above rest the parallelization request and the approval-as-written reading on the invocation being the user's own act, and a section-borne arm has no typed invocation in the arming session; the operator's committed authorization stands in its place, so an appended plan is approved as written and carries the same request. What a section cannot supply is live steering: anything the plan does not cover still goes to the operator.
+
+A plan handed to a running session is armed at the earliest moment the receiving tree holds it: immediately, by `--append` from the run's own cwd, where the checkout already contains the plan's commit, or at the next safe tree advance where the worktree was cut before that commit. A worktree is pinned to the commit it was cut from, so a plan committed after the cut is unreachable to the receiving CLI however real it is at origin, and the gap is invisible from the sender's side, where the arm looks trivially possible. The handoff therefore stays open on the sender's side until the receiver's armed acknowledgment, which is the conversion signal, and a receiver that has to wait replies `received-authorized-deferred` naming the gate it waits on, so the sender can tell a deferred arm from a held one and from nothing delivered.
+
+Two things make that wait workable, and both are the sender's to supply. The dispatch names its anchor, the commit the plan landed in, because a receiver whose tree lacks the path otherwise cannot tell a worktree cut before that commit from a wrong path or a plan never pushed. And the sender re-sends at its own next boundary rather than waiting indefinitely, since an acknowledgment can be lost with the receiver's context. The deferred receiver re-checks its tree against that anchor at each boundary it already takes: a section close, a pull it owes anyway, or an arm attempt, whose refusal of an unseen path is itself the drift surfacing rather than an error to route around. `--append` is the spelling only once a queue is armed; a session running unleashed takes the bare `arm` form instead, since there is no queue for an append to extend.
+
+Arm where you will run. The goal family is deliberately cwd-scoped, while memq alone follows worktree pointers to a shared store, and that asymmetry is what lets two leashed runs coexist in one repo, each holding its own leash in its own tree. So never arm across the worktree boundary, and never invoke the goal or checkpoint CLIs from the other side mid-run: they resolve state from the cwd they run in, so a call from the other side reads that tree's own state, finding a different leash or none at all.
 
 ## Clear
 
@@ -41,7 +65,7 @@ node <plugin-root>/hooks/kit-goal.js clear
 
 ## Status
 
-`/kit-goal` with no argument, or `/kit-goal status`, reports what is armed: the current plan and its position in the queue, the plans remaining, the outcome recorded for each plan already finished, and which session currently holds the leash (or that it is unbound):
+`/kit-goal` with no argument, or `/kit-goal status`, reports what is armed: the current plan and its position in the queue, the plans remaining, the authorization recorded for each queued plan (the sentence, or that none was recorded), the outcome recorded for each plan already finished, and which session currently holds the leash (or that it is unbound):
 
 ```
 node <plugin-root>/hooks/kit-goal.js status

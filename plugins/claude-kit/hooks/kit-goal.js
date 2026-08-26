@@ -3,7 +3,12 @@
 //
 // Subcommands:
 //   kit-goal.js arm <planPath>...  arm a goal against one plan doc or an
-//                                  ordered queue of them
+//                                  ordered queue of them, replacing whatever
+//                                  was armed before and naming on stderr any
+//                                  plans that replacement takes off the leash
+//   kit-goal.js arm --append <planPath>...
+//                                  add plans to the end of the armed queue,
+//                                  under the binding it already carries
 //   kit-goal.js clear              clear any armed goal
 //   kit-goal.js status             report whether a goal is armed
 //
@@ -28,19 +33,22 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const {
-    armGoal, clearGoal, readGoal, planHead, lastActivePhrase, isSessionIdShaped, goalPath,
-    planPathState, pathErrnoClass, GOAL_STATE_MAX_BYTES
+    armGoal, appendGoal, clearGoal, readGoal, planHead, lastActivePhrase, isSessionIdShaped, goalPath,
+    planPathState, pathErrnoClass, safeForAuthorization, GOAL_STATE_MAX_BYTES
 } = require('./kit-goal-lib.js');
 
 // Repo-controlled strings (a plan path) are sanitized to printable ASCII and
 // length-capped before they reach stdout/stderr, matching the sibling hooks'
-// convention for any repo data entering a trusted output channel.
+// convention for any repo data entering a trusted output channel. The cap is
+// sized for a path and for the short fields beside one; a recorded authorization
+// sentence is prose that runs past it and goes through safeForAuthorization
+// instead, the same screen the value was stored under.
 function sanitize(s) {
     return String(s).replace(/[^\x20-\x7E]/g, '').slice(0, 120);
 }
 
 function usage() {
-    process.stderr.write('usage: kit-goal.js arm <planPath>... | clear | status\n');
+    process.stderr.write('usage: kit-goal.js arm [--append] <planPath>... | clear | status\n');
     process.exitCode = 1;
 }
 
@@ -83,12 +91,35 @@ function findTranscript(sessionId) {
     }
 }
 
-function cmdArm(planArgs) {
+// Add plans to the armed queue, leaving everything already armed where it is.
+// The binding is the state file's own, never this shell's: an append is what a
+// running session's operator reaches for when a new plan arrives mid-run, and
+// re-deriving the binding from whatever shell ran the CLI would move the leash
+// off the session doing the work. That is why no bind is passed here.
+function cmdAppend(planArgs) {
+    const result = appendGoal(process.cwd(), planArgs);
+    if (!result.ok) {
+        process.stderr.write('kit-goal: ' + sanitize(result.reason) + '\n');
+        process.exitCode = 1;
+        return;
+    }
+    process.stdout.write('kit goal queue extended with ' + result.appended.map(sanitize).join(', ')
+        + ' (now ' + result.queue.length + ' plans; working ' + sanitize(result.plan) + ')'
+        + (result.boundSession ? ' (binding unchanged)' : ' (still unbound)')
+        + '\n');
+    process.exitCode = 0;
+}
+
+function cmdArm(planArgs, append) {
     if (planArgs.length === 0) {
         usage();
         return;
     }
     try {
+        if (append) {
+            cmdAppend(planArgs);
+            return;
+        }
         // The environment of this process is the only source of the binding:
         // no argument, no file, and no repo data can bind the goal, and the
         // transcript is located rather than supplied. armGoal owns the gate
@@ -100,6 +131,16 @@ function cmdArm(planArgs) {
             transcriptPath: findTranscript(sessionId)
         });
         if (result.ok) {
+            // Arming replaces the queue, so a plan that was armed and is not
+            // named again has quietly stopped being armed. That is the one
+            // failure this warning exists to make loud, and it stays a warning:
+            // the replace itself is unchanged. Silent when the replacement drops
+            // nothing, so the line means something when it appears.
+            if (result.dropped.length > 0) {
+                process.stderr.write('kit-goal: this arm replaced the armed queue and these plans are no'
+                    + ' longer armed: ' + result.dropped.map(sanitize).join(', ')
+                    + ' (arm --append adds to a queue instead of replacing it)\n');
+            }
             process.stdout.write('kit goal armed for ' + sanitize(result.plan)
                 + (result.queue.length > 1
                     ? ' (1 of ' + result.queue.length + '; then '
@@ -239,7 +280,21 @@ function cmdStatus() {
         // is neither. The classification is planPathState's, the one every
         // reader of a plan path here answers to.
         const status = head.exists ? head.status : QUEUE_TOKENS[planPathState(cwd, plan)];
-        out.push('  ' + (i === 0 ? '>' : ' ') + ' ' + sanitize(plan) + ' [' + status + ']');
+        // The authorization each plan recorded when it was queued, printed on
+        // both directions rather than only when one is present: an audit trail
+        // that showed nothing for a plan carrying no authorization would read
+        // the same as one this surface simply did not render. It is quoted from
+        // the plan doc and asserted rather than authenticated, which is why it
+        // reads as what the plan says rather than as a grant.
+        //
+        // It is screened by safeForAuthorization, the rule it was stored under,
+        // rather than by sanitize: the sentences plans carry run well past
+        // sanitize's 120-character path cap, and a claim about who authorized
+        // arming that is cut mid-clause reads as the whole recorded claim, which
+        // is the one thing this line exists to let a reader judge.
+        const authorization = state.authorizations[plan];
+        out.push('  ' + (i === 0 ? '>' : ' ') + ' ' + sanitize(plan) + ' [' + status + ']'
+            + ' (authorization: ' + (authorization ? safeForAuthorization(authorization) : 'none recorded') + ')');
     });
     const more = state.queue.length - state.queueIndex - window.length;
     if (more > 0) out.push('  ... and ' + more + ' more');
@@ -267,7 +322,10 @@ const CLEAR_ALIASES = new Set(['clear', 'stop', 'off', 'reset', 'none', 'cancel'
 
 function main() {
     const [cmd, ...args] = process.argv.slice(2);
-    if (cmd === 'arm') cmdArm(args);
+    // --append is read wherever it sits among the plan paths and removed from
+    // them, so an operator typing it after the paths gets an append rather than
+    // an arm over a plan doc named --append, which no repository has.
+    if (cmd === 'arm') cmdArm(args.filter((a) => a !== '--append'), args.includes('--append'));
     else if (CLEAR_ALIASES.has(cmd)) cmdClear();
     else if (cmd === 'status') cmdStatus();
     else usage();

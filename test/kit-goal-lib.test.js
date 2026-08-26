@@ -25,6 +25,7 @@ const {
     goalPath,
     readGoal,
     armGoal,
+    appendGoal,
     advanceGoal,
     bindSession,
     clearGoal,
@@ -131,7 +132,8 @@ test('armGoal success writes goal-state.json with the exact schema', () => {
         const state = readGoal(repo);
         assert.ok(state, 'goal state should be readable after arming');
         assert.deepStrictEqual(Object.keys(state).sort(),
-            ['armedAt', 'boundSession', 'boundTranscript', 'condition', 'history', 'plan', 'queue', 'queueIndex']);
+            ['armedAt', 'authorizations', 'boundSession', 'boundTranscript', 'condition', 'history', 'plan',
+                'queue', 'queueIndex']);
         assert.strictEqual(state.plan, 'docs/plans/foo.md');
         assert.strictEqual(state.boundSession, null, 'an arm carrying no bind is unbound');
         assert.strictEqual(state.boundTranscript, null,
@@ -139,6 +141,11 @@ test('armGoal success writes goal-state.json with the exact schema', () => {
         assert.deepStrictEqual(state.queue, ['docs/plans/foo.md'], 'one plan is a queue of one');
         assert.strictEqual(state.queueIndex, 0);
         assert.deepStrictEqual(state.history, []);
+        // Spread into a plain object to compare the entries: the map itself
+        // carries no prototype, which deepStrictEqual counts as a difference
+        // from a literal, and the absent prototype has its own case below.
+        assert.deepStrictEqual({ ...state.authorizations }, { 'docs/plans/foo.md': null },
+            'a plan carrying no Dispatch Authorization section records the none marker, one entry per armed plan');
         assert.ok(!state.plan.includes('\\'), 'plan path must be forward-slash');
         // The stored condition is whatever composeCondition produces, so the
         // clause text is pinned in one place (its own test) rather than twice.
@@ -1364,7 +1371,7 @@ test('CLI arm accepts several plan paths and names the queue', () => {
 
         const none = spawnSync(process.execPath, [CLI, 'arm'], { cwd: repo, encoding: 'utf8' });
         assert.strictEqual(none.status, 1);
-        assert.match(none.stderr, /usage: kit-goal\.js arm <planPath>\.\.\./);
+        assert.match(none.stderr, /usage: kit-goal\.js arm \[--append\] <planPath>\.\.\./);
     } finally {
         rmRepo(repo);
     }
@@ -2117,7 +2124,8 @@ test('armGoal binds the arming session when the session id and its transcript ar
         assert.strictEqual(raw.boundTranscript, transcript);
         assert.strictEqual(readGoal(repo).boundSession, SID);
         assert.deepStrictEqual(Object.keys(readGoal(repo)).sort(),
-            ['armedAt', 'boundSession', 'boundTranscript', 'condition', 'history', 'plan', 'queue', 'queueIndex'],
+            ['armedAt', 'authorizations', 'boundSession', 'boundTranscript', 'condition', 'history', 'plan',
+                'queue', 'queueIndex'],
             'the state shape is unchanged by the bind');
         assert.deepStrictEqual(tmpLeftovers(repo), [], 'the bound arm is one atomic write');
 
@@ -2959,6 +2967,427 @@ test('writeState refuses a link pre-planted at its temp path rather than followi
             assert.ok(!fs.existsSync(goalPath(repo)), 'and nothing lands at the goal-state path');
             assert.ok(fs.existsSync(path.join(target, 'kept.txt')), 'the link target is untouched');
         });
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+// The append direction of the queue's two spellings. Its whole point is that
+// nothing already armed moves: an append that re-derived the binding would hand
+// the leash to whoever happened to run the CLI, and one that moved armedAt would
+// make every in-flight advance's compare-and-swap refuse.
+test('appendGoal grows the queue under the existing binding, leaving the current plan and the history alone', () => {
+    const repo = makeRepo();
+    try {
+        for (const name of ['a', 'b', 'c']) {
+            writePlan(repo, 'docs/plans/' + name + '.md', 'Status: In Progress\n');
+        }
+        assert.strictEqual(armGoal(repo, ['docs/plans/a.md', 'docs/plans/b.md']).ok, true);
+        assert.strictEqual(bindSession(repo, SID, path.join(repo, 'transcript.jsonl')).ok, true);
+        const before = readGoal(repo);
+
+        const result = appendGoal(repo, ['docs/plans/c.md']);
+        assert.strictEqual(result.ok, true, result.reason);
+        assert.deepStrictEqual(result.appended, ['docs/plans/c.md']);
+        assert.deepStrictEqual(result.queue, ['docs/plans/a.md', 'docs/plans/b.md', 'docs/plans/c.md']);
+
+        const after = readGoal(repo);
+        assert.deepStrictEqual(after.queue, ['docs/plans/a.md', 'docs/plans/b.md', 'docs/plans/c.md'],
+            'an append never drops a queue entry');
+        assert.strictEqual(after.plan, before.plan, 'the current plan does not move');
+        assert.strictEqual(after.queueIndex, before.queueIndex);
+        assert.strictEqual(after.boundSession, before.boundSession, 'the binding is preserved, never re-derived');
+        assert.strictEqual(after.boundTranscript, before.boundTranscript);
+        assert.strictEqual(after.armedAt, before.armedAt,
+            'armedAt is the advance compare-and-swap key, so an append must leave it standing');
+        assert.deepStrictEqual(after.history, before.history);
+        assert.strictEqual(after.condition, composeCondition(after.plan, after.queue, after.queueIndex));
+        assert.match(after.condition, /docs\/plans\/c\.md/, 'the condition names the appended plan');
+        assert.deepStrictEqual(tmpLeftovers(repo), []);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+// A duplicate would make the leash advance past the plan once and stall on the
+// repeat, which is what armGoal refuses a repeated path for; the append form
+// answers to the same rule, against the standing queue as well as against its
+// own arguments, and refuses the whole invocation rather than landing the good
+// half of it.
+test('appendGoal refuses a duplicate atomically, naming it and leaving the queue unchanged', () => {
+    const repo = makeRepo();
+    try {
+        for (const name of ['a', 'b', 'c', 'd']) {
+            writePlan(repo, 'docs/plans/' + name + '.md', 'Status: In Progress\n');
+        }
+        assert.strictEqual(armGoal(repo, ['docs/plans/a.md', 'docs/plans/b.md']).ok, true);
+
+        const already = appendGoal(repo, ['docs/plans/c.md', 'docs/plans/b.md']);
+        assert.strictEqual(already.ok, false);
+        assert.match(already.reason, /docs\/plans\/b\.md/, 'the duplicate is named: ' + already.reason);
+        assert.deepStrictEqual(readGoal(repo).queue, ['docs/plans/a.md', 'docs/plans/b.md'],
+            'the whole invocation is refused, so the good path never lands either');
+
+        const twice = appendGoal(repo, ['docs/plans/d.md', 'docs/plans/d.md']);
+        assert.strictEqual(twice.ok, false);
+        assert.match(twice.reason, /docs\/plans\/d\.md/);
+        assert.deepStrictEqual(readGoal(repo).queue, ['docs/plans/a.md', 'docs/plans/b.md']);
+
+        // A plan the leash has already finished is still in the queue, and
+        // appending it would set the run up to walk it a second time.
+        assert.strictEqual(advanceGoal(repo, { outcome: 'complete' }).advanced, true);
+        const finished = appendGoal(repo, ['docs/plans/a.md']);
+        assert.strictEqual(finished.ok, false);
+        assert.match(finished.reason, /docs\/plans\/a\.md/);
+
+        // Nothing above left a half-written state: the good paths still append.
+        const good = appendGoal(repo, ['docs/plans/c.md', 'docs/plans/d.md']);
+        assert.strictEqual(good.ok, true, good.reason);
+        assert.deepStrictEqual(readGoal(repo).queue,
+            ['docs/plans/a.md', 'docs/plans/b.md', 'docs/plans/c.md', 'docs/plans/d.md']);
+        assert.deepStrictEqual(tmpLeftovers(repo), []);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+// The arm-time refusals reach the append form too, since a queue entry that
+// cannot be read as a plan doc is the same problem wherever it entered the
+// queue, and the whole invocation is refused for one bad path exactly as an arm
+// is.
+test('appendGoal refuses an unarmed repo, a missing plan, a Complete plan, and an escaping path', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
+        writePlan(repo, 'docs/plans/done.md', 'Status: Complete\n');
+        writePlan(repo, 'docs/plans/b.md', 'Status: In Progress\n');
+
+        const unarmed = appendGoal(repo, ['docs/plans/a.md']);
+        assert.strictEqual(unarmed.ok, false);
+        assert.match(unarmed.reason, /no goal is armed/);
+        assert.ok(!fs.existsSync(goalPath(repo)), 'an append never arms a goal of its own');
+
+        assert.strictEqual(armGoal(repo, 'docs/plans/a.md').ok, true);
+        const armedAt = readGoal(repo).armedAt;
+
+        for (const [args, pattern] of [
+            [['docs/plans/gone.md'], /not found: docs\/plans\/gone\.md/],
+            [['docs/plans/b.md', 'docs/plans/done.md'], /already Complete: docs\/plans\/done\.md/],
+            [['../outside.md'], /invalid or outside the repo/],
+            [[], /no plan path given/]
+        ]) {
+            const refused = appendGoal(repo, args);
+            assert.strictEqual(refused.ok, false, 'refused: ' + JSON.stringify(args));
+            assert.match(refused.reason, pattern);
+            const state = readGoal(repo);
+            assert.deepStrictEqual(state.queue, ['docs/plans/a.md'], 'the queue is untouched by a refusal');
+            assert.strictEqual(state.armedAt, armedAt);
+        }
+        assert.deepStrictEqual(tmpLeftovers(repo), []);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+// The replace direction, both ways round. A bare arm still replaces the queue
+// (that is the compatible behavior), so the only thing standing between an
+// operator and a silently unarmed plan is this warning naming what left the
+// queue; and a warning that fired when nothing was dropped would train them to
+// ignore it.
+test('CLI arm warns naming exactly the plans a replace drops, and says nothing when it drops none', () => {
+    const repo = makeRepo();
+    try {
+        for (const name of ['a', 'b', 'c', 'd']) {
+            writePlan(repo, 'docs/plans/' + name + '.md', 'Status: In Progress\n');
+        }
+
+        const first = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md', 'docs/plans/b.md', 'docs/plans/c.md'],
+            { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(first.status, 0, first.stderr);
+        assert.strictEqual(first.stderr, '', 'nothing was armed before, so nothing was dropped');
+
+        const replaced = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md', 'docs/plans/d.md'],
+            { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(replaced.status, 0, replaced.stderr);
+        assert.match(replaced.stderr, /docs\/plans\/b\.md/, 'names a dropped plan: ' + replaced.stderr);
+        assert.match(replaced.stderr, /docs\/plans\/c\.md/, 'names the other one: ' + replaced.stderr);
+        assert.ok(!replaced.stderr.includes('docs/plans/a.md'),
+            'a plan the new queue still carries was not dropped: ' + replaced.stderr);
+        assert.ok(!replaced.stderr.includes('docs/plans/d.md'), replaced.stderr);
+        assert.deepStrictEqual(readGoal(repo).queue, ['docs/plans/a.md', 'docs/plans/d.md'],
+            'the replace itself is unchanged: it is a warning, never a refusal');
+
+        const same = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/d.md', 'docs/plans/a.md'],
+            { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(same.status, 0, same.stderr);
+        assert.strictEqual(same.stderr, '', 'a re-arm naming the same plans drops none of them');
+
+        // A plan the leash already finished is behind the current position and
+        // is not dropped by a re-arm: it left the queue by being completed.
+        assert.strictEqual(advanceGoal(repo, { outcome: 'complete' }).advanced, true);
+        const past = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md'], { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(past.status, 0, past.stderr);
+        assert.strictEqual(past.stderr, '', 'a finished plan is not a dropped one: ' + past.stderr);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+// The provenance field is derived from the artifact, never asserted by the
+// caller: there is no flag that writes it. It is the audit trail the status
+// report and the doctor can surface, and it authenticates nothing.
+test('an arm records each plan\'s Dispatch Authorization sentence, and an append records the ones it adds', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n\n'
+            + '## Dispatch Authorization\n\n'
+            + 'Authorized by the operator, 2026-08-25. Any session holding this plan may arm it.\n\n'
+            + '## Goal\n\nsomething else entirely.\n');
+        writePlan(repo, 'docs/plans/b.md', 'Status: In Progress\n\n## Goal\n\nno authorization here.\n');
+        writePlan(repo, 'docs/plans/c.md', 'Status: In Progress\n\n'
+            + '## Dispatch Authorization\n\nAuthorized in the c session.\n');
+
+        assert.strictEqual(armGoal(repo, ['docs/plans/a.md', 'docs/plans/b.md']).ok, true);
+        assert.deepStrictEqual({ ...readGoal(repo).authorizations }, {
+            'docs/plans/a.md': 'Authorized by the operator, 2026-08-25.',
+            'docs/plans/b.md': null
+        }, 'the first sentence verbatim, or the none marker');
+
+        assert.strictEqual(appendGoal(repo, ['docs/plans/c.md']).ok, true);
+        assert.deepStrictEqual({ ...readGoal(repo).authorizations }, {
+            'docs/plans/a.md': 'Authorized by the operator, 2026-08-25.',
+            'docs/plans/b.md': null,
+            'docs/plans/c.md': 'Authorized in the c session.'
+        }, 'an append records the plans it adds and disturbs no standing entry');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+// The sentence is untrusted file content on its way into a state file several
+// surfaces print, so it is held to a printable-ASCII cap rather than stored as
+// written. The cap is proved in both directions on purpose: a cap low enough to
+// cut the sentences plans actually carry would store half a claim about who
+// authorized arming, which reads as whole and cannot be judged, so the
+// survives-intact case is as load-bearing as the truncation case.
+test('a recorded authorization sentence is screened to printable ASCII and capped', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n\n'
+            + '## Dispatch Authorization\n\n'
+            + 'Authorized \x07by \x1B[31mthe\n operator ' + 'x'.repeat(400) + '. Second sentence.\n');
+        writePlan(repo, 'docs/plans/empty.md',
+            'Status: In Progress\n\n## Dispatch Authorization\n\n## Goal\n\nnothing under the heading.\n');
+
+        assert.strictEqual(armGoal(repo, ['docs/plans/a.md', 'docs/plans/empty.md']).ok, true);
+        const recorded = readGoal(repo).authorizations['docs/plans/a.md'];
+        assert.strictEqual(recorded.length, 320, 'capped: ' + recorded);
+        assert.ok(!/[^\x20-\x7E]/.test(recorded), 'printable ASCII only: ' + JSON.stringify(recorded));
+        assert.ok(recorded.startsWith('Authorized by [31mthe operator '), JSON.stringify(recorded));
+        assert.strictEqual(readGoal(repo).authorizations['docs/plans/empty.md'], null,
+            'a heading with no sentence under it records as none rather than as an empty quote');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+// The control for the cap above, written from the real sentence rather than an
+// invented one: the first plan to carry a Dispatch Authorization section quotes
+// the operator's own words and runs to 268 characters. A cap that cuts this is
+// the defect, so this pins the length the field has to hold.
+test('a real-length authorization sentence is recorded whole, not truncated', () => {
+    const repo = makeRepo();
+    try {
+        const real = 'Authorized by the operator, 2026-08-25, in the main kit session '
+            + '("build a spec out of the backlog items to tackle this scenario, and then '
+            + 'queue that up for the Opus KIT: Shared Messages session to run when '
+            + 'complete, exactly as my standing authorization should grant").';
+        // A length this case depends on, stated so a reworded fixture that no
+        // longer exercises the cap fails here rather than passing quietly. It
+        // pins this literal, not the plan doc it was copied from.
+        assert.strictEqual(real.length, 268, 'this fixture is written to be 268 characters long');
+
+        writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n\n'
+            + '## Dispatch Authorization\n\n' + real + ' A second sentence follows.\n');
+
+        assert.strictEqual(armGoal(repo, ['docs/plans/a.md']).ok, true);
+        assert.strictEqual(readGoal(repo).authorizations['docs/plans/a.md'], real,
+            'the whole sentence is stored: a claim cut mid-clause reads as whole and cannot be judged');
+
+        // The status report is where a reader actually judges the claim, so the
+        // render answers to the same rule the store does. A value held whole and
+        // printed cut is the same defect one step later: what reaches the reader
+        // is half a claim presented as the whole recorded one.
+        const status = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(status.status, 0, status.stderr);
+        assert.ok(status.stdout.includes('(authorization: ' + real + ')'),
+            'the whole sentence reaches the report: ' + status.stdout);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+// The map is keyed by untrusted, hand-editable strings and then read by key, so
+// it is built without a prototype and read as own keys only. A plain object
+// answers a key it never recorded with whatever Object.prototype carries under
+// that name, and the status report prints what it is handed: a plan path of
+// 'toString' with no entry of its own would render a native function as the
+// authorization that plan recorded, which is a fabricated provenance claim.
+test('a hand-edited authorizations map cannot forge an entry through the prototype', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'toString', 'Status: In Progress\n');
+        fs.mkdirSync(path.join(repo, '.kit'), { recursive: true });
+        // Written as text rather than through an object literal: a literal
+        // '__proto__' key is the prototype syntax and never becomes an own
+        // property, where JSON.parse of the same text does create one, which is
+        // the shape a hand-edited state file actually arrives in.
+        fs.writeFileSync(goalPath(repo), '{\n'
+            + '  "plan": "toString",\n'
+            + '  "condition": "x",\n'
+            + '  "armedAt": "' + new Date().toISOString() + '",\n'
+            + '  "boundSession": null,\n'
+            + '  "boundTranscript": null,\n'
+            + '  "queue": ["toString"],\n'
+            + '  "queueIndex": 0,\n'
+            + '  "history": [],\n'
+            + '  "authorizations": {\n'
+            + '    "docs/plans/gone.md": "Authorized by nobody.",\n'
+            + '    "__proto__": "Authorized by nobody."\n'
+            + '  }\n'
+            + '}\n', 'utf8');
+
+        const state = readGoal(repo);
+        assert.strictEqual(Object.getPrototypeOf(state.authorizations), null,
+            'the map carries no prototype, so no key can be answered by an inherited value');
+        assert.deepStrictEqual(Object.keys(state.authorizations), [],
+            'a key that is not a queued plan is pruned rather than propagated');
+
+        const status = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(status.status, 0, status.stderr);
+        assert.match(status.stdout, /authorization: none recorded/,
+            'a plan with no recorded authorization reports none: ' + status.stdout);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+// An append is a read-modify-write over a file a leashed session's Stop hook
+// writes too, so it verifies the state it decided from is still the state on
+// disk. Without that check the append writes back its own pre-advance snapshot
+// and the advance is undone: the leash walks back to the finished plan and the
+// record of finishing it is gone.
+test('appendGoal refuses an append whose state moved under it, leaving the advance standing', () => {
+    const repo = makeRepo();
+    const realOpen = fs.openSync;
+    try {
+        writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
+        writePlan(repo, 'docs/plans/b.md', 'Status: In Progress\n');
+        writePlan(repo, 'docs/plans/c.md', 'Status: In Progress\n');
+        assert.strictEqual(armGoal(repo, ['docs/plans/a.md', 'docs/plans/b.md']).ok, true);
+
+        // The concurrent advance lands where a real one would: after the append
+        // has read the state, while it is still opening the plan doc it was
+        // asked to add.
+        let advanced = false;
+        fs.openSync = (target, ...rest) => {
+            if (!advanced && String(target).endsWith('c.md')) {
+                advanced = true;
+                assert.strictEqual(advanceGoal(repo, { outcome: 'complete' }).advanced, true);
+            }
+            return realOpen(target, ...rest);
+        };
+        const result = appendGoal(repo, ['docs/plans/c.md']);
+        fs.openSync = realOpen;
+
+        assert.strictEqual(advanced, true, 'the concurrent advance ran');
+        assert.strictEqual(result.ok, false, 'the append refuses rather than writing a stale snapshot');
+        assert.match(result.reason, /goal state changed/);
+        const state = readGoal(repo);
+        assert.strictEqual(state.plan, 'docs/plans/b.md', 'the advance still stands');
+        assert.strictEqual(state.queueIndex, 1);
+        assert.deepStrictEqual(state.queue, ['docs/plans/a.md', 'docs/plans/b.md'],
+            'nothing was appended');
+        assert.strictEqual(state.history.length, 1, 'the advance record survives');
+    } finally {
+        fs.openSync = realOpen;
+        rmRepo(repo);
+    }
+});
+
+// The heading match is structural, not merely lexical: a plan doc that shows
+// the format rather than asserting it records nothing. Both legs are provenance
+// failures of the same kind, a grant the plan never made being read back as one
+// it did.
+test('a Dispatch Authorization heading inside a fence or below the sections of work records nothing', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/fenced.md', 'Status: In Progress\n\n## Goal\n\n'
+            + 'A plan doc showing the format:\n\n'
+            + '```markdown\n## Dispatch Authorization\n\nAuthorized by nobody at all.\n```\n');
+        writePlan(repo, 'docs/plans/late.md', 'Status: In Progress\n\n## Sections of Work\n\n'
+            + '### Section 1\n\nWork.\n\n## Dispatch Authorization\n\nAuthorized by nobody at all.\n');
+
+        assert.strictEqual(armGoal(repo, ['docs/plans/fenced.md', 'docs/plans/late.md']).ok, true);
+        const recorded = readGoal(repo).authorizations;
+        assert.strictEqual(recorded['docs/plans/fenced.md'], null,
+            'an illustration inside a fenced block is not a claim');
+        assert.strictEqual(recorded['docs/plans/late.md'], null,
+            'the section is front matter: a heading below the sections of work is not it');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+// The body terminator and the heading matcher answer the same question about
+// the same syntax, so they agree about a heading written with no space after
+// its hashes. Where they disagreed, the section body ran on into the next
+// section and its first sentence was recorded as this plan's authorization.
+test('a next heading written with no space after its hashes still ends the section body', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n\n'
+            + '## Dispatch Authorization\n\n##Goal\n\nShip the thing by Friday.\n');
+
+        assert.strictEqual(armGoal(repo, ['docs/plans/a.md']).ok, true);
+        assert.strictEqual(readGoal(repo).authorizations['docs/plans/a.md'], null,
+            'the empty section records none rather than quoting the next section');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('CLI arm --append extends the queue, reports it, and reads back through status', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n\n'
+            + '## Dispatch Authorization\n\nAuthorized by the operator, 2026-08-25.\n');
+        writePlan(repo, 'docs/plans/b.md', 'Status: In Progress\n');
+
+        const armed = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md'], { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(armed.status, 0, armed.stderr);
+
+        const appended = spawnSync(process.execPath, [CLI, 'arm', '--append', 'docs/plans/b.md'],
+            { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(appended.status, 0, appended.stderr);
+        assert.match(appended.stdout, /docs\/plans\/b\.md/);
+        assert.strictEqual(appended.stderr, '', 'an append drops nothing, so it warns about nothing');
+        assert.deepStrictEqual(readGoal(repo).queue, ['docs/plans/a.md', 'docs/plans/b.md']);
+
+        const status = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(status.status, 0, status.stderr);
+        assert.match(status.stdout, /authorization: Authorized by the operator, 2026-08-25\./,
+            'status reads the recorded provenance back: ' + status.stdout);
+        assert.match(status.stdout, /authorization: none recorded/, status.stdout);
+
+        // An append with no goal armed is refused rather than arming one.
+        const clear = spawnSync(process.execPath, [CLI, 'clear'], { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(clear.status, 0, clear.stderr);
+        const orphan = spawnSync(process.execPath, [CLI, 'arm', '--append', 'docs/plans/b.md'],
+            { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(orphan.status, 1);
+        assert.match(orphan.stderr, /no goal is armed/);
+        assert.ok(!fs.existsSync(goalPath(repo)), 'nothing was armed by the refusal');
     } finally {
         rmRepo(repo);
     }
