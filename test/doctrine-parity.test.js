@@ -16,6 +16,13 @@
 // Line endings are normalized to \n and trailing newlines trimmed before
 // comparing, so a CRLF/LF checkout difference can never fail a parity the
 // content holds. Everything else is byte-exact.
+//
+// A second class of test lives below the doctrine-copy pins: presence-and-
+// tracking checks that do not start from a doctrine bullet at all, but from
+// a committed pointer in one file (a README map entry, a skill's own prose)
+// naming another. Those close the same gap the doctrine pins close, a
+// deletion or drift that a diff-blind review pass would not catch, for
+// pointers that live outside the doctrine copies.
 
 'use strict';
 
@@ -54,6 +61,23 @@ function skillBody() {
 
 function mirrorBody() {
     return normalize(fs.readFileSync(MIRROR, 'utf8'));
+}
+
+// The failure this check exists to catch is a commit that omits a newly
+// created file: git ls-files --error-unmatch asserts the path sits in the
+// index, so an ordinary pathspec-less commit taken from this state carries
+// it, and the never-added case, a file created and forgotten, reddens here
+// on the machine that wrote it rather than only on some later fresh
+// checkout, and this repo runs no CI to be that checkout. What it cannot
+// see: a `git commit <pathspec>` that stages other paths and excludes this
+// already-added one leaves the path in the index and out of HEAD, and
+// nothing local catches that. Asserting against HEAD instead would close
+// that gap but would also redden during the section that creates the file,
+// before its commit lands, which is the normal shape of every skill-adding
+// section in this repo, so the check stays scoped to the index.
+function assertTrackedInIndex(relPath) {
+    execFileSync('git', ['ls-files', '--error-unmatch', '--', relPath],
+        { cwd: path.join(__dirname, '..'), stdio: 'pipe' });
 }
 
 test('the two doctrine copies are byte-identical (skill body vs mirror)', () => {
@@ -218,34 +242,109 @@ test('the peer-sessions bullet is present once in each copy and identical', () =
     // routed-to skills.
     assert.ok(inSkill[0].includes('`peer-sessions` skill'),
         'the peer-sessions bullet no longer names the skill it defers to');
-    const target = path.join(__dirname, '..', 'plugins', 'claude-kit',
-        'skills', 'peer-sessions', 'SKILL.md');
+    const parts = ['plugins', 'claude-kit', 'skills', 'peer-sessions', 'SKILL.md'];
+    const target = path.join(__dirname, '..', ...parts);
     assert.ok(fs.existsSync(target),
         'the peer-sessions bullet defers to a skill that is not on disk: '
-        + 'plugins/claude-kit/skills/peer-sessions/SKILL.md');
+        + parts.join('/'));
     // Existence is the weaker sibling of the outline pin, which asserts
     // routed-to content rather than a routed-to file. The bullet defers three
     // named things, so all three are pinned: a stub passing existence would
     // otherwise satisfy a pointer that promises contracts, patterns, and
-    // etiquette.
+    // etiquette. The Naming heading rides along for a different pointer,
+    // coordinator:49's "the peer-sessions Naming section owns", which is the
+    // reverse direction of the same skill-to-skill pointer pair; it belongs
+    // here rather than in a pin of its own because it is the same defect
+    // class against the same file.
     const body = fs.readFileSync(target, 'utf8');
     for (const heading of [/^## The messaging surface$/m,
-        /^## The sanctioned patterns$/m, /^## Etiquette$/m]) {
+        /^## The sanctioned patterns$/m, /^## Etiquette$/m, /^## Naming$/m]) {
         assert.match(body, heading, 'the peer-sessions bullet defers to the '
-            + 'skill\'s contracts, sanctioned patterns, and etiquette, so '
-            + 'deleting one of those sections leaves the pointer promising '
-            + 'what the skill no longer carries: ' + heading);
+            + 'skill\'s contracts, sanctioned patterns, and etiquette, and the '
+            + 'coordinator skill separately defers to its Naming section, so '
+            + 'deleting one of those sections leaves a pointer promising what '
+            + 'the skill no longer carries: ' + heading);
     }
-    // existsSync reads the working tree, which is the one place the file is
-    // guaranteed to sit on the machine that just wrote it. The failure this
-    // pin was added for is a commit that omits the new directory, and that
-    // commit is authored on exactly that machine, so tracking is asserted
-    // against the index rather than the disk. Without this the red fires only
-    // on some later fresh checkout, and this repo runs no CI to be that
-    // checkout.
-    execFileSync('git', ['ls-files', '--error-unmatch', '--',
-        'plugins/claude-kit/skills/peer-sessions/SKILL.md'],
-        { cwd: path.join(__dirname, '..'), stdio: 'pipe' });
+    assertTrackedInIndex(parts.join('/'));
+});
+
+// README's payload map and the peer-sessions Roles section both point at
+// the coordinator skill. Asserting only the far end (the skill on disk,
+// carrying what it promises) would stay green after the pointer itself was
+// deleted, since nothing would then depend on the coordinator skill
+// existing at all, so the near end is pinned first: the two committed
+// pointers still name the coordinator skill.
+test('README and peer-sessions still point at the coordinator skill', () => {
+    const readme = fs.readFileSync(path.join(__dirname, '..', 'README.md'), 'utf8');
+    const mapLine = readme.split(/\r?\n/).find((l) => /^\s*coordinator\//.test(l));
+    assert.ok(mapLine, 'README\'s payload map no longer carries a coordinator/ '
+        + 'entry; the coordinator pin below reads this line as its near end');
+    // Anchored on the words the entry promises rather than the whole line,
+    // since the map's column alignment is cosmetic and will be reflowed
+    // someday; a reflow that keeps the words would still pass this.
+    for (const word of ['operator interface', 'cross-repo', 'resource arbitration']) {
+        assert.ok(mapLine.toLowerCase().includes(word),
+            'README\'s coordinator/ map entry no longer mentions "' + word
+            + '", one of the three functions it promises the skill carries');
+    }
+
+    const peerSessions = fs.readFileSync(path.join(__dirname, '..', 'plugins',
+        'claude-kit', 'skills', 'peer-sessions', 'SKILL.md'), 'utf8');
+    assert.match(peerSessions, /the coordinator skill names the file/,
+        'peer-sessions\' Roles section no longer names the coordinator skill as '
+        + 'the ledger\'s owner; that clause is the near end of the pointer the '
+        + 'next pin closes at its far end, and losing it here would leave that '
+        + 'pin asserting a premise nothing in the tree depends on');
+});
+
+// The far end of the pointer pinned above: the coordinator skill on disk,
+// tracked, and carrying what README and peer-sessions each promise it does.
+test('the coordinator skill is tracked and carries what it is pointed at for', () => {
+    const parts = ['plugins', 'claude-kit', 'skills', 'coordinator', 'SKILL.md'];
+    const target = path.join(__dirname, '..', ...parts);
+    assert.ok(fs.existsSync(target),
+        'the README payload map and the peer-sessions Roles section both '
+        + 'point at a coordinator skill that is not on disk: ' + parts.join('/'));
+    const body = fs.readFileSync(target, 'utf8');
+
+    // README's map line promises three named functions, not the heading text
+    // "three": a fourth function added under the unchanged "## The three
+    // functions" heading (kept as-is, since the skill states the set closed
+    // at three as a design invariant) would pass heading presence while
+    // breaking the closed-at-three promise the map line makes, so each
+    // function's own lead is pinned instead of the heading.
+    for (const lead of ['- **Operator interface.**',
+        '- **Cross-repo dependency and portfolio sequencing.**',
+        '- **Machine-resource arbitration.**']) {
+        assert.ok(body.includes(lead),
+            'README\'s payload map promises the coordinator\'s three functions '
+            + '(operator interface, cross-repo sequencing, resource arbitration), '
+            + 'and the skill no longer carries the function lead "' + lead + '"');
+    }
+
+    // peer-sessions:81 says the coordinator skill "names the file"; the file
+    // is docs/coordinator-board.md. A "## The ledger" heading kept while the
+    // path inside it is renamed or dropped would pass heading presence while
+    // leaving that pointer aimed at a name the skill no longer states, so the
+    // literal path is pinned instead of the heading.
+    assert.match(body, /docs\/coordinator-board\.md/,
+        'peer-sessions defers to the coordinator skill to name the ledger file '
+        + 'as docs/coordinator-board.md, and the skill no longer states that '
+        + 'path anywhere in its body');
+
+    // peer-sessions:64 says the status round runs "no oftener than the
+    // coordinator's heartbeat cadence, which that skill states". The cadence
+    // is stated once, in the cold-start opening above the "## The three
+    // functions" heading, so a pin scoped to the two headings alone would
+    // stay green if that opening paragraph were dropped. Matched loosely
+    // enough to survive ordinary rewording of the sentence around it and
+    // tightly enough to redden when the cadence itself is gone.
+    assert.match(body, /heartbeat[^\n]{0,60}hourly|hourly[^\n]{0,60}heartbeat/i,
+        'peer-sessions defers the status round\'s pricing to "the coordinator\'s '
+        + 'heartbeat cadence, which that skill states", and the coordinator '
+        + 'skill no longer states an hourly cadence anywhere in its body');
+
+    assertTrackedInIndex(parts.join('/'));
 });
 
 // The three pins below cover one drift class rather than three deletions: an
