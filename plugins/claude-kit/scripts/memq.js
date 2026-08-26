@@ -91,7 +91,11 @@
 // candidate, both thresholds extended in proportion to how many distinct days
 // the memory was applied and waived entirely by a `pinned:` frontmatter
 // field, and journal entries older than 30 days are rollup candidates,
-// each line carrying the evidence dates that justify it. Which candidates to
+// each line carrying the evidence dates that justify it. Beside those three
+// classes it reports anchor drift over the project tier's live records: a
+// memory whose anchored file has changed or gone is unverified rather than
+// wrong, so that block nominates a re-read and no `decay-prune` flag acts on
+// it. Which candidates to
 // act on is a judgment made in-session, never automated here. `decay-prune`
 // then performs exactly the mechanical rewrites its arguments call for
 // (`--rollup` for the journal rollup and the usage prunes, `--archive`,
@@ -288,6 +292,13 @@ const STORE_LOCK_FILE = 'store.lock';
 const DECAY_LOCK_FILE = 'decay.lock';
 const DECLARERS_SHOWN = 10;   // declaring-project names listed before the remainder is counted
 const PINNED_SHOWN = 10;      // pinned memories listed by decay-scan before the remainder is counted
+const DRIFT_SHOWN = 10;       // drifted memories listed by decay-scan before the remainder is counted
+// Anchor paths named on one drift line before the remainder is counted. Lower
+// than the block enumerations above for SUPERSEDED_SHOWN's reason: these ride
+// inside a line that already carries a name and a second path list, and a
+// record may anchor up to ANCHOR_ENTRIES_MAX files at ANCHOR_PATH_CAP
+// characters each.
+const DRIFT_PATHS_SHOWN = 4;
 // Successors named in a superseded record's label before the remainder is
 // counted. Lower than the block enumerations above because this one rides
 // inside a line that already carries columns and free text, where ten names
@@ -304,6 +315,10 @@ const ANCHOR_ENTRIES_MAX = 32;          // anchors read from one record's line
 // 40-hex sha. Past it no entry can parse, so the length answers before the
 // pattern and the display reduction run over a line of unbounded store text.
 const ANCHOR_ENTRY_CAP = ANCHOR_PATH_CAP + 41;
+// What a line cut at ANCHOR_ENTRIES_MAX says about itself, spelled once so
+// the row `get` prints and the class the scan counts cannot drift apart.
+const ANCHOR_TRUNCATED_TEXT = 'the rest of the line is unread past '
+    + ANCHOR_ENTRIES_MAX + ' entries';
 // Characters of the whole anchors: value. The line is one field of a
 // hand-written record, and the split that reads it allocates a piece per
 // comma, so the value is bounded before that runs rather than after.
@@ -425,6 +440,46 @@ function readGitPointer(file) {
         const buf = Buffer.alloc(GIT_POINTER_READ_CAP);
         const n = fs.readSync(fd, buf, 0, GIT_POINTER_READ_CAP, 0);
         return buf.toString('utf8', 0, n);
+    } finally {
+        fs.closeSync(fd);
+    }
+}
+
+// A file's leading `cap` bytes as text, or null when the path does not answer
+// as a regular file. Reads short of the cap are looped over, since one
+// readSync answers with what it has rather than with everything asked for.
+//
+// The fstat is taken on the open descriptor rather than on the name, for the
+// reason readGitPointer states, and off win32 the open is non-blocking so a
+// planted fifo cannot park the caller. A multi-byte character the cap cuts in
+// half decodes to a replacement character, which costs that character's text
+// and never the read.
+//
+// The buffer is the smaller of the cap and the size that stat reported, so
+// a pass over a tier of small records allocates for the records rather than
+// for the ceiling. A second fstat closes what that first one opens: a file
+// rewritten between the measurement and the read would otherwise be scored
+// as a head of one text measured against the length of another, so a size
+// that moved answers null, which is the not-checked answer every caller of
+// this already handles. `blobSha` takes the same pair for the same reason.
+function readHead(file, cap) {
+    const flags = process.platform === 'win32'
+        ? fs.constants.O_RDONLY
+        : fs.constants.O_RDONLY | (fs.constants.O_NONBLOCK || 0);
+    const fd = fs.openSync(file, flags);
+    try {
+        const st = fs.fstatSync(fd);
+        if (!st.isFile()) return null;
+        const want = Math.min(cap, st.size);
+        const buf = Buffer.alloc(want);
+        let read = 0;
+        while (read < want) {
+            const n = fs.readSync(fd, buf, read, want - read, read);
+            if (n <= 0) break;
+            read += n;
+        }
+        if (fs.fstatSync(fd).size !== st.size) return null;
+        return buf.toString('utf8', 0, read);
     } finally {
         fs.closeSync(fd);
     }
@@ -1899,6 +1954,26 @@ const FRONTMATTER_UNREADABLE = Symbol('frontmatter unreadable');
 const FRONTMATTER_INDENTED = Symbol('frontmatter field indented');
 const FRONTMATTER_MAX_LINES = 40;
 
+// The most of a memory file any frontmatter read takes, at every door that
+// reads one. It is a bound rather than a proof: nothing in the format
+// bounds a frontmatter's width, since a harness-written `metadata:` scalar
+// can be any length, so this is a line drawn with a named cost rather than
+// a size no legitimate record can exceed.
+//
+// The cost, paid by a record whose frontmatter does not close inside it:
+// the record reads as one whose frontmatter could not be read, so its
+// anchors, tags and supersedes are all not-checked rather than wrong,
+// which is the direction every answer on this surface takes. Where the
+// line sits: the widest line the anchor grammar admits is ANCHOR_ENTRIES_MAX
+// entries of ANCHOR_ENTRY_CAP characters, 9,504 of them, and this is nearly
+// seven times that, so an ordinary record is nowhere near it.
+//
+// This is a ceiling and not a saving. A record shorter than it is read to
+// its end, body included, and every record in the largest project store on
+// this machine (105 records, 304 KB) is: what the cap buys is that no one
+// oversized record can cost a pass over a whole tier its latency budget.
+const FRONTMATTER_READ_CAP = 65536;
+
 // A record's text as lines, with the frontmatter block's boundaries in them:
 // the byte order mark split off, the opening fence answered, and the closing
 // fence located inside the bounded head. `bom` is what was stripped, so a
@@ -2434,7 +2509,9 @@ function frontmatterAnchors(raw) {
 }
 
 // The same answer for a record on disk, and null for one that could not be
-// read at all.
+// read at all. At most FRONTMATTER_READ_CAP bytes of the file are read,
+// which is what lets a caller ask this of a whole tier with a cost per
+// record it can state ahead of time.
 //
 // Both causes of null, here and in the two readers below, are one value
 // rather than two. `pinState` keeps its own apart, answering 'unknown' for an
@@ -2447,7 +2524,7 @@ function frontmatterAnchors(raw) {
 function readFrontmatterAnchors(file) {
     let raw;
     try {
-        raw = fs.readFileSync(file, 'utf8');
+        raw = readHead(file, FRONTMATTER_READ_CAP);
     } catch {
         return null;
     }
@@ -2491,6 +2568,76 @@ function anchorRoot(cwd) {
     return main === null ? String(cwd) : main;
 }
 
+// A read meter bounds a pass along two dimensions, because one of them does
+// not bound the work on its own: `bytes` is what the hashing has read and
+// `entries` is how many anchors have been examined, whatever each of them
+// cost. A refusal costs no bytes and a walk all the same, so a store whose
+// anchored files are gone or oversized, which is the drifted case this
+// feature exists to find, would hash nothing and walk without limit under a
+// byte cap alone.
+//
+// A cap a caller handed in, or Infinity for anything that is not a count.
+// `typeof x === 'number'` is not that test: NaN passes it and compares
+// false against everything, so a NaN cap is a pass that never stops, and a
+// negative one is spent before it starts and reports a whole tier as
+// unexamined. Neither is a bound, and this is the one place that decides
+// it, so no door can decide it differently.
+function capOrNone(value) {
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0
+        ? value
+        : Infinity;
+}
+
+// `normalizeMeter` is what every entry point that takes one calls first.
+// Null for a caller that passed nothing, which is the 'meter nothing, bound
+// nothing' answer; otherwise the caller's own object with its counters made
+// numeric and its caps made counts-or-Infinity, in place, so a caller that
+// handed in a half-formed meter still reads its own counters back
+// afterwards. A cap this cannot read as a count reads as no cap on that
+// dimension, never as a cap of zero: bounding a pass to nothing on a
+// malformed field would report a tier nobody looked at, which is the answer
+// this whole surface exists to keep off a report.
+function normalizeMeter(meter) {
+    if (meter === undefined || meter === null || typeof meter !== 'object') return null;
+    if (typeof meter.bytes !== 'number' || !Number.isFinite(meter.bytes)) meter.bytes = 0;
+    if (typeof meter.entries !== 'number' || !Number.isFinite(meter.entries)) meter.entries = 0;
+    meter.byteCap = capOrNone(meter.byteCap);
+    meter.entryCap = capOrNone(meter.entryCap);
+    return meter;
+}
+
+// A meter built from a caller's `{records, bytes, entries}` limits, or null
+// for a caller that set none.
+function meterFor(limits) {
+    if (limits === undefined || limits === null || typeof limits !== 'object') return null;
+    return normalizeMeter({
+        bytes: 0,
+        entries: 0,
+        byteCap: capOrNone(limits.bytes),
+        entryCap: capOrNone(limits.entries)
+    });
+}
+
+function chargeBytes(meter, n) {
+    if (meter !== null && meter !== undefined && typeof meter.bytes === 'number') {
+        meter.bytes += n;
+    }
+}
+
+// One anchor examined, whatever examining it cost.
+function chargeEntry(meter) {
+    if (meter !== null && meter !== undefined && typeof meter.entries === 'number') {
+        meter.entries += 1;
+    }
+}
+
+// Whether either dimension of a meter's budget is spent, which is false for
+// a meter with no caps and for no meter at all.
+function meterSpent(meter) {
+    if (meter === null || meter === undefined) return false;
+    return meter.bytes >= meter.byteCap || meter.entries >= meter.entryCap;
+}
+
 // The git blob name of a file's bytes: sha1 over the header `blob <len>\0`
 // and then the file's own bytes, which is what `git hash-object --no-filters`
 // prints for the same file. Null for a path that is missing, is not a file,
@@ -2504,11 +2651,24 @@ function anchorRoot(cwd) {
 // the kind check and the size gate are about the file that was opened rather
 // than about a name that can be swapped between the check and the read, and
 // the second fstat catches a file still being written, whose bytes would hash
-// to a value matching nothing. Off win32 the open refuses a symbolic link and
-// is non-blocking: the caller has already established that the name was not a
-// link when it looked, and the flag is what keeps a swap in the window
-// between that look and this open from being followed, while the fifo a
-// planted name could otherwise point at would block the open forever.
+// to a value matching nothing. Off win32 the open is non-blocking, so the
+// fifo a planted name could otherwise point at cannot block it forever, and
+// it carries O_NOFOLLOW, which POSIX defines against the trailing component
+// alone: a final segment swapped to a link between the caller's walk and
+// this open is refused, and a component anywhere earlier in the path is
+// resolved by the open as any open resolves it. On win32 no such flag is
+// carried, so any component is. That window is narrowed by the walk rather
+// than closed, exactly as `readGitPointer` states for its own open, and the
+// fstat below refuses anything that is not a regular file.
+//
+// `meter` is optional and is the pass's own shared meter, whose byte
+// dimension this charges: it is how a caller bounding a pass over many
+// files learns what the reads cost. Every byte this read is added to it,
+// including the bytes of a read that then answered null: the I/O was spent
+// whether or not a hash came out of it, and a bound that only counted
+// successful hashes would not bound the work. The count is the read loop's
+// own total rather than a size from any stat, so it is what this call
+// consumed and not what another moment's stat said the file was.
 //
 // The bytes are hashed as they sit on disk and never decoded to text. A
 // decode would fold a CRLF file and its LF twin onto one hash, and an anchor
@@ -2519,7 +2679,7 @@ function anchorRoot(cwd) {
 // file; and a record anchored on a checkout with one line ending reports its
 // text anchors `changed` on a checkout with the other, because those working
 // trees do hold different bytes.
-function blobSha(absPath) {
+function blobSha(absPath, meter) {
     const flags = process.platform === 'win32'
         ? fs.constants.O_RDONLY
         : fs.constants.O_RDONLY | (fs.constants.O_NONBLOCK || 0) | (fs.constants.O_NOFOLLOW || 0);
@@ -2534,10 +2694,14 @@ function blobSha(absPath) {
         if (!st.isFile() || st.size > ANCHOR_READ_CAP) return null;
         const buf = Buffer.alloc(st.size);
         let read = 0;
-        while (read < buf.length) {
-            const n = fs.readSync(fd, buf, read, buf.length - read, read);
-            if (n === 0) break;
-            read += n;
+        try {
+            while (read < buf.length) {
+                const n = fs.readSync(fd, buf, read, buf.length - read, read);
+                if (n === 0) break;
+                read += n;
+            }
+        } finally {
+            chargeBytes(meter, read);
         }
         const after = fs.fstatSync(fd);
         if (read < st.size || after.size !== st.size) return null;
@@ -2608,7 +2772,7 @@ function anchorRootReal(root) {
 // causes behind 'unreadable' it hit, and the walk is the only thing that
 // knows. Reporting it from here is what keeps that answer out of a second
 // walk of the same path.
-function anchorEntryState(rootReal, entry) {
+function anchorEntryState(rootReal, entry, meter) {
     const parts = entry.path.split('/');
     const full = path.join(rootReal, ...parts);
     // The grammar admits no segment that could climb out, so this holds
@@ -2661,7 +2825,11 @@ function anchorEntryState(rootReal, entry) {
             };
         }
     }
-    const current = blobSha(full);
+    // The read is metered inside the hash, on the bytes it actually read, so
+    // a caller's budget counts the I/O this spent rather than a size some
+    // other moment's stat reported. Nothing about the cost reaches the row
+    // this returns: the row is about the anchor's state.
+    const current = blobSha(full, meter);
     if (current === null) {
         return {
             current: null, state: 'unreadable',
@@ -2709,8 +2877,25 @@ function anchorEntryState(rootReal, entry) {
 // Like the file-reading form below, this answers rather than throwing for any
 // input: it is the form a caller holding a record's text calls, and that
 // caller is on the same report path.
-function anchorStatesFrom(parsed, root) {
+//
+// `meter` is optional, `{bytes, entries, byteCap, entryCap}`, and is both
+// how a caller running this
+// over many records learns what the checks cost and how it bounds them: every
+// byte read is added to `meter.bytes` and every anchor examined to
+// `meter.entries`, whatever that anchor cost: a refusal spends no bytes and
+// a path walk all the same, so entries are the dimension that bounds the
+// work. Where the caller set either cap, the budget is read again before
+// each entry, so one record cannot spend ANCHOR_ENTRIES_MAX walks before a
+// caller's bound is consulted. An entry the stop skipped is a check that did
+// not happen, so it takes a row of its own marked `budgeted`, which is what
+// keeps a half-read record out of the checked-and-clean class. The meter is
+// a channel beside the answer rather than a field in it, because the rows
+// are what a report prints and a cost belongs to the pass rather than to any
+// one anchor. A caller that passes nothing meters nothing, bounds nothing,
+// and gets identical rows.
+function anchorStatesFrom(parsed, root, rawMeter) {
     try {
+        const meter = normalizeMeter(rawMeter);
         if (parsed === null || typeof parsed !== 'object' || !Array.isArray(parsed.items)) return null;
         const rootReal = anchorRootReal(root);
         if (rootReal === null) return null;
@@ -2718,7 +2903,14 @@ function anchorStatesFrom(parsed, root) {
             if (item.path === null) {
                 return { path: null, entry: item.text, recorded: null, current: null, state: 'unreadable' };
             }
-            const got = anchorEntryState(rootReal, item);
+            if (meterSpent(meter)) {
+                return {
+                    path: item.path, entry: item.text, recorded: item.sha,
+                    current: null, state: 'unreadable', budgeted: true
+                };
+            }
+            chargeEntry(meter);
+            const got = anchorEntryState(rootReal, item, meter);
             return {
                 path: item.path,
                 entry: item.text,
@@ -2730,7 +2922,7 @@ function anchorStatesFrom(parsed, root) {
         if (parsed.truncated) {
             states.push({
                 path: null,
-                entry: 'the rest of the line is unread past ' + ANCHOR_ENTRIES_MAX + ' entries',
+                entry: ANCHOR_TRUNCATED_TEXT,
                 recorded: null,
                 current: null,
                 state: 'unreadable',
@@ -2756,6 +2948,213 @@ function anchorStates(file, root) {
     } catch {
         return null;
     }
+}
+
+// One tier directory's records judged against their anchors, or null when
+// nothing in it could be checked at all.
+//
+// Null is the not-checked answer for the whole tier and is what a caller
+// prints instead of a report. Three things produce it: a null root, whose
+// usual source is an honored store pin, since a pin names a project directory
+// that says nothing about this working directory; a memory directory that is
+// there but cannot be enumerated, which this establishes itself rather than
+// inferring from a listing, because `listMemories` answers an unreadable
+// directory and an empty one with the same empty array and a tier nobody
+// could read must not report as a tier with nothing in it; and a listing that
+// cannot be walked, which is what a caller handing in something other than a
+// record list gets. A directory that is simply absent is not one of them: an
+// absent tier holds no records, which is a fact rather than a failure, and it
+// answers as checked and empty.
+//
+// `{drifted: [], unverified: [], unchecked: [], unexamined: 0}` is the
+// opposite answer, 'checked, and nothing here anchors a file that moved', and
+// no caller may conflate the two.
+//
+// Three lists and a count, because a record has more than two answers here
+// and no two of them may share a value:
+//
+//   drifted     `{name, changed, missing, unreadable}` for each record
+//               holding at least one anchor whose file changed or is gone,
+//               the paths in the record's own line order
+//   unverified  `{name, unreadable, truncated, budgeted}` for a record with
+//               no changed or missing anchor and at least one check that
+//               could not be made, split by what stopped it: `unreadable`
+//               holds the anchors nothing could examine (an entry the
+//               grammar refused, a path running through a link, a file over
+//               the read cap or one that could not be opened), `truncated`
+//               is the line cut at ANCHOR_ENTRIES_MAX, and `budgeted` holds
+//               the entries a caller's read budget stopped short of. The
+//               same three fields ride on a `drifted` row, where the drift
+//               is what the record is nominated for
+//   unchecked   `{name, cause}` for each record whose anchors could not be
+//               read at all, the cause an ANCHOR_CAUSE key: `frontmatter`
+//               for the field reader answering null (an unreadable file, an
+//               `anchors:` key under a key other than `metadata:`, a
+//               frontmatter block that opened and never closed), `root` for
+//               `anchorStatesFrom` answering null, which is about the root
+//               and not the record, and `file` for a name the directory
+//               listing holds that the caller's record listing does not,
+//               which is a record whose own file could not be examined
+//   unexamined  how many records a caller's budget stopped this from looking
+//               at at all, zero for a caller that set none
+//
+// The last three are separate answers rather than absences. A record nobody
+// could read, a record whose anchored file nobody could hash, and a record
+// this pass never reached are all records it did not verify, and a surface
+// that dropped any of them would report it as verified with nothing anywhere
+// saying otherwise. Each unchecked record carries which of the three doors
+// it came through, because the remedies differ: a record to repair, a root
+// to fix, a file to look at. Where a record has both a moved file and an unexaminable
+// one, the drift is what it is nominated for and its `unreadable` paths ride
+// on the same line.
+//
+// Each record's own field is read before the root is asked for anything. A
+// record naming no anchor is checked and clean whatever the root is, since
+// what it declares comes from its own frontmatter; asking the root first
+// would let one unusable root report every record in the tier, those that
+// anchor nothing included, as unread.
+//
+// `limits` is optional, `{records, bytes, entries}`, and is how a caller on
+// a latency budget bounds the pass: it stops before a record once it has
+// examined `records` of them, walked `entries` anchors or hashed `bytes`,
+// and the records it then never looked
+// at are counted in `unexamined` rather than dropped, since a pass that
+// stopped early and reported clean is the reading this whole surface exists
+// to prevent. The byte budget is read again before each of a record's own entries, so a
+// single record cannot spend ANCHOR_ENTRIES_MAX files against a smaller
+// cap; a record a mid-record stop cut short reports as unverified, since
+// entries nobody read are not entries that were found clean. The record
+// budget is read between records only, so a record is never half-listed.
+//
+// Both halves of the work are bounded, which takes all three dimensions:
+// `records` bounds how many records are examined, `entries` bounds how many
+// anchors are walked whatever each one costs, and `bytes` bounds how much is
+// hashed. The entry budget is the one the byte budget cannot stand in for: a
+// refusal (a file that is gone, one over the read cap, a path through a
+// link) hashes nothing while still costing a walk, so a store whose anchored
+// files have all moved would run every entry under a byte budget alone.
+//
+// What no budget here bounds is a caller's own listing: `listMemories` reads
+// every record's frontmatter before this runs, which on the largest project
+// store on this machine (105 records, 304 KB) costs 60 to 70 ms. A caller
+// with no listing of its own avoids building one by passing none at all,
+// which is the listing mode below.
+//
+// This never throws, for any input, since every caller of it is a report
+// line. `memories` is the caller's own listing (listMemories), passed in so a
+// caller that already walked the tier walks it once. A record carrying an
+// `anchors` field is judged from that parse rather than read again, which is
+// what listMemories hands over from the one read it already spends per
+// record; a record list from anywhere else carries no such field and is read
+// here.
+//
+// `null` for `memories` is the listing mode, for a caller that wants this
+// tier read and has no listing of its own to spend. The record set is then
+// the directory listing this already takes, names only, and every record's
+// anchors arrive through `readFrontmatterAnchors`. Both doors read the same
+// capped head of a record, `listMemories` included, so no record is read
+// two ways and the two modes cannot disagree about one. What this mode
+// saves is the rest of a listing's work, the per-record stat and the fields
+// this pass never asks about, which is little: on the largest project store
+// on this machine (105 records, 304 KB) the whole pass measures 60 to 70 ms
+// either way. The mode is for the caller that has no listing rather than
+// for the caller that wants a faster one.
+// Nothing is reconciled in that mode, because the listing every record came
+// from is the only one there is. A path is null on an entry the grammar refused, so the
+// `unreadable` list carries the row's own display text where there is no path
+// to name.
+function tierAnchorDrift(dir, memories, root, limits) {
+    if (root === null) return null;
+    const drifted = [];
+    const unverified = [];
+    const unchecked = [];
+    let unexamined = 0;
+    try {
+        // The directory is established here rather than inferred from the
+        // listing, for the reason the doc block above states, and its own
+        // names are kept rather than thrown away: a record whose file the
+        // caller's listing could not stat is absent from that listing while
+        // its file sits right there, and a pass that walked only the listing
+        // would report the tier as one that never held it.
+        let present = null;
+        try {
+            present = fs.readdirSync(dir)
+                .filter((f) => isMemoryFilename(f))
+                .map((f) => f.slice(0, -3));
+        } catch (err) {
+            const code = err !== null && typeof err === 'object' ? err.code : null;
+            if (code !== 'ENOENT') return null;
+        }
+        const recordCap = limits !== undefined && limits !== null
+            ? capOrNone(limits.records) : Infinity;
+        const meter = meterFor(limits);
+        // Listing mode: the tier's own names are the record set, in name
+        // order because a directory's enumeration order is not one.
+        const records = memories === null
+            ? (present === null ? [] : present.slice().sort().map((name) => ({ name })))
+            : memories;
+        const listed = new Set();
+        let examined = 0;
+        for (const m of records) {
+            listed.add(m.name);
+            if (examined >= recordCap || meterSpent(meter)) {
+                unexamined += 1;
+                continue;
+            }
+            examined += 1;
+            const parsed = m.anchors === undefined
+                ? readFrontmatterAnchors(path.join(dir, m.name + '.md'))
+                : m.anchors;
+            if (parsed === null) {
+                unchecked.push({ name: m.name, cause: 'frontmatter' });
+                continue;
+            }
+            if (parsed.items.length === 0 && !parsed.truncated) continue;
+            const states = anchorStatesFrom(parsed, root, meter);
+            if (states === null) {
+                unchecked.push({ name: m.name, cause: 'root' });
+                continue;
+            }
+            // Three ways a record can go unverified and no two of them
+            // share a bucket: an anchored file nobody could examine, a
+            // line this stopped reading at ANCHOR_ENTRIES_MAX, and an
+            // entry a read budget stopped short of. A heading that
+            // counted the last two as the first would state a fact about
+            // a file for a record whose files were never in question.
+            const changed = [];
+            const missing = [];
+            const unreadable = [];
+            const budgeted = [];
+            let truncated = false;
+            for (const st of states) {
+                if (st.state === 'changed') changed.push(st.path);
+                else if (st.state === 'missing') missing.push(st.path);
+                else if (st.truncated === true) truncated = true;
+                else if (st.budgeted === true) budgeted.push(st.path === null ? st.entry : st.path);
+                else if (st.state === 'unreadable') {
+                    unreadable.push(st.path === null ? st.entry : st.path);
+                }
+            }
+            if (changed.length > 0 || missing.length > 0) {
+                drifted.push({ name: m.name, changed, missing, unreadable, truncated, budgeted });
+            } else if (unreadable.length > 0 || truncated || budgeted.length > 0) {
+                unverified.push({ name: m.name, unreadable, truncated, budgeted });
+            }
+        }
+        // A file the directory holds under a memory name that no record in
+        // the caller's listing accounts for. The listing drops a record it
+        // could not stat, so this is where such a record is answered for,
+        // in name order because a directory's enumeration order is not one.
+        // Listing mode has no second list to disagree with, so nothing here
+        // applies to it.
+        if (memories !== null && present !== null) {
+            const lost = present.filter((name) => !listed.has(name)).sort();
+            for (const name of lost) unchecked.push({ name, cause: 'file' });
+        }
+    } catch {
+        return null;
+    }
+    return { drifted, unverified, unchecked, unexamined };
 }
 
 // The last sign of life of a memory file: the newest of its mtime (an edit
@@ -2987,8 +3386,9 @@ function supersededNaming(successors, render) {
 
 // The file-per-fact memories in a memory dir, the entries isMemoryFilename
 // admits. Name is the filename without extension, description comes from the
-// index line for that file, tags and the supersedes pointer from the file's
-// own frontmatter, read once for both. Sorted
+// index line for that file, and the tags, the supersedes pointer and the
+// anchors parse from the file's own frontmatter, read once for all three.
+// Sorted
 // ascending by name in codepoint order, so output never depends on filesystem
 // enumeration order.
 function listMemories(memDir) {
@@ -3006,16 +3406,29 @@ function listMemories(memDir) {
         try { st = fs.statSync(path.join(memDir, f)); } catch { /* unreadable: skip */ }
         if (!st || !st.isFile()) continue;
         // One read per record answers every frontmatter question this listing
-        // carries. A file that cannot be read is still a record, and still
-        // occupies its name; what it loses is the fields, which is what a
-        // record with no frontmatter block has anyway.
+        // carries, and it is the same capped head `readFrontmatterAnchors`
+        // takes, because both doors answer the same question about the same
+        // record: a whole-file read here would let a wide record parse for
+        // one caller and read as unclosed for the other, and the two
+        // surfaces would contradict each other about one tier. Every field
+        // taken from this text is a frontmatter field, so nothing past the
+        // head was ever read for. A file that cannot be read is still a
+        // record, and still occupies its name; what it loses is the fields,
+        // which is what a record with no frontmatter block has anyway.
         let raw = null;
-        try { raw = fs.readFileSync(path.join(memDir, f), 'utf8'); } catch { /* fields absent */ }
+        try { raw = readHead(path.join(memDir, f), FRONTMATTER_READ_CAP); } catch { /* fields absent */ }
         memories.push({
             name: f.slice(0, -3),
             description: descriptions.get(f) || '',
             tags: raw === null ? [] : frontmatterTags(frontmatterValue(raw, 'tags')),
-            supersedes: raw === null ? null : supersedesName(frontmatterValue(raw, 'supersedes'))
+            supersedes: raw === null ? null : supersedesName(frontmatterValue(raw, 'supersedes')),
+            // The record's anchors as this one read saw them, null for a
+            // record whose text or frontmatter said nothing this can read.
+            // It is the parse rather than the text: a drift pass over a whole
+            // tier needs the entries and nothing else, and carrying the
+            // bodies instead would hold every record of the tier in memory
+            // for a field that is one bounded line.
+            anchors: raw === null ? null : frontmatterAnchors(raw)
         });
     }
     memories.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
@@ -4069,10 +4482,14 @@ function digestFenceLine(pinShown, typeShown, operatorShown) {
 // sanitization would destroy it; the fence, not the charset, is the control.
 // Every tier is capped all the same, with a note, so one oversized file
 // cannot flood the context reading it.
-function printMemoryBody(file, fence) {
+function printMemoryBody(file, fence, read) {
     let body = null;
     try {
         body = fs.readFileSync(file, 'utf8');
+        // The text goes back to the caller where one asked for it, so a
+        // caller that needs the record's own frontmatter after the body has
+        // printed reads the file once rather than twice.
+        if (read !== undefined && read !== null) read.raw = body;
     } catch (err) {
         if (err && err.code === 'ENOENT') return 'absent';
         process.stderr.write('memq: could not read memory \''
@@ -4134,6 +4551,152 @@ function stampRead(tierDir, file) {
     } catch { /* the body is already served; a lost stamp never fails the read */ }
 }
 
+// Why a record went unchecked, in one spelling per cause, because the scan
+// and `get` answer the same question about the same record and a reader
+// comparing them must not meet two accounts of one fact.
+//
+// Two of the three reach both surfaces. `file` is the scan's alone and
+// structurally so: it is a record the tier listing holds and could not
+// stat, which only a pass over a whole tier can notice, while `get` is
+// reached only after a record's body has been read and printed, so a record
+// it could not read is a record it never gets to report on.
+const ANCHOR_CAUSE = {
+    frontmatter: 'this record\'s frontmatter could not be read',
+    root: 'this project\'s root could not be examined',
+    file: 'this record\'s file could not be examined'
+};
+
+// Why a whole tier went unchecked, in one spelling per cause, for the same
+// reason: `get`, the digest's coverage line and the scan's drift block all
+// state these, and a reader comparing two of them must meet one account.
+//
+// A pin is not a fault. It names the project store this session reads,
+// which says nothing about the directory the session was launched in, so
+// no root is derived and no anchor path has anything to resolve against.
+// The other covers every remaining way a tier-wide pass answers nothing, a
+// listing that failed and a walk that threw alike, and it names the tier
+// rather than the listing because a reader handed the listing as the cause
+// would be handed a cause the pass never established.
+const ANCHOR_ROOTLESS_PIN = 'a store pin is in effect, so no root is derived'
+    + ' from this working directory';
+const ANCHOR_TIER_UNEXAMINED = 'this tier could not be examined';
+
+// What a coverage line says about a tier whose anchors this digest never
+// resolves. It is the same fact `get` states per record, in the same words
+// after the subject: an anchor is a path under a project root at the bytes
+// that root held, and a tier written by other projects and synced across
+// machines has no root here to resolve one against. Without the clause a
+// shared tier's line reads exactly like a project line that was checked and
+// found fresh.
+const SHARED_TIER_ANCHOR_TAIL = 'anchors do not resolve against this project\'s root';
+const SHARED_TIER_ANCHOR_CLAUSE = ', anchors not checked (a shared tier\'s '
+    + SHARED_TIER_ANCHOR_TAIL + ')';
+
+
+// One anchor's state as `get` states it, without the leading label:
+//
+//   <path> fresh
+//   <path> changed (recorded <sha7>, now <sha7>)
+//   <path> missing
+//   <path> unreadable
+//
+// and, for the row standing for a line cut at ANCHOR_ENTRIES_MAX, a sentence
+// of its own:
+//
+//   the rest of the line is unread past <n> entries, so those anchors were not checked
+//
+// That row gets a sentence rather than the shape above because its `entry` is
+// already a sentence, and suffixing a state word to one reads as though
+// 'unreadable' were a file's condition rather than the pass's.
+//
+// A row the grammar refused carries no path at all, so it prints the row's
+// own `entry` text, which parseAnchors has already reduced to what may be
+// shown and named the reduction on. A path that parsed is printed as the
+// record wrote it, never through `sanitize`: the grammar admits visible
+// non-ASCII, and the reduction that strips it would name a different file.
+//
+// The recorded and current hashes ride only on `changed`, the one state where
+// both exist and the difference is what the line is about; seven characters
+// is the length git itself abbreviates to.
+function anchorStateText(state) {
+    if (state.truncated === true) return state.entry + ', so those anchors were not checked';
+    const shown = state.path === null ? state.entry : state.path;
+    if (state.state === 'changed') {
+        return shown + ' changed (recorded ' + state.recorded.slice(0, 7)
+            + ', now ' + state.current.slice(0, 7) + ')';
+    }
+    return shown + ' ' + state.state;
+}
+
+// The `anchors:` lines `get` prints under a record's body: one per anchor, or
+// one line saying the record could not be checked and which cause it was.
+//
+// A record that names no anchor prints nothing, and '' is that answer. That
+// is a checked answer rather than a withheld one: what the record declares is
+// read from its own frontmatter, which no root is needed for, so a record
+// naming nothing has nothing left unverified whatever the store's shape. The
+// order matters for exactly that reason. Reading the field first is what
+// keeps every body served under a store pin from carrying a not-checked line
+// about anchors the record does not have.
+//
+// The causes are told apart rather than merged, because the remedies differ
+// and none of them is 'the anchors are fine': a pin is a fact about the
+// session's working directory (it resolves the store from an instance name
+// and says nothing about cwd), a root that cannot be examined is a fact about
+// the filesystem, and an unreadable record is a fact about the record's own
+// frontmatter, which covers a file that could not be read, an `anchors:` key
+// under a key other than `metadata:`, and a frontmatter block that opened and
+// never closed. Each prints in place of the per-anchor lines, so no reader of
+// this surface takes silence for a clean check on a record that declared
+// anchors.
+//
+// A shared tier's record is never checked here, whatever it declares. An
+// anchor is a path under a project root at the bytes that root held, and the
+// type and operator tiers have no root: they are written by other projects
+// and synced across machines, so resolving one of their paths against this
+// session's working directory would state a verdict about a repository the
+// record was never about. That is the same reason `find` carries no label at
+// all. Such a record gets one fixed sentence when it declares an anchor and
+// nothing when it declares none, and the sentence carries no text from the
+// record: these lines sit at column zero on stdout, outside the provenance
+// fence the body printed under, which is memq's own voice, and a path from a
+// tier any project on the machine can write is not memq's voice.
+//
+// `raw` is the record's text where the caller already read it, which spares
+// this a second read of a file just printed; without it the record is read
+// here.
+function anchorReport(file, raw, sharedTier) {
+    const parsed = typeof raw === 'string' ? frontmatterAnchors(raw) : readFrontmatterAnchors(file);
+    if (sharedTier) {
+        // A record whose frontmatter could not be read is on this branch too:
+        // what it declares is unknown, so the honest answer is the one that
+        // says nothing was checked, and it is the same sentence either way
+        // because the tier is reason enough on its own.
+        return parsed === null || parsed.items.length > 0 || parsed.truncated
+            ? 'anchors: not checked (this record is on a shared tier, whose '
+                + SHARED_TIER_ANCHOR_TAIL + ')\n'
+            : '';
+    }
+    if (parsed === null) {
+        return 'anchors: not checked (' + ANCHOR_CAUSE.frontmatter + ')\n';
+    }
+    if (parsed.items.length === 0 && !parsed.truncated) return '';
+    const root = anchorRoot(process.cwd());
+    if (root === null) {
+        return 'anchors: not checked (' + ANCHOR_ROOTLESS_PIN + ')\n';
+    }
+    const states = anchorStatesFrom(parsed, root);
+    // The parse is already known good here, so a null is about the root: one
+    // that is not an existing directory this process can examine, or one whose
+    // examination threw, which that reader catches and answers null for too.
+    // Both are one fact to a reader of this line and one remedy, so they take
+    // one sentence.
+    if (states === null) {
+        return 'anchors: not checked (' + ANCHOR_CAUSE.root + ')\n';
+    }
+    return states.map((s) => 'anchors: ' + anchorStateText(s) + '\n').join('');
+}
+
 // memq get: the full record behind a find line. Precedence on a name
 // collision: a journal key wins (keys are the primary namespace `get`
 // serves), then this run's pending memory, then a project-tier memory, then
@@ -4144,7 +4707,15 @@ function stampRead(tierDir, file) {
 // record of that name always wins. A pending body prints raw, the project
 // tier's posture: it is this run's own writing, not another project's.
 //
-// A hit on a tier the session owns is the pure body on stdout; a type-tier or
+// A record's own `anchors:` states follow its body on stdout, one line per
+// anchor, or one line naming why they could not be checked (anchorReport
+// above). The project and pending rungs are checked; a shared tier's rung is
+// not, and a record of one that declares an anchor says so in a fixed
+// sentence, because an anchor names a path under a project root and those
+// tiers have none of this session's.
+//
+// A hit on a tier the session owns is the body on stdout, followed by those
+// anchor lines; a type-tier or
 // operator-tier hit, and a project-tier hit under a store pin, print inside
 // printMemoryBody's provenance fence, on stdout with the body they frame,
 // because a marker on a different stream would fence nothing. An
@@ -4222,28 +4793,31 @@ function cmdGet(argv) {
         if (pendingDir !== null) {
             rungs.push({
                 dir: pendingDir, fence: null, stampDir: pendingDir,
-                retiredIn: null, supersedesIn: null
+                retiredIn: null, supersedesIn: null, sharedTier: false
             });
         }
         rungs.push({
             dir: memDir, fence: projectFence, stampDir: memDir,
-            retiredIn: null, supersedesIn: memDir
+            retiredIn: null, supersedesIn: memDir, sharedTier: false
         });
         if (typed !== null) {
             rungs.push({
                 dir: typed.dir, fence: typeFenceLine(typed.type),
-                stampDir: typed.dir, retiredIn: null, supersedesIn: typed.dir
+                stampDir: typed.dir, retiredIn: null, supersedesIn: typed.dir,
+                sharedTier: true
             });
         }
         if (operator !== null) {
             rungs.push({
                 dir: operator, fence: operatorFenceLine(),
-                stampDir: operator, retiredIn: null, supersedesIn: operator
+                stampDir: operator, retiredIn: null, supersedesIn: operator,
+                sharedTier: true
             });
         }
         rungs.push({
             dir: path.join(memDir, ARCHIVE_DIR), fence: projectFence,
-            stampDir: memDir, retiredIn: 'the project tier', supersedesIn: memDir
+            stampDir: memDir, retiredIn: 'the project tier', supersedesIn: memDir,
+            sharedTier: false
         });
         if (typed !== null) {
             // A retired body keeps the provenance fence a live one gets: the
@@ -4251,19 +4825,30 @@ function cmdGet(argv) {
             // change.
             rungs.push({
                 dir: path.join(typed.dir, ARCHIVE_DIR), fence: typeFenceLine(typed.type),
-                stampDir: typed.dir, retiredIn: 'the type tier', supersedesIn: typed.dir
+                stampDir: typed.dir, retiredIn: 'the type tier', supersedesIn: typed.dir,
+                sharedTier: true
             });
         }
         if (operator !== null) {
             rungs.push({
                 dir: path.join(operator, ARCHIVE_DIR), fence: operatorFenceLine(),
-                stampDir: operator, retiredIn: 'the operator tier', supersedesIn: operator
+                stampDir: operator, retiredIn: 'the operator tier', supersedesIn: operator,
+                sharedTier: true
             });
         }
         for (const rung of rungs) {
-            const shown = printMemoryBody(path.join(rung.dir, file), rung.fence);
+            const read = {};
+            const shown = printMemoryBody(path.join(rung.dir, file), rung.fence, read);
             if (shown === 'absent') continue;
             if (shown === 'printed') {
+                // The anchors report follows the body on the same stream, at
+                // column zero: it is memq's own words about the record, the
+                // place a fenced body's truncation note already speaks from,
+                // and it names files the reader is being told to go and check
+                // rather than a fact about the fetch. It is built from the
+                // text the body was printed from, so the record is read once.
+                process.stdout.write(anchorReport(path.join(rung.dir, file), read.raw,
+                    rung.sharedTier));
                 // The retirement note follows the body rather than leading it,
                 // because until printMemoryBody returns there is no knowing
                 // whether there is a body to describe. It rides stderr because
@@ -4576,6 +5161,15 @@ function recallDigest(surfaces, maxLines) {
 //     (pinned, the same shape indented under the fence above)
 //   pending  <name>  applied <n>d distinct|never|unknown  alive <age>
 //
+// And what the archive line says. A retired record keeps its `anchors:`
+// line when `decay-prune --archive` moves it, and the drift pass walks the
+// live tier only, so nothing here ever resolved one of those paths. Without
+// the clause an archive line reads exactly like a project line that was
+// checked and found fresh, which is the whole reading this surface exists
+// to prevent.
+const ARCHIVE_ANCHOR_CLAUSE = ', anchors not checked (this digest does not check'
+    + ' retired records)';
+
 // A record a live record of its own tier supersedes carries a
 // 'superseded by <name>' label after its alive column, and a fan-in names its
 // live successors in name order, up to SUPERSEDED_SHOWN with the rest
@@ -4584,6 +5178,18 @@ function recallDigest(surfaces, maxLines) {
 // that name rather than the retired file. The label is read from the
 // successors' frontmatter at digest time, the same per-record read
 // listMemories spends on tags, so no index line anywhere carries it.
+//
+// A live project-tier record anchoring a file that changed or is gone carries
+// a '[drift]' token in that same slot, after the supersession label where a
+// record has both, and one this pass could not verify carries '[drift?]'. The
+// check runs once per invocation over that tier alone. Where it could not run
+// at all, which is a store pin (no root resolves from this working directory)
+// or a tier that could not be examined, no line carries a token and the
+// project tier's coverage line names which of the two it was, so an
+// unlabeled digest is never read as a checked one. A record the tier holds
+// and the listing could not stat has no line here at all, and that same
+// coverage line counts it with its cause for the same reason. The shared tiers and the pending tier are
+// never checked at all, and their coverage lines say so for the same reason.
 //
 // The pending block is present only inside a run, and it holds the records
 // of the one directory this process's own run id resolves: no other run's
@@ -4668,6 +5274,29 @@ function cmdRecall(argv) {
     // that record's tags, and the index lines are untouched by any of it.
     const projectMemories = listMemories(memDir);
     const projectSupersedes = supersededSuccessors(projectMemories);
+    // Anchor drift for the project tier, checked once for the whole digest
+    // and shown as a token in the slot the supersession label uses. The two
+    // are separate facts about a record and both may ride: a record can be
+    // replaced and anchor a file that moved.
+    //
+    // Only this tier's live records are checked: an anchor resolves against
+    // the project root, which the shared tiers have no relationship to, and a
+    // retired record is nominated by nothing. Under a store pin there is no
+    // root at all, so the check is skipped and no line carries a token, since
+    // resolving these records' paths against a working directory the pin says
+    // nothing about would report every anchored file in the store as deleted.
+    //
+    // '[drift?]' is the record this pass could not verify: its frontmatter
+    // could not be read at all, or an anchor it names could not be examined.
+    // It is a distinct token rather than silence, because neither of those is
+    // a record whose anchors are fresh, and this digest is where an effort's
+    // first read of the tier happens.
+    const projectRoot = anchorRoot(process.cwd());
+    const projectDrift = tierAnchorDrift(memDir, projectMemories, projectRoot);
+    const driftedNames = new Set(projectDrift === null ? [] : projectDrift.drifted.map((r) => r.name));
+    const uncheckedAnchors = new Set(projectDrift === null ? []
+        : projectDrift.unchecked.map((u) => u.name)
+            .concat(projectDrift.unverified.map((r) => r.name)));
     // A project line always carries its description, whether pinned or not:
     // this digest is the only place a reader sees these records, and a bare
     // name is little to judge a memory by. It rides last, where a journal
@@ -4677,15 +5306,43 @@ function cmdRecall(argv) {
     // reduces to '', and one written as spaces survives the reduction intact,
     // so testing the raw string would let either through as a trailing
     // separator with nothing legible after it.
-    const projectLines = recallTierRecords(memDir, projectTally, projectMemories)
+    const projectRecords = recallTierRecords(memDir, projectTally, projectMemories);
+    const projectLines = projectRecords
         .map((r) => {
             const desc = sanitize(r.description, SUMMARY_CAP).trim();
             return projectIndent + 'project  ' + sanitize(r.name, NAME_CAP)
                 + '  ' + recallAppliedColumn(r.applied, projectUnread)
                 + '  alive ' + recallAgeColumn(r.aliveMs, now)
                 + supersededLabel(projectSupersedes, r.name, false)
+                + (driftedNames.has(r.name) ? '  [drift]'
+                    : uncheckedAnchors.has(r.name) ? '  [drift?]' : '')
                 + (desc === '' ? '' : '  ' + desc);
         });
+    // A record the tier holds and this listing could not stat has no line
+    // here to carry a token: the listing dropped it, and every reader of
+    // this digest below reads that as a tier of one record fewer. So the
+    // tier's own line answers for it, counted and with its cause, because a
+    // digest that showed the records it could list and said nothing about
+    // the one it could not is a clean report of a tier it did not read.
+    const shownNames = new Set(projectRecords.map((r) => r.name));
+    const unlisted = projectDrift === null ? []
+        : projectDrift.unchecked.filter((u) => !shownNames.has(u.name));
+    const unlistedCauses = Array.from(new Set(unlisted.map((u) => ANCHOR_CAUSE[u.cause])))
+        .sort();
+    // What the coverage line says when no token could be earned. A digest
+    // whose lines all read as unlabeled, with nothing saying the check never
+    // ran, is a clean report of an unchecked tier, so the tier's own line
+    // carries the answer the tokens cannot. A tier holding no record earns
+    // no clause at all, the gate every sibling clause on this line takes:
+    // there is nothing there for a not-checked claim to be about.
+    const driftClause = projectDrift === null
+        ? (projectLines.length === 0 ? ''
+            : ', anchors not checked ('
+                + (projectRoot === null ? ANCHOR_ROOTLESS_PIN : ANCHOR_TIER_UNEXAMINED)
+                + ')')
+        : unlisted.length === 0 ? ''
+            : ', plus ' + unlisted.length + ' this digest could not list, anchors not'
+                + ' checked (' + unlistedCauses.join('; ') + ')';
 
     const typed = typedTierOrNull(process.cwd());
     let typeCoverage;
@@ -4704,7 +5361,8 @@ function cmdRecall(argv) {
                 + '  alive ' + recallAgeColumn(r.aliveMs, now)
                 + supersededLabel(typeSupersedes, r.name, false));
         typeCoverage = 'type tier (' + sanitize(typed.type, TYPE_CAP) + '): '
-            + typeLines.length + ' record' + (typeLines.length === 1 ? '' : 's');
+            + typeLines.length + ' record' + (typeLines.length === 1 ? '' : 's')
+            + (typeLines.length > 0 ? SHARED_TIER_ANCHOR_CLAUSE : '');
     } else {
         // The coverage line is a claim, so the two states typedTierOrNull
         // merges for routing are told apart here: a project that declared a
@@ -4739,7 +5397,8 @@ function cmdRecall(argv) {
                 + '  alive ' + recallAgeColumn(r.aliveMs, now)
                 + supersededLabel(operatorSupersedes, r.name, false));
         operatorCoverage = 'operator tier: ' + operatorLines.length + ' record'
-            + (operatorLines.length === 1 ? '' : 's');
+            + (operatorLines.length === 1 ? '' : 's')
+            + (operatorLines.length > 0 ? SHARED_TIER_ANCHOR_CLAUSE : '');
     }
 
     // Both tiers' retirements, ordered as one surface. Descriptions are
@@ -4799,7 +5458,8 @@ function cmdRecall(argv) {
         },
         archive: {
             coverage: 'archive: ' + archiveLines.length + ' record'
-                + (archiveLines.length === 1 ? '' : 's'),
+                + (archiveLines.length === 1 ? '' : 's')
+                + (archiveLines.length > 0 ? ARCHIVE_ANCHOR_CLAUSE : ''),
             lines: archiveLines,
             narrow: archiveNarrow
         },
@@ -4813,7 +5473,8 @@ function cmdRecall(argv) {
             coverage: 'project tier: ' + projectLines.length + ' record'
                 + (projectLines.length === 1 ? '' : 's')
                 + (pinned === null ? ''
-                    : ', the pinned tier this instance shares'),
+                    : ', the pinned tier this instance shares')
+                + driftClause,
             lines: projectLines,
             narrow: reach
         }
@@ -4834,7 +5495,9 @@ function cmdRecall(argv) {
         surfaces.pending = {
             coverage: 'pending tier (' + sanitize(runIdOrNull(), STORE_SEGMENT_CAP) + '): '
                 + pendingLines.length + ' record' + (pendingLines.length === 1 ? '' : 's')
-                + ', awaiting adjudication',
+                + ', awaiting adjudication'
+                + (pendingLines.length > 0
+                    ? ', anchors not checked (this digest checks the project tier only)' : ''),
             lines: pendingLines,
             narrow: reach
         };
@@ -6191,6 +6854,24 @@ function cmdAnchor(argv) {
 //   memq: pinned: <n> memories exempt from decay
 //   memq: pinned  <name>  idle <n>d  (same evidence fields)
 //
+// and the drift block, over the project tier's live records:
+//
+//   memq: anchor drift (project tier): <n> memories anchoring a file that changed or is gone
+//   memq: drift  <name>  changed: <path>, <path>  missing: <path>
+//   memq: drift  <name>  unreadable: <path>
+//   memq: drift  <name>  not checked (<why>)
+//
+// where <why> is one of ANCHOR_CAUSE's three: the record's frontmatter
+// could not be read, the project's root could not be examined, or the
+// record's own file could not be examined. The block says 'no anchor drift'
+// where there is none, and says the tier went unchecked where a store pin
+// left no root to resolve against or the tier itself could not be examined.
+// A drift line is a nomination like every other
+// line here and is acted on by no `decay-prune` flag: a changed file makes a
+// memory unverified rather than wrong, and a pinned record is listed among
+// them, since a pin exempts a record from retirement and not from being
+// unverified.
+//
 // An evidence field the scan could not determine reads 'unknown': a tier
 // whose sidecar could not be read has no applied or read evidence to state,
 // and a file time no arithmetic can trust has no date.
@@ -6272,7 +6953,7 @@ function cmdAnchor(argv) {
 // goes unreadable is a standing exemption nobody can review. Its evidence
 // columns read 'unknown' rather than 'never', because the tier's stamps were
 // not read and a line that says otherwise is a claim the scan cannot make.
-function tierDecayCandidates(dir, label, now, usage, summarize, archive, pinned) {
+function tierDecayCandidates(dir, label, now, usage, summarize, archive, pinned, memories) {
     const stamps = usage.stamps;
     const evidenceUnread = usage.status === 'unreadable';
     // Applied evidence comes from the shared tally, the same computation
@@ -6282,9 +6963,12 @@ function tierDecayCandidates(dir, label, now, usage, summarize, archive, pinned)
     // is decided on the parsed time, never a lexical string compare, so two
     // valid spellings of one moment cannot disagree about which is later.
     const appliedByFile = appliedTally(stamps);
-    // One listing of the tier serves both the walk below and the inverse of
-    // its records' pointers, so no record is opened twice in a scan.
-    const memories = listMemories(dir);
+    // The caller's one listing of the tier serves the walk below, the inverse
+    // of its records' pointers, and whatever else that scan does with the
+    // same tier, so no record is opened twice for the listing's sake. The
+    // walk below still opens a record again where it needs a field the
+    // listing does not carry: `readFrontmatterCreated` for the created date
+    // and `pinState` for the pin each read the file themselves.
     const supersedes = supersededSuccessors(memories);
     // Keyed by memoryFileKey like the tally, because the lookups below use
     // that derivation: a raw key would drop a synced mixed-case read from
@@ -6459,6 +7143,128 @@ function usageEvidenceLine(usage, tag) {
     process.stderr.write('memq: usage evidence: ' + body + tag + '\n');
 }
 
+// The paths on one drift line, capped with the remainder counted, the rule
+// every other enumeration here follows. Exactly two kinds of text arrive
+// here, and neither goes through `sanitize`, whose printable-ASCII reduction
+// would name a different file for a repository with non-English filenames.
+// Every list a drift line carries arrives through this one function, the
+// changed, the missing, the unreadable and the entries a read budget
+// stopped short of alike, so the bounding argument below covers all four.
+// What does not pass through here is the fixed words around those lists,
+// this file's own: the label ahead of each list, and the sentence saying a
+// line was cut at ANCHOR_ENTRIES_MAX, which names a count and no path.
+//
+// A path the grammar admitted is printed as the record wrote it: `parseAnchors`
+// admits no whitespace, no invisible character, no comma, and at most
+// ANCHOR_PATH_CAP characters, so it is bounded and unambiguous in a
+// comma-separated list by construction.
+//
+// A row the grammar refused carries its display text instead, which is
+// `anchorRefusalText` output: that is what strips the invisible and
+// whitespace classes and names the reduction, and it is bounded at
+// ANCHOR_ENTRY_CAP plus its own bracketed note. So it is safe to print
+// because of that reduction rather than because of the grammar, and it can
+// carry spaces and brackets, which is why a reader of one of these lines sees
+// a bracketed fault where a path would otherwise be.
+function driftPathList(paths) {
+    const shown = paths.slice(0, DRIFT_PATHS_SHOWN);
+    return shown.join(', ')
+        + (paths.length > shown.length ? ', and ' + (paths.length - shown.length) + ' more' : '');
+}
+
+// The scan's drift block, as the text it writes to stderr.
+//
+// It rides stderr for the pinned block's reason: stdout is the candidate list
+// a pass acts on, and no `decay-prune` flag acts on a drift line. Drift
+// nominates and never retires. A changed file does not make a memory wrong,
+// it makes it unverified, and the remedies are to re-read the file and then
+// re-anchor, supersede, or correct the record.
+//
+// The block covers the project tier's live records and says so in its
+// heading, since a reader who took it for the whole store would read silence
+// about the shared tiers as a clean answer about them.
+//
+// More states than two, and the block never lets one stand in for another.
+// `drift` being null is 'not checked' for the whole tier, and it says so
+// rather than printing an empty block a reader would take for a clean store.
+// `rootless` is what tells the two causes of that answer apart: with no root
+// the usual reason is an honored store pin, and with one the tier itself
+// could not be examined, which is the wording because a listing that failed
+// and a walk that threw both arrive here and only the first is a listing.
+// An empty report is the scan's no-candidates wording. Otherwise the population is counted and then listed,
+// the pinned block's shape, with pinned records among them (a pin exempts a
+// record from retirement, not from being unverified) and with the records
+// this pass could not verify listed beside the ones that drifted, each named
+// for what stopped the check. Four such causes reach this, and the heading
+// counts each in words true of it: an anchored file nothing could examine,
+// an anchors line cut at ANCHOR_ENTRIES_MAX, an entry a read budget stopped
+// short of, and a record whose anchors could not be read at all, which is
+// itself three doors ANCHOR_CAUSE tells apart on the record's own line.
+// The first three are counted over every record this block prints, drifted
+// and unverified alike, because a drifted record carries those same three
+// fields: a heading counted over one list while the lines came from two
+// would have a reader counting one population and reading another.
+function driftBlock(drift, rootless) {
+    if (drift === null) {
+        return 'memq: anchor drift (project tier): not checked ('
+            + (rootless ? ANCHOR_ROOTLESS_PIN : ANCHOR_TIER_UNEXAMINED)
+            + ')\n';
+    }
+    const counts = [];
+    if (drift.drifted.length > 0) {
+        counts.push(drift.drifted.length + ' memor' + (drift.drifted.length === 1 ? 'y' : 'ies')
+            + ' anchoring a file that changed or is gone');
+    }
+    // One clause per reason a record went unverified, each counted over the
+    // records that reason applies to. A record stopped two ways is counted
+    // in both, which is what its line shows.
+    const printed = drift.drifted.concat(drift.unverified);
+    const listLength = (value) => (Array.isArray(value) ? value.length : 0);
+    const unexaminable = printed.filter((r) => listLength(r.unreadable) > 0).length;
+    const cut = printed.filter((r) => r.truncated === true).length;
+    const stopped = printed.filter((r) => listLength(r.budgeted) > 0).length;
+    if (unexaminable > 0) {
+        counts.push(unexaminable + ' record' + (unexaminable === 1 ? '' : 's')
+            + ' whose anchored file could not be examined');
+    }
+    if (cut > 0) {
+        counts.push(cut + ' record' + (cut === 1 ? '' : 's')
+            + ' where ' + ANCHOR_TRUNCATED_TEXT);
+    }
+    if (stopped > 0) {
+        counts.push(stopped + ' record' + (stopped === 1 ? '' : 's')
+            + ' with an anchor a read budget stopped this pass short of');
+    }
+    if (drift.unchecked.length > 0) {
+        counts.push(drift.unchecked.length + ' record' + (drift.unchecked.length === 1 ? '' : 's')
+            + ' whose anchors could not be read');
+    }
+    if (drift.unexamined > 0) {
+        counts.push(drift.unexamined + ' record' + (drift.unexamined === 1 ? '' : 's')
+            + ' a read budget stopped this pass short of');
+    }
+    if (counts.length === 0) return 'memq: no anchor drift (project tier)\n';
+    const shownRecords = printed.slice(0, DRIFT_SHOWN);
+    const shownUnchecked = drift.unchecked.slice(0, DRIFT_SHOWN);
+    return 'memq: anchor drift (project tier): ' + counts.join(', ') + '\n'
+        + shownRecords.map((r) => 'memq: drift  ' + sanitize(r.name, NAME_CAP)
+            + (r.changed !== undefined && r.changed.length > 0
+                ? '  changed: ' + driftPathList(r.changed) : '')
+            + (r.missing !== undefined && r.missing.length > 0
+                ? '  missing: ' + driftPathList(r.missing) : '')
+            + (r.unreadable.length > 0 ? '  unreadable: ' + driftPathList(r.unreadable) : '')
+            + (r.truncated === true ? '  ' + ANCHOR_TRUNCATED_TEXT : '')
+            + (r.budgeted.length > 0 ? '  budget stopped: ' + driftPathList(r.budgeted) : '')
+            + '\n').join('')
+        + (printed.length > shownRecords.length
+            ? 'memq: drift  ... and ' + (printed.length - shownRecords.length) + ' more\n' : '')
+        + shownUnchecked.map((u) => 'memq: drift  ' + sanitize(u.name, NAME_CAP)
+            + '  not checked (' + ANCHOR_CAUSE[u.cause] + ')\n').join('')
+        + (drift.unchecked.length > shownUnchecked.length
+            ? 'memq: drift  ... and ' + (drift.unchecked.length - shownUnchecked.length)
+                + ' more not checked\n' : '');
+}
+
 function cmdDecayScan(argv) {
     if (argv.length > 0) return usage('decay-scan takes no arguments');
     const memDir = readMemDirOrNote();
@@ -6470,24 +7276,30 @@ function cmdDecayScan(argv) {
     // candidates inside the walk (nominating on a zero the scan knows is
     // false is the failure it guards) while its pinned memories are still
     // listed, since a pin is read from the memory file and owes the sidecar
-    // nothing.
+    // nothing. Each tier is listed once here and the listing is handed to
+    // every part of this pass that reads that tier, the drift check
+    // included, so no record is opened twice for the listing's sake.
     const summarize = [];
     const archive = [];
     const pinned = [];
+    const projectMemories = listMemories(memDir);
     const projectUsage = readUsage(memDir);
     usageEvidenceLine(projectUsage, '');
-    tierDecayCandidates(memDir, '', now, projectUsage, summarize, archive, pinned);
+    tierDecayCandidates(memDir, '', now, projectUsage, summarize, archive, pinned,
+        projectMemories);
     const typed = typedTierOrNull(process.cwd());
     if (typed !== null) {
         const typeUsage = readUsage(typed.dir);
         usageEvidenceLine(typeUsage, '  (type:' + sanitize(typed.type, TYPE_CAP) + ')');
-        tierDecayCandidates(typed.dir, typed.type, now, typeUsage, summarize, archive, pinned);
+        tierDecayCandidates(typed.dir, typed.type, now, typeUsage, summarize, archive, pinned,
+            listMemories(typed.dir));
     }
     const operator = operatorTierOrNull();
     if (operator !== null) {
         const operatorUsage = readUsage(operator);
         usageEvidenceLine(operatorUsage, '  (operator)');
-        tierDecayCandidates(operator, OPERATOR_LABEL, now, operatorUsage, summarize, archive, pinned);
+        tierDecayCandidates(operator, OPERATOR_LABEL, now, operatorUsage, summarize, archive,
+            pinned, listMemories(operator));
     }
 
     // The pinned population, counted and then listed, on every scan that
@@ -6536,6 +7348,16 @@ function cmdDecayScan(argv) {
                 + ' awaiting adjudication, exempt from decay\n');
         }
     }
+
+    // Anchor drift, over the project tier's live records alone: an anchor
+    // resolves against the project root, which the shared tiers have no
+    // relationship to, and a retired record is nominated by nothing. It runs
+    // off the listing taken above rather than a second one, and hashes only
+    // the paths a record anchors, so a store holding no anchors costs this
+    // block the frontmatter that listing already read and nothing else.
+    const anchorsRoot = anchorRoot(process.cwd());
+    process.stderr.write(driftBlock(
+        tierAnchorDrift(memDir, projectMemories, anchorsRoot), anchorsRoot === null));
 
     // Journal entries past the rollup age, tallied per key with the evidence
     // range. An entry whose timestamp does not parse has no age, so it is
@@ -10609,9 +11431,12 @@ module.exports = {
     ANCHOR_ENTRIES_MAX,
     ANCHOR_READ_CAP,
     ANCHOR_ENTRY_CAP,
+    ANCHOR_TRUNCATED_TEXT,
     anchorStatesFrom,
     anchorStates,
     anchorRoot,
+    tierAnchorDrift,
+    driftBlock,
     pinState,
     FRONTMATTER_INDENTED,
     FRONTMATTER_UNREADABLE,

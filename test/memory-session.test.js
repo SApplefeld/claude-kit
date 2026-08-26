@@ -2348,3 +2348,338 @@ test('the embedder nudge carries no store-controlled text: only the fixed remedy
         try { fs.rmSync(embedderRoot, { recursive: true, force: true }); } catch { /* best effort */ }
     }
 });
+
+// The git blob SHA of the six bytes `hello\n`, spelled rather than derived so
+// the fixture holds a recorded value no implementation detail can move, and a
+// second value no file here hashes to.
+const HELLO_SHA = 'ce013625030ba8dba906f756967f9e9ca394464a';
+const OTHER_SHA = 'b'.repeat(40);
+
+function writeMemory(store, name, contents) {
+    fs.mkdirSync(store.memDir, { recursive: true });
+    fs.writeFileSync(path.join(store.memDir, name), contents, 'utf8');
+}
+
+test('the drift line counts the project memories anchoring a changed file, and is silent otherwise', () => {
+    const store = makeStore();
+    try {
+        // The anchored tree is the project cwd, which is the root memq
+        // derives without a store pin.
+        fs.writeFileSync(path.join(store.proj, 'a.js'), Buffer.from('hello\n', 'latin1'));
+
+        // Zero first, and it is an anchored record rather than an empty
+        // store: the silence below is the count being zero, not the check
+        // never running.
+        writeMemory(store, 'fresh.md', '---\nname: ""\nanchors: a.js@' + HELLO_SHA + '\n---\n\n# f\n');
+        assertOnlyProjectMemory(runHook(store, startupPayload(store)));
+
+        // One: the file no longer hashes to what the record wrote down.
+        writeMemory(store, 'drifted.md', '---\nname: ""\nanchors: a.js@' + OTHER_SHA + '\n---\n\n# d\n');
+        const one = assertBlock(runHook(store, startupPayload(store)));
+        const line = blockStarting(one, '1 project memory');
+        assert.strictEqual(line, '1 project memory anchors a file that has changed since it was '
+            + 'written; memq decay-scan lists it.');
+        assert.ok(!line.includes('drifted'), 'the count is the only store-derived value on the line');
+        assert.deepStrictEqual(blocksOf(one).map((b) => b.split(':')[0]),
+            ['Kit project memory', line], 'the line follows the project index block');
+
+        // Two, an anchored file that is gone rather than changed, so both
+        // drifted states reach the count.
+        writeMemory(store, 'gone.md', '---\nname: ""\nanchors: nowhere.js@' + HELLO_SHA + '\n---\n\n# g\n');
+        const two = assertBlock(runHook(store, startupPayload(store)));
+        assert.strictEqual(blockStarting(two, '2 project memories'),
+            '2 project memories anchor files that have changed since they were written; '
+            + 'memq decay-scan lists them.');
+
+        // A run-scoped session hears it too. A run id adds a pending tier and
+        // leaves the project tier where the working directory puts it, so these
+        // records resolve against the right root; the run block owns the
+        // destination, which this line does not touch.
+        const inRun = assertBlock(runHook(store, startupPayload(store), { KIT_RUN_ID: 'r1' }));
+        assert.strictEqual(blockStarting(inRun, '2 project memories'),
+            '2 project memories anchor files that have changed since they were written; '
+            + 'memq decay-scan lists them.');
+
+        // A record nothing can read is neither drifted nor clean: its
+        // frontmatter block never closes, so what it anchors is unknown. It
+        // rides in a second sentence, which is what keeps could-not-check
+        // from sharing a value with checked-and-clean, and both sentences
+        // stand on one line when both counts are non-zero.
+        fs.rmSync(path.join(store.memDir, 'gone.md'));
+        writeMemory(store, 'unterminated.md',
+            '---\nname: ""\nanchors: a.js@' + OTHER_SHA + '\nstill open\n');
+        const both = assertBlock(runHook(store, startupPayload(store)));
+        assert.strictEqual(blockStarting(both, '1 project memory'),
+            '1 project memory anchors a file that has changed since it was written; '
+            + 'memq decay-scan lists it. 1 project memory could not be checked against '
+            + 'the files it anchors; memq decay-scan says why.');
+
+        // The unreadable record alone: the line is the second sentence and
+        // nothing else, so an unverified store never reads as a clean one.
+        fs.rmSync(path.join(store.memDir, 'drifted.md'));
+        const unread = assertBlock(runHook(store, startupPayload(store)));
+        assert.strictEqual(blockStarting(unread, '1 project memory'),
+            '1 project memory could not be checked against the files it anchors; '
+            + 'memq decay-scan says why.');
+        assert.ok(!unread.includes('drifted'), 'no store-derived text on the line:\n' + unread);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('the drift pass is bounded, and what the bound stopped it short of is counted', () => {
+    const store = makeStore();
+    try {
+        fs.writeFileSync(path.join(store.proj, 'a.js'), Buffer.from('hello\n', 'latin1'));
+        // One record past the hook's record bound, every one of them drifted.
+        // A session start must not wait on a large store, and a pass that
+        // stopped early and said nothing about the rest would report a store
+        // it did not finish reading as one it had.
+        for (let i = 0; i <= 200; i += 1) {
+            writeMemory(store, 'r' + i + '.md',
+                '---\nname: ""\nanchors: a.js@' + OTHER_SHA + '\n---\n\n# r\n');
+        }
+        const context = assertBlock(runHook(store, startupPayload(store)));
+        // The record the bound skipped is counted apart from the records the
+        // pass reached and could not settle, and its sentence names this
+        // hook's own bound: the scan sets no budget, so sending a session
+        // there for this cause would send it somewhere with nothing to say.
+        assert.strictEqual(blockStarting(context, '200 project memories'),
+            '200 project memories anchor files that have changed since they were written; '
+            + 'memq decay-scan lists them. This session-start check stopped short of '
+            + '1 project memory, because it stops after 200 records, 500 anchors '
+            + 'or 8388608 bytes read.');
+
+        // The same sentence with nothing ahead of it on the line: it names
+        // its own subject either way, so no reading of it depends on what
+        // it follows.
+        for (let i = 0; i <= 200; i += 1) {
+            writeMemory(store, 'r' + i + '.md',
+                '---\nname: ""\nanchors: a.js@' + HELLO_SHA + '\n---\n\n# r\n');
+        }
+        const alone = assertBlock(runHook(store, startupPayload(store)));
+        assert.strictEqual(blockStarting(alone, 'This session-start check'),
+            'This session-start check stopped short of 1 project memory, because it '
+            + 'stops after 200 records, 500 anchors or 8388608 bytes read.');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a record the anchor budget stopped mid-way is counted as bounded, never as unsettled', () => {
+    const store = makeStore();
+    try {
+        // Every anchor here is fresh, so nothing about these records is
+        // unsettled except what the budget stopped short of.
+        fs.writeFileSync(path.join(store.proj, 'a.js'), Buffer.from('hello\n', 'latin1'));
+        const wide = new Array(32).fill('a.js@' + HELLO_SHA).join(', ');
+        for (let i = 0; i < 15; i += 1) {
+            writeMemory(store, 'r' + i + '.md',
+                '---\nname: ""\nanchors: ' + wide + '\n---\n\n# r\n');
+        }
+
+        // The control: 480 anchors is inside the 500 this check walks, so
+        // the same store finishes and says nothing at all.
+        assertOnlyProjectMemory(runHook(store, startupPayload(store)));
+
+        // One record more, which the entry budget stops part way through.
+        // That record is not unsettled: it is a record this check did not
+        // finish, and the sentence that points at `memq decay-scan` would
+        // send the session to a command that sets no budget and reports
+        // the tier clean.
+        writeMemory(store, 'r15.md',
+            '---\nname: ""\nanchors: ' + wide + '\n---\n\n# r\n');
+        const context = assertBlock(runHook(store, startupPayload(store)));
+        assert.strictEqual(blockStarting(context, 'This session-start check'),
+            'This session-start check stopped short of 1 project memory, because it '
+            + 'stops after 200 records, 500 anchors or 8388608 bytes read.');
+        assert.ok(!context.includes('could not be checked'),
+            'a budget stop is never routed to the scan:\n' + context);
+    } finally {
+        rmStore(store);
+    }
+});
+
+// Reach into the hook's own memq module inside the spawned hook and change
+// one export: `mutation` is the body of a function taking the loaded module.
+// A version skew and a check that failed are two different states, and the
+// only way to stand either of them up is from inside the process the hook
+// runs in. The preload path is forward-slashed because Node parses
+// NODE_OPTIONS with backslash as an escape character.
+function memqExportPreload(dir, name, mutation) {
+    const shim = path.join(dir, name);
+    fs.writeFileSync(shim, [
+        "'use strict';",
+        "const Module = require('module');",
+        'const realLoad = Module._load;',
+        'Module._load = function (request) {',
+        '    const loaded = realLoad.apply(Module, arguments);',
+        "    if (String(request).endsWith('memq.js') && loaded !== null",
+        "        && typeof loaded === 'object') {",
+        '        (' + mutation + ')(loaded);',
+        '    }',
+        '    return loaded;',
+        '};'
+    ].join('\n') + '\n', 'utf8');
+    return '--require "' + shim.replace(/\\/g, '/') + '"';
+}
+
+test('a memq missing the symbols this calls says nothing; one that throws says so', () => {
+    const store = makeStore();
+    try {
+        fs.writeFileSync(path.join(store.proj, 'a.js'), Buffer.from('hello\n', 'latin1'));
+        writeMemory(store, 'drifted.md',
+            '---\nname: ""\nanchors: a.js@' + OTHER_SHA + '\n---\n\n# d\n');
+
+        // The control: this store does produce the line, so the two answers
+        // below are the shims and not an empty store.
+        const control = assertBlock(runHook(store, startupPayload(store)));
+        assert.ok(blockStarting(control, '1 project memory') !== null);
+
+        // A memq whose export table has moved under this hook: the symbols
+        // are checked before any of them is called, and a check that cannot
+        // run at all has nothing to say rather than something to report.
+        const gated = runHook(store, startupPayload(store), {
+            NODE_OPTIONS: memqExportPreload(store.root, 'skew.js',
+                'function (m) { delete m.tierAnchorDrift; }')
+        });
+        assertOnlyProjectMemory(gated);
+
+        // A memq that is all there and throws mid-pass is the other state,
+        // and it is not silence: the store is there, the check failed, and a
+        // session told nothing would read that as a store found clean.
+        const threw = assertBlock(runHook(store, startupPayload(store), {
+            NODE_OPTIONS: memqExportPreload(store.root, 'throws.js',
+                'function (m) { m.tierAnchorDrift = function () '
+                + '{ throw new Error("the fixture throws"); }; }')
+        }));
+        assert.strictEqual(blockStarting(threw, 'This project'),
+            "This project's memories could not be checked against the files they anchor, "
+            + 'because the check itself failed.');
+        assert.ok(!threw.includes('drifted'), 'no store text on the line:\n' + threw);
+    } finally {
+        rmStore(store);
+    }
+});
+
+// Refuse a named record's whole-file read inside the spawned hook. Only the
+// named records are refused: the store's index is a .md file too, and this
+// is about what the drift pass reads, not about every read the hook takes.
+function refuseWholeRecordPreload(dir, names) {
+    const shim = path.join(dir, 'refuse-whole.js');
+    fs.writeFileSync(shim, [
+        "'use strict';",
+        "const fs = require('fs');",
+        'const realReadFileSync = fs.readFileSync;',
+        'const refused = ' + JSON.stringify(names) + ';',
+        'fs.readFileSync = function (target) {',
+        '    if (refused.some((n) => String(target).endsWith(n))) {',
+        "        throw new Error('a record was read whole');",
+        '    }',
+        '    return realReadFileSync.apply(fs, arguments);',
+        '};'
+    ].join('\n') + '\n', 'utf8');
+    return '--require "' + shim.replace(/\\/g, '/') + '"';
+}
+
+test('the drift pass takes a capped read of each record, never a whole-file read', () => {
+    const store = makeStore();
+    try {
+        // A fresh stamp, so the one other block whose work grows with the
+        // store (the decay nudge, which lists the tier when no pass has ever
+        // completed) answers from the stamp and leaves the drift pass as the
+        // only reader of these records.
+        writeStamp(store, 0);
+        fs.writeFileSync(path.join(store.proj, 'a.js'), Buffer.from('hello\n', 'latin1'));
+        writeMemory(store, 'drifted.md',
+            '---\nname: ""\nanchors: a.js@' + OTHER_SHA + '\n---\n\n# d\n');
+
+        const context = assertBlock(runHook(store, startupPayload(store),
+            { NODE_OPTIONS: refuseWholeRecordPreload(store.root, ['drifted.md']) }));
+        assert.strictEqual(blockStarting(context, '1 project memory'),
+            '1 project memory anchors a file that has changed since it was '
+            + 'written; memq decay-scan lists it.');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// Refuse the project memory directory's listing inside the spawned hook, so
+// the tier is there and cannot be enumerated. chmod does not produce that
+// state reliably under libuv on Windows, and the preload path is
+// forward-slashed because Node parses NODE_OPTIONS with backslash as an
+// escape character.
+function refuseDirListPreload(dir) {
+    const shim = path.join(dir, 'refuse-list.js');
+    fs.writeFileSync(shim, [
+        "'use strict';",
+        "const fs = require('fs');",
+        'const realReaddirSync = fs.readdirSync;',
+        'fs.readdirSync = function (target) {',
+        '    if (String(target).endsWith(' + JSON.stringify(path.sep + 'memory') + ')) {',
+        "        const err = new Error('EACCES: the fixture refuses this listing');",
+        "        err.code = 'EACCES';",
+        '        throw err;',
+        '    }',
+        '    return realReaddirSync.apply(fs, arguments);',
+        '};'
+    ].join('\n') + '\n', 'utf8');
+    return '--require "' + shim.replace(/\\/g, '/') + '"';
+}
+
+test('a store this session cannot examine gets a sentence, not the silence a clean one gets', () => {
+    const store = makeStore();
+    try {
+        fs.writeFileSync(path.join(store.proj, 'a.js'), Buffer.from('hello\n', 'latin1'));
+        writeMemory(store, 'fresh.md',
+            '---\nname: ""\nanchors: a.js@' + HELLO_SHA + '\n---\n\n# f\n');
+
+        // The control: the same store, readable, says nothing, because
+        // nothing drifted. That silence is the clean answer, which is
+        // exactly why the broken store below may not borrow it.
+        assertOnlyProjectMemory(runHook(store, startupPayload(store)));
+
+        const blind = assertBlock(runHook(store, startupPayload(store),
+            { NODE_OPTIONS: refuseDirListPreload(store.root) }));
+        assert.strictEqual(blockStarting(blind, 'This project'),
+            "This project's memories could not be checked against the files they anchor, "
+            + 'because its memory directory could not be examined; memq decay-scan says why.');
+        // Fixed words and no count: nothing about a store nobody could read
+        // is known well enough to state, and nothing from it reaches stdout.
+        assert.ok(!blind.includes('fresh'), 'no store text on the line:\n' + blind);
+        // The rest of the block list still runs: this check is one block
+        // among several and its failure is not the hook's.
+        assert.ok(blocksOf(blind).some((b) => b.startsWith('Kit project memory:')),
+            'the project memory block still prints:\n' + blind);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a pinned session gets no drift line, since no root resolves from its working directory', () => {
+    const store = makeStore();
+    const pinnedMemDir = path.join(store.root, 'projects', 'inst-a', 'memory');
+    try {
+        // The same drifted shape that produces the line unpinned. A pin names
+        // the project directory the store reads, which says nothing about
+        // this working directory, so resolving these anchors here would count
+        // every anchored file in the store as changed.
+        fs.mkdirSync(pinnedMemDir, { recursive: true });
+        fs.writeFileSync(path.join(pinnedMemDir, 'drifted.md'),
+            '---\nname: ""\nanchors: a.js@' + OTHER_SHA + '\n---\n\n# d\n', 'utf8');
+        fs.writeFileSync(path.join(store.proj, 'a.js'), Buffer.from('hello\n', 'latin1'));
+        const context = assertBlock(runHook(store, startupPayload(store),
+            { KIT_MEMORY_PROJECT: 'inst-a' }));
+        assert.ok(!context.includes('memq decay-scan lists'), 'no drift line under a pin:\n' + context);
+
+        // The control, the same bytes in the cwd-derived tier with no pin, so
+        // the silence above is the pin and not the fixture.
+        fs.mkdirSync(store.memDir, { recursive: true });
+        fs.writeFileSync(path.join(store.memDir, 'drifted.md'),
+            '---\nname: ""\nanchors: a.js@' + OTHER_SHA + '\n---\n\n# d\n', 'utf8');
+        const plain = assertBlock(runHook(store, startupPayload(store)));
+        assert.match(plain, /1 project memory anchors a file that has changed/);
+    } finally {
+        rmStore(store);
+    }
+});

@@ -179,6 +179,23 @@ const REMINDER_OP = REMINDER + ' (--operator for an operator-tier hit)';
 const REMINDER_TYPE_OP = REMINDER
     + ' (--type for a type-tier hit, --operator for an operator-tier hit)';
 
+// The drift block's clean answer. Every decay-scan says one of the block's
+// three things, so a store with nothing anchored says this rather than
+// nothing: silence on this surface would be indistinguishable from a scan
+// that could not check, which is the one reading a drift report exists to
+// prevent. Spelled once here because every exact-stderr case below carries
+// it.
+const NO_DRIFT = 'memq: no anchor drift (project tier)\n';
+
+// What a recall coverage line says about a tier whose anchors that digest
+// never resolves: the shared tiers, which have no root here, and the pending
+// tier, which the digest's one check does not span. Neither may read like a
+// tier that was checked and found fresh.
+const SHARED_ANCHORS = ', anchors not checked (a shared tier\'s anchors do not'
+    + ' resolve against this project\'s root)';
+const PENDING_ANCHORS = ', anchors not checked (this digest checks the project tier only)';
+const ARCHIVE_ANCHORS = ', anchors not checked (this digest does not check retired records)';
+
 // The semantic block's framing line, memq's fence wording over the semantic
 // clause, pinned here so a drift in either half fails a test by name.
 const SEMANTIC_FENCE = 'memq: from the semantic index, ranking every memory store'
@@ -1202,8 +1219,8 @@ test('decay-scan flags a memory idle past each threshold and not one with a rece
 
         const res = run(store, ['decay-scan']);
         assert.strictEqual(res.status, 0, res.stderr);
-        assert.strictEqual(res.stderr, 'memq: usage evidence: 1 stamp across 1 file\n',
-            'the standing evidence line is the only note a clean store gets');
+        assert.strictEqual(res.stderr, 'memq: usage evidence: 1 stamp across 1 file\n' + NO_DRIFT,
+            'the standing evidence line and the clean drift answer are the only notes a clean store gets');
         // Exact lines: each candidate carries the evidence dates that justify
         // it, and the class-then-name order is a total order, so the output
         // is byte-stable for identical store state.
@@ -1476,7 +1493,7 @@ test('each distinct applied day extends both thresholds by 30 idle days, inclusi
 
         const res = run(store, ['decay-scan']);
         assert.strictEqual(res.status, 0, res.stderr);
-        assert.strictEqual(res.stderr, 'memq: usage evidence: 24 stamps across 4 files\n');
+        assert.strictEqual(res.stderr, 'memq: usage evidence: 24 stamps across 4 files\n' + NO_DRIFT);
         // Both directions at both boundaries: 210 summarizes and 209 does
         // not, 240 archives and 239 is still only a summarize candidate. The
         // tally rides in the applied column, so the judgment reading the line
@@ -1521,7 +1538,7 @@ test('the extension caps at 365 idle days, so a larger tally moves no boundary',
 
         const res = run(store, ['decay-scan']);
         assert.strictEqual(res.status, 0, res.stderr);
-        assert.strictEqual(res.stderr, 'memq: usage evidence: 120 stamps across 5 files\n');
+        assert.strictEqual(res.stderr, 'memq: usage evidence: 120 stamps across 5 files\n' + NO_DRIFT);
         // Both boundaries in both directions under the cap: summarize at 395
         // and not 394, archive at 425 and not 424.
         assert.strictEqual(res.stdout,
@@ -1559,7 +1576,7 @@ test('a pinned memory is listed and counted on stderr and never a candidate; del
             'the pinned memory is on no candidate list a prune could act on');
         assert.strictEqual(res.stderr, evidence
             + 'memq: pinned: 1 memory exempt from decay\n'
-            + 'memq: pinned  pinned-old' + oldLine);
+            + 'memq: pinned  pinned-old' + oldLine + NO_DRIFT);
 
         // Revocation is deleting the field: the same memory, same age, back
         // on the archive list and out of the pinned count.
@@ -1569,7 +1586,7 @@ test('a pinned memory is listed and counted on stderr and never a candidate; del
         assert.strictEqual(revoked.status, 0, revoked.stderr);
         assert.strictEqual(revoked.stdout,
             'archive  loud-old' + oldLine + 'archive  pinned-old' + oldLine);
-        assert.strictEqual(revoked.stderr, evidence, 'nothing is pinned, so no block prints');
+        assert.strictEqual(revoked.stderr, evidence + NO_DRIFT, 'nothing is pinned, so no block prints');
     } finally {
         rmStore(store);
     }
@@ -1602,7 +1619,7 @@ test('the pin is the field\'s presence: an unparseable date, an empty value, and
             + 'memq: pinned: 3 memories exempt from decay\n'
             + 'memq: pinned  dated' + oldLine
             + 'memq: pinned  empty' + oldLine
-            + 'memq: pinned  garbled' + oldLine);
+            + 'memq: pinned  garbled' + oldLine + NO_DRIFT);
     } finally {
         rmStore(store);
     }
@@ -1641,6 +1658,7 @@ test('a future-dated applied stamp reads as zero idle days, never a negative cou
             + 'memq: pinned: 1 memory exempt from decay\n'
             + 'memq: pinned  skewed  idle 0d  applied ' + dateOf(ahead)
             + ' (1d distinct)  edited ' + dateOf(d400) + '  read never\n'
+            + NO_DRIFT
             + 'memq: no decay candidates\n');
         assert.doesNotMatch(res.stderr, /idle -\d+d/, 'the idle clock never runs negative');
     } finally {
@@ -1713,7 +1731,11 @@ test('the frontmatter grammar decides the pin: top level pins, indented is repor
             + ' write it at the frontmatter block\'s top level, where it pins whether or not'
             + ' the harness then moves it under metadata:\n'
             + 'memq: pinned: 1 memory exempt from decay\n'
-            + 'memq: pinned  top-level' + oldLine);
+            + 'memq: pinned  top-level' + oldLine
+            + 'memq: anchor drift (project tier): 2 records whose anchors could not be read\n'
+            + 'memq: drift  faraway  not checked (this record\'s frontmatter could not be read)\n'
+            + 'memq: drift  unterminated  not checked (this record\'s frontmatter could not be read)\n',
+            'a record no reader can read is named as unchecked rather than counted clean');
     } finally {
         rmStore(store);
     }
@@ -2597,7 +2619,8 @@ test('the frontmatter readers are exported, so the guard validates through memq 
     for (const name of ['frontmatterBlock', 'frontmatterValue', 'frontmatterField',
         'readFrontmatterTags', 'frontmatterTags', 'readFrontmatterCreated', 'pinState',
         'supersedesName', 'frontmatterAnchors', 'readFrontmatterAnchors', 'parseAnchors',
-        'isAnchorPath', 'blobSha', 'anchorStates', 'anchorStatesFrom', 'anchorRoot']) {
+        'isAnchorPath', 'blobSha', 'anchorStates', 'anchorStatesFrom', 'anchorRoot',
+        'tierAnchorDrift', 'driftBlock']) {
         assert.strictEqual(typeof memq[name], 'function', name + ' is exported');
     }
     // The bounds a refusal names. A writer spelling 32 or 256 of its own is
@@ -2615,6 +2638,876 @@ test('the frontmatter readers are exported, so the guard validates through memq 
         memq.FRONTMATTER_INDENTED);
     assert.strictEqual(memq.frontmatterField(path.join(os.tmpdir(), 'no-such-memq-record.md'), 'pinned'),
         memq.FRONTMATTER_UNREADABLE);
+});
+
+test('decay-scan names every drifted record, pinned included, and says so when there is none', () => {
+    const store = makeStore();
+    try {
+        // The tree the anchors resolve against is the project cwd itself,
+        // which is what anchorRoot derives without a pin.
+        fs.mkdirSync(path.join(store.proj, 'src'), { recursive: true });
+        fs.writeFileSync(path.join(store.proj, 'src', 'a.js'), Buffer.from('hello\n', 'latin1'));
+        fs.writeFileSync(path.join(store.proj, 'src', 'kept.js'), Buffer.from('hello\n', 'latin1'));
+        // One record drifted two ways at once, so the line carries both
+        // lists; one pinned and drifted, because a pin exempts a record from
+        // retirement and not from being unverified; one whose file still
+        // hashes to what it recorded; and one that anchors nothing at all,
+        // the control that keeps a clean line from being the absence of a
+        // reader.
+        writeMemoryFile(store, 'drifted.md', '---\nname: ""\nanchors: src/a.js@' + OTHER_SHA
+            + ', src/gone.js@' + HELLO_SHA + '\n---\n\n# d\n');
+        writeMemoryFile(store, 'pinned-drift.md', '---\nname: ""\npinned: 2026-07-01\n'
+            + 'anchors: src/a.js@' + OTHER_SHA + '\n---\n\n# p\n');
+        writeMemoryFile(store, 'fresh.md',
+            '---\nname: ""\nanchors: src/kept.js@' + HELLO_SHA + '\n---\n\n# f\n');
+        writeMemoryFile(store, 'plain.md', '# nothing anchored\n');
+        // An anchor naming a directory is a check that could not be made
+        // rather than a file that moved, so the record is listed apart from
+        // the drifted ones and never among the clean.
+        fs.mkdirSync(path.join(store.proj, 'lib'), { recursive: true });
+        writeMemoryFile(store, 'unexaminable.md',
+            '---\nname: ""\nanchors: lib@' + HELLO_SHA + '\n---\n\n# u\n');
+
+        const res = run(store, ['decay-scan']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stderr,
+            'memq: usage evidence: none (no usage.jsonl)\n'
+            + 'memq: pinned: 1 memory exempt from decay\n'
+            + 'memq: pinned  pinned-drift  idle 0d  applied never  edited ' + dateOf(new Date())
+            + '  read never\n'
+            + 'memq: anchor drift (project tier): 2 memories anchoring a file that changed or is gone, 1 record whose anchored file could not be examined\n'
+            + 'memq: drift  drifted  changed: src/a.js  missing: src/gone.js\n'
+            + 'memq: drift  pinned-drift  changed: src/a.js\n'
+            + 'memq: drift  unexaminable  unreadable: lib\n'
+            + 'memq: no decay candidates\n');
+        // Drift nominates and never retires: stdout is the list a prune acts
+        // on, and no flag of decay-prune's acts on a drift line.
+        assert.strictEqual(res.stdout, '');
+
+        // The same store with the recorded hashes corrected: the block says
+        // there is none, which is a different sentence from saying nothing.
+        writeMemoryFile(store, 'drifted.md', '---\nname: ""\nanchors: src/a.js@' + HELLO_SHA
+            + '\n---\n\n# d\n');
+        writeMemoryFile(store, 'pinned-drift.md', '---\nname: ""\npinned: 2026-07-01\n'
+            + 'anchors: src/a.js@' + HELLO_SHA + '\n---\n\n# p\n');
+        fs.rmSync(path.join(store.memDir, 'unexaminable.md'));
+        const clean = run(store, ['decay-scan']);
+        assert.strictEqual(clean.status, 0, clean.stderr);
+        assert.ok(clean.stderr.includes(NO_DRIFT), 'the clean answer is stated:\n' + clean.stderr);
+        assert.ok(!clean.stderr.includes('memq: drift  '), 'and no record is named:\n' + clean.stderr);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a drift line caps its paths and its records with the remainder counted', () => {
+    const store = makeStore();
+    try {
+        // Six anchored paths on one record and twelve drifted records, both
+        // past their caps, so a line and a block each tail off rather than
+        // growing with the store.
+        const entries = [];
+        for (let i = 0; i < 6; i++) entries.push('gone-' + i + '.js@' + HELLO_SHA);
+        writeMemoryFile(store, 'many-paths.md',
+            '---\nname: ""\nanchors: ' + entries.join(', ') + '\n---\n\n# m\n');
+        for (let i = 0; i < 12; i++) {
+            writeMemoryFile(store, 'rec-' + String(i).padStart(2, '0') + '.md',
+                '---\nname: ""\nanchors: gone.js@' + HELLO_SHA + '\n---\n\n# r\n');
+        }
+
+        const res = run(store, ['decay-scan']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        const lines = res.stderr.split('\n').filter((l) => l !== '');
+        assert.strictEqual(lines[1], 'memq: anchor drift (project tier): 13 memories anchoring a file that changed or is gone');
+        assert.strictEqual(lines[2],
+            'memq: drift  many-paths  missing: gone-0.js, gone-1.js, gone-2.js, gone-3.js, and 2 more');
+        assert.strictEqual(lines[11], 'memq: drift  rec-08  missing: gone.js');
+        assert.strictEqual(lines[12], 'memq: drift  ... and 3 more');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a pinned store reports the drift block as not checked, never as clean', () => {
+    const store = makeStore();
+    const memDir = pinnedMemDir(store, PIN);
+    try {
+        // A pin names the project directory the store reads, which says
+        // nothing about this working directory, so these records' paths
+        // resolve against nothing. Saying so is the whole point: a scan that
+        // said 'no anchor drift' here would report a store nobody checked as
+        // verified.
+        fs.mkdirSync(memDir, { recursive: true });
+        fs.writeFileSync(path.join(memDir, 'anchored.md'),
+            '---\nname: ""\nanchors: src/a.js@' + HELLO_SHA + '\n---\n\n# a\n', 'utf8');
+        const res = run(store, ['decay-scan'], { KIT_MEMORY_PROJECT: PIN });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.ok(res.stderr.includes('memq: anchor drift (project tier): not checked (a store'
+            + ' pin is in effect, so no root is derived from this working directory)\n'),
+            'the rootless cause is named:\n' + res.stderr);
+        assert.ok(!res.stderr.includes(NO_DRIFT), 'not checked is never the clean answer:\n' + res.stderr);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('get states each anchor after the body, and names the cause when it could not check', () => {
+    const store = makeStore();
+    try {
+        fs.mkdirSync(path.join(store.proj, 'src'), { recursive: true });
+        fs.writeFileSync(path.join(store.proj, 'src', 'a.js'), Buffer.from('hello\n', 'latin1'));
+        fs.writeFileSync(path.join(store.proj, 'src', 'changed.js'), Buffer.from('hello\n', 'latin1'));
+        // All four states from one record: the file that still hashes to what
+        // was recorded, the one that does not, the one that is gone, and the
+        // directory, which is a check that could not be made rather than a
+        // deletion.
+        const body = '---\nname: ""\nanchors: src/a.js@' + HELLO_SHA + ', src/changed.js@' + OTHER_SHA
+            + ', src/gone.js@' + HELLO_SHA + ', src@' + HELLO_SHA + '\n---\n\n# anchored\n';
+        writeMemoryFile(store, 'anchored.md', body);
+
+        const got = run(store, ['get', 'anchored']);
+        assert.strictEqual(got.status, 0, got.stderr);
+        assert.strictEqual(got.stdout, body
+            + 'anchors: src/a.js fresh\n'
+            + 'anchors: src/changed.js changed (recorded ' + OTHER_SHA.slice(0, 7)
+            + ', now ' + HELLO_SHA.slice(0, 7) + ')\n'
+            + 'anchors: src/gone.js missing\n'
+            + 'anchors: src unreadable\n');
+
+        // A record that anchors nothing says nothing: there is no state to
+        // report, and the read that established it needed no root.
+        const plainBody = '# plain\n';
+        writeMemoryFile(store, 'plain.md', plainBody);
+        const plain = run(store, ['get', 'plain']);
+        assert.strictEqual(plain.status, 0, plain.stderr);
+        assert.strictEqual(plain.stdout, plainBody);
+
+        // A frontmatter block that opens and never closes is read by nothing,
+        // so what the record anchors is unknown and the line says which cause
+        // it was rather than printing no anchors.
+        const openBody = '---\nname: ""\nanchors: src/a.js@' + HELLO_SHA + '\nstill open\n';
+        writeMemoryFile(store, 'unterminated.md', openBody);
+        const unread = run(store, ['get', 'unterminated']);
+        assert.strictEqual(unread.status, 0, unread.stderr);
+        assert.strictEqual(unread.stdout, openBody
+            + 'anchors: not checked (this record\'s frontmatter could not be read)\n');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('get says a pinned store checked no anchors, and stays silent for a record with none', () => {
+    const store = makeStore();
+    const memDir = pinnedMemDir(store, PIN);
+    const projB = makeSecondProject();
+    try {
+        fs.mkdirSync(memDir, { recursive: true });
+        fs.writeFileSync(path.join(memDir, 'anchored.md'),
+            '---\nname: ""\nanchors: src/a.js@' + HELLO_SHA + '\n---\n\n# a\n', 'utf8');
+        fs.writeFileSync(path.join(memDir, 'plain.md'), '# plain\n', 'utf8');
+
+        const got = runFrom(store, projB, ['get', 'anchored'], { KIT_MEMORY_PROJECT: PIN });
+        assert.strictEqual(got.status, 0, got.stderr);
+        assert.ok(got.stdout.endsWith('anchors: not checked (a store pin is in effect, so no root'
+            + ' is derived from this working directory)\n'),
+            'the record that anchors something says it went unchecked:\n' + got.stdout);
+
+        // The record naming no anchor is silent even here: what it declares
+        // is read from its own frontmatter, which needs no root, so nothing
+        // about it is unverified.
+        const plain = runFrom(store, projB, ['get', 'plain'], { KIT_MEMORY_PROJECT: PIN });
+        assert.strictEqual(plain.status, 0, plain.stderr);
+        assert.ok(!plain.stdout.includes('anchors:'), 'nothing to check, nothing said:\n' + plain.stdout);
+    } finally {
+        rmStore(store);
+        try { fs.rmSync(projB, { recursive: true, force: true }); } catch { /* best effort */ }
+    }
+});
+
+test('recall marks a drifted record, leaves a fresh one plain, and carries both labels at once', () => {
+    const store = makeStore();
+    try {
+        fs.mkdirSync(path.join(store.proj, 'src'), { recursive: true });
+        fs.writeFileSync(path.join(store.proj, 'src', 'a.js'), Buffer.from('hello\n', 'latin1'));
+        const d5 = daysAgo(5);
+        writeMemoryFile(store, 'drifted.md',
+            '---\nname: ""\nanchors: src/a.js@' + OTHER_SHA + '\n---\n\n# d\n');
+        // Superseded and drifted at once: two facts about one record, in a
+        // declared order so no two lines disagree about where each sits.
+        writeMemoryFile(store, 'both.md',
+            '---\nname: ""\nanchors: src/gone.js@' + HELLO_SHA + '\n---\n\n# b\n');
+        writeMemoryFile(store, 'successor.md', '---\nsupersedes: both\n---\n# s\n');
+        writeMemoryFile(store, 'fresh.md',
+            '---\nname: ""\nanchors: src/a.js@' + HELLO_SHA + '\n---\n\n# f\n');
+        // An anchor naming a directory is a check that could not be made,
+        // which is not a fresh anchor either.
+        fs.mkdirSync(path.join(store.proj, 'lib'), { recursive: true });
+        writeMemoryFile(store, 'unexaminable.md',
+            '---\nname: ""\nanchors: lib@' + HELLO_SHA + '\n---\n\n# u\n');
+        // A record no reader can read is not a record whose anchors are
+        // fresh, and the digest says so with its own token.
+        writeMemoryFile(store, 'unterminated.md',
+            '---\nname: ""\nanchors: src/a.js@' + HELLO_SHA + '\nstill open\n');
+        for (const name of ['drifted.md', 'both.md', 'successor.md', 'fresh.md',
+            'unterminated.md', 'unexaminable.md']) {
+            setMtime(store, name, d5);
+        }
+
+        const res = run(store, ['recall']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        const lines = res.stdout.split('\n');
+        assert.ok(lines.includes('project  both  applied never  alive 5d  superseded by successor  [drift]'),
+            'the supersession label leads and the drift token follows it:\n' + res.stdout);
+        assert.ok(lines.includes('project  drifted  applied never  alive 5d  [drift]'), res.stdout);
+        assert.ok(lines.includes('project  fresh  applied never  alive 5d'),
+            'a record whose anchored file still hashes the same is plain:\n' + res.stdout);
+        assert.ok(lines.includes('project  successor  applied never  alive 5d'), res.stdout);
+        assert.ok(lines.includes('project  unexaminable  applied never  alive 5d  [drift?]'),
+            'an anchor nobody could examine is marked apart from a fresh one:\n' + res.stdout);
+        assert.ok(lines.includes('project  unterminated  applied never  alive 5d  [drift?]'),
+            'a record nobody could read is marked apart from both:\n' + res.stdout);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('recall carries no drift token under a store pin, where no root resolves', () => {
+    const store = makeStore();
+    const memDir = pinnedMemDir(store, PIN);
+    const projB = makeSecondProject();
+    try {
+        // The same record that reads as drifted without a pin: under one, the
+        // check is skipped rather than resolved against a working directory
+        // the pin says nothing about, which would call every anchored file
+        // deleted.
+        fs.mkdirSync(memDir, { recursive: true });
+        fs.writeFileSync(path.join(memDir, 'drifted.md'),
+            '---\nname: ""\nanchors: src/a.js@' + OTHER_SHA + '\n---\n\n# d\n', 'utf8');
+        const pinned = runFrom(store, projB, ['recall'], { KIT_MEMORY_PROJECT: PIN });
+        assert.strictEqual(pinned.status, 0, pinned.stderr);
+        assert.ok(!pinned.stdout.includes('[drift'), 'no token at all under a pin:\n' + pinned.stdout);
+
+        // A digest whose lines all read unlabeled, with nothing saying the
+        // check never ran, is a clean report of an unchecked tier, so the
+        // tier's own line carries what the tokens cannot.
+        assert.match(pinned.stdout, /^project tier: .*, anchors not checked \(a store pin is in effect, so no root is derived from this working directory\)$/m);
+
+        // The control, the same bytes in the cwd-derived tier with no pin:
+        // the token is there, so the silence above is the pin and not the
+        // fixture.
+        writeMemoryFile(store, 'drifted.md',
+            '---\nname: ""\nanchors: src/a.js@' + OTHER_SHA + '\n---\n\n# d\n');
+        fs.writeFileSync(path.join(store.proj, 'src.js'), Buffer.from('hello\n', 'latin1'));
+        const plain = run(store, ['recall']);
+        assert.strictEqual(plain.status, 0, plain.stderr);
+        assert.match(plain.stdout, /^project  drifted  applied never  alive \S+  \[drift\]$/m);
+    } finally {
+        rmStore(store);
+        try { fs.rmSync(projB, { recursive: true, force: true }); } catch { /* best effort */ }
+    }
+});
+
+// Refuse one directory listing inside the spawned CLI, so a tier is there
+// and cannot be enumerated: chmod does not produce that state reliably under
+// libuv on Windows. The preload path is forward-slashed because Node parses
+// NODE_OPTIONS with backslash as an escape character.
+function refuseDirListPreload(dir, suffix) {
+    const shim = path.join(dir, 'refuse-list.js');
+    fs.writeFileSync(shim, [
+        "'use strict';",
+        "const fs = require('fs');",
+        'const realReaddirSync = fs.readdirSync;',
+        'fs.readdirSync = function (target) {',
+        '    if (String(target).endsWith(' + JSON.stringify(suffix) + ')) {',
+        "        const err = new Error('EACCES: the fixture refuses this listing');",
+        "        err.code = 'EACCES';",
+        '        throw err;',
+        '    }',
+        '    return realReaddirSync.apply(fs, arguments);',
+        '};'
+    ].join('\n') + '\n', 'utf8');
+    return '--require "' + shim.replace(/\\/g, '/') + '"';
+}
+
+test('a tier that is there and cannot be listed reads as not checked, never as clean', () => {
+    const store = makeStore();
+    try {
+        fs.writeFileSync(path.join(store.proj, 'a.js'), Buffer.from('hello\n', 'latin1'));
+        writeMemoryFile(store, 'fresh.md', '---\nname: ""\nanchors: a.js@' + HELLO_SHA + '\n---\n\n# f\n');
+
+        // The control first: the same store reads clean when its tier can be
+        // enumerated, so the answer below is the refused listing rather than
+        // the fixture.
+        const control = run(store, ['decay-scan']);
+        assert.strictEqual(control.status, 0, control.stderr);
+        assert.ok(control.stderr.includes(NO_DRIFT), 'the readable tier reads clean:\n' + control.stderr);
+
+        // A tier nobody could enumerate holds an unknown number of records,
+        // which an empty listing reads exactly like, so the block says it was
+        // not checked instead of making a claim about records nobody saw.
+        const blind = run(store, ['decay-scan'],
+            { NODE_OPTIONS: refuseDirListPreload(store.root, path.sep + 'memory') });
+        assert.strictEqual(blind.status, 0, 'an unlistable tier never fails the scan');
+        assert.ok(blind.stderr.includes('memq: anchor drift (project tier): not checked'
+            + ' (this tier could not be examined)\n'),
+            'the tier is named as the cause, in words true of a listing that failed '
+            + 'and of a walk that threw alike:\n' + blind.stderr);
+        assert.ok(!blind.stderr.includes(NO_DRIFT),
+            'not checked is never the clean answer:\n' + blind.stderr);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('get on a shared tier says so and checks nothing, whatever the record declares', () => {
+    const store = makeStore();
+    try {
+        fs.mkdirSync(path.join(store.proj, 'src'), { recursive: true });
+        fs.writeFileSync(path.join(store.proj, 'src', 'a.js'), Buffer.from('hello\n', 'latin1'));
+        writeMemoryFile(store, 'MEMORY.md', 'Project-Type: webapp\n');
+        const typeDir = typeDirPath(store, 'webapp');
+        fs.mkdirSync(typeDir, { recursive: true });
+        // The anchored path exists in this project and hashes to what the
+        // record wrote down, so a reader resolving a shared tier's anchors
+        // here would print 'fresh' about a repository the record was never
+        // written against.
+        const anchored = '---\nname: ""\nanchors: src/a.js@' + HELLO_SHA + '\n---\n\n# s\n';
+        fs.writeFileSync(path.join(typeDir, 'shared.md'), anchored, 'utf8');
+        fs.writeFileSync(path.join(typeDir, 'plain.md'), '# nothing anchored\n', 'utf8');
+        // A record on a shared tier whose frontmatter never closes declares
+        // nothing anyone can read, and the tier is reason enough on its own.
+        fs.writeFileSync(path.join(typeDir, 'unterminated.md'),
+            '---\nname: ""\nanchors: src/a.js@' + HELLO_SHA + '\nstill open\n', 'utf8');
+        writeOperatorMemory(store, 'op-shared.md', anchored);
+        const SHARED = 'anchors: not checked (this record is on a shared tier, whose anchors do not'
+            + ' resolve against this project\'s root)\n';
+
+        for (const name of ['shared', 'unterminated', 'op-shared']) {
+            const got = run(store, ['get', name]);
+            assert.strictEqual(got.status, 0, got.stderr);
+            assert.ok(got.stdout.endsWith(SHARED), name + ' says its tier is why:\n' + got.stdout);
+            // The sentence is memq's own words at column zero, outside the
+            // provenance fence the body printed under, so no path from a tier
+            // every project on this machine writes to reaches that line.
+            assert.strictEqual(got.stdout.split('src/a.js').length - 1,
+                name === 'plain' ? 0 : 1, 'the anchored path stays inside the fenced body');
+        }
+
+        // A shared record declaring no anchor has nothing left unverified, so
+        // it says nothing at all.
+        const plain = run(store, ['get', 'plain']);
+        assert.strictEqual(plain.status, 0, plain.stderr);
+        assert.ok(!plain.stdout.includes('anchors:'), 'nothing to check, nothing said:\n' + plain.stdout);
+
+        // The control: the same bytes on the project tier are checked against
+        // this root, so the sentence above is the tier and not the record.
+        writeMemoryFile(store, 'local.md', anchored);
+        const local = run(store, ['get', 'local']);
+        assert.strictEqual(local.status, 0, local.stderr);
+        assert.ok(local.stdout.endsWith('anchors: src/a.js fresh\n'),
+            'the project tier states the anchor:\n' + local.stdout);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a line cut at the entry cap reads as unchecked, at get and in the scan', () => {
+    const store = makeStore();
+    try {
+        fs.mkdirSync(path.join(store.proj, 'src'), { recursive: true });
+        const entries = [];
+        for (let i = 0; i <= memq.ANCHOR_ENTRIES_MAX; i += 1) {
+            fs.writeFileSync(path.join(store.proj, 'src', 'f' + i + '.js'),
+                Buffer.from('hello\n', 'latin1'));
+            entries.push('src/f' + i + '.js@' + HELLO_SHA);
+        }
+        // Every entry the reader reaches is fresh, so what is left is the cut
+        // itself: part of the line was never read, which is neither a drifted
+        // record nor a clean one.
+        writeMemoryFile(store, 'cut.md',
+            '---\nname: ""\nanchors: ' + entries.join(', ') + '\n---\n\n# c\n');
+        const CUT = 'the rest of the line is unread past ' + memq.ANCHOR_ENTRIES_MAX + ' entries';
+
+        const got = run(store, ['get', 'cut']);
+        assert.strictEqual(got.status, 0, got.stderr);
+        assert.ok(got.stdout.includes('anchors: src/f0.js fresh\n'),
+            'the entries that were read are stated:\n' + got.stdout);
+        assert.ok(got.stdout.endsWith('anchors: ' + CUT + ', so those anchors were not checked\n'),
+            'and the cut is stated as its own sentence:\n' + got.stdout);
+
+        const res = run(store, ['decay-scan']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        // The heading counts this class in words true of it: the record's
+        // anchored files were all examined and all fresh, and what went
+        // unchecked is the part of the line this never read.
+        assert.ok(res.stderr.includes('memq: anchor drift (project tier): 1 record where '
+            + memq.ANCHOR_TRUNCATED_TEXT + '\n'
+            + 'memq: drift  cut  ' + CUT + '\n'),
+            'the scan lists it apart from the drifted:\n' + res.stderr);
+        assert.ok(!res.stderr.includes('could not be examined'),
+            'and never as a file nobody could look at:\n' + res.stderr);
+
+        const digest = run(store, ['recall']);
+        assert.strictEqual(digest.status, 0, digest.stderr);
+        assert.match(digest.stdout, /^project  cut  applied never  alive \S+  \[drift\?\]$/m);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a read budget stops the drift pass short and counts what it never reached', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'memq-drift-'));
+    try {
+        fs.writeFileSync(path.join(dir, 'a.js'), Buffer.from('hello\n', 'latin1'));
+        const mem = path.join(dir, 'memory');
+        fs.mkdirSync(mem);
+        for (const name of ['one', 'three', 'two']) {
+            fs.writeFileSync(path.join(mem, name + '.md'),
+                '---\nname: ""\nanchors: a.js@' + OTHER_SHA + '\n---\n\n# ' + name + '\n', 'utf8');
+        }
+        const memories = memq.listMemories(mem);
+        assert.strictEqual(memories.length, 3);
+
+        // No budget: every record is judged.
+        const all = memq.tierAnchorDrift(mem, memories, dir);
+        assert.strictEqual(all.drifted.length, 3);
+        assert.strictEqual(all.unexamined, 0);
+
+        // A record budget. What it stopped short of is counted rather than
+        // dropped: a pass that stopped early and reported clean is the
+        // reading this surface exists to prevent.
+        const capped = memq.tierAnchorDrift(mem, memories, dir, { records: 1 });
+        assert.strictEqual(capped.drifted.length, 1);
+        assert.strictEqual(capped.unexamined, 2);
+
+        // A byte budget. The first record is judged whole, since the budget
+        // is read before a record and this one had spent nothing yet, and
+        // the records after it are counted rather than dropped.
+        const metered = memq.tierAnchorDrift(mem, memories, dir, { bytes: 1 });
+        assert.strictEqual(metered.drifted.length, 1);
+        assert.strictEqual(metered.unexamined, 2);
+
+        // The budget is read between one record's own entries too, so a
+        // record anchoring many files cannot spend the whole budget before
+        // anyone looks at it. The entries the stop skipped were never read,
+        // so the record reports as unverified: an entry nobody hashed is
+        // not an entry that was found fresh.
+        const wide = path.join(dir, 'wide');
+        fs.mkdirSync(wide);
+        fs.mkdirSync(path.join(wide, 'memory'));
+        for (const f of ['x.js', 'y.js', 'z.js']) {
+            fs.writeFileSync(path.join(wide, f), Buffer.from('hello\n', 'latin1'));
+        }
+        fs.writeFileSync(path.join(wide, 'memory', 'many.md'),
+            '---\nname: ""\nanchors: x.js@' + HELLO_SHA + ', y.js@' + HELLO_SHA
+            + ', z.js@' + HELLO_SHA + '\n---\n\n# m\n', 'utf8');
+        const wideMem = path.join(wide, 'memory');
+        const wideList = memq.listMemories(wideMem);
+        // Six bytes buys the first entry and no more: 'hello' and its
+        // newline are what each of these files holds.
+        const cut = memq.tierAnchorDrift(wideMem, wideList, wide, { bytes: 6 });
+        assert.strictEqual(cut.drifted.length, 0);
+        assert.deepStrictEqual(cut.unverified.map((r) => r.name), ['many']);
+        // The entries the stop skipped are their own class, apart from the
+        // anchors nothing could examine: nobody looked at these, which is a
+        // different fact about a different thing.
+        assert.deepStrictEqual(cut.unverified[0].budgeted, ['y.js', 'z.js']);
+        assert.deepStrictEqual(cut.unverified[0].unreadable, []);
+        assert.strictEqual(cut.unverified[0].truncated, false);
+        assert.strictEqual(cut.unexamined, 0, 'the record itself was reached');
+
+        // The entry cap bounds what the byte cap cannot: a refusal hashes
+        // nothing, so a store whose anchored files are all gone would walk
+        // every path under a byte cap alone.
+        const gone = path.join(dir, 'gone');
+        fs.mkdirSync(gone);
+        fs.mkdirSync(path.join(gone, 'memory'));
+        fs.writeFileSync(path.join(gone, 'memory', 'absent.md'),
+            '---\nname: ""\nanchors: p.js@' + HELLO_SHA + ', q.js@' + HELLO_SHA
+            + '\n---\n\n# a\n', 'utf8');
+        const goneMem = path.join(gone, 'memory');
+        const goneList = memq.listMemories(goneMem);
+        const byBytes = memq.tierAnchorDrift(goneMem, goneList, gone, { bytes: 1 });
+        assert.deepStrictEqual(byBytes.drifted[0].missing, ['p.js', 'q.js'],
+            'a byte cap never fires on a record that hashes nothing');
+        const byEntries = memq.tierAnchorDrift(goneMem, goneList, gone, { entries: 1 });
+        assert.deepStrictEqual(byEntries.drifted[0].missing, ['p.js']);
+        assert.deepStrictEqual(byEntries.drifted[0].budgeted, ['q.js'],
+            'the entry cap counts a refusal, which cost a walk and no bytes');
+
+        // The control: with no budget the same record is checked and clean,
+        // so the rows above are the stop and not the fixture.
+        const whole = memq.tierAnchorDrift(wideMem, wideList, wide);
+        assert.deepStrictEqual(whole,
+            { drifted: [], unverified: [], unchecked: [], unexamined: 0 });
+
+        // A root that resolves nowhere is the tier-level not-checked answer,
+        // never an empty report.
+        assert.strictEqual(memq.tierAnchorDrift(mem, memories, null), null);
+
+        // Each record's own field is read before the root is asked for
+        // anything, so one unusable root cannot report a record that anchors
+        // nothing as unread: what such a record declares comes from its own
+        // frontmatter.
+        fs.writeFileSync(path.join(mem, 'plain.md'), '# nothing anchored\n', 'utf8');
+        const badRoot = memq.tierAnchorDrift(mem, memq.listMemories(mem), path.join(dir, 'a.js'));
+        assert.deepStrictEqual(badRoot.unchecked, [
+            { name: 'one', cause: 'root' },
+            { name: 'three', cause: 'root' },
+            { name: 'two', cause: 'root' }
+        ], 'the cause is the root, which is not a fault of any of these records');
+        assert.strictEqual(badRoot.drifted.length, 0);
+        assert.strictEqual(badRoot.unverified.length, 0);
+
+        // An absent tier holds no records, which is a fact rather than a
+        // failure, so it answers checked and empty.
+        assert.deepStrictEqual(memq.tierAnchorDrift(path.join(dir, 'nope'), [], dir),
+            { drifted: [], unverified: [], unchecked: [], unexamined: 0 });
+    } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
+});
+
+test('listing mode reads the tier itself, through a capped read of each record', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'memq-drift-listing-'));
+    const realReadFileSync = fs.readFileSync;
+    try {
+        fs.writeFileSync(path.join(dir, 'a.js'), Buffer.from('hello\n', 'latin1'));
+        const mem = path.join(dir, 'memory');
+        fs.mkdirSync(mem);
+        fs.writeFileSync(path.join(mem, 'fresh.md'),
+            '---\nname: \"\"\nanchors: a.js@' + HELLO_SHA + '\n---\n\n# f\n', 'utf8');
+        fs.writeFileSync(path.join(mem, 'drifted.md'),
+            '---\nname: \"\"\nanchors: a.js@' + OTHER_SHA + '\n---\n\n# d\n', 'utf8');
+
+        // A null listing is the whole request: no caller listing goes in,
+        // and the tier's own names come back judged.
+        const listed = memq.tierAnchorDrift(mem, null, dir);
+        assert.deepStrictEqual(listed.drifted.map((r) => r.name), ['drifted']);
+        assert.deepStrictEqual(listed.unverified, []);
+        assert.deepStrictEqual(listed.unchecked, [],
+            'nothing is reconciled in this mode: the listing every record came '
+            + 'from is the only one there is');
+        assert.strictEqual(listed.unexamined, 0);
+        assert.deepStrictEqual(listed, memq.tierAnchorDrift(mem, memq.listMemories(mem), dir),
+            'the same tier reads the same way whoever listed it');
+
+        // The record cap bounds this mode too, over the tier's own names in
+        // name order, so what a stop skipped is a stated count rather than a
+        // silence shaped like a clean tier.
+        const capped = memq.tierAnchorDrift(mem, null, dir, { records: 1 });
+        assert.deepStrictEqual(capped.drifted.map((r) => r.name), ['drifted']);
+        assert.strictEqual(capped.unexamined, 1);
+
+        // And no record goes through a whole-file read. A record shorter than
+        // the cap is read to its end either way, so what this pins is the
+        // ceiling: the reader takes a capped head, which is what lets a
+        // caller on a latency budget state a cost per record ahead of time.
+        // The shim makes an uncapped read fail rather than merely counting
+        // it, so the pass cannot answer at all if it takes one.
+        fs.readFileSync = function (target) {
+            if (String(target).endsWith('.md')) throw new Error('a record was read whole');
+            return realReadFileSync.apply(fs, arguments);
+        };
+        const bounded = memq.tierAnchorDrift(mem, null, dir);
+        fs.readFileSync = realReadFileSync;
+        assert.deepStrictEqual(bounded, listed,
+            'the head read answers everything the whole-file read did');
+    } finally {
+        fs.readFileSync = realReadFileSync;
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
+});
+
+// Refuse one file's stat inside the spawned CLI, which is what makes a
+// record present in the directory and absent from the listing: the listing
+// drops a name it cannot stat.
+function refuseFileStatPreload(dir, filename) {
+    const shim = path.join(dir, 'refuse-stat.js');
+    fs.writeFileSync(shim, [
+        "'use strict';",
+        "const fs = require('fs');",
+        'const realStatSync = fs.statSync;',
+        'fs.statSync = function (target) {',
+        '    if (String(target).endsWith(' + JSON.stringify(filename) + ')) {',
+        "        const err = new Error('EACCES: the fixture refuses this stat');",
+        "        err.code = 'EACCES';",
+        '        throw err;',
+        '    }',
+        '    return realStatSync.apply(fs, arguments);',
+        '};'
+    ].join('\n') + '\n', 'utf8');
+    return '--require "' + shim.replace(/\\/g, '/') + '"';
+}
+
+test('a record the listing could not stat is named as unchecked, never dropped', () => {
+    const store = makeStore();
+    try {
+        fs.writeFileSync(path.join(store.proj, 'a.js'), Buffer.from('hello\n', 'latin1'));
+        writeMemoryFile(store, 'fresh.md',
+            '---\nname: ""\nanchors: a.js@' + HELLO_SHA + '\n---\n\n# f\n');
+        writeMemoryFile(store, 'ghost.md',
+            '---\nname: ""\nanchors: a.js@' + OTHER_SHA + '\n---\n\n# g\n');
+
+        // The control: with every file readable the drifted record is named
+        // and the clean one is not, so the answer below is the refused stat.
+        const control = run(store, ['decay-scan']);
+        assert.strictEqual(control.status, 0, control.stderr);
+        assert.ok(control.stderr.includes('memq: drift  ghost  changed: a.js\n'),
+            'the record is an ordinary drift line when it can be read:\n' + control.stderr);
+
+        // A record whose file cannot be stat'd is absent from the listing
+        // while its file sits in the directory. Walking only the listing
+        // would report a tier that never held it, which is the clean answer
+        // for a record nobody looked at.
+        const blind = run(store, ['decay-scan'],
+            { NODE_OPTIONS: refuseFileStatPreload(store.root, 'ghost.md') });
+        assert.strictEqual(blind.status, 0, 'an unstattable record never fails the scan');
+        assert.ok(blind.stderr.includes('memq: anchor drift (project tier): 1 record whose anchors could not be read\n'
+            + 'memq: drift  ghost  not checked (this record\'s file could not be examined)\n'),
+            'the record is named and its cause is its own file:\n' + blind.stderr);
+        assert.ok(!blind.stderr.includes(NO_DRIFT), blind.stderr);
+
+        // The digest is the other surface this pass feeds, and the same
+        // record is invisible there: the listing dropped it, so no line
+        // carries it and no label can. The control first, so the clause
+        // below is shown to speak rather than the digest to be quiet.
+        const seen = run(store, ['recall']);
+        assert.strictEqual(seen.status, 0, seen.stderr);
+        assert.match(seen.stdout, /^project tier: 2 records$/m);
+        assert.match(seen.stdout, /^project {2}ghost .*\[drift\]/m);
+
+        const digest = run(store, ['recall'],
+            { NODE_OPTIONS: refuseFileStatPreload(store.root, 'ghost.md') });
+        assert.strictEqual(digest.status, 0, digest.stderr);
+        assert.ok(!digest.stdout.includes('ghost'),
+            'a record the listing dropped has no line to carry a label:\n' + digest.stdout);
+        // So the tier's own line carries it, counted and with its cause,
+        // because a digest that showed one record and said nothing about
+        // the other is a clean report of a tier it did not read whole.
+        assert.match(digest.stdout, new RegExp('^project tier: 1 record, plus 1 this digest '
+            + 'could not list, anchors not checked '
+            + '\\(this record.s file could not be examined\\)$', 'm'));
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a frontmatter wider than the read cap reads the same way at both doors', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'memq-wide-'));
+    try {
+        fs.writeFileSync(path.join(dir, 'a.js'), Buffer.from('hello\n', 'latin1'));
+        const mem = path.join(dir, 'memory');
+        fs.mkdirSync(mem);
+        // Frontmatter that closes well inside the line limit and well
+        // outside the byte cap: one field carrying 80 KB of text, which
+        // nothing in the grammar forbids.
+        fs.writeFileSync(path.join(mem, 'wide.md'),
+            '---\nname: ""\ntags: ' + 'x'.repeat(81920) + '\nanchors: a.js@' + OTHER_SHA + '\n---\n\n# w\n', 'utf8');
+
+        // One expression decides the question, so the two doors cannot
+        // disagree: a session start that called this record unchecked
+        // while the scan called its tier clean would send a reader to a
+        // command that contradicts the line that sent them.
+        const listed = memq.tierAnchorDrift(mem, null, dir);
+        const passed = memq.tierAnchorDrift(mem, memq.listMemories(mem), dir);
+        assert.deepStrictEqual(listed.unchecked, [{ name: 'wide', cause: 'frontmatter' }]);
+        assert.deepStrictEqual(passed, listed);
+        assert.strictEqual(listed.drifted.length, 0,
+            'a record nobody could parse is never a record found drifted');
+
+        // The cost of the shared bound, stated where it is paid: the
+        // listing loses this record's other frontmatter fields too.
+        assert.deepStrictEqual(memq.listMemories(mem)[0].tags, []);
+
+        // The control: the same record inside the cap parses at both
+        // doors, so the answer above is the width and not the fixture.
+        fs.writeFileSync(path.join(mem, 'wide.md'),
+            '---\nname: ""\ntags: one\nanchors: a.js@' + OTHER_SHA
+            + '\n---\n\n# w\n', 'utf8');
+        assert.deepStrictEqual(memq.tierAnchorDrift(mem, null, dir).drifted.map((r) => r.name),
+            ['wide']);
+        assert.deepStrictEqual(memq.listMemories(mem)[0].tags, ['one']);
+    } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
+});
+
+test('a cap that is not a finite count bounds nothing, and never bounds everything', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'memq-caps-'));
+    try {
+        fs.writeFileSync(path.join(dir, 'a.js'), Buffer.from('hello\n', 'latin1'));
+        const mem = path.join(dir, 'memory');
+        fs.mkdirSync(mem);
+        for (const name of ['one', 'two']) {
+            fs.writeFileSync(path.join(mem, name + '.md'),
+                '---\nname: ""\nanchors: a.js@' + OTHER_SHA + '\n---\n\n# ' + name + '\n', 'utf8');
+        }
+        const whole = memq.tierAnchorDrift(mem, null, dir);
+        assert.strictEqual(whole.drifted.length, 2);
+
+        // NaN is a number and a negative count is a number, and neither is
+        // a bound. Comparing against one silently, which is what a bare
+        // typeof check leaves in place, gives a caller that asked to be
+        // bounded a pass that either never stops or stops before it
+        // starts, and the second reports a whole tier unexamined.
+        for (const limits of [{ records: NaN }, { bytes: NaN }, { entries: NaN },
+            { records: -1 }, { bytes: -1 }, { entries: -1 },
+            { records: 'two' }, { bytes: null }]) {
+            assert.deepStrictEqual(memq.tierAnchorDrift(mem, null, dir, limits), whole,
+                'no bound at all, for ' + JSON.stringify(limits));
+        }
+
+        // The control: a real bound still bounds.
+        assert.strictEqual(memq.tierAnchorDrift(mem, null, dir, { records: 1 }).unexamined, 1);
+        assert.strictEqual(memq.tierAnchorDrift(mem, null, dir, { records: 0 }).unexamined, 2);
+    } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
+});
+
+test('the head read allocates for the file it opened, and refuses one that changed under it', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'memq-head-'));
+    const realAlloc = Buffer.alloc;
+    const realFstatSync = fs.fstatSync;
+    try {
+        fs.writeFileSync(path.join(dir, 'a.js'), Buffer.from('hello\n', 'latin1'));
+        const mem = path.join(dir, 'memory');
+        fs.mkdirSync(mem);
+        for (let i = 0; i < 20; i += 1) {
+            fs.writeFileSync(path.join(mem, 'r' + i + '.md'),
+                '---\nname: ""\nanchors: a.js@' + HELLO_SHA + '\n---\n\n# r\n', 'utf8');
+        }
+        const clean = memq.tierAnchorDrift(mem, null, dir);
+        assert.deepStrictEqual(clean,
+            { drifted: [], unverified: [], unchecked: [], unexamined: 0 });
+
+        // The fstat that bounds the read is already taken, so the buffer
+        // is the file's own size: a pass over a tier that allocated the
+        // cap per record would spend megabytes to read kilobytes.
+        let widest = 0;
+        Buffer.alloc = function (size) {
+            if (size > widest) widest = size;
+            return realAlloc.apply(Buffer, arguments);
+        };
+        memq.tierAnchorDrift(mem, null, dir);
+        Buffer.alloc = realAlloc;
+        assert.ok(widest < 4096, 'the widest allocation was ' + widest
+            + ' bytes for a tier of records well under a kilobyte');
+
+        // And the file that was measured is the file that was read: a
+        // record rewritten between the two answers not-checked rather
+        // than a head of one text measured against another.
+        let calls = 0;
+        fs.fstatSync = function () {
+            const st = realFstatSync.apply(fs, arguments);
+            calls += 1;
+            if (calls % 2 === 0) return Object.assign({}, st, { size: st.size + 1,
+                isFile: () => true });
+            return st;
+        };
+        const shifted = memq.tierAnchorDrift(mem, null, dir);
+        fs.fstatSync = realFstatSync;
+        assert.strictEqual(shifted.unchecked.length, 20,
+            'every record answered not-checked, got: ' + JSON.stringify(shifted));
+        assert.strictEqual(shifted.unchecked[0].cause, 'frontmatter');
+    } finally {
+        Buffer.alloc = realAlloc;
+        fs.fstatSync = realFstatSync;
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
+});
+
+test('the drift block tells its three not-checked causes apart, and counts a budget stop', () => {
+    // driftBlock is exported for this: no shipped call site gives the scan
+    // a budget (the hook is the caller that sets one, and it renders its own
+    // line), so the budget branch of this renderer is reachable from a test
+    // alone. Deleting it instead would leave the next caller that passes
+    // limits with a report that drops what it never reached.
+    const rendered = memq.driftBlock({
+        drifted: [], unverified: [], unexamined: 2,
+        unchecked: [
+            { name: 'a-frontmatter', cause: 'frontmatter' },
+            { name: 'b-root', cause: 'root' },
+            { name: 'c-file', cause: 'file' }
+        ]
+    }, false);
+    assert.strictEqual(rendered,
+        'memq: anchor drift (project tier): 3 records whose anchors could not be read,'
+        + ' 2 records a read budget stopped this pass short of\n'
+        + 'memq: drift  a-frontmatter  not checked (this record\'s frontmatter could not be read)\n'
+        + 'memq: drift  b-root  not checked (this project\'s root could not be examined)\n'
+        + 'memq: drift  c-file  not checked (this record\'s file could not be examined)\n');
+
+    // A drifted record carries the same three unsettled fields, and the
+    // heading counts it for each of them: a heading that counted only the
+    // unverified list would not sum to the records the block goes on to
+    // print, and a reader would be counting one population and reading
+    // another.
+    const both = memq.driftBlock({
+        drifted: [{
+            name: 'mixed', changed: ['a.js'], missing: [],
+            unreadable: ['lib'], truncated: true, budgeted: ['z.js']
+        }],
+        unverified: [], unchecked: [], unexamined: 0
+    }, false);
+    assert.strictEqual(both.split('\n')[0],
+        'memq: anchor drift (project tier): 1 memory anchoring a file that changed '
+        + 'or is gone, 1 record whose anchored file could not be examined, '
+        + '1 record where ' + memq.ANCHOR_TRUNCATED_TEXT + ', '
+        + '1 record with an anchor a read budget stopped this pass short of');
+
+    // The two tier-level doors, which no report may render as an empty block.
+    assert.strictEqual(memq.driftBlock(null, true),
+        'memq: anchor drift (project tier): not checked (a store pin is in effect, so no'
+        + ' root is derived from this working directory)\n');
+    assert.strictEqual(memq.driftBlock(null, false),
+        'memq: anchor drift (project tier): not checked (this tier could not be examined)\n');
+
+    // And the clean answer, which none of the above may borrow.
+    assert.strictEqual(memq.driftBlock(
+        { drifted: [], unverified: [], unchecked: [], unexamined: 0 }, false), NO_DRIFT);
+});
+
+test('a hash that answered null still charges the bytes it read to a caller\'s meter', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'memq-meter-'));
+    try {
+        const file = path.join(dir, 'hello.txt');
+        fs.writeFileSync(file, Buffer.from('hello\n', 'latin1'));
+        const script = 'const m = require(' + JSON.stringify(MEMQ) + ');'
+            + 'const meter = { bytes: 0 };'
+            + 'const sha = m.blobSha(' + JSON.stringify(file) + ', meter);'
+            + 'process.stdout.write(String(sha) + "|" + meter.bytes);';
+        const run = (extra) => spawnSync(process.execPath, ['-e', script], {
+            encoding: 'utf8',
+            env: { ...scrubRunEnv({ ...process.env }), ...(extra || {}) }
+        });
+
+        // A budget that counts only successful hashes does not bound the
+        // work: the I/O was spent either way. Both faults below read the
+        // file's six bytes and then answer null, and both are charged.
+        const control = run();
+        assert.strictEqual(control.status, 0, control.stderr);
+        assert.strictEqual(control.stdout, HELLO_SHA + '|6');
+
+        const short = run({ NODE_OPTIONS: growingFstatPreload(dir, 'first') });
+        assert.strictEqual(short.status, 0, short.stderr);
+        assert.strictEqual(short.stdout, 'null|6');
+
+        const grew = run({ NODE_OPTIONS: growingFstatPreload(dir, 'second') });
+        assert.strictEqual(grew.status, 0, grew.stderr);
+        assert.strictEqual(grew.stdout, 'null|6');
+
+        // A file past the read cap is refused before any of it is read, so
+        // nothing is charged for it: the meter is about I/O spent.
+        const huge = path.join(dir, 'huge.bin');
+        fs.writeFileSync(huge, Buffer.alloc(memq.ANCHOR_READ_CAP + 1));
+        const meter = { bytes: 0 };
+        assert.strictEqual(memq.blobSha(huge, meter), null);
+        assert.strictEqual(meter.bytes, 0);
+    } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
 });
 
 test('a pinned field the harness moved under metadata pins, silently', () => {
@@ -2641,7 +3534,7 @@ test('a pinned field the harness moved under metadata pins, silently', () => {
             + ' write it at the frontmatter block\'s top level, where it pins whether or not'
             + ' the harness then moves it under metadata:\n'
             + 'memq: pinned: 1 memory exempt from decay\n'
-            + 'memq: pinned  nested-pin' + oldLine,
+            + 'memq: pinned  nested-pin' + oldLine + NO_DRIFT,
             'the metadata-nested pin is an ordinary pin, reported as nothing else');
     } finally {
         rmStore(store);
@@ -2894,6 +3787,7 @@ test('the harness variant that names the record reads exactly as the empty-name 
             + 'memq: pinned: 2 memories exempt from decay\n'
             + 'memq: pinned  empty-name' + oldLine
             + 'memq: pinned  named-variant' + oldLine
+            + NO_DRIFT
             + 'memq: no decay candidates\n');
     } finally {
         rmStore(store);
@@ -2995,8 +3889,11 @@ test('the frontmatter budget is 34 author lines past the harness\'s five, and a 
         assert.strictEqual(res.stderr,
             'memq: usage evidence: none (no usage.jsonl)\n'
             + 'memq: pinned: 1 memory exempt from decay\n'
-            + 'memq: pinned  at-budget' + oldLine,
-            'the last line inside the budget pins, and the overflow says nothing at all');
+            + 'memq: pinned  at-budget' + oldLine
+            + 'memq: anchor drift (project tier): 1 record whose anchors could not be read\n'
+            + 'memq: drift  over-budget  not checked (this record\'s frontmatter could not be read)\n',
+            'the last line inside the budget pins, the overflow pins nothing, and the drift '
+            + 'block is the one surface that says the record could not be read at all');
     } finally {
         rmStore(store);
     }
@@ -3128,6 +4025,7 @@ test('a file time no arithmetic can trust skips an unpinned memory and still lis
             'memq: usage evidence: none (no usage.jsonl)\n'
             + 'memq: pinned: 1 memory exempt from decay\n'
             + 'memq: pinned  pinned-clock  idle unknown  applied never  edited unknown  read never\n'
+            + NO_DRIFT
             + 'memq: no decay candidates\n');
     } finally {
         rmStore(store);
@@ -3150,11 +4048,13 @@ test('the pinned listing tails off after 10 with a counted remainder, and the co
         assert.strictEqual(lines[0], 'memq: usage evidence: none (no usage.jsonl)');
         assert.strictEqual(lines[1], 'memq: pinned: 12 memories exempt from decay',
             'the count is the whole population, whatever the listing shows');
-        assert.strictEqual(lines.length, 14, 'one evidence line, the count, ten pins, the remainder, the note');
+        assert.strictEqual(lines.length, 15,
+            'one evidence line, the count, ten pins, the remainder, the drift answer, the note');
         assert.match(lines[2], /^memq: pinned  pin-00  /);
         assert.match(lines[11], /^memq: pinned  pin-09  /);
         assert.strictEqual(lines[12], 'memq: pinned  ... and 2 more');
-        assert.strictEqual(lines[13], 'memq: no decay candidates');
+        assert.strictEqual(lines[13], 'memq: no anchor drift (project tier)');
+        assert.strictEqual(lines[14], 'memq: no decay candidates');
     } finally {
         rmStore(store);
     }
@@ -3905,7 +4805,8 @@ test('the standing evidence line distinguishes an absent sidecar from an unreada
         const absent = run(store, ['decay-scan']);
         assert.strictEqual(absent.status, 0);
         assert.strictEqual(absent.stderr,
-            'memq: usage evidence: none (no usage.jsonl)\nmemq: no decay candidates\n');
+            'memq: usage evidence: none (no usage.jsonl)\n' + NO_DRIFT
+            + 'memq: no decay candidates\n');
 
         // Present but unreadable: the case that silently zeroes applied
         // evidence, and the reason the line is unconditional. The memory is
@@ -4324,7 +5225,7 @@ test('decay-scan covers the declared type tier with labeled candidates and honor
         // decay-prune labels its report lines.
         assert.strictEqual(res.stderr,
             'memq: usage evidence: none (no usage.jsonl)\n'
-            + 'memq: usage evidence: 1 stamp across 1 file  (type:webapp)\n');
+            + 'memq: usage evidence: 1 stamp across 1 file  (type:webapp)\n' + NO_DRIFT);
     } finally {
         rmStore(store);
     }
@@ -4355,6 +5256,7 @@ test('the pinned count spans both tiers and a type-tier pin carries its tier lab
             + 'memq: pinned: 2 memories exempt from decay\n'
             + 'memq: pinned  local-pin' + oldLine
             + 'memq: pinned  webapp/shared-pin' + oldLine
+            + NO_DRIFT
             + 'memq: no decay candidates\n');
 
         // The type tier's pin is enforced where its name would be acted on:
@@ -5295,8 +6197,8 @@ test('recall digests all four surfaces with correct counts, newest sign of life 
         assert.strictEqual(res.stderr, '', 'a healthy store digests without a note');
         assert.strictEqual(res.stdout,
             'outcomes journal: 2 keys\n'
-            + 'archive: 1 record\n'
-            + 'type tier (webapp): 1 record\n'
+            + 'archive: 1 record' + ARCHIVE_ANCHORS + '\n'
+            + 'type tier (webapp): 1 record' + SHARED_ANCHORS + '\n'
             + 'operator tier: no memory-operator/ directory\n'
             + 'project tier: 3 records\n'
             + 'journal  beta.key  0/1  last 3d  newer outcome\n'
@@ -5479,7 +6381,7 @@ test('the archive index read is a bounded prefix: a description past the cap rea
             'memq: archive index read capped at 65536 bytes; descriptions past the cap may be stale or absent\n');
         assert.strictEqual(res.stdout,
             'outcomes journal: 0 keys\n'
-            + 'archive: 2 records\n'
+            + 'archive: 2 records' + ARCHIVE_ANCHORS + '\n'
             + 'type tier: none declared\n'
             + 'operator tier: no memory-operator/ directory\n'
             + 'project tier: 0 records\n'
@@ -5516,7 +6418,8 @@ test('an archive index of exactly the cap is complete: no clip note, and tags an
         const res = run(store, ['recall']);
         assert.strictEqual(res.status, 0, res.stderr);
         assert.strictEqual(res.stderr, '', 'a complete file at the cap is not reported as clipped');
-        assert.match(res.stdout, /^archive: 1 record$/m);
+        assert.match(res.stdout, new RegExp('^archive: 1 record'
+            + ARCHIVE_ANCHORS.replace(/[()]/g, '\\$&') + '$', 'm'));
         assert.match(res.stdout,
             /^archive  edge  \[t01,t02,t03,t04,t05,t06,t07,t08\]  at the exact boundary  alive 4d$/m);
     } finally {
@@ -5548,7 +6451,7 @@ test('a type-archived memory joins the archive surface, labeled with its tier an
         assert.strictEqual(res.stderr, '');
         assert.strictEqual(res.stdout,
             'outcomes journal: 0 keys\n'
-            + 'archive: 2 records\n'
+            + 'archive: 2 records' + ARCHIVE_ANCHORS + '\n'
             + 'type tier (webapp): 0 records\n'
             + 'operator tier: no memory-operator/ directory\n'
             + 'project tier: 0 records\n'
@@ -5690,7 +6593,7 @@ test('a cut archive surface names the tier archive directories that hold it, per
         assert.strictEqual(res.status, 0, res.stderr);
         const lines = res.stdout.split('\n').filter((l) => l !== '');
         assert.strictEqual(lines.length, 200, 'the budget holds with the fence counted');
-        assert.strictEqual(lines[1], 'archive: 220 records');
+        assert.strictEqual(lines[1], 'archive: 220 records' + ARCHIVE_ANCHORS);
         assert.strictEqual(lines[5], fence, 'the newest records are type-side, so the fence leads them');
         assert.ok(lines[6].startsWith('  archive  webapp/t001  '), 'the type-side record rides fenced');
         assert.strictEqual(lines[lines.length - 1],
@@ -5907,7 +6810,7 @@ test('a run id opens a pending tier its own reads span, leaving the project tier
             + 'type tier: none declared\n'
             + 'operator tier: no memory-operator/ directory\n'
             + 'project tier: 1 record\n'
-            + 'pending tier (r1): 1 record, awaiting adjudication\n'
+            + 'pending tier (r1): 1 record, awaiting adjudication' + PENDING_ANCHORS + '\n'
             + 'project  main-fact  applied never  alive 9d  a main fact\n'
             + 'pending  run-fact  applied never  alive 2d\n');
 
@@ -5962,7 +6865,8 @@ test('cross-run isolation: another run\'s pending memory is never read, listed, 
             const digest = runIn(store, runId, ['recall']);
             assert.strictEqual(digest.status, 0, digest.stderr);
             assert.match(digest.stdout,
-                new RegExp('^pending tier \\(' + runId + '\\): 1 record, awaiting adjudication$', 'm'));
+                new RegExp('^pending tier \\(' + runId + '\\): 1 record, awaiting adjudication'
+                + PENDING_ANCHORS.replace(/[()]/g, '\\$&') + '$', 'm'));
             assert.match(digest.stdout, new RegExp('^pending  ' + mine + '  ', 'm'));
             assert.ok(!digest.stdout.includes(theirs),
                 'no line and no count of the digest mentions the other run');
@@ -6403,6 +7307,39 @@ function projectDirNames(store) {
     return fs.readdirSync(path.join(store.root, 'projects')).sort();
 }
 
+test('a tier with no records makes no not-checked claim about the records it lacks', () => {
+    const store = makeStore();
+    const pin = { KIT_MEMORY_PROJECT: PIN };
+    try {
+        // A pin resolves no root here, which is the tier-level not-checked
+        // state the coverage clause exists for. With no record in the tier
+        // there is nothing it could be a claim about, and every sibling
+        // clause on this line is gated on a count for the same reason.
+        //
+        // The directory is made first: a tier with no directory at all is a
+        // different case, which this digest answers before it prints a line.
+        const memDir = pinnedMemDir(store, PIN);
+        fs.mkdirSync(memDir, { recursive: true });
+        const empty = run(store, ['recall'], pin);
+        assert.strictEqual(empty.status, 0, empty.stderr);
+        assert.match(empty.stdout,
+            /^project tier: 0 records, the pinned tier this instance shares$/m);
+
+        // The control: one record in the same pinned tier, and the clause
+        // speaks, so the silence above is the empty tier and not the gate
+        // swallowing the answer.
+        fs.writeFileSync(path.join(memDir, 'one.md'), '# a fact\n', 'utf8');
+        const held = run(store, ['recall'], pin);
+        assert.strictEqual(held.status, 0, held.stderr);
+        assert.ok(held.stdout.includes('project tier: 1 record, the pinned tier this '
+            + 'instance shares, anchors not checked (a store pin is in effect, so no '
+            + 'root is derived from this working directory)'),
+            'the clause speaks for a tier that holds a record:' + held.stdout);
+    } finally {
+        rmStore(store);
+    }
+});
+
 test('a pinned project collapses two working directories into one tier every surface shares', () => {
     const store = makeStore();
     const projB = makeSecondProject();
@@ -6433,8 +7370,10 @@ test('a pinned project collapses two working directories into one tier every sur
         assert.strictEqual(digest.status, 0, digest.stderr);
         // The coverage line names provenance under a pin: the writer of these
         // records is another of this instance's workers, not the reading
-        // session.
-        assert.match(digest.stdout, /^project tier: 1 record, the pinned tier this instance shares$/m);
+        // session. The same pin is why no anchor resolves from here, and the
+        // line says that too rather than leaving an unchecked tier looking
+        // checked.
+        assert.match(digest.stdout, /^project tier: 1 record, the pinned tier this instance shares, anchors not checked \(a store pin is in effect, so no root is derived from this working directory\)$/m);
         assert.ok(!digest.stdout.includes('project tier: 1 record\n'),
             'the pinned clause rides on the count, never the plain unpinned form');
         assert.match(digest.stdout, /^journal  k\.one  1\/0  last \d+m  learned in repo A$/m);
@@ -6785,7 +7724,7 @@ test('the pin composes with a run id: the pending tier sits under the pinned pro
         assert.strictEqual(got.stdout, '---\nrun: r1\n---\n# run fact\n');
         const digest = runFrom(store, projB, ['recall'], both);
         assert.strictEqual(digest.status, 0, digest.stderr);
-        assert.match(digest.stdout, /^pending tier \(r1\): 1 record, awaiting adjudication$/m);
+        assert.match(digest.stdout, /^pending tier \(r1\): 1 record, awaiting adjudication, anchors not checked \(this digest checks the project tier only\)$/m);
         assert.deepStrictEqual(projectDirNames(store), [PIN],
             'neither working directory minted a project directory of its own');
     } finally {
@@ -11430,9 +12369,9 @@ test('recall covers the operator tier live and archived, and states its zero eve
         assert.strictEqual(res.stderr, '');
         assert.strictEqual(res.stdout,
             'outcomes journal: 0 keys\n'
-            + 'archive: 1 record\n'
+            + 'archive: 1 record' + ARCHIVE_ANCHORS + '\n'
             + 'type tier: none declared\n'
-            + 'operator tier: 1 record\n'
+            + 'operator tier: 1 record' + SHARED_ANCHORS + '\n'
             + 'project tier: 0 records\n'
             + OPERATOR_FENCE + '\n'
             + '  archive  operator/op-retired  [sql]  a retired operator fact  alive 15d\n'
@@ -11574,7 +12513,7 @@ test('decay-scan covers the operator tier with labeled candidates and its own ev
         assert.strictEqual(res.stderr,
             'memq: usage evidence: none (no usage.jsonl)\n'
             + 'memq: usage evidence: none (no usage.jsonl)  (type:webapp)\n'
-            + 'memq: usage evidence: 1 stamp across 1 file  (operator)\n');
+            + 'memq: usage evidence: 1 stamp across 1 file  (operator)\n' + NO_DRIFT);
     } finally {
         rmStore(store);
     }
@@ -11595,6 +12534,7 @@ test('an operator-tier pin is listed with its tier label and refuses the retirem
             + 'memq: pinned: 1 memory exempt from decay\n'
             + 'memq: pinned  operator/op-pin  idle 400d  applied never  edited '
             + dateOf(d400) + '  read never\n'
+            + NO_DRIFT
             + 'memq: no decay candidates\n');
 
         const refused = run(store, ['decay-prune', '--archive-operator', 'op-pin', '--confirm-shared']);
@@ -11864,9 +12804,9 @@ test('every read surface reaches the operator tier in a project with no memory d
         assert.match(digest.stderr, absent);
         assert.strictEqual(digest.stdout,
             'outcomes journal: 0 keys\n'
-            + 'archive: 1 record\n'
+            + 'archive: 1 record' + ARCHIVE_ANCHORS + '\n'
             + 'type tier: none declared\n'
-            + 'operator tier: 1 record\n'
+            + 'operator tier: 1 record' + SHARED_ANCHORS + '\n'
             + 'project tier: 0 records\n'
             + OPERATOR_FENCE + '\n'
             + '  archive  operator/op-retired  []  a retired operator fact  alive 15d\n'
@@ -15663,7 +16603,7 @@ test('the supersedes grammar decides the pointer: top level points, indented doe
         assert.strictEqual(res.status, 0, res.stderr);
         assert.strictEqual(res.stdout, 'archive  top-target  idle 5d  applied never  edited '
             + dateOf(d5) + '  read never  superseded by top-level\n');
-        assert.strictEqual(res.stderr, 'memq: usage evidence: none (no usage.jsonl)\n',
+        assert.strictEqual(res.stderr, 'memq: usage evidence: none (no usage.jsonl)\n' + NO_DRIFT,
             'a pointer that reads as absence is silent, as a tags: under another key is');
     } finally {
         rmStore(store);
@@ -15698,7 +16638,7 @@ test('a supersedes pointer the harness moved under metadata labels its target', 
         assert.strictEqual(res.status, 0, res.stderr);
         assert.strictEqual(res.stdout, 'archive  meta-target  idle 5d  applied never  edited '
             + dateOf(d5) + '  read never  superseded by meta-successor\n');
-        assert.strictEqual(res.stderr, 'memq: usage evidence: none (no usage.jsonl)\n',
+        assert.strictEqual(res.stderr, 'memq: usage evidence: none (no usage.jsonl)\n' + NO_DRIFT,
             'a pointer read where the harness put it is an ordinary pointer, reported as nothing else');
     } finally {
         rmStore(store);
@@ -15736,7 +16676,7 @@ test('decay-scan nominates a superseded record whatever its idle clock, and a pi
         // reviewer.
         assert.strictEqual(res.stderr, 'memq: usage evidence: none (no usage.jsonl)\n'
             + 'memq: pinned: 1 memory exempt from decay\n'
-            + 'memq: pinned  pinned-target' + columns + '  superseded by pinned-successor\n',
+            + 'memq: pinned  pinned-target' + columns + '  superseded by pinned-successor\n' + NO_DRIFT,
             'the pinned record is listed as pinned, nominated by nothing, and labeled');
     } finally {
         rmStore(store);
@@ -15852,7 +16792,7 @@ test('a pointer at an archived record labels the archived copy, and one at no re
         assert.strictEqual(res.status, 0, res.stderr);
         assert.strictEqual(res.stdout,
             'outcomes journal: 0 keys\n'
-            + 'archive: 1 record\n'
+            + 'archive: 1 record' + ARCHIVE_ANCHORS + '\n'
             + 'type tier: none declared\n'
             + 'operator tier: no memory-operator/ directory\n'
             + 'project tier: 2 records\n'
@@ -16094,7 +17034,7 @@ test('an archived record whose name the live tier still holds takes no label: th
         assert.strictEqual(res.status, 0, res.stderr);
         assert.strictEqual(res.stdout,
             'outcomes journal: 0 keys\n'
-            + 'archive: 1 record\n'
+            + 'archive: 1 record' + ARCHIVE_ANCHORS + '\n'
             + 'type tier: none declared\n'
             + 'operator tier: no memory-operator/ directory\n'
             + 'project tier: 2 records\n'
@@ -16326,7 +17266,7 @@ test('the same name in two tiers is two records: the label lands where the succe
         assert.strictEqual(res.stdout,
             'outcomes journal: 0 keys\n'
             + 'archive: 0 records\n'
-            + 'type tier (webapp): 2 records\n'
+            + 'type tier (webapp): 2 records' + SHARED_ANCHORS + '\n'
             + 'operator tier: no memory-operator/ directory\n'
             + 'project tier: 1 record\n'
             + 'memq: from type \'webapp\', the shared tier every project of this type'
