@@ -4905,11 +4905,15 @@ test('gate: a valve landing retires the landing session\'s marker and leaves a f
 });
 
 test('gate: a manual trigger allows via not-auto and retires only the session\'s own markers', () => {
-    // Clause 1 is still the whole manual-/compact story for the verdict: a
-    // manual trigger never reaches a deny leg, so neither marker affects it.
-    // The landing sweep applies all the same: a manual compaction resets this
-    // session's context like any other landing, so its own markers have had
-    // their moment, while another session's are not this landing's to spend.
+    // Clause 1 is the whole manual-/compact story for the verdict: a manual
+    // trigger never reaches a deny leg, so neither marker affects it. What
+    // this pins is the code path rather than a reachable one. hooks.json
+    // wires PreCompact on the auto matcher alone, so no manual compaction
+    // reaches this hook at all and the clause is defence against a rewiring.
+    // Handed such a payload the sweep behaves like any other landing's, the
+    // session's own markers having had their moment while another session's
+    // are not this landing's to spend. In production a manual compaction
+    // spends no marker, and a live one is retired by its age bound instead.
     const { repo, transcript } = armedRepo();
     try {
         assert.strictEqual(writeRoleBoundary(repo, SESSION).ok, true, 'test setup: marker should write');

@@ -699,11 +699,15 @@ if (require.main === module) {
     // The landing sweep: every allow is a compaction landing for the
     // payload's session, whatever clause allowed it, and a marker that missed
     // its moment must not outlive it. A boundary or consent marker left live
-    // through a valve, checkpoint, manual or illegible landing would stay
+    // through a valve, checkpoint or illegible landing would stay
     // honorable for up to its age bound, and if the same session crossed the
     // trigger again mid-chapter inside that window, the leftover would
     // convert the deny into an allow at exactly the placement the gate exists
-    // to prevent. So an allow retires any marker naming the landing session;
+    // to prevent. A manual /compact leaves that same leftover and this sweep
+    // never reaches it: hooks.json wires PreCompact on the auto matcher alone,
+    // so the gate does not run for one at all and the not-auto clause above is
+    // defence against a rewiring rather than a live path. There the age bound
+    // is the only retirement. So an allow retires any marker naming the landing session;
     // a marker naming another session is not this landing's to spend, and a
     // deny retires nothing, because nothing landed. Scoping needs both a
     // project and a string session id (the sweep, like the record below,
