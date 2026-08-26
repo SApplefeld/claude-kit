@@ -79,5 +79,9 @@ Files in scope: `docs/architecture.md`, `docs/security-model.md`.
 
 - None at spec time; the blind read may add entries.
 
+## Related
+
+- Amends: [Session roles and the machine coordinator](../archive/claude-kit_coordinator-and-roles_spec_v1.md), which wrote the coordinator and peer-sessions role sections this plan edits.
+
 ## Chapters
 
