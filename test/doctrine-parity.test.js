@@ -252,7 +252,7 @@ test('the peer-sessions bullet is present once in each copy and identical', () =
     // named things, so all three are pinned: a stub passing existence would
     // otherwise satisfy a pointer that promises contracts, patterns, and
     // etiquette. The Naming heading rides along for a different pointer,
-    // coordinator:49's "the peer-sessions Naming section owns", which is the
+    // the coordinator skill's seat-handoff paragraph and its "the peer-sessions Naming section owns", which is the
     // reverse direction of the same skill-to-skill pointer pair; it belongs
     // here rather than in a pin of its own because it is the same defect
     // class against the same file.
@@ -272,7 +272,7 @@ test('the peer-sessions bullet is present once in each copy and identical', () =
 // the coordinator skill. Asserting only the far end (the skill on disk,
 // carrying what it promises) would stay green after the pointer itself was
 // deleted, since nothing would then depend on the coordinator skill
-// existing at all, so the near end is pinned first: the two committed
+// existing at all, so the near end is pinned first: the committed
 // pointers still name the coordinator skill.
 test('README and peer-sessions still point at the coordinator skill', () => {
     const readme = fs.readFileSync(path.join(__dirname, '..', 'README.md'), 'utf8');
