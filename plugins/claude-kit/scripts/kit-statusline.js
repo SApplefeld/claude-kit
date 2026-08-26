@@ -30,6 +30,19 @@
 // opened here, and it is stat'ed only when it names something inside the
 // project; anything else unexpected in the file simply misses and re-renders.
 //
+// Not every render is written there. The widget's Plans segment can name a
+// position derived from a plan doc other than the two files above (an
+// archived sibling of the armed plan, on a corrected position, or one this
+// walk could not resolve at all), and neither of those other docs'
+// modification times sits in the key: a doc archived after such a line was
+// cached would leave both stats unchanged and this launcher would serve that
+// stale line forever. The widget answers whether a render is safe to cache
+// (renderState's cacheable field), and this launcher honors that answer at
+// every write, so a corrected or unresolvable Plans segment is never stored
+// and so never served from here; only a render the widget itself vouches for
+// reaches this file. A payload whose renderState predates the field is read
+// as cacheable, the two-mtime behavior this cache always had.
+//
 // Blank output is the widget's own "nothing armed" answer, so this launcher
 // prints nothing on the failures a status line cannot act on either (no
 // installed payload, a payload from before the widget existed, a payload whose
@@ -237,15 +250,26 @@ function cacheIsCurrent(widget, cwd, cached, goalMtimeMs) {
 }
 
 // Whether a render carries a key its line can be stored under: the plan doc it
-// was rendered from, and that doc's modification time as the render itself read
-// it. A payload whose renderState predates the timestamp reports no time, and an
-// entry stored without one would key on the goal state alone, which no plan-doc
-// edit moves, so the line would hold a stale Sections count until the next arm
-// or advance. Nothing stored is better than a key that cannot detect the change
-// the key exists for.
+// was rendered from, that doc's modification time as the render itself read
+// it, and the render's own say that nothing in its line came from outside
+// those two files. A payload whose renderState predates the timestamp reports
+// no time, and an entry stored without one would key on the goal state alone,
+// which no plan-doc edit moves, so the line would hold a stale Sections count
+// until the next arm or advance. Nothing stored is better than a key that
+// cannot detect the change the key exists for.
+//
+// state.cacheable false is the same rule reaching a third input: a corrected
+// or unresolvable Plans segment reads a plan doc the two stat targets above
+// do not cover, so no key built from them can ever notice that doc changing,
+// and the line must not be stored under one that cannot. A payload whose
+// renderState predates the field carries no cacheable property at all, and a
+// missing flag reads as cacheable, the two-file rule this cache always had:
+// an older widget paired with a newer launcher behaves exactly as it did
+// before this field existed.
 function cacheKeyable(state) {
     return typeof state.plan === 'string' && state.plan !== ''
-        && (typeof state.planMtimeMs === 'number' || state.planMtimeMs === null);
+        && (typeof state.planMtimeMs === 'number' || state.planMtimeMs === null)
+        && state.cacheable !== false;
 }
 
 // The project directory the status-line JSON names. The widget's own reader of

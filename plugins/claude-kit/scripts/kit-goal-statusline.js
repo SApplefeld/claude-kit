@@ -19,6 +19,32 @@
 // a state whose queue disagrees with its current plan reads as the queue of
 // one that reader normalizes it to.
 //
+// The position it names is read from the plan docs through the library's own
+// queuePosition (hooks/kit-goal-lib.js), never taken from the stored index
+// alone: the index only moves at a clean stop of the bound session, so a run
+// that died at its close-out can leave it naming a plan already finished and
+// archived, and this segment would otherwise repeat that stale claim beside
+// the corrected one the SessionStart advisory and `kit-goal.js status` both
+// already report. On a healthy queue, where the two agree, the segment reads
+// exactly as it always has, "Plans: <i>/<n>". Where a missed advance leaves
+// them apart, the marker above still names the STORED plan (the run bound to
+// this queue is still working the plan it was armed for), so this segment
+// also names the plan the derived position points at, beside the stored
+// index it moved past: "Plans: 2/2 b_spec_v1 (stored 1)". An entry the plan
+// docs cannot resolve at all keeps its position and names why rather than
+// being silently skipped, "Plans: 2/2 (unresolvable: <cause>)", and a
+// position whose own entry reads finished adds a clause of its own, "Plans:
+// 2/2 (all complete)", since a leash about to release rather than advance is
+// not visible from the bare numbers. A missed advance onto an unresolvable or
+// finished entry combines the two clauses in that order, "Plans: 2/2
+// b_spec_v1 (stored 1, unresolvable: <cause>)" or "Plans: 2/2 b_spec_v1
+// (stored 1, all complete)"; unresolvable and finished never combine with
+// each other, since an entry reads as exactly one of pending, complete or
+// unresolvable. A payload whose library does not answer, whose call throws,
+// or whose answer does not carry the shape this reader trusts, renders the
+// stored index alone, exactly as it did before this segment read
+// queuePosition at all.
+//
 // The Sections segment is read from the armed plan doc under the plan-doc
 // machine contract the curating-docs skill freezes: a section is a
 // "### N. Title" heading inside "## Sections of Work", and it is complete
@@ -39,18 +65,30 @@
 // section. A plan doc that is missing, unreadable, not a regular file, or past
 // the read cap drops the Sections segment and keeps the rest.
 //
-// WHICH copy of the plan doc is counted follows the goal state. When it
-// records an execution tree (the worktree a chapter boundary was last opened
-// from, judged by the library's planDisplayRoot rule before anything under it
-// is opened), both the count and its render-cache key come from that tree's
-// copy, because the live doc sits on the executing branch while this cwd's
-// copy may be a stale one from whatever branch it has checked out. Otherwise,
-// and whenever the recorded tree cannot be trusted, lacks the doc, or holds a
-// copy past this widget's read cap, both come from the cwd's own copy: the
-// cap rides into the root election itself, so an oversized tree copy falls
-// back rather than electing a root whose doc the read then refuses. A render
-// resolves that root once and hands it to both readers, so the key and the
-// text cannot come from different copies.
+// WHICH copy of the plan doc the SECTIONS segment counts from follows the
+// goal state. When it records an execution tree (the worktree a chapter
+// boundary was last opened from, judged by the library's planDisplayRoot rule
+// before anything under it is opened), both the count and its render-cache
+// key come from that tree's copy, because the live doc sits on the executing
+// branch while this cwd's copy may be a stale one from whatever branch it has
+// checked out. Otherwise, and whenever the recorded tree cannot be trusted,
+// lacks the doc, or holds a copy past this widget's read cap, both come from
+// the cwd's own copy: the cap rides into the root election itself, so an
+// oversized tree copy falls back rather than electing a root whose doc the
+// read then refuses. A render resolves that root once and hands it to both
+// readers, so the key and the text cannot come from different copies.
+//
+// The PLANS segment's walk follows a different rule, deliberately: it hands
+// this widget's bare cwd to queuePositionFor, and queueEntryState inside it
+// reads cwd and goalRoot(cwd) (the main checkout, for a worktree session),
+// never the recorded execution tree. The direction is the safe one: a branch
+// whose plan doc reads Complete is invisible to a walk that never opens that
+// branch's copy, so main's still-pending copy is what the walk reads instead,
+// and the reported position under-reports rather than jumping ahead of work
+// only the execution tree has finished. The widget still agrees with the
+// SessionStart advisory and `kit-goal.js status` about where the queue
+// stands, because both of those resolve the position through the same
+// goalRoot/cwd rule rather than through planDisplayRoot.
 //
 // Loaded as a module (the launcher and the test suite) this only exports its
 // internals, among them the render entry scripts/kit-statusline.js calls
@@ -114,6 +152,76 @@ function readGoalState(cwd) {
     const state = lib.readGoal(cwd);
     if (!state || typeof state.plan !== 'string' || state.plan === '') return null;
     return state;
+}
+
+// The queue position queuePosition reports, or null when this payload does not
+// carry the library, the library does not export queuePosition, the call
+// throws, or the answer does not carry the shape this widget trusts (see the
+// validation below). queuePosition never throws and always returns that shape
+// by its own contract, but this widget prints to the operator's prompt on
+// every refresh, so this call alone is wrapped rather than trusted to keep
+// that contract, unlike the reads above it (readGoalState, planDocRoot,
+// planText, planKeyMtime), which rely on main()'s outer catch: a payload that
+// cannot answer here, or answers with something this reader does not
+// recognize, renders the Plans segment exactly as it did before this segment
+// read a derived position at all.
+function queuePositionFor(cwd, state) {
+    const lib = goalLib();
+    if (!lib || typeof lib.queuePosition !== 'function') return null;
+    try {
+        const pos = lib.queuePosition(cwd, state);
+        // A malformed answer is treated exactly as no answer. index and
+        // stored are the two fields this widget does arithmetic on directly
+        // (a non-integer index would print "Plans: NaN/2"), and positional is
+        // the flag that decides whether the segment renders at all (a truthy
+        // pos missing it would fall through the caller's `if (pos.positional)`
+        // as false and silently drop a segment a healthy multi-plan queue
+        // should show, the exact silent-drop outcome this reader exists to
+        // prevent). None of the three may be trusted from a call this widget
+        // cannot itself verify.
+        if (!pos || !Number.isInteger(pos.index) || !Number.isInteger(pos.stored)
+            || typeof pos.positional !== 'boolean') {
+            return null;
+        }
+        return pos;
+    } catch {
+        return null;
+    }
+}
+
+// The base name a plan path renders as: the file name with its extension
+// stripped, the treatment the marker above applies to the armed plan. Shared
+// rather than respelled, so a plan named beside the marker and one named
+// inside the Plans segment cannot render two different ways.
+function planBaseName(rel) {
+    return path.basename(rel).replace(/\.md$/i, '');
+}
+
+// The Plans segment's text, from queuePosition's derived position rather than
+// the stored index alone. On a healthy queue the two agree and this reads
+// exactly as the stored index always has; where a missed advance leaves them
+// apart, the stored index rides along beside the corrected one, so a reader
+// is never told the stored plan is current when the plan docs themselves
+// report otherwise. An entry the plan docs cannot resolve at all keeps its
+// position and names why, rather than being folded into the count in
+// silence: a status line that renumbers around a missing plan is the failure
+// this segment exists to close. A position whose own entry reads finished
+// adds a clause naming that, since a leash about to release rather than
+// advance is not visible from the bare numbers either.
+function plansSegmentText(state, pos) {
+    const clauses = [];
+    if (pos.healed > 0) clauses.push('stored ' + (pos.stored + 1));
+    if (pos.unresolvable) clauses.push('unresolvable: ' + (pos.cause || 'unknown'));
+    if (pos.finished) clauses.push('all complete');
+    const suffix = clauses.length ? ' (' + clauses.join(', ') + ')' : '';
+    // On a corrected position the marker above still names the STORED plan (a
+    // corrected line does not re-point it: the run bound to this queue is
+    // still working the plan it was armed for), so this segment names the
+    // plan actually at the derived position beside its own number. Left
+    // unnamed, "Plans: 2/2" would read as a claim about the plan the marker
+    // names, which is false of it.
+    const correctedName = pos.healed > 0 ? ' ' + planBaseName(state.queue[pos.index]) : '';
+    return LABEL_PLANS + ': ' + (pos.index + 1) + '/' + state.queue.length + correctedName + suffix;
 }
 
 // What may not reach a terminal, whatever it came from: the C0 controls and DEL,
@@ -421,19 +529,36 @@ function sectionProgress(text) {
     return { done: done.size, total: sections.length, pointer };
 }
 
-// The widget line for a cwd together with the plan doc it was rendered from and
-// that doc's modification time: { line, plan, planMtimeMs }. With nothing armed
-// the line is empty, the plan is null and the time is null; otherwise plan is the
-// armed plan doc's path as stored, whether or not that doc was readable, since a
-// doc that appears later changes the line, and planMtimeMs is null for the same
-// unreadable doc. The launcher caches the line and re-renders when either of the
-// two files it was rendered from changes, so it needs the plan the line
-// describes, and taking both from the same render costs one stat and cannot name
-// a different plan, or a later moment, than the line does.
+// The widget line for a cwd together with the plan doc it was rendered from,
+// that doc's modification time, and whether this render is safe to cache:
+// { line, plan, planMtimeMs, cacheable }. With nothing armed the line is
+// empty, the plan is null, the time is null, and the render is cacheable
+// (there is nothing in it that could go stale outside the two files the
+// launcher already keys on). Otherwise plan is the armed plan doc's path as
+// stored, whether or not that doc was readable, since a doc that appears
+// later changes the line, and planMtimeMs is null for the same unreadable
+// doc.
+//
+// cacheable is false exactly when the Plans segment named a position derived
+// from a plan doc other than the armed plan's own: a corrected position
+// (queuePositionFor's healed > 0) reads an archived sibling of the armed
+// plan, and an unresolvable one keeps naming an entry whose doc this walk
+// could not find in any tree. Neither of those docs' modification times is in
+// the launcher's cache key, so a line built from one could go stale in a way
+// the key can never detect, and the launcher must not store it. Every other
+// render, a healthy Plans segment and one with no Plans segment at all alike,
+// is cacheable: the goal state and the armed plan doc are the only inputs
+// that can move it, and both are already keyed on.
+//
+// The launcher caches the line and re-renders when either of the two files it
+// was rendered from changes, for every render this field marks cacheable, so
+// it needs the plan the line describes, and taking both from the same render
+// costs one stat and cannot name a different plan, or a later moment, than
+// the line does.
 function renderState(cwd) {
     const state = readGoalState(cwd);
-    if (!state) return { line: '', plan: null, planMtimeMs: null };
-    const parts = [MARKER + ' ' + safeSegment(path.basename(state.plan).replace(/\.md$/i, ''))];
+    if (!state) return { line: '', plan: null, planMtimeMs: null, cacheable: true };
+    const parts = [MARKER + ' ' + safeSegment(planBaseName(state.plan))];
 
     // The doc's directory is resolved once and handed to both readers, so the
     // key and the text come from one election rather than two that a tree doc
@@ -451,10 +576,36 @@ function renderState(cwd) {
         parts.push(safeSegment(LABEL_SECTIONS + ': ' + progress.done + '/' + progress.total + next));
     }
 
-    if (Array.isArray(state.queue) && state.queue.length > 1 && Number.isInteger(state.queueIndex)) {
+    // The position is read from the plan docs through queuePosition rather
+    // than trusted from the stored index, so this segment cannot disagree
+    // with the SessionStart advisory or `kit-goal.js status` about where the
+    // queue actually stands. positional is queuePosition's own answer to
+    // whether this queue holds more than one plan; it is read rather than
+    // re-derived from state.queue.length so this surface and those two
+    // cannot answer that question two different ways. A payload the library
+    // cannot answer for falls back to the stored index alone, unchanged from
+    // before this segment read a derived position.
+    //
+    // The call itself is skipped for a queue of one, the common case: it
+    // costs at least one plan-doc walk (queueEntryState), and pos.positional
+    // is always false for a queue this short whatever queuePosition would
+    // answer, so a single-plan render would pay that walk only to discard it.
+    // This is a cheap precondition on making the call, not a second
+    // derivation of the positional question: when the call does run,
+    // pos.positional is still what decides whether the segment renders, so
+    // this surface and the two hook surfaces that also call queuePosition
+    // still cannot answer that question two different ways.
+    let cacheable = true;
+    const pos = Array.isArray(state.queue) && state.queue.length > 1 ? queuePositionFor(cwd, state) : null;
+    if (pos) {
+        if (pos.positional) {
+            parts.push(safeSegment(plansSegmentText(state, pos)));
+            if (pos.healed > 0 || pos.unresolvable) cacheable = false;
+        }
+    } else if (Array.isArray(state.queue) && state.queue.length > 1 && Number.isInteger(state.queueIndex)) {
         parts.push(safeSegment(LABEL_PLANS + ': ' + (state.queueIndex + 1) + '/' + state.queue.length));
     }
-    return { line: parts.join(' · '), plan: state.plan, planMtimeMs };
+    return { line: parts.join(' · '), plan: state.plan, planMtimeMs, cacheable };
 }
 
 // The widget line for a cwd, or '' when nothing is armed there.

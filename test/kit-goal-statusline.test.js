@@ -20,7 +20,10 @@ const os = require('os');
 const SCRIPTS = path.join(__dirname, '..', 'plugins', 'claude-kit', 'scripts');
 const WIDGET = path.join(SCRIPTS, 'kit-goal-statusline.js');
 const LAUNCHER = path.join(SCRIPTS, 'kit-statusline.js');
-const GOAL_LIB = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-goal-lib.js');
+const HOOKS = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks');
+const GOAL_LIB = path.join(HOOKS, 'kit-goal-lib.js');
+const SESSION_START_HOOK = path.join(HOOKS, 'session-start.js');
+const GOAL_CLI = path.join(HOOKS, 'kit-goal.js');
 const { cwdFromInput, sectionProgress, pointerFrom, render, PLAN_MAX_BYTES } = require(WIDGET);
 
 function makeRepo() {
@@ -169,10 +172,377 @@ test('a missing plan doc drops the Sections segment and keeps the rest', () => {
         // plan), which is what the CLI writes and what the shared reader
         // requires: a state whose index disagrees with its plan is normalized
         // to a queue of one, and the Plans segment then has nothing to report.
+        // Neither the doc at 'docs/plans/b.md' nor a same-named archived copy
+        // exists here, so the entry the reported position names is itself one
+        // no tree can resolve, and the Plans segment says so rather than
+        // printing a bare "2/2" the plan docs give no evidence for.
         arm(dir, { plan: 'docs/plans/b.md', queue: ['docs/plans/gone_spec_v1.md', 'docs/plans/b.md'], queueIndex: 1 });
-        assert.strictEqual(render(dir), '\u{1F3AF} b · Plans: 2/2');
+        assert.strictEqual(render(dir), '\u{1F3AF} b · Plans: 2/2 (unresolvable: neither)');
     } finally {
         rmDir(dir);
+    }
+});
+
+// A plan doc at an arbitrary relative path, with a Status header this
+// module's own machine contract reads. Used for the Plans-segment fixtures
+// below, which need more than one plan path and so cannot reuse PLAN_REL.
+function planAt(dir, rel, statusValue, chapters) {
+    const head = [
+        '# ' + path.basename(rel, '.md'),
+        'Status: ' + statusValue,
+        'Commit Model: Review-Only',
+        '',
+        '## Sections of Work',
+        '',
+        '### 1. First thing',
+        'Model: sonnet',
+        '',
+        '## Chapters',
+        ''
+    ];
+    fs.writeFileSync(path.join(dir, rel), head.concat(chapters || []).join('\n'), 'utf8');
+}
+
+// A same-named copy filed under docs/archive/, the shape queueEntryState
+// reads when nothing stands at the plans path any more. rel is the entry's
+// plans-path spelling; the archived copy's name is its tail, matching
+// archivePathFor's own derivation.
+function archiveAt(dir, rel, statusValue) {
+    const tail = rel.slice('docs/plans/'.length);
+    const full = path.join(dir, 'docs', 'archive', tail);
+    fs.mkdirSync(path.dirname(full), { recursive: true });
+    const head = [
+        '# ' + path.basename(rel, '.md'),
+        'Status: ' + statusValue,
+        '',
+        '## Sections of Work',
+        '',
+        '### 1. First thing',
+        '',
+        '## Chapters',
+        ''
+    ];
+    fs.writeFileSync(full, head.join('\n'), 'utf8');
+}
+
+test('a queue whose first entry is finished and archived reports the plan docs\' position, not the stale stored one', () => {
+    const dir = makeRepo();
+    try {
+        // The live defect state this section exists to fix: the stored index
+        // still names the first queued plan, which is Complete and filed under
+        // docs/archive/, while the second one is the plan actually being
+        // worked. Today's code prints the stored index alone ("Plans: 1/2");
+        // the derived position agrees with the SessionStart advisory and
+        // `kit-goal.js status`, both of which read "plan 2 of 2" here, and
+        // names the stored index alongside it so the gap is visible rather
+        // than papered over. The marker above still names the STORED plan
+        // (a_spec_v1), so the plan actually at the derived position
+        // (b_spec_v1) is named beside its own number too: left unnamed,
+        // "Plans: 2/2" would read as a claim about a_spec_v1, which is false
+        // of it.
+        archiveAt(dir, 'docs/plans/a_spec_v1.md', 'Complete');
+        planAt(dir, 'docs/plans/b_spec_v1.md', 'In Progress');
+        arm(dir, {
+            plan: 'docs/plans/a_spec_v1.md',
+            queue: ['docs/plans/a_spec_v1.md', 'docs/plans/b_spec_v1.md'],
+            queueIndex: 0
+        });
+        assert.strictEqual(render(dir), '\u{1F3AF} a_spec_v1 · Plans: 2/2 b_spec_v1 (stored 1)');
+    } finally {
+        rmDir(dir);
+    }
+});
+
+test('a healthy queue renders the Plans segment byte-identically to before this section', () => {
+    const dir = makeRepo();
+    try {
+        // Guard direction: the stored index and the derived position agree on
+        // a healthy queue (the first entry is unfinished), so this line must
+        // stay exactly what it always was.
+        arm(dir, { plan: PLAN_REL, queue: [PLAN_REL, 'docs/plans/other_spec_v1.md'], queueIndex: 0 });
+        plan(dir, ['### Chapter 1', 'Completed: 1. First thing', 'Next: 2. Second thing']);
+        assert.strictEqual(render(dir), '\u{1F3AF} widget_spec_v1 · Sections: 1/3 (Next §2) · Plans: 1/2');
+    } finally {
+        rmDir(dir);
+    }
+});
+
+test('an entry the plan docs cannot resolve at all renders its cause rather than a bare number', () => {
+    const dir = makeRepo();
+    try {
+        // Neither queue[0]'s doc nor a same-named archived copy exists in any
+        // tree, so the reported position keeps that entry rather than
+        // skipping past it (skipping would renumber the queue around a plan
+        // whose absence is exactly what an operator needs told).
+        arm(dir, {
+            plan: 'docs/plans/missing_spec_v1.md',
+            queue: ['docs/plans/missing_spec_v1.md', 'docs/plans/other_spec_v1.md'],
+            queueIndex: 0
+        });
+        assert.strictEqual(render(dir), '\u{1F3AF} missing_spec_v1 · Plans: 1/2 (unresolvable: neither)');
+    } finally {
+        rmDir(dir);
+    }
+});
+
+test('a queue of one plan prints no Plans segment, even when its own doc reads finished', () => {
+    const dir = makeRepo();
+    try {
+        arm(dir, { plan: PLAN_REL, queue: [PLAN_REL], queueIndex: 0 });
+        plan(dir, []);
+        assert.strictEqual(render(dir), '\u{1F3AF} widget_spec_v1 · Sections: 0/3 (Next §1)',
+            'a queue of one is never positional, however queuePosition would answer');
+    } finally {
+        rmDir(dir);
+    }
+
+    // A corrected single-plan queue is unreachable by construction (there is
+    // nothing past the one entry for the walk to move to), so the
+    // discriminating case for a queue of one is a finished one instead:
+    // positional stays false even where the entry AT the stored index itself
+    // reads Complete and archived, and no queue-of-one render ever renders a
+    // Plans segment.
+    const finishedDir = makeRepo();
+    try {
+        archiveAt(finishedDir, 'docs/plans/a_spec_v1.md', 'Complete');
+        arm(finishedDir, { plan: 'docs/plans/a_spec_v1.md', queue: ['docs/plans/a_spec_v1.md'], queueIndex: 0 });
+        assert.strictEqual(render(finishedDir), '\u{1F3AF} a_spec_v1',
+            'a queue of one stays non-positional even when its only entry is finished');
+    } finally {
+        rmDir(finishedDir);
+    }
+});
+
+test('the whole queue finished adds a clause, whether the stored index already agrees or needed correcting', () => {
+    // Direction one: the stored index already sits on the last entry, and it
+    // reads finished. healed is 0 (index === stored), so no plan name and no
+    // "stored" clause ride along, only the finished clause.
+    const agreeing = makeRepo();
+    try {
+        archiveAt(agreeing, 'docs/plans/a_spec_v1.md', 'Complete');
+        archiveAt(agreeing, 'docs/plans/b_spec_v1.md', 'Complete');
+        arm(agreeing, {
+            plan: 'docs/plans/b_spec_v1.md',
+            queue: ['docs/plans/a_spec_v1.md', 'docs/plans/b_spec_v1.md'],
+            queueIndex: 1
+        });
+        assert.strictEqual(render(agreeing), '\u{1F3AF} b_spec_v1 · Plans: 2/2 (all complete)');
+    } finally {
+        rmDir(agreeing);
+    }
+
+    // Direction two: the stored index still names the first entry, which is
+    // finished and archived, so the walk moves to the second and finds it
+    // finished too. The corrected plan name and the "stored" clause both ride
+    // along beside "all complete".
+    const corrected = makeRepo();
+    try {
+        archiveAt(corrected, 'docs/plans/a_spec_v1.md', 'Complete');
+        archiveAt(corrected, 'docs/plans/b_spec_v1.md', 'Complete');
+        arm(corrected, {
+            plan: 'docs/plans/a_spec_v1.md',
+            queue: ['docs/plans/a_spec_v1.md', 'docs/plans/b_spec_v1.md'],
+            queueIndex: 0
+        });
+        assert.strictEqual(render(corrected), '\u{1F3AF} a_spec_v1 · Plans: 2/2 b_spec_v1 (stored 1, all complete)');
+    } finally {
+        rmDir(corrected);
+    }
+});
+
+test('a missed advance onto an entry no tree can resolve combines both clauses, in that order', () => {
+    // The header enumerates three forms of the segment, plus the corrected
+    // name and the finished clause this fix round adds; this is the fourth
+    // and fifth combined form the code actually emits, reachable when the
+    // walk moves past a finished first entry onto one neither tree can
+    // resolve at all.
+    const dir = makeRepo();
+    try {
+        archiveAt(dir, 'docs/plans/a_spec_v1.md', 'Complete');
+        arm(dir, {
+            plan: 'docs/plans/a_spec_v1.md',
+            queue: ['docs/plans/a_spec_v1.md', 'docs/plans/gone_spec_v1.md'],
+            queueIndex: 0
+        });
+        assert.strictEqual(render(dir),
+            '\u{1F3AF} a_spec_v1 · Plans: 2/2 gone_spec_v1 (stored 1, unresolvable: neither)');
+    } finally {
+        rmDir(dir);
+    }
+});
+
+test('renderState\'s plan and planMtimeMs are unchanged by the corrected Plans segment, and it reports itself uncacheable', () => {
+    const dir = makeRepo();
+    try {
+        // The launcher keys its render cache on plan and planMtimeMs, so the
+        // corrected Plans text must not move either of them: renderState
+        // still names the STORED plan and its own modification time, exactly
+        // as it did before this section, even where the segment beside it now
+        // reports a different position. cacheable is the launcher's separate
+        // signal that this line must not be stored under that key at all: the
+        // Plans segment named a doc (b_spec_v1.md) neither of the two files
+        // the key covers, so a later change to it could never be detected.
+        const { renderState } = require(WIDGET);
+        archiveAt(dir, 'docs/plans/a_spec_v1.md', 'Complete');
+        planAt(dir, 'docs/plans/b_spec_v1.md', 'In Progress');
+        arm(dir, {
+            plan: 'docs/plans/a_spec_v1.md',
+            queue: ['docs/plans/a_spec_v1.md', 'docs/plans/b_spec_v1.md'],
+            queueIndex: 0
+        });
+        const result = renderState(dir);
+        assert.strictEqual(result.plan, 'docs/plans/a_spec_v1.md');
+        assert.strictEqual(result.planMtimeMs, null,
+            'a_spec_v1.md does not stand at the plans path, so its key mtime stays null');
+        assert.strictEqual(result.line, '\u{1F3AF} a_spec_v1 · Plans: 2/2 b_spec_v1 (stored 1)');
+        assert.strictEqual(result.cacheable, false,
+            'a corrected position must never be cached under a key that cannot detect it going stale');
+    } finally {
+        rmDir(dir);
+    }
+});
+
+test('a healthy render reports itself cacheable', () => {
+    const dir = makeRepo();
+    try {
+        const { renderState } = require(WIDGET);
+        arm(dir, { plan: PLAN_REL, queue: [PLAN_REL, 'docs/plans/other_spec_v1.md'], queueIndex: 0 });
+        plan(dir, ['### Chapter 1', 'Completed: 1. First thing', 'Next: 2. Second thing']);
+        const result = renderState(dir);
+        assert.strictEqual(result.cacheable, true);
+    } finally {
+        rmDir(dir);
+    }
+});
+
+test('an unresolvable position reports itself uncacheable', () => {
+    const dir = makeRepo();
+    try {
+        const { renderState } = require(WIDGET);
+        arm(dir, {
+            plan: 'docs/plans/missing_spec_v1.md',
+            queue: ['docs/plans/missing_spec_v1.md', 'docs/plans/other_spec_v1.md'],
+            queueIndex: 0
+        });
+        const result = renderState(dir);
+        assert.strictEqual(result.line, '\u{1F3AF} missing_spec_v1 · Plans: 1/2 (unresolvable: neither)');
+        assert.strictEqual(result.cacheable, false,
+            'an entry no tree can resolve may appear later, and no key here would notice');
+    } finally {
+        rmDir(dir);
+    }
+});
+
+test('a payload whose library does not export queuePosition renders the stored index unchanged', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kit-statusline-noqp-'));
+    const dir = makeRepo();
+    try {
+        const entry = path.join(root, 'scripts');
+        const hooksDir = path.join(root, 'hooks');
+        fs.mkdirSync(entry, { recursive: true });
+        fs.mkdirSync(hooksDir, { recursive: true });
+        fs.copyFileSync(WIDGET, path.join(entry, 'kit-goal-statusline.js'));
+        // A copy of the real library with queuePosition dropped from its own
+        // export list, which drives the "library does not export it" branch
+        // without deleting the file the widget's lazy require reaches for.
+        const libSrc = fs.readFileSync(GOAL_LIB, 'utf8');
+        const stripped = libSrc.replace(/,\s*queuePosition\s*,/, ',');
+        assert.notStrictEqual(stripped, libSrc, 'setup: the export list still named queuePosition to strip');
+        fs.writeFileSync(path.join(hooksDir, 'kit-goal-lib.js'), stripped, 'utf8');
+
+        // The archived-first-entry fixture, not a healthy queue: on a healthy
+        // queue the derived path and the fallback path render the same
+        // "Plans: 1/2", so an assertion there would pass whether or not the
+        // export strip took effect. Here the two paths disagree (the derived
+        // path corrects to "2/2 b_spec_v1 (stored 1)", the fallback stays on
+        // the stored "1/2"), so the assertion below can only pass if the
+        // fallback branch actually ran.
+        archiveAt(dir, 'docs/plans/a_spec_v1.md', 'Complete');
+        planAt(dir, 'docs/plans/b_spec_v1.md', 'In Progress');
+        arm(dir, {
+            plan: 'docs/plans/a_spec_v1.md',
+            queue: ['docs/plans/a_spec_v1.md', 'docs/plans/b_spec_v1.md'],
+            queueIndex: 0
+        });
+        const res = spawnSync(process.execPath, [path.join(entry, 'kit-goal-statusline.js')],
+            { input: JSON.stringify({ cwd: dir }), encoding: 'utf8' });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout, '\u{1F3AF} a_spec_v1 · Plans: 1/2');
+    } finally {
+        rmDir(dir);
+        rmDir(root);
+    }
+});
+
+// A hooks directory whose kit-goal-lib.js re-exports the real library
+// (everything readGoalState, planDocRoot, planText and planKeyMtime need to
+// answer normally) with queuePosition alone replaced by a stub answering a
+// fixed, possibly malformed, shape. Real GOAL_LIB is required by absolute
+// path from the stub, so only queuePosition itself is under test.
+function stubQueuePosition(hooksDir, posLiteral) {
+    fs.writeFileSync(path.join(hooksDir, 'kit-goal-lib.js'), [
+        "'use strict';",
+        'const real = require(' + JSON.stringify(GOAL_LIB) + ');',
+        'module.exports = Object.assign({}, real, {',
+        '    queuePosition() { return ' + posLiteral + '; }',
+        '});'
+    ].join('\n') + '\n', 'utf8');
+}
+
+test('a queuePosition answer missing positional falls back to the stored index rather than dropping the segment', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kit-statusline-badpos-'));
+    const dir = makeRepo();
+    try {
+        const entry = path.join(root, 'scripts');
+        const hooksDir = path.join(root, 'hooks');
+        fs.mkdirSync(entry, { recursive: true });
+        fs.mkdirSync(hooksDir, { recursive: true });
+        fs.copyFileSync(WIDGET, path.join(entry, 'kit-goal-statusline.js'));
+        // A shape carrying valid integers but no positional flag at all.
+        // Taken at face value (the `else if` fallback only runs when
+        // queuePositionFor answers null), pos.positional reads as undefined,
+        // which is falsy, and the Plans segment is dropped in silence on a
+        // queue this reader would otherwise call positional. The validation
+        // must reject the shape and let the stored-index fallback answer
+        // instead.
+        stubQueuePosition(hooksDir,
+            '{ index: 0, stored: 0, healed: 0, unresolvable: false, cause: null, finished: false }');
+
+        arm(dir, { plan: PLAN_REL, queue: [PLAN_REL, 'docs/plans/other_spec_v1.md'], queueIndex: 0 });
+        plan(dir, ['### Chapter 1', 'Completed: 1. First thing', 'Next: 2. Second thing']);
+        const res = spawnSync(process.execPath, [path.join(entry, 'kit-goal-statusline.js')],
+            { input: JSON.stringify({ cwd: dir }), encoding: 'utf8' });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout, '\u{1F3AF} widget_spec_v1 · Sections: 1/3 (Next §2) · Plans: 1/2',
+            'the malformed answer is rejected and the stored index is shown, not dropped');
+    } finally {
+        rmDir(dir);
+        rmDir(root);
+    }
+});
+
+test('a queuePosition answer with a non-integer index falls back to the stored index rather than printing NaN', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kit-statusline-badpos2-'));
+    const dir = makeRepo();
+    try {
+        const entry = path.join(root, 'scripts');
+        const hooksDir = path.join(root, 'hooks');
+        fs.mkdirSync(entry, { recursive: true });
+        fs.mkdirSync(hooksDir, { recursive: true });
+        fs.copyFileSync(WIDGET, path.join(entry, 'kit-goal-statusline.js'));
+        stubQueuePosition(hooksDir,
+            '{ index: NaN, stored: 0, healed: 0, positional: true, unresolvable: false, cause: null, finished: false }');
+
+        arm(dir, { plan: PLAN_REL, queue: [PLAN_REL, 'docs/plans/other_spec_v1.md'], queueIndex: 0 });
+        plan(dir, ['### Chapter 1', 'Completed: 1. First thing', 'Next: 2. Second thing']);
+        const res = spawnSync(process.execPath, [path.join(entry, 'kit-goal-statusline.js')],
+            { input: JSON.stringify({ cwd: dir }), encoding: 'utf8' });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout, '\u{1F3AF} widget_spec_v1 · Sections: 1/3 (Next §2) · Plans: 1/2',
+            'the malformed answer is rejected rather than printing "Plans: NaN/2"');
+    } finally {
+        rmDir(dir);
+        rmDir(root);
     }
 });
 
@@ -607,5 +977,129 @@ test('the launcher runs the widget from the payload memq-shim resolves, passing 
     } finally {
         rmDir(dir);
         rmDir(root);
+    }
+});
+
+// The section's own acceptance criterion, over one fixture: this status-line
+// widget, the SessionStart advisory (session-start.js) and `kit-goal.js
+// status` must report the SAME position, in the defect state and in the
+// healthy control. Each surface is asserted against its own literal
+// elsewhere in this file and in session-start-goal.test.js and
+// kit-goal-worktree.test.js; none of those pins the three against EACH
+// OTHER, which is exactly the shape a mismatch between them could hide
+// behind. This extracts the position each surface reports and compares them,
+// reusing the two hook surfaces' own drivers (runHook from
+// session-start-goal.test.js, runGoalCli from kit-goal-worktree.test.js)
+// rather than inventing a third way to spawn either.
+function runSessionStartHook(cwd) {
+    return spawnSync(process.execPath, [SESSION_START_HOOK], {
+        input: JSON.stringify({ cwd, session_id: 'ses-cross-surface-pin' }),
+        encoding: 'utf8'
+    });
+}
+
+function runGoalStatus(cwd) {
+    return spawnSync(process.execPath, [GOAL_CLI, 'status'], { cwd, encoding: 'utf8' });
+}
+
+// The position "Plans: <i>/<n>" the widget's own line reports, or null when
+// the line carries no Plans segment (a queue of one, where the acceptance
+// criterion has nothing positional to compare).
+function widgetPosition(line) {
+    const m = /Plans: (\d+)\/(\d+)/.exec(line);
+    return m ? { index: Number(m[1]), total: Number(m[2]) } : null;
+}
+
+// The position the SessionStart advisory's armed-goal notice reports. Both
+// queueClause's branches (the plain sentence and the correction) share the
+// substring "plan N of M in the armed queue", so one pattern reads either.
+function advisoryPosition(stdout) {
+    const context = JSON.parse(stdout).hookSpecificOutput.additionalContext;
+    const m = /plan (\d+) of (\d+) in the armed queue/.exec(context);
+    return m ? { index: Number(m[1]), total: Number(m[2]) } : null;
+}
+
+// The position `kit-goal.js status`'s queue line reports: "queue: plan N of
+// M, <plan>".
+function statusPosition(stdout) {
+    const m = /queue: plan (\d+) of (\d+),/.exec(stdout);
+    return m ? { index: Number(m[1]), total: Number(m[2]) } : null;
+}
+
+test('the widget, the SessionStart advisory and `kit-goal.js status` agree on the queue position, defect and healthy alike', () => {
+    // The defect state: queueIndex frozen on a_spec_v1, which is Complete and
+    // archived, while b_spec_v1 is the plan actually being worked. Every
+    // surface here reads the plan docs and must correct to "plan 2 of 2".
+    const defect = makeRepo();
+    try {
+        archiveAt(defect, 'docs/plans/a_spec_v1.md', 'Complete');
+        planAt(defect, 'docs/plans/b_spec_v1.md', 'In Progress');
+        const state = {
+            plan: 'docs/plans/a_spec_v1.md',
+            condition: 'cross-surface pin fixture',
+            armedAt: '2026-08-16T00:00:00.000Z',
+            boundSession: null,
+            boundTranscript: null,
+            queue: ['docs/plans/a_spec_v1.md', 'docs/plans/b_spec_v1.md'],
+            queueIndex: 0,
+            history: []
+        };
+        arm(defect, state);
+
+        const widgetLine = render(defect);
+        const advisory = runSessionStartHook(defect);
+        const status = runGoalStatus(defect);
+        assert.strictEqual(advisory.status, 0, advisory.stderr);
+        assert.strictEqual(status.status, 0, status.stderr);
+
+        const wp = widgetPosition(widgetLine);
+        const ap = advisoryPosition(advisory.stdout);
+        const sp = statusPosition(status.stdout);
+        assert.notStrictEqual(wp, null, 'setup: the widget line carries a Plans segment: ' + widgetLine);
+        assert.notStrictEqual(ap, null, 'setup: the advisory names a queue position: ' + advisory.stdout);
+        assert.notStrictEqual(sp, null, 'setup: the status report names a queue position: ' + status.stdout);
+        assert.deepStrictEqual(wp, { index: 2, total: 2 }, 'the widget corrects to plan 2 of 2: ' + widgetLine);
+        assert.deepStrictEqual(ap, wp, 'the advisory must report the position the widget reports');
+        assert.deepStrictEqual(sp, wp, '`kit-goal.js status` must report the position the widget reports');
+    } finally {
+        rmDir(defect);
+    }
+
+    // The healthy control: the stored index and the derived position already
+    // agree, so every surface reports "plan 1 of 2" without correcting
+    // anything.
+    const healthy = makeRepo();
+    try {
+        planAt(healthy, 'docs/plans/a_spec_v1.md', 'In Progress');
+        planAt(healthy, 'docs/plans/b_spec_v1.md', 'In Progress');
+        const state = {
+            plan: 'docs/plans/a_spec_v1.md',
+            condition: 'cross-surface pin fixture',
+            armedAt: '2026-08-16T00:00:00.000Z',
+            boundSession: null,
+            boundTranscript: null,
+            queue: ['docs/plans/a_spec_v1.md', 'docs/plans/b_spec_v1.md'],
+            queueIndex: 0,
+            history: []
+        };
+        arm(healthy, state);
+
+        const widgetLine = render(healthy);
+        const advisory = runSessionStartHook(healthy);
+        const status = runGoalStatus(healthy);
+        assert.strictEqual(advisory.status, 0, advisory.stderr);
+        assert.strictEqual(status.status, 0, status.stderr);
+
+        const wp = widgetPosition(widgetLine);
+        const ap = advisoryPosition(advisory.stdout);
+        const sp = statusPosition(status.stdout);
+        assert.notStrictEqual(wp, null, 'setup: the widget line carries a Plans segment: ' + widgetLine);
+        assert.notStrictEqual(ap, null, 'setup: the advisory names a queue position: ' + advisory.stdout);
+        assert.notStrictEqual(sp, null, 'setup: the status report names a queue position: ' + status.stdout);
+        assert.deepStrictEqual(wp, { index: 1, total: 2 }, 'the healthy queue needs no correction: ' + widgetLine);
+        assert.deepStrictEqual(ap, wp, 'the advisory must report the position the widget reports');
+        assert.deepStrictEqual(sp, wp, '`kit-goal.js status` must report the position the widget reports');
+    } finally {
+        rmDir(healthy);
     }
 });

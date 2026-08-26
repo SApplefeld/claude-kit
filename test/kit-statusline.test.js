@@ -640,3 +640,124 @@ test('a payload whose render reports no plan doc prints, and caches nothing', ()
         rmDir(root);
     }
 });
+
+// A same-named copy filed under docs/archive/, the shape queueEntryState reads
+// when nothing stands at the plans path any more. Mirrors archiveAt in
+// kit-goal-statusline.test.js; kept local here because this file's fixtures
+// key off rel paths under dir directly rather than through arm()/plan()'s own
+// PLAN_REL constant.
+function archiveAt(dir, rel, statusValue) {
+    const tail = rel.slice('docs/plans/'.length);
+    const full = path.join(dir, 'docs', 'archive', tail);
+    fs.mkdirSync(path.dirname(full), { recursive: true });
+    const head = ['# ' + path.basename(rel, '.md'), 'Status: ' + statusValue, '',
+        '## Sections of Work', '', '### 1. First thing', '', '## Chapters', ''];
+    fs.writeFileSync(full, head.join('\n'), 'utf8');
+}
+
+test('a corrected Plans position is never cached, so a later archive is picked up on the very next refresh', () => {
+    const { root } = makePayload();
+    const dir = makeRepo();
+    try {
+        // The live defect state this section closes: a_spec_v1 is Complete
+        // and archived while queueIndex is still frozen on it, so the marker
+        // still names it and the Plans segment corrects to b_spec_v1. Neither
+        // a_spec_v1's nor b_spec_v1's modification time sits in the
+        // launcher's two-file cache key (a_spec_v1 no longer stands at its
+        // plans path at all), so a line built from this walk must never be
+        // stored under that key.
+        archiveAt(dir, 'docs/plans/a_spec_v1.md', 'Complete');
+        plan(dir, 'docs/plans/b_spec_v1.md', []);
+        arm(dir, {
+            plan: 'docs/plans/a_spec_v1.md',
+            queue: ['docs/plans/a_spec_v1.md', 'docs/plans/b_spec_v1.md'],
+            queueIndex: 0
+        });
+        const first = '\u{1F3AF} a_spec_v1 · Plans: 2/2 b_spec_v1 (stored 1)';
+        assert.strictEqual(runLauncher(root, dir).stdout, first, 'the first refresh renders the corrected line');
+        assert.ok(!fs.existsSync(path.join(dir, CACHE_REL)), 'a corrected render writes nothing to the cache');
+
+        // The goal state never moves (queueIndex stays frozen on a_spec_v1,
+        // exactly what a run that died at its close-out leaves behind), yet
+        // b_spec_v1 finishes and is archived too: its live copy under
+        // docs/plans/ is removed (a Complete live copy would read finished
+        // there directly and never reach the archive leg at all) and an
+        // archived one takes its place. A launcher serving a cached line here
+        // would still print the first line forever, since neither file the
+        // two-mtime key covers has changed; one that never cached it has
+        // nothing to serve and re-renders from the plan docs instead.
+        fs.rmSync(path.join(dir, 'docs', 'plans', 'b_spec_v1.md'));
+        archiveAt(dir, 'docs/plans/b_spec_v1.md', 'Complete');
+        const second = '\u{1F3AF} a_spec_v1 · Plans: 2/2 b_spec_v1 (stored 1, all complete)';
+        assert.strictEqual(runLauncher(root, dir).stdout, second,
+            'the second refresh re-renders the now-finished queue rather than serving the first line');
+        assert.ok(!fs.existsSync(path.join(dir, CACHE_REL)), 'and still writes nothing to the cache');
+    } finally {
+        rmDir(dir);
+        rmDir(root);
+    }
+});
+
+test('a healthy Plans segment still caches, and the cache-hit path is unchanged for it', () => {
+    const { root } = makePayload();
+    const dir = makeRepo();
+    try {
+        arm(dir, { plan: PLAN_REL, queue: [PLAN_REL, 'docs/plans/other_spec_v1.md'], queueIndex: 0 });
+        plan(dir, PLAN_REL, []);
+        const healthy = '\u{1F3AF} widget_spec_v1 · Sections: 0/3 (Next §1) · Plans: 1/2';
+        assert.strictEqual(runLauncher(root, dir).stdout, healthy, 'the first refresh renders fresh');
+
+        const cached = readCache(dir);
+        assert.strictEqual(cached.line, healthy, 'a healthy Plans segment is written to the cache');
+        assert.strictEqual(cached.plan, PLAN_REL);
+
+        // The cache-hit path: a sentinel no render can produce proves the
+        // second refresh took the cached line rather than re-deriving it.
+        writeCache(dir, Object.assign({}, cached, { line: 'CACHED' }));
+        assert.strictEqual(runLauncher(root, dir).stdout, 'CACHED',
+            'an unchanged goal state and plan doc reprint the cached line, exactly as before this section');
+    } finally {
+        rmDir(dir);
+        rmDir(root);
+    }
+});
+
+test('a payload whose renderState carries no cacheable field at all still caches, as it did before the field existed', () => {
+    const { root, entry } = makePayload();
+    const dir = makeRepo();
+    try {
+        // The compatibility case: this launcher reaches a machine through the
+        // doctor and the payload through a plugin update, so a payload can
+        // carry an older widget whose renderState predates the cacheable
+        // field entirely. cacheKeyable must read a missing flag as cacheable,
+        // or an old widget paired with a new launcher would silently stop
+        // caching anything.
+        fs.copyFileSync(WIDGET, path.join(entry, 'scripts', 'real-widget.js'));
+        fs.writeFileSync(path.join(entry, 'scripts', 'kit-goal-statusline.js'), [
+            "'use strict';",
+            "const w = require('./real-widget.js');",
+            'module.exports = {',
+            '    cwdFromInput: w.cwdFromInput,',
+            '    goalStatePath: w.goalStatePath,',
+            '    planKeyMtime: w.planKeyMtime,',
+            '    safeLine: w.safeLine,',
+            '    renderState(cwd) {',
+            '        const state = w.renderState(cwd);',
+            '        return { line: state.line, plan: state.plan, planMtimeMs: state.planMtimeMs };',
+            '    }',
+            '};'
+        ].join('\n') + '\n', 'utf8');
+
+        arm(dir, { plan: PLAN_REL });
+        plan(dir, PLAN_REL, []);
+        assert.strictEqual(runLauncher(root, dir).stdout, FIRST_LINE, 'the first refresh renders fresh');
+        assert.ok(fs.existsSync(path.join(dir, CACHE_REL)), 'a renderState with no cacheable field still caches');
+
+        writeCache(dir, Object.assign({}, readCache(dir), { line: 'CACHED' }));
+        assert.strictEqual(runLauncher(root, dir).stdout, 'CACHED',
+            'and the cache it wrote is served back on the next refresh');
+    } finally {
+        rmDir(dir);
+        rmDir(root);
+    }
+});
