@@ -43,7 +43,7 @@ Verify on every pass:
 
 **Data exposure & logging (A02/A09):** PII or credentials in log messages and audit or error-logging proc payloads (error-data parameters often carry full request bodies, so flag when they may contain sensitive fields); exception details returned to external callers; missing audit logging on security-relevant actions (auth events, permission changes, data export), which SOC 2 cares about even where OWASP does not.
 
-**Input validation & boundaries (A03/A04):** external inputs (API payloads, file uploads, message queues) unvalidated for type/length/range before use; path traversal in file handling; deserialization of untrusted input with unsafe settings.
+**Input validation & boundaries (A03/A04):** external inputs (API payloads, file uploads, message queues) unvalidated for type/length/range before use; path traversal in file handling; deserialization of untrusted input with unsafe settings. The second-producer check: does this change create a new path to a surface some other file already guards (a sanitizer, a clamp, an allowlist), and is that guard reachable from here? A guard private to its first producer does not protect the path this change adds, and the new path ships unguarded while the reviewed guard reads as covering it.
 
 **Non-.NET surfaces (hooks, shell, CLI, infra) (A03/A08):** in JS/Node, shell, and CLI code, including the kit's own hooks and setup scripts, command and argument injection, unsafe shell or `eval`/`Function` interpolation, untrusted input (CLI args, env, stdin, data piped from a hook) used in a command or a file path without validation, path traversal and unsanitized file writes, and secrets or tokens written to disk or committed. Run `npm audit` or `pnpm audit` where a lockfile is present.
 
