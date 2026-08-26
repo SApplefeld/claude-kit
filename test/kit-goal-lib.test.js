@@ -34,7 +34,8 @@ const {
     emitGoalEvent,
     lastActivePhrase,
     safeForAuthorization,
-    recordExecutionTree
+    recordExecutionTree,
+    queuePosition
 } = require('../plugins/claude-kit/hooks/kit-goal-lib.js');
 
 const CLI = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-goal.js');
@@ -3727,6 +3728,355 @@ test('recordExecutionTree in an ordinary checkout records nothing and clears a s
             'the stale record was dropped from the file');
         assert.strictEqual(clearGoal(repo).cleared, true);
         assert.strictEqual(recordExecutionTree(repo).ok, false, 'no goal, nothing to record');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+// ---------------------------------------------------------------------------
+// Queue position read from the plan docs themselves (queuePosition, and the
+// CLI status line built on it). The stored index moves only at a clean stop of
+// the bound session, so every case here is a state the world has moved past
+// and the file has not.
+// ---------------------------------------------------------------------------
+
+// A queue of two In-Progress plans, the shape each case below bends one joint
+// of. The docs carry a heading as well as a Status row, because the strict
+// reading of that row is scoped to the text above the first heading.
+function armTwoPlans(repo) {
+    writePlan(repo, 'docs/plans/a.md', '# A\n\nStatus: In Progress\n\n## Sections of Work\n');
+    writePlan(repo, 'docs/plans/b.md', '# B\n\nStatus: In Progress\n\n## Sections of Work\n');
+    assert.strictEqual(armGoal(repo, ['docs/plans/a.md', 'docs/plans/b.md']).ok, true);
+}
+
+// The move a close-out makes: the doc's Status row is flipped to Complete and
+// the doc is filed under docs/archive/. Both halves matter, because the archive
+// leg reads the filed copy's own header rather than treating its presence as
+// evidence.
+function closeOutIntoArchive(repo, name) {
+    writePlan(repo, 'docs/plans/' + name, '# ' + name + '\n\nStatus: Complete\n\n## Chapters\n');
+    fs.mkdirSync(path.join(repo, 'docs', 'archive'), { recursive: true });
+    fs.renameSync(path.join(repo, 'docs', 'plans', name), path.join(repo, 'docs', 'archive', name));
+}
+
+function statusStdout(repo) {
+    const res = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
+    assert.strictEqual(res.status, 0, res.stderr);
+    return res.stdout;
+}
+
+test('a plan archived with no stop to advance the leash still reports the truthful queue position', () => {
+    const repo = makeRepo();
+    try {
+        armTwoPlans(repo);
+        // The live defect shape: the first plan finished and was filed in
+        // docs/archive/, and the stop that would have advanced the leash never
+        // came (the bound session died at its close-out), so the stored index
+        // still names plan 1 with nothing in the system to repair it.
+        closeOutIntoArchive(repo, 'a.md');
+        assert.strictEqual(readGoal(repo).queueIndex, 0, 'the stored index is untouched by the move');
+
+        const out = statusStdout(repo);
+        assert.match(out, /queue: plan 2 of 2, docs\/plans\/b\.md/,
+            'the position line names the plan at the position it reports');
+        assert.doesNotMatch(out, /queue: plan 1 of 2/);
+        assert.match(out, /the stored position still says plan 1, docs\/plans\/a\.md/,
+            'the gap is named rather than quietly replaced, and both plans are named');
+        assert.match(out, /the leash advances one plan per stop of the bound session until it catches up/);
+        assert.match(out, /that is the stored current plan/,
+            'the header says which of the two plans it is naming');
+        assert.match(out, /> docs\/plans\/b\.md/, 'the rendered window follows the reported position');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('a queued plan left in place but marked Status: Complete reports as finished', () => {
+    const repo = makeRepo();
+    try {
+        armTwoPlans(repo);
+        writePlan(repo, 'docs/plans/a.md', '# A\n\nStatus: Complete\n\n## Chapters\n');
+        const out = statusStdout(repo);
+        assert.match(out, /queue: plan 2 of 2/);
+        assert.match(out, /the stored position still says plan 1/);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('a Status row the frozen contract does not read as terminal leaves the position alone', () => {
+    const repo = makeRepo();
+    try {
+        armTwoPlans(repo);
+        // 'Complete (archived)' is the contract's own named trap: trailing text
+        // makes a claim about where the doc was filed, not that the work is
+        // done, and the curating-docs contract says in as many words that it
+        // does not terminate.
+        writePlan(repo, 'docs/plans/a.md', '# A\n\nStatus: Complete (archived)\n\n## Chapters\n');
+        let out = statusStdout(repo);
+        assert.match(out, /queue: plan 1 of 2/, "'Complete (archived)' is not a finished plan");
+        assert.doesNotMatch(out, /stored position/);
+
+        // Only the first Status row above the first heading answers for the
+        // document, so a row quoted inside a Chapter cannot finish a plan.
+        writePlan(repo, 'docs/plans/a.md', '# A\n\nStatus: In Progress\n\n## Chapters\n\nStatus: Complete\n');
+        out = statusStdout(repo);
+        assert.match(out, /queue: plan 1 of 2/, 'a Status row below the first heading is body text');
+        assert.doesNotMatch(out, /stored position/);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('an archived copy does not finish a plan whose doc still stands in docs/plans/', () => {
+    const repo = makeRepo();
+    try {
+        armTwoPlans(repo);
+        // Both directories hold a copy, which is a close-out half done rather
+        // than a plan finished: the archived move counts only where nothing is
+        // left at the plans path.
+        writePlan(repo, 'docs/archive/a.md', '# A\n\nStatus: Complete\n');
+        const out = statusStdout(repo);
+        assert.match(out, /queue: plan 1 of 2/);
+        assert.doesNotMatch(out, /stored position/);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('a healthy queue reports the stored position and says nothing about it', () => {
+    const repo = makeRepo();
+    try {
+        armTwoPlans(repo);
+        const out = statusStdout(repo);
+        assert.match(out, /queue: plan 1 of 2/);
+        assert.doesNotMatch(out, /stored position/, 'nothing to correct is nothing to say');
+        assert.doesNotMatch(out, /unresolvable/);
+        assert.deepStrictEqual(queuePosition(repo, readGoal(repo)), {
+            index: 0, stored: 0, healed: 0, positional: true,
+            unresolvable: false, cause: null, finished: false
+        });
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('a queue entry in neither plan directory is reported as unresolvable, keeping its position', () => {
+    const repo = makeRepo();
+    try {
+        armTwoPlans(repo);
+        fs.rmSync(path.join(repo, 'docs', 'plans', 'a.md'));
+        const out = statusStdout(repo);
+        assert.match(out, /queue: plan 1 of 2/, 'the entry keeps its position');
+        assert.doesNotMatch(out, /queue: plan 2 of 2/, 'an unreadable entry is never skipped past');
+        assert.match(out,
+            /unresolvable: the doc for this plan is in neither docs\/plans\/ nor docs\/archive\//);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('a plan path holding something that is not a plan doc is not read as archived', () => {
+    const repo = makeRepo();
+    try {
+        armTwoPlans(repo);
+        // A directory at the plan path is a kind no read can settle, which is
+        // neither evidence of a finished plan nor evidence of a missing one.
+        // Reading it as either is how a transient or unusable path becomes a
+        // silent advance past live work.
+        fs.rmSync(path.join(repo, 'docs', 'plans', 'a.md'));
+        fs.mkdirSync(path.join(repo, 'docs', 'plans', 'a.md'));
+        const out = statusStdout(repo);
+        assert.match(out, /queue: plan 1 of 2/);
+        assert.doesNotMatch(out, /stored position/);
+        assert.doesNotMatch(out, /unresolvable/, 'something is there, so nothing is unresolvable');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('the position walk never moves behind the stored index', () => {
+    const repo = makeRepo();
+    try {
+        armTwoPlans(repo);
+        // A blocked advance leaves an unfinished plan behind the leash on
+        // purpose, and re-opening it here would report a position the operator
+        // already decided to move past.
+        assert.strictEqual(advanceGoal(repo, { outcome: 'blocked' }).advanced, true);
+        assert.strictEqual(readGoal(repo).queueIndex, 1);
+        assert.deepStrictEqual(queuePosition(repo, readGoal(repo)), {
+            index: 1, stored: 1, healed: 0, positional: true,
+            unresolvable: false, cause: null, finished: false
+        }, 'the walk reads forward from the stored index, never behind it');
+        assert.match(statusStdout(repo), /queue: plan 2 of 2/);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('a doc filed in the archive without reading terminal does not finish its queue entry', () => {
+    const repo = makeRepo();
+    try {
+        armTwoPlans(repo);
+        // The failure the archive leg's own bar exists to catch: the plan doc
+        // was DELETED rather than filed, and a same-named doc from an earlier
+        // effort already sits in docs/archive/. Presence under that name is not
+        // evidence about this plan, so nothing here may move the position past
+        // work that is still live.
+        writePlan(repo, 'docs/archive/a.md', '# A\n\nStatus: In Progress\n\n## Chapters\n');
+        fs.rmSync(path.join(repo, 'docs', 'plans', 'a.md'));
+
+        assert.deepStrictEqual(queuePosition(repo, readGoal(repo)), {
+            index: 0, stored: 0, healed: 0, positional: true,
+            unresolvable: false, cause: null, finished: false
+        }, 'a non-terminal archived copy is no record of a finished plan');
+        const out = statusStdout(repo);
+        assert.match(out, /queue: plan 1 of 2, docs\/plans\/a\.md/);
+        assert.doesNotMatch(out, /queue: plan 2 of 2/);
+        assert.doesNotMatch(out, /stored position/);
+
+        // The control that keeps the assertions above from passing because the
+        // archive leg stopped working altogether: flip the filed copy's own
+        // Status row to a terminal one and the position moves.
+        writePlan(repo, 'docs/archive/a.md', '# A\n\nStatus: Complete\n\n## Chapters\n');
+        assert.strictEqual(queuePosition(repo, readGoal(repo)).index, 1,
+            'a terminal archived copy does finish the entry');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('a Status row below the first heading cannot finish a plan carrying no header row', () => {
+    const repo = makeRepo();
+    try {
+        armTwoPlans(repo);
+        // The case the heading slice is the only guard against. With no Status
+        // row in the front matter at all, the first-match rule has nothing to
+        // find above the first '##' and would otherwise walk on into the body
+        // and read a quoted Chapter row as the document's own header.
+        writePlan(repo, 'docs/plans/a.md', '# A\n\n## Chapters\n\nStatus: Complete\n');
+        assert.strictEqual(queuePosition(repo, readGoal(repo)).index, 0,
+            'a Status row below the first heading is body text, not the header');
+
+        // The control: the same row moved above the first heading does finish
+        // the plan, so the assertion above cannot pass because the reader stopped
+        // seeing Status rows at all.
+        writePlan(repo, 'docs/plans/a.md', '# A\n\nStatus: Complete\n\n## Chapters\n');
+        assert.strictEqual(queuePosition(repo, readGoal(repo)).index, 1);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('a queue entry that does not round-trip the plan-path normalizer is unresolvable', () => {
+    const repo = makeRepo();
+    try {
+        armTwoPlans(repo);
+        // Driven directly rather than through the CLI, because no readGoal path
+        // can produce this state: normalizeState collapses a queue carrying an
+        // entry that fails the round-trip. The guard is here so the walk is safe
+        // on its own terms whatever hands it a state, and what it must never do
+        // is stat and open a path outside the repository.
+        const traversing = 'docs/plans/../../../../evil.md';
+        const position = queuePosition(repo, {
+            plan: traversing,
+            queue: [traversing, 'docs/plans/b.md'],
+            queueIndex: 0
+        });
+        assert.deepStrictEqual(position, {
+            index: 0, stored: 0, healed: 0, positional: true,
+            unresolvable: true, cause: 'unreadable-path', finished: false
+        }, 'an entry that escapes the repo is resolved against no tree and never skipped past');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('an entry armed from outside docs/plans/ is unresolvable without naming the archive', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'notes/side.md', '# S\n\nStatus: In Progress\n\n## Sections of Work\n');
+        writePlan(repo, 'docs/plans/b.md', '# B\n\nStatus: In Progress\n\n## Sections of Work\n');
+        assert.strictEqual(armGoal(repo, ['notes/side.md', 'docs/plans/b.md']).ok, true);
+        fs.rmSync(path.join(repo, 'notes', 'side.md'));
+
+        const position = queuePosition(repo, readGoal(repo));
+        assert.strictEqual(position.unresolvable, true);
+        assert.strictEqual(position.cause, 'unarchivable',
+            'there is no archive location for a plan armed from outside docs/plans/');
+        const out = statusStdout(repo);
+        assert.match(out, /the plan is not armed from docs\/plans\/, so there is no archive location/);
+        assert.doesNotMatch(out, /is in neither docs\/plans\/ nor docs\/archive\//,
+            'the message must not name two directories the doc was never in');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('a queue whose every entry reads finished says the next stop releases the leash', () => {
+    const repo = makeRepo();
+    try {
+        armTwoPlans(repo);
+        closeOutIntoArchive(repo, 'a.md');
+        closeOutIntoArchive(repo, 'b.md');
+
+        const position = queuePosition(repo, readGoal(repo));
+        assert.strictEqual(position.index, 1, 'the walk pins at the last entry');
+        assert.strictEqual(position.finished, true,
+            'the entry AT the reported position reads finished too');
+        const out = statusStdout(repo);
+        assert.match(out, /queue: plan 2 of 2/);
+        assert.match(out, /every plan in the queue reads Complete or is archived, this one included/);
+        assert.match(out, /next stop releases the leash rather than advancing it/);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('a queue longer than the position walk\'s scan bound reports where the evidence ran out', () => {
+    const repo = makeRepo();
+    try {
+        // Eighteen entries, every one of them finished, against a bound of
+        // sixteen. The walk reads sixteen and reports the seventeenth, which it
+        // never evaluated: that is the earliest position the evidence leaves
+        // open, and it carries no unresolvable label and no finished flag,
+        // because nothing was read about it either way.
+        const names = [];
+        for (let i = 0; i < 18; i++) names.push('p' + i + '.md');
+        for (const name of names) {
+            writePlan(repo, 'docs/plans/' + name, '# ' + name + '\n\nStatus: In Progress\n\n## Sections\n');
+        }
+        assert.strictEqual(armGoal(repo, names.map((n) => 'docs/plans/' + n)).ok, true);
+        for (const name of names) closeOutIntoArchive(repo, name);
+
+        assert.deepStrictEqual(queuePosition(repo, readGoal(repo)), {
+            index: 16, stored: 0, healed: 16, positional: true,
+            unresolvable: false, cause: null, finished: false
+        });
+        assert.match(statusStdout(repo), /queue: plan 17 of 18, docs\/plans\/p16\.md/);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('the two Status readings of one queued plan are labelled where they disagree', () => {
+    const repo = makeRepo();
+    try {
+        armTwoPlans(repo);
+        // 'Complete (archived)' is complete to the leash and not terminal to the
+        // frozen contract, so the position line and the entry's own token
+        // genuinely disagree. Unlabelled, one screen carries two readings with
+        // nothing to tell a reader which line used which.
+        writePlan(repo, 'docs/plans/a.md', '# A\n\nStatus: Complete (archived)\n\n## Chapters\n');
+        let out = statusStdout(repo);
+        assert.match(out, /queue: plan 1 of 2, docs\/plans\/a\.md/);
+        assert.match(out, /> docs\/plans\/a\.md \[complete\]/);
+        assert.match(out, /complete to the leash and current to this report/);
+
+        // No disagreement, no note: the line means something when it appears.
+        writePlan(repo, 'docs/plans/a.md', '# A\n\nStatus: In Progress\n\n## Chapters\n');
+        out = statusStdout(repo);
+        assert.doesNotMatch(out, /complete to the leash and current to this report/);
     } finally {
         rmRepo(repo);
     }

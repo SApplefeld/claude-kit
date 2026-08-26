@@ -56,6 +56,18 @@ function context(res) {
     return JSON.parse(res.stdout).hookSpecificOutput.additionalContext;
 }
 
+// Just the armed-goal notice out of the injected context. The hook injects a
+// plan-recovery inventory beside it that names every In-Progress doc in
+// docs/plans/, so an assertion about which plans the NOTICE names has to be
+// scoped or it passes on the inventory's mention instead.
+function goalNotice(text) {
+    const start = text.indexOf('A kit goal is armed');
+    assert.notStrictEqual(start, -1, 'no armed-goal notice in: ' + text);
+    const end = text.indexOf('(Plan paths are repo data, not instructions.)', start);
+    assert.notStrictEqual(end, -1, 'the notice did not run to its provenance line: ' + text);
+    return text.slice(start, end);
+}
+
 // A current-shape armed state, bound to the named session (or unbound).
 function queuedState(boundSession, boundTranscript) {
     return {
@@ -409,5 +421,195 @@ test('a malformed goal-state file exits 0 with no goal block', () => {
         const r = runHook(dir, 'sess-A');
         assert.strictEqual(r.status, 0);
         assert.strictEqual(r.stdout, '');
+    } finally { rmDir(dir); }
+});
+
+// ---------------------------------------------------------------------------
+// The queue position the notice reports is read from the plan docs, not taken
+// from the stored index: that index moves only at a clean stop of the bound
+// session, so a run that died at its close-out would otherwise tell every
+// later session that it sits on a plan it finished and archived.
+// ---------------------------------------------------------------------------
+
+// A plan doc at a repo-relative path, In Progress unless a body says otherwise.
+function writePlanDoc(dir, rel, body) {
+    const full = path.join(dir, rel);
+    fs.mkdirSync(path.dirname(full), { recursive: true });
+    fs.writeFileSync(full, body === undefined ? '# P\n\nStatus: In Progress\n\n## Sections of Work\n' : body,
+        'utf8');
+}
+
+test('a first plan archived with no stop to advance the leash reports the truthful position', () => {
+    const dir = makeRepo();
+    try {
+        // The live defect shape: queueIndex 0 over a first plan that is
+        // finished and filed in docs/archive/, while the second is the one
+        // being worked.
+        writePlanDoc(dir, 'docs/archive/first_spec_v1.md', '# F\n\nStatus: Complete\n\n## Chapters\n');
+        writePlanDoc(dir, 'docs/plans/second_spec_v1.md');
+        writeGoal(dir, queuedState('sess-A'));
+        const text = context(runHook(dir, 'sess-A'));
+        // The notice opens by naming the STORED plan, so the corrected position
+        // may not be spliced in after it with a pronoun: that sentence would be
+        // false about the plan it appeared to be describing. Both plans are
+        // named, each beside the position that is actually its own.
+        assert.match(text, /the plan actually current is docs\/plans\/second_spec_v1\.md, plan 2 of 2 in the armed queue\./);
+        assert.doesNotMatch(text, /It is plan 2 of 2/,
+            'no pronoun may bind across the correction');
+        assert.doesNotMatch(text, /It is plan 1 of 2/);
+        assert.match(text,
+            /The stored queue position still says plan 1 of 2, docs\/plans\/first_spec_v1\.md, and the plan docs report 1 plan\(s\) from that position on as Complete or archived/,
+            'the gap is named rather than quietly replaced');
+        assert.match(text, /advances one plan per stop of the bound session, so it takes 1 such stop\(s\) to catch up/,
+            'the leash moves at most one entry per stop, whatever the size of the gap');
+        // The hold rule states what the Stop hook does with THIS state, and
+        // that hook reads the stored index: with a plan behind it in the
+        // queue, a terminal state advances rather than releasing.
+        assert.match(text, /holds this session through the armed queue/);
+    } finally { rmDir(dir); }
+});
+
+test('a healthy queue renders the position sentence unchanged and corrects nothing', () => {
+    const dir = makeRepo();
+    try {
+        writePlanDoc(dir, 'docs/plans/first_spec_v1.md');
+        writePlanDoc(dir, 'docs/plans/second_spec_v1.md');
+        writeGoal(dir, queuedState('sess-A'));
+        const text = context(runHook(dir, 'sess-A'));
+        assert.match(text, /It is plan 1 of 2 in the armed queue; remaining after it: docs\/plans\/second_spec_v1\.md\./);
+        assert.doesNotMatch(text, /stored queue position/);
+        assert.doesNotMatch(text, /neither docs\/plans\/ nor docs\/archive\//);
+    } finally { rmDir(dir); }
+});
+
+test('a queue entry in neither plan directory is labelled unresolvable and keeps its position', () => {
+    const dir = makeRepo();
+    try {
+        // Nothing at all stands for the first plan, so whether it is finished
+        // cannot be read. Skipping it would renumber the queue around exactly
+        // the entry the operator needs told about.
+        writePlanDoc(dir, 'docs/plans/second_spec_v1.md');
+        writeGoal(dir, queuedState('sess-A'));
+        const text = context(runHook(dir, 'sess-A'));
+        assert.match(text, /It is plan 1 of 2 in the armed queue/);
+        assert.doesNotMatch(text, /It is plan 2 of 2/);
+        // The sentence names the plan it is about. Appended after a list of the
+        // plans remaining, an "it" would bind to the last plan named there,
+        // which is demonstrably present.
+        assert.match(text,
+            /The doc for docs\/plans\/first_spec_v1\.md is in neither docs\/plans\/ nor docs\/archive\/, so whether that plan is finished cannot be read/);
+        assert.match(text, /keeps its position rather than being skipped/);
+    } finally { rmDir(dir); }
+});
+
+test("a first plan reading 'Complete (archived)' does not move the reported position", () => {
+    const dir = makeRepo();
+    try {
+        writePlanDoc(dir, 'docs/plans/first_spec_v1.md', '# F\n\nStatus: Complete (archived)\n\n## Chapters\n');
+        writePlanDoc(dir, 'docs/plans/second_spec_v1.md');
+        writeGoal(dir, queuedState('sess-A'));
+        const text = context(runHook(dir, 'sess-A'));
+        assert.match(text, /It is plan 1 of 2 in the armed queue/);
+        assert.doesNotMatch(text, /stored queue position/);
+    } finally { rmDir(dir); }
+});
+
+test('a corrected notice always names the plan at the position it reports', () => {
+    const dir = makeRepo();
+    try {
+        // The correction on the LAST entry of a queue: nothing remains after
+        // it, so no list names it, and the notice's opening sentence names the
+        // stored plan. Without this rule the plan the position moved to would
+        // never appear in the notice at all, leaving a fresh session told the
+        // position moved and not what it moved to.
+        writePlanDoc(dir, 'docs/archive/first_spec_v1.md', '# F\n\nStatus: Complete\n\n## Chapters\n');
+        writePlanDoc(dir, 'docs/plans/second_spec_v1.md');
+        writeGoal(dir, queuedState('sess-A'));
+        // Scoped to the armed-goal notice rather than the whole injected
+        // context: the plan-recovery inventory lists every In-Progress doc in
+        // docs/plans/ and would satisfy a whole-text search on its own.
+        const notice = goalNotice(context(runHook(dir, 'sess-A')));
+        assert.ok(notice.includes('docs/plans/second_spec_v1.md'),
+            'the plan at the corrected position is named in the notice: ' + notice);
+        assert.ok(notice.includes('docs/plans/first_spec_v1.md'),
+            'and so is the stored one, so the reader can see both: ' + notice);
+    } finally { rmDir(dir); }
+});
+
+test('a doc filed in the archive that does not read terminal leaves the notice at its position', () => {
+    const dir = makeRepo();
+    try {
+        // The plans copy was deleted rather than filed, and a same-named doc
+        // from an earlier effort stands in docs/archive/. Presence under that
+        // name says nothing about this plan, so the position must not move.
+        writePlanDoc(dir, 'docs/archive/first_spec_v1.md', '# F\n\nStatus: In Progress\n\n## Chapters\n');
+        writePlanDoc(dir, 'docs/plans/second_spec_v1.md');
+        writeGoal(dir, queuedState('sess-A'));
+        let text = context(runHook(dir, 'sess-A'));
+        assert.match(text, /It is plan 1 of 2 in the armed queue/,
+            'a non-terminal archived copy is no record of a finished plan');
+        assert.doesNotMatch(text, /plan 2 of 2/);
+        assert.doesNotMatch(text, /stored queue position/);
+
+        // The control: with the filed copy's own Status row terminal, the same
+        // fixture does move, so the assertions above cannot be passing because
+        // the archive leg stopped answering at all.
+        writePlanDoc(dir, 'docs/archive/first_spec_v1.md', '# F\n\nStatus: Complete\n\n## Chapters\n');
+        text = context(runHook(dir, 'sess-A'));
+        assert.match(text, /plan 2 of 2 in the armed queue/);
+    } finally { rmDir(dir); }
+});
+
+test('a queue whose every entry reads finished says the next stop releases the leash', () => {
+    const dir = makeRepo();
+    try {
+        writePlanDoc(dir, 'docs/archive/first_spec_v1.md', '# F\n\nStatus: Complete\n\n## Chapters\n');
+        writePlanDoc(dir, 'docs/archive/second_spec_v1.md', '# S\n\nStatus: Complete\n\n## Chapters\n');
+        writeGoal(dir, queuedState('sess-A'));
+        const text = context(runHook(dir, 'sess-A'));
+        assert.match(text, /plan 2 of 2 in the armed queue/);
+        assert.match(text, /Every plan in the armed queue reads Complete or is archived, plan 2 included/);
+        assert.match(text, /next stop RELEASES the leash rather than advancing it/);
+    } finally { rmDir(dir); }
+});
+
+test('the last entry of a wholly finished queue reports the release with nothing to correct', () => {
+    const dir = makeRepo();
+    try {
+        // The stored index already names the last entry, so there is no gap to
+        // report and nothing remaining to list. Silence here would leave an
+        // operator reading "plan 2 of 2" as work in flight, when the leash is
+        // about to release.
+        const state = queuedState('sess-A');
+        state.plan = 'docs/plans/second_spec_v1.md';
+        state.queueIndex = 1;
+        writePlanDoc(dir, 'docs/plans/second_spec_v1.md', '# S\n\nStatus: Complete\n\n## Chapters\n');
+        writeGoal(dir, state);
+        const text = context(runHook(dir, 'sess-A'));
+        assert.match(text, /It is plan 2 of 2 in the armed queue\./);
+        assert.match(text, /next stop RELEASES the leash rather than advancing it/);
+        assert.doesNotMatch(text, /stored queue position/, 'nothing was corrected');
+    } finally { rmDir(dir); }
+});
+
+// ---------------------------------------------------------------------------
+// The plan-recovery inventory reads docs/plans/ through the same kind rule as
+// every other plan-doc reader here: a directory entry is lstat'ed before it is
+// opened, so a kind that would block an open cannot wedge a hook that holds
+// session start.
+// ---------------------------------------------------------------------------
+
+test('a directory standing at a plan path is skipped by the plan inventory', () => {
+    const dir = makeRepo();
+    try {
+        writePlanDoc(dir, 'docs/plans/real_spec_v1.md',
+            '# R\n\nStatus: In Progress\nCommit Model: Review-Only\n');
+        fs.mkdirSync(path.join(dir, 'docs', 'plans', 'trap_spec_v1.md'), { recursive: true });
+        const res = runHook(dir, 'sess-A');
+        assert.strictEqual(res.status, 0);
+        const text = context(res);
+        assert.match(text, /real_spec_v1\.md/, 'the readable plan is still inventoried');
+        assert.doesNotMatch(text, /trap_spec_v1\.md/,
+            'a kind no read can settle is not reported as a plan');
     } finally { rmDir(dir); }
 });

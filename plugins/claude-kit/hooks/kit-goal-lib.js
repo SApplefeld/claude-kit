@@ -299,10 +299,17 @@ function goalRoot(cwd) {
 // inherits the worktree resolution without an edit of its own. What resolves
 // is only where the STATE file lives: plan docs stay resolved against the
 // caller's own cwd, because the live plan doc belongs to the execution tree's
-// branch while the leash belongs to the repository. planDisplayRoot is the
-// one exception and it runs the other way, letting a progress-rendering
-// surface prefer the recorded execution tree's copy of the plan doc; nothing
-// that decides a hold or a release resolves through it.
+// branch while the leash belongs to the repository. Three readers reach past
+// that cwd for a plan doc, and none replaces it. planDisplayRoot runs the
+// other way, letting a progress-rendering surface prefer the recorded
+// execution tree's copy; nothing that decides a hold or a release resolves
+// through it. queueEntryState and the Stop hook's 'gone' cross-check are the
+// other two: each takes the same shape over goalRoot, asking BOTH trees and
+// acting only where they agree, which is a second opinion rather than a second
+// resolution. Where the two disagree, the answer is the conservative one and no
+// position moves. The pair ask different underlying questions (whether an entry
+// reads finished, and whether an armed plan's doc is gone) and so stay two
+// predicates rather than one.
 function goalPath(cwd) {
     return path.join(goalRoot(cwd), '.kit', 'goal-state.json');
 }
@@ -516,10 +523,11 @@ function normalizeAuthorizations(value, queue) {
 // readGoal calls the one definition below over the goal state file. Every
 // question about an armed PLAN path goes through planFileSize and planPathState
 // instead, which add the one resolution rule a plan doc needs, and those two are
-// what planHead, armGoal, the CLI's queue rendering, the Stop hook's hold and the
-// status-line widget all call: a reader that answered differently would open a
-// path another one refused, which is the disagreement this file's section exists
-// to close.
+// what planHeadText, armGoal, the CLI's queue rendering, the Stop hook's hold,
+// the queue-position walk's treeEntryState, the SessionStart hook's plan
+// inventory and the status-line widget all call: a reader that answered
+// differently would open a path another one refused, which is the disagreement
+// this file's section exists to close.
 //
 // emitGoalEvent spells the same lstat-and-isFile shape inline over a different
 // file, and deliberately with the opposite posture: an lstat that fails for any
@@ -1022,39 +1030,379 @@ function writeState(cwd, state) {
 // an absent plan produces but NOT the same case, and a caller that acts on the
 // difference asks planPathState, which parts the three.
 function planHead(cwd, planRel) {
+    const readings = planStatusReadings(cwd, planRel);
+    return { exists: readings.exists, status: readings.status };
+}
+
+// Both readings of a plan doc's Status row, from one head read:
+//
+//   { exists, status, terminal }
+//
+// status is classifyPlanStatus's loose reading, the one the leash acts on, and
+// terminal is planReadsTerminal's strict frozen-contract reading, the one the
+// queue-position walk acts on. The two answer different questions and are
+// allowed to disagree ('Complete (archived)' is complete and not terminal),
+// which is exactly why a surface rendering both must take them from one call
+// over one set of bytes: read separately, a screen can print a position walked
+// under one rule beside a per-entry token classified under the other, with no
+// way for its reader to tell which sentence used which. Never throws.
+function planStatusReadings(cwd, planRel) {
+    const head = planHeadText(cwd, planRel);
+    if (!head.exists || head.text === null) {
+        return { exists: head.exists, status: 'unknown', terminal: false };
+    }
+    return { exists: true, status: classifyPlanStatus(head.text), terminal: planReadsTerminal(head.text) };
+}
+
+// How much of a plan doc any header question here reads. A plan's header rows
+// sit at the top by the machine contract the curating-docs skill freezes, so a
+// fixed head answers every one of them, and the bound is what keeps a plan doc
+// from ever being pulled into memory whole on a path the Stop hook crosses
+// while holding a stop.
+const PLAN_HEAD_MAX_BYTES = 2048;
+
+// The head bytes of a plan doc at a repo-relative path, decoded and with a
+// leading UTF-8 BOM stripped (PowerShell Set-Content writes one, and every
+// header anchor below is line-start anchored, so an unstripped BOM would hide
+// the first row). One read site for every question asked of a plan doc's Status
+// row, so two readings of that row cannot disagree about which bytes they were
+// asked of. It is not the file's only read of a plan doc: planAuthorization
+// takes a far wider window for a different question, and states its own bound.
+//
+// { exists, text }, and the pair carries three outcomes rather than two, which
+// is the distinction callers act on: exists false is a path that is not a
+// readable plan doc at all (planFileSize's kind rule, or an open that failed),
+// while exists true with a null text is a plan doc whose read failed after the
+// open, which says nothing about the plan and must not read as an answer about
+// its header. Never throws.
+function planHeadText(cwd, planRel) {
     const full = path.join(cwd, planRel);
+    // The path must read as a plan doc before it is opened, judged by
+    // planFileSize's kind rule, because the plan path arrives from the
+    // goal-state file: a FIFO at a well-formed in-repo plan path passes every
+    // other check and would block a POSIX open until a writer appears.
     if (planFileSize(cwd, planRel) === null) {
-        return { exists: false, status: 'unknown' };
+        return { exists: false, text: null };
     }
     let fd;
     try {
         fd = fs.openSync(full, 'r');
     } catch {
-        return { exists: false, status: 'unknown' };
+        return { exists: false, text: null };
     }
     try {
-        const buf = Buffer.alloc(2048);
-        const bytes = fs.readSync(fd, buf, 0, 2048, 0);
+        const buf = Buffer.alloc(PLAN_HEAD_MAX_BYTES);
+        const bytes = fs.readSync(fd, buf, 0, PLAN_HEAD_MAX_BYTES, 0);
         let head = buf.toString('utf8', 0, bytes);
         if (head.charCodeAt(0) === 0xFEFF) head = head.slice(1);
-        // Classify from the Status header only: anchored to a line start (m flag)
-        // so body prose cannot match, and the value must sit on the same line as
-        // the header ([^\S\r\n]* is horizontal whitespace only, never a newline),
-        // so a bare "Status:" line above a line beginning "Complete" or "in
-        // progress" does not misclassify the plan. A leading UTF-8 BOM (PowerShell
-        // Set-Content writes one) is stripped above so the anchor sees the header.
-        // The Status header sits on its own line near the top by convention.
-        const inProgress = /^status:[^\S\r\n]*in[^\S\r\n]*progress/im.test(head);
-        const complete = /^status:[^\S\r\n]*complete/im.test(head) && !inProgress;
-        let status = 'unknown';
-        if (complete) status = 'complete';
-        else if (inProgress) status = 'in progress';
-        return { exists: true, status };
+        return { exists: true, text: head };
     } catch {
-        return { exists: true, status: 'unknown' };
+        return { exists: true, text: null };
     } finally {
         try { fs.closeSync(fd); } catch { /* already closed or invalid */ }
     }
+}
+
+// The Stop hook's reading of a plan doc's Status header: 'complete', 'in
+// progress', or 'unknown'. Deliberately looser than the frozen machine
+// contract planReadsTerminal below answers to, and the two are separate
+// because they decide different things. This one decides whether a leash
+// releases or advances, where a header carrying trailing text after Complete
+// ("Complete (archived)") is a plan whose author called it finished, and
+// holding every stop of a finished run over the parenthetical is the more
+// expensive error. planReadsTerminal decides whether a queue entry a reporting
+// surface is standing on may be counted as finished on the filesystem's
+// evidence alone, with no author in the loop, so it takes the strict contract:
+// the position walk evaluates the entry at the stored index FIRST and then
+// everything forward of it, so the strict rule governs the current plan and its
+// successors rather than anything already behind the leash.
+//
+// The consequence of the two rules meeting on one plan is worth naming, because
+// it is a state an operator will see: a current plan whose header reads
+// 'Status: Complete (archived)' is finished to the leash, which advances or
+// releases on it, and unfinished to both reporting surfaces, which keep
+// reporting it as the current position until the stop that moves the index.
+function classifyPlanStatus(head) {
+    // Classify from the Status header only: anchored to a line start (m flag)
+    // so body prose cannot match, and the value must sit on the same line as
+    // the header ([^\S\r\n]* is horizontal whitespace only, never a newline),
+    // so a bare "Status:" line above a line beginning "Complete" or "in
+    // progress" does not misclassify the plan. A leading UTF-8 BOM (PowerShell
+    // Set-Content writes one) is stripped by the reader so the anchor sees the
+    // header. The Status header sits on its own line near the top by convention.
+    const inProgress = /^status:[^\S\r\n]*in[^\S\r\n]*progress/im.test(head);
+    const complete = /^status:[^\S\r\n]*complete/im.test(head) && !inProgress;
+    if (complete) return 'complete';
+    if (inProgress) return 'in progress';
+    return 'unknown';
+}
+
+// The directory a plan is armed from, and the one a close-out files it under.
+// The move between them is the second of the two pieces of evidence a queue
+// entry can be read as finished on; the first is the entry's own Status row.
+const PLANS_DIR = 'docs/plans/';
+const ARCHIVE_DIR = 'docs/archive/';
+
+// Where a queued plan path's doc lands when a close-out files it, or null when
+// there is no archive location to ask about. A goal may be armed over any
+// in-repo path, and an entry outside docs/plans/ has no archived counterpart:
+// such an entry carries no archived evidence, so it is reported at its position
+// rather than counted finished behind the reader's back.
+//
+// The derived path is round-tripped through normalizePlanArg before it is
+// returned, the same guard every reader of a stored plan path applies, so this
+// function is safe on its own terms whatever calls it. The slice alone is a
+// text operation over a value that reached the caller from a JSON file: an
+// entry spelled docs/plans/../../../evil.md passes the bare prefix test and
+// would yield an archive target outside the repository, which the callers would
+// then stat and open. Containment is this function's own to prove rather than
+// its callers' to promise.
+function archivePathFor(cwd, planRel) {
+    if (typeof planRel !== 'string' || !planRel.startsWith(PLANS_DIR)) return null;
+    const tail = planRel.slice(PLANS_DIR.length);
+    if (tail === '') return null;
+    const filed = ARCHIVE_DIR + tail;
+    return normalizePlanArg(cwd, filed) === filed ? filed : null;
+}
+
+// Whether a plan doc's head reads terminal under the machine contract the
+// curating-docs skill freezes: the first Status row above the first '##'
+// heading is the one read, and its value must be exactly Complete as a whole
+// string, case-insensitively. 'Complete (archived)' does not terminate, in the
+// contract's own words, because trailing text makes a different claim (where
+// the doc has been filed) from the one being read here (that the work is
+// finished).
+//
+// Three legs sit beyond the value compare, each closing a way this could
+// answer yes on something that is not the header. Only the text above the
+// first '##' heading is searched, so a Status row quoted inside a Chapter
+// cannot answer for the document. The FIRST such row wins, so a later one
+// cannot override the header. And the row must be terminated by a newline
+// inside the head window, so a header pushed to the window's own bound never
+// reads terminal on a value the window cut in half.
+function planReadsTerminal(head) {
+    if (typeof head !== 'string') return false;
+    const heading = /^##/m.exec(head);
+    const front = heading ? head.slice(0, heading.index) : head;
+    const row = /^status:([^\r\n]*)\r?\n/im.exec(front);
+    return row !== null && row[1].trim().toLowerCase() === 'complete';
+}
+
+// What one checkout's filesystem says about a queued plan entry:
+//
+//   'complete'  the doc's own header reads terminal, or the doc has moved to
+//               docs/archive/ with nothing left at the plans path AND the
+//               archived copy's own header reads terminal too
+//   'live'      a readable plan doc stands at the plans path and does not read
+//               terminal
+//   'absent'    neither path holds anything
+//   'unknown'   something this tree cannot settle right now stands at one of
+//               the paths: a kind that is not a plan doc, or a stat refused by
+//               a lock, a permission or a scanner
+//
+// The fourth state is the one worth spelling out, because collapsing it into
+// 'absent' is how a transient errno becomes a claim that a plan was archived.
+// It is evidence of neither finished nor missing, so every caller here reads
+// it as an entry that is present and unfinished, the direction that
+// under-reports progress rather than reporting past live work. Never throws.
+function treeEntryState(root, planRel) {
+    try {
+        const head = planHeadText(root, planRel);
+        if (head.exists) {
+            if (head.text === null) return 'unknown';
+            return planReadsTerminal(head.text) ? 'complete' : 'live';
+        }
+        // planHeadText refuses on the kind rule as well as on absence, so the
+        // cases are parted by planPathState, the classification every reader of
+        // a plan path here answers to.
+        if (planPathState(root, planRel) !== 'gone') return 'unknown';
+        const filed = archivePathFor(root, planRel);
+        if (filed === null) return 'absent';
+        // planFileSize answers 0 for an absent path and null for one that
+        // cannot be read as a plan doc. A zero-byte file standing at the
+        // archive path answers 0 too and so reads as absent: it is
+        // indistinguishable from nothing here, and an empty file is no record
+        // of a finished plan anyway.
+        const size = planFileSize(root, filed);
+        if (size === null) return 'unknown';
+        if (size === 0) return 'absent';
+        // The archived copy is HELD TO THE SAME BAR as a doc still in
+        // docs/plans/: its header must read terminal. Presence alone is not
+        // evidence, because the two paths carry the same name and nothing ties
+        // the file under docs/archive/ to this plan beyond that name. A plan doc
+        // DELETED rather than filed, with a same-named doc from an earlier
+        // effort already in the archive, would otherwise read finished in every
+        // tree and move the reported position past live work in silence, which
+        // is the one outcome this function's agreement rule exists to prevent.
+        const filedHead = planHeadText(root, filed);
+        if (!filedHead.exists || filedHead.text === null) return 'unknown';
+        // Present and not terminal is the same answer a live doc at the plans
+        // path gives: something stands for this entry and it does not read
+        // finished, so the walk stops on it rather than counting it either way.
+        return planReadsTerminal(filedHead.text) ? 'complete' : 'live';
+    } catch {
+        return 'unknown';
+    }
+}
+
+// Whether a queue entry is finished, asked of every tree that has a say, as
+// { state, cause }. state is 'complete', 'pending', or 'unresolvable' (nothing
+// can be read about the entry at all), and cause names WHY an unresolvable one
+// is unresolvable, so a reporting surface can say something true about it:
+//
+//   'unreadable-path'  the entry does not round-trip the plan-path normalizer,
+//                      so no reader here will resolve it against any tree
+//   'unarchivable'     the entry is not armed from docs/plans/, so its own path
+//                      is the only place it could be, and nothing is there
+//   'neither'          its doc is in neither docs/plans/ nor docs/archive/ of
+//                      any tree
+//
+// cause is null for the two resolvable states. Naming it here rather than at
+// each surface is what keeps a message from describing the wrong directories:
+// the sentence "in neither docs/plans/ nor docs/archive/" is false of an entry
+// that was never armed from either.
+//
+// The entry is re-validated against the normalizer before any tree is asked,
+// the same round-trip readGoal applies, kept here so this function is safe on
+// its own terms whatever calls it: the entries arrive from a JSON file, and a
+// caller that passed a raw state rather than a normalized one would otherwise
+// have this walk stat and open paths outside the repository.
+//
+// A worktree session reads goal state from the main checkout while plan docs
+// resolve against its own cwd, so the two trees can genuinely disagree about
+// whether an entry's doc exists or reads terminal: a plan finished on a branch
+// is Complete in the worktree and In Progress on main until the merge lands.
+// An entry counts as finished only where every tree agrees, and a disagreement
+// reports it pending. That asymmetry is deliberate and matches the one the
+// Stop hook's 'gone' branch already takes: a wrongly-finished entry moves the
+// reported position PAST live work, silently, while a wrongly-unfinished one
+// only under-reports progress, where an operator can see it. Unresolvable
+// takes the same agreement rule, so an entry standing in either tree is
+// reported from that tree rather than as missing. Never throws.
+function queueEntryState(cwd, planRel) {
+    if (normalizePlanArg(cwd, planRel) !== planRel) {
+        return { state: 'unresolvable', cause: 'unreadable-path' };
+    }
+    const root = goalRoot(cwd);
+    const here = treeEntryState(cwd, planRel);
+    const votes = root === cwd ? [here] : [here, treeEntryState(root, planRel)];
+    if (votes.every((v) => v === 'complete')) return { state: 'complete', cause: null };
+    if (votes.every((v) => v === 'absent')) {
+        return {
+            state: 'unresolvable',
+            cause: archivePathFor(cwd, planRel) === null ? 'unarchivable' : 'neither'
+        };
+    }
+    return { state: 'pending', cause: null };
+}
+
+// How many queue entries a position walk will settle before it stops asking.
+// Each entry costs a file open or two, on paths that run at every session start
+// and at every status report, so the walk is bounded rather than proportional
+// to a queue an operator may have armed dozens of plans into.
+//
+// A walk that exhausts the bound has read every one of those entries as
+// finished and reports the NEXT one, which it never evaluated. That is the
+// conservative end of the evidence rather than a claim about the entry: naming
+// the last entry it did read would report a plan it just established is
+// finished. Nothing was read about the reported entry either way, so such a
+// walk reports no unresolvable label and no finished flag, and the position it
+// gives is the earliest one the evidence leaves open.
+const QUEUE_POSITION_MAX_SCAN = 16;
+
+// The queue position a reporting surface shows: the first entry from the
+// stored index onward that the plan docs themselves do not report as finished.
+//
+// The stored index only ever moves at a clean stop of the bound session (the
+// Stop hook is advanceGoal's one caller), so a run that dies at its close-out,
+// or one whose bound session never stops again, leaves the index frozen on a
+// plan that is finished and archived, with no path in the system that repairs
+// it. Every surface that reported the stored index at face value then told the
+// operator, and the next session, that the run sits on a plan it finished
+// yesterday. So position is READ from the world here rather than trusted from
+// the file.
+//
+// The walk only ever moves FORWARD from the stored index, and that is a rule
+// rather than an implementation detail: an entry behind the stored position
+// may be unfinished for a reason the leash already adjudicated (a blocked
+// advance moves past a plan that never went Complete), and reporting a
+// position behind the leash's own would re-open work the operator decided to
+// leave. Reading forward can only ever agree with the leash or catch it up.
+//
+// Returns { index, stored, healed, positional, unresolvable, cause, finished }:
+//
+//   index         the position to report
+//   stored        the stored index the walk started from, clamped into the
+//                 queue, which a surface names beside a corrected position so
+//                 the gap between the two is visible rather than papered over
+//   healed        how many finished entries the walk moved past (0 on every
+//                 healthy state, where the first entry read is the current plan
+//                 and it is not finished)
+//   positional    whether this queue holds more than one plan, and so whether a
+//                 claim ABOUT a position among several says anything at all.
+//                 Spelled once here rather than at each surface, because two
+//                 surfaces that answered it differently would report the same
+//                 queue of one two different ways
+//   unresolvable  whether the entry AT the reported position is one no tree can
+//                 resolve
+//   cause         queueEntryState's cause for that unresolvable entry, or null
+//   finished      whether the entry AT the reported position itself reads
+//                 finished, which is the whole-queue-finished state: the walk
+//                 pins at the last entry and the leash RELEASES at the bound
+//                 session's next stop rather than advancing, so a surface that
+//                 reported the position alone would describe work remaining
+//                 where none does
+//
+// An unresolvable entry stops the walk and keeps its position, never being
+// skipped: skipping it would renumber the queue around a plan whose absence is
+// the very thing the operator needs told. Nothing here writes: this reports the
+// truth over a stale file rather than repairing it. Never throws.
+function queuePosition(cwd, state) {
+    let stored = 0;
+    let index = 0;
+    let entry = null;
+    let positional = false;
+    try {
+        if (!state || typeof state.plan !== 'string' || state.plan === '') {
+            return empty();
+        }
+        const queue = Array.isArray(state.queue) ? state.queue : [];
+        if (queue.length === 0) return empty();
+        positional = queue.length > 1;
+        stored = Number.isInteger(state.queueIndex) && state.queueIndex >= 0
+            && state.queueIndex < queue.length ? state.queueIndex : 0;
+        index = stored;
+        const last = queue.length - 1;
+        for (let scanned = 0; scanned < QUEUE_POSITION_MAX_SCAN; scanned++) {
+            entry = queueEntryState(cwd, queue[index]);
+            if (entry.state !== 'complete' || index === last) break;
+            index++;
+            entry = null;
+        }
+    } catch {
+        // A walk that threw has no evidence for the ground it covered, so it
+        // keeps none of it: the stored index is still a position, and reporting
+        // it is exactly today's behavior.
+        index = stored;
+        entry = null;
+    }
+    return {
+        index,
+        stored,
+        healed: index - stored,
+        positional,
+        unresolvable: entry !== null && entry.state === 'unresolvable',
+        cause: entry !== null && entry.state === 'unresolvable' ? entry.cause : null,
+        finished: entry !== null && entry.state === 'complete'
+    };
+}
+
+// The answer for a state carrying no queue to have a position in.
+function empty() {
+    return {
+        index: 0, stored: 0, healed: 0, positional: false,
+        unresolvable: false, cause: null, finished: false
+    };
 }
 
 // How much of a plan doc the authorization scan reads. A Dispatch Authorization
@@ -2193,4 +2541,20 @@ function emitGoalEvent(details) {
 // field, so no surface judges that field by a spelling of its own, and
 // recordExecutionTree for the checkpoint CLI, the field's one writer; both
 // state their display-trust bound where they are defined.
-module.exports = { goalPath, goalRoot, readGoal, armGoal, appendGoal, advanceGoal, bindSession, clearGoal, composeCondition, planHead, emitGoalEvent, normalizePlanArg, lastActivePhrase, isSessionIdShaped, planFileSize, planPathState, planDisplayRoot, recordExecutionTree, pathErrnoClass, safeForAuthorization, GOAL_STATE_MAX_BYTES };
+// queuePosition rides along for the surfaces that report where a queue stands:
+// the SessionStart notice, the CLI status report and the status-line widget's
+// Plans segment. The stored index moves only at a clean stop of the bound
+// session, so what a queue entry's own plan doc says is the evidence those
+// surfaces read, and one spelling of that evidence is what keeps three reports
+// of one queue from disagreeing. A fourth surface reports the position and
+// deliberately does not read this: the doctor renders the raw stored index,
+// because it is the reporting control for a state file the hooks correct or
+// refuse, and a doctor that silently corrected too would have nothing left to
+// report the defect with.
+// classifyPlanStatus and planStatusReadings ride along for the same
+// single-rule reason one level down. The SessionStart hook's plan inventory
+// asks the loose Status question of docs/plans/ entries and would otherwise
+// carry a second spelling of the regex in the same hook whose queue clause
+// reads the strict one; the CLI's queue rendering asks both questions of one
+// entry and must show which reading each of its lines used.
+module.exports = { goalPath, goalRoot, readGoal, armGoal, appendGoal, advanceGoal, bindSession, clearGoal, composeCondition, planHead, planStatusReadings, classifyPlanStatus, emitGoalEvent, normalizePlanArg, lastActivePhrase, isSessionIdShaped, planFileSize, planHeadText, planPathState, planDisplayRoot, recordExecutionTree, pathErrnoClass, safeForAuthorization, queuePosition, GOAL_STATE_MAX_BYTES };

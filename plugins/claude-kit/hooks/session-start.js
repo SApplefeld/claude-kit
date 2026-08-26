@@ -19,7 +19,9 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { readGoal, lastActivePhrase, isSessionIdShaped } = require('./kit-goal-lib.js');
+const {
+    readGoal, lastActivePhrase, isSessionIdShaped, queuePosition, planHeadText, classifyPlanStatus
+} = require('./kit-goal-lib.js');
 const { sameSessionId } = require('./kit-compact-lib.js');
 
 // How recently another session's transcript must have been written for that
@@ -182,15 +184,86 @@ function safeText(value, cap) {
 // last plan of a queue, where there is nothing left to name. Plan paths pass
 // through the same sanitizer as every other repo-provided string, and the list
 // is capped so a long queue cannot flood the notice.
-function queueClause(goal) {
+//
+// The position is read from the plan docs rather than taken from the stored
+// index (kit-goal-lib's queuePosition owns the rule and states why). The index
+// moves only at a clean stop of the bound session, so a run that died at its
+// close-out leaves this notice telling every later session that the run sits on
+// a plan it finished and archived, which is the one thing this notice exists to
+// get right. A healthy state settles one entry, finds it unfinished, and
+// renders exactly the sentence it rendered before.
+function queueClause(cwd, goal) {
     const queue = Array.isArray(goal.queue) ? goal.queue : [];
-    const index = Number.isInteger(goal.queueIndex) ? goal.queueIndex : 0;
+    const position = queuePosition(cwd, goal);
+    const index = position.index;
     const remaining = queue.slice(index + 1);
-    if (remaining.length === 0) return '';
+    // A correction, a release warning and an unresolvable label are all claims
+    // ABOUT a position among several, so none of them speaks for a queue of
+    // one: there the position is 1 of 1 whatever the plan doc says, and what
+    // the leash does about a lone plan whose doc is missing is the Stop hook's
+    // decision, stated at every stop rather than here. Whether a queue is
+    // positional at all is queuePosition's own answer, shared with the CLI
+    // status report, so the two surfaces cannot report one queue two ways.
+    //
+    // A correction and a whole-queue-finished reading each summon this clause
+    // where it would otherwise stay silent: a position the stored index gets
+    // wrong, and a leash about to release rather than advance, are both things
+    // the reader cannot see any other way.
+    const correction = position.positional && position.healed > 0;
+    const finished = position.positional && position.finished;
+    if (remaining.length === 0 && !correction && !finished) return '';
+    const unresolvable = position.positional && position.unresolvable;
     const shown = remaining.slice(0, 5).map((p) => safeText(p, 120));
     const more = remaining.length - shown.length;
     const list = shown.join(', ') + (more > 0 ? `, and ${more} more` : '');
-    return ` It is plan ${index + 1} of ${queue.length} in the armed queue; remaining after it: ${list}.`;
+    const tail = remaining.length === 0 ? '.' : `; remaining after it: ${list}.`;
+    const current = safeText(queue[index], 120);
+
+    let clause;
+    if (correction) {
+        // Both plans are named and no pronoun crosses the correction. The
+        // sentence the notice opens with names the STORED plan, so a position
+        // spliced in after it with an "it" would read as a claim about that
+        // plan and be false of it: the corrected position belongs to a
+        // different plan, and on a corrected last entry that plan would
+        // otherwise never be named in the notice at all. The stored position is
+        // named rather than quietly replaced for the other half of the same
+        // reason: the gap between it and the truth is what tells a session an
+        // advance was missed, and the leash still acts on the stored one.
+        clause = ` The stored queue position still says plan ${position.stored + 1} of ${queue.length},`
+            + ` ${safeText(queue[position.stored], 120)}, and the plan docs report ${position.healed}`
+            + ` plan(s) from that position on as Complete or archived, so the plan actually current is`
+            + ` ${current}, plan ${index + 1} of ${queue.length} in the armed queue${tail}`
+            + ` The leash still acts on the stored position and advances one plan per stop of the bound`
+            + ` session, so it takes ${position.healed} such stop(s) to catch up.`;
+    } else {
+        clause = ` It is plan ${index + 1} of ${queue.length} in the armed queue${tail}`;
+    }
+    if (finished) {
+        clause += ` Every plan in the armed queue reads Complete or is archived, plan ${index + 1}`
+            + ` included, so the bound session's next stop RELEASES the leash rather than advancing it.`;
+    }
+    if (unresolvable) {
+        clause += ` The doc for ${current} ${unresolvableWhere(position.cause)}, so whether that plan is`
+            + ` finished cannot be read; it keeps its position rather than being skipped.`;
+    }
+    return clause;
+}
+
+// Where a queue entry's doc was looked for and not found, worded from
+// queuePosition's own cause so the sentence cannot name directories the entry
+// was never in: a plan armed from outside docs/plans/ has no archive location
+// to check, and an entry that does not round-trip the plan-path normalizer was
+// never resolved against any directory at all.
+function unresolvableWhere(cause) {
+    if (cause === 'unarchivable') {
+        return 'is not at that path, and the plan is not armed from docs/plans/, so there is no'
+            + ' archive location to look in either';
+    }
+    if (cause === 'unreadable-path') {
+        return 'is at a path no reader here resolves, so it was looked for in no directory';
+    }
+    return 'is in neither docs/plans/ nor docs/archive/';
 }
 
 // The armed-goal notice, framed by this session's relationship to the leash:
@@ -198,10 +271,19 @@ function queueClause(goal) {
 // unbound and claimable. A bound goal beside a payload carrying no session id
 // is an anomaly rather than evidence of either state, so it degrades to the
 // undifferentiated notice. Returns null when no goal is armed.
-function composeGoalBlock(goal, sessionId) {
+function composeGoalBlock(cwd, goal, sessionId) {
     if (!goal || typeof goal.plan !== 'string' || goal.plan === '') return null;
     const plan = safeText(goal.plan, 120);
-    const tail = queueClause(goal);
+    const tail = queueClause(cwd, goal);
+    // Which hold rule this state gets is the Stop hook's question, not the
+    // notice's, and that hook reads the STORED index (its plansRemain), so the
+    // predicate is spelled from the stored index rather than from the sentence
+    // above: the clause now renders on a last plan whose position was
+    // corrected, and keying the rule off its presence would state a queue rule
+    // for a leash that is about to release.
+    const queued = Array.isArray(goal.queue) ? goal.queue : [];
+    const storedIndex = Number.isInteger(goal.queueIndex) ? goal.queueIndex : 0;
+    const plansRemain = queued.length > storedIndex + 1;
     const skillPointer = 'The kit-goal skill states what an arming requests, parallelizing that plan\'s'
         + ' work via subagent dispatch and Workflows to reduce wall-clock time included; read it there'
         + ' rather than from this notice.';
@@ -226,7 +308,7 @@ function composeGoalBlock(goal, sessionId) {
     // punctuation: one branch opens a sentence with it (through
     // holdRuleSentence below), the others splice it after a comma and
     // continue past it.
-    const holdRule = (subject) => (tail !== ''
+    const holdRule = (subject) => (plansRemain
         ? `a Stop hook holds ${subject} through the armed queue: a terminal state (plan Complete or a`
             + ` leading 'BLOCKED:') on any plan but the last advances the leash to the next plan and keeps`
             + ` holding, and only the last plan's terminal state releases the stop`
@@ -420,31 +502,34 @@ function main() {
             .slice(0, 50);
         for (const file of entries) {
             try {
-                // Only the header matters; read the first 2KB.
-                const fd = fs.openSync(path.join(plansDir, file), 'r');
-                const buf = Buffer.alloc(2048);
-                const bytes = fs.readSync(fd, buf, 0, 2048, 0);
-                fs.closeSync(fd);
-                let head = buf.toString('utf8', 0, bytes);
-                if (head.charCodeAt(0) === 0xFEFF) head = head.slice(1);
-                // Classify from the Status header only: anchored to a line start
-                // (m flag) so body prose cannot match, and the value must sit on
-                // the same line as the header ([^\S\r\n]* is horizontal whitespace
-                // only, never a newline), so a bare "Status:" line above a line
-                // beginning "complete" or "in progress" does not misclassify the
-                // plan. A leading UTF-8 BOM (PowerShell Set-Content writes one) is
-                // stripped above so the anchor sees the header. The header sits on
-                // its own line near the top by convention.
-                if (/^status:[^\S\r\n]*in[^\S\r\n]*progress/im.test(head)) {
+                // The head read goes through kit-goal-lib's planHeadText, which
+                // applies the shared kind-and-size rule before it opens
+                // anything: a directory entry is judged by an lstat first, and
+                // only a regular file (or a link resolving in-repo to one) is
+                // opened. Opening these entries directly would leave the one
+                // reader here that a FIFO can wedge, and this hook blocks
+                // session start, so a FIFO named anything.md in a cloned repo's
+                // docs/plans/ would hold every session start in that checkout
+                // with no try able to rescue it. The window is the same 2 KB of
+                // header, and the BOM strip and the decode are the shared
+                // reader's too.
+                const head = planHeadText(cwd, 'docs/plans/' + file);
+                if (!head.exists || head.text === null) continue;
+                // The Status question is classifyPlanStatus's, the same rule the
+                // armed-goal notice's queue clause answers to one function over,
+                // so one hook's output cannot carry two readings of one row.
+                const status = classifyPlanStatus(head.text);
+                if (status === 'in progress') {
                     // The header is repo-controlled data bound for a trusted context
                     // channel: whitelist the commit model and sanitize the filename so
                     // a hostile plan doc cannot inject instructions.
-                    const model = /commit model:\s*(Review-Only|Branch-and-PR|Commit-and-Push)\b/i.exec(head);
+                    const model = /commit model:\s*(Review-Only|Branch-and-PR|Commit-and-Push)\b/i
+                        .exec(head.text);
                     activePlans.push({
                         file: file.replace(/[^\x20-\x7E]/g, '').slice(0, 120),
                         model: model ? model[1] : 'unknown'
                     });
-                } else if (/^status:[^\S\r\n]*complete/im.test(head)) {
+                } else if (status === 'complete') {
                     // A Complete plan should have moved to docs/archive/. One still
                     // in plans/ is a missed close-out step: count it for a soft nudge.
                     completedUnarchived++;
@@ -473,7 +558,7 @@ function main() {
     // only, because visibility is how a crashed run gets rescued.
     let goalBlock = null;
     try {
-        goalBlock = composeGoalBlock(readGoal(cwd), payload.session_id);
+        goalBlock = composeGoalBlock(cwd, readGoal(cwd), payload.session_id);
     } catch {
         // Never let the goal check break recovery or the session.
     }

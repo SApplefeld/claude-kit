@@ -1249,3 +1249,72 @@ test('the leash decides nothing from the execution tree: a Complete copy there n
         rmDir(eventsRoot);
     }
 });
+
+// ---------------------------------------------------------------------------
+// Queue position over two trees. Goal state resolves worktree-to-main while
+// plan docs resolve against the caller's own cwd, so the two trees can
+// genuinely disagree about whether a queued plan is finished: a plan closed out
+// on a branch is archived in the worktree and still live on main until the
+// merge lands.
+// ---------------------------------------------------------------------------
+
+const QUEUE_A = 'docs/plans/qa.md';
+const QUEUE_B = 'docs/plans/qb.md';
+
+function writeQueuePlans(root) {
+    writeFile(path.join(root, QUEUE_A), '# A\n\nStatus: In Progress\n\n## Sections of Work\n');
+    writeFile(path.join(root, QUEUE_B), '# B\n\nStatus: In Progress\n\n## Sections of Work\n');
+}
+
+// The move a close-out makes in one tree: the doc's Status row is flipped to
+// Complete and the doc is filed under that tree's docs/archive/. Both halves
+// matter, because the archive leg reads the filed copy's own header rather than
+// treating its presence as evidence.
+function archiveIn(root, rel) {
+    writeFile(path.join(root, rel), '# A\n\nStatus: Complete\n\n## Chapters\n');
+    fs.mkdirSync(path.join(root, 'docs', 'archive'), { recursive: true });
+    fs.renameSync(path.join(root, rel), path.join(root, 'docs', 'archive', path.basename(rel)));
+}
+
+test('a queue entry finished in one tree only holds the reported position; agreement moves it', () => {
+    const w = makeWorktree();
+    try {
+        writeQueuePlans(w.main);
+        writeQueuePlans(w.tree);
+        assert.strictEqual(armGoal(w.main, [QUEUE_A, QUEUE_B]).ok, true,
+            'setup: the queue arms in the main checkout');
+
+        // The branch closed the first plan out and filed it; main has not seen
+        // the merge, so its copy is still live. The disagreement reports the
+        // entry unfinished, because a wrongly-finished one moves the reported
+        // position past work that is still live in the other tree, silently,
+        // where a wrongly-unfinished one only under-reports progress.
+        archiveIn(w.tree, QUEUE_A);
+        let res = runGoalCli(['status'], w.tree);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /queue: plan 1 of 2/,
+            'archived here and live there is not a finished plan: ' + res.stdout);
+        assert.doesNotMatch(res.stdout, /queue: plan 2 of 2/);
+
+        // The other direction of the same disagreement: filed on main while
+        // the branch still holds a live copy.
+        writeFile(path.join(w.tree, QUEUE_A), '# A\n\nStatus: In Progress\n\n## Sections of Work\n');
+        archiveIn(w.main, QUEUE_A);
+        res = runGoalCli(['status'], w.tree);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /queue: plan 1 of 2/,
+            'live here and archived there is not a finished plan either: ' + res.stdout);
+
+        // The control that keeps the two assertions above from passing for the
+        // wrong reason: with the merge landed, both trees read the entry the
+        // same way and the reported position moves.
+        fs.rmSync(path.join(w.tree, QUEUE_A));
+        res = runGoalCli(['status'], w.tree);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /queue: plan 2 of 2/,
+            'agreement in both trees moves the position: ' + res.stdout);
+        assert.match(res.stdout, /the stored position still says plan 1/);
+    } finally {
+        rmWorktree(w);
+    }
+});

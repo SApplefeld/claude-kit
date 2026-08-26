@@ -36,8 +36,8 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const {
-    armGoal, appendGoal, clearGoal, readGoal, planHead, lastActivePhrase, isSessionIdShaped, goalPath,
-    planPathState, pathErrnoClass, safeForAuthorization, GOAL_STATE_MAX_BYTES
+    armGoal, appendGoal, clearGoal, readGoal, planStatusReadings, lastActivePhrase, isSessionIdShaped,
+    goalPath, planPathState, pathErrnoClass, safeForAuthorization, queuePosition, GOAL_STATE_MAX_BYTES
 } = require('./kit-goal-lib.js');
 
 // Repo-controlled strings (a plan path) are sanitized to printable ASCII and
@@ -237,6 +237,22 @@ function cmdClear() {
 // finished plan produces and what the leash advances on).
 const QUEUE_TOKENS = { gone: 'missing', unusable: 'unusable', unreadable: 'unreadable' };
 
+// Where a queue entry's doc was looked for and not found, worded from
+// queuePosition's own cause so the sentence cannot name directories the entry
+// was never in: a plan armed from outside docs/plans/ has no archive location
+// to check, and an entry that does not round-trip the plan-path normalizer was
+// never resolved against any directory at all.
+function unresolvableWhere(cause) {
+    if (cause === 'unarchivable') {
+        return 'is not at that path, and the plan is not armed from docs/plans/, so there is no'
+            + ' archive location to look in either';
+    }
+    if (cause === 'unreadable-path') {
+        return 'is at a path no reader here resolves, so it was looked for in no directory';
+    }
+    return 'is in neither docs/plans/ nor docs/archive/';
+}
+
 function cmdStatus() {
     const cwd = process.cwd();
     const state = readGoal(cwd);
@@ -261,23 +277,67 @@ function cmdStatus() {
     const binding = state.boundSession
         ? 'bound to session ' + sanitize(state.boundSession) + (phrase ? ', last active ' + phrase : '')
         : 'unbound';
-    const out = ['kit goal armed for ' + sanitize(state.plan)
-        + ' (armed ' + sanitize(state.armedAt) + '; ' + binding + ')'];
 
-    out.push('queue: plan ' + (state.queueIndex + 1) + ' of ' + state.queue.length);
+    // The position is read from the plan docs rather than taken from the
+    // stored index (queuePosition states the whole rule): the index only moves
+    // at a clean stop of the bound session, so a run that died at its close-out
+    // leaves it naming a plan that is finished and archived, and this report is
+    // where an operator goes to find out where the queue actually stands.
+    const position = queuePosition(cwd, state);
+    const correction = position.positional && position.healed > 0;
+    // The first line names the plan the STATE says is armed, which on a
+    // corrected position is not the plan the '>' marker below points at. Left
+    // bare, the two would read as a contradiction on one screen, so the line
+    // says which of the two it is naming and where the other one is.
+    const out = ['kit goal armed for ' + sanitize(state.plan)
+        + ' (armed ' + sanitize(state.armedAt) + '; ' + binding + ')'
+        + (correction ? ' (that is the stored current plan; the queue line below names the plan the'
+            + ' plan docs put current, and the > marker points at that one)' : '')];
+
+    const current = sanitize(state.queue[position.index]);
+    let queueLine = 'queue: plan ' + (position.index + 1) + ' of ' + state.queue.length
+        + ', ' + current;
+    if (correction) {
+        // The stored index is named rather than quietly replaced: the gap
+        // between it and the truth is what tells an operator an advance was
+        // missed, and the leash still acts on the stored one until the bound
+        // session's next stop moves it, one plan per stop.
+        queueLine += ' (the stored position still says plan ' + (position.stored + 1) + ', '
+            + sanitize(state.queue[position.stored]) + '; the plan docs report ' + position.healed
+            + ' plan(s) from there on as Complete or archived, and the leash advances one plan per'
+            + ' stop of the bound session until it catches up)';
+    }
+    if (position.positional && position.finished) {
+        queueLine += ' (every plan in the queue reads Complete or is archived, this one included,'
+            + " so the bound session's next stop releases the leash rather than advancing it)";
+    }
+    if (position.positional && position.unresolvable) {
+        queueLine += ' (unresolvable: the doc for this plan ' + unresolvableWhere(position.cause)
+            + ', so whether it is finished cannot be read; it keeps its position rather than being'
+            + ' skipped)';
+    }
+    out.push(queueLine);
     // The rendering is capped at five entries from the current position, with
     // the rest as a count, matching the SessionStart notice's queue clause:
     // this stdout is echoed into the session by the /kit-goal skill, and each
-    // rendered entry costs a file open (planHead), so an oversized state file
-    // must not become an unbounded context flood or an open per line. Entries
-    // behind the current position are not rendered here: each plan the leash
-    // advanced past is reported under finished below.
-    const window = state.queue.slice(state.queueIndex, state.queueIndex + 5);
+    // rendered entry costs a file open (planStatusReadings), so an oversized
+    // state file must not become an unbounded context flood or an open per
+    // line. Entries behind the reported position are not rendered here: each
+    // plan the leash advanced past is reported under finished below, and any
+    // the position walk moved past is counted in the queue line above.
+    const window = state.queue.slice(position.index, position.index + 5);
+    // Whether any rendered entry is one the two Status readings answer
+    // differently about, which the note after the window explains. Both
+    // readings come from one call over one set of bytes (planStatusReadings),
+    // so the token an entry prints and the position walked above cannot be
+    // taken from different reads of the same row.
+    let divergent = false;
     window.forEach((plan, i) => {
-        const head = planHead(cwd, plan);
-        // planHead answers the same 'no' for three states, and this is the
-        // surface an operator reads first when debugging an armed queue, so the
-        // three get three tokens rather than all printing as missing: a
+        const head = planStatusReadings(cwd, plan);
+        if (head.exists && head.status === 'complete' && !head.terminal) divergent = true;
+        // planStatusReadings answers the same 'no' for three states, and this
+        // is the surface an operator reads first when debugging an armed queue,
+        // so the three get three tokens rather than all printing as missing: a
         // directory, a junction or a link out of the repo at a queued plan path
         // is not the same problem as a plan that was archived, and a locked one
         // is neither. The classification is planPathState's, the one every
@@ -299,8 +359,18 @@ function cmdStatus() {
         out.push('  ' + (i === 0 ? '>' : ' ') + ' ' + sanitize(plan) + ' [' + status + ']'
             + ' (authorization: ' + (authorization ? safeForAuthorization(authorization) : 'none recorded') + ')');
     });
-    const more = state.queue.length - state.queueIndex - window.length;
+    const more = state.queue.length - position.index - window.length;
     if (more > 0) out.push('  ... and ' + more + ' more');
+    if (divergent) {
+        // One screen, two readings of one Status row, and without this line a
+        // reader has no way to tell which line used which: a [complete] token
+        // above a plan the queue line still reports as current looks like a
+        // contradiction rather than the two rules meeting.
+        out.push('  (a [complete] token above is the leash\'s reading of the Status row, under which'
+            + ' trailing text after Complete still finishes a plan; the queue position above reads the'
+            + ' frozen plan-doc contract instead, under which it does not, so an entry can be complete'
+            + ' to the leash and current to this report)');
+    }
 
     if (state.history.length > 0) {
         out.push('finished:');
