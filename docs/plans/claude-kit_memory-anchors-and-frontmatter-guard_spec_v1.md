@@ -66,6 +66,10 @@ Entries here bind every section opened after they were written, dispatched or in
 
 - **A blind dispatch's brief carries its inputs and never its subject (added 2026-08-26, from Section 4's fifth review round and Section 5's first).** The blind reviewer's whole value is that it does not hold the intent story, and the orchestrator is the one positioned to leak it, twice now: once as a section of the brief telling the reviewer where to concentrate, and once as a sentence naming the sources relevant to this change. Both were caught by the reviewer rather than by the writer, which is the tell that the brief was composed from what the section is about instead of from the contract. So a blind brief carries the base ref or the changed-file list, the workspace constraints, and standing properties of the repository that would read identically for every diff in it, and nothing else. A pointer to the code the change touches is subject rather than input: the reviewer finds it unaided, and in Section 5's first round the reviewer's most severe finding sat in a paragraph no pointer named.
 
+- **A remedy a message names is proven executable, not asserted (added 2026-08-26, from Section 6's two review rounds).** Three rounds found one defect wearing three faces: an operator-facing message naming a command, a flag set or an edit, written as prose asserting what that command does and never once run. Round 1 found a refusal telling the operator to close a frontmatter block with a `---` line, which for the record whose fence sits past the reader's line bound closes it early, pushes the `pinned:` field into the body, and destroys the pin the refusal exists to protect. Round 2 found the same defect twice more inside the sentence that had just fixed it: the repair for the past-bound shape carried no field-preservation clause, so "shorten the block" is satisfied by deleting the very fields at issue; and the shared-tier clause named `--update --confirm-shared` without a body flag, which is a usage error the CLI refuses outright, while promising a consequence the flag set an operator falls back to does not produce.
+
+  None of the three needed a reviewer to find, and that is the point: each was one command invocation away from being caught at the moment it was written. A remedy is the one sentence in a refusal whose reader will act on it, and a wrong one converts a message meant to protect a record into the instruction that destroys it. So a section writing an operator-facing message returns, in its report, one line per remedy it names, carrying the command actually run with its output, or the file and line implementing the flag combination, together with what following the message exactly does to a record in the state that produced it. A remedy whose effect can only be reasoned about is rewritten until it can be checked, or it is not named at all.
+
 ## Sections of Work
 
 ### 1. The `anchors:` field: grammar, readers, blob hash, states, exports
@@ -168,7 +172,7 @@ The fix is a distinct answer, not a call-first discipline: a caller that must re
 
 Tests, red first, in `test/memq.test.js`: each reader against the unclosed-block fixture paired with the clean control in the same assertion, so a future collapse reddens rather than going quiet; the sentinel exported and distinct from both other sentinels and from `null`; `frontmatterSite`'s `block` still carried so an existing caller reading it is unaffected.
 
-Files in scope: `plugins/claude-kit/scripts/memq.js`, `test/memq.test.js`.
+Files in scope: `plugins/claude-kit/scripts/memq.js`, `test/memq.test.js`, `plugins/claude-kit/hooks/memory-frontmatter-guard.js`, `test/memory-frontmatter-guard.test.js` (the last two folded 2026-08-26 from Section 6's second review round, and so approval drift, recorded in Interim board 5 and Chapter 6: the guard is a sixth door naming the unread-block repair, it gives the destructive spelling of it unconditionally, and a security-weight finding is barred from every deferral route. The fold makes this section a `hooks/*.js` edit, so it runs `build.ps1` before its gate).
 
 ### 7. The drift pass stands down on a network working directory, and says so
 
@@ -396,3 +400,27 @@ Stamps: adjudicated 4, stamped 2. `memq unstamped --since 2h` surfaced one proje
 Gate: 1623 tests, 1622 pass, 0 fail, 1 skipped, exit 0, measured by me on this tree with `node --test "test/*.test.js"`, read from a marker file rather than a background wrapper's exit code, and identical to the baseline I captured before the section opened. That tree carries the concurrent effort's uncommitted `test/readonly-agent-guard.test.js`, re-measured against HEAD at 96 top-level declarations against the committed 79, so the figure for this commit is 1606, unchanged from Chapter 4 because this section adds no test.
 Next: 6. The field readers say when they could not read
 Commit Model: Commit-and-Push
+
+### Interim board 5 - 2026-08-26
+
+Section 6 is in fix round 2 with no section closed since Chapter 5, which is the closure drought this ritual answers.
+
+**Stage.** Section 6, "The field readers say when they could not read", is implemented and has been through two review rounds and one fix round; the second fix round is in flight. Section 7 has not opened.
+
+**Live dispatches.** One: `implementer-opus` (dispatched at the `opus` override), resumed for fix round 2 and carrying the eleven-item round-1 list already applied plus this round's eleven. Two review rounds are closed: round 1 ran adversarial, blind and security in parallel through Workflow at `model: opus`, `effort: max` (the reviewer-effort table's no-headroom row, since the writer tier is opus), and round 2 ran blind and security the same way over the whole change rather than the delta. Both rounds were bracketed with `git status --porcelain` and both compared byte-identical, so every reviewer held read-only.
+
+**Gate baseline.** 1623 tests, 1622 pass, 0 fail, 1 skipped, exit 0, measured on this tree before the section opened and read from a marker file. The section stood at 1629/1628/0/1 after fix round 1. The tree carries a concurrent effort's five uncommitted files, so the committed figure needs the foreign offset re-measured at the Chapter.
+
+**Rulings adopted since Chapter 5.**
+
+The `--supersedes` refusal on a target whose block never closes is in scope and stays: the section's own text instructs the implementer to change a caller's behavior where a wrong answer costs something, and this one closes the mutual pair the neighbouring unreadable-file refusal exists to refuse.
+
+A second review round was run against this plan's own falling-severity precedent, on the same ground Chapter 5 recorded: round 1's fixes added three exported functions, five re-worded operator-facing refusals and three tests, none of which any reviewer had seen. It returned three Majors, all of the class round 1 had found, arriving by routes round 1's fix opened, which is the ordinary hazard of a fix round adding new material and the reason the precedent does not reach one.
+
+`hooks/memory-frontmatter-guard.js` and `test/memory-frontmatter-guard.test.js` are folded into Section 6's Files in scope, and so approval drift. The guard's deny text gives the destructive repair unconditionally and is reachable with an ordinary record, which makes it a security-weight Major, and those are barred from every deferral route: fixed before the section closes whatever their scope, or raised. The fold carries a cost this section did not previously owe and which is stated here so it is not discovered at the gate: a `hooks/*.js` edit moves the build stamp, so Section 6 now runs `build.ps1` before its suite.
+
+The memory-system skill's two falsified sentences are routed to Section 7 rather than fixed here, the skill lying outside even the widened scope; the `docs/` findings are the finishing pass's.
+
+Standing Brief Amendments gained entry 6, above. It is the first amendment earned by a defect the reviewers found three times in three rounds rather than twice at two sites, and the first whose deliverable is a command run rather than a search performed or a table returned.
+
+**Next action per section.** Section 6: adjudicate fix round 2, decide whether the guard fold earns a third review round over the guard specifically, then close with `build.ps1` and the full gate. Section 7: opens after Section 6 closes, carrying the two skill sentences and the wiring question folded from Chapters 5 and this board.
