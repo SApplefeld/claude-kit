@@ -149,3 +149,16 @@ Stamps: adjudicated 0, stamped 0. `memq unstamped --since 2h` (the span since Ch
 Gate: build exit 0, suite 1561 / 1561 / 0, run four times across this section's fix rounds and matching the 1561 baseline recorded at 4a21972 every time. The changeset is prose plus two test comments, so an unchanged count is the expected reading and any movement would have been a regression. Wall clock moved between 234s and 666s across those runs on an unchanged tree, which is a sibling session's load on this machine rather than a property of the changeset.
 Next: 5. Reconcile the roster-row enumerations
 Commit Model: Commit-and-Push
+
+### Chapter 5 - 2026-08-26
+Completed: 5. Reconcile the roster-row enumerations
+Implemented By: main session, inline; a payload edit small enough that a brief would have cost more than the work.
+Metrics: review rounds 1; NEEDS_CONTEXT 0; escalations 0; consults 0
+Decisions / Surprises: the fix needed two clauses rather than the one the section was written for, and the second only became visible once the first landed. Repointing the claim-layers sentence at the messaging-surface bullet made that bullet the field list's owner, and the adversarial and blind lenses independently found that the owner's own enumeration omits the working directory, which is precisely the field the coordinator skill's roster rule exists to strip. So the pointer would have sent a reader to a list missing the field they came for. Completing the owner's enumeration was the other half, and it is the more useful half: the reason two partial lists survived in one file is that each was accurate for the argument it was making, which is how a restated enumeration hides.
+Assumptions: none
+Review Findings: one round of three lenses, dispatched jointly with section 3's fourth round. Two Majors, which were the same finding reached independently by the adversarial and blind reviewers, and both are fixed by the same edit. One Minor recorded unfixed: this section's `Files in scope:` line sits above its body rather than after its acceptance line, where the spec format and sections 1 through 4 put it. Nothing machine-parsed reads that line, so the cost is shape rather than behaviour.
+Acceptance: met and measured. The roster row's field list now appears in exactly one place in `plugins/claude-kit/skills/peer-sessions/SKILL.md`; the claim-layers paragraph's argument, that no layer authenticates, is unchanged; and the doctrine-parity pins over that file hold, the four heading regexes and the content pin asserting `/the coordinator skill names the file/`, which sits in the same paragraph this section rewrote and was checked before and after the edit.
+Stamps: adjudicated 0, stamped 0. Chapter 4's sweep covers this span, and `memq` reports its own zeros as an absence of evidence rather than a clean sweep.
+Gate: build exit 0, suite 1561 / 1561 / 0, the same run that closed section 3, against the 1561 baseline at 4a21972.
+Next: finishing-work
+Commit Model: Commit-and-Push
