@@ -422,10 +422,14 @@ function reportCheckpoint(cwd) {
 // Why a marker on disk gates nothing, per markerMatches reason code, worded
 // as ABSENT_REASONS words the checkpoint's: every message states plainly that
 // the gate treats the file as absent. The 'no-marker' and 'wrong-session'
-// codes have no entry because this report never produces them (a shapeless
-// file takes the illegible leg below, and the marker is judged for the
-// session it itself names); an unknown future code falls back to the bare
-// treats-as-absent clause rather than printing nothing. 'expired' is built at
+// codes have no entry because this report all but never produces them (a
+// shapeless file takes the illegible leg below, and the marker is judged
+// for the session it itself names). One hand-made shape reaches
+// 'wrong-session' anyway: an empty-string session passes the shape guard
+// below, being a string, and then compares unequal to itself. That code and
+// any unknown future one fall back to the bare treats-as-absent clause
+// rather than printing nothing, which is why the fallback is here rather
+// than an assertion. 'expired' is built at
 // the call site, because it names the bound that applied and the two marker
 // kinds carry different bounds.
 const MARKER_DEAD_REASONS = {

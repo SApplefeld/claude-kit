@@ -1723,8 +1723,9 @@ function readConsent(cwd) {
 // with no usable id gets a refusal rather than a wildcard. consumed is
 // written as a literal false, the only value the match rule reads as live.
 // Unlike the gate's own record targets, the directory is created here: the
-// CLI's boundary mode is the one .kit/ writer that must work with no goal
-// ever armed, exactly as writeCheckpoint creates it for the leashed mode.
+// CLI's marker modes are the .kit/ writers that must work with no goal ever
+// armed, boundary and consent alike, exactly as writeCheckpoint creates it
+// for the leashed mode.
 function writeMarkerFile(target, sessionId) {
     if (typeof sessionId !== 'string' || sessionId === '' || sessionId.length > 128
         || /[\x00-\x1F]/.test(sessionId)) {
@@ -1761,10 +1762,11 @@ function writeConsent(cwd, sessionId) {
 // consume a marker on the allow it caused, best-effort: a failed delete
 // degrades to the gate standing open, never to a wedged session. The risk
 // that choice takes is the checkpoint's own, deliberately: a consume that
-// fails to delete can release twice inside the marker's age bound, which
-// costs one extra compaction at a declared boundary (or under a standing
-// consent), while the opposite choice, refusing the allow when the delete
-// fails, would convert a locked file into a session riding to the ceiling,
+// fails to delete releases again on every later offer inside the marker's
+// age bound, with no cap here on the count, which costs an extra compaction
+// at a declared boundary (or under a standing consent), while the opposite
+// choice, refusing the allow when the delete fails, would convert a locked
+// file into a session riding to the ceiling,
 // the exact failure the release paths exist to end.
 function clearMarkerFile(target) {
     try {

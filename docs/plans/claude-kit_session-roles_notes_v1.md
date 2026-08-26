@@ -94,3 +94,4 @@ Scope if specced: gate code (the hands-on leg's marker check), checkpoint CLI go
 
 - `claude-kit_dispatch-authority_spec_v1.md` builds the authority rail roles must not duplicate.
 - `claude-kit_coordinator-and-roles_spec_v1.md` is the executable spec this dialogue produced; this document is its intake and design record.
+- [`claude-kit_compact-boundaries_spec_v1.md`](../archive/claude-kit_compact-boundaries_spec_v1.md) is the second executable spec this dialogue produced, taking the context-boundaries section into the compaction gate as a role seat's own boundary declaration and an operator release.
