@@ -26,9 +26,10 @@ The `curating-docs` skill owns the mechanics: it archives a plan when it complet
 
 ## Active plans
 
-Five plan documents sit in `plans/`. `plans/README.md` carries each one's full description and the go state of its header; the running order of the armed plans rides in their own entries.
+Six plan documents sit in `plans/`. `plans/README.md` carries each one's full description and the go state of its header; the running order of the armed plans rides in their own entries.
 
 - **`plans/claude-kit_kaizen-batch-2_spec_v1.md`** (In Progress, to arm fifth on the executing session's leash, self-authorizing) teaches the goal family what a git worktree is on both asymmetric halves, makes queue-position reporting self-heal from plan Status headers, and lands five prose lessons from the 2026-08-26 kaizen pass on their owning surfaces.
+- **`plans/claude-kit_blocked-escalation_spec_v1.md`** (In Progress, to arm last on the executing session's leash, self-authorizing) gives BLOCKED an escalation ladder without touching its mechanics: the worker asks its repo's expert before declaring, any running coordinator briefs the operator in parallel with the ping, and the operator's answer returns on channel standing or the artifact rail.
 - **`plans/claude-kit_session-roles_notes_v1.md`** (Notes, non-executable) banks the session-roles design dialogue's fact base, positions, and open questions, with the pointer map to the peer-messaging experiment's durable records.
 - **`plans/claude-kit_verification-artifacts_spec_v1.md`** (In Progress, third in the armed running order) answers three kaizen notes as one lesson: a rule that demands a verification names where the fact is readable.
 - **`plans/claude-kit_memory-anchors-and-frontmatter-guard_spec_v1.md`** (In Progress, second in the armed running order, two of seven sections closed) gives a project memory an `anchors:` field so it can say when the file it is about has changed, and adds a PreToolUse guard that validates hand-written memory frontmatter at the Write.
