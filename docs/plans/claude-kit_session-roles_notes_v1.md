@@ -76,6 +76,20 @@ Kit executor ("KIT: Shared Messages"): kaizen batch late sections plus finishing
 
 The settled shape is approved ("that nails it") and the spec is authorized. His mapping of the shape onto AI-OS, banked for the combined-shape adjudication the three-repo retrospective owns: the Warden is what AI-OS calls the admin; Ask/Reach are the coordinator's operator-facing seam; the warm ops thread is shared across several roles rather than being one; spawned workers are the workers; and AI-OS has no expert, which he judges a gap worth filling with expert-style mechanics. His frame: the kit's mesh is more reactive and easier to restructure than AI-OS, so the two experiments teach each other and settle on a combined long-term shape. Executor assignment for the spec deliberately deferred ("we can figure out who should run it").
 
+## Context boundaries for role seats (2026-08-26 dialogue, design sketch awaiting the operator's nod)
+
+The problem, the operator's framing: a leashed worker compacts at chapter checkpoints and never runs away, but the goalless seats (coordinator, expert, admin) ride the hands-on deferral to the 800K ceiling and get force-compacted at arbitrary moments, invisibly to the operator, with the cache economics of a huge context making the post-compaction re-read expensive.
+
+The design answer, one invariant generalizing the chapter boundary: **compact wherever context holds nothing the disk does not.** A chapter boundary is the worker's instance of banked-and-empty; each seat has its own: the coordinator at the end of a reconciliation pass with the ledger updated, board committed, and no interrupt in flight; the expert at a deliverable handoff (spec committed, blind-read adjudicated, dispatch acked) or a consult answered and banked; the admin at an action completed and reported. The pre-compaction ritual the operator and this session performed by hand on 2026-08-25 (bank the learnings durably, then compact) is this invariant executed manually; the design mechanizes it.
+
+Mechanism: extend `kit-compact-checkpoint` with a goalless mode (a role-boundary marker, session-scoped, under `.kit/`), and teach the gate's hands-on leg to honor it before deferring to the ceiling. The seat opens the marker at every natural boundary as cheap routine; the harness only offers compaction past its threshold, so compaction lands at the first boundary after the offer begins, exactly the worker pattern without a goal. No new timer, no self-token-counting.
+
+Security calculus, distinct from the operator-release note's: a self-declared EARLIER compaction is low-harm by construction, since the ceiling force-compaction is already the worst case and the gate's whole purpose is preventing mid-work landings; a session's own banked-and-empty declaration is the best available boundary signal, and leashed workers' checkpoints already extend exactly this trust. The operator-release path (the fd19940 kaizen note: a consent marker for a deferred compaction the operator wants now) is the same gate surface and should ship in the same spec.
+
+Operator visibility rides along: the gate already journals verdicts to `.kit/compact-gate.jsonl`; a compaction event line to the coordinator's board or the relay makes resets legible without console-watching.
+
+Scope if specced: gate code (the hands-on leg's marker check), checkpoint CLI goalless mode, tests red-first both directions, and prose amendments to the coordinator and peer-sessions role sections shipping in plan 3. Natural home: a fourth spec on the same leash, consuming the fd19940 note.
+
 ## Related
 
 - `claude-kit_dispatch-authority_spec_v1.md` builds the authority rail roles must not duplicate.
