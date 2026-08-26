@@ -152,6 +152,21 @@
 //      input_tokens + cache_creation_input_tokens + cache_read_input_tokens
 //      (monotonic across a session, so a rising-signal ceiling check is
 //      sound).
+//   7. No live operator-consent marker names this session. The consent marker
+//      (.kit/compact-consent.json, written by kit-compact-checkpoint.js
+//      consent, only on the operator's explicit word) releases one deferred
+//      compaction for the session it names, on this leg and the interactive
+//      one: a scheduling release, converting "not at this moment" into "now",
+//      never touching an allow clause or the checkpoint rule. It is read only
+//      where the deny would otherwise fire, so every allow above keeps its
+//      meaning; the match (session, unconsumed, age-bounded) is the shared
+//      markerMatches rule in kit-compact-lib.js, and the allow it causes
+//      consumes the marker, single-shot, best-effort like the checkpoint's
+//      own consumption. A marker does not outlive its moment by another route
+//      either: every allow is a compaction landing for the payload's session,
+//      and the entry wrapper's landing sweep retires that session's markers
+//      whatever the reason, so a release that missed its offer cannot convert
+//      a later mid-work deny.
 //
 // The INTERACTIVE deny is the second deny state. When no kit goal covers this
 // session (none armed, an unparseable goal state, a goal bound to another
@@ -164,7 +179,19 @@
 // Neither in effect: the operator is mid-conversation and an early compaction
 // costs the discussion its context, so deny while the same valve reading as
 // clause 6 is legible AND strictly below SAFETY_CEILING_TOKENS, and allow at
-// or above the ceiling or on an illegible reading. No allow on this path ever
+// or above the ceiling or on an illegible reading. Two release markers can
+// end this hold before the ceiling, both read only where the deny would
+// otherwise fire: a live role-boundary marker naming the offering session
+// (.kit/compact-role-boundary.json, opened by a goalless role seat at a
+// banked-and-empty moment via kit-compact-checkpoint.js boundary) lands the
+// compaction at that declared boundary, and a live operator-consent marker
+// naming it does the same on the operator's word. Each allow consumes its
+// marker, single-shot, and journals its own reason (role-boundary,
+// operator-consent); a marker naming another session, a consumed one, and a
+// stale one release nothing and are left in place under a deny, so a
+// marker-less session takes exactly the path it always did, while the
+// landing sweep (see the entry wrapper) retires the landing session's own
+// markers on every allow. No allow on this path ever
 // consumes a checkpoint: consumption is the boundary firing, exclusive to the
 // clause-5 allow, and burning one here would rob the bound run of a boundary
 // it still needs. A detection miss in either direction is safe-cheap: a
@@ -189,7 +216,9 @@ const {
     readCheckpoint, clearCheckpoint, checkpointMatches, sameSessionId,
     transcriptShowsAutomation, userCommandArgsClaimPlan,
     recordGateDecision, projectGateEpisode, episodePhrase,
-    readGateState, pendingOfferCorroborated, checkpointOwner
+    readGateState, pendingOfferCorroborated, checkpointOwner,
+    markerMatches, readRoleBoundary, readConsent, clearRoleBoundary, clearConsent,
+    ROLE_BOUNDARY_MAX_AGE_MS, CONSENT_MAX_AGE_MS
 } = require('./kit-compact-lib.js');
 
 // The deferral ceiling, in consumed tokens, shared by both deny paths: the
@@ -385,7 +414,18 @@ function latestConsumedTokens(transcriptPath) {
 // or an atomic take.
 //
 // Clause 6: the safety valve. Illegible reads allow rather than denying blind.
-function boundaryVerdict(cwd, goal, transcriptPath) {
+//
+// Clause 7: the operator's release. A live consent marker naming the offering
+// session (`sessionId`, the payload's own id, which on both call sites equals
+// the goal's boundSession) converts this hold's "not at this moment" into
+// "now", once. It is read only after every allow above has declined, so none
+// of those allows changes meaning; what they share with this one is the entry
+// wrapper's landing sweep, which retires any marker the landing session names
+// whatever the allow's reason, so a marker never outlives the landing that
+// mooted it. The consume here is best-effort like clearCheckpoint's, and the
+// residue of a failed delete is one extra release inside the consent's own
+// age bound, the same direction the checkpoint's failed consume takes.
+function boundaryVerdict(cwd, goal, transcriptPath, sessionId) {
     const cp = readCheckpoint(cwd);
     // Whether a flagged checkpoint is vouched for by a standing, owned,
     // predating deferral episode: pendingOfferCorroborated owns that rule and
@@ -412,6 +452,12 @@ function boundaryVerdict(cwd, goal, transcriptPath) {
     const consumed = latestConsumedTokens(transcriptPath);
     if (consumed === null) return { verdict: 'allow', reason: 'illegible', consumed: null, checkpoint };
     if (consumed >= SAFETY_CEILING_TOKENS) return { verdict: 'allow', reason: 'valve', consumed, checkpoint };
+
+    const consent = readConsent(cwd);
+    if (markerMatches(consent, sessionId, now, CONSENT_MAX_AGE_MS).ok) {
+        clearConsent(cwd); // best-effort: a failed delete degrades to an open gate, never a wedged run
+        return { verdict: 'allow', reason: 'operator-consent', consumed, checkpoint };
+    }
 
     // The deny's reason is the checkpoint rule's own verdict on whatever was on
     // disk ('no-checkpoint' for the ordinary mid-chapter case, 'expired' for a
@@ -504,7 +550,7 @@ function main() {
     // allows rather than risking an interactive deny against the bound run.
     if (armed && (typeof sessionId !== 'string' || !sessionId)) return decide({ verdict: 'allow', reason: 'no-session' });
     if (armed && sameSessionId(goal.boundSession, sessionId)) {
-        return decide(boundaryVerdict(cwd, goal, transcriptPath));
+        return decide(boundaryVerdict(cwd, goal, transcriptPath, sessionId));
     }
     // An unbound goal whose arming command this session's transcript shows the
     // user typing is this run: claim the binding now, so the gate reaches a
@@ -516,7 +562,7 @@ function main() {
     if (armed && !goal.boundSession && userCommandArgsClaimPlan(transcriptPath, goal.plan)) {
         bindSession(cwd, sessionId, transcriptPath);
         goal.boundSession = sessionId;
-        return decide(boundaryVerdict(cwd, goal, transcriptPath));
+        return decide(boundaryVerdict(cwd, goal, transcriptPath, sessionId));
     }
 
     // The interactive path (see the header): no kit goal covers this session,
@@ -529,6 +575,38 @@ function main() {
     const consumed = latestConsumedTokens(transcriptPath);
     if (consumed === null) return decide({ verdict: 'allow', reason: 'illegible' });
     if (consumed >= SAFETY_CEILING_TOKENS) return decide({ verdict: 'allow', reason: 'valve', consumed });
+    // The release markers, read only once every allow above has declined so a
+    // marker-less session takes exactly the path it always did (see the
+    // header). Both apply to either interactive reason: the bystander leg is a
+    // role seat's ordinary state in a leashed project, held while another
+    // session works the goal, and its own banked-and-empty moment is as real
+    // as an unarmed session's. The seat's own declared boundary is checked
+    // first, mirroring the checkpoint-before-valve ordering: a boundary that
+    // has been reached should land the compaction and retire its marker, and
+    // an operator's consent then stays for the deferral it was given for,
+    // until this session's own landing retires it (the landing sweep in the
+    // entry wrapper). The consume here is best-effort like the checkpoint's;
+    // a failed delete degrades to one extra release inside the marker's own
+    // age bound, never to a wedged run.
+    //
+    // The typeof guard mirrors the armed path's own session-id shape check,
+    // which an unarmed payload never passes through: sameSessionId compares
+    // through a String() coercion, so a coercible non-string (an array of one
+    // id) would otherwise match and spend a marker. A payload whose session
+    // id is not a non-empty string reads neither marker and releases nothing.
+    if (typeof sessionId === 'string' && sessionId !== '') {
+        const now = Date.now();
+        const boundary = readRoleBoundary(cwd);
+        if (markerMatches(boundary, sessionId, now, ROLE_BOUNDARY_MAX_AGE_MS).ok) {
+            clearRoleBoundary(cwd);
+            return decide({ verdict: 'allow', reason: 'role-boundary', consumed });
+        }
+        const consent = readConsent(cwd);
+        if (markerMatches(consent, sessionId, now, CONSENT_MAX_AGE_MS).ok) {
+            clearConsent(cwd);
+            return decide({ verdict: 'allow', reason: 'operator-consent', consumed });
+        }
+    }
     // The deny's reason is why this session took the interactive path at all:
     // nothing is armed in the project, or what is armed belongs to another
     // session. The two read very differently in a log.
@@ -572,7 +650,9 @@ const BOUNDARY_NOTE = 'kit-compact-gate: auto-compaction deferred to the next ch
     + 'boundary, or check yourself from the project directory with node "' + CHECKPOINT_CLI
     + '" status and open one at a true boundary with node "' + CHECKPOINT_CLI + '" open.';
 const INTERACTIVE_NOTE = 'kit-compact-gate: auto-compaction deferred to the context safety ceiling; '
-    + 'this is the kit holding compaction out of an interactive session, not an error. Keep working.';
+    + 'this is the kit holding compaction out of an interactive session, not an error. Keep working. '
+    + 'To land it sooner, bank the session\'s state at a natural boundary and open the release from '
+    + 'the project directory with node "' + CHECKPOINT_CLI + '" boundary; the next offer lands there.';
 
 // How long the gate has been holding this run back, as a sentence for the
 // boundary note: the count of offers held and the whole minutes since the first
@@ -614,6 +694,36 @@ if (require.main === module) {
         process.exitCode = 2;
     } else {
         process.exitCode = 0;
+    }
+
+    // The landing sweep: every allow is a compaction landing for the
+    // payload's session, whatever clause allowed it, and a marker that missed
+    // its moment must not outlive it. A boundary or consent marker left live
+    // through a valve, checkpoint, manual or illegible landing would stay
+    // honorable for up to its age bound, and if the same session crossed the
+    // trigger again mid-chapter inside that window, the leftover would
+    // convert the deny into an allow at exactly the placement the gate exists
+    // to prevent. So an allow retires any marker naming the landing session;
+    // a marker naming another session is not this landing's to spend, and a
+    // deny retires nothing, because nothing landed. Scoping needs both a
+    // project and a string session id (the sweep, like the record below,
+    // trusts the payload's cwd alone, and a coercible non-string id scopes
+    // nothing). The whole pass runs after the exit code is set, inside its
+    // own try, so it can change nothing but the marker files; one that
+    // survives a failed pass is retired by its age bound or the next landing.
+    if (decision.verdict === 'allow'
+        && typeof decision.session === 'string' && decision.session !== ''
+        && typeof decision.cwd === 'string' && decision.cwd !== '') {
+        try {
+            const boundary = readRoleBoundary(decision.cwd);
+            if (boundary && sameSessionId(boundary.session, decision.session)) {
+                clearRoleBoundary(decision.cwd);
+            }
+            const consent = readConsent(decision.cwd);
+            if (consent && sameSessionId(consent.session, decision.session)) {
+                clearConsent(decision.cwd);
+            }
+        } catch { /* best-effort on the same terms as the record below */ }
     }
 
     // The record comes last, once the note has been written and the exit code

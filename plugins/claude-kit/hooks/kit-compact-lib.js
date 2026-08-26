@@ -610,6 +610,10 @@ const GATE_LOG_KEEP_BYTES = 1 * 1024 * 1024;
 // here, well before CHECKPOINT_PENDING_MAX_AGE_MS caps it. The two constants
 // answer different questions and are deliberately separate, but they are no
 // longer independent: shortening this one shortens the pending leg with it.
+// CONSENT_MAX_AGE_MS is defined as this value outright, so tuning this
+// constant also retunes how long an operator-consent marker stays honorable,
+// which is the one window in the release design bounded by code rather than
+// prose; the derivation and its reasoning live at that constant.
 const GATE_EPISODE_MAX_IDLE_MS = 4 * 60 * 60 * 1000;
 
 // The verdicts a record may carry, and the only values recordGateDecision
@@ -617,17 +621,20 @@ const GATE_EPISODE_MAX_IDLE_MS = 4 * 60 * 60 * 1000;
 // the CLI and the nudge read has to be legible to both.
 const GATE_VERDICTS = ['allow', 'deny-boundary', 'deny-interactive'];
 
-// The reasons a record may carry: the gate clause that decided, plus the
-// checkpoint match rule's own codes, which are what a boundary deny reports.
-// The vocabulary is closed and this library is the only thing that writes it,
-// so a value outside it came from a hand-edited state file rather than from the
-// gate. Reason reaches the CLI's status report, a channel a model reads, and
-// the charset and length caps alone would let arbitrary prose through; checking
-// the value against the list it is drawn from costs nothing and bounds it to
-// this file's own words.
+// The reasons a record may carry: the gate clause that decided, the
+// checkpoint match rule's own codes, which are what a boundary deny reports,
+// and the two release reasons a marker-driven allow journals (role-boundary,
+// operator-consent), which are how a run's compaction history states which
+// release landed it. The vocabulary is closed and this library is the only
+// thing that writes it, so a value outside it came from a hand-edited state
+// file rather than from the gate. Reason reaches the CLI's status report, a
+// channel a model reads, and the charset and length caps alone would let
+// arbitrary prose through; checking the value against the list it is drawn
+// from costs nothing and bounds it to this file's own words.
 const GATE_REASONS = [
     'not-auto', 'external-engine', 'no-session', 'no-goal', 'bystander',
     'automation', 'checkpoint', 'valve', 'illegible',
+    'role-boundary', 'operator-consent',
     'no-checkpoint', 'wrong-plan', 'wrong-session', 'no-timestamp', 'expired', 'future'
 ];
 
@@ -1089,8 +1096,8 @@ function projectGateEpisode(cwd, decision) {
 // Write JSON atomically (tmp file plus rename), on writeCheckpoint's discipline
 // and for the same reasons: a failed rename unlinks its tmp so orphans do not
 // accumulate in .kit/. The containing directory is a precondition, never
-// created here (see the section header). Throws on failure; both callers, the
-// decision recorder and the nudge stamp, catch.
+// created here (see the section header; the marker writer creates its own
+// directory before calling). Throws on failure; every caller catches.
 //
 // verifyBeforeRename is optional and runs in the last moment before the rename,
 // with the tmp file already written: returning false abandons the write and
@@ -1542,6 +1549,257 @@ function endsOnLineBoundary(target) {
     } finally {
         try { fs.closeSync(fd); } catch { /* already closed */ }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Release markers. Two session-scoped files beside the checkpoint give the
+// gate its release paths for sessions the checkpoint cannot serve: the
+// role-boundary marker, which a goalless session (a coordinator, expert or
+// admin seat) opens at a banked-and-empty moment so the hands-on deferral can
+// land the next offer there instead of riding to the safety ceiling; and the
+// operator-consent marker, written only on the operator's explicit word,
+// which releases one deferred compaction for the session it names on either
+// deny leg. Both release SCHEDULING denials only, the verdicts that mean
+// "not at this moment": no marker touches an allow clause, an integrity
+// refusal, or the leashed checkpoint rule, and the no-marker case leaves
+// every leg exactly as it was.
+//
+// The trust shape mirrors the checkpoint's. A session's own banked-and-empty
+// declaration is the best boundary signal available, and the ceiling
+// force-landing is already the worst case, so honoring a self-declared
+// boundary can only move a compaction earlier onto a cleaner spot. The
+// consent marker is asserted rather than authenticated (a single-principal
+// machine); what bounds its writing is prose in the role skills, and what
+// bounds its effect is here: one session, one release, one age window.
+// ---------------------------------------------------------------------------
+
+// Path to the role-boundary marker for a given repo root.
+function roleBoundaryPath(cwd) {
+    return path.join(cwd, '.kit', 'compact-role-boundary.json');
+}
+
+// Path to the operator-consent marker for a given repo root.
+function consentPath(cwd) {
+    return path.join(cwd, '.kit', 'compact-consent.json');
+}
+
+// How long each marker stays honorable. The boundary marker is a declared
+// moment, not a standing state: past half an hour the session that opened it
+// has moved into later work, and landing a compaction on the old declaration
+// is the mid-work placement the gate exists to prevent, so the bound sits on
+// the checkpoint's own order of freshness with room for one long tool call.
+// The consent bound is deliberately the deferral episode's idle bound rather
+// than a second number: both answer the same question, how long a moment's
+// word still describes the same working session, and an operator's release
+// may precede the next offer by a while (the offer only recurs while the
+// context sits past the trigger). Derived rather than restated so the two
+// cannot drift; evidence that ever tunes them apart turns the derivation into
+// its own literal.
+const ROLE_BOUNDARY_MAX_AGE_MS = 30 * 60 * 1000;
+const CONSENT_MAX_AGE_MS = GATE_EPISODE_MAX_IDLE_MS;
+
+// The one marker match rule, shared by its two consumers (the gate's release
+// legs and the CLI's status report) so they cannot drift, exactly as
+// checkpointMatches is shared for the checkpoint. A marker counts only for
+// the session it names, only while unconsumed, and only within the age bound
+// the caller passes: the two marker kinds differ in nothing but that bound.
+// Like checkpointMatches, this rule stays pure: it is told the subject
+// session and the clock rather than reading any state.
+//
+// Returns { ok:true, reason:null } on a match, else { ok:false, reason } with
+// reason naming the first failed clause in evaluation order:
+//   'no-marker'      marker is missing, not an object, or carries no session
+//                    string (a hand-made or torn file; the writer always
+//                    records one)
+//   'consumed'       consumed is anything but a literal false. An absent flag
+//                    reads as consumed too: the writer always records false,
+//                    so a record without it is not one of ours, and the
+//                    conservative reading is the dead one.
+//   'wrong-session'  the marker names a different session than the subject,
+//                    or the subject itself is unusable (sameSessionId is
+//                    false when either side is missing, which is exactly the
+//                    treat-as-absent handling a payload without an id needs)
+//   'no-timestamp'   writtenAt is missing or does not parse as a date
+//   'expired'        writtenAt is older than maxAgeMs, or maxAgeMs itself is
+//                    not a finite number: a caller that forgot the bound
+//                    narrows the window to nothing rather than widening it
+//   'future'         writtenAt is beyond the same skew allowance the
+//                    checkpoint tolerates (one constant, one question)
+// Never throws on JSON-derived input: every access is guarded and Date.parse
+// returns NaN on garbage. nowMs pins the clock as it does elsewhere here.
+function markerMatches(marker, sessionId, nowMs, maxAgeMs) {
+    const now = (typeof nowMs === 'number' && Number.isFinite(nowMs)) ? nowMs : Date.now();
+    if (!marker || typeof marker !== 'object' || Array.isArray(marker)
+        || typeof marker.session !== 'string') {
+        return { ok: false, reason: 'no-marker' };
+    }
+    if (marker.consumed !== false) return { ok: false, reason: 'consumed' };
+    if (!sameSessionId(marker.session, sessionId)) return { ok: false, reason: 'wrong-session' };
+    if (typeof marker.writtenAt !== 'string') return { ok: false, reason: 'no-timestamp' };
+    const written = Date.parse(marker.writtenAt);
+    if (!Number.isFinite(written)) return { ok: false, reason: 'no-timestamp' };
+    if (typeof maxAgeMs !== 'number' || !Number.isFinite(maxAgeMs)) {
+        return { ok: false, reason: 'expired' };
+    }
+    const age = now - written;
+    if (age > maxAgeMs) return { ok: false, reason: 'expired' };
+    if (age < -CHECKPOINT_FUTURE_SKEW_MS) return { ok: false, reason: 'future' };
+    return { ok: true, reason: null };
+}
+
+// Read and parse a marker file, mirroring readCheckpointResult leg for leg
+// and for the same reasons: the gate reads these on its deny paths before any
+// verdict is emitted, so the path must be a regular file of sane size before
+// it is opened (a FIFO planted here would block forever inside readFileSync,
+// where no try/catch can rescue it, and being an lstat the check judges a
+// link as a link rather than as its target), and the status report needs the
+// refusal legs told apart because they name different remedies and cannot be
+// recovered by re-asking with a second syscall. The checkpoint's own read cap
+// applies: the writer produces three short fields and never grows. The
+// outcome vocabulary is readCheckpointResult's, with `marker` in place of
+// `cp`.
+function readMarkerResult(target) {
+    let st;
+    try {
+        st = fs.lstatSync(target);
+    } catch (err) {
+        if (err && err.code === 'ENOENT') return { ok: true, marker: null, reason: 'absent' };
+        return { ok: false, marker: null, reason: 'lstat' };
+    }
+    if (!st.isFile()) return { ok: false, marker: null, reason: 'kind' };
+    if (st.size > CHECKPOINT_MAX_BYTES) return { ok: false, marker: null, reason: 'oversized' };
+    let raw;
+    try {
+        raw = fs.readFileSync(target, 'utf8');
+    } catch (err) {
+        if (err && err.code === 'ENOENT') return { ok: true, marker: null, reason: 'absent' };
+        return { ok: false, marker: null, reason: 'unreadable' };
+    }
+    try {
+        return { ok: true, marker: JSON.parse(raw), reason: null };
+    } catch {
+        return { ok: true, marker: null, reason: 'illegible' };
+    }
+}
+
+function readRoleBoundaryResult(cwd) {
+    return readMarkerResult(roleBoundaryPath(cwd));
+}
+
+function readConsentResult(cwd) {
+    return readMarkerResult(consentPath(cwd));
+}
+
+// The swallowing forms the gate takes, because every refusal leg means the
+// same thing to it: no marker releases anything. Same split as readCheckpoint
+// over readCheckpointResult.
+function readRoleBoundary(cwd) {
+    try {
+        return readRoleBoundaryResult(cwd).marker;
+    } catch {
+        return null;
+    }
+}
+
+function readConsent(cwd) {
+    try {
+        return readConsentResult(cwd).marker;
+    } catch {
+        return null;
+    }
+}
+
+// Write a marker atomically, on writeCheckpoint's discipline via
+// writeJsonAtomic (exclusive create, atomic rename, failure cleanup gated on
+// the create having returned). Returns { ok:true, session } or
+// { ok:false, reason }; never throws.
+//
+// The session id is held to bindSession's own storage rules, the same bound
+// writeCheckpoint holds boundSession to (a string, capped length, no control
+// characters); the CLI additionally charset-gates what it accepts before this
+// is reached, so this guard is the floor, not the whole gate. There is no
+// unscoped form: a marker without a session would release whichever session's
+// offer arrived first, which is the one shape the design forbids, so a caller
+// with no usable id gets a refusal rather than a wildcard. consumed is
+// written as a literal false, the only value the match rule reads as live.
+// Unlike the gate's own record targets, the directory is created here: the
+// CLI's boundary mode is the one .kit/ writer that must work with no goal
+// ever armed, exactly as writeCheckpoint creates it for the leashed mode.
+function writeMarkerFile(target, sessionId) {
+    if (typeof sessionId !== 'string' || sessionId === '' || sessionId.length > 128
+        || /[\x00-\x1F]/.test(sessionId)) {
+        return { ok: false, reason: 'session id is invalid' };
+    }
+    const state = {
+        session: sessionId,
+        writtenAt: new Date().toISOString(),
+        consumed: false
+    };
+    try {
+        fs.mkdirSync(path.dirname(target), { recursive: true });
+        writeJsonAtomic(target, state);
+    } catch (err) {
+        return { ok: false, reason: 'could not write marker: ' + (err && err.message ? err.message : String(err)) };
+    }
+    return { ok: true, session: sessionId };
+}
+
+function writeRoleBoundary(cwd, sessionId) {
+    return writeMarkerFile(roleBoundaryPath(cwd), sessionId);
+}
+
+function writeConsent(cwd, sessionId) {
+    return writeMarkerFile(consentPath(cwd), sessionId);
+}
+
+// Delete a marker file if present, on clearCheckpoint's exact rule: presence
+// judged by the lstat kind check rather than existsSync (a link at the path
+// reads as no marker to every reader here, so a clear that followed it would
+// report consuming something nothing read as open), a failed lstat routed by
+// pathErrnoClass, and a racing ENOENT reported as none-open rather than as a
+// failure. Returns clearCheckpoint's own shape. The gate calls these to
+// consume a marker on the allow it caused, best-effort: a failed delete
+// degrades to the gate standing open, never to a wedged session. The risk
+// that choice takes is the checkpoint's own, deliberately: a consume that
+// fails to delete can release twice inside the marker's age bound, which
+// costs one extra compaction at a declared boundary (or under a standing
+// consent), while the opposite choice, refusing the allow when the delete
+// fails, would convert a locked file into a session riding to the ceiling,
+// the exact failure the release paths exist to end.
+function clearMarkerFile(target) {
+    try {
+        let st;
+        try {
+            st = fs.lstatSync(target);
+        } catch (err) {
+            if (pathErrnoClass(err && err.code) !== 'transient') {
+                return { ok: true, cleared: false };
+            }
+            throw err;
+        }
+        if (!st.isFile()) {
+            return { ok: true, cleared: false };
+        }
+        fs.unlinkSync(target);
+        return { ok: true, cleared: true };
+    } catch (err) {
+        if (err && err.code === 'ENOENT') {
+            return { ok: true, cleared: false };
+        }
+        return {
+            ok: false,
+            cleared: false,
+            reason: 'could not clear marker: ' + (err && err.message ? err.message : String(err))
+        };
+    }
+}
+
+function clearRoleBoundary(cwd) {
+    return clearMarkerFile(roleBoundaryPath(cwd));
+}
+
+function clearConsent(cwd) {
+    return clearMarkerFile(consentPath(cwd));
 }
 
 // ---------------------------------------------------------------------------
@@ -2062,6 +2320,9 @@ module.exports = {
     checkpointPath, readCheckpoint, readCheckpointResult, writeCheckpoint, clearCheckpoint,
     checkpointMatches, sameSessionId,
     CHECKPOINT_MAX_AGE_MS, CHECKPOINT_PENDING_MAX_AGE_MS, CHECKPOINT_FUTURE_SKEW_MS,
+    roleBoundaryPath, consentPath, ROLE_BOUNDARY_MAX_AGE_MS, CONSENT_MAX_AGE_MS,
+    markerMatches, readRoleBoundary, readConsent, readRoleBoundaryResult, readConsentResult,
+    writeRoleBoundary, writeConsent, clearRoleBoundary, clearConsent,
     gateStatePath, gateLogPath, readGateState, readGateStateResult, recordGateDecision,
     gateEpisodeOpen, pendingOfferCorroborated, checkpointOwner, recordEpisodeNudge,
     projectGateEpisode, episodePhrase, wholeMinutesSince, gateCount,

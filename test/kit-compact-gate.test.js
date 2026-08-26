@@ -31,7 +31,8 @@ const {
     checkpointPath, writeCheckpoint, automationInEffect, stripLocalCommandOutput,
     commandArgsSpans, readTranscriptCapped, userCommandArgsClaimPlan,
     gateStatePath, gateLogPath, gateEpisodeOpen, pendingOfferCorroborated, checkpointOwner,
-    recordEpisodeNudge, recordGateDecision, readCheckpoint, clearCheckpoint
+    recordEpisodeNudge, recordGateDecision, readCheckpoint, clearCheckpoint,
+    roleBoundaryPath, consentPath, writeRoleBoundary, writeConsent, markerMatches
 } = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
 
 // The session id the fixtures bind the goal to; payloads default to it so the
@@ -183,13 +184,27 @@ function lstatRefusingPreload(dir, basename) {
     return '--require "' + shim.replace(/\\/g, '/') + '"';
 }
 
+// Drop the caller-session variable from a child CLI's environment, matched
+// case-insensitively like the engine scrub above. The CLI's boundary and
+// consent modes derive the caller's session id from it, and this suite runs
+// both under live sessions (where the variable is ambient) and bare shells
+// (where it is not): without the scrub the no-derivable-id cases would pass or
+// fail on whichever shell ran the suite. Cases that need an id set it via
+// extraEnv, which merges after the scrub.
+function scrubSessionEnv(env) {
+    for (const k of Object.keys(env)) {
+        if (/^CLAUDE_CODE_SESSION_ID$/i.test(k)) delete env[k];
+    }
+    return env;
+}
+
 // Run the checkpoint CLI in the given repo (the CLI reads process.cwd()).
 // extraEnv carries a preload for the cases that need the CLI's own filesystem
 // reads to fail in a shape no fixture can stage.
 function runCli(args, cwd, extraEnv) {
     return spawnSync(process.execPath, [CLI, ...args], {
         cwd,
-        env: { ...scrubEngineEnv({ ...process.env }), ...(extraEnv || {}) },
+        env: { ...scrubSessionEnv(scrubEngineEnv({ ...process.env })), ...(extraEnv || {}) },
         encoding: 'utf8'
     });
 }
@@ -324,6 +339,13 @@ function assertInteractiveDeny(res) {
     assert.strictEqual(res.stdout, '', 'deny emits nothing on stdout');
     assert.ok(res.stderr.includes(INTERACTIVE_NOTE), 'interactive deny carries its own fixed note; stderr: ' + res.stderr);
     assert.ok(!res.stderr.includes(DENY_NOTE), 'an interactive deny never carries the boundary note; stderr: ' + res.stderr);
+    // The note names the release a held session can actually run, by the
+    // CLI's absolute installed path, for the reason assertDeny pins the same
+    // path in the boundary note: it is the only operator-facing channel at
+    // deny time, and a note that understates the remedies leaves the hold
+    // looking unconditional.
+    assert.ok(res.stderr.includes('"' + CLI.split(path.sep).join('/') + '" boundary'),
+        'interactive note must name the boundary release; stderr: ' + res.stderr);
 }
 
 function assertAllow(res) {
@@ -4616,4 +4638,529 @@ test('lib: the nudge stamp discriminates two decisions stamped in one millisecon
         fs.openSync = realOpen;
         rmDir(repo);
     }
+});
+
+// ---------------------------------------------------------------------------
+// Release markers (docs/plans/claude-kit_compact-boundaries_spec_v1.md,
+// section 1): the role-boundary marker, a goalless session's declared
+// banked-and-empty moment, and the operator-consent marker, the operator's
+// word releasing one deferred compaction. Both are session-scoped, single
+// shot, and age-bounded. The gate honors the boundary marker on the hands-on
+// deferral only (both of its reasons, no-goal and bystander), and consent on
+// that leg and the leashed boundary hold. Both release scheduling denials
+// only: no marker ever touches an allow clause, and no marker on disk must
+// change any leg's behavior until the moment its own deny would have fired,
+// which the rest of this suite pins by running marker-less.
+// ---------------------------------------------------------------------------
+
+// The shipped marker age bounds, duplicated as pins like CEILING and
+// MAX_AGE_MS above: moving either constant in the lib must fail a boundary
+// case here and force a visible double-edit.
+const BOUNDARY_MARKER_MAX_AGE_MS = 30 * 60 * 1000;
+const CONSENT_MARKER_MAX_AGE_MS = 4 * 60 * 60 * 1000;
+
+// A second session for the never-releases-what-it-does-not-name cases, shaped
+// like SESSION so nothing fails on id shape instead of on scoping.
+const OTHER_SESSION = 'ses-99998888-bbbb-cccc-dddd-000011112222';
+
+// The marker paths are spelled out here rather than taken from the lib, for
+// the reason gateStateFile gives: a case asserting a marker was consumed (or
+// left alone) asserts against the location the spec's shape pins, and one
+// unit case pins the lib's helpers to these same paths.
+function roleBoundaryFile(repo) {
+    return path.join(repo, '.kit', 'compact-role-boundary.json');
+}
+
+function consentFile(repo) {
+    return path.join(repo, '.kit', 'compact-consent.json');
+}
+
+// Hand-write a marker with an arbitrary age and consumed flag, isolating the
+// freshness and consumption legs the way writeCheckpointAt does for the
+// checkpoint.
+function writeMarkerAt(full, session, ageMs, consumed) {
+    writeFile(full, JSON.stringify({
+        session,
+        writtenAt: new Date(Date.now() - ageMs).toISOString(),
+        consumed: consumed === undefined ? false : consumed
+    }) + '\n');
+}
+
+test('gate: a live role-boundary marker releases the hands-on deferral: allow, journaled, consumed, single-shot', () => {
+    const { repo, transcript } = interactiveRepo([]);
+    try {
+        const wrote = writeRoleBoundary(repo, SESSION);
+        assert.strictEqual(wrote.ok, true, 'test setup: marker should write');
+        assert.ok(fs.existsSync(roleBoundaryFile(repo)), 'setup: marker on disk');
+
+        assertAllow(runGate(gatePayload(repo, transcript)));
+        assert.ok(!fs.existsSync(roleBoundaryFile(repo)), 'marker consumed by the allow');
+
+        const state = readState(repo);
+        assert.strictEqual(state.lastDecision.verdict, 'allow');
+        assert.strictEqual(state.lastDecision.reason, 'role-boundary', 'the journal names the release that landed it');
+        assert.strictEqual(state.lastDecision.consumed, 50000, 'the record keeps the token reading');
+        assert.strictEqual(state.lastDecision.session, SESSION);
+        const log = readLog(repo);
+        assert.deepStrictEqual(log[log.length - 1], state.lastDecision, 'the logged line is the recorded decision');
+
+        // Single-shot: the same session without the marker is the deny state.
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript)));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a bystander session\'s own role-boundary marker releases its deferral too', () => {
+    // The bystander leg of the interactive deny is a role seat's ordinary
+    // state in a leashed project: a goal is armed and bound to a worker, and
+    // the hands-on session being held is another one entirely. Its own marker
+    // must release it, exactly as it releases the no-goal leg.
+    const { repo, transcript } = armedRepo();
+    try {
+        const wrote = writeRoleBoundary(repo, OTHER_SESSION);
+        assert.strictEqual(wrote.ok, true, 'test setup: marker should write');
+        assertAllow(runGate(gatePayload(repo, transcript, { session_id: OTHER_SESSION })));
+        const state = readState(repo);
+        assert.strictEqual(state.lastDecision.reason, 'role-boundary');
+        assert.strictEqual(state.lastDecision.session, OTHER_SESSION);
+        assert.ok(!fs.existsSync(roleBoundaryFile(repo)), 'the bystander\'s marker is consumed');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a role-boundary marker naming another session releases nothing and is left in place', () => {
+    const { repo, transcript } = interactiveRepo([]);
+    try {
+        const wrote = writeRoleBoundary(repo, OTHER_SESSION);
+        assert.strictEqual(wrote.ok, true, 'test setup: marker should write');
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript)));
+        assert.ok(fs.existsSync(roleBoundaryFile(repo)), 'a foreign marker is not consumed');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: the role-boundary age bound holds in both directions', () => {
+    // Inside: a minute of margin, so a slow run cannot drift across the bound.
+    let f = interactiveRepo([]);
+    try {
+        writeMarkerAt(roleBoundaryFile(f.repo), SESSION, BOUNDARY_MARKER_MAX_AGE_MS - 60 * 1000);
+        assertAllow(runGate(gatePayload(f.repo, f.transcript)));
+        assert.ok(!fs.existsSync(roleBoundaryFile(f.repo)), 'a fresh marker is consumed');
+    } finally { rmDir(f.repo); }
+
+    // Past it: the marker is dead, and an expiry is not the release firing, so
+    // it is left in place rather than consumed.
+    f = interactiveRepo([]);
+    try {
+        writeMarkerAt(roleBoundaryFile(f.repo), SESSION, BOUNDARY_MARKER_MAX_AGE_MS + 60 * 1000);
+        assertInteractiveDeny(runGate(gatePayload(f.repo, f.transcript)));
+        assert.ok(fs.existsSync(roleBoundaryFile(f.repo)), 'a stale marker is not consumed');
+    } finally { rmDir(f.repo); }
+});
+
+test('gate: a consumed role-boundary marker never releases again', () => {
+    const { repo, transcript } = interactiveRepo([]);
+    try {
+        writeMarkerAt(roleBoundaryFile(repo), SESSION, 60 * 1000, true);
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript)));
+        assert.ok(fs.existsSync(roleBoundaryFile(repo)), 'a consumed marker is left for its bound to retire');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a role-boundary marker never opens the leashed boundary hold', () => {
+    // The leashed run's boundary instrument is the checkpoint, with its plan
+    // and session match rule; the role-boundary marker is the goalless seats'
+    // and must not become a second, weaker channel past that rule.
+    const { repo, transcript } = armedRepo();
+    try {
+        const wrote = writeRoleBoundary(repo, SESSION);
+        assert.strictEqual(wrote.ok, true, 'test setup: marker should write');
+        assertDeny(runGate(gatePayload(repo, transcript)));
+        assert.ok(fs.existsSync(roleBoundaryFile(repo)), 'the marker is not consumed by a leg it does not release');
+        assert.strictEqual(readState(repo).lastDecision.reason, 'no-checkpoint', 'the deny reason is unchanged');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: operator consent releases the leashed boundary hold: allow, journaled, consumed, single-shot', () => {
+    const { repo, transcript } = armedRepo();
+    try {
+        const wrote = writeConsent(repo, SESSION);
+        assert.strictEqual(wrote.ok, true, 'test setup: consent should write');
+        assertAllow(runGate(gatePayload(repo, transcript)));
+        assert.ok(!fs.existsSync(consentFile(repo)), 'consent consumed by the allow');
+
+        const state = readState(repo);
+        assert.strictEqual(state.lastDecision.verdict, 'allow');
+        assert.strictEqual(state.lastDecision.reason, 'operator-consent');
+        const log = readLog(repo);
+        assert.deepStrictEqual(log[log.length - 1], state.lastDecision, 'the logged line is the recorded decision');
+
+        // Single-shot: consent releases one landing, never a standing waiver.
+        assertDeny(runGate(gatePayload(repo, transcript)));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: operator consent releases the hands-on deferral the same way', () => {
+    const { repo, transcript } = interactiveRepo([]);
+    try {
+        const wrote = writeConsent(repo, SESSION);
+        assert.strictEqual(wrote.ok, true, 'test setup: consent should write');
+        assertAllow(runGate(gatePayload(repo, transcript)));
+        assert.ok(!fs.existsSync(consentFile(repo)), 'consent consumed');
+        assert.strictEqual(readState(repo).lastDecision.reason, 'operator-consent');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a consent naming another session releases neither leg', () => {
+    let f = armedRepo();
+    try {
+        const wrote = writeConsent(f.repo, OTHER_SESSION);
+        assert.strictEqual(wrote.ok, true, 'test setup: consent should write');
+        assertDeny(runGate(gatePayload(f.repo, f.transcript)));
+        assert.ok(fs.existsSync(consentFile(f.repo)), 'a foreign consent is not consumed');
+    } finally { rmDir(f.repo); }
+
+    f = interactiveRepo([]);
+    try {
+        const wrote = writeConsent(f.repo, OTHER_SESSION);
+        assert.strictEqual(wrote.ok, true, 'test setup: consent should write');
+        assertInteractiveDeny(runGate(gatePayload(f.repo, f.transcript)));
+        assert.ok(fs.existsSync(consentFile(f.repo)), 'a foreign consent is not consumed on this leg either');
+    } finally { rmDir(f.repo); }
+});
+
+test('gate: the consent age bound holds in both directions', () => {
+    let f = armedRepo();
+    try {
+        writeMarkerAt(consentFile(f.repo), SESSION, CONSENT_MARKER_MAX_AGE_MS - 60 * 1000);
+        assertAllow(runGate(gatePayload(f.repo, f.transcript)));
+        assert.ok(!fs.existsSync(consentFile(f.repo)), 'a fresh consent is consumed');
+    } finally { rmDir(f.repo); }
+
+    f = armedRepo();
+    try {
+        writeMarkerAt(consentFile(f.repo), SESSION, CONSENT_MARKER_MAX_AGE_MS + 60 * 1000);
+        assertDeny(runGate(gatePayload(f.repo, f.transcript)));
+        assert.ok(fs.existsSync(consentFile(f.repo)), 'a stale consent is not consumed');
+    } finally { rmDir(f.repo); }
+});
+
+test('gate: a matching checkpoint lands ahead of consent, and the landing retires the session\'s consent', () => {
+    // The reason is the checkpoint's: the declared chapter boundary is the
+    // release that fired. The consent naming the landing session is retired
+    // by the landing itself (the gate's landing sweep): the deferral it was
+    // given for is over, and a survivor could release a later mid-chapter
+    // deny inside its four-hour bound.
+    let f = armedRepo();
+    try {
+        assert.strictEqual(writeCheckpoint(f.repo, f.planRel, SESSION).ok, true, 'test setup: checkpoint should write');
+        assert.strictEqual(writeConsent(f.repo, SESSION).ok, true, 'test setup: consent should write');
+        assertAllow(runGate(gatePayload(f.repo, f.transcript)));
+        assert.strictEqual(readState(f.repo).lastDecision.reason, 'checkpoint', 'the checkpoint is the release that landed');
+        assert.ok(!fs.existsSync(checkpointPath(f.repo)), 'the checkpoint is consumed');
+        assert.ok(!fs.existsSync(consentFile(f.repo)), 'the landing session\'s consent is retired with it');
+    } finally { rmDir(f.repo); }
+
+    // A consent naming another session is not this landing's to retire.
+    f = armedRepo();
+    try {
+        assert.strictEqual(writeCheckpoint(f.repo, f.planRel, SESSION).ok, true, 'test setup: checkpoint should write');
+        assert.strictEqual(writeConsent(f.repo, OTHER_SESSION).ok, true, 'test setup: consent should write');
+        assertAllow(runGate(gatePayload(f.repo, f.transcript)));
+        assert.ok(fs.existsSync(consentFile(f.repo)), 'a foreign consent survives the landing');
+    } finally { rmDir(f.repo); }
+});
+
+test('gate: a valve landing retires the landing session\'s marker and leaves a foreign one', () => {
+    // A marker that missed its moment must not survive it: the valve lands
+    // the compaction for this session, the context resets, and a marker still
+    // live after that would convert a later mid-work deny into an allow at
+    // exactly the placement the gate exists to prevent. Scope is the sweep's
+    // whole rule: only the landing session's own markers are retired.
+    let f = interactiveRepo([], CEILING);
+    try {
+        assert.strictEqual(writeRoleBoundary(f.repo, SESSION).ok, true, 'test setup: marker should write');
+        assertAllow(runGate(gatePayload(f.repo, f.transcript)));
+        assert.strictEqual(readState(f.repo).lastDecision.reason, 'valve', 'the valve is the reason, not the marker');
+        assert.ok(!fs.existsSync(roleBoundaryFile(f.repo)), 'the landing session\'s marker is retired');
+    } finally { rmDir(f.repo); }
+
+    f = interactiveRepo([], CEILING);
+    try {
+        assert.strictEqual(writeRoleBoundary(f.repo, OTHER_SESSION).ok, true, 'test setup: marker should write');
+        assertAllow(runGate(gatePayload(f.repo, f.transcript)));
+        assert.ok(fs.existsSync(roleBoundaryFile(f.repo)), 'a foreign session\'s marker survives this landing');
+    } finally { rmDir(f.repo); }
+});
+
+test('gate: a manual trigger allows via not-auto and retires only the session\'s own markers', () => {
+    // Clause 1 is still the whole manual-/compact story for the verdict: a
+    // manual trigger never reaches a deny leg, so neither marker affects it.
+    // The landing sweep applies all the same: a manual compaction resets this
+    // session's context like any other landing, so its own markers have had
+    // their moment, while another session's are not this landing's to spend.
+    const { repo, transcript } = armedRepo();
+    try {
+        assert.strictEqual(writeRoleBoundary(repo, SESSION).ok, true, 'test setup: marker should write');
+        assert.strictEqual(writeConsent(repo, OTHER_SESSION).ok, true, 'test setup: consent should write');
+        assertAllow(runGate(gatePayload(repo, transcript, { trigger: 'manual' })));
+        assert.strictEqual(readState(repo).lastDecision.reason, 'not-auto');
+        assert.ok(!fs.existsSync(roleBoundaryFile(repo)), 'the session\'s own marker is retired by its landing');
+        assert.ok(fs.existsSync(consentFile(repo)), 'another session\'s consent survives');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a coercible non-string session id reads neither marker', () => {
+    // sameSessionId compares through String(), so ["ses-x"] stringifies to
+    // its element and would match a marker; the typeof guard the armed path
+    // applies at its own clause is mirrored before the marker reads, so an
+    // anomalous payload releases nothing and spends nothing.
+    const { repo, transcript } = interactiveRepo([]);
+    try {
+        assert.strictEqual(writeRoleBoundary(repo, SESSION).ok, true, 'test setup: marker should write');
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript, { session_id: [SESSION] })));
+        assert.ok(fs.existsSync(roleBoundaryFile(repo)), 'the marker is neither matched nor spent');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a marker path reported as a symlink is refused, never followed or consumed', () => {
+    // Mirrors the checkpoint's and the gate state's own kind-refusal cases:
+    // the path holds a perfectly readable, MATCHING consent, and only
+    // fs.lstatSync says it is a link, so only the kind guard stops the
+    // release. A directory in its place would not discriminate (the ordinary
+    // read fails on one either way).
+    const { repo, transcript } = armedRepo();
+    const shimDir = makeDir('kit-compact-gate-shim-');
+    try {
+        assert.strictEqual(writeConsent(repo, SESSION).ok, true, 'test setup: consent should write');
+        const res = runGate(gatePayload(repo, transcript),
+            { NODE_OPTIONS: symlinkReportingPreload(shimDir, 'compact-consent.json') });
+        assertDeny(res);
+        assert.ok(fs.existsSync(consentFile(repo)), 'the refused marker is not consumed');
+    } finally {
+        rmDir(shimDir);
+        rmDir(repo);
+    }
+});
+
+test('cli: boundary opens a session-scoped marker with no goal armed, and the gate honors it once', () => {
+    const { repo, transcript } = interactiveRepo([]);
+    try {
+        const res = runCli(['boundary'], repo, { CLAUDE_CODE_SESSION_ID: SESSION });
+        assert.strictEqual(res.status, 0, 'boundary succeeds; stderr: ' + res.stderr);
+        assert.ok(res.stdout.includes('role-boundary marker open for session ' + SESSION),
+            'the CLI says what it wrote; stdout: ' + res.stdout);
+        const marker = JSON.parse(fs.readFileSync(roleBoundaryFile(repo), 'utf8'));
+        assert.strictEqual(marker.session, SESSION);
+        assert.strictEqual(marker.consumed, false);
+        assert.ok(Number.isFinite(Date.parse(marker.writtenAt)), 'writtenAt is a parseable ISO time');
+
+        assertAllow(runGate(gatePayload(repo, transcript)));
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript)));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('cli: boundary refuses trailing arguments rather than silently ignoring them', () => {
+    // `boundary --session <id>` is the natural misreading of the consent
+    // form, and a parser that ignored the tail would do two wrong things at
+    // once: the named session gets no release, and the ambient session
+    // silently gains one it never asked for.
+    const repo = makeDir('kit-compact-gate-repo-');
+    try {
+        for (const args of [
+            ['boundary', '--session', OTHER_SESSION],
+            ['boundary', 'stray']
+        ]) {
+            const res = runCli(args, repo, { CLAUDE_CODE_SESSION_ID: SESSION });
+            assert.strictEqual(res.status, 1, 'refused: ' + JSON.stringify(args) + '; stdout: ' + res.stdout);
+            assert.ok(!fs.existsSync(roleBoundaryFile(repo)), 'nothing written: ' + JSON.stringify(args));
+        }
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('cli: boundary with no derivable session id refuses loudly and writes nothing', () => {
+    // runCli scrubs the session variable, so this is the bare-shell case
+    // whichever environment runs the suite.
+    const repo = makeDir('kit-compact-gate-repo-');
+    try {
+        const res = runCli(['boundary'], repo);
+        assert.strictEqual(res.status, 1, 'no scoped marker can be written; stdout: ' + res.stdout);
+        assert.ok(res.stderr.includes('CLAUDE_CODE_SESSION_ID'), 'the refusal names the missing variable; stderr: ' + res.stderr);
+        assert.ok(!fs.existsSync(roleBoundaryFile(repo)), 'nothing written');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('cli: consent writes for the caller\'s session, or an explicitly named one', () => {
+    let repo = makeDir('kit-compact-gate-repo-');
+    try {
+        const res = runCli(['consent'], repo, { CLAUDE_CODE_SESSION_ID: SESSION });
+        assert.strictEqual(res.status, 0, 'consent succeeds; stderr: ' + res.stderr);
+        assert.ok(res.stdout.includes('operator-consent marker recorded for session ' + SESSION),
+            'the CLI says what it wrote; stdout: ' + res.stdout);
+        assert.strictEqual(JSON.parse(fs.readFileSync(consentFile(repo), 'utf8')).session, SESSION);
+    } finally { rmDir(repo); }
+
+    repo = makeDir('kit-compact-gate-repo-');
+    try {
+        const res = runCli(['consent', '--session', OTHER_SESSION], repo, { CLAUDE_CODE_SESSION_ID: SESSION });
+        assert.strictEqual(res.status, 0, 'an explicit session wins; stderr: ' + res.stderr);
+        assert.strictEqual(JSON.parse(fs.readFileSync(consentFile(repo), 'utf8')).session, OTHER_SESSION);
+    } finally { rmDir(repo); }
+
+    repo = makeDir('kit-compact-gate-repo-');
+    try {
+        const res = runCli(['consent'], repo);
+        assert.strictEqual(res.status, 1, 'no id at all refuses');
+        assert.ok(!fs.existsSync(consentFile(repo)), 'nothing written');
+    } finally { rmDir(repo); }
+});
+
+test('cli: a consent --session value that reads as an option is refused, never consumed', () => {
+    // The charset gate alone does not keep an argument out of the flag slot: a
+    // leading dash must be barred as its own rule, or --session swallows the
+    // next option and a typo writes a marker for a session named like a flag.
+    const repo = makeDir('kit-compact-gate-repo-');
+    try {
+        for (const args of [
+            ['consent', '--session'],
+            ['consent', '--session', '--verbose'],
+            ['consent', '--session', '-x'],
+            ['consent', '--session', 'bad$charset'],
+            ['consent', '--session', ''],
+            ['consent', '--session', SESSION, 'stray'],
+            ['consent', 'stray']
+        ]) {
+            const res = runCli(args, repo, { CLAUDE_CODE_SESSION_ID: SESSION });
+            assert.strictEqual(res.status, 1, 'refused: ' + JSON.stringify(args) + '; stdout: ' + res.stdout);
+            assert.ok(!fs.existsSync(consentFile(repo)), 'nothing written: ' + JSON.stringify(args));
+        }
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('cli: status reports both marker kinds in every state the gate distinguishes', () => {
+    // None open.
+    let repo = makeDir('kit-compact-gate-repo-');
+    try {
+        const res = runCli(['status'], repo);
+        assert.strictEqual(res.status, 0);
+        assert.ok(res.stdout.includes('no role-boundary marker is open'), 'stdout: ' + res.stdout);
+        assert.ok(res.stdout.includes('no operator-consent marker is present'), 'stdout: ' + res.stdout);
+    } finally { rmDir(repo); }
+
+    // Both live.
+    repo = makeDir('kit-compact-gate-repo-');
+    try {
+        assert.strictEqual(writeRoleBoundary(repo, SESSION).ok, true, 'test setup: marker should write');
+        assert.strictEqual(writeConsent(repo, SESSION).ok, true, 'test setup: consent should write');
+        const res = runCli(['status'], repo);
+        assert.ok(res.stdout.includes('role-boundary marker open for session ' + SESSION), 'stdout: ' + res.stdout);
+        assert.ok(res.stdout.includes('operator-consent marker present for session ' + SESSION), 'stdout: ' + res.stdout);
+        assert.ok(!res.stdout.includes('treats it as absent'), 'both are live; stdout: ' + res.stdout);
+    } finally { rmDir(repo); }
+
+    // Consumed and expired report the reason the gate would ignore them.
+    repo = makeDir('kit-compact-gate-repo-');
+    try {
+        writeMarkerAt(roleBoundaryFile(repo), SESSION, 60 * 1000, true);
+        writeMarkerAt(consentFile(repo), SESSION, CONSENT_MARKER_MAX_AGE_MS + 60 * 1000);
+        const res = runCli(['status'], repo);
+        assert.ok(res.stdout.includes('already consumed'), 'stdout: ' + res.stdout);
+        assert.ok(res.stdout.includes('expired'), 'stdout: ' + res.stdout);
+        assert.ok(res.stdout.includes('treats it as absent'), 'a dead marker is stated as one; stdout: ' + res.stdout);
+    } finally { rmDir(repo); }
+});
+
+test('cli: status reports a locked marker path as unreadable now, not as absent', () => {
+    const repo = makeDir('kit-compact-gate-repo-');
+    const shimDir = makeDir('kit-compact-gate-shim-');
+    try {
+        assert.strictEqual(writeRoleBoundary(repo, SESSION).ok, true, 'test setup: marker should write');
+        const out = runCli(['status'], repo,
+            { NODE_OPTIONS: readRefusingPreload(shimDir, 'compact-role-boundary.json') }).stdout;
+        assert.ok(out.includes('cannot be read right now'), 'the refusal is stated as transient: ' + out);
+        assert.ok(!out.includes('no role-boundary marker is open'), 'a locked marker is not an absent one: ' + out);
+    } finally {
+        rmDir(shimDir);
+        rmDir(repo);
+    }
+});
+
+test('cli: status reports an illegible marker file instead of claiming absence', () => {
+    const repo = makeDir('kit-compact-gate-repo-');
+    try {
+        writeFile(consentFile(repo), 'not json\n');
+        const out = runCli(['status'], repo).stdout;
+        assert.ok(out.includes('illegible'), 'stated as illegible: ' + out);
+        assert.ok(!out.includes('no operator-consent marker is present'), 'an illegible marker is not an absent one: ' + out);
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('lib: the marker paths are the ones the gate consumes and the CLI writes', () => {
+    const repo = makeDir('kit-compact-gate-repo-');
+    try {
+        assert.strictEqual(roleBoundaryPath(repo), roleBoundaryFile(repo));
+        assert.strictEqual(consentPath(repo), consentFile(repo));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('lib: the marker writers hold session ids to the checkpoint\'s own storage rules', () => {
+    const repo = makeDir('kit-compact-gate-repo-');
+    try {
+        for (const bad of [undefined, null, '', 42, 'x'.repeat(129), 'ctl\u0001char']) {
+            const res = writeRoleBoundary(repo, bad);
+            assert.strictEqual(res.ok, false, 'refused: ' + String(bad));
+        }
+        assert.ok(!fs.existsSync(roleBoundaryFile(repo)), 'nothing written');
+        assert.strictEqual(writeConsent(repo, null).ok, false, 'the consent writer refuses too');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('lib: markerMatches refuses malformed shapes and stales (unit level)', () => {
+    const now = Date.now();
+    const bound = BOUNDARY_MARKER_MAX_AGE_MS;
+    const live = { session: SESSION, writtenAt: new Date(now - 1000).toISOString(), consumed: false };
+    assert.strictEqual(markerMatches(live, SESSION, now, bound).ok, true);
+    assert.strictEqual(markerMatches(null, SESSION, now, bound).reason, 'no-marker');
+    assert.strictEqual(markerMatches([], SESSION, now, bound).reason, 'no-marker');
+    assert.strictEqual(markerMatches({ ...live, session: 42 }, SESSION, now, bound).reason, 'no-marker');
+    // Only a literal false is unconsumed: an absent flag, a truthy value of
+    // another shape, and a hand-set true all read as consumed.
+    assert.strictEqual(markerMatches({ session: SESSION, writtenAt: live.writtenAt }, SESSION, now, bound).reason, 'consumed');
+    assert.strictEqual(markerMatches({ ...live, consumed: 0 }, SESSION, now, bound).reason, 'consumed');
+    assert.strictEqual(markerMatches({ ...live, consumed: true }, SESSION, now, bound).reason, 'consumed');
+    assert.strictEqual(markerMatches(live, OTHER_SESSION, now, bound).reason, 'wrong-session');
+    assert.strictEqual(markerMatches(live, undefined, now, bound).reason, 'wrong-session');
+    assert.strictEqual(markerMatches({ ...live, writtenAt: 'garbage' }, SESSION, now, bound).reason, 'no-timestamp');
+    assert.strictEqual(markerMatches({ ...live, writtenAt: undefined }, SESSION, now, bound).reason, 'no-timestamp');
+    assert.strictEqual(markerMatches({ ...live, writtenAt: new Date(now - bound - 1000).toISOString() }, SESSION, now, bound).reason, 'expired');
+    assert.strictEqual(markerMatches({ ...live, writtenAt: new Date(now + 3 * 60 * 1000).toISOString() }, SESSION, now, bound).reason, 'future');
 });

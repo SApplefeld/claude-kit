@@ -1,22 +1,39 @@
 #!/usr/bin/env node
-// CLI entry for the boundary-compaction checkpoint.
+// CLI entry for the boundary-compaction checkpoint and the release markers.
 //
 // Subcommands:
-//   kit-compact-checkpoint.js open     open a checkpoint for the armed plan
-//   kit-compact-checkpoint.js clear    remove any open checkpoint
-//   kit-compact-checkpoint.js status   report the checkpoint and the gate state
+//   kit-compact-checkpoint.js open      open a checkpoint for the armed plan
+//   kit-compact-checkpoint.js clear     remove any open checkpoint
+//   kit-compact-checkpoint.js status    report the checkpoint, the release
+//                                       markers, and the gate state
+//   kit-compact-checkpoint.js boundary  open the role-boundary marker for the
+//                                       calling session (no goal required)
+//   kit-compact-checkpoint.js consent [--session <id>]
+//                                       record the operator's release for the
+//                                       caller's session, or the named one
 //
-// Invoked by the executing-work chapter-close ritual after a Chapter is
-// appended and the section's commit model has been honored. An open checkpoint
-// tells the PreCompact gate (kit-compact-gate.js) that a chapter boundary has
-// been reached: the gate allows the next auto-compaction attempt and consumes
-// the checkpoint, so each open lands exactly one compaction. Opening requires
-// an armed kit goal, because the checkpoint records the armed plan path and
-// the gate treats a checkpoint naming any other plan as absent: with no goal
-// armed there is nothing the file could ever match, so the open refuses
-// rather than writing a dead checkpoint. All filesystem work is delegated to
-// kit-compact-lib.js; this file is only argument parsing and output
-// formatting, matching kit-goal.js.
+// `open` is invoked by the executing-work chapter-close ritual after a
+// Chapter is appended and the section's commit model has been honored. An
+// open checkpoint tells the PreCompact gate (kit-compact-gate.js) that a
+// chapter boundary has been reached: the gate allows the next auto-compaction
+// attempt and consumes the checkpoint, so each open lands exactly one
+// compaction. Opening requires an armed kit goal, because the checkpoint
+// records the armed plan path and the gate treats a checkpoint naming any
+// other plan as absent: with no goal armed there is nothing the file could
+// ever match, so the open refuses rather than writing a dead checkpoint.
+//
+// `boundary` is the goalless seats' analogue of `open`, invoked by a role
+// session (coordinator, expert, admin) at its own banked-and-empty moments:
+// the marker is scoped by session rather than by plan, so no armed goal is
+// required and the no-goal refusal stays the leashed mode's alone. `consent`
+// writes the operator-release marker; the rule for WHEN it may be run (only
+// on the operator's explicit word over a warranted channel, never on the
+// session's own judgment) is the role skills' prose, while this CLI bounds
+// only what one run of it can do: one session, one release, one age window.
+// Both markers are consumed by the gate on the allow they cause, single-shot.
+//
+// All filesystem work is delegated to kit-compact-lib.js; this file is only
+// argument parsing and output formatting, matching kit-goal.js.
 
 'use strict';
 
@@ -25,7 +42,9 @@ const {
     readCheckpointResult, writeCheckpoint, clearCheckpoint, checkpointMatches,
     readGateStateResult, gateEpisodeOpen, pendingOfferCorroborated, checkpointOwner,
     episodePhrase, wholeMinutesSince, gateCount,
-    CHECKPOINT_MAX_AGE_MS, CHECKPOINT_PENDING_MAX_AGE_MS
+    CHECKPOINT_MAX_AGE_MS, CHECKPOINT_PENDING_MAX_AGE_MS,
+    readRoleBoundaryResult, readConsentResult, writeRoleBoundary, writeConsent,
+    markerMatches, ROLE_BOUNDARY_MAX_AGE_MS, CONSENT_MAX_AGE_MS
 } = require('./kit-compact-lib.js');
 
 // The two age bounds as an operator reads them, derived from the constants
@@ -36,6 +55,11 @@ const {
 // constant that leaves whole units is what keeps these honest.
 const ORDINARY_MINUTES = Math.round(CHECKPOINT_MAX_AGE_MS / (60 * 1000));
 const PENDING_HOURS = Math.round(CHECKPOINT_PENDING_MAX_AGE_MS / (60 * 60 * 1000));
+
+// The marker age bounds as an operator reads them, on the same derive-or-drift
+// rule as the two above, with the same whole-unit caveat.
+const BOUNDARY_MINUTES = Math.round(ROLE_BOUNDARY_MAX_AGE_MS / (60 * 1000));
+const CONSENT_HOURS = Math.round(CONSENT_MAX_AGE_MS / (60 * 60 * 1000));
 
 // What the gate's state says about this goal's binding, as the three facts the
 // report and the open need. Read once per call, so a single call cannot
@@ -74,8 +98,33 @@ function sanitize(s) {
 }
 
 function usage() {
-    process.stderr.write('usage: kit-compact-checkpoint.js open | clear | status\n');
+    process.stderr.write('usage: kit-compact-checkpoint.js open | clear | status | boundary | consent [--session <id>]\n');
     process.exitCode = 1;
+}
+
+// A session id this CLI will scope a marker to, or null. The gate is charset
+// plus a leading-character rule, not charset alone: a value that opens with a
+// dash reads as an option to any parser that meets it later, so the first
+// character must be alphanumeric however clean the rest is. Session ids as
+// the harness mints them are UUID-shaped and pass untouched; anything else
+// degrades to the loud refusal at the call sites, never to an unscoped
+// write.
+function usableSessionId(value) {
+    return (typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value))
+        ? value
+        : null;
+}
+
+// The calling session's own id, from the environment the harness sets for a
+// session's tool shell, or null when nothing usable is there. The variable is
+// an undocumented harness detail that can change or vanish upstream, and
+// inside a dispatched subagent's shell what it holds is unpinned (it may name
+// the subagent's session rather than the seat that dispatched it); the
+// refusal at the call sites is the designed degradation for both: where no id
+// is derivable, this CLI refuses to write a scoped marker rather than
+// writing an unscoped one.
+function callerSessionId() {
+    return usableSessionId(process.env.CLAUDE_CODE_SESSION_ID);
 }
 
 function cmdOpen() {
@@ -132,6 +181,92 @@ function cmdOpen() {
             process.stdout.write('the compaction gate state could not be read, so this checkpoint records no'
                 + ' pending offer and keeps the ' + ORDINARY_MINUTES + '-minute bound\n');
         }
+        process.exitCode = 0;
+    } else {
+        process.stderr.write('kit-compact-checkpoint: ' + sanitize(result.reason) + '\n');
+        process.exitCode = 1;
+    }
+}
+
+// Open the role-boundary marker for the calling session: the goalless seats'
+// analogue of `open`. The marker is scoped by session rather than by plan, so
+// no armed goal is required and the no-goal refusal above stays the leashed
+// mode's alone. The refusal here is loud and names the variable, because the
+// alternative, an unscoped marker whichever session's offer arrived first
+// would consume, is the one shape the design forbids.
+function cmdBoundary(rest) {
+    // The parse is strict for the same reason cmdConsent's is: `boundary
+    // --session <id>` is the natural misreading of the consent form, and a
+    // parser that ignored the tail would do two wrong things at once, denying
+    // the named session its release and handing the ambient session one it
+    // never asked for. The boundary marker is the calling session's own
+    // declaration, so this mode takes no arguments at all.
+    if (rest.length !== 0) {
+        process.stderr.write('usage: kit-compact-checkpoint.js boundary (no arguments: the marker is'
+            + ' scoped to the calling session; consent is the mode that takes --session)\n');
+        process.exitCode = 1;
+        return;
+    }
+    const session = callerSessionId();
+    if (session === null) {
+        process.stderr.write('kit-compact-checkpoint: no usable session id in this shell'
+            + ' (CLAUDE_CODE_SESSION_ID is unset or not id-shaped), so a session-scoped'
+            + ' marker cannot be written; nothing written\n');
+        process.exitCode = 1;
+        return;
+    }
+    const result = writeRoleBoundary(process.cwd(), session);
+    if (result.ok) {
+        // Environment-derived values print indented and sanitized, the same
+        // handling cmdOpen gives the plan path; the duration comes from the
+        // constant, so the sentence cannot promise what the rule does not do.
+        process.stdout.write('  role-boundary marker open for session ' + sanitize(session)
+            + ' (that session\'s next deferred auto-compaction lands at this boundary;'
+            + ' it ages out in ' + BOUNDARY_MINUTES + ' minutes)\n');
+        process.exitCode = 0;
+    } else {
+        process.stderr.write('kit-compact-checkpoint: ' + sanitize(result.reason) + '\n');
+        process.exitCode = 1;
+    }
+}
+
+// Record the operator's release for the caller's session, or an explicitly
+// named one. The rule for WHEN this may be run is the role skills' prose (the
+// operator's explicit word over a warranted channel, never the session's own
+// judgment); what this parser owns is the strictness of the write: --session
+// demands exactly one value, and a value is never taken from anything
+// dash-led (usableSessionId's leading-character rule), so a missing value
+// cannot swallow the next flag and be recorded as a session name.
+function cmdConsent(rest) {
+    let session = null;
+    if (rest.length === 0) {
+        session = callerSessionId();
+        if (session === null) {
+            process.stderr.write('kit-compact-checkpoint: no usable session id in this shell'
+                + ' (CLAUDE_CODE_SESSION_ID is unset or not id-shaped); name one with'
+                + ' --session <id>; nothing written\n');
+            process.exitCode = 1;
+            return;
+        }
+    } else if (rest.length === 2 && rest[0] === '--session') {
+        session = usableSessionId(rest[1]);
+        if (session === null) {
+            process.stderr.write('kit-compact-checkpoint: --session needs one value that starts'
+                + ' with a letter or digit and uses only letters, digits, dot, underscore or'
+                + ' hyphen; nothing written\n');
+            process.exitCode = 1;
+            return;
+        }
+    } else {
+        process.stderr.write('usage: kit-compact-checkpoint.js consent [--session <id>]\n');
+        process.exitCode = 1;
+        return;
+    }
+    const result = writeConsent(process.cwd(), session);
+    if (result.ok) {
+        process.stdout.write('  operator-consent marker recorded for session ' + sanitize(session)
+            + ' (releases that session\'s next deferred auto-compaction once, within '
+            + CONSENT_HOURS + ' hours)\n');
         process.exitCode = 0;
     } else {
         process.stderr.write('kit-compact-checkpoint: ' + sanitize(result.reason) + '\n');
@@ -284,6 +419,76 @@ function reportCheckpoint(cwd) {
     process.stdout.write(line + '\n');
 }
 
+// Why a marker on disk gates nothing, per markerMatches reason code, worded
+// as ABSENT_REASONS words the checkpoint's: every message states plainly that
+// the gate treats the file as absent. The 'no-marker' and 'wrong-session'
+// codes have no entry because this report never produces them (a shapeless
+// file takes the illegible leg below, and the marker is judged for the
+// session it itself names); an unknown future code falls back to the bare
+// treats-as-absent clause rather than printing nothing. 'expired' is built at
+// the call site, because it names the bound that applied and the two marker
+// kinds carry different bounds.
+const MARKER_DEAD_REASONS = {
+    'consumed': 'already consumed, so the gate treats it as absent',
+    'no-timestamp': 'its written timestamp is missing or unreadable, so the gate treats it as absent',
+    'future': 'its written timestamp is in the future, so the gate treats it as absent'
+};
+
+// One marker kind's half of the status report, mirroring reportCheckpoint's
+// legs: the read refusals are told apart by the reader's own reason (a second
+// lstat here could not see the 'unreadable' leg at all), a present marker is
+// judged by the same markerMatches rule the gate decides by, and a dead one
+// is flagged with why, so the file's presence is never misreported as a live
+// release. `verb` is how presence is phrased ("open" for a declared boundary,
+// "present" for a recorded consent), and `boundPhrase` names the age bound
+// that applies to this kind.
+//
+// The marker is judged for the session it itself names, deliberately: a shell
+// running status is not the offering session, so the wrong-session leg is not
+// this report's question to answer. What it answers is whether the marker
+// would release the session it names, and it prints that session so the
+// operator can judge the scoping half themselves.
+function reportMarker(read, label, verb, maxAgeMs, boundPhrase) {
+    const marker = read.marker;
+    if (!marker || typeof marker !== 'object' || Array.isArray(marker)
+        || typeof marker.session !== 'string') {
+        const reason = marker === null ? read.reason : 'illegible';
+        if (reason === 'illegible') {
+            process.stdout.write('an illegible ' + label + ' marker file is present '
+                + '(the gate treats it as absent); the next ' + label + ' write replaces it\n');
+        } else if (reason === 'oversized') {
+            process.stdout.write('a ' + label + ' marker file past the size the reader accepts '
+                + 'is present (the gate treats it as absent); the next ' + label + ' write replaces it\n');
+        } else if (reason === 'kind') {
+            process.stdout.write('something that is not a ' + label + ' marker file is sitting '
+                + 'at its path (the gate treats it as absent); move it aside by hand\n');
+        } else if (reason === 'unreadable' || reason === 'lstat') {
+            // Scoped to now, exactly as reportCheckpoint scopes its own lock
+            // leg: a lock lifts, and absence must not be asserted over it.
+            process.stdout.write('the ' + label + ' marker path cannot be read right now, '
+                + 'so the gate treats it as absent while that lasts\n');
+        } else {
+            process.stdout.write('no ' + label + ' marker is ' + verb + '\n');
+        }
+        return;
+    }
+    // File-derived values print indented, never at column zero (see cmdOpen).
+    let line = '  ' + label + ' marker ' + verb + ' for session ' + sanitize(marker.session);
+    line += (typeof marker.writtenAt === 'string')
+        ? ' (written ' + sanitize(marker.writtenAt) + ')'
+        : ' (no written timestamp recorded)';
+    const verdict = markerMatches(marker, marker.session, Date.now(), maxAgeMs);
+    if (!verdict.ok) {
+        line += ' - ' + (verdict.reason === 'expired'
+            ? 'expired (past the ' + boundPhrase + ' bound), so the gate treats it as absent'
+            : (MARKER_DEAD_REASONS[verdict.reason] || 'the gate treats it as absent'));
+    } else {
+        line += ' - the gate honors it once for that session\'s next deferred auto-compaction, '
+            + 'within the ' + boundPhrase + ' bound';
+    }
+    process.stdout.write(line + '\n');
+}
+
 // The compaction gate's own record: what it decided last, and whether it is
 // currently holding auto-compaction offers back. An operator reads this to tell
 // a gate that is working (a short episode mid-section) from a boundary that was
@@ -366,6 +571,10 @@ function reportGateState(cwd) {
 function cmdStatus() {
     const cwd = process.cwd();
     reportCheckpoint(cwd);
+    reportMarker(readRoleBoundaryResult(cwd), 'role-boundary', 'open',
+        ROLE_BOUNDARY_MAX_AGE_MS, BOUNDARY_MINUTES + '-minute');
+    reportMarker(readConsentResult(cwd), 'operator-consent', 'present',
+        CONSENT_MAX_AGE_MS, CONSENT_HOURS + '-hour');
     reportGateState(cwd);
     process.exitCode = 0;
 }
@@ -375,6 +584,8 @@ function main() {
     if (cmd === 'open') cmdOpen();
     else if (cmd === 'clear') cmdClear();
     else if (cmd === 'status') cmdStatus();
+    else if (cmd === 'boundary') cmdBoundary(process.argv.slice(3));
+    else if (cmd === 'consent') cmdConsent(process.argv.slice(3));
     else usage();
 }
 

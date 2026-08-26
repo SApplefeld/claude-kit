@@ -13,9 +13,12 @@
 //   kit-goal.js status             report whether a goal is armed
 //
 // Invoked by the /kit-goal skill. Goal-state work is delegated to
-// kit-goal-lib.js, which takes the binding as an argument; this file is the
-// only reader of the session-id variable, plus argument parsing and output
-// formatting.
+// kit-goal-lib.js, which takes the binding as an argument; this file reads the
+// session-id variable, plus argument parsing and output formatting. It is not
+// the variable's only reader: the compaction checkpoint CLI's release verbs
+// read it too, to name the session a release marker is scoped to, and they
+// gate it on shape alone where this file also corroborates it against a real
+// transcript before binding anything.
 //
 // arm runs inside the arming session's own shell, so it binds the goal to that
 // session at arm time: CLAUDE_CODE_SESSION_ID names the session, and the
