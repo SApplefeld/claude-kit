@@ -10,6 +10,7 @@
 //   memq recent [--since <n>d|<n>h]
 //   memq unstamped [--since <n>d|<n>h]
 //   memq touch <name> --applied [--type|--operator]
+//   memq anchor <name> <path>...
 //   memq add-type <type> <name> "<description>" [--tag t]...
 //                 [--supersedes <name>] [--body "..."|--body-file "<path>"]
 //   memq add-type <type> <name> "<description>" --update
@@ -266,7 +267,25 @@ const OPERATOR_DIR = 'memory-operator';   // the operator tier, one directory at
 // directory name because the tier has no per-key segment to take one from.
 const OPERATOR_LABEL = 'operator';
 const DECAY_STAMP_FILE = 'decay-stamp';   // mtime records when a decay pass last completed
-const STORE_LOCK_FILE = 'store.lock';     // per-shared-tier lock over every rewrite of its files
+// The two lock names, and what each one actually covers, because they do not
+// cover the same thing and a caller that takes only one of them excludes only
+// what that one holds.
+//
+// store.lock is the shared tiers' lock: every rewrite of a type-tier or
+// operator-tier file takes it in that tier's own directory, and those are all
+// of its holders but one. decay.lock is the project tier's, taken by the
+// decay pass over its project-tier work, and the pass takes no store.lock.
+// The one caller of both is `anchor`, which rewrites a project-tier record:
+// it takes decay.lock and then store.lock in the project memory directory,
+// because decay.lock is what excludes the pass and store.lock is what
+// excludes another `anchor`.
+//
+// So a project-tier writer arriving later cannot get its exclusion from
+// store.lock: the pass does not hold it. It takes decay.lock, and it takes it
+// first, which is the order `anchor` uses and the only thing keeping two
+// lock-takers from inverting into a deadlock.
+const STORE_LOCK_FILE = 'store.lock';
+const DECAY_LOCK_FILE = 'decay.lock';
 const DECLARERS_SHOWN = 10;   // declaring-project names listed before the remainder is counted
 const PINNED_SHOWN = 10;      // pinned memories listed by decay-scan before the remainder is counted
 // Successors named in a superseded record's label before the remainder is
@@ -714,8 +733,18 @@ function projectSegments() {
 // Path and filename fragments compare the way the platform's filesystem
 // compares them, so one physical file cannot pass one caller's check and fail
 // another's.
+//
+// `fsKey` is the same rule for a caller that indexes rather than compares: a
+// map keyed by it collapses two spellings of one file the way `fsEq` finds
+// them equal. Having the two share the rule is the point, since a caller
+// re-spelling the platform test beside a call to `fsEq` is how a lookup and a
+// comparison come to disagree about what one file is.
+function fsKey(s) {
+    return process.platform === 'win32' ? String(s).toLowerCase() : String(s);
+}
+
 function fsEq(a, b) {
-    return process.platform === 'win32' ? String(a).toLowerCase() === String(b).toLowerCase() : a === b;
+    return process.platform === 'win32' ? fsKey(a) === fsKey(b) : a === b;
 }
 
 // The store's definition of a memory file, the one every writer and reader
@@ -1908,6 +1937,22 @@ function frontmatterBlock(raw) {
     return { bom, lines, opened: true, closer: -1 };
 }
 
+// Whether a block opened on the record's first line and never closed inside
+// the reader's line bound. It is the one shape that makes a frontmatter block
+// unreadable rather than absent, and the two are different answers: a record
+// carrying no fence at all definitely declares no fields, while one whose
+// fence never closes may declare any of them and no reader can say. A record
+// with a `pinned:` inside such a block is the case that costs something, since
+// every reader answers as though the pin were not there.
+//
+// It is one predicate rather than the same two-part test spelled at each
+// door: the field reader, the anchors reader and the anchor writer all ask
+// it, and a fourth caller asking it differently is how a record refused at
+// one door is admitted at another.
+function frontmatterUnclosed(block) {
+    return block.opened && block.closer === -1;
+}
+
 // The heading line a record already carries, or null when it carries none:
 // the first non-blank line past the frontmatter block, when that line is an
 // ATX heading. A repair rebuilds the record around it for the reason it
@@ -1981,14 +2026,48 @@ function unquoteScalar(value) {
 
 // The same field read from a record's text already in hand, for a walk that
 // has read the file for its own reasons and must not read it again. Every
-// answer above except FRONTMATTER_UNREADABLE, which is the read's answer and
-// so belongs to the caller that did the reading.
+// answer above, FRONTMATTER_UNREADABLE included: that sentinel is normally
+// the read's own, raised by the file-reading door, and this reader raises it
+// too for a `raw` that is not a string, which is the same statement (nothing
+// here could be read) about a payload rather than about a file.
 function frontmatterValue(raw, name) {
+    return frontmatterSite(raw, name).value;
+}
+
+// The same walk, reporting where the value came from as well as what it is:
+// `{block, value, line}`, where `line` indexes `block.lines` at the line the
+// value was read off and is -1 for every answer that came off no line (the
+// field absent, a block that never closed, a field under a key the reader
+// does not read).
+//
+// It exists so that a writer of one of these fields rewrites the line the
+// reader reads, at the placement it already sits in, rather than deciding
+// that placement over again: a second walk of this grammar is how a writer
+// and a reader come to disagree about which line of a record is the field.
+// `frontmatterValue` is this function with the position dropped, so there is
+// one walk and not two.
+function frontmatterSite(raw, name) {
+    // Text that is not text is `FRONTMATTER_UNREADABLE` rather than a throw
+    // and rather than the `null` a record without the field gives. This
+    // reader is exported, so a caller holding a payload it has not checked
+    // reaches it directly, and an exception out of the block splitter is the
+    // answer none of those callers has anything to do with. The sentinel is
+    // the read's own, which is what this is: nothing here could be read.
+    if (typeof raw !== 'string') {
+        return {
+            block: { bom: '', lines: [], opened: false, closer: -1 },
+            value: FRONTMATTER_UNREADABLE,
+            line: -1
+        };
+    }
     const block = frontmatterBlock(raw);
-    if (!block.opened || block.closer === -1) return null;
+    if (frontmatterUnclosed(block)) return { block, value: null, line: -1 };
+    if (!block.opened) return { block, value: null, line: -1 };
     const re = frontmatterKeyRegex(name);
     let found = null;
+    let foundLine = -1;
     let nested = null;
+    let nestedLine = -1;
     let indented = false;
     // Where the walk stands relative to the harness's map: inside it or not,
     // and once inside, the indentation its first member line set, null until
@@ -2018,7 +2097,7 @@ function frontmatterValue(raw, name) {
             memberIndent = null;
             const m = re.exec(line);
             if (m) {
-                if (found === null) found = m[1];
+                if (found === null) { found = m[1]; foundLine = i; }
                 continue;
             }
         } else if (inMap) {
@@ -2026,7 +2105,7 @@ function frontmatterValue(raw, name) {
             if (indent === memberIndent) {
                 const m = re.exec(line.slice(indent.length));
                 if (m) {
-                    if (nested === null) nested = unquoteScalar(m[1]);
+                    if (nested === null) { nested = unquoteScalar(m[1]); nestedLine = i; }
                     continue;
                 }
             }
@@ -2040,9 +2119,32 @@ function frontmatterValue(raw, name) {
         // this reader owes a report instead.
         if (re.test(line.trim())) indented = true;
     }
-    if (found !== null) return found;
-    if (nested !== null) return nested;
-    return indented ? FRONTMATTER_INDENTED : null;
+    if (found !== null) return { block, value: found, line: foundLine };
+    if (nested !== null) return { block, value: nested, line: nestedLine };
+    return { block, value: indented ? FRONTMATTER_INDENTED : null, line: -1 };
+}
+
+// The absolute offsets of the lines `frontmatterBlock` split out of a
+// record's text, one `{start, end}` per line with the separator that followed
+// it excluded. A rewrite of one frontmatter line uses these to splice that
+// line alone, so every other byte of the record, its body included, is the
+// byte that was there before.
+//
+// The split consumed exactly one '\r\n' or '\n' between lines and leaves a
+// lone carriage return inside a line's own text, so walking those same two
+// separators here reconstructs the spans the split read. The byte order mark
+// the block reports is skipped for the same reason it was stripped there: it
+// sits ahead of the first line rather than inside it.
+function frontmatterLineSpans(text, block) {
+    const spans = [];
+    let at = block.bom.length;
+    for (const line of block.lines) {
+        spans.push({ start: at, end: at + line.length });
+        at += line.length;
+        if (text.startsWith('\r\n', at)) at += 2;
+        else if (text.startsWith('\n', at)) at += 1;
+    }
+    return spans;
 }
 
 function frontmatterField(file, name) {
@@ -2085,18 +2187,69 @@ function readFrontmatterCreated(file) {
     return Number.isFinite(ms) ? ms : null;
 }
 
-// Characters that carry no visible mark of their own and so cannot be shown
-// to a reader: the C0 and C1 control ranges, the zero-width and bidirectional
-// formatting controls, and the byte order mark. An anchor's path is quoted
-// back on a refusal line and printed on a drift line, and text that renders
-// as something other than what it says is the whole hazard those lines have.
-// Visible characters outside ASCII are not this class and are admitted.
-// The double quote rides in the same expression: it is what the display
-// gate strips, and the path grammar refuses exactly what that gate would
-// remove, so both jobs ask one expression rather than two that drift. The
-// `g` flag is what the strip needs; `search` reads it without leaving
-// `lastIndex` behind, which `test` on a global expression would.
-const ANCHOR_INVISIBLE = /[\u0000-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF"]/g;
+// The named characters an anchor's path may not carry, each of which draws
+// nothing of its own: the C0 and C1 control ranges, the zero-width and
+// bidirectional formatting controls (the Arabic letter mark among them, a
+// bidi control outside the U+202x block), the soft hyphen, the Mongolian
+// vowel separator, the variation selectors in both of their blocks (U+FE00 to
+// U+FE0F, and the supplement at U+E0100 to U+E01EF, which is the second half
+// of the surrogate-pair alternative below), the language tag block, and the
+// byte order mark. An anchor's path is quoted back on a refusal line and
+// printed on a drift line, and text that renders as something other than what
+// it says is the whole hazard those lines have. Visible characters outside
+// ASCII are not this class and are admitted.
+//
+// It is an enumeration rather than the complete set of Unicode's invisible
+// characters, which is the honest description of what a hand-written class
+// can be: U+3164 HANGUL FILLER, for one, sits outside it and is admitted. So
+// a path this admits is one none of the named shapes was found in, never one
+// proved to draw everything it carries. Growing the enumeration refuses a
+// file name that could be anchored before it grew, which is why an addition
+// is a decision rather than a sweep: the variation selectors above take an
+// emoji written with U+FE0F out of the grammar, deliberately, since the
+// character they modify renders with or without them.
+//
+// The double quote rides in the same expression: it is what the display gate
+// strips, and this class covers everything the grammar refuses for being
+// unshowable except whitespace, which has its own expression below and which
+// the display gate strips alongside this one. The `g` flag is what the strip
+// needs; `search` reads it without leaving `lastIndex` behind, which `test`
+// on a global expression would.
+//
+// U+2800 BRAILLE PATTERN BLANK is not here and is admitted, which is a line
+// drawn rather than a case missed: it is a character of a real script, and
+// the ruling this grammar carries is that a script's own characters stay
+// admitted. It renders as blank, so a path carrying one reads on a report
+// line as the path without it; that is the author's bar to meet, not this
+// one's.
+const ANCHOR_INVISIBLE = /[\u0000-\u001F\u007F-\u009F\u00AD\u061C\u180E\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFE00-\uFE0F\uFEFF"]|\uDB40[\uDC00-\uDC7F\uDD00-\uDDEF]/g;
+
+// The whitespace an anchor's path may not carry, one expression for the two
+// jobs that ask about it: the grammar refuses it, and a refusal line quoting
+// the path back strips it. A leading or trailing space is invisible in a
+// quoted path exactly as a zero-width space is, so the display gate removes
+// both classes and the grammar refuses both. Global for the strip, and read
+// with `search` rather than `test` for the same `lastIndex` reason.
+const ANCHOR_WHITESPACE = /\s/g;
+
+// Characters a plain YAML scalar may not open with: the format's own
+// indicators, which decide how the value after them is read. The line this
+// grammar feeds is written unquoted, and the record it lands in is parsed and
+// re-serialized by the harness on the next Write of that record, so a path
+// opening with one of these is a value that round trip can drop or transform.
+// `#` is the plainest case: the line is written as `anchors: <value>`, so a
+// `#` at the value's first character sits after a space and opens a comment,
+// leaving the field with no value at all.
+//
+// Only the first character is judged. Inside a plain scalar these characters
+// are ordinary text, and `#` opens a comment only where a space precedes it,
+// which this grammar's whitespace bar has already refused. `-` and `~` are
+// absent deliberately: a plain scalar may open with either where no space
+// follows, which is every path this grammar admits.
+//
+// This is stated from the YAML 1.2 plain-scalar rule rather than measured
+// against the harness's serializer, which is not runnable from here.
+const YAML_INDICATOR_LEAD = /^[#&!%[\]{}'`]/;
 
 // Whether a string is an anchor's path: forward-slashed and relative to the
 // project's root, bounded, and free of the shapes that would make the path
@@ -2115,9 +2268,10 @@ const ANCHOR_INVISIBLE = /[\u0000-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E\
 // filename characters on win32 at all and are refused rather than left to
 // fail at the open; a win32 reserved device segment, since `<root>/COM1`
 // names the device from any directory; a dots-only or trailing-dot segment,
-// which win32 collapses to a different name than the one written; and every
-// whitespace and invisible character, which a reader of a report line cannot
-// see and so cannot check.
+// which win32 collapses to a different name than the one written; a leading
+// YAML indicator, which decides how the unquoted value the writer emits is
+// read back; and every whitespace and invisible character, which a reader of
+// a report line cannot see and so cannot check.
 //
 // Characters outside ASCII are admitted, letters and marks alike: a repository
 // with a non-English filename is an ordinary repository, and refusing
@@ -2139,11 +2293,13 @@ const ANCHOR_INVISIBLE = /[\u0000-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E\
 // specified to hold a path to this function.
 //
 // The space bar costs a real file: `docs/my notes.md` cannot be anchored in
-// v1. A space is admitted by the display gate and invisible at either end of
-// a path, so a refusal line quoting `docs/a .md` and one quoting `docs/a.md`
-// read alike, and the entry a stray space produced would be indistinguishable
-// from the entry the author meant. A refusal names the entry, so the cost is
-// a message rather than a wrong answer.
+// v1. A space is invisible at either end of a path, so a refusal line quoting
+// `docs/a .md` and one quoting `docs/a.md` read alike, and the entry a stray
+// space produced would be indistinguishable from the entry the author meant.
+// The display gate strips whitespace for that same reason, which is why the
+// grammar refuses it here rather than leaning on the quoting to show it. A
+// refusal names the entry, so the cost is a message rather than a wrong
+// answer.
 //
 // A non-string answers false rather than throwing. This is a gate, and it is
 // exported so that a caller holding an unvalidated value asks it rather than
@@ -2151,8 +2307,9 @@ const ANCHOR_INVISIBLE = /[\u0000-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E\
 function isAnchorPath(value) {
     if (typeof value !== 'string') return false;
     if (value.length === 0 || value.length > ANCHOR_PATH_CAP) return false;
-    if (/\s/.test(value) || value.search(ANCHOR_INVISIBLE) !== -1) return false;
+    if (value.search(ANCHOR_WHITESPACE) !== -1 || value.search(ANCHOR_INVISIBLE) !== -1) return false;
     if (/[\\:@,*?<>|]/.test(value)) return false;
+    if (YAML_INDICATOR_LEAD.test(value)) return false;
     return value.split('/').every((s) => s !== '' && !/^\.+$/.test(s)
         && !s.endsWith('.') && !isReservedDeviceSegment(s));
 }
@@ -2165,10 +2322,16 @@ function isAnchorPath(value) {
 // reduction without saying which one it was would quote back text a reader
 // has no reason to doubt. `fault` names what the entry was refused for, since
 // the text alone often looks fine.
+//
+// The strip asks both of the grammar's unshowable classes, in the same two
+// expressions the grammar asks. Stripping only the invisible class would echo
+// back a path whose whitespace the grammar had just refused, with that
+// whitespace intact and invisible on the line, which is the reading a refusal
+// exists to prevent.
 function anchorRefusalText(entry, fault) {
     const cut = entry.length > ANCHOR_ENTRY_CAP;
     const head = cut ? entry.slice(0, ANCHOR_ENTRY_CAP) : entry;
-    const shown = head.replace(ANCHOR_INVISIBLE, '');
+    const shown = head.replace(ANCHOR_INVISIBLE, '').replace(ANCHOR_WHITESPACE, '');
     const notes = [];
     if (shown !== head) notes.push('characters removed for display');
     if (cut) notes.push('shown to ' + ANCHOR_ENTRY_CAP + ' characters');
@@ -2282,8 +2445,7 @@ function parseAnchors(value) {
 // given for an unreadable record.
 function frontmatterAnchors(raw) {
     if (typeof raw !== 'string') return null;
-    const block = frontmatterBlock(raw);
-    if (block.opened && block.closer === -1) return null;
+    if (frontmatterUnclosed(frontmatterBlock(raw))) return null;
     return parseAnchors(frontmatterValue(raw, 'anchors'));
 }
 
@@ -2406,6 +2568,28 @@ function blobSha(absPath) {
     }
 }
 
+// The root an anchor path is joined onto, resolved to its real path, or null
+// when what was handed in is not a root anything can be resolved against: a
+// value that is not an absolute path, a path that is not an existing
+// directory, or one whose resolution failed. `anchorRoot` derives the root
+// and this settles whether that root is usable, which are two questions and
+// two answers: a directory that is not there is still the directory the store
+// derivation names.
+//
+// The real path is what the containment test in the walk below compares
+// against, so it is taken once here rather than at each entry, and every
+// caller that resolves an anchor path goes through this so that the reader
+// and the writer cannot disagree about which roots are usable.
+function anchorRootReal(root) {
+    if (typeof root !== 'string' || root === '' || !path.isAbsolute(root)) return null;
+    try {
+        if (!fs.statSync(root).isDirectory()) return null;
+        return fs.realpathSync(root);
+    } catch {
+        return null;
+    }
+}
+
 // One anchor's state now, against a root already resolved to its real path.
 //
 // The path is walked one segment at a time and every segment is judged before
@@ -2432,6 +2616,14 @@ function blobSha(absPath) {
 // vocabulary for a cause that is not one. Walking the segments settles that
 // consistently across platforms too, where an error code does not: a path
 // running through a file answers ENOENT on win32 and ENOTDIR elsewhere.
+//
+// Beside `current` and `state` each answer carries a `reason`, the words for
+// what the walk found, null where it found a file it could hash. The four
+// states are what a drift report prints and are deliberately few; a writer
+// refusing a path the caller just typed has to say which of the several
+// causes behind 'unreadable' it hit, and the walk is the only thing that
+// knows. Reporting it from here is what keeps that answer out of a second
+// walk of the same path.
 function anchorEntryState(rootReal, entry) {
     const parts = entry.path.split('/');
     const full = path.join(rootReal, ...parts);
@@ -2439,27 +2631,68 @@ function anchorEntryState(rootReal, entry) {
     // whenever the grammar did; it stands with the walk rather than in place
     // of it, and answers for a path built some other way.
     const prefix = rootReal.endsWith(path.sep) ? rootReal : rootReal + path.sep;
-    if (!full.startsWith(prefix)) return { current: null, state: 'unreadable' };
+    if (!full.startsWith(prefix)) {
+        return { current: null, state: 'unreadable', reason: 'it lands outside the project root' };
+    }
     let at = rootReal;
     for (let i = 0; i < parts.length; i++) {
         at = path.join(at, parts[i]);
+        const last = i === parts.length - 1;
         let st;
         try {
             st = fs.lstatSync(at);
         } catch (err) {
             const code = err !== null && typeof err === 'object' ? err.code : null;
             return code === 'ENOENT'
-                ? { current: null, state: 'missing' }
-                : { current: null, state: 'unreadable' };
+                ? {
+                    current: null, state: 'missing',
+                    reason: last ? 'nothing is at that path under the project root'
+                        : 'a directory on the way to it is not there'
+                }
+                : {
+                    current: null, state: 'unreadable',
+                    reason: 'it could not be examined (' + sanitize(String(code), 40) + ')'
+                };
         }
-        if (st.isSymbolicLink()) return { current: null, state: 'unreadable' };
-        const last = i === parts.length - 1;
-        if (!last && !st.isDirectory()) return { current: null, state: 'unreadable' };
-        if (last && !st.isFile()) return { current: null, state: 'unreadable' };
+        if (st.isSymbolicLink()) {
+            return {
+                current: null, state: 'unreadable',
+                reason: last
+                    ? 'it is a symbolic link or a junction, which an anchor never resolves'
+                    : 'it runs through a symbolic link or a junction, which an anchor never resolves'
+            };
+        }
+        if (!last && !st.isDirectory()) {
+            return {
+                current: null, state: 'unreadable',
+                reason: 'it runs through something that is not a directory'
+            };
+        }
+        if (last && !st.isFile()) {
+            return {
+                current: null, state: 'unreadable',
+                reason: st.isDirectory()
+                    ? 'it is a directory, and an anchor names one file'
+                    : 'it is not a regular file'
+            };
+        }
     }
     const current = blobSha(full);
-    if (current === null) return { current: null, state: 'unreadable' };
-    return { current, state: current === entry.sha ? 'fresh' : 'changed' };
+    if (current === null) {
+        return {
+            current: null, state: 'unreadable',
+            // The hash answers null for several conditions and reports which
+            // it met to nobody, so this names them as the possibilities they
+            // are rather than asserting one: a file over the read cap, a file
+            // whose size moved while it was read, a permission or read
+            // failure, and a build of Node whose sha1 is refused outright.
+            reason: 'it could not be hashed: a file over ' + ANCHOR_READ_CAP
+                + ' bytes is past what an anchor reads, and a file that could not be'
+                + ' opened or read, one whose size changed while it was read, and a'
+                + ' Node built in FIPS mode all end here too'
+        };
+    }
+    return { current, state: current === entry.sha ? 'fresh' : 'changed', reason: null };
 }
 
 // The state of each anchor in an already-parsed `anchors:` value, in the
@@ -2495,14 +2728,8 @@ function anchorEntryState(rootReal, entry) {
 function anchorStatesFrom(parsed, root) {
     try {
         if (parsed === null || typeof parsed !== 'object' || !Array.isArray(parsed.items)) return null;
-        if (typeof root !== 'string' || root === '' || !path.isAbsolute(root)) return null;
-        let rootReal;
-        try {
-            if (!fs.statSync(root).isDirectory()) return null;
-            rootReal = fs.realpathSync(root);
-        } catch {
-            return null;
-        }
+        const rootReal = anchorRootReal(root);
+        if (rootReal === null) return null;
         const states = parsed.items.map((item) => {
             if (item.path === null) {
                 return { path: null, entry: item.text, recorded: null, current: null, state: 'unreadable' };
@@ -2861,6 +3088,7 @@ function usage(problem) {
         + '       memq recent [--since <n>d|<n>h]\n'
         + '       memq unstamped [--since <n>d|<n>h]\n'
         + '       memq touch <name> --applied [--type|--operator]\n'
+        + '       memq anchor <name> <path>...\n'
         + '       memq add-type <type> <name> "<description>" [--tag t]...\n'
         + '                     [--supersedes <name>] [--body "..."|--body-file "<path>"]\n'
         + '       memq add-type <type> <name> "<description>" --update\n'
@@ -5671,6 +5899,492 @@ function cmdTouch(argv) {
             : inPending ? ' in the pending tier' : '') + '\n');
 }
 
+// One path argument judged and hashed, as `{sha}` or `{refusal}`.
+//
+// `isAnchorPath` is the whole of the admission rule and `anchorEntryState` is
+// the whole of the resolution: the grammar the reader refuses through and the
+// walk the reader judges through are the two this asks, so an entry this verb
+// writes is one the reader reads as fresh at the moment it is written rather
+// than one it was always going to call unreadable. What is added here is
+// words, since a caller who typed `../x` learns nothing from being told the
+// entry is not one an anchor may name.
+function anchorPathSha(rootReal, given) {
+    if (!isAnchorPath(given)) {
+        const fault = path.isAbsolute(given) || /^[A-Za-z]:/.test(given)
+            ? 'an anchor path is relative to the project root, so an absolute path names'
+                + ' nothing it can resolve'
+            : given.split(/[\\/]/).includes('..')
+                ? 'an anchor path may not climb out of the project root, so no .. segment'
+                    + ' is admitted'
+                : 'not a path an anchor may name. The rules, so a refusal names the one it'
+                    + ' met: forward slashes only, relative to the project root, at most '
+                    + ANCHOR_PATH_CAP + ' characters, no whitespace and no invisible'
+                    + ' character, none of : @ , * ? < > | or a backslash, no segment that is'
+                    + ' only dots or ends in one, no segment whose name before its extension'
+                    + ' is a win32 device (CON, PRN, AUX, NUL, COM1-9, LPT1-9, CONIN$,'
+                    + ' CONOUT$), and no'
+                    + ' leading # & ! % [ ] { } \' or backtick, which decide how the line is'
+                    + ' read back';
+        return { refusal: anchorRefusalText(given, fault) };
+    }
+    // The recorded sha is null here because nothing is being compared: the
+    // walk's own hash of the file is what this verb is for.
+    const got = anchorEntryState(rootReal, { path: given, sha: null });
+    if (got.current === null) return { refusal: anchorRefusalText(given, got.reason) };
+    return { sha: got.current };
+}
+
+// The record's own half of `anchor`, run with the tier lock held: read the
+// record, merge the fresh hashes into whatever it already said, and rewrite
+// the one line. It answers with the line it wrote, or null having written a
+// refusal of its own, and it throws for nothing, so the caller's only duty
+// after it returns is to release the lock.
+//
+// The record is read here rather than before the lock so that what is merged
+// is what is on disk at the moment of the write, and the rewrite is asked to
+// refuse any length change (`refuseGrowth`), which closes the rest of that
+// window: without it a record that grew between this read and the rename
+// passes the head-identity check and has the appended bytes dropped, since a
+// record takes no tail. The splice this builds is stale the moment the file
+// moves, so a stop is the only answer that keeps the body promise.
+function anchorRecord(memPath, name, where, computed) {
+    const shown = '\'' + sanitize(name, NAME_CAP) + '\'' + where;
+    let original;
+    let text;
+    try {
+        refuseNonRegularStoreFile(memPath);
+        original = fs.readFileSync(memPath);
+        text = original.toString('utf8');
+    } catch (err) {
+        process.stderr.write('memq: ' + shown + ' was not anchored: ' + failureText(err) + '\n');
+        process.exitCode = 1;
+        return null;
+    }
+    // A record whose bytes are not valid UTF-8 cannot be spliced: the decode
+    // and the re-encode below would not give back the bytes that came in, so
+    // the body this verb promises to leave alone would be rewritten.
+    if (!Buffer.from(text, 'utf8').equals(original)) {
+        process.stderr.write('memq: ' + shown + ' holds bytes that are not valid UTF-8, so its'
+            + ' body cannot be carried across a rewrite unchanged; nothing written\n');
+        process.exitCode = 1;
+        return null;
+    }
+
+    // Every way a record can say nothing this can read, refused rather than
+    // written into. An anchors: line added to a block nobody could parse
+    // would mint a record whose whole purpose is to report drift and which
+    // every reader answers 'not checked' for, with nothing anywhere saying
+    // why. These two are the causes: after them `frontmatterAnchors` answers
+    // for this text with a parse rather than with null.
+    const site = frontmatterSite(text, 'anchors');
+    if (frontmatterUnclosed(site.block)) {
+        process.stderr.write('memq: ' + shown + ' opens a frontmatter block that never closes'
+            + ' within ' + FRONTMATTER_MAX_LINES + ' lines, so no reader can read its fields;'
+            + ' close the block with a --- line and rerun (nothing written)\n');
+        process.exitCode = 1;
+        return null;
+    }
+    if (site.value === FRONTMATTER_INDENTED) {
+        process.stderr.write('memq: ' + shown + ' has an anchors: field under a key other than'
+            + ' the harness\'s metadata: map, where no reader reads it; move it to the'
+            + ' frontmatter block\'s top level, where it reads whether or not the harness then'
+            + ' moves it under metadata:, and rerun (nothing written)\n');
+        process.exitCode = 1;
+        return null;
+    }
+
+    // What the record already says, which this verb adds to rather than
+    // replaces. A line carrying an entry the grammar refuses, or more entries
+    // than a reader reads, is refused instead of merged: the rewrite would
+    // drop that text, and text dropped out of a record is the one outcome no
+    // .bak beside it makes good in the store's own answers.
+    const parsed = parseAnchors(typeof site.value === 'string' ? site.value : null);
+    if (parsed.bad.length > 0) {
+        process.stderr.write('memq: ' + shown + ' already carries an anchors: entry this cannot'
+            + ' read, and a rewrite would drop it: ' + parsed.bad.join('; ')
+            + '. Correct the line by hand and rerun (nothing written)\n');
+        process.exitCode = 1;
+        return null;
+    }
+    // Truncation has two causes and the message names both, because the
+    // entry count is the one an operator counts and the other is the one that
+    // surprises: a line of few but long entries reaches the value cap first,
+    // and a message naming only the entry count would send its reader to
+    // count to 32 on a line of three.
+    if (parsed.truncated) {
+        process.stderr.write('memq: ' + shown + ' carries an anchors: line past what a reader'
+            + ' reads (' + ANCHOR_ENTRIES_MAX + ' entries, or ' + ANCHOR_VALUE_CAP
+            + ' characters of value, whichever it met first), and a rewrite would drop the'
+            + ' rest; shorten the line by hand and rerun (nothing written)\n');
+        process.exitCode = 1;
+        return null;
+    }
+
+    // The merge. An entry the record already names keeps its position and
+    // takes the fresh hash, because position is the author's own ordering and
+    // is the one thing about the line a re-hash cannot restate; a path the
+    // record did not name is appended. A path the line happens to carry twice
+    // is refreshed at both of its positions rather than at one, so no entry of
+    // the record is left recording bytes this pass has just re-read.
+    //
+    // Paths are matched the way the filesystem matches them, so on win32
+    // `src/a.js` and `src/A.js` are one file and take one entry. Comparing
+    // them as text would append a second entry for the same file, and both
+    // would read `fresh` forever, which is a record saying it anchors two
+    // things when it anchors one. The path already in the record keeps its own
+    // spelling: it is the author's, and rewriting it would rename the anchor
+    // to make a comparison tidy.
+    const merged = parsed.entries.map((e) => ({ path: e.path, sha: e.sha }));
+    for (const fresh of computed) {
+        let held = false;
+        for (const m of merged) {
+            if (fsEq(m.path, fresh.path)) { m.sha = fresh.sha; held = true; }
+        }
+        if (!held) merged.push({ path: fresh.path, sha: fresh.sha });
+    }
+    if (merged.length > ANCHOR_ENTRIES_MAX) {
+        process.stderr.write('memq: ' + shown + ' would carry ' + merged.length
+            + ' anchors and a reader reads ' + ANCHOR_ENTRIES_MAX + ', so the rest would go'
+            + ' unchecked; anchor fewer paths (nothing written)\n');
+        process.exitCode = 1;
+        return null;
+    }
+    // Written unquoted at either placement. A plain scalar carrying commas is
+    // what the field's grammar reads at the top level, where nothing unquotes,
+    // and it is equally what the map reads, where the unquoting takes a pair
+    // off only when there is one.
+    const value = merged.map((e) => e.path + '@' + e.sha).join(', ');
+    const line = 'anchors: ' + value;
+
+    // The splice. One line of the record changes and every other byte of it,
+    // its line endings and its body included, is the byte that was there: a
+    // rebuild from split lines would rewrite the record's line endings on any
+    // checkout whose records are not the separator this file joins with.
+    let rewritten;
+    if (site.line !== -1) {
+        const spans = frontmatterLineSpans(text, site.block);
+        const span = spans[site.line];
+        // The line's own indentation is kept. Under the harness's map the
+        // field is a member of that map, and a member rewritten at column 0
+        // would leave it and stop being read as the author's key.
+        const indent = /^\s*/.exec(site.block.lines[site.line])[0];
+        rewritten = text.slice(0, span.start) + indent + line + text.slice(span.end);
+    } else if (site.block.opened) {
+        // No line to rewrite, so a new one at the block's top level, directly
+        // under the opening fence: the top level is where a hand writes a
+        // field, and a field written there reads whether or not the harness
+        // later moves it under metadata:. The separator that already follows
+        // the fence is the one the new line takes, so a record written with
+        // either line ending keeps the one it has.
+        const spans = frontmatterLineSpans(text, site.block);
+        const at = spans[1].start;
+        rewritten = text.slice(0, at) + line + text.slice(spans[0].end, at) + text.slice(at);
+    } else {
+        // No block at all, so one is created around the line and the whole of
+        // the record follows it untouched. A byte order mark stays at the head
+        // of the file, where it is the file's mark rather than the block's.
+        const eol = text.indexOf('\r\n') === -1 ? '\n' : '\r\n';
+        rewritten = site.block.bom + '---' + eol + line + eol + '---' + eol
+            + text.slice(site.block.bom.length);
+    }
+
+    // The post-condition, asked of the bytes about to be written and through
+    // the same readers that will read them back off disk. A write door owes
+    // this the way a read door owes a not-checked answer: the failure it
+    // catches is not that the record reports something wrong, it is that the
+    // record stops being readable at all, and every field goes with it. The
+    // line count is the case that made it necessary. A block whose closing
+    // fence already sits at the reader's last line has that fence pushed one
+    // line past the bound by the inserted line, after which `frontmatterBlock`
+    // answers `closer: -1`, `pinState` answers 'unpinned' (its
+    // checked-and-clean value, so a protected record becomes a decay
+    // candidate with nothing said), and the anchors this pass wrote read as
+    // nothing. The check is the post-condition rather than the line count,
+    // because the value cap and any later bound produce the same surprise
+    // from a different direction.
+    //
+    // It refuses rather than trimming to fit: what would have to be dropped
+    // is the record's own text, and no rule here gets to choose which line of
+    // somebody's record goes.
+    const readBack = frontmatterAnchors(rewritten);
+    const wroteValue = readBack === null || readBack.bad.length > 0 || readBack.truncated
+        ? null
+        : readBack.entries.map((e) => e.path + '@' + e.sha).join(', ');
+    if (wroteValue !== value) {
+        process.stderr.write('memq: ' + shown + ' was not anchored, because the record with the'
+            + ' line added does not read back as the record this wrote: '
+            + (readBack === null
+                ? 'its frontmatter block ends at the last line a reader reads ('
+                    + FRONTMATTER_MAX_LINES + '), so one more line in it closes nothing and'
+                    + ' every field of the record goes unread, a pinned: field included.'
+                    + ' Shorten the block and rerun'
+                : 'the anchors: line reads back as something else')
+            + ' (nothing written)\n');
+        process.exitCode = 1;
+        return null;
+    }
+
+    const backedUp = [];
+    try {
+        rewriteWithBackup(memPath, original, rewritten, {
+            concurrentAppends: false,
+            refuseGrowth: true,
+            onBackup: (f) => { backedUp.push(backupLabel(f)); }
+        });
+    } catch (err) {
+        process.stderr.write('memq: ' + shown + ' was not anchored: ' + failureText(err)
+            + (backedUp.length > 0 ? '. ' + backupClause(backedUp) : '') + '\n');
+        process.exitCode = 1;
+        return null;
+    }
+    // The line, and which of its entries this run hashed. The line alone
+    // reads as though every entry on it was verified just now, when an entry
+    // the record already carried and the command line did not name is
+    // carried across at whatever hash the record held, which may be a hash
+    // of bytes that are long gone.
+    return {
+        line,
+        hashed: merged.filter((e) => computed.some((c) => fsEq(c.path, e.path))).map((e) => e.path),
+        carried: merged.filter((e) => !computed.some((c) => fsEq(c.path, e.path))).map((e) => e.path)
+    };
+}
+
+// memq anchor <name> <path>...: record which files a project memory is about,
+// at the bytes those files hold now, so a later pass can say whether the
+// memory has gone unverified.
+//
+// The verb writes one frontmatter line and nothing else. A 40-hex value is
+// the one field of a record whose typing a hand cannot check, so the hashes
+// are computed here rather than typed; everything else about the record,
+// its body most of all, is left where it was, which is why this is a splice
+// rather than a rebuild.
+//
+// The project's own tiers only, the run-scoped pending tier first and then
+// the project tier, which is `get`'s and `touch`'s precedence. An anchor path
+// resolves against the project's main root and its file is hashed out of that
+// tree, and the type and operator tiers have neither a root nor a tree of
+// their own, so the tier flags are refused rather than answered with a
+// directory.
+//
+// Every path is judged and hashed before the lock is taken and before
+// anything at all is written, so one refusal leaves the record exactly as it
+// was. What the lock bounds is the record's rewrite and never the tree those
+// hashes came from: a file rewritten after this pass hashed it is recorded at
+// the bytes this pass read, which is the same window that stands between any
+// two commands.
+function cmdAnchor(argv) {
+    let name = null;
+    const given = [];
+    for (const a of argv) {
+        if (a === '--type' || a === '--operator') {
+            return usage('anchor writes the project tier only: an anchor needs a project root to'
+                + ' resolve its paths against and a tree to hash, and the type and operator tiers'
+                + ' have neither');
+        }
+        else if (a.startsWith('--')) return usage('unknown option ' + sanitize(a, 40));
+        else if (name === null) name = a;
+        else given.push(a);
+    }
+    if (name === null) return usage('anchor needs a <name>');
+    if (given.length === 0) return usage('anchor needs at least one <path> to anchor');
+    // The store's own definition of a memory file decides what may be
+    // anchored, so the index and any name that could leave the memory
+    // directory are refused here exactly as they are everywhere else.
+    const file = name + '.md';
+    if (!isMemoryFilename(file)) {
+        return usage('name must be characters from [A-Za-z0-9_.-], at most '
+            + (MEMORY_FILE_CAP - 3) + ', and not the memory index');
+    }
+
+    const memDir = memDirOrNote();
+    if (memDir === null) {
+        process.exitCode = 1;
+        return;
+    }
+    // The root, and then whether that root is one anything can be resolved
+    // against. The two are separate answers: a pinned store has no root at
+    // all, since a pin names the project directory the store reads and says
+    // nothing about this working directory, while a root that is derived and
+    // then found to be no directory is a different report.
+    const root = anchorRoot(process.cwd());
+    if (root === null) {
+        // A pin is in effect, which is all this knows. Which project it names
+        // is not asked here and naming one would be a claim rather than a
+        // report: what makes the root unresolvable is that the store's tier
+        // was chosen by the pin instead of by this working directory, whether
+        // or not the segment it names is the one this directory would derive.
+        process.stderr.write('memq: this store is pinned (KIT_MEMORY_PROJECT), so its records'
+            + ' were not chosen by this working directory and there is no project root here for'
+            + ' an anchor path to be relative to; nothing written\n');
+        process.exitCode = 1;
+        return;
+    }
+    const rootReal = anchorRootReal(root);
+    if (rootReal === null) {
+        process.stderr.write('memq: the project root ' + sanitize(root, 260) + ' is not a'
+            + ' directory this can resolve an anchor path against; nothing written\n');
+        process.exitCode = 1;
+        return;
+    }
+
+    // Which record the name means, on `get`'s and `touch`'s precedence: the
+    // run's own pending tier first, then the project tier. A memory a run
+    // wrote lives in its pending tier and nowhere else, so resolving the
+    // project tier alone would answer for a different record of the same
+    // name, and a session anchoring the memory it just wrote would rewrite
+    // the shared project-tier record instead. The shared tiers are not rungs
+    // here for the reason the flags are refused: they have no root and no
+    // tree.
+    //
+    // The destination is a tier directory this command chose rather than one
+    // derived from a hit, and the existence check below runs against it
+    // either way, so a name in neither tier fails loudly rather than being
+    // written somewhere nothing can answer for it.
+    let recordDir = memDir;
+    let inPending = false;
+    const pendingDir = pendingDirFor(process.cwd());
+    if (pendingDir !== null) {
+        // Only absence means the project tier. A stat that failed for any
+        // other reason says nothing about which tier holds the record, and
+        // reading one as absence sends the write to the shared project-tier
+        // record of the same name, reported as a success with nothing on
+        // either channel saying which record was rewritten. That is the
+        // outcome this precedence exists to prevent, so the unknown answer is
+        // a refusal.
+        let pendingSt = null;
+        let pendingCode = null;
+        try {
+            pendingSt = fs.statSync(path.join(pendingDir, file));
+        } catch (err) {
+            pendingCode = err && err.code ? err.code : String(err);
+        }
+        if (pendingCode !== null && pendingCode !== 'ENOENT') {
+            process.stderr.write('memq: this run\'s pending tier could not be examined ('
+                + sanitize(pendingCode, 40) + '), so which tier holds \''
+                + sanitize(name, NAME_CAP) + '\' is unknown and nothing was anchored\n');
+            process.exitCode = 1;
+            return;
+        }
+        if (pendingSt && pendingSt.isFile()) {
+            recordDir = pendingDir;
+            inPending = true;
+        }
+    }
+    const where = inPending ? ' in the pending tier' : ' in the project tier';
+    const memPath = path.join(recordDir, file);
+    // Answered before any hashing, so a mistyped name costs no reads. It is
+    // answered again under the lock by the read itself, which is the answer
+    // that counts; this one is here to say 'no such memory' in those words
+    // rather than as a failed read.
+    let st = null;
+    let code = null;
+    try {
+        st = fs.statSync(memPath);
+    } catch (err) {
+        code = err && err.code ? err.code : String(err);
+    }
+    if (code !== null && code !== 'ENOENT') {
+        process.stderr.write('memq: \'' + sanitize(name, NAME_CAP) + '\'' + where
+            + ' could not be examined (' + sanitize(code, 40) + '), so nothing was anchored\n');
+        process.exitCode = 1;
+        return;
+    }
+    if (!st || !st.isFile()) {
+        process.stderr.write('memq: no memory file named \'' + sanitize(name, NAME_CAP)
+            + '\' in the project tier\n');
+        process.exitCode = 1;
+        return;
+    }
+
+    // Every path judged and hashed, and every refusal collected rather than
+    // the first one returned: a caller who named four paths and mistyped two
+    // of them fixes both on one re-run.
+    const computed = [];
+    const seen = new Map();
+    const refusals = [];
+    for (const one of given) {
+        const got = anchorPathSha(rootReal, one);
+        if (got.refusal !== undefined) {
+            refusals.push(got.refusal);
+            continue;
+        }
+        // The same path named twice keeps the position of its first mention
+        // and takes the last hash taken for it, which is the rule the merge
+        // below follows for a path the record already carries. Twice means
+        // the filesystem's own idea of twice, so on win32 `src/a.js` and
+        // `src/A.js` are one mention of one file rather than two entries that
+        // would both read fresh forever. The key comes from `fsKey` so that
+        // this map and the `fsEq` merge below decide sameness by one rule.
+        const key = fsKey(one);
+        if (seen.has(key)) computed[seen.get(key)].sha = got.sha;
+        else {
+            seen.set(key, computed.length);
+            computed.push({ path: one, sha: got.sha });
+        }
+    }
+    if (refusals.length > 0) {
+        process.stderr.write('memq: nothing was anchored; '
+            + (refusals.length === 1 ? 'this path was refused' : 'these paths were refused')
+            + ': ' + refusals.join('; ') + '\n');
+        process.exitCode = 1;
+        return;
+    }
+
+    // Both of the project tier's locks, in the order the decay pass takes
+    // them, decay.lock first. Neither one alone excludes the other's holder:
+    // a decay pass rewrites this tier under decay.lock and takes no store.lock
+    // here, so a rewrite holding only store.lock can rename a record back over
+    // a name a pass has just archived, leaving a live file no index lists.
+    // Taking both in the pass's own order is what keeps the two from
+    // inverting into a deadlock.
+    //
+    // They are the project memory directory's locks whichever tier the record
+    // is in, because the pending tier is a directory under it and its records
+    // are written by these same commands.
+    const decayLock = acquireLock(path.join(memDir, DECAY_LOCK_FILE));
+    if (!decayLock.ok) {
+        process.stderr.write('memq: project store locked by a decay pass, nothing written: '
+            + sanitize(decayLock.reason, 260) + '\n');
+        process.exitCode = 1;
+        return;
+    }
+    let written;
+    try {
+        const lock = acquireLock(path.join(memDir, STORE_LOCK_FILE));
+        if (!lock.ok) {
+            process.stderr.write('memq: project store locked, nothing written: '
+                + sanitize(lock.reason, 260) + '\n');
+            process.exitCode = 1;
+            return;
+        }
+        try {
+            written = anchorRecord(memPath, name, where, computed);
+        } finally {
+            lock.release();
+        }
+    } finally {
+        decayLock.release();
+    }
+    // Null is a refusal that has already said what it was, in its own line.
+    if (!written) return;
+    // Printed as written. Every path on it passed the grammar, which bars the
+    // whitespace, the invisible characters and the quote a display gate exists
+    // to remove, and `sanitize` would strip the non-ASCII characters the
+    // grammar deliberately admits, naming a different file than the one
+    // anchored.
+    process.stdout.write(written.line + '\n');
+    // Which entries this run actually hashed, on stderr, where this file puts
+    // a fact about a result rather than the result. The line on stdout reads
+    // as one statement about the present, and it is not: an entry carried
+    // over from the record was hashed whenever it was last anchored, and this
+    // run says nothing about whether that file still holds those bytes.
+    process.stderr.write('memq: hashed now: ' + written.hashed.join(', ')
+        + (written.carried.length > 0
+            ? '; carried from the record at the hash it already held: ' + written.carried.join(', ')
+            : '')
+        + (inPending ? ' (pending tier)' : '') + '\n');
+}
+
 // memq decay-scan: report the store's decay candidates, one deterministic
 // line each, and write nothing. Line shapes:
 //
@@ -6159,6 +6873,16 @@ function rewriteWithBackup(filePath, origBuf, newContent, options) {
             + ' was not rewritten: the call did not state whether it takes lawful'
             + ' concurrent appends');
     }
+    // `refuseGrowth` is optional and off when absent, so absence is lawful
+    // where an absent `concurrentAppends` is not. Any other non-boolean is a
+    // misspelling or a mistyped value, and the `=== true` reading below turns
+    // one into the permissive answer with nothing said, which is the same
+    // silent selection of the unsafe branch the required option above exists
+    // to refuse.
+    if (options.refuseGrowth !== undefined && typeof options.refuseGrowth !== 'boolean') {
+        throw new Error(sanitize(path.basename(filePath), MEMORY_FILE_CAP + 16)
+            + ' was not rewritten: refuseGrowth was given as something other than a boolean');
+    }
     const concurrentAppends = options.concurrentAppends;
     const bak = filePath + '.bak';
     const tmp = filePath + '.tmp.' + process.pid;
@@ -6198,6 +6922,17 @@ function rewriteWithBackup(filePath, origBuf, newContent, options) {
     // is the pulled one, intact, and the same command run again rebuilds from
     // it.
     //
+    // `refuseGrowth` widens the check to any length change, for a caller that
+    // cannot survive one. Without it a file that grew while keeping this
+    // pass's bytes as its prefix passes the check, takes no tail under
+    // `concurrentAppends: false`, and is renamed over: the appended bytes are
+    // dropped and the pass reports success. That is the deliberate answer for
+    // a shared tier's MEMORY.md, where the growth is a sync pull and
+    // last-writer-wins is the failure chosen a few lines above. It is the
+    // wrong answer for a caller whose new content is a splice of the bytes it
+    // read, since the splice is stale the moment the file moved. The one
+    // caller passing it today is `anchor`.
+    //
     // The read and the check come before the backup copy, so a stop here
     // leaves the target and its .bak both as they were. Copying first would
     // spend the single generation of .bak on the replacing bytes, losing the
@@ -6205,7 +6940,8 @@ function rewriteWithBackup(filePath, origBuf, newContent, options) {
     // caller a backup to report for a file it did not rewrite.
     const current = fs.readFileSync(filePath);
     if (current.length < origBuf.length
-        || !current.subarray(0, origBuf.length).equals(origBuf)) {
+        || !current.subarray(0, origBuf.length).equals(origBuf)
+        || (options.refuseGrowth === true && current.length !== origBuf.length)) {
         const err = new Error(sanitize(path.basename(filePath), MEMORY_FILE_CAP + 16)
             + ' was replaced while this pass was rewriting it, so nothing'
             + ' was written; run it again against the file as it stands');
@@ -7660,7 +8396,7 @@ function cmdDecayPrune(argv) {
         }
     }
 
-    const lock = acquireLock(path.join(memDir, 'decay.lock'));
+    const lock = acquireLock(path.join(memDir, DECAY_LOCK_FILE));
     if (!lock.ok) {
         process.stderr.write('memq: decay pass not started: ' + sanitize(lock.reason, 200) + '\n');
         process.exitCode = 1;
@@ -10146,6 +10882,7 @@ function main() {
     else if (cmd === 'recent') cmdRecent(rest);
     else if (cmd === 'unstamped') cmdUnstamped(rest);
     else if (cmd === 'touch') cmdTouch(rest);
+    else if (cmd === 'anchor') cmdAnchor(rest);
     else if (cmd === 'add-type') cmdAddType(rest);
     else if (cmd === 'add-operator') cmdAddOperator(rest);
     else if (cmd === 'delete-type') cmdDeleteType(rest);
@@ -10167,7 +10904,9 @@ module.exports = {
     appliedTally,
     lastAliveMs,
     frontmatterBlock,
+    frontmatterUnclosed,
     frontmatterValue,
+    frontmatterSite,
     frontmatterField,
     readFrontmatterTags,
     frontmatterTags,

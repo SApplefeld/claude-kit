@@ -41,9 +41,12 @@
 //     path, which is the one place memq reads a subcommand from, must be one
 //     of the verbs this grant is meant to cover, and every other word there
 //     withholds it. Left out of that list are delete-type and delete-operator,
-//     which remove a shared-tier record outright, and find, which is the only
-//     verb that loads an embedder. Five flag shapes are refused wherever in
-//     the command they sit, since that is where a flag can appear:
+//     which remove a shared-tier record outright; find, which is the only
+//     verb that loads an embedder; and anchor, which rewrites a project-tier
+//     record in place at a name the command line gives it, and with it the
+//     claim every drift surface reads about which files that memory is still
+//     true of. Five flag shapes are refused wherever in the command they
+//     sit, since that is where a flag can appear:
 //     --body-file, which reads a caller-named path into the store; --update
 //     carrying --body, which replaces a shared record's body whole;
 //     --supersedes, which demotes and labels a record no pin protects from
@@ -53,10 +56,10 @@
 //     rollup rewrite preserves. memq refuses the deletes, the body-file, the
 //     body-carrying update and the supersedes pointer under the store
 //     signals as well, so those five are a second lock rather than the only
-//     one; find and --rollup are withheld here alone, and --drop-malformed's
-//     other lock is the CLI's own coupling (an argument error without
-//     --rollup) rather than a store-signal refusal, so its screen here is
-//     what holds if that coupling is ever loosened. What a
+//     one; find, anchor and --rollup are withheld here alone, and
+//     --drop-malformed's other lock is the CLI's own coupling (an argument
+//     error without --rollup) rather than a store-signal refusal, so its
+//     screen here is what holds if that coupling is ever loosened. What a
 //     withheld grant costs on this vector is the capability itself: no
 //     operator is watching a fleet worker's session, so the command does not
 //     run rather than waiting for an approval. Each withholding below is
@@ -219,10 +222,19 @@ const ESCAPED_QUOTE = /\\["']/;
 const PRELOAD_ENV = ['NODE_OPTIONS', 'NODE_PATH', 'NODE_REPL_EXTERNAL_MODULE'];
 
 // The verbs a prompt-free allow covers, which is memq's own subcommand list
-// minus the three this grant does not extend to. memq dispatches log, find,
-// get, recall, recent, unstamped, touch, add-type, add-operator, delete-type,
-// delete-operator, decay-scan, decay-prune and decay-done, and the three
-// absent here are the two deletes and find.
+// minus the four this grant does not extend to. memq dispatches log, find,
+// get, recall, recent, unstamped, touch, anchor, add-type, add-operator,
+// delete-type, delete-operator, decay-scan, decay-prune and decay-done, and
+// the four absent here are the two deletes, find, and anchor.
+//
+// anchor is the fourth, and it is withheld on what it authors rather than on
+// what it destroys: it rewrites a record of the project tier in place, at a
+// name the command line gives it. What the rewritten line buys is a claim
+// about which files the memory is about and at which bytes, so a worker could
+// re-anchor a record onto whatever the tree holds now and every drift surface
+// would then report that memory as verified when nobody read it. The CLI has
+// no second refusal for the verb, since it is the operator's own, so this
+// screen is the only one.
 //
 // An allowlist rather than a denylist, because the two fail in opposite
 // directions: a verb added to the CLI later is not covered until this list
@@ -423,17 +435,18 @@ function grantable(p) {
     // it replaces only in a local .bak the sync never carries; --body-file
     // anywhere, which reads a caller-named path into the store; and
     // --supersedes, which demotes and labels a record no pin protects from it.
-    // Two more are withheld here alone, with no second layer behind them:
+    // Three more are withheld here alone, with no second layer behind them:
     // find, which loads an embedder out of a directory the command line does
-    // not name, and --rollup, which discards prose no copy survives. The
-    // eighth, --drop-malformed, deletes sidecar lines behind one .bak
+    // not name; --rollup, which discards prose no copy survives; and anchor,
+    // which rewrites a project-tier record in place and with it the claim
+    // every drift surface reads about which files that memory is still true
+    // of. The ninth, --drop-malformed, deletes sidecar lines behind one .bak
     // generation; what stands behind its screen is the CLI's requirement
     // that the flag ride --rollup, a coupling rather than a store-signal
     // refusal, so this screen is what keeps the delete withheld if that
-    // coupling is ever loosened for ergonomics. None of
-    // the eight belongs in a prompt-free allow with no operator in the loop,
-    // and the ones without a store-signal lock are the ones a later edit
-    // here would silently free.
+    // coupling is ever loosened for ergonomics. None of the nine belongs in a
+    // prompt-free allow with no operator in the loop, and the three with no
+    // second lock are the ones a later edit here would silently free.
     //
     // This screen is the second lock rather than a move of the first: the CLI
     // evaluates those signals in the child process, this hook evaluates them

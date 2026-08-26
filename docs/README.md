@@ -26,8 +26,10 @@ The `curating-docs` skill owns the mechanics: it archives a plan when it complet
 
 ## Active plans
 
-Five plan documents sit in `plans/`. `plans/README.md` carries each one's full description and the go state of its header; the running order of the armed plans rides in their own entries.
+Seven plan documents sit in `plans/`. `plans/README.md` carries each one's full description and the go state of its header; the running order of the armed plans rides in their own entries.
 
+- **`plans/claude-kit_coordinator-and-roles_spec_v1.md`** (In Progress, executor unassigned, self-authorizing via its Dispatch Authorization section) codifies session roles as stewardship seams and creates the machine-coordinator skill with its committed ledger.
+- **`plans/claude-kit_session-roles_notes_v1.md`** (Notes, non-executable) banks the session-roles design dialogue's fact base, positions, and open questions, with the pointer map to the peer-messaging experiment's durable records.
 - **`plans/claude-kit_dispatch-authority_spec_v1.md`** (In Progress, queued behind the kaizen batch) codifies artifact-borne dispatch authority (a plan's inert authorization section is the arming grant), `--append` queue semantics with arming provenance, arm-on-receipt, arm-where-you-run, and a session-start warning when another live session shares the checkout.
 - **`plans/claude-kit_kaizen-batch_spec_v1.md`** (In Progress, outside the armed running order) applies the peer-messaging experiment's kaizen slate: amendment routing to reviewer briefs, the peer-sessions post-ship amendment, six doctrine amendments, four authoring lines, the `memq unstamped` empty-versus-clean split, the docs-curator counted-claim sweep, and statusline load tolerance.
 - **`plans/claude-kit_verification-artifacts_spec_v1.md`** (In Progress, third in the armed running order) answers three kaizen notes as one lesson: a rule that demands a verification names where the fact is readable.

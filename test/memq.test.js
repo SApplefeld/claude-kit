@@ -2052,7 +2052,10 @@ test('parseAnchors reads past a refused entry, in order, and names every one it 
     // author wrote.
     // Each shape the grammar refuses, with the fault the refusal names, so
     // a reader of the line learns why rather than only that. The entry text
-    // is quoted back as written where nothing had to be reduced.
+    // is quoted back as written where nothing had to be reduced. Whitespace
+    // is one of the reductions, since a space in a quoted path is as
+    // unreadable on a report line as a zero-width one, so a row carrying it
+    // names the text it is shown as.
     const notEntry = 'not <path>@<40 hex>';
     const notPath = 'the path is not one an anchor may name';
     const rejected = [
@@ -2067,22 +2070,27 @@ test('parseAnchors reads past a refused entry, in order, and names every one it 
         ['src/./a.js@' + HELLO_SHA, notPath],
         ['src//a.js@' + HELLO_SHA, notPath],
         ['@' + HELLO_SHA, notEntry],
-        ['src/a.js @' + HELLO_SHA, notPath],
-        ['src/a b.js@' + HELLO_SHA, notPath],
+        ['src/a.js @' + HELLO_SHA, notPath, 'src/a.js@' + HELLO_SHA],
+        ['src/a b.js@' + HELLO_SHA, notPath, 'src/ab.js@' + HELLO_SHA],
         ['src/a.js@' + HELLO_SHA + '@' + HELLO_SHA, notPath],
         ['src/COM1@' + HELLO_SHA, notPath],
         ['src/CONIN$/a.js@' + HELLO_SHA, notPath],
         ['src/.../a.js@' + HELLO_SHA, notPath],
         ['src/a./b.js@' + HELLO_SHA, notPath]
     ];
-    for (const [entry, fault] of rejected) {
+    for (const [entry, fault, shown] of rejected) {
+        // A row naming its display text is one the gate reduces, and the
+        // reduction is named on the line beside the fault.
+        const display = shown === undefined
+            ? entry + ' [' + fault + ']'
+            : shown + ' [characters removed for display; ' + fault + ']';
         const got = memq.parseAnchors(good + ', ' + entry + ', ' + tail);
         assert.deepStrictEqual(got.items, [
             anchorItem('src/a.js', HELLO_SHA),
-            { text: entry + ' [' + fault + ']', path: null, sha: null },
+            { text: display, path: null, sha: null },
             anchorItem('lib/c.js', 'c'.repeat(40))
         ], entry + ' is refused in its own place, and the entry after it is still read');
-        assert.deepStrictEqual(got.bad, [entry + ' [' + fault + ']']);
+        assert.deepStrictEqual(got.bad, [display]);
     }
 
     // A path in a language the repository is written in is a path. Refusing
@@ -17509,5 +17517,879 @@ test('the cmd.exe wrapper carries --supersedes through to the written pointer', 
             /'no-such-fact' is no record in the operator tier, so --supersedes will not name it/);
     } finally {
         rmHomeStore(store);
+    }
+});
+
+// --- memq anchor -----------------------------------------------------------
+//
+// The verb writes one frontmatter line into a project-tier record and leaves
+// every other byte of it alone, so these cases assert on the record's bytes
+// rather than on its text wherever the distinction can be made: a rewrite
+// that rebuilt the record from split lines would pass a text comparison on
+// this machine and silently retype every line ending of every record on a
+// checkout whose store holds the other one.
+//
+// The anchored files all hold the six bytes `hello\n`, so every hash the verb
+// computes is HELLO_SHA, the value git itself prints for those bytes, and
+// every assertion below is a literal rather than a re-derivation.
+
+// A file in the fake project cwd, which is the root an anchor path resolves
+// against, created with its parents.
+function writeProjectFile(store, rel, contents) {
+    const full = path.join(store.proj, ...rel.split('/'));
+    fs.mkdirSync(path.dirname(full), { recursive: true });
+    fs.writeFileSync(full, contents);
+}
+
+// The project tree these cases anchor into: two files of identical content at
+// different paths, so an assertion about which entry moved is about the path
+// and never about the hash.
+function seedAnchorTargets(store) {
+    for (const rel of ['src/a.js', 'src/b.js', 'docs/x.md']) {
+        writeProjectFile(store, rel, Buffer.from('hello\n', 'latin1'));
+    }
+}
+
+function recordBuf(store, name) {
+    return fs.readFileSync(path.join(store.memDir, name));
+}
+
+test('anchor writes the line it prints, replacing in place, keeping order, and appending', () => {
+    const store = makeStore();
+    try {
+        seedAnchorTargets(store);
+        // The record already anchors two files, the second at a hash that is
+        // not what the file holds now. What the merge owes each of them is
+        // different: the first is untouched and keeps its position, the
+        // second keeps its position and takes the fresh hash, and the path
+        // named on the command line that the record never mentioned goes to
+        // the end. Position is the author's own ordering and is the one thing
+        // about the line a re-hash cannot restate.
+        writeMemoryFile(store, 'fact.md', '---\nname: ""\n'
+            + 'anchors: src/a.js@' + HELLO_SHA + ', docs/x.md@' + OTHER_SHA + '\n'
+            + '---\n\n# Fact\n\nbody\n');
+        const res = run(store, ['anchor', 'fact', 'docs/x.md', 'src/b.js']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        const expected = 'anchors: src/a.js@' + HELLO_SHA + ', docs/x.md@' + HELLO_SHA
+            + ', src/b.js@' + HELLO_SHA;
+        assert.strictEqual(res.stdout, expected + '\n',
+            'the verb prints the line it wrote and nothing else');
+        assert.strictEqual(fs.readFileSync(path.join(store.memDir, 'fact.md'), 'utf8'),
+            '---\nname: ""\n' + expected + '\n---\n\n# Fact\n\nbody\n');
+        // Read back through the reader rather than by eye: what the line is
+        // for is what that reader makes of it.
+        assert.deepStrictEqual(
+            memq.readFrontmatterAnchors(path.join(store.memDir, 'fact.md')).entries.map((e) => e.path),
+            ['src/a.js', 'docs/x.md', 'src/b.js']);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('the same path named twice is one entry, at its first mention', () => {
+    const store = makeStore();
+    try {
+        seedAnchorTargets(store);
+        writeMemoryFile(store, 'fact.md', '---\nname: ""\n---\n\nbody\n');
+        const res = run(store, ['anchor', 'fact', 'src/b.js', 'src/a.js', 'src/b.js']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout,
+            'anchors: src/b.js@' + HELLO_SHA + ', src/a.js@' + HELLO_SHA + '\n',
+            'the repeat keeps the position of its first mention and adds no second entry');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a record\'s body comes through a rewrite byte for byte, its line endings with it', () => {
+    const store = makeStore();
+    try {
+        seedAnchorTargets(store);
+        // A record as the harness writes one on this platform: CRLF
+        // throughout, with a body carrying a lone carriage return, a
+        // non-ASCII character and no trailing newline, all of which a rebuild
+        // from split lines would rewrite.
+        const body = Buffer.from('\r\n# Fact\r\n\r\nein Übersicht\rtail line', 'utf8');
+        const head = Buffer.from('---\r\nname: ""\r\nanchors: src/a.js@' + OTHER_SHA
+            + '\r\n---\r\n', 'utf8');
+        fs.mkdirSync(store.memDir, { recursive: true });
+        fs.writeFileSync(path.join(store.memDir, 'fact.md'), Buffer.concat([head, body]));
+        const before = recordBuf(store, 'fact.md');
+
+        const res = run(store, ['anchor', 'fact', 'src/a.js']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        const after = recordBuf(store, 'fact.md');
+        assert.ok(after.subarray(after.length - body.length).equals(body),
+            'the body is the bytes that were there, compared as bytes');
+        // The frontmatter's other lines too: only the one line moved, and it
+        // moved keeping the record's own separator.
+        assert.ok(after.subarray(0, 20).equals(before.subarray(0, 20)),
+            'the lines ahead of the anchors: line are untouched');
+        assert.ok(after.includes(Buffer.from('anchors: src/a.js@' + HELLO_SHA + '\r\n', 'utf8')),
+            'the rewritten line carries the record\'s own line ending, not this file\'s');
+        assert.ok(!after.includes(Buffer.from(OTHER_SHA, 'utf8')), 'the stale hash is gone');
+
+        // A byte order mark is the file's mark rather than the block's, so it
+        // stays at byte 0 across the rewrite.
+        const bom = Buffer.from('\uFEFF', 'utf8');
+        const marked = Buffer.concat([bom, Buffer.from('---\nname: ""\n---\n\nbody\n', 'utf8')]);
+        fs.writeFileSync(path.join(store.memDir, 'marked.md'), marked);
+        assert.strictEqual(run(store, ['anchor', 'marked', 'src/a.js']).status, 0);
+        const markedAfter = recordBuf(store, 'marked.md');
+        assert.ok(markedAfter.subarray(0, 3).equals(bom),
+            'the mark still leads the file');
+        assert.deepStrictEqual(
+            memq.readFrontmatterAnchors(path.join(store.memDir, 'marked.md')).entries.map((e) => e.path),
+            ['src/a.js'], 'and the line it now carries is read');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a record with no frontmatter block gains one, and the whole of it follows', () => {
+    const store = makeStore();
+    try {
+        seedAnchorTargets(store);
+        const original = Buffer.from('# Fact\n\nbody, no frontmatter at all\n', 'utf8');
+        fs.mkdirSync(store.memDir, { recursive: true });
+        fs.writeFileSync(path.join(store.memDir, 'fact.md'), original);
+
+        const res = run(store, ['anchor', 'fact', 'src/a.js']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        const after = recordBuf(store, 'fact.md');
+        assert.strictEqual(after.toString('utf8'),
+            '---\nanchors: src/a.js@' + HELLO_SHA + '\n---\n' + original.toString('utf8'));
+        assert.ok(after.subarray(after.length - original.length).equals(original),
+            'the record that was there is the record that follows the block, byte for byte');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a line the harness moved under metadata is rewritten where it sits, indentation kept', () => {
+    const store = makeStore();
+    try {
+        seedAnchorTargets(store);
+        // The harness relocates an author's top-level keys under its own
+        // metadata: map, so on this store that is where a record's anchors:
+        // line is found. Rewriting it at the top level instead would leave
+        // the map's stale line behind and put a second one above it; writing
+        // the member back at column 0 would take it out of the map. Either
+        // way the record would carry two answers.
+        writeMemoryFile(store, 'fact.md',
+            harnessShaped(['anchors: "src/a.js@' + OTHER_SHA + '"'], '\nbody\n'));
+        const res = run(store, ['anchor', 'fact', 'src/a.js', 'src/b.js']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        const text = fs.readFileSync(path.join(store.memDir, 'fact.md'), 'utf8');
+        assert.ok(text.includes('\n  anchors: src/a.js@' + HELLO_SHA + ', src/b.js@' + HELLO_SHA + '\n'),
+            'the member keeps the map\'s indentation: ' + JSON.stringify(text));
+        assert.strictEqual(text.split('anchors:').length - 1, 1,
+            'one line says what this record anchors, not two');
+        assert.deepStrictEqual(
+            memq.readFrontmatterAnchors(path.join(store.memDir, 'fact.md')).entries.map((e) => e.path),
+            ['src/a.js', 'src/b.js'], 'and it is still the line the reader reads');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a path the reader would refuse is refused at the writer, and nothing is written', () => {
+    const store = makeStore();
+    try {
+        seedAnchorTargets(store);
+        writeMemoryFile(store, 'fact.md', '---\nname: ""\n---\n\nbody\n');
+        const before = recordBuf(store, 'fact.md');
+        // One case per rule the reader judges by, each named in its own
+        // words: a caller who typed `../x` learns nothing from being told the
+        // entry is not one an anchor may name.
+        const cases = [
+            ['../escape.js', /may not climb out of the project root/],
+            [path.join(store.proj, 'src', 'a.js'), /an absolute path names nothing it can resolve/],
+            ['src/missing.js', /nothing is at that path under the project root/],
+            ['src', /it is a directory, and an anchor names one file/],
+            ['src/a b.js', /not a path an anchor may name/],
+            ['src\\a.js', /not a path an anchor may name/]
+        ];
+        for (const [given, reason] of cases) {
+            const res = run(store, ['anchor', 'fact', given]);
+            assert.strictEqual(res.status, 1, given + ': ' + res.stdout);
+            assert.strictEqual(res.stdout, '', given + ' printed a line for a refused write');
+            assert.match(res.stderr, /^memq: nothing was anchored; this path was refused: /,
+                given + ': ' + res.stderr);
+            assert.match(res.stderr, reason, given + ': ' + res.stderr);
+            assert.ok(recordBuf(store, 'fact.md').equals(before),
+                given + ' left the record changed');
+        }
+        // One bad path among good ones refuses the whole command, and both
+        // refusals are named: a caller who mistyped two paths fixes both on
+        // one re-run rather than meeting them one at a time.
+        const mixed = run(store, ['anchor', 'fact', 'src/a.js', '../escape.js', 'src/nope.js']);
+        assert.strictEqual(mixed.status, 1);
+        assert.match(mixed.stderr, /these paths were refused: \.\.\/escape\.js \[[^\]]+\]; src\/nope\.js \[/);
+        assert.ok(recordBuf(store, 'fact.md').equals(before),
+            'the good path in that list wrote nothing either');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a path through a link is refused where the reader would call it unreadable', (t) => {
+    const store = makeStore();
+    try {
+        seedAnchorTargets(store);
+        writeMemoryFile(store, 'fact.md', '---\nname: ""\n---\n\nbody\n');
+        try {
+            fs.symlinkSync(path.join(store.proj, 'src'), path.join(store.proj, 'alias'), 'junction');
+        } catch (err) {
+            t.skip('this box refuses a junction: ' + err.code);
+            return;
+        }
+        // The reader never resolves a link, so an anchor written through one
+        // would read `unreadable` for as long as the record exists. Admitting
+        // it at the writer is how a record that anchors nothing gets minted.
+        const res = run(store, ['anchor', 'fact', 'alias/a.js']);
+        assert.strictEqual(res.status, 1, res.stdout);
+        assert.match(res.stderr, /symbolic link or a junction, which an anchor never resolves/);
+        // The control, in the same shape: the same file by its own path is
+        // anchored, so the refusal above is the link and not the file.
+        const control = run(store, ['anchor', 'fact', 'src/a.js']);
+        assert.strictEqual(control.status, 0, control.stderr);
+        assert.strictEqual(control.stdout, 'anchors: src/a.js@' + HELLO_SHA + '\n');
+    } finally {
+        fs.rmSync(path.join(store.proj, 'alias'), { recursive: true, force: true });
+        rmStore(store);
+    }
+});
+
+test('a record nothing could read is refused rather than written into', () => {
+    const store = makeStore();
+    try {
+        seedAnchorTargets(store);
+        // Each of these is a record every anchors reader answers 'not
+        // checked' for. Writing a line into one would mint a record whose
+        // whole job is to report drift and which no surface can check, with
+        // nothing anywhere saying why.
+        const cases = [
+            ['unterminated.md', '---\nname: ""\nno closing fence here\n',
+                /opens a frontmatter block that never closes within 40 lines/],
+            ['past-bound.md', '---\n' + 'filler: x\n'.repeat(60) + '---\n\nbody\n',
+                /opens a frontmatter block that never closes within 40 lines/],
+            ['misplaced.md', '---\nname: x\nprovenance:\n  anchors: src/a.js@' + HELLO_SHA
+                + '\n---\n\nbody\n',
+                /has an anchors: field under a key other than the harness's metadata: map/],
+            ['refused-entry.md', '---\nname: ""\nanchors: not-an-entry\n---\n\nbody\n',
+                /already carries an anchors: entry this cannot read, and a rewrite would drop it/]
+        ];
+        for (const [file, contents, reason] of cases) {
+            writeMemoryFile(store, file, contents);
+            const before = recordBuf(store, file);
+            const res = run(store, ['anchor', file.replace(/\.md$/, ''), 'src/a.js']);
+            assert.strictEqual(res.status, 1, file + ': ' + res.stdout);
+            assert.strictEqual(res.stdout, '', file + ' printed a line for a refused write');
+            assert.match(res.stderr, reason, file + ': ' + res.stderr);
+            assert.match(res.stderr, /nothing written/, file + ': ' + res.stderr);
+            assert.ok(recordBuf(store, file).equals(before), file + ' was written to');
+        }
+        // A record that is not there at all is its own answer, and not one of
+        // the above: the name is the thing to fix.
+        const absent = run(store, ['anchor', 'no-such', 'src/a.js']);
+        assert.strictEqual(absent.status, 1);
+        assert.match(absent.stderr, /^memq: no memory file named 'no-such' in the project tier\n$/);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a record a rewrite could not carry across whole is refused, and so is a line over the cap', () => {
+    const store = makeStore();
+    try {
+        seedAnchorTargets(store);
+        // Bytes that are not valid UTF-8 do not survive the decode and
+        // re-encode a splice goes through, so the body this verb promises to
+        // leave alone is the thing that would be rewritten.
+        fs.mkdirSync(store.memDir, { recursive: true });
+        const invalid = Buffer.concat([Buffer.from('---\nname: ""\n---\n\nbody ', 'utf8'),
+            Buffer.from([0xff, 0xfe]), Buffer.from('\n', 'utf8')]);
+        fs.writeFileSync(path.join(store.memDir, 'raw.md'), invalid);
+        const bad = run(store, ['anchor', 'raw', 'src/a.js']);
+        assert.strictEqual(bad.status, 1, bad.stdout);
+        assert.strictEqual(bad.stdout, '');
+        assert.match(bad.stderr, /holds bytes that are not valid UTF-8/);
+        assert.ok(recordBuf(store, 'raw.md').equals(invalid), 'the record kept its bytes');
+
+        // A merge that would push the line past what a reader reads is
+        // refused rather than written: the entries past the cap would go
+        // unchecked forever, which is the answer this field exists to avoid.
+        const full = [];
+        for (let i = 0; i < memq.ANCHOR_ENTRIES_MAX; i++) full.push('src/f' + i + '.js@' + OTHER_SHA);
+        writeMemoryFile(store, 'full.md', '---\nname: ""\nanchors: ' + full.join(', ')
+            + '\n---\n\nbody\n');
+        const before = recordBuf(store, 'full.md');
+        const over = run(store, ['anchor', 'full', 'src/a.js']);
+        assert.strictEqual(over.status, 1, over.stdout);
+        assert.strictEqual(over.stdout, '');
+        assert.match(over.stderr, new RegExp('would carry ' + (memq.ANCHOR_ENTRIES_MAX + 1)
+            + ' anchors and a reader reads ' + memq.ANCHOR_ENTRIES_MAX));
+        assert.ok(recordBuf(store, 'full.md').equals(before), 'the record kept its line');
+        // The control: one of those same entries re-anchored fits, since it
+        // replaces rather than appends, so the refusal above is the count.
+        writeProjectFile(store, 'src/f0.js', Buffer.from('hello\n', 'latin1'));
+        const fits = run(store, ['anchor', 'full', 'src/f0.js']);
+        assert.strictEqual(fits.status, 0, fits.stderr);
+        assert.ok(fits.stdout.startsWith('anchors: src/f0.js@' + HELLO_SHA + ', src/f1.js@'),
+            'the replaced entry kept its position: ' + fits.stdout);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('anchor refuses the shared tiers and an arity it cannot answer, before any store read', () => {
+    const store = makeStore();
+    try {
+        seedAnchorTargets(store);
+        writeMemoryFile(store, 'fact.md', '---\nname: ""\n---\n\nbody\n');
+        const before = recordBuf(store, 'fact.md');
+        const cases = [
+            [['anchor', 'fact', 'src/a.js', '--type'],
+                /anchor writes the project tier only: an anchor needs a project root/],
+            [['anchor', 'fact', 'src/a.js', '--operator'],
+                /anchor writes the project tier only: an anchor needs a project root/],
+            [['anchor', 'fact'], /anchor needs at least one <path> to anchor/],
+            [['anchor'], /anchor needs a <name>/],
+            [['anchor', 'fact', 'src/a.js', '--drop'], /unknown option --drop/],
+            [['anchor', '../elsewhere', 'src/a.js'], /name must be characters from/]
+        ];
+        for (const [args, reason] of cases) {
+            const res = run(store, args);
+            assert.strictEqual(res.status, 1, args.join(' ') + ': ' + res.stdout);
+            assert.strictEqual(res.stdout, '', args.join(' ') + ' printed a line');
+            assert.match(res.stderr, reason, args.join(' ') + ': ' + res.stderr);
+            // The argument channel prints the option list with the problem,
+            // which is where the verb's own spelling is stated.
+            assert.match(res.stderr, /usage: memq log/, args.join(' ') + ': ' + res.stderr);
+            assert.ok(recordBuf(store, 'fact.md').equals(before),
+                args.join(' ') + ' left the record changed');
+        }
+        assert.match(run(store, ['anchor', 'fact', 'src/a.js', '--type']).stderr,
+            /memq anchor <name> <path>\.\.\./, 'the option list names the verb');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('the rewrite is under the tier lock, and the lock is released on the way out', () => {
+    const store = makeStore();
+    try {
+        seedAnchorTargets(store);
+        writeMemoryFile(store, 'fact.md', '---\nname: ""\n---\n\nbody\n');
+        const before = recordBuf(store, 'fact.md');
+        // A held lock is another writer of this tier mid-rewrite. The record
+        // is read and merged under the lock, so a command that cannot take it
+        // reads nothing and writes nothing.
+        const lockPath = path.join(store.memDir, 'store.lock');
+        const payload = JSON.stringify({ pid: 0, token: 'holder', ts: new Date().toISOString() }) + '\n';
+        fs.writeFileSync(lockPath, payload, 'utf8');
+        const held = run(store, ['anchor', 'fact', 'src/a.js']);
+        assert.strictEqual(held.status, 1, held.stdout);
+        assert.strictEqual(held.stdout, '', 'a refused command has nothing to report');
+        assert.match(held.stderr, /^memq: project store locked, nothing written: lock held: /);
+        assert.ok(recordBuf(store, 'fact.md').equals(before), 'nothing was written under a held lock');
+        assert.strictEqual(fs.readFileSync(lockPath, 'utf8'), payload,
+            'the holder\'s lock is the one still there');
+
+        fs.unlinkSync(lockPath);
+        assert.strictEqual(run(store, ['anchor', 'fact', 'src/a.js']).status, 0);
+        assert.ok(!fs.existsSync(lockPath), 'the lock is released after the write');
+        // And after a refusal taken with the lock held, which is the path a
+        // release in a finally is there for.
+        writeMemoryFile(store, 'broken.md', '---\nname: ""\nanchors: not-an-entry\n---\n\nbody\n');
+        assert.strictEqual(run(store, ['anchor', 'broken', 'src/a.js']).status, 1);
+        assert.ok(!fs.existsSync(lockPath), 'the lock is released after a refusal too');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a store pinned to another project has no root to anchor against, and says so', () => {
+    const store = makeStore();
+    try {
+        seedAnchorTargets(store);
+        // A pin names the project directory the store reads, which says
+        // nothing about this working directory, so there is no root for a
+        // path to be relative to. Hashing against cwd anyway would record
+        // this directory's bytes into another project's record.
+        const pinnedMem = path.join(store.root, 'projects', 'pinned-elsewhere', 'memory');
+        fs.mkdirSync(pinnedMem, { recursive: true });
+        fs.writeFileSync(path.join(pinnedMem, 'fact.md'), '---\nname: ""\n---\n\nbody\n', 'utf8');
+        const before = fs.readFileSync(path.join(pinnedMem, 'fact.md'));
+        const res = run(store, ['anchor', 'fact', 'src/a.js'],
+            { KIT_MEMORY_PROJECT: 'pinned-elsewhere', KIT_RUN_ID: 'anchor-pin-case' });
+        assert.strictEqual(res.status, 1, res.stdout);
+        assert.strictEqual(res.stdout, '');
+        assert.match(res.stderr, /this store is pinned \(KIT_MEMORY_PROJECT\), so its records were not chosen by this working directory/);
+        assert.ok(fs.readFileSync(path.join(pinnedMem, 'fact.md')).equals(before),
+            'the pinned store\'s record is untouched');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('frontmatterSite reports the line a field was read off, and answers for text that is not text', () => {
+    // The writer's placement decision is this reader's answer, so what it
+    // says about position is pinned here directly rather than only through
+    // the verb that consumes it: a drift in the index it returns would move
+    // an anchors: line onto a neighbouring field's line, which the verb's own
+    // cases would still read back as a correct anchors: value.
+    assert.strictEqual(typeof memq.frontmatterSite, 'function');
+    assert.strictEqual(typeof memq.frontmatterUnclosed, 'function');
+
+    const top = memq.frontmatterSite('---\nname: ""\nanchors: a.js@x\n---\nbody\n', 'anchors');
+    assert.strictEqual(top.value, 'a.js@x');
+    assert.strictEqual(top.line, 2, 'the index is into block.lines, whose 0 is the opening fence');
+    assert.strictEqual(top.block.lines[top.line], 'anchors: a.js@x');
+
+    // The harness's map, where an author's top-level key is relocated. The
+    // line is a member of that map and the index names it there, indentation
+    // and all, which is what lets a rewrite keep it inside the map.
+    const meta = memq.frontmatterSite('---\nmetadata:\n  anchors: a.js@x\n---\nbody\n', 'anchors');
+    assert.strictEqual(meta.value, 'a.js@x');
+    assert.strictEqual(meta.line, 2);
+    assert.strictEqual(meta.block.lines[meta.line], '  anchors: a.js@x');
+
+    // Every answer that came off no line reports -1, and they are three
+    // different answers about the record rather than one: absent from a block
+    // that reads, no block at all, and a block that never closed.
+    const absent = memq.frontmatterSite('---\nname: ""\n---\n', 'anchors');
+    assert.strictEqual(absent.value, null);
+    assert.strictEqual(absent.line, -1);
+    assert.strictEqual(absent.block.opened, true);
+    assert.strictEqual(memq.frontmatterUnclosed(absent.block), false);
+
+    const noBlock = memq.frontmatterSite('# just a body\n', 'anchors');
+    assert.strictEqual(noBlock.value, null);
+    assert.strictEqual(noBlock.line, -1);
+    assert.strictEqual(noBlock.block.opened, false);
+
+    const unclosed = memq.frontmatterSite('---\nanchors: a.js@x\nbody\n', 'anchors');
+    assert.strictEqual(unclosed.value, null);
+    assert.strictEqual(unclosed.line, -1);
+    assert.strictEqual(memq.frontmatterUnclosed(unclosed.block), true,
+        'an opened block with no closer is the case a writer must refuse rather than write into');
+
+    // A field under some other key is the misplacement sentinel and no line,
+    // so a writer cannot rewrite a line no reader reads.
+    const nested = memq.frontmatterSite('---\nx:\n  anchors: a.js@x\n---\n', 'anchors');
+    assert.strictEqual(nested.value, memq.FRONTMATTER_INDENTED);
+    assert.strictEqual(nested.line, -1);
+
+    // Not text. The reader is exported, so a caller reaches it with a payload
+    // it has not checked, and an exception out of the block splitter is an
+    // answer none of those callers has anything to do with.
+    for (const raw of [7, null, undefined, {}, Buffer.from('---\n')]) {
+        const got = memq.frontmatterSite(raw, 'anchors');
+        assert.strictEqual(got.value, memq.FRONTMATTER_UNREADABLE, String(raw));
+        assert.strictEqual(got.line, -1, String(raw));
+        assert.deepStrictEqual(got.block, { bom: '', lines: [], opened: false, closer: -1 },
+            String(raw) + ': the block is the empty one, so a caller reading it finds no field');
+    }
+});
+
+test('an anchor path carrying an invisible character is refused, and the ones that draw ink are not', () => {
+    // The class bars what a path can carry invisibly, because an entry is
+    // read back by eye when a drift report names it: a path that renders as
+    // its neighbour but hashes a different file is the whole of the harm.
+    // Both directions, because a class written wide enough to bar a
+    // zero-width space and no wider bars nothing an author would actually be
+    // fooled by.
+    const marks = [
+        [0x00ad, 'soft hyphen'],
+        [0x061c, 'arabic letter mark'],
+        [0x180e, 'mongolian vowel separator'],
+        [0x200b, 'zero width space'],
+        [0x202e, 'right-to-left override'],
+        [0x2028, 'line separator'],
+        [0x2029, 'paragraph separator'],
+        [0xfeff, 'byte order mark'],
+        [0xe0001, 'language tag'],
+        [0xe007f, 'cancel tag'],
+        [0xfe00, 'variation selector 1'],
+        [0xfe0f, 'variation selector 16'],
+        [0xe0100, 'variation selector 17'],
+        [0xe01ef, 'variation selector 256']
+    ];
+    for (const [code, what] of marks) {
+        assert.strictEqual(memq.isAnchorPath('src/a' + String.fromCodePoint(code) + 'b.js'), false,
+            what + ' (U+' + code.toString(16) + ') belongs to no anchor path');
+    }
+    // The control the class is measured against: characters that draw
+    // something, non-ASCII ones included, are an author's own file names and
+    // stay admitted.
+    // The class is an enumeration and not the whole of Unicode's invisible
+    // characters, which is what the comment on it says: the Hangul filler is
+    // outside it and admitted, and this pins that the admission is the stated
+    // line rather than an oversight nobody measured.
+    for (const p of ['src/a.js', 'src/Ubersicht.cs', 'src/日本語.md', 'src/a#b.js',
+        'src/a' + String.fromCodePoint(0x2800) + 'b.js',
+        'src/a' + String.fromCodePoint(0x3164) + 'b.js']) {
+        assert.strictEqual(memq.isAnchorPath(p), true, p + ' is a path an author may have');
+    }
+});
+
+test('an anchor path may not open with a character that decides how the line is read back', () => {
+    // The line is a plain scalar, and a value opening with a YAML indicator
+    // is read as something other than the text written: a comment, an alias,
+    // a flow collection, a quoted scalar. Barred at the path so the field
+    // never needs quoting, which is the property that keeps one grammar for
+    // the top-level line and the same line under the harness's map.
+    for (const lead of ['#', '&', '!', '%', '[', ']', '{', '}', "'", '`']) {
+        assert.strictEqual(memq.isAnchorPath(lead + 'src/a.js'), false,
+            lead + ' opens an anchor path');
+    }
+    // Not every punctuation lead is an indicator. These two are plain-scalar
+    // starts wherever a value follows them, and barring them would refuse
+    // file names an author is entitled to.
+    for (const p of ['-src/a.js', '~src/a.js']) {
+        assert.strictEqual(memq.isAnchorPath(p), true, p + ' is a path an author may have');
+    }
+});
+
+test('a record whose block already ends at the reader\'s last line is refused, not silently unread', () => {
+    const store = makeStore();
+    try {
+        seedAnchorTargets(store);
+        // A block whose closing fence sits exactly at the last line a reader
+        // reads. One more line in it pushes the fence past that bound, after
+        // which the block never closes for any reader: the record's pinned:
+        // field goes unread and the memory becomes a decay candidate, the
+        // anchors this wrote read as nothing, and the command would have
+        // exited 0. The verb reads its own bytes back before writing them and
+        // refuses instead.
+        const filler = [];
+        for (let i = 0; i < 38; i++) filler.push('k' + i + ': v');
+        const atBound = '---\npinned: 2099-01-01\n' + filler.join('\n') + '\n---\n\nbody\n';
+        writeMemoryFile(store, 'edge.md', atBound);
+        assert.strictEqual(memq.frontmatterBlock(atBound).closer, 40,
+            'the fixture sits on the bound rather than near it');
+        const before = recordBuf(store, 'edge.md');
+        const res = run(store, ['anchor', 'edge', 'src/a.js']);
+        assert.strictEqual(res.status, 1, res.stdout);
+        assert.strictEqual(res.stdout, '', 'a record that was not written has no line to print');
+        assert.match(res.stderr, /does not read back as the record this wrote/);
+        assert.match(res.stderr, /ends at the last line a reader reads \(40\)/,
+            'the refusal names the bound, so its reader knows what to shorten');
+        assert.ok(recordBuf(store, 'edge.md').equals(before), 'nothing was written');
+        assert.ok(!fs.existsSync(path.join(store.memDir, 'edge.md.bak')),
+            'a refusal before the write spends no backup generation');
+        // The record still reads: the pin that would have been lost is the
+        // point of the refusal.
+        assert.strictEqual(memq.pinState(path.join(store.memDir, 'edge.md')), 'pinned');
+
+        // The control, one line shy of the bound, where the inserted line
+        // lands inside what a reader reads and the write goes through.
+        const room = '---\npinned: 2099-01-01\n' + filler.slice(0, 37).join('\n') + '\n---\n\nbody\n';
+        writeMemoryFile(store, 'room.md', room);
+        assert.strictEqual(memq.frontmatterBlock(room).closer, 39);
+        const ok = run(store, ['anchor', 'room', 'src/a.js']);
+        assert.strictEqual(ok.status, 0, ok.stderr);
+        assert.strictEqual(ok.stdout, 'anchors: src/a.js@' + HELLO_SHA + '\n');
+        assert.strictEqual(memq.pinState(path.join(store.memDir, 'room.md')), 'pinned');
+        assert.deepStrictEqual(
+            memq.readFrontmatterAnchors(path.join(store.memDir, 'room.md')).entries.map((e) => e.path),
+            ['src/a.js']);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('the decay pass\'s lock excludes the rewrite too, and both locks are released on the way out', () => {
+    const store = makeStore();
+    try {
+        seedAnchorTargets(store);
+        writeMemoryFile(store, 'fact.md', '---\nname: ""\n---\n\nbody\n');
+        const before = recordBuf(store, 'fact.md');
+        // A decay pass rewrites this tier under decay.lock and takes no
+        // store.lock, so store.lock alone excludes nothing it does: it can
+        // archive a record while this rewrite renames one back over the name
+        // it just cleared. Both locks, in the pass's own order.
+        const decayPath = path.join(store.memDir, 'decay.lock');
+        const storePath = path.join(store.memDir, 'store.lock');
+        const payload = JSON.stringify({ pid: 0, token: 'holder', ts: new Date().toISOString() }) + '\n';
+        fs.writeFileSync(decayPath, payload, 'utf8');
+        const held = run(store, ['anchor', 'fact', 'src/a.js']);
+        assert.strictEqual(held.status, 1, held.stdout);
+        assert.strictEqual(held.stdout, '');
+        assert.match(held.stderr, /^memq: project store locked by a decay pass, nothing written: /,
+            'the refusal names which of the two locks was held');
+        assert.ok(recordBuf(store, 'fact.md').equals(before), 'nothing was written under the pass\'s lock');
+        assert.strictEqual(fs.readFileSync(decayPath, 'utf8'), payload,
+            'the holder\'s lock is the one still there');
+        assert.ok(!fs.existsSync(storePath),
+            'the second lock is never taken when the first is refused');
+
+        fs.unlinkSync(decayPath);
+        assert.strictEqual(run(store, ['anchor', 'fact', 'src/a.js']).status, 0);
+        for (const p of [decayPath, storePath]) {
+            assert.ok(!fs.existsSync(p), path.basename(p) + ' is released after the write');
+        }
+        // And on the refusal path, which is where a release in a finally
+        // earns its keep: the inner refusal must not strand the outer lock.
+        writeMemoryFile(store, 'broken.md', '---\nname: ""\nanchors: not-an-entry\n---\n\nbody\n');
+        assert.strictEqual(run(store, ['anchor', 'broken', 'src/a.js']).status, 1);
+        for (const p of [decayPath, storePath]) {
+            assert.ok(!fs.existsSync(p), path.basename(p) + ' is released after a refusal too');
+        }
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a run anchors the record in its own pending tier, and says which tier it wrote', () => {
+    const store = makeStore();
+    try {
+        seedAnchorTargets(store);
+        // The same name in both tiers. A memory a run wrote lives in its
+        // pending tier, so resolving the project tier alone would rewrite a
+        // different record that happens to share the name, which is the
+        // precedence get and touch already keep.
+        writeMemoryFile(store, 'fact.md', '---\nname: ""\n---\n\nproject body\n');
+        writePendingMemory(store, 'r1', 'fact.md', '---\nname: ""\n---\n\npending body\n');
+        const projectBefore = recordBuf(store, 'fact.md');
+        const res = runIn(store, 'r1', ['anchor', 'fact', 'src/a.js']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout, 'anchors: src/a.js@' + HELLO_SHA + '\n');
+        assert.match(res.stderr, /\(pending tier\)$/m,
+            'the line alone does not say which of two records took it');
+        assert.strictEqual(
+            fs.readFileSync(path.join(pendingDirPath(store, 'r1'), 'fact.md'), 'utf8'),
+            '---\nanchors: src/a.js@' + HELLO_SHA + '\nname: ""\n---\n\npending body\n');
+        assert.ok(recordBuf(store, 'fact.md').equals(projectBefore),
+            'the shared project-tier record of the same name is untouched');
+
+        // The control, the same store outside a run: no pending tier is
+        // resolved and the project tier is the record that takes the line.
+        const plain = run(store, ['anchor', 'fact', 'src/b.js']);
+        assert.strictEqual(plain.status, 0, plain.stderr);
+        assert.doesNotMatch(plain.stderr, /pending tier/);
+        assert.strictEqual(fs.readFileSync(path.join(store.memDir, 'fact.md'), 'utf8'),
+            '---\nanchors: src/b.js@' + HELLO_SHA + '\nname: ""\n---\n\nproject body\n');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('the verb says which entries it hashed, because the line does not', () => {
+    const store = makeStore();
+    try {
+        seedAnchorTargets(store);
+        // An entry the record already carried and this command did not name
+        // is carried across at whatever hash the record held, which may be a
+        // hash of bytes that are long gone. The line reads as one statement
+        // about the present and is not, so the split is stated.
+        writeMemoryFile(store, 'fact.md', '---\nname: ""\n'
+            + 'anchors: docs/x.md@' + OTHER_SHA + '\n---\n\nbody\n');
+        const res = run(store, ['anchor', 'fact', 'src/a.js']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout, 'anchors: docs/x.md@' + OTHER_SHA
+            + ', src/a.js@' + HELLO_SHA + '\n');
+        assert.strictEqual(res.stderr, 'memq: hashed now: src/a.js; carried from the record at'
+            + ' the hash it already held: docs/x.md\n');
+        // With nothing carried, the clause is absent rather than empty.
+        const all = run(store, ['anchor', 'fact', 'src/a.js', 'docs/x.md']);
+        assert.strictEqual(all.status, 0, all.stderr);
+        assert.strictEqual(all.stderr, 'memq: hashed now: docs/x.md, src/a.js\n');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a record grown between the read and the rename is not written over', () => {
+    const store = makeStore();
+    try {
+        seedAnchorTargets(store);
+        writeMemoryFile(store, 'grow.md', '---\nname: ""\n---\n\nbody\n');
+        // The content this verb writes is a splice of the bytes it read, so
+        // it is stale the moment the file moves: a rewrite that went ahead
+        // would drop whatever arrived in between and report success. The
+        // append happens inside the child, between the verb's read and the
+        // rewrite's re-read, which is the window itself and not a simulation
+        // of one.
+        const shim = path.join(store.root, 'grow-between.js');
+        fs.writeFileSync(shim, [
+            "'use strict';",
+            "const fs = require('fs');",
+            'const realReadFileSync = fs.readFileSync;',
+            'let grown = false;',
+            'fs.readFileSync = function (target) {',
+            '    const out = realReadFileSync.apply(fs, arguments);',
+            "    if (!grown && /grow\\.md$/.test(String(target))) {",
+            '        grown = true;',
+            "        fs.appendFileSync(String(target), 'appended by another writer\\n');",
+            '    }',
+            '    return out;',
+            '};'
+        ].join('\n') + '\n', 'utf8');
+        const res = run(store, ['anchor', 'grow', 'src/a.js'],
+            { NODE_OPTIONS: '--require "' + shim.replace(/\\/g, '/') + '"' });
+        assert.strictEqual(res.status, 1, res.stdout);
+        assert.strictEqual(res.stdout, '');
+        assert.match(res.stderr, /was replaced while this pass was rewriting it/);
+        // The other writer's bytes are still there and no anchors line went
+        // in over them.
+        assert.strictEqual(fs.readFileSync(path.join(store.memDir, 'grow.md'), 'utf8'),
+            '---\nname: ""\n---\n\nbody\nappended by another writer\n');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a project with no memory directory is told so, and nothing is created to hold an anchor', () => {
+    const store = makeStore();
+    try {
+        seedAnchorTargets(store);
+        const res = run(store, ['anchor', 'fact', 'src/a.js']);
+        assert.strictEqual(res.status, 1, res.stdout);
+        assert.strictEqual(res.stdout, '');
+        assert.match(res.stderr, /^memq: no memory directory at /);
+        assert.ok(!fs.existsSync(store.memDir),
+            'a verb that writes one line into an existing record creates no store');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('two spellings of one file on a case-insensitive filesystem are one entry', {
+    skip: process.platform === 'win32' ? false : 'a case-insensitive filesystem is a win32 shape'
+}, () => {
+    const store = makeStore();
+    try {
+        seedAnchorTargets(store);
+        // The record spells the path one way and the command line another.
+        // They are one file, so they are one entry: appending a second would
+        // leave both reading fresh forever, a record claiming two anchors
+        // where it has one. The record's own spelling stays, because it is
+        // the author's.
+        writeMemoryFile(store, 'fact.md', '---\nname: ""\n'
+            + 'anchors: src/A.js@' + OTHER_SHA + '\n---\n\nbody\n');
+        const res = run(store, ['anchor', 'fact', 'src/a.js']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout, 'anchors: src/A.js@' + HELLO_SHA + '\n');
+        assert.strictEqual(res.stderr, 'memq: hashed now: src/A.js\n',
+            'the entry the command named is the one it hashed, at the record\'s spelling');
+
+        // The same file spelled two ways on one command line is one mention
+        // too. That is the dedupe map's rule rather than the merge's: the
+        // record here names neither spelling, so nothing in it can collapse
+        // them, and two entries would both read fresh forever.
+        writeMemoryFile(store, 'twice.md', '---\nname: ""\n---\n\nbody\n');
+        const cli = run(store, ['anchor', 'twice', 'src/a.js', 'src/A.js']);
+        assert.strictEqual(cli.status, 0, cli.stderr);
+        assert.strictEqual(cli.stdout, 'anchors: src/a.js@' + HELLO_SHA + '\n',
+            'the second spelling refreshes the first mention rather than adding an entry');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a run whose pending tier cannot be examined is refused, not sent to the project tier', () => {
+    const store = makeStore();
+    try {
+        seedAnchorTargets(store);
+        // A stat that fails for a reason other than absence says nothing
+        // about which tier holds the record. Read as absence it sends the
+        // write to the shared project-tier record of the same name and
+        // reports success, which is the precedence failing silently at a
+        // write door.
+        writeMemoryFile(store, 'fact.md', '---\nname: ""\n---\n\nproject body\n');
+        writePendingMemory(store, 'r1', 'fact.md', '---\nname: ""\n---\n\npending body\n');
+        const projectBefore = recordBuf(store, 'fact.md');
+        const pendingPath = path.join(pendingDirPath(store, 'r1'), 'fact.md');
+        const pendingBefore = fs.readFileSync(pendingPath);
+
+        const shim = path.join(store.root, 'refuse-pending-stat.js');
+        fs.writeFileSync(shim, [
+            "'use strict';",
+            "const fs = require('fs');",
+            'const realStatSync = fs.statSync;',
+            'fs.statSync = function (target) {',
+            "    if (/[\\\\/]pending[\\\\/]/.test(String(target))) {",
+            "        const err = new Error('EACCES: the fixture refuses this stat');",
+            "        err.code = 'EACCES';",
+            '        throw err;',
+            '    }',
+            '    return realStatSync.apply(fs, arguments);',
+            '};'
+        ].join('\n') + '\n', 'utf8');
+
+        const res = runIn(store, 'r1', ['anchor', 'fact', 'src/a.js'],
+            { NODE_OPTIONS: '--require "' + shim.replace(/\\/g, '/') + '"' });
+        assert.strictEqual(res.status, 1, res.stdout);
+        assert.strictEqual(res.stdout, '', 'a tier this could not identify has no line to print');
+        assert.match(res.stderr, /this run's pending tier could not be examined \(EACCES\)/);
+        assert.match(res.stderr, /nothing was anchored/);
+        assert.ok(recordBuf(store, 'fact.md').equals(projectBefore),
+            'the project-tier record of the same name is not the fallback');
+        assert.ok(fs.readFileSync(pendingPath).equals(pendingBefore),
+            'and the pending record is untouched too');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a refusal quotes a path back with the whitespace it refused removed', () => {
+    const store = makeStore();
+    try {
+        seedAnchorTargets(store);
+        writeMemoryFile(store, 'fact.md', '---\nname: ""\n---\n\nbody\n');
+        // The grammar refuses whitespace because a space is invisible at
+        // either end of a quoted path. A refusal line that echoed the path
+        // with its whitespace intact would show the reader the two paths the
+        // grammar just called different as one string, which is the reading
+        // the refusal exists to prevent.
+        for (const [given, shown] of [
+            ['src/a b.js', 'src/ab.js'],
+            ['src/a' + String.fromCodePoint(0x00a0) + 'b.js', 'src/ab.js'],
+            ['src/a' + String.fromCodePoint(0x2028) + 'b.js', 'src/ab.js'],
+            ['src/a\tb.js', 'src/ab.js']
+        ]) {
+            const res = run(store, ['anchor', 'fact', given]);
+            assert.strictEqual(res.status, 1, JSON.stringify(given));
+            assert.ok(res.stderr.includes(shown + ' [characters removed for display'),
+                JSON.stringify(given) + ' was echoed as ' + JSON.stringify(res.stderr));
+            // And the path as given appears nowhere on the line, which is
+            // the same statement from the other side.
+            assert.strictEqual(res.stderr.indexOf(given), -1,
+                'the refused path was echoed back with its whitespace intact');
+        }
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a CRLF record with no frontmatter block gains a CRLF block', () => {
+    const store = makeStore();
+    try {
+        seedAnchorTargets(store);
+        // The block this branch creates is built rather than spliced, so it
+        // is the one place the verb chooses a line ending instead of keeping
+        // one. The harness writes CRLF records on this platform, so a block
+        // built with LF would put two line endings in one record and leave
+        // the fence a reader looks for on a line that reads differently from
+        // every other line of the block.
+        const original = Buffer.from('# Fact\r\n\r\nbody, no frontmatter at all\r\n', 'utf8');
+        fs.mkdirSync(store.memDir, { recursive: true });
+        fs.writeFileSync(path.join(store.memDir, 'fact.md'), original);
+
+        const res = run(store, ['anchor', 'fact', 'src/a.js']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        const after = recordBuf(store, 'fact.md');
+        assert.strictEqual(after.toString('utf8'),
+            '---\r\nanchors: src/a.js@' + HELLO_SHA + '\r\n---\r\n' + original.toString('utf8'));
+        assert.ok(after.subarray(after.length - original.length).equals(original),
+            'the record that was there is the record that follows the block, byte for byte');
+        assert.deepStrictEqual(
+            memq.readFrontmatterAnchors(path.join(store.memDir, 'fact.md')).entries.map((e) => e.path),
+            ['src/a.js'], 'and the block a reader reads is the block that was written');
+    } finally {
+        rmStore(store);
     }
 });

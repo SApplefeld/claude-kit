@@ -544,12 +544,14 @@ function memqGrantProbes(root, failures) {
         }
     }
     // A verb the grant withholds, in a command that is otherwise the one
-    // allowed shape. find is the one probed because it is the only withheld
-    // verb the CLI does not also refuse for itself: the deletes have a second
-    // lock in memq under the store signals, and this screen is all that keeps
+    // allowed shape. find is the one probed, and this screen is all that keeps
     // an in-process embedder load out of a prompt-free allow. Without this
     // direction a hook that lost its argument screen entirely still passes
-    // both probes above.
+    // both probes above. Of the other three withheld verbs the deletes have a
+    // second lock in memq under the store signals, so a regression on either
+    // degrades to that lock; anchor has none, the verb being the operator's
+    // own, so it is the one withheld shape whose screen rests here alone and
+    // goes unprobed, which makes it what this probe set closes first.
     const withheld = runHook(file, {
         tool_name: 'Bash',
         tool_input: { command: 'node "' + memq + '" find a term' }
