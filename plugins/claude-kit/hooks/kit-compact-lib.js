@@ -33,7 +33,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { normalizePlanArg, pathErrnoClass } = require('./kit-goal-lib.js');
+const { normalizePlanArg, pathErrnoClass, readGoal } = require('./kit-goal-lib.js');
 
 // Path to the checkpoint file for a given repo root.
 function checkpointPath(cwd) {
@@ -510,14 +510,19 @@ function clearCheckpoint(cwd) {
 // much as the swallowing: a path that could block (a FIFO planted at either
 // file) cannot delay a verdict that has already been emitted.
 //
-// The record is written only in a project that is ALREADY kit-governed: an
-// existing .kit/ directory is the precondition, and neither the directory nor
-// its parents are ever created here. The gate runs on every auto-compaction
-// offer on the machine, including in repositories that have nothing to do with
-// the kit, and creating an untracked directory of session ids and token
-// readings in someone's unrelated checkout is a cost the diagnostic does not
-// earn. An armed project always has .kit/goal-state.json, so the record stays
-// complete exactly where the feature is for.
+// The record is written only in a project that is ALREADY kit-governed. An
+// existing .kit/ directory is the ordinary evidence: the gate runs on every
+// auto-compaction offer on the machine, including in repositories that have
+// nothing to do with the kit, and creating an untracked directory of session
+// ids and token readings in someone's unrelated checkout is a cost the
+// diagnostic does not earn. The one .kit/ these writers do create is a
+// directory an armed goal resolves for that has none of its own, and only
+// then: goal state lives in the main checkout, so a leashed run in a linked
+// worktree arrives with no local .kit/ at all, and refusing there would take
+// every deny unrecorded and silence the deferral nudge in exactly the place
+// the record exists for. An armed goal is the same already-governed evidence
+// an existing .kit/ is, so a stranger's checkout still gets nothing. Only
+// .kit itself is ever created, never its parents.
 //
 // Both files must be regular files, and .kit/ itself must be a real directory
 // rather than a link to one. A symlink, junction, or FIFO planted at any of the
@@ -1270,8 +1275,9 @@ function writableOrAbsent(target) {
 }
 
 // Everything that must hold before the gate STATE can be rewritten: the directory
-// exists and is writable, the state path is a regular file this process may write,
-// and the state as it stands right now is legible.
+// exists and is writable (an absent one is created only under the armed-goal
+// condition the section header states), the state path is a regular file this
+// process may write, and the state as it stands right now is legible.
 //
 // Returns { ok:true, statePath, prior } or { ok:false }.
 //
@@ -1287,7 +1293,23 @@ function gateStateTarget(cwd) {
     try {
         const kit = path.join(cwd, '.kit');
         let dir;
-        try { dir = fs.lstatSync(kit); } catch { return { ok: false }; }
+        try {
+            dir = fs.lstatSync(kit);
+        } catch (err) {
+            // An absent .kit/ refuses unless an armed goal resolves for this
+            // directory, which is the one case the section header licenses
+            // creating it: a leashed worktree run has no local .kit/ of its
+            // own. Only ENOENT reads as absent; any other failure is an
+            // unknown answer and stays a refusal. The mkdir creates .kit
+            // itself and never a parent, and a failure there (a racing
+            // creator included) lands in the outer catch as { ok: false },
+            // degrading exactly as an unreadable directory does.
+            if (!err || err.code !== 'ENOENT') return { ok: false };
+            const goal = readGoal(cwd);
+            if (!goal || !goal.plan) return { ok: false };
+            fs.mkdirSync(kit);
+            dir = fs.lstatSync(kit);
+        }
         if (!dir.isDirectory() || !writableOrAbsent(kit)) return { ok: false };
         const statePath = gateStatePath(cwd);
         if (regularFileSize(statePath) === null || !writableOrAbsent(statePath)) return { ok: false };
@@ -1431,9 +1453,10 @@ function recordGateDecision(cwd, decision) {
 // than that status quo, so the failure direction is silence.
 //
 // The refusal preconditions are gateStateTarget's, shared with the recorder rather
-// than spelled a second time: .kit/ must already exist (nothing here creates it),
-// the state file must be a regular file this process may write, and the state must
-// be legible right now. The log legs are deliberately NOT among them, even though
+// than spelled a second time: .kit/ must exist (an absent one is created only for
+// a directory an armed goal resolves for, per the section header), the state file
+// must be a regular file this process may write, and the state must be legible
+// right now. The log legs are deliberately NOT among them, even though
 // this writer does append one journal line: that line comes after the stamp and
 // answers for its own path, so a locked or read-only log costs a log line and never
 // the interval.

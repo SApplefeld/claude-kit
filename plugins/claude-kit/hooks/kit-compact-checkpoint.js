@@ -131,13 +131,17 @@ function cmdOpen() {
     const goal = readGoal(process.cwd());
     if (!goal || typeof goal.plan !== 'string' || goal.plan === '') {
         process.stderr.write('kit-compact-checkpoint: no kit goal is armed, so a checkpoint would never match; nothing written\n');
-        // The goal family resolves its state from the current directory, so a
-        // goal armed in another checkout of the same repository (the worktree
-        // case) is invisible here however live it is. Naming that makes the
-        // refusal self-explaining, since from inside a worktree the goal looks
-        // armed and this looks like a defect.
+        // The goal family resolves its state from the current directory, with
+        // a linked worktree resolving to its main checkout, so a goal armed in
+        // a checkout this directory does not resolve to (a separate clone, a
+        // worktree of a bare repository, or a worktree whose .git pointer no
+        // longer closes the handshake, which the lib notes on stderr) is
+        // invisible here however live it is. Naming that makes the refusal
+        // self-explaining, since from such a tree the goal looks armed and
+        // this looks like a defect.
         process.stderr.write('kit-compact-checkpoint: the goal may be armed in another checkout: this CLI reads'
-            + ' the goal state from the current directory, so arm where you run\n');
+            + ' the goal state from the current directory (a linked worktree resolves to its main'
+            + ' checkout), so arm where you run\n');
         process.exitCode = 1;
         return;
     }

@@ -2,7 +2,10 @@
 //
 // Goal state is a small project-scoped JSON file (.kit/goal-state.json,
 // gitignored) that survives a session swap because it lives in the repo, not
-// in any one session's transcript. This module is the single owner of the
+// in any one session's transcript. It belongs to the repository rather than to
+// any one checkout of it, so a linked git worktree reads and writes the main
+// checkout's file (goalPath below owns the resolution). This module is the
+// single owner of the
 // canonical condition text (composeCondition) and the read/write/clear
 // operations on that file, and of the machine-readable event stream
 // (emitGoalEvent), which carries the releases the Stop hook itself observes; a
@@ -23,9 +26,258 @@ const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
 
-// Path to the goal-state file for a given repo root.
+// The main checkout a git worktree belongs to, or null when the working
+// directory is not a worktree of one.
+//
+// A goal armed in the main checkout must hold a session working in one of its
+// worktrees: the leash is the repository's, and a worktree that resolves goal
+// state against its own directory mints a second, unread .kit/goal-state.json
+// the main checkout's sessions never see, so its checkpoints cannot open and
+// its gate defers to the ceiling. The resolver follows the link git itself
+// maintains: the worktree's .git pointer file out to
+// <main>/.git/worktrees/<name>, and that directory's own gitdir file back.
+//
+// This is a second spelling of worktreeMainRoot in ../scripts/memq.js, which
+// files a worktree's memories under its main checkout for the same reason. It
+// is spelled here rather than imported because readGoal runs where a require
+// must not be able to fail or cost anything (the PreCompact gate before any
+// verdict, the Stop hook while holding a stop), and pulling the whole CLI
+// module onto those paths for three functions is neither minimal nor safe
+// against a damaged copy. The two implementations are pinned together by
+// test/kit-goal-worktree.test.js over shared fixtures, benign and refused
+// alike (ordinary checkout, closing handshake, bare-repo worktree, submodule,
+// a non-pointer .git file, pointers past the read and path caps, and on win32
+// a network-spelled pointer), so a change that moves one spelling and not the
+// other fails the pin. The win32 spelling fold is the one shared behavior
+// outside it: the pin's fixtures are already canonical, so no mintable fixture
+// can catch a resolver that dropped the fold.
+//
+// The two-way handshake is the security boundary, not a validity check. The
+// .git pointer file is on-disk data in a directory the session cd'd into, so a
+// pointer alone must never redirect goal-state reads and writes to a path of
+// its author's choosing. What a planted pointer cannot supply is the other
+// half: <gitdir>/gitdir naming this directory back, beside the commondir file
+// and under a real .git directory, all of it inside the administrative
+// directory of the checkout being claimed. What that proves is bounded: whoever
+// made the claim could already write a git-shaped administrative directory at
+// the path now named as the main checkout. The reason a clone alone cannot
+// arrange it is git's own refusal to check out any path whose components
+// include .git, so the far half has to be planted by something with write
+// access there, not by content that merely arrived.
+//
+// Only <cwd>/.git is consulted, never an upward walk: a subdirectory of a
+// checkout resolves its own goal state today and stays that way. Submodules
+// are excluded by construction rather than by a test of their own, since their
+// gitdir names .git/modules/<name> and only the worktrees form is accepted. A
+// bare repository's worktree fails the same shape check (the segment above
+// worktrees is not a .git directory), which is right: there is no main
+// checkout to resolve to.
+//
+// Every failure answers null and the working directory stands, because a
+// worktree pointer is ambient filesystem state: an unreadable or unrecognized
+// one means an ordinary checkout far more often than it means a problem. The
+// one failure worth saying out loud is a worktree-shaped pointer whose
+// handshake does not close, since there the operator meant to share the main
+// checkout's leash and is silently getting a second one.
+//
+// Memoized per working directory: every goal-state read and write resolves the
+// root, and each resolution would otherwise stat and read several files.
+const worktreeMainRoots = new Map();
+let worktreeHandshakeNoted = false;
+let worktreeOrphanNoted = false;
+
+function worktreeMainRoot(cwd) {
+    const key = String(cwd);
+    if (worktreeMainRoots.has(key)) return worktreeMainRoots.get(key);
+    const main = resolveWorktreeMainRoot(key);
+    worktreeMainRoots.set(key, main);
+    return main;
+}
+
+// A .git pointer file is one line git writes, so a fixed-size prefix reads all
+// of one; the cap keeps a directory whose .git happens to be some arbitrary
+// large file from being pulled into memory on a path every goal read crosses.
+const GIT_POINTER_READ_CAP = 4096;
+
+// Characters of a path a .git pointer file may name. A working directory is
+// bounded by what the OS will hand back; pointer content is not.
+const GIT_POINTER_PATH_CAP = 2048;
+
+// A .git pointer file's first bytes, or '' when the path does not answer as a
+// regular file. The fstat is taken on the open descriptor rather than on the
+// name, so what is measured is the file that was opened: a name checked and
+// then swapped for something else between the check and the open is the
+// classic way a read is steered somewhere it was never meant to go. Off win32
+// the open itself is non-blocking, because opening a fifo for reading
+// otherwise waits for a writer that a planted one will never provide, and this
+// call sits on the path every goal read crosses. Throws on an unopenable path;
+// the resolver's own try is the catch.
+function readGitPointer(file) {
+    const flags = process.platform === 'win32'
+        ? fs.constants.O_RDONLY
+        : fs.constants.O_RDONLY | (fs.constants.O_NONBLOCK || 0);
+    const fd = fs.openSync(file, flags);
+    try {
+        if (!fs.fstatSync(fd).isFile()) return '';
+        const buf = Buffer.alloc(GIT_POINTER_READ_CAP);
+        const n = fs.readSync(fd, buf, 0, GIT_POINTER_READ_CAP, 0);
+        return buf.toString('utf8', 0, n);
+    } finally {
+        fs.closeSync(fd);
+    }
+}
+
+// Path and filename fragments compare the way the platform's filesystem
+// compares them, so one physical file cannot pass one check here and fail
+// another. Only win32 folds case. Off win32 the comparison is exact even
+// where the filesystem folds (macOS's default APFS is case-insensitive and
+// case-preserving), so two spellings of one file can fail to match there;
+// that errs toward not resolving, and it matches memq's fsEq, the agreement
+// the cross-implementation pin depends on.
+function fsEq(a, b) {
+    return process.platform === 'win32'
+        ? String(a).toLowerCase() === String(b).toLowerCase()
+        : a === b;
+}
+
+function resolveWorktreeMainRoot(cwd) {
+    const dotGit = path.join(cwd, '.git');
+    let gitdir;
+    try {
+        // A directory is the ordinary checkout, an absent entry is no
+        // repository at all, and both take the cwd derivation untouched.
+        if (!fs.statSync(dotGit).isFile()) return null;
+        // Anchored at the start of the file, not at any line of it: git writes
+        // the pointer as the first and only line, and a gitdir: line found
+        // somewhere inside an arbitrary file is that file's content rather
+        // than a pointer.
+        const line = /^[ \t]*gitdir:[ \t]*([^\r\n]+?)[ \t]*\r?(?:\n|$)/.exec(readGitPointer(dotGit));
+        if (line === null) return null;
+        gitdir = path.resolve(cwd, line[1]);
+    } catch {
+        return null;
+    }
+    // Every rejection below this point is decided on the path text alone,
+    // before anything touches the filesystem at the pointer's target, because
+    // for the two shapes that follow the touch is itself the harm.
+    //
+    // A pointer naming a UNC or device path from a checkout that is not itself
+    // on that share is refused outright: opening a path under \\host\share is
+    // an outbound SMB connection that authenticates automatically as the
+    // logged-in account, so a single planted file in any directory a session
+    // cd's into would hand an attacker-named host a credential exchange, and
+    // hooks resolve this on their own at every session start and stop. Reading
+    // the target to find out whether the pointer is honest is exactly the
+    // operation being guarded against, so the shape is judged first and never
+    // opened.
+    if (process.platform === 'win32' && path.parse(gitdir).root.startsWith('\\\\')
+        && !fsEq(path.parse(gitdir).root, path.parse(path.resolve(cwd)).root)) {
+        return null;
+    }
+    if (gitdir.length > GIT_POINTER_PATH_CAP) return null;
+    // The shape is read by walking path segments rather than by matching the
+    // raw text, so a pointer spelled with either separator, as git spells them
+    // with forward slashes on Windows too, is the same shape.
+    const worktrees = path.dirname(gitdir);
+    const mainDotGit = path.dirname(worktrees);
+    const main = path.dirname(mainDotGit);
+    if (!fsEq(path.basename(worktrees), 'worktrees') || !fsEq(path.basename(mainDotGit), '.git')) {
+        return null;
+    }
+    try {
+        // The far half of the handshake, in the order that reads cheapest:
+        // the claimed main checkout carries a real .git directory, that
+        // worktree's administrative directory carries the commondir file git
+        // keeps beside every one of them, and its gitdir file names this
+        // working directory's own .git back.
+        if (!fs.statSync(mainDotGit).isDirectory()) throw new Error('no .git directory');
+        if (!fs.statSync(path.join(gitdir, 'commondir')).isFile()) throw new Error('no commondir');
+        const back = readGitPointer(path.join(gitdir, 'gitdir')).replace(/\s+$/, '');
+        if (back !== '' && fsEq(path.resolve(gitdir, back), path.resolve(dotGit))) {
+            return acceptedWorktreeMain(cwd, main);
+        }
+    } catch {
+        // An unreadable or absent half is a handshake that did not close, the
+        // same answer as one naming somewhere else.
+    }
+    // The note names the handshake generically rather than any one half of it,
+    // because every failed leg lands here: a missing or unreadable commondir, a
+    // claimed main whose .git is not a directory, and a back-pointer naming
+    // somewhere else all read the same from this side. It fires once per
+    // process, and every hook consumer is a fresh process, so across a session
+    // it recurs by design; the flag only keeps one process from repeating it.
+    if (!worktreeHandshakeNoted) {
+        worktreeHandshakeNoted = true;
+        try {
+            process.stderr.write('kit-goal: the .git file in the working directory points at a worktree '
+                + 'whose handshake with the main checkout it names does not close (a missing or '
+                + 'unreadable administrative file, or a back-pointer naming somewhere else), so goal '
+                + 'state is read from the working directory rather than the main checkout (git '
+                + 'worktree repair is the usual remedy)\n');
+        } catch { /* the note is best-effort; a failed write changes nothing */ }
+    }
+    return null;
+}
+
+// The accepted main checkout, plus the one note a successful resolution can
+// owe the operator.
+//
+// On win32 the spelling is folded to the volume's own (an 8.3 short path, a
+// re-cased pointer), so the resolved root reads the same however the pointer
+// spelled it; the filesystem would land every spelling on one file regardless,
+// but the path is compared and surfaced by tests and reports, and the memq
+// resolver folds the same way (an agreement the pin's fixtures, already
+// canonical, cannot themselves exercise). Off win32 the lexical spelling
+// stands, since resolving the real path there would silently follow symlinks.
+//
+// A goal-state file already standing at the worktree's own .kit/ is worth a
+// stderr note, because it is now unread: nothing here moves or merges a leash
+// armed before the resolution existed, and a file that quietly stops being
+// consulted is the kind of loss that is noticed months later. The note fires
+// once per process, and every hook consumer is a fresh process, so it recurs
+// across a session for as long as the orphan stands.
+function acceptedWorktreeMain(cwd, main) {
+    let root = main;
+    if (process.platform === 'win32') {
+        try {
+            root = fs.realpathSync.native(main);
+        } catch {
+            // An unresolvable path keeps the lexical spelling: the handshake
+            // already closed, so the resolution stands either way.
+        }
+    }
+    if (!worktreeOrphanNoted) {
+        try {
+            if (fs.statSync(path.join(cwd, '.kit', 'goal-state.json')).isFile()) {
+                worktreeOrphanNoted = true;
+                process.stderr.write('kit-goal: this worktree reads and writes the main checkout\'s '
+                    + 'goal state, and a goal-state file left under the worktree\'s own .kit/ is '
+                    + 'no longer read; clear it by hand if it is stale\n');
+            }
+        } catch {
+            // No such file is the ordinary case and the quiet one.
+        }
+    }
+    return root;
+}
+
+// The directory .kit/ resolves against: the main checkout when cwd is a linked
+// worktree, and cwd itself otherwise. Reaching for worktreeMainRoot directly
+// is the mistake this exists to prevent, since that function answers null for
+// an ordinary checkout, which is most of them, and null is not a root.
+function goalRoot(cwd) {
+    const main = worktreeMainRoot(cwd);
+    return main === null ? cwd : main;
+}
+
+// Path to the goal-state file for a given working directory. Every read/write
+// helper in this file resolves through here, so every consumer of this module
+// inherits the worktree resolution without an edit of its own. What resolves
+// is only where the STATE file lives: plan docs stay resolved against the
+// caller's own cwd, because the live plan doc belongs to the execution tree's
+// branch while the leash belongs to the repository.
 function goalPath(cwd) {
-    return path.join(cwd, '.kit', 'goal-state.json');
+    return path.join(goalRoot(cwd), '.kit', 'goal-state.json');
 }
 
 // The cap on a stored transcript path. Long enough for a real harness
@@ -1696,4 +1948,8 @@ function emitGoalEvent(details) {
 // safeForAuthorization rides along for the same single-rule reason: the CLI
 // prints the stored sentence, and a printer applying a shorter cap than the store
 // hands a reader half a claim and presents it as the whole recorded one.
-module.exports = { goalPath, readGoal, armGoal, appendGoal, advanceGoal, bindSession, clearGoal, composeCondition, planHead, emitGoalEvent, normalizePlanArg, lastActivePhrase, isSessionIdShaped, planFileSize, planPathState, pathErrnoClass, safeForAuthorization, GOAL_STATE_MAX_BYTES };
+// goalRoot rides along for the Stop hook's release clauses: a plan path that
+// reads as gone from the working directory releases or advances the leash only
+// when it is gone from the checkout the goal state lives in too, and that
+// checkout is this resolution's answer, never a second spelling of it.
+module.exports = { goalPath, goalRoot, readGoal, armGoal, appendGoal, advanceGoal, bindSession, clearGoal, composeCondition, planHead, emitGoalEvent, normalizePlanArg, lastActivePhrase, isSessionIdShaped, planFileSize, planPathState, pathErrnoClass, safeForAuthorization, GOAL_STATE_MAX_BYTES };

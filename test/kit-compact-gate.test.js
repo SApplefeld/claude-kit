@@ -3347,8 +3347,9 @@ test('gate: every verdict path records the clause that decided it', () => {
         assert.strictEqual(recorded(f.repo, 'deny-interactive'), 'bystander');
     } finally { rmDir(f.repo); }
 
-    // The two unarmed cases still have to be kit-governed projects, since the
-    // record is written only where .kit/ already exists: an unarmed .kit/ is
+    // The two unarmed cases still have to be kit-governed projects, since with
+    // no goal armed the record is written only where .kit/ already exists (an
+    // armed goal is the one condition that creates it): an unarmed .kit/ is
     // the ordinary state of a project between goals.
     // no-goal: nothing armed in the project at all.
     let i = interactiveRepo([]);
