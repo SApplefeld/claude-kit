@@ -41,9 +41,13 @@ The four are instances, not the boundary: any cost paid per test that could be p
 
 Each gate moment names its lane, and running a bigger lane than the moment calls for is where the wall clock goes:
 
-- **The targeted lane**, the changed files' tests, runs after each fix.
+- **The targeted lane**, the changed files' tests plus any whole-tree pin whose subject those files are, runs after each fix. The second half is what makes the lane honest: a family's pin usually lives in a file of its own, so a lane derived from filenames alone excludes the very shape this skill prefers, and a change to a family member runs the family's pin whatever file it sits in.
 - **The whole gate** runs at section close, at finishing, and before a push. After a fix round it runs only when the round's delta touches a shared module; a delta confined to leaf code takes the targeted lane.
 - **The contention lane** sits apart from the main gate and holds the tests whose subject is genuinely machine-shared state (a machine-global tier, a real shared lock), each saying so in its own text. It runs serially, at finishing, before a push, and at section close whenever that section's delta touched the lane's subject, so a change to machine-shared state is never closed green by a gate that skipped the only tests covering it. A test in the main gate that needs the box to itself belongs here instead: moving it is the fix, not retrying the main gate until it passes.
+
+The moments are closed by a default rather than by the list: any step not named above takes the targeted lane, and only the moments named above earn the whole gate.
+
+A lane's delta is read against a baseline recorded on that same lane. A targeted run's counts describe the tests it ran and nothing else, so diffing them against a whole-gate baseline reports a difference the lanes themselves account for, and a claim of no regressions across the suite takes a whole-gate baseline of its own.
 
 The lanes' commands are the per-repo facts named at the top: read them from the project's memory tier, and record them there when a repo first defines its lanes.
 
@@ -57,8 +61,8 @@ A red is discriminated by protocol, not by re-running the world:
 
 ## The clock and the box
 
-Two rules keep a wall-clock figure honest:
+Three rules keep a wall-clock figure honest:
 
-- **Capture the clock with the baseline.** The suite's wall clock is recorded alongside the pass/fail counts already captured at a baseline, so a later run has a figure to diff against rather than a recollection. Growth past a few minutes is a finding to route (a fast lane for day-to-day edits, the whole gate before a push), never a fact of life to absorb.
+- **Capture the clock with the baseline.** The suite's wall clock is recorded alongside the pass/fail counts already captured at a baseline, and the baseline names the lane it was run on, so a later run has a figure to diff against rather than a recollection and a comparable lane to diff it on. Growth past a few minutes is a finding to route (a fast lane for day-to-day edits, the whole gate before a push), never a fact of life to absorb.
 - **Record the contention beside the clock.** Every wall-clock figure carries the box's process count and free memory beside it, captured at the run. Growth is a finding only against a baseline at comparable contention or a same-conditions trend, and the edge is observable rather than asserted: run the same suite on the same tree once with the box quiet and once beside a neighbor's suite, and the two figures show how much of any growth the load alone accounts for. Without that comparison a raw cross-load reading manufactures a finding out of a busy box.
-- **Check the box before any suite.** Before starting a suite, check the process list for a test runner or build owned by another session, whatever its engine, and either wait for it or name the contention in what you report. `testhost`, `dotnet`, `node --test`, and a build are instances, not the boundary: the class is any foreign process that holds the box's memory or CPU, or the repo's binaries, while your suite runs.
+- **Check the box before any suite.** Before starting a suite, check the process list for a test runner or build, whatever its engine, whether owned by another session or by a running engine, and either wait for it or name the contention in what you report. `testhost`, `dotnet`, `node --test`, and a build are instances, not the boundary: the class is any foreign process that holds the box's memory or CPU, or the repo's binaries, while your suite runs.

@@ -219,6 +219,169 @@ test('the style skills the outline bullet routes to still carry a recipe', () =>
     }
 });
 
+// The gate bullet and the authoring bullet are the outline bullet's shape
+// applied to testing: each keeps the principle it alone owns and routes the
+// mechanics to the testing-discipline skill. That deferral is what earns a pin
+// beyond whole-body identity, since a symmetric deletion from both copies
+// passes identity while the standing rule stops being stated anywhere and the
+// skill it routed to becomes a file nothing points at.
+//
+// The gate bullet is the near end for the lane rule: the doctrine names the
+// moments (after a fix, at section close, at finishing, before a push) and
+// carries none of the lane mechanics itself, so the pointer is the only path
+// from the always-loaded layer to them.
+test('the gate bullet routes its lanes to the testing-discipline skill in each copy', () => {
+    const lead = '- **After each step, run the lane the moment calls for';
+    const inSkill = skillBody().split('\n').filter((l) => l.startsWith(lead));
+    const inMirror = mirrorBody().split('\n').filter((l) => l.startsWith(lead));
+    assert.strictEqual(inSkill.length, 1,
+        'expected exactly one gate bullet in the skill body');
+    assert.strictEqual(inMirror.length, 1,
+        'expected exactly one gate bullet in the doctrine mirror');
+    assert.strictEqual(inMirror[0], inSkill[0]);
+    assert.ok(inSkill[0].includes('skills/testing-discipline/SKILL.md'),
+        'the gate bullet must route to testing-discipline by path, because it '
+        + 'names the gate moments and carries none of the lane mechanics itself');
+    // The moments are the bullet's own content rather than the skill's, so a
+    // rewrite that keeps the pointer while dropping one of them leaves the
+    // always-loaded layer silent on the moment it dropped: without the targeted
+    // lane every fix round is priced at the whole gate again, and without one of
+    // the whole-gate moments a section closes, a push lands, or a finishing pass
+    // runs on a lane too narrow to support the claim it makes.
+    for (const [phrase, why] of [
+        [/targeted lane/, 'name the targeted lane as what a fix takes'],
+        [/section close/, 'name section close as a whole-gate moment'],
+        [/at finishing/, 'name finishing as a whole-gate moment'],
+        [/before a push/, 'name before a push as a whole-gate moment'],
+        [/shared module/, 'state the shared-module condition, which is the only '
+            + 'thing that pulls a fix round up to the whole gate'],
+    ]) {
+        assert.match(inSkill[0], phrase, 'the gate bullet must ' + why
+            + '; the pointer does not carry the moments, so a reader who never '
+            + 'opens the skill has only this bullet to run a gate from');
+    }
+    // The contention lane is named here rather than left to the skill because a
+    // session reading only the always-loaded layer would otherwise run the whole
+    // gate before a push, skip every test whose subject is machine-shared state,
+    // and report green over the one area no other lane covers.
+    assert.match(inSkill[0], /contention lane/,
+        'the gate bullet no longer names the contention lane beside the whole '
+        + 'gate, so a doctrine-only reader pushes on a gate that skipped the '
+        + 'tests covering machine-shared state');
+    // Lane-scoped baselines: a delta is only a delta against the same lane, and
+    // this is the assertion standing between a 12-test targeted run and a "no
+    // regressions" claim diffed against a whole-gate baseline.
+    assert.match(inSkill[0], /baseline recorded on that same lane/,
+        'the gate bullet no longer scopes the baseline to the lane that produced '
+        + 'it, which licenses diffing a targeted run against a whole-gate '
+        + 'baseline and reporting the difference as no regressions');
+});
+
+// Same shape at the authoring end: the bullet keeps independence-by-
+// construction and routes the cost shapes, the wall-clock capture, and the
+// comparable-contention rule to the skill that owns them.
+test('the authoring bullet routes its cost shapes to the testing-discipline skill in each copy', () => {
+    const lead = '- **Write tests independent by construction';
+    const inSkill = skillBody().split('\n').filter((l) => l.startsWith(lead));
+    const inMirror = mirrorBody().split('\n').filter((l) => l.startsWith(lead));
+    assert.strictEqual(inSkill.length, 1,
+        'expected exactly one test-authoring bullet in the skill body');
+    assert.strictEqual(inMirror.length, 1,
+        'expected exactly one test-authoring bullet in the doctrine mirror');
+    assert.strictEqual(inMirror[0], inSkill[0]);
+    assert.ok(inSkill[0].includes('skills/testing-discipline/SKILL.md'),
+        'the test-authoring bullet must route to testing-discipline by path: the '
+        + 'spawn pricing, the wall-clock capture, and the comparable-contention '
+        + 'rule live in that skill and in no clause of this bullet');
+});
+
+// The box-check rule is stated in full in both the doctrine and the skill, on
+// purpose: it must be reachable by a session that never loads the skill, and a
+// point-of-action restatement of a doctrine-adjacent rule is sanctioned. What
+// the duplication costs is drift, so the two statements are pinned together
+// here, at the sentence that does the work. The class sentence is the whole
+// rule: a session that read the old engine list as the boundary checked the box
+// exactly as written and started its suite beside a live gate in an engine the
+// list did not name.
+test('the box-check bullet states the class in each copy and in the skill', () => {
+    const lead = '- **One heavy process at a time is a per-machine budget';
+    const inSkill = skillBody().split('\n').filter((l) => l.startsWith(lead));
+    const inMirror = mirrorBody().split('\n').filter((l) => l.startsWith(lead));
+    assert.strictEqual(inSkill.length, 1,
+        'expected exactly one box-check bullet in the skill body');
+    assert.strictEqual(inMirror.length, 1,
+        'expected exactly one box-check bullet in the doctrine mirror');
+    assert.strictEqual(inMirror[0], inSkill[0]);
+    assert.match(inSkill[0], /instances, not the boundary/,
+        'the box-check bullet no longer closes its engine list with the class, '
+        + 'so `testhost`, `dotnet`, and `node --test` read as the boundary and a '
+        + 'runner in an unnamed engine is licensed to run beside your suite');
+    assert.match(inSkill[0], /whatever its engine/,
+        'the box-check bullet no longer states the check engine-agnostically');
+
+    // The skill's own box-check bullet is the same rule at the point of action.
+    // Both halves of the ownership condition are pinned: it covers a process
+    // owned by another session and one owned by a running engine, which is the
+    // half a restatement drops first, since an engine holding the box is not a
+    // session anyone thinks to look for.
+    const skillPath = path.join(__dirname, '..', 'plugins', 'claude-kit',
+        'skills', 'testing-discipline', 'SKILL.md');
+    const boxLead = '- **Check the box before any suite.**';
+    const inTesting = fs.readFileSync(skillPath, 'utf8').split(/\r?\n/)
+        .filter((l) => l.startsWith(boxLead));
+    assert.strictEqual(inTesting.length, 1,
+        'expected exactly one box-check bullet in the testing-discipline skill');
+    assert.match(inTesting[0], /whatever its engine/,
+        'the testing-discipline skill\'s box check no longer states the check '
+        + 'engine-agnostically, while the doctrine\'s copy of the same rule does');
+    assert.match(inTesting[0], /running engine/,
+        'the testing-discipline skill\'s box check no longer covers a process '
+        + 'owned by a running engine, which the doctrine\'s copy of the same rule '
+        + 'covers; the two are the same rule at two points of action and a '
+        + 'session that loads only one of them must get the same check');
+});
+
+// The far end of both pointers above, in the shape the style-skill pin uses:
+// the file exists, sits in the index, and still carries what each bullet defers
+// to. The index check is what keeps the pointer honest across machines, since a
+// target present but never added passes on the machine that wrote it and is
+// absent on a fresh checkout.
+//
+// Headings alone are too coarse a far end: the near-end bullets promise named
+// contents (a contention lane, a wall clock captured with the baseline, a
+// contention figure beside it), and deleting any one of those leaves its
+// heading standing and this pin green while the doctrine promises what the
+// skill no longer carries. So the leads are pinned beside the headings.
+test('the testing-discipline skill still carries what the doctrine routes to it', () => {
+    const parts = ['plugins', 'claude-kit', 'skills', 'testing-discipline', 'SKILL.md'];
+    const target = path.join(__dirname, '..', ...parts);
+    assert.ok(fs.existsSync(target),
+        'the doctrine\'s gate and test-authoring bullets both route to a skill '
+        + 'that is not on disk: ' + parts.join('/'));
+    const body = fs.readFileSync(target, 'utf8');
+    for (const heading of [/^## Price the shape at authoring$/m, /^## The lanes$/m,
+        /^## The clock and the box$/m]) {
+        assert.match(body, heading, 'the doctrine bullets route their lane '
+            + 'mechanics, cost shapes, wall-clock capture, and contention rule '
+            + 'here and carry none of that content themselves, so deleting this '
+            + 'section leaves the pointer aimed at nothing: ' + heading);
+    }
+    for (const [lead, promised] of [
+        ['- **The contention lane**', 'the contention lane the gate bullet runs '
+            + 'beside the whole gate'],
+        ['- **Capture the clock with the baseline.**', 'the wall-clock capture '
+            + 'the test-authoring bullet defers here'],
+        ['- **Record the contention beside the clock.**', 'the '
+            + 'comparable-contention rule the test-authoring bullet defers here'],
+    ]) {
+        assert.ok(body.split(/\r?\n/).some((l) => l.startsWith(lead)),
+            'the testing-discipline skill no longer carries ' + promised
+            + ', so the doctrine promises content the skill has dropped while its '
+            + 'section heading still stands: ' + lead);
+    }
+    assertTrackedInIndex(parts.join('/'));
+});
+
 // The peer-sessions bullet defers its whole operative content to the
 // peer-sessions skill (it names the contracts, patterns, and etiquette rather
 // than restating them), which is exactly the class whose deletion the
