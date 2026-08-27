@@ -32,21 +32,50 @@
 // argument is invisible (rg "the git commit flow" docs/ is a read), while
 // echo x > "src/file" is still a write. A nested executor (sh -c, bash -c,
 // pwsh -Command, cmd /c, eval, iex, claude -p, a here-string) has its payload
-// analyzed recursively within a depth bound, so quoting is not a way around the
-// guard.
+// analyzed recursively within a depth bound, reconstructed the way that executor
+// assembles it rather than one argument at a time, and a command substitution the
+// shell runs, at the top level, inside a double-quoted span, or standing in an
+// arithmetic operand, is blanked as a span and scanned as its own command.
+// Whatever that depth bound leaves unexpanded, a substitution's interior and an
+// executor's payload alike, is denied as unresolvable rather than trusted as
+// data, so the common quoting evasions are closed. A token the guard
+// reads as a name but cannot resolve, because a substitution is spliced into it,
+// denies on the same rule. This is a best-effort lexer over shell
+// grammar rather than a shell, and like every kit guard it is no security
+// boundary: every agent runs as the one machine principal, so the guard defends
+// the work against well-intentioned-but-wrong agent behavior (a reviewer
+// "fixing" the code under review), not against an attacker. The tree-state
+// check the orchestrator runs around each review round backstops it. That check
+// compares two `git status --porcelain` readings rather than the bytes on disk,
+// so it is blind to a whole class the direct git and gh scans exist to cover: a
+// hidden push, and equally a merge or a reset --hard moving HEAD and the
+// worktree together, each leave that reading identical and so produce nothing
+// for it to detect, which is why those verbs are denied here at the command
+// rather than left to the backstop.
 // Containment is judged against the git root above the payload cwd, and relative
 // operands resolve against any cd or Set-Location the command performs first, so
 // neither a subdirectory cwd nor a directory switch moves a repo path out of
 // scope.
 //
-// SAFETY: this hook can BLOCK a tool call, so it fails OPEN. Any parse error,
-// unrecognized payload, missing command, unidentifiable agent, absent cwd, or
-// path it cannot positively place in the tree exits 0 (allow). It exits 2 (deny)
-// only when certain. A guard bug must never trap legitimate review work.
+// SAFETY: this hook can BLOCK a tool call, so a guard MALFUNCTION fails OPEN:
+// any parse error, unrecognized payload, missing command, or unidentifiable
+// agent exits 0 (allow), and an absent cwd skips the cwd-dependent path checks
+// (no target can be placed without one) while the path-independent heuristics,
+// a git, gh, formatter, or package mutation among them, still deny. A guard
+// bug must never trap legitimate review work. Operand ambiguity the command author chose is a different question, and
+// it takes a per-site judgment rather than that posture: a path operand
+// built through a variable outside the resolvable subset ($PWD, ${PWD}, %CD%, a
+// home-relative path) still cannot be positively placed and allows, a cd target
+// the guard cannot read falls back to the payload cwd, and a destructive cmdlet
+// an enumerating pipeline feeds denies with its operand unresolved. Command
+// text the guard cannot resolve (a substitution or an executor payload nested
+// past the depth bound, a name with a substitution spliced into it) fails
+// CLOSED and denies.
 
 'use strict';
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 function readStdin() {
@@ -72,6 +101,64 @@ function agentClass(t) {
     return null;
 }
 
+// The index just past a command or process substitution opening at `start` (a
+// `$(` or `<(`, or a backtick), matching parentheses across nested substitutions
+// and stepping over inner quoted spans so a `)` inside a string does not close
+// it early. The interior is left untouched: the caller reads it as live command
+// text. An unclosed substitution runs to the end of the string.
+function substitutionEnd(chars, start) {
+    if (chars[start] === '`') {
+        let j = start + 1;
+        while (j < chars.length && chars[j] !== '`') {
+            j += (chars[j] === '\\' && j + 1 < chars.length) ? 2 : 1;
+        }
+        return j + 1;
+    }
+    let j = start + 2;
+    let depth = 1;
+    while (j < chars.length && depth > 0) {
+        const c = chars[j];
+        if (c === '(') depth++;
+        else if (c === ')') depth--;
+        else if (c === "'") { j++; while (j < chars.length && chars[j] !== "'") j++; }
+        else if (c === '"') { j++; while (j < chars.length && chars[j] !== '"') { if (chars[j] === '\\') j++; j++; } }
+        j++;
+    }
+    return j;
+}
+
+// True only where a `$((` span is confidently arithmetic: the inner `(` that
+// opens at at+2 matches the `)` at e-2, so the whole span is exactly one
+// parenthesized group ($((1 + 2)), $(( (a) * b ))). Where that inner `(` closes
+// earlier, the span holds more than one thing inside the outer $(...) ($((cmd);
+// (cmd)), $((cmd) )), and bash reparses it as a command substitution wrapping a
+// subshell list, which it runs. That ambiguous shape is not confidently
+// arithmetic, so it is treated as a command substitution to be collected and
+// scanned, per the fail-closed rule that shell text the guard cannot resolve
+// denies rather than disappearing. Parens inside a quoted span are stepped over,
+// so a `)` inside a string cannot make an early close read as the arithmetic one.
+// A backtick span is never arithmetic.
+//
+// The verdict decides HOW a span's interior is scanned, never whether: an
+// ambiguous span is collected whole as command text, an arithmetic one has the
+// substitutions standing inside it collected one by one. Collecting the arithmetic
+// interior whole instead would deny ordinary arithmetic, whose operators are not
+// shell syntax: the `>` in $((1 > 2)) is a comparison, which a redirect scan reads
+// as a write to a file named 2.
+function arithmeticSpan(chars, at, e) {
+    if (chars[at] !== '$' || chars[at + 1] !== '(' || chars[at + 2] !== '(') return false;
+    if (chars[e - 1] !== ')' || chars[e - 2] !== ')') return false;
+    let depth = 0;
+    for (let k = at + 2; k < e; k++) {
+        const c = chars[k];
+        if (c === "'") { k++; while (k < e && chars[k] !== "'") k++; continue; }
+        if (c === '"') { k++; while (k < e && chars[k] !== '"') { if (chars[k] === '\\') k++; k++; } continue; }
+        if (c === '(') depth++;
+        else if (c === ')') { depth--; if (depth === 0) return k === e - 2; }
+    }
+    return false;
+}
+
 // A copy of the command with every character inside a single- or double-quoted
 // span replaced by NUL, preserving length so indexes stay usable against the
 // original. Backslash escapes follow bash's two context rules, which differ: at
@@ -86,15 +173,141 @@ function agentClass(t) {
 // unterminated quote masks to the end of the string. Quoted text matches no
 // pattern, which is what makes a governed verb or a redirect operator inside an
 // argument invisible.
-function maskQuoted(cmd) {
+//
+// A command substitution ($(...) or backticks) is the exception to both rules:
+// the shell runs it wherever quoting does not suppress it, so it is live command
+// text rather than data, at the top level and inside a double-quoted span alike.
+// Every such span is blanked whole with the SUB_SPAN sentinel, which keeps
+// operand boundaries byte-identical to what the shell reads: a `)` or a closing
+// tick standing in an operand ($(pwd), `true`) never truncates the operand list
+// the way an exposed one would. The interior is instead collected into the `subs`
+// out-parameter (when the caller passes one), for the caller to scan on its own
+// as live command text, which is why echo "$(git commit -m x)" and
+// rm $(true) README.md both deny. A $(( opener is confidently arithmetic only
+// where the span is exactly one parenthesized group, its inner ( matching the )
+// before the outer close (echo "$((1 > 2))" runs no command); every other $((
+// shape is treated as a command substitution wrapping a subshell that bash runs
+// (echo "$((git push) )", whose inner and outer ) are split by a space, and
+// $((git push);(true)), which holds two groups, both run git push), so its
+// interior is collected like any other. An arithmetic span is blanked too, but
+// never without a scan: bash expands a command substitution standing in an
+// arithmetic operand whatever quoting surrounds it ($(( '$(cmd)' )) runs cmd, and
+// the arithmetic error that follows comes after the run), so every $( and backtick
+// inside one is collected as a span of its own. The arithmetic text around them is
+// not read as a command, because its operators are not shell syntax: the > in
+// $((1 > 2)) is a comparison rather than a redirect. A process substitution is not
+// performed on an arithmetic operand, so a <( inside one opens nothing. A
+// process substitution (<(...)) is live at the top level and masked the same way
+// there, but inside double quotes bash performs none, so there it masks as
+// ordinary quoted text. A >( span is left as it stands: the redirect scan reads
+// its > as a redirect whose (...) target classifies in-tree, a deny-leaning
+// over-read that keeps rm >(x) README.md refused, so masking the span would
+// trade a deny away rather than add one. Single quotes suppress
+// substitution, so a span inside them stays literal, and a substitution opener
+// inside a quoted-delimiter heredoc body is data the sink copies, so a body
+// range opens nothing.
+//
+// The `bodies` argument names the ranges of quoted-delimiter heredoc bodies. A
+// heredoc body is literal data, so a quote character in it is a byte rather than
+// a shell quote: read as a quote it would open a span that blanks the live
+// command text after the body (one stray apostrophe hides an entire mutation
+// standing after the terminator). Quotes inside a body range are therefore left
+// as literal characters, and a span opened outside a body ends where a body
+// begins.
+// The sentinel a substitution span masks to. It differs from the NUL quoted spans
+// use because the two need different treatment when a segment is tokenized: quoted
+// text keeps its original characters (git "commit" runs commit, so the token must
+// still read commit), while a substitution expands to text the guard cannot know,
+// so its span must ride as one opaque word rather than as raw $( text a whitespace
+// split would break apart. The input cannot spell it: a raw control character is
+// refused at the boundary before any mask is built.
+const SUB_SPAN = '\x02';
+
+// A token that is entirely a masked substitution span. Its expansion is text
+// the guard cannot know, so every positional-subcommand scan steps over it to
+// the next real token: git $(true) push is judged on push, whatever the
+// substitution prints, since reading the opaque span as the subcommand would
+// match nothing and fall through to allow. Standing as a destructive command's
+// operand the span is placed like any other relative path, at the base the
+// command runs in, which is deny-leaning: rm $(mktemp) denies, with the span
+// named in the reason as an unresolved substitution rather than shipped as its
+// sentinel bytes.
+const SUB_TOKEN = new RegExp(`^${SUB_SPAN}+$`);
+
+// A token with a substitution span spliced into literal text (git $(true)push
+// leaves the subcommand token "\x02...push"). The span's expansion is unknowable
+// and the shell concatenates it with the literal bytes, so the guard cannot
+// resolve what this token is: it may be push, or pushfoo, or anything the
+// substitution prints. This is distinct from SUB_TOKEN, a token that is ENTIRELY
+// a span, which the positional scans step over to the next real token. Where a
+// spliced token stands in a position the guard reads as a NAME (a
+// subcommand, a verb, a script name, a flag), the unresolvable value denies rather
+// than falling through to allow, per the fail-closed rule. `unresolvableSplice`
+// applies that rule across every governed invocation; the readers that go deeper
+// into their own grammar than it does test their own position with this.
+function spliced(tok) {
+    return tok.includes(SUB_SPAN) && !SUB_TOKEN.test(tok);
+}
+
+// A deny reason quotes the offending target, and a target read out of a masked
+// segment can carry a substitution span as its sentinel bytes. Those are
+// control characters no message should ship to the agent reading the denial,
+// so each sentinel run is named as what it stands for: an unresolved
+// substitution.
+function describeTarget(t) {
+    return String(t).replace(new RegExp(`${SUB_SPAN}+`, 'g'), '$(unresolved substitution)');
+}
+
+function maskQuoted(cmd, bodies, subs) {
+    const inBody = i => bodies !== undefined && bodies.some(b => i >= b.from && i < b.to);
     const chars = cmd.split('');
     const dqEscapes = /["\\$`]/;
+    // The substitutions bash performs on an arithmetic operand, each collected as
+    // its own span. Quoting is not honoured here because arithmetic evaluation does
+    // not honour it either, and a <( is not a process substitution there, so only
+    // $( and a backtick open anything.
+    const collectArithmetic = (from, to) => {
+        for (let k = from; k < to; k++) {
+            if (chars[k] === '`' || (chars[k] === '$' && chars[k + 1] === '(')) k = maskSub(k) - 1;
+        }
+    };
+    // Blank one substitution span opening at `at` and collect what the shell runs
+    // inside it, per the arithmetic and collection rules the comment above states:
+    // the whole interior of a span the shell reads as a command substitution, and
+    // the nested substitutions alone of one it reads as arithmetic. Returns the
+    // index just past the span.
+    const maskSub = at => {
+        const e = substitutionEnd(chars, at);
+        const interiorFrom = chars[at] === '`' ? at + 1 : at + 2;
+        if (subs !== undefined) {
+            if (arithmeticSpan(chars, at, e)) collectArithmetic(interiorFrom, e - 1);
+            else subs.push({ from: interiorFrom, to: e - 1 });
+        }
+        for (let k = at; k < e && k < chars.length; k++) chars[k] = SUB_SPAN;
+        return e;
+    };
     for (let i = 0; i < chars.length; i++) {
         if (chars[i] === '\\' && i + 1 < chars.length) { i++; continue; }
+        // A top-level substitution: $(, a backtick, or <( where the preceding
+        // character is not another < (a << is a heredoc, not a process
+        // substitution). Openers inside a single-quoted span never reach this
+        // test, because the quote handler below consumes the span whole.
+        if (!inBody(i) && (chars[i] === '`'
+            || (chars[i] === '$' && chars[i + 1] === '(')
+            || (chars[i] === '<' && chars[i + 1] === '(' && chars[i - 1] !== '<'))) {
+            i = maskSub(i) - 1;
+            continue;
+        }
         const q = chars[i];
         if (q !== '"' && q !== "'") continue;
+        if (inBody(i)) continue;
         let j = i + 1;
         while (j < chars.length && chars[j] !== q) {
+            if (inBody(j)) break;
+            if (q === '"' && ((chars[j] === '$' && chars[j + 1] === '(') || chars[j] === '`')) {
+                j = maskSub(j);
+                continue;
+            }
             if (q === '"' && chars[j] === '\\' && j + 1 < chars.length && dqEscapes.test(chars[j + 1])) {
                 chars[j] = '\x00';
                 j++;
@@ -107,62 +320,34 @@ function maskQuoted(cmd) {
     return chars.join('');
 }
 
-// A copy of the masked command with the > characters inside a quoted-delimiter
-// heredoc body blanked. A heredoc body is data the receiving command reads on
-// stdin rather than shell syntax, so a > in one is a comparison or an arrow
-// function; read as a redirect operator it denies ordinary work, since writing a
-// driver script through a heredoc is how an agent that holds no Write tool
-// authors one.
+// The ranges of quoted-delimiter heredoc bodies in the command. A heredoc body
+// is data the receiving command reads on stdin rather than shell syntax, so its
+// content is literal: `maskQuoted` reads these ranges to keep a body quote from
+// opening a masking span, and the redirect blanking below reads them to blank a
+// body's > operators. Only the quoted spellings (<<'EOF', <<"EOF") qualify: both
+// disable parameter expansion and command substitution, so their bodies are
+// literal; an unquoted <<EOF still runs $(...) in its body and is left alone.
 //
-// A blanked body redirect keeps its own sentinel rather than the NUL quoted spans
-// use, because the two need different treatment downstream: a > is both a
-// redirect operator and a command boundary, and only the first reading is wrong
-// inside a body. `segment` cuts on the sentinel as it would on the character, so
-// an operand list still ends where the shell ends it, while `writeTargets` no
-// longer sees a redirect. Erasing the boundary instead would merge a body's
-// operands into the command around it, which is how a hidden `>` turns into
-// altered parsing for every heuristic that reads operands.
-//
-// Only the redirect operator is blanked, never the whole span, and that bound is
-// what makes the rest of this function's imprecision affordable. Command-position
-// scanning runs over the body untouched, so a governed verb inside one still
-// denies (the accepted false hit named in denyReason's header) and, more to the
-// point, a body that really is a command still denies however it reaches a shell:
-// `cat <<'EOF' | sh` needs no special case here, because the verb inside it was
-// never hidden. The residual this leaves is a hidden redirect, and a redirect
-// that lands leaves a tracked-file delta, which is exactly what the tree-state
-// check around a review round sees. A hidden git or gh mutation would not, and
-// nothing here can hide one.
-//
-// Only the quoted spellings (<<'EOF', <<"EOF") qualify. Both disable parameter
-// expansion and command substitution, so their bodies are literal; an unquoted
-// <<EOF still runs $(...) in its body and is left entirely alone.
-//
-// Three bounds keep the blanking near the body. A << preceded by another < is a
-// here-string operand, not an introduction. The delimiter must be a whole word,
-// so the desyncing spellings bash reads differently (<<'EOF'X, <<'E'OF) match
-// nothing here and blank nothing. And the body starts after the introducing line,
-// so a redirect on that line (cat > path <<'EOF', and the continuation case
-// above) stays visible. What is left imprecise on purpose: a <<'X' sitting in
-// comment or data position starts a span here that the shell never opens, so a
-// redirect after it can go unseen. That costs a hidden file write, which the
-// tree-state check catches, and buying it back would mean tracking comments and
-// nested bodies through the mask.
-const BODY_REDIRECT = '\x01';
-function maskHeredocRedirects(cmd, masked) {
-    const chars = masked.split('');
+// The intro is located in the passed masked copy so a << inside a quoted
+// argument or inside a substitution span is not read as one: the first is data,
+// and the second is scanned as its own command, where its heredoc is parsed
+// afresh. Three bounds keep a range on the body. A << after
+// another < is a here-string operand, not an introduction. The delimiter must be
+// a whole word, so the desyncing spellings bash reads differently (<<'EOF'X,
+// <<'E'OF) match nothing. And the body starts after the introducing line, walking
+// a backslash continuation forward first, so a redirect on that line stays
+// outside the range. A body already found is data, so an introduction inside one
+// opens nothing: an introduction falling in a range is skipped, which keeps a
+// range from running past the terminator the shell reads.
+function heredocBodies(cmd, masked) {
+    const bodies = [];
     const intro = /(?<!<)<<-?[ \t]*(?:'([^'\n]*)'|"([^"\n]*)")(?=[ \t\r\n;|&)]|$)/g;
     let m;
     while ((m = intro.exec(cmd)) !== null) {
-        if (masked[m.index] === '\x00') continue;
+        if (masked[m.index] === '\x00' || masked[m.index] === SUB_SPAN) continue;
+        if (bodies.some(b => m.index >= b.from && m.index < b.to)) continue;
         const delim = m[1] !== undefined ? m[1] : m[2];
         if (delim === '') continue;
-        // The body opens after the introducing LOGICAL line, so a backslash
-        // continuation carries it further: the shell removes the backslash and
-        // the newline before it reads a body at all, which leaves any redirect
-        // on the continued line genuine shell syntax rather than data. An even
-        // run of trailing backslashes is an escaped backslash, not a
-        // continuation.
         let nl = cmd.indexOf('\n', m.index + m[0].length);
         while (nl >= 0) {
             const trail = /\\+$/.exec(cmd.slice(0, nl));
@@ -171,22 +356,271 @@ function maskHeredocRedirects(cmd, masked) {
         }
         if (nl < 0) continue;
         const esc = delim.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const t = new RegExp('^[ \\t]*' + esc + '[ \\t]*\\r?$', 'm').exec(cmd.slice(nl + 1));
+        const t = new RegExp('^[ \\t]*' + esc + '[ \\t]*$', 'm').exec(cmd.slice(nl + 1));
         const end = t === null ? cmd.length : nl + 1 + t.index;
-        for (let i = nl + 1; i < end; i++) if (chars[i] === '>') chars[i] = BODY_REDIRECT;
+        bodies.push({ from: nl + 1, to: end });
+    }
+    return bodies;
+}
+
+// A copy of the masked command with the > characters inside each heredoc body
+// blanked. Read as a redirect operator a body's > denies ordinary work, since a
+// > in a body is a comparison or an arrow function and writing a driver script
+// through a heredoc is how an agent that holds no Write tool authors one. The
+// sentinel differs from the NUL quoted spans use because the two need different
+// treatment downstream: a > is both a redirect operator and a command boundary,
+// and only the first reading is wrong inside a body. `segment` cuts on the
+// sentinel as it would on the character, so an operand list still ends where the
+// shell ends it, while `writeTargets` does not see a redirect. Erasing the
+// boundary instead would merge a body's operands into the command around it.
+//
+// This blanking is the only thing done here: command-position scanning still runs
+// over the body, so a governed verb inside one denies wherever it sits. The whole
+// exemption that lets a data sink's body through untouched is decided by
+// `heredocExemption` over the whole command string, and its mask is applied in
+// `denyReason`.
+const BODY_REDIRECT = '\x01';
+function maskHeredocRedirects(masked, bodies) {
+    const chars = masked.split('');
+    for (const b of bodies) {
+        for (let i = b.from; i < b.to; i++) if (chars[i] === '>') chars[i] = BODY_REDIRECT;
     }
     return chars.join('');
 }
 
-// One command out of a chain, pipeline, or multi-line script: the original text
-// from `from` up to the next unquoted shell separator, redirect, or line break.
+// The heredoc-introducing line parsed into a token stream, or null when it is not
+// a well-formed quoted-delimiter heredoc line at all (an unbalanced quote, a
+// backslash continuation, or a heredoc whose delimiter is unquoted, empty, or
+// desyncing). An excluded construct on an otherwise well-formed line sets the
+// `blocked` flag instead of failing outright: the tokens parsed before it are
+// kept, so `heredocExemption` refuses on the flag rather than on a garbled token
+// stream, which is what lets a single check discriminate the excluded-construct
+// condition. The excluded constructs are a pipe, a separator, a subshell or brace
+// group, a command or process substitution, an input redirect that is not the
+// heredoc, a descriptor dup, a word-start comment, and a second heredoc.
+//
+// Quote-aware and confined to the intro line, so body text (a stray apostrophe
+// among it) can never reach this decision, which is the specific defect a
+// condition set read off a body-wide quote mask carried. A word records whether
+// it was quoted; a redirect records its file-descriptor prefix and its append
+// form; a heredoc records its delimiter and dash form.
+function parseIntro(intro) {
+    if (/\\$/.test(intro)) return null;                 // a backslash continuation
+    const n = intro.length;
+    const stream = [];
+    let cur = null;
+    let heredoc = null;
+    let blocked = false;
+    const flush = () => { if (cur) { stream.push({ type: 'word', text: cur.text, quoted: cur.quoted }); cur = null; } };
+    let i = 0;
+    while (i < n) {
+        const c = intro[i];
+        if (c === ' ' || c === '\t' || c === '\r') { flush(); i++; continue; }
+        if (c === "'") {
+            let j = i + 1, s = '';
+            while (j < n && intro[j] !== "'") { s += intro[j]; j++; }
+            if (j >= n) return null;                    // an unbalanced quote
+            cur = cur || { text: '', quoted: false };
+            cur.text += s; cur.quoted = true;
+            i = j + 1; continue;
+        }
+        if (c === '"') {
+            let j = i + 1, s = '', sub = false;
+            while (j < n && intro[j] !== '"') {
+                if ((intro[j] === '$' && intro[j + 1] === '(') || intro[j] === '`') { sub = true; break; }   // a live substitution
+                if (intro[j] === '\\' && j + 1 < n && /["\\$`]/.test(intro[j + 1])) { s += intro[j + 1]; j += 2; continue; }
+                s += intro[j]; j++;
+            }
+            if (sub) { blocked = true; break; }
+            if (j >= n) return null;                    // an unbalanced quote
+            cur = cur || { text: '', quoted: false };
+            cur.text += s; cur.quoted = true;
+            i = j + 1; continue;
+        }
+        if (c === '\\') { if (i + 1 >= n) return null; cur = cur || { text: '', quoted: false }; cur.text += intro[i + 1]; i += 2; continue; }
+        if (c === '#' && cur === null) { blocked = true; break; }    // a comment at word start
+        if (c === '|' || c === ';' || c === '&' || c === '(' || c === ')' || c === '{' || c === '}' || c === '`') { blocked = true; break; }
+        if (c === '$' && intro[i + 1] === '(') { blocked = true; break; }
+        if (c === '<' && intro[i + 1] === '(') { blocked = true; break; }
+        if (c === '<' && intro[i + 1] === '<') {
+            flush();
+            let j = i + 2, dash = false;
+            if (intro[j] === '-') { dash = true; j++; }
+            while (j < n && (intro[j] === ' ' || intro[j] === '\t')) j++;
+            if (intro[j] !== "'" && intro[j] !== '"') return null;   // an unquoted delimiter
+            const q = intro[j]; j++;
+            let d = '';
+            while (j < n && intro[j] !== q) { d += intro[j]; j++; }
+            if (j >= n) return null;                    // an unbalanced delimiter quote
+            j++;
+            if (j < n && !/[ \t\r]/.test(intro[j])) return null;     // a desyncing suffix (<<'EOF'X)
+            if (d === '') return null;                  // an empty delimiter
+            if (heredoc) { blocked = true; break; }     // a second heredoc
+            heredoc = { delim: d, dash };
+            stream.push({ type: 'heredoc' });
+            i = j; continue;
+        }
+        if (c === '<') { blocked = true; break; }        // an input redirect that is not a heredoc
+        if (c === '>') {
+            let fd = '';
+            if (cur && !cur.quoted && /^[0-9]+$/.test(cur.text)) { fd = cur.text; cur = null; }
+            else flush();
+            let j = i + 1, append = false;
+            if (intro[j] === '>') { append = true; j++; }
+            if (intro[j] === '|') j++;
+            if (intro[j] === '&') { blocked = true; break; }         // a descriptor dup
+            stream.push({ type: 'redir', fd, append });
+            i = j; continue;
+        }
+        cur = cur || { text: '', quoted: false };
+        cur.text += c; i++;
+    }
+    if (!blocked) flush();
+    if (!heredoc && !blocked) return null;              // not a heredoc line at all
+    return { stream, heredoc, blocked };
+}
+
+// The body range { from, to } to mask as data, or null. The exemption holds only
+// where the ENTIRE command string is one simple heredoc write of exactly this
+// shape, decided before and independently of the quote mask so body text cannot
+// influence it:
+//   1. one `cat` or `tee` owns one heredoc whose delimiter is quoted;
+//   2. one `>`/`>>` redirect with no descriptor prefix, or one `tee` file
+//      operand, is the only destination;
+//   3. that destination resolves inside the class's writable set or outside
+//      the git root entirely;
+//   4. the terminator is matched by bash's own rule (a line equal to the
+//      delimiter for <<, leading tabs stripped for <<-, no other whitespace);
+//   5. nothing but whitespace follows the terminator;
+//   6. the introducing line carries no excluded construct: a second <<, a
+//      separator, a pipe, a further redirect, a subshell or brace group, a
+//      command or process substitution, a backslash continuation, an unquoted #,
+//      or an unbalanced quote (conditions 1, 2, and 6 are what `parseIntro`
+//      enforces on the intro line).
+// Because the shape admits no separator, pipe, subshell, substitution, or second
+// heredoc, the shell can read no command this mask would hide: the masked window
+// cannot be wider than the one the shell parses. Every bypass either review
+// round verified requires an excluded construct, so each dies here by
+// construction. Anything outside the shape leaves the body scanned, and every
+// unresolvable value (a destination built from a variable, a missing terminator)
+// refuses.
+function heredocExemption(cmd, cwd, strict) {
+    const firstNL = cmd.indexOf('\n');
+    if (firstNL < 0) return null;                       // a heredoc body sits on a later line
+    const parsed = parseIntro(cmd.slice(0, firstNL));
+    if (parsed === null) return null;
+    const { stream, heredoc, blocked } = parsed;
+    if (blocked) return null;                           // an excluded construct on the intro line
+    if (!heredoc || !stream.length || stream[0].type !== 'word' || stream[0].quoted) return null;
+    const owner = stream[0].text;
+    if (owner !== 'cat' && owner !== 'tee') return null;
+    // One destination, and no stray operand that would change what the sink reads.
+    const dests = [];
+    for (let k = 1; k < stream.length; k++) {
+        const t = stream[k];
+        if (t.type === 'heredoc') continue;
+        if (t.type === 'redir') {
+            if (t.fd) return null;                      // a file-descriptor prefix
+            const next = stream[k + 1];
+            if (!next || next.type !== 'word') return null;
+            dests.push(next.text);
+            k++;
+            continue;
+        }
+        if (t.text.startsWith('-')) {
+            if (owner === 'tee') continue;              // a tee flag
+            return null;                                // cat takes no flag in this shape
+        }
+        if (owner !== 'tee') return null;               // a stray file operand to cat
+        dests.push(t.text);
+    }
+    if (dests.length !== 1) return null;
+    const root = repoRoot(cwd);
+    const writable = strict ? KIT_ONLY : GATE_OUTPUT_DIRS;
+    // The destination must be a place the guard can positively put the body:
+    // inside the class's writable set, or outside the tree under review
+    // entirely, which mirrors the plain redirect this command is a spelling of
+    // (echo hi > /tmp/review.md allows, so a report heredoc aimed at the same
+    // path does too). An unresolvable destination refuses, so "outside" is a
+    // positive placement rather than a failure to place.
+    if (!writableTarget(dests[0], cwd, root, writable)
+        && (resolveTarget(dests[0], cwd) === null || inTreeTarget(dests[0], cwd, root, writable))) {
+        return null;
+    }
+    // The terminator, by bash's own rule, and nothing after it. CRLF is normalized
+    // to a bare newline and a bare carriage return is refused before the command
+    // reaches here, so a terminator line carries no trailing \r and the match is
+    // exactly bash's ^DELIM$ (leading tabs stripped for the dash form).
+    const bodyStart = firstNL + 1;
+    let pos = bodyStart, termStart = -1, termEnd = -1;
+    for (const line of cmd.slice(bodyStart).split('\n')) {
+        const stripped = heredoc.dash ? line.replace(/^\t+/, '') : line;
+        if (stripped === heredoc.delim) { termStart = pos; termEnd = pos + line.length; break; }
+        pos += line.length + 1;
+    }
+    if (termStart < 0) return null;                     // no terminator
+    if (/\S/.test(cmd.slice(termEnd))) return null;     // a command after the terminator
+    return { from: bodyStart, to: termStart };
+}
+
+// A copy of the command with every line continuation spliced out: a backslash
+// standing immediately before a newline joins the two lines into one, so the shell
+// reads no boundary there at all and `git \<newline>push` runs git push. Left in
+// place, that newline ends an operand list in `segment` and every
+// positional-subcommand reader loses its subcommand. The pair becomes two spaces
+// rather than being deleted, so every index into the command stays valid for the
+// masks, the heredoc body ranges, and the substitution ranges built alongside them,
+// and the join reads as the word boundary the shell also puts there.
+//
+// Only an odd-length run of backslashes continues a line: in an even run every
+// backslash is itself escaped and the newline after it is a real separator. That is
+// bash's rule and the one `heredocBodies` walks its intro line by. A quoted-delimiter
+// heredoc body is literal data where bash splices nothing, so a pair inside one of
+// `bodies` is left exactly as it stands. Bash splices nothing inside a single-quoted
+// span either, and a pair there is spliced anyway: a quoted span is blanked out of
+// every pattern the guard matches, so the only thing that reading changes is the
+// spelling of an operand whose own bytes carry a newline, which resolves to a path
+// in the same place either way.
+function spliceContinuations(cmd, bodies) {
+    const chars = cmd.split('');
+    for (let i = 1; i < chars.length; i++) {
+        if (chars[i] !== '\n' || chars[i - 1] !== '\\') continue;
+        let run = 0;
+        while (run < i && chars[i - 1 - run] === '\\') run++;
+        if (run % 2 === 0) continue;
+        if (bodies.some(b => i - 1 >= b.from && i - 1 < b.to)) continue;
+        chars[i - 1] = ' ';
+        chars[i] = ' ';
+    }
+    return chars.join('');
+}
+
+// One command out of a chain, pipeline, or multi-line script: the text from
+// `from` up to the next unquoted shell separator, redirect, or line break.
 // The cut is found in the masked copy, so a separator inside a quoted argument
-// (sed -i 's/a/b/;s/c/d/' src/x) does not truncate the operand list. A newline
-// ends a command as surely as a semicolon; without it the next line's command
-// name reads as an operand of this one.
+// (sed -i 's/a/b/;s/c/d/' src/x) or inside a substitution span (git -C $(pwd)
+// commit) does not truncate the operand list. A newline ends a command as surely
+// as a semicolon; without it the next line's command name reads as an operand of
+// this one. Every newline still standing here is one the shell reads, because a
+// continued line's backslash-newline pair is spliced out of both copies before the
+// masks are built. The `)` stays in the cut set for the subshell closer the mask
+// leaves visible: in (git push), the operand list must end at the paren. A backtick is
+// not in it, because every live backtick span is blanked before this runs and a
+// tick still visible in the masked copy is a literal character (an escaped tick,
+// or data inside a heredoc body), where a cut would truncate the operand list at
+// a byte the shell reads as part of a word. The \x01 sentinel is
+// maskHeredocRedirects's blanked body redirect, a boundary the shell still
+// reads; a bare carriage return is refused at the boundary, so it never reaches
+// this cut. The returned text carries the original characters, except that a
+// substitution span rides as its sentinel bytes: the expansion's value is
+// unknowable, so the span must tokenize as one opaque word rather than as raw
+// $( text a whitespace split would break apart.
 function segment(cmd, masked, from) {
-    const cut = masked.slice(from).search(/[;|&<>)\r\n\x01]/);
-    return cut < 0 ? cmd.slice(from) : cmd.slice(from, from + cut);
+    const cut = masked.slice(from).search(/[;|&<>)\n\x01]/);
+    const to = cut < 0 ? cmd.length : from + cut;
+    let out = '';
+    for (let i = from; i < to; i++) out += masked[i] === SUB_SPAN ? SUB_SPAN : cmd[i];
+    return out;
 }
 
 // One token with its surrounding quotes removed. Inside double quotes a backslash
@@ -200,24 +634,64 @@ function unquote(t) {
     return t.replace(/^["']|["']$/g, '');
 }
 
-// Whitespace-separated tokens of a segment, unquoted.
+// The words of a segment, quoting removed the way the shell removes it. A word
+// ends at whitespace and nowhere else, so quoted and unquoted runs standing
+// adjacent are one word ("git"" push" and --message="x y" are each a single
+// argument), which is what the shell hands the command and what a reader comparing
+// a subcommand or a nested payload against a name must see: split at the quote
+// instead, "git"" push" reads as a git with no subcommand and a stray operand.
+// Inside a double-quoted run a backslash escapes " \ $ or ` and nothing else, so a
+// Windows separator survives; a single-quoted run is literal; an unterminated
+// quote runs to the end of the segment. Outside a quoted run a backslash is taken
+// as an escape only before a quote character, which is the one place the reading
+// matters here: \" is a literal quote that opens no run, while the backslash in a
+// Windows path (src\file) is a separator this host's shells read as one.
 function tokens(seg) {
-    return (seg.match(/"(?:\\.|[^"\\])*"|'[^']*'|\S+/g) || []).map(unquote);
+    const out = [];
+    let cur = null;
+    for (let i = 0; i < seg.length; i++) {
+        const c = seg[i];
+        if (/\s/.test(c)) { if (cur !== null) out.push(cur); cur = null; continue; }
+        if (cur === null) cur = '';
+        if (c === '\\' && (seg[i + 1] === '"' || seg[i + 1] === "'")) { cur += seg[i + 1]; i++; continue; }
+        if (c === '"' || c === "'") {
+            let j = i + 1;
+            while (j < seg.length && seg[j] !== c) {
+                if (c === '"' && seg[j] === '\\' && j + 1 < seg.length && /["\\$`]/.test(seg[j + 1])) j++;
+                cur += seg[j];
+                j++;
+            }
+            i = j;
+            continue;
+        }
+        cur += c;
+    }
+    if (cur !== null) out.push(cur);
+    return out;
 }
 
 // Every index just past an occurrence of one of `names` in command position
-// (start of string, or after whitespace or a shell separator) in the masked
-// command, paired with the matched name, lowercased. An invocation may carry a
-// leading backslash (\git), a directory prefix (/usr/bin/git,
-// ./node_modules/.bin/prettier), and an executable suffix (git.exe), since all
-// three are ordinary ways to name the same command. Residual false hit, accepted:
-// an operand whose final path element is exactly a governed name (wc -l docs/rm)
-// reads as an invocation, which matters only if a following operand then places
-// in the tree. The mask keeps a name inside a quoted argument from matching at
-// all.
+// (start of string, or after whitespace, a shell separator, a backtick, or a
+// substitution span, all of which open a command position: what follows a
+// substitution the shell runs is a fresh word the shell parses, so $(true)git
+// stands git in command position exactly as `true`git and ;git do) in the masked
+// command, paired with the matched name, lowercased. A substitution span also
+// closes the word on the trailing side, so a name glued to one (git$(true) push,
+// which the shell resolves to git push when the substitution prints nothing) is
+// still matched, and the span rides on as the leading token of its segment, where
+// a full-span operand token is stepped over and the real subcommand is read. Only
+// a substitution abutting the name is a boundary here: a substitution splitting
+// the name itself (g$(x)it) leaves no whole name to match and stays the documented
+// assembly miss. An invocation may carry a leading backslash (\git), a directory
+// prefix (/usr/bin/git, ./node_modules/.bin/prettier), and an executable suffix
+// (git.exe), since all three are ordinary ways to name the same command. Residual
+// false hit, accepted: an operand whose final path element is exactly a governed
+// name (wc -l docs/rm) reads as an invocation, which matters only if a following
+// operand then places in the tree. The mask keeps a name inside a quoted argument
+// from matching at all.
 function commandPositions(masked, names) {
     const re = new RegExp(
-        `(?:^|[\\s;|&(])\\\\?(?:[^\\s;|&(]*[\\\\/])?(${names.join('|')})(?:\\.(?:exe|cmd|bat|ps1))?(?=\\s|$)`,
+        `(?:^|[\\s;|&(\`${SUB_SPAN}])\\\\?(?:[^\\s;|&(]*[\\\\/])?(${names.join('|')})(?:\\.(?:exe|cmd|bat|ps1))?(?=\\s|$|${SUB_SPAN})`,
         'gi'
     );
     const out = [];
@@ -272,15 +746,23 @@ function lastPathSwitchBefore(cmd, masked, end) {
 // tree, only deeper into it or nowhere at all: the target as it would resolve
 // (an earlier command in the chain may create it, mkdir -p tmp && cd tmp) and
 // the cwd itself (with ; a failed cd leaves the shell exactly where it was). A
-// target routed through a variable or a backtick is unknowable before the shell
-// runs, so no candidate is returned and the caller allows.
+// target the guard cannot read at all (one routed through a variable or a
+// backtick, an option-shaped one such as cd -, an empty one) falls back to the
+// payload cwd rather than to no candidate: every caller iterates the returned
+// candidates, so an empty list turns the write, mutation, and overwrite checks
+// off for the whole command, and a cd prefix would disarm them. The fallback
+// restores the payload-cwd baseline rather than the directory the shell is
+// actually in: where a readable switch earlier in the chain already moved the
+// base elsewhere (cd C:/Users && cd $FOO && rm README.md), judging from the
+// payload cwd can deny an operand the shell resolves outside the tree. That
+// cost leans toward denial and is the price of keeping the checks armed.
 function effectiveDirs(cmd, masked, at, cwd) {
     const target = lastPathSwitchBefore(cmd, masked, at);
     if (target === null) return [cwd];
     const bare = unquote(target);
-    if (!bare || bare.startsWith('-') || /[$%`]/.test(bare)) return [];
+    if (!bare || bare.startsWith('-') || /[$%`]/.test(bare)) return [cwd];
     let resolved;
-    try { resolved = path.resolve(cwd, bare); } catch { return []; }
+    try { resolved = path.resolve(cwd, bare); } catch { return [cwd]; }
     try {
         if (fs.statSync(resolved).isDirectory()) return [resolved];
     } catch { /* not a directory today: judge both candidates below */ }
@@ -291,17 +773,30 @@ function effectiveDirs(cmd, masked, at, cwd) {
 // absolute path normalized first: a \\?\ extended-length prefix on a drive path
 // is stripped, and on a Windows host the Git-Bash form /<drive>/<rest> becomes
 // <drive>:/<rest> (it is what pwd prints inside the Bash tool, so it names
-// in-tree files with no evasive intent). Null for everything that cannot be
-// resolved before the shell runs, which is the fail-open direction: a
-// descriptor dup (2>&1), a path built through a shell or environment variable,
-// a home-relative path, the null device.
+// in-tree files with no evasive intent). A deterministic subset of shell
+// spellings resolves too, because each names a value fixed before the shell
+// runs: $PWD, ${PWD}, and %CD% are the directory the command runs in, which is
+// `base` itself (base already carries any preceding cd, so this is what the
+// shell would compute), and a bare ~ or a ~/ prefix is the home directory,
+// which sits outside the repo, so resolving it turns "cannot place" into a
+// confirmed out-of-tree answer rather than an unplaceable one. Precision caveat
+// on ~: bash expands it only when unquoted, and quotes are stripped above this
+// test, so a quoted "~/x" is expanded here where the shell would read
+// <base>/~/x; that corner turns a deny into an allow and is accepted rather
+// than threading quotedness through every caller. Null for everything else that
+// cannot be resolved before the shell runs, which is the fail-open direction: a
+// descriptor dup (2>&1), a path built through any other shell or environment
+// variable, a ~user path, the null device.
 function resolveTarget(raw, base) {
     let s = String(raw || '').trim().replace(/^["']|["']$/g, '');
     if (!s) return null;
     if (s.startsWith('&')) return null;                       // a descriptor, not a path
     if (/^\\\\\?\\[A-Za-z]:/.test(s)) s = s.slice(4);         // extended-length prefix
     if (path.sep === '\\' && /^\/[A-Za-z]\//.test(s)) s = `${s[1]}:${s.slice(2)}`;
-    if (/[$%`]/.test(s) || s.startsWith('~')) return null;    // unresolvable before the shell runs
+    s = s.replace(/\$\{PWD\}|\$PWD(?![0-9A-Za-z_])/g, () => base)
+        .replace(/%CD%/gi, () => base);
+    if (s === '~' || /^~[\\/]/.test(s)) s = path.join(os.homedir(), s.slice(1));
+    if (/[$%`]/.test(s) || s.startsWith('~')) return null;    // outside the resolvable subset
     if (/^(?:\/dev\/null|nul)$/i.test(s)) return null;        // the null device
     try { return path.resolve(base, s); } catch { return null; }
 }
@@ -324,6 +819,19 @@ function inTreeTarget(raw, base, root, writable) {
         return !rel.split(/[\\/]/).some(part => writable.includes(part.toLowerCase()));
     }
     return !outward(path.relative(resolved, root));           // an ancestor of the repo
+}
+
+// True when a target path resolves to a place the class may write: inside `root`
+// and under one of `writable` at any depth. The inverse of inTreeTarget rather than
+// its negation, since both answer false for a path they cannot place, and the
+// heredoc exemption needs the positive answer: an unresolvable destination leaves
+// the body scanned.
+function writableTarget(raw, base, root, writable) {
+    const resolved = resolveTarget(raw, base);
+    if (resolved === null) return false;
+    const rel = path.relative(root, resolved);
+    if (rel === '' || path.isAbsolute(rel) || /^\.\.(?:[\\/]|$)/.test(rel)) return false;
+    return rel.split(/[\\/]/).some(part => writable.includes(part.toLowerCase()));
 }
 
 // True when a target resolves to something that already exists on disk. The
@@ -358,14 +866,28 @@ const GIT_MUTATIONS = new Set([
 // subcommand after it is still read correctly.
 const GIT_VALUE_FLAGS = /^(?:-C|-c|--git-dir|--work-tree|--namespace|--exec-path|--config-env)$/;
 
+// git runs an alias as its subcommand, and `-c alias.<name>=<value>` defines one
+// for the invocation, so the command's real verb sits in a config value rather
+// than in the token the subcommand scan reads: `git -c alias.x='!git push' x`
+// pushes, and no shell escape is needed for it, since the bare `alias.p=push`
+// spelling reaches the same verb. That value is data to the shell and a command
+// to git, so the quote mask is right to treat it as data and cannot be what
+// bounds it. The subcommand is therefore unresolvable from the command line and
+// denies, per the fail-closed rule. The bound is the alias key rather than the
+// value's shape, so an ordinary assignment whose value merely contains a word
+// that also names a subcommand (git -c core.pager='less push' log) still allows.
+const GIT_ALIAS_CONFIG = /^alias\./i;
+
 // A short description of the git state mutation in the command, or null when
 // every git invocation in it is a read. Scans the whole string, so a chain
 // (git diff && git checkout main) is judged on its worst member, and skips the
 // global flags between "git" and the subcommand (git -C . commit,
-// git --no-pager checkout). Reads stay allowed, including the ones that share a
-// prefix with a mutation (merge-base, ls-files), the read subverbs of the
-// subcommands that do both (git submodule status, git bisect log, git branch
-// --list), and an invocation asking for help. fetch, remote, and config are
+// git --no-pager checkout) along with any masked substitution span standing
+// there (git $(true) push), per the SUB_TOKEN rule. Reads stay allowed,
+// including the ones that share a prefix with a mutation (merge-base,
+// ls-files), the read subverbs of the subcommands that do both (git submodule
+// status, git bisect log, git branch --list), and an invocation asking for
+// help. fetch, remote, and config are
 // deliberately absent: they touch no tracked file in the tree under review, and
 // resolving a base ref (git fetch origin, git config --get) is review work.
 // True when a git branch or tag invocation names a ref to create: it carries a
@@ -380,11 +902,19 @@ function gitMutation(cmd, masked) {
     for (const hit of commandPositions(masked, ['git'])) {
         const toks = tokens(segment(cmd, masked, hit.at));
         let i = 0;
-        while (i < toks.length && toks[i].startsWith('-')) {
+        while (i < toks.length && (toks[i].startsWith('-') || SUB_TOKEN.test(toks[i]))) {
+            const aliasKey = ((toks[i] === '-c' || toks[i] === '--config-env')
+                && GIT_ALIAS_CONFIG.test(toks[i + 1] || ''))
+                || /^--config-env=alias\./i.test(toks[i]);
+            if (aliasKey) return 'a git alias defined on the command line (the subcommand is in the alias value, not on the command line)';
             i += GIT_VALUE_FLAGS.test(toks[i]) ? 2 : 1;
         }
         const sub = (toks[i] || '').toLowerCase();
         if (!sub) continue;
+        // A substitution spliced into the subcommand token (git $(true)push) leaves
+        // a value the guard cannot resolve to a subcommand, so it denies rather than
+        // matching no mutation name and falling through, per the fail-closed rule.
+        if (spliced(sub)) return 'a git subcommand the guard cannot resolve (a substitution is spliced into it)';
         const rest = toks.slice(i + 1);
         // A help flag is documentation only in the position git itself reads it,
         // immediately after the subcommand. Anywhere later it can be an option's
@@ -416,7 +946,12 @@ function gitMutation(cmd, masked) {
         // Subcommands that mutate under a subverb, which is their first bare
         // operand: git worktree list, git submodule status, and git bisect log
         // stay reads, and a path that merely contains a verb does not count.
-        const subverb = (rest.filter(a => !a.startsWith('-'))[0] || '').toLowerCase();
+        const subverb = (rest.filter(a => !a.startsWith('-') && !SUB_TOKEN.test(a))[0] || '').toLowerCase();
+        // The subverb decides the mutation for these three, so a substitution spliced
+        // into it (git worktree $(true)add) is as unresolvable as a spliced subcommand.
+        if (spliced(subverb) && /^(?:worktree|submodule|bisect)$/.test(sub)) {
+            return `a git ${sub} subcommand the guard cannot resolve (a substitution is spliced into it)`;
+        }
         if (sub === 'worktree' && /^(?:add|remove|move|prune)$/.test(subverb)) return 'a git worktree mutation';
         if (sub === 'submodule' && /^(?:add|update|deinit|sync|set-url|absorbgitdirs)$/.test(subverb)) return 'a git submodule mutation';
         if (sub === 'bisect' && /^(?:start|good|bad|new|old|skip|reset|run|replay)$/.test(subverb)) return 'a git bisect mutation';
@@ -443,10 +978,17 @@ function ghMutation(cmd, masked) {
         const bare = [];
         for (let i = 0; i < toks.length; i++) {
             if (toks[i].startsWith('-')) { if (GH_VALUE_FLAGS.test(toks[i])) i++; continue; }
+            if (SUB_TOKEN.test(toks[i])) continue;
             bare.push(toks[i]);
         }
         const group = (bare[0] || '').toLowerCase();
         const verb = (bare[1] || '').toLowerCase();
+        // The command group and its verb decide the mutation, so a substitution
+        // spliced into either (gh pr $(true)merge 1) leaves an unresolvable value
+        // that denies rather than matching no verb and falling through.
+        if (spliced(group) || spliced(verb)) {
+            return 'a gh subcommand the guard cannot resolve (a substitution is spliced into it)';
+        }
         if (group === 'pr' && /^(?:merge|close|edit|comment|review|ready)$/.test(verb)) {
             return `a pull-request mutation (gh pr ${verb})`;
         }
@@ -498,12 +1040,18 @@ function writeTargets(cmd, masked) {
         if (t) out.push({ target: t[1], at: m.index });
     }
     for (const hit of commandPositions(masked, ['tee'])) {
-        for (const t of tokens(segment(cmd, masked, hit.at)).filter(a => !a.startsWith('-'))) {
+        // A descriptor prefix standing against the redirect that cut this
+        // segment reads as a tee operand and denies, which is the same false
+        // denial mutationTargets prices above and is priced for the same reason.
+        const seg = segment(cmd, masked, hit.at);
+        for (const t of tokens(seg).filter(a => !a.startsWith('-'))) {
             out.push({ target: t, at: hit.at });
         }
     }
     for (const hit of commandPositions(masked, ['sed'])) {
-        const toks = tokens(segment(cmd, masked, hit.at));
+        // The same false denial the tee loop above prices, for the same reason.
+        const seg = segment(cmd, masked, hit.at);
+        const toks = tokens(seg);
         if (!toks.some(a => /^-i/.test(a) || a === '--in-place')) continue;
         // With -e or -f the script arrives as that flag's value, so every bare
         // operand is a file; with neither, the first bare operand is the script.
@@ -625,7 +1173,18 @@ function cpDestination(toks) {
 function mutationTargets(cmd, masked, shellNames, cmdletNames) {
     const out = [];
     for (const hit of commandPositions(masked, shellNames)) {
-        const toks = tokens(segment(cmd, masked, hit.at));
+        // A redirect cuts this segment, so a file-descriptor prefix standing
+        // against the operator (the 2 of rm .kit/x 2>&1) is read as an operand
+        // and denies. That false denial is deliberate rather than unnoticed.
+        // Stripping the digits empties the operand list wherever they are the
+        // only operand, and the words bash hands the command past the redirect
+        // target (rm 2>/dev/null README.md removes README.md) sit in a segment
+        // this scan cannot see, so the strip trades a visible false denial for
+        // a silent allow on the invariant the guard exists to hold. Reading the
+        // operands past the redirect is what would close both, and until it
+        // does the denial is the fail-closed side and is priced here.
+        const seg = segment(cmd, masked, hit.at);
+        const toks = tokens(seg);
         const valueFlags = SHELL_VALUE_FLAGS[hit.name] || /^$/;
         let operands = [];
         for (let i = 0; i < toks.length; i++) {
@@ -676,17 +1235,39 @@ function overwriteTargets(cmd, masked) {
 // so no path in the command text can be classified.
 const BULK_MUTATORS = /^(?:rm|rmdir|mv|truncate|chmod|remove-item|ri|rd|del|erase|move-item|mi|rename-item|ren|rni|clear-content|clc)$/;
 
+// The cmdlets that enumerate filesystem items into a pipeline. A destructive
+// cmdlet fed by one of these is judged as a bulk mutation even when it carries
+// an operand the guard cannot resolve (Remove-Item $_ inside a ForEach-Object
+// body): the enumeration is what names the items, and the operand is only how
+// each one is spelled per item.
+const PS_ENUMERATING = ['Get-ChildItem', 'gci', 'dir', 'ls', 'Get-Item', 'Get-Content'];
+
 // A description of a bulk delete or rewrite, or null. git ls-files | xargs rm and
 // Get-ChildItem -Recurse | Remove-Item each remove the whole tracked worktree
 // while naming no path at all, which is why the idiom is judged rather than its
-// operands. Both classes are denied it.
-function bulkMutation(cmd, masked) {
+// operands. Both classes are denied it with no carve-out, and the cost is a
+// real false denial rather than an oversight: the gate class may clear its
+// build-output directories, and the piped PowerShell spelling of that cleanup
+// (Get-ChildItem obj -Recurse | Remove-Item) is refused here while the direct
+// spelling is not. A carve-out keyed on the upstream was tried and withdrawn
+// after it twice admitted a delete it did not bound, once because the upstream
+// named what it read rather than what it emitted and once because an
+// intermediate pipeline stage replaced the items downstream of the check. What
+// bounds a pipe is not readable from the stage that opens it, so the idiom is
+// denied whole and the false denial is the priced cost. `cwd` may be null (a
+// payload with no cwd); it grounds the resolvability probe below.
+function bulkMutation(cmd, masked, cwd) {
     for (const hit of commandPositions(masked, ['find'])) {
         const toks = tokens(segment(cmd, masked, hit.at));
         if (toks.includes('-delete')) return 'a bulk delete (find -delete)';
         for (let i = 0; i < toks.length; i++) {
             if (toks[i] !== '-exec' && toks[i] !== '-execdir') continue;
             const verb = (toks[i + 1] || '').toLowerCase();
+            // The verb decides the mutation, so a substitution spliced into it
+            // (find . -exec $(true)rm {} ;) is as unresolvable as a spliced flag.
+            if (spliced(verb)) {
+                return `a find ${toks[i]} verb the guard cannot resolve (a substitution is spliced into it)`;
+            }
             if (BULK_MUTATORS.test(verb) || verb === 'sed') return `a bulk mutation (find ${toks[i]} ${verb})`;
         }
     }
@@ -705,10 +1286,28 @@ function bulkMutation(cmd, masked) {
     }
     // A destructive cmdlet downstream of a pipe with no path operand takes its
     // items from the pipeline (Get-ChildItem plugins -Recurse | Remove-Item).
+    // One whose every path operand fails resolution is the same idiom when the
+    // pipeline's upstream is an enumerating cmdlet: in Get-ChildItem |
+    // ForEach-Object { Remove-Item $_ } the pipeline variable is an operand no
+    // rule can place, and the enumeration upstream is what names the items. The
+    // upstream test is what keeps a standalone Remove-Item $x, whose operand is
+    // just as unresolvable but whose items come from no enumeration, an
+    // operand-ambiguity allow rather than a bulk deny; a statement separator
+    // between the two bounds the stage walk, so an enumeration in an earlier
+    // statement is not this pipeline's upstream.
     for (const hit of commandPositions(masked, PS_DESTRUCTIVE)) {
         if (masked.lastIndexOf('|', hit.at) < 0) continue;
+        const upstream = commandPositions(masked, PS_ENUMERATING).filter(e => {
+            if (e.at >= hit.at) return false;
+            const between = masked.slice(e.at, hit.at);
+            return between.includes('|') && !/[;&\n]/.test(between);
+        });
         const { named, positional } = cmdletOperands(tokens(segment(cmd, masked, hit.at)));
-        if (cmdletPaths(hit.name, named, positional).length === 0) return `a piped mutation (${hit.name} from a pipeline)`;
+        const paths = cmdletPaths(hit.name, named, positional);
+        if (paths.length === 0) return `a piped mutation (${hit.name} from a pipeline)`;
+        if (upstream.length && paths.every(p => resolveTarget(p, cwd || '.') === null)) {
+            return `a piped mutation (${hit.name} fed by an enumerating cmdlet)`;
+        }
     }
     return null;
 }
@@ -723,6 +1322,7 @@ function firstVerb(cmd, masked, at, valueFlags) {
     const toks = tokens(segment(cmd, masked, at));
     for (let i = 0; i < toks.length; i++) {
         if (toks[i].startsWith('-')) { if (valueFlags.test(toks[i])) i++; continue; }
+        if (SUB_TOKEN.test(toks[i])) continue;
         return toks[i].toLowerCase();
     }
     return '';
@@ -738,6 +1338,13 @@ function firstVerb(cmd, masked, at, valueFlags) {
 function packageMutation(cmd, masked, strict) {
     for (const hit of commandPositions(masked, ['npm', 'pnpm', 'yarn'])) {
         const verb = firstVerb(cmd, masked, hit.at, PKG_VALUE_FLAGS);
+        // A substitution spliced into the verb (npm $(true)install) is unresolvable,
+        // so it denies rather than matching no install alias and falling through.
+        // This reader tests the position itself, knowing which token it is about to
+        // read; the same evasion in any other name position of any governed
+        // invocation is refused by `unresolvableSplice`, which is the chokepoint for
+        // the class rather than a check each reader carries.
+        if (spliced(verb)) return `a package-manager subcommand the guard cannot resolve (a substitution is spliced into ${hit.name})`;
         if (/^(?:i|in|ins|inst|install|add|up|upgrade|update)$/.test(verb)) {
             return `a package-manager mutation (${hit.name} ${verb})`;
         }
@@ -753,6 +1360,7 @@ function packageMutation(cmd, masked, strict) {
     // scaffolds files into the tree. dotnet build, test, restore, and run pass.
     for (const hit of commandPositions(masked, ['dotnet'])) {
         const verb = firstVerb(cmd, masked, hit.at, /^$/);
+        if (spliced(verb)) return 'a dotnet subcommand the guard cannot resolve (a substitution is spliced into it)';
         if (/^(?:add|remove|new)$/.test(verb)) return `a package-manager mutation (dotnet ${verb})`;
     }
     return null;
@@ -779,7 +1387,7 @@ function formatterRun(cmd, masked) {
     for (const hit of commandPositions(masked, ['npm', 'pnpm', 'yarn'])) {
         const toks = tokens(segment(cmd, masked, hit.at));
         let i = 0;
-        while (i < toks.length && toks[i].startsWith('-')) {
+        while (i < toks.length && (toks[i].startsWith('-') || SUB_TOKEN.test(toks[i]))) {
             i += PKG_VALUE_FLAGS.test(toks[i]) ? 2 : 1;
         }
         if ((toks[i] || '').toLowerCase() !== 'run') continue;
@@ -818,25 +1426,38 @@ const NESTED_FLAGS = /^-{1,2}(?:[a-z]*c|command|cmd|p|print)$/i;
 // The command text a nested executor would run. The caller analyzes each payload
 // recursively, so a quoted mutation is judged on what it does, and delegating one
 // to another agent (claude -p "git commit") is judged the same way.
+//
+// Each payload is reconstructed the way its own executor assembles it, because
+// the executors differ and the analysis must see the text the executor receives
+// rather than the argument list the guard finds convenient. eval and iex join
+// every operand with a space and run the result, so `eval "git" "push"` runs
+// git push and the operands are scanned joined, not one by one. cmd hands the
+// whole tail after /c to its parser the same way. A -c, -Command or -p flag takes
+// exactly one word, and adjacent quoting makes one word out of several runs
+// (`sh -c "git"" push"`), which the tokenizer already joins.
 function nestedPayloads(cmd, masked) {
     const out = [];
     for (const hit of commandPositions(masked, NESTED_EXECUTORS)) {
+        // A here-string operand is one word of the segment that follows the <<<,
+        // read from that point so the operator itself does not cut it short.
         const hs = /^\s*<<</.exec(masked.slice(hit.at));
         if (hs) {
-            const t = /^\s*("(?:\\.|[^"\\])*"|'[^']*'|\S+)/.exec(cmd.slice(hit.at + hs[0].length));
-            if (t) out.push(unquote(t[1]));
+            const word = tokens(segment(cmd, masked, hit.at + hs[0].length))[0];
+            if (word) out.push(word);
         }
         const toks = tokens(segment(cmd, masked, hit.at));
         if (hit.name === 'eval' || hit.name === 'iex' || hit.name === 'invoke-expression') {
-            out.push(...toks.filter(a => !a.startsWith('-')));
+            const operands = toks.filter(a => !a.startsWith('-'));
+            if (operands.length) out.push(operands.join(' '));
             continue;
         }
         if (hit.name === 'cmd') {
-            // The payload follows /c or /k; //c is the Git-Bash spelling that
-            // keeps MSYS path mangling off the switch, and it reaches cmd as /c.
+            // The payload is everything after /c or /k; //c is the Git-Bash spelling
+            // that keeps MSYS path mangling off the switch, and it reaches cmd as /c.
             for (let i = 0; i < toks.length; i++) {
                 if (!/^\/{1,2}[ck]$/i.test(toks[i])) continue;
-                if (toks[i + 1]) out.push(toks[i + 1]);
+                const tail = toks.slice(i + 1);
+                if (tail.length) out.push(tail.join(' '));
             }
             continue;
         }
@@ -849,6 +1470,54 @@ function nestedPayloads(cmd, masked) {
     return out;
 }
 
+// Every command name a heuristic in this file scans for, assembled from the lists
+// those heuristics use so a name cannot be governed by one and unknown to the
+// splice check below. The literals are the names the heuristics spell inline.
+const GOVERNED_NAMES = ['git', 'gh', 'npm', 'pnpm', 'yarn', 'dotnet', 'dotnet-format',
+    'prettier', 'find', 'xargs', 'sed', 'tee']
+    .concat(DESTRUCTIVE_CMDS, CREATING_CMDS, PS_WRITE, PS_DESTRUCTIVE, PS_CREATING, NESTED_EXECUTORS);
+
+// The governed names whose leading bare operands are a subcommand, a verb, or a
+// script name the guard compares against a list, rather than a path it resolves.
+// git is here for its first operand only: its second is a ref or a pathspec
+// (git log <ref>..HEAD), which target resolution handles and no name comparison
+// reads, so requiring that one to resolve would refuse ordinary review work.
+const VERB_READERS = /^(?:gh|npm|pnpm|yarn|dotnet|xargs|git)$/;
+
+// A governed invocation carrying a substitution spliced into a token the guard
+// reads as a name, or null. The shell concatenates such a token into one word
+// whose value is whatever the substitution prints (`$(true)rm -$(true)i` reaches
+// the executor as `rm -i`), so the token answers to no name the guard knows and
+// every equality test against it fails: without this check the reader matches
+// nothing and falls through to allow, which is the direction the fail-closed rule
+// refuses. It is the chokepoint for that whole class rather than a test each
+// reader remembers to make, so a heuristic added later inherits it.
+//
+// A name position is one of two things, and everything else in an invocation is an
+// operand the path and target rules already judge. A token in flag position, since
+// every reader here tests its flags by literal name and an unresolvable flag
+// silently changes which token the reader takes as the subcommand
+// (`git -$(true)C . push` stops consuming a value and reads `.`). And the leading
+// bare operands of a verb reader, which are its subcommand, group, verb, or script
+// name. A reader that goes deeper into its own grammar (git's worktree, submodule
+// and bisect subverbs, gh's verb, find's -exec verb) tests that position itself,
+// where it knows which token it is about to read.
+function unresolvableSplice(cmd, masked) {
+    for (const hit of commandPositions(masked, GOVERNED_NAMES)) {
+        let bare = 0;
+        for (const tok of tokens(segment(cmd, masked, hit.at))) {
+            const flag = tok.startsWith('-') || /^\/{1,2}[a-z]$/i.test(tok);
+            const leading = bare < (hit.name === 'git' ? 1 : 2);
+            if (!flag) bare++;
+            if ((flag || (VERB_READERS.test(hit.name) && leading)) && spliced(tok)) {
+                return `an invocation of ${hit.name} the guard cannot resolve `
+                    + '(a substitution is spliced into a token it reads as a name)';
+            }
+        }
+    }
+    return null;
+}
+
 // The reason this command changes the state under review, or null when it is a
 // read the class may run. Path-dependent heuristics are skipped when the payload
 // carries no cwd, since a target cannot be placed without one; the
@@ -857,29 +1526,147 @@ function nestedPayloads(cmd, masked) {
 // Known misses, accepted under the fail-open posture and backstopped by the
 // tree-state check executing-work runs around a review round: a writer the
 // heuristics do not name (dd of=, install -m, ln -sf, a python or node one-liner,
-// an editor), a path assembled from a variable or split by quoting inside a token
-// ("git" commit, g'i't commit, git${IFS}commit), an in-tree path spelled as an
+// an editor), a command name assembled from a variable or split inside the name
+// itself by quoting or a substitution ("git" commit, g'i't commit, git${IFS}commit,
+// g$(true)it commit), which is the split-name shape and stays a miss, distinct from
+// a substitution glued to a whole name (git$(true) push), which the command-position
+// scan reads as command position and denies, an ANSI-C quoted word ($'...'), whose
+// backslash escapes maskQuoted does not recognize, so an escaped quote inside one
+// (echo $'a\'b' ; git push) reads as closing the span and desyncs quote parity,
+// masking the live command after the separator to end-of-string and allowing it;
+// the cost is a mutation that follows an ANSI-C quoted word on the same line, and
+// the shape is adversarial rather than something a cooperative agent emits, so it
+// is left to the tree-state bracket rather than closed by touching the quote
+// scanner, whose edits have outsized blast radius, an in-tree path spelled as an
 // 8.3 short name (SAPPLE~1) or a UNC share (\\localhost\d\...), both of which
 // need filesystem round-trips to normalize for a shape that takes deliberate
-// evasion to produce, a bulk idiom other than find, xargs, and a PowerShell
-// pipeline, a nested executor deeper than the recursion bound, and a git
+// evasion to produce, a path operand built through a variable outside the
+// resolvable subset ($PWD, ${PWD}, %CD%, and a home-relative path resolve;
+// rm $FOO/x does not place), which stays an allow deliberately, priced against
+// the false denials a guessed expansion would buy and backstopped by the same
+// tree-state bracket, a bulk idiom other than find, xargs, and the two
+// PowerShell pipeline shapes the scan names (a destructive cmdlet piped its
+// items with no path operand, and one whose operands all fail resolution fed by
+// an enumerating cmdlet), so a ForEach-Object body fed by anything outside the
+// enumerating list, or a foreach loop, stays a miss, an xargs whose governed
+// subcommand arrives on the pipe rather than as a literal token
+// (echo push origin main | xargs git runs git push while the scan compares
+// only a literal subcommand), an operand standing past a redirect in the same
+// simple command (rm >/dev/null README.md hands rm the operand while the
+// segmenter's cut at the redirect drops it; the spelling that carries a
+// descriptor prefix denies instead, on the prefix itself read as an operand,
+// so the bare redirect is the example rather than that one; a miss accepted
+// rather than fixed at the segmenter's cut set, whose edits have outsized
+// blast radius), and a git
 // subcommand that writes files as a side effect of a read (git format-patch,
-// git archive), which leaves a tracked-file delta the backstop does see, and a
-// redirect standing inside a heredoc body the shell never opens (maskHeredocRedirects
-// above carries which spellings do that), which leaves that same delta. In the
+// git archive), which leaves a tracked-file delta the backstop does see, a
+// redirect standing inside a heredoc body (a `>`, `>>`, or `>|` inside a `<<`
+// or `<<-` body): maskHeredocRedirects blanks it, which reads an authored
+// script's comparison or arrow correctly and also hides a real write when a
+// downstream executor runs the body (cat <<'EOF' ... echo pwned > README.md
+// ... EOF piped to sh performs the write while the blanked redirect reads as
+// data; the governed verbs in such a body still deny, so the residual is the
+// body whose only mutation is its redirects), a write whose file delta the
+// backstop does see, and a
+// literal heredoc body a data sink writes away from the tree that a later,
+// separately scanned command then runs. That last one is what the data-sink
+// exemption adds. Stated by shape: a body written to a path the class may write
+// (.kit/ for the strict class, and the build-output directory list for the gate
+// class) or to any path outside the tree under review, and executed by a later
+// command that reads it as script (bash <path>, sh <path>, . <path>,
+// source <path>, an interpreter with a file operand such as node <path> or
+// python <path>, or $(cat <path>) in command position) is
+// a repo-state mutation the tree-state check cannot see once that command runs,
+// rather than the file delta the check does see. The out-of-tree destination
+// widens this residual from the writable set to any path, and it opens nothing
+// the `printf '<mutation>' > /tmp/x.sh` spelling did not already leave open. It
+// is the heredoc spelling of the miss `printf '<mutation>' > .kit/x.sh` already
+// makes, and it is left open because no spelling of it is caught rather than
+// because one is: `bash <path>`, `sh <path>`, `. <path>`, `source <path>` and an
+// interpreter with a file operand all allow, the whole-shape recognizer having
+// replaced the executor screen a shell name would once have been read by. One
+// further miss is unreachable rather than exploitable and is recorded as such:
+// an unterminated command substitution loses its last character at each
+// collection level (`subs` records its interior as ending one character before
+// a close that is not there), so the innermost verb of `echo $(( $(git push`
+// scans truncated and would allow, but bash refuses the same string with an EOF
+// error before running anything, so no shell ever executes what the truncation
+// hides. In the
 // other direction the residual false hit is a governed verb in genuine command
 // position whose effect is not what it looks like (a mutating verb inside a
-// heredoc body, whose text is scanned wherever it sits, since a body reaching a
-// shell is a command). Analysis is regex-per-heuristic over the
-// whole string, so cost grows with the square of command length (a 80 KB command
-// takes seconds); the agent authoring that string is the only party it delays.
+// heredoc body outside the exemption's shape, a bare `cat <<'EOF'` writing to no
+// nameable path among them, since a body whose output the guard cannot follow to
+// a resting place may be a command wherever it sits), and a governed invocation
+// carrying a substitution spliced into a token the guard reads as a name, which
+// denies on the unresolvable token whatever that substitution would have printed.
+// Two further false hits are the fail-closed posture's stated price: a command
+// substitution nested three deep in ordinary text
+// (echo $(basename $(dirname $(pwd)))) denies at the depth bound, and a heredoc
+// report body carrying an ANSI escape captured from tool output denies as a
+// control character.
+// Analysis is
+// regex-per-heuristic over the whole string, so cost grows with the square of
+// command length (a 80 KB command takes seconds); the agent authoring that string
+// is the only party it delays.
 function denyReason(cmd, cwd, strict, depth) {
-    const masked = maskHeredocRedirects(cmd, maskQuoted(cmd));
+    // A CRLF pair is a line break the way a bare newline is, so it is normalized to
+    // one before anything reads the command: a Windows-authored report or a
+    // multi-line command carries \r\n between its lines, and the two rules that bound
+    // a heredoc body's terminator (heredocBodies and heredocExemption) would
+    // otherwise disagree about a delimiter line's trailing \r and mask a live command
+    // past the terminator the shell reads.
+    if (depth === 0) cmd = cmd.replace(/\r\n/g, '\n');
+
+    // A raw control character other than tab or newline has no legitimate place in a
+    // governed command, and the guard's own masking sentinels (NUL and \x01) are
+    // themselves control characters, so an input carrying one could forge a sentinel
+    // and reshape an operand list where the shell reads no boundary at all
+    // (rm <0x01> README.md). A bare carriage return joins them: after the CRLF
+    // normalization above every remaining \r sits mid-line, where bash reads an
+    // ordinary word character, so admitting it would only invite the same
+    // sentinel-shaped confusion (rm <CR> README.md) and reopen the heredoc
+    // terminator desync the normalization closes. Refused at the boundary rather
+    // than masked over, which keeps the sentinels unspellable from the input.
+    if (depth === 0 && /[\x00-\x08\x0b-\x1f]/.test(cmd)) {
+        return 'a control character in the command';
+    }
+
+    // Heredoc bodies are found first, on a body-blind quote mask, so the second
+    // mask can treat a body's own quotes as the literal data they are. The second
+    // mask also collects the interiors of command substitutions found inside
+    // double-quoted spans (`subs`), which are live command text scanned on their
+    // own below rather than inline, so their delimiters never reshape an operand
+    // list.
+    const subs = [];
+    const bodies = heredocBodies(cmd, maskQuoted(cmd));
+
+    // The data-sink exemption is decided over the whole command string, before and
+    // independently of the quote mask, and holds only at the top level with a cwd
+    // to resolve its destination against. Below the top level the text under
+    // analysis is a payload some executor was handed, and what consumes that
+    // executor's own stdout sits in the command around it, out of this string:
+    // `sh -c "cat <<'EOF' ... EOF" | sh` runs the body while the payload alone
+    // reads as a sink copying stdin. It is decided here, ahead of the line splice
+    // below, so its intro line is the physical one the recognizer refuses a
+    // continuation on. A qualifying body is masked whole, the way a quoted span is,
+    // so every heuristic reading the masked copy passes over it.
+    const exemptBody = (depth === 0 && cwd) ? heredocExemption(cmd, cwd, strict) : null;
+
+    // Line continuations are spliced out before the masks are built, so no
+    // heuristic reads a boundary the shell does not.
+    cmd = spliceContinuations(cmd, bodies);
+
+    let masked = maskHeredocRedirects(maskQuoted(cmd, bodies, subs), bodies);
+    if (exemptBody) {
+        const chars = masked.split('');
+        for (let i = exemptBody.from; i < exemptBody.to; i++) chars[i] = '\x00';
+        masked = chars.join('');
+    }
 
     const stateChange = gitMutation(cmd, masked)
         || ghMutation(cmd, masked)
         || formatterRun(cmd, masked)
-        || bulkMutation(cmd, masked)
+        || bulkMutation(cmd, masked, cwd)
         || encodedCommand(cmd, masked)
         || packageMutation(cmd, masked, strict);
     if (stateChange) return stateChange;
@@ -893,7 +1680,7 @@ function denyReason(cmd, cwd, strict, depth) {
         for (const w of writeTargets(cmd, masked)) {
             for (const base of effectiveDirs(cmd, masked, w.at, cwd)) {
                 if (inTreeTarget(w.target, base, root, writable)) {
-                    return `a write into the tree under review (${w.target})`;
+                    return `a write into the tree under review (${describeTarget(w.target)})`;
                 }
             }
         }
@@ -908,7 +1695,7 @@ function denyReason(cmd, cwd, strict, depth) {
             for (const hit of mutationTargets(cmd, masked, g.shell, g.cmdlets)) {
                 for (const base of effectiveDirs(cmd, masked, hit.at, cwd)) {
                     if (inTreeTarget(hit.target, base, root, g.writable)) {
-                        return `a path mutation in the tree under review (${hit.name} ${hit.target})`;
+                        return `a path mutation in the tree under review (${hit.name} ${describeTarget(hit.target)})`;
                     }
                 }
             }
@@ -918,18 +1705,49 @@ function denyReason(cmd, cwd, strict, depth) {
                 for (const base of effectiveDirs(cmd, masked, hit.at, cwd)) {
                     if (inTreeTarget(hit.target, base, root, writable)
                         && (hit.force || targetExists(hit.target, base))) {
-                        return `a path mutation in the tree under review (${hit.name} ${hit.target})`;
+                        return `a path mutation in the tree under review (${hit.name} ${describeTarget(hit.target)})`;
                     }
                 }
             }
         }
     }
 
+    // Last among the direct heuristics, so a command the guard does resolve denies
+    // on what it resolves to and this reason is reserved for the one it cannot.
+    const unresolvable = unresolvableSplice(cmd, masked);
+    if (unresolvable) return unresolvable;
+
+    // Every construct whose interior is live command text the guard scans one
+    // level deeper: a command substitution's interior (scanned unadorned, since a
+    // governed verb in a nested quoted phrase there is read the way the shell
+    // reads it, so the quoted spelling denies with the same text the unquoted one
+    // does) and a nested executor's payload (adorned "inside a nested shell").
+    // Both branches below consult this one list, so the fail-closed property does
+    // not depend on two call sites kept in step: a third recursion source added
+    // here is expanded within the bound and denied at it in the same place, rather
+    // than recursed at one site and silently dropped at the other.
+    const recursionSources = [
+        ...subs.map(s => ({ text: cmd.slice(s.from, s.to), adorn: r => r })),
+        ...nestedPayloads(cmd, masked).map(text => ({ text, adorn: r => `${r}, inside a nested shell` })),
+    ];
     if (depth < 2) {
-        for (const inner of nestedPayloads(cmd, masked)) {
-            const nested = denyReason(inner, cwd, strict, depth + 1);
-            if (nested) return `${nested}, inside a nested shell`;
+        for (const src of recursionSources) {
+            const nested = denyReason(src.text, cwd, strict, depth + 1);
+            if (nested) return src.adorn(nested);
         }
+    } else if (recursionSources.length) {
+        // Past the recursion depth, the property is uniform: ANY construct left
+        // unexpanded, a command substitution's interior or a nested executor's
+        // payload alike, is live command text the guard has declined to scan,
+        // which under the fail-closed rule is unresolved rather than absent.
+        // The exhaustion test reads exactly the sources the in-bound branch above
+        // drains, so a construct that recursion would expand is the same one whose
+        // survival here denies, and either can carry the byte-identical git or gh
+        // verb whose mutation leaves no file delta for the tree-state backstop.
+        // echo $(echo $(echo $(git push))) buries the verb past the bound one way;
+        // $($(eval "git push")) buries it the other, a substitution wrapper
+        // consuming a depth increment before the executor's payload is reached.
+        return 'an unresolved command substitution or executor payload (nested past the depth the guard scans)';
     }
     return null;
 }
