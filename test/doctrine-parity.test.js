@@ -658,3 +658,67 @@ test('the surfaces that defer to the outline bullet still say so', () => {
             + 'the identity check stays green');
     }
 });
+
+// Section 3 of the testing-discipline plan added five pointers: three in
+// executing-work (the settle-the-test-question paragraph, the Dispatch Brief
+// template's Tests: field, and the review step's close-gate reference),
+// one in brainstorming's Tests:-line paragraph, and one in README's payload
+// map. None of the five sits inside the doctrine's two parity copies, so
+// none of the pins above sees a symmetric deletion here: a fold that removed
+// any one clause would pass every other test in this file while leaving
+// that surface silent again, which is the same drift-by-duplication this
+// whole section exists to remove. Each is matched on the clause's own
+// distinguishing phrase, never on the bare string "testing-discipline",
+// which a later unrelated mention would also satisfy. Whitespace is
+// collapsed before matching because three of the five clauses wrap across
+// lines in their source file (a fenced template, a long paragraph), so a
+// reflow that keeps the words would still pass this.
+function collapseWhitespace(text) {
+    return text.replace(/\s+/g, ' ');
+}
+
+test('the five Section 3 pointers to testing-discipline are still present', () => {
+    const executingWork = collapseWhitespace(fs.readFileSync(path.join(__dirname,
+        '..', 'plugins', 'claude-kit', 'skills', 'executing-work', 'SKILL.md'), 'utf8'));
+    const brainstormingBody = collapseWhitespace(fs.readFileSync(path.join(__dirname,
+        '..', 'plugins', 'claude-kit', 'skills', 'brainstorming', 'SKILL.md'), 'utf8'));
+
+    assert.ok(executingWork.includes('Settle the test question per '
+        + '`skills/testing-discipline/SKILL.md` under the kit plugin root, '
+        + 'whose litmus decides what earns a durable test'),
+        'executing-work\'s step 2 no longer points the settle-the-test-question '
+        + 'duty at the testing-discipline skill\'s litmus, so a reader is left '
+        + 'with the paragraph\'s own words and no way to reach the four classes '
+        + 'that actually earn a test');
+
+    assert.ok(executingWork.includes('else the test-worthiness call per the '
+        + 'testing-discipline skill\'s litmus, its absolute path resolved by '
+        + 'the same ladder as the Style-skill file paths bullet below'),
+        'the Dispatch Brief template\'s Tests: field no longer points the '
+        + 'test-worthiness call at the testing-discipline skill\'s litmus, or '
+        + 'dropped the resolved-path qualifier a dispatched agent needs since '
+        + 'it inherits no skills and cannot follow a bare relative path');
+
+    assert.ok(executingWork.includes('ahead of the slow suites the close gate '
+        + 'runs (timing owned by the operating doctrine\'s gate bullet)'),
+        'step 3\'s review dispatch no longer points at the operating '
+        + 'doctrine\'s gate bullet for when the close gate runs, which is the '
+        + 'single owner of that moment since Section 2 amended it');
+
+    assert.ok(brainstormingBody.includes('the behaviors that earn one per the '
+        + 'testing-discipline skill\'s litmus '
+        + '(`skills/testing-discipline/SKILL.md` under the kit plugin root)'),
+        'the brainstorming skill\'s Tests:-line paragraph no longer points '
+        + 'what a Tests: line names at the testing-discipline skill\'s litmus');
+
+    const readme = fs.readFileSync(path.join(__dirname, '..', 'README.md'), 'utf8');
+    const mapLine = readme.split(/\r?\n/).find((l) => /^\s*testing-discipline\//.test(l));
+    assert.ok(mapLine, 'README\'s payload map no longer carries a '
+        + 'testing-discipline/ entry');
+    for (const phrase of ['Litmus for what earns a test', 'priced at authoring',
+        'gate\'s lanes', 'red protocol', 'contention rule']) {
+        assert.ok(mapLine.includes(phrase), 'README\'s testing-discipline/ map '
+            + 'entry no longer mentions "' + phrase + '", one of the things it '
+            + 'promises the skill owns');
+    }
+});
