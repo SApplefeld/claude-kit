@@ -21,6 +21,30 @@
 // absent store is the fresh-machine case and stays silent; otherwise the
 // nudge is one line naming the pass.
 //
+// The anchor-drift line: a project memory can name the files it is about at
+// the hash they had when it was written, and this hook says how many of them
+// now anchor a file that has changed or is gone, plus how many the pass could
+// not settle either way, in one line pointing at `memq decay-scan` for the
+// detail. Silence has exactly two causes here and both mean there is nothing
+// to say: every count is zero, or a store pin, where no project root
+// resolves from the working directory. A third is silent for a different
+// reason, that nothing could be said: a memq that will not load or whose
+// export table a version skew has moved, which is detected by checking the
+// symbols before calling them rather than inferred from a throw. Every other
+// could-not-check answers in words, a tier that could not be examined, a
+// working directory naming a network share, and a check that threw, each in
+// a fixed sentence of its own, because a session that heard nothing would
+// take an unchecked tier for a clean one.
+//
+// The whole pass is bounded, both halves of it: DRIFT_RECORDS_CAP records
+// examined, DRIFT_ENTRIES_CAP anchors walked whatever each costs, and
+// DRIFT_BYTES_CAP bytes hashed. What a bound stopped short of is counted
+// rather than dropped. The record half is bounded by memq's own frontmatter
+// cap, which every reader of a record's fields takes: each record costs a
+// capped head read and no more, whatever the record's length. The pass runs
+// in memq's listing mode, where the tier's own directory listing is the
+// record set, because this hook has no listing of its own to spend.
+//
 // The sync trigger and its nudge: the memory store at ~/.claude can be a git
 // repository, and when the store root is its own repository and holds
 // anything pending (uncommitted changes, unpushed commits, unpulled commits,
@@ -110,7 +134,26 @@
 // never enters the session context: the ignored-override note when
 // KIT_MEMORY_ROOT is set without its second signal, and, from a worktree
 // cwd, a note when a worktree-shaped `.git` pointer fails the handshake and
-// a note when a resolved worktree also has an orphaned path-derived store. The sync check runs
+// a note when a resolved worktree also has an orphaned path-derived store.
+// The anchor-drift check reads and never writes: it lists the project memory
+// directory, reads each of its records once for the frontmatter, and opens
+// the files those records anchor to hash them. What that reaches is bounded
+// by a walk rather than by a promise: memq joins an anchor path onto the
+// root it derives from this session's own working directory, one segment at
+// a time, and refuses the anchor where it sees a symbolic link or a junction
+// at a segment. Two residuals ride with that and neither is closed here. The
+// open that follows the walk carries O_NOFOLLOW off win32 only, so on win32
+// a junction swapped into the final segment between the walk and the open is
+// followed. And a hard link is neither a symbolic link nor a junction, so the
+// walk admits one with no race at all. In both cases what the hook does with
+// the bytes is hash them: no byte of any file it reads reaches the output,
+// which carries counts and this file's own words. Every half of the pass is
+// bounded: DRIFT_RECORDS_CAP records examined, each record's frontmatter
+// read capped in bytes by memq's own head cap so the reading half cannot
+// exceed that many records times that cap, DRIFT_ENTRIES_CAP anchors walked
+// and DRIFT_BYTES_CAP bytes hashed. A failure of the whole pass is one
+// fixed sentence rather than the silence every other block here answers
+// with. The sync check runs
 // read-only git subcommands (never `git fetch`) under the store root's own
 // `.git`, and never a repository merely reachable by walking up from it,
 // plus a bounded read of the sync state file and stats of the sync lock and
@@ -133,8 +176,8 @@
 // at a script path resolved from this file's own
 // directory rather than from anything the environment carries.
 // This hook's stdout lands in the model's trusted context, so what enters it
-// is bounded by provenance: the decay nudge, the sync lines, and the
-// embedder nudge carry no store-controlled strings at all, only integers
+// is bounded by provenance: the decay nudge, the sync lines, the drift line,
+// and the embedder nudge carry no store-controlled strings at all, only integers
 // (day counts computed here, and commit counts parsed out of a fixed
 // tab-separated git count), a bare boolean fact (uncommitted or not, read
 // from `git status`'s output length), a reason literal chosen from this
@@ -275,6 +318,34 @@ const INDEX_MAX_LINES = 30;    // type-tier index lines emitted before the remai
 const PROJECT_INDEX_MAX_LINES = 60;
 const INDEX_LINE_CAP = 200;    // characters per emitted index line
 
+// Bounds on the anchor-drift pass, whose work grows with the store: it reads
+// each project-tier record's frontmatter and walks and hashes the files
+// those records anchor. It is not the only block here whose work grows that
+// way (decayNudge lists the tier and stats every record when no decay pass
+// has completed), but it is the one that also opens files the records name.
+// A session start must not wait on that, and this hook's stdout is
+// all-or-nothing (hooks.json sets no timeout, and a hook that runs long
+// loses the whole block list, the project index and the write destination
+// with it), so the pass stops at these and reports what it did not reach
+// rather than reading clean.
+//
+// Three bounds because no one of them bounds the work. The record cap is set
+// above the largest real project store on this machine (105 records, 304
+// KB, a pass over which measures 60 to 70 ms) so an ordinary store is
+// covered whole. The byte cap is two of memq's own
+// per-file anchor read caps, a few tens of milliseconds of hashing and far
+// more than an ordinary store's anchored sources come to. And the entry cap
+// bounds anchors examined whatever each one costs, which is the dimension
+// the byte cap misses entirely: a refusal (a file that is gone, one over the
+// read cap, a path through a link) hashes nothing while still walking the
+// path, and a store whose anchored files have all moved is exactly the case
+// this feature exists to find. At 500 it admits two and a half anchors for
+// every record the record cap allows, well above what a record carries in
+// practice and well under the 6,400 that cap alone would permit.
+const DRIFT_RECORDS_CAP = 200;
+const DRIFT_BYTES_CAP = 8388608;
+const DRIFT_ENTRIES_CAP = 500;
+
 // What an overdue project should do next; shared by both overdue shapes so
 // the instruction cannot drift between them.
 const PASS_INSTRUCTIONS = 'At the next close-out, run `memq decay-scan`, act on its '
@@ -316,6 +387,150 @@ function decayNudge(cwd, memq) {
     return 'Kit memory decay: this project has memories but no decay pass has ever completed, '
         + 'and its oldest memory is ' + ageDays + ' days old (threshold ' + NUDGE_AFTER_DAYS + '). '
         + PASS_INSTRUCTIONS;
+}
+
+// The memq symbols the anchor-drift line calls, checked before any of them
+// is called so that a memq which will not load or whose export table a
+// version skew has moved is told apart from a check that failed on a store
+// that is there.
+const DRIFT_MEMQ_SYMBOLS = ['anchorRoot', 'projectMemoryDir', 'tierAnchorDrift'];
+
+// The two could-not-check answers, this file's own fixed words: no count, no
+// name, nothing from the store. The first names a tier that is there and
+// could not be examined, which the scan can explain; the second names the
+// check itself failing, which the scan cannot explain either.
+//
+// A working directory naming a network share gets no sentence of its own
+// here, and needs none, because this digest's own
+// anchorRoot(cwd) call answers a pin before it ever touches cwd's filesystem
+// shape, so a pinned session with a network-shaped cwd was never at risk of
+// the hang the sentence described, and this digest's only caller, main()'s
+// final else branch, is reached only after the top-level stand-down has
+// already refused the one state that was at risk (no pin and a network
+// share). No path from main() into driftNudge can carry a network cwd that
+// anchorRoot has not already answered with the ordinary pin silence below,
+// so the sentence had no reachable state left to describe.
+const DRIFT_TIER_UNEXAMINABLE = 'This project\'s memories could not be checked '
+    + 'against the files they anchor, because its memory directory could not be '
+    + 'examined; memq decay-scan says why.';
+const DRIFT_CHECK_FAILED = 'This project\'s memories could not be checked against '
+    + 'the files they anchor, because the check itself failed.';
+
+// The anchor-drift line, or null when there is nothing to say. One line
+// naming how many of this project's memories anchor a file that has changed
+// or is gone, which is a count the session acts on by running the scan rather
+// than a list it reads here.
+//
+// The count is the only store-derived value on the line, an integer computed
+// here, and the rest is this file's own words: the record names and the paths
+// they anchor stay in the store, where `memq decay-scan` prints them.
+//
+// A store pin is silence, because no root resolves from this working
+// directory and a tier nobody can resolve anchors against has nothing to
+// report. Every other could-not-check answers in words. Three sentences,
+// because three states must not share a value:
+//
+//   drifted     the anchored file changed or is gone. Folding anything
+//               else into this count would state as changed a file nobody
+//               looked at.
+//   unsettled   the record was reached and not settled: its frontmatter,
+//               its file, or the root defeated the check. The scan names
+//               each such record and its cause, so this points there.
+//   bounded     this check did not finish the record, because its own read
+//               budget stopped the pass: one it never reached, or one it
+//               stopped part way through. The scan carries no budget and so
+//               cannot explain either; the sentence names the bound instead
+//               of sending the session somewhere that would answer nothing.
+//
+// A whole pass that could not run gets its own fixed sentence for the same
+// reason: the tier is there and could not be examined, and a session told
+// nothing would read that as a clean tier. So does a throw out of any of the
+// memq calls below, which is why the gate above them checks the symbols this
+// uses before calling any of them: with the skew case detected rather than
+// inferred, a throw is no longer ambiguous evidence of a memq that will not
+// load, and answering it with silence would be the clean answer for a check
+// that failed.
+//
+// Silence, then, means one of three things and each is a nothing-to-say:
+// every count zero, a store pin (including one whose cwd also names a
+// network share, since the pin resolves before cwd's shape is ever
+// consulted), or a memq whose symbols are not there.
+//
+// A run-scoped session is not a special case: a run id adds a pending tier
+// and leaves the project tier where the working directory puts it, so the
+// root these records resolve against is the right one.
+function driftNudge(cwd, memq) {
+    if (memq === null || typeof memq !== 'object') return null;
+    for (const symbol of DRIFT_MEMQ_SYMBOLS) {
+        if (typeof memq[symbol] !== 'function') return null;
+    }
+    try {
+        // anchorRoot answers the pin before it ever touches cwd's filesystem
+        // shape (pinnedProjectSegment is checked first, and worktreeMainRoot
+        // is reached only when no pin is set), so a pinned session is safe to
+        // resolve here regardless of whether cwd names a network share.
+        // Checking namesNetworkShare ahead of anchorRoot would answer a state
+        // that cannot arise: a pin closes that door before worktreeMainRoot is
+        // ever reached, so no pinned session's network-shaped cwd needs a
+        // network cause. This
+        // digest's only caller, main()'s final else branch, is reached only
+        // when the top-level stand-down has already ruled out the one state
+        // where cwd itself would be walked (no pin and a network share), so
+        // root === null here means only "no root resolves" (no pin and no
+        // git worktree, or an unusable pin), never a hang risk.
+        const root = memq.anchorRoot(cwd);
+        if (root === null) return null;
+        const memDir = memq.projectMemoryDir(cwd);
+        // Listing mode (a null listing): memq builds the record set from
+        // the directory listing it already takes and reads each record's
+        // frontmatter through its bounded reader, so a session start never
+        // reads a whole tier of records to ask one question about each.
+        const drift = memq.tierAnchorDrift(memDir, null, root,
+            { records: DRIFT_RECORDS_CAP, bytes: DRIFT_BYTES_CAP,
+                entries: DRIFT_ENTRIES_CAP });
+        // The tier is there and could not be examined. Saying nothing here
+        // would be the clean answer for a check that never ran.
+        if (drift === null) return DRIFT_TIER_UNEXAMINABLE;
+        const n = drift.drifted.length;
+        // Reached and not settled: a record whose frontmatter could not be
+        // read, one whose anchored file could not be examined, and one the
+        // root defeated are three causes with one consequence, and the scan
+        // names each of them.
+        // A record whose only unsettled entries are ones the budget stopped
+        // short of belongs with the bound below, not here: nothing about
+        // the record defeated the check, this check ran out. One carrying
+        // an unreadable entry as well is genuinely unsettled and stays.
+        const stoppedOnly = drift.unverified.filter((r) => r.budgeted.length > 0
+            && r.unreadable.length === 0 && r.truncated !== true).length;
+        const m = drift.unverified.length - stoppedOnly + drift.unchecked.length;
+        // What this hook's own budget stopped short of, whether it stopped
+        // before the record or part way through it. The scan sets no
+        // budget, so it has nothing to say about either.
+        const b = drift.unexamined + stoppedOnly;
+        if (n === 0 && m === 0 && b === 0) return null;
+        const drifted = n === 1
+            ? '1 project memory anchors a file that has changed since it was written; '
+                + 'memq decay-scan lists it.'
+            : n + ' project memories anchor files that have changed since they were written; '
+                + 'memq decay-scan lists them.';
+        const unsettled = m === 1
+            ? '1 project memory could not be checked against the files it anchors; '
+                + 'memq decay-scan says why.'
+            : m + ' project memories could not be checked against the files they anchor; '
+                + 'memq decay-scan says why.';
+        // One sentence for both positions, carrying its own subject, so no
+        // reading of it depends on what it follows. 'Stopped short of'
+        // rather than 'did not reach', because a record the budget cut off
+        // part way through was reached and not finished.
+        const bounded = 'This session-start check stopped short of ' + b
+            + ' project memor' + (b === 1 ? 'y' : 'ies') + ', because it stops after '
+            + DRIFT_RECORDS_CAP + ' records, ' + DRIFT_ENTRIES_CAP + ' anchors or '
+            + DRIFT_BYTES_CAP + ' bytes read.';
+        return [n > 0 ? drifted : null, m > 0 ? unsettled : null, b > 0 ? bounded : null]
+            .filter((part) => part !== null).join(' ');
+    } catch {
+        return DRIFT_CHECK_FAILED;
+    }
 }
 
 // The environment a store-root git call runs under: process.env with every
@@ -474,7 +689,27 @@ function syncFallbackText(dirty, ahead, behind) {
 // fixed literal from this file (the reason text is a map lookup with a fixed
 // fallback); nothing git prints, nothing the state file holds, no path,
 // branch name, or remote URL, ever rides it.
-function syncNudge(memq) {
+//
+// `source` gates the whole function to two of the three SessionStart
+// sources hooks.json's matcher admits: `startup` and `resume`, never
+// `compact`. The matcher covers `compact` so that the drift line and the
+// memory index answer on a compacted session instead of going silent, which
+// would be a false clean. This function is a different kind of block, and
+// takes the narrower gate for its own reason: docs/security-model.md
+// records the detached commit-and-push as happening at the next session
+// start, and every auto-compaction is now a session start this function can
+// reach. Gating here, ahead of every git subprocess this function runs to
+// decide whether to spawn (not only the spawn itself), keeps that spawn's
+// trigger where the security model already describes it while letting the
+// drift line and the index block ride the wider matcher. A `source` this
+// function cannot read as exactly 'startup' or 'resume' (absent, non-string,
+// 'compact', 'clear', or any other value) takes the same branch as
+// 'compact': the spawn is the outward, irreversible-ish action this gate
+// exists to contain, so an unreadable source answers the question the
+// conservative way for that action, never the permissive one
+// session-start.js's own benign text nudge defaults to.
+function syncNudge(source, memq) {
+    if (source !== 'startup' && source !== 'resume') return null;
     const root = memq.memoryRoot();
     let hasGit = false;
     try { hasGit = fs.statSync(path.join(root, '.git')).isDirectory(); } catch { hasGit = false; }
@@ -776,6 +1011,23 @@ function typeIndexBlock(cwd, memq) {
 const RUN_VARIABLE = 'a run id (KIT_RUN_ID)';
 const PIN_VARIABLE = 'a memory-store pin (KIT_MEMORY_PROJECT)';
 
+// A different subject than standDownBlock's two callers: not a variable the
+// kit cannot honor, but the working directory shape itself. Every block
+// main() would otherwise run first (decayNudge, typeIndexBlock,
+// runScopedBlock, projectMemoryBlock, driftNudge) resolves the project
+// memory directory from cwd through memq.projectMemoryDir or memq.anchorRoot,
+// either of which walks cwd synchronously (worktreeMainRoot's fs.statSync)
+// whenever no store pin is set. This hook has no timeout entry in
+// hooks.json, so a hang on any of those doors costs the whole of this hook's
+// stdout rather than one line of it.
+const NETWORK_CWD_STAND_DOWN = 'Kit memory stand-down: this session\'s working directory names a '
+    + 'network share, and no memory-store pin (KIT_MEMORY_PROJECT) is in effect to resolve a memory '
+    + 'directory another way, so every block below would derive one from the working directory '
+    + 'itself, which risks a synchronous open hanging for the SMB timeout on an unreachable host '
+    + 'rather than failing fast. Write no memory files this session, in the project memory '
+    + 'directory or anywhere else, and do not add a line to MEMORY.md or edit it: there is no '
+    + 'directory this session can safely resolve. Report the condition instead.';
+
 function standDownBlock(variable, why) {
     return 'Kit memory stand-down: this session carries ' + variable + ' that the kit cannot '
         + 'honor, because ' + why + '. Write no memory files this session, in the '
@@ -1024,6 +1276,7 @@ function main() {
     try { payload = JSON.parse(readStdin() || '{}'); } catch { /* malformed: defaults */ }
     if (typeof payload !== 'object' || payload === null) payload = {};
     const cwd = typeof payload.cwd === 'string' && payload.cwd !== '' ? payload.cwd : process.cwd();
+    const source = typeof payload.source === 'string' ? payload.source : null;
 
     // Required inside main() so a damaged plugin cache that cannot supply the
     // store's rules leaves the hook inert (the outer catch owns the failure)
@@ -1045,6 +1298,42 @@ function main() {
         blocks.push(standDownBlock(PIN_VARIABLE, 'the value is not usable as a directory name '
             + '(it must be characters from [A-Za-z0-9_.-], bounded, and not a path token or a '
             + 'reserved device name), so no memory directory resolves for this session at all'));
+    } else if (memq.pinnedProjectSegment() === null && typeof memq.namesNetworkShare === 'function'
+            && memq.namesNetworkShare(cwd)) {
+        // No pin is active, so every block below would walk cwd itself (see
+        // NETWORK_CWD_STAND_DOWN); under an active pin none of them touches
+        // cwd at all (projectSegment resolves the pin before ever reaching
+        // worktreeMainRoot), so that case takes the ordinary path below.
+        //
+        // namesNetworkShare is checked for presence here the same way
+        // DRIFT_MEMQ_SYMBOLS checks its own three symbols before driftNudge
+        // calls any of them: an installed cache carrying a memq.js older
+        // than this predicate lacks the export, and
+        // without this guard that throws past this branch to the outer
+        // catch, which silences this whole hook (no decay nudge, no type
+        // index, no destination line, no sync trigger) rather than the one
+        // line the skew would otherwise cost. Missing the export routes to the
+        // ordinary branch below instead, where driftNudge's own resolution
+        // through anchorRoot answers null for an unusable pin, degrading one
+        // line rather than the whole hook (a plain skew, memq missing
+        // DRIFT_MEMQ_SYMBOLS' own three exports, is degraded the same way by
+        // that separate check).
+        blocks.push(NETWORK_CWD_STAND_DOWN);
+        // syncNudge and embedderNudge touch neither cwd nor anything this
+        // stand-down exists to protect: syncNudge's root is
+        // memq.memoryRoot(), which reads only KIT_MEMORY_ROOT/the home
+        // directory, and embedderNudge reads only the embedder install
+        // state. Standing the whole hook down here would silence both
+        // alongside the cwd-derived blocks they have nothing to do with,
+        // including the automatic-sync alarm embedderNudge's sibling
+        // carries (the "automatic sync is standing down" line, built to
+        // fire even when nothing is pending), which would otherwise go
+        // quiet for every unpinned network session. So they run here too,
+        // same as the ordinary branch below.
+        const sync = syncNudge(source, memq);
+        if (sync !== null) blocks.push(sync);
+        const embedder = embedderNudge();
+        if (embedder !== null) blocks.push(embedder);
     } else {
         const nudge = decayNudge(cwd, memq);
         if (nudge !== null) blocks.push(nudge);
@@ -1074,7 +1363,7 @@ function main() {
             // ordinary and pinned sessions the rest of this branch already
             // speaks to: a fleet of run-scoped workers each spawning a sync
             // would be contention with no owner.
-            const sync = syncNudge(memq);
+            const sync = syncNudge(source, memq);
             if (sync !== null) blocks.push(sync);
             // Gated on the same branch, for the same reason: see
             // embedderNudge's own comment.
@@ -1085,6 +1374,14 @@ function main() {
             const projectMemory = projectMemoryBlock(cwd, memq, pinnedDestination);
             if (projectMemory !== null) blocks.push(projectMemory);
         }
+        // The drift line rides last, after whatever named the project tier's
+        // index, because it is a fact about records that block has just
+        // listed. It is outside the run branch above rather than inside it:
+        // the project tier's anchors are checkable from a run-scoped session
+        // exactly as they are from an ordinary one, the same reach the decay
+        // nudge above already has.
+        const drift = driftNudge(cwd, memq);
+        if (drift !== null) blocks.push(drift);
     }
 
     if (blocks.length === 0) return;

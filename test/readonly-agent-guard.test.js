@@ -600,8 +600,10 @@ test('a directory switch inside the command moves the base for relative operands
     assertDeniedAt(REPO, STRICT, 'cd .kit && rm ../README.md', PATHMUT);
     assertDeniedAt(REPO, STRICT, 'cd test && echo x > ../README.md', WRITE);
     assertDeniedAt(REPO, STRICT, 'pushd test; rm ../README.md', PATHMUT);
-    // .kit/ is writable from anywhere, and a switch target routed through a
-    // variable is unknowable before the shell runs, which allows.
+    // .kit/ is writable from anywhere. A switch target routed through a
+    // variable falls back to the payload cwd, from which ../README.md resolves
+    // outside the tree, so the allow below is the operand's own placement
+    // rather than a disarmed check.
     assertAllowedAt(REPO, STRICT, 'cd test && echo x > ../.kit/report.md');
     assertAllowedAt(REPO, STRICT, 'cd $TARGET && rm ../README.md');
 });
@@ -610,8 +612,8 @@ test('a literal switch target that does not resolve still gets the path check', 
     // A failed literal cd cannot move the shell out of the tree: with ; the
     // shell does not move at all, and with && an earlier command in the chain
     // may create the directory before the switch runs, so both candidate bases
-    // are judged instead of skipping the containment check. Only a target the
-    // guard genuinely cannot know (cd $TARGET above) skips it.
+    // are judged instead of skipping the containment check. A target the guard
+    // cannot read at all falls back to the payload cwd rather than skipping it.
     assertDeniedAt(REPO, STRICT, 'mkdir -p tmp && cd tmp && rm ../README.md', PATHMUT);
     assertDeniedAt(REPO, STRICT, 'cd nosuchdir; rm README.md', PATHMUT);
     assertDeniedAt(REPO, STRICT, 'cd nosuchdir; echo x > README.md', WRITE);
@@ -741,6 +743,35 @@ test('camelCase and subagent_type identity fields resolve too', () => {
     }
 });
 
+test('a git alias defined on the command line denies, since the real subcommand sits in the value', () => {
+    // git runs an alias as its subcommand, so `-c alias.<name>=<value>` moves the
+    // invocation's real verb out of the token this scan reads and into a config
+    // value: `git -c alias.x='!git push' x` pushes, and the payload need not even
+    // be a shell escape, since the bare `alias.p=push` spelling reaches the same
+    // verb. The value is data to the shell and a command to git, which is why the
+    // quote mask correctly treats it as data and why that alone cannot bound it.
+    for (const cmd of [
+        "git -c alias.x='!git push' x",
+        "git -c alias.d='!rm -rf src' d",
+        'git -c alias.p=push p',
+        "git --config-env=alias.x=EVIL x",
+    ]) {
+        const r = runGuard(bash(STRICT, cmd));
+        assert.strictEqual(r.status, 2, `expected deny for ${cmd}`);
+        assert.match(r.stderr, /git alias/, `expected the alias reason for ${cmd}`);
+    }
+    // The condition is the alias key, so an ordinary -c assignment still allows and
+    // the case cannot pass by denying every -c invocation. Both are read commands
+    // whose config value merely contains a word that also names a subcommand, which
+    // is the false denial the quote mask removed and must stay removed.
+    for (const cmd of [
+        "git -c core.pager='less push' log",
+        "git --git-dir='x push' status",
+    ]) {
+        assert.strictEqual(runGuard(bash(STRICT, cmd)).status, 0, `expected allow for ${cmd}`);
+    }
+});
+
 test('the denial names the agent and the correct moves', () => {
     const r = runGuard(bash(STRICT, 'git checkout main'));
     assert.strictEqual(r.status, 2);
@@ -749,6 +780,18 @@ test('the denial names the agent and the correct moves', () => {
     assert.match(r.stderr, /final message/);
     assert.match(r.stderr, /\.kit\//);
     assert.match(r.stderr, /orchestrator/);
+});
+
+test('a deny reason ships no sentinel bytes: an unresolvable target is named, not dumped', () => {
+    // A destructive command's operand that is entirely a substitution span rides
+    // through the segment as the guard's sentinel bytes, and a reason that
+    // interpolates them verbatim hands the agent raw control characters where
+    // the shell saw $(...) text. The deny stands; the reason names the span as
+    // the unresolved substitution it is.
+    const r = runGuard(bash(STRICT, 'rm $(mktemp)'));
+    assert.strictEqual(r.status, 2, 'expected deny for rm $(mktemp)');
+    assert.ok(!/[\x00-\x08\x0b-\x1f]/.test(r.stderr), 'the reason must carry no raw control bytes');
+    assert.match(r.stderr, /unresolved substitution/);
 });
 
 test('the encoded-command flag is a PowerShell spelling, not bash flag bundling', () => {
@@ -873,99 +916,809 @@ test('the reviewers and the consultant pin the effort the skills cite as their f
     }
 });
 
+// A command or process substitution inside a double-quoted span is live code the
+// shell runs, not data, so it is scanned exactly as the unquoted spelling is. The
+// whole-span mask would otherwise blank it and let a mutation ride through inside
+// quotes.
+test('a substitution inside double quotes is scanned as live code, not masked', () => {
+    denyAll(STRICT, [
+        ['echo "$(git commit -m x)"', GIT],
+        ['echo $(git commit -m x)', GIT],
+        ['echo "wrapped $(git push origin main) here"', GIT],
+        ['echo "`git commit -m x`"', GIT],
+        ['echo "$(rm -rf src)"', PATHMUT],
+        ['printf "%s" "$(gh pr merge 1)"', /a pull-request mutation/],
+    ]);
+    // A read inside the substitution stays a read, and a substitution-free quoted
+    // argument is still literal text.
+    allowAll(STRICT, ['echo "$(git diff)"', 'echo "$(git log --oneline -5)"',
+        'echo "run git commit when ready"', 'rg "git push" docs/']);
+});
+
+// The interior of a double-quoted substitution is scanned as its own command, but
+// the SPAN it sits in stays blanked in the copy the segmenter cuts on, so a `)`
+// closing a substitution nested in an operand does not truncate the operand list.
+// Every one of these denies at the base ref, allows on the pre-fix round-3
+// worktree, and denies again after the fix.
+test('a substitution in an operand does not truncate the scan at its closing paren', () => {
+    denyAll(STRICT, [
+        ['git -C "$(pwd)" commit -m x', GIT],
+        ['gh -R "$(echo o/n)" pr merge 1 --squash', /a pull-request mutation/],
+        ['sh -c "$(true) git commit -m y"', GIT],
+        ['npm --prefix "$(pwd)" install lodash', /a package-manager mutation/],
+        ['cp "$(echo /tmp/a)" README.md', PATHMUT],
+    ]);
+});
+
+// The substitution scan matches only what bash actually runs inside double quotes.
+// A process substitution <( is a literal string there. A $(( opener is arithmetic
+// only where the span is confidently one parenthesized group, its inner ( matching
+// the ) before the outer close, so echo "$((1 > 2))" runs no command and passes,
+// while echo "$((git push) )", whose inner ( closes before that outer ) because a
+// space splits the two, holds more than one thing inside $(...) and bash reparses
+// it as a command substitution wrapping a subshell, so it is scanned and denies. A
+// governed verb inside a nested quoted phrase is data the inner command prints, so
+// scanning it is a false deny on text no shell runs.
+test('the substitution scan follows bash: <( is literal, $(( arithmetic is one parenthesized group, inner quotes re-mask', () => {
+    allowAll(STRICT, [
+        'echo "cmp: diff <(git stash list) f"',
+        'echo "$((1 > 2))"',
+        'echo "$(( (1 + 2) * 3 ))"',
+        "echo \"$(printf %s 'run git commit later')\"",
+    ]);
+    // The live spellings still deny, matching the unquoted form. The doubled-paren
+    // bash runs as a command substitution denies with them, and a write hidden the
+    // same way denies on its target rather than passing as arithmetic.
+    denyAll(STRICT, [
+        ['echo "$(git commit -m x)"', GIT],
+        ['cat <(git commit -m x)', GIT],
+        ['echo "$((git push) )"', GIT],
+        ['echo "$((echo x > README.md) )"', WRITE],
+    ]);
+});
+
+// A raw control character other than tab or newline has no place in a governed
+// command, and the guard's own masking sentinels (NUL and \x01) are control
+// characters, so an input carrying one could forge a sentinel and truncate an
+// operand list where the shell reads no boundary. rm <0x01> README.md removes the
+// file in a real shell while the segmenter, whose separator set holds \x01, cuts the
+// operand list at the byte. A bare carriage return is the same primitive: bash reads
+// it as an ordinary word character, so rm <CR>README.md removes the file while a
+// segmenter cutting on \r drops the operand. Both are refused at the boundary. A
+// CRLF between two commands is a line break, normalized to a newline, so it passes.
+test('a raw control character, a bare carriage return among them, is rejected at the boundary', () => {
+    assertDenied(STRICT, 'rm \x01 README.md', /a control character/);
+    assertDenied(STRICT, 'rm \x00 README.md', /a control character/);
+    assertDenied(GATE, 'echo x\x01 > .kit/o', /a control character/);
+    // A bare carriage return, spaced or glued and mid-token, is the truncation
+    // primitive and denies. The plain spellings deny too, so the reason text (not
+    // the status) is the discriminator that the return, not the verb, refused it.
+    denyAll(STRICT, [
+        ['rm \r README.md', /a control character/],
+        ['rm \rREADME.md', /a control character/],
+        ['git \rpush', /a control character/],
+    ]);
+    // Tab and newline are ordinary and still pass, and a CRLF between commands is a
+    // line break normalized to a newline rather than a bare return.
+    allowAll(GATE, ['rm -rf obj\ndotnet build', 'rm -rf bin\r\ndotnet test']);
+    allowAll(STRICT, ['echo x > .kit/o\t# note']);
+});
+
+// An unquoted backtick opens a command substitution bash runs, so a governed verb
+// after one is scanned in command position. A governed subcommand that is the last
+// token before the closing tick had glued the tick onto itself (push`) and slipped
+// the whole-token comparison; the segmenter cuts on the closing tick, so the
+// subcommand tokenizes and denies. A backtick read still allows, which pins the cut
+// to the tick rather than to the verb.
+const BT = String.fromCharCode(96);
+test('a governed verb inside an unquoted backtick substitution denies, a read allows', () => {
+    denyAll(STRICT, [
+        ['echo ' + BT + 'git push' + BT, GIT],
+        ['echo ' + BT + 'git pull' + BT, GIT],
+        ['echo ' + BT + 'git stash' + BT, GIT],
+    ]);
+    allowAll(STRICT, ['echo ' + BT + 'git diff' + BT, 'echo ' + BT + 'git log --oneline' + BT]);
+});
+
+// A masked substitution span standing between a verb and its positional
+// subcommand is a token boundary the scan steps over, exactly as target
+// resolution steps over one in an operand: the span's expansion is unknowable,
+// so the next real token is read as the subcommand the shell may run. Without
+// the skip, the opaque span itself reads as the subcommand, matches nothing,
+// and a git with an unreadable subcommand falls through to allow. The treatment
+// is uniform across every positional-subcommand reader, not a git special case,
+// so the gh and npm spellings pin the same skip in their own scans.
+test('a substitution span before a positional subcommand is stepped over, not read as it', () => {
+    denyAll(STRICT, [
+        ['git $(true) push', GIT],
+        ['git ' + BT + 'true' + BT + ' push', GIT],
+        ['gh $(true) pr merge 1 --squash', /a pull-request mutation/],
+        ['npm $(true) install lodash', /a package-manager mutation/],
+    ]);
+    // A read after the span stays a read, which pins the skip to reading the
+    // next real token rather than denying on the span itself.
+    allowAll(STRICT, ['git $(true) status', 'git ' + BT + 'true' + BT + ' diff']);
+});
+
+// Reason fragments for the fail-closed denials the guard raises where it cannot
+// resolve what the shell will run. Each names the ambiguity as its ground, so an
+// operator reading a false denial can tell it from a resolved mutation.
+const UNRESOLVED_SUB = /an unresolved command substitution/;
+const UNRESOLVED_CMD = /the guard cannot resolve/;
+
+// A command substitution the shell runs, nested past the depth the guard recurses
+// into, is text the guard has declined to scan: echo $(echo $(echo $(git push)))
+// buries its innermost command one level beyond the bound, where maskQuoted has
+// blanked the verb out of the masked copy and no heuristic can see it. Under the
+// fail-closed rule that is unresolved rather than absent, so it denies rather than
+// riding through. The two-deep cases prove a substitution within the bound is
+// still scanned, not blanket-denied.
+test('a command substitution nested past the guard depth denies as unresolved', () => {
+    denyAll(STRICT, [
+        ['echo $(echo $(echo $(git push origin main)))', UNRESOLVED_SUB],
+        ['echo $(echo $(echo $(rm -rf src)))', UNRESOLVED_SUB],
+        // An arithmetic span at the bound reaches the same deny: it is blanked with
+        // its own substitution collected, so the collection the depth check reads is
+        // not empty and the verb inside cannot ride through as arithmetic.
+        ['echo $(echo $(echo $(( $(git push origin main) ))))', UNRESOLVED_SUB],
+    ]);
+    // Affects the gate class the same way: a hidden push leaves no file delta for
+    // the tree-state backstop, which is the miss the direct scan exists to close.
+    assertDenied(GATE, 'echo $(echo $(echo $(git push origin main)))', UNRESOLVED_SUB);
+    // Two levels deep is within the bound, so the substitution is still scanned: a
+    // read there stays a read and a mutation still denies through the scan, not
+    // through the depth cutoff.
+    allowAll(STRICT, ['echo $(echo $(git diff))']);
+    assertDenied(STRICT, 'echo $(echo $(git commit -m x))', GIT);
+});
+
+// The depth bound fails closed for EVERY construct it leaves unexpanded, not one
+// construct at a time. A substitution wrapper consumes a depth increment the
+// executor recursion was sized without, so an executor payload arriving at the
+// bound inside substitution wrappers is text the guard declined to scan exactly
+// as a too-deep substitution is, and it can carry the byte-identical git or gh
+// verbs whose mutation leaves no file delta for the tree-state backstop. The
+// exhaustion check reads the same two collectors the in-bound recursion drains,
+// so whatever remains unexpanded at the bound denies as unresolved.
+test('an unexpanded nested executor at the depth bound denies instead of dropping', () => {
+    denyAll(STRICT, [
+        ['$($(eval "git push"))', UNRESOLVED_SUB],
+        ['$($(sh -c "git commit -m x"))', UNRESOLVED_SUB],
+        ['$($(eval "gh pr merge 1"))', UNRESOLVED_SUB],
+        ['$(sh -c "sh -c \\"git push\\"")', UNRESOLVED_SUB],
+        ['$(sh -c "eval \\"git push\\"")', UNRESOLVED_SUB],
+        ['$($(eval "rm README.md"))', UNRESOLVED_SUB],
+        // Three plain executors deep reaches the bound with a payload still
+        // unexpanded, so the structural form closes this spelling too.
+        ['bash -c "bash -c \\"bash -c \\\\\\"git push\\\\\\"\\""', UNRESOLVED_SUB],
+    ]);
+    // The in-bound spellings still deny through the scan rather than through the
+    // bound, so the bound is not doing the scanner's work.
+    assertDenied(STRICT, 'sh -c "sh -c \\"git push\\""', NESTED);
+    assertDenied(STRICT, 'echo $(echo $(echo $(git push origin main)))', UNRESOLVED_SUB);
+    // An executor whose flags carry no payload leaves nothing unexpanded, so
+    // ordinary depth-2 text is not blanket-denied.
+    allowAll(STRICT, ['echo $(echo $(bash scripts/verify.sh))']);
+});
+
+// $(( opens arithmetic only where the span is confidently one parenthesized group,
+// its inner ( matching the ) before the outer close. $((cmd);(cmd)) and
+// $((cmd)&&(cmd)) hold more than one group, and bash reparses them as a command
+// substitution wrapping a subshell list, which it runs. The guard treats every
+// ambiguous $(( as a command substitution to be collected and scanned, so the verb
+// inside denies. These allow on the pre-fix worktree, which classified the span as
+// arithmetic by the accident of its closing )) and blanked it without scanning.
+test('an ambiguous $(( is a command substitution bash runs, not arithmetic', () => {
+    denyAll(STRICT, [
+        ['$((git push origin main);(true))', GIT],
+        ['$((git push origin main)&&(true))', GIT],
+        ['$((true)||(git push origin main))', GIT],
+        ['$((true);(git push origin main))', GIT],
+        ['$((echo x > README.md);(true))', WRITE],
+    ]);
+    // A confidently arithmetic span holding no substitution runs no command and
+    // still passes, so the fix does not over-block genuine arithmetic. The span
+    // that does hold one is the case below.
+    allowAll(STRICT, ['echo "$((1 + 2))"', 'echo "$((1 > 2))"', 'echo "$(( (1 + 2) * 3 ))"']);
+});
+
+// A governed verb split from its command across a substitution boundary is
+// unresolvable, not absent. git $(true)push leaves a subcommand token of span
+// bytes glued to push that the shell resolves to whatever the substitution prints,
+// so the guard denies rather than matching no mutation name and falling through.
+// These are the readers that test the position themselves, knowing which token they
+// are about to read; the block below pins the chokepoint that covers every other
+// name position in the file, since the same evasion reaches each. All allow on the
+// pre-fix worktree.
+test('a governed verb spliced onto a substitution span denies as unresolvable', () => {
+    denyAll(STRICT, [
+        ['git $(true)push origin main', UNRESOLVED_CMD],
+        ['git ' + BT + 'true' + BT + 'push origin main', UNRESOLVED_CMD],
+        ['gh pr $(true)merge 1 --squash', UNRESOLVED_CMD],
+        ['git worktree $(true)add ../wt main', UNRESOLVED_CMD],
+        ['npm $(true)install lodash', UNRESOLVED_CMD],
+        ['dotnet $(true)add package Foo', UNRESOLVED_CMD],
+    ]);
+});
+
+// A substitution the shell runs stands the word after it in command position, the
+// same as a separator or a backtick does: $(true)git is git run fresh once the
+// substitution expands. The command-position prefix class admits the span sentinel
+// so the verb is seen at all; the pre-fix class did not, so the leading-span
+// spellings were never recognised and allowed.
+test('a substitution standing before a governed verb puts it in command position', () => {
+    denyAll(STRICT, [
+        ['$(true)git push origin main', GIT],
+        ['$(true)gh pr merge 1', /a pull-request mutation/],
+        ['$(true)npm install lodash', /a package-manager mutation/],
+    ]);
+    // A read after the leading substitution stays a read, so the sentinel opens a
+    // command position without denying on the substitution itself.
+    allowAll(STRICT, ['$(true)git diff', '$(true)git status']);
+});
+
+// A substitution glued to the right of a governed name (git$(true) push) closes
+// the name's word the way a space does: the shell resolves git$(true) to git when
+// the substitution prints nothing, so it runs git push. The command-position
+// trailing boundary admits the span, so the name is matched; the span then rides
+// on as the leading token of the segment, where a full-span operand token is
+// stepped over and the real subcommand is read. So a name-glued mutation denies on
+// the subcommand it resolves to, while a name-glued read (git$(true) diff) stays a
+// read, since denying it would trap review work the shell runs as a read. The
+// mutation spellings allow on the pre-fix worktree. A substitution that splits the
+// name itself (g$(x)it) leaves no whole name to match and stays the documented
+// assembly miss, exactly as the quoting-split "git" commit and g'i't commit do.
+test('a substitution glued to the right of a governed name is still command position', () => {
+    denyAll(STRICT, [
+        ['git$(true) push origin main', GIT],
+        ['git$(true) commit -m x', GIT],
+        ['gh$(true) pr merge 1', /a pull-request mutation/],
+        ['npm$(true) install lodash', /a package-manager mutation/],
+    ]);
+    assertDenied(GATE, 'git$(true) push origin main', GIT);
+    // A name-glued read stays the read the shell resolves it to.
+    allowAll(STRICT, ['git$(true) diff', 'git$(true) status']);
+    // A substitution splitting the name itself is the accepted assembly miss, not
+    // this case, and stays allowed alongside its quoting-split siblings above.
+    allowAll(STRICT, ['g$(x)it commit -m x']);
+});
+
+// Bash expands a command substitution standing in an arithmetic operand before it
+// evaluates anything, and whatever quoting surrounds it: $(( $(cmd) )) and
+// $(( '$(cmd)' )) both run cmd, and the arithmetic error that follows comes after
+// the run. So an arithmetic span is blanked but never left unscanned. Every span
+// below is CONFIDENTLY arithmetic, its inner ( matching the ) before the outer
+// close, which is what discriminates these from the ambiguous shapes above: a guard
+// that scans only the ambiguous ones blanks each of these whole and allows it, which
+// is how they stand on the pre-fix worktree. The deny lands on the substitution's own
+// verb rather than on the shape, which is what the reason text pins.
+test('a command substitution inside arithmetic is scanned, the arithmetic around it is not', () => {
+    denyAll(STRICT, [
+        ['echo $(($(git push origin main)))', GIT],
+        ['echo $(( 1 + $(git push origin main) ))', GIT],
+        ['true && echo $(($(git push origin main)))', GIT],
+        ['echo $(( ' + BT + 'git push origin main' + BT + ' ))', GIT],
+        ['echo "$(($(git commit -m x)))"', GIT],
+        ["echo $(( '$(git push origin main)' ))", GIT],
+        ['echo $(($(rm -rf src)))', PATHMUT],
+    ]);
+    // Genuine arithmetic runs no command and still passes, because the text around
+    // the operands is arithmetic rather than shell syntax. $((1 > 2)) is the case
+    // that proves it: read as command text, its > is a redirect writing a file
+    // named 2, so a scan of the whole interior denies it. The last case pins the
+    // other direction, that the interior is genuinely scanned and a read there
+    // stays a read.
+    allowAll(STRICT, ['echo $((1 + 2))', 'echo $(( (1 + 2) * 3 ))', 'echo $((1 > 2))',
+        'echo "$((1 + 2))"', 'echo $(( $(git rev-list --count HEAD) + 1 ))']);
+});
+
+// A backslash standing immediately before a newline joins the two lines into one,
+// so the shell reads no boundary there and `git \<newline>push` runs git push.
+// Left as a boundary it ends the operand list where the shell does not, and every
+// positional-subcommand reader loses its subcommand. The allow cases are the
+// discriminator rather than a decoration: the same two lines without the backslash
+// really are two commands, and a doubled backslash escapes the backslash rather
+// than the line, so both leave the newline the separator the shell reads. All the
+// deny cases allow on the pre-fix worktree.
+test('a backslash before a newline continues the line rather than ending the command', () => {
+    denyAll(STRICT, [
+        ['git \\\npush origin main', GIT],
+        ['gh pr \\\nmerge 1 --squash', /a pull-request mutation/],
+        ['npm \\\ninstall lodash', /a package-manager mutation/],
+        ['dotnet \\\nnew console', /a package-manager mutation/],
+        ['git ls-files | xargs \\\nrm', BULK],
+        // The operand list continues too, not only the subcommand, and here the
+        // reason text is the discriminator rather than the status: cut at the
+        // newline, the trailing backslash is itself an operand that resolves above
+        // the repo root and denies as an ancestor, so the case is pinned to the
+        // target the shell actually passes.
+        ['rm -rf \\\nsrc', /a path mutation in the tree under review \(rm src\)/],
+    ]);
+    allowAll(STRICT, ['git \\\nstatus --short', 'git\npush origin main', 'git \\\\\npush origin main']);
+});
+
+// The shell concatenates a substitution spliced into a token with the literal bytes
+// around it, so `$(true)rm -$(true)i -$(true)delete` reaches the executor as
+// `rm -i -delete`. The token's value is whatever the substitution prints, so every
+// equality test the guard makes against it fails, and matching nothing is the
+// fail-open direction. A spliced token standing where the guard reads a NAME
+// therefore denies, at one chokepoint over every governed invocation rather than at
+// a test each reader remembers to make: the cases below span the flag scans (sed,
+// find, git, gh) and the verb scans (xargs, npm) alike, and each carries a real
+// mutation the reader would have caught had the token resolved. All allow on the
+// pre-fix worktree.
+test('a spliced substitution in a name position denies at every reader, not at six of them', () => {
+    denyAll(STRICT, [
+        ['git ls-files | xargs $(true)rm', UNRESOLVED_CMD],
+        ["find . -name '*.md' -$(true)delete", UNRESOLVED_CMD],
+        ["sed -$(true)i 's/a/b/' README.md", UNRESOLVED_CMD],
+        ['git -$(true)C . push', UNRESOLVED_CMD],
+        ['npm run $(true)format', UNRESOLVED_CMD],
+        ['gh -$(true)R o/n pr merge 1', UNRESOLVED_CMD],
+        // The -exec verb takes a destination outside the tree, so the case reaches
+        // the verb reader rather than denying on the operand the spliced verb
+        // stands before: with `{}` there, the rm the span puts in command position
+        // carries an in-tree target and the path scan answers first.
+        [`find . -name '*.md' -exec $(true)rm ${OUTSIDE} ;`, UNRESOLVED_CMD],
+    ]);
+    // An operand is not a name: a ref, a pathspec, or a scratch path carrying a
+    // substitution is resolved rather than compared against a list, and ordinary
+    // review work spells refs and scratch paths exactly this way.
+    allowAll(STRICT, [
+        'git log --oneline $(git merge-base main HEAD)..HEAD',
+        'git diff $(git merge-base main HEAD)..HEAD',
+        'rm -rf .kit/$(date +%s)',
+        'git $(true) status',
+    ]);
+});
+
+// A nested executor receives the payload its own assembly rule produces, and the
+// analysis has to read that text rather than the argument list the guard finds
+// convenient. eval and iex join every operand with a space, so `eval "git" "push"`
+// runs git push; cmd takes the whole tail after /c the same way; and adjacent
+// quoted runs are one word, so `sh -c "git"" push"` hands sh a single payload and
+// `git "pu""sh"` names one subcommand. Read one token at a time instead, every one
+// of these is a bare verb with no subcommand and allows, which is how they stand on
+// the pre-fix worktree.
+test('a nested payload is judged as the executor assembles it, joined and concatenated', () => {
+    denyAll(STRICT, [
+        ['eval "git" "push"', GIT],
+        ['iex "git" "push"', GIT],
+        ['cmd /c "git" "push"', GIT],
+        ['sh -c "git"" push"', GIT],
+        ['bash -c "rm"" -rf src"', PATHMUT],
+        ['bash <<< "git"" push"', GIT],
+        ['git "pu""sh" origin main', GIT],
+    ]);
+    // Joining is what the executor does rather than an extra reach of the guard's,
+    // so a read assembled the same way stays a read.
+    allowAll(STRICT, ['eval "git" "status"', 'cmd /c "git" "status"', 'sh -c "git status"',
+        'bash <<< "git diff"', 'git "sta""tus"']);
+});
+
 // A heredoc body is data the receiving command reads on stdin, not shell syntax,
-// so a > inside one is a comparison or an arrow rather than a redirect. The guard
-// blanks that operator and nothing else: command-position scanning runs over the
-// body untouched, which is why a body reaching a shell is still governed and why
-// no receiver list is needed. The deny cases below carry most of the weight, since
-// the narrow mechanism is what makes the introduction-matching imprecision
-// affordable, and each of them passes only because the operator is all that moved.
+// so a > inside one is a comparison or an arrow rather than a redirect, and a
+// governed verb inside one is a word the sink copies rather than a command. The
+// guard blanks a body's > operators and, where the WHOLE command is one simple
+// data-sink heredoc write, masks the body outright so its prose reaches a scratch
+// file untouched. That exemption is a whole-command shape recognizer, and it
+// holds only when every one of these is true (the same enumeration the guard's
+// heredocExemption comment carries):
+//   1. one cat or tee owns one heredoc whose delimiter is quoted;
+//   2. one > or >> redirect with no descriptor prefix, or one tee file operand,
+//      is the only destination;
+//   3. that destination resolves inside the class's writable set or outside
+//      the git root entirely;
+//   4. the terminator is matched by bash's own rule (a line equal to the
+//      delimiter for <<, leading tabs stripped for <<-);
+//   5. nothing but whitespace follows the terminator;
+//   6. the intro line carries no excluded construct (a second <<, a separator, a
+//      pipe, a further redirect, a subshell or brace group, a command or process
+//      substitution, a backslash continuation, an unquoted #, or an unbalanced
+//      quote).
+// Two conditions bound the application rather than the intro shape: the exemption
+// runs only at the top level (denyReason's depth 0), since below it the body is a
+// payload another command was handed; and a cat sink takes no stray file operand,
+// since the sink then reads that file and the body is not what it writes.
+// The deny cases below carry most of the weight: a body outside the shape is a
+// command wherever it sits, and each condition is discriminated by a deny case
+// that is a valid exemption in every respect but the one it names, so disabling
+// that one condition turns the case green. The proof is a grant-style mutant
+// matrix (each condition made to pass, not each line deleted, since the shape
+// checks are layered and a single deletion is backstopped by another) in the
+// section's verification report. Body text never reaches the decision, so a stray
+// apostrophe among the prose cannot blank the mask.
 
 test('a quoted heredoc body carrying > is data rather than a redirect', () => {
-    const r = runGuard(bash(STRICT, "node <<'EOF'\nconst f = (a) => a > 1;\nconsole.log(f(2) >= 1);\nEOF"));
-    assert.strictEqual(r.status, 0, r.stderr);
-    assert.strictEqual(r.stderr, '');
+    // The owner is not a data sink, so the body is not exempt, but its > operators
+    // are still blanked: a comparison in a script written through a heredoc is not
+    // a write.
+    allowAll(STRICT, ["node <<'EOF'\nconst f = (a) => a > 1;\nconsole.log(f(2) >= 1);\nEOF"]);
 });
 
-// The blanking reaches the redirect operator and nothing else, so every shape
-// below still denies on the verb. That is the property the imprecision rides on:
-// a body reaching a shell is a command wherever it sits, and no spelling of a
-// heredoc can hide one.
+// A body a data sink writes to a writable path is text the shell never runs, so
+// the verbs a review report quotes are operands of cat or tee rather than
+// commands. These are the allow cases, one per accepted shape.
 
-test('a mutating verb inside a heredoc body is still scanned', () => {
-    const r = runGuard(bash(STRICT, "cat <<'EOF'\ngit commit -m x\nEOF"));
-    assert.strictEqual(r.status, 2);
-    assert.match(r.stderr, GIT);
+test('a report naming governed verbs reaches a writable path through cat and tee', () => {
+    allowAll(STRICT, [
+        "cat > .kit/review.md <<'EOF'\ngit push origin main is a mutation the orchestrator must run\nrm -rf bin obj clears the build output before the gate\nEOF",
+        "tee .kit/review.md <<'EOF'\ngit push origin main is a mutation the orchestrator must run\nrm -rf bin obj clears the build output before the gate\nEOF",
+        "cat >> .kit/notes.md <<'EOF'\ngit reset --hard is what the fix reverts\nEOF",
+        "cat > .kit/o <<\"EOF\"\ngh pr merge would land it early\nEOF",
+    ]);
+    // The dash form strips leading tabs from its terminator, exactly as bash does.
+    allowAll(STRICT, ["cat > .kit/o <<-'EOF'\n\tgit push notes for the report\n\tEOF"]);
 });
 
-test('a heredoc body piped onward to a shell is still governed', () => {
-    const r = runGuard(bash(STRICT, "cat <<'EOF' | sh\ngit commit -am pwn\nEOF"));
-    assert.strictEqual(r.status, 2);
-    assert.match(r.stderr, GIT);
+test('the gate class writes a heredoc report into its build-output directories', () => {
+    allowAll(GATE, [
+        "tee bin/out.log <<'EOF'\ngit push origin main is a mutation\nEOF",
+        "cat > obj/report.txt <<'EOF'\nrm -rf bin obj is the clean step\nEOF",
+    ]);
+    // The strict class writes only .kit/, so the same target denies for it.
+    assertDenied(STRICT, "cat > bin/out.log <<'EOF'\ngit commit -m x\nEOF", GIT);
 });
 
-test('a here-string is not a heredoc introduction and disarms nothing', () => {
-    const r = runGuard(bash(STRICT, 'grep -q docs <<< "$out"\necho hi > README.md'));
-    assert.strictEqual(r.status, 2);
-    assert.match(r.stderr, WRITE);
+// Each deny case below misses exactly one condition, named in its title, and the
+// mutant matrix in the section's verification report grants that one condition
+// and watches the case go green. Every case carries a writable destination where
+// the destination is not itself the thing under test, so it reaches and fails the
+// condition it names rather than failing the destination check first.
+
+test('condition 1, the owner is a data sink: a non-sink owner keeps the body scanned', () => {
+    assertDenied(STRICT, "node > .kit/o <<'EOF'\ngit commit -m x\nEOF", GIT);
 });
 
-test('a delimiter carrying text outside the quotes blanks nothing', () => {
-    const r = runGuard(bash(STRICT, "cat <<'EOF'X\nfiller\nEOFX\necho hi > README.md"));
-    assert.strictEqual(r.status, 2);
-    assert.match(r.stderr, WRITE);
+test('condition 1, a quoted or variable owner is not the literal cat or tee', () => {
+    denyAll(STRICT, [
+        ["\"cat\" > .kit/o <<'EOF'\ngit commit -m x\nEOF", GIT],
+        ["$CAT > .kit/o <<'EOF'\ngit commit -m x\nEOF", GIT],
+    ]);
 });
 
-test('a split delimiter blanks nothing either', () => {
-    const r = runGuard(bash(STRICT, "cat <<'E'OF\nfiller\nEOF\necho hi > README.md"));
-    assert.strictEqual(r.status, 2);
-    assert.match(r.stderr, WRITE);
+test('condition 2, the delimiter is quoted: an unquoted heredoc still expands and stays scanned', () => {
+    denyAll(STRICT, [
+        ["cat > .kit/o <<EOF\ngit commit -m x\nEOF", GIT],
+        ['cat > .kit/o <<EOF\n$(git commit -m x)\nEOF', GIT],
+    ]);
+    // The desyncing and empty delimiter spellings bash reads differently are not
+    // the shape either. The split-delimiter spelling (<<'E'OF, whose delimiter
+    // bash assembles as EOF) is among them: heredocBodies names it as a
+    // spelling it refuses to read as an introduction, so the body stays scanned.
+    denyAll(STRICT, [
+        ["cat > .kit/o <<'EOF'X\ngit commit -m x\nEOFX", GIT],
+        ["cat > .kit/o <<''\ngit commit -m x\n", GIT],
+        ["cat > .kit/o <<'E'OF\ngit commit -m x\nEOF", GIT],
+    ]);
 });
 
-test('a backslash-continued introducing line keeps its redirect', () => {
-    const r = runGuard(bash(STRICT, "cat <<'EOF' \\\n> README.md\nhi\nEOF"));
-    assert.strictEqual(r.status, 2);
-    assert.match(r.stderr, WRITE);
+test('condition 3, a destination is required: a bare sink terminating nowhere nameable stays scanned', () => {
+    // cat with no redirect names no destination, so its stdout goes nowhere the
+    // guard can follow to a resting place; the body stays scanned exactly as a
+    // command line is.
+    assertDenied(STRICT, "cat <<'EOF'\ngit commit -m x\nEOF", GIT);
 });
 
-test('a blanked body redirect still ends an operand list', () => {
-    const r = runGuard(bash(STRICT, "# <<'A'\ncp /etc/hosts README.md > /dev/null"));
-    assert.strictEqual(r.status, 2);
-    assert.match(r.stderr, PATHMUT);
+test('condition 3, the destination is writable or out of tree: a sink writing into the tree stays scanned', () => {
+    assertDenied(STRICT, "cat > src/report.md <<'EOF'\ngit commit -m x\nEOF", GIT);
+    // The write into the tree denies on its own account once the body is scanned.
+    assertDenied(STRICT, "cat > src/notes.md <<'EOF'\nplain prose\nEOF", WRITE);
 });
 
-test('a blanked body redirect cannot push a ref creation past its flags', () => {
-    const r = runGuard(bash(STRICT, "# <<'A'\ngit branch pwned > --list"));
-    assert.strictEqual(r.status, 2);
-    assert.match(r.stderr, /a git branch creation/);
+test('condition 3, an out-of-tree destination is a positive placement: the report reaches /tmp', () => {
+    // The guard already treats an out-of-root write as no mutation of the tree
+    // under review (echo hi > /tmp/review.md allows), so the heredoc spelling of
+    // the same write mirrors it: a reviewer's report aimed at the session
+    // scratchpad or /tmp is not blocked by its own subject matter.
+    // The out-of-tree path is spelled with forward slashes: on the intro line a
+    // top-level backslash is bash's escape character, so a backslashed spelling
+    // would hand the sink a different operand than the path it names.
+    allowAll(STRICT, [
+        "cat > /tmp/review.md <<'EOF'\ngit push origin main is a mutation the orchestrator must run\nEOF",
+        `cat > ${OUTSIDE.replace(/\\/g, '/')} <<'EOF'\nrm -rf bin obj is the clean step\nEOF`,
+    ]);
+    // An in-tree tracked destination still refuses the shape, and a destination
+    // the guard cannot resolve still leaves the body scanned: outside is a
+    // positive placement, never a failure to place.
+    assertDenied(STRICT, "cat > README.md <<'EOF'\ngit push origin main\nEOF", GIT);
+    assertDenied(STRICT, "cat > $DEST/review.md <<'EOF'\ngit commit -m x\nEOF", GIT);
 });
 
-test('an introduction in comment position cannot hide a verb', () => {
-    const r = runGuard(bash(STRICT, "# <<'A'\ngit commit -am pwn\nA"));
-    assert.strictEqual(r.status, 2);
-    assert.match(r.stderr, GIT);
+test('condition 4, the redirect carries no descriptor prefix', () => {
+    denyAll(STRICT, [
+        ["cat 1> .kit/o <<'EOF'\ngit commit -m x\nEOF", GIT],
+        ["cat 0<> .kit/o <<'EOF'\ngit commit -m x\nEOF", GIT],
+    ]);
+});
+
+test('condition 5, the terminator exists by bash rule', () => {
+    // No terminator line, so the body is not bounded by the shape.
+    assertDenied(STRICT, "cat > .kit/o <<'EOF'\ngit commit -m x", GIT);
+    // A terminator bash does not accept (leading space for <<) is not a terminator
+    // here either, and a live command sits past it.
+    assertDenied(STRICT, "cat > .kit/o <<'EOF'\nbody\n  EOF\ngit commit -m x", GIT);
+});
+
+test('condition 5, a here-string is not a heredoc introduction and disarms nothing', () => {
+    assertDenied(STRICT, 'grep -q docs <<< "$out"\necho hi > README.md', WRITE);
+});
+
+test('condition 6, nothing follows the terminator: a command after it stays scanned', () => {
+    // The whole point of a single simple command: a body written to a writable
+    // path and then run by a command after the terminator (sh .kit/o) must not be
+    // masked, or the write plus the execute is a bypass.
+    denyAll(STRICT, [
+        ["cat > .kit/o <<'EOF'\ngit push origin main\nEOF\nsh .kit/o", GIT],
+        ["cat > .kit/o <<'EOF'\nbody\nEOF\ngit commit -m x", GIT],
+    ]);
+});
+
+test('condition 6, the intro line carries no pipe, separator, second heredoc, or further redirect', () => {
+    // tee writes to a writable path and to stdout, so a consumer of that stdout
+    // executes the body; the pipe keeps the body scanned. A separator, a second
+    // heredoc, or a further redirect (a second destination) likewise takes the
+    // command out of the single-simple-command shape.
+    denyAll(STRICT, [
+        ["tee .kit/o <<'EOF' | python\ngit commit -m x\nEOF", GIT],
+        ["tee .kit/o <<'EOF' ; ls\ngit push --force origin main\nEOF", GIT],
+        ["tee .kit/o <<'EOF' && git commit -m x\nbody\nEOF", GIT],
+        ["cat > .kit/o <<'EOF' <<'ZZ'\ngit commit -m x\nEOF\nZZ", GIT],
+        ["cat > .kit/o > .kit/o2 <<'EOF'\ngit commit -m x\nEOF", GIT],
+    ]);
+});
+
+// The excluded-construct condition closes every bypass either review round
+// verified. Each moves the thing that makes the body live (a second introduction,
+// a substitution, a consumer of the sink's stdout, a descriptor trick) out of the
+// single-simple-command shape, and each runs in a real shell.
+
+test('a subshell consuming the sink output stays scanned, stray apostrophe and all', () => {
+    // The sink's stdout is consumed by a subshell or pipe, an excluded construct,
+    // so the body is scanned as command text. The apostrophe in the body is a
+    // literal there, not a shell quote, so it neither blanks the mask nor lets the
+    // shape decision pass vacuously.
+    denyAll(STRICT, [
+        ["( tee .kit/o <<'EOF'\ncan't stop the report\ngit push --force origin main\nEOF\n) | sh", GIT],
+        ["(cat <<'EOF'\ngit commit -m x\nEOF\n)|bash", GIT],
+        ["{ ( cat <<'EOF'\ngit commit -m x\nEOF\n) ; } | sh", GIT],
+        ["f() ( cat <<'EOF'\ngit commit -m x\nEOF\n)\nf | sh", GIT],
+        ["( cat <<'EOF'\ngit commit -m x\nEOF\n) > .kit/o && sh .kit/o", GIT],
+        ["( cat <<'EOF'\ngh pr merge 1 --squash\nEOF\n) | sh", /a pull-request mutation/],
+    ]);
+});
+
+test('a pipe consuming the sink output stays scanned, whatever the consumer', () => {
+    // The reach test is positive, not a list of known consumers, so a consumer the
+    // executor list never named is refused for the same reason a shell is.
+    denyAll(STRICT, [
+        ["tee .kit/o <<'EOF' | sh\ndon't stop\ngit push --force origin main\nEOF", GIT],
+        ["cat <<'EOF' | source /dev/stdin\ngit commit -m x\nEOF", GIT],
+        ["cat <<'EOF' | . /dev/stdin\ngit commit -m x\nEOF", GIT],
+        ["cat <<'EOF' | \"sh\"\ngit commit -m x\nEOF", GIT],
+        ["cat <<'EOF' | $SHELL\ngit commit -m x\nEOF", GIT],
+        ["cat <<'EOF' | python\ngit commit -m x\nEOF", GIT],
+    ]);
+});
+
+test('a substitution reaching the operator, on any physical line, stays scanned', () => {
+    denyAll(STRICT, [
+        ["eval $(\ncat <<'EOF'\ngit commit -m x\nEOF\n)", GIT],
+        ['eval `\ncat <<\'EOF\'\ngit commit -m x\nEOF\n`', GIT],
+        [". <(cat <<'EOF'\ngit commit -m x\nEOF\n)", GIT],
+        ["x=$(cat <<'EOF'\ngit commit -m x\nEOF\n)", GIT],
+        ["cat > .kit/o <<'EOF' $(git commit -m x)\nbody\nEOF", GIT],
+        // The substitution is scanned as live code, so a heredoc it carries is
+        // read directly rather than masked: the verb in its body denies.
+        ["eval \"$(cat <<'EOF'\ngit commit -m x\nEOF\n)\"", GIT],
+    ]);
 });
 
 test('a heredoc into a nested shell is code, and stays governed', () => {
-    const r = runGuard(bash(STRICT, "bash <<'EOF'\ngit commit -m x\nEOF"));
-    assert.strictEqual(r.status, 2);
-    assert.match(r.stderr, GIT);
+    denyAll(STRICT, [
+        ["bash <<'EOF'\ngit commit -m x\nEOF", GIT],
+        ["sh -c \"cat <<'EOF'\ngit commit -m x\nEOF\" | sh", GIT],
+    ]);
+});
+
+test('a nested introduction inside a body opens no span of its own', () => {
+    // The first terminator ends the body, so a second introduction inside it opens
+    // nothing and the live lines after the real terminator stay scanned.
+    denyAll(STRICT, [
+        ["cat <<'EOF'\ncat <<'ZZ'\nEOF\ngit push --force origin main\nZZ", GIT],
+        ["tee .kit/o <<\"EOF\"\ncat <<'ZZ'\nEOF\ngit push --force origin main\nZZ", GIT],
+        ["cat <<-'EOF'\ncat <<'ZZ'\nEOF\ngh pr merge 1 --squash\nZZ", /a pull-request mutation/],
+    ]);
+});
+
+test('a comment-position introduction opens no body, so its lines stay scanned', () => {
+    denyAll(STRICT, [
+        ["# <<'A'\ngit commit -am pwn\nA", GIT],
+        ["# cat <<'EOF'\ngit commit -am pwn\nEOF", GIT],
+        ["# note; cat <<'EOF'\ngit commit -am pwn\nEOF", GIT],
+    ]);
 });
 
 test('an unquoted heredoc body still expands, so it stays scanned', () => {
-    const r = runGuard(bash(STRICT, 'cat <<EOF\n$(git commit -m x)\nEOF'));
-    assert.strictEqual(r.status, 2);
-    assert.match(r.stderr, GIT);
+    assertDenied(STRICT, 'cat <<EOF\n$(git commit -m x)\nEOF', GIT);
 });
 
 test('the redirect on a heredoc intro line is outside the body and still denies', () => {
-    const r = runGuard(bash(STRICT, "cat > README.md <<'EOF'\nhello\nEOF"));
-    assert.strictEqual(r.status, 2);
-    assert.match(r.stderr, WRITE);
+    assertDenied(STRICT, "cat > README.md <<'EOF'\nhello\nEOF", WRITE);
+    assertDenied(STRICT, "cat <<'EOF' \\\n> README.md\nhi\nEOF", WRITE);
 });
 
-test('the terminator ends the blanking, so a command after it is still scanned', () => {
-    const r = runGuard(bash(STRICT, "cat <<'EOF' > .kit/scratch.txt\nhello\nEOF\ngit commit -m x"));
-    assert.strictEqual(r.status, 2);
-    assert.match(r.stderr, GIT);
+test('a blanked body redirect still ends an operand list', () => {
+    assertDenied(STRICT, "# <<'A'\ncp /etc/hosts README.md > /dev/null", PATHMUT);
+    assertDenied(STRICT, "# <<'A'\ngit branch pwned > --list", /a git branch creation/);
+});
+
+// The stray-operand and depth conditions each get an isolating case: the command
+// is a valid exemption in every respect but the one named, so granting that one
+// condition (and only that one) turns it green in the mutant matrix.
+
+test('a stray file operand to cat keeps the body scanned', () => {
+    // cat reads .kit/x and the heredoc rides stdin, written nowhere the guard can
+    // follow to a resting place, so the sink is not writing the body and the body
+    // stays scanned. .kit/x is writable, so the destination is not what refuses it.
+    assertDenied(STRICT, "cat .kit/x <<'EOF'\ngit commit -m x\nEOF", GIT);
+});
+
+test('the data-sink exemption applies only at the top level, not to a nested payload', () => {
+    // The heredoc write sits inside a substitution, so it is a payload the outer
+    // command was handed; what consumes it is outside this string. .kit/o is
+    // writable and the shape is otherwise exact, so only the depth-0 restriction
+    // keeps the body scanned.
+    assertDenied(STRICT, "echo \"$(cat > .kit/o <<'EOF'\ngit commit -m x\nEOF\n)\"", GIT);
+});
+
+test('a heredoc delimiter carrying a bare carriage return is refused, not masked past', () => {
+    // The terminator-desync regression: bash accepts a body line as the terminator
+    // that the guard, reading the delimiter with a trailing \r attached, does not,
+    // so the guard's terminator lands on a later line and masks the git push bash
+    // runs between the two. The bare return is refused at the boundary, so the
+    // command denies before any body is masked. .kit/review.md is writable, so the
+    // destination is not what refuses it.
+    const CR = '\r';
+    assertDenied(STRICT,
+        "cat > .kit/review.md <<'EOF" + CR + "'\nharmless report line\nEOF" + CR
+        + "\ngit push origin main\nEOF" + CR + CR + "\n",
+        /a control character/);
+});
+
+// The operand-posture sites, settled together: where the guard cannot read a
+// value the command author chose, each site takes the judgment its own failure
+// direction earns rather than one shared posture. A cd target falls back to the
+// payload cwd, since an empty candidate list disarms every path check for the
+// whole command; a redirect's descriptor prefix is read as an operand and
+// denies, which is the priced false denial the withdrawal restored; the
+// spellings whose value is fixed before the shell runs ($PWD, ${PWD}, %CD%, a
+// home-relative path) resolve; and a destructive cmdlet fed by an enumerating
+// pipeline is the bulk idiom whatever its operand looks like. Every other
+// variable-built operand stays an allow, deliberately, backstopped by the
+// tree-state bracket the orchestrator runs around a review round.
+
+test('an unresolvable cd target falls back to the payload cwd rather than disarming the path checks', () => {
+    // Each deny here is red without the fallback: effectiveDirs returned no
+    // candidate for these targets, and the write, mutation, and overwrite
+    // checks iterate candidates, so the cd prefix turned all three off while
+    // the same command without it denies. The fallback restores the payload-cwd
+    // baseline rather than the directory the shell is actually in, so where a
+    // readable switch earlier in the chain already left the tree (cd C:/Users
+    // && cd $FOO && rm README.md) it can deny an operand the shell resolves
+    // elsewhere; that cost leans toward denial and is the price of keeping the
+    // checks armed.
+    assertDeniedAt(REPO, STRICT, 'cd $PWD && rm -rf src', PATHMUT);
+    assertDeniedAt(REPO, STRICT, 'cd $PWD; echo pwned > README.md', WRITE);
+    assertDeniedAt(REPO, STRICT, 'cd - && rm -rf src', PATHMUT);
+    assertDeniedAt(REPO, STRICT, 'cd "" && rm -rf src', PATHMUT);
+    // A read under the same prefix stays a read, and an operand that resolves
+    // outside the tree from the fallback base stays allowed.
+    assertAllowedAt(REPO, STRICT, 'cd $PWD && rg foo docs/');
+    assertAllowedAt(REPO, STRICT, 'cd "$TMP" && cat x');
+});
+
+test("a descriptor prefix beside a redirect denies, and the false denial is the priced side", () => {
+    // A redirect cuts the segment the operand scan reads, so the descriptor
+    // digits glued to the operator are read as an operand and deny. That is a
+    // false denial: bash hands rm one operand here, not two. It is kept
+    // deliberately, and this case pins the reason rather than the spelling.
+    // Stripping the digits was tried and withdrawn, because it empties the
+    // operand list wherever they are the only operand, and the words bash
+    // hands the command past the redirect target sit in a segment this scan
+    // cannot see, so the strip turned four real in-tree destructions into
+    // allows while removing one visible false denial.
+    denyAll(STRICT, [
+        ['rm .kit/x 2>&1', PATHMUT],
+        ['node x.js | tee .kit/log 2>&1', WRITE],
+    ]);
+    // The destructions the strip admitted, each denying again. Every one of
+    // these removes a tracked file when bash runs it, and each names an
+    // operand the strip would have dropped along with the digits.
+    denyAll(STRICT, [
+        ['rm 2>/dev/null README.md', PATHMUT],
+        ['rm -rf 2>&1 src', PATHMUT],
+        ['mv 2>/dev/null README.md /tmp/x', PATHMUT],
+        ['rm .kit/a 2>/dev/null README.md', PATHMUT],
+    ]);
+    // The controls, so the denials above are not the whole instrument saying
+    // no: the same commands without a redirect discriminate in both
+    // directions, and a word merely ending in digits stays an operand.
+    allowAll(STRICT, ['rm .kit/x', 'node x.js | tee .kit/log']);
+    assertDenied(STRICT, 'rm file2>/dev/null', PATHMUT);
+    assertDenied(STRICT, 'rm README.md', PATHMUT);
+});
+
+test('the resolvable operand subset: $PWD, ${PWD}, %CD%, and a home path resolve before the shell runs', () => {
+    // Each names a value fixed before the shell runs, so "cannot place" was
+    // the wrong answer: $PWD spells the tree under review through a variable.
+    assertDeniedAt(REPO, STRICT, 'rm $PWD/README.md', PATHMUT);
+    assertDeniedAt(REPO, STRICT, 'rm ${PWD}/README.md', PATHMUT);
+    assertDeniedAt(REPO, STRICT, 'del %CD%/README.md', PATHMUT);
+    // Home sits outside the repo, so a home-relative path is a confirmed
+    // out-of-tree allow rather than an unplaceable one.
+    assertAllowedAt(REPO, STRICT, 'rm ~/scratch/x');
+    // The subset is exact: a variable that merely starts with PWD is another
+    // variable, and every other variable stays unplaceable and allowed,
+    // deliberately, backstopped by the tree-state bracket.
+    assertAllowedAt(REPO, STRICT, 'rm $PWDX/README.md');
+    assertAllowedAt(REPO, STRICT, 'rm $FOO/README.md');
+});
+
+test('a destructive cmdlet fed by an enumerating pipeline is a bulk mutation, pipeline variable or none', () => {
+    for (const agent of [STRICT, GATE]) {
+        denyAll(agent, [
+            // The $_-shaped operand defeated the no-path-operand branch while
+            // the items still came from the enumeration upstream.
+            ['Get-ChildItem | ForEach-Object { Remove-Item $_ }', BULK],
+            ['gci | % { ri $_ }', BULK],
+            ['Get-ChildItem . | Sort-Object | ForEach-Object { Remove-Item $_ }', BULK],
+            // The operand-free shape stays covered by the original branch.
+            ['Get-ChildItem . -Recurse | Remove-Item', BULK],
+        ]);
+        // An enumeration into a non-mutating consumer is a read.
+        allowAll(agent, ['Get-ChildItem . -Recurse | Select-Object Name']);
+    }
+    // A standalone destructive cmdlet with the same unresolvable operand has no
+    // enumeration feeding it items, which is what scopes the predicate to the
+    // bulk idiom rather than to every variable operand.
+    allowAll(STRICT, ['Remove-Item $x']);
+    // An enumeration in an earlier statement is not this pipeline's upstream:
+    // the separator bounds the stage walk.
+    allowAll(STRICT, ['ls .kit; sort | Remove-Item $x']);
+});
+
+test('a piped destructive cmdlet is the bulk idiom whatever its upstream, with no writable-set carve-out', () => {
+    // A carve-out that read the enumerating upstream and allowed the class its
+    // own cleanup was built and withdrawn, and the withdrawal is what this case
+    // pins. It twice admitted a delete it did not bound. Once because the
+    // upstream named what it READ rather than what it emitted, so
+    // Get-Content .kit/list.txt named a writable file whose lines name any path
+    // at all. And once because an intermediate stage replaced the items after
+    // the check had already passed on the stage that opened the pipe, so
+    // gci .kit | ForEach-Object { 'README.md' } | Remove-Item reached a tracked
+    // file from a writable enumeration. What a pipe actually feeds a destructive
+    // cmdlet is not readable from the stage that opens it, so the idiom denies
+    // whole for both classes and the false denial is priced rather than hidden.
+    denyAll(GATE, [
+        ['Get-ChildItem obj -Recurse | ForEach-Object { Remove-Item $_.FullName }', BULK],
+        ['Get-ChildItem obj -Recurse | Remove-Item', BULK],
+        ['gci bin -Recurse | ri -Force', BULK],
+        ['Get-Content obj/gen.txt | Remove-Item', BULK],
+        ['Get-ChildItem src -Recurse | Remove-Item', BULK],
+        ['Get-ChildItem | ForEach-Object { Remove-Item $_ }', BULK],
+        ["gci obj | ForEach-Object { 'README.md' } | Remove-Item", BULK],
+    ]);
+    denyAll(STRICT, [
+        ['Get-ChildItem .kit | ForEach-Object { Remove-Item $_ }', BULK],
+        ['Get-Content .kit/list.txt | Remove-Item', BULK],
+        ["gci .kit | ForEach-Object { 'README.md' } | Remove-Item", BULK],
+        ['Get-Item obj | Remove-Item', BULK],
+        ['Get-ChildItem obj -Recurse | Remove-Item', BULK],
+    ]);
+    // The cost is bounded, which is why the denial is priced rather than a hole
+    // in the charter: each class's direct spelling of the same cleanup still
+    // allows, so the grant survives in the form that names its own target.
+    allowAll(GATE, ['Remove-Item obj -Recurse -Force', 'ri bin -Recurse -Force']);
+    allowAll(STRICT, ['Remove-Item .kit/x -Recurse']);
 });

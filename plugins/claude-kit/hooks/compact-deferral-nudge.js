@@ -262,8 +262,32 @@ function agentIdentity(payload) {
 // directly: the spawned end-to-end case can only prove the refusal where an
 // SMB stack exists, and on a POSIX runner a doubled-slash path is an ordinary
 // missing file that produces the same silence for another reason.
+//
+// The canonical definition lives in hooks/kit-network-lib.js rather than
+// here (Standing Amendment 2): a module of a few lines, required directly by
+// this hook, by scripts/memq.js (which re-exports it for
+// hooks/memory-session.js's drift pass and hooks/memory-frontmatter-guard.js,
+// both of which already hold memq for other reasons), and by
+// hooks/chapter-boundary-nudge.js, which like this hook does not otherwise
+// need memq. The require is deferred to inside this function rather than
+// hoisted to module scope, on the same fail-toward-silence reasoning every
+// other kit library require in this file carries: a damaged or missing
+// installed cache must not crash a hook that runs after every covered tool
+// return.
+//
+// A require failure answers true, refusing the call, not false: false is the
+// checked-and-clean value this predicate exists to gate the goal read (guard
+// 5's readGoal) behind, and a damaged cache that cannot even supply this
+// small module is a state this predicate cannot make sense of, not evidence
+// the working directory is safe to open. Standing down here costs one
+// best-effort nudge; falling through to readGoal on a network share can cost
+// the tool call itself.
 function namesNetworkShare(cwd) {
-    return /^[\\/]{2}/.test(cwd);
+    try {
+        return require('./kit-network-lib.js').namesNetworkShare(cwd);
+    } catch {
+        return true;
+    }
 }
 
 // Guard 8: has the interval elapsed since this episode was last spoken to? An

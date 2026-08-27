@@ -58,10 +58,17 @@
 //   5. A kit goal is armed (readGoal from kit-goal-lib.js, the same read the
 //      gate uses, returning a state with a non-empty plan). The payload cwd
 //      that read resolves against is refused when it names a network share
-//      (two leading separators, the UNC and //server forms): opening a path
-//      on an unreachable share blocks for the SMB timeout, and a stalled
-//      edit loop is the one failure this hook must never cause.
-//      kit-goal-lib.js applies the same rejection to its own stat paths.
+//      (two leading separators, the UNC and //server forms, single-sourced in
+//      hooks/kit-network-lib.js per Standing Amendment 2): opening a path on
+//      an unreachable share blocks for the SMB timeout, and a stalled edit
+//      loop is the one failure this hook must never cause. A require failure
+//      for that small module answers true, refusing the call, on the same
+//      fail-toward-refusal reasoning as the lib requires just below: a
+//      damaged cache that cannot even supply this module is not evidence the
+//      working directory is safe to open. kit-goal-lib.js applies the same
+//      rejection to its own stat paths, for a different subject (a stored
+//      transcript path rather than a working directory), so it keeps its own
+//      copy rather than folding into this module.
 //   6. The goal's boundSession equals the payload's session_id (sameSessionId
 //      from kit-compact-lib.js). Bound sessions only: claiming a binding
 //      stays the business of the gate and the Stop hook.
@@ -234,12 +241,13 @@ function main() {
     // share (see the header); the lib requires are deferred to here so a
     // damaged installed cache degrades to silence rather than a crash.
     const cwd = (typeof payload.cwd === 'string' && payload.cwd !== '') ? payload.cwd : process.cwd();
-    if (/^[\\/]{2}/.test(cwd)) return null;
-    let readGoal, sameSessionId;
+    let readGoal, sameSessionId, namesNetworkShare;
     try {
+        ({ namesNetworkShare } = require('./kit-network-lib.js'));
         ({ readGoal } = require('./kit-goal-lib.js'));
         ({ sameSessionId } = require('./kit-compact-lib.js'));
     } catch { return null; }
+    if (namesNetworkShare(cwd)) return null;
     const goal = readGoal(cwd);
     if (!goal || typeof goal.plan !== 'string' || goal.plan === '') return null;
 
