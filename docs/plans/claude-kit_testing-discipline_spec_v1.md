@@ -42,6 +42,7 @@ When this plan is done: a `testing-discipline` skill owns the litmus for writing
 
 1. A counted claim about the suite (file counts, call-site counts, assert tallies, wall clocks) is measured by the section that states it, with the measuring command named beside the number, never copied forward from this spec's Evidence, a kaizen note, or a memory. The Evidence figures above were one day stale at authoring; treat them as scale, not fact.
 2. Every test this plan adds or edits runs green under the suite's parallel runner and owns its own temp state. A test whose subject is genuinely machine-shared state says so and lives in the contention lane Section 4 defines, never in the main gate.
+3. When a design changes mid-section, every test written against the old design is re-derived against the new one rather than carried forward. A test whose meaning depended on the replaced design can survive the change syntactically and become inert, or worse become an assertion about production defaults nobody chose to write.
 
 ## Sections of Work
 
@@ -168,3 +169,22 @@ Stamps: adjudicated 1, stamped 6. `memq unstamped --since 2h` listed one record,
 Gate: 1858 tests, 1857 pass, 0 fail, 1 skipped, 163s, exit 0, read from the run's own marker at `.kit/scratch/gate-s34.exit` rather than from the background wrapper's completion notification. Box confirmed quiet before the run by command-line match rather than by a process count, at 7 node processes and 16.9 GB free, and unchanged at the run's end. Against the two-run baseline of 1854/1853/0/1 at 188s (8 node, 17.4 GB) and 199s (7 node, 17.1 GB): failure delta zero, test count +4. The wall clock came in below both baseline runs at comparable contention, which reads as a lighter box rather than a finding, and is recorded because the comparable-contention rule asks for the figure whatever it says. The targeted lane for this section alone, `node --test test/doctrine-parity.test.js`, went 18/18/0 before the section, 18/18/0 after the first pass, and 19/19/0 after the pin landed, each run re-run by the orchestrator rather than accepted from the implementer's report.
 Next: 4. The unreliable tests take their recorded fixes, and contention gets a lane
 Commit Model: Commit-and-Push
+
+### Interim board 1 - 2026-08-27
+
+Section 4 is the only section in flight and it is in its third fix round; Sections 1 through 3 are closed and committed. This entry exists because the compaction gate reported offers held and no section has closed across two adjudications, so the board is written down rather than left in context.
+
+Stage: Section 4's code and tests are written and its three targeted lanes were green at round 2 (guard 29/29/0 exit 0, re-run by the orchestrator at 5218 ms; memq 525/525/0; canary 48/48/0, both reported by the implementer). Round 3's review then returned a Critical, and a consult ruled the override's design should change, so the section is mid-redesign and the round-2 lane numbers describe a tree that no longer exists.
+
+Live dispatches: one, the Section 4 implementer (`implementer-opus`, resumed by message), asked for the consult's adopted redesign, two verified security Majors, two remaining Majors, and five Minors. The round-3 reviewer trio (adversarial, blind, security, all opus/`max` through the Workflow route) and the consultant (opus/`max`) have all returned and are not live.
+
+Gate baseline: 1858 tests, 1857 pass, 0 fail, 1 skipped, 163 s, exit 0, recorded at Chapter 3's close on a box confirmed quiet by command-line match (7 node, 16.9 GB free). Section 4's own whole-gate run is still owed and will be measured after this fix round, against that number.
+
+Rulings adopted since the last boundary, both recorded here because they changed what is being built:
+
+- The override becomes a signal-only "no deadline" switch rather than a numeric budget, adopted from the consult against the orchestrator's own stated lean. The floor design it replaces bought 1.875x more headroom against a flake whose recorded excursion was roughly 400x, so it was the same bet at better odds rather than the removal of load-dependence the section's goal asks for. `execSync(cmd, { timeout: 0 })` means no timeout, measured on this box at node v24.19.0 (1549 ms for a 1.5 s command, byte-identical to omitting the option, against ETIMEDOUT at `timeout: 500`), which is the fact the new design rests on. Removing a deadline can only remove ETIMEDOUT, and every failure path in this hook is fail-open, so the switch can only make the guard more likely to block.
+- The switch's unbounded-wait fork was ruled here rather than raised, because the exposure it names does not exist: the only consumer is the test suite, which spawns the hook under its own `spawnSync` timeout that fires first. The bounded-floor design is the named one-line fallback if that reading is ever wrong.
+
+Two security findings of Major weight ride with the fix round rather than being routed out, per the rule that a security Major is never parked on scope grounds: the guard's push detector misses `\n`-, `&`- and `(`-separated segments (verified by running its regex, three shapes returning false), and `sh()` inherits an ambient `GIT_*` environment that can redirect every git query the decision rests on.
+
+Next action: adjudicate the fix round, rewrite `docs/security-model.md`'s entry for the shipped switch, move the two retired backlog entries to `docs/archive/backlog-2026-Q3.md` (the dated-snapshot destination is wrong by the backlog's own rule at `docs/backlog.md:179`, which reserves it for items retired because an effort removed what they were about), run the whole gate, then close Chapter 4.
