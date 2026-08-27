@@ -10,7 +10,7 @@ Authorized by the operator at the keyboard, 2026-08-26, closing a same-day desig
 
 ## Goal
 
-When this is done, a blocker climbs a ladder instead of arriving raw. A worker asks its repo's expert before declaring BLOCKED, so a blocker an existing source already answers never becomes one; a declared BLOCKED keeps today's mechanics whole, the Stop hook's release and the operator's ping untouched, while any running coordinator surfaces it in parallel as a briefed decision ask; and the operator's answer returns either directly or through the coordinator on the artifact rail. The peer-sessions role etiquette and the coordinator skill carry the ladder, and the operator reads one brief instead of reconstructing a thread.
+When this is done, a blocker climbs a ladder instead of arriving raw. A worker asks its repo's expert before declaring BLOCKED, so a blocker an existing source already answers never becomes one; a declared BLOCKED keeps today's mechanics whole, the Stop hook's release and the operator's ping untouched, while any running coordinator surfaces it in parallel as a briefed decision ask; and the operator's answer returns on the channel the coordinator's brief named in advance, the worker's own, never through the seat. The peer-sessions role etiquette and the coordinator skill carry the ladder, and the operator reads one brief instead of reconstructing a thread.
 
 ## Approach
 
@@ -73,7 +73,7 @@ Files in scope: `test/kit-goal-lib.test.js`.
 
 ## Out of Scope
 
-- Any hook or CLI code: the verified BLOCKED mechanics are already what the design needs, so this plan is prose-only.
+- Any hook or CLI code: the verified BLOCKED mechanics are already what the design needs, so this plan changes no shipped behavior. Its one non-prose file is the test section 6 appends to pin a disclosure control section 2 rests on.
 - Any wait for the pre-BLOCKED ask, mechanical or stated: the ask never gates, so there is no window to bound. The worker keeps working what is workable and declares at exactly the point it would have declared with no ask in flight.
 - The admin seat: it has no blocker role in this design.
 - Role authentication and roster trust: unchanged, per the shipped never-a-privilege rule.

@@ -1474,23 +1474,29 @@ test('CLI status prints the blocked note but never the bound transcript or execu
         const res = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
         assert.strictEqual(res.status, 0, res.stderr);
 
+        // The control is what the command puts in front of the seat, which is
+        // both streams rather than stdout alone: the CLI writes advisory notes
+        // to stderr, and a path leaking there reaches a brief exactly as one on
+        // stdout would.
+        const shown = res.stdout + '\n' + res.stderr;
+
         // Prove the absence checks below can actually see a leak before
         // trusting them passing: run the same shape of check against a copy
         // of the real output with each path spliced in, and require it to
         // fail. A check that never goes red here would pass for the wrong
         // reason against the real command too.
-        const leakingTranscript = res.stdout + '\n' + transcript;
+        const leakingTranscript = shown + '\n' + transcript;
         assert.throws(() => assert.strictEqual(leakingTranscript.includes(transcript), false),
             'the transcript-absence check must be able to fail, or it proves nothing');
-        const leakingTree = res.stdout + '\n' + executionTree;
+        const leakingTree = shown + '\n' + executionTree;
         assert.throws(() => assert.strictEqual(leakingTree.includes(executionTree), false),
             'the execution-tree-absence check must be able to fail, or it proves nothing');
 
         assert.ok(res.stdout.includes(note), 'the blocked note is what the seat reads status for: ' + res.stdout);
-        assert.strictEqual(res.stdout.includes(transcript), false,
-            'the bound transcript path must never reach this output: ' + res.stdout);
-        assert.strictEqual(res.stdout.includes(executionTree), false,
-            'the execution tree path must never reach this output: ' + res.stdout);
+        assert.strictEqual(shown.includes(transcript), false,
+            'the bound transcript path must never reach this output: ' + shown);
+        assert.strictEqual(shown.includes(executionTree), false,
+            'the execution tree path must never reach this output: ' + shown);
     } finally {
         rmRepo(repo);
     }
