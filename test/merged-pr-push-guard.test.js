@@ -68,8 +68,11 @@ function makeGhShim() {
 }
 
 // A bound on the whole spawn, well clear of anything a healthy run takes. It is
-// a flat number because the hook's queries no longer carry one to derive from:
-// every case below runs them with no deadline at all.
+// a flat number rather than one derived from the hook's budgets, because the
+// cases below run the queries with no deadline at all, except the two whose
+// subject is the production configuration itself (the no-override case and the
+// ignored-switch case), which run under the shipped budgets and assert only
+// what no budget can red.
 const SPAWN_TIMEOUT_MS = 90000;
 
 // deadlineOpts shapes the two switch variables in the child's environment:
@@ -185,18 +188,22 @@ test('a host query that exits nonzero fails open, with the host reached', () => 
 // produces, so contention can make this case slower and can never make it red,
 // while the same case asserting a block would be a bet on the box finishing
 // four queries inside 8000 ms, which is the load-sensitive shape this file
-// exists to retire.
+// exists to retire. The recorder file is not asserted for the same reason:
+// under the shipped budgets it appears only if the host query spawns inside
+// its 8000 ms, which is a bet on the box's load, and host reachability is
+// already proven where no budget applies ('valid branch reaches the host
+// query').
 test('the shipped budgets allow an unmerged branch with no override present', () => {
     const repo = makeRepo();
     const shim = makeDir('mpr-rec-');
     try {
-        const recFile = makeRecorder(shim);
-        // Empty host output is UNKNOWN, which allows; the recorder proves the
-        // query ran under the shipped budgets rather than being skipped.
+        makeRecorder(shim);
+        // Empty host output is UNKNOWN, which allows, and a query that
+        // overruns its budget under load is a fail-open path to the same
+        // allow, so the exit code and the quiet stderr are load-independent.
         const r = runHook(repo, 'git push origin feature/valid-1.0', shim, null, { none: true });
         assert.strictEqual(r.status, 0, r.stderr);
         assertAllowedQuietly(r);
-        assert.ok(fs.existsSync(recFile), 'the host CLI was reached');
     } finally { rmDir(repo); rmDir(shim); }
 });
 
@@ -204,18 +211,23 @@ test('the switch without its signal is ignored, and the hook says so', () => {
     const repo = makeRepo();
     const shim = makeDir('mpr-rec-');
     try {
-        const recFile = makeRecorder(shim);
+        makeRecorder(shim);
         // The switch set to the value that would be honored with the signal,
         // offered without it. The note is the observable proof it was not
-        // honored, and it rides an allow, which is load-independent: this
-        // asserts nothing about a block. It also exercises the note's own
-        // delivery, a synchronous write to fd 2 immediately before the exit.
+        // honored, and it is load-independent twice over: it rides an allow,
+        // which every query outcome under production budgets produces here,
+        // and it is latched before the query's execSync runs, so it is owed
+        // whether the query finishes or overruns. Whether the host CLI is
+        // reached inside the production budget is the box's business, so the
+        // recorder file is deliberately not asserted; host reachability is
+        // proven where no budget applies ('valid branch reaches the host
+        // query'). The case also exercises the note's own delivery, a
+        // synchronous write to fd 2 immediately before the exit.
         const r = runHook(repo, 'git push origin feature/valid-1.0', shim, null,
             { value: '1', signal: null });
         assert.strictEqual(r.status, 0, r.stderr);
         assert.match(r.stderr, /ignoring KIT_MERGED_PR_GUARD_NO_DEADLINE/);
         assert.match(r.stderr, /KIT_MERGED_PR_GUARD_NO_DEADLINE_ALLOW=1/);
-        assert.ok(fs.existsSync(recFile), 'the host CLI was still reached');
     } finally { rmDir(repo); rmDir(shim); }
 });
 
@@ -498,7 +510,9 @@ for (const [shape, command] of [
     ['a background separator', 'echo starting & git push origin feature-x'],
     ['an && chain', 'echo starting && git push origin feature-x'],
     ['a semicolon chain', 'echo starting; git push origin feature-x'],
-    ['a pipeline tail', 'git push origin feature-x | tee out.log']
+    ['a pipeline tail', 'git push origin feature-x | tee out.log'],
+    ['an environment assignment prefix', 'GIT_SSH_COMMAND="ssh -i k" git push origin feature-x'],
+    ['a backtick substitution', '`git push origin feature-x`']
 ]) {
     test('a merged branch is blocked when the push arrives after ' + shape, () => {
         const repo = makeRepo();
@@ -513,6 +527,52 @@ for (const [shape, command] of [
         } finally { rmDir(repo); rmDir(shim); }
     });
 }
+
+// The parser's whole case matrix, pinned in-process at pushArgs so the residue
+// is a recorded decision rather than an accident. Three groups: pushes at a
+// real command position (including behind NAME=value assignment prefixes and
+// inside substitutions, both of which a real shell runs), non-pushes that must
+// stay invisible, and the deliberate residue, the evasions the parser does not
+// model, left unfixed with their names on them. The exact operands are
+// asserted, not just detection, so a cut that drifts shows up here.
+test('pushArgs pins the parser matrix, caught shapes and deliberate residue alike', () => {
+    for (const [cmd, expected] of [
+        // A push at command position, its operands cut at the command's end.
+        ['git push origin merged-feature', 'origin merged-feature'],
+        ['git push --delete origin x', '--delete origin x'],
+        ['(git push origin b)', 'origin b'],
+        ['a & git push origin b', 'origin b'],
+        ['git push origin b && ls -d', 'origin b'],
+        ['echo starting\ngit push origin b', 'origin b'],
+        // Assignment prefixes: NAME=value before a command is command position
+        // in every POSIX shell, and GIT_SSH_COMMAND=... is a real shape a push
+        // arrives in. Unquoted, double-quoted, single-quoted, several at once,
+        // and behind a separator.
+        ['FOO=bar git push origin merged-feature', 'origin merged-feature'],
+        ['GIT_SSH_COMMAND="ssh -i k" git push origin merged-feature', 'origin merged-feature'],
+        ['GIT_SSH_COMMAND=\'ssh -i k\' git push origin merged-feature', 'origin merged-feature'],
+        ['A=1 B=2 git push origin merged-feature', 'origin merged-feature'],
+        ['ls && FOO=bar git push origin merged-feature', 'origin merged-feature'],
+        // Substitutions: both spellings run the push, so both open a command
+        // position and both close the operand cut.
+        ['$(git push origin merged-feature)', 'origin merged-feature'],
+        ['`git push origin merged-feature`', 'origin merged-feature'],
+        // Not pushes: no command position, nothing to guard.
+        ['git status', null],
+        ['echo git push', null],
+        // The deliberate residue, pinned so a change to any of it is a
+        // decision. A push inside a quoted string is not detected,
+        ['echo "git push origin x"', null],
+        // a backslash-newline continuation between git and push is not modeled,
+        ['git \\\npush origin merged-feature', null],
+        // an interposed runner is not modeled,
+        ['echo b | xargs git push origin', null],
+        // and only the first command-position push in a compound is guarded.
+        ['git push origin first; git push origin second', 'origin first'],
+    ]) {
+        assert.strictEqual(guard.pushArgs(cmd), expected, JSON.stringify(cmd));
+    }
+});
 
 // A trailing command after a semicolon is a second command, not part of the
 // branch name. Reading it as part of the branch is what the allowlist then

@@ -104,7 +104,7 @@ Files in scope: `plugins/claude-kit/skills/operating-instructions/SKILL.md`, `ho
 
 ## Related
 
-- `docs/plans/claude-kit_testing-discipline_spec_v1.md`: slate position 1; shares `executing-work/SKILL.md` and both doctrine copies as amendment surfaces, which is why this plan is sequenced strictly after it.
+- `docs/archive/claude-kit_testing-discipline_spec_v1.md` (complete and archived; it ran as `docs/plans/claude-kit_testing-discipline_spec_v1.md`): slate position 1; shares `executing-work/SKILL.md` and both doctrine copies as amendment surfaces, which is why this plan is sequenced strictly after it.
 - `kaizen/notes-SCOTT-CLAUDE.md`, the seven 2026-08-26 review-and-record notes: the origin, cleared into this spec at authoring.
 - Project memories applied in this authoring: `skill-amendments-collide-with-neighbours` (Standing Amendment 1), `an-enumeration-about-a-tool-is-read-from-the-tool` (Section 1), `a-restated-count-is-a-cross-file-invariant` (Standing Amendment 2's shape).
 

@@ -78,5 +78,6 @@ Files in scope: `plugins/claude-kit/skills/memory-system/SKILL.md`.
 ## Related
 
 - `docs/plans/claude-kit_memory-anchors-and-frontmatter-guard_spec_v1.md`: the plan whose Section 7 created the predicate, fixed four of the eleven verbs, and named this remainder as a handoff. Archived on that plan's close; look under `docs/archive/` if it is not in `docs/plans/`.
+- `docs/archive/claude-kit_testing-discipline_spec_v1.md`: the slate plan sequenced immediately ahead of this one, complete and archived. The two share `test/memq.test.js`, which that plan's Section 4 edited (a readiness barrier for the stale-lock race, and the type-lock test cut to two writers), so read its Chapter 4 before touching that file here. Its shared-setup coverage-gap pattern, where every test in an area shares the setup that avoids a hazard and the area is structurally blind to it, is what this plan's unpinned-test control applies.
 
 ## Chapters

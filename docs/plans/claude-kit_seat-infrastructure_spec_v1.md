@@ -216,7 +216,7 @@ Files in scope: `plugins/claude-kit/skills/peer-sessions/SKILL.md`, `plugins/cla
 
 ## Related
 
-- `docs/plans/claude-kit_testing-discipline_spec_v1.md`: slate priority 1, in execution; its box check composes with element E's claim file. The two plans share exactly one file, `test/doctrine-parity.test.js`, which is why the start condition above sequences this plan behind that queue.
+- `docs/archive/claude-kit_testing-discipline_spec_v1.md` (complete and archived; it ran as `docs/plans/claude-kit_testing-discipline_spec_v1.md`): slate priority 1, complete; its box check composes with element E's claim file. The two plans share exactly one file, `test/doctrine-parity.test.js`, which is why the start condition above sequences this plan behind that queue.
 - `docs/archive/claude-kit_compact-boundaries_spec_v1.md`: created the two release markers Forks 1-2 amend.
 - `docs/archive/claude-kit_coordinator-and-roles_spec_v1.md`: created the seat vocabulary and the board this plan re-homes.
 - `docs/plans/claude-kit_session-roles_notes_v1.md`: the design dialogue's fact base behind the seat vocabulary.

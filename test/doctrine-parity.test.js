@@ -722,3 +722,56 @@ test('the five Section 3 pointers to testing-discipline are still present', () =
             + 'promises the skill owns');
     }
 });
+
+// The adversarial reviewer's Tests bullet is the same drift class one surface
+// later: that charter adjudicates every future section review, so a litmus
+// restated there outlives every deletion the Section 3 fold performed. Both
+// halves are pinned: the bullet still routes to the testing-discipline skill's
+// litmus, and the three-instance list the fold deleted has not resurfaced,
+// because a pointer bolted onto a surviving restatement presents two
+// authorities and the reader takes the nearest list.
+test('the adversarial reviewer judges test-worthiness by the testing-discipline litmus, not a local list', () => {
+    const charter = collapseWhitespace(fs.readFileSync(path.join(__dirname, '..',
+        'plugins', 'claude-kit', 'agents', 'adversarial-reviewer.md'), 'utf8'));
+    assert.ok(charter.includes('testing-discipline skill\'s litmus'),
+        'the adversarial reviewer\'s Tests bullet no longer routes '
+        + 'test-worthiness to the testing-discipline skill\'s litmus, so the '
+        + 'agent adjudicating every section review is back to its own words');
+    assert.ok(!charter.includes('(a business rule, an edge case, a bug fix)'),
+        'the three-instance test-worthiness list has resurfaced in the '
+        + 'adversarial reviewer\'s charter; the litmus lives in the '
+        + 'testing-discipline skill, and a local restatement is what drifts');
+});
+
+// The targeted-lane definition and the contention-lane schedule are stated in
+// full in both the doctrine's gate bullet and the testing-discipline skill, on
+// purpose: the duplication was adjudicated for doctrine-only-reader
+// visibility. What duplication costs is drift (the box-check pair had exactly
+// that, the skill's copy dropping the running-engine case), so the shared text
+// is pinned here at the phrases that do the work: the targeted lane's
+// definition, the contention lane's schedule, and the schedule's
+// touched-delta condition.
+test('the lane text agrees between the doctrine gate bullet and the testing-discipline skill', () => {
+    const testingSkill = fs.readFileSync(path.join(__dirname, '..', 'plugins',
+        'claude-kit', 'skills', 'testing-discipline', 'SKILL.md'), 'utf8');
+    const copies = [
+        ['the skill-body doctrine copy', skillBody()],
+        ['the doctrine mirror', mirrorBody()],
+        ['the testing-discipline skill', testingSkill],
+    ];
+    for (const [phrase, what] of [
+        ['the changed files\' tests plus any whole-tree pin whose subject those files are',
+            'the targeted lane\'s definition'],
+        ['at finishing, before a push, and at section close whenever',
+            'the contention lane\'s schedule'],
+        ['section\'s delta touched',
+            'the schedule\'s touched-delta condition'],
+    ]) {
+        for (const [label, body] of copies) {
+            assert.ok(body.includes(phrase), label + ' no longer carries ' + what
+                + ' ("' + phrase + '"); the lane text is deliberately stated in '
+                + 'full on both surfaces, so the copies must keep saying the '
+                + 'same thing');
+        }
+    }
+});

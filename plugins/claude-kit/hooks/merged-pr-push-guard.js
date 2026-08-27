@@ -130,38 +130,50 @@ function sh(cmd, cwd, timeout) {
 // where the command does.
 //
 // A command begins at the start of the string or just after a shell separator,
-// redirect, subshell opener, or line break, and it ends at the next one. The
-// cut set is readonly-agent-guard.js's, whose `segment` cuts the same input on
-// /[;|&<>)\n\x01]/ for the same reason. It is replicated rather than shared:
-// that hook exports nothing, so sharing would mean building an export surface
-// on a second deny guard and loading it on every Bash call, and what has to
-// agree between the two is this one-line cut set rather than the quote and
-// heredoc masking that surrounds it there.
+// redirect, subshell opener, backtick, or line break, optionally behind one or
+// more NAME=value assignment prefixes (`GIT_SSH_COMMAND="ssh -i k" git push`
+// is command position in every POSIX shell), and it ends at the next separator.
+// The cut set extends readonly-agent-guard.js's, whose `segment` cuts on
+// /[;|&<>)\n\x01]/: that hook masks substitutions to \x01 sentinels before it
+// cuts, so a backtick reaches its cut as a sentinel, while this hook does no
+// masking and must cut on the literal backtick itself. The set is replicated
+// rather than shared: that hook exports nothing, so sharing would mean building
+// an export surface on a second deny guard and loading it on every Bash call,
+// and what has to agree between the two is this one-line cut set rather than
+// the quote and heredoc masking that surrounds it there.
 //
 // Every shape in the set matters. A newline ends a command as surely as a
 // semicolon, and a two-line Bash call is what a model routinely writes, so
 // without it the push on line two is not seen at all. `(` opens a command and
 // `)` closes one, so a push in a subshell is neither missed nor allowed to
-// swallow what follows. And a command that ends at its own separator is what
-// keeps a later flag, in `git push origin x && ls -d`, out of the operands read
-// below.
+// swallow what follows, and a backtick does both jobs at once. And a command
+// that ends at its own separator is what keeps a later flag, in
+// `git push origin x && ls -d`, out of the operands read below.
 //
-// What this does not do is mask quoted text, so a separator inside a quoted
-// argument still cuts. The residue is a `git push` written inside a quoted
-// string being read as a push, which is a needless query and at worst a
-// needless block, never a missed one; it is the same residue the previous
-// separator test carried.
+// What the parser catches is exactly a textual `git push` at a command position
+// as defined above, and both error directions carry residue. Quoted text is not
+// masked, so a separator inside a quoted argument still opens a command
+// position and prose like `echo "x; git push origin b"` is read as a push:
+// over-detection, a needless query and at worst a needless block. The missed
+// direction's residue is the class of pushes the shell reaches through a layer
+// this parser does not model: a quoted string later executed as code, a
+// backslash-newline continuation between `git` and `push`, an interposed runner
+// (`echo b | xargs git push origin`), an alias or shell function; and within
+// one compound command only the first command-position push is guarded. Each of
+// those is a known, deliberately unfixed gap: closing the class means modeling
+// the shell, which is readonly-agent-guard.js's job, not this one's.
 function pushArgs(cmd) {
     const c = String(cmd || '');
     const re = /\bgit\s+push\b/g;
     let m;
     while ((m = re.exec(c)) !== null) {
-        // Everything from the previous boundary to the match must be blank, or
-        // this `git push` is an operand of some other command rather than a
-        // command of its own.
-        if (!/(?:^|[;|&<>()\n\x01])[ \t]*$/.test(c.slice(0, m.index))) continue;
+        // Everything from the previous boundary to the match must be blank or
+        // NAME=value assignment prefixes (values unquoted, single-quoted, or
+        // double-quoted), or this `git push` is an operand of some other
+        // command rather than a command of its own.
+        if (!/(?:^|[;|&<>()`\n\x01])[ \t]*(?:[A-Za-z_][A-Za-z0-9_]*=(?:'[^']*'|"[^"]*"|[^\s;|&<>()`'"\x01])*[ \t]+)*$/.test(c.slice(0, m.index))) continue;
         const rest = c.slice(m.index + m[0].length);
-        const cut = rest.search(/[;|&<>)\n\x01]/);
+        const cut = rest.search(/[;|&<>)`\n\x01]/);
         return (cut < 0 ? rest : rest.slice(0, cut)).trim();
     }
     return null;
