@@ -1439,6 +1439,63 @@ test('CLI status renders a legacy single-plan state as a queue of one', () => {
     }
 });
 
+// This is what makes 'run the goal CLI instead of reading the state file'
+// a disclosure control rather than just a rerouted read: the raw state file
+// carries the bound transcript's and the execution tree's absolute paths,
+// both under the user profile, and status must print the blocker note
+// without printing either. Nothing else enforces that property, so a later
+// change to status's rendering could start leaking one of the two paths
+// while the skill kept telling a coordinator seat to rely on this command
+// for exactly the guarantee that had just gone quiet.
+test('CLI status prints the blocked note but never the bound transcript or execution tree path', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
+        writePlan(repo, 'docs/plans/b.md', 'Status: In Progress\n');
+        armGoal(repo, ['docs/plans/a.md', 'docs/plans/b.md']);
+
+        const transcript = path.join(repo, 'transcript-should-not-leak.jsonl');
+        fs.writeFileSync(transcript, '{}\n', 'utf8');
+        bindSession(repo, 'sess-1', transcript);
+
+        const note = 'waiting on the operator to pick a database vendor';
+        advanceGoal(repo, { outcome: 'blocked', note });
+
+        // recordExecutionTree derives the tree from goalRoot(cwd) against cwd
+        // itself, which needs a real .git boundary this fixture repo does not
+        // have. The field is written directly instead, the same way
+        // writeLegacyState above builds a state the normal write path never
+        // produces.
+        const executionTree = path.join(repo, 'execution-tree-should-not-leak');
+        const state = JSON.parse(fs.readFileSync(goalPath(repo), 'utf8'));
+        state.executionTree = executionTree;
+        fs.writeFileSync(goalPath(repo), JSON.stringify(state, null, 2) + '\n', 'utf8');
+
+        const res = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(res.status, 0, res.stderr);
+
+        // Prove the absence checks below can actually see a leak before
+        // trusting them passing: run the same shape of check against a copy
+        // of the real output with each path spliced in, and require it to
+        // fail. A check that never goes red here would pass for the wrong
+        // reason against the real command too.
+        const leakingTranscript = res.stdout + '\n' + transcript;
+        assert.throws(() => assert.strictEqual(leakingTranscript.includes(transcript), false),
+            'the transcript-absence check must be able to fail, or it proves nothing');
+        const leakingTree = res.stdout + '\n' + executionTree;
+        assert.throws(() => assert.strictEqual(leakingTree.includes(executionTree), false),
+            'the execution-tree-absence check must be able to fail, or it proves nothing');
+
+        assert.ok(res.stdout.includes(note), 'the blocked note is what the seat reads status for: ' + res.stdout);
+        assert.strictEqual(res.stdout.includes(transcript), false,
+            'the bound transcript path must never reach this output: ' + res.stdout);
+        assert.strictEqual(res.stdout.includes(executionTree), false,
+            'the execution tree path must never reach this output: ' + res.stdout);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
 // Run a case with the event sink redirected into its own temp dir, restoring
 // KIT_EVENTS_PATH and KIT_EVENTS_PATH_ALLOW (including their absence)
 // afterward so one case cannot leak the redirect into the next, and cleaning

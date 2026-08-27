@@ -214,3 +214,48 @@ Stamps: not run, per the Assumptions line above
 Next: 3. The architecture sentence
 Commit Model: Commit-and-Push
 
+
+### Chapter 3 - 2026-08-26
+Completed: 3. The architecture sentence
+Implemented By: main session, inline per the section's Locus line
+Metrics: 1 review round, three reviewers at opus/max (adversarial, blind, security), shared with sections 4 and 5; NEEDS_CONTEXT 0; escalations 0; consults 0
+Decisions / Surprises: The round's sharpest finding was a seam this session authored one commit after fixing the same seam elsewhere. Section 2 had just bounded the answered leg of an escalation to answered-unconfirmed, because the plan-doc resolution record narrows an honest writer without authenticating one and any local session can write a Chapter claiming an operator answer. The ladder sentence added here then closed the escalation on exactly that record. All three reviewers caught it independently. The lesson is that the seam class this effort has been hunting for nine rounds does not stop at the boundary of the files under review: an amendment in one document falsifies an unchanged sentence in another, and the sibling most likely to be falsified is the one just amended.
+Assumptions: memq was not run at this section's boundary (declared 2026-08-26, section 3): the operator's standing workspace constraint bars this session from the machine-global memory store, so no stamp adjudication was performed.
+Review Findings: No Critical. Majors fixed: the answered-leg contradiction above; a size deviation, since the section specced one sentence naming the ladder and six landed, and the two beyond the specced content were exactly where that contradiction came from, so collapsing to the specced scope fixed both at once; and an unchanged neighbour under Goal release events claiming a mid-queue blocker's content survives only in a session's closing summary and that closing the gap needs a new field, which is false for the armed window the funnel operates in and false in the direction that hides the new disclosure path. Minors fixed: the ask leg does not reach the coordinator seat and the enumeration said both legs did; the widened source list's units no longer matched its count; and the folded seat correction published this machine's worktree concurrency and slot arbitration into a public repository, six lines from a clearance rationale that rests on those being facts a repository does not show, so the exercised-versus-unexercised split is now stated without naming either.
+Stamps: not run, per the Assumptions line above
+Next: 4. The publication clearance catches up with what an escalation line carries
+Commit Model: Commit-and-Push
+
+### Chapter 4 - 2026-08-26
+Completed: 4. The publication clearance catches up with what an escalation line carries
+Implemented By: main session, inline per the section's Locus line
+Metrics: 1 review round, three reviewers at opus/max, shared with sections 3 and 5; NEEDS_CONTEXT 0; escalations 0; consults 0
+Decisions / Surprises: This section widened mid-flight to carry a security Major that round 9 raised against sections 1 and 2, routed here rather than parked because this document is the one that owns the surface. Two of its own findings then turned on the same rule R17 states, that the clearance exists in two copies and the skill's is the one the writing seat reads: the two copies had drifted by one subject within this changeset, and the input-side path screen the funnel now rests on was recorded in the skill and in neither published document. That second one is the round-9 lesson arriving on a new surface. A rule bounding what a surface may output says nothing about what it may take as input, and a security model that records only the output half describes a control the system does not have.
+Assumptions: memq was not run at this section's boundary (declared 2026-08-26, section 4): same standing constraint as the sections above.
+Review Findings: No Critical. Majors fixed: the input-side path screen now recorded here as a control distinct from the corroboration rule; the two copies of the clearance enumeration reconciled to one wording carrying blocker-derived content, the incident, whether it has been briefed, and the answering channel, landed in both this document and the coordinator skill in the same change. Minors fixed: the claim that the Stop hook records a declaration's first line verbatim, which overstates the mechanism twice, since the note is stripped to printable ASCII and cut at 120 characters and is recorded only on a mid-queue advance; two change-narrative sentences authored here in a shipped artifact, against house style; and the goal state file's own section, which enumerated ten readers and did not carry the eleventh this plan creates, a foreign cross-repo one, nor name the single sensitive field that survives the CLI filter.
+Stamps: not run, per the Assumptions line above
+Next: 5. The ladder's first rung reaches the skill that owns the moment
+Commit Model: Commit-and-Push
+
+### Chapter 5 - 2026-08-26
+Completed: 5. The ladder's first rung reaches the skill that owns the moment
+Implemented By: main session, inline per the section's Locus line
+Metrics: 1 review round, three reviewers at opus/max, shared with sections 3 and 4; NEEDS_CONTEXT 0; escalations 0; consults 0
+Decisions / Surprises: The section widened mid-flight to carry the second of round 9's routed security Majors, that the public-board cap on a declaration's first line lived only in a skill the declaring worker runs without. Writing it here then produced the same defect one level down, and all three reviewers found it: the paragraph restated the cap for the first line and introduced two new outbound blocker-bearing messages, the expert ask and the coordinator notice, with no cap on either, while its own stated reason for restating anything is that this worker may never load the file where the cap lives. A partial restatement of a control is worse than a pointer, because it reads as the whole of what was worth carrying over.
+Assumptions: memq was not run at this section's boundary (declared 2026-08-26, section 5): same standing constraint as the sections above.
+Review Findings: No Critical. Majors fixed: the ask and the notice now carry the cap directively rather than by reference; the record duty on a prevented declaration, which is an agreement reached over messaging and so lands in the plan doc in the same turn, restored from the skill this section routes around; and an unchanged paragraph two screens down asserting a second opinion always arrives through fresh eyes, which the warm expert ask falsifies. Minors fixed: the word verbatim, false against a silent 120-character printable-ASCII cut that carries no truncation mark, which matters here more than in the sibling document because this is the paragraph that tells a worker to put a path in that same line; an audience claim written as a delivery guarantee; a cap rationale scoped to the mid-queue case, which invited a worker on a single-plan arming to conclude the cap did not apply while the coordinator notice carries the line either way; the notice losing the expert as a recipient where the ask went unanswered; a no-expert branch reading as a licence to declare immediately rather than to go to the consult; and two bold leads both claiming to come first, which is the exact shape this section was written to prevent.
+Stamps: not run, per the Assumptions line above
+Next: 6. The seat's disclosure control gets a pin on the CLI it now rests on
+Commit Model: Commit-and-Push
+
+### Chapter 6 - 2026-08-26
+Completed: 6. The seat's disclosure control gets a pin on the CLI it now rests on
+Implemented By: implementer-sonnet
+Metrics: 0 dedicated review rounds, see Review Findings; NEEDS_CONTEXT 0; escalations 0; consults 0
+Decisions / Surprises: The section exists because section 2 turned a property of a command's output into a stated security control, and no test held that command to it. The pin's two-direction proof is left standing in the committed test rather than performed once and discarded: it splices each fixture path into a copy of the real output and requires the absence check to go red against it, so the control that the assertion can see a leak runs on every pass instead of being a claim in a Chapter about a step nobody can re-run. What that proof does not establish is that a future leak would spell the path the way the fixture does; the residual is narrow, since the stored value and the asserted value are the same string, and it would open only if a later renderer transformed the path on its way out.
+Assumptions: memq was not run at this section's boundary (declared 2026-08-26, section 6): same standing constraint as the sections above.
+Review Findings: This section had no dedicated reviewer pair, and that is recorded as a decision rather than left as a silence. It was dispatched after the sections 3 to 5 round was already in flight, its one file sat outside that round's brief, and it is a single self-contained test addition whose own gate is a two-direction proof plus the full suite. The finishing pass covers it over the whole changeset. The security reviewer read it unprompted while bracketing its own round and left two observations, both recorded and neither fixed here: the two-direction proof is weaker than driving the command against leaking output, adjudicated above; and the pin does not cover the note's 120-character truncation, which is outside this section's stated scope of the two absolute paths.
+Stamps: not run, per the Assumptions line above
+Next: finishing-work
+Commit Model: Commit-and-Push
+
