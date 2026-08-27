@@ -170,7 +170,7 @@ function assertOnlyFlagged(text, flagged) {
     }
     const others = ['docs-write-guard.js', 'readonly-agent-guard.js', 'kit-goal-stop.js',
         'merged-pr-push-guard.js', 'pr-docs-guard.js', 'session-start.js', 'doctrine-refresh.js',
-        'memq-grant.js']
+        'memq-grant.js', 'memory-frontmatter-guard.js']
         .filter((h) => !flagged.some((f) => f.hook === h));
     for (const h of others) {
         assert.ok(!text.includes(h), 'a healthy hook must not be named: ' + h);
@@ -221,6 +221,41 @@ test('a guard stubbed to deny everything fails its allow probe (the other direct
         const text = warning(res);
         assert.ok(text, 'a guard that blocks reads must not be silent');
         assertOnlyFlagged(text, [{ hook: 'readonly-agent-guard.js', probe: 'allow probe' }]);
+        assert.match(text, /expected exit 0, got exit 2/);
+    } finally {
+        rmDir(cache);
+    }
+});
+
+test('the memory frontmatter guard stubbed to allow everything fails its deny probe', () => {
+    const cache = makeCache();
+    try {
+        fs.writeFileSync(hookFile(cache, 'memory-frontmatter-guard.js'),
+            "'use strict';\nprocess.exit(0);\n", 'utf8');
+        const res = runCanary(cache);
+        assert.strictEqual(res.status, 0);
+        const text = warning(res);
+        assert.ok(text, 'a guard that lets a dangling pointer through must not be silent');
+        assertOnlyFlagged(text, [{ hook: 'memory-frontmatter-guard.js', probe: 'deny probe' }]);
+        assert.match(text, /expected exit 2, got exit 0/);
+    } finally {
+        rmDir(cache);
+    }
+});
+
+test('the memory frontmatter guard stubbed to deny everything fails its allow probe (the other direction)', () => {
+    // This guard matches Write, Edit and MultiEdit, so one stuck at deny
+    // blocks every file write in every session. The allow probe is what
+    // catches that, and this is the state it catches it in.
+    const cache = makeCache();
+    try {
+        fs.writeFileSync(hookFile(cache, 'memory-frontmatter-guard.js'),
+            "'use strict';\nprocess.exit(2);\n", 'utf8');
+        const res = runCanary(cache);
+        assert.strictEqual(res.status, 0);
+        const text = warning(res);
+        assert.ok(text, 'a guard that blocks every write must not be silent');
+        assertOnlyFlagged(text, [{ hook: 'memory-frontmatter-guard.js', probe: 'allow probe' }]);
         assert.match(text, /expected exit 0, got exit 2/);
     } finally {
         rmDir(cache);
@@ -287,7 +322,10 @@ test('the leash probe sets KIT_EVENTS_PATH_ALLOW alongside its own throwaway KIT
     // canary's own line deleted), and the observed path is asserted against
     // its actual shape (under os.tmpdir(), basename probe-events.jsonl) rather
     // than mere truthiness, which any non-empty value including the real
-    // homedir sink would satisfy.
+    // homedir sink would satisfy. The marker path is baked into the stub
+    // rather than passed in a variable, because the leash probe builds its
+    // child's environment from the allowlist and a variable is exactly what
+    // that environment does not carry through.
     const cache = makeCache();
     const markerDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hook-canary-marker-'));
     const marker = path.join(markerDir, 'seen-env.json');
@@ -298,7 +336,7 @@ test('the leash probe sets KIT_EVENTS_PATH_ALLOW alongside its own throwaway KIT
             // JSON payload on stdin, and a child that exits without reading it
             // can hand the parent an EPIPE on the write.
             + "require('fs').readFileSync(0, 'utf8');\n"
-            + "require('fs').writeFileSync(process.env.CANARY_TEST_MARKER, JSON.stringify({\n"
+            + "require('fs').writeFileSync(" + JSON.stringify(marker) + ", JSON.stringify({\n"
             + "    path: process.env.KIT_EVENTS_PATH || null,\n"
             + "    allow: process.env.KIT_EVENTS_PATH_ALLOW || null\n"
             + "}));\n",
@@ -310,7 +348,7 @@ test('the leash probe sets KIT_EVENTS_PATH_ALLOW alongside its own throwaway KIT
         const res = spawnSync(process.execPath, [CANARY], {
             input: '',
             encoding: 'utf8',
-            env: { ...scrubbedEnv, CLAUDE_PLUGIN_ROOT: cache, CANARY_TEST_MARKER: marker }
+            env: { ...scrubbedEnv, CLAUDE_PLUGIN_ROOT: cache }
         });
         assert.strictEqual(res.status, 0);
         const seen = JSON.parse(fs.readFileSync(marker, 'utf8'));
@@ -335,6 +373,13 @@ test('a cache with no memq to grant is reported, not probed for refusals', () =>
     // with silence. Probing its refusals there would pass without exercising a
     // single screen, and the state itself is damage: the one command this hook
     // exists to allow cannot run at all.
+    //
+    // The frontmatter guard reads the store's rules out of that same file, so
+    // without it that guard allows the record its deny probe expects it to
+    // refuse. Its line is named here rather than folded into the grant's,
+    // because the two are different losses from one missing payload file: a
+    // fleet worker without memq, and a hand-written memory record landing
+    // unchecked.
     const cache = makeCache();
     try {
         fs.rmSync(path.join(cache, 'scripts', 'memq.js'));
@@ -342,7 +387,8 @@ test('a cache with no memq to grant is reported, not probed for refusals', () =>
         assert.strictEqual(res.status, 0);
         const text = warning(res);
         assert.ok(text, 'a cache whose grant can never fire must not read as healthy');
-        assertOnlyFlagged(text, [{ hook: 'memq-grant.js', probe: 'grant probes' }]);
+        assertOnlyFlagged(text, [{ hook: 'memq-grant.js', probe: 'grant probes' },
+            { hook: 'memory-frontmatter-guard.js', probe: 'deny probe' }]);
     } finally {
         rmDir(cache);
     }
@@ -353,7 +399,9 @@ test('a cache missing memq and holding a tampered grant hook reports both', () =
     // beside it, so it must not stand in for having checked the hook's own
     // bytes. A partial or interrupted install is where both breakages are
     // plausible at once, and the integrity check is the only thing that sees
-    // the second one.
+    // the second one. The frontmatter guard's deny probe rides along for the
+    // reason the case above states: it reads the store's rules out of the same
+    // missing file.
     const cache = makeCache();
     try {
         stampCache(cache);
@@ -364,7 +412,121 @@ test('a cache missing memq and holding a tampered grant hook reports both', () =
         const text = warning(res);
         assert.ok(text, 'a cache broken twice must not read as healthy');
         assertOnlyFlagged(text, [{ hook: 'memq-grant.js', probe: 'grant probes' },
-            { hook: 'memq-grant.js', probe: 'integrity check' }]);
+            { hook: 'memq-grant.js', probe: 'integrity check' },
+            { hook: 'memory-frontmatter-guard.js', probe: 'deny probe' }]);
+    } finally {
+        rmDir(cache);
+    }
+});
+
+test('a cache missing memq and holding a tampered frontmatter guard reports both', () => {
+    // The frontmatter guard's deny probe fails on a cache without
+    // scripts/memq.js whatever the guard's own bytes say, so that failure is
+    // about the payload file beside it and must not stand in for having
+    // checked the guard: a partial or interrupted install is exactly where a
+    // missing payload file and a tampered guard are both plausible, and the
+    // integrity check is the only thing that sees the second one.
+    const cache = makeCache();
+    try {
+        stampCache(cache);
+        fs.rmSync(path.join(cache, 'scripts', 'memq.js'));
+        fs.appendFileSync(hookFile(cache, 'memory-frontmatter-guard.js'), '// tampered\n', 'utf8');
+        const res = runCanary(cache);
+        assert.strictEqual(res.status, 0);
+        const text = warning(res);
+        assert.ok(text, 'a cache broken twice must not read as healthy');
+        assertOnlyFlagged(text, [{ hook: 'memq-grant.js', probe: 'grant probes' },
+            { hook: 'memory-frontmatter-guard.js', probe: 'deny probe' },
+            { hook: 'memory-frontmatter-guard.js', probe: 'integrity check' }]);
+    } finally {
+        rmDir(cache);
+    }
+});
+
+test('a cache whose memq is present and unloadable, holding a tampered frontmatter guard, reports both', () => {
+    // A present-but-broken payload disarms the guard exactly as an absent one
+    // does: the guard's require of it throws, the guard fails open at exit 0,
+    // and its deny probe fails whatever the guard's own bytes say. A check that
+    // asked only whether the file is there would read this cache as supplied,
+    // file that failure against the guard, and dedup the integrity check out of
+    // the report, leaving the tampered guard unnamed on exactly the partial
+    // install where both breakages are plausible at once. The payload here
+    // parses and throws as it initializes, which is the half a syntax check
+    // does not see.
+    const cache = makeCache();
+    try {
+        stampCache(cache);
+        fs.writeFileSync(path.join(cache, 'scripts', 'memq.js'),
+            "'use strict';\nthrow new Error('a half-written payload');\n", 'utf8');
+        fs.appendFileSync(hookFile(cache, 'memory-frontmatter-guard.js'), '// tampered\n', 'utf8');
+        const res = runCanary(cache);
+        assert.strictEqual(res.status, 0);
+        const text = warning(res);
+        assert.ok(text, 'a cache broken twice must not read as healthy');
+        assertOnlyFlagged(text, [{ hook: 'memq-grant.js', probe: 'grant probe' },
+            { hook: 'memory-frontmatter-guard.js', probe: 'deny probe' },
+            { hook: 'memory-frontmatter-guard.js', probe: 'integrity check' }]);
+        const line = failureLines(text).find((l) =>
+            l.includes('memory-frontmatter-guard.js') && l.includes('deny probe'));
+        assert.match(line, /memq\.js/, 'the line names the payload file: ' + line);
+        assert.match(line, /fails open/, 'and says what its state does to the guard: ' + line);
+    } finally {
+        rmDir(cache);
+    }
+});
+
+test('a cache without memq holding a frontmatter guard stuck at deny reports the allow probe as its own', () => {
+    // Without scripts/memq.js the real guard's require throws before any
+    // exit-2 path, so the absence can only produce an exit 0: a probe that
+    // observed an exit 2 saw the hook's own bytes decide, and the missing
+    // payload explains nothing about it. Annotating that failure as fail-open
+    // would contradict the status on its own line, and exempting it from the
+    // dedup would report the same file twice. The state is a partial install
+    // with the guard replaced by a stub that blocks every write in every
+    // session, which is the failure the allow probe exists for.
+    const cache = makeCache();
+    try {
+        stampCache(cache);
+        fs.rmSync(path.join(cache, 'scripts', 'memq.js'));
+        fs.writeFileSync(hookFile(cache, 'memory-frontmatter-guard.js'),
+            "'use strict';\nprocess.exit(2);\n", 'utf8');
+        const res = runCanary(cache);
+        assert.strictEqual(res.status, 0);
+        const text = warning(res);
+        assert.ok(text, 'a cache broken twice must not read as healthy');
+        assertOnlyFlagged(text, [{ hook: 'memq-grant.js', probe: 'grant probes' },
+            { hook: 'memory-frontmatter-guard.js', probe: 'allow probe' }]);
+        const line = failureLines(text).find((l) =>
+            l.includes('memory-frontmatter-guard.js') && l.includes('allow probe'));
+        assert.match(line, /expected exit 0, got exit 2/);
+        assert.doesNotMatch(line, /fails open/,
+            'an exit 2 is not what a missing payload file produces: ' + line);
+        // The deny probe passes against this stub and says nothing, and the
+        // integrity check is deduped by the probe that did examine the hook's
+        // bytes, so the two assertions above are the whole report for it.
+    } finally {
+        rmDir(cache);
+    }
+});
+
+test('a frontmatter probe failure on a cache without memq names the missing payload file', () => {
+    // The grant probes' missing-payload line only fires when memq-grant.js
+    // itself loads, so on a cache where that hook is broken too, this line is
+    // the one place the real cause can be named: without it the report reads
+    // as a guard answering wrong when the guard's own bytes may be fine.
+    const cache = makeCache();
+    try {
+        fs.rmSync(path.join(cache, 'scripts', 'memq.js'));
+        fs.writeFileSync(hookFile(cache, 'memq-grant.js'), 'this is not javascript(', 'utf8');
+        const res = runCanary(cache);
+        assert.strictEqual(res.status, 0);
+        const text = warning(res);
+        assert.ok(text, 'a cache broken twice must not read as healthy');
+        const line = failureLines(text).find((l) =>
+            l.includes('memory-frontmatter-guard.js') && l.includes('deny probe'));
+        assert.ok(line, 'the deny probe still fails: ' + text);
+        assert.match(line, /memq\.js/, 'the line names the absent payload file: ' + line);
+        assert.match(line, /fails open/, 'and says what its absence does: ' + line);
     } finally {
         rmDir(cache);
     }
@@ -926,6 +1088,84 @@ test('the probe environment is built, not inherited, so ambient state cannot fai
     });
     assert.strictEqual(res.status, 0);
     assertSilent(res, 'a healthy cache stays silent under a hostile ambient environment');
+});
+
+test('a probe that names its own variables gets those and the allowlist, and nothing else the session holds', () => {
+    // The env-built contract read at the child rather than at the canary's
+    // silence. The frontmatter guard's probes are the pair that names extra
+    // variables, so the stub below records the environment it was handed: the
+    // two store signals the probe sets must be there, and an ordinary ambient
+    // variable this process holds must not, because a probed hook answering
+    // under the session's own environment is answering a different question
+    // than the one the canary asked. The marker path is baked into the stub
+    // rather than passed in a variable, because a variable is exactly what
+    // this environment does not carry through.
+    const cache = makeCache();
+    const markerDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hook-canary-env-'));
+    const marker = path.join(markerDir, 'seen-env.json');
+    try {
+        fs.writeFileSync(hookFile(cache, 'memory-frontmatter-guard.js'), [
+            "'use strict';",
+            // The canary writes a JSON payload to this child's stdin, and a
+            // child that exits without reading it can hand the parent an EPIPE.
+            "require('fs').readFileSync(0, 'utf8');",
+            "require('fs').writeFileSync(" + JSON.stringify(marker)
+                + ", JSON.stringify(process.env));"
+        ].join('\n') + '\n', 'utf8');
+        const res = runCanary(cache, {
+            KIT_CANARY_PLANTED: 'a variable an ordinary shell profile might set'
+        });
+        assert.strictEqual(res.status, 0);
+        const seen = JSON.parse(fs.readFileSync(marker, 'utf8'));
+        assert.ok(seen.KIT_MEMORY_ROOT, 'the probe must hand the child its own store root');
+        assert.strictEqual(seen.KIT_MEMORY_ROOT_ALLOW_DATA, '1',
+            'memq honors the root override only alongside the data signal, so the pair travels together');
+        assert.strictEqual(seen.KIT_MEMORY_PROJECT, '',
+            'the probe must pin the project empty, or an ambient pin takes the project root away');
+        assert.ok(!('KIT_CANARY_PLANTED' in seen),
+            'a variable the probe did not name must not reach the child: the environment is built from '
+            + 'the allowlist, not inherited');
+    } finally {
+        rmDir(cache);
+        rmDir(markerDir);
+    }
+});
+
+test('the store root a probe points at is fresh per run, so no state can be arranged there in advance', () => {
+    // The frontmatter guard resolves its answer through the store the probe
+    // names, and the probe names a directory that is not there: no project
+    // holds the record its pointer names, which is the certain refusal. A
+    // fixed name under a shared temp directory is a place anybody on the
+    // machine can create that record, or an unreadable directory, before the
+    // canary ever runs, turning the refusal into an allow and the session
+    // start into a warning that the kit's guards are broken when they are
+    // not. Two runs, two roots, and neither one on disk.
+    const cache = makeCache();
+    const markerDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hook-canary-root-'));
+    try {
+        const roots = [];
+        for (const run of [1, 2]) {
+            const marker = path.join(markerDir, 'run-' + run + '.json');
+            fs.writeFileSync(hookFile(cache, 'memory-frontmatter-guard.js'), [
+                "'use strict';",
+                "require('fs').readFileSync(0, 'utf8');",
+                "require('fs').writeFileSync(" + JSON.stringify(marker)
+                    + ", JSON.stringify(process.env.KIT_MEMORY_ROOT || null));"
+            ].join('\n') + '\n', 'utf8');
+            runCanary(cache);
+            roots.push(JSON.parse(fs.readFileSync(marker, 'utf8')));
+        }
+        assert.ok(roots[0] && roots[1], 'each run must hand the probed guard a store root');
+        assert.notStrictEqual(roots[0], roots[1],
+            'a store root that repeats across runs is state a third party can arrange in advance');
+        for (const root of roots) {
+            assert.ok(!fs.existsSync(root),
+                'the probe root must stay unmade: the absent store is the answer the probe reads');
+        }
+    } finally {
+        rmDir(cache);
+        rmDir(markerDir);
+    }
 });
 
 test('the canary loads no file out of the cache it is probing', () => {

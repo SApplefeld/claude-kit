@@ -435,20 +435,27 @@ test('the probe bullet defers its first-turn probe window to the dispatch shape 
 // site, because finishing-work and executing-work both discuss reachability
 // elsewhere in prose that is true as written.
 test('the hand-off copies route on the gate-level conclusion, not on a model being unreachable', () => {
-    // The list is the consult skill alone. Three further routing lines make the
-    // same hand-off and belong here too, named by their own text because their
-    // line numbers move: executing-work's two, carrying "is confirmed per
-    // finishing-work's unavailability rule" and "Unavailability is confirmed and
-    // recorded per finishing-work's unavailability rule", and finishing-work's
-    // final-adversarial-review dispatch line, which sets the review's model. All
-    // three spell the conclusion as a model being unreachable in the committed
-    // tree, so they join this list with the amendment that rewrites them and not
-    // before: a pin reading them now is red at every checked-out state, which is
-    // worth less than no pin at all.
+    // Four sites make the hand-off, each named by its own text because line
+    // numbers move. Three restate the conclusion in one clause and are pinned
+    // to its gate-level spelling. The fourth, executing-work's
+    // reviewer-effort-table line, defers to finishing-work's rule by name and
+    // restates no conclusion of its own; that is the shape that cannot drift,
+    // so its pin holds the deferral in place rather than demanding a
+    // restatement, which would create a second copy of the conclusion for
+    // every later amendment to sweep.
+    const conclusion = /(?:could not|cannot) be run at (?:the|its) fable tier/;
+    const deferral = /per finishing-work's unavailability rule/;
     const sites = [
-        [['skills', 'consult', 'SKILL.md'], /the stand-in is Opus at `max`/],
+        [['skills', 'consult', 'SKILL.md'],
+            /the stand-in is Opus at `max`/, conclusion],
+        [['skills', 'executing-work', 'SKILL.md'],
+            /compensated per the effort table below/, conclusion],
+        [['skills', 'executing-work', 'SKILL.md'],
+            /Unavailability is confirmed and recorded/, deferral],
+        [['skills', 'finishing-work', 'SKILL.md'],
+            /the compensated re-dispatch that rule defines/, conclusion],
     ];
-    for (const [parts, locator] of sites) {
+    for (const [parts, locator, expected] of sites) {
         const label = 'plugins/claude-kit/' + parts.join('/');
         const p = path.join(__dirname, '..', 'plugins', 'claude-kit', ...parts);
         const lines = fs.readFileSync(p, 'utf8').split(/\r?\n/);
@@ -463,10 +470,11 @@ test('the hand-off copies route on the gate-level conclusion, not on a model bei
             + 'model being "unreachable", which the unavailability rule declines to '
             + 'conclude: two closed windows establish only that this gate could not '
             + 'be run at this tier in this environment');
-        assert.match(line, /(?:could not|cannot) be run at (?:the|its) fable tier/,
-            label + ':' + lineNo + ' must state the rule\'s own conclusion, that '
-            + 'the gate could not be run at its fable tier here, since it carries '
-            + 'none of that rule\'s evidence itself');
+        assert.match(line, expected,
+            label + ':' + lineNo + ' must carry ' + expected + ': the rule\'s own '
+            + 'gate-level conclusion where the line restates one, or the deferral '
+            + 'to finishing-work\'s rule where it routes without restating, since '
+            + 'the line carries none of that rule\'s evidence itself');
     }
 });
 
