@@ -4,9 +4,9 @@ Status: Draft
 Commit Model: Commit-and-Push
 Created: 2026-08-27
 
-**Design round pending: this draft is not executable.** Six forks below need the operator's calls before Sections of Work are finalized and this header flips to In Progress. The Draft status is deliberate: it keeps the plan out of the SessionStart resume inventory so no session picks it up, and the kit's Ready-status work (the plan-lifecycle spec of this slate) will give this state a proper name. Slate position: priority 2, decided by the operator 2026-08-27 (relayed by the machine coordinator; recorded here by reference, never by quotation, per the authorization-format convention).
+**Design round settled 2026-08-27; full section briefs are the authoring seat's next pass, so this draft is not yet executable.** The operator accepted all six marked recommendations as binding proceeds, with one clarification on Fork 3 and both named inputs answered; The settled round below is the record. The Draft status stays until the sections carry full briefs, keeping the plan out of the SessionStart resume inventory meanwhile; the kit's Ready-status work (the plan-lifecycle spec of this slate) will give the authored-and-parked state a proper name. Slate position: priority 2, decided by the operator 2026-08-27 (relayed by the machine coordinator; recorded here by reference, never by quotation, per the authorization-format convention).
 
-Session model: to be set at the design round, per section. Authored by the KIT: Expert seat from the 2026-08-26 seat-coordination kaizen cluster plus the operator's 2026-08-27 cost addendum.
+Session model: Opus, in a clean session opened in the kit repo, once the briefs land. Authored by the KIT: Expert seat from the 2026-08-26 seat-coordination kaizen cluster plus the operator's 2026-08-27 cost addendum.
 
 ## Goal
 
@@ -43,9 +43,18 @@ These carry operator design or decision already and need the round only for sequ
 - **F. The `/role` skill.** One command runs the takeover: check the session already carries the machine-form seat name and stop with the exact launch invocation when it does not (the launch alias owns the name, since a rename cannot follow the channels flag that bakes it into a relay thread); load the seat's runbook; resolve the home directory from the operator tier and ask where none is recorded; arm the seat's loop at the seat's cadence; read the ledger or inbox; write the registry entry; announce the takeover; open the boundary marker. `/role Admin` prepares and asks rather than self-authorizes, the arming staying the operator's act.
 - **G. Report shape.** Operator reports are deltas against the last board state, capped, never full tables; every relayed message leads with its audience, because relayed traffic reading as though addressed to the operator was a measured reading friction (2026-08-27).
 
-## The forks
+## The settled round
 
-Each fork states the options, the evidence, and the authoring seat's lean. The round decides; nothing below is settled design.
+The design round of 2026-08-27 decided every fork: the operator accepted each marked recommendation as a binding proceed (relayed by the machine coordinator; recorded by reference). The decisions, with the options each was weighed against preserved below it:
+
+- **Fork 1 decided:** the push model first, marker-age lengthening for the residue, gate-trust widening held in reserve.
+- **Fork 2 decided:** the Stop-or-idle hook opens the goalless seat's boundary, with the test driving the release path.
+- **Fork 3 decided, with the operator's clarification:** per-session status files with the coordinator as sole board writer, and the registry directory lives under the memory store's home (`~/.claude/coordinator/<machine>/`, the same placement the board takes), so it rides the store's private repo and sync and is discoverable by any session on any machine. The material-change enumeration lands in the section brief.
+- **Fork 4 decided:** the seat-tier table in the peer-sessions Roles section: coordinator at Opus with an observation-gated step to Sonnet, Expert top-tier, Worker per its plan's section tiers, Admin cheap.
+- **Fork 5 decided:** the `admin-requests.md` inbox with the registry heartbeat; per-command elevation stays the named fallback.
+- **Fork 6 decided:** the remaining-time estimate lives in the registry status file; the Chapter format's frozen contract is untouched.
+
+The weighed options, kept as the decision record:
 
 **Fork 1: the gate versus a seat's own timer.** The gate defers compaction for a hands-on session, and a self-armed heartbeat looks hands-on to it. Options: (i) the gate accepts a seat's own automation on evidence a seat can honestly write (a cron entry the transcript records, or a marker form declaring driven-by-timer); (ii) the seat cadence aligns to the marker's 30-minute window, which doubles wake cost and runs against design goal 1; (iii) the goalless-seat marker takes an age of at least one heartbeat interval; (iv) the push model of Fork 3 removes fixed short loops entirely, making the conflict rare, with (iii) covering what survives. Lean: (iv) first and (iii) for the residue, holding (i) as the structural fix only if observation still shows seats riding to the ceiling, because widening what the gate reads as automation moves a trust boundary the security model prices.
 
@@ -59,14 +68,14 @@ Each fork states the options, the evidence, and the authoring seat's lean. The r
 
 **Fork 6: where the worker's remaining-time estimate lives.** The artifact-first design wants a `Remaining:` wall-clock estimate readable per worker. Options: the Chapter format gains a line, which edits a frozen machine contract (`curating-docs`' table) and every parser of it; or the estimate lives in the session's registry status file, leaving the Chapter contract untouched. Lean: the registry status file, because a frozen contract is expensive to version and the estimate is transient coordination state, exactly what the registry is for and exactly what a curated plan record is not.
 
-## Inputs the round needs that no note settles
+## Round inputs, answered 2026-08-27
 
-- The fleet-wide prompt-cache TTL: confirmed 1 hour only for the coordinator's own session; one check per machine before any cadence number is tuned to it.
-- Whether any current seat besides the coordinator runs a fixed loop today (the push model's payoff estimate depends on it).
+- The prompt-cache TTL: 1 hour is the universal ceiling per the operator's reading of the vendor guidance, and expiry can come sooner, never later. Cadence tuning may assume TTL at most 1 hour on every machine, and warm-window tactics do not cut the window close, since sub-hour expiry is possible.
+- The loop census, operator-stated for the whole fleet: the coordinator's loop was the only fixed loop in existence, and it is off while the operator is at the keyboard. An Admin seat ran for a stretch and had no work in 18-plus turns before being shut down, which is direct evidence for Fork 5's inbox model and the Admin tier's cheapness. The push model's payoff is therefore measured against that one loop's overnight cold-read bill plus the fleet replication the operator wants it for.
 
 ## Candidate Sections of Work
 
-Skeleton only; tiers provisional until the round settles the forks. Sequence: A before B (history), B before C-F (the directory must exist), the compaction work (Forks 1-2) parallel-safe with C-F, G last as prose.
+Skeleton with the round settled; the authoring seat's next pass turns each into a full briefed section (acceptance, Tests lines, exact anchors) and flips the header. Sequence: A before B (history), B before C-F (the directory must exist), the compaction work (Forks 1-2) parallel-safe with C-F, G last as prose.
 
 1. The allowlist and drift reporting admit `coordinator/` (element A). Provisional: opus.
 2. The board's home migration and the coordinator skill's home-repo, visibility, and push paragraphs (element B; folds the backlog's coordinator cold-start restructure, 2026-08-26, whose parity pins are re-derived red-then-green as that entry directs). Provisional: opus.
