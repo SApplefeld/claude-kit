@@ -1,0 +1,93 @@
+# A parked plan gets a name, a stale session view gets a line, and the CLI stops misreading its own flags
+
+Status: In Progress
+Commit Model: Commit-and-Push
+Created: 2026-08-27
+
+Session model: Opus, in a clean session opened in the kit repo. Slate position 4. Its files are disjoint from the testing-discipline plan's and the review-and-record plan's, so the sequencing constraint is only the machine's one-suite-at-a-time budget, not a file collision. Authored by the KIT: Expert seat from three kaizen notes (2026-08-26/27) plus one backlog fold. Anchors as of commit `6a928f7`; re-locate by content.
+
+## Goal
+
+Three diagnostics lie to their reader today, each in the direction that reads as healthy. A plan authored and deliberately parked has no `Status:` value of its own: `Draft` conflates it with mid-authoring and hides it from every recovery surface, which on another VM left two finished drafts unreadable as ready work (relayed, operator-nodded 2026-08-27). A session's plugin view freezes at session start, so a day-old session reports the machine's install stale when only its own view trails, a false machine-level claim that was a true session-level one (live instance 2026-08-26: an `arm --append` failing on a session-view CLI hours after the install advanced). And the goal CLI parses an unknown leading-dash token as a plan path, answering "plan not found: --append" when the real cause was an older CLI without the flag, a misdiagnosis every not-yet-updated session repeats on every future flag. A fourth, from the backlog: the SessionStart backlog block counts only what fits in its 64 KB head read and announces neither the bound nor the truncation, so both figures it hands a session can disagree with the file they summarize.
+
+When this plan is done: `Ready` is a recognized plan status meaning authored-and-parked, surfaced distinctly at session start, ignored by the unarchived-Complete nag, and normalized to In Progress by the run that starts it; the kit-repo session start prints one line when the session's plugin view trails the install or the checkout; the goal CLI refuses an unknown leading-dash token with a usage error that names its own version; and the backlog block either counts the whole file or says its count is bounded.
+
+## Evidence
+
+- The status classifier: `classifyPlanStatus` at `plugins/claude-kit/hooks/kit-goal-lib.js:1125-1138` recognizes `in progress` and `complete` and returns `unknown` for everything else; `session-start.js:521` consumes it for the recovery inventory; `stop-docs-hygiene.js` still carries its own spelling of the Status predicate (:55-:58) over `planHeadText` reads, the residual half of the backlog's three-spellings item (parked 2026-08-26), which this plan folds because adding a vocabulary value would otherwise widen three predicates in three files.
+- The strict twin: `planReadsTerminal` (near the classifier, per its header comment at :1106-:1124) answers the frozen machine contract; `curating-docs/SKILL.md` owns that contract's table, and `docs/plans/README.md:10` states that five parsed shapes carry value rules an external engine enforces silently, so a new Status value is a contract change to version there, bounded by the fact that a Ready plan is by definition unarmed and pre-execution.
+- The normalization precedent: `executing-work/SKILL.md` already directs a run to set a non-vocabulary Status to In Progress as part of starting, naming `Draft` as the common invention; Ready slots into that sentence as the recognized parked value rather than an invention.
+- The stale-view instance (reported, 2026-08-26 note): the install advanced at 05:40Z per `installed_plugins.json`, a day-old executor's `arm --append` still failed hours later on its session-view CLI, and it reported the machine stale, the second firing in two days in opposite directions.
+- The parse shape: `cmdArm` at `plugins/claude-kit/hooks/kit-goal.js:117` receives already-split `planArgs`; the argv dispatch above it routes known flags and passes everything else through as plan arguments, so an unknown `--flag` reaches `armGoal` as a path. The operator tier holds the pattern this joins (the charset-gate-must-bar-a-leading-dash record): refuse an unknown leading-dash token with a usage error naming the CLI's version.
+- The backlog block: `summarizeBacklog` at `plugins/claude-kit/hooks/session-start.js:107`, whose fixed 65,536-byte head read is the recorded cause (backlog entry of 2026-08-26, measured: 52 of 77 items inside the window on a 103 KB file); this session's own start notice reported 49 items against a file whose bullet count differed, the live symptom.
+- The plugin-view surfaces (confirmed shapes, exact spellings the implementer verifies): the session's plugin root path embeds the cache directory named by the installed commit (this session's is `...\claude-kit\8d2ecd1fce26\...`), `~/.claude/plugins/installed_plugins.json` records the machine's installed version, and the kit checkout's HEAD is one `git rev-parse` away when the cwd is the kit repo.
+
+## Approach
+
+- **Ready is a vocabulary addition, not a new mechanism.** The classifier gains the value; each consumer states what it does with it (session start lists a Ready plan as authored-and-parked with no resume directive; the unarchived-Complete nag ignores it; the leash and strict contract treat it as non-terminal exactly like unknown; executing-work's normalization sentence names it as the value a starting run flips). The three-spellings consolidation rides along because this is the moment the backlog item named: before the vocabulary widens, the predicate collapses to the library so it widens once. Red-first per consumer behavior, per that item's own condition.
+- **The staleness line is kit-repo-scoped and one line.** Session start in the kit repo compares three readings (session plugin-view sha, installed sha, checkout HEAD) and prints one line when either trails, so the operator's update-and-restart ritual gets a trigger instead of a memory. Fail-open: any unreadable surface drops the line rather than guessing.
+- **The CLI refusal names the version.** The misdiagnosis's sting was that the wrong cause pointed away from the real one (an old CLI); a usage error carrying the CLI's own version makes the next new flag self-diagnosing on every stale session.
+- **The backlog count either reads whole or says it is bounded.** Cheapest honest form wins; the test fixture is deliberately larger than the window, since a fixture sized to today's file passes on either behavior.
+
+## Standing Brief Amendments
+
+1. Every quoted current-text phrase and line anchor in these sections is re-read from the file at implementation time; two slate plans land ahead of this one and the anchors above are authoring-time.
+
+## Sections of Work
+
+### 1. The goal CLI refuses unknown leading-dash tokens, naming its version
+
+Model: sonnet
+
+In `plugins/claude-kit/hooks/kit-goal.js`'s argument dispatch: a leading-dash token that is not a recognized flag exits with a usage error naming the token and the CLI's version (the installed plugin's version string, from the nearest surface the hook tree already reads; the implementer confirms which and names it in the Chapter), and never reaches `armGoal` as a plan argument. Known flags are untouched.
+
+Tests, red first: `arm --bogus` today answers "plan not found"-shaped output; after, it exits non-zero with the usage error naming `--bogus` and the version, and a control run with a real plan path still arms. Extend the existing kit-goal test file's pattern.
+
+Files in scope: `plugins/claude-kit/hooks/kit-goal.js`, `test/kit-goal-lib.test.js` or the CLI-level test file the existing arm tests live in (the implementer names it).
+
+### 2. Ready joins the plan-status vocabulary, and the predicate collapses to one spelling
+
+Model: opus
+
+- `classifyPlanStatus` (`kit-goal-lib.js:1125`) recognizes `Ready` as its own value; `planReadsTerminal` continues to read it as non-terminal (prove by test, not assumption).
+- `stop-docs-hygiene.js`'s own Status predicate collapses to the library's classifier (the backlog's three-spellings fold, red-first per behavior it decides: the unarchived-Complete listing and the plan-shaped-file check each pinned before and after the collapse).
+- `session-start.js`'s recovery inventory lists a Ready plan on its own line as authored and parked, with no resume directive and no In Progress conflation; a Ready plan does not count toward the in-progress recovery block.
+- The unarchived-Complete nag (session start `:634` and stop-docs-hygiene `:148`) ignores Ready.
+- `executing-work/SKILL.md`'s normalization sentence names Ready as the recognized parked value a starting run sets to In Progress; `curating-docs/SKILL.md`'s machine-contract table versions the vocabulary addition, stating that Ready is a pre-arm value the external engine never meets on an armed plan.
+- The seat-infrastructure draft (`docs/plans/claude-kit_seat-infrastructure_spec_v1.md`), currently wearing `Draft` with a prose apology, flips to Ready as this section's own live proof once the surfaces read it.
+
+Tests, red first per consumer: fixture plans carrying `Status: Ready` against each surface (classifier unit, session-start block, stop-docs-hygiene listing, statusline position walk unaffected), each proven to misread today and read correctly after.
+
+Files in scope: `plugins/claude-kit/hooks/kit-goal-lib.js`, `plugins/claude-kit/hooks/stop-docs-hygiene.js`, `plugins/claude-kit/hooks/session-start.js`, `plugins/claude-kit/skills/executing-work/SKILL.md`, `plugins/claude-kit/skills/curating-docs/SKILL.md`, `docs/plans/claude-kit_seat-infrastructure_spec_v1.md` (status line only), matching test files.
+
+### 3. Session start says when this session's plugin view trails
+
+Model: opus
+
+In `session-start.js`, kit-repo sessions only: read the session's own plugin-view version (the cache directory sha the running hook's path embeds), the machine's installed version (`installed_plugins.json`), and the checkout's HEAD; print one line when the session view trails the install or the install trails the checkout, naming which trails which, so "restart the session" and "run claude plugin update" become triggered acts rather than remembered ones. Fail-open on any unreadable surface: no line, never a guess. The line states session-level versus machine-level explicitly, because the recorded failure was a true session-level fact reported as a false machine-level one.
+
+Tests: fixture the three readings in each trailing combination plus the aligned case and each unreadable-surface case, on the session-start test pattern the suite already uses.
+
+Files in scope: `plugins/claude-kit/hooks/session-start.js`, `test/session-start-*.test.js` (the implementer names the file, new or existing).
+
+### 4. The backlog block stops counting a truncation as a total
+
+Model: sonnet
+
+`summarizeBacklog` (`session-start.js:107`) either reads the whole file or appends "counted within the first 64 KB" to its figures when the file exceeds the window; the backlog entry of 2026-08-26 leans toward reading whole given its own growth argument, and the implementer takes that unless the whole read costs something measurable at session start. Red first: a fixture backlog deliberately larger than the window shows today's silent undercount, then the honest behavior.
+
+Files in scope: `plugins/claude-kit/hooks/session-start.js`, `test/session-start-backlog.test.js`.
+
+## Out of Scope
+
+- Any doctor-side reporting of the same staleness: the doctor already reports install state; this plan's surface is the session's own start.
+- The external engine's parser: Ready is pre-arm by construction and the contract table documents it; no engine change ships here.
+- The other two Status readers' deeper unification beyond the predicate collapse (the display-only readers keep their own decisions, per the backlog item's own design note).
+
+## Related
+
+- `docs/backlog.md`: the three-spellings item (parked 2026-08-26) and the 64 KB count item (2026-08-26), both folded here; the first retires on Section 2's landing, the second on Section 4's.
+- `docs/plans/claude-kit_seat-infrastructure_spec_v1.md`: Section 2 flips its header to Ready as the live proof.
+- `kaizen/notes-SCOTT-CLAUDE.md`, the three notes of 2026-08-26/27 (plugin-view staleness, leading-dash parse, Ready status): the origin, cleared into this spec at authoring.
+
+## Chapters
