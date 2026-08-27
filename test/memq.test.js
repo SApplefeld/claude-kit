@@ -1091,27 +1091,111 @@ test('the payload gate: an unparseable stale .lock breaks, a non-lock JSON paylo
 test('two concurrent acquirers of one stale lock admit exactly one winner', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'memq-lock-'));
     const lock = path.join(dir, 'race.lock');
+    const ready = path.join(dir, 'ready');
+    // The one staleness threshold this test has. It reaches three places that
+    // must agree (how old the fixture's lock is, what the children pass to
+    // acquireLock, what the assertion calls stale), so it is defined once and
+    // interpolated into all three, the child script string included. Written
+    // out three times instead, one of them can be edited to a value that makes
+    // the assertion unable to fail while the test still reads correct.
+    const STALE_MS = 30000;
+    // Comfortably older than the threshold, so the fixture's staleness is
+    // decided here and not by how long the children take to start.
+    const LOCK_AGE_MS = 2 * STALE_MS;
     try {
         // A dead holder's stale lock, contended by two real processes at
         // once. The rename-based break admits exactly one of them in every
         // interleaving; the unlink-based break this replaces could admit
         // both (the loser deleting the winner's fresh lock on the way).
+        fs.mkdirSync(ready);
         fs.writeFileSync(lock, JSON.stringify({ pid: 0, token: 'dead', ts: '' }) + '\n', 'utf8');
-        const past = new Date(Date.now() - 60000);
+        const past = new Date(Date.now() - LOCK_AGE_MS);
         fs.utimesSync(lock, past, past);
 
-        const script = 'const m = require(process.argv[1]);'
-            + 'const r = m.acquireLock(process.argv[2], { staleMs: 1000, waitMs: 0 });'
-            + 'process.stdout.write(r.ok ? "WIN" : "LOSE");';
-        const contend = () => new Promise((resolve) => {
-            const child = spawn(process.execPath, ['-e', script, MEMQ, lock], { env: { ...process.env } });
+        // What makes the two children contend is a readiness signal, not the
+        // moment they happen to start: each announces itself in the ready
+        // directory and waits for its rival's announcement before touching
+        // the lock. Two node startups on a loaded box land seconds apart, and
+        // a staggered pair is not a race at all: the first child's fresh lock
+        // ages past staleMs before the second arrives, so the second breaks
+        // it too and both report a win. The barrier polls at 5 ms and the
+        // scheduler adds its own delay, so the two attempts land milliseconds
+        // apart; the 30-second stale threshold sits far above that and far
+        // below the minute the dead holder's lock is aged by, so which locks
+        // count as stale is decided by the fixture rather than by the box.
+        //
+        // The barrier's 20-second bound sits between two margins: a healthy
+        // pair clears it in milliseconds, so there are twenty seconds of
+        // headroom before a slow box trips it, and it is shorter than
+        // STALE_MS, so a child that waits the whole bound still finds the dead
+        // holder's lock stale when it gets there (the fixture is aged to twice
+        // STALE_MS, which leaves that margin intact from the other side). A
+        // child whose rival never starts reports rather than hanging the
+        // suite, and says in its own assertion message that a stagger that
+        // wide is a loaded box rather than a defect in the lock.
+        //
+        // Each child reports two things about itself, because the verdict
+        // alone pins less than it looks like it does. Whether it cleared the
+        // barrier: a pair that both timed out never raced, and would otherwise
+        // pass this test while proving nothing. And how old the lock was when
+        // it reached it, which says which of two interleavings this run got.
+        // Both children reaching the aged lock is the rename race proper. A
+        // loser reaching the winner's fresh lock instead never entered the
+        // break path and found a live lock, which acquireLock reports with the
+        // same lock-held reason. Both are correct outcomes of one race and the
+        // second happens in a minority of runs, so requiring the first of both
+        // children would make this test fail on the interleaving rather than
+        // on a defect. What every interleaving owes is the invariant this test
+        // is named for, one winner, over a lock that was genuinely stale when
+        // the race reached it. The losing rename's own detect-and-restore is
+        // pinned deterministically by an injected interleaving, in 'a
+        // stale-break that renamed a rival's fresh lock detects it, restores
+        // it, and reports contention', rather than raced for here.
+        const script = 'const fs = require("fs"), path = require("path");'
+            + 'const m = require(process.argv[1]);'
+            + 'const lock = process.argv[2], ready = process.argv[3], id = process.argv[4];'
+            + 'fs.writeFileSync(path.join(ready, id), "1");'
+            + 'const idle = new Int32Array(new SharedArrayBuffer(4));'
+            + 'const deadline = Date.now() + 20000;'
+            + 'let cleared = true;'
+            + 'while (fs.readdirSync(ready).length < 2) {'
+            + '  if (Date.now() >= deadline) { cleared = false; break; }'
+            + '  Atomics.wait(idle, 0, 0, 5);'
+            + '}'
+            + 'let ageMs = -1;'
+            + 'try { ageMs = Date.now() - fs.statSync(lock).mtimeMs; } catch { ageMs = -1; }'
+            + 'const r = m.acquireLock(lock, { staleMs: ' + STALE_MS + ', waitMs: 0 });'
+            + 'process.stdout.write((cleared ? "raced" : "alone") + ":"'
+            + ' + (r.ok ? "WIN" : "LOSE") + ":age" + Math.round(ageMs));';
+        const contend = (id) => new Promise((resolve) => {
+            const child = spawn(process.execPath, ['-e', script, MEMQ, lock, ready, id],
+                { env: scrubRunEnv({ ...process.env }) });
             let out = '';
+            let err = '';
             child.stdout.on('data', (d) => { out += d; });
-            child.on('close', () => resolve(out));
+            child.stderr.on('data', (d) => { err += d; });
+            // A child that never starts otherwise reaches the count below as
+            // an empty verdict, which reads as a lost race rather than as the
+            // spawn failure it is.
+            child.on('error', (e) => { err += String((e && e.message) || e); });
+            child.on('close', (code) => resolve({ out, err, code }));
         });
-        const results = await Promise.all([contend(), contend()]);
-        assert.strictEqual(results.filter((r) => r === 'WIN').length, 1,
-            'exactly one acquirer may win a stale break, got: ' + results.join(','));
+        const results = await Promise.all([contend('a'), contend('b')]);
+        const detail = results.map((r, i) => 'child ' + i + ' exit ' + r.code + ' said '
+            + JSON.stringify(r.out) + (r.err ? ' stderr: ' + r.err.trim() : '')).join('; ');
+        const ageOf = (r) => Number((/:age(-?\d+)$/.exec(r.out) || [, '-1'])[1]);
+        for (const r of results) {
+            assert.strictEqual(r.code, 0, 'both acquirers must run to completion; ' + detail);
+            assert.match(r.out, /^raced:/,
+                'both acquirers must clear the barrier, or no race happened here; an "alone" '
+                + 'verdict is a spawn stagger past the barrier\'s 20-second bound, which is a '
+                + 'loaded box rather than a defect in the lock; ' + detail);
+        }
+        assert.ok(results.some((r) => ageOf(r) > STALE_MS),
+            'the race must reach a lock that was already stale, or nobody broke anything and '
+            + 'this pins arrival order rather than the break; ' + detail);
+        assert.strictEqual(results.filter((r) => /^raced:WIN:/.test(r.out)).length, 1,
+            'exactly one acquirer may win a stale break; ' + detail);
         // The winner exited without releasing, so its fresh lock remains.
         assert.ok(fs.existsSync(lock), 'the winner\'s fresh lock file remains');
         const payload = JSON.parse(fs.readFileSync(lock, 'utf8'));
@@ -5739,12 +5823,32 @@ test('concurrent add-type writers from two projects serialize under the type loc
         // projects of the same type in two sessions. All writers are spawned
         // before any is awaited. Without the lock, the index update is a
         // read-modify-write and interleaved writers would drop lines.
-        const WRITERS = 6;
+        //
+        // The writers take childEnv, this file's shared child environment,
+        // which is what keeps the type tier under test this store's own: the
+        // root pair points it at the temp store, and the scrub keeps an
+        // engine's ambient run and project pins out of children that would
+        // otherwise answer for the machine's state rather than the fixture's.
+        // Only the cwd differs, and it is the variable under test.
+        //
+        // Two writers, one per project, is a count chosen against the lock's
+        // wait budget rather than picked. add-type takes the tier lock with
+        // acquireLock's default 2000 ms wait, so the last writer in the queue
+        // starves once the writers ahead of it hold the lock for longer than
+        // that between them, and it then exits nonzero with "type store
+        // locked" and reds this test for the box's load rather than for the
+        // code. Every writer past the second buys nothing here and spends that
+        // budget: a read-modify-write loses a line as soon as two of them
+        // interleave, which is what the lock exists to prevent and what these
+        // assertions read, and none of them is per-project. Two is that
+        // minimum, and it is still one writer per project, so the cross-cwd
+        // shape the test is named for is intact.
+        const WRITERS = 2;
         const spawnAdd = (cwd, i) => new Promise((resolve) => {
             const child = spawn(process.execPath,
                 [MEMQ, 'add-type', 'shared-type', 'fact-' + i, 'fact number ' + i], {
                     cwd,
-                    env: { ...process.env, KIT_MEMORY_ROOT: store.root, KIT_MEMORY_ROOT_ALLOW_DATA: '1' }
+                    env: childEnv(store)
                 });
             let stderr = '';
             child.stderr.on('data', (d) => { stderr += d; });
@@ -5753,7 +5857,11 @@ test('concurrent add-type writers from two projects serialize under the type loc
         const results = await Promise.all(Array.from({ length: WRITERS }, (_, i) =>
             spawnAdd(i % 2 === 0 ? store.proj : projB, i)));
         for (const r of results) {
-            assert.strictEqual(r.code, 0, r.stderr);
+            // A writer refused by the tier lock names itself, so a red here is
+            // read as the starved tail it is rather than as a lost index line.
+            assert.strictEqual(r.code, 0, /type store locked/.test(r.stderr)
+                ? 'a writer starved on the tier lock rather than losing a line: ' + r.stderr
+                : r.stderr);
         }
         const dir = typeDirPath(store, 'shared-type');
         const index = fs.readFileSync(path.join(dir, 'MEMORY.md'), 'utf8');

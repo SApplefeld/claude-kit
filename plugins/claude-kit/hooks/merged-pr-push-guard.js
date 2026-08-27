@@ -21,27 +21,156 @@ function readStdin() {
     try { return fs.readFileSync(0, 'utf8'); } catch { return ''; }
 }
 
+// Whether KIT_MERGED_PR_GUARD_NO_DEADLINE applies, and why it does not when it
+// does not. Pure, and reading the environment it is handed, so the rules below
+// are testable without spawning this hook.
+//
+// The switch exists for tests: a suite spawns this hook and its faked host CLI
+// on a box under parallel load, paying spawn costs a developer's machine never
+// does, and a query that overruns fails open, which a test then reads as a
+// missing block. Turning the deadline off removes that reading entirely rather
+// than betting on a larger number, since no margin is wide enough to be a
+// guarantee on a box whose load has no ceiling.
+//
+// SAFETY: removing a deadline can only remove ETIMEDOUT, every failure path in
+// this hook is fail-open, so no value of this switch can stand the guard down
+// and the switch can only make it more likely to block.
+//
+// Both variables take the kit's one override predicate, an exact '1', so a
+// reviewer checks the same property here as at every other kit override rather
+// than re-deriving a per-variable argument. Any other value is not a request:
+// NO_DEADLINE=0 asks for nothing and is reported as nothing.
+function budgetOverride(env) {
+    const e = env || process.env;
+    if (e.KIT_MERGED_PR_GUARD_NO_DEADLINE !== '1') return { off: false, reason: 'unset' };
+    if (e.KIT_MERGED_PR_GUARD_NO_DEADLINE_ALLOW !== '1') return { off: false, reason: 'unsignalled' };
+    return { off: true, reason: 'honored' };
+}
+
+// The timeout one query runs under, with the reason the switch gave.
+//
+// Unhonored that is the caller's own value, or 8000 ms: a guard that cannot
+// answer quickly must never hang a push, and a query that overruns fails open
+// like any other failure. A guarded push runs up to four queries
+// (3000 + 3000 + 3000 + 8000), so its worst case is 17 seconds.
+//
+// Honored it is 0, which is how Node's child_process spells no deadline: an
+// execSync given timeout 0 waits as long as the command takes, byte-identical
+// to omitting the option.
+//
+// The reason is returned rather than latched here, so this function is pure and
+// callable from a test without leaving anything behind in the calling process.
+// The one caller that runs inside the hook does the latching.
+function queryBudgetMs(timeout, env) {
+    const o = budgetOverride(env);
+    return { ms: o.off ? 0 : (timeout || 8000), reason: o.reason };
+}
+
+// Whether an ignored switch is owed a note. The note is written on the allow
+// path only (the runner at the foot of this file), never alongside the denial
+// reason a PreToolUse exit 2 feeds back to the model, which is a channel for
+// the decision and not for this hook's diagnostics.
+let ungatedOverrideOwed = false;
+
+// The note for a switch that was set without its signal, written once and only
+// where the caller asks for it. Best-effort, like the sibling note in
+// kit-goal-lib.js: a failed write must not cost the decision it rides beside.
+// It goes out through a synchronous write to fd 2 rather than through
+// process.stderr, whose write to a pipe is asynchronous and can be dropped by
+// the process.exit() on the next line.
+function noteUngatedOverride() {
+    if (!ungatedOverrideOwed) return;
+    ungatedOverrideOwed = false;
+    try {
+        fs.writeSync(2, 'merged-pr-push-guard: ignoring KIT_MERGED_PR_GUARD_NO_DEADLINE '
+            + '(it is honored only with KIT_MERGED_PR_GUARD_NO_DEADLINE_ALLOW=1)\n');
+    } catch { /* the note is best-effort; a failed write changes nothing */ }
+}
+
+// The environment a query runs under: this process's, with every GIT_*
+// variable removed case-insensitively (Windows env keys are not the casing a
+// plain-object copy is indexed by), and the prompt suppressed. A wholesale
+// strip, not just GIT_DIR/GIT_WORK_TREE, and for the same reason the memory
+// store's git calls take one (gitStoreEnv in memory-session.js): a repo-carried
+// GIT_COMMON_DIR or GIT_CONFIG_GLOBAL redirects a git read at another
+// repository, and every fact this guard's decision rests on (the branch name,
+// the origin URL) comes from a git read. Nothing here needs any of them, since
+// every call runs under an explicit cwd.
+function queryEnv() {
+    const env = Object.assign({}, process.env);
+    for (const k of Object.keys(env)) {
+        if (/^GIT_/i.test(k)) delete env[k];
+    }
+    env.GIT_TERMINAL_PROMPT = '0';
+    return env;
+}
+
 // Run a shell command and capture stdout. The command strings passed here are
 // fixed literals; the only variable, the branch, is allowlisted in prState before
 // it is interpolated. That discipline is load-bearing: interpolating any raw
 // payload field into one of these strings reopens the command-injection class.
+// Each query carries its own budget, exactly as production does: nothing here
+// is shared across the four, so a slow git query cannot eat the budget of the
+// host query the block decision depends on. This is where the switch's reason
+// is latched, so the function deciding the budget stays pure.
 function sh(cmd, cwd, timeout) {
+    const budget = queryBudgetMs(timeout);
+    if (budget.reason === 'unsignalled') ungatedOverrideOwed = true;
     return execSync(cmd, {
         cwd,
-        timeout: timeout || 8000,
+        timeout: budget.ms,
         stdio: ['ignore', 'pipe', 'ignore'],
         encoding: 'utf8',
-        env: Object.assign({}, process.env, { GIT_TERMINAL_PROMPT: '0' })
+        env: queryEnv()
     });
 }
 
-// The branch a `git push` targets, or null if this is not a push to guard.
-// Detects `git push` only at a command-segment start (so a quoted mention in an
-// echo is ignored).
-function targetBranch(cmd, cwd) {
+// The arguments of the `git push` in a command string, or null when it holds
+// none to guard. The returned text is that one command's operands and stops
+// where the command does.
+//
+// A command begins at the start of the string or just after a shell separator,
+// redirect, subshell opener, or line break, and it ends at the next one. The
+// cut set is readonly-agent-guard.js's, whose `segment` cuts the same input on
+// /[;|&<>)\n\x01]/ for the same reason. It is replicated rather than shared:
+// that hook exports nothing, so sharing would mean building an export surface
+// on a second deny guard and loading it on every Bash call, and what has to
+// agree between the two is this one-line cut set rather than the quote and
+// heredoc masking that surrounds it there.
+//
+// Every shape in the set matters. A newline ends a command as surely as a
+// semicolon, and a two-line Bash call is what a model routinely writes, so
+// without it the push on line two is not seen at all. `(` opens a command and
+// `)` closes one, so a push in a subshell is neither missed nor allowed to
+// swallow what follows. And a command that ends at its own separator is what
+// keeps a later flag, in `git push origin x && ls -d`, out of the operands read
+// below.
+//
+// What this does not do is mask quoted text, so a separator inside a quoted
+// argument still cuts. The residue is a `git push` written inside a quoted
+// string being read as a push, which is a needless query and at worst a
+// needless block, never a missed one; it is the same residue the previous
+// separator test carried.
+function pushArgs(cmd) {
     const c = String(cmd || '');
-    if (!/(?:^|&&|;|\|)\s*git\s+push\b/.test(c)) return null;
-    const after = c.replace(/^[\s\S]*?\bgit\s+push\b/, '').trim();
+    const re = /\bgit\s+push\b/g;
+    let m;
+    while ((m = re.exec(c)) !== null) {
+        // Everything from the previous boundary to the match must be blank, or
+        // this `git push` is an operand of some other command rather than a
+        // command of its own.
+        if (!/(?:^|[;|&<>()\n\x01])[ \t]*$/.test(c.slice(0, m.index))) continue;
+        const rest = c.slice(m.index + m[0].length);
+        const cut = rest.search(/[;|&<>)\n\x01]/);
+        return (cut < 0 ? rest : rest.slice(0, cut)).trim();
+    }
+    return null;
+}
+
+// The branch a `git push` targets, or null if this is not a push to guard.
+function targetBranch(cmd, cwd) {
+    const after = pushArgs(cmd);
+    if (after === null) return null;
     // A branch deletion (git push --delete / -d, or a `:branch` / `+:branch` refspec)
     // removes a merged branch: correct cleanup, the inverse of stranding. Never guard it.
     if (/(?:^|\s)(?:--delete|-d)\b/.test(after)) return null;
@@ -131,5 +260,15 @@ function main() {
     process.exit(2);
 }
 
-try { main(); } catch { /* fail open */ }
-process.exit(0);
+// Run as the PreToolUse hook only when invoked directly, so a require() of this
+// file (the test suite reads the budget rules through it) can never guard a
+// push, write to stderr, or exit the requiring process as a side effect.
+if (require.main === module) {
+    try { main(); } catch { /* fail open */ }
+    // main() exits the process itself on the block path, so reaching this line
+    // is an allow, which is the only place an ignored override is reported.
+    noteUngatedOverride();
+    process.exit(0);
+}
+
+module.exports = { budgetOverride, queryBudgetMs, pushArgs };
