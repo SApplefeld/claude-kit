@@ -69,7 +69,7 @@ function localUncPath(dir) {
     return '\\\\' + os.hostname() + '\\' + resolved[0] + '$' + resolved.slice(2);
 }
 
-// A control-earns-its-silence probe (fix round 3, m11): administrative shares
+// A control-earns-its-silence probe: administrative shares
 // are a machine setting, not a win32 guarantee, and a machine with them
 // disabled makes localUncPath's own spelling resolve to nothing. Without this
 // probe the one test below built on it read that state as a code failure
@@ -822,15 +822,14 @@ test('an anchored record with a network working directory is allowed and names t
     } finally { rmStore(store); }
 });
 
-// Fix round 3, M1: namesNetworkShare's own fail-closed type guard (m9, round
-// 2) answers true for any non-string, and cwd is legitimately null here when
-// the payload carries no working directory at all (main() sets it that way
-// at the top). Before the type guard, a null cwd fell through to
-// memq.anchorRoot(null), which answers null, and the accurate "no project
-// root resolves" cause below. After it, a null cwd was misread as naming a
-// network share, a call that never had a working directory being told it
-// named a share it does not have. The fix routes a non-string cwd around
-// the network check entirely, back to anchorRoot's own answer.
+// namesNetworkShare's own fail-closed type guard answers true for any
+// non-string, and cwd is legitimately null here when the payload carries no
+// working directory at all (main() sets it that way at the top). So a
+// non-string cwd is routed around the network check entirely, back to
+// memq.anchorRoot(null), which answers null and yields the accurate "no
+// project root resolves" cause below. Letting it reach the network check
+// instead would tell a call that never had a working directory that it
+// names a share it does not have.
 test('an anchored record whose payload carries no working directory names the rootless cause, '
     + 'not the network cause', () => {
     const store = makeStore();
@@ -1227,9 +1226,9 @@ test("tierOf names the tier memq's own tierNameFor answers, so a shape memq move
 // any of the three is called at all, so a shared-tier target that would
 // otherwise deny gets a Not checked line instead of vanishing into the same
 // silence the throwing case earns for a target outside the store.
-// namesNetworkShare joined this gate in fix round 3 (M3): placeTarget calls
+// namesNetworkShare belongs on this gate: placeTarget calls
 // it and runs before placedTier is ever set, so a missing namesNetworkShare
-// used to reach the outer catch with placedTier still null, the exact
+// would reach the outer catch with placedTier still null, the exact
 // silent-allow this test's own sibling case (dropping tierDirFor or
 // tierNameFor) was written to catch, left open for this one symbol.
 test("a memq missing tierDirFor, tierNameFor or namesNetworkShare is reported rather than "

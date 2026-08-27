@@ -2986,7 +2986,10 @@ test("get's four cwd/pin cells: exit code and first not-checked line",
 // network-shaped to namesNetworkShare's leading-separator test exactly as
 // an unreachable share would.
 test('get stands the whole command down for an unpinned network working directory, before its '
-        + 'project memory directory is ever resolved', () => {
+        + 'project memory directory is ever resolved',
+    { skip: process.platform !== 'win32' ? 'an admin-share UNC path is a win32 shape'
+        : localUncPathAvailable() ? false : 'administrative shares are not reachable on this machine' },
+    () => {
     const store = makeStore();
     try {
         const res = runFrom(store, localUncPath(store.proj), ['get', 'anything'], {});
@@ -3292,7 +3295,10 @@ test("decay-scan's four cwd/pin cells: exit code and first not-checked line",
 // The unpinned sibling of the two pinned cases above: no KIT_MEMORY_PROJECT,
 // so the hoist ahead of readMemDirOrNote fires on cwd's shape alone and the
 // digest never reaches its ordinary empty-store answer.
-test('recall stands the whole digest down for an unpinned network working directory', () => {
+test('recall stands the whole digest down for an unpinned network working directory',
+    { skip: process.platform !== 'win32' ? 'an admin-share UNC path is a win32 shape'
+        : localUncPathAvailable() ? false : 'administrative shares are not reachable on this machine' },
+    () => {
     const store = makeStore();
     try {
         const res = runFrom(store, localUncPath(store.proj), ['recall'], {});
@@ -3310,7 +3316,10 @@ test('recall stands the whole digest down for an unpinned network working direct
 // recall's: no KIT_MEMORY_PROJECT, so the hoist ahead of readMemDirOrNote
 // fires on cwd's shape alone and the scan never reaches 'memq: no anchor
 // drift (project tier)'.
-test('decay-scan stands the whole command down for an unpinned network working directory', () => {
+test('decay-scan stands the whole command down for an unpinned network working directory',
+    { skip: process.platform !== 'win32' ? 'an admin-share UNC path is a win32 shape'
+        : localUncPathAvailable() ? false : 'administrative shares are not reachable on this machine' },
+    () => {
     const store = makeStore();
     try {
         const res = runFrom(store, localUncPath(store.proj), ['decay-scan'], {});

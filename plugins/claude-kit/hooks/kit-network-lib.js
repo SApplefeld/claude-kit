@@ -28,9 +28,9 @@
 // checked-and-clean value this predicate exists to gate a walk behind, and a
 // caller that passes something other than the path it means to walk is a
 // call this predicate cannot make sense of, not evidence the path is safe.
-// Chapter 1 of the section that introduced this predicate recorded exactly
-// this row (a coercion that answers the checked-and-clean value for an input
-// that was never checked) catching a real defect in anchorRoot.
+// Answering false there would be a coercion handing back the
+// checked-and-clean value for an input nothing checked, which is the defect
+// class this one type guard exists to keep out of every caller.
 'use strict';
 
 function namesNetworkShare(cwd) {

@@ -1839,12 +1839,11 @@ test('a pending default store spawns nothing on a compact source: no marker, no 
         }
     });
 
-// m8 (fix round 3): a payload carrying no source at all is a different input
-// than 'compact', and syncNudge's own gate (source !== 'startup' && source
-// !== 'resume') answers both the same way, but nothing before this test
-// pinned that the absent case actually reaches that fallback rather than,
-// say, some other code path defaulting source to 'startup' and spawning
-// anyway. Same fixture and same assertions as the compact case above: no
+// A payload carrying no source at all is a different input than 'compact',
+// and syncNudge's own gate (source !== 'startup' && source !== 'resume')
+// answers both the same way. This test is what pins that the absent case
+// actually reaches that fallback rather than, say, some other code path
+// defaulting source to 'startup' and spawning anyway. Same fixture and same assertions as the compact case above: no
 // attempt marker, no commit, because a malformed or incomplete payload is
 // the higher-stakes half of this gate, sitting closer to a detached
 // commit-and-push than a session source the hook merely does not widen for.
@@ -2531,10 +2530,10 @@ test('the drift line counts the project memories anchoring a changed file, and i
 // worktreeMainRoot, which is what keeps this fixture fast.
 //
 // driftNudge itself resolves cwd through memq.anchorRoot, which answers the
-// pin before it ever touches cwd's filesystem shape (fix round 3, M5), so a
+// pin before it ever touches cwd's filesystem shape, so a
 // pinned session's cwd being network-shaped changes nothing about what
-// driftNudge says: it is silence either way, the same pin answer Section 3
-// gives anchorRoot generally. A spawnSync timeout is the safety net if any
+// driftNudge says: it is silence either way, the same pin answer anchorRoot
+// gives generally. A spawnSync timeout is the safety net if any
 // of this reasoning is ever wrong: a stray real walk would fail the test
 // loudly well inside the timeout rather than hang the suite.
 const UNC_FIXTURE_SEGMENT = 'network-cwd-fixture';
@@ -2592,14 +2591,12 @@ test('a pinned session\'s drift pass answers the pin the same way whether or not
             + 'memq decay-scan lists it.');
 
         // The pinned network case: same store, same pin, a UNC cwd in the
-        // payload alone. Fix round 3, M5: anchorRoot answers the pin before
-        // it ever touches cwd's filesystem shape, so this is silence, the
-        // same pin answer the local-path control above gives, not a
-        // could-not-check sentence naming the working directory. A prior
-        // round had this state produce such a sentence, reasoning that the
-        // pin closes every OTHER door onto cwd but not this one; that
-        // reasoning was wrong; the pin closes this door too, before
-        // namesNetworkShare's own predicate would ever run against cwd.
+        // payload alone. anchorRoot answers the pin before it ever touches
+        // cwd's filesystem shape, so this is silence, the same pin answer
+        // the local-path control above gives, not a could-not-check
+        // sentence naming the working directory. The pin closes this door
+        // as it closes every other one onto cwd, before namesNetworkShare's
+        // own predicate would ever run against cwd.
         const network = assertBlock(runHookTimed(store,
             { cwd: '//10.255.255.1/share', source: 'startup' }, null, 8000));
         assert.ok(!/anchor|drift/i.test(network),
@@ -2618,8 +2615,8 @@ test('a pinned session\'s drift pass answers the pin the same way whether or not
 
 test('an unpinned network working directory stands the whole hook down, not just the drift line', () => {
     // The pinned case above is silent because a pin makes every block bypass
-    // cwd entirely, driftNudge's own anchorRoot(cwd) call included (fix
-    // round 3, M5). Without a pin, decayNudge is the FIRST call that would
+    // cwd entirely, driftNudge's own anchorRoot(cwd) call included.
+    // Without a pin, decayNudge is the FIRST call that would
     // resolve the project memory directory from cwd, so this hook's own
     // top-level stand-down (main's namesNetworkShare check, gated on no pin
     // being active) is what this case exercises: a project with an overdue

@@ -210,8 +210,8 @@ const QUOTE_CAP = 120;
 //
 // The value duplicates memq's FRONTMATTER_READ_CAP (:1991) rather than
 // importing it, because memq does not export that constant: the duplication
-// is an accepted residual of this section, and a change to memq's cap has to
-// be made here too.
+// is an accepted residual, and a change to memq's cap has to be made here
+// too.
 const READ_CAP = 65536;
 
 // The byte length a string lands on disk with, the unit READ_CAP is in and
@@ -1099,9 +1099,9 @@ function main() {
     // this line, memq.namesNetworkShare included.
     const memq = require(MEMQ);
 
-    // tierDirFor, tierNameFor and namesNetworkShare are this section's own
-    // additions, so a plugin cache carrying an older memq.js can supply an
-    // isMemoryFilename that works while lacking any of the three.
+    // tierDirFor, tierNameFor and namesNetworkShare are newer than
+    // isMemoryFilename, so a plugin cache carrying an older memq.js can
+    // supply an isMemoryFilename that works while lacking any of the three.
     // namesNetworkShare belongs in this same gate rather than a separate one:
     // placeTarget below calls it, and placeTarget runs
     // before placedTier is ever set (placedTier = 'memory' is the line right

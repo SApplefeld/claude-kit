@@ -237,13 +237,12 @@
 // one contiguous top-of-file requires block plus the one dynamic code load
 // inside semanticChannel; this line is the former, not the latter, because
 // its target is a fixed, kit-shipped sibling rather than a directory the
-// command line names. This is a load-time coupling this file did not carry
-// before this section: a require failure for hooks/kit-network-lib.js (an
-// install missing that file, a hand-edited plugin cache) throws before any
-// of this file's own code runs, refusing every verb rather than only the
-// ones that call namesNetworkShare, where before this section the whole
-// file loaded on Node's own built-ins alone and no sibling file's absence
-// could take it down.
+// command line names. This is a load-time coupling: a require failure for
+// hooks/kit-network-lib.js (an install missing that file, a hand-edited
+// plugin cache) throws before any of this file's own code runs, refusing
+// every verb rather than only the ones that call namesNetworkShare. It is
+// the one sibling whose absence can take this whole file down; everything
+// else loaded at the top of it is a Node built-in.
 
 'use strict';
 

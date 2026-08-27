@@ -690,12 +690,12 @@ function syncFallbackText(dirty, ahead, behind) {
 // fallback); nothing git prints, nothing the state file holds, no path,
 // branch name, or remote URL, ever rides it.
 //
-// `source` gates the whole function to the two SessionStart sources this
-// hook ran on before this section widened hooks.json's matcher to add
-// `compact`: `startup` and `resume`. Widening the matcher was a deliberate
-// fix for a real false-clean (the drift line and the memory index going
-// silent on a compacted session, this session among the instances it
-// fixed), but this function is a different kind of block: docs/security-model.md
+// `source` gates the whole function to two of the three SessionStart
+// sources hooks.json's matcher admits: `startup` and `resume`, never
+// `compact`. The matcher covers `compact` so that the drift line and the
+// memory index answer on a compacted session instead of going silent, which
+// would be a false clean. This function is a different kind of block, and
+// takes the narrower gate for its own reason: docs/security-model.md
 // records the detached commit-and-push as happening at the next session
 // start, and every auto-compaction is now a session start this function can
 // reach. Gating here, ahead of every git subprocess this function runs to
@@ -1305,14 +1305,14 @@ function main() {
         // cwd at all (projectSegment resolves the pin before ever reaching
         // worktreeMainRoot), so that case takes the ordinary path below.
         //
-        // namesNetworkShare is this section's own addition, checked for
-        // presence here the same way DRIFT_MEMQ_SYMBOLS checks its own three
-        // symbols before driftNudge calls any of them: an installed cache
-        // still carrying a pre-Section-7 memq.js lacks the export, and
+        // namesNetworkShare is checked for presence here the same way
+        // DRIFT_MEMQ_SYMBOLS checks its own three symbols before driftNudge
+        // calls any of them: an installed cache carrying a memq.js older
+        // than this predicate lacks the export, and
         // without this guard that throws past this branch to the outer
         // catch, which silences this whole hook (no decay nudge, no type
         // index, no destination line, no sync trigger) rather than the one
-        // line the skew previously cost. Missing the export routes to the
+        // line the skew would otherwise cost. Missing the export routes to the
         // ordinary branch below instead, where driftNudge's own resolution
         // through anchorRoot answers null for an unusable pin, degrading one
         // line rather than the whole hook (a plain skew, memq missing

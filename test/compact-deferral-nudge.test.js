@@ -505,8 +505,8 @@ test('the share predicate refuses both network forms and nothing else', () => {
 
 test('the share predicate fails closed on a non-string, refusing rather than answering clean', () => {
     // A non-string cwd names no path at all, so there is no text to run the
-    // leading-separator check against; the predicate answers true for it (fix
-    // round 2, m9) rather than false, because a caller that cannot walk this
+    // leading-separator check against; the predicate answers true for it
+    // rather than false, because a caller that cannot walk this
     // value safely either is the one this predicate exists to protect, and
     // answering false here would tell that caller cwd was fine to open when
     // the truth is there was no cwd to judge. Line 486 above already proves
