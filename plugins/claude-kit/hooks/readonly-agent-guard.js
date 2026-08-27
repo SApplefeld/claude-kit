@@ -876,6 +876,16 @@ const GIT_VALUE_FLAGS = /^(?:-C|-c|--git-dir|--work-tree|--namespace|--exec-path
 // denies, per the fail-closed rule. The bound is the alias key rather than the
 // value's shape, so an ordinary assignment whose value merely contains a word
 // that also names a subcommand (git -c core.pager='less push' log) still allows.
+// The alias key is one member of a wider class, and the rest of that class is
+// residual here rather than covered: git also runs a command from several other
+// config values (core.fsmonitor, core.sshCommand, core.pager carrying a bang,
+// credential.helper, diff.external, uploadpack.packObjectsHook, and an
+// include.path naming a file that sets any of them), and every one of those
+// still allows. They are left open deliberately rather than by oversight,
+// because the bound that works for an alias, the key alone, would deny the
+// everyday review spelling git -c core.pager=cat log; bounding them needs a
+// value-shape rule, a different instrument than this one and not the
+// work of this exemption.
 const GIT_ALIAS_CONFIG = /^alias\./i;
 
 // A short description of the git state mutation in the command, or null when
@@ -924,8 +934,9 @@ function gitMutation(cmd, masked) {
         if (GIT_MUTATIONS.has(sub)) return `a git state change (git ${sub})`;
         // Subcommands that read in their bare form and mutate either under a flag
         // or by naming a ref to create. Creating a ref is a repo-state change that
-        // leaves the worktree byte-identical, so the tree-state check cannot see
-        // it; a read flag (--list, --contains, --points-at, --merged, --sort) keeps
+        // moves no tracked file, so the two `git status --porcelain` readings the
+        // tree-state check compares stay identical and it cannot see the ref at
+        // all; a read flag (--list, --contains, --points-at, --merged, --sort) keeps
         // an operand a filter rather than a new name.
         if (sub === 'branch') {
             if (rest.some(a => /^-[dDmMcCf]$/.test(a) || /^--(?:delete|move|copy|force|set-upstream-to|unset-upstream)/.test(a))) {
@@ -967,8 +978,9 @@ const GH_VALUE_FLAGS = /^(?:-R|--repo|--json|--jq|--template|--hostname)$/;
 // closing, or commenting on the pull request under review, mutating the
 // repository or an issue, dispatching a workflow, or writing a secret or
 // variable changes the state the review is about, reaches outside the machine,
-// and leaves the worktree byte-identical, so the tree-state check around a
-// review round cannot see it. Reads stay allowed: gh pr view, gh pr diff,
+// and moves no tracked file, so the two `git status --porcelain` readings the
+// tree-state check around a review round compares stay identical and it cannot
+// see the mutation at all. Reads stay allowed: gh pr view, gh pr diff,
 // gh run list, and a GET through gh api. gh api's own default method is GET
 // normally and POST once any parameter flag adds a field, so a field or body
 // flag with no explicit method is a write.
@@ -1742,8 +1754,9 @@ function denyReason(cmd, cwd, strict, depth) {
         // which under the fail-closed rule is unresolved rather than absent.
         // The exhaustion test reads exactly the sources the in-bound branch above
         // drains, so a construct that recursion would expand is the same one whose
-        // survival here denies, and either can carry the byte-identical git or gh
-        // verb whose mutation leaves no file delta for the tree-state backstop.
+        // survival here denies, and either can carry a git or gh verb whose
+        // mutation moves no tracked file, leaving the tree-state backstop's two
+        // `git status --porcelain` readings identical and so nothing to detect.
         // echo $(echo $(echo $(git push))) buries the verb past the bound one way;
         // $($(eval "git push")) buries it the other, a substitution wrapper
         // consuming a depth increment before the executor's payload is reached.
