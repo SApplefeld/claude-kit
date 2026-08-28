@@ -1520,3 +1520,22 @@ suite, which is the mechanical leg ruling 2's line prescribes and the thing that
 would have caught this round's Critical. Its most defect-dense half is the two
 transitions the fork governs, so it is built once the fork is answered rather
 than built twice. Then the close gate on a quiet box, then Chapter 4.
+
+### Operator ruling on the Section 4 fork - 2026-08-28
+
+Ruled by the operator at the keyboard of this repo's expert session, mirrored
+on that session's account-allowlisted relay thread, recorded here by reference
+per Amendment 4: the coordinator's release of a foreign heavy-process claim
+and its prune of a foreign registry entry ship ARMED in Section 4. This
+supersedes the disarmed recommendation board 12 records from both the worker
+and the expert, and it supersedes on new fact rather than on preference: the
+manual clearing path the disarmed option priced as the fallback does not
+exist on this fleet, because the operator does not operate the VMs directly
+and the coordinator seat is the operator's hands on the machine, so a
+disarmed release leaves a phantom hold with no one positioned to clear it.
+The exposure window is bounded on the operator's own read: Section 5's
+machinery is expected within hours, and no fleet install is expected between
+the sections, so the armed text is unlikely to reach an installed payload
+ahead of the probe fabric that grounds it. The receiving session performs its
+own trace of this record per the peer-sessions rule; the relay thread is the
+operator's audit surface for it.
