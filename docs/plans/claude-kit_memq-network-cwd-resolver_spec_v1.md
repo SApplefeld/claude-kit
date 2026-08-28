@@ -6,6 +6,10 @@ Created: 2026-08-26
 
 Session model: Opus, in a clean session opened in the kit repo. This plan is the shared-resolver half deliberately left out of `claude-kit_memory-anchors-and-frontmatter-guard_spec_v1.md` Section 7, whose Critical finding established the defect and fixed it at four command entry paths. Anchors below are as of commit `1567b38`; re-locate by content.
 
+## Dispatch Authorization
+
+Authorized 2026-08-27 by the operator: arming and execution of the four remaining queue plans by a worker session in this repository on this machine, in order: seat-infrastructure, then memq-network-cwd-resolver, then review-and-record-discipline, then plan-lifecycle-and-diagnostics, each plan honoring its own recorded start condition. This grant supersedes the same date's earlier grant, which placed a three-plan slate behind an armed testing-discipline and memq-network queue: the operator promoted seat-infrastructure ahead of memq-network-cwd-resolver, and the earlier queue's leash did not survive the session that held it, so memq-network-cwd-resolver now carries its own section rather than riding an armed goal. The grant was given at the keyboard of the KIT: Expert session in this repository, in that session's own conversation, and is recorded here by reference rather than quotation, per the public-repository convention. One grant covers the four plans, each carrying its own section pointing at it. This section was authored by the KIT: Expert seat on that keyboard instruction; per the peer-sessions trace rule it is a warrant only for a citing session that did not author it, and the receiving session performs its own trace of the grant before arming. That trace takes the form the peer-sessions rule states, provenance rather than credential: it reads this section's recorded claim, the commit that landed it, and the grant's scope against the action in front of it.
+
 ## Goal
 
 `memq` hangs for the SMB timeout on an unreachable network working directory, at eleven of its fifteen verbs, before any of them can print a refusal.
