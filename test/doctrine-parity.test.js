@@ -607,11 +607,24 @@ test('the coordinator holds four functions, kaizen among them, and no surface st
         + 'count-restating surface and must move with the skill\'s own count');
     for (const [label, sibling] of [['README.md', readme],
         ['docs/README.md', docsReadme], ['docs/architecture.md', architecture]]) {
+        // The banned spellings are read against this pin's own subject rather
+        // than against the file: "three functions" is a phrase another
+        // subject may legitimately take, and a bare substring test would
+        // redden on a sentence that has nothing to do with the seat. An
+        // occurrence counts only where the coordinator is named inside the
+        // window around it, which is the count this pin is about.
+        const lower = sibling.toLowerCase();
         for (const retired of ['three closed functions', 'closed at three',
             "coordinator's three", 'three functions']) {
-            assert.ok(!sibling.toLowerCase().includes(retired),
-                label + ' still states the coordinator count with the retired '
-                + 'spelling "' + retired + '" while the set is closed at four');
+            for (let at = lower.indexOf(retired); at !== -1;
+                at = lower.indexOf(retired, at + 1)) {
+                const window = lower.slice(Math.max(0, at - 200),
+                    at + retired.length + 200);
+                assert.ok(!window.includes('coordinator'),
+                    label + ' still states the coordinator count with the '
+                    + 'retired spelling "' + retired + '" while the set is '
+                    + 'closed at four');
+            }
         }
     }
 });
@@ -794,14 +807,15 @@ test('the role skill still carries the delegation exclusions and the three refus
 // the only copy a dispatched subagent receives, since an agent inherits no
 // skills, so the two surfaces can drift while every pin above stays green,
 // every claim pin above reading the role skill alone. This pin holds the two
-// copies to each other at the phrases that do the work: the four claim
-// fields, the session-scoped delete, and the poll stated as a sample rather
-// than a clearance, with the process list named nowhere in the clause, since
-// a process-list verdict in the brief is the one instruction that licenses a
-// subagent to start a suite beside a live foreign gate. The clause region is
-// sliced by its own landmarks rather than matched against the whole file, so
-// role-contract language elsewhere in executing-work cannot satisfy a pin
-// about what the brief actually says.
+// copies to each other at the phrases that do the work: the claim's field
+// set, derived from the shape-bearing sentence on each surface and compared
+// as sets rather than listed here, the session-scoped delete, and the poll
+// stated as a sample rather than a clearance, with the process list named
+// nowhere in the clause, since a process-list verdict in the brief is the
+// one instruction that licenses a subagent to start a suite beside a live
+// foreign gate. The clause region is sliced by its own landmarks rather
+// than matched against the whole file, so role-contract language elsewhere
+// in executing-work cannot satisfy a pin about what the brief actually says.
 test('the box-budget brief clause agrees with the role skill\'s claim contract and carries no process-list verdict', () => {
     const executingWork = fs.readFileSync(path.join(__dirname, '..', 'plugins',
         'claude-kit', 'skills', 'executing-work', 'SKILL.md'), 'utf8');
@@ -817,20 +831,93 @@ test('the box-budget brief clause agrees with the role skill\'s claim contract a
     const roleBody = collapseWhitespace(fs.readFileSync(path.join(__dirname,
         '..', 'plugins', 'claude-kit', 'skills', 'role', 'SKILL.md'), 'utf8'));
 
-    // The four claim fields, on both surfaces: the clause is what the
-    // subagent copies into the claim, and the role skill is the contract the
-    // coordinator sweeps and releases against, so a field present on one
-    // side only is a claim the other side cannot parse.
-    for (const field of ['`Repo:`', '`Session:`', '`Started:`',
-        '`Expected-seconds:`']) {
-        assert.ok(clause.includes(field),
-            'the box-budget brief clause no longer carries the claim field '
-            + field + ', so a subagent briefed from it writes a claim the '
-            + 'role skill\'s contract does not describe');
-        assert.ok(roleBody.includes(field),
-            'the role skill\'s claim contract no longer carries the claim '
-            + 'field ' + field + ' while the brief clause still instructs '
-            + 'subagents to write it');
+    // The claim's field set, derived from each surface rather than named
+    // here: a pin carrying its own list of the fields is a third literal
+    // that drifts with neither surface, so a field added to one side alone
+    // reads green against it. The derivation reads the shape-bearing
+    // sentence on each side, never the whole region, because both regions
+    // mention fields incidentally (the probe addresses `Name:`, the delete
+    // is scoped by `Session:`): a whole-region read stays green when a
+    // field is dropped from the shape sentence but still mentioned
+    // elsewhere in the region, and reddens spuriously when a non-shape
+    // sentence gains a field mention, both misfires on the one-sided-drift
+    // class this comparison exists to catch. Set equality over the two
+    // shape sentences catches a one-sided addition, and a one-sided
+    // removal by the same comparison. The clause is what the subagent
+    // copies into the claim and the role skill is the contract the
+    // coordinator probes and releases against, so a field on one side
+    // only is a claim the other side cannot parse.
+    const roleClaimStart = roleBody.indexOf('## The claim file');
+    const roleClaimEnd = roleBody.indexOf('## The takeover ritual');
+    assert.ok(roleClaimStart !== -1 && roleClaimEnd > roleClaimStart,
+        'the role skill no longer carries a claim-file section between its '
+        + 'own headings, so the slice this pin derives the claim fields '
+        + 'from has no edges');
+    const roleSection = roleBody.slice(roleClaimStart, roleClaimEnd);
+    const roleShapeStart = roleSection.indexOf(
+        'write `claims/heavy-process.md` carrying');
+    const roleShapeEnd = roleSection.indexOf(
+        'delete it at completion', roleShapeStart);
+    assert.ok(roleShapeStart !== -1 && roleShapeEnd > roleShapeStart,
+        'the role skill\'s claim-file section no longer carries its '
+        + 'shape-bearing sentence ("write `claims/heavy-process.md` '
+        + 'carrying ... delete it at completion"), so the contract side of '
+        + 'the field-set comparison has no sentence to derive from');
+    const clauseShapeStart = clause.indexOf('write the claim with its');
+    const clauseShapeEnd = clause.indexOf(
+        'at completion delete only a claim', clauseShapeStart);
+    assert.ok(clauseShapeStart !== -1 && clauseShapeEnd > clauseShapeStart,
+        'the box-budget brief clause no longer carries its shape-bearing '
+        + 'sentence ("write the claim with its ... fields" through the '
+        + 'completion delete), so the clause side of the field-set '
+        + 'comparison has no sentence to derive from');
+    // The token class admits a digit and a lowercase tail after the leading
+    // letter, wider than today's field names on purpose: a derivation
+    // narrower than the tokens it must see is how a future field such as
+    // `Retry2:` goes invisible to BOTH sides at once, a one-sided addition
+    // of it then passing green, which is the class this comparison exists
+    // to catch.
+    const claimFieldSet = (text) => [...new Set(
+        text.match(/`[A-Za-z][A-Za-z0-9-]*:`/g) || [])].sort();
+    const roleFields = claimFieldSet(
+        roleSection.slice(roleShapeStart, roleShapeEnd));
+    const clauseFields = claimFieldSet(
+        clause.slice(clauseShapeStart, clauseShapeEnd));
+    assert.ok(roleFields.length > 0,
+        'the role skill\'s shape-bearing sentence names no claim fields at '
+        + 'all, so this pin would compare two empty sets and pass on a '
+        + 'contract that describes no claim');
+    assert.strictEqual(clauseFields.join(', '), roleFields.join(', '),
+        'the box-budget brief clause and the role skill\'s claim contract '
+        + 'name different claim fields (clause: ' + clauseFields.join(', ')
+        + '; contract: ' + roleFields.join(', ') + '), so a subagent briefed '
+        + 'from the clause writes a claim the contract does not describe, or '
+        + 'omits a field the coordinator needs');
+    // The count lives here rather than in either surface's prose: a numeral
+    // in the brief clause is a copy nothing checks, staying green while a
+    // field lands correctly on both shape sentences and the numeral goes
+    // false in the one copy a dispatched agent ever receives. Asserted
+    // against the derived set, a shape change reddens this line and forces
+    // a deliberate update instead of a silent drift.
+    assert.strictEqual(roleFields.length, 5,
+        'the claim shape no longer carries exactly five fields (now: '
+        + roleFields.join(', ') + '); if the shape grew or shrank on both '
+        + 'surfaces deliberately, update this expected count with it');
+    // Set equality is blind to a symmetric rename: `Name:` becoming
+    // `Address:` on both shape sentences leaves the sets equal and the
+    // count at five, so both assertions above stay green, while `Name:` is
+    // the address the coordinator's probe uses and the field that makes the
+    // release's first leg satisfiable at all. (A symmetric removal is
+    // already caught by the count assertion above, which runs first.) Same
+    // idiom as the presence pins above: the load-bearing member is asserted
+    // by name on each surface beside the whole-set comparison.
+    for (const [label, fields] of [['role contract', roleFields],
+        ['brief clause', clauseFields]]) {
+        assert.ok(fields.includes('`Name:`'),
+            'the ' + label + '\'s claim shape no longer names `Name:`, the '
+            + 'field that addresses the coordinator\'s probe; without it no '
+            + 'probe can be put, the release\'s first leg is never '
+            + 'satisfiable, and every claim ends as an untracked hold');
     }
 
     // The session-scoped delete, on both surfaces, each in its own spelling:
@@ -864,6 +951,129 @@ test('the box-budget brief clause agrees with the role skill\'s claim contract a
         + 'protocol retired as a verdict: the clause instructs on claims and '
         + 'contention naming only, and a process-list instruction in the '
         + 'brief is a poll-as-clearance reading arriving by another name');
+});
+
+// The goal event is the BLOCKED funnel's machine-wide input: any session on
+// the box writes the stream, so a field the emitter ships that the funnel
+// never dispositions is an unscreened writer-controlled value, the defect
+// class an enumeration round found live instances of (the `plan` path and
+// the `ts` dedup key among them). The field set is derived from the two hook
+// surfaces rather than listed here, in the box-budget pin's own idiom: a pin
+// carrying its own field list is a third literal that drifts with neither
+// surface, so a field added to one side alone reads green against it.
+// Surface one is the emitGoalEvent call sites in kit-goal-stop.js, the keys
+// callers pass; surface two is the emitter body in kit-goal-lib.js, both the
+// keys it reads off its argument and the record keys it actually ships,
+// `ts` and `run` being emitter-generated and appearing in no call site. The
+// funnel's disposition sentence names every shipped field in backticks,
+// which is what the final loop reads: a field named nowhere in the funnel
+// slice is a field the contract routes no reader of through any screen.
+test('the coordinator\'s BLOCKED funnel dispositions every field the goal event ships', () => {
+    const stopSrc = fs.readFileSync(path.join(__dirname, '..', 'plugins',
+        'claude-kit', 'hooks', 'kit-goal-stop.js'), 'utf8');
+    const libSrc = fs.readFileSync(path.join(__dirname, '..', 'plugins',
+        'claude-kit', 'hooks', 'kit-goal-lib.js'), 'utf8');
+
+    // Surface one: the keys the call sites pass. The object literals are
+    // flat today; a nested brace would end the lazy match early and drop
+    // keys, which the set comparison below reddens on rather than passing.
+    const calls = stopSrc.match(/emitGoalEvent\(\{[\s\S]*?\}\)/g) || [];
+    assert.ok(calls.length > 0, 'kit-goal-stop.js no longer calls '
+        + 'emitGoalEvent, so the goal event this pin derives its field set '
+        + 'from is emitted nowhere and the funnel paragraph describes a '
+        + 'stream nothing writes');
+    // A key is an identifier opening an object entry, so it is anchored to the
+    // `{` or `,` (or line start) that precedes one. An unanchored identifier
+    // followed by a colon also matches a ternary's middle arm, `x ? a : b`,
+    // which would enter the field set as `a` and make this pin demand a
+    // disposition for a field the emitter never ships.
+    const keyOf = /(?:^|[{,])\s*([A-Za-z_$][\w$]*)\s*:/gm;
+    const callKeys = new Set();
+    for (const c of calls) {
+        for (const m of c.matchAll(keyOf)) callKeys.add(m[1]);
+    }
+
+    // Surface two: the emitter body, sliced from its declaration to the
+    // next top-level declaration or the exports line, whichever follows.
+    const emitterStart = libSrc.indexOf('function emitGoalEvent(');
+    assert.ok(emitterStart !== -1, 'kit-goal-lib.js no longer declares '
+        + 'emitGoalEvent, so the emitter half of the field-set derivation '
+        + 'has no body to read');
+    let emitterEnd = libSrc.indexOf('\nfunction ', emitterStart);
+    if (emitterEnd === -1) {
+        emitterEnd = libSrc.indexOf('\nmodule.exports', emitterStart);
+    }
+    assert.ok(emitterEnd > emitterStart, 'the emitGoalEvent body has no '
+        + 'following declaration or exports line to bound the slice this '
+        + 'pin reads');
+    const emitter = libSrc.slice(emitterStart, emitterEnd);
+    // The keys the emitter reads off its argument object: the caller-facing
+    // contract, compared against what the callers actually pass.
+    const argKeys = new Set(
+        [...emitter.matchAll(/\bd\.([A-Za-z_$][\w$]*)/g)].map((m) => m[1]));
+    // The keys the emitter ships: the record literal's own keys plus the
+    // conditional record.<key> assignments; `ts` and `run` live only here.
+    const recordLiteral = emitter.match(/const record = \{[\s\S]*?\};/);
+    assert.ok(recordLiteral, 'the emitGoalEvent body no longer builds its '
+        + 'record object literal, so the shipped field set cannot be '
+        + 'derived from it');
+    const shipped = new Set();
+    for (const m of recordLiteral[0].matchAll(keyOf)) shipped.add(m[1]);
+    for (const m of emitter.matchAll(/\brecord\.([A-Za-z_$][\w$]*)\s*=/g)) {
+        shipped.add(m[1]);
+    }
+
+    // The two derivations must agree with each other before either is read
+    // against the funnel: a call site passing a key the emitter never reads
+    // is a field that silently ships nowhere, and the emitter reading a key
+    // no call site passes is a contract field nothing exercises.
+    const sorted = (s) => [...s].sort().join(', ');
+    assert.strictEqual(sorted(callKeys), sorted(argKeys),
+        'the emitGoalEvent call sites in kit-goal-stop.js and the keys the '
+        + 'emitter reads in kit-goal-lib.js name different field sets (call '
+        + 'sites: ' + sorted(callKeys) + '; emitter reads: ' + sorted(argKeys)
+        + '), so one surface gained or lost a field the other cannot see');
+    assert.ok(shipped.size > callKeys.size,
+        'the emitter ships no field of its own beyond what callers pass '
+        + '(shipped: ' + sorted(shipped) + '); `ts` at least is '
+        + 'emitter-generated, so an equal set means the record derivation '
+        + 'went blind');
+
+    // Every shipped field has a backticked disposition in the funnel
+    // paragraph, sliced by its own landmarks so a mention elsewhere in the
+    // coordinator skill cannot satisfy a pin about what the funnel says.
+    const coordinator = fs.readFileSync(path.join(__dirname, '..', 'plugins',
+        'claude-kit', 'skills', 'coordinator', 'SKILL.md'), 'utf8');
+    const funnelStart = coordinator.indexOf('**The BLOCKED funnel.**');
+    const funnelEnd = coordinator.indexOf('**A blocker\'s answer never returns');
+    assert.ok(funnelStart !== -1 && funnelEnd > funnelStart,
+        'the coordinator skill no longer carries the BLOCKED funnel '
+        + 'paragraph between its own landmarks, so the disposition side of '
+        + 'this pin has no slice to read');
+    const funnel = coordinator.slice(funnelStart, funnelEnd);
+    // Narrower than the funnel slice: the disposition clause itself, which
+    // runs from the sentence's own colon to the clause that closes it. The
+    // paragraph also enumerates the record's fields a few words earlier, so a
+    // pin reading the whole slice passes on that enumeration alone and stays
+    // green when a field's disposition is dropped while the field survives in
+    // the list of what the record carries.
+    const dispStart = funnel.indexOf('stated so no field rides without one:');
+    const dispEnd = funnel.indexOf('A mid-queue advance does record');
+    assert.ok(dispStart !== -1 && dispEnd > dispStart,
+        'the BLOCKED funnel paragraph no longer carries its per-field '
+        + 'disposition clause between its own landmarks, so this pin has no '
+        + 'clause to read and would otherwise fall back to the record '
+        + 'enumeration, which names the fields without dispositioning them');
+    const dispositions = funnel.slice(dispStart, dispEnd);
+    for (const field of shipped) {
+        assert.ok(dispositions.includes('`' + field + '`'),
+            'the BLOCKED funnel\'s disposition clause gives no disposition to '
+            + 'the goal event\'s `' + field + '` field, which the emitter '
+            + 'ships and any session on the box can write: a field with no '
+            + 'named reader or screen at its point of use is the defect class '
+            + 'this pin exists to keep out, and naming it in the record '
+            + 'enumeration beside the clause is not a disposition');
+    }
 });
 
 // The reciprocal half of the coordinator's kaizen function: every seat but
