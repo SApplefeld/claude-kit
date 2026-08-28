@@ -3455,6 +3455,254 @@ test('decay-scan stands the whole command down for an unpinned network working d
     }
 });
 
+// The seven remaining doors: log, find, recent, unstamped, touch, decay-prune,
+// decay-done. Every case below runs unpinned, the control Standing Amendment
+// 1 and this section's own approach both ask for: KIT_MEMORY_PROJECT is never
+// set here, unlike every network case above, so projectSegment is not
+// answered by a pin before it ever consults worktreeMainRoot and the walk
+// this section closes is the one actually at risk. Each case pairs the
+// network-shaped cwd with a same-store local-cwd control in the same test,
+// so a green assertion on the network side is evidence the predicate spoke,
+// not evidence the verb happened to be quiet.
+//
+// localUncPath's admin-share spelling resolves only on win32, and only with
+// local-admin rights on this machine (the C$-style share); off win32 the
+// path is not this machine's own directory and the case fails for an
+// environment reason rather than a code one. It is a real, locally reachable
+// UNC path (Standing Amendment 6), so a case built on it costs no SMB
+// timeout to prove: if the gate below did not fire, the walk would resolve
+// fast and the verb would answer normally, which is exactly what the local
+// control instead does answer, and the difference between the two is the
+// gate.
+const NETWORK_SKIP = { skip: process.platform !== 'win32' ? 'an admin-share UNC path is a win32 shape'
+    : localUncPathAvailable() ? false : 'administrative shares are not reachable on this machine' };
+
+test('log stands down for an unpinned network working directory and writes nothing; '
+    + 'the same command from an ordinary local cwd logs normally', NETWORK_SKIP, () => {
+    const store = makeStore();
+    try {
+        const res = runFrom(store, localUncPath(store.proj), ['log', 'k.one', 'pass', 'a summary'], {});
+        assert.strictEqual(res.status, 1, res.stdout);
+        assert.strictEqual(res.stdout, '');
+        assert.strictEqual(res.stderr, 'memq: this call\'s working directory names a network '
+            + 'share, so its project memory directory was not resolved (a synchronous walk under '
+            + 'it risks hanging for the SMB timeout on an unreachable host); nothing was logged\n');
+        assert.ok(!fs.existsSync(journalPath(store)), 'no journal file was created; nothing was written');
+
+        // The control: the same store, the same command, an ordinary local
+        // cwd. Only cwd's shape differs, which is what proves the refusal
+        // above is the predicate speaking rather than the verb going quiet
+        // on its own.
+        const local = run(store, ['log', 'k.one', 'pass', 'a summary']);
+        assert.strictEqual(local.status, 0, local.stderr);
+        assert.strictEqual(local.stdout, 'logged k.one pass\n');
+        assert.strictEqual(readJournalLines(store).length, 1, 'the local control actually wrote');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('find stands the whole verb down for an unpinned network working directory, both the '
+    + 'project-tier lexical block and the semantic ranking; the same search from an ordinary '
+    + 'local cwd answers from the journal', NETWORK_SKIP, () => {
+    const store = makeStore();
+    try {
+        const oldTs = new Date(Date.now() - 3 * 86400000).toISOString();
+        seedJournal(store, [
+            JSON.stringify({ ts: oldTs, key: 'widget.load', outcome: 'pass', summary: 'loads the widget' })
+        ]);
+
+        // --outcomes keeps this case to the journal alone: the semantic
+        // channel opens only with the real or fake embedding stack present,
+        // which is not this test's subject, and the whole-verb refusal below
+        // fires ahead of the --outcomes branch either way.
+        const res = runFrom(store, localUncPath(store.proj), ['find', 'widget', '--outcomes'], {});
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout, '');
+        assert.strictEqual(res.stderr, 'memq: this call\'s working directory names a network '
+            + 'share, so its project memory directory was not resolved (a synchronous walk under '
+            + 'it risks hanging for the SMB timeout on an unreachable host); neither the '
+            + 'project-tier lexical block nor the semantic ranking was searched\n');
+
+        const local = run(store, ['find', 'widget', '--outcomes']);
+        assert.strictEqual(local.status, 0, local.stderr);
+        assert.strictEqual(local.stdout, 'widget.load  1/0  last 3d  loads the widget\n');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('recent stands down for an unpinned network working directory; the same digest from an '
+    + 'ordinary local cwd reports its zeros', NETWORK_SKIP, () => {
+    const store = makeStore();
+    try {
+        const res = runFrom(store, localUncPath(store.proj), ['recent'], {});
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout, '');
+        assert.strictEqual(res.stderr, 'memq: this call\'s working directory names a network '
+            + 'share, so its project memory directory was not resolved (a synchronous walk under '
+            + 'it risks hanging for the SMB timeout on an unreachable host); nothing recent to '
+            + 'report\n');
+
+        fs.mkdirSync(store.memDir, { recursive: true });
+        const local = run(store, ['recent']);
+        assert.strictEqual(local.status, 0, local.stderr);
+        assert.strictEqual(local.stdout,
+            'journal entries: 0 in the last 1d\n'
+            + 'applied stamps: 0 in the last 1d, 0 read stamps\n'
+            + 'memory files: 0 added or updated in the last 1d\n');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('unstamped stands down for an unpinned network working directory; the same digest from '
+    + 'an ordinary local cwd reports its zeros', NETWORK_SKIP, () => {
+    const store = makeStore();
+    try {
+        const res = runFrom(store, localUncPath(store.proj), ['unstamped'], {});
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout, '');
+        assert.strictEqual(res.stderr, 'memq: this call\'s working directory names a network '
+            + 'share, so its project memory directory was not resolved (a synchronous walk under '
+            + 'it risks hanging for the SMB timeout on an unreachable host); nothing unstamped to '
+            + 'report\n');
+
+        fs.mkdirSync(store.memDir, { recursive: true });
+        const local = run(store, ['unstamped']);
+        assert.strictEqual(local.status, 0, local.stderr);
+        assert.strictEqual(local.stdout,
+            'project tier: 0 records read but not applied in the last 1d\n' + NO_STAMP + '\n');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('touch stands down for an unpinned network working directory and stamps nothing; the '
+    + 'same touch from an ordinary local cwd lands', NETWORK_SKIP, () => {
+    const store = makeStore();
+    try {
+        const res = runFrom(store, localUncPath(store.proj), ['touch', 'a-memory', '--applied'], {});
+        assert.strictEqual(res.status, 1, res.stdout);
+        assert.strictEqual(res.stdout, '');
+        assert.strictEqual(res.stderr, 'memq: this call\'s working directory names a network '
+            + 'share, so its project memory directory was not resolved (a synchronous walk under '
+            + 'it risks hanging for the SMB timeout on an unreachable host); nothing was stamped\n');
+        assert.ok(!fs.existsSync(usagePath(store)), 'no usage sidecar was created; nothing was written');
+
+        writeMemoryFile(store, 'a-memory.md', '# A memory\n');
+        const local = run(store, ['touch', 'a-memory', '--applied']);
+        assert.strictEqual(local.status, 0, local.stderr);
+        assert.strictEqual(local.stdout, 'touched a-memory applied\n');
+        assert.strictEqual(readUsageEntries(store).length, 1, 'the local control actually stamped');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// touch --operator resolves through operatorTierOrNull(), which takes no cwd
+// argument at all: the operator tier belongs to every project
+// unconditionally, so this form never reaches worktreeMainRoot and the
+// entry gate above deliberately excludes it (the same reason add-operator
+// and delete-operator are not gated). This proves the exclusion behaviorally
+// rather than only in the source: a network-shaped cwd still reaches
+// operatorTierOrNull's own answer, here its "no target" refusal since this
+// fixture has no operator tier, never the network-share refusal.
+test('touch --operator is not gated on cwd\'s network shape, because its tier does not '
+    + 'depend on cwd', NETWORK_SKIP, () => {
+    const store = makeStore();
+    try {
+        const res = runFrom(store, localUncPath(store.proj),
+            ['touch', 'a-memory', '--applied', '--operator'], {});
+        assert.strictEqual(res.status, 1, res.stdout);
+        assert.strictEqual(res.stdout, '');
+        assert.strictEqual(res.stderr, 'memq: this store has no operator tier'
+            + ' (no memory-operator/ directory), so --operator has no target\n',
+            'the operator-tier refusal, not the network-share refusal:\n' + res.stderr);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('decay-prune stands down for an unpinned network working directory and writes nothing; '
+    + 'the same pass from an ordinary local cwd runs and reports its own distinct '
+    + 'clean answer', NETWORK_SKIP, () => {
+    const store = makeStore();
+    try {
+        const res = runFrom(store, localUncPath(store.proj), ['decay-prune', '--rollup'], {});
+        assert.strictEqual(res.status, 1, res.stdout);
+        assert.strictEqual(res.stdout, '');
+        assert.strictEqual(res.stderr, 'memq: this call\'s working directory names a network '
+            + 'share, so its project memory directory was not resolved (a synchronous walk under '
+            + 'it risks hanging for the SMB timeout on an unreachable host); nothing was written\n');
+
+        fs.mkdirSync(store.memDir, { recursive: true });
+        const local = run(store, ['decay-prune', '--rollup']);
+        assert.strictEqual(local.status, 0, local.stdout);
+        assert.strictEqual(local.stdout, '');
+        assert.strictEqual(local.stderr, 'memq: nothing to prune\n',
+            'the store\'s own clean answer, distinct from the network refusal above');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('decay-done stands down for an unpinned network working directory and writes nothing; '
+    + 'the same command from an ordinary local cwd stamps the decay clock', NETWORK_SKIP, () => {
+    const store = makeStore();
+    try {
+        const res = runFrom(store, localUncPath(store.proj), ['decay-done'], {});
+        assert.strictEqual(res.status, 1, res.stdout);
+        assert.strictEqual(res.stdout, '');
+        assert.strictEqual(res.stderr, 'memq: this call\'s working directory names a network '
+            + 'share, so its project memory directory was not resolved (a synchronous walk under '
+            + 'it risks hanging for the SMB timeout on an unreachable host); nothing was written\n');
+        assert.ok(!fs.existsSync(path.join(store.memDir, 'decay-stamp')),
+            'no decay stamp was created; nothing was written');
+
+        writeMemoryFile(store, 'a-memory.md', '# m\n');
+        const local = run(store, ['decay-done']);
+        assert.strictEqual(local.status, 0, local.stderr);
+        assert.strictEqual(local.stdout, 'decay stamp touched\n');
+        assert.ok(fs.statSync(path.join(store.memDir, 'decay-stamp')).isFile());
+    } finally {
+        rmStore(store);
+    }
+});
+
+// Source inspection: the stand-down check is a call to the shared predicate,
+// spelled once per gated door, never a second inline copy of the leading-
+// separator test (that copy is pinned separately, at exactly
+// hooks/kit-network-lib.js, by test/compact-deferral-nudge.test.js). A
+// behavioral test above only proves these eleven verbs currently refuse; it
+// cannot prove a twelfth verb was not quietly given its own hand-rolled
+// check, or that one of the eleven was not duplicated into two gates inside
+// its own body. This widens Section 7's four doors (cmdGet, cmdRecall,
+// cmdAnchor, cmdDecayScan) to the seven this section adds.
+test('the network-share stand-down check is spelled once per gated verb, at exactly the '
+    + 'eleven doors Section 7 and this section cover', () => {
+    const source = fs.readFileSync(MEMQ, 'utf8').split(/\r?\n/);
+    const enclosing = (lineNo) => {
+        for (let i = lineNo - 1; i >= 0; i--) {
+            const m = source[i].match(/^(?:async )?function (\w+)/);
+            if (m) return m[1];
+        }
+        return null;
+    };
+    // touch's gate carries one extra clause, !toOperator, excluding the one
+    // branch that does not depend on cwd; every other gate is the bare form.
+    const gateLine = /^\s*if \((?:!toOperator && )?pinnedProjectSegment\(\) === null && namesNetworkShare\((?:process\.cwd\(\)|cwd)\)\)/;
+    const gates = [];
+    source.forEach((line, i) => {
+        if (gateLine.test(line)) gates.push({ line: i + 1, fn: enclosing(i + 1) });
+    });
+    assert.deepStrictEqual(gates.map((g) => g.fn).sort(), [
+        'cmdAnchor', 'cmdDecayDone', 'cmdDecayPrune', 'cmdDecayScan', 'cmdFind',
+        'cmdGet', 'cmdLog', 'cmdRecall', 'cmdRecent', 'cmdTouch', 'cmdUnstamped'
+    ], 'the stand-down check gates exactly these eleven verbs, no more, no fewer: '
+        + JSON.stringify(gates));
+});
+
 // Refuse one directory listing inside the spawned CLI, so a tier is there
 // and cannot be enumerated: chmod does not produce that state reliably under
 // libuv on Windows. The preload path is forward-slashed because Node parses

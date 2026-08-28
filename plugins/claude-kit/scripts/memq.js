@@ -3868,6 +3868,20 @@ function cmdLog(argv) {
         }
     }
 
+    // This hoist sits ahead of the direct projectMemoryDir(process.cwd())
+    // call below, cmdLog's own resolver door: on an unpinned cwd that call
+    // reaches worktreeMainRoot's fs.statSync(cwd/.git), the walk that hangs
+    // for the SMB timeout on an unreachable host. A pin answers
+    // projectSegment before worktreeMainRoot is ever reached, so only an
+    // unpinned network cwd rides that walk.
+    if (pinnedProjectSegment() === null && namesNetworkShare(process.cwd())) {
+        process.stderr.write('memq: this call\'s working directory names a network share, so its '
+            + 'project memory directory was not resolved (a synchronous walk under it risks '
+            + 'hanging for the SMB timeout on an unreachable host); nothing was logged\n');
+        process.exitCode = 1;
+        return;
+    }
+
     const memDir = projectMemoryDir(process.cwd());
     // Free-text fields are bounded at write time by reduction, with a note,
     // rather than by rejection: the head of an oversized summary still logs,
@@ -4080,6 +4094,24 @@ async function cmdFind(argv) {
     if (showArchived && scope === 'outcomes') {
         return usage('--archived has nothing to filter under --outcomes:'
             + ' the journal has no archive');
+    }
+
+    // This hoist sits ahead of readMemDirOrNote(): that call's own first
+    // statement, projectMemoryDir(process.cwd()), reaches worktreeMainRoot's
+    // fs.statSync(cwd/.git) whenever no pin is set, the walk that hangs for
+    // the SMB timeout on an unreachable host. find's semantic channel is
+    // itself cwd-dependent below (typedTierOrNull(process.cwd()),
+    // pendingDirFor(process.cwd()), projectSegment(process.cwd())), so
+    // letting it proceed while only the lexical block stands down would not
+    // avoid the hang, it would relocate it further down this same function;
+    // the whole verb refuses instead, and says both channels went
+    // unanswered.
+    if (pinnedProjectSegment() === null && namesNetworkShare(process.cwd())) {
+        process.stderr.write('memq: this call\'s working directory names a network share, so its '
+            + 'project memory directory was not resolved (a synchronous walk under it risks '
+            + 'hanging for the SMB timeout on an unreachable host); neither the project-tier '
+            + 'lexical block nor the semantic ranking was searched\n');
+        return;
     }
 
     const memDir = readMemDirOrNote();
@@ -6112,6 +6144,18 @@ function cmdRecent(argv) {
     if (window === null) {
         return usage('--since takes <n>d or <n>h, a positive whole number of days or hours');
     }
+    // This hoist sits ahead of readMemDirOrNote(): that call's own first
+    // statement, projectMemoryDir(process.cwd()), reaches worktreeMainRoot's
+    // fs.statSync(cwd/.git) whenever no pin is set, the walk that hangs for
+    // the SMB timeout on an unreachable host. A pin answers projectSegment
+    // before worktreeMainRoot is ever reached, so only an unpinned network
+    // cwd rides that walk.
+    if (pinnedProjectSegment() === null && namesNetworkShare(process.cwd())) {
+        process.stderr.write('memq: this call\'s working directory names a network share, so its '
+            + 'project memory directory was not resolved (a synchronous walk under it risks '
+            + 'hanging for the SMB timeout on an unreachable host); nothing recent to report\n');
+        return;
+    }
     const memDir = readMemDirOrNote();
     if (memDir === null) return;
     const now = Date.now();
@@ -6540,6 +6584,18 @@ function cmdUnstamped(argv) {
     if (window === null) {
         return usage('--since takes <n>d or <n>h, a positive whole number of days or hours');
     }
+    // This hoist sits ahead of readMemDirOrNote(): that call's own first
+    // statement, projectMemoryDir(process.cwd()), reaches worktreeMainRoot's
+    // fs.statSync(cwd/.git) whenever no pin is set, the walk that hangs for
+    // the SMB timeout on an unreachable host. A pin answers projectSegment
+    // before worktreeMainRoot is ever reached, so only an unpinned network
+    // cwd rides that walk.
+    if (pinnedProjectSegment() === null && namesNetworkShare(process.cwd())) {
+        process.stderr.write('memq: this call\'s working directory names a network share, so its '
+            + 'project memory directory was not resolved (a synchronous walk under it risks '
+            + 'hanging for the SMB timeout on an unreachable host); nothing unstamped to report\n');
+        return;
+    }
     const memDir = readMemDirOrNote();
     if (memDir === null) return;
     const now = Date.now();
@@ -6788,6 +6844,25 @@ function cmdTouch(argv) {
     if (!isMemoryFilename(file)) {
         return usage('name must be characters from [A-Za-z0-9_.-], at most '
             + (MEMORY_FILE_CAP - 3) + ', and not the memory index');
+    }
+
+    // This hoist sits ahead of every branch below but --operator: --type
+    // reaches typedTierOrNull(process.cwd()) -> projectType(cwd) ->
+    // projectMemoryDir(cwd), and the plain form reaches memDirOrNote() and
+    // pendingDirFor(process.cwd()), all three of which land on
+    // worktreeMainRoot's fs.statSync(cwd/.git) whenever no pin is set, the
+    // walk that hangs for the SMB timeout on an unreachable host. --operator
+    // resolves through operatorTierOrNull(), which takes no cwd argument at
+    // all (the operator tier belongs to every project unconditionally), so
+    // it never reaches that walk and is excluded from this refusal: gating
+    // it would refuse a shared-tier stamp for a reason that does not apply
+    // to it, the same reason add-operator and delete-operator are not gated.
+    if (!toOperator && pinnedProjectSegment() === null && namesNetworkShare(process.cwd())) {
+        process.stderr.write('memq: this call\'s working directory names a network share, so its '
+            + 'project memory directory was not resolved (a synchronous walk under it risks '
+            + 'hanging for the SMB timeout on an unreachable host); nothing was stamped\n');
+        process.exitCode = 1;
+        return;
     }
 
     let stampDir;
@@ -9605,6 +9680,20 @@ function cmdDecayPrune(argv) {
         }
     }
 
+    // This hoist sits ahead of memDirOrNote(): that call's own first
+    // statement, projectMemoryDir(process.cwd()), reaches worktreeMainRoot's
+    // fs.statSync(cwd/.git) whenever no pin is set, the walk that hangs for
+    // the SMB timeout on an unreachable host. Every form of this pass,
+    // --archive-type and --archive-operator included, resolves memDir first
+    // (below), so the gate covers all of them from this one door.
+    if (pinnedProjectSegment() === null && namesNetworkShare(process.cwd())) {
+        process.stderr.write('memq: this call\'s working directory names a network share, so its '
+            + 'project memory directory was not resolved (a synchronous walk under it risks '
+            + 'hanging for the SMB timeout on an unreachable host); nothing was written\n');
+        process.exitCode = 1;
+        return;
+    }
+
     const memDir = memDirOrNote();
     if (memDir === null) {
         process.exitCode = 1;
@@ -12129,6 +12218,19 @@ function deleteSharedRecord(dir, indexPath, name, where, options) {
 // store stays stale.
 function cmdDecayDone(argv) {
     if (argv.length > 0) return usage('decay-done takes no arguments');
+    // This hoist sits ahead of memDirOrNote(): that call's own first
+    // statement, projectMemoryDir(process.cwd()), reaches worktreeMainRoot's
+    // fs.statSync(cwd/.git) whenever no pin is set, the walk that hangs for
+    // the SMB timeout on an unreachable host. A pin answers projectSegment
+    // before worktreeMainRoot is ever reached, so only an unpinned network
+    // cwd rides that walk.
+    if (pinnedProjectSegment() === null && namesNetworkShare(process.cwd())) {
+        process.stderr.write('memq: this call\'s working directory names a network share, so its '
+            + 'project memory directory was not resolved (a synchronous walk under it risks '
+            + 'hanging for the SMB timeout on an unreachable host); nothing was written\n');
+        process.exitCode = 1;
+        return;
+    }
     const memDir = memDirOrNote();
     if (memDir === null) {
         process.exitCode = 1;
