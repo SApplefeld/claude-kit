@@ -26,7 +26,8 @@ claude-kit/                          (repo = the marketplace)
         cold/                        Neutral evidence-first lens for non-code judgment calls
         consult/                     Fresh-context single-judge ruling on a question a stuck run cannot settle
         peer-sessions/               Discover and message live peer sessions: tool contracts, sanctioned patterns, etiquette
-        coordinator/                 The machine-coordinator seat's runbook: operator interface, cross-repo sequencing, resource arbitration, a board in the memory store
+        coordinator/                 The machine-coordinator seat's runbook: operator interface, cross-repo sequencing, resource arbitration, kaizen capture and dispatch, a board in the memory store
+        role/                        The /role <Seat> takeover ritual: the coordinator-directory contract, the session registry, the heavy-process claim, the operator's standing delegation
         standing-watch/              Repeating watch loop over a live system you do not own: runbook, ledger, wake and sleep
         kit-goal/                    /kit-goal <plan> arms a deterministic project-scoped completion leash
         kit-doctor/                  Validate and repair the machine's kit install (runs the payload doctor)
@@ -64,6 +65,8 @@ claude-kit/                          (repo = the marketplace)
                                      Compaction scheduling: PreCompact hook that defers auto-compaction to a
                                      chapter boundary on a leashed run and to a safety ceiling on a hands-on
                                      one, the checkpoint command that marks a boundary, shared library
+        kit-network-lib.js           Shared predicate for network-share paths (UNC and //server forms),
+                                     kept tiny so hot hook paths can load it without paying for memq.js
         chapter-boundary-nudge.js    PostToolUse nudge that puts the boundary steps in front of a leashed
                                      run when it appends a Chapter to a plan doc, so the checkpoint the
                                      compaction gate waits on gets opened
@@ -80,6 +83,9 @@ claude-kit/                          (repo = the marketplace)
         branch-reaper-nudge.js       SessionStart nudge for reapable/stranded branches
         kit-version-nudge.js         Warns when the session is running a stale kit build
         hook-canary.js               SessionStart probe that the installed kit hooks are alive
+        memory-frontmatter-guard.js  PreToolUse guard on memory records: checks a record's frontmatter
+                                     at the write and keeps the write tools off the two CLI-authored
+                                     shared tiers; fails open, denying only what memq would not read
         memory-usage-stamp.js        Stamps reads of memory files to the store's usage sidecar
         memory-session.js            SessionStart decay nudge, both tiers' memory indexes, and the
                                      memory write destination for a pinned or run-scoped session
