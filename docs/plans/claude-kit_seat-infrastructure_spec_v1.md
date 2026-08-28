@@ -1,6 +1,6 @@
 # The seats run on artifacts, at the cheapest sufficient tier, and compact at their own boundaries
 
-Status: Draft
+Status: In Progress
 Commit Model: Commit-and-Push
 Created: 2026-08-27
 
@@ -224,3 +224,55 @@ Files in scope: `plugins/claude-kit/skills/peer-sessions/SKILL.md`, `plugins/cla
 - `docs/backlog.md`: the two folded entries (the `consent --project` flag, 2026-08-26; the coordinator cold-start restructure, 2026-08-26).
 
 ## Chapters
+
+### Interim board 1 - 2026-08-27
+
+Run opened; no section has made a tree edit yet. Recorded here because the
+compaction gate was holding offers at a point where nothing is half-finished.
+
+**Section stages.** Section 1 (allowlist admits `coordinator/`): briefed and
+held, not started. Sections 2 through 7: not started. The plan's `Status:`
+header was normalized `Draft` to `In Progress` at run start per executing-work,
+which is the run's first approval-scoped edit and is recorded as deliberate
+rather than drift.
+
+**Live dispatches.** None. One backgrounded wait is running on a box-clear
+marker; it is not a dispatch and holds no files.
+
+**Gate baseline.** Not captured, and this is what the run waits on. Amendment 3
+gates each section's first edit on a full-suite baseline, so Section 1 opens
+with a suite run rather than closing with one. The machine's one-heavy-process
+slot is held by a sibling repository's measurement run, granted to this plan as
+a standing block for its duration once that lands. Every wall clock recorded on
+this box before the 2026-08-27 20:17 local reboot is a different machine's
+number (4 logical processors where there were 6, 20 GB where there were 16,
+Defender exclusions added), so the baseline is taken fresh and no pre-reboot
+figure is comparable to it. The tree's own enumerated test count is unsettled:
+two figures are in circulation, 1,870 and 1,850, neither traceable to a run
+anyone here read, and the first clean post-reboot run settles it.
+
+**Rulings adopted since the last boundary.**
+
+1. *Execution stays on `main` in the shared checkout rather than a worktree.*
+   Commit-and-Push against a worktree run routes onto Branch-and-PR with an
+   integration merge, and Section 5 edits `plugins/claude-kit/hooks/`, where a
+   merge re-stales the build stamp with no conflict (project memory
+   `merging-hook-edits-staleness-the-build-stamp`) - the exact artifact
+   Amendment 6 exists to keep fresh. The expert seat sharing this checkout holds
+   a commit freeze and moves to a worktree itself if its authoring collides.
+2. *Section 1 gains a security review the spec does not call for.* Its file is
+   the allowlist deciding what leaves a store holding `.credentials.json`,
+   `settings.json`, and full session transcripts, and the section widens that
+   allowlist, which is executing-work's secrets-and-configuration trigger. A
+   widening defect there leaks the store rather than reddening a test.
+3. *`Get-MemorySyncProbePaths` is assumed to need no change* (route (b),
+   declared). The spec directs extending "any probe enumeration" so every reader
+   answers identically for coordinator paths; that function enumerates paths
+   proven **ignored** and there is no positive-probe enumeration in the file, so
+   the two readers that must agree are the ignore text and
+   `Test-MemorySyncPathAllowed`. The implementer is briefed to contradict this
+   if it finds a positive enumeration.
+
+**Next action per section.** Section 1: capture the suite baseline the moment
+the box clears, then dispatch `implementer-opus` from the held brief. Sections 2
+through 7: unchanged, in order, each gated on its own baseline.
