@@ -184,7 +184,7 @@ Worker status derives from artifacts only, now stated as the pass's default rath
 
 Fork 3's writing topology is stated where the readers look: sessions write status only to their own registry file, only the coordinator writes the board, and the role skill (Section 3) already owns that contract, so both runbook mentions are bound to it and it governs where they are read against each other. They are not bare pointers: a runbook restates the parts of the contract a pass cannot be run without, which is a designed copy rather than drift, and the contract's precedence is what keeps the two from disagreeing.
 
-Tests: prose section; the Section 2 and 3 pins stay green; suite delta per Amendment 3. One pin is strengthened rather than added: the cross-file pin holding the dispatch-brief box-budget clause to the role skill's claim contract carried its own hardcoded list of the claim fields, a third literal drifting with neither surface, so a field added to one side alone read green against it. It now derives the field set from each surface and compares the two, which is what catches a one-sided addition or removal, and each of its three assertions is taken to red by its own ablation.
+Tests: prose section; the Section 2 and 3 pins stay green; suite delta per Amendment 3. One pin is strengthened rather than added: the cross-file pin holding the dispatch-brief box-budget clause to the role skill's claim contract carried its own hardcoded list of the claim fields, a third literal drifting with neither surface, so a field added to one side alone read green against it. It now derives the field set from each surface and compares the two, which is what catches a one-sided addition or removal, and each of its three assertions is taken to red by its own ablation. A second pin is added at the enumeration fix round rather than strengthened: it derives the goal event's field set from the `emitGoalEvent` call sites in `kit-goal-stop.js` and from the emitter body in `kit-goal-lib.js`, compares the two surfaces to each other, and asserts every shipped field carries a backticked disposition in the coordinator's BLOCKED funnel paragraph, each assertion taken to red by its own ablation; it is the mechanical guard against the defect class the enumeration surfaced, a contract defining a field and routing no reader of it through a screen.
 
 Files in scope: `plugins/claude-kit/skills/coordinator/SKILL.md`, `plugins/claude-kit/skills/peer-sessions/SKILL.md`, and `plugins/claude-kit/skills/role/SKILL.md` (folded during execution: this section's pass prunes a registry file, and the role skill is the owning contract, which names the coordinator's foreign-delete carve-outs explicitly for the claim file and not for the registry, so the prune as shipped would be a destructive power over a peer's single-writer artifact asserted only in the acting seat's own runbook. All three review lenses found it independently. The carve-out lands in the owning contract; the fold began as one narrow addition to that contract's registry writer rule and widened at the second review round to the claim protocol itself, because both files agree this contract governs where the two are read against each other and the release fixes had landed only in the runbook, which by that rule loses: a ruling implemented only in the losing file is not implemented. The security Critical at the launch-invocation screen is fixed here too, being a finding of a weight this plan never parks. All of it stays clear of the admitted-leaves parenthetical Section 10 owns in the same file). `plugins/claude-kit/skills/executing-work/SKILL.md` and `test/doctrine-parity.test.js` folded at the third round: the claim contract gained a `Name:` field so an unregistered writer's claim carries the address the probe needs, and the dispatch-brief clause is the only copy of that rule a spawning subagent ever receives, so a contract requiring a field its sole writer never writes would have left every subagent claim unaddressable. The pin that exists to hold those two surfaces to each other could not catch it, naming the fields in a list of its own, and is strengthened in the same fold. `docs/security-model.md` and `docs/architecture.md` carry counted claims this section falsifies and are routed to Section 8, which already owns both files, rather than folded here.
 
@@ -1191,3 +1191,128 @@ round; the confirmed Majors from round 8 are fixed either way, the event's plan
 path and the claim's forgeable name among them. Then the close gate on a quiet
 box, then Chapter 4. The section has now run five fix rounds and eight review
 rounds, with no Critical on any lens across the last four.
+
+### Interim board 10 - 2026-08-28
+
+Section 4 stopped being reviewed by sampling. The consult convened at the last
+boundary ruled that the round-by-round loop was the wrong instrument, and the
+section ran an exhaustive two-table enumeration, one fix round driven by it, and
+one review round briefed to falsify the tables. The section is still open, and it
+is open at a defined stopping rule rather than at another round's discretion.
+
+**In-flight sections.** Section 4 only. Sections 1, 2 and 3 closed at `77462a5`,
+`ebf5ee0` and `fb0f194`; 5 through 10 not started. Base moved to `07bd40c` during
+the round: this checkout is shared with the repo's expert seat, whose one-file
+kaizen commit advanced HEAD under this session with both indexes read and agreed
+across the window, nothing of either side swept, and this session's six dirty
+files riding untouched on top.
+
+**Live dispatches.** None. Two enumerators, one implementer and three review
+lenses all returned within this boundary.
+
+**Gate baseline.** Targeted lane re-run by this session rather than taken from a
+report: 27 pass, 0 fail, exit 0 read from the run's own exit code, against a
+26-test baseline, the added test being the round's new pin. Whole gate as run by
+the implementer: 1,884 tests, 1,881 pass, 1 fail, 2 skipped, exit 1, 223 s, a
+delta of one test and one pass against the 1,883 / 1,880 / 1 / 2 baseline at
+`fb0f194` with the same single known machine-specific path-length red. The
+section has still taken no close gate of this session's own.
+
+**The ruling that changed the instrument.** The consult was asked whether the fix
+loop was the right instrument and told to test the framing rather than ratify it.
+It ruled that the sweep dominates, and sharpened why: not that rounds sample in
+general, but that both defect classes are closed and mechanically enumerable from
+schemas the contracts themselves state, which is the specific condition under
+which enumeration beats iteration. It named the yield trajectory as the
+discriminator, three Majors at round 6 against roughly seven at round 8, since a
+converging process shows declining yield while a fixed population under sampling
+shows steady-to-rising yield as reviewers learn the class. It refused three of the
+four alternatives put to it, declined to let an eleventh amendment be written on
+the ground that the amendment layer had two demonstrated failures at holding
+sweep obligations, and set a falsifiable stopping rule rather than a feel.
+
+**Rulings adopted since the last boundary.**
+
+1. *The section closes on an enumeration that survives falsification, never on a
+   quiet round.* The stopping rule adopted: the section closes when one full
+   review round returns zero findings that add a row to either table. A
+   post-sweep round returning an in-class Major repairs the table first, then the
+   text, and one more round runs. Two consecutive post-sweep rounds each
+   returning in-class Majors falsifies the enumeration diagnosis itself, and the
+   question goes to the operator as a design question about the medium.
+2. *The eight prior rounds are a labeled validation set, and the enumeration is
+   checked against it before it is trusted.* The confirmed instances of boards 3
+   through 9 were written down as a control before the tables landed, and the
+   enumerators were briefed on none of it, an enumerator anchored on prior
+   findings reproducing the sampling disease inside the sweep. The control
+   discriminated exactly as intended between two failures that look alike from
+   outside: the enumeration missing an instance, which would require re-running
+   it, and the enumeration containing the instance while rating it wrong, which
+   needs only a re-rating pass. Both tables passed on rows and failed on ratings.
+3. *A rating rubric that lets a general clause elsewhere count as a screen
+   records defects as ambiguities.* Class A's first pass returned zero rows rated
+   a defect across 78 rows, against a validation set holding confirmed unfixed
+   ones. The repair was to the rubric rather than the enumeration: a screen counts
+   only where the reading site's own paragraph names it as applying to that field,
+   and a general clause inferred to reach it is itself the defect. Re-rated, the
+   same unchanged row set returned six column-four defects.
+4. *A hostile-value disposition is derived from the act's harm direction, never
+   from the field.* The first pass evaluated every hostile case in the direction
+   that preserves the artifact, which is why a destructive act's fail-open went
+   unseen. Re-rated on the direction that licenses the act, and split into three
+   cases per row rather than one, the table returned 22 rows whose absent and
+   unresolvable branches are fail-closed while the hostile-but-well-formed branch
+   is fail-open, and 22 decision legs a single forged value satisfies by
+   construction. The shape matters because a contract reads defended to anyone
+   checking only the absent branch.
+5. *Warrant strength and routed act are two enumerations, and strength alone is
+   blind to the higher-yield one.* Class B's first pass rated each site on the
+   strength of the warrant it states and nothing on what it then routes to, so a
+   site read correct on strength while a sentence seven sentences downstream in
+   its own paragraph still routed on the retired reading. A routed-act column was
+   added across all 158 sites.
+6. *The fix round's repairs were the honest three rather than a manufactured
+   guarantee.* There is no authentication anywhere in this design and the
+   contracts say so deliberately, so a fail-open is repaired by naming a screen
+   at the point of use, by stating the absence with its bound in the contract's
+   own idiom, or by giving the hostile case a licensed reading that never
+   destroys. All three review lenses were told that asserting a guarantee the
+   design cannot deliver is worse than leaving the gap, and each walked the
+   stated absences for exactly that cheat; the adversarial and security lenses
+   both reported the bounds genuine.
+7. *The tables are falsified, which is the round working rather than the round
+   failing.* The review round returned reads and warrants absent from both
+   tables. The precedence warrant is the sharpest omission, resting on ten sites
+   and absent from the warrant table entirely, which matters because Section 4's
+   own fold history turned on it: a ruling implemented only in the losing file is
+   not implemented. The coordinator's release-adjudication paragraph appears under
+   no warrant at all. Also absent: the probe answer's renewal act, by which a
+   session wearing a claimant's name renews a dead claim indefinitely with no
+   operator report; the board's own pass evidence time, which gates a recovery
+   read and whose forged-future branch silently narrows the dead-worker backstop;
+   and the kaizen landing, a re-disclosure act that folds peer-written text into
+   a public repository with the disclosure direction unexamined.
+8. *A never-poll carve-out was repaired at one sentence and a broader sibling
+   kept the retired scope.* The claim probe was carved out by name from the
+   status round's never-poll sentence, while a second sentence covering other
+   machines' sessions reads broader and took no carve-out, so a claim whose name
+   resolves only to a foreign-machine row is unprobeable, which is precisely the
+   state the first repair exists to prevent. This is the same warrant-sibling
+   class the validation set already held, recurring at a new sentence, and it is
+   the reason the stopping rule is stated on table growth rather than on severity.
+9. *The instrument that decides a dispatch is dead was itself broken, and the
+   check now carries a control.* The first-turn reading taken at the path the
+   dispatch tool returns reported zero assistant lines and zero synthetic for
+   two healthy agents, the never-started shape exactly. A positive control run
+   against a dispatch known to have completed returned the same zero, proving the
+   path rather than the agents. The real transcript lives beside the session's
+   own record, the reading is taken there, and it now always runs a control,
+   because a wrong path and a dead agent are indistinguishable without one. Banked
+   to project memory, since a false never-started licenses killing working agents.
+
+**Next action.** The tables are repaired first and the text second, per the
+stopping rule's own ordering, then one more review round. This is post-sweep
+round one of the two the rule allows: if the next round also returns in-class
+Majors, the diagnosis is falsified by its own terms and the medium question goes
+to the operator rather than into another round. Then the close gate on a quiet
+box, then Chapter 4.
