@@ -1727,3 +1727,443 @@ test('every shipped sentence stating the sync allowlist narrowly names every roo
     // sentence admits it, so "re-includes only the memory tiers, excluding
     // the coordinator directory" would pass. No check here reads prose sense.
 });
+
+// The public-board cap on a worker's blocker traffic is stated at three
+// sites: executing-work's expert-ask paragraph, its first-line paragraph, and
+// peer-sessions' Worker seat bullet. The cap prices what the ask, the
+// coordinator notice, and the declaration's own first line may carry, and
+// each site states the footing it stands on. These pins hold both, because
+// the footing is the part that has already gone false once: it read as a
+// board file a public repository may carry, and the coordinator's board sits
+// in the memory store, so a worker reasoning from the footing rather than
+// obeying the rule would conclude the cap had lapsed.
+//
+// The footing each site now states is that the cap is a standard rather than
+// a derivation. It is stated against a public board so that moving the board
+// somewhere quieter never reads as relaxing it, which is the framing
+// docs/security-model.md carries, and no fact about where the board sits,
+// what remote is configured, whether anything replicates at all, or who reads
+// it can be reasoned into relaxing it. Each site resolves to
+// docs/security-model.md for the readership analysis and to the coordinator
+// skill for the readership precondition, rather than restating either.
+//
+// Each pin refuses three named axes and asserts the footing is stated.
+//
+//   axis 1, the retired footing: the site grounding the cap in a repository
+//   carrying the board. The refusing rule is assertFootingNotRetired, which
+//   throws on a "board"/container-noun adjacency inside one sentence, in
+//   either order. Its reach and its one known misfire are stated at the rule
+//   itself.
+//
+//   axis 2, the re-pegged footing: the site grounding the cap in a fact about
+//   the store's remote, either the remote being private or the store's own
+//   replication standing as the warrant. The first is the "correction" a
+//   later pass would make while appearing to update the paragraph, and it
+//   would remove the screen, since a private remote is a precondition of one
+//   installation rather than a property of the kit. The second is the
+//   re-derivation this section was rewritten to retire, and it passes a
+//   refusal aimed at the replacement case when it is added beside the
+//   standard rather than put in its place, so the rule reaches it in either
+//   position. The refusing rule is assertFootingNotRepegged. Its reach and
+//   what it misses are stated at the rule itself.
+//
+//   axis 3, the cap relaxed while still being named: text that keeps the
+//   cap's vocabulary and drops its force, by conditioning the cap or its
+//   footing on something ("only until the operator has answered the
+//   readership question, after which the seat's own judgement replaces the
+//   cap"). It is what a pin over a standard needs, since a standard has no
+//   derivation left to falsify: the only way to disarm it in prose is to make
+//   it contingent. The refusing rule is assertCapNotConditioned. Its window
+//   covers the cap's own statement and its footing's, so a footing made
+//   contingent ("where a remote is configured") is refused by this axis and
+//   needs no separate one. What it reads is a relaxation vocabulary rather
+//   than force itself, which is a real limit and is stated at the rule.
+//
+// A fourth refusal is not an axis but a boundary: assertNoBoundaryTriple
+// keeps these paragraphs from restating which boundaries a board line
+// crosses. Two shipped surfaces name different triples, the coordinator skill
+// naming machine, account and session and docs/security-model.md naming
+// account, machine and person, so a restatement here picks a side in a
+// disagreement these paragraphs have no mandate to settle. They point at
+// docs/security-model.md instead. Its residual is stated at the rule.
+//
+// The ablations below are standalone constructed strings that never reference
+// the slice, and they prove exactly one thing: that each refusing rule fires
+// on that axis's offending shape. They prove nothing about the slice, and no
+// arrangement of them could, since each ablation matches on its own and the
+// assert.throws would succeed whatever the slice held. What keeps the slice
+// itself honest is the positive assertions in assertFootingStated and the
+// far-end assertions in assertFootingSourcesCarryIt, which read the live text
+// and nothing else.
+//
+// The far end is the other half of this design. Each site stops carrying its
+// own ground and delegates it, so a pin that only reads the pointer goes
+// green while the pointed-at standard is reworded or deleted, which is the
+// cross-file-invariant-nothing-checks shape these paragraphs refuse to
+// create. assertFootingSourcesCarryIt reads the two delegated surfaces and
+// runs inside all three site pins, so a far end that moves reddens at every
+// site that leans on it rather than nowhere.
+
+function sentencesOf(text) {
+    // A period is a sentence break only where whitespace or the end follows,
+    // so `board.md` and `docs/security-model.md` stay inside their sentence
+    // rather than splitting it. Splitting on a bare period is what let the
+    // most likely re-introduction spelling, the coordinator skill's own
+    // `board.md`, slip past an adjacency check.
+    return text.split(/[.;:](?=\s|$)/);
+}
+
+// The container nouns a re-introduced premise would spell. The list is wider
+// than the two spellings the retired text used, since the premise reads the
+// same with any of them, and it is still a list rather than a rule: a
+// re-introduction spelling a container this alternation does not name goes
+// unrefused, and that residual is the honest limit of this axis. What the
+// list does cover is every spelling on the surfaces this repository ships,
+// which is where a copy-forward would come from.
+const CONTAINER_NOUN
+    = '(?:repo|repos|repository|repositories|project|projects|marketplace|marketplaces|forge|forges|host|hosts|GitHub|git remote)';
+// The gap between the two words spans anything but a sentence break, and a
+// period is a break only where whitespace or the end follows it. A gap that
+// broke on every period was cut by the period inside `board.md`, which is how
+// the coordinator skill spells the board and so the most likely spelling a
+// re-introduced premise would carry.
+const SAME_SENTENCE_GAP = '(?:[^.;:]|[.;:](?!\\s|$)){0,80}';
+// `board` is anchored on both sides. Unanchored it matched inside keyboard,
+// billboard and boards, and "the operator's keyboard" is standing vocabulary
+// in these files, so an ordinary sentence pairing it with a repo would have
+// reddened the suite claiming a retired premise that was not there. The
+// anchor costs nothing the axis needs: a period is a word boundary, so the
+// `board.md` spelling still matches.
+const RETIRED_FOOTING = new RegExp(
+    '\\bboard\\b' + SAME_SENTENCE_GAP + '\\b' + CONTAINER_NOUN + '\\b|\\b'
+    + CONTAINER_NOUN + '\\b' + SAME_SENTENCE_GAP + '\\bboard\\b', 'i');
+
+// Axis 2 is two patterns, because the footing can be re-pegged to the store
+// in two directions and only one of them was ever written here.
+//
+// PRIVATE_PREMISE refuses the literal word "private" beside a remote, a store
+// or a board. That covers the primary copy-forward risk, since the
+// coordinator skill's own precondition is worded "the store's remote is
+// private", so a pass that pulls that premise down into these paragraphs is
+// caught. What it misses is the same premise said without the word: "only the
+// operator's own machines pull the store", "the remote is the operator's own
+// and its principals are theirs alone", "the store is never published, so the
+// readership is bounded". Those are refused by nothing here and are left to
+// review, which is why each site states the footing as a standard rather than
+// leaving a reader to infer one.
+//
+// REPLICATION_PREMISE refuses a replication-shaped warrant beside a remote or
+// a store. That premise is the one this section retired, and refusing only
+// the absence of the standard would miss it: added beside the standard
+// sentence rather than in its place ("the store's sync replicates that line
+// to every machine the configured remote serves, which is why the line is
+// capped"), it leaves every other rule green while restoring the derivation a
+// worker on a box that replicates nowhere reads as absent. What it misses is
+// a replication premise that names neither the remote nor the store ("every
+// machine that pulls it sees the line"), and a description of replication
+// that is not offered as a warrant, since no pattern here reads a sentence's
+// argumentative role. The second cuts the other way and is the reason these
+// paragraphs describe no replication at all rather than describing it
+// carefully: a site that needs the fact points at docs/security-model.md,
+// which carries it.
+const PRIVATE_PREMISE
+    = /\bprivate\b[^.;:]{0,80}\b(remote|store|board)\b|\b(remote|store|board)\b[^.;:]{0,80}\bprivate\b/i;
+const REPLICATION_VERB = '(?:replicat\\w+|sync\\w*|propagat\\w+|pushe[sd]|pulls?)';
+const REPLICATION_PREMISE = new RegExp(
+    REPLICATION_VERB + SAME_SENTENCE_GAP + '\\b(remote|store)\\b|\\b(remote|store)\\b'
+    + SAME_SENTENCE_GAP + REPLICATION_VERB, 'i');
+
+// The relaxation vocabulary. A cap that is named and then made contingent
+// reads as a cap to a skimming reader and to any check that matches the cap's
+// own words, which is the shape the security lens constructed: the pins are
+// satisfied by text that names the cap and no longer imposes it. "Only what"
+// and "only when it holds" are not here: the first is how every one of these
+// sites states the cap itself, and the second is unrelated prose in the
+// Worker bullet.
+//
+// The residual is the honest limit of this axis and is larger than the other
+// two: a relaxation written outside this vocabulary is not refused. Measured
+// non-refusals, all of which say what the ablation below says: "the cap binds
+// until the operator answers", "where the readership is settled the seat's
+// own judgement governs", "at the seat's discretion once the store's
+// readership is known". A rule that read force rather than words would catch
+// those, and nothing here reads force; what this rule buys is that the
+// cheapest spellings of a relaxation, the ones a pass "correcting" these
+// paragraphs would reach for first, cannot be written silently.
+const RELAXATION
+    = /\bonly (?:where|while|until|once|if|so long as|for so long)\b|\bunless\b|\bonce the operator\b|\bmay be relaxed\b|\bno longer applies\b|\bneed not\b|\bceases to\b|\blapses\b|\bis lifted\b|\bdoes not apply\b|\bstops applying\b|\bown judge?ment replaces\b|\bwhere a remote is\b|\bwhere the store's remote\b/i;
+
+const CAP_PHRASE = /public[- ]board cap|put on a public board/i;
+const FOOTING_PHRASE = /a standard rather than/i;
+const CAP_MENTION = /\bthe cap\b/i;
+
+function assertFootingNotRetired(slice, where) {
+    // \brepo\b matches inside "repo-relative", which two of these three
+    // slices already contain, so a future sentence putting "board" and
+    // "repo-relative" in one clause reddens wrongly. That direction is the
+    // acceptable one, a loud false alarm rather than a silent pass, and it is
+    // named here so the next author reads the failure rather than guessing at
+    // it: reword the sentence or split the clause.
+    const hit = slice.match(RETIRED_FOOTING);
+    assert.ok(!hit, where + ' grounds the public-board cap in a repository '
+        + 'carrying the board, which is the retired footing: the '
+        + 'coordinator\'s board sits in the memory store, so a worker reading '
+        + 'this reasons from a false premise and concludes the cap has '
+        + 'lapsed. Offending text: "' + (hit ? hit[0] : '') + '"');
+}
+
+function assertFootingNotRepegged(slice, where) {
+    const priv = slice.match(PRIVATE_PREMISE);
+    assert.ok(!priv, where + ' grounds the public-board cap in the store\'s '
+        + 'remote being private, which is a precondition of one installation '
+        + 'rather than a property of the kit: pegging the cap to a private '
+        + 'remote removes the screen while appearing to update the paragraph. '
+        + 'Offending text: "' + (priv ? priv[0] : '') + '"');
+    const repl = slice.match(REPLICATION_PREMISE);
+    assert.ok(!repl, where + ' grounds the public-board cap in the store '
+        + 'replicating, which is the derivation this section retired: a store '
+        + 'with no remote, or a branch that tracks nothing, replicates '
+        + 'nowhere, so a worker on that box reads the stated ground as empty '
+        + 'and concludes the cap has lapsed. The cap is a standard; the '
+        + 'replication belongs to docs/security-model.md, which these '
+        + 'paragraphs point at. Offending text: "' + (repl ? repl[0] : '')
+        + '"');
+}
+
+function assertCapNotConditioned(slice, where) {
+    // The window is every sentence that states the cap, its footing, or
+    // speaks of the cap at all, plus the sentence after each, since a
+    // relaxation is as often written as the following clause as inside the
+    // one it relaxes. The bare "the cap" trigger is what reaches these
+    // paragraphs' operative cap sentences, which name no cap phrase of their
+    // own: "So compose that one line for a public board and keep it inside
+    // 120 characters", "The cap holds whatever the queue position", "A path
+    // under the cap is spelled repo-relative". A relaxation written into one
+    // of those was outside the window while reading as squarely inside the
+    // rule.
+    const units = sentencesOf(slice);
+    for (let i = 0; i < units.length; i++) {
+        if (!CAP_PHRASE.test(units[i]) && !FOOTING_PHRASE.test(units[i])
+            && !CAP_MENTION.test(units[i])) continue;
+        for (const unit of [units[i], units[i + 1] || '']) {
+            const hit = unit.match(RELAXATION);
+            assert.ok(!hit, where + ' conditions the public-board cap or its '
+                + 'footing rather than stating it: the cap is a standard, so '
+                + 'no fact about the store, its remote, or who has answered '
+                + 'the readership question relaxes it. Text that names the '
+                + 'cap and drops its force reads as a cap to every check that '
+                + 'matches the cap\'s own words. Offending text: "'
+                + (hit ? hit[0] : '') + '" in: "' + unit.trim() + '"');
+        }
+    }
+}
+
+function assertNoBoundaryTriple(slice, where) {
+    // It reaches the two orderings the shipped surfaces actually use, both of
+    // which lead with account and machine in one order or the other. The
+    // residual: a triple ordered otherwise ("machine, session and account",
+    // "account, person and machine") passes, and so does a degenerate shape
+    // like "account, account and person", since the rule matches an ordering
+    // pattern rather than parsing a list. It is a copy-forward refusal, not a
+    // proof that no triple can be written here.
+    const hit = slice.match(/\b(account|machine),\s*(account|machine)\s+and\s+(person|session)\b/i);
+    assert.ok(!hit, where + ' restates which boundaries a board line crosses, '
+        + 'which picks a side in a disagreement between two shipped surfaces: '
+        + 'the coordinator skill names machine, account and session, '
+        + 'docs/security-model.md names account, machine and person. These '
+        + 'paragraphs point at docs/security-model.md rather than carrying a '
+        + 'triple of their own. Offending text: "' + (hit ? hit[0] : '') + '"');
+}
+
+function assertCapStated(slice, where) {
+    assert.match(slice, CAP_PHRASE,
+        where + ' no longer prices the blocker traffic at what the sender '
+        + 'would put on a public board, so the cap itself is gone rather '
+        + 'than its footing');
+}
+
+// The footing's three parts: the cap is a standard, the standard does not
+// move when the board does, and the analysis behind it lives on the two
+// surfaces that own it. The pointer is asserted as the path rather than as a
+// phrase, since "the security model" is ambiguous in peer-sessions, which
+// uses that wording for the AI-OS security model.
+function assertFootingStated(slice, where) {
+    assert.match(slice, FOOTING_PHRASE, where + ' no longer states the cap as '
+        + 'a standard rather than a derivation, so a reader is left to derive '
+        + 'it from wherever the board happens to sit');
+    assert.match(slice, /stated against a public board/, where + ' no longer '
+        + 'states that the cap is held against a public board, which is what '
+        + 'makes it independent of where the board lives');
+    assert.match(slice, /never reads as relaxing it/, where + ' no longer '
+        + 'says that moving the board somewhere quieter does not relax the '
+        + 'cap, which is the whole point of stating it against a public board');
+    assert.match(slice, /docs\/security-model\.md/, where + ' no longer '
+        + 'resolves to docs/security-model.md for the readership analysis, so '
+        + 'the paragraph either carries that analysis itself or drops it');
+    assert.match(slice, /coordinator skill/, where + ' no longer resolves the '
+        + 'readership precondition to the coordinator skill, which owns it; a '
+        + 'copy of that precondition here would be a cross-file invariant '
+        + 'nothing checks');
+    assert.match(slice, /precondition/, where + ' no longer names the '
+        + 'readership question as a precondition, so the pointer at the '
+        + 'coordinator skill no longer says what is being pointed at');
+}
+
+function assertAxesRefuseHere(slice, where) {
+    assertFootingNotRetired(slice, where);
+    assertFootingNotRepegged(slice, where);
+    assertCapNotConditioned(slice, where);
+    assertNoBoundaryTriple(slice, where);
+
+    assert.throws(() => assertFootingNotRetired(
+        'The seat writes board.md, a file a public repository may carry.',
+        where + '\'s retired-footing ablation'),
+    /retired footing/, where + '\'s retired-footing ablation passed: the '
+        + 'retired premise spelled with the board\'s own filename was '
+        + 'accepted, so this axis\'s green proves nothing');
+    assert.throws(() => assertFootingNotRetired(
+        'What it briefs reaches a board a public GitHub project may carry.',
+        where + '\'s retired-footing synonym ablation'),
+    /retired footing/, where + '\'s retired-footing synonym ablation passed: '
+        + 'the retired premise spelled with a container noun other than '
+        + '"repository" was accepted, so this axis reaches only the two '
+        + 'spellings the retired text happened to use');
+    assert.throws(() => assertFootingNotRepegged(
+        'The cap holds because the store\'s remote is private.',
+        where + '\'s re-pegged-footing ablation'),
+    /remote being private/, where + '\'s re-pegged-footing ablation passed: a '
+        + 'private-remote premise was accepted, so this axis\'s green proves '
+        + 'nothing');
+    assert.throws(() => assertCapNotConditioned(
+        'The first line carries what you would put on a public board only '
+        + 'until the operator has answered the readership question for this '
+        + 'store. Once they have, the seat\'s own judgement replaces the cap.',
+        where + '\'s conditioned-cap ablation'),
+    /conditions the public-board cap/, where + '\'s conditioned-cap ablation '
+        + 'passed: text naming the cap and then making it contingent on the '
+        + 'readership answer was accepted, so the relaxation vocabulary is '
+        + 'not being read at all');
+    // The second half of the window, exercised on its own. The ablation above
+    // puts its relaxation in the same sentence as the cap, so it throws
+    // before the following-sentence half is ever inspected and would stay
+    // green if that half were deleted. Here the cap sentence is clean and the
+    // relaxation sits only in the sentence after it, which is how a
+    // "correction" to a paragraph of argued prose would most naturally be
+    // written: the rule is left standing and a sentence is added beside it.
+    assert.throws(() => assertCapNotConditioned(
+        'The first line carries only what you would put on a public board. '
+        + 'The cap does not apply once the operator has answered the '
+        + 'readership question for this store.',
+        where + '\'s following-sentence conditioned-cap ablation'),
+    /conditions the public-board cap/, where + '\'s following-sentence '
+        + 'conditioned-cap ablation passed: a clean cap sentence followed by '
+        + 'a sentence relaxing it was accepted, so this axis reads only the '
+        + 'sentence the cap sits in');
+    assert.throws(() => assertFootingNotRepegged(
+        'The store\'s sync replicates that line to every machine the '
+        + 'configured remote serves, which is why the line is capped.',
+        where + '\'s replication-premise ablation'),
+    /grounds the public-board cap in the store replicating/, where
+        + '\'s replication-premise ablation passed: a replication-shaped '
+        + 'warrant was accepted, so the derivation this section retired could '
+        + 'be added back beside the standard with the suite green');
+    assert.throws(() => assertNoBoundaryTriple(
+        'The line crosses the account, machine and person boundaries recorded '
+        + 'there.', where + '\'s boundary-triple ablation'),
+    /restates which boundaries/, where + '\'s boundary-triple ablation '
+        + 'passed: a restated triple was accepted');
+}
+
+// The far end of the delegation. Each site names two surfaces and carries
+// neither's content: docs/security-model.md for why readership is never what
+// makes a board line safe, and the coordinator skill for the readership
+// precondition and its unestablished default. Asserting the pointer's words
+// and stopping there is the near end alone, and it goes green with the
+// pointed-at standard reworded or gone, leaving three skills delegating to a
+// surface that no longer answers. The fragments are distinctive rather than
+// whole sentences, so ordinary editing of the surrounding prose does not
+// redden them while a rewrite of the claim itself does.
+function assertFootingSourcesCarryIt(where) {
+    const root = path.join(__dirname, '..');
+    const model = fs.readFileSync(path.join(root, 'docs', 'security-model.md'), 'utf8');
+    assert.match(model, /independent of where the board lives/, 'docs/'
+        + 'security-model.md no longer states that the public-board cap is '
+        + 'independent of where the board lives, and ' + where + ' delegates '
+        + 'its footing to that statement, as do the other two cap sites');
+    assert.match(model, /moving the board somewhere quieter/, 'docs/'
+        + 'security-model.md no longer states why the cap is put against a '
+        + 'public board, that moving the board somewhere quieter never reads '
+        + 'as relaxing it, and ' + where + ' delegates its footing to that '
+        + 'statement, as do the other two cap sites');
+    assert.match(model, /Readership is therefore never the thing that makes a board line safe/,
+        'docs/security-model.md no longer carries the readership analysis '
+        + 'the three cap sites point at, so each of them points at a document '
+        + 'that no longer answers the question it sends a reader there with');
+
+    const coordinator = fs.readFileSync(path.join(root, 'plugins',
+        'claude-kit', 'skills', 'coordinator', 'SKILL.md'), 'utf8');
+    assert.match(coordinator, /the board is written as a public surface/,
+        'the coordinator skill no longer states what a seat does while the '
+        + 'readership precondition is unestablished, and ' + where + ' names '
+        + 'that skill as the owner of the precondition, as do the other two '
+        + 'cap sites');
+    assert.match(coordinator, /unestablished/, 'the coordinator skill no '
+        + 'longer names the unestablished state of the readership '
+        + 'precondition, which is the default state the three cap sites send '
+        + 'a reader there to find');
+    assertTrackedInIndex('docs/security-model.md');
+    assertTrackedInIndex('plugins/claude-kit/skills/coordinator/SKILL.md');
+}
+
+function sliceBetween(body, startMark, endMark, where) {
+    const start = body.indexOf(startMark);
+    assert.ok(start !== -1, where + ' no longer opens with the lead this pin '
+        + 'reads ("' + startMark + '"), so the slice has no near edge');
+    const end = body.indexOf(endMark, start);
+    assert.ok(end > start, where + ' is no longer followed by the landmark '
+        + 'this pin bounds it with ("' + endMark + '"), so the slice has no '
+        + 'far edge and would run past the paragraph it is about');
+    return collapseWhitespace(body.slice(start, end));
+}
+
+function executingWorkBody() {
+    return fs.readFileSync(path.join(__dirname, '..', 'plugins', 'claude-kit',
+        'skills', 'executing-work', 'SKILL.md'), 'utf8');
+}
+
+function peerSessionsBody() {
+    return fs.readFileSync(path.join(__dirname, '..', 'plugins', 'claude-kit',
+        'skills', 'peer-sessions', 'SKILL.md'), 'utf8');
+}
+
+test('the expert-ask paragraph holds the cap as a standard, not as a reading of where the board sits', () => {
+    const where = 'executing-work\'s expert-ask paragraph';
+    const slice = sliceBetween(executingWorkBody(),
+        '**Before any BLOCKED at all, the expert ask goes out',
+        '**Before any BLOCKED that turns on a decision', where);
+    assertCapStated(slice, where);
+    assertAxesRefuseHere(slice, where);
+    assertFootingStated(slice, where);
+    assertFootingSourcesCarryIt(where);
+});
+
+test('the first-line paragraph holds the cap as a standard, not as a reading of where the board sits', () => {
+    const where = 'executing-work\'s first-line paragraph';
+    const slice = sliceBetween(executingWorkBody(),
+        '**The first line carries only what you would put on a public board',
+        'Waiting is the third stop shape', where);
+    assertCapStated(slice, where);
+    assertAxesRefuseHere(slice, where);
+    assertFootingStated(slice, where);
+    assertFootingSourcesCarryIt(where);
+});
+
+test('the Worker seat bullet holds the cap as a standard, not as a reading of where the board sits', () => {
+    const where = 'peer-sessions\' Worker seat bullet';
+    const slice = sliceBetween(peerSessionsBody(), '- **Worker.**',
+        '- **Admin.**', where);
+    assertCapStated(slice, where);
+    assertAxesRefuseHere(slice, where);
+    assertFootingStated(slice, where);
+    assertFootingSourcesCarryIt(where);
+});
