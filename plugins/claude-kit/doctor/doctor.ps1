@@ -657,9 +657,10 @@ else {
 # --- Memory sync. The memory store is ~\.claude itself, which also holds
 # --- .credentials.json, settings.json, history.jsonl, and every session
 # --- transcript, so the sync repo carries an allowlist that excludes
-# --- everything and re-includes only the memory tiers. That allowlist is the
-# --- entire barrier between syncing memories and publishing credentials,
-# --- which is why this check re-derives it on every run and proves the
+# --- everything and re-includes only the memory tiers and the coordinator
+# --- directory. That allowlist is the entire barrier between syncing
+# --- memories and publishing credentials, which is why this check
+# --- re-derives it on every run and proves the
 # --- negative directly (check-ignore on the sensitive files, a dry-run add,
 # --- the tracked-file list, and committed history) rather than trusting a file
 # --- that merely looks right. Any drift is a FAIL, never a warning. Every leak
@@ -966,8 +967,9 @@ else {
             # A repository here that carries no doctor-written allowlist was
             # created by someone else (an operator versioning their dotfiles at
             # the store root). Writing an allowlist and committing into it
-            # would put the memory tiers, and whatever that repo had staged, in
-            # a commit and possibly a push nobody asked for.
+            # would put the memory tiers and the coordinator directory, and
+            # whatever that repo had staged, in a commit and possibly a push
+            # nobody asked for.
             Report "FAIL" "Memory sync" ($syncFixLines + @(
                 "$claudeDir is already a git repository the doctor did not create, and it carries no memory-sync allowlist.",
                 "The store root holds .credentials.json, settings.json, history.jsonl, and every session transcript, all of which that repository can stage.",

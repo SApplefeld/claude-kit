@@ -53,10 +53,12 @@ $script:MemorySyncOwnValue = "true"
 # transient state of one machine and never syncs.
 #
 # One leaf set covers both admitted roots. The coordinator directory holds no
-# memq output at all: its seat artifacts (the board, the registry entries, the
-# claim file) are .md and .jsonl by their own contract, so the same forms
-# admit them for a different reason, and a form no writer of either root
-# produces stays refused in both.
+# memq output at all: its contract names four files, the board, the registry
+# entries, the claim file, and the Admin request inbox, and all four are .md,
+# so this set admits them for a different reason and is wider than that
+# contract rather than derived from it. The .jsonl leaf admits a form no
+# writer of that root produces today, over a predicate that matches
+# coordinator/ followed by anything.
 function Get-MemorySyncAllowedLeafPatterns {
     return @('*.md', '*.jsonl', 'decay-stamp')
 }
@@ -755,10 +757,10 @@ function Install-MemorySyncRepo {
     }
     $stagedCount = @($stagedNames.Output | Where-Object { $_.Trim() -ne "" }).Count
     if ($stagedCount -eq 0) {
-        $notes += "Nothing to commit; the repository already holds the current memory tiers."
+        $notes += "Nothing to commit; the repository already holds the current memory tiers and coordinator directory."
         return @{ Ok = $true; Notes = $notes }
     }
-    $commit = Invoke-MemorySyncGit -StoreRoot $StoreRoot -Arguments @("commit", "--quiet", "-m", "kit memory sync: allowlist and memory tiers") -GitExe $GitExe
+    $commit = Invoke-MemorySyncGit -StoreRoot $StoreRoot -Arguments @("commit", "--quiet", "-m", "kit memory sync: allowlist, memory tiers, and coordinator directory") -GitExe $GitExe
     if ($commit.Code -ne 0) {
         return @{ Ok = $false; Notes = ($notes + @("git commit failed: " + ($commit.Output -join " "))) }
     }

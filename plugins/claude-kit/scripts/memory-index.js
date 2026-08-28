@@ -27,7 +27,8 @@
 // where it belongs (it spans every tier and every store on the machine) and
 // what keeps it out of the memory-sync repository: that repository's allowlist
 // excludes the whole store root with `/*` and re-includes only paths inside
-// the three tiers, so a root-level file cannot be staged. Vectors are valid
+// the memory tiers and the machine coordinator directory, so a root-level
+// file cannot be staged. Vectors are valid
 // only against the local model that produced them, so syncing them would
 // publish stale derived data to every other machine.
 //

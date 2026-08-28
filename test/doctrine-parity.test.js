@@ -1491,3 +1491,239 @@ test('the Admin seat\'s cadence is single-sourced in the peer-sessions tier tabl
         + 'peer-sessions Roles table alone, which is the same drift the '
         + 'role-skill half of this pin catches on its own surface');
 });
+
+
+// The sync allowlist's admitted roots, read from the installer's own
+// generator rather than from a list this file keeps. Get-MemorySyncIgnoreText
+// builds each root's rules by calling $tierRules with the root's prefix, so
+// the prefixes it passes are the allowlist's own statement of what the store
+// publishes. A root added there appears here with no edit to this file, which
+// is the point: the boundary sentences below are prose restating that set,
+// and a restated claim nothing checks is exactly how the widening that
+// created this pin shipped with the suite green and four documents wrong.
+//
+// The slice is bounded at the next function header rather than run to end of
+// file, so a $tierRules call in some later function cannot be read as an
+// admitted root.
+function admittedSyncRoots(installer) {
+    const start = installer.indexOf('function Get-MemorySyncIgnoreText');
+    assert.ok(start !== -1, 'install-memory-sync.ps1 no longer defines '
+        + 'Get-MemorySyncIgnoreText, which is the generated text this pin '
+        + 'derives the admitted roots from');
+    const rest = installer.slice(start + 1);
+    const next = rest.indexOf('\nfunction ');
+    const body = next === -1 ? rest : rest.slice(0, next);
+    const roots = [];
+    const call = /&\s*\$tierRules\s*'([^']+)'/g;
+    let m;
+    while ((m = call.exec(body)) !== null) roots.push(m[1]);
+    assert.ok(roots.length >= 2, 'Get-MemorySyncIgnoreText no longer builds '
+        + 'its roots through $tierRules calls carrying a literal prefix, so '
+        + 'this pin can no longer read what the allowlist admits');
+    return roots;
+}
+
+// The same set read off the path predicate the probes and the inbound screen
+// share. Two code surfaces state the admitted roots, and this pin reddens
+// when either drifts from the other: the generator alone would let the
+// predicate widen silently, and that predicate is what actually decides
+// whether a path is published.
+function predicateSyncRoots(installer) {
+    const start = installer.indexOf('function Test-MemorySyncPathAllowed');
+    assert.ok(start !== -1, 'install-memory-sync.ps1 no longer defines '
+        + 'Test-MemorySyncPathAllowed, the predicate half of this pin');
+    const rest = installer.slice(start + 1);
+    const next = rest.indexOf('\nfunction ');
+    const body = next === -1 ? rest : rest.slice(0, next);
+    const roots = [];
+    const branch = /\$p -match '\^([^']+)'/g;
+    let m;
+    while ((m = branch.exec(body)) !== null) roots.push(m[1]);
+    assert.ok(roots.length >= 2, 'Test-MemorySyncPathAllowed no longer tests '
+        + 'its roots with anchored -match branches, so this pin can no longer '
+        + 'read the predicate half');
+    return roots;
+}
+
+// Both spellings reduced to the root name a document would say: the leading
+// segment, with a wildcard segment in either vocabulary written as '*'.
+function rootName(prefix) {
+    return prefix.replace(/^\//, '').replace(/\/.*$/, '')
+        .replace(/\[\^\/\]\+/g, '*');
+}
+
+// Roots whose content the phrase "memory tiers" already covers. This list is
+// itself a restatement, and the direction it fails in is the safe one: a new
+// memory tier reddens every boundary sentence for not naming its prefix,
+// which is a loud review prompt rather than a silent pass.
+// The shapes below are ordinary English and match sentences with nothing to
+// do with the store ("admits only printable ASCII"), so a match counts only
+// where the run-up to it names the sync repository. The subject word sits
+// before the match rather than inside it, which is why the window is read
+// rather than the claim.
+const BOUNDARY_SUBJECT = /allowlist|gitignore|the repository there|sync repo|store root/i;
+const SUBJECT_WINDOW = 240;
+
+const MEMORY_TIER_ROOTS = ['projects', 'memory-types', 'memory-operator'];
+
+// The three sentence shapes a surface uses to state the allowlist narrowly.
+// A new shape is outside this pin, which is why the sweep below names the
+// surfaces it already knows about rather than trusting its own count.
+const BOUNDARY_SHAPES = [
+    /re-includes only[^.]*\./g,
+    /admits only[^.]*\./g,
+    /only memory files inside[^.]*\./g,
+];
+
+// Comment markers stripped so a claim wrapped across a comment block reads as
+// one sentence, then whitespace collapsed through this file's own helper.
+function flattenForBoundary(raw) {
+    return collapseWhitespace(raw
+        .replace(/^[ \t]*(#[ \t]*(---[ \t]*)?|\/\/[ \t]?)/gm, ''));
+}
+
+function boundaryClaims(raw) {
+    const flat = flattenForBoundary(raw);
+    const out = [];
+    for (const shape of BOUNDARY_SHAPES) {
+        shape.lastIndex = 0;
+        let m;
+        while ((m = shape.exec(flat)) !== null) {
+            const runUp = flat.slice(Math.max(0, m.index - SUBJECT_WINDOW), m.index);
+            if (BOUNDARY_SUBJECT.test(runUp)) out.push(m[0]);
+        }
+    }
+    return out;
+}
+
+function assertNamesEveryRoot(claim, extraRoots, where) {
+    assert.ok(/memory tier/i.test(claim), where + ' states the sync boundary '
+        + 'without naming the memory tiers: "' + claim + '"');
+    for (const root of extraRoots) {
+        assert.ok(claim.toLowerCase().includes(root), where + ' states the sync '
+            + 'boundary without naming the "' + root + '" root the allowlist '
+            + 'admits, so the document describes a boundary narrower than the '
+            + 'code enforces: "' + claim + '"');
+    }
+}
+
+// The shipped surfaces this sweep reads: the repo-root and docs/ markdown,
+// and everything under the plugin payload. Two directories are deliberately
+// out, docs/plans/ and docs/archive/, which are the journal layer and quote
+// retired wordings as their subject, and so is this test file, whose control
+// below is a retired sentence by construction.
+function shippedBoundaryFiles() {
+    const root = path.join(__dirname, '..');
+    const files = [];
+    const walk = (dir, depth) => {
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            const full = path.join(dir, entry.name);
+            if (entry.isDirectory()) {
+                if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
+                if (depth > 0) walk(full, depth - 1);
+                continue;
+            }
+            if (/\.(md|ps1|js)$/.test(entry.name)) files.push(full);
+        }
+    };
+    for (const f of fs.readdirSync(root)) {
+        if (/\.md$/.test(f)) files.push(path.join(root, f));
+    }
+    for (const f of fs.readdirSync(path.join(root, 'docs'))) {
+        if (/\.md$/.test(f)) files.push(path.join(root, 'docs', f));
+    }
+    walk(path.join(root, 'plugins', 'claude-kit'), 6);
+    return files;
+}
+
+test('every shipped sentence stating the sync allowlist narrowly names every root the allowlist admits', () => {
+    const installer = fs.readFileSync(path.join(__dirname, '..', 'plugins',
+        'claude-kit', 'doctor', 'install-memory-sync.ps1'), 'utf8');
+
+    const generated = admittedSyncRoots(installer).map(rootName);
+    const predicate = predicateSyncRoots(installer).map(rootName);
+    assert.deepStrictEqual([...generated].sort(), [...predicate].sort(),
+        'the roots Get-MemorySyncIgnoreText re-includes and the roots '
+        + 'Test-MemorySyncPathAllowed admits are no longer the same set, so '
+        + 'the ignore file and the probes disagree about what the store '
+        + 'publishes: generated ' + JSON.stringify(generated) + ' vs '
+        + 'predicate ' + JSON.stringify(predicate));
+
+    const extraRoots = generated.filter((r) => !MEMORY_TIER_ROOTS.includes(r));
+    assert.ok(extraRoots.length > 0, 'the allowlist admits nothing beyond the '
+        + 'memory tiers, so the boundary sentences this pin checks now name a '
+        + 'root the allowlist does not publish; the drift is real and runs '
+        + 'the other way');
+
+    let checked = 0;
+    const seen = [];
+    for (const file of shippedBoundaryFiles()) {
+        if (file === __filename) continue;
+        const claims = boundaryClaims(fs.readFileSync(file, 'utf8'));
+        if (claims.length === 0) continue;
+        const rel = path.relative(path.join(__dirname, '..'), file);
+        seen.push(rel);
+        for (const claim of claims) {
+            assertNamesEveryRoot(claim, extraRoots, rel);
+            checked++;
+        }
+    }
+
+    // Non-vacuity, and the one thing a sweep cannot prove about itself. A
+    // sweep that matched nothing reads exactly like a clean one, so the
+    // surfaces already known to state the boundary are named here: if a
+    // rewording takes one out of the sweep's grammar, this fails rather than
+    // going quiet.
+    const known = [
+        ['docs', 'security-model.md'],
+        ['docs', 'architecture.md'],
+        ['plugins', 'claude-kit', 'skills', 'kit-doctor', 'SKILL.md'],
+        ['plugins', 'claude-kit', 'doctor', 'doctor.ps1'],
+        ['plugins', 'claude-kit', 'doctor', 'install-memory-sync.ps1'],
+        ['plugins', 'claude-kit', 'scripts', 'memory-index.js'],
+    ];
+    for (const parts of known) {
+        const want = path.join(...parts);
+        assert.ok(seen.includes(want), want + ' no longer states the sync '
+            + 'boundary in any shape this sweep recognizes, so it has dropped '
+            + 'out of coverage silently; either the sentence was reworded out '
+            + 'of the grammar or the claim was removed');
+    }
+    assert.ok(checked >= known.length, 'the boundary sweep matched only '
+        + checked + ' sentences, fewer than the surfaces known to carry one');
+
+    // The commit message is the surface a later reader reconstructs the
+    // change from, so a message narrower than its own commit misdescribes
+    // what was published. It states no sentence the sweep's grammar reaches.
+    const msg = installer.match(/"kit memory sync:[^"]*"/);
+    assert.ok(msg, 'install-memory-sync.ps1 no longer carries the '
+        + '"kit memory sync: ..." commit message literal this pin reads');
+    assertNamesEveryRoot(msg[0], extraRoots,
+        'the sync commit message in install-memory-sync.ps1');
+
+    // The control, derived from a live claim rather than written out, so a
+    // later sweep that "corrects" a retired literal in this file cannot
+    // disarm it. The failure this pin exists against is a sentence naming the
+    // tiers and stopping there, which is what stripping the extra roots out
+    // of a live claim produces.
+    const live = boundaryClaims(fs.readFileSync(path.join(__dirname, '..',
+        'docs', 'security-model.md'), 'utf8'))[0];
+    assert.ok(live, 'docs/security-model.md carries no boundary claim to '
+        + 'build the control from');
+    let ablated = live;
+    for (const root of extraRoots) {
+        ablated = ablated.replace(new RegExp('\\s*(and\\s+)?(the\\s+)?(machine\\s+)?'
+            + root + '(\\s+directory)?', 'gi'), '');
+    }
+    assert.throws(
+        () => assertNamesEveryRoot(ablated, extraRoots, 'the control'),
+        /without naming the "/,
+        'the control passed: a boundary sentence with every admitted root '
+        + 'beyond the memory tiers stripped out of it was accepted, so a '
+        + 'green from this pin proves nothing');
+
+    // What this pin does not refuse, stated rather than left to be assumed:
+    // it tests that a root's name appears in the sentence, not that the
+    // sentence admits it, so "re-includes only the memory tiers, excluding
+    // the coordinator directory" would pass. No check here reads prose sense.
+});
