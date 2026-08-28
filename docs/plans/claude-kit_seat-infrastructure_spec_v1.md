@@ -98,7 +98,7 @@ The rollout constraint, stated here because this section creates it: `sync-store
 
 Tests, red first, extending `test/memory-sync.test.js`: a `coordinator/<machine>/board.md` path is refused by today's ignore text and path predicate (red), admitted after (green); `coordinator/**/*.lock`, `*.bak`, and `*.tmp.*` are refused both before and after (pin); the ignore text and the path predicate agree on all of the above; the existing exclusion probes (credentials, settings, transcripts) stay green untouched (pin).
 
-Files in scope: `plugins/claude-kit/doctor/install-memory-sync.ps1`, `test/memory-sync.test.js`.
+Files in scope: `plugins/claude-kit/doctor/install-memory-sync.ps1`, `test/memory-sync.test.js`, and `plugins/claude-kit/doctor/doctor.ps1` (folded during execution: the `-Fix` consent prompts name "the memory tiers" while the commit they authorize now also carries the coordinator directory, which is a security finding of Major weight and so is fixed in this section rather than deferred; the prompts' wording is pinned in `test/memory-sync.test.js`, already in scope, so the fix moves both. Section 8 edits a different region of the same file, and the two run serially in one session).
 
 ### 2. The board moves home, and the cold start becomes a tick order (element B, folding the cold-start backlog entry)
 
@@ -125,7 +125,7 @@ Model: fable
 
 A new skill, `plugins/claude-kit/skills/role/SKILL.md`, invoked as `/role <Seat>`, owns the coordinator-directory contract and the takeover ritual. One owner: peer-sessions and the coordinator skill point here for the directory's shape and never restate it.
 
-The directory contract the skill states: `~/.claude/coordinator/<machine>/` holds `board.md` (the coordinator's, Section 2), `registry/<session-id>.md` (one per registered session; written by that session, plus the one `Heartbeat:` line the seat-stop hook stamps in Section 5), `claims/heavy-process.md` (the machine's one-heavy-process slot, element E), and `admin-requests.md` (Section 6). Every file is single-writer by this contract; another session's registry file is never yours to write, and only the coordinator writes the board. All file forms stay inside the sync allowlist's admitted leaves (`*.md`, `*.jsonl`).
+The directory contract the skill states: `~/.claude/coordinator/<machine>/` holds `board.md` (the coordinator's, Section 2), `registry/<session-id>.md` (one per registered session; written by that session, plus the one `Heartbeat:` line the seat-stop hook stamps in Section 5), `claims/heavy-process.md` (the machine's one-heavy-process slot, element E), and `admin-requests.md` (Section 6). Every file is single-writer by this contract; another session's registry file is never yours to write, and only the coordinator writes the board. All file forms stay inside the sync allowlist's admitted leaves (`*.md`, `*.jsonl`). The directory is deliberately outside `memory-frontmatter-guard.js`'s tier set, and this contract states that exemption so it reads as design rather than oversight: the guard's rule is CLI-authored-only, and this directory exists for direct writes by seats, a Stop hook, and claim-writing subagents, so guarding it on the memory tiers' terms would refuse the contract's own writer classes, while a shape-checking guard would need a schema this contract does not state and a carve-out per writer class, each carve-out re-admitting the accident it exists to stop. What holds the contract is the single-writer rule plus audit rather than prevention: the store is private, reaching only the operator's own machines, and its sync history attributes every change. An empty guard path here is the design and not a gap: nothing validates a coordinator file at write time on any machine the sync reaches, and the live board predates this contract and was written the unguarded way, the normal case rather than the exception.
 
 The registry entry's shape, exactly:
 
@@ -207,6 +207,21 @@ Element G lands in the coordinator skill's Etiquette section: operator reports a
 Tests: prose section; the peer-sessions four-heading pin and Section 3's role-skill pin stay green; suite delta per Amendment 3.
 
 Files in scope: `plugins/claude-kit/skills/peer-sessions/SKILL.md`, `plugins/claude-kit/skills/coordinator/SKILL.md`.
+
+### 8. The documented security boundary catches up with the widened allowlist
+
+Model: opus
+Locus: inline
+
+Appended during Section 1's execution, and it is approval drift recorded as such: Section 1 widened the store's allowlist, which made a sentence false on four shipped surfaces that no section of this plan had in scope. Both the adversarial and the security reviewer found it independently, and the security reviewer established the part that decides the routing: `docs/security-model.md` appears in no section's files-in-scope across all seven sections, so unrouted the plan ships a security document describing a boundary narrower than the code enforces.
+
+Four surfaces state that the store's `.gitignore` excludes everything and re-includes only the memory tiers, or that the repository there admits only the memory tiers: `docs/security-model.md` (the sentence stating the boundary, the counted claim that three tiers are versioned, and the accepted-risk paragraph whose stated precondition is that a probe proves a path sits inside a memory tier), `docs/architecture.md`, `plugins/claude-kit/skills/kit-doctor/SKILL.md`, and the section comment in `plugins/claude-kit/doctor/doctor.ps1`. Each is restated as memory tiers plus the coordinator directory. The accepted-risk paragraph needs more than a name added: its sole named control is the `memory-system` skill's instruction to the model, which governs the writers of the memory tiers and does not reach the coordinator directory's writers, so the paragraph states what governs coordinator content or states plainly that nothing does.
+
+The last surface is the one that keeps this from recurring. `test/doctrine-parity.test.js` carries no pin over any of these phrases, which is why a widening shipped with the suite green and four documents wrong: this is the kit's own recorded "a count restated on a second surface is an invariant nothing checks" shape, in prose rather than in numbers. A new pin ties the boundary sentence to the tier list `Get-MemorySyncIgnoreText` actually emits, so the next widening reddens the suite instead of quietly falsifying the security model. The pin's far end reads the installer's generated text rather than a hand-copied list, since a pin against a second literal is the same invariant unchecked.
+
+Tests, red first: the new parity pin fails against the current documents, passes once they are corrected; a control confirms it would also fail against a document naming the tiers without the coordinator directory, so its green is not the vacuous kind. Suite delta per Amendment 3.
+
+Files in scope: `docs/security-model.md`, `docs/architecture.md`, `plugins/claude-kit/skills/kit-doctor/SKILL.md`, `plugins/claude-kit/doctor/doctor.ps1`, `test/doctrine-parity.test.js`.
 
 ## Out of Scope
 
