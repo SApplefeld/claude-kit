@@ -14,7 +14,7 @@ Authorized 2026-08-27 by the operator: arming and execution of the four remainin
 
 Seven review-and-record lessons the kit learned this week exist only as incident reports: a security lens explicitly cleared a trust claim a prose lens correctly called Critical, and only the orchestrator's own trace settled it; two documents agreed the ListAgents roster row carries a working directory, the tool prints none, and two review lenses across two rounds endorsed the false claim because no lens ran the tool; a falsified-claim sweep whose pattern was shaped by the incident that taught it missed two sibling falsehoods in the same changeset; a whole-document prose pass at finishing caught a positional back-reference broken by that effort's own insertions, which a per-section diff reviewer structurally cannot see; a fix-round delta shipped a hang because the round's review was nearly skipped as unnecessary; a late section silently invalidated a document an earlier section had written, with no step to re-open it; and the operator's own reading evidence says the communication register's depth calibration is tuned backwards.
 
-When this plan is done, each of those is a standing rule on the surface that fires at its moment: responding-to-review treats clearances as hypotheses, the reviewer charters and the dispatch brief anchor tool-printed claims to tool runs, the docs-curator's sweep recipe states its class, executing-work owes a review round to qualifying fix deltas and re-opens documents a late section falsified, finishing-work states the whole-document scope structurally, and the register's default is the plain floor in all three parity copies.
+When this plan is done, each of those is a standing rule on the surface that fires at its moment: responding-to-review treats clearances as hypotheses, the reviewer charters and the dispatch brief anchor tool-printed claims to tool runs, the docs-curator's sweep recipe states its class, executing-work owes a review round to qualifying fix deltas and re-opens documents a late section falsified, finishing-work states the whole-document scope structurally, and the register's default is the plain floor in all three parity copies; the dispatch brief and the sighted charters bind a clean check to the rule that refuses each case and a sweep to its exemption dispositions; and corroboration excludes evidence the run under review itself authored.
 
 ## Evidence
 
@@ -95,6 +95,34 @@ Amend the calibration sentence inside the register bullet ("Calibrate depth to d
 Tests: `test/doctrine-parity.test.js` and `test/output-style-parity.test.js` mid-edit red, end green; suite delta zero.
 
 Files in scope: `plugins/claude-kit/skills/operating-instructions/SKILL.md`, `home/claude-kit-doctrine.md`, `plugins/claude-kit/output-styles/kit.md`, `test/doctrine-parity.test.js`, `test/output-style-parity.test.js` (each test file only where a pin matches).
+
+### 6. A clean check names the rule that refuses each case, and a sweep reports its exemptions
+
+Model: opus
+
+Folded 2026-08-28 from the kaizen absence-check note (four instances in one night across four seats, plus a fifth transient-axis shape with no wrong answer in it to notice), operator-approved at the expert session's keyboard. Two amendments, same owner split as Section 1:
+
+- `plugins/claude-kit/skills/executing-work/SKILL.md`'s Dispatch Brief gains the standing clause, both halves: an implementer whose work includes a pin whose subject is a refusal, a sweep expected to come back clean, or a grep whose acceptance is empty output reports it by naming, in words, which rule refuses each case, never by reporting the run green, since a green says the assertion held while naming the mechanism says the assertion was about the thing meant; and a sweep's dispositions include the unchanged, a referrer left unchanged reported with the rule that exempts it, because a complete sweep and a partial one leave behind the same clean grep.
+- The sighted reviewer charters (`plugins/claude-kit/agents/adversarial-reviewer.md`, `plugins/claude-kit/agents/prose-reviewer.md`) gain the lens half: of every clean sweep or absence claim, ask what its control was and which rule refuses each case; where that account cannot be had, the axis is unproven rather than covered.
+
+The seat-infrastructure plan's Standing Brief Amendment 7 is this rule's plan-local instance, landed mid-run there; this section is the durable home, and the two compose rather than duplicate, the amendment remaining that plan's record.
+
+Tests: grep `test/` for pins over every line touched; any matching pin re-derived red-then-green; suite delta zero against this section's own baseline.
+
+Files in scope: `plugins/claude-kit/skills/executing-work/SKILL.md`, `plugins/claude-kit/agents/adversarial-reviewer.md`, `plugins/claude-kit/agents/prose-reviewer.md`, `test/doctrine-parity.test.js` (only where a pin matches).
+
+### 7. An artifact the run authored is not corroboration
+
+Model: opus
+
+Folded 2026-08-28 from the coordinator-raised, worker-confirmed instance, operator-approved at the expert session's keyboard: a fixture invented a registry journal the directory contract does not define, and two independent reviewers then cited the invention as evidence the tier needed a union merge, agreement manufactured by an artifact the run itself authored, which looks like ground truth to every downstream reader while nothing about reading it says who wrote it.
+
+- `plugins/claude-kit/skills/responding-to-review/SKILL.md`'s corroboration section gains: two findings converging on evidence the run under review itself authored (a fixture, a stub, a generated artifact) are one finding, not two; corroboration requires evidence originating outside the run, and a claim about a contract cites the contract's owning surface, which outranks any artifact written to exercise it.
+- The sighted charters gain the reviewer half: a fixture is an assertion by a test author, never evidence of a contract. The blind charters stay untouched, preserving their minimal input contract; a blind lens's fixture misread is caught at the orchestrator's corroboration step, which is the rule above.
+
+Tests: grep `test/` for pins over every line touched; any matching pin re-derived red-then-green; suite delta zero against this section's own baseline.
+
+Files in scope: `plugins/claude-kit/skills/responding-to-review/SKILL.md`, `plugins/claude-kit/agents/adversarial-reviewer.md`, `plugins/claude-kit/agents/prose-reviewer.md`, `test/doctrine-parity.test.js` (only where a pin matches).
 
 ## Out of Scope
 
