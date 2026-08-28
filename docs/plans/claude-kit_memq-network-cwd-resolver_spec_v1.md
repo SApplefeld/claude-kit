@@ -73,6 +73,17 @@ Model: sonnet
 
 Files in scope: `plugins/claude-kit/skills/memory-system/SKILL.md`.
 
+### 3. The architecture doc's call-site count catches up with the code
+
+Model: sonnet
+Locus: inline
+
+`docs/architecture.md` describes `hooks/kit-network-lib.js` and counts what reaches the predicate, stating that memq itself calls it at four verb entry points. Section 1 took that number to eleven, so a curated document states a count its own subject retired. Correct it. The two neighbouring counts in the same sentence are unaffected and stay as they are: the module still has two direct importers, and the predicate still has five consumers, since Section 1 added call sites inside a consumer that was already counted rather than adding a consumer.
+
+The locus is inline because the file sits under `docs/`, which the docs-write-guard closes to a dispatched implementer; the tier records what the work is worth rather than where it runs.
+
+Files in scope: `docs/architecture.md`.
+
 ## Out of Scope
 
 - Gating `projectSegment`, `worktreeMainRoot` or `resolveWorktreeMainRoot` themselves. The four shared-tier verbs run correctly from any working directory and must keep doing so.
@@ -104,3 +115,45 @@ Decisions / Surprises:
 - **The wall clock is recorded with its configuration because the box changed underneath the plan.** This machine dropped from 20 GB to 16 GB tonight, operator-confirmed, with the host's GPU requirements the stated cause and raising it permanently off the table. Counts remain comparable across the boundary; durations do not, so a duration diffed against any baseline recorded earlier tonight would be measuring a hypervisor change rather than the code.
 
 Next: 2. The skill says what a network working directory costs
+
+### Chapter 2 - 2026-08-28
+
+Completed: 2. The skill says what a network working directory costs
+Implemented By: implementer-sonnet for the prose; the controlling session repaired one defect at step 2 verification and the review round's findings inline. The review pair ran at opus, effort xhigh, dispatched through the Workflow route that the Agent tool's missing effort parameter requires. No escalations, no NEEDS_CONTEXT.
+Metrics: review rounds 1; NEEDS_CONTEXT 0; escalations 0; consults 0; findings 3 Major and 4 Minor across the pair, two of the Majors being one defect the two lenses found independently.
+Gate: whole gate run twice by the controlling session rather than taken from a report, each read from its own exit marker. Pre-fix and contended: 1,893 tests, 1,890 pass, 1 fail, 2 skipped, exit 1, 336 s with two opus reviewers resident. Post-fix and uncontended: 1,893 / 1,890 / 1 / 2, exit 1, 284 s. Counts are identical to the Chapter 1 baseline in both runs, a delta of zero, and the single red is the same known machine-specific path-length failure. The three durations on this plan (245 s, 336 s, 284 s) are not comparable to one another: they differ in resident load, and this box's 16 GB is a host GPU-memory ceiling rather than a tunable, so a duration diffed across them measures the fleet rather than the code. Counts diff; durations do not.
+
+Decisions / Surprises:
+
+- **The dispatch brief carried a wrong fact, and its wrongness reached the shipped prose before either lens caught it.** The brief stated that a store pin disables the network refusal outright, on the strength of `projectSegment` returning `pinnedProjectSegment()` before the walk. That reading stopped one function too early. `pinnedProjectSegment` itself returns null unless `storeSignalsPresent()` holds, so `KIT_MEMORY_PROJECT` set alone is ignored with a note and the refusal fires anyway. The implementer caught the gating and scoped its wording to the file's existing phrasing, which was the right instinct, but the delivered sentence still read as an unqualified escape hatch, and both reviewers rated it Major on exactly that ground. The transferable point is about where a brief's authority ends: an implementer that correctly refines a briefed fact has not thereby repaired the prose the briefed fact shaped, and the controlling session is the only party positioned to notice that gap, because it is the only one that knows the brief was wrong.
+- **A contradiction inside a single paragraph, caught at step 2 before the reviewers were dispatched.** The delivered closure line said the network refusal is the gate in front of the pin, the worktree root and the plain cwd, met before any of them. Two sentences earlier the same paragraph said a pinned session never reaches the refusal at all. All twelve gate sites read `pinnedProjectSegment() === null && namesNetworkShare(...)`, and the code's own comment at `memq.js`:6150 states the ordering, so the pin is ahead of the refusal and the closure line was backwards. Repaired inline as a fold. Worth recording because it is the same class the sibling seat plan keeps producing: a new sentence that is defensible alone and falsifies the sentence beside it.
+- **Both lenses found the same Major independently, which is the pair working as designed rather than a redundancy.** The adversarial lens reached it from the spec's Amendment 3, that a remedy is proven in every environment the emitting path admits, and named the unproven cell. The blind lens reached it from the code with no spec at all, and named the concrete failure a reader would hit. Same defect, two unrelated routes, which is the strongest evidence available that it was real and not an artifact of either brief.
+- **`find` refuses whole, and the skill now says so where a reader would otherwise infer the opposite.** Two other passages in the same file describe `find`'s semantic ranking as reaching every store on the machine, which invites the reading that a project-tier stand-down leaves that channel answering. It does not: the semantic body resolves the project segment from the working directory itself. The added clause says the machine-wide answer is withheld along with the project-tier one, and says both were withheld, so an unsearched channel cannot read as an empty one.
+- **A refusal's channel is not its status, and flattening the two is the exact hazard Amendment 1 names.** All eleven refusals speak on stderr, but five writing verbs exit non-zero while six reading verbs exit 0 with empty stdout. A caller gating on status alone cannot tell a stood-down `recall` from a clean read of an empty store, which is a not-checked answer sharing a value with a checked-and-clean one. The prose now separates the channel from the status and says which verbs sit on which side.
+- **The section's own review found a curated public document carrying a count this plan retired, and that became Section 3.** It did not meet the fold predicate, sitting outside the changed file's directory, so it took the out-of-scope route as an appended section rather than a quiet edit. The class is one this repository keeps producing and has a memory record for: a count restated on a second surface is a cross-file invariant that nothing checks, so git merges both sides clean and no test speaks.
+- **A grep read the line endings wrong and a byte count corrected it inside the same section.** `grep -c` for a carriage return reported zero on a file holding 264 of them, which would have supported a false claim that the implementer had rewritten the file's endings. Node reading the bytes gave the true count. The operator-tier record that says to verify line endings by reading bytes rather than by grepping earned its keep in real time, and this is a second surface on which that record has now paid.
+
+Assumptions: none. The one gap the intake check found in this section, whether the closure line should name the enumeration exhaustive or merely name the unnamed case, was answered from the file's own idiom rather than assumed.
+Review Findings: 3 Majors, all addressed. The pin escape hatch is now qualified by the engine store signals it actually requires. The eleven gated verbs are now named rather than left as a count with a back-reference to a naming that never happened. The stale count in `docs/architecture.md` became Section 3 rather than being folded across a directory boundary. 4 Minors, all fixed in the same pass rather than deferred, since each was one clause in a paragraph already being rewritten: the exit-status split, the partition that only summed to fifteen if `touch --operator` were counted as refused, the dangling antecedent in the closure line, and the reference table's `anchor` row reading as though the refusal were particular to that verb. One Minor rated low by the adversarial lens was not accepted as a defect: the spec's parenthetical describes the prior enumeration as naming a failed handshake, and the shipped file never named one, so the prose is correct as built and the spec text is what was loose. Recorded rather than silently reconciled.
+Stamps: adjudicated 2 surfaced over a 3h window covering the section, stamped 2. `commit-charge-ceiling` steered how this Chapter reports its three durations, and is why the section did not read a 336 s run as a regression. `a-deleted-head-branch-makes-the-strand-check-error-not-pass` was skipped, no merge having occurred in this section. One project-tier record was stamped outside the surfaced list: `memq-find-semantic-channel-is-cwd-dependent` produced the `find` clause in the shipped prose directly, and the window reported the project tier at zero because a recall digest names a record without reading it, which is the accounted reason that zero is not owed a hand walk.
+Next: 3. The architecture doc's call-site count catches up with the code
+Commit Model: Commit-and-Push
+
+### Chapter 3 - 2026-08-28
+
+Completed: 3. The architecture doc's call-site count catches up with the code
+Implemented By: main session, inline, the file sitting under `docs/` where the docs-write-guard closes the write to a dispatched implementer.
+Metrics: review rounds 0; NEEDS_CONTEXT 0; escalations 0; consults 0. The section is a single retired numeral with a whole-tree sweep behind it, and it was itself produced by a review round rather than escaping one.
+Gate: covered by the post-fix whole gate recorded in Chapter 2, run over the settled tree holding both sections: 1,893 / 1,890 / 1 / 2, exit 1, 284 s, read from the run's own exit marker.
+
+Decisions / Surprises:
+
+- **The section exists because the plan's own Section 1 falsified a document three commits before anyone read it.** Taking the predicate's call sites from four to eleven made `docs/architecture.md` state a count its own subject had retired, and the section that made the change swept its code and not its prose. The appended section is the record of that, made deliberately rather than as a quiet correction, since a plan growing under Commit-and-Push pushes to the trunk with no human gate behind it.
+- **The sweep for sibling sites found two more and correctly left both.** An archived plan's Chapter carries the old count as append-only history, which is the journey by design and states what was true when it shipped. The new Section 3 text quotes the old count as the thing being fixed. Neither is a live claim, and treating a history file as drift is how an append-only record gets rewritten to agree with the present.
+- **The neighbouring counts in the same sentence were recounted rather than assumed unaffected.** The predicate still has five consumers and the module still has two direct importers, because Section 1 added call sites inside a consumer that was already counted rather than adding a consumer. A count adjacent to a stale one is the natural place for a second staleness to hide, and the only way to know is to recount.
+
+Assumptions: none.
+Review Findings: none dispatched. The section is the output of Section 2's review round, its change is a single numeral, and the whole-changeset finishing pass covers it next.
+Stamps: none surfaced beyond those adjudicated in Chapter 2, the two sections sharing one window.
+Next: finishing-work
+Commit Model: Commit-and-Push
