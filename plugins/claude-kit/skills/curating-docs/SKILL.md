@@ -9,7 +9,7 @@ A project's `docs/` is a curated library and working backlog, not an attic where
 
 ## The taxonomy
 
-Three zones, each with one job, plus the living documents, a class with two members: the backlog and the coordinator's board.
+Three zones, each with one job, plus one living document: the backlog.
 
 | Location | Holds | Discipline |
 |---|---|---|
@@ -17,7 +17,8 @@ Three zones, each with one job, plus the living documents, a class with two memb
 | `docs/plans/` | Active plans only (open or in progress) | A plan leaves the moment it is Complete or abandoned |
 | `docs/archive/` | Finished and abandoned plans (Chapters intact) and dated backlog snapshots | Immutable history; nothing here is live |
 | `docs/backlog.md` | The living handoff and next-steps doc, active items only | Pruned-live: completed items move to a dated snapshot |
-| `docs/coordinator-board.md` | The machine coordinator's committed board, in the seat's home repo, which the operator establishes and the operator memory tier records; the coordinator skill owns the mechanics | Rewritten in place each pass; git history is its archive |
+
+One file is deliberately outside the taxonomy rather than missing from it. A `docs/coordinator-board.md` in a project's `docs/` is the machine coordinator's own state, retired to the memory store but not necessarily deleted where it used to live, and a curating pass neither zones it nor moves it: it belongs to the seat, and the `docs-curator` charter says so in the same words.
 
 Two append disciplines stay separate. A plan's Chapters are append-only history and travel with the plan into the archive. The backlog is pruned-live. Conflating them is what produces the endless-append problem.
 

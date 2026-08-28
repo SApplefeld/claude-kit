@@ -485,27 +485,50 @@ test('the coordinator skill is tracked and carries what it is pointed at for', (
             + 'and the skill no longer carries the function lead "' + lead + '"');
     }
 
-    // peer-sessions:81 says the coordinator skill "names the file"; the file
-    // is docs/coordinator-board.md. A "## The ledger" heading kept while the
-    // path inside it is renamed or dropped would pass heading presence while
-    // leaving that pointer aimed at a name the skill no longer states, so the
-    // literal path is pinned instead of the heading.
-    assert.match(body, /docs\/coordinator-board\.md/,
+    // peer-sessions' Roles section says the coordinator skill "names the file";
+    // the file is coordinator/<machine>/board.md in the memory store. A
+    // "## The ledger" heading kept while the path inside it is renamed or
+    // dropped would pass heading presence while leaving that pointer aimed at a
+    // name the skill no longer states, so the literal path is pinned instead of
+    // the heading.
+    assert.match(body, /coordinator\/<machine>\/board\.md/,
         'peer-sessions defers to the coordinator skill to name the ledger file '
-        + 'as docs/coordinator-board.md, and the skill no longer states that '
-        + 'path anywhere in its body');
+        + 'as coordinator/<machine>/board.md in the memory store, and the skill '
+        + 'no longer states that path anywhere in its body');
 
-    // peer-sessions:64 says the status round runs "no oftener than the
-    // coordinator's heartbeat cadence, which that skill states". The cadence
-    // is stated once, in the cold-start opening above the "## The three
-    // functions" heading, so a pin scoped to the two headings alone would
-    // stay green if that opening paragraph were dropped. Matched loosely
-    // enough to survive ordinary rewording of the sentence around it and
-    // tightly enough to redden when the cadence itself is gone.
-    assert.match(body, /heartbeat[^\n]{0,60}hourly|hourly[^\n]{0,60}heartbeat/i,
+    // peer-sessions prices the status round at "no oftener than the
+    // coordinator's heartbeat cadence, which that skill states". The seat's
+    // paced wake is a reconciliation timer every 4 hours, stated once in the
+    // cold-start opening above the "## The three functions" heading. No other
+    // assertion here pins that figure: the function leads above pin other
+    // paragraphs outright, and the path assertion above matches the opening
+    // among several occurrences, so it stays green off the ledger's own
+    // occurrence with the opening gone. Dropping the opening would take the
+    // cadence with it and redden nothing without this assertion, which is why
+    // it is separate. Matched loosely enough to survive ordinary rewording of the
+    // sentence around it and tightly enough to redden when the figure is gone.
+    assert.match(body, /reconciliation timer[^\n]{0,60}every 4 hours/i,
         'peer-sessions defers the status round\'s pricing to "the coordinator\'s '
         + 'heartbeat cadence, which that skill states", and the coordinator '
-        + 'skill no longer states an hourly cadence anywhere in its body');
+        + 'skill no longer states its paced cadence, a reconciliation timer '
+        + 'every 4 hours, anywhere in its body');
+
+    // The far end of that same deferral is the word it defers to: peer-sessions
+    // prices against a "heartbeat cadence", so the timer has to be readable as
+    // the seat's heartbeat and not only as a timer, or the clause points at a
+    // cadence under a name this skill never uses. The window is 90 characters
+    // because the sentence that names the timer as the heartbeat spans 68 of
+    // them, which leaves room for rewording and is short enough that the two
+    // words have to be making one claim rather than sitting in neighbouring
+    // sentences about different things; the skill's paragraphs are one line
+    // each, so a window wide enough to cross a sentence boundary twice would
+    // go green off an unrelated pair.
+    assert.match(body,
+        /heartbeat[^\n]{0,90}reconciliation timer|reconciliation timer[^\n]{0,90}heartbeat/i,
+        'peer-sessions prices the status round against "the coordinator\'s '
+        + 'heartbeat cadence", and the coordinator skill no longer names its '
+        + 'reconciliation timer as that heartbeat, leaving the deferral aimed '
+        + 'at a cadence under a name this skill does not state');
 
     assertTrackedInIndex(parts.join('/'));
 });

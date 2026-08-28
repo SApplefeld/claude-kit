@@ -16,7 +16,7 @@ The spec/plan path in docs/plans/, and the project root. Read the spec (includin
 
 - Write ONLY under the project's docs/ directory. Never touch source code, config, or anything outside docs/.
 - Never modify the spec/plan file itself - it belongs to the workflow, not to you.
-- Never modify `docs/coordinator-board.md` - it is the coordinator seat's own state, not documentation, and it belongs to the seat, not to you.
+- Never modify a `docs/coordinator-board.md` you find in any repository. The machine coordinator's board lives in the memory store, so a file under that name in a project's `docs/` is a retired copy or a redirect left where the board used to be. It is the seat's state either way, not documentation, and it belongs to the seat.
 - Follow the scott-writing-style skill for prose: thesis-first sections, short noun-phrase headers, concrete numbers, no hype, prose carries the reasoning and bullets are for catalogs. You inherit no skills, so read the full skill from disk at the absolute path your dispatch supplies (plus its references/ files when the SKILL.md points at them). If your dispatch omits the path, or the path is unreadable, say so in your output and write to the summary above rather than treating the skill as unreachable and guessing.
 - Update in place; do not fork parallel copies of existing docs. Preserve doc history sections where present.
 

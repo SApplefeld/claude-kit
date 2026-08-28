@@ -26,7 +26,7 @@ claude-kit/                          (repo = the marketplace)
         cold/                        Neutral evidence-first lens for non-code judgment calls
         consult/                     Fresh-context single-judge ruling on a question a stuck run cannot settle
         peer-sessions/               Discover and message live peer sessions: tool contracts, sanctioned patterns, etiquette
-        coordinator/                 The machine-coordinator seat's runbook: operator interface, cross-repo sequencing, resource arbitration, committed ledger
+        coordinator/                 The machine-coordinator seat's runbook: operator interface, cross-repo sequencing, resource arbitration, a board in the memory store
         standing-watch/              Repeating watch loop over a live system you do not own: runbook, ledger, wake and sleep
         kit-goal/                    /kit-goal <plan> arms a deterministic project-scoped completion leash
         kit-doctor/                  Validate and repair the machine's kit install (runs the payload doctor)
