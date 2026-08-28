@@ -182,7 +182,7 @@ Fork 3's writing topology is stated where the readers look: sessions write statu
 
 Tests: prose section; the Section 2 and 3 pins stay green; suite delta per Amendment 3.
 
-Files in scope: `plugins/claude-kit/skills/coordinator/SKILL.md`, `plugins/claude-kit/skills/peer-sessions/SKILL.md`, and `plugins/claude-kit/skills/role/SKILL.md` (folded during execution: this section's pass prunes a registry file, and the role skill is the owning contract, which names the coordinator's foreign-delete carve-outs explicitly for the claim file and not for the registry, so the prune as shipped would be a destructive power over a peer's single-writer artifact asserted only in the acting seat's own runbook. All three review lenses found it independently. The carve-out lands in the owning contract; the fold is one narrow addition to that contract's registry writer rule, a different region from the admitted-leaves parenthetical Section 10 owns in the same file). `docs/security-model.md` and `docs/architecture.md` carry counted claims this section falsifies and are routed to Section 8, which already owns both files, rather than folded here.
+Files in scope: `plugins/claude-kit/skills/coordinator/SKILL.md`, `plugins/claude-kit/skills/peer-sessions/SKILL.md`, and `plugins/claude-kit/skills/role/SKILL.md` (folded during execution: this section's pass prunes a registry file, and the role skill is the owning contract, which names the coordinator's foreign-delete carve-outs explicitly for the claim file and not for the registry, so the prune as shipped would be a destructive power over a peer's single-writer artifact asserted only in the acting seat's own runbook. All three review lenses found it independently. The carve-out lands in the owning contract; the fold began as one narrow addition to that contract's registry writer rule and widened at the second review round to the claim protocol itself, because both files agree this contract governs where the two are read against each other and the release fixes had landed only in the runbook, which by that rule loses: a ruling implemented only in the losing file is not implemented. The security Critical at the launch-invocation screen is fixed here too, being a finding of a weight this plan never parks. All of it stays clear of the admitted-leaves parenthetical Section 10 owns in the same file). `docs/security-model.md` and `docs/architecture.md` carry counted claims this section falsifies and are routed to Section 8, which already owns both files, rather than folded here.
 
 ### 5. The boundary becomes structural, and the marker survives the gap (Forks 1 and 2, folding the consent ergonomics backlog entry)
 
@@ -204,7 +204,7 @@ Files in scope: `plugins/claude-kit/hooks/kit-compact-lib.js`, `plugins/claude-k
 
 Model: sonnet
 
-`admin-requests.md` in the machine's coordinator directory: a dated checklist, one line per request, appended by the coordinator routing an operator ask or by the operator's own session; the Admin seat polls it on its own loop at the cadence its tier row states, acts within its two binding constraints unchanged (every action reported; support, never work product), and flips the handled line with a one-line outcome. The role skill's directory contract gains the file's shape as its owner. The peer-sessions Admin bullet gains the reachability statement: an elevated session's sends arrive while nothing reaches it (`ListAgents` never lists it, `SendMessage` fails unreachable; the Windows-integrity-level cause stays marked inferred), the inbox is how work reaches the seat, the registry heartbeat is how it proves life, and per-command elevation (gsudo or RunAs) stays the named fallback where per-action interactivity matters. The coordinator skill's routing line points at the inbox.
+`admin-requests.md` in the machine's coordinator directory: a dated checklist, one line per request, appended by the coordinator routing an operator ask or by the operator's own session; the Admin seat polls it on its own loop at the cadence its tier row states, acts within its two binding constraints unchanged (every action reported; support, never work product), and flips the handled line with a one-line outcome. The role skill's directory contract gains the file's shape as its owner. The peer-sessions Admin bullet gains the reachability statement as a pointer rather than as a restatement, which is a correction Section 4's execution earned: that section landed the unreachable send in the same file's own messaging-surface contract, as a fourth receiving outcome with the Windows-integrity-level cause marked inferred there, so the one-way property now has a home and a second statement of it in the Admin bullet would put two accounts of one property in one file for a later editor to drift apart, which is the seam Amendment 2 names and this is the section that would open it. The bullet cites that contract line for the property and carries only what is the seat's own: the inbox is how work reaches the seat, the registry heartbeat is how it proves life, and per-command elevation (gsudo or RunAs) stays the named fallback where per-action interactivity matters. The coordinator skill's routing line points at the inbox.
 
 Tests: prose section; pins green; suite delta per Amendment 3.
 
@@ -718,3 +718,150 @@ tests / 26 pass / 0 fail, exit 0 from the run itself.
 re-review of the changed surfaces by all three lenses, then the close gate on a
 quiet box, then Chapter 4. The box is free and uncontended as of 09:44:53Z by the
 AI-OS worker's own release; this seat holds no suite slot while the fix round runs.
+
+### Interim board 6 - 2026-08-28
+
+Section 4's second review round has adjudicated with the section again not
+closing. All three lenses returned against it, the security lens returning BLOCK
+for the second consecutive round, and the tree-state bracket is byte-identical at
+both ends, so no finding is an artifact of a reviewer writing to the tree.
+
+**In-flight sections.** Section 4 only. Sections 1, 2 and 3 closed at `77462a5`,
+`ebf5ee0` and `fb0f194`; 5 through 10 not started. Base is `aee3457`.
+
+**Live dispatches.** None at the time of writing. Four returned since the last
+board: one `implementer-opus` fix round resumed once by message for a single
+correction, and an adversarial, a blind and a security reviewer, all three at
+opus with effort `max` through the Workflow route. First-turn readings were taken
+as per-line assistant-model tallies on all four, 16, 55, 32 and 28 assistant
+lines, every line resolving at `claude-opus-5` with zero synthetic. The reading
+had to be taken at `subagents/agent-<id>.jsonl`, because on this machine the
+`tasks/<id>.output` path the tool result advertises is zero bytes for every local
+agent dispatch, and a tally run against that path returns zero assistant lines,
+which is indistinguishable from the never-started shape the reading exists to
+detect.
+
+**Gate baseline.** Unchanged at 1,883 tests / 1,880 pass / 1 fail / 2 skipped,
+exit 1, 213.8 s, captured at `fb0f194`; no whole-suite run since, the section
+having taken no close gate. `node --test test/doctrine-parity.test.js` was re-run
+by the orchestrator after each implementer round rather than taken from a report:
+26 tests / 26 pass / 0 fail, exit 0 from the run itself, twice.
+
+**The tier comparison, run before the bump the ladder allows.** Round 1's findings
+and round 2's are compared, and one class repeats: the sweep's warrant. Round 1
+found the sweep resting on a registry file nothing validates at write time. Round
+2's security lens found that the corroboration ordered in response resolves the
+claim's `Session:` through that same registry entry, so the primitive survived one
+field larger and the corroborating evidence is still drawn from the surface the
+corroboration exists to distrust. A repeating class makes the tier the lever, so
+round 3 dispatches to `implementer-fable` with the explicit fable override. The
+comparison also names what the ladder does not cover: the repeat is this
+orchestrator's ruling rather than the implementer's execution, the implementer
+having built exactly what ruling 2 specified. Both repairs are therefore made, the
+tier bump and the generator fix below, rather than the bump alone.
+
+**Rulings adopted since the last boundary.**
+
+1. *The sweep stops existing as a separate act.* No surface independently
+   corroborates a session id: the join from an id to a roster name runs through the
+   registry entry, which any local session writes and which another machine can
+   write through store replication. So a reconciliation-driven sweep cannot be made
+   sound at any level of care, and the repair is not a better corroboration but the
+   removal of the cheaper path. A foreign claim is reclaimed exactly one way, the
+   probe, the window, the roster reading, the record and the notification, and
+   reconciliation refers to that one rule rather than carrying a second. This
+   dissolves three round-2 findings with it: the sweep trigger that cancelled
+   itself, the prune-then-sweep ordering that destroyed the evidence the sweep
+   needed, and the unknown gate that protected only the paragraph the sweep had
+   been decoupled from. The cost is that reclaiming a dead session's claim is slower
+   by one probe window, which is the correct side of this protocol's own cost
+   asymmetry.
+2. *The join default is narrowed back to what ruling 4 licensed.* The shipped text
+   resolves to present where the key matches no roster row "ambiguously or not at
+   all", and the not-at-all half is the exited leg's own trigger, so the prune
+   became unreachable while the neighbouring paragraph still prunes on it. All three
+   lenses found the contradiction. Ambiguity, meaning two or more rows, resolves to
+   present; zero rows is a candidate the heartbeat leg then decides; and the role
+   skill states the same, since it currently says an unresolved reading leaves the
+   file in place.
+3. *Rulings 1 and 2 land in the owning contract, which widens this section's fold.*
+   Both files agree the role skill's contract governs where the two are read against
+   each other, and that contract still states the release on one leg, unanswered
+   past the probe window and released, with no roster reading and no unreachable
+   exemption, and still gives record-and-notification to the release alone. A ruling
+   implemented only in the file its own precedence rule says loses is not
+   implemented. The fold in the role skill therefore widens from the one narrow
+   prune carve-out to the claim protocol itself.
+4. *The launch-invocation screen is a security Critical and is fixed here whatever
+   its scope.* The role skill admits a resolved invocation as runnable where it is
+   one line of printable ASCII reading as the launcher, its flags, and the seat
+   name, with no separator, substitution or redirection. The screen is
+   metacharacter-shaped and the payload class that matters is flag-shaped, so a
+   permission-disarming launcher flag passes every clause and is presented to the
+   operator as runnable with the kit's imprimatur. The record body comes from the
+   operator memory tier, which the same paragraph states is writable by any local
+   session and reachable from every machine the store syncs, so this is
+   cross-machine reachable and the security model's already-has-code-execution
+   acceptance does not cover it. This is Section 3 text surfaced by Amendment 2's
+   whole-file read rather than a regression of this round, and a security finding of
+   Critical weight is never parked. The screen becomes an allowlist of admitted
+   flags rather than a scan for metacharacters.
+5. *A probe's board line is written when the probe is sent, not when it is
+   adjudicated.* Ruling 6 required the probe time to have a durable home and did not
+   name the moment it becomes durable, which leaves the latest moment as the natural
+   reading, and that is the moment a compaction between send and adjudication has
+   already passed. The general form is worth carrying: a durability requirement that
+   does not name the moment of writing defaults to the moment a failure has already
+   gone by. Raised by the coordinator seat and adopted.
+6. *The inversion is stated in the section text, because it is what makes the probe
+   defect dangerous rather than merely wrong.* The instrument's error is perfectly
+   correlated with the harm: the holder deepest inside a long run is the one most
+   certainly unable to answer and the most costly to release. That is the same shape
+   as the process-poll inversion Chapter 3's gate-3 and gate-4 pair measured, 216.8
+   s against 304.3 s on the same tree shape, where a poll by process name during the
+   slower run would have reported a quieter box than during the faster one. Two
+   instruments, one failure shape, and the second was adopted to replace the first,
+   so the pair is cited together.
+7. *Six evaluability defects are fixed rather than routed, each being a predicate
+   with no value on today's surfaces.* The staleness test reads twice a seat's
+   stated cadence, which only the coordinator and admin rows will state, so an entry
+   whose seat states none takes the coordinator's own 4-hour cadence as the default.
+   A future start stamp is read as now, since otherwise a claim dated forward is
+   never past its duration and holds the slot permanently. The unregistered mark is
+   scoped to local non-subagent roster rows, since as written it accumulates a board
+   line per dispatched subagent per pass. A claim written by a session that never
+   took a seat has no address at all, the claim carrying a session id and no
+   registry entry existing to resolve it, so the claim file gains a name field and
+   the probe addresses that. An unparseable or absent duration field takes the same
+   bound and the same report as an over-long one. And the malformed label is
+   separated from the bound, an honest six-hour pass being over the bound without
+   being a malformed file.
+8. *The path screen is narrowed to the sources that can actually bear it.* The
+   shipped accept leg matches a path against a repo known from the roster, the board,
+   or the operator, and neither of the first two can carry one: a roster row's repo
+   name is the self-chosen half of a session name, and the board is the same
+   unauthenticated cross-machine artifact the screen exists to distrust. A path is
+   placed only against a repo the operator named or the seat resolved from disk, it
+   is normalized before matching, and a residual parent-directory segment is refused.
+9. *Three consistency repairs ride with the round.* A prune gains its own commitment
+   class, both files requiring the prune to be recorded in a board shape the ledger
+   never defined, which is ruling 6's defect fixed for the probe and left standing
+   for the prune. The re-derive field on a board line is stated as a label rather
+   than a command to run, the board replicating across machines. And the reason given
+   for excluding the idle subscription from the claim probe is restated as a latency
+   argument, a 12-hour expiry against a 4-hour window, rather than as the claim that
+   the peer is neither idle nor exited, which the same file contradicts by naming
+   exit as one of the subscription's two triggers.
+
+**Recorded approval drift.** Section 6's text was edited during Section 4's
+execution to make the elevation reachability statement a pointer to the messaging
+contract rather than a second full statement of it, Section 4 having landed that
+property in the contract this round. The adversarial lens correctly noted the edit
+was unrecorded, and this entry is that record. The same lens noted the coordinator
+skill states the same property twice while the spec edit argues for one home; both
+mentions become pointers in round 3.
+
+**Next action.** One fix round to `implementer-fable` with the explicit fable
+override, over the same three files with the role skill's fold widened to the
+claim protocol, then a re-review by all three lenses, then the close gate on a
+quiet box, then Chapter 4.
