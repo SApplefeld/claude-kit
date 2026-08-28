@@ -3458,9 +3458,15 @@ test('decay-scan stands the whole command down for an unpinned network working d
 // The seven remaining doors: log, find, recent, unstamped, touch, decay-prune,
 // decay-done. Every case below runs unpinned, the control Standing Amendment
 // 1 and this section's own approach both ask for: KIT_MEMORY_PROJECT is never
-// set here, unlike every network case above, so projectSegment is not
+// set here, unlike the pinned cases above, so projectSegment is not
 // answered by a pin before it ever consults worktreeMainRoot and the walk
-// this section closes is the one actually at risk. Each case pairs the
+// this section closes is the one actually at risk. The contrast is with
+// those pinned cases and not with every network case above them: Section 7
+// left four unpinned network cases of its own, for the four verbs it
+// covered. What made the suite blind to this defect was narrower than a
+// pin, and is worth stating exactly, because the wider claim is false and
+// was believed here for two days: there was no network case at all for any
+// of the seven verbs below. Each case pairs the
 // network-shaped cwd with a same-store local-cwd control in the same test,
 // so a green assertion on the network side is evidence the predicate spoke,
 // not evidence the verb happened to be quiet.
@@ -3701,6 +3707,76 @@ test('the network-share stand-down check is spelled once per gated verb, at exac
         'cmdGet', 'cmdLog', 'cmdRecall', 'cmdRecent', 'cmdTouch', 'cmdUnstamped'
     ], 'the stand-down check gates exactly these eleven verbs, no more, no fewer: '
         + JSON.stringify(gates));
+});
+
+test('a pin the store signals honor opens the door at a network working directory, '
+    + 'because it answers projectSegment before the walk the refusal exists to prevent',
+    NETWORK_SKIP, () => {
+    const store = makeStore();
+    try {
+        // The cell the skill's escape-hatch sentence rests on. With both
+        // store signals present the pin is honored, projectSegment answers
+        // from it, and no walk is reached, so the network shape of the cwd
+        // costs this call nothing. Proving it here is what keeps the
+        // sentence from resting on two separately-proven facts composed by
+        // a reader rather than on an observed answer.
+        const res = runFrom(store, localUncPath(store.proj),
+            ['log', 'k.pinned', 'pass', 'a summary'], { KIT_MEMORY_PROJECT: PIN });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout, 'logged k.pinned pass\n');
+        assert.strictEqual(res.stderr, '', 'a honored pin reaches no refusal to print');
+        assert.ok(fs.existsSync(path.join(store.root, 'projects', PIN, 'memory', 'outcomes.jsonl')),
+            'the entry landed in the pinned tier');
+        assert.deepStrictEqual(projectDirNames(store), [PIN],
+            'and no second tier was minted from the network cwd');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a pin the store signals do not gate is ignored and the network refusal fires anyway, '
+    + 'so the escape hatch is closed to exactly the session that has not earned it',
+    NETWORK_SKIP, () => {
+    const store = makeStore();
+    const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'memq-home-'));
+    try {
+        // The fourth cell, and the one a caller is most likely to reach by
+        // accident: KIT_MEMORY_PROJECT set on its own, out of a shell
+        // profile, with no store signals beside it. The pin is ignored with
+        // a note and the refusal then fires exactly as it would with no pin
+        // at all, which is what the skill now says in words. The child gets
+        // a fixture home so the ignored-pin fallback resolves somewhere
+        // observable rather than at the live store.
+        const env = scrubRunEnv({ ...process.env });
+        for (const k of Object.keys(env)) {
+            const lower = k.toLowerCase();
+            if (lower === 'userprofile' || lower === 'home'
+                || lower === 'kit_memory_root' || lower === 'kit_memory_root_allow_data') {
+                delete env[k];
+            }
+        }
+        env.USERPROFILE = fakeHome;
+        env.HOME = fakeHome;
+        env.KIT_MEMORY_PROJECT = PIN;
+        const res = spawnSync(process.execPath, [MEMQ, 'log', 'k.ungated', 'pass', 'a summary'], {
+            cwd: localUncPath(store.proj), encoding: 'utf8', env
+        });
+        assert.strictEqual(res.status, 1, res.stdout);
+        assert.strictEqual(res.stdout, '');
+        // Both lines, in this order: the pin is disposed of first, then the
+        // walk is refused. Asserting only the second would pass just as
+        // well against a build that honored the pin and never reached it.
+        assert.match(res.stderr, /ignoring KIT_MEMORY_PROJECT/);
+        assert.match(res.stderr, /names a network share.*nothing was logged/s);
+        assert.ok(res.stderr.indexOf('ignoring KIT_MEMORY_PROJECT')
+            < res.stderr.indexOf('names a network share'),
+            'the ignored-pin note precedes the refusal it does not prevent');
+        assert.ok(!fs.existsSync(path.join(fakeHome, '.claude')),
+            'the refusal came before any store resolution, so nothing was created');
+    } finally {
+        rmStore(store);
+        try { fs.rmSync(fakeHome, { recursive: true, force: true }); } catch { /* best effort */ }
+    }
 });
 
 // Refuse one directory listing inside the spawned CLI, so a tier is there
