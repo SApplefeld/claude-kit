@@ -1394,3 +1394,129 @@ medium question's answer, since neither turns on it. The pre-declaration expert
 ask goes to this repo's expert seat and the consult convenes on the framing, per
 the blocker path; the declaration that follows carries the ruling. Then the close
 gate on a quiet box, then Chapter 4.
+
+### Interim board 12 - 2026-08-28
+
+The stopping rule's trigger was honoured and the conclusion drawn from it was
+wrong. Board 11 recorded the rule as fired and named the medium as the question
+to send up. An expert ask and a fresh consult, run in that order, both refuted
+that framing on evidence this session then verified by its own hand. The medium
+was never the variable. What goes to the operator is one narrow risk-appetite
+fork about two destructive acts, and the section's remaining work is now defined
+against a repaired instrument rather than against another round.
+
+**In-flight sections.** Section 4 only. Sections 1, 2 and 3 closed at `77462a5`,
+`ebf5ee0` and `fb0f194`; 5 through 10 not started.
+
+**Live dispatches.** None. One consult returned within this boundary.
+
+**Gate baseline.** Targeted lane re-run by this session after each fix batch: 27
+pass, 0 fail, exit 0 read from the run's own exit code, unchanged against the
+27-test baseline. The banned-punctuation gate reads zero across all five payload
+files with a control returning one, so the silence is a refusal rather than a
+pattern that cannot speak.
+
+**Rulings adopted since the last boundary.**
+
+1. *The medium question is withdrawn, and it was already decided.* The repo's
+   expert seat answered the pre-declaration ask inside minutes, and every
+   citation it gave was verified here rather than taken on its word. Prose as
+   the contract medium is decided and its ceiling is stated in words: an
+   authorization section "narrows an honest writer without authenticating one",
+   which `peer-sessions/SKILL.md:35` carries in this worktree's own copy, and
+   `docs/security-model.md` records the same acceptance mechanically at `:234`
+   and `:270`. The reason the kit chose prose here is recorded in this plan's
+   own Section 3 paragraph at `:141`: guarding the directory on the memory
+   tiers' terms would refuse the contract's own writer classes, and a
+   shape-checking guard would need a schema this contract does not state plus a
+   carve-out per writer class, "each carve-out re-admitting the accident it
+   exists to stop". Neither queued plan behind this one rules on the medium;
+   both were read here and both assume it.
+2. *The kit's decided line is accident inside a priced perimeter for prose, and
+   structural where a duty must fire.* This is the expert's synthesis, marked by
+   the sender as its inference and adopted here on the evidence rather than on
+   the claim: Fork 2 of this plan at `:65` moved the goalless-seat boundary from
+   prose to a hook precisely because "the two journals hold zero role-boundary
+   allows" and "the boundary should be structural". So the question a Class A
+   site raises is never prose-versus-not, which is settled, but whether that
+   site crosses from accident to adversary or from stated to must-fire.
+3. *Both enumeration tables encode a one-directional harm model, and that is why
+   two rounds could not close the class.* The consult found it and this session
+   confirmed both rubric texts at the artifacts. Class A's column-5 rule reads
+   "the harmful direction chosen from the act (destructive act: the value that
+   makes it fire)"; Class B's W2 reads "every ambiguous reading resolves in the
+   non-destructive direction". Neither prices a destructive act that never
+   fires. For a lease over the machine's one heavy-process slot that is the
+   primary harm, and `role/SKILL.md:53` says so in its own words, "a declaration
+   honoured unbounded is the phantom hold with a longer arm". So the section's
+   contract knew a harm direction its two review instruments structurally could
+   not see.
+4. *The instrument converted this round's Critical into a pass, in writing.* The
+   Class A row for `Started:` rates the exact site of the confirmed security
+   Critical as a screen at its point of use, fail-closed, "never hastens", and
+   the Class B row for the same paragraph rates its warrant as already matching.
+   Never-hastens is the failure for this act. A rating rubric that cannot
+   express the harm records the defect as a pass, which is the same failure mode
+   board 10 ruling 3 already found once in the screen rubric and did not
+   generalise.
+5. *A stable defect count under total population turnover is a fixed-budget
+   detector, and this run wrote that tell down without reading it.* The Class A
+   table's own summary reads "The defect count is therefore unchanged at six and
+   the population is entirely different, which is what the round bought". Six
+   before and six after with no overlap is the signature of a detector spending
+   a fixed budget, never of a population that is failing to converge. The
+   inference from "the enumeration is not closing the class" to "the medium
+   cannot hold this" is the error, and it is recorded as this session's rather
+   than the rule's.
+6. *The residual population is mostly neither class, so no repair to either
+   table would have reached it.* Of round 2's Criticals and Majors, six are a
+   different kind of thing entirely: prose contradicting shipped code, a forward
+   reference to machinery no build ships, a constant disagreeing with a stated
+   cadence, a missing protocol branch, and a guard predicate that excludes the
+   case its own sentence enumerates. No medium fixes a forward reference to a
+   hook that does not exist.
+7. *The stopping rule's predicate is replaced rather than relaxed.* It counted
+   in-class Majors, which measures the detector's budget rather than the
+   population. It now counts findings the state model has no cell for: a round
+   returning only cell-fillers is convergence, and a round returning an
+   unrepresentable finding is the real falsification signal. Replacing a
+   predicate that fired correctly is not explaining away its trigger, because
+   the trigger is accepted and the conclusion drawn from it is what is retired.
+8. *Both Criticals are fixed, and one of the fixes created a sibling defect this
+   round caught rather than the next.* The compaction-gate clause at
+   `coordinator/SKILL.md:53` stated the gate's condition backwards; the gate
+   allows on automation before it ever reads the marker, so the marker matters
+   where no `/loop` drives the watch, which is the seat's ordinary state. The
+   claim-duration anchor at `role/SKILL.md:53` had no durable home, which
+   re-instated by another road the exact reading its own sentence forbids; it is
+   now banked as a told-not-derived board line and an un-bankable anchor is an
+   operator report rather than a fresh anchor. Banking it added a sixth
+   commitment category, and the board's two enumerations of that set did not
+   carry it, which is the warrant-sibling class arriving inside the repair
+   itself. Both enumerations were extended in the same round.
+9. *Three further code-confirmed defects are repaired on the same terms.* The
+   claim write now states that naming a contention and proceeding never includes
+   writing the claim, there being one claim file and one holder. The registry
+   prune now states what its bound costs where nothing stamps the heartbeat: the
+   exited verdict is unreachable, no entry is ever pruned, and the registry
+   accretes, which is the correct direction stated rather than left to be met at
+   a pass. And the boundary marker's age bound is stated against this seat's own
+   cadence, the bound being far the shorter, so a seat is markerless for most of
+   the interval and a compaction offered there rides to the safety ceiling.
+
+**The one fork that survives, and it is the operator's.** Section 4's claim lease
+depends on machinery Section 5 ships, and no coordinator seat has yet run a real
+reconciliation pass against this protocol. The question is whether the two
+destructive acts, the release of a foreign heavy-process claim and the prune of a
+foreign registry entry, ship armed or stated-but-disarmed until that machinery
+exists and one real pass has been observed. It is risk appetite rather than fact,
+which is why it is the only thing that goes up. The disarmed path is already
+written in both files as the untracked-hold report.
+
+**Next action.** The declaration carries that fork. Held behind it is the repair
+of the instrument itself: one state model keyed on claim state, transition, and
+both harm directions, moved out of scratch into shipped payload and pinned in the
+suite, which is the mechanical leg ruling 2's line prescribes and the thing that
+would have caught this round's Critical. Its most defect-dense half is the two
+transitions the fork governs, so it is built once the fork is answered rather
+than built twice. Then the close gate on a quiet box, then Chapter 4.
