@@ -122,7 +122,9 @@ This section restructures existing content only; Section 3 adds its registry tic
 
 Tests: the two re-derived pins red then green; the peer-sessions four-heading pin (`:332`) green untouched; suite delta per Amendment 3.
 
-Files in scope: `plugins/claude-kit/skills/coordinator/SKILL.md`, `test/doctrine-parity.test.js`, plus the referrers the `coordinator-board` grep surfaces.
+Files in scope: `plugins/claude-kit/skills/coordinator/SKILL.md`, `test/doctrine-parity.test.js`, plus the referrers the sweep surfaces, which during execution resolved to `plugins/claude-kit/agents/docs-curator.md` and `plugins/claude-kit/skills/curating-docs/SKILL.md` (edited by the implementer), and `docs/security-model.md`, `docs/architecture.md` and `README.md` (written in the main thread, since the docs-write-guard denies a non-curator subagent any write under `docs/`). The `docs/security-model.md` write is this section's `## The coordinator board` section only, a different region from the allowlist boundary Section 8 owns in the same file; the two run serially in one session.
+
+The mandated grep is `coordinator-board`, and it is under-inclusive for this change, which is worth stating because the sweep's own acceptance is that nothing is left: a referrer can describe the board without naming its path, and three did (`docs/architecture.md`'s "the ledger commit" and "hourly heartbeat", `README.md`'s "committed ledger"). The sweep therefore also runs on `hourly`, `clearance`, `home repo`, and `committed board|ledger|state`. Per Amendment 7 the sweep reports a disposition per referrer with the rule that settles it, and two classes are exempt rather than missed: the archive-index entries in `docs/README.md` and `docs/plans/README.md`, whose own preambles state that their entries record what a plan delivered when it shipped, and the three referrers under `docs/archive/`, both exempt under the append-only-history rule, since repointing either class would falsify a record rather than update a reference.
 
 ### 3. The registry, the claim file, and the `/role` skill (elements C, E, F)
 
@@ -227,6 +229,18 @@ The last surface is the one that keeps this from recurring. `test/doctrine-parit
 Tests, red first: the new parity pin fails against the current documents, passes once they are corrected; a control confirms it would also fail against a document naming the tiers without the coordinator directory, so its green is not the vacuous kind. Suite delta per Amendment 3.
 
 Files in scope: `docs/security-model.md`, `docs/architecture.md`, `plugins/claude-kit/skills/kit-doctor/SKILL.md`, `plugins/claude-kit/doctor/doctor.ps1`, `test/doctrine-parity.test.js`.
+
+### 9. The public-board cap keeps its force after its reason stops being true
+
+Model: opus
+
+Three sentences outside Section 2's scope justify the cap on a worker's `BLOCKED:` first line by where the board lives: `peer-sessions/SKILL.md` and `executing-work/SKILL.md` (twice) each price the cap as "what the sender would put on a public board", reasoning from "a board a public repository may carry". Section 2 moves the board into the memory store, so that reason is false and a worker following the reasoning rather than the rule concludes the cap has lapsed. Section 2's own review surfaced it; the sentences carry doctrine parity mirrors and need whole-file review, so they are a section rather than a fold.
+
+The cap survives and its force is unchanged; only its ground moves. The new ground is that the store replicates to every machine on the operator's remote, so a board line crosses the account, machine and person boundaries the security model's Principals section records, and a line already replicated cannot be unwritten on the machines that pulled it. State the ground so that it does not rest on the store's remote being private: that premise is a precondition of an installation rather than a property of the kit, and this cap is the last screen standing between a worker's own sentence and that replication, blocker text being the least bounded payload the funnel carries. A later pass "correcting" these sentences to a private-store premise would remove the screen while appearing to update it, which is why the cap is written to be independent of where the board sits rather than re-pegged to its new home.
+
+Tests: a parity pin over each of the three sites asserting the cap and its ground, re-derived red then green; the existing four-heading and bullet-identity pins green untouched. Per Amendment 7 each pin names the axis it refuses and is observed red against the unedited text, an ablation standing in where an earlier assertion aborts the case.
+
+Files in scope: `plugins/claude-kit/skills/peer-sessions/SKILL.md`, `plugins/claude-kit/skills/executing-work/SKILL.md`, their doctrine mirrors, and `test/doctrine-parity.test.js`.
 
 ## Out of Scope
 
@@ -334,3 +348,25 @@ Gate: baseline 1,875 tests / 1,872 pass / 1 fail / 2 skipped at `939c75d`; close
 
 Next: 2. The board moves home, and the cold start becomes a tick order (element B)
 Commit Model: Commit-and-Push
+
+### Interim board 2 - 2026-08-28
+
+Section 2 is mid-fix-round; this entry exists because the compaction gate reached 16 held offers over 30 minutes with no section closing, and the run's state lives only in context until it is written here.
+
+In-flight sections: Section 2 only. Sections 1 closed at `77462a5`; 3 through 9 not started.
+
+Live dispatches: one, `implementer-opus` on Section 2's fix round, resumed rather than re-dispatched, holding `plugins/claude-kit/skills/coordinator/SKILL.md`, `test/doctrine-parity.test.js`, `plugins/claude-kit/agents/docs-curator.md` and `plugins/claude-kit/skills/curating-docs/SKILL.md`. It was asked for eight fixes plus two minors, enumerated in the resume message: the private-remote premise restated as a precondition rather than a fact; the sensitivity screen restored at the what-rides paragraph; the durability claim qualified to the platform where the committer actually runs; the chassis seam where the unchanged paragraph still claims pacing and tick order ride unchanged; the heartbeat's unobservable attendance predicate; the predecessor guard the no-board-yet collapse dropped; the local leg missing from the sync-lag statement; and the contested-seat freeze's lost citable anchor.
+
+Gate baseline: 1,878 tests, 1,875 pass, 1 fail, 2 skipped, 315.8 s, exit 1 read from the run's own marker, captured at `75d208b` on a box carrying 0 dotnet, 0 testhost, 19 node, 8 claude and 14,884 MB free commit. The one failure is the known short-`TEMP` path-length case at `test/memory-session.test.js:865`, identical by name and line to both Section 1 readings. The close gate has not run: it is deliberately held until the fix round returns, because reviewer briefs carrying no no-build constraint plus a live suite is the contention that forges a result rather than merely slowing one.
+
+The wall clock is recorded as data rather than diffed, and it is the first comparable pair this effort has had: Section 1's close gate ran 279.3 s at node 25 / claude 8 / 14,349 MB free, and this baseline ran 315.8 s at node 19 / claude 8 / 14,884 MB free. Fewer runners and more free memory, and 13 percent slower. That is not a controlled comparison and node count at launch is not node count during the run, but it does establish that the naive runner-count story fails its first honest test.
+
+Rulings adopted since the last boundary:
+
+- The review round returned three verdicts, adversarial CHANGES_REQUIRED, security BLOCK, blind CHANGES_REQUIRED, all at opus with effort max through the Workflow route. The tree-state bracket was clean at both ends, so no finding is an artifact of a reviewer writing to the tree.
+- Two Criticals were adjudicated as real and non-deferrable, and both trace to this orchestrator rather than to the implementer. The referrer sweep did not close on `docs/security-model.md`, whose `## The coordinator board` section documented the retired clearance apparatus as current and named as a live control the `docs-curator` bullet this changeset deletes; the section is rewritten on the store premise, and it shrank, because most of what it documented no longer exists. And `docs/architecture.md` carried four falsified current-state claims, three of which the mandated `coordinator-board` grep cannot surface at all because they describe the board without naming its path. Both files were routed to the main thread at dispatch, correctly, because the docs-write-guard denies a non-curator subagent any write under `docs/`; the defect is that the routing was recorded and then not executed before review.
+- The mandated sweep pattern is under-inclusive for this change and Section 2's text now says so, with the additional patterns named. This is the sweep-dispositions half of Amendment 7 applied to the amendment's own author: the brief's referrer table was short by three, the implementer reported it short rather than treating the table as the boundary, and the reviewers then found three more the grep could not reach.
+- Section 9 is appended, which is approval drift recorded as such: three sentences in `peer-sessions` and `executing-work` justify the worker's public-board cap by where the board lives, and Section 2 falsifies that ground. The cap keeps its force and only its ground moves. It is a section rather than a fold because the sentences carry doctrine parity mirrors and need whole-file review, and because the security lens' warning is load-bearing: that cap is now the last screen between a worker's own sentence and replication to every machine on the store's remote, so a later pass re-pegging it to a private-store premise would remove the screen while appearing to update it.
+- Deferred with reasons rather than silently: the boundary marker's 30-minute ageing against a 4-hour pass, which Section 5 owns and which this section makes worse in the interval, so Section 5 stays tightly sequenced; and pins over the four surviving board bars, which no test covers today and which Section 8 is the natural home for, since it already plans a pin whose far end reads generated text.
+
+Next action per section: Section 2 awaits the fix round, then a re-review of the changed surfaces, then the close gate alone on a quiet box, then the Chapter. Section 3 is next in the running order.
