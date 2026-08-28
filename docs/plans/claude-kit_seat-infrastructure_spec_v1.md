@@ -174,7 +174,7 @@ Model: opus
 
 The coordinator skill's reconciliation pass gains the registry as a source and the diff as its shape: the pass diffs the live roster against `registry/`. Registered-and-absent means the session exited; the pass prunes its registry file (the one write the coordinator makes under `registry/`: prune, never edit) and sweeps any claim it held. Present-and-unregistered is listed on the board once as unregistered and never polled. An elevated seat, off the roster by the one-way property Section 6 documents, proves life by its `Heartbeat:` stamp; a heartbeat stale past twice the seat's stated cadence reads as exited and takes the same prune.
 
-The pass also operationalizes the claim protocol Section 3 hands it, which that section's review round established is otherwise assigned to this runbook and performed by nothing in it: the pass reads `claims/heavy-process.md` as a source alongside the registry, and it states the probe window and the release window Section 3's contract defers to it by name rather than inventing figures of its own. Past a claim's declared duration the pass probes the claimant; unanswered past the stated probe window it releases the claim as a recorded, reversible decision naming the window and the decider, and it notifies the claimant, the release being an authority act rather than a measured fact. This is recorded as approval drift: Section 3's execution surfaced that the role skill assigns three claim duties to a runbook whose source list named neither the claim file nor the registry, and a contract whose only designated performer never performs it leaves a crashed session's claim standing as a phantom hold until an operator notices.
+The pass also operationalizes the claim protocol Section 3 hands it, which that section's review round established is otherwise assigned to this runbook and performed by nothing in it: the pass reads `claims/heavy-process.md` as a source alongside the registry, and it states the probe window and the release window Section 3's contract defers to it by name, as figures rather than as a feel, carried in this skill on the precedent Section 2's cadence pin already set rather than re-invented at each pass. Past a claim's declared duration the pass probes the claimant; unanswered past the stated probe window it releases the claim as a recorded, reversible decision, and it notifies the claimant, the release being an authority act rather than a measured fact. Where that decision is recorded is part of the rule rather than left to the seat, and the reason is that the alternative degrades silently: a release recorded only in a message dies with the session that sent it, leaving the next pass unable to tell a claim somebody adjudicated from one nobody ever looked at, which is the phantom hold arriving by a second route. So the release is written to the board, the coordinator's own single-writer surface, naming the claim, the elapsed window, and the decider; and the deletion of the released claim file cites that board line, so the artifact that disappears points at the record that outlives it. This is recorded as approval drift: Section 3's execution surfaced that the role skill assigns three claim duties to a runbook whose source list named neither the claim file nor the registry, and a contract whose only designated performer never performs it leaves a crashed session's claim standing as a phantom hold until an operator notices.
 
 Worker status derives from artifacts only, now stated as the pass's default rather than the funnel's aside: the goal CLI, plan-doc Chapters, `kit-events.jsonl`, the branch tip, and the registry status file (`Remaining:` and the Status lines). The operator-interface function bullet rewrites to match: status aggregation is the registry-and-artifact read, and a message goes out only for what no artifact carries to the party that needs it in time, which is the peer-sessions stance the skill already defers to. In peer-sessions, the status round's paragraph in the sanctioned-patterns section takes one amendment: the round is the residue for what no registry file or artifact carries, at its existing pricing; the pricing deferral to the coordinator's stated cadence stays as pinned in Section 2.
 
@@ -182,7 +182,7 @@ Fork 3's writing topology is stated where the readers look: sessions write statu
 
 Tests: prose section; the Section 2 and 3 pins stay green; suite delta per Amendment 3.
 
-Files in scope: `plugins/claude-kit/skills/coordinator/SKILL.md`, `plugins/claude-kit/skills/peer-sessions/SKILL.md`.
+Files in scope: `plugins/claude-kit/skills/coordinator/SKILL.md`, `plugins/claude-kit/skills/peer-sessions/SKILL.md`, and `plugins/claude-kit/skills/role/SKILL.md` (folded during execution: this section's pass prunes a registry file, and the role skill is the owning contract, which names the coordinator's foreign-delete carve-outs explicitly for the claim file and not for the registry, so the prune as shipped would be a destructive power over a peer's single-writer artifact asserted only in the acting seat's own runbook. All three review lenses found it independently. The carve-out lands in the owning contract; the fold is one narrow addition to that contract's registry writer rule, a different region from the admitted-leaves parenthetical Section 10 owns in the same file). `docs/security-model.md` and `docs/architecture.md` carry counted claims this section falsifies and are routed to Section 8, which already owns both files, rather than folded here.
 
 ### 5. The boundary becomes structural, and the marker survives the gap (Forks 1 and 2, folding the consent ergonomics backlog entry)
 
@@ -611,3 +611,110 @@ Gate: baseline 1,879 tests / 1,876 pass / 1 fail / 2 skipped at `5edb448`, exit 
 
 Next: 4. Reconciliation becomes a diff, and the status round becomes the residue (element D and Fork 3)
 Commit Model: Commit-and-Push
+
+### Interim board 5 - 2026-08-28
+
+Section 4's first review round has adjudicated with the section not closing, and
+the compaction gate is holding offers, so this entry banks the run's state rather
+than leaving it in context. All three lenses returned against the section and the
+security lens returned BLOCK, so the section goes to a fix round rather than to a
+close gate.
+
+**In-flight sections.** Section 4 only. Sections 1, 2 and 3 closed at `77462a5`,
+`ebf5ee0` and `fb0f194`; 5 through 10 not started. Base is `7f02b65`, which moved
+under this session when the expert seat committed its three plan files after its
+freeze was released; nothing was lost, this section's work being unstaged
+throughout.
+
+**Live dispatches.** None. Four have returned: one `implementer-opus` on the
+build, and an adversarial, a blind and a security reviewer, all three at opus with
+effort `max` through the Workflow route. First-turn readings were taken as
+per-line assistant-model tallies on the two transcripts that existed at the
+five-minute mark, 24 and 17 assistant lines, every line resolving at the requested
+alias with zero synthetic. The third had no transcript and no journal entry at
+that reading, which is the runtime's own scheduling rather than a fault: the
+workflow ran two agents concurrently and started the security lens as the blind
+lens finished, and it then completed normally. The tree-state bracket is
+byte-identical at both ends of the round, so no finding is an artifact of a
+reviewer writing to the tree.
+
+**Gate baseline.** 1,883 tests / 1,880 pass / 1 fail / 2 skipped, exit 1 read from
+the run's own marker, 213.8 s, captured at `fb0f194` on a box carrying 0 dotnet, 0
+testhost, 0 msbuild, 12 node, 5 claude and 9,120 MB available. The counts are
+identical to Section 3's close, and that identity is the evidence rather than a
+coincidence: no tree edit landed between the two runs. The one red is the standing
+host-dependent short-`TEMP` case, matched by name, enclosing line, assertion and
+mechanism; both skips carry guard-emitted reasons read rather than counted; the
+failure's `actual` is a domain value rather than a process-level one. The run
+clears every contention-forgery clause. `node --test test/doctrine-parity.test.js`
+was re-run by the orchestrator rather than taken from the implementer's report: 26
+tests / 26 pass / 0 fail, exit 0 from the run itself.
+
+**Rulings adopted since the last boundary.**
+
+1. *The probe is degenerate for the population it governs, which is the finding of
+   the round and it lands on this section's own instrument.* A session holding the
+   heavy-process slot is by construction sitting inside one long-running build or
+   suite tool call, and a message is delivered at the claimant's next tool round,
+   so a live holder cannot answer and the pass would release a live claim and put a
+   second heavy process on the box. The section retired the process poll for being
+   degenerate and then rested the replacement on an instrument degenerate for the
+   same population in a different way. The repair is not a longer window: an
+   unanswered probe conflates a dead claimant with held-and-expired, queue
+   overflow, an unreachable elevated seat and a claimant that cannot be addressed
+   at all, so the release takes a roster liveness reading beside the unanswered
+   probe, and refuses to fire on a claimant it could not reach.
+2. *A destructive act may not rest on an unauthenticated artifact, and the sweep
+   did.* The sweep's whole warrant is a registry file that nothing validates at
+   write time, that any local session writes directly, and that another machine can
+   write through store replication. Writing a registry entry whose name appears on
+   no roster row is enough to make the next pass delete a live foreign claim, with
+   no probe, no board record and no notification on that leg. The sweep takes the
+   release's discipline: corroboration, a record, and a notification.
+3. *The heartbeat prune would fire on every install today.* Its writer is Section
+   5's seat-stop hook, which does not exist yet, and the contract's own documented
+   value at takeover is `Heartbeat: none`. So the one seat the paragraph exempts,
+   the elevated Admin, reads as exited on the first pass and has its entry pruned
+   and its claim swept while being structurally unable to be told. An absent or
+   `none` stamp reads as unknown, never as stale, and the prune leg waits on an
+   explicit elevation marker.
+4. *The diff's join has no key, and the file already said so.* The roster prints a
+   name and a `[ref]` where the registry is keyed by session id, names collide by
+   construction, and the roster carries classes with no entry in this machine's
+   registry at all, other machines' sessions, cloud sessions, and the seat's own
+   in-process subagents. The unchanged funnel paragraph states as fact that no
+   surface matches the two. The join key is stated explicitly, the diff is scoped
+   to this machine's registered sessions, and an ambiguous match resolves to
+   present rather than exited, because only one direction of that error deletes
+   anything.
+5. *The section changed a trigger it was only asked to give figures to.* The role
+   skill defers exactly one window and releases on it; the runbook invented a
+   second, conjunctive one, which put the contract and the runbook four hours
+   apart and left the 30-minute figure gating nothing, a dead conjunct no wrong
+   value could ever surface. The release fires at the single deferred window.
+6. *The probe time has no durable home, which the file's own rules forbid.* Every
+   board line is situational or a commitment; a situational line is re-derived from
+   the claim file, which carries no probe field, and the commitment set was closed
+   without one. So the probe time lives only in loop context, which this same file
+   forbids for anything load-bearing. A probed claim becomes a named commitment
+   line.
+7. *`docs/security-model.md` and `docs/architecture.md` are routed to Section 8
+   rather than folded here.* Both carry counted claims this section falsifies, six
+   durable sources now eight, and a claim-protocol description stating that a
+   completing writer cannot erase a live foreign claim with no mention of the
+   coordinator's carve-outs. Section 8 already owns both files and already exists
+   for exactly this shape, so folding them here would mix two efforts and spend the
+   red-first evidence Section 8's own pin depends on.
+8. *`plugins/claude-kit/skills/role/SKILL.md` is folded into this section's scope.*
+   All three lenses found that the pass grants itself a prune the owning contract
+   does not admit, that contract naming coordinator carve-outs explicitly for the
+   claim file and conspicuously not for the registry. A seat asserting a
+   destructive power over a peer's single-writer artifact in its own runbook is the
+   authority model's own cannot-warrant-a-grant-it-authored shape, so the carve-out
+   lands in the owning contract. The section's files-in-scope line records the
+   widening.
+
+**Next action.** One fix round to `implementer-opus` over the three files, then a
+re-review of the changed surfaces by all three lenses, then the close gate on a
+quiet box, then Chapter 4. The box is free and uncontended as of 09:44:53Z by the
+AI-OS worker's own release; this seat holds no suite slot while the fix round runs.
