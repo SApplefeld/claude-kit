@@ -1418,3 +1418,76 @@ test('the lane text agrees between the doctrine gate bullet and the testing-disc
         }
     }
 });
+
+// Section 7's own Tests: line called for no new test, written before the
+// section existed; the section's own fix round created a cross-file
+// invariant that line could not anticipate, so this pin extends that floor
+// rather than honoring it as written. The peer-sessions Roles table is the
+// Admin seat's cadence's one home (the admin-requests.md bullet's own former
+// copy was retired in the same round), and the coordinator's staleness leg
+// prunes a registry entry on twice that figure, so a row deleted or reshaped
+// here leaves two skills pointing at a figure that no longer exists with the
+// suite green. The figure is derived from the table row rather than
+// restated as a literal in this test, which is what makes the pin sensitive
+// to the row moving rather than to one hand-copied number agreeing with
+// another.
+test('the Admin seat\'s cadence is single-sourced in the peer-sessions tier table, and the role and coordinator skills resolve against it rather than copy it', () => {
+    const peerSessions = fs.readFileSync(path.join(__dirname, '..', 'plugins',
+        'claude-kit', 'skills', 'peer-sessions', 'SKILL.md'), 'utf8');
+    const adminRow = peerSessions.split(/\r?\n/).find((l) => l.startsWith('| Admin |'));
+    assert.ok(adminRow, 'the peer-sessions Roles table no longer carries an '
+        + 'Admin row; this pin reads that row as the cadence\'s one source');
+    const hourMatch = adminRow.match(/A (\d+)-hour inbox poll of `admin-requests\.md`/);
+    assert.ok(hourMatch, 'the peer-sessions Admin row no longer states its '
+        + 'inbox-poll cadence in the "A <N>-hour inbox poll of '
+        + '`admin-requests.md`" shape this pin derives the figure from');
+    const hours = Number(hourMatch[1]);
+    assert.ok(Number.isInteger(hours) && hours > 0,
+        'the peer-sessions Admin row\'s cadence figure is not a positive '
+        + 'whole number of hours');
+
+    // The role skill's admin-requests.md bullet: the far end that must point
+    // at the table rather than restate the figure.
+    const roleBody = fs.readFileSync(path.join(__dirname, '..', 'plugins',
+        'claude-kit', 'skills', 'role', 'SKILL.md'), 'utf8');
+    const roleLine = roleBody.split(/\r?\n/)
+        .find((l) => l.includes('admin-requests.md`: the Admin seat\'s artifact inbox'));
+    assert.ok(roleLine, 'the role skill no longer carries the admin-requests.md '
+        + 'directory-contract bullet this pin reads for the cadence pointer');
+    assert.match(roleLine,
+        /the Admin seat polls it on its own loop, at the cadence the peer-sessions Roles table states/,
+        'the role skill\'s admin-requests.md bullet no longer resolves the '
+        + 'Admin seat\'s poll cadence through the peer-sessions Roles table; a '
+        + 'reader following this bullet alone has no source for the figure');
+    assert.ok(!/\d+-hour/.test(roleLine),
+        'the role skill\'s admin-requests.md bullet carries its own '
+        + '<N>-hour figure again, a second copy of what the peer-sessions '
+        + 'Roles table already states, which is exactly the drift this pin '
+        + 'exists to catch');
+
+    // The coordinator skill's staleness leg: the second far end, read from
+    // its own paragraph rather than the whole file, so a stray hardcoded
+    // figure elsewhere in the skill cannot hide behind this pin passing.
+    const coordinator = fs.readFileSync(path.join(__dirname, '..', 'plugins',
+        'claude-kit', 'skills', 'coordinator', 'SKILL.md'), 'utf8');
+    const staleStart = coordinator.indexOf(
+        'An off-roster entry is not by itself a dead session');
+    const staleEnd = coordinator.indexOf('A claim on the heavy-process slot');
+    assert.ok(staleStart !== -1 && staleEnd > staleStart,
+        'the coordinator skill\'s staleness-leg paragraph no longer sits '
+        + 'between its own landmarks, so this pin has no slice to read');
+    const staleness = coordinator.slice(staleStart, staleEnd);
+    const adminLead = 'The peer-sessions Roles table names a cadence for the Admin seat, which takes that stated figure';
+    const adminIdx = staleness.indexOf(adminLead);
+    assert.ok(adminIdx !== -1,
+        'the coordinator skill\'s staleness leg no longer resolves the Admin '
+        + 'seat\'s twice-cadence prune bound through the peer-sessions Roles '
+        + 'table by name, so a reader of this skill alone cannot tell which '
+        + 'bound an off-roster Admin entry takes');
+    const adminWindow = staleness.slice(adminIdx, adminIdx + 250);
+    assert.ok(!/\d+-hour/.test(adminWindow),
+        'the coordinator skill\'s Admin-cadence sentence carries its own '
+        + '<N>-hour figure again rather than resolving through the '
+        + 'peer-sessions Roles table alone, which is the same drift the '
+        + 'role-skill half of this pin catches on its own surface');
+});
