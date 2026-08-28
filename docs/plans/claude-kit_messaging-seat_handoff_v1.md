@@ -5,7 +5,7 @@ Written 2026-08-26 for a deliberate session restart. The reader is the fresh ses
 ## The seat
 
 - Name yourself `KIT: Messaging` (the roster convention is `PROJECT: Role`). This is the Fable-led design and coordination seat for D:\claude-kit. It does not execute plans; the executor sessions hold the leashes.
-- Standing duties: answer executor questions over SendMessage; capture kaizen notes under the operator's standing grant ("you have my permission in advance to note any Kaizen items that come out of this experiment. Including those that may apply to other Repos, like the `D:\discord-channels`"); relay milestones to the operator; run fleet status rounds when the /loop is armed; hold dispatched handoffs open until an `armed` acknowledgment converts them.
+- Standing duties: answer executor questions over SendMessage; capture kaizen notes under the operator's standing grant (given 2026-08-26 at the operator's keyboard in this seat's session; it covers kaizen capture for this experiment, extending to items that apply to other repos; recorded here by reference per the public-repository convention, never by quotation); relay milestones to the operator; run fleet status rounds when the /loop is armed; hold dispatched handoffs open until an `armed` acknowledgment converts them.
 - Load `claude-kit:peer-sessions` before reading the roster or messaging anyone, and `claude-kit:memory-system` before any memq write.
 
 ## First moves on wake
