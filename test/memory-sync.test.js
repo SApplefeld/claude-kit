@@ -48,6 +48,9 @@ const isWin = process.platform === 'win32';
 
 const PROJECT_A = 'D--fake-project-alpha';
 const PROJECT_B = 'D--fake-project-beta';
+// The coordinator tier is one directory per machine, so every path under it
+// carries a machine name.
+const MACHINE = 'FAKE-BOX-01';
 
 // Single-quoted PowerShell literal, any embedded quote doubled.
 const q = (s) => "'" + String(s).replace(/'/g, "''") + "'";
@@ -148,6 +151,31 @@ function makeStore(options) {
             'memory-operator/archive/retired-operator.md',
             'memory-operator/usage.jsonl',
             'memory-operator/operator-fact.md');
+    }
+
+    if (opts.coordinator) {
+        const dir = path.join(store, 'coordinator', MACHINE);
+        write(path.join(dir, 'board.md'), '# board\n');
+        write(path.join(dir, 'admin-requests.md'), '# requests\n');
+        // Two registry entries, which is what exercises the nested directory:
+        // one file per session, the shape the directory contract defines.
+        write(path.join(dir, 'registry', 'session-a.md'), '# session a\n');
+        write(path.join(dir, 'registry', 'session-b.md'), '# session b\n');
+        // The .jsonl leaf form under this tier. It sits at the machine's own
+        // top level, where the coordinator seat is the only writer, so the
+        // fixture exercises the form without standing as an example of a file
+        // several sessions append to: every file the directory holds is
+        // single-writer, which is why the tier carries no union-merge rule.
+        write(path.join(dir, 'board-events.jsonl'), '{"event":"board rewritten"}\n');
+        // The same transient forms the memory tiers hold, plus a name no
+        // allowed form describes.
+        write(path.join(dir, 'board.lock'), '1234\n');
+        write(path.join(dir, 'board.md.bak'), '# board\n');
+        write(path.join(dir, 'board.md.tmp.77'), '# board\n');
+        write(path.join(dir, 'notes.txt'), 'notes\n');
+        const p = 'coordinator/' + MACHINE + '/';
+        allowed.push(p + 'board.md', p + 'admin-requests.md', p + 'board-events.jsonl',
+            p + 'registry/session-a.md', p + 'registry/session-b.md');
     }
     return { home, store, allowed: allowed.sort() };
 }
@@ -441,6 +469,97 @@ test('the ignore file and the path predicate answer alike on transient-shaped na
         assert.strictEqual(res.status, 0, res.stdout + res.stderr);
         assert.deepStrictEqual(JSON.parse(res.stdout), cases.map(([, allowed]) => allowed));
         // And git, asked the same question, agrees on every one of them.
+        for (const [rel, allowed] of cases) {
+            assert.strictEqual(isIgnored(fake.store, rel), !allowed, rel + ' must agree with the predicate');
+        }
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+test('the coordinator tier syncs when it exists, and its per-machine transient state stays home', { skip: !isWin }, () => {
+    const fake = makeStore({ coordinator: true });
+    try {
+        assert.strictEqual(installRepo(fake.store).status, 0);
+        // Positive space: every planted coordinator file is tracked, nested
+        // registry directory included. The tier takes the same allowed forms
+        // as the memory tiers, so a name outside them stays out even though
+        // its directory is re-included.
+        assert.deepStrictEqual(trackedPaths(fake.store), fake.allowed);
+        const p = 'coordinator/' + MACHINE + '/';
+        for (const rel of [p + 'board.lock', p + 'board.md.bak', p + 'board.md.tmp.77', p + 'notes.txt']) {
+            assert.ok(isIgnored(fake.store, rel), rel + ' must be ignored');
+        }
+        // The status reader over the committed tier, which is the surface the
+        // doctor reports on: its probes read the index and the object graph
+        // through the same predicate, so a predicate that disagreed with the
+        // ignore file on a coordinator path would report those paths as
+        // Tracked or in HistoryPaths and turn every doctor run on a machine
+        // holding this tier into a permanent FAIL.
+        const status = statusOf(fake.store);
+        assert.strictEqual(status.ProbesRan, true);
+        assert.deepStrictEqual(status.NotIgnored, []);
+        assert.deepStrictEqual(status.Unexpected, []);
+        assert.deepStrictEqual(status.Tracked, []);
+        assert.deepStrictEqual(status.HistoryPaths, []);
+        assert.deepStrictEqual(status.Notes, []);
+        // And the commit just made holds the coordinator files themselves, so
+        // the empty probes above are the clean kind rather than the kind an
+        // over-excluding allowlist produces.
+        assert.deepStrictEqual(historyPaths(fake.store), fake.allowed);
+
+        // A file written after the repo exists is staged by the same rules.
+        write(path.join(fake.store, 'coordinator', MACHINE, 'fresh.md'), '# fresh\n');
+        write(path.join(fake.store, 'coordinator', MACHINE, 'fresh.lock'), '1234\n');
+        assert.deepStrictEqual(dryRunPaths(fake.store), [p + 'fresh.md']);
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+test('the ignore file and the path predicate answer alike on coordinator paths', { skip: !isWin }, () => {
+    const fake = makeStore({ coordinator: true });
+    try {
+        assert.strictEqual(installRepo(fake.store).status, 0);
+        // The re-include names the coordinator directory itself, so a path
+        // whose first segment merely starts with the word, a sibling
+        // directory, a root-level file, and a coordinator directory nested
+        // inside a project store are all outside it and stay excluded. Those
+        // are the shapes a widened rule admits by accident, and git and the
+        // predicate have to refuse them alike, since the sync's inbound screen
+        // trusts the predicate for an incoming tree the ignore file never sees.
+        const p = 'coordinator/' + MACHINE + '/';
+        const cases = [
+            [p + 'board.md', true],
+            [p + 'admin-requests.md', true],
+            [p + 'registry/session-a.md', true],
+            [p + 'board-events.jsonl', true],
+            ['coordinator/board.md', true],
+            [p + 'board.lock', false],
+            [p + 'board.md.bak', false],
+            [p + 'board.md.tmp.77', false],
+            // An allowed extension carrying a transient shape, at the leaf and
+            // in both admitted forms. These are the only cases here that reach
+            // the per-segment transient loop at all: the three names above are
+            // refused earlier, by the allowed-leaf-form check, so without these
+            // the trailing exclusions are untested under this tier.
+            [p + 'board.tmp.md', false],
+            [p + 'registry/session-a.tmp.jsonl', false],
+            [p + 'notes.txt', false],
+            [p + 'held.lock/board.md', false],
+            [p + 'old.bak/board.md', false],
+            [p + 'x.tmp.1/board.md', false],
+            ['coordinator.md', false],
+            ['coordinatorx/board.md', false],
+            ['coordinator-old/board.md', false],
+            ['projects/' + PROJECT_A + '/coordinator/board.md', false]
+        ];
+        const script = '. ' + q(INSTALLER) + '; '
+            + '@(' + cases.map(([rel]) => '(Test-MemorySyncPathAllowed -RelativePath ' + q(rel) + ')').join(', ')
+            + ') | ConvertTo-Json -Compress';
+        const res = pwsh(script);
+        assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+        assert.deepStrictEqual(JSON.parse(res.stdout), cases.map(([, allowed]) => allowed));
         for (const [rel, allowed] of cases) {
             assert.strictEqual(isIgnored(fake.store, rel), !allowed, rel + ' must agree with the predicate');
         }
@@ -1119,20 +1238,26 @@ test('a foreign repository with uncommitted changes is still refused, never comm
 // The consent prompt itself, real doctor.ps1 code lifted and run against a
 // stubbed status for every combination: it must never describe a repair that
 // is not happening (Section 1's original finding, mirrored onto the new
-// branch), and it must offer nothing at all when there is genuinely nothing
-// to do.
+// branch), it must name every part of the store the commit it authorizes
+// actually carries, and it must offer nothing at all when there is genuinely
+// nothing to do. The naming half is a consent property rather than a wording
+// preference: the allowlist admits the memory tiers and the coordinator
+// directory, so a prompt naming only the tiers asks the operator to approve
+// less than -Fix commits and pushes.
 test('the consent prompt names exactly the action -Fix is about to take, for every combination', { skip: !isWin }, () => {
     // Not a repo at all: init plus one commit.
     let g = doctorFixQuestion({ IsRepo: false, IsOwnRepo: false, IgnoreState: 'Missing', AttrState: 'Missing', Dirty: false, DirtyCount: 0 });
     assert.strictEqual(g.NeedsWork, true);
     assert.match(g.Question, /Initialize .* as the memory-sync git repository/);
+    assert.match(g.Question, /memory tiers and the coordinator directory/);
 
     // A repo whose allowlist drifted: restore plus commit, regardless of Dirty.
     for (const dirty of [false, true]) {
         g = doctorFixQuestion({ IsRepo: true, IsOwnRepo: true, IgnoreState: 'Drift', AttrState: 'Canonical', Dirty: dirty, DirtyCount: dirty ? 2 : 0 });
         assert.strictEqual(g.NeedsWork, true);
         assert.match(g.Question, /Restore the canonical memory-sync allowlist/, JSON.stringify({ dirty, g }));
-        assert.ok(!/pending memory-tier change/.test(g.Question), 'a drift repair must not be described as a plain commit');
+        assert.match(g.Question, /memory tiers and the coordinator directory/, JSON.stringify({ dirty, g }));
+        assert.ok(!/pending change/.test(g.Question), 'a drift repair must not be described as a plain commit');
     }
 
     // A canonical repo, clean: nothing to do, and the prompt is never reached
@@ -1145,7 +1270,7 @@ test('the consent prompt names exactly the action -Fix is about to take, for eve
     // pending changes, never a repair, and it must carry the real count.
     g = doctorFixQuestion({ IsRepo: true, IsOwnRepo: true, IgnoreState: 'Canonical', AttrState: 'Canonical', Dirty: true, DirtyCount: 3 });
     assert.strictEqual(g.NeedsWork, true);
-    assert.match(g.Question, /Commit 3 pending memory-tier change\(s\)/);
+    assert.match(g.Question, /Commit 3 pending change\(s\) to the memory tiers and the coordinator directory/);
     assert.ok(!/Restore the canonical|Initialize/.test(g.Question),
         'a pending-change commit must not be described as a repair or a fresh init:\n' + g.Question);
 
@@ -1232,6 +1357,11 @@ test('the doctor reports the sync section in both states against a redirected st
         assert.strictEqual(absent.status, 'WARN', absent.detail);
         assert.match(absent.detail, /not a git repository/);
         assert.match(absent.detail, /-Fix/);
+        // The remedy line names what the repair would commit, on the same
+        // consent ground as the -Fix prompts: the allowlist admits the memory
+        // tiers and the coordinator directory, so a line naming only the
+        // tiers understates what a -Fix on this store publishes.
+        assert.match(absent.detail, /memory tiers and the coordinator directory/);
 
         assert.strictEqual(installRepo(fake.store).status, 0);
         // A canonical allowlist with no remote is not a pass: every leak probe
@@ -2024,6 +2154,40 @@ test('sync-store: an incoming symlink at an allowed path gates as inbound-leak',
         assert.ok(!fs.existsSync(path.join(fake.store, '.git', 'rebase-merge')));
         assert.strictEqual(git(fake.store, ['rev-parse', '--verify', 'refs/remotes/origin/main']).status, 0,
             'the fetched tracking ref is left in place so the recorded gate stays visible');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// The same screen over the coordinator tier, the allowlist's second admitted
+// root. The mode check runs before the path check and reads no path at all, so
+// this holds by construction rather than by a rule of its own; what the case
+// pins is that the tier gained no exemption when the allowlist widened, since
+// a coordinator path is one a seat writes directly and a symlink planted there
+// would be materialized by the rebase exactly as one at a memory path is.
+test('sync-store: an incoming symlink at an allowed coordinator path gates as inbound-leak', { skip: !isWin }, () => {
+    const fake = makeOwnStore();
+    try {
+        const bare = attachBareOrigin(fake);
+        const head = headOf(fake.store);
+        const clone = cloneOf(fake, bare);
+        const target = '../../../../.credentials.json';
+        const hashed = spawnSync('git', ['-C', clone, 'hash-object', '-w', '--stdin'],
+            { input: target, encoding: 'utf8', env: { ...process.env } });
+        assert.strictEqual(hashed.status, 0, hashed.stderr);
+        const sha = hashed.stdout.trim();
+        assert.strictEqual(git(clone, ['update-index', '--add', '--cacheinfo',
+            '120000,' + sha + ',coordinator/' + MACHINE + '/board.md']).status, 0);
+        assert.strictEqual(git(clone, ['commit', '--quiet', '-m', 'plant a symlink at a coordinator path']).status, 0);
+        assert.strictEqual(git(clone, ['push', '--quiet', 'origin', 'main']).status, 0);
+
+        assertSilentSync(runSync(fake.store));
+
+        const state = readState(fake.store);
+        assert.strictEqual(state.lastResult, 'gate');
+        assert.strictEqual(state.reason, 'inbound-leak', 'a symlink at a coordinator path is a leak, not admitted');
+        assert.strictEqual(headOf(fake.store), head, 'nothing was merged');
+        assert.ok(!fs.existsSync(path.join(fake.store, '.git', 'rebase-merge')));
     } finally {
         rmDir(fake.home);
     }

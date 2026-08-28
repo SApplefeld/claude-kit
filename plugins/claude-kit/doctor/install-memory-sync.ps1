@@ -13,11 +13,11 @@
 #
 # The store root is ~/.claude itself, and the allowlist is the whole security
 # model of the sync: it excludes everything and re-includes only the memory
-# tiers, so no add, however careless, can stage a credential. The canonical
-# text of both files is defined once here and used by both the writer and the
-# check, so the check cannot drift from what the installer writes, and the
-# check re-derives it on every doctor run rather than trusting a one-time
-# verification.
+# tiers and the coordinator directory, so no add, however careless, can stage
+# a credential. The canonical text of both files is defined once here and used
+# by both the writer and the check, so the check cannot drift from what the
+# installer writes, and the check re-derives it on every doctor run rather than
+# trusting a one-time verification.
 #
 # Verification is by direct probe, never by reading the ignore file alone.
 # Each probe reads a different surface, and none of them substitutes for
@@ -51,6 +51,12 @@ $script:MemorySyncOwnValue = "true"
 # tier directory can hold (locks, the single-generation .bak, rename
 # temporaries, a broken-lock rename such as decay.lock.stale.<pid>) is
 # transient state of one machine and never syncs.
+#
+# One leaf set covers both admitted roots. The coordinator directory holds no
+# memq output at all: its seat artifacts (the board, the registry entries, the
+# claim file) are .md and .jsonl by their own contract, so the same forms
+# admit them for a different reason, and a form no writer of either root
+# produces stays refused in both.
 function Get-MemorySyncAllowedLeafPatterns {
     return @('*.md', '*.jsonl', 'decay-stamp')
 }
@@ -91,7 +97,8 @@ function Get-MemorySyncIgnoreText {
         '#',
         "# The store root holds .credentials.json, settings.json, and history.jsonl,",
         '# and its projects/ directories hold full session transcripts. Everything is',
-        '# excluded; only memory files inside the memory tiers are re-included.',
+        '# excluded; only memory files inside the memory tiers and the coordinator',
+        '# directory are re-included.',
         '',
         '/*',
         '!/.gitignore',
@@ -118,6 +125,13 @@ function Get-MemorySyncIgnoreText {
         '',
         '# The operator tier, live and archived.') +
         (& $tierRules '/memory-operator') + @(
+        '',
+        '# The coordinator tier: one directory per machine, holding the seat',
+        '# artifacts every machine reads. It takes the same file forms as the',
+        '# memory tiers and the same trailing transient exclusions, so a lock or',
+        '# a rewrite temporary a seat leaves behind is per-machine state that',
+        '# stays home.') +
+        (& $tierRules '/coordinator') + @(
         '',
         '# Never, even inside an allowed directory: lock files, the single-generation',
         '# backup memq writes before each rewrite, and its rename temporaries.') +
@@ -196,9 +210,12 @@ function Test-MemorySyncRepoIsOwn {
 # judge what a dry-run add would stage, what is already tracked, and what
 # committed history holds, so every probe answers against the same rule the
 # ignore file encodes. The rule is positive on both axes: the path must sit
-# inside a memory tier, and its file name must be one of the forms memq writes
-# there. A name outside that set is refused whether or not any exclusion
-# pattern happens to describe it.
+# inside one of the two roots the allowlist admits, a memory tier or the
+# coordinator directory, and its file name must be one of the allowed leaf
+# forms. Those forms are the ones memq writes in a tier; the coordinator
+# directory carries no memq output and takes the same forms because its own
+# contract writes .md and .jsonl. A name outside that set is refused whether
+# or not any exclusion pattern happens to describe it.
 function Test-MemorySyncPathAllowed {
     param([Parameter(Mandatory = $true)][string]$RelativePath)
     $p = $RelativePath -replace '\\', '/'
@@ -223,6 +240,7 @@ function Test-MemorySyncPathAllowed {
     if ($p -match '^projects/[^/]+/memory/.+') { return $true }
     if ($p -match '^memory-types/.+') { return $true }
     if ($p -match '^memory-operator/.+') { return $true }
+    if ($p -match '^coordinator/.+') { return $true }
     return $false
 }
 

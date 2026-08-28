@@ -886,17 +886,22 @@ else {
 
     if ($Fix -and $syncNeedsWork) {
         # Three shapes, not two: the prompt must never describe a repair that
-        # is not happening, so a canonical repo that only needs its pending memories
-        # committed asks about exactly that, never about restoring an
+        # is not happening, so a canonical repo that only needs its pending
+        # changes committed asks about exactly that, never about restoring an
         # allowlist that is already right.
+        #
+        # Every shape names both parts of the store the commit carries. The
+        # allowlist admits the memory tiers and the coordinator directory, so
+        # a prompt naming only the tiers asks consent for less than the commit
+        # and the push that follows it actually publish.
         $syncQuestion = if (-not $syncStatus.IsRepo) {
-            "Initialize $claudeDir as the memory-sync git repository (allowlist plus one commit of the memory tiers)?"
+            "Initialize $claudeDir as the memory-sync git repository (allowlist plus one commit of the memory tiers and the coordinator directory)?"
         }
         elseif ($syncStatus.IgnoreState -ne "Canonical" -or $syncStatus.AttrState -ne "Canonical") {
-            "Restore the canonical memory-sync allowlist in $claudeDir and commit the memory tiers?"
+            "Restore the canonical memory-sync allowlist in $claudeDir and commit the memory tiers and the coordinator directory?"
         }
         else {
-            "Commit $($syncStatus.DirtyCount) pending memory-tier change(s) in $claudeDir through the gated allowlist?"
+            "Commit $($syncStatus.DirtyCount) pending change(s) to the memory tiers and the coordinator directory in $claudeDir through the gated allowlist?"
         }
         if (Get-Consent $syncQuestion) {
             $syncInstall = Install-MemorySyncRepo -StoreRoot $claudeDir
@@ -972,7 +977,7 @@ else {
         elseif (-not $syncStatus.IsRepo) {
             Report "WARN" "Memory sync" (@(
                 "$claudeDir is not a git repository, so the memory store does not sync across machines.",
-                "Fix: re-run doctor with -Fix (initializes the repo with the memory-only allowlist and commits the tiers)."
+                "Fix: re-run doctor with -Fix (initializes the repo with the gated allowlist and commits the memory tiers and the coordinator directory)."
             ) + $syncReport.Context)
         }
         elseif ($syncGaps.Count -gt 0) {
