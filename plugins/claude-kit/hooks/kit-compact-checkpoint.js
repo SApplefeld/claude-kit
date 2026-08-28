@@ -8,9 +8,10 @@
 //                                       markers, and the gate state
 //   kit-compact-checkpoint.js boundary  open the role-boundary marker for the
 //                                       calling session (no goal required)
-//   kit-compact-checkpoint.js consent [--session <id>]
+//   kit-compact-checkpoint.js consent [--session <id>] [--project <path>]
 //                                       record the operator's release for the
-//                                       caller's session, or the named one
+//                                       caller's session, or the named one, in
+//                                       the caller's directory or a named one
 //
 // `open` is invoked by the executing-work chapter-close ritual after a
 // Chapter is appended and the section's commit model has been honored. An
@@ -22,14 +23,22 @@
 // other plan as absent: with no goal armed there is nothing the file could
 // ever match, so the open refuses rather than writing a dead checkpoint.
 //
-// `boundary` is the goalless seats' analogue of `open`, invoked by a role
-// session (coordinator, expert, admin) at its own banked-and-empty moments:
-// the marker is scoped by session rather than by plan, so no armed goal is
-// required and the no-goal refusal stays the leashed mode's alone. `consent`
+// `boundary` is the goalless seats' analogue of `open`: it opens the
+// role-boundary marker for a role session (coordinator, expert, admin) at its
+// own banked-and-empty moment, scoped by session rather than by plan, so no
+// armed goal is required and the no-goal refusal stays the leashed mode's
+// alone. The ordinary writer of that marker is the seat-stop.js Stop hook,
+// which opens it at a turn end off the seat's own registry status push; this
+// subcommand is the fallback for a seat the machine's session registry does
+// not carry, and it writes the same file the hook does. `consent`
 // writes the operator-release marker; the rule for WHEN it may be run (only
 // on the operator's explicit word over a warranted channel, never on the
 // session's own judgment) is the role skills' prose, while this CLI bounds
 // only what one run of it can do: one session, one release, one age window.
+// Its `--project` names the directory the marker is written at, for the
+// ordinary case of an operator releasing a session that is not the one their
+// shell stands in; a named project the session left no transcript under is
+// refused, since a marker written there would be read by nobody.
 // Both markers are consumed by the gate on the allow they cause, single-shot.
 //
 // All filesystem work is delegated to kit-compact-lib.js; this file is only
@@ -40,11 +49,12 @@
 const { readGoal, recordExecutionTree } = require('./kit-goal-lib.js');
 const {
     readCheckpointResult, writeCheckpoint, clearCheckpoint, checkpointMatches,
-    readGateStateResult, gateEpisodeOpen, pendingOfferCorroborated, checkpointOwner,
+    readGateStateResult, gateStatePath, gateEpisodeOpen, pendingOfferCorroborated, checkpointOwner,
     episodePhrase, wholeMinutesSince, gateCount,
     CHECKPOINT_MAX_AGE_MS, CHECKPOINT_PENDING_MAX_AGE_MS,
     readRoleBoundaryResult, readConsentResult, writeRoleBoundary, writeConsent,
-    markerMatches, ROLE_BOUNDARY_MAX_AGE_MS, CONSENT_MAX_AGE_MS
+    markerMatches, projectHoldsSessionTranscript, usableSessionId,
+    ROLE_BOUNDARY_MAX_AGE_MS, CONSENT_MAX_AGE_MS
 } = require('./kit-compact-lib.js');
 
 // The two age bounds as an operator reads them, derived from the constants
@@ -57,8 +67,11 @@ const ORDINARY_MINUTES = Math.round(CHECKPOINT_MAX_AGE_MS / (60 * 1000));
 const PENDING_HOURS = Math.round(CHECKPOINT_PENDING_MAX_AGE_MS / (60 * 60 * 1000));
 
 // The marker age bounds as an operator reads them, on the same derive-or-drift
-// rule as the two above, with the same whole-unit caveat.
-const BOUNDARY_MINUTES = Math.round(ROLE_BOUNDARY_MAX_AGE_MS / (60 * 1000));
+// rule as the two above, with the same whole-unit caveat. Both render in hours
+// because both bounds are the same quantity: rendering one of them in minutes
+// would print two different-looking figures for one window in a single
+// `status` report, which reads as two rules rather than one.
+const BOUNDARY_HOURS = Math.round(ROLE_BOUNDARY_MAX_AGE_MS / (60 * 60 * 1000));
 const CONSENT_HOURS = Math.round(CONSENT_MAX_AGE_MS / (60 * 60 * 1000));
 
 // What the gate's state says about this goal's binding, as the three facts the
@@ -98,21 +111,9 @@ function sanitize(s) {
 }
 
 function usage() {
-    process.stderr.write('usage: kit-compact-checkpoint.js open | clear | status | boundary | consent [--session <id>]\n');
+    process.stderr.write('usage: kit-compact-checkpoint.js open | clear | status | boundary'
+        + ' | consent [--session <id>] [--project <path>]\n');
     process.exitCode = 1;
-}
-
-// A session id this CLI will scope a marker to, or null. The gate is charset
-// plus a leading-character rule, not charset alone: a value that opens with a
-// dash reads as an option to any parser that meets it later, so the first
-// character must be alphanumeric however clean the rest is. Session ids as
-// the harness mints them are UUID-shaped and pass untouched; anything else
-// degrades to the loud refusal at the call sites, never to an unscoped
-// write.
-function usableSessionId(value) {
-    return (typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value))
-        ? value
-        : null;
 }
 
 // The calling session's own id, from the environment the harness sets for a
@@ -235,7 +236,7 @@ function cmdBoundary(rest) {
         // constant, so the sentence cannot promise what the rule does not do.
         process.stdout.write('  role-boundary marker open for session ' + sanitize(session)
             + ' (that session\'s next deferred auto-compaction lands at this boundary;'
-            + ' it ages out in ' + BOUNDARY_MINUTES + ' minutes)\n');
+            + ' it ages out in ' + BOUNDARY_HOURS + ' hours)\n');
         process.exitCode = 0;
     } else {
         process.stderr.write('kit-compact-checkpoint: ' + sanitize(result.reason) + '\n');
@@ -251,8 +252,21 @@ function cmdBoundary(rest) {
 // dash-led (usableSessionId's leading-character rule), so a missing value
 // cannot swallow the next flag and be recorded as a session name.
 function cmdConsent(rest) {
-    let session = null;
-    if (rest.length === 0) {
+    const flags = { '--session': null, '--project': null };
+    for (let i = 0; i < rest.length; i += 2) {
+        if (!Object.prototype.hasOwnProperty.call(flags, rest[i])
+            || flags[rest[i]] !== null || i + 1 >= rest.length) {
+            process.stderr.write('usage: kit-compact-checkpoint.js consent'
+                + ' [--session <id>] [--project <path>]'
+                + ' (each flag at most once, each with one value)\n');
+            process.exitCode = 1;
+            return;
+        }
+        flags[rest[i]] = rest[i + 1];
+    }
+
+    let session;
+    if (flags['--session'] === null) {
         session = callerSessionId();
         if (session === null) {
             process.stderr.write('kit-compact-checkpoint: no usable session id in this shell'
@@ -261,8 +275,8 @@ function cmdConsent(rest) {
             process.exitCode = 1;
             return;
         }
-    } else if (rest.length === 2 && rest[0] === '--session') {
-        session = usableSessionId(rest[1]);
+    } else {
+        session = usableSessionId(flags['--session']);
         if (session === null) {
             process.stderr.write('kit-compact-checkpoint: --session needs one value that starts'
                 + ' with a letter or digit and uses only letters, digits, dot, underscore or'
@@ -270,12 +284,25 @@ function cmdConsent(rest) {
             process.exitCode = 1;
             return;
         }
-    } else {
-        process.stderr.write('usage: kit-compact-checkpoint.js consent [--session <id>]\n');
+    }
+
+    // Without --project the marker lands where the caller stands, which is the
+    // operator's own session's project and needs no corroboration. With it the
+    // target directory is a value the caller supplied, so it is corroborated
+    // before anything is written: the named session must have a transcript
+    // filed under that project. A marker written anywhere else is inert and
+    // says nothing about it, which is the failure this flag exists to end, so
+    // the miss is an error here rather than a successful-looking write.
+    const target = flags['--project'] === null ? process.cwd() : flags['--project'];
+    if (flags['--project'] !== null && !projectHoldsSessionTranscript(target, session)) {
+        process.stderr.write('kit-compact-checkpoint: no transcript for session '
+            + sanitize(session) + ' under the project at ' + sanitize(target)
+            + ', so a marker written there would never be read; check the path and the'
+            + ' session id; nothing written\n');
         process.exitCode = 1;
         return;
     }
-    const result = writeConsent(process.cwd(), session);
+    const result = writeConsent(target, session);
     if (result.ok) {
         process.stdout.write('  operator-consent marker recorded for session ' + sanitize(session)
             + ' (releases that session\'s next deferred auto-compaction once, within '
@@ -545,17 +572,25 @@ function reportGateState(cwd) {
         // the leg where the read was refused: that lstat succeeds and reports an
         // ordinary regular file, so the destructive advice would print over
         // exactly the transient case it is withheld for.
+        //
+        // Both remedies name the file at the path the reader itself used rather
+        // than at a spelling written out here: the scratch directory is
+        // resolved (kitScratchDir in kit-compact-lib.js), and a project
+        // directory inside the memory store keeps its gate state outside the
+        // project, so a hard-coded `.kit/` remedy would send an operator to
+        // inspect a file that is not there.
+        const statePath = gateStatePath(cwd);
         if (result.reason === 'oversized') {
             // Worded as reportCheckpoint words its own oversized leg: the file
             // is legible and was refused on size, which is not the same fact as
             // a read that failed, and one refusal answered two ways is what the
             // shared-spelling rule exists to stop.
             process.stdout.write('a compaction gate state file past the size the reader accepts is present, '
-                + 'so the gate is recording nothing; removing .kit/compact-gate.json lets the next '
+                + 'so the gate is recording nothing; removing ' + statePath + ' lets the next '
                 + 'decision rebuild it\n');
         } else if (result.reason === 'kind') {
             process.stdout.write('something that is not the gate state file is sitting at '
-                + '.kit/compact-gate.json, so the gate is recording nothing; move it aside by hand '
+                + statePath + ', so the gate is recording nothing; move it aside by hand '
                 + '(a delete cannot remove it)\n');
         } else {
             process.stdout.write('the compaction gate state file cannot be read right now, so the gate '
@@ -589,7 +624,7 @@ function cmdStatus() {
     const cwd = process.cwd();
     reportCheckpoint(cwd);
     reportMarker(readRoleBoundaryResult(cwd), 'role-boundary', 'open',
-        ROLE_BOUNDARY_MAX_AGE_MS, BOUNDARY_MINUTES + '-minute');
+        ROLE_BOUNDARY_MAX_AGE_MS, BOUNDARY_HOURS + '-hour');
     reportMarker(readConsentResult(cwd), 'operator-consent', 'present',
         CONSENT_MAX_AGE_MS, CONSENT_HOURS + '-hour');
     reportGateState(cwd);

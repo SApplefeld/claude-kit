@@ -1861,10 +1861,15 @@ test('cli: status does not assert a hold it could not check', () => {
         // names that kind and the remedy that works on it: a delete cannot
         // remove what is there, and removing the file is advice for the
         // ordinary illegible-file case rather than for this one.
-        assert.ok(out.includes('is sitting at\n.kit/compact-gate.json') || out.includes('sitting at .kit/compact-gate.json'),
+        // The path is the resolved one rather than a `.kit/` spelling: the
+        // scratch directory is resolved per project, so a remedy naming a
+        // literal would send an operator working a store-backed directory to a
+        // file that is not there.
+        const statePath = path.join(repo, '.kit', 'compact-gate.json');
+        assert.ok(out.includes('sitting at\n' + statePath) || out.includes('sitting at ' + statePath),
             'the gate-state half names what is at the path: ' + out);
         assert.ok(out.includes('move it aside by hand'), 'with a remedy that works: ' + out);
-        assert.ok(!out.includes('removing .kit/compact-gate.json lets'),
+        assert.ok(!out.includes('removing ' + statePath + ' lets'),
             'and not one that does not: ' + out);
     } finally {
         rmDir(shimDir);
@@ -3573,7 +3578,10 @@ test('gate: an oversized state file is refused rather than read whole', () => {
         // two must not drift back into describing one refusal two ways.
         assert.ok(!status.stdout.includes('present but unreadable'),
             'and does not call a legible-but-refused file unreadable: ' + status.stdout);
-        assert.ok(status.stdout.includes('removing .kit/compact-gate.json lets'),
+        // The advice names the resolved state path, the one the reader itself
+        // used, rather than a `.kit/` spelling that holds only for a project
+        // directory outside the memory store.
+        assert.ok(status.stdout.includes('removing ' + gateStateFile(repo) + ' lets'),
             'and gives the removal advice, which is right for the one permanent leg: ' + status.stdout);
         assert.ok(!status.stdout.includes('recorded no decisions'),
             'never reported as an absent record: ' + status.stdout);
@@ -3597,7 +3605,7 @@ test('cli: status does not tell an operator to delete a gate state file a lock i
         const out = runCli(['status'], repo,
             { NODE_OPTIONS: readRefusingPreload(shimDir, 'compact-gate.json') }).stdout;
         assert.ok(out.includes('cannot be read right now'), 'the refusal is stated as transient: ' + out);
-        assert.ok(!out.includes('removing .kit/compact-gate.json lets'),
+        assert.ok(!out.includes('removing ' + gateStateFile(repo) + ' lets'),
             'and nothing invites the operator to delete the live episode: ' + out);
         assert.ok(!out.includes('recorded no decisions'), 'nor reads as an empty record: ' + out);
         assert.ok(fs.existsSync(gateStateFile(repo)), 'the state file is untouched');
@@ -3618,7 +3626,7 @@ test('cli: status reports a gate state file whose own kind cannot be read as unr
         const out = runCli(['status'], repo,
             { NODE_OPTIONS: lstatRefusingPreload(shimDir, 'compact-gate.json') }).stdout;
         assert.ok(out.includes('cannot be read right now'), 'the refusal is stated as transient: ' + out);
-        assert.ok(!out.includes('removing .kit/compact-gate.json lets'), 'with no removal advice: ' + out);
+        assert.ok(!out.includes('removing ' + gateStateFile(repo) + ' lets'), 'with no removal advice: ' + out);
         assert.ok(!out.includes('is sitting at'), 'and no claim about what is there: ' + out);
     } finally {
         rmDir(shimDir);
@@ -4656,8 +4664,10 @@ test('lib: the nudge stamp discriminates two decisions stamped in one millisecon
 
 // The shipped marker age bounds, duplicated as pins like CEILING and
 // MAX_AGE_MS above: moving either constant in the lib must fail a boundary
-// case here and force a visible double-edit.
-const BOUNDARY_MARKER_MAX_AGE_MS = 30 * 60 * 1000;
+// case here and force a visible double-edit. The two are the same figure and
+// are written out separately anyway, so a later change tuning one of them
+// apart from the other fails one boundary case rather than none.
+const BOUNDARY_MARKER_MAX_AGE_MS = 4 * 60 * 60 * 1000;
 const CONSENT_MARKER_MAX_AGE_MS = 4 * 60 * 60 * 1000;
 
 // A second session for the never-releases-what-it-does-not-name cases, shaped
@@ -5065,6 +5075,93 @@ test('cli: a consent --session value that reads as an option is refused, never c
     }
 });
 
+// The harness files a session's transcript as <session-id>.jsonl under
+// ~/.claude/projects/<project path with every non-alphanumeric character
+// replaced by a hyphen>. The flattening is spelled out here rather than
+// imported, as the pin on the derivation the CLI shares with memq: a change to
+// one of them must fail here rather than agree with itself.
+function plantTranscript(home, projectDir, sessionId) {
+    const flat = String(path.resolve(projectDir)).replace(/[^A-Za-z0-9]/g, '-');
+    const full = path.join(home, '.claude', 'projects', flat, sessionId + '.jsonl');
+    writeFile(full, '{}\n');
+    return full;
+}
+
+test('cli: consent --project writes at the named directory when that project holds the session', () => {
+    const home = makeDir('kit-compact-gate-home-');
+    const target = makeDir('kit-compact-gate-target-');
+    const elsewhere = makeDir('kit-compact-gate-repo-');
+    try {
+        plantTranscript(home, target, OTHER_SESSION);
+        const res = runCli(['consent', '--session', OTHER_SESSION, '--project', target], elsewhere,
+            { USERPROFILE: home, HOME: home });
+        assert.strictEqual(res.status, 0, 'consent succeeds; stderr: ' + res.stderr);
+        assert.strictEqual(JSON.parse(fs.readFileSync(consentFile(target), 'utf8')).session, OTHER_SESSION,
+            'the marker lands at the named project');
+        assert.ok(!fs.existsSync(consentFile(elsewhere)), 'and not in the directory the CLI was run from');
+    } finally {
+        rmDir(elsewhere);
+        rmDir(target);
+        rmDir(home);
+    }
+});
+
+test('cli: consent --project refuses loudly where the named session has no transcript there', () => {
+    const home = makeDir('kit-compact-gate-home-');
+    const target = makeDir('kit-compact-gate-target-');
+    const other = makeDir('kit-compact-gate-other-');
+    try {
+        // The refusing rule is the transcript corroboration and nothing else:
+        // the session id is well formed, the directory exists and is writable,
+        // and the test above is the control proving the same invocation
+        // succeeds once the transcript is there. Here the transcript exists
+        // under a DIFFERENT project, so a check that merely looked the session
+        // up anywhere on the machine would pass.
+        plantTranscript(home, other, OTHER_SESSION);
+        const res = runCli(['consent', '--session', OTHER_SESSION, '--project', target], target,
+            { USERPROFILE: home, HOME: home });
+        assert.strictEqual(res.status, 1, 'refused; stdout: ' + res.stdout);
+        assert.ok(res.stderr.includes('no transcript for session'), 'and says why; stderr: ' + res.stderr);
+        assert.ok(!fs.existsSync(consentFile(target)), 'nothing written');
+    } finally {
+        rmDir(other);
+        rmDir(target);
+        rmDir(home);
+    }
+});
+
+test('cli: the consent parser takes its two flags in either order and refuses every other shape', () => {
+    const home = makeDir('kit-compact-gate-home-');
+    const target = makeDir('kit-compact-gate-target-');
+    try {
+        plantTranscript(home, target, SESSION);
+        const env = { USERPROFILE: home, HOME: home, CLAUDE_CODE_SESSION_ID: SESSION };
+
+        const reversed = runCli(['consent', '--project', target, '--session', SESSION], target, env);
+        assert.strictEqual(reversed.status, 0, 'either order; stderr: ' + reversed.stderr);
+        fs.rmSync(consentFile(target));
+
+        const implied = runCli(['consent', '--project', target], target, env);
+        assert.strictEqual(implied.status, 0, '--project alone takes the caller\'s own id; stderr: ' + implied.stderr);
+        assert.strictEqual(JSON.parse(fs.readFileSync(consentFile(target), 'utf8')).session, SESSION);
+        fs.rmSync(consentFile(target));
+
+        for (const args of [
+            ['consent', '--project'],
+            ['consent', '--project', target, '--project', target],
+            ['consent', '--project', target, 'stray'],
+            ['consent', '--plan', target]
+        ]) {
+            const res = runCli(args, target, env);
+            assert.strictEqual(res.status, 1, 'refused: ' + JSON.stringify(args) + '; stdout: ' + res.stdout);
+            assert.ok(!fs.existsSync(consentFile(target)), 'nothing written: ' + JSON.stringify(args));
+        }
+    } finally {
+        rmDir(target);
+        rmDir(home);
+    }
+});
+
 test('cli: status reports both marker kinds in every state the gate distinguishes', () => {
     // None open.
     let repo = makeDir('kit-compact-gate-repo-');
@@ -5132,6 +5229,120 @@ test('lib: the marker paths are the ones the gate consumes and the CLI writes', 
         assert.strictEqual(consentPath(repo), consentFile(repo));
     } finally {
         rmDir(repo);
+    }
+});
+
+// ---------------------------------------------------------------------------
+// The scratch resolution for a project directory that lies inside the memory
+// store. The store replicates to every machine the sync's remote reaches, so
+// gate state, the journal, and both markers must not land in it; they resolve
+// to a home-anchored per-machine directory instead. One resolver serves the
+// writers and the gate's reader, which is what keeps a marker's writer and its
+// reader agreeing on where it lives.
+// ---------------------------------------------------------------------------
+
+// A fixture home whose .claude is the store, plus a project directory inside
+// it in the shape a coordinator seat runs from. Nothing here touches the real
+// store: the resolver reads os.homedir(), which follows USERPROFILE and HOME.
+function storeHomeFixture() {
+    const home = makeDir('kit-compact-gate-home-');
+    const storeRoot = path.join(home, '.claude');
+    // The hostname is read at runtime rather than written into the fixture, so
+    // no machine name ships in the suite.
+    const project = path.join(storeRoot, 'coordinator', os.hostname(), 'seat');
+    fs.mkdirSync(project, { recursive: true });
+    return { home, storeRoot, project };
+}
+
+function withHome(home, fn) {
+    const saved = { USERPROFILE: process.env.USERPROFILE, HOME: process.env.HOME };
+    process.env.USERPROFILE = home;
+    process.env.HOME = home;
+    try {
+        return fn();
+    } finally {
+        for (const key of Object.keys(saved)) {
+            if (saved[key] === undefined) delete process.env[key];
+            else process.env[key] = saved[key];
+        }
+    }
+}
+
+// Every path under root, relative and forward-slashed, for the sweeps that
+// assert what a run did and did not leave behind.
+function walkPaths(root, prefix, out) {
+    const acc = out || [];
+    let entries;
+    try { entries = fs.readdirSync(root, { withFileTypes: true }); } catch { return acc; }
+    for (const e of entries) {
+        const rel = (prefix ? prefix + '/' : '') + e.name;
+        acc.push(rel);
+        if (e.isDirectory()) walkPaths(path.join(root, e.name), rel, acc);
+    }
+    return acc;
+}
+
+test('lib: a project directory inside the memory store resolves its scratch outside the store', () => {
+    const f = storeHomeFixture();
+    try {
+        withHome(f.home, () => {
+            for (const resolve of [gateStatePath, gateLogPath, roleBoundaryPath, consentPath, checkpointPath]) {
+                const target = resolve(f.project);
+                const escaped = path.relative(f.storeRoot, target);
+                assert.ok(escaped.startsWith('..'),
+                    'resolves outside the store root, got ' + target);
+                assert.ok(!path.relative(f.home, target).startsWith('..'),
+                    'and stays under the home directory, got ' + target);
+            }
+            // The store-relative shape is preserved under the home-anchored
+            // root, so two store-backed project directories cannot collide.
+            assert.notStrictEqual(gateStatePath(f.project),
+                gateStatePath(path.join(f.storeRoot, 'coordinator', os.hostname(), 'other')));
+        });
+    } finally {
+        rmDir(f.home);
+    }
+});
+
+test('lib: a project directory outside the store keeps its own .kit (the control)', () => {
+    // Without this the case above passes for a resolver that sends every cwd
+    // to the home-anchored root, which would move every ordinary repo's gate
+    // state off the repo it belongs to.
+    const f = storeHomeFixture();
+    const repo = makeDir('kit-compact-gate-repo-');
+    try {
+        withHome(f.home, () => {
+            assert.strictEqual(gateStatePath(repo), gateStateFile(repo));
+            assert.strictEqual(roleBoundaryPath(repo), roleBoundaryFile(repo));
+            assert.strictEqual(consentPath(repo), consentFile(repo));
+            assert.strictEqual(checkpointPath(repo), path.join(repo, '.kit', 'compact-checkpoint.json'));
+        });
+    } finally {
+        rmDir(repo);
+        rmDir(f.home);
+    }
+});
+
+test('gate: a marker written from a store-backed project directory is read there, and the store stays clean', () => {
+    const f = storeHomeFixture();
+    try {
+        const transcript = path.join(f.project, 'transcript.jsonl');
+        writeUsageTranscript(transcript, 50000);
+        const wrote = withHome(f.home, () => writeRoleBoundary(f.project, SESSION));
+        assert.strictEqual(wrote.ok, true, 'test setup: marker should write');
+
+        const env = { USERPROFILE: f.home, HOME: f.home };
+        assertAllow(runGate(gatePayload(f.project, transcript), env));
+        const state = withHome(f.home,
+            () => JSON.parse(fs.readFileSync(gateStatePath(f.project), 'utf8')));
+        assert.strictEqual(state.lastDecision.reason, 'role-boundary',
+            'the gate read the marker from the resolved location');
+
+        // The pin: nothing this section's paths write lands under the store.
+        const left = walkPaths(f.storeRoot, '').filter((p) => /(^|\/)\.kit(\/|$)/.test(p));
+        assert.deepStrictEqual(left, [], 'no .kit path under the store root');
+    } finally {
+        rmDir(f.home);
     }
 });
 

@@ -75,6 +75,9 @@ claude-kit/                          (repo = the marketplace)
                                      let one land, at most once per 30-minute interval per tool batch
         docs-write-guard.js          Denies non-curator subagent writes into docs/
         stop-docs-hygiene.js         Stop-time docs-library backstop
+        seat-stop.js                 Stop hook for a registered seat: stamps its registry heartbeat and,
+                                     where its status push is recent and the tree is clean, opens the
+                                     compaction gate's role-boundary marker
         pr-docs-guard.js             Requires the docs work committed before the PR goes up
         merged-pr-push-guard.js      Blocks pushes to a branch whose PR already merged
         readonly-agent-guard.js      Keeps the judgment agents from mutating the tree they review

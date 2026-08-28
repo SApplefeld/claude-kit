@@ -1,8 +1,9 @@
 // Shared library for the boundary-gated compaction checkpoint, and for the
 // transcript reading its consumers share.
 //
-// The checkpoint is a small project-scoped JSON file (.kit/compact-checkpoint.json,
-// gitignored territory) recording the plan path a chapter boundary was reached
+// The checkpoint is a small project-scoped JSON file (compact-checkpoint.json
+// in the scratch directory kitScratchDir resolves below, gitignored territory
+// for an ordinary project) recording the plan path a chapter boundary was reached
 // for. It is the signal between two programs that must agree on its path and
 // shape: the checkpoint CLI (kit-compact-checkpoint.js) writes it at the
 // chapter-close ritual, and the PreCompact gate (kit-compact-gate.js) reads it
@@ -12,7 +13,8 @@
 // (checkpointMatches, with its age constants) here is what keeps the writer,
 // the gate, and the status report from drifting apart.
 //
-// The gate's decision record (.kit/compact-gate.json and its .jsonl log) is
+// The gate's decision record (compact-gate.json and its .jsonl log, in that
+// same resolved scratch directory) is
 // here for the same single-sourcing reason: the gate writes it and the
 // checkpoint CLI's status report reads it, so its paths and its shape belong in
 // one place.
@@ -31,13 +33,44 @@
 'use strict';
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 const { normalizePlanArg, pathErrnoClass, readGoal } = require('./kit-goal-lib.js');
 
+// The directory every file in this library lives in, for a given project
+// directory. Two branches, and the second exists because one project
+// directory the kit itself creates is inside a replicated tree.
+//
+// Ordinarily the answer is the project's own `.kit/`, gitignored territory
+// beside the work it describes. But the memory store at ~/.claude is a git
+// repository the sync pushes to a remote that reaches every machine, and a
+// seat whose project directory is the store's coordinator directory would
+// otherwise drop its gate state, its journal, and its markers into that
+// replicated tree. None of these files is meaningful on another machine: they
+// name a session id, a local plan path, and a local clock, and a journal that
+// replicates carries one box's decisions into every other box's copy. So a
+// project directory lying inside the store resolves instead to a home-
+// anchored directory outside it, which nothing syncs, keeping the store-
+// relative shape below it so two store-backed project directories cannot
+// collide.
+//
+// The store root is the home directory's .claude, read at call time so a
+// fixture home redirects it. One resolver serves every writer here and the
+// gate's own reader, which is what keeps a marker's writer and its reader
+// agreeing on where it lives.
+function kitScratchDir(cwd) {
+    const storeRoot = path.join(os.homedir(), '.claude');
+    const rel = path.relative(storeRoot, path.resolve(cwd));
+    const underStore = !path.isAbsolute(rel) && !/^\.\.(?:[\\/]|$)/.test(rel);
+    return underStore
+        ? path.join(os.homedir(), '.kit', 'store', rel)
+        : path.join(cwd, '.kit');
+}
+
 // Path to the checkpoint file for a given repo root.
 function checkpointPath(cwd) {
-    return path.join(cwd, '.kit', 'compact-checkpoint.json');
+    return path.join(kitScratchDir(cwd), 'compact-checkpoint.json');
 }
 
 // How long an open checkpoint stays honorable. There are two bounds, and which
@@ -566,12 +599,12 @@ function clearCheckpoint(cwd) {
 
 // Path to the gate's decision state for a given repo root.
 function gateStatePath(cwd) {
-    return path.join(cwd, '.kit', 'compact-gate.json');
+    return path.join(kitScratchDir(cwd), 'compact-gate.json');
 }
 
 // Path to the gate's append-only decision log for a given repo root.
 function gateLogPath(cwd) {
-    return path.join(cwd, '.kit', 'compact-gate.jsonl');
+    return path.join(kitScratchDir(cwd), 'compact-gate.jsonl');
 }
 
 // The log's bound. Both record classes run a few hundred bytes or less, and
@@ -615,10 +648,12 @@ const GATE_LOG_KEEP_BYTES = 1 * 1024 * 1024;
 // here, well before CHECKPOINT_PENDING_MAX_AGE_MS caps it. The two constants
 // answer different questions and are deliberately separate, but they are no
 // longer independent: shortening this one shortens the pending leg with it.
-// CONSENT_MAX_AGE_MS is defined as this value outright, so tuning this
-// constant also retunes how long an operator-consent marker stays honorable,
-// which is the one window in the release design bounded by code rather than
-// prose; the derivation and its reasoning live at that constant.
+// Both release markers' windows are defined as this value outright,
+// CONSENT_MAX_AGE_MS and ROLE_BOUNDARY_MAX_AGE_MS alike, so tuning this
+// constant retunes two windows and not one: how long an operator-consent
+// marker stays honorable, and how long a seat's declared role boundary does.
+// Those are the windows in the release design bounded by code rather than
+// prose; the derivations and their reasoning live at those constants.
 const GATE_EPISODE_MAX_IDLE_MS = 4 * 60 * 60 * 1000;
 
 // The verdicts a record may carry, and the only values recordGateDecision
@@ -1291,7 +1326,7 @@ function writableOrAbsent(target) {
 // every covered tool return for the life of the episode.
 function gateStateTarget(cwd) {
     try {
-        const kit = path.join(cwd, '.kit');
+        const kit = kitScratchDir(cwd);
         let dir;
         try {
             dir = fs.lstatSync(kit);
@@ -1300,14 +1335,18 @@ function gateStateTarget(cwd) {
             // directory, which is the one case the section header licenses
             // creating it: a leashed worktree run has no local .kit/ of its
             // own. Only ENOENT reads as absent; any other failure is an
-            // unknown answer and stays a refusal. The mkdir creates .kit
-            // itself and never a parent, and a failure there (a racing
-            // creator included) lands in the outer catch as { ok: false },
-            // degrading exactly as an unreadable directory does.
+            // unknown answer and stays a refusal. The mkdir is recursive
+            // because the store-backed branch of the resolver names a
+            // directory several levels below a root that need not exist yet,
+            // and the armed-goal condition above is what bounds it: a goal
+            // resolves only for a directory that is already there. A failure
+            // (a racing creator included) lands in the outer catch as
+            // { ok: false }, degrading exactly as an unreadable directory
+            // does.
             if (!err || err.code !== 'ENOENT') return { ok: false };
             const goal = readGoal(cwd);
             if (!goal || !goal.plan) return { ok: false };
-            fs.mkdirSync(kit);
+            fs.mkdirSync(kit, { recursive: true });
             dir = fs.lstatSync(kit);
         }
         if (!dir.isDirectory() || !writableOrAbsent(kit)) return { ok: false };
@@ -1598,27 +1637,74 @@ function endsOnLineBoundary(target) {
 
 // Path to the role-boundary marker for a given repo root.
 function roleBoundaryPath(cwd) {
-    return path.join(cwd, '.kit', 'compact-role-boundary.json');
+    return path.join(kitScratchDir(cwd), 'compact-role-boundary.json');
 }
 
 // Path to the operator-consent marker for a given repo root.
 function consentPath(cwd) {
-    return path.join(cwd, '.kit', 'compact-consent.json');
+    return path.join(kitScratchDir(cwd), 'compact-consent.json');
 }
 
-// How long each marker stays honorable. The boundary marker is a declared
-// moment, not a standing state: past half an hour the session that opened it
-// has moved into later work, and landing a compaction on the old declaration
-// is the mid-work placement the gate exists to prevent, so the bound sits on
-// the checkpoint's own order of freshness with room for one long tool call.
-// The consent bound is deliberately the deferral episode's idle bound rather
-// than a second number: both answer the same question, how long a moment's
-// word still describes the same working session, and an operator's release
-// may precede the next offer by a while (the offer only recurs while the
-// context sits past the trigger). Derived rather than restated so the two
-// cannot drift; evidence that ever tunes them apart turns the derivation into
-// its own literal.
-const ROLE_BOUNDARY_MAX_AGE_MS = 30 * 60 * 1000;
+// A session id a caller may scope a marker to, or null. The gate is charset
+// plus a leading-character rule, not charset alone: a value that opens with a
+// dash reads as an option to any parser that meets it later, so the first
+// character must be alphanumeric however clean the rest is. Session ids as
+// the harness mints them are UUID-shaped and pass untouched; anything else
+// degrades to the refusal at the call sites, never to an unscoped write. The
+// rule also carries a path-safety property two callers depend on, since a
+// passing value is a single path component: it holds no separator, is not a
+// dots-only name, and is inside the storage cap the marker writer enforces.
+// One definition serves the checkpoint CLI's marker verbs and the seat Stop
+// hook's registry lookup, so the value one of them refuses is not a value the
+// other joins onto a path.
+function usableSessionId(value) {
+    return (typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value))
+        ? value
+        : null;
+}
+
+// Whether the harness holds a transcript for this session under this project
+// directory, which is the corroboration a marker written at a directory the
+// caller named rather than stood in has to pass. A marker landing in a
+// project the named session never ran in is inert and silently so, and this
+// turns that miss into a refusal.
+//
+// The harness files a session's transcript as <session-id>.jsonl under
+// ~/.claude/projects/<flattened project path>, and the flattening is memq's
+// own sanitizeProjectPath, imported rather than restated so the two cannot
+// disagree about a directory name. memq is required lazily because this is
+// the only path here that needs it and the gate's own hot path must not pay
+// for loading it.
+//
+// Anything unresolvable reads as no transcript: the caller's refusal is the
+// conservative answer, and a marker not written costs one re-run at the right
+// directory while one written at the wrong one costs a release nothing reads.
+function projectHoldsSessionTranscript(projectDir, sessionId) {
+    try {
+        if (usableSessionId(sessionId) === null) return false;
+        const { sanitizeProjectPath } = require(path.join(__dirname, '..', 'scripts', 'memq.js'));
+        const dir = path.join(os.homedir(), '.claude', 'projects',
+            sanitizeProjectPath(path.resolve(projectDir)));
+        return fs.statSync(path.join(dir, sessionId + '.jsonl')).isFile();
+    } catch {
+        return false;
+    }
+}
+
+// How long each marker stays honorable. Both are the deferral episode's idle
+// bound rather than numbers of their own, because all three answer one
+// question: how long a moment's word still describes the same working
+// session. A seat opens the boundary marker at a banked moment its runbook
+// defines, and the invariant that moment carries is that context holds
+// nothing the disk does not, so a compaction anywhere inside the window costs
+// a re-read and never state; what the window has to cover is the seat's own
+// quiet gap between banked moments, which is the same order as the idle bound
+// and far longer than one tool call. The consent marker covers the same gap
+// from the other side, an operator's release preceding the next offer by a
+// while (the offer only recurs while the context sits past the trigger).
+// Derived rather than restated so the three cannot drift; evidence that ever
+// tunes one apart turns that one's derivation into its own literal.
+const ROLE_BOUNDARY_MAX_AGE_MS = GATE_EPISODE_MAX_IDLE_MS;
 const CONSENT_MAX_AGE_MS = GATE_EPISODE_MAX_IDLE_MS;
 
 // The one marker match rule, shared by its two consumers (the gate's release
@@ -2348,6 +2434,7 @@ module.exports = {
     roleBoundaryPath, consentPath, ROLE_BOUNDARY_MAX_AGE_MS, CONSENT_MAX_AGE_MS,
     markerMatches, readRoleBoundary, readConsent, readRoleBoundaryResult, readConsentResult,
     writeRoleBoundary, writeConsent, clearRoleBoundary, clearConsent,
+    projectHoldsSessionTranscript, usableSessionId,
     gateStatePath, gateLogPath, readGateState, readGateStateResult, recordGateDecision,
     gateEpisodeOpen, pendingOfferCorroborated, checkpointOwner, recordEpisodeNudge,
     projectGateEpisode, episodePhrase, wholeMinutesSince, gateCount,

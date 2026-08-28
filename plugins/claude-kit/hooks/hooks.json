@@ -172,6 +172,14 @@
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/kit-goal-stop.js\""
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/seat-stop.js\""
+          }
+        ]
       }
     ]
   }

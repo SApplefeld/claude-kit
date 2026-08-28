@@ -8,8 +8,9 @@
 // denied auto attempt is re-tried once per assistant turn, indefinitely), so
 // the kit uses the veto as a scheduler: deny auto-compaction mid-chapter,
 // stand aside once the chapter-close ritual or an interim board entry has
-// written a boundary checkpoint (.kit/compact-checkpoint.json, via
-// kit-compact-checkpoint.js), and the compaction lands on the first attempt
+// written a boundary checkpoint (compact-checkpoint.json in the project's
+// scratch directory, via kit-compact-checkpoint.js), and the compaction lands
+// on the first attempt
 // after the boundary. The kit summarizes
 // nothing itself; re-grounding after the compaction is the existing
 // SessionStart plan-doc recovery.
@@ -153,8 +154,10 @@
 //      (monotonic across a session, so a rising-signal ceiling check is
 //      sound).
 //   7. No live operator-consent marker names this session. The consent marker
-//      (.kit/compact-consent.json, written by kit-compact-checkpoint.js
-//      consent, only on the operator's explicit word) releases one deferred
+//      (compact-consent.json in the project's scratch directory, which
+//      kitScratchDir in kit-compact-lib.js resolves, written by
+//      kit-compact-checkpoint.js consent, only on the operator's explicit
+//      word) releases one deferred
 //      compaction for the session it names, on this leg and the interactive
 //      one: a scheduling release, converting "not at this moment" into "now",
 //      never touching an allow clause or the checkpoint rule. It is read only
@@ -182,11 +185,15 @@
 // or above the ceiling or on an illegible reading. Two release markers can
 // end this hold before the ceiling, both read only where the deny would
 // otherwise fire: a live role-boundary marker naming the offering session
-// (.kit/compact-role-boundary.json, opened by a goalless role seat at a
-// banked-and-empty moment via kit-compact-checkpoint.js boundary) lands the
-// compaction at that declared boundary, and a live operator-consent marker
-// naming it does the same on the operator's word. Each allow consumes its
-// marker, single-shot, and journals its own reason (role-boundary,
+// (compact-role-boundary.json in the project's scratch directory, which
+// kitScratchDir in kit-compact-lib.js resolves for writer and reader alike)
+// lands the compaction at that declared boundary, and a live operator-consent
+// marker naming it does the same on the operator's word. The boundary marker's
+// ordinary writer is the seat-stop.js Stop hook, which opens it at a turn end
+// off the registered seat's own status push over a clean tree; the
+// kit-compact-checkpoint.js boundary subcommand writes the same marker by hand
+// and is the fallback for a seat the registry does not carry. Each allow
+// consumes its marker, single-shot, and journals its own reason (role-boundary,
 // operator-consent); a marker naming another session, a consumed one, and a
 // stale one release nothing and are left in place under a deny, so a
 // marker-less session takes exactly the path it always did, while the

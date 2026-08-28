@@ -532,6 +532,36 @@ test('the coordinator skill is tracked and carries what it is pointed at for', (
     assertTrackedInIndex(parts.join('/'));
 });
 
+// One number on two surfaces. The coordinator skill's banked-pass paragraph
+// rests its coverage argument on an equality: the role-boundary marker's age
+// bound is the seat's own reconciliation cadence, so a marker opened at the end
+// of one pass is still live when the paced wake fires. The bound lives in code
+// as ROLE_BOUNDARY_MAX_AGE_MS; the cadence lives in that skill's prose as a
+// figure. Nothing else reads the two together, so shortening the constant would
+// leave the skill arguing coverage it no longer has, silently and with the
+// suite green. The assertion above pins the prose figure at a literal 4 for the
+// status round's own pricing; this one pins the same figure against the
+// constant, which is what reddens when the constant moves.
+test('the coordinator\'s stated cadence is the role-boundary marker\'s own age bound', () => {
+    const { ROLE_BOUNDARY_MAX_AGE_MS } = require(path.join(__dirname, '..',
+        'plugins', 'claude-kit', 'hooks', 'kit-compact-lib.js'));
+    const hours = ROLE_BOUNDARY_MAX_AGE_MS / (60 * 60 * 1000);
+    assert.ok(Number.isInteger(hours) && hours > 0,
+        'the role-boundary marker\'s age bound is no longer a whole number of '
+        + 'hours, so the coordinator skill cannot state it as one: give the '
+        + 'skill\'s cadence a spelling that matches and pin that spelling here');
+    const body = fs.readFileSync(path.join(__dirname, '..', 'plugins',
+        'claude-kit', 'skills', 'coordinator', 'SKILL.md'), 'utf8');
+    assert.match(body,
+        new RegExp('reconciliation timer[^\\n]{0,60}every ' + hours + ' hours', 'i'),
+        'the coordinator skill\'s banked-pass paragraph argues that a marker '
+        + 'opened at the end of one pass is still live when the next paced wake '
+        + 'fires, which holds only while the seat\'s reconciliation cadence and '
+        + 'the role-boundary marker\'s age bound (ROLE_BOUNDARY_MAX_AGE_MS, '
+        + hours + ' hours) are the same figure; the skill no longer states that '
+        + 'cadence as every ' + hours + ' hours');
+});
+
 // The coordinator's function count is a counted claim stated on two surfaces
 // of its own file, the enumeration heading and the closed-set sentence, and
 // restated on four sibling surfaces: one peer-sessions clause, README's
