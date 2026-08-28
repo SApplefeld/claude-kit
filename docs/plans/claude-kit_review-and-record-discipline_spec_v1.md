@@ -4,7 +4,7 @@ Status: In Progress
 Commit Model: Commit-and-Push
 Created: 2026-08-27
 
-Session model: Opus, in a clean session opened in the kit repo. The running order, recorded in each plan's header and in `docs/plans/README.md`: seat-infrastructure (1), memq-network-cwd-resolver (2), this plan (3), plan-lifecycle-and-diagnostics (4), with testing-discipline complete and archived ahead of the whole queue. The start condition is observable and names its check: this plan starts when `docs/plans/claude-kit_testing-discipline_spec_v1.md` and `claude-kit_memq-network-cwd-resolver_spec_v1.md` both read `Status: Complete` or sit in `docs/archive/`, because that pair edits two of this plan's amendment surfaces (executing-work, both doctrine copies) first. The seat-infrastructure plan shares no files with this one and does not gate it; the machine's one-suite-at-a-time budget is the only constraint it adds. Authored by the KIT: Expert seat from seven 2026-08-26 kaizen notes on review and record discipline. Anchors as of commit `6a928f7`; re-locate by content.
+Session model: Opus, in a clean session opened in the kit repo. The running order, recorded in each plan's header and in `docs/plans/README.md`: seat-infrastructure (1), memq-network-cwd-resolver (2), this plan (3), plan-lifecycle-and-diagnostics (4), with testing-discipline complete and archived ahead of the whole queue. The start condition is observable and names its check: this plan starts when `docs/plans/claude-kit_testing-discipline_spec_v1.md` and `claude-kit_memq-network-cwd-resolver_spec_v1.md` both read `Status: Complete` or sit in `docs/archive/`, because that pair edits two of this plan's amendment surfaces (executing-work, both doctrine copies) first. The seat-infrastructure plan shares one file with this one, `plugins/claude-kit/skills/executing-work/SKILL.md` (its Section 3 adds the dispatch-brief box-budget clause), and the queue order already sequences it strictly first; beyond that ordering, the machine's one-suite-at-a-time budget is the only constraint it adds. Authored by the KIT: Expert seat from seven 2026-08-26 kaizen notes on review and record discipline. Anchors as of commit `6a928f7`; re-locate by content.
 
 ## Dispatch Authorization
 
@@ -100,7 +100,7 @@ Files in scope: `plugins/claude-kit/skills/operating-instructions/SKILL.md`, `ho
 
 - The testing-discipline plan's own executing-work and doctrine edits: slate position 1, already in execution; this plan starts after its queue completes and re-reads every shared file then (Standing Amendment 2).
 - New review lenses or roster changes: every amendment here tunes an existing surface.
-- The seat-infrastructure plan (`docs/plans/claude-kit_seat-infrastructure_spec_v1.md`): slate position 1, its own effort, sharing no files with this one.
+- The seat-infrastructure plan (`docs/plans/claude-kit_seat-infrastructure_spec_v1.md`): slate position 1, its own effort, sharing only `executing-work/SKILL.md`, which the queue order sequences it into strictly first.
 
 ## Related
 
