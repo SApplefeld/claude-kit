@@ -89,6 +89,8 @@ The weighed options, kept as the decision record:
 
 8. A paragraph is the edit unit for a curated document, never the sentence. Where a change falsifies a claim that sits inside a paragraph, the whole paragraph is re-read and rewritten as one; a sentence-level replacement that leaves its neighbours unread is Amendment 2's recorded defect mode arriving in a document rather than in skill prose, and it fails the same way: the replaced sentence is right, and a clause beside it describing the same retired mechanism in different words survives and now contradicts it inside one paragraph. Amendment 2 binds what a reviewer is briefed to read; this binds what a writer edits, and it reaches every curated surface rather than skill files alone. A sweep's dispositions take the same unit, which is what makes this more than style: a referrer is settled by reading the paragraph that holds it, never by reading the grep line, because the grep line is exactly the sentence whose neighbours the miss lives in.
 
+9. When a review retires or repairs a mechanism, every sibling mechanism resting on the same warrant is enumerated and dispositioned in the same round, never only the site the finding named. A finding arrives as one location, and a fix aimed at that location leaves untouched every other rule written from the same reasoning, which then reads as reviewed precisely because the round that examined its twin reported itself closed. Section 4 produced the case twice over: the reconciliation sweep was retired because its corroboration ran through the registry entry an attacker writes, and the registry prune one paragraph away kept the identical warrant, shipping two rounds later still claiming to rest on corroboration it does not have. The unit of disposition is the warrant rather than the paragraph, the file, or the finding's own coordinates: name the reasoning the repaired rule rested on, enumerate every rule this changeset's files state on that same reasoning, and give each one a disposition with the rule that settles it, per Amendment 7. A sibling left as it stands is named as such with its reason, because a round that repairs one of two twins and reports itself clean reads exactly like a round that checked both.
+
 ## Sections of Work
 
 ### 1. The allowlist and drift reporting admit `coordinator/` (element A)
@@ -174,7 +176,7 @@ Model: opus
 
 The coordinator skill's reconciliation pass gains the registry as a source and the diff as its shape: the pass diffs the live roster against `registry/`. A session both surfaces answer for is the ordinary live case, its state read from its own entry. A session the registry carries that no roster row resolves to is a candidate rather than a verdict, because the join between the two runs through a registry entry any local session writes: the heartbeat reading is what decides it, a stamp that advanced past the entry's start and has since gone stale past twice the seat's stated cadence reading as exited and taking the prune, which is the one write the coordinator makes under `registry/`, a prune and never an edit. An absent stamp, and the `none` the takeover shape writes, read as unknown rather than as stale and prune nothing, which is every entry on an install carrying no heartbeat writer. The elevated seat is decided by that same stamp rather than by an exemption, since being off the roster is the exited leg's own trigger and an exemption asserted there would not hold. A roster row the registry does not answer for is marked unregistered and never polled, the mark scoped to local non-subagent rows so the board does not accrue a line per dispatched agent per pass. Reconciliation carries no path to a foreign claim at all: a claim the pass believes stale is the claim protocol's to adjudicate on that protocol's own clock, no artifact on this machine independently attesting that a session id is dead.
 
-The pass also operationalizes the claim protocol Section 3 hands it, which that section's review round established is otherwise assigned to this runbook and performed by nothing in it: the pass reads `claims/heavy-process.md` as a source alongside the registry, and it states the probe window and the release window Section 3's contract defers to it by name, as figures rather than as a feel, carried in this skill on the precedent Section 2's cadence pin already set rather than re-invented at each pass. Past a claim's declared duration the pass probes the claimant; unanswered past the stated probe window it releases the claim as a recorded, reversible decision, and it notifies the claimant, the release being an authority act rather than a measured fact. Where that decision is recorded is part of the rule rather than left to the seat, and the reason is that the alternative degrades silently: a release recorded only in a message dies with the session that sent it, leaving the next pass unable to tell a claim somebody adjudicated from one nobody ever looked at, which is the phantom hold arriving by a second route. So the release is written to the board, the coordinator's own single-writer surface, naming the claim, the elapsed window, and the decider; and the deletion of the released claim file cites that board line, so the artifact that disappears points at the record that outlives it. This is recorded as approval drift: Section 3's execution surfaced that the role skill assigns three claim duties to a runbook whose source list named neither the claim file nor the registry, and a contract whose only designated performer never performs it leaves a crashed session's claim standing as a phantom hold until an operator notices.
+The pass also operationalizes the claim protocol Section 3 hands it, which that section's review round established is otherwise assigned to this runbook and performed by nothing in it: the pass reads `claims/heavy-process.md` as a source alongside the registry, and it states by name, as figures rather than as a feel, exactly the two the contract defers to it, the probe window and the bound past which a claimant's own declared duration stops being honoured, carried in this skill on the precedent Section 2's cadence pin already set rather than re-invented at each pass. A third figure is what the runbook does not invent, and naming the count here is the guard: the release turns on the probe window this pass already states, so a release window is a name for a quantity that does not exist. Past the bounded declared duration the pass probes the claimant, and the release takes two legs rather than one, both required: the probe's send returned no failure and went unanswered past the probe window, and a roster reading agrees the claimant is not live. Together they license a recorded, reversible decision that notifies the claimant, the release being an authority act rather than a measured fact. Either leg alone leaves the claim standing as an untracked hold reported to the operator, and the second leg is not redundancy: a session holding the slot is by construction inside one long-running tool call and so cannot take the round a message is delivered at, which makes silence strongest exactly where releasing is most costly. Where that decision is recorded is part of the rule rather than left to the seat, and the reason is that the alternative degrades silently: a release recorded only in a message dies with the session that sent it, leaving the next pass unable to tell a claim somebody adjudicated from one nobody ever looked at, which is the phantom hold arriving by a second route. So the release is written to the board, the coordinator's own single-writer surface, naming the claim, the elapsed window, and the decider; the deletion of the released claim file cites that board line, so the artifact that disappears points at the record that outlives it; and a seat with no board to record it on releases nothing, exactly as it prunes nothing. This is recorded as approval drift: Section 3's execution surfaced that the role skill assigns claim duties to a runbook whose source list named neither the claim file nor the registry, and a contract whose only designated performer never performs it leaves a crashed session's claim standing as a phantom hold until an operator notices.
 
 Worker status derives from artifacts only, now stated as the pass's default rather than the funnel's aside: the goal CLI, plan-doc Chapters, `kit-events.jsonl`, the branch tip, and the registry status file (`Remaining:` and the Status lines). The operator-interface function bullet rewrites to match: status aggregation is the registry-and-artifact read, and a message goes out only for what no artifact carries to the party that needs it in time, which is the peer-sessions stance the skill already defers to. In peer-sessions, the status round's paragraph in the sanctioned-patterns section takes one amendment: the round is the residue for what no registry file or artifact carries, at its existing pricing; the pricing deferral to the coordinator's stated cadence stays as pinned in Section 2.
 
@@ -978,3 +980,109 @@ run itself, on each of four occasions.
 surfaces, then the close gate on a quiet box, then Chapter 4. The section has now
 run three fix rounds and four review rounds; the tier escalated once, at the
 second round, on a repeating finding class.
+
+### Interim board 8 - 2026-08-28
+
+Section 4's fourth fix round and fifth review round have both landed, and the
+section is still open. The round returned adversarial APPROVED_WITH_CONCERNS,
+blind CHANGES_REQUIRED and security CONCERNS, with no Critical on any lens for
+the second consecutive round. The tree-state bracket was byte-identical at both
+ends, and the parity lane was re-run by the orchestrator itself at every step:
+26 of 26, exit 0 read from the run's own exit code, on each of three occasions
+this boundary.
+
+**In-flight sections.** Section 4 only. Sections 1, 2 and 3 closed at `77462a5`,
+`ebf5ee0` and `fb0f194`; 5 through 10 not started. Base is `09b9db3`.
+
+**Live dispatches.** One: an `implementer-fable` fix round over the three skill
+files, the dispatch-brief clause and the parity test, carrying fifteen
+adjudicated items. Its first-turn reading is taken and clean, 16 non-synthetic
+assistant lines on the requested model with no synthetic placeholder.
+
+**Gate baseline.** Unchanged at 1,883 tests / 1,880 pass / 1 fail / 2 skipped,
+exit 1, 213.8 s at `fb0f194`; the section has taken no close gate yet.
+
+**What the fifth round established, and what it did not.** Every ruling from
+boards 5, 6 and 7 was located in shipped text by the adversarial lens, by file
+and line, rather than asserted, with one exception it named as partial: board 7
+ruling 4's rewrite of the plan's own body reached two paragraphs of three. The
+security lens answered both of its round questions by naming the rule that
+refuses each candidate path rather than by reporting a sweep clean, and found no
+second path to a foreign claim and no unmarked untrusted content. What the round
+did not establish is any Critical, on any lens, for the second round running.
+
+**Rulings adopted since the last boundary.**
+
+1. *A repair is aimed at the warrant, never at the finding's coordinates, and
+   that is now Standing Amendment 9.* The prune's paragraph still claimed to
+   rest on corroboration rather than on the registry entry, while both of the
+   readings it names are taken from that same entry. This is the identical
+   defect the sweep was retired for two rounds earlier, surviving one paragraph
+   away because the fix was aimed at the site the finding named. Two instances
+   of one class means the generator is at fault rather than the output, so the
+   amendment makes the unit of disposition the reasoning a rule rests on:
+   enumerate every rule in the changeset stated on that same reasoning and give
+   each one a disposition with the rule that settles it, naming any sibling left
+   as it stands. The overclaim grants nobody a new ability, since a session able
+   to write a peer's entry can already delete it; what it costs is the accuracy
+   of the audit line the same file calls the whole of the compensating control.
+2. *The never-polled sentence forecloses the claim probe against exactly the
+   population the address field was added for.* An unregistered heavy spawner is
+   both a marked roster row and a claimant the pass must probe, and the two
+   dispositions sit two paragraphs apart in one file with neither carving out
+   the other. Left as written, an unregistered writer's overdue claim can never
+   satisfy the release's first leg and the machine's one slot is held for good,
+   which is the stuck hold this section exists to close arriving through a seam.
+3. *A confirmation paid once does not cover text that can change afterwards.*
+   The launch-invocation screen correctly stopped presenting anything as
+   runnable, and then bounded its remaining control to one confirmation per
+   machine over a record any local session can rewrite and every syncing machine
+   reaches. The confirmation becomes per-resolution, or the seat records what it
+   confirmed and re-asks when the resolved text differs; no flag literal is
+   introduced either way, the earlier refusal to guess one standing.
+4. *The contract defines a path-bearing field and routes no reader of it through
+   the path screen.* The working-directory field is gated for writing and
+   ungated for reading, while the two files that do carry the screen apply it at
+   their own points of use. This is the second-producer shape: a sanitizing
+   guard is a property of the channel, so it belongs at the shared boundary the
+   moment a second producer appears. The registry filename's own session
+   identifier is named as a disclosure in the same edit, the privacy paragraph
+   having gated the field beside it at length and said nothing about the name.
+5. *An unverifiable transport behaviour is marked unverified rather than
+   asserted.* The dead-claimant branch rested on a send to an unresolvable name
+   returning a failure, which the messaging contract that owns sender-observable
+   outcomes never states and which that file's own rule therefore leaves
+   unverified. The contract says so plainly, and the branch is rewritten to hold
+   whichever way the send resolves, rather than the convenient direction.
+6. *Three more evaluability repairs.* The blocker funnel's corroboration leg
+   gains its three readings explicitly, with one vocabulary across the paragraph
+   and a stated disposition for the case that currently has none. The
+   forward-dated start stamp anchors at the first observing pass, since read as
+   the reading pass's own now it makes elapsed time zero forever and delivers
+   precisely the never-probed outcome it was written to prevent. And the release
+   window, a name for a figure no surface defines, becomes the probe window at
+   both sites.
+7. *The plan's own body carried the defect it was rewritten to remove.* Section
+   4's second paragraph still described a one-legged release, named the window
+   that does not exist, and restated a count of the claim duties. Board 7's
+   rewrite reached the section's opening paragraph and Section 3's body and
+   stopped one paragraph short, which is Amendment 8's own edit unit failing in
+   the hands that wrote it. Rewritten whole, with the count dropped rather than
+   corrected, since a restated count is an invariant nothing checks.
+8. *A dispatch stopped by a model safeguard is an environment fault, and its
+   accounting is recorded rather than absorbed.* The first round-6 dispatch
+   terminated on an API safeguard flag before writing anything, its transcript
+   holding the synthetic-only shape: zero non-synthetic assistant lines beside
+   one placeholder, with the payload files verified untouched. The error names a
+   deterministic content trigger rather than a capacity fault, so re-sending the
+   same brief would have reproduced it and spent the one same-model retry on a
+   certain repeat. The retry went out at the same tier with the threat narrative
+   stripped and every technical requirement intact, and started cleanly. The
+   pair rule is therefore not met and the tier stands; had the second stop
+   landed, this fable-tier section would have taken its stall raise.
+
+**Next action.** The fix round returns, then a sixth review round over the
+changed surfaces, then the close gate on a quiet box, then Chapter 4. The
+section has now run four fix rounds and five review rounds; the tier escalated
+once, at the second round, on a repeating finding class, and has had no
+Critical on either of the last two rounds.
