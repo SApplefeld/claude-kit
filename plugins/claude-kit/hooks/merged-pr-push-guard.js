@@ -95,13 +95,25 @@ function noteUngatedOverride() {
 // GIT_COMMON_DIR or GIT_CONFIG_GLOBAL redirects a git read at another
 // repository, and every fact this guard's decision rests on (the branch name,
 // the origin URL) comes from a git read. Nothing here needs any of them, since
-// every call runs under an explicit cwd.
+// every call names the repository it means through its own cwd.
+//
+// That cwd is the repository under inspection, which is what makes the second
+// variable below load-bearing rather than belt and braces. These queries run
+// through a shell, and cmd.exe resolves a bare command name against its
+// working directory before PATH, so a repository carrying a file named
+// git.cmd, gh.cmd or az.cmd is what runs. cmd.exe reads the suppressing
+// variable from its own environment, unlike libuv, which reads it from the
+// spawning process, so setting it here closes the route for all six queries
+// while leaving the shell form the az shim needs. hooks/kit-git-lib.js closes
+// the same route the other way, by spawning outside the repository, which is
+// available to it because it needs no shell.
 function queryEnv() {
     const env = Object.assign({}, process.env);
     for (const k of Object.keys(env)) {
         if (/^GIT_/i.test(k)) delete env[k];
     }
     env.GIT_TERMINAL_PROMPT = '0';
+    env.NoDefaultCurrentDirectoryInExePath = '1';
     return env;
 }
 
@@ -283,4 +295,4 @@ if (require.main === module) {
     process.exit(0);
 }
 
-module.exports = { budgetOverride, queryBudgetMs, pushArgs };
+module.exports = { budgetOverride, queryBudgetMs, pushArgs, queryEnv };

@@ -207,7 +207,8 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawn, spawnSync } = require('child_process');
+const { spawn } = require('child_process');
+const { gitOutput, gitChildEnv } = require('./kit-git-lib.js');
 
 const NUDGE_AFTER_DAYS = 30;   // stamp (or oldest-memory) age at which the nudge fires
 const DAY_MS = 86400000;
@@ -542,12 +543,11 @@ function driftNudge(cwd, memq) {
 // (a committed .vscode/settings.json terminal env) could point the ownership
 // check at a config that answers claudekit.memorysync=true and forge the gate.
 // None of these variables is needed here, since every call passes `-C <root>`.
+// The strip itself is spelled once, in the shared git runner (kit-git-lib.js),
+// which every hook's git calls already run through; this name is what the
+// detached sync relauncher below reads it by.
 function gitStoreEnv() {
-    const env = { ...process.env };
-    for (const k of Object.keys(env)) {
-        if (/^GIT_/i.test(k)) delete env[k];
-    }
-    return env;
+    return gitChildEnv();
 }
 
 // A read-only git subcommand run under the store root, or null on any
@@ -555,20 +555,12 @@ function gitStoreEnv() {
 // one of those is silence to syncNudge's caller, never a thrown error, which
 // is what lets a machine with no git at all, or a store that predates the
 // sync repo, pass through this check unremarked.
+//
+// The shared runner (kit-git-lib.js) is what supplies the `-C <root>` form,
+// the environment gitStoreEnv describes above, and a spawn working directory
+// outside the repository being read.
 function gitStoreOutput(root, args) {
-    let res;
-    try {
-        res = spawnSync('git', ['-C', root].concat(args), {
-            encoding: 'utf8',
-            timeout: GIT_TIMEOUT_MS,
-            stdio: ['ignore', 'pipe', 'ignore'],
-            env: gitStoreEnv()
-        });
-    } catch {
-        return null;
-    }
-    if (!res || res.error || res.status !== 0 || typeof res.stdout !== 'string') return null;
-    return res.stdout;
+    return gitOutput(root, args, { timeoutMs: GIT_TIMEOUT_MS });
 }
 
 // The recorded outcome of the last sync run, or null when there is none to

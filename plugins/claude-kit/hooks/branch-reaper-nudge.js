@@ -29,43 +29,48 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { gitOutput, gitRun } = require('./kit-git-lib.js');
 
 const FETCH_SKIP_MS = 10 * 60 * 1000; // skip the fetch if fetched within 10 minutes
+const GIT_TIMEOUT_MS = 4000;
+const FETCH_TIMEOUT_MS = 6000;
 
 function readStdin() {
     try { return fs.readFileSync(0, 'utf8'); } catch { return ''; }
 }
 
+// One git read, through the shared runner (kit-git-lib.js): git runs with
+// `-C <cwd>` from a working directory outside the repository being read and
+// with every GIT_* variable stripped from the child. Arguments are an array and
+// never a command string, and no shell is involved, so a ref name reaching argv
+// is an operand git cannot read as anything else.
+//
+// Returns stdout, and throws when git did not answer at all, which is the
+// contract each caller below reads: a git that fails is silence rather than a
+// fact, and every call sits inside a try that turns the throw into one.
 function git(cwd, args) {
-    return execSync('git ' + args, {
-        cwd,
-        timeout: 4000,
-        stdio: ['ignore', 'pipe', 'ignore'],
-        encoding: 'utf8'
-    });
+    const out = gitOutput(cwd, args, { timeoutMs: GIT_TIMEOUT_MS });
+    if (out === null) throw new Error('git did not answer');
+    return out;
 }
 
 function refExists(cwd, ref) {
-    try { git(cwd, `rev-parse --verify --quiet ${ref}`); return true; } catch { return false; }
+    try { git(cwd, ['rev-parse', '--verify', '--quiet', ref]); return true; } catch { return false; }
 }
 
 // Refresh remote-tracking refs, unless fetched recently. Bounded, auth-safe, and
 // fail-open: a failure or timeout just leaves the cached refs in place.
 function maybeFetch(cwd) {
     try {
-        const fh = git(cwd, 'rev-parse --git-path FETCH_HEAD').trim();
+        const fh = git(cwd, ['rev-parse', '--git-path', 'FETCH_HEAD']).trim();
         const full = path.isAbsolute(fh) ? fh : path.join(cwd, fh);
         if ((Date.now() - fs.statSync(full).mtimeMs) < FETCH_SKIP_MS) return; // recent: skip
     } catch { /* no FETCH_HEAD yet: fall through and fetch */ }
-    try {
-        execSync('git fetch --prune', {
-            cwd,
-            timeout: 6000,
-            stdio: ['ignore', 'ignore', 'ignore'],
-            env: Object.assign({}, process.env, { GIT_TERMINAL_PROMPT: '0' })
-        });
-    } catch { /* offline, slow, or no remote: proceed on cached refs */ }
+    // The result is unread: a fetch that fails, times out, or finds no remote
+    // leaves the cached refs in place, which is what the passes below read. The
+    // runner disables the credential prompt, so an authenticating remote fails
+    // fast instead of holding the session start open.
+    gitRun(cwd, ['fetch', '--prune'], { timeoutMs: FETCH_TIMEOUT_MS });
 }
 
 function main() {
@@ -94,7 +99,7 @@ function main() {
     // set, so a non-standard default name (trunk, release) is never counted
     // reapable or stranded. Unset origin/HEAD leaves the literal names.
     try {
-        const head = git(cwd, 'symbolic-ref --quiet refs/remotes/origin/HEAD').trim();
+        const head = git(cwd, ['symbolic-ref', '--quiet', 'refs/remotes/origin/HEAD']).trim();
         const name = head.replace(/^refs\/remotes\/origin\//, '');
         if (name) integrationNames.add(name);
     } catch { /* origin/HEAD unset: fall through */ }
@@ -103,7 +108,7 @@ function main() {
     // surfaced when stranded - being parked on a stranded branch is exactly when
     // the warning matters most.
     let current = '';
-    try { current = git(cwd, 'rev-parse --abbrev-ref HEAD').trim(); } catch { /* detached / not a repo */ }
+    try { current = git(cwd, ['rev-parse', '--abbrev-ref', 'HEAD']).trim(); } catch { /* detached / not a repo */ }
 
     // Reapable: verified merged into the integration ref, minus the permanent
     // names and the current branch. Also record the merged set so the stranded
@@ -111,7 +116,7 @@ function main() {
     const merged = new Set();
     let reapable = 0;
     try {
-        for (const raw of git(cwd, `branch --merged ${integ}`).split('\n')) {
+        for (const raw of git(cwd, ['branch', '--merged', integ]).split('\n')) {
             const name = raw.replace(/^[*+]?\s*/, '').trim();
             if (!name) continue;
             merged.add(name);
@@ -121,13 +126,13 @@ function main() {
 
     // Stranded suspects: a local branch whose upstream is GONE yet whose tip is
     // NOT reachable from the integration ref. The "gone" marker comes from the
-    // prune above and is read from `git branch -vv` (shell-safe: no format string
-    // with parentheses to quote across cmd.exe and sh). Matching the bracketed
+    // prune above and is read from `git branch -vv` rather than from a --format
+    // string, whose parentheses no reader here has to quote. Matching the bracketed
     // "[<upstream>: gone]" marker - not a bare "gone" - avoids false hits from a
     // commit subject. The current branch IS included here.
     let stranded = 0;
     try {
-        for (const raw of git(cwd, 'branch -vv').split('\n')) {
+        for (const raw of git(cwd, ['branch', '-vv']).split('\n')) {
             const line = raw.replace(/^[*+]?\s*/, '');
             if (!line.trim()) continue;
             if (!/\[[^\]]*:\s*gone\]/.test(line)) continue; // upstream present: active work, not stranded

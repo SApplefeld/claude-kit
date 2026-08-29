@@ -30,10 +30,30 @@ function rmDir(dir) {
     try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* best effort */ }
 }
 
+// The hook runs against the fixture and nothing else on this machine. The kit's
+// other session-start blocks read the operator's home directory, the plugin root
+// this suite is itself running under, and the project's git repository, and a
+// fixture carrying the kit-repo marker reaches all three, so each is pointed
+// somewhere the case owns: the home pair (what os.homedir() reads) at a
+// directory inside the fixture, the plugin root and the external-engine marker
+// dropped in every casing Windows carries them in, and every GIT_* variable
+// dropped so no repository this suite was started from can answer for the
+// fixture. process.env is spread rather than rebuilt so the child keeps its real
+// PATH, which a rebuilt object loses on Windows.
 function runHook(cwd) {
+    const env = { ...process.env };
+    for (const k of Object.keys(env)) {
+        if (/^(USERPROFILE|HOME|KIT_EXTERNAL_ENGINE|CLAUDE_PLUGIN_ROOT)$/i.test(k)) delete env[k];
+        if (/^GIT_/i.test(k)) delete env[k];
+    }
+    const home = path.join(cwd, 'fixture-home');
+    fs.mkdirSync(home, { recursive: true });
+    env.USERPROFILE = home;
+    env.HOME = home;
     return spawnSync(process.execPath, [HOOK], {
         input: JSON.stringify({ cwd }),
-        encoding: 'utf8'
+        encoding: 'utf8',
+        env
     });
 }
 

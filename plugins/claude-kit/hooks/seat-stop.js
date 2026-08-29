@@ -49,7 +49,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawnSync } = require('child_process');
+const { gitOutput } = require('./kit-git-lib.js');
 const { writeRoleBoundary, usableSessionId } = require('./kit-compact-lib.js');
 
 // How often the heartbeat is rewritten. The stamp's only reader asks whether
@@ -149,18 +149,9 @@ function stampHeartbeat(full, text) {
 // declared, so the conservative direction here is the permissive one, and a
 // seat whose project directory is not a checkout has no tree to be mid-work on.
 function treeIsClean(cwd) {
-    try {
-        const res = spawnSync('git', ['status', '--porcelain'], {
-            cwd,
-            encoding: 'utf8',
-            timeout: GIT_TIMEOUT_MS,
-            windowsHide: true
-        });
-        if (res.error || res.status !== 0 || typeof res.stdout !== 'string') return true;
-        return res.stdout.trim() === '';
-    } catch {
-        return true;
-    }
+    const out = gitOutput(cwd, ['status', '--porcelain'], { timeoutMs: GIT_TIMEOUT_MS });
+    if (out === null) return true;
+    return out.trim() === '';
 }
 
 function main() {

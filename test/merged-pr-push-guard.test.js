@@ -643,3 +643,72 @@ test('an ambient GIT_DIR cannot redirect the queries the decision rests on', () 
         assert.match(r.stderr, /already merged/);
     } finally { rmDir(repo); rmDir(decoy); rmDir(shim); }
 });
+
+// A repository is a place an attacker can put a file, and cmd.exe resolves a
+// bare command name against its working directory before PATH. Every query this
+// guard makes runs a shell with the repository as that working directory, so the
+// environment those queries run under carries the suppressing variable, and
+// cmd.exe reads it from its own environment rather than from the spawning
+// process.
+//
+// The variable is cleared from this process around the call, because
+// queryEnv() copies process.env: a suite whose own shell exports the variable
+// hands the function a copy that already carries it, and the assertion then
+// holds whether or not the function sets it. Clearing it is what makes this
+// case about the function. Windows only, since no POSIX shell searches its
+// working directory for a bare name.
+const SUPPRESSOR = 'NoDefaultCurrentDirectoryInExePath';
+
+function withoutSuppressor(fn) {
+    const had = Object.prototype.hasOwnProperty.call(process.env, SUPPRESSOR);
+    const previous = process.env[SUPPRESSOR];
+    delete process.env[SUPPRESSOR];
+    try { return fn(); } finally { if (had) process.env[SUPPRESSOR] = previous; }
+}
+
+test('a command planted in the repository is not what the guard\'s queries run',
+    { skip: process.platform !== 'win32' ? 'the resolution rule is Windows only' : false }, () => {
+    const repo = makeDir('mpr-plant-');
+    try {
+        fs.writeFileSync(path.join(repo, 'zzprobe.cmd'), '@echo off\r\necho PLANT\r\n', 'ascii');
+
+        withoutSuppressor(() => {
+            // The control comes first, because an absence check that was never
+            // shown to speak reads exactly like a healthy result. The same
+            // command under the same working directory, with only the
+            // suppressor removed from the environment the guard built, runs the
+            // planted file.
+            const unscrubbed = guard.queryEnv();
+            delete unscrubbed[SUPPRESSOR];
+            const control = execSync('zzprobe', {
+                cwd: repo, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], env: unscrubbed
+            });
+            assert.match(control, /PLANT/,
+                'the control did not reach the planted command, so the assertion below proves nothing');
+
+            // The subject: the environment the guard actually uses.
+            let ran = null;
+            try {
+                ran = execSync('zzprobe', {
+                    cwd: repo, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], env: guard.queryEnv()
+                });
+            } catch { /* not resolving is the pass */ }
+            assert.strictEqual(ran, null,
+                'the guard resolved a command out of the repository it was inspecting: ' + ran);
+        });
+    } finally { rmDir(repo); }
+});
+
+// The GIT_* strip and the resolution suppressor are two independent properties
+// of one environment, so the environment is asserted to carry both rather than
+// leaving the second to the behavioural case alone. The same clearing applies
+// for the same reason.
+test('the query environment carries no GIT_ variable, refuses a prompt, and suppresses cwd resolution', () => {
+    withoutSuppressor(() => {
+        const env = guard.queryEnv();
+        const leaked = Object.keys(env).filter((k) => /^GIT_/i.test(k) && k !== 'GIT_TERMINAL_PROMPT');
+        assert.deepStrictEqual(leaked, [], 'GIT_ variables reached the query environment: ' + leaked);
+        assert.strictEqual(env.GIT_TERMINAL_PROMPT, '0');
+        assert.strictEqual(env[SUPPRESSOR], '1');
+    });
+});

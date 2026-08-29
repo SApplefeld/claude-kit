@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // SessionStart hook: compaction/startup recovery, plus a kit-repo kaizen nudge,
 // a docs-library hygiene nudge, an armed-goal notice, a backlog block
-// (any project with a docs/backlog.md), and a shared-checkout advisory when
-// another session of this project has written a transcript recently.
+// (any project with a docs/backlog.md), a kit-repo plugin-view staleness line,
+// and a shared-checkout advisory when another session of this project has
+// written a transcript recently.
 // Scans docs/plans/ for in-progress plan docs and injects an instruction to
 // re-read them (including Chapters) before any work proceeds. Fires on
 // startup, resume, and (critically) after compaction.
@@ -19,6 +20,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { gitRun, gitOutput } = require('./kit-git-lib.js');
 const {
     readGoal, lastActivePhrase, isSessionIdShaped, queuePosition, planHeadText, classifyPlanStatus
 } = require('./kit-goal-lib.js');
@@ -40,6 +42,30 @@ const SHARED_CHECKOUT_WINDOW_MS = 10 * 60 * 1000;
 // directory someone has filled cannot turn session start into an unbounded walk.
 const SIBLING_SCAN_MAX_ENTRIES = 4096;
 
+// Bound on each git read the plugin-view comparison makes, so a wedged or
+// stalled git never holds up a session start. Three reads at most run (HEAD,
+// then one ancestry question in each direction), and this hook blocks the
+// session for as long as they take, so the worst case a session start pays
+// here is three times this bound.
+const PLUGIN_VIEW_GIT_TIMEOUT_MS = 2000;
+
+// Ceiling on the install record read below. The harness writes a few hundred
+// bytes per installed plugin, so this sits far above any real file and exists
+// only so session start cannot be made to pull an arbitrarily large file into
+// memory.
+const INSTALLED_PLUGINS_MAX_BYTES = 1024 * 1024;
+
+// Whether cwd is the claude-kit repo itself, keyed on the plugin manifest the
+// repo carries at a fixed path. Two checks here are kit-repo-scoped: the
+// kaizen count (friction is captured from anywhere, but the reminder to act
+// belongs where it can be acted on) and the plugin-view comparison (whose
+// subject is this kit's own install against this kit's own checkout). The
+// marker lives in one place so the two cannot come to disagree about which
+// repo they are in.
+function isKitRepo(cwd) {
+    return fs.existsSync(path.join(cwd, 'plugins', 'claude-kit', '.claude-plugin', 'plugin.json'));
+}
+
 // Read Hook Input from stdin.
 function readStdin() {
     try {
@@ -54,8 +80,7 @@ function readStdin() {
 // but the reminder to act belongs where it can be acted on. Injects a count only,
 // never inbox text. Any failure returns 0 (silent).
 function countPendingKaizen(cwd) {
-    const kitMarker = path.join(cwd, 'plugins', 'claude-kit', '.claude-plugin', 'plugin.json');
-    if (!fs.existsSync(kitMarker)) return 0;
+    if (!isKitRepo(cwd)) return 0;
 
     const inbox = path.join(cwd, 'kaizen');
     let count = 0;
@@ -476,6 +501,213 @@ function summarizeSiblingSessions(sessionId, transcriptPath) {
     return { count, phrase: lastActivePhrase(newestPath) };
 }
 
+// Whether a directory name is a git object name: the plugin cache names each
+// install's directory for a 12-character prefix of its commit, and the install
+// record spells that same prefix as its installPath leaf. Anything else is a
+// name rather than a commit identity (a dev-path or marketplace-clone plugin
+// root is named `claude-kit`), and reporting one as a version is how a
+// diagnostic states an answer it never established.
+function isShaShaped(value) {
+    return typeof value === 'string' && /^[0-9a-f]{7,40}$/i.test(value);
+}
+
+// Whether two shas name one commit. They are compared over the shorter one's
+// length: a 12-character cache-directory sha meets a 40-hex install sha here,
+// so a plain equality test would report two spellings of a single commit as a
+// lag, which is the false alarm this whole notice exists to avoid.
+function sameSha(a, b) {
+    const n = Math.min(a.length, b.length);
+    return a.slice(0, n).toLowerCase() === b.slice(0, n).toLowerCase();
+}
+
+// The commit THIS session's plugin view was loaded from, or null when the
+// running plugin root does not name one. The installed cache layout names each
+// install's directory for its commit (...<separator>claude-kit<separator><sha>),
+// so the root's own basename is the view's identity and is read directly. The
+// build stamp beside it (.claude-plugin/build-info.json, which kit-goal.js and
+// kit-version-nudge.js both read for their own purposes) is deliberately not
+// consulted: its hash is the SOURCE checkout's short hash at build time, a
+// different identity from the cache directory's, and comparing it against what
+// installed_plugins.json records would compare two unlike things. A dev-path
+// or clone install spells the basename `claude-kit`, which yields null and
+// drops the comparison rather than guessing.
+function sessionPluginSha() {
+    const root = process.env.CLAUDE_PLUGIN_ROOT || path.join(__dirname, '..');
+    const base = path.basename(root);
+    return isShaShaped(base) ? base : null;
+}
+
+// The commit the MACHINE has installed, read from the harness's own install
+// record, or null when nothing there resolves to one.
+//
+// The record keys each plugin as <plugin>@<marketplace>, and only the plugin
+// half is ours to match: another operator installs this kit from a marketplace
+// under a different name, and keying on the whole string would report every
+// such machine as having no kit installed. The reading is the entry's full
+// 40-hex gitCommitSha and nothing else. The 12-character version field beside
+// it is not a fallback, because that field carries whatever version scheme a
+// plugin uses, and a build number of the shape 20260828 is sha-shaped to any
+// hex test: a diagnostic that reports an identifier it never established is
+// worse than one that reports nothing, so a record with no gitCommitSha is no
+// reading at all.
+//
+// A plugin can be installed at more than one scope, so the key's value is an
+// array. The entry whose installPath leaf names this session's own plugin view
+// is preferred, since that is the entry this session is actually running from;
+// with no such match the first usable entry stands, which is the single-scope
+// case every ordinary machine is in.
+//
+// Any failure returns null (never throws).
+function installedKitSha(viewSha) {
+    const file = path.join(os.homedir(), '.claude', 'plugins', 'installed_plugins.json');
+    let record;
+    try {
+        // isFile before the size test and the read: a FIFO at this path reports
+        // size 0, passes the ceiling, and blocks readFileSync in open() forever,
+        // which would hold session start open with no timeout able to rescue it.
+        const st = fs.statSync(file);
+        if (!st.isFile() || st.size > INSTALLED_PLUGINS_MAX_BYTES) return null;
+        // Strip a leading BOM: a UTF-8-with-BOM record would otherwise fail JSON.parse.
+        record = JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, ''));
+    } catch {
+        return null;
+    }
+    const plugins = record && typeof record.plugins === 'object' && record.plugins !== null
+        ? record.plugins
+        : null;
+    if (!plugins) return null;
+    let first = null;
+    for (const key of Object.keys(plugins)) {
+        if (key.split('@')[0] !== 'claude-kit') continue;
+        const entries = Array.isArray(plugins[key]) ? plugins[key] : [];
+        for (const entry of entries) {
+            if (!entry || typeof entry !== 'object') continue;
+            if (typeof entry.gitCommitSha !== 'string' || !/^[0-9a-f]{40}$/i.test(entry.gitCommitSha)) continue;
+            if (viewSha && typeof entry.installPath === 'string'
+                && isShaShaped(path.basename(entry.installPath))
+                && sameSha(path.basename(entry.installPath), viewSha)) {
+                return entry.gitCommitSha;
+            }
+            if (first === null) first = entry.gitCommitSha;
+        }
+    }
+    return first;
+}
+
+// This checkout's HEAD commit, or null when git does not answer with one: git
+// absent, a directory that is not a checkout, a nonzero exit, or a run past the
+// timeout. Every one of those is silence, which is what lets a session in a
+// kit-shaped directory that is not a checkout pass this check unremarked.
+function checkoutHeadSha(cwd) {
+    const out = gitOutput(cwd, ['rev-parse', 'HEAD'], { timeoutMs: PLUGIN_VIEW_GIT_TIMEOUT_MS });
+    if (out === null) return null;
+    const sha = out.trim();
+    return /^[0-9a-f]{40}$/i.test(sha) ? sha : null;
+}
+
+// Whether maybeAncestor is an ancestor of descendant in this checkout: true,
+// false, or null when git could not decide the question. Direction between two
+// shas is ancestry and nothing else, since shas are unordered and inequality
+// carries no direction at all.
+//
+// git spells the three apart by exit code: 0 for an ancestor, 1 for a clean
+// "no", and anything else for a question it could not answer (128 for a commit
+// this checkout does not contain, which is exactly the state a machine
+// installed from a fork or from an unfetched branch is in). The undecidable
+// case returns null rather than false so the caller can say the direction is
+// unknown instead of asserting the reverse of a question nobody answered.
+//
+// Both arguments have passed the sha shape test before reaching argv, and the
+// call runs through the shared runner as an argument array with no shell, so
+// nothing here can turn a repo-provided string into a git option or a command.
+function isAncestor(cwd, maybeAncestor, descendant) {
+    const res = gitRun(cwd, ['merge-base', '--is-ancestor', maybeAncestor, descendant],
+        { timeoutMs: PLUGIN_VIEW_GIT_TIMEOUT_MS });
+    if (res === null) return null;
+    if (res.status === 0) return true;
+    if (res.status === 1) return false;
+    return null;
+}
+
+// The staleness notice for a kit-repo session, or null when there is nothing to
+// say. Three readings drive it: the plugin view this session loaded, the
+// version the machine has installed, and this checkout's HEAD.
+//
+// Each comparison names which side lags, and the two lag at different levels,
+// which the wording says outright: a session's plugin view is frozen at session
+// start while the install keeps moving, so a difference there is normally this
+// session's view trailing and the remedy is a restart, while reporting it as a
+// stale install is a machine-level claim about a machine that is usually
+// current. The install against the checkout is the machine-level comparison,
+// and its direction comes from ancestry rather than from inequality.
+//
+// Fail-open throughout: any surface that does not resolve drops its own
+// comparison rather than guessing, and a payload where neither comparison
+// resolves carries no line at all. Shas are repo and machine data bound for a
+// trusted context channel, so each one goes through the same sanitizer every
+// other value here does.
+//
+// The machine-level part comes first when both fire, because the two remedies
+// are ordered acts: a restart taken before the install is updated loads the
+// same trailing kit again, so the reader meets the update first.
+//
+// Under KIT_EXTERNAL_ENGINE=1 the readings are stated with no remedy attached.
+// A spawned worker cannot restart its own session and has no operator at its
+// keyboard to run an install command, so a directive there is an instruction
+// nobody in the session can carry out.
+function composePluginViewNotice(cwd) {
+    if (!isKitRepo(cwd)) return null;
+
+    const worker = process.env.KIT_EXTERNAL_ENGINE === '1';
+    const view = sessionPluginSha();
+    const installed = installedKitSha(view);
+    const head = installed ? checkoutHeadSha(cwd) : null;
+    const parts = [];
+
+    if (installed && head && !sameSha(installed, head)) {
+        const installBehind = isAncestor(cwd, installed, head);
+        // The reverse ancestry is asked only of a clean `false`. A null means
+        // git could not resolve one of the two shas in this checkout, and the
+        // reverse question puts the same two shas to the same checkout, so it
+        // fails identically and buys nothing but a second timeout.
+        const checkoutBehind = installBehind === false ? isAncestor(cwd, head, installed) : null;
+        if (installBehind === true) {
+            parts.push(`Machine-level: the installed kit ${safeText(installed, 40)} is an ancestor of this`
+                + ` checkout's HEAD ${safeText(head, 40)}, so the machine's install trails this checkout`
+                + (worker ? '.' : ': run claude plugin update to install what is committed here.'));
+        } else if (checkoutBehind === true) {
+            parts.push(`Machine-level: this checkout's HEAD ${safeText(head, 40)} is an ancestor of the`
+                + ` installed kit ${safeText(installed, 40)}, so this checkout is behind the machine's`
+                + ` install rather than ahead of it.`);
+        } else if (installBehind === false) {
+            parts.push(`Machine-level: the installed kit ${safeText(installed, 40)} and this checkout's HEAD`
+                + ` ${safeText(head, 40)} differ, with neither an ancestor of the other: the two histories`
+                + ` have parted, which is what a branch cut before the installed commit looks like from`
+                + ` on it.`);
+        } else {
+            parts.push(`Machine-level: the installed kit ${safeText(installed, 40)} and this checkout's HEAD`
+                + ` ${safeText(head, 40)} differ, direction unknown: git answered neither ancestry question`
+                + ` here, which is what an installed commit this checkout holds no object for looks like,`
+                + ` the shape of an install from a fork or from a branch this checkout has not fetched.`);
+        }
+    }
+
+    if (view && installed && !sameSha(view, installed)) {
+        parts.push(`Session-level: this session loaded the kit installed at ${safeText(view, 40)} and the`
+            + ` machine's install now records ${safeText(installed, 40)}. A session's plugin view is frozen`
+            + ` at session start, so a difference here is normally this session's view trailing an install`
+            + ` that moved after the session began`
+            + (worker ? '.' : ': restart the session to load what is installed now.'));
+    }
+
+    if (parts.length === 0) return null;
+    const closing = worker
+        ? 'These readings are information: the session an external engine spawned cannot restart itself'
+            + ' or update the machine\'s install, and neither act is its to take.'
+        : 'Reminder, not a blocker.';
+    return 'Kit version check. ' + parts.join(' ') + ' ' + closing;
+}
+
 function main() {
     // Parse Hook Payload.
     let payload = {};
@@ -604,6 +836,19 @@ function main() {
         // Never let the backlog check break recovery or the session.
     }
 
+    // The plugin-view comparison is additive and must never affect plan
+    // recovery. A session keeps the plugin it loaded at startup, so a long
+    // session's view of the kit and the machine's install drift apart in
+    // silence, and in the kit repo the checkout is a third reading that drifts
+    // from both. Naming which one lags is what turns the restart and the
+    // update from remembered acts into triggered ones.
+    let pluginView = null;
+    try {
+        pluginView = composePluginViewNotice(cwd);
+    } catch {
+        // Never let the plugin-view check break recovery or the session.
+    }
+
     // Shared-checkout detection is additive and must never affect plan
     // recovery. Two sessions in one working tree overwrite each other's edits
     // with no signal from git, and the sessions cannot see each other, so the
@@ -636,7 +881,7 @@ function main() {
 
     // Emit Additional Context.
     if (!reload && activePlans.length === 0 && parkedPlans.length === 0 && kaizenCount === 0
-        && completedUnarchived === 0 && !goalBlock && !backlog && !siblings) return;
+        && completedUnarchived === 0 && !goalBlock && !backlog && !siblings && !pluginView) return;
 
     const blocks = [];
 
@@ -687,6 +932,10 @@ function main() {
 
     if (kaizenCount > 0) {
         blocks.push(`This is the claude-kit repo and the kaizen inbox has ${kaizenCount} pending item(s). At a natural stopping point, consider running a kaizen pass (see the kaizen skill). Reminder, not a blocker.`);
+    }
+
+    if (pluginView) {
+        blocks.push(pluginView);
     }
 
     if (goalBlock) {
