@@ -253,18 +253,164 @@ test('the block fires outside the kit repo, with no kit-repo marker present', ()
     } finally { rmDir(dir); }
 });
 
-test('an oversized backlog file exits 0 without a crash, reading only the bounded head', () => {
+test('a backlog file of any size inside the read ceiling is counted in full', () => {
     const dir = makeProject();
     try {
-        // Pad well past the 64 KB read cap before the Active section, so the
-        // parser must never read the whole file to stay bounded.
+        // The Active section and its item sit about 170 KB into the file and
+        // well inside the read ceiling, so the count is right only where the
+        // reader takes the file up to that ceiling rather than a head of it.
         const padding = '<!-- padding -->\n'.repeat(10000);
         writeBacklog(dir, `${padding}## Active\n\n- **Real item (2026-03-01).** Body.\n`);
         const r = runHook(dir);
         assert.strictEqual(r.status, 0);
-        // The Active heading and item sit past the 64 KB cap, so the bounded
-        // read never reaches them: no crash, and no block either.
-        assert.strictEqual(r.stdout, '');
+        const text = context(r);
+        assert.ok(text, 'the item deep inside the file is still counted');
+        assert.match(text, /docs\/backlog\.md holds 1 active item\(s\)/);
+        assert.match(text, /oldest dated 2026-03-01/);
+        // Inside the ceiling the summary is a total, and says nothing about
+        // being bounded.
+        assert.doesNotMatch(text, /went unread/);
+    } finally { rmDir(dir); }
+});
+
+// The reader's per-file ceiling, which the cases below build fixtures around.
+// Stated here rather than imported because the assertions are about what a
+// session is told, and a constant read out of the hook would move with it.
+const CEILING = 1024 * 1024;
+
+test('a backlog file past the read ceiling reports a bounded summary and counts no severed line', () => {
+    const dir = makeProject();
+    try {
+        // One whole item ahead of the ceiling, then padding, then a second item
+        // the ceiling cuts through. The severed head of that second line still
+        // opens with "- " and still carries its whole date token, so a reader
+        // that kept the fragment would report two items and age the backlog
+        // from a line that does not exist.
+        const head = '## Active\n\n- **Item ahead of the ceiling (2026-03-01).** Body.\n';
+        const second = '- **Item past the ceiling (2026-01-01).** Body.\n';
+        const severed = 40;
+        assert.ok(second.slice(0, severed).includes('2026-01-01'),
+            'the fixture must sever the second item after its date token');
+        const pad = '<!-- padding -->\n';
+        // One pad line short of the boundary, so the remainder below is always
+        // long enough to spell as a comment line.
+        const whole = pad.repeat(Math.floor((CEILING - severed - head.length) / pad.length) - 1);
+        const short = CEILING - severed - head.length - whole.length;
+        // The remainder rides on one comment line, so the byte before the
+        // ceiling is still the start of the severed item.
+        const filler = short === 0 ? '' : '<!--' + 'x'.repeat(short - 5) + '\n';
+        writeBacklog(dir, head + whole + filler + second);
+        assert.strictEqual(
+            fs.statSync(path.join(dir, 'docs', 'backlog.md')).size,
+            CEILING - severed + second.length,
+            'the fixture must place the ceiling inside the second item'
+        );
+        const r = runHook(dir);
+        assert.strictEqual(r.status, 0);
+        const text = context(r);
+        assert.ok(text, 'the item ahead of the ceiling is still counted');
+        assert.match(text, /docs\/backlog\.md holds 1 active item\(s\)/);
+        assert.match(text, /oldest dated 2026-03-01/);
+        assert.doesNotMatch(text, /2026-01-01/);
+        assert.match(text, /The file was not read in full, so every figure here is of what was read/);
+    } finally { rmDir(dir); }
+});
+
+test('a file past the read ceiling states its bound even where a heading closes the Active section', () => {
+    const dir = makeProject();
+    try {
+        // The read stops at the ceiling and the Snapshots heading ends the
+        // Active section well inside it. The figures below are of the whole
+        // section here, but the only evidence of that is a line-anchored regex
+        // over markdown, which a '## ' line inside a fenced code block would
+        // satisfy just as well; so a read that stopped short states its bound
+        // whatever followed the section, and understates a summary rather than
+        // risking a partial one presented as a total.
+        writeBacklog(dir, [
+            '## Active',
+            '',
+            '- **Only item (2026-03-01).** Body.',
+            '',
+            '## Snapshots',
+            '',
+            '<!-- padding -->\n'.repeat(CEILING / 16)
+        ].join('\n'));
+        assert.ok(fs.statSync(path.join(dir, 'docs', 'backlog.md')).size > CEILING,
+            'the fixture must be larger than the read ceiling');
+        const r = runHook(dir);
+        assert.strictEqual(r.status, 0);
+        const text = context(r);
+        assert.match(text, /docs\/backlog\.md holds 1 active item\(s\)/);
+        assert.match(text, /oldest dated 2026-03-01/);
+        assert.match(text, /The file was not read in full, so every figure here is of what was read/);
+    } finally { rmDir(dir); }
+});
+
+test('an Active heading past the read ceiling is reported as unread, not as an absent backlog', () => {
+    const dir = makeProject();
+    try {
+        // The heading sits past where the read stops. Silence here would tell
+        // the session the file has no active section at all, which is the
+        // reading the bytes cannot support.
+        writeBacklog(dir, '<!-- padding -->\n'.repeat(CEILING / 16)
+            + '## Active\n\n- **Unseen item (2026-03-01).** Body.\n');
+        const r = runHook(dir);
+        assert.strictEqual(r.status, 0);
+        const text = context(r);
+        assert.match(text, /docs\/backlog\.md was read only in part/);
+        assert.doesNotMatch(text, /active item\(s\)/);
+    } finally { rmDir(dir); }
+});
+
+test('an Active section whose items all sit past the read ceiling is reported as unread', () => {
+    const dir = makeProject();
+    try {
+        // The heading is inside the read and every item is past it, so the
+        // count is zero for a reason that is not an empty backlog.
+        writeBacklog(dir, '## Active\n\n' + '<!-- padding -->\n'.repeat(CEILING / 16)
+            + '- **Unseen item (2026-03-01).** Body.\n');
+        const r = runHook(dir);
+        assert.strictEqual(r.status, 0);
+        const text = context(r);
+        assert.match(text, /docs\/backlog\.md was read only in part/);
+        assert.doesNotMatch(text, /active item\(s\)/);
+    } finally { rmDir(dir); }
+});
+
+test('a backlog resolving out of the checkout is read as nothing at all', (t) => {
+    // The reader follows a link by design, so containment is the caller's
+    // judgment, and this caller's subject is repository data in whatever
+    // directory the session opened. A backlog reached through a link out of the
+    // tree would put a foreign file's item count and its oldest date into
+    // session context out of a repository nobody has read. A directory junction
+    // is the link kind this box creates without privilege; a file symlink at
+    // docs/backlog.md is the same rule reached by a different kind.
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'backlog-block-test-'));
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'backlog-outside-test-'));
+    try {
+        fs.writeFileSync(path.join(outside, 'backlog.md'),
+            '## Active\n\n- **Foreign item (2026-03-01).** Body.\n', 'utf8');
+        try {
+            fs.symlinkSync(outside, path.join(dir, 'docs'), 'junction');
+        } catch (err) {
+            return t.skip('this box refuses a junction: ' + err.code);
+        }
+        const r = runHook(dir);
+        assert.strictEqual(r.status, 0);
+        assert.strictEqual(context(r), null, 'nothing about the foreign backlog reaches the session');
+    } finally { rmDir(dir); rmDir(outside); }
+});
+
+test('the same backlog inside the checkout is read', () => {
+    // The control for the case above: identical content at a real docs/
+    // directory of the project's own is counted, so the refusal there is about
+    // where the path resolved and not about the fixture.
+    const dir = makeProject();
+    try {
+        writeBacklog(dir, '## Active\n\n- **Foreign item (2026-03-01).** Body.\n');
+        const r = runHook(dir);
+        assert.strictEqual(r.status, 0);
+        assert.match(context(r), /docs\/backlog\.md holds 1 active item\(s\)/);
     } finally { rmDir(dir); }
 });
 

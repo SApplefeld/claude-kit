@@ -37,6 +37,10 @@ const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 const { normalizePlanArg, pathErrnoClass, readGoal } = require('./kit-goal-lib.js');
+// The gate-log tail read below goes through the shared bounded reader: a
+// single readSync may legally return fewer bytes than asked for, and the fill
+// loop that closes it belongs to every hook read rather than to this one.
+const { readFully } = require('./kit-read-lib.js');
 
 // The directory every file in this library lives in, for a given project
 // directory. Two branches, and the second exists because one project
@@ -1217,21 +1221,6 @@ function gateOwnedFingerprint(state) {
         episode ? episode.denials : null,
         episode ? episode.lastDeniedAt : null
     ]);
-}
-
-// Read `length` bytes from `position`, looping until the buffer is full or the
-// file ends: a single readSync may legally return fewer bytes than asked for,
-// and treating a short read as the whole tail would cut the NEWEST line in half
-// and then append onto the fragment.
-function readFully(fd, position, length) {
-    const buf = Buffer.alloc(length);
-    let filled = 0;
-    while (filled < length) {
-        const n = fs.readSync(fd, buf, filled, length - filled, position + filled);
-        if (n <= 0) break;
-        filled += n;
-    }
-    return buf.toString('utf8', 0, filled);
 }
 
 // Rewrite the log to its newest GATE_LOG_KEEP_BYTES. The tail is taken at a

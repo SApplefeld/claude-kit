@@ -488,6 +488,23 @@ test('an absent, malformed or unmatched install record drops both comparisons', 
         assert.strictEqual(block(context(dir, view), NOTICE_LEAD), '',
             'an entry with no gitCommitSha is no reading, whatever its version says');
 
+        // Past the read ceiling: the record is read up to a megabyte, and part
+        // of a record answers nothing about the installed version. A version
+        // this hook cannot establish is one it must not report, so a bounded
+        // read is no reading rather than a partial one.
+        // The record is otherwise well formed and names an entry a whole read
+        // would report on, so what the silence measures is the ceiling.
+        const oversized = {
+            version: 2,
+            plugins: { 'claude-kit@applefeld': [installedEntry(second)] },
+            comment: 'x'.repeat(1024 * 1024)
+        };
+        writeInstalled(dir, [], { raw: JSON.stringify(oversized) });
+        assert.ok(fs.statSync(path.join(dir, 'home', '.claude', 'plugins', 'installed_plugins.json')).size
+            > 1024 * 1024, 'the fixture must be larger than the read ceiling');
+        assert.strictEqual(block(context(dir, view), NOTICE_LEAD), '',
+            'a record past the read ceiling is no reading');
+
         // The control for all of them: a well-formed entry under a key whose
         // marketplace half is some other operator's still matches, since the
         // plugin half is the part that identifies the kit.

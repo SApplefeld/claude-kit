@@ -218,6 +218,26 @@ test('a live sibling is found past the entries a crowded store lists ahead of it
     } finally { f.clean(); }
 });
 
+test('a transcript store that will not answer is reported as no reading, not as no sibling', () => {
+    // The scan's silence carries a claim: that no other session of this
+    // checkout wrote recently. A directory that could not be listed at all
+    // establishes nothing of the kind, so what the session gets is the absence
+    // of a reading and the coordination advice that rides with it.
+    const f = fixture();
+    try {
+        const notADirectory = path.join(f.transcripts, 'a-file');
+        fs.writeFileSync(notADirectory, 'not a directory\n');
+        const r = runHook(f.project,
+            { session_id: OWN_ID, transcript_path: path.join(notADirectory, `${OWN_ID}.jsonl`) },
+            f.home);
+        assert.strictEqual(r.status, 0);
+        const text = context(r);
+        assert.ok(text, 'a store that would not answer is not silence');
+        assert.match(text, /could not be listed in full, so this session has no reading/);
+        assert.doesNotMatch(text, /other session\(s\) of this project wrote/);
+    } finally { f.clean(); }
+});
+
 test('a payload carrying no session id emits nothing', () => {
     const f = fixture();
     try {

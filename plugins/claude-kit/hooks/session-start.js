@@ -22,6 +22,9 @@ const os = require('os');
 const path = require('path');
 const { gitRun, gitOutput } = require('./kit-git-lib.js');
 const {
+    readFileBounded, containedRealPath, listBoundedNames, DIR_SCAN_MAX_ENTRIES
+} = require('./kit-read-lib.js');
+const {
     readGoal, lastActivePhrase, isSessionIdShaped, queuePosition, planHeadText, classifyPlanStatus
 } = require('./kit-goal-lib.js');
 const { sameSessionId } = require('./kit-compact-lib.js');
@@ -34,12 +37,13 @@ const { sameSessionId } = require('./kit-compact-lib.js');
 // constants are.
 const SHARED_CHECKOUT_WINDOW_MS = 10 * 60 * 1000;
 
-// How many directory entries the sibling-session scan may examine. The store
-// holds one transcript plus one subdirectory per session of a project, kept for
-// as long as the harness keeps history, so a project worked for months lists
-// entries in the hundreds; this ceiling sits far above that so the scan reaches
-// a live sibling rather than stopping short of one, and exists only so a
-// directory someone has filled cannot turn session start into an unbounded walk.
+// How many sibling transcript names the scan may keep. The store holds one
+// transcript plus one subdirectory per session of a project, kept for as long
+// as the harness keeps history, so a project worked for months lists entries in
+// the hundreds; this ceiling sits far above that so the scan reaches a live
+// sibling rather than stopping short of one. What the walk READS is bounded
+// separately, by the entry ceiling listBoundedNames carries, so a directory
+// someone has filled cannot turn session start into an unbounded walk.
 const SIBLING_SCAN_MAX_ENTRIES = 4096;
 
 // Bound on each git read the plugin-view comparison makes, so a wedged or
@@ -54,6 +58,40 @@ const PLUGIN_VIEW_GIT_TIMEOUT_MS = 2000;
 // only so session start cannot be made to pull an arbitrarily large file into
 // memory.
 const INSTALLED_PLUGINS_MAX_BYTES = 1024 * 1024;
+
+// Ceiling on any one file a repository supplies that the nudges below read
+// whole: docs/backlog.md, and each kaizen note file. A real backlog runs to the
+// tens or low hundreds of KB and a note file to a few tens of KB over a
+// machine's whole history, so this sits far above every real shape while
+// holding what one file can cost a session start to a megabyte. The figure is
+// not argued from the honest file alone: this hook runs on startup, resume and
+// compaction in whatever directory the session opened, including a clone of
+// this public repository nobody has read, so the file that sets the bound is
+// the manufactured one. That is the same reasoning INSTALLED_PLUGINS_MAX_BYTES
+// above carries, and the same figure. A file over the ceiling is read to it and
+// reported as a bounded count rather than as a total.
+const NUDGE_FILE_READ_CEILING_BYTES = 1024 * 1024;
+
+// Ceiling on what the whole kaizen note walk reads, across every file it opens.
+// The per-file ceiling bounds one file and nothing bounds their product, so
+// without this the walk's worst case is the file cap times the ceiling, spent
+// synchronously at every session start in a directory that arranged it. The
+// budget is what makes that worst case a few megabytes instead. A real inbox is
+// a handful of files at tens of KB, so an honest walk never approaches it;
+// exhausting it leaves the remaining files unread and sets the count's bounded
+// flag.
+const KAIZEN_WALK_BUDGET_BYTES = 4 * 1024 * 1024;
+
+// Flood guards on how many names one directory walk keeps. A machine carries
+// a handful of note files, a healthy inbox a handful of briefs, and a project a
+// few dozen plan docs, so all three caps sit far above any real shape. What a
+// walk READS is bounded separately, by the entry ceiling listBoundedNames
+// carries, so a directory filled with non-matching names cannot turn one into
+// an unbounded walk. Like the byte bounds above, a cap that binds sets the
+// walk's bounded flag rather than letting a capped walk render as a total.
+const MAX_NOTE_FILES = 50;
+const MAX_BRIEF_FILES = 500;
+const MAX_PLAN_FILES = 50;
 
 // Whether cwd is the claude-kit repo itself, keyed on the plugin manifest the
 // repo carries at a fixed path. Two checks here are kit-repo-scoped: the
@@ -75,86 +113,156 @@ function readStdin() {
     }
 }
 
-// Count pending kaizen items (note lines plus briefs) in the kit repo.
-// Only fires inside the kit repo itself: friction is captured from anywhere,
-// but the reminder to act belongs where it can be acted on. Injects a count only,
-// never inbox text. Any failure returns 0 (silent).
-function countPendingKaizen(cwd) {
-    if (!isKitRepo(cwd)) return 0;
+// Space, tab, line feed, vertical tab, form feed and carriage return.
+function isAsciiSpace(code) {
+    return code === 0x20 || (code >= 0x09 && code <= 0x0D);
+}
 
-    const inbox = path.join(cwd, 'kaizen');
+// Non-empty, non-header lines in a note file's text. The scan walks the text
+// between newlines and measures each line in place: splitting and trimming
+// would hold an array of every line plus a trimmed copy of each beside the text
+// itself, several times the memory the read was bounded to. The whitespace set
+// is the ASCII one a markdown note carries (the CR ahead of a newline is what
+// makes it load-bearing) rather than the full Unicode class trim() applies,
+// which costs at most a line of exotic spacing counted as an item.
+//
+// A leading UTF-8 BOM is dropped first, the same strip summarizeBacklog applies
+// for the same reason: PowerShell's Set-Content writes one, so a note file in
+// this repository can carry it, and it sits ahead of the '#' the header test
+// below reads, where it would leave every BOM-prefixed note file reporting its
+// own header as a pending item. The ASCII whitespace set this scan uses does
+// not remove it.
+function countNoteLines(noteText) {
+    const text = noteText.charCodeAt(0) === 0xFEFF ? noteText.slice(1) : noteText;
     let count = 0;
-
-    try {
-        // Per-machine note files: kaizen/notes-<machine>.md. Count non-empty
-        // lines, excluding markdown headers: each file opens with a
-        // "# Kaizen inbox: <machine>" line that is structure, not a note.
-        const noteFiles = fs.readdirSync(inbox)
-            .filter((f) => /^notes-.*\.md$/i.test(f))
-            .slice(0, 50);
-        for (const f of noteFiles) {
-            try {
-                // Bounded read: never pull a huge file into memory just to count lines.
-                const fd = fs.openSync(path.join(inbox, f), 'r');
-                const buf = Buffer.alloc(65536);
-                const bytes = fs.readSync(fd, buf, 0, 65536, 0);
-                fs.closeSync(fd);
-                count += buf.toString('utf8', 0, bytes).split('\n')
-                    .map((l) => l.trim())
-                    .filter((l) => l.length > 0 && !l.startsWith('#')).length;
-            } catch {
-                // Unreadable note file: skip it.
-            }
-        }
-    } catch {
-        // No kaizen dir or no note files: nothing from there.
+    let i = 0;
+    while (i <= text.length) {
+        let end = text.indexOf('\n', i);
+        if (end === -1) end = text.length;
+        let s = i;
+        let e = end;
+        while (s < e && isAsciiSpace(text.charCodeAt(s))) s += 1;
+        while (e > s && isAsciiSpace(text.charCodeAt(e - 1))) e -= 1;
+        // A line opening with '#' is a markdown header: every note file opens
+        // with "# Kaizen inbox: <machine>", which is structure, not a note.
+        if (e > s && text.charCodeAt(s) !== 0x23) count += 1;
+        if (end === text.length) break;
+        i = end + 1;
     }
-
-    try {
-        // One file per brief: count regular files only.
-        const briefs = fs.readdirSync(path.join(inbox, 'briefs'), { withFileTypes: true })
-            .filter((d) => d.isFile() && !d.name.startsWith('.'));
-        count += briefs.slice(0, 500).length;
-    } catch {
-        // No briefs directory: nothing from there.
-    }
-
     return count;
 }
 
+// Count pending kaizen items (note lines plus briefs) in the kit repo, as
+// { count, bounded }. Only fires inside the kit repo itself: friction is
+// captured from anywhere, but the reminder to act belongs where it can be acted
+// on. Injects a count only, never inbox text.
+//
+// `bounded` is true whenever the count is of less than the whole inbox, which
+// this walk has five ways of being: a listing the file cap or the entry ceiling
+// truncated, a directory that could not be listed, a note file that could not
+// be read, a file past the per-file ceiling, and the walk's aggregate budget
+// running out. All five report one flag because they say one thing to the
+// session, that the number in the notice is a floor rather than a total.
+// Never throws: every read here degrades to a refusal the loop reads.
+function countPendingKaizen(cwd) {
+    if (!isKitRepo(cwd)) return { count: 0, bounded: false };
+
+    const inbox = path.join(cwd, 'kaizen');
+    let count = 0;
+    let bounded = false;
+
+    // Per-machine note files: kaizen/notes-<machine>.md.
+    const notes = listBoundedNames(inbox, MAX_NOTE_FILES, (d) => /^notes-.*\.md$/i.test(d.name));
+    if (notes.bounded) bounded = true;
+    let budget = KAIZEN_WALK_BUDGET_BYTES;
+    for (const name of notes.names) {
+        if (budget <= 0) {
+            // The walk has spent its budget: every file still on the list is
+            // unread, and the count is of what was read before it ran out.
+            bounded = true;
+            break;
+        }
+        // The containment judgment the shared reader leaves to its callers: a
+        // note file resolving outside this checkout is repository-supplied
+        // indirection, and a count taken off it would be of a file the
+        // repository merely points at.
+        const file = containedRealPath(cwd, path.join(inbox, name));
+        const read = file === null
+            ? null
+            : readFileBounded(file, Math.min(NUDGE_FILE_READ_CEILING_BYTES, budget));
+        if (read === null) {
+            // A note file that could not be read at all, that is not a regular
+            // file, or that resolves out of the checkout: the count is short by
+            // whatever it held.
+            bounded = true;
+            continue;
+        }
+        budget -= read.bytesRead;
+        if (read.bounded) bounded = true;
+        count += countNoteLines(read.text);
+    }
+
+    // One file per brief: count regular files only.
+    const briefs = listBoundedNames(
+        path.join(inbox, 'briefs'),
+        MAX_BRIEF_FILES,
+        (d) => d.isFile() && !d.name.startsWith('.')
+    );
+    if (briefs.bounded) bounded = true;
+    count += briefs.names.length;
+
+    return { count, bounded };
+}
+
 // Summarize the active backlog (docs/backlog.md) under cwd: item count, the
-// oldest dated item's ISO date and age in days, and an undated count. Fires
-// in any project, not just the kit repo (unlike countPendingKaizen above).
-// Injects numbers and a regex-extracted ISO date only, never item text: a
-// hostile backlog line cannot inject instructions into session context.
-// No file, unreadable file, no Active section, or zero items: returns null,
-// silently. Any failure returns null (never throws).
+// oldest dated item's ISO date and age in days, an undated count, and whether
+// the summary is bounded. Fires in any project, not just the kit repo (unlike
+// countPendingKaizen above). Injects numbers and a regex-extracted ISO date
+// only, never item text: a hostile backlog line cannot inject instructions into
+// session context.
+//
+// null when the file says nothing: absent, not a regular file, unreadable,
+// resolving out of the checkout, or read whole and holding no active items. A
+// link out of the checkout is refused here rather than inside the shared
+// reader, which follows a link by design: docs/backlog.md is repository data in
+// whatever directory the session opened, and a link out of the tree would put a
+// foreign file's item count and oldest date into session context. A bounded
+// read never returns null,
+// because "nothing is here" and "the part I read held nothing" are different
+// answers and only the first is silence. A bounded return with a zero count is
+// the second: the summary states its own limit instead of reading as an empty
+// backlog. Never throws.
 function summarizeBacklog(cwd) {
-    const file = path.join(cwd, 'docs', 'backlog.md');
-    let fd;
-    try {
-        fd = fs.openSync(file, 'r');
-    } catch {
-        return null;
-    }
-    let head;
-    try {
-        // Bounded read: never pull a huge file into memory to scan it.
-        const buf = Buffer.alloc(65536);
-        const bytes = fs.readSync(fd, buf, 0, 65536, 0);
-        head = buf.toString('utf8', 0, bytes);
-    } catch {
-        return null;
-    } finally {
-        try { fs.closeSync(fd); } catch { /* already closed or invalid */ }
-    }
+    const file = containedRealPath(cwd, path.join(cwd, 'docs', 'backlog.md'));
+    if (file === null) return null;
+    const read = readFileBounded(file, NUDGE_FILE_READ_CEILING_BYTES);
+    if (read === null) return null;
+    let head = read.text;
     if (head.charCodeAt(0) === 0xFEFF) head = head.slice(1);
 
     const activeHeading = /^##\s+Active/im.exec(head);
-    if (!activeHeading) return null;
+    // A bounded read holding no Active heading says nothing about whether the
+    // file has one, since the heading may sit past where the read stopped.
+    if (!activeHeading) {
+        return read.bounded
+            ? { count: 0, undated: 0, oldestIso: null, ageDays: null, bounded: true }
+            : null;
+    }
     const afterHeading = head.slice(activeHeading.index + activeHeading[0].length);
     const nextHeading = /^##\s/m.exec(afterHeading);
     const section = nextHeading ? afterHeading.slice(0, nextHeading.index) : afterHeading;
+
+    // Any read that stopped short of the file qualifies this summary. A heading
+    // after the Active section is evidence the section ended inside the bytes
+    // read, and reading the flag that way would tighten a true total; but the
+    // evidence is a line-anchored regex over markdown, which a '## ' line inside
+    // a fenced code block satisfies just as well, and this whole summary exists
+    // so a partial reading cannot reach a session as a total. So the flag errs
+    // toward stating the bound. What that costs is an over-ceiling file whose
+    // Active section genuinely ended early reported as bounded when it is
+    // complete, which understates the summary's confidence rather than
+    // overstating it.
+    const bounded = read.bounded;
 
     let count = 0;
     let undated = 0;
@@ -192,10 +300,12 @@ function summarizeBacklog(cwd) {
         }
     }
 
-    if (count === 0) return null;
+    // A bounded window that turned up no items is not an empty backlog: the
+    // items may sit past it, so the bound is reported rather than swallowed.
+    if (count === 0 && !bounded) return null;
 
     const ageDays = oldestMs === null ? null : Math.max(0, Math.floor((Date.now() - oldestMs) / 86400000));
-    return { count, undated, oldestIso, ageDays };
+    return { count, undated, oldestIso, ageDays, bounded };
 }
 
 // Repo-provided text bound for the trusted context channel: printable ASCII
@@ -408,7 +518,13 @@ function ownTranscriptDir(sessionId, transcriptPath) {
             return stem && sameSessionId(stem, sessionId) ? path.dirname(transcriptPath) : null;
         }
         const root = path.join(os.homedir(), '.claude', 'projects');
-        for (const entry of fs.readdirSync(root)) {
+        // The listing goes through the shared bounded reader, so a store filled
+        // with entries cannot turn this fallback into an unbounded walk. A
+        // listing cut short by the cap, or one the store would not give up,
+        // simply ends with no match, which is the same null an absent
+        // transcript answers with: this function's whole contract is a
+        // directory or nothing.
+        for (const entry of listBoundedNames(root, DIR_SCAN_MAX_ENTRIES, () => true).names) {
             const candidate = path.join(root, entry, sessionId + '.jsonl');
             try {
                 if (fs.statSync(candidate).isFile()) return path.join(root, entry);
@@ -420,18 +536,26 @@ function ownTranscriptDir(sessionId, transcriptPath) {
     }
 }
 
-// How many OTHER sessions of this checkout have written a transcript inside
-// the recency window, and how long ago the most recent of them wrote, or null
-// when none has. Recency is the whole signal: a transcript file outlives the
-// session that wrote it, so age is all that separates a session that may be
-// live from one that ended weeks ago.
+// How many OTHER sessions of this checkout have written a transcript inside the
+// recency window, how long ago the most recent of them wrote, and whether the
+// listing that answer came off was partial: { count, phrase, bounded }, or null
+// when the store says nothing at all. Recency is the whole signal: a transcript
+// file outlives the session that wrote it, so age is all that separates a
+// session that may be live from one that ended weeks ago.
 //
 // Only regular .jsonl files count (the store also keeps a per-session
 // subdirectory), and this session's own transcript is excluded through
 // sameSessionId, the comparison rule the goal notice and the Stop hook share,
 // so a mixed-case id cannot make a session report itself as a sibling. No
-// transcript is opened and no name or path leaves this function: a count and
-// an age are the whole result.
+// transcript is opened and no name or path leaves this function: a count, an
+// age and a bound are the whole result.
+//
+// The listing goes through the shared listBoundedNames, so what the walk READS
+// is capped where a store has been filled, and a cap that binds or a directory
+// that will not answer sets the bound rather than passing part of a store off
+// as a count of it. A bounded listing holding no sibling is still a result:
+// there, silence would tell a session no other session is live when nothing
+// here established that.
 //
 // Any failure returns null (never throws).
 function summarizeSiblingSessions(sessionId, transcriptPath) {
@@ -439,66 +563,53 @@ function summarizeSiblingSessions(sessionId, transcriptPath) {
     const dir = ownTranscriptDir(sessionId, transcriptPath);
     if (!dir) return null;
 
+    // Every filter that judges a NAME runs before any stat, so what a discarded
+    // entry costs is a directory entry rather than a syscall. The store keeps a
+    // per-session subdirectory beside each transcript, so most of what a
+    // long-lived project lists is discarded and never counts as a sibling,
+    // which is why the name cap sits far above the number of transcripts a
+    // project has: lowering it toward that number is what would miss a live
+    // sibling sitting behind them. A file named exactly '.jsonl' has an empty
+    // stem, and sameSessionId answers false for an empty side (that is the
+    // treat-as-absent handling an unbound goal needs), so without the stem test
+    // the stray file would count as another session of this checkout.
+    const listing = listBoundedNames(dir, SIBLING_SCAN_MAX_ENTRIES, (entry) => {
+        const name = entry.name;
+        if (!name.toLowerCase().endsWith('.jsonl')) return false;
+        const stem = name.slice(0, -6);
+        if (stem === '' || sameSessionId(stem, sessionId)) return false;
+        return entry.isFile();
+    });
+
     const cutoff = Date.now() - SHARED_CHECKOUT_WINDOW_MS;
     let count = 0;
     let newestPath = null;
     let newestMs = null;
-    let handle = null;
-    try {
-        handle = fs.opendirSync(dir);
-        for (let seen = 0; seen < SIBLING_SCAN_MAX_ENTRIES; seen += 1) {
-            const entry = handle.readSync();
-            if (entry === null) break;
-            // The ceiling above bounds the entries this loop READS, filtered or
-            // not, and it is sized far above what any realistic transcript store
-            // holds so the filters have room to discard: the store keeps a
-            // per-session subdirectory beside each transcript, so most of what a
-            // long-lived project lists here counts against the budget and never
-            // counts as a sibling. Lowering it toward the number of transcripts
-            // a project has is what would miss a live sibling sitting behind
-            // them. Every filter that judges a NAME runs before the stat, so
-            // what a discarded entry costs is a directory entry rather than a
-            // syscall. The listing is read incrementally rather than through
-            // readdirSync for the reason sweepStaleTmp in kit-goal-lib.js
-            // states: readdirSync materializes the whole directory before the
-            // first entry can be judged, so a ceiling on the loop alone would
-            // bound nothing.
-            const name = entry.name;
-            if (!name.toLowerCase().endsWith('.jsonl')) continue;
-            const stem = name.slice(0, -6);
-            // A file named exactly '.jsonl' has an empty stem, and sameSessionId
-            // answers false for an empty side (that is the treat-as-absent
-            // handling an unbound goal needs), so without this the stray file
-            // would count as another session of this checkout.
-            if (stem === '' || sameSessionId(stem, sessionId)) continue;
-            if (!entry.isFile()) continue;
-            const file = path.join(dir, name);
-            let mtimeMs;
-            try {
-                mtimeMs = fs.statSync(file).mtimeMs;
-            } catch {
-                continue;
-            }
-            if (!Number.isFinite(mtimeMs) || mtimeMs < cutoff) continue;
-            count++;
-            if (newestMs === null || mtimeMs > newestMs) {
-                newestMs = mtimeMs;
-                newestPath = file;
-            }
+    for (const name of listing.names) {
+        const file = path.join(dir, name);
+        let mtimeMs;
+        try {
+            mtimeMs = fs.statSync(file).mtimeMs;
+        } catch {
+            continue;
         }
-    } catch {
-        return null;
-    } finally {
-        if (handle) {
-            try { handle.closeSync(); } catch { /* already closed, or never opened cleanly */ }
+        if (!Number.isFinite(mtimeMs) || mtimeMs < cutoff) continue;
+        count++;
+        if (newestMs === null || mtimeMs > newestMs) {
+            newestMs = mtimeMs;
+            newestPath = file;
         }
     }
 
-    if (count === 0) return null;
+    if (count === 0 && !listing.bounded) return null;
     // The liveness phrase is single-sourced in kit-goal-lib (lastActivePhrase),
     // the same one the armed-goal notice and the CLI status report render, so
     // the three surfaces cannot answer the same mtime differently.
-    return { count, phrase: lastActivePhrase(newestPath) };
+    return {
+        count,
+        phrase: count === 0 ? null : lastActivePhrase(newestPath),
+        bounded: listing.bounded
+    };
 }
 
 // Whether a directory name is a git object name: the plugin cache names each
@@ -560,15 +671,18 @@ function sessionPluginSha() {
 // Any failure returns null (never throws).
 function installedKitSha(viewSha) {
     const file = path.join(os.homedir(), '.claude', 'plugins', 'installed_plugins.json');
+    // The kind, the ceiling and the fill are the shared reader's: a FIFO at this
+    // path reports size 0, passes any ceiling, and blocks a bare open forever,
+    // and a read that came back short would hand JSON.parse a truncated record.
+    // A bounded result is no reading rather than a partial one: part of a record
+    // answers nothing about the installed version, and a version this hook
+    // cannot establish is one it must not report.
+    const read = readFileBounded(file, INSTALLED_PLUGINS_MAX_BYTES);
+    if (read === null || read.bounded) return null;
     let record;
     try {
-        // isFile before the size test and the read: a FIFO at this path reports
-        // size 0, passes the ceiling, and blocks readFileSync in open() forever,
-        // which would hold session start open with no timeout able to rescue it.
-        const st = fs.statSync(file);
-        if (!st.isFile() || st.size > INSTALLED_PLUGINS_MAX_BYTES) return null;
         // Strip a leading BOM: a UTF-8-with-BOM record would otherwise fail JSON.parse.
-        record = JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, ''));
+        record = JSON.parse(read.text.replace(/^\uFEFF/, ''));
     } catch {
         return null;
     }
@@ -728,67 +842,83 @@ function main() {
     const activePlans = [];
     const readyPlans = [];
     let completedUnarchived = 0;
-    try {
-        // Cap the scan so a pathological repo cannot turn session start into
-        // thousands of file opens. The index README documents the phrase
-        // "Status: Complete"; it is not a plan.
-        const entries = fs.readdirSync(plansDir)
-            .filter((f) => f.toLowerCase().endsWith('.md'))
-            .filter((f) => f.toLowerCase() !== 'readme.md')
-            .slice(0, 50);
-        for (const file of entries) {
-            try {
-                // The head read goes through kit-goal-lib's planHeadText, which
-                // applies the shared kind-and-size rule before it opens
-                // anything: a directory entry is judged by an lstat first, and
-                // only a regular file (or a link resolving in-repo to one) is
-                // opened. Opening these entries directly would leave the one
-                // reader here that a FIFO can wedge, and this hook blocks
-                // session start, so a FIFO named anything.md in a cloned repo's
-                // docs/plans/ would hold every session start in that checkout
-                // with no try able to rescue it. The window is the same 2 KB of
-                // header, and the BOM strip and the decode are the shared
-                // reader's too.
-                const head = planHeadText(cwd, 'docs/plans/' + file);
-                if (!head.exists || head.text === null) continue;
-                // The Status question is classifyPlanStatus's, the same rule the
-                // armed-goal notice's queue clause answers to one function over,
-                // so one hook's output cannot carry two readings of one row.
-                const status = classifyPlanStatus(head.text);
-                if (status === 'in progress' || status === 'ready') {
-                    // The header is repo-controlled data bound for a trusted context
-                    // channel: whitelist the commit model and sanitize the filename so
-                    // a hostile plan doc cannot inject instructions.
-                    const model = /commit model:\s*(Review-Only|Branch-and-PR|Commit-and-Push)\b/i
-                        .exec(head.text);
-                    (status === 'ready' ? readyPlans : activePlans).push({
-                        file: file.replace(/[^\x20-\x7E]/g, '').slice(0, 120),
-                        // The path as a goal queue spells it, kept beside the
-                        // sanitized display name because the queue comparison
-                        // below has to match on the real path: sanitizing is a
-                        // rule about what may reach the context channel, and a
-                        // name it altered would compare unequal to the queue
-                        // entry naming the same file.
-                        rel: 'docs/plans/' + file,
-                        model: model ? model[1] : 'unknown'
-                    });
-                } else if (status === 'complete') {
-                    // A Complete plan should have moved to docs/archive/. One still
-                    // in plans/ is a missed close-out step: count it for a soft nudge.
-                    completedUnarchived++;
-                }
-            } catch {
-                // Unreadable file: skip it.
+    // Cap the scan so a pathological repo cannot turn session start into
+    // thousands of file opens. The index README documents the phrase
+    // "Status: Complete"; it is not a plan. A listing the cap truncates, or one
+    // the directory would not give up, sets plansBounded: what falls off the end
+    // of a capped listing can be an in-progress plan, and a recovery inventory
+    // quietly missing one is the failure this whole block exists to prevent.
+    const planFiles = listBoundedNames(plansDir, MAX_PLAN_FILES, (d) => {
+        const lower = d.name.toLowerCase();
+        return lower.endsWith('.md') && lower !== 'readme.md';
+    });
+    let plansBounded = planFiles.bounded;
+    for (const file of planFiles.names) {
+        try {
+            // The head read goes through kit-goal-lib's planHeadText, which
+            // applies the shared kind-and-size rule before it opens
+            // anything: a directory entry is judged by an lstat first, and
+            // only a regular file (or a link resolving in-repo to one) is
+            // opened. Opening these entries directly would leave the one
+            // reader here that a FIFO can wedge, and this hook blocks
+            // session start, so a FIFO named anything.md in a cloned repo's
+            // docs/plans/ would hold every session start in that checkout
+            // with no try able to rescue it. The window is the same 2 KB of
+            // header, and the BOM strip and the decode are the shared
+            // reader's too.
+            const head = planHeadText(cwd, 'docs/plans/' + file);
+            // planHeadText carries three outcomes, and the two that yield no
+            // text are not one answer. Nothing at the path is nothing to miss,
+            // so it stays silent. A plan doc that opened and whose read then
+            // failed says nothing about the plan, which is precisely a plan
+            // this inventory has no reading of: it drops out of all three
+            // readings below, so the scan's bound is what tells the session a
+            // plan doc went unread rather than reading as absent.
+            if (!head.exists) continue;
+            if (head.text === null) {
+                plansBounded = true;
+                continue;
             }
+            // The Status question is classifyPlanStatus's, the same rule the
+            // armed-goal notice's queue clause answers to one function over,
+            // so one hook's output cannot carry two readings of one row.
+            const status = classifyPlanStatus(head.text);
+            if (status === 'in progress' || status === 'ready') {
+                // The header is repo-controlled data bound for a trusted context
+                // channel: whitelist the commit model and sanitize the filename so
+                // a hostile plan doc cannot inject instructions.
+                const model = /commit model:\s*(Review-Only|Branch-and-PR|Commit-and-Push)\b/i
+                    .exec(head.text);
+                (status === 'ready' ? readyPlans : activePlans).push({
+                    file: file.replace(/[^\x20-\x7E]/g, '').slice(0, 120),
+                    // The path as a goal queue spells it, kept beside the
+                    // sanitized display name because the queue comparison
+                    // below has to match on the real path: sanitizing is a
+                    // rule about what may reach the context channel, and a
+                    // name it altered would compare unequal to the queue
+                    // entry naming the same file.
+                    rel: 'docs/plans/' + file,
+                    model: model ? model[1] : 'unknown'
+                });
+            } else if (status === 'complete') {
+                // A Complete plan should have moved to docs/archive/. One still
+                // in plans/ is a missed close-out step: count it for a soft nudge.
+                completedUnarchived++;
+            }
+        } catch {
+            // A file the loop could not judge at all is one more plan doc with
+            // no reading, so it carries the same bound as a failed head read.
+            plansBounded = true;
         }
-    } catch {
-        // No docs/plans directory: nothing to recover.
     }
 
     // Kaizen check is additive and must never affect plan recovery.
     let kaizenCount = 0;
+    let kaizenBounded = false;
     try {
-        kaizenCount = countPendingKaizen(cwd);
+        const kaizen = countPendingKaizen(cwd);
+        kaizenCount = kaizen.count;
+        kaizenBounded = kaizen.bounded;
     } catch {
         // Never let the kaizen check break recovery or the session.
     }
@@ -881,7 +1011,8 @@ function main() {
 
     // Emit Additional Context.
     if (!reload && activePlans.length === 0 && parkedPlans.length === 0 && kaizenCount === 0
-        && completedUnarchived === 0 && !goalBlock && !backlog && !siblings && !pluginView) return;
+        && !kaizenBounded && !plansBounded && completedUnarchived === 0 && !goalBlock && !backlog
+        && !siblings && !pluginView) return;
 
     const blocks = [];
 
@@ -930,8 +1061,29 @@ function main() {
         blocks.push(`${completedUnarchived} plan doc(s) in docs/plans/ are marked Status: Complete but still sit there unarchived. At the next close-out, run the curating-docs skill to move them into docs/archive/, prune the backlog, and refresh the index. Reminder, not a blocker.`);
     }
 
-    if (kaizenCount > 0) {
-        blocks.push(`This is the claude-kit repo and the kaizen inbox has ${kaizenCount} pending item(s). At a natural stopping point, consider running a kaizen pass (see the kaizen skill). Reminder, not a blocker.`);
+    // One block rather than a clause inside each of the three the scan feeds
+    // (the in-progress inventory, the parked list and the unarchived count), so
+    // a bound stated in one place cannot come to say different things in the
+    // three. It names docs/plans/ itself rather than pointing at those blocks,
+    // because the states that set it include the ones where none of them was
+    // emitted: a directory that could not be listed at all, and a listing whose
+    // entries held no readable plan, both leave this the only thing this payload
+    // says about docs/plans/.
+    if (plansBounded) {
+        blocks.push('The docs/plans/ scan is bounded: the directory holds more entries than one session'
+            + ' start reads, one of its plan docs could not be read, or the directory could not be listed'
+            + ' at all. Any plan inventory, parked list or unarchived count in this payload is therefore'
+            + ' of part of docs/plans/ rather than of the whole directory, and their absence says as'
+            + ' little: a plan doc may be missing from them, an in-progress one included. List'
+            + ' docs/plans/ directly before concluding anything about what is there. Reminder, not a'
+            + ' blocker.');
+    }
+
+    // A bounded count is emitted at zero as well, since the zero is of what was
+    // read rather than of the inbox, and a silent zero would state the opposite.
+    if (kaizenCount > 0 || kaizenBounded) {
+        const kaizenBoundedClause = kaizenBounded ? ' (a bounded count: part of the inbox went unread)' : '';
+        blocks.push(`This is the claude-kit repo and the kaizen inbox has ${kaizenCount} pending item(s)${kaizenBoundedClause}. At a natural stopping point, consider running a kaizen pass (see the kaizen skill). Reminder, not a blocker.`);
     }
 
     if (pluginView) {
@@ -942,20 +1094,53 @@ function main() {
         blocks.push(goalBlock);
     }
 
-    if (backlog) {
+    if (backlog && backlog.count === 0) {
+        // The bounded read reached no item at all, so there is no number to
+        // qualify: what the session gets is the fact that the file went partly
+        // unread, which is the one thing silence here would misstate.
+        blocks.push('docs/backlog.md was read only in part, so this session has no count of its active'
+            + ' items and no reading of their ages. If the backlog bears on this session\'s work, read'
+            + ' it directly. Reminder, not a blocker.');
+    } else if (backlog) {
         const undatedClause = backlog.undated > 0 ? `; ${backlog.undated} undated` : '';
         const oldestClause = backlog.oldestIso
             ? `; oldest dated ${backlog.oldestIso} (${backlog.ageDays} days ago)${undatedClause}`
             : ', none dated';
-        blocks.push(`docs/backlog.md holds ${backlog.count} active item(s)${oldestClause}. If any bear on this session's work, read the backlog and say so; items older than 90 days get a promote/retire/keep call at the close-out. Reminder, not a blocker.`);
+        // The bound covers the whole summary and not the count alone: the
+        // oldest date, the age and the undated tally are all read off the same
+        // partial window, so a clause sitting on the count would leave three
+        // numbers beside it reading as totals. It states what the read did,
+        // that the file was not taken whole, rather than which part of the
+        // Active section was missed: the summary is bounded whenever the read
+        // was, and where the section did end inside the read the figures are a
+        // total this clause merely declines to vouch for.
+        const boundedClause = backlog.bounded
+            ? ' The file was not read in full, so every figure here is of what was read rather than of'
+            + ' the whole backlog.'
+            : '';
+        blocks.push(`docs/backlog.md holds ${backlog.count} active item(s)${oldestClause}.${boundedClause} If any bear on this session's work, read the backlog and say so; items older than 90 days get a promote/retire/keep call at the close-out. Reminder, not a blocker.`);
     }
 
-    if (siblings) {
+    if (siblings && siblings.count === 0) {
+        // The listing was partial and held no sibling, which is not the same
+        // answer as a store that held none: what this session has is no reading,
+        // and the coordination advice is worth the same whether the other
+        // session was seen or merely not ruled out.
+        blocks.push('The transcript store for this project could not be listed in full, so this session'
+            + ' has no reading of whether another session of this checkout is live. If one is, two'
+            + ' sessions are editing one tree: coordinate before touching shared files (the plan doc is'
+            + ' the usual collision), stage only what this session changed, and prefer a separate git'
+            + ' worktree for concurrent work. Reminder, not a blocker.');
+    } else if (siblings) {
         const windowMinutes = SHARED_CHECKOUT_WINDOW_MS / 60000;
         const recent = siblings.phrase ? `, the most recent ${siblings.phrase}` : '';
+        const boundedClause = siblings.bounded
+            ? ' The transcript listing was read only in part, so that count is a floor rather than a'
+            + ' total.'
+            : '';
         blocks.push(`As a hint and not a verdict, ${siblings.count} other session(s) of this project wrote a`
             + ` transcript within the last ${windowMinutes} minutes${recent}, so another session may be live in`
-            + ` this same working tree. A file mtime is not proof of a live session, and a different checkout`
+            + ` this same working tree.${boundedClause} A file mtime is not proof of a live session, and a different checkout`
             + ` whose path maps to the same transcript directory would look the same from here. If one is live,`
             + ` two sessions are editing one tree: coordinate before touching shared files (the plan doc is the`
             + ` usual collision), stage only what this session changed, and prefer a separate git worktree for`

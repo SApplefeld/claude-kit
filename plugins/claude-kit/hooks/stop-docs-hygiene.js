@@ -23,55 +23,75 @@
 const fs = require('fs');
 const path = require('path');
 const { planHeadText, classifyPlanStatus } = require('./kit-goal-lib.js');
+const { listBoundedNames } = require('./kit-read-lib.js');
 
 function readStdin() {
     try { return fs.readFileSync(0, 'utf8'); } catch { return ''; }
 }
 
-// Plans marked Status: Complete still living in docs/plans/ (should be archived).
+// How many plan-doc names this scan keeps. A project carries a few dozen plan
+// docs, so the cap sits far above any real shape and binds only where something
+// arranged for it to; what the walk READS is bounded separately, by the entry
+// ceiling listBoundedNames carries.
+const MAX_PLAN_FILES = 50;
+
+// Plans marked Status: Complete still living in docs/plans/ (they should be
+// archived), beside whether the reading behind them is of the whole directory:
+// { files, bounded }.
+//
+// The listing goes through the shared bounded reader, the same one session
+// start's plan scan takes, so one repository state cannot produce two honesty
+// levels across the two surfaces. bounded is true when the cap truncated the
+// listing, when the directory would not answer at all, or when an entry that
+// was listed could not be read, all three of which leave a plan doc this count
+// says nothing about. Never throws.
 function findCompletedUnarchived(cwd) {
     const plansDir = path.join(cwd, 'docs', 'plans');
     const files = [];
-    try {
-        // The index README documents the phrase "Status: Complete"; it is not a plan.
-        const entries = fs.readdirSync(plansDir)
-            .filter((f) => f.toLowerCase().endsWith('.md'))
-            .filter((f) => f.toLowerCase() !== 'readme.md')
-            .slice(0, 50);
-        for (const file of entries) {
-            try {
-                // The head read goes through kit-goal-lib's planHeadText, which
-                // applies the shared kind-and-size rule before it opens
-                // anything: a directory entry is judged by an lstat first, and
-                // only a regular file (or a link resolving in-repo to one) is
-                // opened. Opened directly, a FIFO named anything.md in a
-                // cloned repo's docs/plans/ blocks the open until a writer
-                // appears, with no try able to rescue it, and this hook runs at
-                // every turn end, so that clone's session would wedge at every
-                // stop. The window is the same 2 KB of header, and the BOM
-                // strip and the decode are the shared reader's too.
-                const head = planHeadText(cwd, 'docs/plans/' + file);
-                if (!head.exists || head.text === null) continue;
-                // The Status question is classifyPlanStatus's, the same rule
-                // session start's recovery inventory and the leash answer to,
-                // so no two surfaces that call the classifier can read one
-                // plan doc's header differently. That is a statement about
-                // those surfaces and not about the document: the strict
-                // contract predicate the position walk uses answers a
-                // different question and disagrees by design on a header like
-                // 'Complete (archived)', which is complete here and
-                // non-terminal there. The classifier owns the anchoring (the
-                // value must sit on the header's own line, so body prose
-                // cannot answer for the document) and the vocabulary, which is
-                // what keeps a value the classifier learns from needing a
-                // second spelling here.
-                if (classifyPlanStatus(head.text) === 'complete') {
-                    files.push(file.replace(/[^\x20-\x7E]/g, '').slice(0, 120));
-                }
-            } catch { /* skip unreadable */ }
+    // The index README documents the phrase "Status: Complete"; it is not a plan.
+    const listing = listBoundedNames(plansDir, MAX_PLAN_FILES, (d) => {
+        const lower = d.name.toLowerCase();
+        return lower.endsWith('.md') && lower !== 'readme.md';
+    });
+    let bounded = listing.bounded;
+    for (const file of listing.names) {
+        try {
+            // The head read goes through kit-goal-lib's planHeadText, which
+            // applies the shared kind-and-size rule before it opens
+            // anything: a directory entry is judged by an lstat first, and
+            // only a regular file (or a link resolving in-repo to one) is
+            // opened. Opened directly, a FIFO named anything.md in a
+            // cloned repo's docs/plans/ blocks the open until a writer
+            // appears, with no try able to rescue it, and this hook runs at
+            // every turn end, so that clone's session would wedge at every
+            // stop. The window is the same 2 KB of header, and the BOM
+            // strip and the decode are the shared reader's too.
+            const head = planHeadText(cwd, 'docs/plans/' + file);
+            if (!head.exists || head.text === null) continue;
+            // The Status question is classifyPlanStatus's, the same rule
+            // session start's recovery inventory and the leash answer to,
+            // so no two surfaces that call the classifier can read one
+            // plan doc's header differently. That is a statement about
+            // those surfaces and not about the document: the strict
+            // contract predicate the position walk uses answers a
+            // different question and disagrees by design on a header like
+            // 'Complete (archived)', which is complete here and
+            // non-terminal there. The classifier owns the anchoring (the
+            // value must sit on the header's own line, so body prose
+            // cannot answer for the document) and the vocabulary, which is
+            // what keeps a value the classifier learns from needing a
+            // second spelling here.
+            if (classifyPlanStatus(head.text) === 'complete') {
+                files.push(file.replace(/[^\x20-\x7E]/g, '').slice(0, 120));
+            }
+        } catch {
+            // An entry that was listed and could not be judged is one more
+            // plan doc this count says nothing about, so it carries the same
+            // bound a truncated listing does.
+            bounded = true;
         }
-    } catch { /* no docs/plans: nothing */ }
-    return files;
+    }
+    return { files, bounded };
 }
 
 // Does a docs/ file carry the plan-spec header contract: a Status: header and a
@@ -152,11 +172,18 @@ function main() {
     const cwd = payload.cwd || process.cwd();
     const completed = findCompletedUnarchived(cwd);
     const scratch = findDocsScratch(cwd);
-    if (completed.length === 0 && scratch.length === 0) return; // common case: allow stop
+    // A bound with nothing else to say is not a finding: this hook speaks by
+    // holding a stop, and holding one over a directory it could not list in
+    // full would turn a listing hiccup into a blocked turn. The bound rides on
+    // the count when there is a count, and is silent otherwise.
+    if (completed.files.length === 0 && scratch.length === 0) return; // common case: allow stop
 
     const parts = [];
-    if (completed.length > 0) {
-        parts.push(`${completed.length} plan doc(s) in docs/plans/ are marked Status: Complete but still sit there unarchived (${completed.map((f) => 'docs/plans/' + f).join(', ')}). Run the curating-docs skill to move them into docs/archive/, prune docs/backlog.md, and refresh the docs/README.md index.`);
+    if (completed.files.length > 0) {
+        const boundedClause = completed.bounded
+            ? ' That count is of part of docs/plans/ rather than of the whole directory: the listing ran past its cap, or an entry in it could not be read, so there may be more.'
+            : '';
+        parts.push(`${completed.files.length} plan doc(s) in docs/plans/ are marked Status: Complete but still sit there unarchived (${completed.files.map((f) => 'docs/plans/' + f).join(', ')}).${boundedClause} Run the curating-docs skill to move them into docs/archive/, prune docs/backlog.md, and refresh the docs/README.md index.`);
     }
     if (scratch.length > 0) {
         parts.push(`scratch leaked into the curated docs/ tree (${scratch.join(', ')}). These are working artifacts, not library content: move them to .kit/ (gitignored) or remove them before commit. The durable record is the plan's Chapter.`);

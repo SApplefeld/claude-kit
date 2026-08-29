@@ -120,6 +120,53 @@ test('a Complete spec still sitting in docs/plans/ is flagged as unarchived', ()
     } finally { rmDir(cwd); }
 });
 
+// The listing cap this hook keeps, which the case below builds a fixture
+// around. Stated here rather than imported because the assertion is about what
+// a session is told, and a constant read out of the hook would move with it.
+const MAX_PLAN_FILES = 50;
+
+test('an unarchived count taken off a capped listing says it is of part of the directory', () => {
+    // The count is of the plan docs the listing reached, and the listing stops
+    // at its cap. Rendered bare it reads as a count of docs/plans/, which is
+    // the reading the bytes do not support: what fell off the end can hold more
+    // Complete plans. Session start's own scan of this same directory says so,
+    // and one repository state must not get two honesty levels.
+    const cwd = makeDir('sdh-capped-');
+    try {
+        for (let i = 0; i <= MAX_PLAN_FILES; i++) {
+            writeFile(path.join(cwd, 'docs', 'plans', `p_${String(i).padStart(3, '0')}_spec_v1.md`), COMPLETE);
+        }
+        const { blocked, reason } = runHook(cwd);
+        assert.strictEqual(blocked, true);
+        assert.match(reason, /That count is of part of docs\/plans\/ rather than of the whole directory/);
+    } finally { rmDir(cwd); }
+});
+
+test('an unarchived count taken off a whole listing is stated as a total', () => {
+    // The control for the case above: inside the cap nothing was dropped, and
+    // the count carries no qualification.
+    const cwd = makeDir('sdh-uncapped-');
+    try {
+        writeFile(path.join(cwd, 'docs', 'plans', 'neo_public-api_spec_v1.md'), COMPLETE);
+        const { blocked, reason } = runHook(cwd);
+        assert.strictEqual(blocked, true);
+        assert.doesNotMatch(reason, /of part of docs\/plans\//);
+    } finally { rmDir(cwd); }
+});
+
+test('a docs/plans that cannot be listed at all does not hold the stop by itself', () => {
+    // This hook speaks by holding a stop, so a bound with nothing beside it
+    // stays silent: holding a turn end over a directory that would not answer
+    // trades a listing hiccup for a stuck run, and the bound is worth stating
+    // only where there is a count for it to qualify.
+    const cwd = makeDir('sdh-unlistable-');
+    try {
+        writeFile(path.join(cwd, 'docs', 'plans'), 'not a directory\n');
+        const { blocked } = runHook(cwd);
+        assert.strictEqual(blocked, false);
+    } finally { rmDir(cwd); }
+});
+
 // Two pins, not reds: the Status question here is kit-goal-lib's
 // classifyPlanStatus, and a Ready plan is neither complete nor scratch, so
 // this hook leaves it alone on both counts. A parked plan is not a missed

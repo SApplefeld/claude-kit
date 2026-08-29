@@ -44,7 +44,7 @@ function writePlan(dir, name, status) {
 // spread rather than rebuilt so the child keeps its real PATH (a rebuilt env
 // object loses the Windows `Path` key), and every casing of the home variables
 // is dropped before the fixture pair is set, since Windows carries both.
-function runHook(dir) {
+function runHook(dir, extraEnv) {
     const env = { ...process.env };
     for (const k of Object.keys(env)) {
         if (/^(USERPROFILE|HOME|KIT_EXTERNAL_ENGINE)$/i.test(k)) delete env[k];
@@ -54,13 +54,13 @@ function runHook(dir) {
     return spawnSync(process.execPath, [HOOK], {
         input: JSON.stringify({ cwd: dir }),
         encoding: 'utf8',
-        env
+        env: { ...env, ...(extraEnv || {}) }
     });
 }
 
 // The context block the hook injected, or '' when it stayed silent.
-function context(dir) {
-    const res = runHook(dir);
+function context(dir, extraEnv) {
+    const res = runHook(dir, extraEnv);
     assert.strictEqual(res.status, 0, res.stderr);
     if (!res.stdout) return '';
     return JSON.parse(res.stdout).hookSpecificOutput.additionalContext;
@@ -245,5 +245,121 @@ test('the parked block lists the unqueued Ready plan and not the queued one', ()
             'the unqueued parked plan is listed: ' + ready);
         assert.ok(!ready.includes('queued_spec_v1.md'),
             'the queued parked plan is not: ' + ready);
+    } finally { rmDir(dir); }
+});
+
+// How many plan docs one session start reads. Stated here rather than imported
+// because the assertions are about what a session is told, and a constant read
+// out of the hook would move with it.
+const MAX_PLAN_FILES = 50;
+
+test('a plan listing past the scan cap says the readings it feeds are partial', () => {
+    const dir = makeProject();
+    try {
+        // One plan doc past the cap. What falls off the end of the listing can
+        // be an in-progress plan, so the inventory and the unarchived count are
+        // both of part of the directory, and the session is told so rather than
+        // reading a capped scan as a total.
+        for (let i = 0; i <= MAX_PLAN_FILES; i++) {
+            writePlan(dir, `plan_${String(i).padStart(3, '0')}_spec_v1.md`, 'In Progress');
+        }
+        const text = context(dir);
+        assert.match(text, /The docs\/plans\/ scan is bounded/);
+    } finally { rmDir(dir); }
+});
+
+test('a plan listing inside the scan cap reads as a total', () => {
+    const dir = makeProject();
+    try {
+        // The control for the case above: at the cap exactly, nothing was
+        // dropped and no bound is stated.
+        for (let i = 0; i < MAX_PLAN_FILES; i++) {
+            writePlan(dir, `plan_${String(i).padStart(3, '0')}_spec_v1.md`, 'In Progress');
+        }
+        const text = context(dir);
+        assert.match(text, /in-progress plan doc\(s\)/);
+        assert.doesNotMatch(text, /scan is bounded/);
+    } finally { rmDir(dir); }
+});
+
+test('a docs/plans that cannot be listed states the bound with no plan block beside it', () => {
+    // The states that set this bound include the ones where no plan block was
+    // emitted at all: a regular file at docs/plans/ is a listing that never
+    // happened, so the advisory is the only thing this payload says about the
+    // directory and has to stand on its own rather than qualify blocks above it.
+    // A project keeping a file at that path meets this at every session start.
+    const dir = makeProject();
+    try {
+        fs.rmSync(path.join(dir, 'docs', 'plans'), { recursive: true, force: true });
+        fs.writeFileSync(path.join(dir, 'docs', 'plans'), 'not a directory\n', 'utf8');
+        const text = context(dir);
+        assert.match(text, /The docs\/plans\/ scan is bounded/);
+        assert.match(text, /could not be listed at all/);
+        assert.doesNotMatch(text, /in-progress plan doc\(s\)/);
+        assert.doesNotMatch(text, /Status: Ready/);
+        assert.doesNotMatch(text, /marked Status: Complete/);
+    } finally { rmDir(dir); }
+});
+
+// Make the head read of one plan doc fail after its open, which is the third
+// outcome planHeadText carries: the path is a plan doc, and what its header says
+// is unknown. The descriptor is tainted at the open and refused at the read, so
+// no other file's read is touched. The NODE_OPTIONS shape matches the suite's
+// other preloads': forward-slashed, because Node reads a backslash there as an
+// escape.
+function readRefusingPreload(dir, basename) {
+    const shim = path.join(dir, 'refuse-read.js');
+    fs.writeFileSync(shim, [
+        "'use strict';",
+        "const fs = require('fs');",
+        'const realOpenSync = fs.openSync;',
+        'const realReadSync = fs.readSync;',
+        'const tainted = new Set();',
+        'fs.openSync = function (target) {',
+        '    const fd = realOpenSync.apply(fs, arguments);',
+        '    if (String(target).endsWith(' + JSON.stringify(basename) + ')) tainted.add(fd);',
+        '    return fd;',
+        '};',
+        'fs.readSync = function (fd) {',
+        '    if (tainted.has(fd)) {',
+        "        const err = new Error('EIO: the fixture refuses this read');",
+        "        err.code = 'EIO';",
+        '        throw err;',
+        '    }',
+        '    return realReadSync.apply(fs, arguments);',
+        '};'
+    ].join('\n') + '\n', 'utf8');
+    return { NODE_OPTIONS: '--require "' + shim.replace(/\\/g, '/') + '"' };
+}
+
+test('a plan doc that opens and will not read leaves the inventory bounded', () => {
+    // exists true with no text says nothing about the plan, which is a plan doc
+    // this inventory has no reading of. Silence would present the remaining
+    // readings as the whole of docs/plans/, so the bound is what the session
+    // gets instead. True absence is the other case and stays silent, since a
+    // path with nothing at it is nothing to miss.
+    const dir = makeProject();
+    try {
+        writePlan(dir, 'readable_spec_v1.md', 'In Progress');
+        writePlan(dir, 'unreadable_spec_v1.md', 'In Progress');
+        const text = context(dir, readRefusingPreload(dir, 'unreadable_spec_v1.md'));
+        assert.match(text, /The docs\/plans\/ scan is bounded/);
+        assert.match(text, /docs\/plans\/readable_spec_v1\.md/);
+        assert.doesNotMatch(text, /docs\/plans\/unreadable_spec_v1\.md/);
+        // The control: with nothing refusing the read, both plans are listed and
+        // no bound is stated.
+        const plain = context(dir);
+        assert.match(plain, /docs\/plans\/unreadable_spec_v1\.md/);
+        assert.doesNotMatch(plain, /scan is bounded/);
+    } finally { rmDir(dir); }
+});
+
+test('a plan doc absent from docs/plans/ is not a bound', () => {
+    // The other half of the rule above, as its own case: an empty directory is
+    // a whole reading of an empty directory, and a session start there says
+    // nothing at all.
+    const dir = makeProject();
+    try {
+        assert.strictEqual(context(dir), '');
     } finally { rmDir(dir); }
 });
