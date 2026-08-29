@@ -55,7 +55,7 @@ Nothing agreed over messaging is real until it lands in the plan doc, memory, or
 ## The sanctioned patterns
 
 - **Liveness.** Before treating any peer session as dead, a leashed one included (a session held to a plan its operator armed, per Leashed peers below), read the roster: busy or idle from `ListAgents` outranks a transcript-mtime hint. This is the check that stands between a bystander session and re-arming over a live run, since the session-start notice renders a sibling's last-active time as a hint and not a verdict, and offers re-arming as the recovery without naming what would settle the question. For a session the roster lists, the row's busy-or-idle reading is the verdict that hint lacks. A session the roster does not list is a candidate and never the verdict: a row can be absent for reasons that are not death, an elevated session being roster-absent by construction per the one-way property the messaging surface above owns, so an absent row settles nothing in either direction, and before re-arming over one the question goes to the machine's coordinator, whose registry diff and heartbeat readings own the candidate, or to the operator where that seat is empty.
-- **Shared-tree negotiation.** Before staging or committing a file a live sibling may hold, the doctrine's hold-the-add rule gains a bilateral option: ask.
+- **Shared-tree negotiation.** Before staging or committing a file a live sibling may hold, the doctrine's shared-file hold rule gains a bilateral option: ask.
 - **Handoff Q&A backstop.** The handoff doc must still stand alone; a warm predecessor is a new answerable source for the intake gap check's route (a), never a substitute for the doc.
 - **Warm cross-project consult.** A peer session with loaded context answers questions the fresh-context consultant cannot; it complements, never replaces, the consult skill.
 
@@ -123,7 +123,7 @@ The shape, in full (copy it):
 Touches your tree: I hold unstaged edits in docs/backlog.md as of now.
 This is CRM: Migration (worktree crm-migration, named rather than pathed), holding the worker seat on that tree, mid-section on the tenant-split plan; my section parks two entries in that file (plan doc, docs/plans/crm_tenant-split_spec_v1.md, section 3).
 Confirmed by reading the file this turn, not from memory: the entries sit at lines 40 and 41, and I have touched nothing else in it.
-Not a request, and nothing here needs your agreement: your own hold-the-add rule already decides what you do with a shared file, and it decides it better than I can from here. No reply needed unless you also hold edits in that file; if you do, one line naming the path is enough.
+Not a request, and nothing here needs your agreement: your own shared-file hold rule already decides what you do with it, and it decides it better than I can from here. No reply needed unless you also hold edits in that file; if you do, one line naming the path is enough.
 ```
 
 ## Leashed peers
