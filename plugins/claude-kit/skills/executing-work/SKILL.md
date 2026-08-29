@@ -132,9 +132,17 @@ For each Section of Work, in order (sections run concurrently only where the dis
        command you ran), an inferred one says so and says to verify it before
        relying on it, and a reported one names the peer session it came from and
        says the same, since what a peer reported is no more checkable from the
-       agent's seat than from yours. An unmarked assertion reads as settled
-       fact and gets obeyed instead of checked, which is how a wrong premise in a
-       brief becomes a wrong implementation that passes its own gate
+       agent's seat than from yours. A claim whose subject is what a tool
+       prints is confirmed by that tool and by nothing else: a run of it,
+       or the line in its own source that emits the output, which is the
+       stronger of the two wherever that source is in reach, since a run
+       exercises one branch and the source shows them all. Document
+       agreement never suffices, however many documents agree, since
+       documents copy one another and a claim can pass through all of
+       them without the tool ever having printed it. An unmarked
+       assertion reads as settled fact and gets obeyed instead of
+       checked, which is how a wrong premise in a brief becomes a wrong
+       implementation that passes its own gate
      - Workaround bar: a workaround needing a paragraph to justify means fix the
        code or escalate
      - When returning NEEDS_CONTEXT on a hard question, state it consult-shaped:
