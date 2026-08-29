@@ -2231,3 +2231,112 @@ test('the absence-check clause states the same two classes on all three surfaces
         }
     }
 });
+
+// The fixture-evidence clause is a deliberate multi-surface restatement, and its
+// two sentences have two different reaches on purpose. The diagnosis sentence is
+// a reviewer duty, so it sits on the two sighted charters and deliberately not on
+// the skill, whose job is counting independence rather than weighing a contract.
+// The class sentence is the boundary itself and sits on all three, because a
+// boundary stated two ways is exactly the drift this asserts against: the review
+// round that produced this clause found the charters bounding the class at what
+// the work "carries" while the skill bounded it at what the run "authored", which
+// are different sets. Compared on collapsed whitespace for the same reason the
+// absence-check pin below uses it, since both sentences wrap across lines.
+test('the fixture-evidence clause states the same class across its surfaces', () => {
+    const diagnosis = 'A fixture is an assertion by its author about what the '
+        + 'code should do, never in itself a statement of a contract, and where '
+        + 'no owning surface states the contract the fixture claims, the contract '
+        + 'is unstated and the fixture is a proposal rather than the source.';
+    const classSentence = 'Fixtures, stubs, golden files, sample payloads, and '
+        + 'generated files are instances rather than the boundary: the class is '
+        + 'any artifact this effort authored, cited as evidence of a fact the '
+        + 'effort does not own.';
+    const charters = [
+        ['agents', 'adversarial-reviewer.md'],
+        ['agents', 'prose-reviewer.md'],
+    ];
+    const allThree = charters.concat([['skills', 'responding-to-review', 'SKILL.md']]);
+    const bodyOf = (parts) => collapseWhitespace(fs.readFileSync(path.join(
+        __dirname, '..', 'plugins', 'claude-kit', ...parts), 'utf8'));
+    for (const parts of charters) {
+        const rel = ['plugins', 'claude-kit', ...parts].join('/');
+        const hits = bodyOf(parts).split(diagnosis).length - 1;
+        assert.strictEqual(hits, 1, rel + ' states the fixture diagnosis sentence '
+            + hits + ' times, not once; both sighted charters carry it verbatim, '
+            + 'so either they agree or one reviewer half has drifted');
+    }
+    for (const parts of allThree) {
+        const rel = ['plugins', 'claude-kit', ...parts].join('/');
+        const hits = bodyOf(parts).split(classSentence).length - 1;
+        assert.strictEqual(hits, 1, rel + ' states the fixture class sentence '
+            + hits + ' times, not once; the class boundary is single-sourced '
+            + 'across all three surfaces, and a surface stating it differently is '
+            + 'the reviewer and the orchestrator disagreeing about what counts as '
+            + 'evidence this effort authored');
+    }
+});
+
+// The index-window bullet is a two-copy restatement like every doctrine bullet,
+// and the byte-identity assertion above already holds the two copies together.
+// What identity cannot see is both copies losing the same leg at once, which is
+// the shape any later amendment to the staging rule would take. Two legs are
+// pinned rather than the whole bullet: the lead, which carries the claim that the
+// index is a window rather than a resting place, and the merge clause, whose
+// plain-form command under-reports on a merge commit and so goes quiet for the
+// wrong reason at exactly the point a swept peer file would land.
+test('the index-window bullet keeps both of its legs in each doctrine copy', () => {
+    const legs = [
+        ['the window lead', 'On a checkout another session may commit to, the '
+            + 'index is a window rather than a resting place.'],
+        ['the merge-listing clause', 'and `git show --first-parent --name-only` '
+            + 'for a merge, whose plain form shows the combined diff and omits '
+            + 'every path that merged cleanly from one side'],
+    ];
+    const copies = [
+        ['home/claude-kit-doctrine.md',
+            path.join(__dirname, '..', 'home', 'claude-kit-doctrine.md')],
+        ['plugins/claude-kit/skills/operating-instructions/SKILL.md',
+            path.join(__dirname, '..', 'plugins', 'claude-kit', 'skills',
+                'operating-instructions', 'SKILL.md')],
+    ];
+    for (const [rel, abs] of copies) {
+        const body = collapseWhitespace(fs.readFileSync(abs, 'utf8'));
+        for (const [name, leg] of legs) {
+            const hits = body.split(leg).length - 1;
+            assert.strictEqual(hits, 1, rel + ' carries ' + name + ' ' + hits
+                + ' times, not once; both doctrine copies state the index-window '
+                + 'rule, and the byte-identity assertion cannot see both copies '
+                + 'dropping the same leg together');
+        }
+    }
+});
+
+// The owning-surface enumeration is the third deliberate three-surface copy this
+// clause carries, and it is pinned because its drift is demonstrated rather than
+// hypothetical: the review round that produced this clause found the list shipped
+// documents-only on all three surfaces, with the tool leg missing, which put it in
+// direct conflict with the tool-printed-claims rule sitting one bullet above it on
+// both charters. The class sentence is pinned rather than the member list, since
+// the members are instances by their own admission and the boundary is the thing
+// two surfaces must not state differently.
+test('the owning-surface class sentence is one sentence on all three surfaces', () => {
+    const classSentence = 'Those surfaces are instances rather than the boundary: '
+        + 'the owning surface is wherever the fact\'s own producer defines it, '
+        + 'never a copy that restates it.';
+    const surfaces = [
+        ['agents', 'adversarial-reviewer.md'],
+        ['agents', 'prose-reviewer.md'],
+        ['skills', 'responding-to-review', 'SKILL.md'],
+    ];
+    for (const parts of surfaces) {
+        const rel = ['plugins', 'claude-kit', ...parts].join('/');
+        const body = collapseWhitespace(fs.readFileSync(path.join(__dirname, '..',
+            'plugins', 'claude-kit', ...parts), 'utf8'));
+        const hits = body.split(classSentence).length - 1;
+        assert.strictEqual(hits, 1, rel + ' states the owning-surface class '
+            + 'sentence ' + hits + ' times, not once; the list of owning surfaces '
+            + 'is instances and this sentence is its boundary, so a surface that '
+            + 'drops or reworks it is the one that will quietly lose a leg, as the '
+            + 'tool leg was lost from the enumeration itself');
+    }
+});
