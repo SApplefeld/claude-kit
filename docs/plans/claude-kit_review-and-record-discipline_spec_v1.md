@@ -175,6 +175,21 @@ Tests: `test/doctrine-parity.test.js` mid-edit red and end green per Approach's 
 
 Files in scope: `home/claude-kit-doctrine.md`, `plugins/claude-kit/skills/operating-instructions/SKILL.md`, `test/doctrine-parity.test.js` (only where a pin matches).
 
+### 12. The doctrine's box check states the same instrument limit its owning skill does
+
+Model: opus
+
+Appended 2026-08-29 during this plan's own execution, from the wave-1 review round: Section 10 gave the testing-discipline skill's box check its instrument statement, and the two doctrine copies still present the process poll as the whole pre-suite check. The two are the same rule at two points of action, and `test/doctrine-parity.test.js` says so in its own assertion message, that a session loading only one of them must get the same check. That stated invariant is now false while the pin stays green, because the pin asserts the substrings `whatever its engine` and `running engine` and the divergence touched neither. The doctrine is the always-loaded surface, so a session that never loads the skill performs exactly the check the skill now calls insufficient.
+
+- The doctrine's box-check bullet, in both parity copies (`home/claude-kit-doctrine.md`, `plugins/claude-kit/skills/operating-instructions/SKILL.md`; the compared region is defined by `test/doctrine-parity.test.js`, not by markers), gains the leg the skill now carries: the poll is a sample rather than a clearance, and its presence reading and its absence reading are not worth the same, since a live foreign process is contention while an empty poll is a sample that saw nothing. The bullet states the limit and defers the claim protocol to its owner rather than restating it, per Approach's one-owner rule, so the doctrine copy gains no protocol mechanics. The paragraph is the edit unit, and the two copies land byte-identically or not at all.
+- The pin gains the leg it is missing. `test/doctrine-parity.test.js`'s box-check test currently ties the doctrine bullet and the skill bullet together on two substrings that a divergence of this shape slips past. Extend it so the invariant its own message states is actually asserted: whatever phrase carries the sample-not-clearance leg is pinned on both surfaces, so the next amendment to either cannot silently re-open the gap.
+
+This section exists because the wave-1 finding could not fold into Section 10: the doctrine copies sit outside that section's `Files in scope:`, the parity edit carries its own red-then-green acceptance, and the pin extension is a test change Section 10 was explicitly barred from making.
+
+Tests: `test/doctrine-parity.test.js` red at the mid-edit point (one copy edited, the other not) and green at the end, per Approach's parity procedure; the extended pin re-derived red-then-green, its red proven by reverting the skill-side leg and watching the new assertion speak rather than by assuming it would; suite delta zero against this section's own baseline.
+
+Files in scope: `home/claude-kit-doctrine.md`, `plugins/claude-kit/skills/operating-instructions/SKILL.md`, `test/doctrine-parity.test.js`.
+
 ## Out of Scope
 
 - The testing-discipline plan's own executing-work and doctrine edits: slate position 1, already in execution; this plan starts after its queue completes and re-reads every shared file then (Standing Amendment 2).
@@ -190,3 +205,37 @@ Files in scope: `home/claude-kit-doctrine.md`, `plugins/claude-kit/skills/operat
 - `docs/backlog.md`, the claim-protocol review-instrument item (2026-08-28, parked from that plan's Section 4 close): the two one-directional enumeration tables and the specified-but-unbuilt state model keyed on claim state, transition, and both harm directions. This plan is one of that item's named signals; a session reaching this plan's review-instrument territory reads the item and resolves its two open design calls (which shipped surface owns the model; what a pin over a review instrument asserts) before building, consulting rather than guessing, since both are design calls the item deliberately left open.
 
 ## Chapters
+
+### Chapter 1 - 2026-08-29
+Completed: 2. The claim sweep states its class and widens its tokens
+Implemented By: implementer-sonnet
+Metrics: 1 review round (shared with sections 4 and 10, both lenses at opus/xhigh); 1 pre-review fold round; 1 fix round; NEEDS_CONTEXT 0; escalations 0; consults 0
+Decisions / Surprises: the implementer flagged an upstream neighbour in the charter's "Highest yield first" list and rated it non-contradicting; I disagreed and folded it, since that list framed exclusivity purely as a count of one while the amended recipe below it had grown a universal-denial pass, so the two disagreed about what the sweep covers. It went back to the implementer rather than being fixed in the main thread, per this plan's own Section 9 finding that main-thread prose edits between rounds are where the Criticals land. The implementer chose a dedicated Exclusivity claims bullet over widening the counting bullet, on the ground that a never-claim is falsified by one counterexample rather than by a member joining a set, so the counting title would have become false of its own contents. Review then found the section had shipped the very defect it was written against: a closed enumeration whose class sentence was false of two of its four passes. Resolved by stating two classes and closing each. Two further findings were real: the justification rested on a false premise, since the number pass does land on the "one" in "the one X", re-grounded on discrimination rather than absence; and the never-claim schema was a metavariable sitting in a slot that records literal search terms, which would have made every never-claim sweep read clean for the wrong reason.
+Assumptions: the brief named two edit sites while the section's Files in scope is the whole charter; I treated the named sites as a starting point rather than a scope boundary, and said so when folding (2026-08-29, section 2).
+Review Findings: 3 Major addressed (class sentence false of passes 1 and 2, at both the recipe and the CLAIMS SWEPT sites; false no-digit premise; unrunnable metavariable in the searched field). No Critical, no Minor left open.
+Stamps: adjudicated 2, stamped 2 (doctrine-has-a-third-gitignored-copy, which rode verbatim into both reviewer briefs so the gitignored build copy would not be reported as drift; grep-phrase-straddles-a-line-wrap, operator tier, which is why the bullet hunt anchored on single rare words rather than phrases).
+Next: 1
+Commit Model: Commit-and-Push
+
+### Chapter 2 - 2026-08-29
+Completed: 4. The finishing document pass states its whole-document scope
+Implemented By: implementer-sonnet
+Metrics: 1 review round (shared with sections 2 and 10, both lenses at opus/xhigh); 1 fix round; NEEDS_CONTEXT 0; escalations 0; consults 0
+Decisions / Surprises: the spec's own premise was wrong and the blind lens caught it. Section 4 as written credits the finishing prose pass with seeing what a section-scoped reviewer cannot, because that reviewer reads a diff. No section-time document reviewer reads a diff: executing-work's Document Review Brief hands prose-reviewer and blind-reader document paths, and both read whole, so the credited gap does not exist. The real structural reason is time-ordering, which the spec's own example already stated: a section-time read is fixed at its own section, and only the finishing pass runs after every section has landed. The spec section was corrected to match reality per step 5 rather than the implementation being defended. Section 2's new charter bullet also falsified an enumeration two lines below this section's own edit, finishing-work's "a falsified count, enumeration, justification, or path", which mirrored the curator's three sweep bullets one to one; the fix extended it and restated it as instances of the curator's classes rather than their boundary, so a future fifth bullet cannot re-falsify it the same way.
+Assumptions: none.
+Review Findings: 3 Major addressed (false diff-versus-whole premise, replaced with time-ordering; falsified mirror enumeration in the same file; nothing left open), 2 Minor addressed (closing class narrower than its own second instance, since verb drift between siblings is not visible reading one document end to end; "The pass" restored to "The prose pass", which read literally forbade the changeset-scoped adversarial read the same step mandates). No Critical.
+Stamps: covered by Chapter 1's adjudication over the same window; no further record surfaced.
+Next: 1
+Commit Model: Commit-and-Push
+
+### Chapter 3 - 2026-08-29
+Completed: 10. The box check names its instrument's limits, and a clean poll is a sample rather than a clearance
+Implemented By: implementer-sonnet
+Metrics: 1 review round (shared with sections 2 and 4, both lenses at opus/xhigh); 1 fix round; NEEDS_CONTEXT 0; escalations 0; consults 0
+Decisions / Surprises: the implementer corrected my own central pin resolution and was right. I had cleared its target bullet as unpinned after reading fifteen lines of the parity test at :306; that test's second half pins exactly that bullet, and the test's own name says "and in the skill", which I read past. Its edit preserved both pinned substrings and the gate confirmed it. Review then found the first draft restated the claim protocol without the carve-out its owning contract states in terms, that naming contention and proceeding never includes writing the claim, since there is one claim file and a proceeding session that wrote would replace a live holder's record. The blind lens rated it Critical. One change resolved four findings: the restatement became a pointer to the role skill, which removed the hazard, kept the designed-restatement count at two on the two surfaces that enumerate it, dropped a duplicate of executing-work's own presence-and-absence clause, and replaced an unrooted relative path with a resolvable owner. The instrument limit was also wrong in kind: a single pre-spawn read has no interval, so the sampling-interval framing was replaced with the two limits that actually bite a one-shot read, in-process agent fan-out and a neighbour starting after the sample.
+Assumptions: the spec hedged the claim surface as existing only once the seat-infrastructure plan landed it; that plan is Status Complete in docs/archive, so the conditional was resolved to the present tense and the hedge kept out of the shipped prose (2026-08-29, section 10).
+Review Findings: 1 Critical addressed (unconditional claim-write restatement, reduced to a pointer), 4 Major addressed, 3 Minor addressed. One Major could not be fixed here and became Section 12: the amendment leaves both doctrine copies stating the process poll as the whole pre-suite check, and the parity test that exists to hold the two in step stays green because it asserts two substrings the divergence never touched.
+Stamps: covered by Chapter 1's adjudication over the same window; no further record surfaced.
+Next: 1
+Commit Model: Commit-and-Push
+
