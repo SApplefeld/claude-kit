@@ -3201,6 +3201,80 @@ test('the advance leaves a non-matching checkpoint alone and creates none when n
     }
 });
 
+// ---------------------------------------------------------------------------
+// A linked worktree whose main checkout does not read the plan path as gone.
+// Mirrors makeWorktree in test/kit-goal-statusline.test.js: the same on-disk
+// shape goalRoot's own handshake reads (a worktrees/<name>/commondir and
+// gitdir pair in the main checkout, a .git pointer file in the tree). This
+// file has no worktree fixture of its own, so this is that pattern's copy
+// rather than a new one. The fixtures sit under the canonical spelling of the
+// temp root for that builder's reason: this machine's TEMP can be an 8.3
+// short path, and an accepted main root is folded to the volume's own
+// spelling on win32.
+// ---------------------------------------------------------------------------
+const WORKTREE_TMP = process.platform === 'win32' ? fs.realpathSync.native(os.tmpdir()) : os.tmpdir();
+
+function makeWorktree() {
+    const main = fs.mkdtempSync(path.join(WORKTREE_TMP, 'kit-goal-stop-main-'));
+    const tree = fs.mkdtempSync(path.join(WORKTREE_TMP, 'kit-goal-stop-tree-'));
+    for (const root of [main, tree]) {
+        fs.mkdirSync(path.join(root, '.kit'), { recursive: true });
+        fs.mkdirSync(path.join(root, 'docs', 'plans'), { recursive: true });
+    }
+    const gitdir = path.join(main, '.git', 'worktrees', 'wt');
+    fs.mkdirSync(gitdir, { recursive: true });
+    fs.writeFileSync(path.join(gitdir, 'commondir'), '../..\n', 'utf8');
+    fs.writeFileSync(path.join(gitdir, 'gitdir'), path.join(tree, '.git') + '\n', 'utf8');
+    fs.writeFileSync(path.join(tree, '.git'), 'gitdir: ' + gitdir + '\n', 'utf8');
+    return { main, tree };
+}
+
+test('stop: a worktree held on an unestablished main-checkout path still blocks, with a reason claiming no presence', () => {
+    const { main, tree } = makeWorktree();
+    const local = makeDir('kit-goal-stop-local-');
+    try {
+        // planPathState(main, planRel) reads 'unusable' here (a directory
+        // stands where the plan doc should be), one of the three non-'gone'
+        // answers the enforcement (planGoneHereOnly) treats alike. The reason
+        // text used to claim the doc was "still present in the main checkout";
+        // a directory is not that, and this fixture is chosen because it is
+        // the state where the old wording was demonstrably false. armGoal
+        // requires a readable plan doc at arm time, so the fixture arms
+        // against a real file and replaces it with a directory afterward.
+        const planRel = 'docs/plans/wrongtree_example.md';
+        const planFull = path.join(main, planRel);
+        writeFile(planFull, 'Status: In Progress\n\nbody\n');
+        const armed = armGoal(main, planRel);
+        assert.strictEqual(armed.ok, true, 'setup: goal should arm in the main checkout');
+        fs.rmSync(planFull, { force: true });
+        fs.mkdirSync(planFull, { recursive: true });
+        assert.strictEqual(bindSession(main, 'ses-worktree-fold').ok, true, 'setup: bind the leash holder');
+        const transcript = path.join(tree, 'transcript.jsonl');
+        writeTranscript(transcript, planRel, ['Working on it.']);
+
+        const res = runHook({ cwd: tree, transcript_path: transcript, session_id: 'ses-worktree-fold' }, local);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.notStrictEqual(res.stdout, '', 'the stop is held, not allowed in silence');
+        const out = JSON.parse(res.stdout);
+        // The enforcement is unchanged by this round: a main-checkout reading
+        // that is not 'gone' still holds the stop exactly as before, whatever
+        // the reason text says about it.
+        assert.strictEqual(out.decision, 'block', 'the stop is held');
+        assert.ok(out.reason.includes('absent in this working directory'),
+            'the reason names the local absence: ' + out.reason);
+        assert.ok(out.reason.includes('did not read as gone at that path'),
+            'the reason names what the reading actually established, not what stands there: ' + out.reason);
+        assert.ok(out.reason.includes('What stands there was not established by this reading'),
+            'the reason states the presence question as open rather than settled: ' + out.reason);
+        assert.ok(!out.reason.includes('still present in the main checkout'),
+            'the reason no longer claims a presence this reading never checked: ' + out.reason);
+    } finally {
+        rmDir(main);
+        rmDir(tree);
+        rmDir(local);
+    }
+});
+
 test('bound goal, Stop payload missing session_id entirely: empty stdout (the documented fail-open release)', () => {
     // Pins the shape loudly: if the harness ever stops sending session_id, a
     // bound goal must not silently start enforcing (or silently stop enforcing)
@@ -3217,4 +3291,42 @@ test('bound goal, Stop payload missing session_id entirely: empty stdout (the do
         rmDir(repo);
         rmDir(local);
     }
+});
+
+// Every block reason this hook emits about the main checkout fires on
+// planPathState(stateRoot, planRel) !== 'gone', and that predicate is true for a
+// present doc, an unusable path and an unreadable one alike. This hook takes no
+// presence read at all, so no sentence it emits can name the plan present there.
+// The status CLI is the surface that may say it, and only in the branch a
+// planHeadText read guards, which is why the phrase is banned here and counted
+// rather than banned everywhere.
+//
+// The scan joins adjacent string literals first. These reasons are built by
+// concatenation across source lines, so the sentence a reader receives exists
+// in no single line of the file, and a pattern applied to the raw source is
+// unable to match the very wording it screens for.
+test('no reason this hook emits names the plan present in the main checkout', () => {
+    const CLAIM = /still present in the main checkout/;
+    const joinLiterals = (src) => src.replace(/'\s*\+\s*'/g, '');
+
+    // The control carries the retired wording in the split form the source
+    // actually uses. A control written as one unbroken line would pass against
+    // a scan that cannot read this file at all, which is how this check first
+    // went quiet for the wrong reason.
+    const splitSample = [
+        "' One thing first: ' + safePlan + ' is absent in this working directory but still '",
+        "    + 'present in the main checkout its goal state lives in, so it is not archived'"
+    ].join('\n');
+    assert.doesNotMatch(splitSample, CLAIM,
+        'control: the raw split source does not match, which is why the join exists');
+    assert.match(joinLiterals(splitSample), CLAIM,
+        'control: joined, the retired wording matches, so a clean scan below means absence');
+
+    assert.doesNotMatch(joinLiterals(fs.readFileSync(HOOK, 'utf8')), CLAIM,
+        'the Stop hook establishes no presence, so it may not assert one');
+
+    const cli = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-goal.js');
+    const cliHits = (joinLiterals(fs.readFileSync(cli, 'utf8')).match(new RegExp(CLAIM.source, 'g')) || []).length;
+    assert.strictEqual(cliHits, 1,
+        'the status CLI states this once, in the branch a planHeadText read guards');
 });

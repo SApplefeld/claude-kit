@@ -1217,6 +1217,15 @@ test('`kit-goal.js status` ties a [missing] token to the position that still cou
         // so it must not appear beside this one.
         assert.doesNotMatch(res.stdout, /holds no readable copy at either path/,
             'this tree has archived nothing, so the mirror direction\'s note must not print');
+        // A real, readable doc is what this fixture stands at the main
+        // checkout's path, so neither non-present branch's note has grounds
+        // to print beside this one.
+        assert.doesNotMatch(res.stdout,
+            /holds no plan file any reader can resolve at this plan's path/,
+            'the doc reads present here, so the unusable branch\'s note must not print');
+        assert.doesNotMatch(res.stdout,
+            /could not be read at this plan's path just now/,
+            'the doc reads present here, so the unreadable branch\'s note must not print');
     } finally {
         rmDir(main);
         rmDir(tree);
@@ -1256,6 +1265,15 @@ test('a plan archived-terminal in this worktree alone ties its [missing] token t
         // not appear.
         assert.doesNotMatch(res.stdout, /still present in the main checkout this goal state lives in/,
             'nothing is present in the main checkout, so the other direction\'s note must not print');
+        // Nothing at all stands at the main checkout's plans path in this
+        // fixture (planPathState reads 'gone' there), so neither non-present
+        // branch's note has grounds to print beside the mirror note either.
+        assert.doesNotMatch(res.stdout,
+            /holds no plan file any reader can resolve at this plan's path/,
+            'nothing stands at the main checkout\'s path, so the unusable branch\'s note must not print');
+        assert.doesNotMatch(res.stdout,
+            /could not be read at this plan's path just now/,
+            'nothing stands at the main checkout\'s path, so the unreadable branch\'s note must not print');
     } finally {
         rmDir(main);
         rmDir(tree);
@@ -1292,6 +1310,11 @@ test('a single checkout prints neither tree-split note, though the plans-path to
             'setup: the plans-path token reads missing: ' + res.stdout);
         assert.doesNotMatch(res.stdout, /still present in the main checkout this goal state lives in/);
         assert.doesNotMatch(res.stdout, /holds no readable copy at either path/);
+        assert.doesNotMatch(res.stdout, /holds no plan file any reader can resolve at this plan's path/,
+            'a single checkout has no root !== cwd gate to open, so the unusable-kind note must not'
+                + ' print either');
+        assert.doesNotMatch(res.stdout, /could not be read at this plan's path just now/,
+            'and neither must the unreadable-kind note');
     } finally {
         rmDir(dir);
     }
@@ -1313,6 +1336,256 @@ test('a queue entry missing from both trees keeps the plain unresolvable wording
         assert.match(res.stdout, /unresolvable: the doc for this plan is in neither/);
         assert.doesNotMatch(res.stdout, /still present in the main checkout this goal state lives in/,
             'nothing is present in the main checkout, so nothing claims it is');
+    } finally {
+        rmDir(main);
+        rmDir(tree);
+    }
+});
+
+test('a directory standing at the main checkout\'s plan path gets the unusable note, not a presence claim', () => {
+    const { main, tree } = makeWorktree();
+    try {
+        // A directory at the plans path is planPathState's 'unusable' kind:
+        // it is not a readable plan doc and never will be one at this path.
+        // planHeadText's kind check refuses it before any read is attempted,
+        // so the present-in-main note's presence claim has no basis here.
+        fs.mkdirSync(path.join(main, 'docs', 'plans', 'a_spec_v1.md'));
+        planAt(main, 'docs/plans/b_spec_v1.md', 'In Progress');
+        planAt(tree, 'docs/plans/b_spec_v1.md', 'In Progress');
+        arm(main, worktreeState());
+
+        const res = runGoalStatus(tree);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /queue: plan 1 of 2, docs\/plans\/a_spec_v1\.md/,
+            'setup: the position still counts the plan pending: ' + res.stdout);
+        assert.match(res.stdout, /> docs\/plans\/a_spec_v1\.md \[missing\]/,
+            'setup: this tree reads the entry as missing: ' + res.stdout);
+        assert.match(res.stdout,
+            /holds no plan file any reader can resolve at this plan's path/,
+            'the unusable-kind note names what was found: ' + res.stdout);
+        assert.doesNotMatch(res.stdout, /still present in the main checkout this goal state lives in/,
+            'a directory is not a presence this reading established');
+        assert.doesNotMatch(res.stdout,
+            /could not be read at this plan's path just now/,
+            'the unreadable note is a different branch and must not also print');
+        assert.doesNotMatch(res.stdout, /holds no readable copy at either path/,
+            'the mirror note requires no readable copy at either path in the main checkout, and this'
+            + ' branch never reaches it');
+    } finally {
+        rmDir(main);
+        rmDir(tree);
+    }
+});
+
+test('an archived-complete copy in this tree alongside a directory in the main checkout still gets the unusable note, not the mirror note', () => {
+    const { main, tree } = makeWorktree();
+    try {
+        // Both conjuncts of archivedOnlyHere's guard are live here, unlike the
+        // sibling cases above it: this tree really does hold a terminal
+        // archived copy (treeEntryState(cwd, plan) === 'complete', genuinely
+        // true, not merely absent-by-construction), and the main checkout
+        // holds a directory at the plans path rather than nothing at all
+        // (planPathState(root, plan) === 'unusable', not 'gone'). The mirror
+        // note may only print where the main checkout's own read is 'gone';
+        // this fixture is the one where the first conjunct alone is not
+        // enough, and the unusable note is what actually applies.
+        archiveAt(tree, 'docs/plans/a_spec_v1.md', 'Complete');
+        fs.mkdirSync(path.join(main, 'docs', 'plans', 'a_spec_v1.md'));
+        planAt(main, 'docs/plans/b_spec_v1.md', 'In Progress');
+        planAt(tree, 'docs/plans/b_spec_v1.md', 'In Progress');
+        arm(main, worktreeState());
+
+        const res = runGoalStatus(tree);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /queue: plan 1 of 2, docs\/plans\/a_spec_v1\.md/,
+            'setup: the position still counts the plan pending: ' + res.stdout);
+        assert.match(res.stdout, /> docs\/plans\/a_spec_v1\.md \[missing\]/,
+            'setup: this tree reads the entry as missing: ' + res.stdout);
+        assert.match(res.stdout,
+            /holds no plan file any reader can resolve at this plan's path/,
+            'the unusable-kind note prints: ' + res.stdout);
+        assert.doesNotMatch(res.stdout, /holds no readable copy at either path/,
+            'the mirror note requires the main checkout\'s own read to be \'gone\', which this'
+            + ' fixture is not, so it must not print even though this tree\'s archive is genuinely'
+            + ' complete: ' + res.stdout);
+    } finally {
+        rmDir(main);
+        rmDir(tree);
+    }
+});
+
+test('a main checkout copy that could not be read gets the unreadable note, not a presence claim', () => {
+    const { main, tree } = makeWorktree();
+    try {
+        // A real plan doc stands at the main checkout's path, but its lstat is
+        // shimmed to fail with a transient errno, matching planPathState's
+        // 'unreadable' contract for a lock, a permission race or a descriptor
+        // exhaustion. planHeadText's own open never runs far enough to read
+        // any text, so the present-in-main note's presence claim has no basis
+        // here either, even though a doc genuinely sits at the path.
+        planAt(main, 'docs/plans/a_spec_v1.md', 'In Progress');
+        planAt(main, 'docs/plans/b_spec_v1.md', 'In Progress');
+        planAt(tree, 'docs/plans/b_spec_v1.md', 'In Progress');
+        arm(main, worktreeState());
+
+        const target = path.join(main, 'docs', 'plans', 'a_spec_v1.md');
+        const shim = path.join(main, 'lock-plan-path.js');
+        fs.writeFileSync(shim, [
+            "'use strict';",
+            "const fs = require('fs');",
+            'const realLstatSync = fs.lstatSync;',
+            'const target = ' + JSON.stringify(target) + ';',
+            'fs.lstatSync = function (p) {',
+            '    if (String(p) === target) {',
+            "        const err = new Error('EBUSY: resource busy or locked, lstat ' + target);",
+            "        err.code = 'EBUSY';",
+            '        throw err;',
+            '    }',
+            '    return realLstatSync.apply(fs, arguments);',
+            '};'
+        ].join('\n') + '\n', 'utf8');
+
+        const res = spawnSync(process.execPath, [GOAL_CLI, 'status'], {
+            cwd: tree,
+            encoding: 'utf8',
+            env: { ...process.env, NODE_OPTIONS: '--require "' + shim.replace(/\\/g, '/') + '"' }
+        });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /queue: plan 1 of 2, docs\/plans\/a_spec_v1\.md/,
+            'setup: the position still counts the plan pending: ' + res.stdout);
+        assert.match(res.stdout, /> docs\/plans\/a_spec_v1\.md \[missing\]/,
+            'setup: this tree reads the entry as missing: ' + res.stdout);
+        assert.match(res.stdout,
+            /could not be read at this plan's path just now/,
+            'the unreadable note names what was found: ' + res.stdout);
+        assert.doesNotMatch(res.stdout, /still present in the main checkout this goal state lives in/,
+            'a lstat refusal is not a presence this reading established');
+        assert.doesNotMatch(res.stdout,
+            /holds no plan file any reader can resolve at this plan's path/,
+            'the unusable note is a different branch and must not also print');
+        assert.doesNotMatch(res.stdout, /holds no readable copy at either path/,
+            'the mirror note requires no readable copy at either path in the main checkout, and this'
+            + ' branch never reaches it');
+    } finally {
+        rmDir(main);
+        rmDir(tree);
+    }
+});
+
+test('a genuinely present main-checkout doc whose open is refused also gets the unreadable note', () => {
+    const { main, tree } = makeWorktree();
+    try {
+        // The third leg planHeadText's own contract names: lstat succeeds
+        // (the file really is there, the kind is established) and the open
+        // fails. The two sibling cases above both shim lstat itself, which
+        // never lets a reader get this far, so neither exercises the leg
+        // where a doc genuinely sits at the path and only the open is
+        // refused. fs.openSync is shimmed instead of fs.lstatSync here, and
+        // only for this one target path, so every other open (the goal-state
+        // file, the sibling plan doc) still succeeds.
+        planAt(main, 'docs/plans/a_spec_v1.md', 'In Progress');
+        planAt(main, 'docs/plans/b_spec_v1.md', 'In Progress');
+        planAt(tree, 'docs/plans/b_spec_v1.md', 'In Progress');
+        arm(main, worktreeState());
+
+        const target = path.join(main, 'docs', 'plans', 'a_spec_v1.md');
+        const shim = path.join(main, 'lock-plan-open.js');
+        fs.writeFileSync(shim, [
+            "'use strict';",
+            "const fs = require('fs');",
+            'const realOpenSync = fs.openSync;',
+            'const target = ' + JSON.stringify(target) + ';',
+            'fs.openSync = function (p) {',
+            '    if (String(p) === target) {',
+            "        const err = new Error('EACCES: permission denied, open ' + target);",
+            "        err.code = 'EACCES';",
+            '        throw err;',
+            '    }',
+            '    return realOpenSync.apply(fs, arguments);',
+            '};'
+        ].join('\n') + '\n', 'utf8');
+
+        const res = spawnSync(process.execPath, [GOAL_CLI, 'status'], {
+            cwd: tree,
+            encoding: 'utf8',
+            env: { ...process.env, NODE_OPTIONS: '--require "' + shim.replace(/\\/g, '/') + '"' }
+        });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /queue: plan 1 of 2, docs\/plans\/a_spec_v1\.md/,
+            'setup: the position still counts the plan pending: ' + res.stdout);
+        assert.match(res.stdout, /> docs\/plans\/a_spec_v1\.md \[missing\]/,
+            'setup: this tree reads the entry as missing: ' + res.stdout);
+        assert.match(res.stdout,
+            /could not be read at this plan's path just now/,
+            'the unreadable note prints for the open-refused leg too, with a doc genuinely at the'
+                + ' path: ' + res.stdout);
+        assert.doesNotMatch(res.stdout, /still present in the main checkout this goal state lives in/,
+            'an open refusal is not a presence this reading established, even though a doc really'
+                + ' sits there');
+        assert.doesNotMatch(res.stdout,
+            /holds no plan file any reader can resolve at this plan's path/,
+            'the unusable note is a different branch and must not also print');
+        assert.doesNotMatch(res.stdout, /holds no readable copy at either path/,
+            'the mirror note requires no readable copy at either path in the main checkout, and this'
+            + ' branch never reaches it');
+    } finally {
+        rmDir(main);
+        rmDir(tree);
+    }
+});
+
+test('the unreadable note reads the same where nothing stands at the path, so it claims no copy', () => {
+    const { main, tree } = makeWorktree();
+    try {
+        // The refusal is identical to the sibling above and the path holds
+        // nothing, which is the state planPathState reports as unreadable
+        // whenever lstat itself throws: the errno arrives before anything
+        // about the path is observed. The note is honest only if it reads
+        // the same here, so a presence claim put back into it fails here.
+        planAt(main, 'docs/plans/b_spec_v1.md', 'In Progress');
+        planAt(tree, 'docs/plans/b_spec_v1.md', 'In Progress');
+        arm(main, worktreeState());
+
+        const target = path.join(main, 'docs', 'plans', 'a_spec_v1.md');
+        const shim = path.join(main, 'lock-absent-plan-path.js');
+        fs.writeFileSync(shim, [
+            "'use strict';",
+            "const fs = require('fs');",
+            'const realLstatSync = fs.lstatSync;',
+            'const target = ' + JSON.stringify(target) + ';',
+            'fs.lstatSync = function (p) {',
+            '    if (String(p) === target) {',
+            "        const err = new Error('EBUSY: resource busy or locked, lstat ' + target);",
+            "        err.code = 'EBUSY';",
+            '        throw err;',
+            '    }',
+            '    return realLstatSync.apply(fs, arguments);',
+            '};'
+        ].join('\n') + '\n', 'utf8');
+
+        const res = spawnSync(process.execPath, [GOAL_CLI, 'status'], {
+            cwd: tree,
+            encoding: 'utf8',
+            env: { ...process.env, NODE_OPTIONS: '--require "' + shim.replace(/\\/g, '/') + '"' }
+        });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /> docs\/plans\/a_spec_v1\.md \[missing\]/,
+            'setup: this tree reads the entry as missing: ' + res.stdout);
+        // A positive pin on the note's full text rather than a negative
+        // pattern: a doesNotMatch against a phrase no code emits is silent
+        // for the wrong reason, and passes just the same however the note is
+        // reworded. Asserting the exact text fails the moment a rewording
+        // changes it, which is the property this pin exists to hold.
+        assert.ok(res.stdout.includes('  (the [missing] token above is this working directory\'s reading'
+            + ' alone; the main checkout this goal state lives in could not be read at this plan\'s'
+            + ' path just now, and which of three states it is in was not established here: a plan doc'
+            + ' may be at that path with its open refused, or with its read failing after it opened,'
+            + ' or the refusal may have arrived before anything at the path was observed at all. So'
+            + ' this reading is evidence neither way about whether the plan is present there, and the'
+            + ' position above still counts the plan pending. Try again once whatever is holding it'
+            + ' clears, and look at what stands there by hand if it does not)'),
+            'the note reads the same whether a copy genuinely sits at the path or nothing does: '
+                + res.stdout);
     } finally {
         rmDir(main);
         rmDir(tree);

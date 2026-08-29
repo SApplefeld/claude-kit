@@ -44,7 +44,7 @@ const os = require('os');
 const {
     armGoal, appendGoal, clearGoal, readGoal, planStatusReadings, lastActivePhrase, isSessionIdShaped,
     goalRoot, goalPathKind, planPathState, safeForAuthorization, planArmedBy, queuePosition,
-    treeEntryState,
+    treeEntryState, planHeadText,
     GOAL_STATE_MAX_BYTES
 } = require('./kit-goal-lib.js');
 
@@ -400,20 +400,38 @@ function cmdStatus() {
     // the position walk moved past is counted in the queue line above.
     const window = state.queue.slice(position.index, position.index + 5);
     // Whether any rendered entry is one the two Status readings answer
-    // differently about, which the note after the window explains. Both
+    // differently about, which the divergent-token note below explains. Both
     // readings come from one call over one set of bytes (planStatusReadings),
     // so the token an entry prints and the position walked above cannot be
     // taken from different reads of the same row.
     let divergent = false;
     // Whether the entry AT the reported position prints as missing while the
-    // position line above reports it pending, which the second note after the
-    // window explains. The tokens read THIS working directory alone, while the
+    // position line above reports it pending, which the wrong-tree note below
+    // explains. The tokens read THIS working directory alone, while the
     // position walk requires every tree to agree, so in a worktree an entry
     // present only in the main checkout the goal state lives in prints
     // [missing] directly beneath a position that still counts it as work to do.
     // The main checkout is asked only in that narrow case, and only to keep the
-    // note from claiming a presence nothing checked.
+    // note from claiming a presence nothing checked. Set only when the main
+    // checkout's copy is read and its text came back (planHeadText answers a
+    // non-null text), the one outcome that actually establishes presence;
+    // wrongTreeUnusable and wrongTreeUnreadable below are the two notes for a
+    // read that did not, mutually exclusive with this one and with each other
+    // because they all come from parting one read.
     let wrongTree = false;
+    // Whether the main checkout's copy could not be read because something
+    // other than a readable plan doc stands at its path, or the path itself
+    // cannot resolve to one (planPathState's 'unusable'). The reading settles
+    // nothing about whether the plan itself is present there, so the note this
+    // flag prints says only what was found, not that the doc is present or
+    // absent.
+    let wrongTreeUnusable = false;
+    // Whether the main checkout could not be read at the plan's path for a
+    // reason that does not name a kind (planPathState's 'unreadable': a
+    // transient errno, which leaves even what stands at the path unknown, or
+    // a copy whose read failed after it was opened). As with wrongTreeUnusable,
+    // the reading settles nothing about presence.
+    let wrongTreeUnreadable = false;
     // Whether this tree's own docs/archive/ holds a readable copy whose header
     // reads terminal while the main checkout the goal state lives in has no
     // readable copy at either path: the mirror of wrongTree above. The token
@@ -428,9 +446,12 @@ function cmdStatus() {
     // report. treeEntryState is asked of both trees instead of re-derived here,
     // so this reading cannot drift from the one the position walk itself trusts
     // (queueEntryState calls the same function). Asked only in the same narrow
-    // case wrongTree is: the current entry, only once the split is live, and
-    // only when this tree's own archive is what makes the split, so the healthy
-    // single-tree case never reaches it.
+    // window wrongTree, wrongTreeUnusable and wrongTreeUnreadable are: the
+    // current entry, only once the split is live, and only when the main
+    // checkout's copy did not read present, and only in the branch below where
+    // that copy's own path read as gone rather than unusable or unreadable
+    // (planPathState(root, plan) === 'gone'), which is the one answer this flag
+    // can say anything true about.
     let archivedOnlyHere = false;
     window.forEach((plan, i) => {
         const head = planStatusReadings(cwd, plan);
@@ -446,10 +467,28 @@ function cmdStatus() {
         if (i === 0 && status === QUEUE_TOKENS.gone && !position.unresolvable && !position.finished) {
             const root = goalRoot(cwd);
             if (root !== cwd) {
-                wrongTree = planPathState(root, plan) !== 'gone';
-                if (!wrongTree) {
-                    archivedOnlyHere = treeEntryState(cwd, plan) === 'complete'
-                        && treeEntryState(root, plan) === 'absent';
+                // planHeadText is the one read that can actually answer
+                // presence: a non-null text is bytes this call read off the
+                // main checkout's own copy. planPathState alone cannot stand
+                // in for it here, because it is asked of a tree planHead was
+                // never run against, and its 'unreadable' answer is also what
+                // a perfectly readable present file gives (an ordinary file
+                // satisfies its own isFile() leg before any read is
+                // attempted); a bare `!== 'gone'` would then be satisfied by a
+                // locked path and by a directory standing at the plan's path
+                // exactly as it is by a present doc, none of which is a
+                // presence this call established.
+                const mainHead = planHeadText(root, plan);
+                if (mainHead.exists && mainHead.text !== null) {
+                    wrongTree = true;
+                } else {
+                    const mainState = planPathState(root, plan);
+                    if (mainState === 'unusable') wrongTreeUnusable = true;
+                    else if (mainState === 'unreadable') wrongTreeUnreadable = true;
+                    else if (mainState === 'gone') {
+                        archivedOnlyHere = treeEntryState(cwd, plan) === 'complete'
+                            && treeEntryState(root, plan) === 'absent';
+                    }
                 }
             }
         }
@@ -495,6 +534,26 @@ function cmdStatus() {
             + ' still present in the main checkout this goal state lives in, so the position above'
             + ' counts the plan pending. Bring it onto this tree\'s branch, or land its archival in'
             + ' the main checkout, so both trees agree)');
+    }
+    if (wrongTreeUnusable) {
+        out.push('  (the [missing] token above is this working directory\'s reading alone; the main'
+            + ' checkout this goal state lives in holds no plan file any reader can resolve at this'
+            + ' plan\'s path. Either something that is not a regular file is at that path, or the path'
+            + ' itself no longer resolves to one (a parent that is not a directory, or a link cycle'
+            + ' above it). So this reading is not evidence the plan is present there, and the position'
+            + ' above still counts the plan pending. What the main checkout holds at that path is'
+            + ' the operator\'s to repair, whether by restoring a readable plan doc there, parents'
+            + ' included, or by landing the plan\'s archival there so both trees agree)');
+    }
+    if (wrongTreeUnreadable) {
+        out.push('  (the [missing] token above is this working directory\'s reading alone; the main'
+            + ' checkout this goal state lives in could not be read at this plan\'s path just now, and'
+            + ' which of three states it is in was not established here: a plan doc may be at that path'
+            + ' with its open refused, or with its read failing after it opened, or the refusal may have'
+            + ' arrived before anything at the path was observed at all. So this reading is evidence'
+            + ' neither way about whether the plan is present there, and the position above still counts'
+            + ' the plan pending. Try again once whatever is holding it clears, and look at what stands'
+            + ' there by hand if it does not)');
     }
     if (archivedOnlyHere) {
         out.push('  (this working directory has filed the plan under docs/archive/ with a'
