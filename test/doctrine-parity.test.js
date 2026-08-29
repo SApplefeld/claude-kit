@@ -2340,3 +2340,96 @@ test('the owning-surface class sentence is one sentence on all three surfaces', 
             + 'tool leg was lost from the enumeration itself');
     }
 });
+
+// The coverage-answer clause is a deliberate five-surface rule in three
+// registers, so this pins each surface's own wording rather than byte-identity.
+// Two registers carry it: the skill and the two doctrine copies share the
+// operative phrases verbatim, and the two sighted charters state the same duty
+// in the reviewer's voice. The charter leg deliberately pins only the durable
+// half, because the discriminator sentence beside it is itself scheduled to
+// change, and a pin over a sentence due to be corrected reds on the fix. What
+// makes the pin necessary is that the doctrine copies joined the set last and a
+// key-phrase grep run from the charters would have missed them: the review round
+// that produced this clause found the doctrine copies shipping "neither listed
+// nor shaped" and "a member you could not have listed" against the three
+// surfaces' "neither enumerated nor shaped" and "a member you did not name",
+// with both parity suites green, because they compare the doctrine copies only
+// to each other and never to the skill that owns the rule.
+test('the coverage-answer clause reaches every surface carrying the absence-check duty', () => {
+    const operative = [
+        'what would catch a member you did not name',
+        'a structural pattern over the class\'s shape where one exists',
+        'neither enumerated nor shaped',
+    ];
+    const paths = [
+        ['plugins/claude-kit/skills/executing-work/SKILL.md',
+            path.join(__dirname, '..', 'plugins', 'claude-kit', 'skills',
+                'executing-work', 'SKILL.md')],
+        ['home/claude-kit-doctrine.md',
+            path.join(__dirname, '..', 'home', 'claude-kit-doctrine.md')],
+        ['plugins/claude-kit/skills/operating-instructions/SKILL.md',
+            path.join(__dirname, '..', 'plugins', 'claude-kit', 'skills',
+                'operating-instructions', 'SKILL.md')],
+    ];
+    for (const [rel, p] of paths) {
+        const body = collapseWhitespace(fs.readFileSync(p, 'utf8'));
+        for (const phrase of operative) {
+            const hits = body.split(phrase).length - 1;
+            assert.strictEqual(hits, 1, rel + ' carries the '
+                + 'coverage-answer phrase \'' + phrase + '\' ' + hits + ' times, '
+                + 'not once; the skill and both doctrine copies state this duty '
+                + 'in one shared wording on purpose, so a surface that drops it '
+                + 'or restates it in its own words has drifted from the owner');
+        }
+    }
+
+    const charterDuty = [
+        'a structural pattern over that class\'s shape where one exists',
+    ];
+    for (const charter of ['adversarial-reviewer.md', 'prose-reviewer.md']) {
+        const body = collapseWhitespace(fs.readFileSync(path.join(__dirname, '..',
+            'plugins', 'claude-kit', 'agents', charter), 'utf8'));
+        for (const phrase of charterDuty) {
+            const hits = body.split(phrase).length - 1;
+            assert.strictEqual(hits, 1, charter + ' carries the reviewer-register '
+                + 'coverage duty \'' + phrase.slice(0, 50) + '...\' ' + hits
+                + ' times, not once; a reviewer that stops asking whether a '
+                + 'control proved coverage is the backstop this rule leans on');
+        }
+    }
+});
+
+// The paragraph-edit-unit rule has one owner and one operational residue, and
+// the residue is what a fix round actually reads, since executing-work is loaded
+// at that moment and writing-skills may not be. Both halves are pinned, and so
+// is the pointer's path shape: the round that landed this shipped the residue
+// carrying a repo-root-relative literal, which resolves only inside this
+// checkout and names nothing under a marketplace install or an external engine's
+// payload, and no existing assertion could see it.
+test('the paragraph-edit-unit rule keeps its owner and its pointer, and the pointer resolves', () => {
+    const writingSkills = collapseWhitespace(fs.readFileSync(path.join(__dirname,
+        '..', 'plugins', 'claude-kit', 'skills', 'writing-skills', 'SKILL.md'), 'utf8'));
+    const owner = 'When an amendment corrects a claim a curated document states, '
+        + 'the edit unit is the paragraph, never the sentence.';
+    assert.strictEqual(writingSkills.split(owner).length - 1, 1,
+        'writing-skills no longer states the paragraph-edit-unit rule exactly '
+        + 'once; it is the owning surface, so a second copy or none at all both '
+        + 'leave the residue in executing-work pointing at nothing');
+
+    const executingWork = collapseWhitespace(fs.readFileSync(path.join(__dirname,
+        '..', 'plugins', 'claude-kit', 'skills', 'executing-work', 'SKILL.md'), 'utf8'));
+    assert.ok(executingWork.includes('takes the paragraph as its edit unit rather '
+        + 'than the sentence, and carries the claim\'s other carriers with it, per '
+        + 'the writing-skills skill (`skills/writing-skills/SKILL.md` under the kit '
+        + 'plugin root)'),
+        'executing-work\'s fix-round step no longer carries the paragraph-edit-unit '
+        + 'residue pointing at the writing-skills skill by its plugin-root path, so '
+        + 'an orchestrator correcting curated prose between review rounds gets the '
+        + 'rule from nowhere');
+
+    assert.ok(!executingWork.includes('plugins/claude-kit/skills/writing-skills/'),
+        'executing-work names the writing-skills skill by a repo-root-relative '
+        + 'path, which resolves only inside this checkout: under a marketplace '
+        + 'install or an external engine\'s --plugin-dir payload the plugin root '
+        + 'holds skills/ directly and that path names nothing');
+});
