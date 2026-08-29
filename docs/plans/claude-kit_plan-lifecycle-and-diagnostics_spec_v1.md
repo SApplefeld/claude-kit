@@ -104,9 +104,11 @@ Appended 2026-08-28, coordinator-routed for expert adjudication: a worker in a p
 
 The fix: the current-entry check gains the mirror arm. When the current entry prints `[missing]`, the position counts it pending, and this tree's `docs/archive/` holds a copy whose header reads terminal while the main checkout answers gone at both paths, print a note naming the shape and the way forward: archived in this worktree only, land the archival in the main checkout for the queue to advance. Same fail-open discipline as the sibling note, and the same narrow trigger (asked only for the current entry, only when the split is live), so the healthy single-tree case pays nothing.
 
+A lead from the originating seat, routed 2026-08-28 marked inferred by its author, adjudicated here so this section's implementer takes it as settled rather than open: the token's source state carries a library gloss reading "nothing is there: the plan was moved to the archive" (`kit-goal-lib.js:658`), which reads as if archived were the state's semantic and makes `missing` look like a misname. It is not: the state is computed from an absent-class lstat errno alone (`:683`) and cannot distinguish archived from deleted from never-existed, the callers own their wordings by documented design (`:675-676`), and a token reading `archived` would claim evidence its reader never gathered, where the reconciling notes are the surface that renders the discriminating evidence when it exists. The gloss is the residue: it states the healthy lifecycle cause as if it were the meaning, which is what produced the misreading, so sharpen it to name nothing-is-there as the semantic and archival as the expected cause. A comment edit riding this section, no test.
+
 Tests, red first on the new note (worktree fixture: archived-terminal in the worktree, gone at both paths in main, note asserted and failing today), with the existing present-in-main note pinned as a control so the two directions cannot pass on each other's fixture, and a single-tree control staying silent.
 
-Files in scope: `plugins/claude-kit/hooks/kit-goal.js`, the test file the existing status-rendering tests live in (the implementer names it).
+Files in scope: `plugins/claude-kit/hooks/kit-goal.js`, `plugins/claude-kit/hooks/kit-goal-lib.js` (the gloss comment alone), the test file the existing status-rendering tests live in (the implementer names it).
 
 ## Out of Scope
 
