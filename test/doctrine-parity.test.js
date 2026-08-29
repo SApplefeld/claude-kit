@@ -964,6 +964,26 @@ test('the box-budget brief clause agrees with the role skill\'s claim contract a
         + 'writer\'s own session id while the brief clause still states the '
         + 'session-scoped delete');
 
+    // The contention branch, on both surfaces: naming a contention and
+    // proceeding writes no claim. The field-set comparison above is blind to
+    // this by construction, comparing what a claim carries and never whether
+    // one is written at all, so the two surfaces can agree on the shape while
+    // disagreeing on the branch, which is the drift this leg exists for. The
+    // clause is the only copy a dispatched subagent receives, so a clause
+    // that chains the write onto the contention branch has that subagent
+    // overwrite a live holder's claim on the machine's one slot, the failure
+    // the contract's own sentence names.
+    for (const [label, text] of [['role contract', roleBody],
+        ['brief clause', clause]]) {
+        assert.ok(text.includes('the contention and proceeding never '
+            + 'includes writing the claim'),
+            'the ' + label + ' no longer states that naming a contention and '
+            + 'proceeding writes no claim, so a session that proceeds under a '
+            + 'named contention writes over the live holder\'s claim and the '
+            + 'box ends up holding two heavy processes under one claim naming '
+            + 'only the second');
+    }
+
     // The poll's standing in the clause: a sample that grounds waiting and
     // never licenses starting or releasing. These two phrases are the
     // anti-verdict statement, and the absence assertion below is its negative

@@ -128,7 +128,7 @@ This section restructures existing content only; Section 3 adds its registry tic
 
 Tests: the two re-derived pins red then green; the peer-sessions four-heading pin (`:332`) green untouched; suite delta per Amendment 3.
 
-Files in scope: `plugins/claude-kit/skills/coordinator/SKILL.md`, `test/doctrine-parity.test.js`, plus the referrers the sweep surfaces, which during execution resolved to `plugins/claude-kit/agents/docs-curator.md` and `plugins/claude-kit/skills/curating-docs/SKILL.md` (edited by the implementer), and `docs/security-model.md`, `docs/architecture.md`, `README.md` and `docs/README.md` (written in the main thread, since the docs-write-guard denies a non-curator subagent any write under `docs/`). `docs/README.md` is a fold made at the second review round: its `architecture.md` and `security-model.md` entries described the retired clearance model as current, and they sit under **Documents about the solution** rather than in an archive index, so the exemption below does not reach them. The `docs/security-model.md` write is this section's `## The coordinator board` section only, a different region from the allowlist boundary Section 8 owns in the same file; the two run serially in one session.
+Files in scope: `plugins/claude-kit/skills/coordinator/SKILL.md`, `test/doctrine-parity.test.js`, plus the referrers the sweep surfaces, which during execution resolved to `plugins/claude-kit/agents/docs-curator.md` and `plugins/claude-kit/skills/curating-docs/SKILL.md` (edited by the implementer), and `docs/security-model.md`, `docs/architecture.md`, `README.md`, `docs/README.md` and `docs/plans/README.md` (written in the main thread, since the docs-write-guard denies a non-curator subagent any write under `docs/`). `docs/README.md` is a fold made at the second review round: its `architecture.md` and `security-model.md` entries described the retired clearance model as current, and they sit under **Documents about the solution** rather than in an archive index, so the exemption below does not reach them. The `docs/security-model.md` write is this section's `## The coordinator board` section only, a different region from the allowlist boundary Section 8 owns in the same file; the two run serially in one session.
 
 The mandated grep is `coordinator-board`, and it is under-inclusive for this change, which is worth stating because the sweep's own acceptance is that nothing is left: a referrer can describe the board without naming its path, and three did (`docs/architecture.md`'s "the ledger commit" and "hourly heartbeat", `README.md`'s "committed ledger"). The sweep therefore also runs on `hourly`, `clearance`, `home repo`, and `committed board|ledger|state`. Per Amendment 7 the sweep reports a disposition per referrer with the rule that settles it, and two classes are exempt rather than missed: the archive-index entries in `docs/README.md` and `docs/plans/README.md`, whose own preambles state that their entries record what a plan delivered when it shipped, and the three referrers under `docs/archive/`, both exempt under the append-only-history rule, since repointing either class would falsify a record rather than update a reference.
 
@@ -202,7 +202,7 @@ Three mechanical changes and the prose that rides them:
 
 Tests, red first, in a new `test/seat-stop.test.js` plus the compact suite files the implementer extends: the hook is silent for an unregistered session; stamps and throttles the heartbeat; opens the marker only on fresh `Status-updated:` plus clean tree (dirty tree: no marker; stale stamp: no marker; non-git cwd: marker); the age-boundary tests pinning 30 minutes go red then green at 4 hours; `consent --project` writes at the target and refuses a session with no transcript there, with a control run proving the happy path; and the role-boundary allow gets its recorded green as a full path, marker written by the hook at a fixture cwd and the gate then journaling an `allow` with reason `role-boundary`, the test Fork 2 called non-negotiable. The two end-to-end operator observations in the backlog stay operator work and ride the close-out list. Amendment 6 applies: this section edits hooks, so the build stamp is rebuilt before the gate.
 
-Files in scope: `plugins/claude-kit/hooks/kit-compact-lib.js`, `plugins/claude-kit/hooks/kit-compact-checkpoint.js`, `plugins/claude-kit/hooks/seat-stop.js` (new), `plugins/claude-kit/hooks/hooks.json`, `plugins/claude-kit/skills/coordinator/SKILL.md`, `plugins/claude-kit/skills/peer-sessions/SKILL.md`, `test/seat-stop.test.js` (new), `test/kit-compact-gate.test.js`, `test/compact-deferral-nudge.test.js`, and any further file a grep for the constant name surfaces. The re-run grep found no test file referencing the constant by name, so the authoring-time note of three was wrong; what the tests carry is the bare literal, and `test/compact-deferral-nudge.test.js` turned out to be exempt (its `30 * 60 * 1000` builds an expired checkpoint for the ten-minute leg, a different constant). The shipped file set additionally carries `plugins/claude-kit/skills/role/SKILL.md`, whose step 8 asserted that nothing installed converts a status push into a boundary, which this section falsifies, and `README.md`'s hook inventory.
+Files in scope: `plugins/claude-kit/hooks/kit-compact-lib.js`, `plugins/claude-kit/hooks/kit-compact-checkpoint.js`, `plugins/claude-kit/hooks/seat-stop.js` (new), `plugins/claude-kit/hooks/hooks.json`, `plugins/claude-kit/skills/coordinator/SKILL.md`, `plugins/claude-kit/skills/peer-sessions/SKILL.md`, `test/seat-stop.test.js` (new), `test/kit-compact-gate.test.js`, `test/compact-deferral-nudge.test.js`, and any further file a grep for the constant name surfaces. The re-run grep found no test file referencing the constant by name, so the authoring-time note of three was wrong; what the tests carry is the bare literal, and `test/compact-deferral-nudge.test.js` turned out to be exempt (its `30 * 60 * 1000` builds an expired checkpoint for the ten-minute leg, a different constant). The shipped file set additionally carries `plugins/claude-kit/skills/role/SKILL.md`, whose step 8 asserted that nothing installed converts a status push into a boundary, which this section falsifies, `README.md`'s hook inventory, `plugins/claude-kit/hooks/kit-compact-gate.js`, whose hands-on deferral path the marker releases, `test/doctrine-parity.test.js`, which gains the pin holding the marker's bound equal to the deferral episode's own idle bound, and the three curated documents that describe the gate, `docs/README.md`, `docs/architecture.md` and `docs/security-model.md`.
 
 ### 6. The Admin inbox (Fork 5)
 
@@ -272,7 +272,7 @@ Appended 2026-08-28 from the coordinator seat's kaizen finding under the operato
 - Tests, red first, extending `test/memory-sync.test.js`: `coordinator/<machine>/.kit/compact-gate.jsonl` is admitted by today's text (red) and refused after (green, the refusing rule named); the board, registry, claims, and admin-requests forms stay admitted (pin); each owned memory-tier sidecar stays admitted (pin, one per name); a foreign `stray.jsonl` under a memory tier is refused where that tier's enumeration closed; the existing exclusion probes stay green untouched. Amendment 7 binds throughout: every refusal names the rule that produces it.
 - Section 1's rollout constraint applies unchanged and by reference: the fleet order is plugin update then `doctor -Fix` per machine before the narrowed text is live anywhere, and the close-out's operator list gains one line, removing the untracked `.kit/` residue from the live store's coordinator directory (the operator's act per Amendment 5, never a section's). That sweep is by directory rather than by file, which is what makes it sufficient: `kit-compact-lib.js`'s store-backed redirect is not the only writer reaching a `.kit/` path, `kit-goal-lib.js` and the statusline cache building theirs directly, so a sweep naming the compact gate alone would leave two files behind. Both managed files change here, not one, since the attributes text is now derived: a store reads Drift on `.gitattributes` as well as on `.gitignore` until its `-Fix` runs, which costs nothing extra because the same run repairs both. Two things this section adds to that constraint, both raised by the review round. The mirror direction is real and Section 1 states only its opposite: an updated machine's inbound screen runs the narrowed predicate over an incoming tree, so a tree pushed by a machine still on the old payload carrying a coordinator `.jsonl` is refused as an inbound leak, which stands that machine's whole store sync down rather than dropping the one path. The window exists only for a machine carrying Section 1's payload and not this one's, and one plugin update closes it. And the narrowing is retroactive, which the same round established is the sharper edge: the doctor feeds the index and every historical blob path through this same predicate, so a store that already tracked or committed a now-refused `.jsonl` reads as a leak permanently, the history half having no remedy short of rewriting the store's history. So each machine takes a read-only audit before its `-Fix`, `git -C <store> ls-files` and `git -C <store> rev-list --objects --branches --tags`, with every `.jsonl` path checked against the narrowed set. This machine's store was audited during execution and is clean on both surfaces, index and full history carrying `outcomes.jsonl` and `usage.jsonl` alone, the check returning hits rather than silence so the clean reading is measured; the other machines are unmeasurable from here and take the audit at rollout, which is the close-out operator list's second line.
 
-Files in scope: `plugins/claude-kit/doctor/install-memory-sync.ps1`, `test/memory-sync.test.js`, `plugins/claude-kit/skills/role/SKILL.md` (two consequence clauses, not the one parenthetical named at authoring), and, folded during execution, `docs/security-model.md`, whose allowlist paragraph documents this exact hole as live prose and would otherwise advertise a vulnerability this section closed and whose accepted-risk paragraph states the retired predicate, `docs/architecture.md`, which states that same retired predicate in its store-sync overview and was found by the review round rather than the section-open sweep, and `docs/backlog.md`, on two counts: its traversal-gap entry cites an example this narrowing falsifies, and it gains a new entry of its own for the `.kit` redirect asymmetry the fix round surfaced. Both `docs/` edits are the main thread's, the docs-write guard denying a dispatched implementer any write there.
+Files in scope: `plugins/claude-kit/doctor/install-memory-sync.ps1`, `test/memory-sync.test.js`, `plugins/claude-kit/skills/role/SKILL.md` (two consequence clauses, not the one parenthetical named at authoring), and, folded during execution, `docs/security-model.md`, whose allowlist paragraph documents this exact hole as live prose and would otherwise advertise a vulnerability this section closed and whose accepted-risk paragraph states the retired predicate, `docs/architecture.md`, which states that same retired predicate in its store-sync overview and was found by the review round rather than the section-open sweep, and `docs/backlog.md`, on two counts: its traversal-gap entry cites an example this narrowing falsifies, and it gains a new entry of its own for the `.kit` redirect asymmetry the fix round surfaced, and `plugins/claude-kit/scripts/memq.js`, whose shipped comment restated the retired merge rule and now points at its generator. Both `docs/` edits are the main thread's, the docs-write guard denying a dispatched implementer any write there.
 
 ## Out of Scope
 
@@ -1758,3 +1758,84 @@ Stamps: adjudicated 10, stamped 10, and the window owed a hand walk which was ta
 Next: finishing-work. This is the last section of the plan.
 
 Commit Model: Commit-and-Push
+
+### Interim board 13 - 2026-08-29
+
+The finishing pass ran its three gates and they found what ten sections of
+per-section review structurally could not: two counted claims falsified on a
+second surface, and one control-flow divergence between a contract and the copy
+of it a dispatched subagent actually receives. All three were repaired in this
+round, and the last of them earned a pin.
+
+**Where the run stands.** All ten sections closed and pushed, the last at
+`ab1dd52`. The finishing pass is mid-flight: steps 1 through 3 are done and
+adjudicated, and the fix round for their findings is what this board closes.
+Remaining: the docs curation pass, the plan's terminal-state close and archival,
+the commit of that docs work, the memory close-out, and the kaizen offer.
+
+**Step 1, QA verification.** PASS. The build runs clean with an empty porcelain
+either side of it. The suite matched the recorded baseline exactly at 1,922
+tests, 1,919 pass, 1 fail, 2 skipped, exit 1, with the single red the known
+machine-specific path-length case, matched on both its name and its mechanism.
+Every acceptance criterion across the ten sections was confirmed against the
+shipped files rather than against the Chapters that describe them.
+
+**Steps 2 and 3, three fresh-context lenses at fable.** Security returned
+CONCERNS, the final adversarial APPROVED_WITH_CONCERNS, and the prose lens
+CHANGES_REQUIRED. All three ran at their assigned tier with no substitution: the
+resolved-model distribution over each transcript's own assistant lines reads 91,
+116 and 96 turns, every one of them `claude-fable-5`, with zero synthetic
+placeholders. The tree-state bracket around all three read identical before and
+after, so no reviewer wrote.
+
+**What the round found, and what it says about the ten sections that preceded
+it.** Both accuracy defects are this repository's own named defect class, a
+count or enumeration restated on a surface nothing checks. `docs/architecture.md`
+counted 23 skills while the tree holds 24, falsified by this effort's own largest
+deliverable, the role skill, and missed by every section that added to that file.
+The security model's union-merge enumeration named two of the four rules the
+attributes text now derives. Neither is pinned by any test, which is why neither
+reddened anything.
+
+The third is different in kind and is the one worth carrying forward. The
+box-budget clause in `executing-work` chained the claim write onto the contention
+branch, where the role skill's owning contract says in terms that naming a
+contention and proceeding never includes writing the claim. Both files state that
+the clause is the only copy a dispatched subagent ever receives, so precedence
+could not repair it at the point of use: a subagent that named a contention,
+proceeded, and followed the clause's next act would replace a live holder's claim
+on the machine's one slot. The existing parity pin held the two surfaces to each
+other and stayed green throughout, because it compares the claim's field set and
+is blind by construction to whether a claim is written at all. A pin over data
+shape cannot see a divergence in control flow, and that is the general lesson
+rather than this instance: Amendment 9's warrant-sibling shape, arriving in the
+one place a pin was already watching.
+
+**Fixes landed in this round.** The skill count corrected to 24. The union-merge
+enumeration rewritten to name the shared tiers' two among the four rules the
+generator derives. The clause given the never-write-under-contention branch,
+without loosening the contract it now agrees with, and a new leg on the existing
+parity pin holding both surfaces to that branch, proved red against the pre-fix
+text and green after, with the restore verified byte-identical against a
+pre-probe copy. Two change-narrative passages removed from curated documents,
+where the rule beside each was state and the journey clause was not. Three
+`Files in scope:` lines corrected against what their own commits shipped:
+Section 2 gains `docs/plans/README.md`, Section 5 gains five files including the
+compaction gate it edited, and Section 10 gains the memq comment fold its own
+Chapter records.
+
+**Dispositioned without action, with the reasoning recorded.** The security
+lens rated the operator's machine hostnames in this repository a Major. Four
+sites carry one: three sit inside this plan's own Chapters and one is a reference
+to the kaizen inbox filename. Every one falls under a named exemption in the
+disposition table of the already-armed public-surface-hygiene plan, which records
+the operator's own scope ruling; the Chapter case is named there explicitly. The
+lens said in terms that it inferred this from scope wording and could not read
+that plan, which is exactly what made the check mine to run rather than its.
+
+**Open, and routed rather than fixed here.** The audience finding against the
+role and coordinator skills' longest paragraphs is a restructure whose parity
+pins assert literals inside the paragraphs it would split, so it is a plan of its
+own rather than a finishing-pass edit. The docs index entry lengths turn on an
+operator preference the lens flagged as such. The `consent --project` flag takes
+no network-shape refusal where its siblings do. All three go to the backlog.
