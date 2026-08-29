@@ -77,6 +77,11 @@ function block(text, lead) {
     return end === -1 ? text.slice(start) : text.slice(start, end);
 }
 
+// Whether a piece of text names the goal CLI as a path a session could run.
+function namesRunnableCli(text) {
+    return text.includes('kit-goal.js');
+}
+
 const IN_PROGRESS_LEAD = 'in-progress plan doc(s)';
 const READY_LEAD = 'Status: Ready';
 
@@ -361,5 +366,124 @@ test('a plan doc absent from docs/plans/ is not a bound', () => {
     const dir = makeProject();
     try {
         assert.strictEqual(context(dir), '');
+    } finally { rmDir(dir); }
+});
+
+// The conjunction of the two readings this hook already takes: plans in
+// progress here and no leash on any of them. The notice fires on that pair
+// alone, so each control below holds one half of it steady and breaks the
+// other.
+const UNLEASHED_LEAD = 'and no kit goal is armed in this project';
+
+test('in-progress plans with no goal armed are named as unleashed, with the arming named', () => {
+    const dir = makeProject();
+    try {
+        writePlan(dir, 'running_spec_v1.md', 'In Progress');
+        writePlan(dir, 'second_spec_v1.md', 'In Progress');
+        const text = context(dir);
+
+        const notice = block(text, UNLEASHED_LEAD);
+        assert.notStrictEqual(notice, '', 'the unleashed notice is emitted: ' + text);
+        assert.match(text, /2 plan doc\(s\) here read Status: In Progress and no kit goal is armed/,
+            'the notice counts the in-progress plans: ' + text);
+        assert.ok(notice.includes('/kit-goal <plan path>...'),
+            'the notice names the arming in the spelling that loads the skill: ' + notice);
+        assert.ok(notice.includes('bare arm form'),
+            'and says that spelling runs the CLI\'s bare arm form: ' + notice);
+        assert.ok(notice.includes('arm --append'),
+            'and says which form the append is for: ' + notice);
+        assert.ok(notice.includes('The kit-goal skill states who may arm one and on what authority'),
+            'and points at the skill for the actor and the authority: ' + notice);
+    } finally { rmDir(dir); }
+});
+
+// A hook payload is an instruction set a session executes, so a runnable node
+// path in it is directly executable by a session that has loaded no skill,
+// which routes that session around the arming rules the kit-goal skill owns,
+// while the slash spelling routes it through them. No block of this payload
+// names the goal CLI as a path.
+test('no block of the payload names a runnable kit-goal CLI path', () => {
+    const dir = makeProject();
+    try {
+        writePlan(dir, 'running_spec_v1.md', 'In Progress');
+        const text = context(dir);
+        assert.notStrictEqual(block(text, UNLEASHED_LEAD), '',
+            'the unleashed notice is emitted, so the absence below is of the path: ' + text);
+
+        // The control for that absence. The same predicate, run over the hook's
+        // own source, which does name the CLI file, speaks: what the assertion
+        // below reads is the payload lacking the path rather than the predicate
+        // unable to see one.
+        assert.ok(namesRunnableCli(fs.readFileSync(HOOK, 'utf8')),
+            'the predicate finds a runnable CLI path in text that holds one');
+        assert.ok(!namesRunnableCli(text),
+            'the payload names no runnable kit-goal CLI path: ' + text);
+    } finally { rmDir(dir); }
+});
+
+test('an armed goal is the control: the unleashed notice stays silent beside it', () => {
+    const dir = makeProject();
+    try {
+        writePlan(dir, 'running_spec_v1.md', 'In Progress');
+        arm(dir, ['running_spec_v1.md']);
+        const text = context(dir);
+
+        assert.notStrictEqual(block(text, ARMED_LEAD), '',
+            'the armed-goal notice is emitted, so the silence below is the leash speaking: ' + text);
+        assert.strictEqual(block(text, UNLEASHED_LEAD), '',
+            'a project with a leash on it is not unleashed: ' + text);
+    } finally { rmDir(dir); }
+});
+
+test('a Ready plan is the control: parked and unarmed is the healthy state and stays silent', () => {
+    const dir = makeProject();
+    try {
+        writePlan(dir, 'parked_spec_v1.md', 'Ready');
+        const text = context(dir);
+
+        assert.notStrictEqual(block(text, READY_LEAD), '',
+            'the parked block is emitted, so the silence below is the status speaking: ' + text);
+        assert.strictEqual(block(text, UNLEASHED_LEAD), '',
+            'a plan nobody has started needs no leash: ' + text);
+    } finally { rmDir(dir); }
+});
+
+test('no plan in progress is the control: an unarmed project with nothing running needs no leash', () => {
+    const dir = makeProject();
+    try {
+        // The fixture holds a plan that is finished and unarchived, so this
+        // payload speaks: the nag block is what makes the absence below a
+        // reading of the notice rather than of an empty payload. Nothing here
+        // reads In Progress, and an unarmed project with no run in it is the
+        // state the notice has nothing to say about.
+        writePlan(dir, 'finished_spec_v1.md', 'Complete');
+        const text = context(dir);
+
+        assert.ok(text.includes('unarchived'),
+            'the unarchived-Complete block is emitted: ' + text);
+        assert.strictEqual(block(text, IN_PROGRESS_LEAD), '',
+            'and nothing reads In Progress: ' + text);
+        assert.strictEqual(block(text, UNLEASHED_LEAD), '',
+            'so no run is unheld and the notice stays silent: ' + text);
+    } finally { rmDir(dir); }
+});
+
+test('an unreadable goal state is the control: no reading of the leash, no notice', () => {
+    const dir = makeProject();
+    try {
+        // Something is at the goal-state path that no reader makes a goal of,
+        // so this hook has no reading of whether a goal is armed. The notice
+        // would be a guess, and the inventory beside it is what the session
+        // gets instead.
+        writePlan(dir, 'running_spec_v1.md', 'In Progress');
+        fs.mkdirSync(path.join(dir, '.kit'), { recursive: true });
+        fs.writeFileSync(path.join(dir, '.kit', 'goal-state.json'), '{not json at all', 'utf8');
+        const text = context(dir);
+
+        assert.notStrictEqual(block(text, IN_PROGRESS_LEAD), '',
+            'the inventory is emitted, so the silence below is the unread state speaking: ' + text);
+        assert.strictEqual(block(text, ARMED_LEAD), '', 'and no goal reads as armed: ' + text);
+        assert.strictEqual(block(text, UNLEASHED_LEAD), '',
+            'an unreadable goal state drops the notice: ' + text);
     } finally { rmDir(dir); }
 });

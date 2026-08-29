@@ -43,8 +43,10 @@
 // vouches for reaches this file. A payload whose renderState predates the
 // field is read as cacheable, the two-mtime behavior this cache always had.
 //
-// Blank output is the widget's own "nothing armed" answer, so this launcher
-// prints nothing on the failures a status line cannot act on either (no
+// Blank output is the widget's answer for having no reading at all rather than
+// a reading that nothing is armed: a project with nothing armed draws an
+// affirmative unarmed line. So this launcher prints nothing on the failures a
+// status line cannot act on either (no
 // installed payload, a payload from before the widget existed, a payload whose
 // widget will not load): a status line is no place for an error message, and
 // exit 0 keeps the tool from reporting one. Those are answers about what is

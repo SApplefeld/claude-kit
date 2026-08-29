@@ -1,17 +1,28 @@
 #!/usr/bin/env node
-// SessionStart hook: compaction/startup recovery, plus a kit-repo kaizen nudge,
-// a docs-library hygiene nudge, an armed-goal notice, a backlog block
-// (any project with a docs/backlog.md), a kit-repo plugin-view staleness line,
-// and a shared-checkout advisory when another session of this project has
-// written a transcript recently.
+// SessionStart hook: compaction/startup recovery plus additive advisory blocks.
+// The payload composes eleven blocks in all: the post-compaction re-load
+// instruction, the in-progress plan inventory, an unleashed notice when
+// in-progress plans stand beside no armed goal, a parked-plan (Status: Ready)
+// listing, a docs-library hygiene nudge over unarchived Complete plans, a
+// qualifier when the docs/plans/ scan read only part of the directory, a
+// kit-repo kaizen nudge, a kit-repo plugin-view staleness line, an armed-goal
+// notice, a backlog block (any project with a docs/backlog.md), and a
+// shared-checkout advisory when another session of this project has written a
+// transcript recently. The backlog block and the advisory each have two
+// mutually exclusive spellings, a full reading and a partial one, so the
+// emitters number thirteen and the blocks eleven.
 // Scans docs/plans/ for in-progress plan docs and injects an instruction to
 // re-read them (including Chapters) before any work proceeds. Fires on
 // startup, resume, and (critically) after compaction.
 // Under KIT_EXTERNAL_ENGINE=1, the marker an external engine sets on the
 // sessions it spawns, the plan inventory still ships but the drive-to-completion
-// instruction does not: the engine's own directive owns a spawned session's
-// scope and continuation, and a worker told to work one section must not be
-// pushed past it.
+// instruction does not, the re-load instruction names the engine's directive
+// rather than executing-work, the plugin-view line states its readings with no
+// remedy attached, and the unleashed notice is withheld whole. The engine's own
+// directive owns a spawned session's scope and continuation: a worker told to
+// work one section must not be pushed past it, and it starts in exactly the
+// state the unleashed notice describes, which its engine rather than a leash is
+// there to hold.
 // Cross-platform: Node core modules only, no dependencies. Never blocks:
 // any failure exits 0 with no output.
 
@@ -25,7 +36,8 @@ const {
     readFileBounded, containedRealPath, listBoundedNames, DIR_SCAN_MAX_ENTRIES
 } = require('./kit-read-lib.js');
 const {
-    readGoal, lastActivePhrase, isSessionIdShaped, queuePosition, planHeadText, classifyPlanStatus
+    readGoal, goalStateAbsent, lastActivePhrase, isSessionIdShaped, queuePosition, planHeadText,
+    classifyPlanStatus
 } = require('./kit-goal-lib.js');
 const { sameSessionId } = require('./kit-compact-lib.js');
 
@@ -942,6 +954,42 @@ function main() {
         // Never let the goal check break recovery or the session.
     }
 
+    // The conjunction of the two readings above: plans in progress here and no
+    // leash on any of them. Each half is already surfaced on its own, and
+    // neither says anything about the other, so a run works section after
+    // section with nothing holding it to completion and no surface stating it.
+    // A stop then ends that run wherever it stands, which is what this line
+    // exists to make visible while the run is young.
+    //
+    // A Ready plan does not fire it: authored and parked beside no leash is the
+    // healthy state the parked block describes, so only an in-progress plan
+    // counts here.
+    //
+    // Unarmed is read from goalBlock, the same composition the armed notice is
+    // emitted from, so one payload cannot both name an armed goal and say none
+    // is armed. Absence is read from the goal-state path itself, because a
+    // state file that exists and could not be read is no reading at all, and
+    // this line would be a guess there; fail-open, like every other additive
+    // check here, and silent wherever the reading is uncertain.
+    //
+    // An external-engine worker is never told this. It starts in exactly the
+    // state the line describes, in-progress plans beside no leash, and it is the
+    // one session for which that state is correct: its engine owns its scope and
+    // its boundaries, and a leash armed here would hold it past the section that
+    // engine assigned, since the CLI binds the leash to any session with a
+    // transcript on disk and the Stop hook carries no engine gate of its own. So
+    // the line is suppressed under the marker rather than restated: the block
+    // above already tells a worker its inventory is information and that the
+    // engine owns continuation, and this line has nothing left to say once the
+    // arming it names is not this session's to perform.
+    let unleashed = false;
+    try {
+        unleashed = process.env.KIT_EXTERNAL_ENGINE !== '1'
+            && activePlans.length > 0 && !goalBlock && goalStateAbsent(cwd);
+    } catch {
+        // Never let this check break recovery or the session.
+    }
+
     // The parked plans this payload states anything about: the Ready ones the
     // armed queue does not already hold. A plan in the queue is described by
     // the armed-goal notice above, which states the hold the leash puts it
@@ -1009,10 +1057,15 @@ function main() {
         ? `Context was just compacted. Anything a tool call loaded into context before it is gone: a skill body brought in by the Skill tool does not survive a compaction, a deferred tool schema brought in by ToolSearch cannot be assumed to, and a summarized skill can leave a multi-step procedure half-present without saying so. Before continuing, re-invoke the skill governing the work in hand (${governing}) and re-load any deferred tool the work ahead needs; where the harness leaves a visible truncation notice inside a loaded skill or a tool result, that notice is the same trigger.`
         : null;
 
-    // Emit Additional Context.
+    // Emit Additional Context. The condition list is a complete enumeration of
+    // this payload's emitters, which is why it carries !unleashed even though
+    // that conjunct changes no outcome today: unleashed requires at least one
+    // in-progress plan and this guard requires none, so the two can never
+    // disagree here. It is defensive against those two readings decoupling and
+    // is not load-bearing.
     if (!reload && activePlans.length === 0 && parkedPlans.length === 0 && kaizenCount === 0
         && !kaizenBounded && !plansBounded && completedUnarchived === 0 && !goalBlock && !backlog
-        && !siblings && !pluginView) return;
+        && !siblings && !pluginView && !unleashed) return;
 
     const blocks = [];
 
@@ -1035,6 +1088,19 @@ function main() {
             ...lines,
             closing
         ].join('\n'));
+    }
+
+    // Placed against the inventory it is about rather than beside the
+    // armed-goal notice further down: it fires only where that notice is
+    // absent, and a session reading top to bottom meets the plans and the fact
+    // that nothing holds them in one breath.
+    if (unleashed) {
+        blocks.push(`${activePlans.length} plan doc(s) here read Status: In Progress and no kit goal is`
+            + ' armed in this project, so nothing holds a run of them to completion: a stop ends the run'
+            + ' wherever it stands. The arming is /kit-goal <plan path>..., which runs the CLI\'s bare arm'
+            + ' form; the arm --append form extends a queue that is already armed and refuses where none'
+            + ' is. The kit-goal skill states who may arm one and on what authority; read it there rather'
+            + ' than from this notice. Reminder, not a blocker.');
     }
 
     // A parked plan gets its own block rather than a line inside the one
@@ -1061,19 +1127,23 @@ function main() {
         blocks.push(`${completedUnarchived} plan doc(s) in docs/plans/ are marked Status: Complete but still sit there unarchived. At the next close-out, run the curating-docs skill to move them into docs/archive/, prune the backlog, and refresh the index. Reminder, not a blocker.`);
     }
 
-    // One block rather than a clause inside each of the three the scan feeds
-    // (the in-progress inventory, the parked list and the unarchived count), so
-    // a bound stated in one place cannot come to say different things in the
-    // three. It names docs/plans/ itself rather than pointing at those blocks,
-    // because the states that set it include the ones where none of them was
-    // emitted: a directory that could not be listed at all, and a listing whose
-    // entries held no readable plan, both leave this the only thing this payload
-    // says about docs/plans/.
+    // One block rather than a clause inside each of the four figures the scan
+    // feeds (the in-progress inventory, the parked list, the unarchived count
+    // and the unleashed notice's count of in-progress plans), so a bound stated
+    // in one place cannot come to say different things in the four. Each of
+    // them renders a partial reading as a plain figure, which is what this block
+    // is here to qualify, and a figure added to that set is added to the
+    // enumeration below in the same breath. It names docs/plans/ itself rather
+    // than pointing at those blocks, because the states that set it include the
+    // ones where none of them was emitted: a directory that could not be
+    // listed at all, and a listing whose entries held no readable plan, both
+    // leave this the only thing this payload says about docs/plans/.
     if (plansBounded) {
         blocks.push('The docs/plans/ scan is bounded: the directory holds more entries than one session'
             + ' start reads, one of its plan docs could not be read, or the directory could not be listed'
-            + ' at all. Any plan inventory, parked list or unarchived count in this payload is therefore'
-            + ' of part of docs/plans/ rather than of the whole directory, and their absence says as'
+            + ' at all. Any plan inventory, parked list, unarchived count, or count of in-progress'
+            + ' plans beside no armed goal in this payload is therefore of part of docs/plans/'
+            + ' rather than of the whole directory, and their absence says as'
             + ' little: a plan doc may be missing from them, an in-progress one included. List'
             + ' docs/plans/ directly before concluding anything about what is there. Reminder, not a'
             + ' blocker.');

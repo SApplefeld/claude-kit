@@ -806,6 +806,61 @@ function readGoal(cwd) {
     }
 }
 
+// What is at the goal-state path: 'file', 'oversized' (a regular file past the
+// bound every reader of it enforces), 'other' (something that is not a regular
+// file), 'unresolvable' (a path that can never resolve to a file), 'unreadable'
+// (a kind that could not be read at all) or 'absent'. The kind rule every reader
+// of that file applies, plus the size cap they apply with it, asked here because
+// it is the one question readGoal above cannot answer: readGoal returns null for
+// a state file that is not there and for one that is there and could not be read
+// alike, and a surface that tells an operator no goal is armed on the second of
+// those is guessing rather than reading.
+//
+// Every surface that needs the distinction takes it from here. The CLI turns
+// each non-file kind into its own sentence, so the two places it would otherwise
+// print plain absence do not say "nothing armed" about a path with something
+// sitting at it that a later arm will fail on with a raw errno; goalStateAbsent
+// below is the boolean face, for the surfaces that only choose between speaking
+// and staying silent.
+//
+// The errno split is pathErrnoClass's, the rule every caller of this question in
+// the kit answers to. 'unresolvable' is what its 'determinate' leg produces, and
+// that leg holds three codes: ENOTDIR, a regular file standing where a parent
+// directory belongs; ELOOP, a link cycle above the final component; and
+// ENAMETOOLONG.
+//
+// A regular file standing where the .kit directory belongs therefore reads two
+// ways, by platform, and both readings are the platform's own. On POSIX the
+// lstat through that file answers ENOTDIR, so the kind is 'unresolvable',
+// goalStateAbsent is false, and every surface gated on it stays silent. On win32
+// the same lstat answers ENOENT, so the kind is 'absent' and the state reads as
+// plain absence. The win32 residual is loud rather than silent: the write an arm
+// would then attempt fails on its own mkdir, so what the operator meets there is
+// an arm that errors, never a surface claiming an arm landed.
+//
+// Never throws.
+function goalPathKind(cwd) {
+    let st;
+    try {
+        st = fs.lstatSync(goalPath(cwd));
+    } catch (err) {
+        const cls = pathErrnoClass(err && err.code);
+        if (cls === 'absent') return 'absent';
+        return cls === 'determinate' ? 'unresolvable' : 'unreadable';
+    }
+    if (!st.isFile()) return 'other';
+    return st.size > GOAL_STATE_MAX_BYTES ? 'oversized' : 'file';
+}
+
+// Whether nothing at all is at the goal-state path: the boolean face of
+// goalPathKind, true for its 'absent' answer alone. Every other kind, a file of
+// any kind, an oversized one and one whose kind could not be read included, is
+// false, so a surface gated on this one stays silent wherever its reading is
+// uncertain. Never throws.
+function goalStateAbsent(cwd) {
+    return goalPathKind(cwd) === 'absent';
+}
+
 // The temporary path an atomic write in this file renames from, the local copy
 // of kit-compact-lib.js's atomicTmpPath (see regularFileSize above for why it is
 // a copy). The pid keeps two writers off one name (a CLI arm racing a Stop
@@ -2046,7 +2101,43 @@ function appendGoal(cwd, planArgs) {
     }
     const state = readGoal(cwd);
     if (!state || typeof state.plan !== 'string' || state.plan === '') {
-        return { ok: false, reason: 'no goal is armed, so there is no queue to append to' };
+        // Three readings reach this refusal and they do not call for the same
+        // advice, so the path is asked about rather than assumed. readGoal
+        // answers null for a state file that is absent and for one sitting there
+        // unreadable alike (a lock or a scanner holding it, an oversized one, a
+        // kind no reader opens, JSON that does not parse), and it answers a
+        // parsed object carrying no plan for a file that is there, is JSON, and
+        // is not a goal state, which normalizeState returns unchanged and which
+        // may carry a queue and a history. The bare arm this reason would
+        // otherwise name replaces whatever queue is on disk. Named over either
+        // of the two readings where something is at the path, it would overwrite
+        // a live leash, its queue, its history and its binding, with armGoal's
+        // own dropped-plan warning defeated by the same file and so unable to
+        // say what went.
+        //
+        // So the guard is the path's own emptiness rather than the shape of what
+        // readGoal returned, and the pointer rides only where nothing is there
+        // to lose, which is where the way forward is genuinely a first arming:
+        // the state a caller that reached for --append with nothing armed is in,
+        // and what rescues a session that loaded neither the kit-goal skill nor
+        // the executing-work paragraph naming both spellings. Every other
+        // reading takes the reason that names no command, which asserts nothing
+        // about what is at the path because one of the kinds it covers,
+        // 'unresolvable', is a path with nothing at it at all. Both fit inside
+        // the 120-character cap the CLI sanitizes every reason to, so what an
+        // operator reads on stderr is a whole clause rather than a cut one.
+        if (!goalStateAbsent(cwd)) {
+            return {
+                ok: false,
+                reason: '.kit/goal-state.json could not be read as a goal state,'
+                    + ' so what is armed is unknown'
+            };
+        }
+        return {
+            ok: false,
+            reason: 'no goal is armed, so there is no queue to append to;'
+                + ' arm without --append is the first arming'
+        };
     }
 
     // The progress this append was decided from, which the re-read below is
@@ -2651,4 +2742,4 @@ function emitGoalEvent(details) {
 // A value the classifier learns reaches all three at once, which is the whole
 // point of naming them here: a fourth surface spelling its own regex is the
 // drift this export exists to prevent.
-module.exports = { goalPath, goalRoot, readGoal, armGoal, appendGoal, advanceGoal, bindSession, clearGoal, composeCondition, planHead, planStatusReadings, classifyPlanStatus, emitGoalEvent, normalizePlanArg, lastActivePhrase, isSessionIdShaped, planFileSize, planHeadText, planPathState, planDisplayRoot, recordExecutionTree, pathErrnoClass, safeForAuthorization, queuePosition, GOAL_STATE_MAX_BYTES };
+module.exports = { goalPath, goalRoot, goalPathKind, goalStateAbsent, readGoal, armGoal, appendGoal, advanceGoal, bindSession, clearGoal, composeCondition, planHead, planStatusReadings, classifyPlanStatus, emitGoalEvent, normalizePlanArg, lastActivePhrase, isSessionIdShaped, planFileSize, planHeadText, planPathState, planDisplayRoot, recordExecutionTree, pathErrnoClass, safeForAuthorization, queuePosition, GOAL_STATE_MAX_BYTES };

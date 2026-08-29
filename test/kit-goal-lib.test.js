@@ -3250,6 +3250,60 @@ test('appendGoal refuses a duplicate atomically, naming it and leaving the queue
     }
 });
 
+// A state file sitting at its path that no reader makes a goal of is not an
+// unarmed repo, and the refusal separates the two because the way forward
+// differs. The bare arm replaces whatever queue is on disk, and armGoal's
+// dropped-plan warning is read from the same file this one cannot read, so a
+// refusal naming the bare arm here points at a silent replacement of a leash
+// that may be live.
+test('appendGoal over a goal state no reader makes a goal of names no arming command', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
+        const state = goalPath(repo);
+        fs.mkdirSync(path.dirname(state), { recursive: true });
+        fs.writeFileSync(state, '{not json at all', 'utf8');
+
+        const refused = appendGoal(repo, ['docs/plans/a.md']);
+        assert.strictEqual(refused.ok, false);
+        assert.match(refused.reason, /could not be read as a goal state/, refused.reason);
+        assert.doesNotMatch(refused.reason, /--append is the first arming/,
+            'the bare form is not offered over a file this reader cannot see into: ' + refused.reason);
+        assert.doesNotMatch(refused.reason, /no goal is armed/,
+            'and nothing here reads as a settled unarmed repo: ' + refused.reason);
+        // The same cross-surface cap the unarmed reason answers to: kit-goal.js
+        // prints every reason through a sanitizer that cuts at 120 characters
+        // with no truncation mark.
+        assert.ok(refused.reason.length <= 120,
+            'the reason fits the CLI\'s 120-character print cap: ' + refused.reason.length);
+        assert.strictEqual(fs.readFileSync(state, 'utf8'), '{not json at all',
+            'and the refusal left the file exactly as it found it');
+
+        // The second reading that reaches this refusal over a path with
+        // something at it: valid JSON carrying a queue and a history and no
+        // plan. normalizeState returns such an object unchanged, so readGoal
+        // answers a truthy state that is still no goal, and the guard is the
+        // path's own emptiness rather than the shape of what readGoal returned.
+        // A bare arm named here would replace the queue on disk.
+        const notAGoal = JSON.stringify({
+            queue: ['docs/plans/a.md'],
+            queueIndex: 0,
+            history: [{ plan: 'docs/plans/a.md', outcome: 'done' }]
+        });
+        fs.writeFileSync(state, notAGoal, 'utf8');
+        const planless = appendGoal(repo, ['docs/plans/a.md']);
+        assert.strictEqual(planless.ok, false);
+        assert.match(planless.reason, /could not be read as a goal state/, planless.reason);
+        assert.doesNotMatch(planless.reason, /--append is the first arming/,
+            'the bare form is not offered over a queue it would replace: ' + planless.reason);
+        assert.doesNotMatch(planless.reason, /no goal is armed/, planless.reason);
+        assert.strictEqual(fs.readFileSync(state, 'utf8'), notAGoal,
+            'and the refusal left that file exactly as it found it too');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
 // The arm-time refusals reach the append form too, since a queue entry that
 // cannot be read as a plan doc is the same problem wherever it entered the
 // queue, and the whole invocation is refused for one bad path exactly as an arm
@@ -3264,6 +3318,17 @@ test('appendGoal refuses an unarmed repo, a missing plan, a Complete plan, and a
         const unarmed = appendGoal(repo, ['docs/plans/a.md']);
         assert.strictEqual(unarmed.ok, false);
         assert.match(unarmed.reason, /no goal is armed/);
+        // The refusal carries the way forward as well as the problem: an append
+        // with nothing armed is the state a first arming starts from, and the
+        // caller that reached for --append there needs the bare form named.
+        assert.match(unarmed.reason, /arm without --append is the first arming/,
+            'the refusal points at the bare form: ' + unarmed.reason);
+        // A cross-surface pin: kit-goal.js prints this reason through a
+        // sanitizer that cuts at 120 characters with no truncation mark, so a
+        // reason past the cap loses its pointer on the one surface an operator
+        // reads it from.
+        assert.ok(unarmed.reason.length <= 120,
+            'the reason fits the CLI\'s 120-character print cap: ' + unarmed.reason.length);
         assert.ok(!fs.existsSync(goalPath(repo)), 'an append never arms a goal of its own');
 
         assert.strictEqual(armGoal(repo, 'docs/plans/a.md').ok, true);
@@ -3599,6 +3664,10 @@ test('CLI arm --append extends the queue, reports it, and reads back through sta
             { cwd: repo, encoding: 'utf8' });
         assert.strictEqual(orphan.status, 1);
         assert.match(orphan.stderr, /no goal is armed/);
+        // The whole reason reaches the operator through the CLI's print path,
+        // pointer included: this is the surface a session that loaded neither
+        // skill meets, so the way forward has to survive the printing.
+        assert.match(orphan.stderr, /arm without --append is the first arming/, orphan.stderr);
         assert.ok(!fs.existsSync(goalPath(repo)), 'nothing was armed by the refusal');
     } finally {
         rmRepo(repo);

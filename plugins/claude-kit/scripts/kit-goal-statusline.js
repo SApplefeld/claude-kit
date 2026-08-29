@@ -1,10 +1,17 @@
 #!/usr/bin/env node
 // The kit-goal status-line widget: one line describing the goal armed by
 // /kit-goal for the current project, for a status-line tool such as
-// ccstatusline's Custom Command widget. Prints nothing (exit 0) when no goal
-// is armed, so the widget simply stays blank.
+// ccstatusline's Custom Command widget.
 //
 //   🎯 <plan> · Sections: <done>/<total> (Next §N) · Plans: <i>/<n>
+//
+// A project with nothing armed draws "🎯 unarmed" rather than nothing, so the
+// three states an operator can be in are three readings rather than one. An
+// affirmative line says the widget ran and read the goal state and found no
+// goal there. A blank line says one of the other two: a payload that predates
+// this widget (the launcher draws nothing at all then), or a fault, the goal
+// state sitting at its path unreadable among them. So a blank is never a
+// reading that the project is healthily unarmed.
 //
 // Input is the status-line JSON Claude Code pipes to a status-line command on
 // stdin; only the working directory is read from it (workspace.current_dir,
@@ -103,6 +110,14 @@ const LABEL_SECTIONS = 'Sections';
 const LABEL_PLANS = 'Plans';
 const MARKER = '\u{1F3AF}';
 
+// What a project with nothing armed draws. It carries the marker every other
+// render of this widget carries, so the segment is recognizable as this widget
+// speaking rather than as some other tool's text, and one word beyond it: this
+// line draws in every project with no goal armed, which is most of them most of
+// the time, and it competes for the operator's prompt width with every other
+// widget on it.
+const UNARMED_LINE = MARKER + ' unarmed';
+
 // The working directory named by the status-line JSON, or the fallback.
 function cwdFromInput(raw, fallback) {
     try {
@@ -152,6 +167,22 @@ function readGoalState(cwd) {
     const state = lib.readGoal(cwd);
     if (!state || typeof state.plan !== 'string' || state.plan === '') return null;
     return state;
+}
+
+// Whether nothing at all is at the goal-state path, through the library's own
+// answer to that question, which is the answer the SessionStart notice about an
+// unleashed project takes too: the two surfaces then cannot differ about what
+// counts as a project with no goal armed. False whenever this payload does not
+// carry a library that answers, which keeps the widget blank on a payload too
+// old to have the question rather than affirming an unarmed state it never read.
+function goalStateAbsent(cwd) {
+    const lib = goalLib();
+    if (!lib || typeof lib.goalStateAbsent !== 'function') return false;
+    try {
+        return lib.goalStateAbsent(cwd) === true;
+    } catch {
+        return false;
+    }
 }
 
 // The queue position queuePosition reports, or null when this payload does not
@@ -337,11 +368,11 @@ const LINE_MAX_CHARS = 400;
 // one. An astral character that is not the marker rides through, which is a
 // display oddity in a plan name rather than a way to act on a terminal.
 //
-// A line that sanitizes away entirely comes back empty, and empty is what the
-// launcher prints for nothing armed, so there is no placeholder here: a blank
-// segment is the right answer for a cached line with nothing printable left in
-// it, where safeSegment's placeholder exists to keep a joined line from
-// rendering a bare marker with a doubled separator after it.
+// A line that sanitizes away entirely comes back empty, and empty is what this
+// widget prints where it has no reading at all, so there is no placeholder
+// here: a blank line is the right answer for a cached line with nothing
+// printable left in it, where safeSegment's placeholder exists to keep a joined
+// line from rendering a bare marker with a doubled separator after it.
 const UNSAFE_FOR_TERMINAL_LINE = new RegExp('[' + UNSAFE_BMP_CLASS + ']'
     + '|[\\uD800-\\uDBFF](?![\\uDC00-\\uDFFF])|(?<![\\uD800-\\uDBFF])[\\uDC00-\\uDFFF]', 'g');
 
@@ -573,13 +604,22 @@ function sectionProgress(text) {
 
 // The widget line for a cwd together with the plan doc it was rendered from,
 // that doc's modification time, and whether this render is safe to cache:
-// { line, plan, planMtimeMs, cacheable }. With nothing armed the line is
-// empty, the plan is null, the time is null, and the render is cacheable
-// (there is nothing in it that could go stale outside the two files the
-// launcher already keys on). Otherwise plan is the armed plan doc's path as
-// stored, whether or not that doc was readable, since a doc that appears
-// later changes the line, and planMtimeMs is null for the same unreadable
-// doc.
+// { line, plan, planMtimeMs, cacheable }. With nothing armed the line is the
+// affirmative unarmed line, the plan is null, the time is null, and the render
+// is cacheable (there is nothing in it that could go stale outside the two
+// files the launcher already keys on); the launcher stores no entry for it in
+// any case, since its key needs a plan path and this render carries none, so
+// the line is composed fresh on each refresh and cannot outlive an arm.
+//
+// The line is empty instead wherever this reader has no reading: no goal state
+// could be read and the path is not plainly absent either, which covers a
+// state file that is there and unreadable, and a payload whose hooks library
+// this widget could not load at all. A blank status line is this widget's one
+// failure mode and stays reserved for it.
+//
+// Otherwise plan is the armed plan doc's path as stored, whether or not that
+// doc was readable, since a doc that appears later changes the line, and
+// planMtimeMs is null for the same unreadable doc.
 //
 // cacheable is false whenever a rendered Plans segment came from a walk that
 // read anything other than the single plan doc the launcher's key stats. That
@@ -608,7 +648,14 @@ function sectionProgress(text) {
 // the line does.
 function renderState(cwd) {
     const state = readGoalState(cwd);
-    if (!state) return { line: '', plan: null, planMtimeMs: null, cacheable: true };
+    if (!state) {
+        return {
+            line: goalStateAbsent(cwd) ? UNARMED_LINE : '',
+            plan: null,
+            planMtimeMs: null,
+            cacheable: true
+        };
+    }
     const parts = [MARKER + ' ' + safeSegment(planBaseName(state.plan))];
 
     // The doc's directory is resolved once and handed to both readers, so the
@@ -659,7 +706,8 @@ function renderState(cwd) {
     return { line: parts.join(' · '), plan: state.plan, planMtimeMs, cacheable };
 }
 
-// The widget line for a cwd, or '' when nothing is armed there.
+// The widget line for a cwd: the armed goal's line, the affirmative unarmed
+// line where nothing is armed, or '' where this reader has no reading at all.
 function render(cwd) {
     return renderState(cwd).line;
 }

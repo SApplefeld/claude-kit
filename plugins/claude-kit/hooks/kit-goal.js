@@ -37,7 +37,7 @@ const path = require('path');
 const os = require('os');
 const {
     armGoal, appendGoal, clearGoal, readGoal, planStatusReadings, lastActivePhrase, isSessionIdShaped,
-    goalPath, goalRoot, planPathState, pathErrnoClass, safeForAuthorization, queuePosition,
+    goalRoot, goalPathKind, planPathState, safeForAuthorization, queuePosition,
     GOAL_STATE_MAX_BYTES
 } = require('./kit-goal-lib.js');
 
@@ -204,28 +204,6 @@ function cmdArm(planArgs, append) {
         process.stderr.write('kit-goal: ' + sanitize(err.message) + '\n');
         process.exitCode = 1;
     }
-}
-
-// What is at the goal-state path: 'file', 'oversized' (a regular file past the
-// bound every reader of it enforces), 'other' (something that is not a regular
-// file), 'unresolvable' (a path that can never resolve to a file),
-// 'unreadable' (a kind that could not be read at all) or 'absent'. The kind rule
-// every reader of that file applies, plus the size cap they apply with it, asked
-// here so the two surfaces that would otherwise print plain absence do not say
-// "nothing armed" about a path with something sitting at it that a later arm will
-// fail on with a raw errno. The errno split is pathErrnoClass's, the rule every
-// caller of this question in the kit answers to.
-function goalPathKind(cwd) {
-    let st;
-    try {
-        st = fs.lstatSync(goalPath(cwd));
-    } catch (err) {
-        const cls = pathErrnoClass(err && err.code);
-        if (cls === 'absent') return 'absent';
-        return cls === 'determinate' ? 'unresolvable' : 'unreadable';
-    }
-    if (!st.isFile()) return 'other';
-    return st.size > GOAL_STATE_MAX_BYTES ? 'oversized' : 'file';
 }
 
 // The sentence the two absence-reporting surfaces add when the goal-state path

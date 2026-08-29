@@ -36,14 +36,32 @@ function rmDir(dir) {
     try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* best effort */ }
 }
 
-// process.env is spread rather than rebuilt so the child keeps its real PATH
-// (a rebuilt env object loses the Windows `Path` key); extra is where a case
-// adds the external-engine marker.
+// Spawn the hook against a fixture cwd with a fixture home. process.env is
+// spread rather than rebuilt so the child keeps its real PATH (a rebuilt env
+// object loses the Windows `Path` key); extra is where a case adds the
+// external-engine marker.
+//
+// Every casing of USERPROFILE, HOME and KIT_EXTERNAL_ENGINE is dropped before
+// the fixture pair is set, since Windows carries both casings. The marker goes
+// with them because the case's own reading of it is the whole subject here: the
+// kit supports a shell that sets it, and a marker reaching the child from the
+// runner's environment would decide these cases instead of `extra`, passing the
+// marker-set cases for the wrong reason and failing the unmarked ones. The
+// fixture home is what keeps the sibling-session check off the real transcript
+// store.
 function runHook(cwd, extra) {
+    const env = { ...process.env };
+    for (const k of Object.keys(env)) {
+        if (/^(USERPROFILE|HOME|KIT_EXTERNAL_ENGINE)$/i.test(k)) delete env[k];
+    }
+    const home = path.join(cwd, 'home');
+    fs.mkdirSync(home, { recursive: true });
+    env.USERPROFILE = home;
+    env.HOME = home;
     return spawnSync(process.execPath, [HOOK], {
         input: JSON.stringify({ cwd, source: 'startup' }),
         encoding: 'utf8',
-        env: { ...process.env, ...(extra || {}) }
+        env: { ...env, ...(extra || {}) }
     });
 }
 
@@ -55,6 +73,12 @@ function context(res) {
 
 const DRIVE = /driving the remaining sections to completion/;
 
+// The unleashed notice, which this fixture is in the state for: in-progress
+// plans and no goal armed. A worker under an engine is the one session that
+// state is correct for, and arming there would hold it past the boundary its
+// engine assigned, so the notice is the engine marker's second subject.
+const UNLEASHED = /no kit goal is armed in this project/;
+
 test('under KIT_EXTERNAL_ENGINE the plan inventory ships without the drive-to-completion push', () => {
     const dir = makeProject();
     try {
@@ -64,6 +88,8 @@ test('under KIT_EXTERNAL_ENGINE the plan inventory ships without the drive-to-co
         assert.ok(text, 'the inventory is information a worker still gets');
         assert.doesNotMatch(text, DRIVE);
         assert.doesNotMatch(text, /Model tier/, 'the tier-routing instruction goes with the push');
+        assert.doesNotMatch(text, UNLEASHED,
+            'and the unleashed notice, whose command a worker must not run, goes with it');
         assert.match(text, /docs\/plans\/alpha_thing_spec_v1\.md \(Commit Model: Commit-and-Push\)/);
         assert.match(text, /docs\/plans\/beta_thing_spec_v1\.md \(Commit Model: Commit-and-Push\)/);
         assert.match(text, /in-progress plan doc\(s\)/, 'the reason line still frames the inventory');
@@ -82,6 +108,8 @@ test('without the marker the drive-to-completion push is unchanged', () => {
         assert.match(text, DRIVE);
         assert.match(text, /Before doing ANY work/);
         assert.match(text, /Honor each section's Model tier/);
+        assert.match(text, UNLEASHED,
+            'the notice this fixture is in the state for reaches an attended session');
         assert.match(text, /docs\/plans\/alpha_thing_spec_v1\.md \(Commit Model: Commit-and-Push\)/);
         assert.doesNotMatch(text, /owns its scope and continuation/);
     } finally { rmDir(dir); }

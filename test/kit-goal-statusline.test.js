@@ -68,9 +68,27 @@ function plan(dir, chapters) {
     fs.writeFileSync(path.join(dir, PLAN_REL), head.concat(chapters).join('\n'), 'utf8');
 }
 
-test('nothing armed renders nothing', () => {
+test('nothing armed renders the affirmative unarmed line', () => {
     const dir = makeRepo();
     try {
+        // A project with no goal state gets a line saying so, not a blank. The
+        // blank is reserved for the widget having no reading at all, so an
+        // operator can tell a healthy unarmed project from a payload that
+        // predates the widget and from a fault.
+        assert.strictEqual(render(dir), '\u{1F3AF} unarmed');
+    } finally {
+        rmDir(dir);
+    }
+});
+
+test('a goal state that is there and unreadable renders blank rather than claiming nothing is armed', () => {
+    const dir = makeRepo();
+    try {
+        // The control for the case above: something is at the goal-state path
+        // and no reader can make a goal of it, so the widget has no reading of
+        // whether a goal is armed and says nothing. Affirming an unarmed
+        // project here would be a guess.
+        fs.writeFileSync(path.join(dir, '.kit', 'goal-state.json'), '{not json at all', 'utf8');
         assert.strictEqual(render(dir), '');
     } finally {
         rmDir(dir);

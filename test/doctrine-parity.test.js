@@ -2562,3 +2562,69 @@ test('the paragraph-edit-unit rule keeps its owner and its pointer, and the poin
         + 'install or an external engine\'s --plugin-dir payload the plugin root '
         + 'holds skills/ directly and that path names nothing');
 });
+
+// session-start.js composes its Additional Context payload from a fixed set of
+// blocks, and that set's size is restated on two surfaces outside the code that
+// produces it: the hook's own file header and docs/architecture.md's
+// SessionStart bullet. A count restated on a sibling surface is an invariant
+// nothing checks, which git merges clean and no diff-reading review catches, so
+// both restatements are read here against the source (docs/ is read, never
+// written).
+//
+// The count is derived rather than asserted at a literal. The emitters are the
+// blocks.push sites; two pairs of them are the mutually exclusive if/else
+// branches of one block each, the backlog block (a full reading or the bound it
+// hit) and the shared-checkout advisory (the sibling count or a transcript
+// store that could not be listed), so the blocks number two fewer than the
+// emitters. The pairing is the one figure a reader has to re-derive when this
+// reddens: a new emitter moves the emitter assertion first, and its message
+// says what to re-derive before the prose is touched.
+const SESSION_START_BLOCK_PAIRS = 2;
+const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven',
+    'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen',
+    'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty'];
+
+test('session-start.js\'s block count is stated the same by the code, its header, and docs/architecture.md', () => {
+    const hookPath = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'session-start.js');
+    const hook = fs.readFileSync(hookPath, 'utf8');
+
+    const emitters = (hook.match(/\bblocks\.push\(/g) || []).length;
+    assert.strictEqual(emitters, 13,
+        'session-start.js now holds ' + emitters + ' blocks.push sites rather than 13. '
+        + 'Re-derive how many distinct blocks that is (an emitter pair that is the '
+        + 'if/else of one block counts once), then move this pin, the hook\'s file '
+        + 'header, and docs/architecture.md\'s SessionStart bullet together');
+    const blocks = emitters - SESSION_START_BLOCK_PAIRS;
+    const word = NUMBER_WORDS[blocks];
+    assert.ok(word, 'the derived block count ' + blocks + ' is past this pin\'s number words');
+
+    // The control for the two absence-shaped reads below: the same word lookup
+    // over the count the source actually derives is what each surface is
+    // searched for, so a surface that fails is one stating a different count
+    // rather than one this pin cannot read.
+    assert.strictEqual(word, NUMBER_WORDS[11],
+        'the derived count is no longer eleven, so the two prose surfaces below '
+        + 'state a stale figure until they are moved with it');
+
+    // The header is a comment block, so it is read with its line markers
+    // stripped and its whitespace collapsed: the two figures below wrap across
+    // lines, and a raw substring test would read a wrap as a stale count.
+    const header = collapseWhitespace(hook.split(/\r?\n/).slice(0, 40)
+        .filter((l) => l.startsWith('//'))
+        .map((l) => l.replace(/^\/\/ ?/, ''))
+        .join(' '));
+    assert.ok(header.includes('composes ' + word + ' blocks in all'),
+        'session-start.js\'s own file header no longer states its payload at '
+        + word + ' blocks, which is what the source composes');
+    assert.ok(header.includes('the emitters number ' + NUMBER_WORDS[emitters]),
+        'session-start.js\'s file header no longer states its emitter count at '
+        + NUMBER_WORDS[emitters] + ', the number of blocks.push sites in the file');
+
+    const architecture = fs.readFileSync(path.join(__dirname, '..', 'docs', 'architecture.md'), 'utf8');
+    const bullet = architecture.split(/\r?\n/).find((l) => l.includes('runs `session-start.js`'));
+    assert.ok(bullet, 'docs/architecture.md no longer carries a SessionStart bullet naming '
+        + 'session-start.js; this pin reads that line as a count-restating surface');
+    assert.ok(bullet.includes('(' + word + ' blocks:'),
+        'docs/architecture.md\'s SessionStart bullet states a block count other than '
+        + word + ', which is what session-start.js composes: ' + bullet.slice(0, 200));
+});

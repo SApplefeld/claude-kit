@@ -348,10 +348,12 @@ test('clearing the goal drops the cache, so a later failure draws no retired pla
         assert.ok(fs.existsSync(path.join(dir, CACHE_REL)), 'the armed refresh cached its line');
 
         // What /kit-goal clear leaves behind: no state file, so the render is
-        // blank and there is no key to store it under.
+        // the affirmative unarmed line and there is no key to store it under.
+        // The line carries no plan path, which is what the cache keys on, so it
+        // is composed fresh at every refresh and can never outlive an arm.
         fs.unlinkSync(path.join(dir, '.kit', 'goal-state.json'));
         const cleared = runLauncher(root, dir);
-        assert.strictEqual(cleared.stdout, '', 'a cleared goal draws nothing');
+        assert.strictEqual(cleared.stdout, '\u{1F3AF} unarmed', 'a cleared goal draws the unarmed line');
         assert.ok(!fs.existsSync(path.join(dir, CACHE_REL)), 'and the retired line is dropped');
 
         // Why it must be dropped: a failure after the clear would otherwise draw
@@ -360,7 +362,7 @@ test('clearing the goal drops the cache, so a later failure draws no retired pla
             "'use strict';\nmodule.exports = { get goalPath() { throw new Error('boom'); } };\n", 'utf8');
         const res = runLauncher(root, dir);
         assert.strictEqual(res.status, 0, res.stderr);
-        assert.strictEqual(res.stdout, '', 'nothing armed stays nothing drawn');
+        assert.strictEqual(res.stdout, '', 'a payload that cannot answer draws nothing at all');
     } finally {
         rmDir(dir);
         rmDir(root);
