@@ -8,11 +8,11 @@ Session model: fable, required, in a dedicated session that is not the implement
 
 ## Dispatch Authorization
 
-Authorized 2026-08-29 by the operator: the corpus audit as designed in the dialog, three lanes (conflict sweep, bloat sweep feeding provenance adjudication, upstream watch), the hybrid model tiering recorded under Decisions, run by a dedicated seat separate from the implementation queue. This section was authored by the KIT: Expert seat; per the peer-sessions trace rule it is a warrant only for a citing session that did not author it, and the receiving session performs its own trace: the grant is the operator's approval in the expert session's transcript, and the plan arms only by the operator's word or the expert's append under it.
+Authorized 2026-08-29 by the operator: the corpus audit as designed in the dialog, four lanes (conflict sweep, bloat sweep feeding provenance adjudication, operator-gate census, upstream watch), the hybrid model tiering recorded under Decisions, run by a dedicated seat separate from the implementation queue. The census lane's grant is the operator's own framing at the kaizen-nod retirement: the semantic family of escalations, confirmations, and waits should each be checked for whether it makes sense in a self-improving, self-maintaining loop model. This section was authored by the KIT: Expert seat; per the peer-sessions trace rule it is a warrant only for a citing session that did not author it, and the receiving session performs its own trace: the grant is the operator's approval in the expert session's transcript, and the plan arms only by the operator's word or the expert's append under it.
 
 ## Goal
 
-The kit's behavior-shaping prose cannot be reviewed by the sessions that run it, because a session that has loaded the corpus grades with the judgment the corpus shaped: it ratifies what it was trained by. Meanwhile the corpus accretes three defect classes nothing currently sweeps: instructions that conflict with each other across documents, incident-born density that machinery has since superseded, and assumptions about the harness that Anthropic's own releases quietly falsify. When this plan is done: cold readers who never held the corpus have swept it for conflicts and bloat; a warm judge holding the corpus's full history has adjudicated every finding against its provenance, so no load-bearing scar is deleted for reading like verbosity; the kit's beliefs about the harness live in one inventory a release-notes diff can be run against; the first upstream verdict (Anthropic's Subagent Memory feature against the kit's own memory system) is banked so it is never re-litigated; and the operator has ruled on the surviving findings from a batched brief, with the approved changes authored as an ordinary follow-on plan for the implementation queue. The audit itself changes nothing: its deliverable is judgment, durably recorded.
+The kit's behavior-shaping prose cannot be reviewed by the sessions that run it, because a session that has loaded the corpus grades with the judgment the corpus shaped: it ratifies what it was trained by. Meanwhile the corpus accretes four defect classes nothing currently sweeps: instructions that conflict with each other across documents, incident-born density that machinery has since superseded, operator-approval gates installed before the loop could maintain itself, and assumptions about the harness that Anthropic's own releases quietly falsify. When this plan is done: cold readers who never held the corpus have swept it for conflicts, bloat, and operator-gates; a warm judge holding the corpus's full history has adjudicated every finding against its provenance, so no load-bearing scar is deleted for reading like verbosity; the kit's beliefs about the harness live in one inventory a release-notes diff can be run against; the first upstream verdict (Anthropic's Subagent Memory feature against the kit's own memory system) is banked so it is never re-litigated; and the operator has ruled on the surviving findings from a batched brief, with the approved changes authored as an ordinary follow-on plan for the implementation queue. The audit itself changes nothing: its deliverable is judgment, durably recorded.
 
 ## Evidence
 
@@ -20,6 +20,7 @@ The kit's behavior-shaping prose cannot be reviewed by the sessions that run it,
 - The corpus's density is incident-born by design: the doctrine's staged-index paragraph traces to a real cross-session sweep, re-confirmed 2026-08-29 when the staged-list read caught a peer's four staged files ahead of an expert commit. A cold reader flags such prose as bloat at a high rate, which is why generation and adjudication must be different agents with opposite context.
 - The representative-reader argument, the operator's ruling: the corpus's production audience is Opus-and-below (worker seats, implementer tiers, dispatched reviewers), so a confusion that only trips an Opus reader is a real defect, and a Fable-only read would under-report the ambiguity that bites the fleet daily.
 - The banked-verdict precedent is the Warden evaluation: evaluated once, verdict recorded in project memory with reasons (`warden-ai-evaluated-and-declined`), never re-opened from the README. The upstream lane adopts that shape per feature.
+- The census lane's motivating instance: the kaizen capture nod, retired 2026-08-29 by the operator's standing grant, turned out to be the keystone of a routing architecture spanning four skills (seats forbidden to append, a message leg recorded as a sanctioned pattern on the gate's existence), and the operator's read at the retirement is that the literal phrase is the minority: the population is the semantic family of escalations, confirmations, and waits on the operator, each needing a keep-or-retire call against the loop model rather than a blanket sweep.
 - The motivating upstream instance: Anthropic shipped persistent Subagent Memory (the sub-agents page of the Claude Code docs, under Enable persistent memory), reported by the operator 2026-08-29 and unevaluated as of authoring; the kit's assumption that memory needs hand-rolled machinery is exactly the kind of belief no corpus reader can check, because the falsifying evidence lives on Anthropic's servers, not in the tree.
 
 ## Decisions
@@ -60,41 +61,51 @@ Tests: none mechanical; same dispatch-discipline gate as Section 1.
 
 Files in scope: none written outside `.kit/` scratch.
 
-### 3. Provenance adjudication
+### 3. The operator-gate census
+
+Model: opus readers, dispatched; adjudication rides Section 4.
+
+The corpus is swept for every point that requires the operator's approval, confirmation, presence, or word: the literal nod family and its semantic kin (escalate to the operator, wait for the operator's call, goes up as a decision ask, on the operator's word). Grep seeds the list but does not bound it, because the family is semantic rather than lexical; the retired kaizen routing's own consequence paragraphs never contained the phrase. Cold readers per cluster enumerate the gates their documents state, each entry naming the surface, the exact gate, and what it holds up, with a proposed class: a blast-radius gate (irreversible, outward-facing, destructive, or materially consequential acts; the dispatch-authority rail), which the loop model keeps; a loop-maintenance gate (approval to capture, record, adjudicate, or improve the kit's own machinery), which is a retirement candidate under the standing-grant precedent the kaizen capture retirement set; or a genuine operator decision (product, design, risk trade-offs), which stays. The classification is a hypothesis like any other finding: Section 4 adjudicates it, and the surviving retirement candidates ride the Section 7 brief for the operator's batch ruling, because the asymmetry is the ruling's to weigh and not a reader's: a gate wrongly retired removes a safety property, while a gate wrongly kept costs one round-trip.
+
+Tests: none mechanical; same dispatch-discipline gate as Sections 1 and 2.
+
+Files in scope: none written outside `.kit/` scratch.
+
+### 4. Provenance adjudication
 
 Model: fable.
 
-Every Section 1 and 2 finding is traced before it survives: for a bloat candidate, whether the passage is incident-born (git history, the memory store, the kaizen archive), whether the incident class is still possible, and whether machinery now supersedes the prose, with retire-as-superseded the only honest simplification and taste never a verdict; for a conflict, whether it is real at execution time or two intentionally different semantics, and if real, which side the history says is right. Verdicts are keep, rewrite, or retire, each with its reason and its evidence pointer, recorded in a scratch adjudication log the brief is built from. Any surviving rewrite of behavior-shaping wording is flagged for baseline-testing per the writing-skills discipline, to be performed in the follow-on plan, never here.
+Every finding from Sections 1 through 3 is traced before it survives: for a bloat candidate, whether the passage is incident-born (git history, the memory store, the kaizen archive), whether the incident class is still possible, and whether machinery now supersedes the prose, with retire-as-superseded the only honest simplification and taste never a verdict; for a conflict, whether it is real at execution time or two intentionally different semantics, and if real, which side the history says is right; for an operator-gate entry, whether the proposed class survives the gate's own history, meaning what incident installed it and what blast radius it actually guards. Verdicts are keep, rewrite, or retire, each with its reason and its evidence pointer, recorded in a scratch adjudication log the brief is built from. Any surviving rewrite of behavior-shaping wording is flagged for baseline-testing per the writing-skills discipline, to be performed in the follow-on plan, never here.
 
 Tests: none mechanical; the gate is that no finding reaches the brief without a recorded trace, checked by re-reading the adjudication log against the finding lists.
 
 Files in scope: `.kit/` scratch only.
 
-### 4. The harness-assumptions inventory
+### 5. The harness-assumptions inventory
 
 Model: opus.
 
-One curated document collecting what the kit believes about the harness it runs on: leash and compaction mechanics, tool contracts, dispatch and messaging behavior, cache resolution, drawn from the doctrine's environment section, the skills' contract-facts sections, and the project memories that record harness behavior. Each assumption carries its source pointer and what observation would falsify it, so the upstream watch's release-notes diff has a fixed surface to run against. Curated state only, no journey narration, per the doctrine's document rules.
+One curated document collecting what the kit believes about the harness it runs on: leash and compaction mechanics, tool contracts, dispatch and messaging behavior, cache resolution, drawn from the doctrine's environment section, the skills' contract-facts sections, and the project memories that record harness behavior. Each assumption carries its source pointer and what observation would falsify it, so the upstream watch's release-notes diff has a fixed surface to run against. Section 6 consumes it. Curated state only, no journey narration, per the doctrine's document rules.
 
 Tests: none mechanical; acceptance is the blind-reader dispatch over the finished document.
 
 Files in scope: `docs/harness-assumptions.md` (or the name `curating-docs` prefers at implementation), its index line where docs/ carries one.
 
-### 5. The upstream watch, proved on Subagent Memory
+### 6. The upstream watch, proved on Subagent Memory
 
 Model: fable.
 
-The lane's proving run: fetch the current Claude Code sub-agents documentation live (never from training memory, per the doctrine's external-specifics rule), evaluate the persistent Subagent Memory feature against the kit's own memory system on the properties the kit actually leans on (cross-session recall, the applied-stamp evidence loop, the shared tiers, decay, recognition once the memory-recognition plan ships), and bank the verdict as a project memory in the Warden idiom: adopted, declined-with-reasons, or watch-with-named-trigger, so it is never re-evaluated from a headline. The standing cadence ships beside it: the kaizen skill gains one line adding the upstream diff (current release notes against the Section 4 inventory) to the weekly pass, findings entering the inbox as ordinary kaizen notes.
+The lane's proving run: fetch the current Claude Code sub-agents documentation live (never from training memory, per the doctrine's external-specifics rule), evaluate the persistent Subagent Memory feature against the kit's own memory system on the properties the kit actually leans on (cross-session recall, the applied-stamp evidence loop, the shared tiers, decay, recognition once the memory-recognition plan ships), and bank the verdict as a project memory in the Warden idiom: adopted, declined-with-reasons, or watch-with-named-trigger, so it is never re-evaluated from a headline. The standing cadence ships beside it: the kaizen skill gains one line adding the upstream diff (current release notes against the Section 5 inventory) to the weekly pass, findings entering the inbox as ordinary kaizen notes.
 
 Tests: none mechanical for the verdict; the kaizen amendment is reviewed whole-file per the recorded skill-amendment defect mode.
 
 Files in scope: `plugins/claude-kit/skills/kaizen/SKILL.md`, one new project memory file and its index line.
 
-### 6. The ruling brief and the follow-on plan
+### 7. The ruling brief and the follow-on plan
 
 Model: fable.
 
-The surviving findings, batched for the operator in the client-briefing register: each with the passage, the adjudicated verdict and its evidence, the recommendation marked, and the cost of leaving it. On the operator's rulings, the approved changes are authored as an ordinary implementation plan for the normal queue, carrying the baseline-test requirement for every wording change Section 3 flagged; declined findings are recorded with their reasons in the brief's committed form so they are not re-found by the next audit. The brief and the follow-on spec are the audit's only committed deliverables beyond Sections 4 and 5.
+The surviving findings, batched for the operator in the client-briefing register: each with the passage, the adjudicated verdict and its evidence, the recommendation marked, and the cost of leaving it. On the operator's rulings, the approved changes are authored as an ordinary implementation plan for the normal queue, carrying the baseline-test requirement for every wording change Section 4 flagged; declined findings are recorded with their reasons in the brief's committed form so they are not re-found by the next audit. The brief and the follow-on spec are the audit's only committed deliverables beyond Sections 5 and 6.
 
 Tests: none mechanical; acceptance is the operator's rulings received and recorded.
 

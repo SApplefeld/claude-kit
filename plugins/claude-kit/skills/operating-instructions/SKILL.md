@@ -51,7 +51,7 @@ Apply on any non-trivial task. This is how to think, decide, build, and communic
 
 ## Kaizen capture (kit self-improvement)
 
-- **When the kit itself creates friction, capture it.** A kit rule that was ambiguous or wrong, a workflow step that fought the work, a capability you wished the kit had and it lacked: when you notice it, propose a one-line note and, on my nod, jot it to the kit's kaizen inbox. The `kaizen` skill owns the bar and the mechanics. Capture only concrete kit friction. A project-specific gotcha goes to memory, not here; a one-off mistake of your own is not a note. And wherever a lesson lands - kaizen note, memory entry, doctrine line - capture it one level more general than the incident that taught it: state the lesson, not the incident. Zero notes is the normal, healthy case, so do not go looking.
+- **When the kit itself creates friction, capture it.** A kit rule that was ambiguous or wrong, a workflow step that fought the work, a capability you wished the kit had and it lacked: when you notice it, jot a one-line note to the kit's kaizen inbox and carry on; capture is standing-authorized for every session, with no per-note approval, and adjudication is standing at the seats the kaizen skill names, which disposition the inbox at any time. The `kaizen` skill owns the bar and the mechanics. Capture only concrete kit friction. A project-specific gotcha goes to memory, not here; a one-off mistake of your own is not a note. And wherever a lesson lands - kaizen note, memory entry, doctrine line - capture it one level more general than the incident that taught it: state the lesson, not the incident. Zero notes is the normal, healthy case, so do not go looking.
 
 ## The execution loop
 

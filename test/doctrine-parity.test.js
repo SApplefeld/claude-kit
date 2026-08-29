@@ -1201,33 +1201,40 @@ test('the coordinator\'s BLOCKED funnel dispositions every field the goal event 
     }
 });
 
-// The reciprocal half of the coordinator's kaizen function: every seat but
-// the coordinator carries the explicit duty to route captured kit friction to
-// the coordinator and carry on, never actioning it inline and never shelving
-// it. The reason is the rule's boundary and is pinned with the rule, because
-// a responsibility that names no owner is discharged by whichever party is
-// least busy, in a fleet reliably the party least likely to have seen the
-// friction; a rewrite keeping the duty and dropping the reason reopens
-// exactly that reading. Both stating surfaces are pinned together, the role
-// skill and the peer-sessions Roles section, since one surface amended while
-// a sibling goes on saying the old thing is the drift class this file exists
-// to catch.
-test('every non-coordinator seat carries the kaizen routing duty, with its reason, on both surfaces', () => {
+// The capture half of the kaizen function under the standing grant: every
+// seat carries the duty to append captured kit friction to the kaizen inbox
+// itself and carry on, never actioning it inline and never shelving it, with
+// capture standing-authorized so no per-note approval and no routing leg
+// stands between the friction and the inbox. The reason is the rule's
+// boundary and is pinned with the rule, because a responsibility that names
+// no owner is discharged by whichever party is least busy, in a fleet
+// reliably the party least likely to have seen the friction; standing
+// capture answers it by making the owner whoever met the friction, and a
+// rewrite keeping the duty and dropping the reason reopens exactly that
+// reading. Both stating surfaces are pinned together, the role skill and the
+// peer-sessions Roles section, since one surface amended while a sibling
+// goes on saying the old thing is the drift class this file exists to catch.
+test('every seat carries the kaizen capture duty as a direct append, with its reason, on both surfaces', () => {
     for (const skill of ['role', 'peer-sessions']) {
         const label = 'plugins/claude-kit/skills/' + skill + '/SKILL.md';
         const body = fs.readFileSync(path.join(__dirname, '..', 'plugins',
             'claude-kit', 'skills', skill, 'SKILL.md'), 'utf8');
-        assert.match(body, /kit friction[^.]{0,200}machine's coordinator/i,
-            label + ' no longer states that captured kit friction routes to '
-            + 'the machine\'s coordinator, so the duty has lost its named '
-            + 'owner on this surface and the ownerless reading is back');
+        assert.match(body, /kit friction[^.]{0,200}kaizen inbox/i,
+            label + ' no longer states that captured kit friction goes to the '
+            + 'kaizen inbox, so the duty has lost its destination on this '
+            + 'surface and the ownerless reading is back');
+        assert.match(body, /standing-authorized/i,
+            label + ' no longer states that capture is standing-authorized, '
+            + 'the grant that replaced the per-note nod and the routing leg; '
+            + 'without it this surface reads as requiring an approval that no '
+            + 'longer exists');
         assert.match(body, /never action\w*[^.]{0,40}inline/,
             label + ' no longer bars actioning a captured note inline, which '
-            + 'is half of carry-on: the capturing seat routes the note and '
+            + 'is half of carry-on: the capturing seat appends the note and '
             + 'returns to its mandate');
         assert.match(body, /never shelv/,
             label + ' no longer bars shelving a captured note, which is the '
-            + 'other half of carry-on: routed now, not parked');
+            + 'other half of carry-on: appended now, not parked');
         assert.ok(body.includes('least likely to have seen the friction'),
             label + ' no longer carries the rule\'s reason, that an ownerless '
             + 'duty is discharged by the least busy party, in a fleet reliably '
@@ -1240,11 +1247,11 @@ test('every non-coordinator seat carries the kaizen routing duty, with its reaso
         const lines = peerSessions.split(/\r?\n/).filter((l) => l.startsWith(lead));
         assert.strictEqual(lines.length, 1,
             'expected exactly one ' + lead + ' bullet in peer-sessions\' Roles '
-            + 'section; the routing-duty pin below reads that bullet');
-        assert.match(lines[0], /kit friction[^.]{0,160}coordinator/i,
+            + 'section; the capture-duty pin below reads that bullet');
+        assert.match(lines[0], /kit friction[^.]{0,160}kaizen inbox/i,
             'the peer-sessions ' + lead + ' bullet no longer carries the '
-            + 'reciprocal routing duty; the duty lands in each seat\'s own '
-            + 'definition, not only in the shared routing paragraph');
+            + 'capture duty; the duty lands in each seat\'s own definition, '
+            + 'not only in the shared capture paragraph');
     }
 });
 
