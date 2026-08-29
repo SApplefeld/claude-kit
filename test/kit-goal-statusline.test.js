@@ -1212,9 +1212,88 @@ test('`kit-goal.js status` ties a [missing] token to the position that still cou
             'setup: this tree reads the entry as missing: ' + res.stdout);
         assert.match(res.stdout, /still present in the main checkout this goal state lives in/,
             'the two readings on one screen are tied together');
+        // The mirror direction's note names an archived copy filed in this
+        // tree, which is not this fixture's shape (nothing here is archived),
+        // so it must not appear beside this one.
+        assert.doesNotMatch(res.stdout, /holds no readable copy at either path/,
+            'this tree has archived nothing, so the mirror direction\'s note must not print');
     } finally {
         rmDir(main);
         rmDir(tree);
+    }
+});
+
+test('a plan archived-terminal in this worktree alone ties its [missing] token to the pending position', () => {
+    const { main, tree } = makeWorktree();
+    try {
+        // The mirror of the case above: this working directory's own
+        // docs/archive/ copy reads terminal, while the main checkout the goal
+        // state lives in holds no readable copy at either path (never armed
+        // there, never archived there). The position walk still requires
+        // every tree to agree, so it reports the entry pending rather than
+        // complete. The token above it reads [missing] because
+        // planPathState(cwd, plan) finds docs/plans/ gone here too; that
+        // token never opens docs/archive/ at all, so it cannot be read as the
+        // note's cause, only as one half of the on-screen pairing the note
+        // explains. The leash is not held pending by any of this: it reads a
+        // plan gone in both trees as archived on its own, at the bound
+        // session's next clean stop, independent of this report.
+        archiveAt(tree, 'docs/plans/a_spec_v1.md', 'Complete');
+        planAt(main, 'docs/plans/b_spec_v1.md', 'In Progress');
+        planAt(tree, 'docs/plans/b_spec_v1.md', 'In Progress');
+        arm(main, worktreeState());
+
+        const res = runGoalStatus(tree);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /queue: plan 1 of 2, docs\/plans\/a_spec_v1\.md/,
+            'setup: the position still counts the plan pending: ' + res.stdout);
+        assert.match(res.stdout, /> docs\/plans\/a_spec_v1\.md \[missing\]/,
+            'setup: this tree reads the entry as missing: ' + res.stdout);
+        assert.match(res.stdout, /holds no readable copy at either path/,
+            'the archived-here-only shape and the way forward are both named');
+        // The two directions must not satisfy each other's fixture: this one
+        // has nothing present in main, so the present-in-main wording must
+        // not appear.
+        assert.doesNotMatch(res.stdout, /still present in the main checkout this goal state lives in/,
+            'nothing is present in the main checkout, so the other direction\'s note must not print');
+    } finally {
+        rmDir(main);
+        rmDir(tree);
+    }
+});
+
+test('a single checkout prints neither tree-split note, though the plans-path token still reads missing', () => {
+    const dir = makeRepo();
+    try {
+        // No worktree at all, so goalRoot(cwd) === cwd and neither note's
+        // root !== cwd gate ever opens: this pins that on-screen silence, not
+        // an unopened archive, since the position walk reads this tree's own
+        // docs/archive/ regardless of that gate (treeEntryState has no
+        // worktree condition of its own). The archived copy here is left
+        // unfinished (not terminal) on purpose: a terminal one is
+        // unconstructible at the current entry in a single tree, because a
+        // lone 'complete' vote either advances the walk past this entry (the
+        // window then starts elsewhere) or reports the whole queue finished,
+        // and neither shape is "pending at the current entry" for either
+        // note's guard to reach.
+        archiveAt(dir, 'docs/plans/a_spec_v1.md', 'In Progress');
+        planAt(dir, 'docs/plans/b_spec_v1.md', 'In Progress');
+        arm(dir, {
+            plan: 'docs/plans/a_spec_v1.md',
+            queue: ['docs/plans/a_spec_v1.md', 'docs/plans/b_spec_v1.md'],
+            queueIndex: 0
+        });
+
+        const res = runGoalStatus(dir);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /queue: plan 1 of 2, docs\/plans\/a_spec_v1\.md/,
+            'setup: the position stays on this entry: ' + res.stdout);
+        assert.match(res.stdout, /> docs\/plans\/a_spec_v1\.md \[missing\]/,
+            'setup: the plans-path token reads missing: ' + res.stdout);
+        assert.doesNotMatch(res.stdout, /still present in the main checkout this goal state lives in/);
+        assert.doesNotMatch(res.stdout, /holds no readable copy at either path/);
+    } finally {
+        rmDir(dir);
     }
 });
 

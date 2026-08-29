@@ -655,7 +655,9 @@ function resolvePlanLink(cwd, full) {
 // differently. Asked only where planHead has already reported the path
 // unreadable, and one of:
 //
-//   'gone'        nothing is there: the plan was moved to the archive
+//   'gone'        nothing is there; archiving a finished plan is the expected
+//                 cause, but this state alone cannot tell that from a deletion
+//                 or a path that never held a doc
 //   'unusable'    the path cannot be opened as a plan doc now or later, either
 //                 because something that is not a readable plan doc is at it (a
 //                 directory, a junction, a FIFO, a link resolving out of the repo
@@ -2742,4 +2744,9 @@ function emitGoalEvent(details) {
 // A value the classifier learns reaches all three at once, which is the whole
 // point of naming them here: a fourth surface spelling its own regex is the
 // drift this export exists to prevent.
-module.exports = { goalPath, goalRoot, goalPathKind, goalStateAbsent, readGoal, armGoal, appendGoal, advanceGoal, bindSession, clearGoal, composeCondition, planHead, planStatusReadings, classifyPlanStatus, emitGoalEvent, normalizePlanArg, lastActivePhrase, isSessionIdShaped, planFileSize, planHeadText, planPathState, planDisplayRoot, recordExecutionTree, pathErrnoClass, safeForAuthorization, queuePosition, GOAL_STATE_MAX_BYTES };
+// treeEntryState rides along for the same single-rule reason at the tree
+// level: the CLI's queue rendering must read the same per-tree state the
+// position walk itself votes on, so the note explaining a [missing] token and
+// the position it sits beside cannot drift apart from reading two spellings
+// of the same archive check.
+module.exports = { goalPath, goalRoot, goalPathKind, goalStateAbsent, readGoal, armGoal, appendGoal, advanceGoal, bindSession, clearGoal, composeCondition, planHead, planStatusReadings, classifyPlanStatus, emitGoalEvent, normalizePlanArg, lastActivePhrase, isSessionIdShaped, planFileSize, planHeadText, planPathState, planDisplayRoot, recordExecutionTree, pathErrnoClass, safeForAuthorization, queuePosition, treeEntryState, GOAL_STATE_MAX_BYTES };

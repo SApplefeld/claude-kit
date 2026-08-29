@@ -37,7 +37,7 @@ const path = require('path');
 const os = require('os');
 const {
     armGoal, appendGoal, clearGoal, readGoal, planStatusReadings, lastActivePhrase, isSessionIdShaped,
-    goalRoot, goalPathKind, planPathState, safeForAuthorization, queuePosition,
+    goalRoot, goalPathKind, planPathState, safeForAuthorization, queuePosition, treeEntryState,
     GOAL_STATE_MAX_BYTES
 } = require('./kit-goal-lib.js');
 
@@ -360,6 +360,24 @@ function cmdStatus() {
     // The main checkout is asked only in that narrow case, and only to keep the
     // note from claiming a presence nothing checked.
     let wrongTree = false;
+    // Whether this tree's own docs/archive/ holds a readable copy whose header
+    // reads terminal while the main checkout the goal state lives in has no
+    // readable copy at either path: the mirror of wrongTree above. The token
+    // above still reads [missing] from planPathState(cwd, plan) alone (it never
+    // opens docs/archive/, so it is byte-identical whichever of these states the
+    // archive is in); this flag governs only the note that explains what the
+    // token cannot say. The position still counts the entry pending, because the
+    // agreement rule needs every tree to see the same archived-terminal doc, not
+    // because the leash is held here: a plan gone in both trees is exactly the
+    // shape the Stop hook's own 'gone' branch reads as archived and advances (or
+    // releases on) at the bound session's next clean stop, independent of this
+    // report. treeEntryState is asked of both trees instead of re-derived here,
+    // so this reading cannot drift from the one the position walk itself trusts
+    // (queueEntryState calls the same function). Asked only in the same narrow
+    // case wrongTree is: the current entry, only once the split is live, and
+    // only when this tree's own archive is what makes the split, so the healthy
+    // single-tree case never reaches it.
+    let archivedOnlyHere = false;
     window.forEach((plan, i) => {
         const head = planStatusReadings(cwd, plan);
         if (head.exists && head.status === 'complete' && !head.terminal) divergent = true;
@@ -373,7 +391,13 @@ function cmdStatus() {
         const status = head.exists ? head.status : QUEUE_TOKENS[planPathState(cwd, plan)];
         if (i === 0 && status === QUEUE_TOKENS.gone && !position.unresolvable && !position.finished) {
             const root = goalRoot(cwd);
-            wrongTree = root !== cwd && planPathState(root, plan) !== 'gone';
+            if (root !== cwd) {
+                wrongTree = planPathState(root, plan) !== 'gone';
+                if (!wrongTree) {
+                    archivedOnlyHere = treeEntryState(cwd, plan) === 'complete'
+                        && treeEntryState(root, plan) === 'absent';
+                }
+            }
         }
         // The authorization each plan recorded when it was queued, printed on
         // both directions rather than only when one is present: an audit trail
@@ -408,6 +432,17 @@ function cmdStatus() {
             + ' still present in the main checkout this goal state lives in, so the position above'
             + ' counts the plan pending. Bring it onto this tree\'s branch, or land its archival in'
             + ' the main checkout, so both trees agree)');
+    }
+    if (archivedOnlyHere) {
+        out.push('  (this working directory has filed the plan under docs/archive/ with a'
+            + ' terminal header while the main checkout this goal state lives in holds no'
+            + ' readable copy at either path, so the token above reads [missing] from this'
+            + ' tree\'s docs/plans/ alone and the position above still counts the plan'
+            + ' pending: the two readings need every tree to agree. The leash itself is not'
+            + ' held here. It reads a plan gone in both trees as archived and advances past'
+            + ' it, or releases on the last plan, at the bound session\'s next clean stop.'
+            + ' Landing this archival in the main checkout is what makes the reported'
+            + ' position agree sooner)');
     }
 
     if (state.history.length > 0) {
