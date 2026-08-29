@@ -143,6 +143,48 @@ For each Section of Work, in order (sections run concurrently only where the dis
        assertion reads as settled fact and gets obeyed instead of
        checked, which is how a wrong premise in a brief becomes a wrong
        implementation that passes its own gate
+     - The standing absence-check clause. It covers two classes, which
+       fail differently and are reported differently, and the run's green
+       alone reports neither. A check whose acceptance is a refusal (a pin
+       asserting a guard denied a command with the reason it names, a test
+       asserting the error path threw, a hook pin asserting a deny
+       decision) is reported by naming, in words, which rule refused each
+       case, since a green says something refused it while naming the rule
+       says the thing meant refused it. Those are instances and not the
+       boundary: the class is any check whose acceptance is a refusal,
+       because a check that records only that something refused reports
+       the same green whether the rule it was meant to exercise refused it
+       or another rule refused it first. A check whose acceptance is an
+       absence (a sweep expected to come back clean, a grep whose
+       acceptance is empty output, a box-free readiness poll, a contention
+       gate that reads clear, a pre-flight sweep) is reported by naming
+       the predicate you ran, the scope you ran it over, and what it
+       matched; where it matched nothing at all, that empty result stated
+       against that predicate and that scope is the report, since there
+       are no cases to attribute and a bare green is the one form this
+       clause refuses. Those are instances and not the boundary: the class
+       is any check whose acceptance is an absence, because a predicate
+       narrower than the class it guards reports the same clear verdict
+       whether the state it was meant to detect is absent or merely
+       unnamed. A sweep's dispositions include the unchanged: a site the
+       sweep found and left unchanged is reported with the rule that
+       exempts it, because where the omitted site falls outside the
+       verification grep's predicate, a complete sweep and a partial one
+       leave behind the same clean grep. A referring document, a call
+       site, an archived copy are instances; the class is any site the
+       sweep reached and the change did not touch. And a control you run
+       against an instance you named proves the instrument functions and
+       proves nothing about its coverage, so a check whose subject is a
+       class states what would catch a member you did not name, a
+       structural pattern over the class's shape where one exists; where
+       the class can be neither enumerated nor shaped, the report is that
+       the named members are swept and the class is not, never that the
+       sweep is clean. Build the control under the `.kit/` scratch path. A
+       control that must touch the tree under review is a tree-mutating
+       probe and takes this skill's exclusivity rule for one, carried here
+       because an agent holds no skills to resolve a pointer through: no
+       other agent reading the tree while it runs, and a restore from
+       copies taken before the first mutation
      - Workaround bar: a workaround needing a paragraph to justify means fix the
        code or escalate
      - When returning NEEDS_CONTEXT on a hard question, state it consult-shaped:

@@ -2187,3 +2187,47 @@ test('the Worker seat bullet holds the cap as a standard, not as a reading of wh
     assertFootingStated(slice, where);
     assertFootingSourcesCarryIt(where);
 });
+
+// The absence-check clause is a deliberate three-surface restatement: the
+// Dispatch Brief carries the implementer half, and both sighted charters carry
+// the lens half, because an agent inherits no skills and cannot resolve a
+// pointer. What a deliberate copy owes is a pin, which is the lesson Section 12
+// of the review-and-record plan exists to record: a divergence survives a
+// parity suite whose assertions never touch the diverging text. Both class
+// sentences are pinned rather than one, because the clause closes two
+// enumerations and an edit that reprices either class on one surface alone is
+// exactly the drift this asserts against. The comparison runs on collapsed
+// whitespace for a mechanical reason, not a stylistic one: the brief copy sits
+// inside a fenced template that wraps it across lines at a 7-space indent, so a
+// raw includes finds two of the three copies and would pass while the third
+// said something else.
+test('the absence-check clause states the same two classes on all three surfaces', () => {
+    const surfaces = [
+        ['skills', 'executing-work', 'SKILL.md'],
+        ['agents', 'adversarial-reviewer.md'],
+        ['agents', 'prose-reviewer.md'],
+    ];
+    const classSentences = [
+        'the class is any check whose acceptance is a refusal, because a check '
+            + 'that records only that something refused reports the same green '
+            + 'whether the rule it was meant to exercise refused it or another '
+            + 'rule refused it first',
+        'the class is any check whose acceptance is an absence, because a '
+            + 'predicate narrower than the class it guards reports the same clear '
+            + 'verdict whether the state it was meant to detect is absent or '
+            + 'merely unnamed',
+    ];
+    for (const parts of surfaces) {
+        const rel = ['plugins', 'claude-kit', ...parts].join('/');
+        const body = collapseWhitespace(fs.readFileSync(path.join(__dirname, '..',
+            'plugins', 'claude-kit', ...parts), 'utf8'));
+        for (const sentence of classSentences) {
+            const hits = body.split(sentence).length - 1;
+            assert.strictEqual(hits, 1, `${rel} carries the class sentence '`
+                + `${sentence.slice(0, 60)}...' ${hits} times, not once; the `
+                + 'absence-check clause is a deliberate three-surface copy, so '
+                + 'either every surface states both classes identically or the '
+                + 'copies have drifted');
+        }
+    }
+});
