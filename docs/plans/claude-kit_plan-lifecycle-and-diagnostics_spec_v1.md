@@ -37,6 +37,7 @@ When this plan is done: `Ready` is a recognized plan status meaning authored-and
 
 1. Every quoted current-text phrase and line anchor in these sections is re-read from the file at implementation time; two slate plans land ahead of this one and the anchors above are authoring-time.
 2. A test's comments state the invariant the test pins, in the present tense. A comment framing an assertion as before-and-after ("it behaved this way while X was unrecognized and must behave this way now") is the banned change-narrative shape and does not ship, in test files exactly as in source. Added at Section 2's review round, on the class recurring there after Chapter 2 recorded three instances of it.
+3. Before writing a call at a boundary where a correct call is not the obvious one, grep the tree for that boundary's other callers first, and where a correct one exists, export it and call it rather than writing a second implementation of it. The boundaries this covers are the ones whose failure is silent: spawning a process, building a child environment, reading a file whose size or kind the caller does not control, sanitizing text bound for a trusted channel, and clamping a bound. Added at Section 4's review round, on the class recurring within this plan: Section 3 found three hooks that had each rewritten a git spawn without the guard the one correct call site carried, and Section 4 then wrote two whole-file reads without the fill loop `kit-compact-lib.js` already carries for exactly the short-read hazard those reads hit. A guard behind an unexported boundary stays correct and stops being applied, and nothing in a build, a suite, or a review of the new code points at it, because the new code is self-consistent and the old code is still right.
 
 ## Sections of Work
 
@@ -81,7 +82,7 @@ Model: sonnet
 
 `summarizeBacklog` (`session-start.js:107`) reads the whole file; the bound-stating fallback ("counted within the first 64 KB") is taken only if the whole read measurably regresses session start, which the implementer proves with a timing figure recorded in the Chapter before choosing it, not on a feel. Red first: a fixture backlog deliberately larger than the window shows today's silent undercount, then the honest behavior.
 
-Files in scope: `plugins/claude-kit/hooks/session-start.js`, `test/session-start-backlog.test.js`.
+Files in scope: `plugins/claude-kit/hooks/session-start.js`, `test/session-start-backlog.test.js`, `test/session-start-kaizen.test.js` (folded at execution: `countPendingKaizen` in the same file carries the same fixed 64 KB read per note file, latent today only because the notes file sits inside the window, so the honest-count fix is sited at both readers rather than at the one with a live symptom).
 
 ### 5. An unleashed run reports itself, and the arming seam closes at both ends
 
@@ -137,6 +138,26 @@ Files in scope: `plugins/claude-kit/hooks/kit-goal-stop.js`, `plugins/claude-kit
 - `kaizen/notes-SCOTT-CLAUDE.md`, the three notes of 2026-08-26/27 (plugin-view staleness, leading-dash parse, Ready status): the origin, cleared into this spec at authoring.
 
 ## Chapters
+
+### Interim board 1 - 2026-08-29
+Trigger: the compaction gate reported one held offer over five minutes with Section 4 still open, its review round adjudicated and its fix round in flight.
+
+In-flight sections: 4 only. This plan closed Sections 1, 7, 2 and 3, in that order, across Chapters 1 through 4, all pushed; Sections 5 and 6 are unstarted and run after 4.
+
+Section 4 stage: first implementation delivered and verified, one fold taken in the main session, whole gate green against baseline, three-lens review round returned and adjudicated, fix round dispatched and running.
+
+Live dispatches: one, `implementer-opus`, asked to answer the review round. Its brief carries the two headline fixes (a shared bounded-read boundary at `plugins/claude-kit/hooks/kit-read-lib.js` that both session-start readers and `kit-compact-lib.js` route through, and an aggregate byte budget across the kaizen note walk) plus nine numbered findings. The review round itself is complete: three agents, all resolved at `claude-opus-5` with no substitution, all three returning CHANGES_REQUIRED.
+
+Gate baseline in effect: whole gate 1,976 tests / 1,973 pass / 1 fail / 2 skipped, exit 1, on the working tree carrying the first implementation plus the fold, read from the run's own exit marker. The prior baseline was 1,971 / 1,968 / 1 / 2 at commit `13a9f7d`, so the section has added five tests, all passing. The single red is the known machine-specific path-length case in `test/memory-session.test.js`, matched on name and never counted.
+
+Rulings adopted since the last boundary:
+- The section folded three further readers in `session-start.js` beyond the one it named. `countPendingKaizen` carries the same fixed 64 KB per-file read, latent only because the notes file sits inside the window; the same function also caps its note-file and brief walks and renders each cap as a total. The plan's `Files in scope:` line was widened at execution to name the second test file, and the fold is recorded there.
+- Standing Amendment 3 was added, on the recurrence rule rather than on a single finding. The class is a correct guard sitting behind an unexported boundary while a later author writes the call without it: Section 3 found three hooks that had each rewritten a git spawn without the guard the one correct site carried, and Section 4 then wrote two whole-file reads without the fill loop `kit-compact-lib.js` already carries for exactly the short-read hazard those reads hit. The amendment is approval drift by construction, sitting above `## Chapters`, and is recorded here as such.
+- One review Minor was refuted rather than fixed. The adversarial lens rated the plan doc's LF line endings a defect against a CRLF worktree. `git ls-files --eol` reports `i/lf w/lf` for this file, it has been LF throughout this plan, and Chapter 4's own writer asserts LF-only and would have thrown otherwise; the lens inferred the convention from the three changed code files, which are genuinely `w/crlf`.
+
+Next action per section: Section 4 awaits the fix round, then a re-review of the changed surface, then the whole gate, then `docs/architecture.md` (which still describes the read as bounded at 64 KB and names truncation as an accepted degradation, three claims this section falsifies) and the two backlog retirements the plan's `## Related` section names, both of those in the main session because the docs guard bars a subagent. Sections 5, 6 and 7 follow in order.
+
+Commit Model: Commit-and-Push
 
 ### Chapter 1 - 2026-08-29
 Completed: 1. The goal CLI refuses unknown leading-dash tokens, naming its version
