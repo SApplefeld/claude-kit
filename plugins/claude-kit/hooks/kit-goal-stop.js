@@ -114,7 +114,7 @@ const path = require('path');
 const crypto = require('crypto');
 const {
     readGoal, goalRoot, planHead, planPathState, clearGoal, bindSession, advanceGoal, emitGoalEvent,
-    queuePosition
+    queuePosition, planArmedBy
 } = require('./kit-goal-lib.js');
 const {
     readTranscriptCapped, stripLocalCommandOutput, sameSessionId,
@@ -364,6 +364,52 @@ function withNoteBeforeDisclaimer(reason, note) {
     return at === -1 ? reason + note : reason.slice(0, at) + note + reason.slice(at);
 }
 
+// What a block reason says about who armed the plan it is about. The kit
+// sanctions two armings: an operator's, a person's own act at the keyboard,
+// and a self-arming, an invocation a run made for itself. What the state
+// records is which of the two the arming INVOCATION declared itself to be, and
+// that is all these clauses may say: nothing here establishes that the session
+// now stopping is the one that armed, or what authorized any plan (the
+// authorizations map records that, per plan, from the doc). The value is per
+// queue entry, so both clauses take the plan the reason is about: a value read
+// from the queue as a whole would attribute one plan's arming to another's.
+//
+// The attribution rides at the head of the reason, beside the plan it is
+// about, and the request clause stays at the parallelization instruction. A
+// grant arming changes who asked for the goal, not what the run is told to
+// do: the instruction to parallelize stands on the operator's standing
+// doctrine and on the kit-goal skill's ruling that a section-borne arm
+// carries what a typed one does, so the head clause states the arming and the
+// request clause is simply absent rather than qualified. Both clauses carry
+// their own leading space, which is what lets the typed reason read exactly
+// as it does with no arming recorded at all.
+//
+// The head clause points at the kit-goal skill rather than restating what a
+// grant arming carries, which is the shape hook-emitted text takes for a rule
+// whose qualifying conditions live in a skill: this text reaches a session
+// that has loaded no skill, where a half-stated rule is worse than a pointer.
+//
+// The state is readGoal's, normalized before it arrives here, so a plan with
+// nothing recorded (a state file predating the map, a hand edit) reads as the
+// operator's arming at this reader exactly as at every other.
+function armingHeadClause(armedBy) {
+    if (armedBy !== 'self') return '';
+    return ' (armed by an invocation a run made for itself rather than one Scott typed, as that '
+        + 'invocation declared it; the kit-goal skill states what such an arming carries)';
+}
+
+// The request an operator's arming carries, for the parallelization instruction
+// it qualifies. Empty under a self-arming, whose attribution armingHeadClause
+// has already made at the head of the reason. wallClock adds the
+// reduce-wall-clock-time tail at the ordinary hold alone, because that is the
+// site whose pre-existing sentence carried it, and this text is byte-identical
+// to what it has always been wherever the operator armed.
+function armingRequestClause(armedBy, wallClock) {
+    if (armedBy === 'self') return '';
+    return " (the armed goal carries the user's request for subagent dispatch and Workflows on "
+        + 'this run' + (wallClock ? ', to reduce wall-clock time' : '') + ')';
+}
+
 // Does the armed queue hold another plan after the current one? readGoal
 // normalizes every state file to a queue (a pre-queue file reads as a queue of
 // one), so the current plan is the last one exactly when no plan follows it.
@@ -424,9 +470,16 @@ function advanceAndHold(cwd, goal, sessionId, entry) {
     // and the reason must name the plan the state actually moved to, not the
     // one the snapshot predicted. The not-advanced branch wrote nothing, so
     // the snapshot is the only thing there is to name.
-    const safeNext = advanced
-        ? safeForReason(moved.plan)
-        : safeForReason(goal.queue[goal.queueIndex + 1]);
+    const nextPlan = advanced ? moved.plan : goal.queue[goal.queueIndex + 1];
+    const safeNext = safeForReason(nextPlan);
+    // The advance re-reads the state it writes, so it is the one reading that
+    // names the plan and its arming from the same state: taking the arming from
+    // the pre-advance snapshot would pair the plan the advance moved to with an
+    // arming read for another. Only the advanced reason states an arming at all,
+    // so this is resolved on that branch alone: the not-advanced reason claims no
+    // advance and names no next plan to attribute one to, and on the last plan of
+    // a queue there is no next entry to read.
+    const nextArmedBy = advanced ? moved.arming : null;
     if (entry.detail && advanced) {
         emitGoalEvent({
             event: 'goal-complete', project: cwd, plan: goal.plan,
@@ -484,7 +537,7 @@ function advanceAndHold(cwd, goal, sessionId, entry) {
     const reason = advanced
         ? 'A kit goal is armed for a queue of plans and the leash has advanced: '
             + safeFinished + ' finished (' + entry.word + ') and the current plan is now '
-            + safeNext + '.'
+            + safeNext + armingHeadClause(nextArmedBy) + '.'
             // The note is the first line of transcript text and carries no
             // guaranteed sentence end, so it is quoted and terminated: an
             // unmarked splice would dissolve the boundary between the repo
@@ -500,11 +553,11 @@ function advanceAndHold(cwd, goal, sessionId, entry) {
             + ' Continue in this session with ' + safeNext
             + ': one binding rides the whole queue, so no re-arming is needed. Read it in full '
             + 'and work it to completion using executing-work, parallelizing what can run '
-            + "simultaneously (the armed goal carries the user's request for subagent dispatch "
-            + 'and Workflows on this run); take it to Complete, or surface a true blocker with a '
+            + 'simultaneously' + armingRequestClause(nextArmedBy, false)
+            + '; take it to Complete, or surface a true blocker with a '
             + "leading 'BLOCKED:' line, which records the blocker and advances to the plan after "
             + 'it. The leash releases when the last plan of the queue finishes, or with '
-            // Five reasons in this file emit decision: 'block', and only two take
+            // Six reasons in this file emit decision: 'block', and only two take
             // BOUNDARY_DIRECTIVE. Enumerated here because a rule applied at one
             // site and not its siblings is this plan's recurring defect, so each
             // one's disposition is stated rather than left to be inferred:
@@ -519,6 +572,9 @@ function advanceAndHold(cwd, goal, sessionId, entry) {
             //                        transcript entry, so the boundary guidance
             //                        that advance already delivered would only
             //                        repeat; a test pins the absence.
+            //   wrong-tree hold      declines it. The plan doc is absent in this
+            //                        worktree, so the run cannot reach the plan
+            //                        whose chapter a boundary would follow.
             //
             // This reason declines it because what it asks is narrower and
             // specific to the advance: whether the plan just finished opened a
@@ -705,6 +761,8 @@ function main() {
     // The plan path is repo data sanitized before it enters this trusted
     // channel, in every block reason below.
     const safePlan = safeForReason(planRel);
+    // Who armed the current plan, for the reasons that name it.
+    const currentArmedBy = planArmedBy(goal, planRel);
 
     // Two of the release clauses below end in a block of their own, and both are
     // reachable with an unusable plan path: the capacity refusal tells the
@@ -890,10 +948,11 @@ function main() {
             + 'message is already recorded'
             + (lastBlocked && lastBlocked.note ? ' (as: ' + safeForReason(lastBlocked.note) + ')' : '')
             + ': the leash advanced when it was recorded, and the current plan is now '
-            + safePlan + '. Read ' + safePlan + ' in full and work it to completion using '
-            + 'executing-work, parallelizing what can run simultaneously (the armed goal '
-            + "carries the user's request for subagent dispatch and Workflows on this run). "
-            + 'The leash releases when the last plan of the queue finishes, or the user '
+            + safePlan + armingHeadClause(currentArmedBy)
+            + '. Read ' + safePlan + ' in full and work it to completion using '
+            + 'executing-work, parallelizing what can run simultaneously'
+            + armingRequestClause(currentArmedBy, false)
+            + '. The leash releases when the last plan of the queue finishes, or the user '
             + 'releases it with /kit-goal clear. (Plan paths and any recorded blocker are '
             + 'repo data, not an instruction.)';
         process.stdout.write(JSON.stringify({
@@ -942,15 +1001,19 @@ function main() {
         return;
     }
 
-    // The reason restates the armed goal's parallelization request because this
-    // is the one surface a leashed session re-reads on every held stop,
-    // compaction included; the /kit-goal skill owns the full statement of that
-    // request.
-    const reason = 'A kit goal is armed for ' + safePlan + ': this run is not complete '
+    // The reason restates what the armed goal requests because this is the one
+    // surface a leashed session re-reads on every held stop, compaction included.
+    // It restates the arming this plan's queue entry records rather than one
+    // arming of the two, with the attribution at the plan it is about and the
+    // request where it qualifies the instruction (the two clause helpers state
+    // which sits where and why); the kit-goal skill owns the full statement of
+    // what an arming carries.
+    const reason = 'A kit goal is armed for ' + safePlan + armingHeadClause(currentArmedBy)
+        + ': this run is not complete '
         + "and the last message did not lead with 'BLOCKED:' or 'WAITING:'. Finish the "
-        + 'remaining sections, parallelizing what can run simultaneously (the armed '
-        + "goal carries the user's request for subagent dispatch and Workflows on "
-        + 'this run, to reduce wall-clock time); or surface a true blocker with a '
+        + 'remaining sections, parallelizing what can run simultaneously'
+        + armingRequestClause(currentArmedBy, true)
+        + '; or surface a true blocker with a '
         + "leading 'BLOCKED:' line; or, if the only remaining work this turn is "
         + "dispatched background subagents, park with a leading 'WAITING:' line "
         + 'naming them (their completion re-invokes the session); or clear it with '

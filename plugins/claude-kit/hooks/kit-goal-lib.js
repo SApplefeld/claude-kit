@@ -448,6 +448,13 @@ function normalizeState(cwd, state) {
     // rather than nulled: absent is the field's ordinary state, and no reader
     // tells the two apart.
     if (!validExecutionTree(state.executionTree)) delete state.executionTree;
+    // Who made the arming invocation each queued plan was armed by, repaired
+    // one entry at a time. A state predating the map reads as the operator's
+    // arming throughout, which is the reading its own stored condition sentence
+    // was composed under, so the two agree there. A hand edit is where they can
+    // disagree, since this repair never recomposes condition; the next append
+    // or advance recomposes it from the repaired map.
+    state.armedBy = normalizeArmedBy(state.armedBy, state.queue);
     state.authorizations = normalizeAuthorizations(state.authorizations, state.queue);
     return state;
 }
@@ -494,6 +501,83 @@ function normalizeAuthorizations(value, queue) {
         clean[rel] = safe === '' ? null : safe;
     }
     return clean;
+}
+
+// The armedBy map as every reader may rely on it: an object with NO prototype,
+// one entry per plan the queue holds, each entry either 'self' or 'operator'.
+// It records ONE fact, who made the invocation that armed this plan: 'self'
+// where the run ran the CLI for itself, 'operator' where a person typed it.
+// What authorizes a plan to be leashed is a different fact with its own field,
+// authorizations above, read from the plan doc rather than declared by the
+// caller.
+//
+// The keys answer to the rules stated above, one at a time and for the same
+// reasons: they are hand-editable plan paths, so the map is walked from the
+// queue rather than from the file's own key list. Where the two maps differ is
+// the absent entry. An authorization is a quotation, so a plan the file says
+// nothing about records nothing; armedBy is an answer every armed plan has, so
+// an absent or unrecognized entry reads as the operator's arming. That is a
+// compatibility reading and rests on nothing else: every state written before
+// this map existed was armed by an operator typing the CLI, since the self
+// spelling did not exist to be run, so it is the reading such a file was
+// written under and the one its stored condition text already states.
+function normalizeArmedBy(value, queue) {
+    const clean = Object.create(null);
+    const usable = value && typeof value === 'object' && !Array.isArray(value);
+    for (const rel of queue) {
+        clean[rel] = usable && Object.prototype.hasOwnProperty.call(value, rel) && value[rel] === 'self'
+            ? 'self'
+            : 'operator';
+    }
+    return clean;
+}
+
+// The map an arm or an append writes for the plans it is adding: one entry per
+// plan, all of them who made that invocation. The entries already in a queue
+// are never touched by it, which is what lets one queue hold plans armed by two
+// different invocations.
+function armedByFor(plans, arming) {
+    const map = Object.create(null);
+    for (const rel of plans) map[rel] = arming;
+    return map;
+}
+
+// Who armed one plan of an armed queue: the single reader every surface that
+// renders or composes from the field goes through, so the Stop hook, the CLI
+// and the recompose sites cannot spell the lookup three ways. 'self' is the
+// only value that answers self, so a map damaged in any way reads as the
+// operator's arming, matching the repair every reader's state has been
+// through.
+function planArmedBy(state, planRel) {
+    const map = state && state.armedBy;
+    return map && typeof map === 'object' && Object.prototype.hasOwnProperty.call(map, planRel)
+        && map[planRel] === 'self'
+        ? 'self'
+        : 'operator';
+}
+
+// The armedBy argument as an arming caller may pass it, judged rather than
+// repaired. A stored value is hand-editable and gets the lenient repair above;
+// this one is a live argument from the CLI, where a typo ('granted', 'Self',
+// true) silently repaired to 'operator' would record an arming nobody made. So
+// an unrecognized value refuses the whole invocation and nothing is written.
+// Absent means the operator's arming, what a caller saying nothing is doing.
+function armedByArg(value) {
+    if (value === undefined || value === null || value === 'operator') {
+        return { ok: true, authority: 'operator' };
+    }
+    if (value === 'self') return { ok: true, authority: 'self' };
+    // Named defensively: a value with no primitive conversion (an object with
+    // a null prototype, one whose toString is not callable) throws on String(),
+    // and this module's contract is that no exported function throws. What such
+    // a value is cannot be quoted, so the refusal names its type instead.
+    let named;
+    try {
+        named = safeForReason(String(value));
+    } catch {
+        named = 'an unprintable ' + typeof value;
+    }
+    return { ok: false, reason: 'armedBy must be self or operator: ' + named };
 }
 
 // The kind-and-size preamble the hardened readers in kit-compact-lib.js apply,
@@ -1685,15 +1769,25 @@ function planAuthorization(cwd, planRel) {
         return null;
     }
     try {
+        // The size that decides the question below is the descriptor's own,
+        // taken after the open: the screen above stats a path, and anything
+        // that swapped or grew the file between that stat and this open would
+        // have the answer decided about a different file. readGitPointer in
+        // this file takes the same open-then-fstat shape.
+        const size = fs.fstatSync(fd).size;
         const buf = Buffer.alloc(AUTHORIZATION_SCAN_MAX_BYTES);
         const bytes = fs.readSync(fd, buf, 0, AUTHORIZATION_SCAN_MAX_BYTES, 0);
         let head = buf.toString('utf8', 0, bytes);
         if (head.charCodeAt(0) === 0xFEFF) head = head.slice(1);
-        // A read that filled the buffer is a plan doc with more of itself past
-        // the window, so what the scan holds may end mid-sentence. This is the
-        // only place that fact is known, and authorizationSentence needs it to
-        // tell a section's own short line from a sentence cut by the window.
-        return authorizationSentence(head, bytes === AUTHORIZATION_SCAN_MAX_BYTES);
+        // What authorizationSentence needs to know is whether this head is a
+        // PREFIX of the doc, so that a trailing sentence carrying no terminator
+        // is a sentence something cut rather than the section's own short line.
+        // Fewer bytes than the file holds is that question exactly, and it
+        // answers both ways a prefix arises: a doc longer than the window, and
+        // a read that came back short of one no larger than it. A read holding
+        // every byte of the file is not a prefix however large the file is,
+        // window-sized included, so it is not judged one.
+        return authorizationSentence(head, bytes < size);
     } catch {
         return null;
     } finally {
@@ -1703,22 +1797,47 @@ function planAuthorization(cwd, planRel) {
 
 // The single source of the canonical goal condition text. planRel is the
 // repo-relative forward-slash plan path already validated by armGoal. This
-// text is descriptive: it is surfaced for a human reading goal-state.json. The
-// deterministic Stop hook enforces via file and transcript signals, not by
-// parsing this string, so its clause (a) wording need not mirror the hook's
-// exact Complete-or-archived check. The text also carries the user's per-run
-// parallelization request (subagent dispatch and Workflows), so the request
-// rides with the goal state across session swaps; the /kit-goal skill owns
-// the full statement of what arming requests, and the Stop hook's enforcement
-// block restates it at the point of action.
+// text is descriptive and has no reader in this tree: it is written for a
+// person, or a session, opening goal-state.json. The deterministic Stop hook
+// enforces via file and transcript signals rather than by parsing it, and
+// composes its own block reason, so this clause (a) wording need not mirror
+// the hook's exact Complete-or-archived check.
+//
+// authority is who armed THIS plan, 'self' or 'operator', resolved by the
+// caller (planArmedBy reads a state's own map, and armGoal refuses any other
+// value at the point a caller supplies one). It decides which arming the text
+// records, because the two carry different authority and the file must not
+// assert one the arming did not have. An operator's arming is a person's own
+// act, so its text carries the per-run parallelization request (subagent
+// dispatch and Workflows) and that request rides with the goal state across
+// session swaps. A self-arming is an invocation the run made for itself, which
+// no keystroke accompanies: its text records that the invocation declared
+// itself the run's own, which is all the state holds, and asserts nothing about
+// what authorized any plan (the authorizations map records that, per plan, from
+// the plan doc). It then points at the skill rather than restating what an
+// arming carries, so nothing in the file states a request the operator never
+// made.
 //
 // queue and queueIndex are optional and describe the armed sequence this plan
 // belongs to. When plans remain after this one, the text gains the queue
 // context: the position, the plans still to come, and that each runs to
 // Complete or a recorded BLOCKED: before the next begins. A single plan, or
 // the last plan of a queue, has nothing remaining and reads exactly as a solo
-// arming does.
-function composeCondition(planRel, queue, queueIndex) {
+// arming does. The queue context is a property of the queue, so both armings
+// take it identically.
+const OPERATOR_ARMING_TEXT = "Arming is Scott's request for this run: reduce wall-clock time by "
+    + 'parallelizing work that can run simultaneously, via subagent dispatch '
+    + 'and via Workflows. ';
+
+// The self spelling states one fact, the one the state holds: the invocation
+// that armed this plan declared itself the run's own rather than a person's.
+// It names no plan, claims no grant and identifies no session, because none of
+// those is established by anything the CLI saw.
+const SELF_ARMING_TEXT = 'Arming is recorded as this run\'s own rather than as a request Scott '
+    + 'typed, as the arming invocation declared it. The kit-goal skill states what an '
+    + 'arming carries; read it there rather than from this text. ';
+
+function composeCondition(planRel, queue, queueIndex, authority) {
     const remaining = Array.isArray(queue) && Number.isInteger(queueIndex)
         ? queue.slice(queueIndex + 1)
         : [];
@@ -1727,10 +1846,9 @@ function composeCondition(planRel, queue, queueIndex) {
         + remaining.join(', ') + '. Each plan runs to Complete or a recorded '
         + "'BLOCKED:' before the next begins, and the leash advances to the next "
         + 'plan on its own: no re-arming, and the run continues in this session.';
-    return 'Work ' + planRel + ' to completion using executing-work. Arming is '
-        + "Scott's request for this run: reduce wall-clock time by parallelizing "
-        + 'work that can run simultaneously, via subagent dispatch and via '
-        + 'Workflows. Met when (a) every section is complete and closed out, or '
+    const arming = authority === 'self' ? SELF_ARMING_TEXT : OPERATOR_ARMING_TEXT;
+    return 'Work ' + planRel + ' to completion using executing-work. ' + arming
+        + 'Met when (a) every section is complete and closed out, or '
         + '(b) you are BLOCKED on a decision only Scott can make and have said so. '
         + 'Capacity is never a blocker: auto-compaction rides through with the '
         + 'leash intact. Waiting on dispatched background work is a pause, not a '
@@ -1874,6 +1992,20 @@ function validatePlanArg(cwd, arg) {
 // blockedAdvancePlan, is reserved here instead, against the longest path in the
 // queue, because that is where the paths are measured.
 //
+// The condition takes a reservation of its own, because every advance rewrites
+// it for the plan the leash moves to and it can come back longer two ways: it
+// names that plan's path once, hence the reservation against the longest path
+// in the queue, and it carries one of two fixed arming spellings, the self one
+// being the longer, so an advance onto a self-armed plan grows the text by that
+// measured difference. Both terms are reserved unconditionally rather than only
+// where the queue already holds a self-armed plan, because an append can add
+// one after this budget was judged.
+//
+// The armedBy map is measured rather than reserved: it is written at the arm,
+// one short value per queued plan, so the serialization below already counts
+// it, and an append that adds entries re-runs this whole judgment on the state
+// it is about to write.
+//
 // The reservation runs where a queue grows, so a queue armed before it existed
 // carries none: such a state reads back fine under the cap and can still meet
 // writeState's refusal on a later advance. That takes a standing queue in the
@@ -1892,7 +2024,14 @@ function queueFits(state) {
         reserved += 2 * bytes + HISTORY_RECORD_MAX_BYTES;
         if (bytes > longest) longest = bytes;
     }
-    reserved += 2 * longest;
+    // Three terms. Two are plan paths, each doubled for JSON escaping the same
+    // way the per-path term above is: blockedAdvancePlan, and the copy of the
+    // current plan path the recomposed condition carries. The third is the
+    // difference between the two arming spellings, which is fixed ASCII text
+    // and escapes to itself.
+    reserved += 2 * longest + 2 * longest
+        + Math.max(0, Buffer.byteLength(SELF_ARMING_TEXT, 'utf8')
+            - Buffer.byteLength(OPERATOR_ARMING_TEXT, 'utf8'));
     return Buffer.byteLength(JSON.stringify(state, null, 2) + '\n', 'utf8') + reserved <= GOAL_STATE_MAX_BYTES;
 }
 
@@ -1933,11 +2072,34 @@ function queueFits(state) {
 // had ahead of it that this queue does not name, which the caller warns about.
 // Arming replaces the queue rather than growing it, and appendGoal below is the
 // spelling that grows one.
-function armGoal(cwd, planArgs, bind) {
+//
+// authority names who is making this invocation: 'self' for a run running the
+// CLI for itself, 'operator' or absent for a person typing it, and anything
+// else refuses the whole invocation (armedByArg states why a typo must not be
+// repaired here). It is asserted by the caller because the caller is the only
+// surface that knows: an arm a session runs for itself reaches this function
+// identical to one an operator typed. Every plan this call arms records it, one
+// entry per plan, because an append can add a self-armed plan to a queue the
+// operator typed and the condition each plan is worked under is that plan's
+// own. Nothing about enforcement, the binding or the queue answers to it; the
+// condition text and the surfaces that restate it are its whole reach, and
+// arming rides on the success result so the caller can report what was
+// recorded without restating the rule.
+//
+// unauthorized rides on the success result beside it: the self-armed plans of
+// this invocation whose doc records no Dispatch Authorization, for the caller
+// to warn about. A warning rather than a refusal because the kit's own skills
+// direct a legitimate case of it, an unleashed run arming an inbound plan
+// alongside its own in-flight plan, which need carry no section. The arm
+// records what is true of each plan either way.
+function armGoal(cwd, planArgs, bind, authority) {
     const args = Array.isArray(planArgs) ? planArgs : [planArgs];
     if (args.length === 0) {
         return { ok: false, reason: 'no plan path given' };
     }
+    const requested = armedByArg(authority);
+    if (!requested.ok) return requested;
+    const arming = requested.authority;
 
     const queue = [];
     const seen = new Set();
@@ -1947,6 +2109,9 @@ function armGoal(cwd, planArgs, bind) {
     // invokes the prototype setter rather than recording a key, so the entry for
     // such a plan would simply never be written.
     const authorizations = Object.create(null);
+    // The self-armed plans of this invocation whose doc records no
+    // authorization, collected in the same pass that reads them.
+    const unauthorized = [];
     for (const arg of args) {
         const checked = validatePlanArg(cwd, arg);
         if (!checked.ok) return checked;
@@ -1956,21 +2121,27 @@ function armGoal(cwd, planArgs, bind) {
         }
         seen.add(queueKey(rel));
         authorizations[rel] = planAuthorization(cwd, rel);
+        if (arming === 'self' && authorizations[rel] === null) unauthorized.push(rel);
         queue.push(rel);
     }
 
-    const requested = bind || {};
+    const requestedBind = bind || {};
     // Both keys or neither: an id of the right shape whose transcript is
     // absent or unusable arms unbound rather than failing the arm.
-    const bindable = isSessionIdShaped(requested.sessionId) && validTranscript(requested.transcriptPath);
-    const boundSession = bindable ? requested.sessionId : null;
+    const bindable = isSessionIdShaped(requestedBind.sessionId) && validTranscript(requestedBind.transcriptPath);
+    const boundSession = bindable ? requestedBind.sessionId : null;
 
     const state = {
         // The current plan of the queue. Every other reader of this state
         // answers to this field and to boundSession, so both keep their
         // meaning as the queue advances: plan is what is being worked now.
         plan: queue[0],
-        condition: composeCondition(queue[0], queue, 0),
+        condition: composeCondition(queue[0], queue, 0, arming),
+        // Which arming each of these plans was armed under, one entry per
+        // plan, so an append and an advance recompose the condition under the
+        // authority that plan's own arming had rather than under whatever the
+        // queue was started with.
+        armedBy: armedByFor(queue, arming),
         armedAt: new Date().toISOString(),
         // Which session currently holds the leash, or null when unclaimed. An
         // arm carrying a usable bind (the CLI supplies the arming session's
@@ -1986,7 +2157,7 @@ function armGoal(cwd, planArgs, bind) {
         // corroboration that the bound id names a real local session. It is
         // written with the binding or not at all, so an unbound arm records
         // none and a bound one always has it.
-        boundTranscript: bindable ? requested.transcriptPath : null,
+        boundTranscript: bindable ? requestedBind.transcriptPath : null,
         queue,
         queueIndex: 0,
         // One entry per finished plan: { plan, outcome, at } and, for a
@@ -2035,14 +2206,25 @@ function armGoal(cwd, planArgs, bind) {
     const written = writeState(cwd, state);
     if (!written.ok) return written;
 
-    return { ok: true, plan: queue[0], queue, boundSession, dropped };
+    return { ok: true, plan: queue[0], queue, boundSession, dropped, arming, unauthorized };
 }
 
 // Append plans to the armed queue under the binding it already carries, in one
 // atomic rewrite: the new paths land at the end of the queue, the current plan
 // and queueIndex do not move, the condition is recomposed so it names what is
-// now still to come, and boundSession, boundTranscript, armedAt and the history
-// are preserved untouched.
+// now still to come, and boundSession, boundTranscript, armedAt, the arming
+// authority of every plan already queued, and the history are preserved
+// untouched.
+//
+// authority is who is making this invocation, in armGoal's vocabulary and
+// answering to the same judgment: an unrecognized value refuses the whole
+// invocation before anything is written, and a self-armed plan recording no
+// authorization rides back on unauthorized for the caller to warn about. It
+// reaches the appended plans alone. An append arms nothing that is already in
+// the queue, so the entries there keep what they were armed under, and the
+// recomposed condition is the CURRENT plan's, which an append never moves. That
+// is what lets a run append a plan it armed itself to a queue the operator
+// typed, or the reverse, without either plan wearing the other's arming.
 //
 // Preserving armedAt is load-bearing rather than tidy: it is half of
 // advanceGoal's compare-and-swap, so an append that refreshed it would make
@@ -2096,7 +2278,7 @@ function armGoal(cwd, planArgs, bind) {
 // { ok:false, reason } when no goal is armed, a path fails, a duplicate is
 // named, the grown queue would not fit, the state moved under the append, or
 // the write fails. Never throws.
-function appendGoal(cwd, planArgs) {
+function appendGoal(cwd, planArgs, authority) {
     const args = Array.isArray(planArgs) ? planArgs : [planArgs];
     if (args.length === 0) {
         return { ok: false, reason: 'no plan path given' };
@@ -2137,8 +2319,13 @@ function appendGoal(cwd, planArgs) {
         }
         return {
             ok: false,
-            reason: 'no goal is armed, so there is no queue to append to;'
-                + ' arm without --append is the first arming'
+            // The whole reason is printed through the CLI's 120-character cap,
+            // so the bare form's own flag is named in four words rather than
+            // explained: a run arming a plan it traced a grant for needs
+            // --self-armed on the bare form too, and the kit-goal skill states
+            // when that is the right spelling.
+            reason: 'no goal is armed, so nothing to append to;'
+                + ' arm without --append is the first arming (--self-armed rides on it)'
         };
     }
 
@@ -2151,6 +2338,10 @@ function appendGoal(cwd, planArgs) {
         queueLength: state.queue.length,
         historyLength: state.history.length
     };
+
+    const requested = armedByArg(authority);
+    if (!requested.ok) return requested;
+    const arming = requested.authority;
 
     const seen = new Set(state.queue.map(queueKey));
     const appended = [];
@@ -2169,8 +2360,10 @@ function appendGoal(cwd, planArgs) {
     // the re-read's whole value is that nothing slow sits between it and the
     // write.
     const added = Object.create(null);
+    const unauthorized = [];
     for (const rel of appended) {
         added[rel] = planAuthorization(cwd, rel);
+        if (arming === 'self' && added[rel] === null) unauthorized.push(rel);
     }
 
     const now = readGoal(cwd);
@@ -2186,9 +2379,10 @@ function appendGoal(cwd, planArgs) {
 
     for (const rel of appended) {
         now.authorizations[rel] = added[rel];
+        now.armedBy[rel] = arming;
     }
     now.queue = now.queue.concat(appended);
-    now.condition = composeCondition(now.plan, now.queue, now.queueIndex);
+    now.condition = composeCondition(now.plan, now.queue, now.queueIndex, planArmedBy(now, now.plan));
     // Judged on the object that is about to be written, so the answer is about
     // the state that will exist rather than about a snapshot of it.
     if (!queueFits(now)) {
@@ -2203,14 +2397,18 @@ function appendGoal(cwd, planArgs) {
     const written = writeState(cwd, now);
     if (!written.ok) return written;
 
-    return { ok: true, plan: now.plan, queue: now.queue, appended, boundSession: now.boundSession };
+    return {
+        ok: true, plan: now.plan, queue: now.queue, appended, boundSession: now.boundSession,
+        arming, unauthorized
+    };
 }
 
 // Record the current plan's outcome and move the leash to the next plan in the
 // queue, in one atomic rewrite: the history entry is appended, queueIndex and
 // plan move together, the condition is recomposed for the new current plan,
-// and boundSession and boundTranscript are preserved, so one binding rides the
-// whole queue.
+// and boundSession, boundTranscript and every plan's recorded arming authority
+// are preserved, so one binding rides the whole queue and each plan keeps the
+// authority it was armed under.
 //
 // outcome is 'complete', 'archived', or 'blocked'; note is the optional
 // recorded blocker, sanitized and capped here because it originates in
@@ -2239,7 +2437,10 @@ function appendGoal(cwd, planArgs) {
 // position), so a keyless advance slotting in between two reads of the same
 // entry cannot make that entry consumable again.
 //
-// Returns { ok:true, advanced:true, finished, plan } when the leash moved,
+// Returns { ok:true, advanced:true, finished, plan, arming } when the leash
+// moved (arming is who armed the new plan, the value its fresh condition text
+// was composed under; the state's own field is the per-plan map armedBy, and
+// the two are named apart because one is a scalar and the other a map),
 // { ok:true, advanced:false, finished } on the last plan of the queue (nothing
 // is written: the caller releases the goal, and the session's own closing
 // summary is the operator-facing record), and { ok:false, reason } when no
@@ -2293,7 +2494,14 @@ function advanceGoal(cwd, outcomeEntry) {
     state.history.push(record);
     state.queueIndex = next;
     state.plan = state.queue[next];
-    state.condition = composeCondition(state.plan, state.queue, next);
+    // The plan the leash moves to owns the arming the new condition is composed
+    // under, which is its own map entry rather than the finished plan's: a queue
+    // can hold plans armed two different ways, and the condition states the
+    // arming of the plan it is about. It rides back on the result, so a caller
+    // naming the new plan states the arming this text was composed under rather
+    // than re-reading it from a snapshot taken before the advance.
+    const movedArmedBy = planArmedBy(state, state.plan);
+    state.condition = composeCondition(state.plan, state.queue, next, movedArmedBy);
     // The execution tree recorded for the finished plan (recordExecutionTree)
     // says where THAT plan's chapter boundaries were opened, which is no claim
     // about the plan the leash moves to, so it does not survive the advance: a
@@ -2320,7 +2528,7 @@ function advanceGoal(cwd, outcomeEntry) {
     const written = writeState(cwd, state);
     if (!written.ok) return written;
 
-    return { ok: true, advanced: true, finished, plan: state.plan };
+    return { ok: true, advanced: true, finished, plan: state.plan, arming: movedArmedBy };
 }
 
 // Bind (or rebind) the armed goal to a session id, recording which session
@@ -2749,4 +2957,4 @@ function emitGoalEvent(details) {
 // position walk itself votes on, so the note explaining a [missing] token and
 // the position it sits beside cannot drift apart from reading two spellings
 // of the same archive check.
-module.exports = { goalPath, goalRoot, goalPathKind, goalStateAbsent, readGoal, armGoal, appendGoal, advanceGoal, bindSession, clearGoal, composeCondition, planHead, planStatusReadings, classifyPlanStatus, emitGoalEvent, normalizePlanArg, lastActivePhrase, isSessionIdShaped, planFileSize, planHeadText, planPathState, planDisplayRoot, recordExecutionTree, pathErrnoClass, safeForAuthorization, queuePosition, treeEntryState, GOAL_STATE_MAX_BYTES };
+module.exports = { goalPath, goalRoot, goalPathKind, goalStateAbsent, readGoal, armGoal, appendGoal, advanceGoal, bindSession, clearGoal, composeCondition, planArmedBy, planHead, planStatusReadings, classifyPlanStatus, emitGoalEvent, normalizePlanArg, lastActivePhrase, isSessionIdShaped, planFileSize, planHeadText, planPathState, planDisplayRoot, recordExecutionTree, pathErrnoClass, safeForAuthorization, queuePosition, treeEntryState, GOAL_STATE_MAX_BYTES };

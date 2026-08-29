@@ -25,7 +25,7 @@ const path = require('path');
 const os = require('os');
 
 const HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-goal-stop.js');
-const { armGoal, bindSession, advanceGoal } = require('../plugins/claude-kit/hooks/kit-goal-lib.js');
+const { armGoal, appendGoal, bindSession, advanceGoal } = require('../plugins/claude-kit/hooks/kit-goal-lib.js');
 // The compaction-checkpoint helpers pin the advance's checkpoint rewrite (the
 // chapter-close ritual opens a checkpoint the advance would otherwise strand
 // as wrong-plan at the plan boundary).
@@ -175,7 +175,8 @@ test('goal armed, transcript names plan, In Progress, no BLOCKED: block', () => 
         assert.strictEqual(out.decision, 'block');
         assert.ok(out.reason.includes(path.basename(planRel)), 'reason names the plan basename');
         assert.ok(out.reason.includes('subagent dispatch and Workflows'),
-            "the block reason restates the user's per-run parallelization request");
+            "an operator-armed goal carries that arming's request for subagent dispatch and "
+            + 'Workflows, and the block reason restates it');
         assert.ok(out.reason.includes('kit-compact-checkpoint.js open'),
             'the standard hold reason names the boundary checkpoint command');
         assert.ok(out.reason.includes('holding auto-compaction offers and this turn is at a clean point'),
@@ -2429,6 +2430,153 @@ test('an unchanged transcript across two stops advances once: the second stop ho
     } finally {
         rmDir(repo);
         rmDir(local);
+    }
+});
+
+// A plan doc carrying a Dispatch Authorization section, which is what a plan
+// armed by a run for itself ordinarily carries. Nothing gates the arm on it:
+// the section is the authorization record, and who armed the plan is the
+// separate fact these reasons state.
+function writeAuthorizedPlan(repo, rel) {
+    writeFile(path.join(repo, rel), 'Status: In Progress\n\n## Dispatch Authorization\n\n'
+        + 'Authorized 2026-08-29 by the operator for any session holding this plan.\n\nbody\n');
+}
+
+// The three block reasons that state what the armed goal requests, produced
+// under one arming: the ordinary hold, the queue advance, and the spent-lead
+// hold. They are built together because the clause is one rule with three
+// sites, and a rule applied at one site and not its siblings is the defect
+// this file's own enumeration comment guards against.
+function armingClauseReasons(authority) {
+    const repo = makeDir('kit-goal-stop-repo-');
+    const local = makeDir('kit-goal-stop-local-');
+    try {
+        const plans = ['docs/plans/first.md', 'docs/plans/second.md'];
+        for (const p of plans) {
+            if (authority === 'self') writeAuthorizedPlan(repo, p);
+            else writeFile(path.join(repo, p), 'Status: In Progress\n\nbody\n');
+        }
+        const transcript = path.join(repo, 'transcript.jsonl');
+
+        // The ordinary hold: an In-Progress plan and a turn that leads with
+        // neither 'BLOCKED:' nor 'WAITING:'.
+        assert.strictEqual(armGoal(repo, plans[0], null, authority).ok, true, 'test setup: the arm should land');
+        writeTranscript(transcript, plans[0], ['Working on it.']);
+        const ordinary = JSON.parse(runHook(
+            { cwd: repo, transcript_path: transcript, session_id: 'sess-ordinary' }, local).stdout).reason;
+
+        // The queue advance: a Complete current plan with a plan behind it.
+        assert.strictEqual(armGoal(repo, plans, null, authority).ok, true, 'test setup: the queue should arm');
+        const firstBody = fs.readFileSync(path.join(repo, plans[0]), 'utf8');
+        writeFile(path.join(repo, plans[0]), firstBody.replace('Status: In Progress', 'Status: Complete'));
+        writeTranscript(transcript, plans.join(' '), ['Section 1 is closed out.']);
+        const advance = JSON.parse(runHook(
+            { cwd: repo, transcript_path: transcript, session_id: 'sess-advance' }, local).stdout).reason;
+
+        // The spent-lead hold: the stop that re-reads the very entry the
+        // advance before it consumed, which advances nothing and holds with
+        // its own reason.
+        writeFile(path.join(repo, plans[0]), firstBody);
+        assert.strictEqual(armGoal(repo, plans, null, authority).ok, true, 'test setup: the queue should re-arm');
+        writeTranscript(transcript, plans.join(' '), ['BLOCKED: need your call on the rollout order.']);
+        const payload = { cwd: repo, transcript_path: transcript, session_id: 'sess-spent' };
+        assert.strictEqual(JSON.parse(runHook(payload, local).stdout).decision, 'block',
+            'test setup: the mid-queue blocker advances and holds');
+        const spent = JSON.parse(runHook(payload, local).stdout).reason;
+        assert.ok(spent.includes('already recorded'), 'test setup: the second stop is the spent-lead hold');
+        return { ordinary, advance, spent };
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+}
+
+// Every hold reason states the arming the goal state records for the plan it is
+// about, at all three sites. A goal the operator typed carries that arming's
+// request for subagent dispatch and Workflows, in the clause that licenses the
+// parallelize instruction beside it. A goal armed by an invocation the run made
+// for itself has no typed request to carry, so the attribution rides at the head
+// of the reason, beside the plan it identifies, and the parallelize instruction
+// stands unqualified: that license rests on the doctrine's standing request
+// rather than on the arming, and an attribution sitting in that clause's place
+// would read as withdrawing it. The two directions are each other's control, so
+// neither can pass on the other's fixture.
+test('every hold reason states the arming the goal state records', () => {
+    const typed = armingClauseReasons('operator');
+    const selfArmed = armingClauseReasons('self');
+    const TYPED = "(the armed goal carries the user's request for subagent dispatch and Workflows on this run";
+    const SELF = 'armed by an invocation a run made for itself rather than one Scott typed';
+
+    assert.ok(typed.ordinary.includes(TYPED + ', to reduce wall-clock time)'),
+        'the ordinary hold names the typed request');
+    assert.ok(typed.advance.includes(TYPED + ')'), 'the queue advance names the typed request');
+    assert.ok(typed.spent.includes(TYPED + ')'), 'the spent-lead hold names the typed request');
+    for (const site of ['ordinary', 'advance', 'spent']) {
+        assert.ok(!typed[site].includes(SELF),
+            'the ' + site + ' reason claims no self-arming for a goal the operator typed');
+    }
+
+    for (const site of ['ordinary', 'advance', 'spent']) {
+        const reason = selfArmed[site];
+        assert.ok(!reason.includes("the user's request for subagent dispatch"),
+            'the ' + site + ' reason asserts no request Scott typed under a self-arming');
+        assert.ok(reason.includes(SELF),
+            'the ' + site + ' reason names the arming the state records');
+        assert.ok(!/dispatch authorization/i.test(reason),
+            'and claims nothing about what authorized the plan, which the arming '
+            + 'invocation never told this state');
+        assert.ok(reason.includes('the kit-goal skill states what such an arming carries'),
+            'the ' + site + ' reason points at the skill that owns the conditions');
+        assert.ok(reason.includes('parallelizing what can run simultaneously'),
+            'the ' + site + ' reason still instructs the run to parallelize');
+        assert.ok(!reason.includes('simultaneously ('),
+            'and the attribution is not in the clause that qualifies that instruction, where it '
+            + 'would read as the license being withdrawn');
+    }
+    assert.ok(selfArmed.ordinary.startsWith('A kit goal is armed for docs/plans/first.md (' + SELF),
+        'the attribution rides with the goal identification the reason opens on');
+});
+
+// One queue, two armings, and the reason states the arming of the plan it is
+// about rather than the one the queue was started with. The advance is the
+// discriminating site: it composes for the plan the leash moves TO, so a
+// reading taken from the finished plan would state the wrong authority exactly
+// where the run reads its instruction for the next plan.
+test('a queue holding both armings states each plan\'s own at the advance', () => {
+    for (const order of [['operator', 'self'], ['self', 'operator']]) {
+        const repo = makeDir('kit-goal-stop-repo-');
+        const local = makeDir('kit-goal-stop-local-');
+        try {
+            const plans = ['docs/plans/first.md', 'docs/plans/second.md'];
+            plans.forEach((p, i) => {
+                if (order[i] === 'self') writeAuthorizedPlan(repo, p);
+                else writeFile(path.join(repo, p), 'Status: In Progress\n\nbody\n');
+            });
+            assert.strictEqual(armGoal(repo, plans[0], null, order[0]).ok, true, 'test setup: arm');
+            assert.strictEqual(appendGoal(repo, [plans[1]], order[1]).ok, true, 'test setup: append');
+
+            const body = fs.readFileSync(path.join(repo, plans[0]), 'utf8');
+            writeFile(path.join(repo, plans[0]), body.replace('Status: In Progress', 'Status: Complete'));
+            const transcript = path.join(repo, 'transcript.jsonl');
+            writeTranscript(transcript, plans.join(' '), ['Section 1 is closed out.']);
+            const reason = JSON.parse(runHook(
+                { cwd: repo, transcript_path: transcript, session_id: 'sess-mixed' }, local).stdout).reason;
+
+            const self = 'armed by an invocation a run made for itself rather than one Scott typed';
+            if (order[1] === 'self') {
+                assert.ok(reason.includes(self),
+                    'the advance states the self-arming of the plan it moves to');
+                assert.ok(!reason.includes("the user's request for subagent dispatch"),
+                    'and not the typed arming of the plan it just finished');
+            } else {
+                assert.ok(reason.includes("the user's request for subagent dispatch"),
+                    'the advance states the typed arming of the plan it moves to');
+                assert.ok(!reason.includes(self), 'and not the self-arming of the plan it just finished');
+            }
+        } finally {
+            rmDir(repo);
+            rmDir(local);
+        }
     }
 });
 

@@ -9,6 +9,12 @@
 //   kit-goal.js arm --append <planPath>...
 //                                  add plans to the end of the armed queue,
 //                                  under the binding it already carries
+//   kit-goal.js arm [--append] --self-armed <planPath>...
+//                                  record the named plans as armed by an
+//                                  invocation this run made for itself rather
+//                                  than by one the operator typed, and warn on
+//                                  stderr for any of them whose doc records no
+//                                  Dispatch Authorization
 //   kit-goal.js clear              clear any armed goal
 //   kit-goal.js status             report whether a goal is armed
 //
@@ -37,7 +43,8 @@ const path = require('path');
 const os = require('os');
 const {
     armGoal, appendGoal, clearGoal, readGoal, planStatusReadings, lastActivePhrase, isSessionIdShaped,
-    goalRoot, goalPathKind, planPathState, safeForAuthorization, queuePosition, treeEntryState,
+    goalRoot, goalPathKind, planPathState, safeForAuthorization, planArmedBy, queuePosition,
+    treeEntryState,
     GOAL_STATE_MAX_BYTES
 } = require('./kit-goal-lib.js');
 
@@ -52,7 +59,7 @@ function sanitize(s) {
 }
 
 function usage() {
-    process.stderr.write('usage: kit-goal.js arm [--append] <planPath>... | clear | status\n');
+    process.stderr.write('usage: kit-goal.js arm [--append] [--self-armed] <planPath>... | clear | status\n');
     process.exitCode = 1;
 }
 
@@ -140,28 +147,68 @@ function findTranscript(sessionId) {
 // running session's operator reaches for when a new plan arrives mid-run, and
 // re-deriving the binding from whatever shell ran the CLI would move the leash
 // off the session doing the work. That is why no bind is passed here.
-function cmdAppend(planArgs) {
-    const result = appendGoal(process.cwd(), planArgs);
+//
+// The arming authority is passed, because it is a property of this invocation
+// rather than of the queue: a run under its own typed leash appends a plan it
+// armed itself under a traced grant, and the appended plan records that while
+// the queue keeps what it was armed under. It reaches the appended plans alone.
+function cmdAppend(planArgs, authority) {
+    const result = appendGoal(process.cwd(), planArgs, authority);
     if (!result.ok) {
         process.stderr.write('kit-goal: ' + sanitize(result.reason) + '\n');
         process.exitCode = 1;
         return;
     }
+    unauthorizedWarning(result.unauthorized);
     process.stdout.write('kit goal queue extended with ' + result.appended.map(sanitize).join(', ')
         + ' (now ' + result.queue.length + ' plans; working ' + sanitize(result.plan) + ')'
         + (result.boundSession ? ' (binding unchanged)' : ' (still unbound)')
+        + armingNote(result.arming)
         + '\n');
     process.exitCode = 0;
 }
 
-function cmdArm(planArgs, append) {
+// What an arm or an append says about the arming it recorded, on the self
+// direction only: this line is what tells the session the claim landed. It is
+// worded as what the invocation declared, because that is all that happened:
+// a run arming a plan for itself reaches this CLI indistinguishable from an
+// operator typing the same command. An operator's arming says nothing extra,
+// being the ordinary case.
+function armingNote(authority) {
+    return authority === 'self'
+        ? " (recorded as this run's own arming rather than one the operator typed)"
+        : '';
+}
+
+// The self-armed plans whose docs record no Dispatch Authorization, named on
+// stderr beside a successful arm. A warning rather than a refusal because the
+// directed path reaches plans with no section: an unleashed run arming an
+// inbound plan must name its own in-flight plan too. What it is for is the
+// other case, a section the scan does not reach, invisible from the state
+// alone. It reports what the scan read rather than what the doc holds,
+// because null has several causes and a doc with no section at all is only
+// one of them, so the remedy names where a section is read from instead of
+// asserting one is missing. The list is capped and says so, since every path
+// prints through the 120-character cut. Silent when there is nothing to name.
+function unauthorizedWarning(plans) {
+    if (!Array.isArray(plans) || plans.length === 0) return;
+    const shown = plans.slice(0, 5).map(sanitize);
+    const more = plans.length - shown.length;
+    process.stderr.write('kit-goal: armed as this run\'s own, and the scan read no Dispatch'
+        + ' Authorization out of these plan docs: ' + shown.join(', ')
+        + (more > 0 ? ', and ' + more + ' more' : '')
+        + ' (the arming stands; a section reads only above ## Sections of Work, outside a code'
+        + ' fence, in the head of the file, with nothing after its heading)\n');
+}
+
+function cmdArm(planArgs, append, selfArmed) {
     if (planArgs.length === 0) {
         usage();
         return;
     }
     try {
         if (append) {
-            cmdAppend(planArgs);
+            cmdAppend(planArgs, selfArmed ? 'self' : 'operator');
             return;
         }
         // The environment of this process is the only source of the binding:
@@ -169,11 +216,16 @@ function cmdArm(planArgs, append) {
         // transcript is located rather than supplied. armGoal owns the gate
         // that decides whether the pair is usable, so this output answers to
         // what was actually written rather than to a second copy of the rule.
+        //
+        // Who is arming is the one thing here that no surface of this process
+        // can read: a run arming a plan for itself supplies the same session id,
+        // transcript and arguments an operator typing the command does. So it is
+        // what the invocation says it is, and the default is the operator's.
         const sessionId = process.env.CLAUDE_CODE_SESSION_ID;
         const result = armGoal(process.cwd(), planArgs, {
             sessionId,
             transcriptPath: findTranscript(sessionId)
-        });
+        }, selfArmed ? 'self' : 'operator');
         if (result.ok) {
             // Arming replaces the queue, so a plan that was armed and is not
             // named again has quietly stopped being armed. That is the one
@@ -185,6 +237,7 @@ function cmdArm(planArgs, append) {
                     + ' longer armed: ' + result.dropped.map(sanitize).join(', ')
                     + ' (arm --append adds to a queue instead of replacing it)\n');
             }
+            unauthorizedWarning(result.unauthorized);
             process.stdout.write('kit goal armed for ' + sanitize(result.plan)
                 + (result.queue.length > 1
                     ? ' (1 of ' + result.queue.length + '; then '
@@ -194,6 +247,7 @@ function cmdArm(planArgs, append) {
                     ? ' (bound to this session)'
                     : " (unbound; the leash binds at the arming session's first stop"
                         + ' or auto-compaction offer)')
+                + armingNote(result.arming)
                 + '\n');
             process.exitCode = 0;
         } else {
@@ -412,7 +466,16 @@ function cmdStatus() {
         // arming that is cut mid-clause reads as the whole recorded claim, which
         // is the one thing this line exists to let a reader judge.
         const authorization = state.authorizations[plan];
+        // The arming beside the authorization, on both directions for the reason
+        // the authorization prints on both: a line rendered only for one reading
+        // is indistinguishable from a line this surface did not render. They are
+        // two facts and read as two: who ran the arming invocation, which the
+        // caller declared, and what the doc records, which was read from it.
+        const arming = planArmedBy(state, plan) === 'self'
+            ? "recorded as this run's own arming"
+            : 'typed by the operator';
         out.push('  ' + (i === 0 ? '>' : ' ') + ' ' + sanitize(plan) + ' [' + status + ']'
+            + ' (armed: ' + arming + ')'
             + ' (authorization: ' + (authorization ? safeForAuthorization(authorization) : 'none recorded') + ')');
     });
     const more = state.queue.length - position.index - window.length;
@@ -468,15 +531,17 @@ const CLEAR_ALIASES = new Set(['clear', 'stop', 'off', 'reset', 'none', 'cancel'
 
 function main() {
     const [cmd, ...args] = process.argv.slice(2);
-    // --append is read wherever it sits among the plan paths and removed from
-    // them, so an operator typing it after the paths gets an append rather than
-    // an arm over a plan doc named --append, which no repository has. Any other
-    // leading-dash token is refused before it can reach armGoal as a plan
-    // argument, rather than misread as a plan path that is merely missing.
+    // --append and --self-armed are read wherever they sit among the plan paths and
+    // removed from them, so an operator typing one after the paths gets the flag
+    // rather than an arm over a plan doc named --append, which no repository
+    // has. Any other leading-dash token is refused before it can reach armGoal
+    // as a plan argument, rather than misread as a plan path that is merely
+    // missing.
     if (cmd === 'arm') {
-        const badFlag = args.find((a) => a.startsWith('-') && a !== '--append');
+        const flags = new Set(['--append', '--self-armed']);
+        const badFlag = args.find((a) => a.startsWith('-') && !flags.has(a));
         if (badFlag) usageBadArmFlag(badFlag);
-        else cmdArm(args.filter((a) => a !== '--append'), args.includes('--append'));
+        else cmdArm(args.filter((a) => !flags.has(a)), args.includes('--append'), args.includes('--self-armed'));
     }
     else if (CLEAR_ALIASES.has(cmd)) cmdClear();
     else if (cmd === 'status') cmdStatus();

@@ -137,8 +137,8 @@ test('armGoal success writes goal-state.json with the exact schema', () => {
         const state = readGoal(repo);
         assert.ok(state, 'goal state should be readable after arming');
         assert.deepStrictEqual(Object.keys(state).sort(),
-            ['armedAt', 'authorizations', 'boundSession', 'boundTranscript', 'condition', 'history', 'plan',
-                'queue', 'queueIndex']);
+            ['armedAt', 'armedBy', 'authorizations', 'boundSession', 'boundTranscript',
+                'condition', 'history', 'plan', 'queue', 'queueIndex']);
         assert.strictEqual(state.plan, 'docs/plans/foo.md');
         assert.strictEqual(state.boundSession, null, 'an arm carrying no bind is unbound');
         assert.strictEqual(state.boundTranscript, null,
@@ -981,6 +981,268 @@ test('composeCondition embeds the plan path, the parallelization request, and ex
     );
 });
 
+// Pins the self-armed condition text exactly, with the operator-armed text
+// above as its control: the two armings the kit sanctions carry different
+// authority, and this text is the standing statement of why the run is held,
+// written for whoever opens goal-state.json. The self spelling states one fact,
+// what the arming invocation declared itself to be, and names no request of
+// Scott's and no plan's authorization, neither of which the CLI can establish.
+// An exact compare is free for the same reason the operator-armed pin above
+// takes one: the function is pure, and nothing parses the text, so a literal is
+// what keeps it honest.
+test("composeCondition records a self-arming as this run's own, naming no request of Scott's", () => {
+    const selfArmed = composeCondition('docs/plans/example.md', null, null, 'self');
+    assert.strictEqual(
+        selfArmed,
+        'Work docs/plans/example.md to completion using executing-work. Arming is '
+        + "recorded as this run's own rather than as a request Scott typed, as the "
+        + 'arming invocation declared it. The kit-goal skill states what an arming '
+        + 'carries; read it there rather than from this text. '
+        + 'Met when (a) every section is complete and closed out, or '
+        + '(b) you are BLOCKED on a decision only Scott can make and have said so. '
+        + 'Capacity is never a blocker: auto-compaction rides through with the '
+        + 'leash intact. Waiting on dispatched background work is a pause, not a '
+        + "stop: lead with 'WAITING:' and what you await; the leash stays armed "
+        + 'and the completion notification resumes the run.'
+    );
+    // The control, on the same fixture: the operator-armed spelling carries the
+    // typed request, and neither spelling can pass on the other's assertion.
+    const typed = composeCondition('docs/plans/example.md');
+    assert.match(typed, /Scott's request for this run/);
+    assert.doesNotMatch(selfArmed, /Scott's request for this run/);
+    assert.doesNotMatch(selfArmed, /parallelizing/);
+    // Nor does it claim anything about the plan's own authorization, which is a
+    // separate fact with its own field: this text is composed from a caller's
+    // declaration, and no plan doc was consulted to write it.
+    assert.doesNotMatch(selfArmed, /authorization/i);
+    // The vocabulary is two values, resolved before the text is composed: a
+    // stored map entry through planArmedBy, a caller's argument through
+    // armGoal, which refuses anything else rather than repairing it (its own
+    // case below). An absent argument is the operator's arming, which is what a
+    // state written before the map records for every plan in it.
+    assert.strictEqual(composeCondition('docs/plans/example.md', null, null, 'operator'), typed);
+    // The queue context is a property of the queue, not of the arming, so a
+    // self-armed queue states what is still to come exactly as an operator's does.
+    const queue = ['docs/plans/a.md', 'docs/plans/b.md'];
+    assert.strictEqual(
+        composeCondition('docs/plans/a.md', queue, 0, 'self')
+            .slice(composeCondition('docs/plans/a.md', null, null, 'self').length),
+        composeCondition('docs/plans/a.md', queue, 0).slice(composeCondition('docs/plans/a.md').length)
+    );
+});
+
+// A plan doc carrying a Dispatch Authorization section. Nothing gates an arm
+// on it: the arm records the sentence the scan read out of the doc, under
+// authorizations, and records who ran the invocation separately, under
+// armedBy. This fixture is what a test uses when it wants the first of those
+// two to be a sentence rather than null.
+function authorizedPlan(repo, rel) {
+    writePlan(repo, rel, 'Status: In Progress\n\n## Dispatch Authorization\n\n'
+        + 'Authorized 2026-08-29 by the operator for any session holding this plan.\n');
+}
+
+// The arming is a property of each plan's own invocation rather than of the
+// queue, so it is recorded per plan: one queue can hold a plan the operator
+// typed an arming for and a plan a run armed for itself, and each is worked
+// under the condition its own arming composes.
+test('armGoal records the arming per plan, and every recompose follows the plan it is about', () => {
+    const repo = makeRepo();
+    try {
+        authorizedPlan(repo, 'docs/plans/a.md');
+        authorizedPlan(repo, 'docs/plans/b.md');
+        writePlan(repo, 'docs/plans/c.md', 'Status: In Progress\n');
+
+        assert.strictEqual(armGoal(repo, ['docs/plans/a.md', 'docs/plans/b.md'], null, 'self').ok, true);
+        let state = readGoal(repo);
+        assert.deepStrictEqual({ ...state.armedBy },
+            { 'docs/plans/a.md': 'self', 'docs/plans/b.md': 'self' },
+            'every plan the invocation armed records that invocation\'s arming');
+        assert.strictEqual(state.condition, composeCondition('docs/plans/a.md', state.queue, 0, 'self'));
+
+        // An operator's append onto a self-armed queue: the appended plan records
+        // the append's own arming and the queued plans keep theirs.
+        assert.strictEqual(appendGoal(repo, ['docs/plans/c.md']).ok, true);
+        state = readGoal(repo);
+        assert.deepStrictEqual({ ...state.armedBy },
+            { 'docs/plans/a.md': 'self', 'docs/plans/b.md': 'self', 'docs/plans/c.md': 'operator' });
+        assert.strictEqual(state.condition, composeCondition('docs/plans/a.md', state.queue, 0, 'self'),
+            'an append does not move the current plan, so its condition is the one it had');
+
+        assert.strictEqual(advanceGoal(repo, { outcome: 'complete' }).ok, true);
+        state = readGoal(repo);
+        assert.strictEqual(state.condition, composeCondition('docs/plans/b.md', state.queue, 1, 'self'));
+        assert.strictEqual(advanceGoal(repo, { outcome: 'complete' }).ok, true);
+        state = readGoal(repo);
+        assert.strictEqual(state.plan, 'docs/plans/c.md');
+        assert.strictEqual(state.condition, composeCondition('docs/plans/c.md', state.queue, 2),
+            'the leash advances onto a typed-armed plan and states that arming');
+        assert.match(state.condition, /Scott's request for this run/);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+// The mirror case, and each is the other's control: a self-armed append onto a
+// queue the operator typed. The queue's own plans are untouched by it, and the
+// leash states the self-arming only once it reaches the plan armed that way.
+test('a self-armed append onto an operator-armed queue leaves the queue\'s own arming alone', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
+        authorizedPlan(repo, 'docs/plans/inbound.md');
+
+        assert.strictEqual(armGoal(repo, 'docs/plans/a.md').ok, true);
+        const appended = appendGoal(repo, ['docs/plans/inbound.md'], 'self');
+        assert.strictEqual(appended.ok, true, appended.reason);
+        assert.strictEqual(appended.arming, 'self',
+            'the caller learns what the append recorded without restating the rule');
+
+        let state = readGoal(repo);
+        assert.deepStrictEqual({ ...state.armedBy },
+            { 'docs/plans/a.md': 'operator', 'docs/plans/inbound.md': 'self' });
+        assert.strictEqual(state.condition, composeCondition('docs/plans/a.md', state.queue, 0),
+            'the plan in flight keeps the arming it was armed under');
+        assert.match(state.condition, /Scott's request for this run/);
+
+        assert.strictEqual(advanceGoal(repo, { outcome: 'complete' }).ok, true);
+        state = readGoal(repo);
+        assert.strictEqual(state.plan, 'docs/plans/inbound.md');
+        assert.strictEqual(state.condition,
+            composeCondition('docs/plans/inbound.md', state.queue, 1, 'self'));
+        assert.doesNotMatch(state.condition, /Scott's request for this run/);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+// Who armed a plan and what authorizes that plan are two facts, so a self-arming
+// over a plan recording no authorization arms and reports it rather than
+// refusing. The directed path is why: an unleashed run arming an inbound plan
+// must name its own in-flight plan in the same invocation, and that plan carries
+// no section of its own, so a refusal would leave the path with no correct
+// spelling. Both plans record what is true of them, and the plan with a section
+// is the control that keeps the list from being every plan the arm named.
+test('a self-arming over a plan recording no authorization arms it and reports the plan', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/bare.md', 'Status: In Progress\n');
+        authorizedPlan(repo, 'docs/plans/authorized.md');
+
+        const armed = armGoal(repo, ['docs/plans/authorized.md', 'docs/plans/bare.md'], null, 'self');
+        assert.strictEqual(armed.ok, true);
+        assert.deepStrictEqual(armed.unauthorized, ['docs/plans/bare.md'],
+            'the plan with a section to read is not in the list');
+        const state = readGoal(repo);
+        assert.deepStrictEqual({ ...state.armedBy },
+            { 'docs/plans/authorized.md': 'self', 'docs/plans/bare.md': 'self' },
+            'both plans record the arming this invocation declared');
+        assert.strictEqual(state.authorizations['docs/plans/bare.md'], null,
+            'and the plan doc that records nothing still records nothing');
+
+        // The control: the same two plans, the operator's arming, and no plan is
+        // reported at all, so the list follows the arming rather than the docs.
+        const typed = armGoal(repo, ['docs/plans/authorized.md', 'docs/plans/bare.md']);
+        assert.strictEqual(typed.ok, true);
+        assert.deepStrictEqual(typed.unauthorized, []);
+
+        // The append answers the same way over the plans it adds.
+        assert.strictEqual(armGoal(repo, 'docs/plans/authorized.md', null, 'self').ok, true);
+        const appended = appendGoal(repo, ['docs/plans/bare.md'], 'self');
+        assert.strictEqual(appended.ok, true);
+        assert.deepStrictEqual(appended.unauthorized, ['docs/plans/bare.md']);
+        assert.deepStrictEqual(readGoal(repo).queue, ['docs/plans/authorized.md', 'docs/plans/bare.md']);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+// An armedBy argument is a live claim from a caller, not a stored value, so an
+// unrecognized one refuses rather than repairing to 'operator': a repaired typo
+// would record an arming nobody made, which is the harm the field exists to
+// prevent. 'operator' and an absent argument are the control. The list holds the
+// near misses a caller reaches for, spellings that read like the field's own
+// vocabulary without being it, since those are the values a lenient repair
+// would swallow most quietly.
+test('an unrecognized armedBy argument refuses the arm and the append, writing nothing', () => {
+    const repo = makeRepo();
+    try {
+        authorizedPlan(repo, 'docs/plans/a.md');
+        authorizedPlan(repo, 'docs/plans/b.md');
+
+        for (const bogus of ['granted', 'grant', 'Self', 'SELF', true, 1, {}]) {
+            const refused = armGoal(repo, 'docs/plans/a.md', null, bogus);
+            assert.strictEqual(refused.ok, false, 'refuses ' + String(bogus));
+            assert.match(refused.reason, /armedBy must be self or operator/);
+        }
+        assert.strictEqual(readGoal(repo), null, 'no refused arm wrote a state');
+
+        // A value with no primitive conversion at all. The refusal names its type
+        // rather than quoting it, because quoting means String(), which throws on
+        // exactly these values, and every exported function of this module answers
+        // rather than throws.
+        for (const opaque of [Object.create(null), { toString: null }]) {
+            const refused = armGoal(repo, 'docs/plans/a.md', null, opaque);
+            assert.strictEqual(refused.ok, false);
+            assert.match(refused.reason,
+                /armedBy must be self or operator: an unprintable object/);
+        }
+        assert.strictEqual(readGoal(repo), null, 'and neither wrote one');
+
+        assert.strictEqual(armGoal(repo, 'docs/plans/a.md', null, 'operator').ok, true);
+        assert.strictEqual(readGoal(repo).armedBy['docs/plans/a.md'], 'operator');
+        assert.strictEqual(armGoal(repo, 'docs/plans/a.md').ok, true, 'and an absent argument is the same arming');
+        assert.strictEqual(readGoal(repo).armedBy['docs/plans/a.md'], 'operator');
+
+        const appendRefused = appendGoal(repo, ['docs/plans/b.md'], 'Self');
+        assert.strictEqual(appendRefused.ok, false);
+        assert.match(appendRefused.reason, /armedBy must be self or operator/);
+        assert.deepStrictEqual(readGoal(repo).queue, ['docs/plans/a.md']);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+// The map answers to the repair every other normalized field gets, and the
+// direction of the repair is what matters: a damaged file can lose a recorded
+// self-arming, and can never invent one.
+test('readGoal repairs the armedBy map: unknown values and absent entries read as the operator arming', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
+        writePlan(repo, 'docs/plans/b.md', 'Status: In Progress\n');
+        assert.strictEqual(armGoal(repo, ['docs/plans/a.md', 'docs/plans/b.md']).ok, true);
+
+        const raw = JSON.parse(fs.readFileSync(goalPath(repo), 'utf8'));
+        raw.armedBy = {
+            'docs/plans/a.md': 'self',
+            'docs/plans/b.md': 'SELF',
+            'docs/plans/never-armed.md': 'self'
+        };
+        fs.writeFileSync(goalPath(repo), JSON.stringify(raw, null, 2) + '\n', 'utf8');
+
+        const state = readGoal(repo);
+        assert.deepStrictEqual({ ...state.armedBy },
+            { 'docs/plans/a.md': 'self', 'docs/plans/b.md': 'operator' },
+            "an exact 'self' is honored, an unrecognized value reads as the operator's arming, "
+            + 'and a key naming no queued plan is dropped rather than carried');
+        assert.strictEqual(Object.getPrototypeOf(state.armedBy), null,
+            'the map carries no prototype, so a plan path of toString cannot answer from Object.prototype');
+
+        // A map that is not an object at all, and a state carrying none, both
+        // read as the typed arming for every plan the queue holds.
+        raw.armedBy = ['self'];
+        fs.writeFileSync(goalPath(repo), JSON.stringify(raw, null, 2) + '\n', 'utf8');
+        assert.deepStrictEqual({ ...readGoal(repo).armedBy },
+            { 'docs/plans/a.md': 'operator', 'docs/plans/b.md': 'operator' });
+        delete raw.armedBy;
+        fs.writeFileSync(goalPath(repo), JSON.stringify(raw, null, 2) + '\n', 'utf8');
+        assert.deepStrictEqual({ ...readGoal(repo).armedBy },
+            { 'docs/plans/a.md': 'operator', 'docs/plans/b.md': 'operator' });
+    } finally {
+        rmRepo(repo);
+    }
+});
+
 test('armGoal re-arms idempotently over an existing goal state', () => {
     const repo = makeRepo();
     try {
@@ -1177,7 +1439,8 @@ test('a one-plan arm and a legacy state read back identically through the normal
         // downstream sees the same object an arm would have produced.
         writeLegacyState(repo, 'docs/plans/solo.md');
         const legacy = readGoal(repo);
-        for (const key of ['plan', 'boundSession', 'boundTranscript', 'queue', 'queueIndex', 'history', 'condition']) {
+        for (const key of ['plan', 'boundSession', 'boundTranscript', 'queue', 'queueIndex', 'history', 'condition',
+            'armedBy']) {
             assert.deepStrictEqual(legacy[key], armed[key], key + ' reads identically');
         }
     } finally {
@@ -1450,7 +1713,129 @@ test('CLI arm accepts several plan paths and names the queue', () => {
 
         const none = spawnSync(process.execPath, [CLI, 'arm'], { cwd: repo, encoding: 'utf8' });
         assert.strictEqual(none.status, 1);
-        assert.match(none.stderr, /usage: kit-goal\.js arm \[--append\] <planPath>\.\.\./);
+        assert.match(none.stderr, /usage: kit-goal\.js arm \[--append\] \[--self-armed\] <planPath>\.\.\./);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+// The CLI is the one surface that knows which arming is running it: the
+// invocation is identical whether the operator typed it or a run arming an
+// inbound plan spawned it, so the flag is how the second one says so. It rides
+// on the bare form and on an append alike, because a run handed a plan mid-run
+// arms it into the queue it is already working.
+test('CLI arm --self-armed records the self-arming, on the bare form and on an append', () => {
+    const repo = makeRepo();
+    try {
+        authorizedPlan(repo, 'docs/plans/a.md');
+        authorizedPlan(repo, 'docs/plans/b.md');
+
+        const res = spawnSync(process.execPath, [CLI, 'arm', '--self-armed', 'docs/plans/a.md'],
+            { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /recorded as this run's own arming/);
+        let state = readGoal(repo);
+        assert.strictEqual(state.armedBy['docs/plans/a.md'], 'self');
+        assert.strictEqual(state.condition, composeCondition('docs/plans/a.md', state.queue, 0, 'self'));
+
+        // The append form takes the flag too, and it reaches the appended plan
+        // alone: this is the spelling a run already under a leash uses for an
+        // inbound plan it armed itself, which is the path the flag exists for.
+        const appended = spawnSync(process.execPath, [CLI, 'arm', '--append', '--self-armed', 'docs/plans/b.md'],
+            { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(appended.status, 0, appended.stderr);
+        assert.match(appended.stdout, /recorded as this run's own arming/);
+        state = readGoal(repo);
+        assert.deepStrictEqual({ ...state.armedBy },
+            { 'docs/plans/a.md': 'self', 'docs/plans/b.md': 'self' });
+
+        // The control, on the same fixture: neither form says anything about the
+        // arming without the flag, and the state records the operator's.
+        const typed = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md'],
+            { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(typed.status, 0, typed.stderr);
+        assert.strictEqual(readGoal(repo).armedBy['docs/plans/a.md'], 'operator');
+        assert.doesNotMatch(typed.stdout, /own arming/);
+        const typedAppend = spawnSync(process.execPath, [CLI, 'arm', '--append', 'docs/plans/b.md'],
+            { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(typedAppend.status, 0, typedAppend.stderr);
+        assert.strictEqual(readGoal(repo).armedBy['docs/plans/b.md'], 'operator');
+        assert.doesNotMatch(typedAppend.stdout, /own arming/);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+// The warning a self-armed plan recording no authorization earns, at the CLI: it
+// names the plan on stderr, the arm lands, and the exit code stays 0, so a
+// session that mis-placed its authorization section learns which plan while the directed
+// path (which names an in-flight plan that legitimately carries no section) still
+// works. The operator's arming over the same plan is the control: the warning
+// follows what the arming declared, not what the doc records.
+test('CLI arm --self-armed warns for a plan recording no authorization, and still arms', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/bare.md', 'Status: In Progress\n');
+
+        const warned = spawnSync(process.execPath, [CLI, 'arm', '--self-armed', 'docs/plans/bare.md'],
+            { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(warned.status, 0, warned.stderr);
+        assert.match(warned.stderr, /docs\/plans\/bare\.md/);
+        assert.match(warned.stderr, /the scan read no Dispatch Authorization out of these plan docs/);
+        assert.strictEqual(readGoal(repo).armedBy['docs/plans/bare.md'], 'self',
+            'the arm landed and recorded the arming it was given');
+
+        // The control: the same plan, the same CLI, without the flag.
+        const typed = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/bare.md'],
+            { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(typed.status, 0, typed.stderr);
+        assert.doesNotMatch(typed.stderr, /Dispatch Authorization/);
+        assert.strictEqual(readGoal(repo).armedBy['docs/plans/bare.md'], 'operator');
+
+        // A queue long enough to outrun the line caps the list and says by how
+        // much, rather than printing paths until the terminal wraps. Every path
+        // this line names goes through the 120-character cut, which leaves no
+        // mark of its own, so the count is where a reader learns anything was
+        // left out at all.
+        const many = [];
+        for (let i = 0; i < 7; i++) {
+            const rel = 'docs/plans/bare' + i + '.md';
+            writePlan(repo, rel, 'Status: In Progress\n');
+            many.push(rel);
+        }
+        const capped = spawnSync(process.execPath, [CLI, 'arm', '--self-armed', ...many],
+            { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(capped.status, 0, capped.stderr);
+        assert.match(capped.stderr, /docs\/plans\/bare4\.md, and 2 more/);
+        assert.doesNotMatch(capped.stderr, /docs\/plans\/bare5\.md/);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+// status is the inspection path an operator and a coordinator seat are directed
+// to, so the arming each queued plan records is rendered there beside the
+// authorization sentence read from its doc: two facts, printed as two. Both
+// armings print, because a line that appeared only for a self-arming would read
+// the same as one this surface did not render.
+test('CLI status reports the arming recorded for each queued plan', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/typed.md', 'Status: In Progress\n');
+        authorizedPlan(repo, 'docs/plans/authorized.md');
+        assert.strictEqual(armGoal(repo, 'docs/plans/typed.md').ok, true);
+        assert.strictEqual(appendGoal(repo, ['docs/plans/authorized.md'], 'self').ok, true);
+
+        const res = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(res.status, 0, res.stderr);
+        // The queue entry lines are the subject. The header names the current
+        // plan as well, so the lookup takes only the lines the queue block
+        // indents, which is where the per-plan arming is rendered.
+        const entries = res.stdout.split('\n').filter((l) => l.startsWith('  '));
+        const typedLine = entries.find((l) => l.includes('docs/plans/typed.md'));
+        const authorizedLine = entries.find((l) => l.includes('docs/plans/authorized.md'));
+        assert.match(typedLine, /armed: typed by the operator/);
+        assert.match(authorizedLine, /armed: recorded as this run's own arming/);
     } finally {
         rmRepo(repo);
     }
@@ -2323,8 +2708,8 @@ test('armGoal binds the arming session when the session id and its transcript ar
         assert.strictEqual(raw.boundTranscript, transcript);
         assert.strictEqual(readGoal(repo).boundSession, SID);
         assert.deepStrictEqual(Object.keys(readGoal(repo)).sort(),
-            ['armedAt', 'authorizations', 'boundSession', 'boundTranscript', 'condition', 'history', 'plan',
-                'queue', 'queueIndex'],
+            ['armedAt', 'armedBy', 'authorizations', 'boundSession', 'boundTranscript',
+                'condition', 'history', 'plan', 'queue', 'queueIndex'],
             'the state shape is unchanged by the bind');
         assert.deepStrictEqual(tmpLeftovers(repo), [], 'the bound arm is one atomic write');
 
@@ -3323,6 +3708,12 @@ test('appendGoal refuses an unarmed repo, a missing plan, a Complete plan, and a
         // caller that reached for --append there needs the bare form named.
         assert.match(unarmed.reason, /arm without --append is the first arming/,
             'the refusal points at the bare form: ' + unarmed.reason);
+        // The bare form records the arming it is, so the refusal names the flag
+        // a run arming a plan it traced a grant for needs there: a rescue naming
+        // the command alone steers exactly that run to the spelling that records
+        // the wrong arming.
+        assert.match(unarmed.reason, /--self-armed rides on it/,
+            'and at the flag the bare form takes: ' + unarmed.reason);
         // A cross-surface pin: kit-goal.js prints this reason through a
         // sanitizer that cuts at 120 characters with no truncation mark, so a
         // reason past the cap loses its pointer on the one surface an operator
@@ -3825,6 +4216,46 @@ test('an authorization sentence straddling the scan window records as none', () 
             'a sentence the scan could not see the end of is no claim: ' + recorded['docs/plans/straddle.md']);
         assert.strictEqual(recorded['docs/plans/inside.md'], 'Authorized by the operator.');
         assert.strictEqual(recorded['docs/plans/short.md'], 'Authorized by the operator');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+// The truncation flag answers one question, whether the scanned head is a
+// PREFIX of the doc, and a doc measuring exactly the scan window is the input
+// that separates the readings of it. Every byte of such a doc is in hand, so a
+// closing sentence carrying no terminator is the section's own line and
+// records; a flag keyed on the read having filled its buffer would call the
+// same head a fragment and record none, discarding a grant the plan really
+// made. The doc one byte longer is the control, where the head genuinely is a
+// prefix and the same tail records nothing.
+//
+// The flag's other leg, a read returning fewer bytes than a file no larger
+// than the window holds, cannot be staged from here: a regular file does not
+// return a short read on demand. This case is what pins the reading the two
+// legs share.
+test('a plan doc measuring exactly the scan window is read whole, not as a fragment', () => {
+    const repo = makeRepo();
+    try {
+        const scan = 16 * 1024;
+        const tail = '\n\n## Dispatch Authorization\n\nAuthorized by the operator with no terminator';
+        const head = 'Status: In Progress\n\n';
+        const exact = head + 'x'.repeat(scan - head.length - tail.length) + tail;
+        assert.strictEqual(Buffer.byteLength(exact, 'utf8'), scan,
+            'the fixture is exactly the scan window, which is the geometry under test');
+        writePlan(repo, 'docs/plans/exact.md', exact);
+
+        // One byte more, and the same tail is a prefix the scan cannot see the
+        // end of, so it records nothing.
+        writePlan(repo, 'docs/plans/over.md', head + 'x'.repeat(scan - head.length - tail.length + 1) + tail);
+
+        assert.strictEqual(armGoal(repo, ['docs/plans/exact.md', 'docs/plans/over.md']).ok, true);
+        const recorded = readGoal(repo).authorizations;
+        assert.strictEqual(recorded['docs/plans/exact.md'],
+            'Authorized by the operator with no terminator',
+            'the whole file was in hand, so its last line is the section speaking');
+        assert.strictEqual(recorded['docs/plans/over.md'], null,
+            'while a doc the scan could not reach the end of records no claim');
     } finally {
         rmRepo(repo);
     }
