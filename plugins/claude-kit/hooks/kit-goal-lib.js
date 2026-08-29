@@ -2095,7 +2095,13 @@ function appendGoal(cwd, planArgs) {
 //
 // outcome is 'complete', 'archived', or 'blocked'; note is the optional
 // recorded blocker, sanitized and capped here because it originates in
-// transcript text. expectedPlan and expectedArmedAt are an optional
+// transcript text. attributedPlan is the optional plan the history record is
+// filed under, for a caller whose own reading of where the run stands differs
+// from the stored pointer (the Stop hook's blocked clause reads the position
+// walk and emits an event under it, and the record has to agree with that
+// event); it is honored only when the armed queue holds it, and it reaches the
+// history record alone, never the guards below or the position the leash
+// moves to. expectedPlan and expectedArmedAt are an optional
 // compare-and-swap guard: the caller decided to advance from a snapshot,
 // another writer (a CLI re-arm or clear) can land between that snapshot and
 // this function's own re-read, and a state that no longer matches either
@@ -2153,7 +2159,17 @@ function advanceGoal(cwd, outcomeEntry) {
         return { ok: true, advanced: false, finished };
     }
 
-    const record = { plan: finished, outcome: entry.outcome, at: new Date().toISOString() };
+    // The plan the record is filed under is attributedPlan where the caller
+    // supplied one the queue actually holds, otherwise the stored pointer. The
+    // two differ when the pointer lags the position the plan docs put the run
+    // at, and the caller that supplies one emits an event for the same
+    // incident, so this keeps the persisted record and that event naming one
+    // plan. Nothing else moves: every enforcement read below, the
+    // compare-and-swap above included, is the stored pointer's.
+    const attributed = typeof entry.attributedPlan === 'string' && state.queue.includes(entry.attributedPlan)
+        ? entry.attributedPlan
+        : finished;
+    const record = { plan: attributed, outcome: entry.outcome, at: new Date().toISOString() };
     if (entry.note) record.note = safeForReason(entry.note);
     state.history.push(record);
     state.queueIndex = next;
@@ -2585,12 +2601,16 @@ function emitGoalEvent(details) {
 // recordExecutionTree for the checkpoint CLI, the field's one writer; both
 // state their display-trust bound where they are defined.
 // queuePosition rides along for the surfaces that report where a queue stands:
-// the SessionStart notice, the CLI status report and the status-line widget's
-// Plans segment. The stored index moves only at a clean stop of the bound
-// session, so what a queue entry's own plan doc says is the evidence those
-// surfaces read, and one spelling of that evidence is what keeps three reports
-// of one queue from disagreeing. A fourth surface reports the position and
-// deliberately does not read this: the doctor renders the raw stored index,
+// the SessionStart notice, the CLI status report, the status-line widget's
+// Plans segment, and the Stop hook's blocked clause, which files its event and
+// its history record under the plan the walk puts current. The stored index
+// moves only at a clean stop of the bound session, so what a queue entry's own
+// plan doc says is the evidence those surfaces read, and one spelling of that
+// evidence is what keeps four reports of one queue from disagreeing. The Stop
+// hook reads it for attribution alone: the leash's own position, and every
+// enforcement decision taken from it, stays the stored index's. A fifth
+// surface reports the position and deliberately does not read this: the doctor
+// renders the raw stored index,
 // because it is the reporting control for a state file the hooks correct or
 // refuse, and a doctor that silently corrected too would have nothing left to
 // report the defect with.

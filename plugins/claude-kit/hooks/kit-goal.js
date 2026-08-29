@@ -56,6 +56,46 @@ function usage() {
     process.exitCode = 1;
 }
 
+// The build identity of the plugin this CLI is running from. The build stamps
+// its short git hash into `.claude-plugin/build-info.json` under the plugin
+// root, which is the one surface that carries a version at all: the root is
+// CLAUDE_PLUGIN_ROOT where the host provides it, else this file's own parent
+// directory. kit-version-nudge.js's installedBuildInfo() reads the same stamp
+// for the session-restart nudge; this is a second reader of the file rather
+// than a shared helper, since that hook exports nothing.
+//
+// The fallback is the root's own directory name, taken only when it is
+// sha-shaped, which is what the installed cache layout spells
+// (...<separator>claude-kit<separator><commit-sha>). Any other basename is a
+// directory name and not a build identity (a dev checkout and a marketplace
+// clone both spell it `claude-kit`), so it yields 'unknown' rather than being
+// printed as a version. Either way the refusal still names the token itself.
+function pluginVersion() {
+    const root = process.env.CLAUDE_PLUGIN_ROOT || path.join(__dirname, '..');
+    try {
+        // Strip a leading BOM: a UTF-8-with-BOM stamp would otherwise fail JSON.parse.
+        const stamp = JSON.parse(
+            fs.readFileSync(path.join(root, '.claude-plugin', 'build-info.json'), 'utf8')
+                .replace(/^\uFEFF/, '')
+        );
+        if (stamp && typeof stamp.hash === 'string' && stamp.hash) return stamp.hash;
+    } catch { /* unstamped or unreadable: fall back to the root's own name */ }
+    const base = path.basename(root);
+    return /^[0-9a-f]{7,40}$/.test(base) ? base : 'unknown';
+}
+
+// A leading-dash token on an arm invocation that is not a recognized flag. It
+// is refused here rather than passed to armGoal as a plan argument, which
+// would answer a misleading "plan not found" for what is actually an
+// unrecognized flag, most often an older CLI running a build without the flag
+// a newer session expects. Naming the CLI's own build identity is what makes
+// that case self-diagnosing.
+function usageBadArmFlag(token) {
+    process.stderr.write('kit-goal: unrecognized flag ' + sanitize(token)
+        + ' (kit-goal.js version ' + sanitize(pluginVersion()) + ')\n');
+    usage();
+}
+
 // The transcript file of a session id, or null when it cannot be located. The
 // harness stores each session's transcript as <sessionId>.jsonl inside a
 // per-project directory under ~/.claude/projects, and that directory's name is
@@ -417,8 +457,14 @@ function main() {
     const [cmd, ...args] = process.argv.slice(2);
     // --append is read wherever it sits among the plan paths and removed from
     // them, so an operator typing it after the paths gets an append rather than
-    // an arm over a plan doc named --append, which no repository has.
-    if (cmd === 'arm') cmdArm(args.filter((a) => a !== '--append'), args.includes('--append'));
+    // an arm over a plan doc named --append, which no repository has. Any other
+    // leading-dash token is refused before it can reach armGoal as a plan
+    // argument, rather than misread as a plan path that is merely missing.
+    if (cmd === 'arm') {
+        const badFlag = args.find((a) => a.startsWith('-') && a !== '--append');
+        if (badFlag) usageBadArmFlag(badFlag);
+        else cmdArm(args.filter((a) => a !== '--append'), args.includes('--append'));
+    }
     else if (CLEAR_ALIASES.has(cmd)) cmdClear();
     else if (cmd === 'status') cmdStatus();
     else usage();

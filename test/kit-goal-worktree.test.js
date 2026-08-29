@@ -838,6 +838,136 @@ test('stop: a plan gone from both trees still advances mid-queue and releases on
     }
 });
 
+test('stop: a blocked declaration attributes to the plan the position walk puts current, '
+    + 'not the lagging stored pointer', () => {
+    const w = makeWorktree();
+    const eventsRoot = fs.mkdtempSync(path.join(WORKTREE_TMP, 'kit-goal-stopev-'));
+    const PLAN2_REL = 'docs/plans/second.md';
+    try {
+        // Both plans present and In Progress, armed as a two-plan queue with the
+        // stored pointer at the first, and the leash bound to the stopping
+        // session. That is the state the archival below moves off.
+        writePlanDoc(w.tree);
+        writeFile(path.join(w.tree, PLAN2_REL), 'Status: In Progress\n\nbody\n');
+        assert.strictEqual(armGoal(w.tree, [PLAN_REL, PLAN2_REL]).ok, true,
+            'setup: arm the two-plan queue');
+        assert.strictEqual(bindSession(w.tree, SESSION).ok, true, 'setup: bind the leash holder');
+
+        // The worktree's own branch archives the first plan: its doc is removed
+        // from docs/plans/ here and its archived copy reads Complete. The main
+        // checkout this goal state lives in still carries the first plan's doc
+        // present, also flipped to Complete, but not yet moved to the archive
+        // there. A same-named plan doc absent from one tree and present in the
+        // other is unmerged or unfetched, not archived (Section 6's own
+        // subject), so the Stop hook's 'gone' read never trusts this alone and
+        // falls through instead of auto-advancing, while the position walk,
+        // which asks both trees and only requires that they agree the plan
+        // reads finished, agrees on this one (each tree's own copy reads
+        // Complete). The second plan is untouched and reads In Progress in both
+        // trees, so the walk settles there while the stored pointer still names
+        // the first.
+        fs.rmSync(path.join(w.tree, PLAN_REL));
+        writeFile(path.join(w.tree, 'docs/archive/example.md'), 'Status: Complete\n\nbody\n');
+        writeFile(path.join(w.main, PLAN_REL), 'Status: Complete\n\nbody\n');
+        writeFile(path.join(w.main, PLAN2_REL), 'Status: In Progress\n\nbody\n');
+        const transcript = path.join(w.tree, 'transcript.jsonl');
+        const blocker = 'BLOCKED: need your call on the rollout order.';
+        writeStopTranscript(transcript, PLAN_REL, [blocker]);
+
+        const res = runStopHook(w.tree, transcript, eventsRoot);
+        assert.strictEqual(res.status, 0, res.stderr);
+        const out = JSON.parse(res.stdout);
+        assert.strictEqual(out.decision, 'block', 'the blocker holds the stop');
+
+        const events = readStopEvents(eventsRoot);
+        assert.strictEqual(events.length, 1);
+        assert.strictEqual(events[0].event, 'goal-blocked');
+        assert.strictEqual(events[0].plan, PLAN2_REL,
+            'the event names the plan the position walk puts current, not the stored pointer '
+            + 'still naming the plan already finished and archived: ' + JSON.stringify(events[0]));
+
+        // The leash's own position is the stored pointer's: it advances exactly
+        // one plan from where it stood, whatever the walk found. The history
+        // record is attribution rather than position, so it files the outcome
+        // under the plan the event names and the two cannot disagree about one
+        // incident.
+        const state = readGoal(w.tree);
+        assert.strictEqual(state.plan, PLAN2_REL, 'the leash advanced exactly one plan');
+        assert.strictEqual(state.queueIndex, 1, 'from the stored index, by one');
+        assert.strictEqual(state.history[0].outcome, 'blocked');
+        assert.strictEqual(state.history[0].plan, PLAN2_REL,
+            'the persisted history record files the outcome under the same plan the event names: '
+            + JSON.stringify(state.history[0]));
+
+        // The hold reason is the leash's own, composed from the stored pointer
+        // rather than from the walk: it tells the session which plan the leash
+        // has moved off and which it has moved to, and those two are never one
+        // string. A reason naming one plan as both finished and current would go
+        // on to tell an unattended run that a blocker recorded against that plan
+        // does not carry over to it, which is the leash walking a real blocker.
+        assert.ok(out.reason.includes(PLAN_REL + ' finished (blocked)'),
+            'the reason names the plan the leash moved off: ' + out.reason);
+        assert.ok(out.reason.includes('the current plan is now ' + PLAN2_REL),
+            'and names the plan it moved to: ' + out.reason);
+        assert.ok(!out.reason.includes(PLAN2_REL + ' finished ('),
+            'never the plan it moved to as the plan that finished: ' + out.reason);
+        assert.ok(out.reason.includes('a blocker specific to ' + PLAN_REL + ' does not carry over'),
+            'the carry-over test names the finished plan, so it is a test and not a waiver: '
+            + out.reason);
+    } finally {
+        rmWorktree(w);
+        rmDir(eventsRoot);
+    }
+});
+
+test('stop: a blocked declaration with the pointer and the walk agreeing attributes to that plan '
+    + 'and advances off it', () => {
+    const w = makeWorktree();
+    const eventsRoot = fs.mkdtempSync(path.join(WORKTREE_TMP, 'kit-goal-stopev-'));
+    const PLAN2_REL = 'docs/plans/second.md';
+    try {
+        // The control for the case above: nothing is archived anywhere, both
+        // plans read In Progress in both trees, so the position walk settles on
+        // the same first plan the stored pointer names. Attribution and
+        // enforcement then have one plan between them, and the healthy case is
+        // pinned unchanged.
+        writePlanDoc(w.tree);
+        writeFile(path.join(w.tree, PLAN2_REL), 'Status: In Progress\n\nbody\n');
+        writeFile(path.join(w.main, PLAN_REL), 'Status: In Progress\n\nbody\n');
+        writeFile(path.join(w.main, PLAN2_REL), 'Status: In Progress\n\nbody\n');
+        assert.strictEqual(armGoal(w.tree, [PLAN_REL, PLAN2_REL]).ok, true,
+            'setup: arm the two-plan queue');
+        assert.strictEqual(bindSession(w.tree, SESSION).ok, true, 'setup: bind the leash holder');
+
+        const transcript = path.join(w.tree, 'transcript.jsonl');
+        writeStopTranscript(transcript, PLAN_REL, ['BLOCKED: need your call on the rollout order.']);
+
+        const res = runStopHook(w.tree, transcript, eventsRoot);
+        assert.strictEqual(res.status, 0, res.stderr);
+        const out = JSON.parse(res.stdout);
+        assert.strictEqual(out.decision, 'block', 'the blocker holds the stop');
+
+        const events = readStopEvents(eventsRoot);
+        assert.strictEqual(events.length, 1);
+        assert.strictEqual(events[0].event, 'goal-blocked');
+        assert.strictEqual(events[0].plan, PLAN_REL,
+            'the event names the plan both readings agree on: ' + JSON.stringify(events[0]));
+
+        const state = readGoal(w.tree);
+        assert.strictEqual(state.plan, PLAN2_REL, 'the leash advanced exactly one plan');
+        assert.strictEqual(state.history[0].outcome, 'blocked');
+        assert.strictEqual(state.history[0].plan, PLAN_REL,
+            'and the history record files the outcome under that same plan');
+        assert.ok(out.reason.includes(PLAN_REL + ' finished (blocked)'),
+            'the reason names the plan the leash moved off: ' + out.reason);
+        assert.ok(out.reason.includes('the current plan is now ' + PLAN2_REL),
+            'and names the plan it moved to: ' + out.reason);
+    } finally {
+        rmWorktree(w);
+        rmDir(eventsRoot);
+    }
+});
+
 // ---------------------------------------------------------------------------
 // The plan doc's live copy: a chapter boundary opened from a worktree records
 // the execution tree in the goal state (the checkpoint CLI is the field's one

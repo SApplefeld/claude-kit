@@ -1380,6 +1380,63 @@ test('CLI arm accepts several plan paths and names the queue', () => {
     }
 });
 
+test('CLI arm refuses an unknown leading-dash token, naming it and the CLI version, before it reaches armGoal', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
+
+        // The build stamp under the plugin root is the version the message
+        // names, and a root directory named for no build at all does not
+        // displace it: the stamp is read from a root spelled `claude-kit`,
+        // which is what both a dev checkout and a marketplace clone spell.
+        const stamped = makeRepo();
+        writePlan(stamped, path.join('claude-kit', '.claude-plugin', 'build-info.json'),
+            JSON.stringify({ name: 'claude-kit', hash: 'ab12cd3' }));
+        const bogus = spawnSync(process.execPath, [CLI, 'arm', '--bogus'], {
+            cwd: repo, encoding: 'utf8',
+            env: { ...process.env, CLAUDE_PLUGIN_ROOT: path.join(stamped, 'claude-kit') }
+        });
+        assert.strictEqual(bogus.status, 1);
+        assert.match(bogus.stderr, /--bogus/);
+        assert.match(bogus.stderr, /version ab12cd3\b/);
+        assert.doesNotMatch(bogus.stderr, /plan not found/);
+        rmRepo(stamped);
+
+        // With no stamp to read, the root's own directory name stands in only
+        // where it is sha-shaped, which is what the installed cache layout
+        // spells.
+        const versioned = spawnSync(process.execPath, [CLI, 'arm', '--bogus'], {
+            cwd: repo, encoding: 'utf8',
+            env: { ...process.env, CLAUDE_PLUGIN_ROOT: path.join(os.tmpdir(), '5edb4483fd03') }
+        });
+        assert.strictEqual(versioned.status, 1);
+        assert.match(versioned.stderr, /version 5edb4483fd03\b/);
+
+        // And a root that is neither stamped nor sha-shaped yields the explicit
+        // marker: a directory name is not a build identity, so the message that
+        // exists to say which build is running never presents one as a version.
+        const bare = makeRepo();
+        fs.mkdirSync(path.join(bare, 'claude-kit'));
+        const unstamped = spawnSync(process.execPath, [CLI, 'arm', '--bogus'], {
+            cwd: repo, encoding: 'utf8',
+            env: { ...process.env, CLAUDE_PLUGIN_ROOT: path.join(bare, 'claude-kit') }
+        });
+        rmRepo(bare);
+        assert.strictEqual(unstamped.status, 1);
+        assert.match(unstamped.stderr, /version unknown\b/);
+        assert.doesNotMatch(unstamped.stderr, /version claude-kit/);
+
+        // A real plan path, no bogus flag involved, still arms: the refusal
+        // targets only an unrecognized leading-dash token.
+        const control = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md'], {
+            cwd: repo, encoding: 'utf8'
+        });
+        assert.strictEqual(control.status, 0, control.stderr);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
 test('CLI status renders the queue, the per-plan heads, the history, and the liveness hint', () => {
     const repo = makeRepo();
     try {

@@ -113,7 +113,8 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const {
-    readGoal, goalRoot, planHead, planPathState, clearGoal, bindSession, advanceGoal, emitGoalEvent
+    readGoal, goalRoot, planHead, planPathState, clearGoal, bindSession, advanceGoal, emitGoalEvent,
+    queuePosition
 } = require('./kit-goal-lib.js');
 const {
     readTranscriptCapped, stripLocalCommandOutput, sameSessionId,
@@ -375,13 +376,21 @@ function plansRemain(goal) {
 // the outcome, move the leash to the next plan, emit the release event for the
 // plan that finished where the clause has one, and hold the stop with a reason
 // naming what finished, the recorded blocker where there is one, and the plan
-// now current. entry is { outcome, word, detail, note, leadKey }: outcome and
-// note go to the history record, word names the outcome in the reason, detail
-// is the goal-complete detail value for the clauses that emit one (clause (b)
-// emits its goal-blocked before advancing, so it passes none), and leadKey is
-// the identity of the transcript entry whose 'BLOCKED:' lead drove a
+// now current. entry is { outcome, word, detail, note, leadKey, attributedPlan }:
+// outcome and note go to the history record, word names the outcome in the
+// reason, detail is the goal-complete detail value for the clauses that emit
+// one (clause (b) emits its goal-blocked before advancing, so it passes none),
+// leadKey is the identity of the transcript entry whose 'BLOCKED:' lead drove a
 // clause-(b) advance, persisted beside the plan the advance moves to so a
-// stale re-read of that same entry cannot advance the queue again.
+// stale re-read of that same entry cannot advance the queue again, and
+// attributedPlan, where given, is the plan the history record files this
+// outcome under, so the persisted record and the event the caller emitted for
+// the same incident name one plan. It is carried through to advanceGoal and
+// reaches nothing else: every reason string below composes from goal.plan, the
+// pointer the leash itself moves, because the reason instructs the session
+// about the leash's own position and a plan named there from any other reading
+// would tell a run that a blocker recorded against a plan does not carry over
+// to that same plan.
 //
 // Exactly-once for the advance is a compare-and-swap, not an assumption: only
 // the bound session's stops reach this point (a bystander returns at the
@@ -405,7 +414,7 @@ function plansRemain(goal) {
 function advanceAndHold(cwd, goal, sessionId, entry) {
     const safeFinished = safeForReason(goal.plan);
     const moved = advanceGoal(cwd, {
-        outcome: entry.outcome, note: entry.note,
+        outcome: entry.outcome, note: entry.note, attributedPlan: entry.attributedPlan,
         expectedPlan: goal.plan, expectedArmedAt: goal.armedAt, leadKey: entry.leadKey
     });
     const advanced = !!(moved && moved.ok && moved.advanced);
@@ -814,10 +823,31 @@ function main() {
         const spent = !!(lead.key && typeof goal.blockedAdvanceKey === 'string'
             && goal.blockedAdvanceKey === lead.key && keyStands);
         if (!spent) {
+            // goal.plan is the stored queue pointer, and it only ever advances
+            // one plan per clean stop: a run that closed and archived a plan
+            // itself, rather than through this hook's own advance, leaves the
+            // pointer naming that finished plan until a later stop catches up.
+            // The position walk (queuePosition, the same reading the status
+            // surfaces take of this staleness) reads the plan docs themselves,
+            // so it is what the event below and the history record that
+            // advanceAndHold writes both file this blocker under, and the two
+            // agree because they take one value.
+            //
+            // The walk reaches attribution and nothing else. The leash's own
+            // queueIndex advances exactly one plan from goal.plan as stored,
+            // the spent-key suppression above matches on that stored pointer,
+            // and the hold reason composes from it too: that reason instructs
+            // the session about the leash's position, so a plan named there
+            // from any other reading would tell a run that a blocker recorded
+            // against a plan does not carry over to that same plan.
+            const position = queuePosition(cwd, goal);
+            const attributedPlan = Array.isArray(goal.queue) && typeof goal.queue[position.index] === 'string'
+                ? goal.queue[position.index]
+                : planRel;
             // Every blocked stop emits, so a session that stops blocked repeatedly
             // produces one event per stop: the hook stays stateless and dedup is the
             // event consumer's policy.
-            emitGoalEvent({ event: 'goal-blocked', project: cwd, plan: planRel, session: sessionId });
+            emitGoalEvent({ event: 'goal-blocked', project: cwd, plan: attributedPlan, session: sessionId });
             if (plansRemain(goal)) {
                 // A blocker is a terminal state for this plan, not for the queue:
                 // the first line of the block message is recorded as the outcome so
@@ -825,7 +855,8 @@ function main() {
                 // last plan of the queue keeps releasing the session instead.
                 const firstLine = leadText.split('\n')[0].trim();
                 advanceAndHold(cwd, goal, sessionId, {
-                    outcome: 'blocked', word: 'blocked', note: firstLine, leadKey: lead.key
+                    outcome: 'blocked', word: 'blocked', note: firstLine, leadKey: lead.key,
+                    attributedPlan
                 });
             }
             return;
