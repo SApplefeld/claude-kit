@@ -45,22 +45,75 @@ $script:MemorySyncMarker = "# claude-kit memory sync allowlist."
 $script:MemorySyncOwnKey = "claudekit.memorysync"
 $script:MemorySyncOwnValue = "true"
 
-# The file forms the store's memory tiers hold: memq writes memory bodies and
-# both indexes as .md, the outcome and usage journals as .jsonl, and the decay
-# pass's completion stamp as the extension-less decay-stamp. Everything else a
-# tier directory can hold (locks, the single-generation .bak, rename
-# temporaries, a broken-lock rename such as decay.lock.stale.<pid>) is
-# transient state of one machine and never syncs.
+# The file forms an admitted root holds, keyed on the prefix that root's block
+# in the ignore file takes. One set is defined per root and every surface that
+# needs one reads it from here, so git, the probes, and the merge attributes
+# cannot answer differently about a form. The switch carries one arm per root
+# and a default that throws, so a root added to the prefix list below, or to
+# either surface, and not to an arm here is a thrown error rather than another
+# root's forms silently. Which callers surface that error differs, and the
+# difference matters: the doctor and the repo suite let it out, where
+# sync-store.ps1 runs Get-MemorySyncStatus inside a try whose tail catch is
+# bare and whose contract is silence, so on the automatic sync path the throw
+# is swallowed and the state file keeps whatever it last held. The check that
+# actually stops a root being added to one surface and not another is the
+# suite's drift pin over these three lists, not this throw.
 #
-# One leaf set covers both admitted roots. The coordinator directory holds no
-# memq output at all: its contract names four files, the board, the registry
-# entries, the claim file, and the Admin request inbox, and all four are .md,
-# so this set admits them for a different reason and is wider than that
-# contract rather than derived from it. The .jsonl leaf admits a form no
-# writer of that root produces today, over a predicate that matches
-# coordinator/ followed by anything.
+# The forms differ per root because what writes into each root differs, and a
+# form no writer of a root produces is a form that root does not re-include.
+#
+# The project tier holds the whole of what memq writes: memory bodies and both
+# indexes as .md, the outcome journal, the usage sidecar, and the decay pass's
+# completion stamp as the extension-less decay-stamp. The journal and the
+# stamp are per-project by construction, both of their writers resolving
+# through projectMemoryDir, so this is the only root that holds them. The
+# run-scoped pending tier sits two levels below this root, under pending/
+# <run-id>, and its own usage sidecar takes the same name, which the
+# surrounding /**/ reaches at any depth.
+#
+# The type and operator tiers are shared, and the only memq output written
+# into them is the usage sidecar: read stamps, the stamp rewrite a delete
+# takes, and the decay pass's usage step all run against a tier directory,
+# while the journal's writers and the decay stamp's do not. So those two roots
+# admit .md and usage.jsonl and nothing else.
+#
+# Both sidecars are admitted by name rather than by extension, because a
+# re-include written as an extension admits every .jsonl any tool writes
+# anywhere under a root, whatever its relationship to the store.
+#
+# The coordinator directory holds no memq output at all: its contract names
+# four files, the board, the registry entries, the claim file, and the Admin
+# request inbox, and all four are .md. Its set is still a form rather than
+# that contract, and so is wider than it: .md at any depth under any
+# directory there is admitted, where the contract names four paths. What the
+# form buys is that it is the one form the contract writes, rather than a
+# form no writer of that root produces. A coordinator .jsonl or stamp is a
+# widening this function performs by name at the moment that contract defines
+# one.
+#
+# Everything else an admitted directory can hold (locks, the single-generation
+# .bak, rename temporaries, a broken-lock rename such as decay.lock.stale.<pid>)
+# is transient state of one machine and never syncs.
 function Get-MemorySyncAllowedLeafPatterns {
-    return @('*.md', '*.jsonl', 'decay-stamp')
+    param([Parameter(Mandatory = $true)][string]$RootPrefix)
+    # The two forms every memory root holds, written once because the two
+    # shared tiers hold these and nothing else.
+    $sharedTierForms = @('*.md', 'usage.jsonl')
+    switch ($RootPrefix) {
+        '/projects/*/memory' { return @('*.md', 'outcomes.jsonl', 'usage.jsonl', 'decay-stamp') }
+        '/memory-types'      { return $sharedTierForms }
+        '/memory-operator'   { return $sharedTierForms }
+        '/coordinator'       { return @('*.md') }
+        default { throw "Get-MemorySyncAllowedLeafPatterns: no leaf set is defined for the root '$RootPrefix'." }
+    }
+}
+
+# Every root the allowlist admits, in the prefix spelling its own block in the
+# ignore file takes. Get-MemorySyncIgnoreText writes those blocks from literal
+# prefixes, each carrying its own comment, so this list is for the surfaces
+# that need the whole set at once rather than one block at a time.
+function Get-MemorySyncAdmittedRootPrefixes {
+    return @('/projects/*/memory', '/memory-types', '/memory-operator', '/coordinator')
 }
 
 # The transient names, refused last and therefore refused whatever else
@@ -82,15 +135,17 @@ function Get-MemorySyncLsFilesArguments {
 
 # The allowlist itself. Each directory level is re-included before its
 # contents because git cannot re-include a path whose parent directory is
-# excluded, and each tier re-includes its files by form rather than excluding
+# excluded, and each root re-includes its files by form rather than excluding
 # transient ones by pattern, because a positive rule is closed and a pattern
-# list is open. The blanket exclusions come last, where the last matching
-# pattern decides, so a lock, backup, or rewrite temporary is refused twice.
+# list is open. Each root's forms are the ones its own contract defines, read
+# from the function above by the same prefix the block is written under. The
+# blanket exclusions come last, where the last matching pattern decides, so a
+# lock, backup, or rewrite temporary is refused twice.
 function Get-MemorySyncIgnoreText {
     $tierRules = {
         param($prefix)
         @("!$prefix/", "$prefix/**", "!$prefix/**/") +
-            (Get-MemorySyncAllowedLeafPatterns | ForEach-Object { "!$prefix/**/$_" })
+            (Get-MemorySyncAllowedLeafPatterns -RootPrefix $prefix | ForEach-Object { "!$prefix/**/$_" })
     }
     return (@(
         $script:MemorySyncMarker,
@@ -129,10 +184,13 @@ function Get-MemorySyncIgnoreText {
         (& $tierRules '/memory-operator') + @(
         '',
         '# The coordinator tier: one directory per machine, holding the seat',
-        '# artifacts every machine reads. It takes the same file forms as the',
-        '# memory tiers and the same trailing transient exclusions, so a lock or',
-        '# a rewrite temporary a seat leaves behind is per-machine state that',
-        '# stays home.') +
+        '# artifacts every machine reads. Every file its contract defines is a',
+        '# .md, so .md is the only form re-included here: still a form, and so',
+        '# any .md at any depth rather than the four paths that contract names,',
+        '# but a journal or a stamp some other tool writes under this directory',
+        '# stays home. The same trailing transient exclusions apply, so a lock',
+        '# or a rewrite temporary a seat leaves behind is per-machine state that',
+        '# stays home too.') +
         (& $tierRules '/coordinator') + @(
         '',
         '# Never, even inside an allowed directory: lock files, the single-generation',
@@ -145,16 +203,31 @@ function Get-MemorySyncIgnoreText {
 # machines that both appended since the last sync hold no conflicting edit,
 # only two sets of new lines; a union merge keeps both sides instead of
 # raising a conflict over a file whose only history is appends.
+#
+# The rules are derived from the same per-root leaf sets the allowlist is
+# written from, one rule per .jsonl form per root, so no rule here can name a
+# form its root does not admit. What that derivation does not settle is the
+# root list itself: the ignore text writes its blocks from four literal
+# prefixes while this function iterates Get-MemorySyncAdmittedRootPrefixes, so
+# a root reaching one list and not the other is caught by the suite's drift
+# pin over the two rather than prevented here. A root whose forms hold no
+# .jsonl contributes nothing, which is why the coordinator directory has no
+# rule here: not an omission, but the absence of anything to merge. The
+# prefixes drop the leading slash the ignore file's spelling carries, an
+# attributes pattern being rooted by its position in the file rather than by a
+# slash.
 function Get-MemorySyncAttributesText {
-    return (@(
+    $rules = @(foreach ($prefix in (Get-MemorySyncAdmittedRootPrefixes)) {
+        foreach ($leaf in (Get-MemorySyncAllowedLeafPatterns -RootPrefix $prefix)) {
+            if ($leaf -like '*.jsonl') { "$($prefix.TrimStart('/'))/**/$leaf merge=union" }
+        }
+    })
+    return ((@(
         $script:MemorySyncMarker,
         '# Managed by the kit doctor, which re-derives this file on every run and',
         '# reports any difference as a failure.',
-        '',
-        'projects/*/memory/**/*.jsonl merge=union',
-        'memory-types/**/*.jsonl merge=union',
-        'memory-operator/**/*.jsonl merge=union',
-        '') -join "`n")
+        '') + $rules + @(
+        '')) -join "`n")
 }
 
 # The two managed files, each with the text it must hold.
@@ -212,19 +285,32 @@ function Test-MemorySyncRepoIsOwn {
 # judge what a dry-run add would stage, what is already tracked, and what
 # committed history holds, so every probe answers against the same rule the
 # ignore file encodes. The rule is positive on both axes: the path must sit
-# inside one of the two roots the allowlist admits, a memory tier or the
-# coordinator directory, and its file name must be one of the allowed leaf
-# forms. Those forms are the ones memq writes in a tier; the coordinator
-# directory carries no memq output and takes the same forms because its own
-# contract writes .md and .jsonl. A name outside that set is refused whether
-# or not any exclusion pattern happens to describe it.
+# inside one of the roots the allowlist admits, a memory tier or the
+# coordinator directory, and its file name must be one of the forms that root
+# admits. The root is resolved first because the forms are per root, and they
+# differ three ways: the project tier takes the whole of what memq writes
+# there, the two shared tiers take .md and the usage sidecar alone, since that
+# is the only memq output written into them, and the coordinator directory
+# takes .md alone, the one form its contract writes. That last set is a form
+# rather than the contract, and so wider than it, admitting a .md at any depth
+# where the contract names four paths; what it buys is that the admitted form
+# is one the contract writes rather than one no writer there produces. A name
+# outside its root's set is refused whether or not any exclusion pattern
+# happens to describe it, and a path in no admitted root is refused before any
+# form is considered.
 function Test-MemorySyncPathAllowed {
     param([Parameter(Mandatory = $true)][string]$RelativePath)
     $p = $RelativePath -replace '\\', '/'
     if ($p -eq ".gitignore" -or $p -eq ".gitattributes") { return $true }
+    $rootPrefix = $null
+    if ($p -match '^projects/[^/]+/memory/.+') { $rootPrefix = '/projects/*/memory' }
+    elseif ($p -match '^memory-types/.+') { $rootPrefix = '/memory-types' }
+    elseif ($p -match '^memory-operator/.+') { $rootPrefix = '/memory-operator' }
+    elseif ($p -match '^coordinator/.+') { $rootPrefix = '/coordinator' }
+    if ($null -eq $rootPrefix) { return $false }
     $leaf = $p.Substring($p.LastIndexOf('/') + 1)
     $leafAllowed = $false
-    foreach ($pattern in (Get-MemorySyncAllowedLeafPatterns)) {
+    foreach ($pattern in (Get-MemorySyncAllowedLeafPatterns -RootPrefix $rootPrefix)) {
         if ($leaf -like $pattern) { $leafAllowed = $true; break }
     }
     if (-not $leafAllowed) { return $false }
@@ -239,11 +325,7 @@ function Test-MemorySyncPathAllowed {
             if ($segment -like $pattern) { return $false }
         }
     }
-    if ($p -match '^projects/[^/]+/memory/.+') { return $true }
-    if ($p -match '^memory-types/.+') { return $true }
-    if ($p -match '^memory-operator/.+') { return $true }
-    if ($p -match '^coordinator/.+') { return $true }
-    return $false
+    return $true
 }
 
 # The paths the check proves are ignored: the three sensitive root files, plus

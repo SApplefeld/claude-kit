@@ -10138,11 +10138,11 @@ const NEWLINE = Buffer.from('\n');
 // history extends.
 //
 // The removal is local. The store's sync merges these sidecars with a union
-// strategy (doctor/install-memory-sync.ps1 sets merge=union over the shared
-// tiers' *.jsonl), so a machine that still holds the deleted name's lines
-// reinstates them on its first sync. What this achieves is that the machine
-// deleting a record stops counting it, and that a store never synced never
-// carries it again.
+// strategy (Get-MemorySyncAttributesText in doctor/install-memory-sync.ps1
+// derives the rules and is the place to read which paths carry it), so a
+// machine that still holds the deleted name's lines reinstates them on its
+// first sync. What this achieves is that the machine deleting a record stops
+// counting it, and that a store never synced never carries it again.
 //
 // Two writers append to this sidecar without the tier lock, by design:
 // stampRead on every read served, and `touch` for an applied stamp. Either

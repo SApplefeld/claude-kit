@@ -96,10 +96,13 @@ function makeStore(options) {
         '.cache', 'Xenova', 'all-MiniLM-L6-v2', 'onnx', 'model_quantized.onnx'), 'not a real model\n');
     write(path.join(store, 'memory-index.jsonl'), '{"store":"a","tier":"type","name":"b"}\n');
 
-    // Every form memq writes into a tier: memory bodies and both indexes as
-    // .md, the journals as .jsonl, and the decay pass's extension-less
-    // completion stamp. The run-scoped pending tier sits under the project
-    // memory directory and rides the same re-include.
+    // What memq writes, per root. The project tier holds the whole set:
+    // memory bodies and both indexes as .md, the outcome journal, the usage
+    // sidecar, and the decay pass's extension-less completion stamp. The
+    // run-scoped pending tier sits two levels below it and rides the same
+    // re-include. The shared tiers hold .md and the usage sidecar alone,
+    // which is the only memq output written into them, so a journal or a
+    // stamp planted there below is negative space rather than a memory file.
     const allowed = [
         '.gitattributes',
         '.gitignore',
@@ -123,7 +126,7 @@ function makeStore(options) {
     write(path.join(store, 'projects', PROJECT_A, 'memory', 'a-fact.md'), '# a fact\n');
     write(path.join(store, 'projects', PROJECT_A, 'memory', 'outcomes.jsonl'), '{"key":"k"}\n');
     write(path.join(store, 'projects', PROJECT_A, 'memory', 'usage.jsonl'), '{"name":"a-fact"}\n');
-    write(path.join(store, 'projects', PROJECT_A, 'memory', 'decay-stamp'), '');
+    write(path.join(store, 'projects', PROJECT_A, 'memory', 'decay-stamp'), 'project decay pass\n');
     write(path.join(store, 'projects', PROJECT_A, 'memory', 'archive', 'old-fact.md'), '# old\n');
     write(path.join(store, 'projects', PROJECT_A, 'memory', 'pending', 'run-fact.md'), '# run\n');
     write(path.join(store, 'projects', PROJECT_B, 'memory', 'MEMORY.md'), '# Memory Index\n\n- beta\n');
@@ -132,21 +135,34 @@ function makeStore(options) {
     // rename a stale-lock break leaves behind, the single-generation backup,
     // and a rewrite temporary. The last two names are the ones an exclusion
     // pattern list misses, which is why the re-include is by file form.
-    write(path.join(store, 'projects', PROJECT_A, 'memory', 'decay.lock'), '1234\n');
-    write(path.join(store, 'projects', PROJECT_A, 'memory', 'decay.lock.stale.1234'), '1234\n');
-    write(path.join(store, 'projects', PROJECT_A, 'memory', 'a-fact.md.bak'), '# a fact\n');
-    write(path.join(store, 'projects', PROJECT_A, 'memory', 'a-fact.md.tmp.4242'), '# a fact\n');
+    write(path.join(store, 'projects', PROJECT_A, 'memory', 'decay.lock'), 'lock 2\n');
+    write(path.join(store, 'projects', PROJECT_A, 'memory', 'decay.lock.stale.1234'), 'lock 3\n');
+    write(path.join(store, 'projects', PROJECT_A, 'memory', 'a-fact.md.bak'), '# a fact, one rewrite ago\n');
+    write(path.join(store, 'projects', PROJECT_A, 'memory', 'a-fact.md.tmp.4242'), '# a fact, mid rewrite\n');
     write(path.join(store, 'projects', PROJECT_A, 'memory', 'scratch.json'), '{}\n');
-    write(path.join(store, 'memory-types', 'store.lock'), '1234\n');
+    // A .jsonl no memq surface writes. The tier's re-include names the two
+    // sidecar filenames memq owns, so this one is negative space: it is what a
+    // re-include written by extension would carry to every machine.
+    write(path.join(store, 'projects', PROJECT_A, 'memory', 'stray.jsonl'), '{"from":"another tool"}\n');
+    write(path.join(store, 'memory-types', 'store.lock'), 'lock 1\n');
     write(path.join(store, 'memory-types', 'notes.txt'), 'notes\n');
+    // The two forms the project tier holds and a shared tier does not: memq's
+    // journal writers and its decay stamp both resolve through the project
+    // memory directory, so neither name has a writer under this root and
+    // neither is re-included here.
+    write(path.join(store, 'memory-types', 'outcomes.jsonl'), '{"key":"type-k"}\n');
+    write(path.join(store, 'memory-types', 'decay-stamp'), 'type tier stamp\n');
 
     if (opts.operatorTier) {
         write(path.join(store, 'memory-operator', 'MEMORY.md'), '# Memory Index\n\n- operator\n');
         write(path.join(store, 'memory-operator', 'operator-fact.md'), '# operator\n');
         write(path.join(store, 'memory-operator', 'archive', 'retired-operator.md'), '# retired operator fact\n');
         write(path.join(store, 'memory-operator', 'usage.jsonl'), '{"name":"operator-fact"}\n');
-        write(path.join(store, 'memory-operator', 'store.lock'), '1234\n');
-        write(path.join(store, 'memory-operator', 'store.lock.stale.99'), '1234\n');
+        write(path.join(store, 'memory-operator', 'store.lock'), 'lock 4\n');
+        write(path.join(store, 'memory-operator', 'store.lock.stale.99'), 'lock 5\n');
+        // The same two forms this shared tier holds no writer for.
+        write(path.join(store, 'memory-operator', 'outcomes.jsonl'), '{"key":"operator-k"}\n');
+        write(path.join(store, 'memory-operator', 'decay-stamp'), 'operator tier stamp\n');
         allowed.push('memory-operator/MEMORY.md',
             'memory-operator/archive/retired-operator.md',
             'memory-operator/usage.jsonl',
@@ -161,20 +177,27 @@ function makeStore(options) {
         // one file per session, the shape the directory contract defines.
         write(path.join(dir, 'registry', 'session-a.md'), '# session a\n');
         write(path.join(dir, 'registry', 'session-b.md'), '# session b\n');
-        // The .jsonl leaf form under this tier. It sits at the machine's own
-        // top level, where the coordinator seat is the only writer, so the
-        // fixture exercises the form without standing as an example of a file
-        // several sessions append to: every file the directory holds is
-        // single-writer, which is why the tier carries no union-merge rule.
-        write(path.join(dir, 'board-events.jsonl'), '{"event":"board rewritten"}\n');
+        write(path.join(dir, 'claims', 'heavy-process.md'), '# claim\n');
+        // A journal shaped like what a tool with no relationship to the store
+        // writes under this tier, in the kit's own per-project scratch
+        // directory: the compaction gate's log. No writer puts one here today,
+        // kitScratchDir in plugins/claude-kit/hooks/kit-compact-lib.js sending
+        // a store-backed project directory to a home-anchored path outside the
+        // store, and the fixture is about the form the re-include must refuse
+        // rather than about that writer. Nothing in the directory contract
+        // names it, so it is negative space rather than an allowed path, and
+        // it is planted several levels deep because that is where a re-include
+        // written by extension would reach it.
+        write(path.join(dir, '.kit', 'compact-gate.jsonl'), '{"event":"offer"}\n');
         // The same transient forms the memory tiers hold, plus a name no
-        // allowed form describes.
-        write(path.join(dir, 'board.lock'), '1234\n');
-        write(path.join(dir, 'board.md.bak'), '# board\n');
-        write(path.join(dir, 'board.md.tmp.77'), '# board\n');
-        write(path.join(dir, 'notes.txt'), 'notes\n');
+        // allowed form describes and the memq stamp this tier never carries.
+        write(path.join(dir, 'board.lock'), 'lock 6\n');
+        write(path.join(dir, 'board.md.bak'), '# board, one rewrite ago\n');
+        write(path.join(dir, 'board.md.tmp.77'), '# board, mid rewrite\n');
+        write(path.join(dir, 'notes.txt'), 'coordinator notes\n');
+        write(path.join(dir, 'decay-stamp'), 'a stamp no writer of this root produces\n');
         const p = 'coordinator/' + MACHINE + '/';
-        allowed.push(p + 'board.md', p + 'admin-requests.md', p + 'board-events.jsonl',
+        allowed.push(p + 'board.md', p + 'admin-requests.md', p + 'claims/heavy-process.md',
             p + 'registry/session-a.md', p + 'registry/session-b.md');
     }
     return { home, store, allowed: allowed.sort() };
@@ -235,6 +258,20 @@ function isIgnored(store, rel) {
     const res = git(store, ['check-ignore', '-q', '--no-index', '--', rel]);
     assert.ok(res.status === 0 || res.status === 1, 'check-ignore errored: ' + res.stderr);
     return res.status === 0;
+}
+
+// The ignore-file pattern git resolves a path by, from `check-ignore -v`, or
+// null where no pattern matches. This is what lets a refusal name the rule
+// that produces it rather than only that it happened: a path refused by the
+// tier's blanket exclusion and a path refused by a transient pattern read
+// identically through isIgnored alone, so a case can sit untested behind an
+// earlier rule while its pin stays green.
+function ignoreRule(store, rel) {
+    const res = git(store, ['check-ignore', '-v', '--no-index', '--', rel]);
+    assert.ok(res.status === 0 || res.status === 1, 'check-ignore errored: ' + res.stderr);
+    if (res.status === 1) return null;
+    const line = res.stdout.split(/\r?\n/).find((l) => l.trim() !== '') || '';
+    return (line.match(/^[^:]*:\d+:(\S*)\s/) || [])[1];
 }
 
 // Every blob path reachable from any ref, which is the surface no amount of
@@ -409,15 +446,19 @@ test('inside an allowed directory only the memory file forms sync, everything el
     const fake = makeStore({ operatorTier: true });
     try {
         assert.strictEqual(installRepo(fake.store).status, 0);
-        // The re-include is positive (.md, .jsonl, decay-stamp), so a name no
-        // exclusion pattern describes is still out. decay.lock.stale.<pid> is
-        // the one a stale-lock break leaves behind, and it matches none of
-        // *.lock, *.bak, or *.tmp.*.
+        // The re-include is positive (.md, the two memq sidecar names,
+        // decay-stamp), so a name no exclusion pattern describes is still out.
+        // decay.lock.stale.<pid> is the one a stale-lock break leaves behind,
+        // and it matches none of *.lock, *.bak, or *.tmp.*. stray.jsonl is the
+        // extension-form case: it carries a form the tier holds and a name no
+        // memq surface writes, so only a re-include naming the sidecars
+        // refuses it.
         for (const rel of ['projects/' + PROJECT_A + '/memory/decay.lock',
             'projects/' + PROJECT_A + '/memory/decay.lock.stale.1234',
             'projects/' + PROJECT_A + '/memory/a-fact.md.bak',
             'projects/' + PROJECT_A + '/memory/a-fact.md.tmp.4242',
             'projects/' + PROJECT_A + '/memory/scratch.json',
+            'projects/' + PROJECT_A + '/memory/stray.jsonl',
             'memory-types/store.lock',
             'memory-types/notes.txt',
             'memory-operator/store.lock.stale.99']) {
@@ -447,14 +488,26 @@ test('the ignore file and the path predicate answer alike on transient-shaped na
         // re-include anything beneath a directory it has excluded, so a
         // predicate reading the leaf alone is more permissive than git and the
         // probes built on it would miss a real staged path.
+        //
+        // The refused cases do not all resolve by the same rule, and the split
+        // is named here rather than left to be assumed. Seven carry a leaf the
+        // tier admits, foo.tmp.md and the sidecar name usage.jsonl among them,
+        // so the leaf-form check passes them and the transient axis is the
+        // only rule left that can refuse them. Two do not: notes.bak and
+        // foo.lock match none of *.md, outcomes.jsonl, usage.jsonl or
+        // decay-stamp, so the predicate refuses them at the leaf-form check
+        // and never reaches the per-segment loop, while git refuses them by
+        // **/*.bak and **/*.lock. What that pair pins is that the two surfaces
+        // reach the same answer by different rules, not that the transient
+        // axis ran.
         const cases = [
             ['projects/' + PROJECT_A + '/memory/foo.tmp.md', false],
             ['projects/' + PROJECT_A + '/memory/notes.bak', false],
-            ['memory-types/foo.tmp.jsonl', false],
+            ['memory-types/foo.tmp.md', false],
             ['memory-operator/foo.lock', false],
             ['projects/' + PROJECT_A + '/memory/notes.bak/inner.md', false],
             ['projects/' + PROJECT_A + '/memory/x.tmp.d/inner.md', false],
-            ['projects/' + PROJECT_A + '/memory/held.lock/inner.jsonl', false],
+            ['projects/' + PROJECT_A + '/memory/held.lock/usage.jsonl', false],
             ['memory-types/archive.bak/retired.md', false],
             ['memory-operator/scratch.tmp.1/fact.md', false],
             ['projects/' + PROJECT_A + '/memory/a-fact.md', true],
@@ -482,9 +535,10 @@ test('the coordinator tier syncs when it exists, and its per-machine transient s
     try {
         assert.strictEqual(installRepo(fake.store).status, 0);
         // Positive space: every planted coordinator file is tracked, nested
-        // registry directory included. The tier takes the same allowed forms
-        // as the memory tiers, so a name outside them stays out even though
-        // its directory is re-included.
+        // registry directory included. The tier admits .md and nothing else,
+        // the one form its directory contract writes, so a journal, a stamp,
+        // or any other form stays out even though its directory is
+        // re-included.
         assert.deepStrictEqual(trackedPaths(fake.store), fake.allowed);
         const p = 'coordinator/' + MACHINE + '/';
         for (const rel of [p + 'board.lock', p + 'board.md.bak', p + 'board.md.tmp.77', p + 'notes.txt']) {
@@ -533,18 +587,21 @@ test('the ignore file and the path predicate answer alike on coordinator paths',
             [p + 'board.md', true],
             [p + 'admin-requests.md', true],
             [p + 'registry/session-a.md', true],
-            [p + 'board-events.jsonl', true],
+            [p + 'claims/heavy-process.md', true],
             ['coordinator/board.md', true],
             [p + 'board.lock', false],
             [p + 'board.md.bak', false],
             [p + 'board.md.tmp.77', false],
-            // An allowed extension carrying a transient shape, at the leaf and
-            // in both admitted forms. These are the only cases here that reach
-            // the per-segment transient loop at all: the three names above are
-            // refused earlier, by the allowed-leaf-form check, so without these
-            // the trailing exclusions are untested under this tier.
+            // The admitted form carrying a transient shape in leaf position.
+            // The three names above are refused earlier, by the leaf-form
+            // check, so without a case like these two the trailing exclusions
+            // are untested against a leaf under this tier. Both carry .md, the
+            // one form this tier admits, which is what leaves the transient
+            // axis as the only rule that can refuse them. The directory cases
+            // further down (held.lock, old.bak, x.tmp.1) carry an admitted
+            // .md leaf too and reach the same loop one segment up.
             [p + 'board.tmp.md', false],
-            [p + 'registry/session-a.tmp.jsonl', false],
+            [p + 'registry/session-a.tmp.md', false],
             [p + 'notes.txt', false],
             [p + 'held.lock/board.md', false],
             [p + 'old.bak/board.md', false],
@@ -566,6 +623,200 @@ test('the ignore file and the path predicate answer alike on coordinator paths',
     } finally {
         rmDir(fake.home);
     }
+});
+
+// The predicate's answer for a list of paths, one PowerShell run for the lot.
+// A one-element array unrolls in the pipeline and converts to a scalar, so the
+// answer is re-wrapped the same way statusOf re-wraps its own, and a case list
+// of one reads like any other rather than throwing on index 0.
+function predicateAnswers(rels) {
+    const script = '. ' + q(INSTALLER) + '; '
+        + '@(' + rels.map((rel) => '(Test-MemorySyncPathAllowed -RelativePath ' + q(rel) + ')').join(', ')
+        + ') | ConvertTo-Json -Compress';
+    const res = pwsh(script);
+    assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+    const parsed = JSON.parse(res.stdout);
+    return Array.isArray(parsed) ? parsed : [parsed];
+}
+
+// Both surfaces asked about one path, with the refusing rule named. A control
+// path establishes which rule the refusal comes from: the control differs from
+// the refused path in its leaf name alone, so its admission proves the root
+// re-includes and the transient axis both pass and leaves the allowed-leaf
+// check as the only rule left to produce the refusal.
+function assertRefusedByLeafForm(store, cases, tierRule, controlRule) {
+    const rels = cases.flatMap(([refused, control]) => [refused, control]);
+    const answers = predicateAnswers(rels);
+    cases.forEach(([refused, control], i) => {
+        assert.strictEqual(answers[i * 2], false, refused + ' must be refused by the predicate');
+        assert.strictEqual(answers[i * 2 + 1], true, control + ' is the control for '
+            + refused + ' and must be admitted, or the refusal is unattributed');
+        assert.strictEqual(isIgnored(store, refused), true, refused + ' must be ignored');
+        assert.strictEqual(isIgnored(store, control), false, control + ' must not be ignored');
+        assert.strictEqual(ignoreRule(store, refused), tierRule, refused
+            + ' must be refused by the root exclusion ' + tierRule + ', no re-include '
+            + 'matching after it; a different rule means the case proves a different axis');
+        assert.strictEqual(ignoreRule(store, control), controlRule, control
+            + ' must be admitted by ' + controlRule + ', the root re-include naming the '
+            + 'one form that differs between it and ' + refused);
+    });
+}
+
+test('the coordinator tier admits the .md forms its directory contract defines and no other form', { skip: !isWin }, () => {
+    const fake = makeStore({ coordinator: true });
+    try {
+        assert.strictEqual(installRepo(fake.store).status, 0);
+        const p = 'coordinator/' + MACHINE + '/';
+        // The four file forms the directory contract names, each of them a
+        // .md, at the depths the contract puts them.
+        const contractForms = [p + 'board.md', p + 'admin-requests.md',
+            p + 'registry/session-a.md', p + 'claims/heavy-process.md'];
+        assert.deepStrictEqual(predicateAnswers(contractForms), contractForms.map(() => true));
+        for (const rel of contractForms) {
+            assert.strictEqual(isIgnored(fake.store, rel), false, rel + ' must be admitted');
+        }
+        // Forms this tier's contract names no writer for. The subject is the
+        // class rather than any one tool: a re-include written by extension
+        // admits whatever writes that extension anywhere under the tier, and
+        // a directory the kit itself creates under a session's project path is
+        // exactly where an unrelated tool's state lands. compact-gate.jsonl is
+        // the shape that class takes, the compaction gate's own log. No writer
+        // reaches this path today, because kitScratchDir in plugins/claude-kit
+        // /hooks/kit-compact-lib.js resolves a store-backed project directory
+        // to a home-anchored path outside the store rather than to <cwd>/.kit.
+        // The re-include refuses the form whether or not a writer is currently
+        // pointed at it. decay-stamp is memq's completion stamp, and this tier
+        // carries no memq output.
+        assertRefusedByLeafForm(fake.store, [
+            [p + '.kit/compact-gate.jsonl', p + '.kit/compact-gate.md'],
+            [p + 'board-events.jsonl', p + 'board-events.md'],
+            [p + 'registry/session-a.jsonl', p + 'registry/session-a.md'],
+            [p + 'decay-stamp', p + 'decay-stamp.md']
+        ], '/coordinator/**', '!/coordinator/**/*.md');
+        // The transient axis under this tier, attributed rather than assumed.
+        // Both names carry .md, the one form the tier admits, so the leaf-form
+        // check passes them and the trailing exclusion is the only rule left
+        // that can refuse them. Naming the rule is what keeps this axis from
+        // reading as covered while an earlier check does all the refusing.
+        const transient = [p + 'board.tmp.md', p + 'registry/session-a.tmp.md'];
+        assert.deepStrictEqual(predicateAnswers(transient), transient.map(() => false));
+        for (const rel of transient) {
+            assert.strictEqual(isIgnored(fake.store, rel), true, rel + ' must be ignored');
+            assert.strictEqual(ignoreRule(fake.store, rel), '**/*.tmp.*', rel
+                + ' must be refused by the trailing transient exclusion rather than by the '
+                + 'leaf-form check, or this tier has no transient coverage at all');
+        }
+        // The fixture plants the journal and the stamp on disk, so the two
+        // surfaces that read a real worktree answer about them too. The
+        // tracked set is asserted exactly rather than by a predicate over its
+        // members, which an empty set would satisfy for free.
+        assert.deepStrictEqual(trackedPaths(fake.store), fake.allowed);
+        // And a .jsonl written after the install is not staged by a fresh add,
+        // while a .md beside it is. The journal's name is new to this repo, so
+        // the assertion turns on the narrowed re-include and reddens when it
+        // is reverted; a form no root ever admitted, or a path already
+        // committed above, would pass either way and prove nothing.
+        write(path.join(fake.store, 'coordinator', MACHINE, '.kit', 'compact-gate-2.jsonl'), '{"event":"deferral"}\n');
+        write(path.join(fake.store, 'coordinator', MACHINE, 'fresh-note.md'), '# a note written after the install\n');
+        assert.deepStrictEqual(dryRunPaths(fake.store), [p + 'fresh-note.md']);
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+test('each memory root admits the forms memq writes into it and refuses the rest', { skip: !isWin }, () => {
+    const fake = makeStore({ operatorTier: true });
+    try {
+        assert.strictEqual(installRepo(fake.store).status, 0);
+        const mem = 'projects/' + PROJECT_A + '/memory';
+        // One case per form each root actually holds, which is not the same
+        // set for all three. The project tier holds memq's whole output: both
+        // sidecars, the decay stamp, and them again at the two depths the
+        // re-include has to keep reaching, the archive directory and the
+        // run-scoped pending tier, whose usage sidecar memq reads back inside
+        // a run and whose loss would cost a crashed run its own stamps. The
+        // two shared tiers hold the usage sidecar and nothing else of memq's,
+        // because the journal's writers and the decay stamp's both resolve
+        // through the project memory directory.
+        const owned = [mem + '/outcomes.jsonl', mem + '/usage.jsonl', mem + '/decay-stamp',
+            mem + '/archive/outcomes.jsonl', mem + '/archive/decay-stamp',
+            mem + '/pending/run-7/usage.jsonl',
+            'memory-types/usage.jsonl', 'memory-types/archive/usage.jsonl',
+            'memory-operator/usage.jsonl', 'memory-operator/archive/usage.jsonl'];
+        assert.deepStrictEqual(predicateAnswers(owned), owned.map(() => true));
+        for (const rel of owned) {
+            assert.strictEqual(isIgnored(fake.store, rel), false, rel + ' must be admitted');
+        }
+        // A .jsonl no memq surface writes, at the same depths. memory-index
+        // .jsonl is the near miss worth naming: memory-index.js writes that
+        // name at the store root, which /* excludes and nothing re-includes,
+        // so a copy of it inside a tier is a foreign file like any other.
+        assertRefusedByLeafForm(fake.store, [
+            [mem + '/stray.jsonl', mem + '/stray.md'],
+            [mem + '/memory-index.jsonl', mem + '/memory-index.md'],
+            [mem + '/pending/run-7/stray.jsonl', mem + '/pending/run-7/stray.md']
+        ], '/projects/*/memory/**', '!/projects/*/memory/**/*.md');
+        assertRefusedByLeafForm(fake.store, [
+            ['memory-types/stray.jsonl', 'memory-types/stray.md'],
+            // The two forms the project tier holds and this one does not.
+            // decay-stamp takes a .md control, having no extension to vary.
+            ['memory-types/decay-stamp', 'memory-types/decay-stamp.md'],
+            ['memory-types/archive/decay-stamp', 'memory-types/archive/decay-stamp.md']
+        ], '/memory-types/**', '!/memory-types/**/*.md');
+        assertRefusedByLeafForm(fake.store, [
+            ['memory-operator/stray.jsonl', 'memory-operator/stray.md'],
+            ['memory-operator/decay-stamp', 'memory-operator/decay-stamp.md'],
+            ['memory-operator/archive/decay-stamp', 'memory-operator/archive/decay-stamp.md']
+        ], '/memory-operator/**', '!/memory-operator/**/*.md');
+        // The journal, refused on both shared tiers against the sharpest
+        // control there is: the sidecar the same root does admit, in the same
+        // directory and the same .jsonl form. Its admission leaves the leaf
+        // NAME as the only thing that differs, so the refusal cannot be read
+        // as being about the extension, the directory, or the root.
+        assertRefusedByLeafForm(fake.store, [
+            ['memory-types/outcomes.jsonl', 'memory-types/usage.jsonl'],
+            ['memory-types/archive/outcomes.jsonl', 'memory-types/archive/usage.jsonl']
+        ], '/memory-types/**', '!/memory-types/**/usage.jsonl');
+        assertRefusedByLeafForm(fake.store, [
+            ['memory-operator/outcomes.jsonl', 'memory-operator/usage.jsonl'],
+            ['memory-operator/archive/outcomes.jsonl', 'memory-operator/archive/usage.jsonl']
+        ], '/memory-operator/**', '!/memory-operator/**/usage.jsonl');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+test('the root list, the generated allowlist, and the per-root leaf sets cannot drift apart', { skip: !isWin }, () => {
+    // Three surfaces are written from the roots: the ignore text writes a
+    // block per root from a literal prefix, the predicate branches on a
+    // literal per root, and the attributes text iterates the prefix list. The
+    // first two are pinned against each other in doctrine-parity.test.js; this
+    // is the third, because a root added to the generator and not to the list
+    // would silently cost that tier its union merge, which nothing else here
+    // would notice.
+    const script = '. ' + q(INSTALLER) + '; '
+        + '$listed = @(Get-MemorySyncAdmittedRootPrefixes); '
+        + '$generated = @(((Get-MemorySyncIgnoreText) -split "`n") '
+        + '| Where-Object { $_ -match \'^!(.+)/\\*\\*/$\' } '
+        + '| ForEach-Object { $Matches[1] }); '
+        + '@{ Listed = $listed; Generated = $generated } | ConvertTo-Json -Compress';
+    const res = pwsh(script);
+    assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+    const roots = JSON.parse(res.stdout);
+    assert.ok(roots.Listed.length >= 4, JSON.stringify(roots));
+    assert.deepStrictEqual([...roots.Generated].sort(), [...roots.Listed].sort(),
+        'the roots the ignore text re-includes and the roots Get-MemorySyncAdmittedRootPrefixes '
+        + 'names are no longer the same set, so a root exists whose merge attributes are not derived');
+
+    // And the leaf function refuses a root it has no arm for, rather than
+    // handing back another root's forms. Watched speaking rather than assumed:
+    // the case is a prefix no arm names, and the assertion is on the message.
+    const bad = pwsh('. ' + q(INSTALLER) + '; '
+        + 'try { Get-MemorySyncAllowedLeafPatterns -RootPrefix \'/coordinator-new\' } '
+        + 'catch { Write-Output $_.Exception.Message }');
+    assert.strictEqual(bad.status, 0, bad.stdout + bad.stderr);
+    assert.match(bad.stdout, /no leaf set is defined for the root '\/coordinator-new'/,
+        'an unnamed root must throw rather than fall through to another root\'s forms: ' + bad.stdout);
 });
 
 test('a memory file whose name carries an accent is an ordinary tracked file, not a leak', { skip: !isWin }, () => {
@@ -663,15 +914,32 @@ test('the journals merge as line unions in every tier, live and archived', { ski
         assert.strictEqual(installRepo(fake.store).status, 0);
         // Two machines that both appended since the last sync hold no
         // conflicting edit, only two sets of new lines, so the attribute is
-        // what keeps a routine append from becoming a merge conflict.
+        // what keeps a routine append from becoming a merge conflict. Every
+        // path here is one the allowlist admits: check-attr answers about a
+        // path whether or not it can ever sync, so a pin naming a refused name
+        // would assert merge semantics for a file that never reaches a merge.
         for (const rel of ['projects/' + PROJECT_A + '/memory/outcomes.jsonl',
             'projects/' + PROJECT_A + '/memory/usage.jsonl',
-            'projects/' + PROJECT_A + '/memory/archive/old-outcomes.jsonl',
-            'memory-types/outcomes.jsonl',
-            'memory-types/archive/old-outcomes.jsonl',
+            'projects/' + PROJECT_A + '/memory/archive/outcomes.jsonl',
+            'projects/' + PROJECT_A + '/memory/pending/run-7/usage.jsonl',
+            'memory-types/usage.jsonl',
+            'memory-types/archive/usage.jsonl',
             'memory-operator/usage.jsonl',
-            'memory-operator/archive/old-usage.jsonl']) {
+            'memory-operator/archive/usage.jsonl']) {
             assert.strictEqual(mergeAttr(fake.store, rel), 'union', rel + ' must merge as a union');
+            assert.strictEqual(isIgnored(fake.store, rel), false, rel
+                + ' must be a path the allowlist admits, or the union rule covers a file that never syncs');
+        }
+        // And a root carries a union rule only for a .jsonl it admits, the
+        // attributes text being derived from the same per-root leaf sets. The
+        // coordinator root admits no .jsonl at all, and the two shared tiers
+        // admit the usage sidecar and not the journal, so neither name below
+        // has a rule: an absence by construction rather than an omission.
+        for (const rel of ['coordinator/' + MACHINE + '/board-events.jsonl',
+            'memory-types/outcomes.jsonl',
+            'memory-operator/outcomes.jsonl']) {
+            assert.notStrictEqual(mergeAttr(fake.store, rel), 'union',
+                rel + ' is not a path its root admits, so no merge rule may name it');
         }
         // A memory body is prose, where a union merge would interleave two
         // rewrites into nonsense, so it takes git's default.
