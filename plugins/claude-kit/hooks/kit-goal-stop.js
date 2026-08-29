@@ -844,9 +844,12 @@ function main() {
             const attributedPlan = Array.isArray(goal.queue) && typeof goal.queue[position.index] === 'string'
                 ? goal.queue[position.index]
                 : planRel;
-            // Every blocked stop emits, so a session that stops blocked repeatedly
-            // produces one event per stop: the hook stays stateless and dedup is the
-            // event consumer's policy.
+            // A blocked stop that reaches here emits, so a session that stops blocked
+            // repeatedly under distinct blockers produces one event per stop; a stop
+            // whose lead the suppression above found spent emits nothing at all, having
+            // returned before this line. The hook stays stateless beyond that one
+            // suppression, and dedup is the event consumer's policy, keyed on the
+            // blocker's identity rather than on the event count.
             emitGoalEvent({ event: 'goal-blocked', project: cwd, plan: attributedPlan, session: sessionId });
             if (plansRemain(goal)) {
                 // A blocker is a terminal state for this plan, not for the queue:

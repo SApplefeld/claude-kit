@@ -60,7 +60,7 @@ Prefer rich references over prose: acceptance criteria as runnable checks or rub
 ```markdown
 # <Title>
 
-Status: In Progress
+Status: In Progress | Ready
 Commit Model: Review-Only | Branch-and-PR | Commit-and-Push
 Created: YYYY-MM-DD
 
@@ -112,6 +112,8 @@ Unresolved items and who owns the answer.
 ## Chapters
 (Appended by executing-work as sections complete. Leave empty at creation.)
 ```
+
+The `Status:` line is picked at authoring: a spec written for a run that starts now is born `In Progress`, and one written and deliberately parked is born `Ready`, which session start surfaces as parked rather than offering for resume, and which the run that starts it moves to `In Progress`.
 
 The header and structure above are a machine contract read by external tooling, not just kit convention; see `curating-docs/SKILL.md`'s machine contract section for the frozen shape and which values it accepts, including `Model:`. `## Assumptions` sits outside the parsed blocks: it is inert to the external parser, and it must stay outside `## Sections of Work`, whose block any foreign `##` heading ends early.
 

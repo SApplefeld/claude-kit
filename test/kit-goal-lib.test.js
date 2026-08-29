@@ -31,6 +31,8 @@ const {
     clearGoal,
     composeCondition,
     planHead,
+    planStatusReadings,
+    classifyPlanStatus,
     emitGoalEvent,
     lastActivePhrase,
     safeForAuthorization,
@@ -878,6 +880,80 @@ test('planHead classifies a header behind a UTF-8 BOM (PowerShell Set-Content wr
         const bom = String.fromCharCode(0xFEFF);
         writePlan(repo, 'docs/plans/bom.md', bom + 'Status: In Progress\n\nbody\n');
         assert.deepStrictEqual(planHead(repo, 'docs/plans/bom.md'), { exists: true, status: 'in progress' });
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+// Ready is the value for a plan that is authored and deliberately parked before
+// any run starts. It classifies as its own token rather than falling through to
+// 'unknown' so the recovery inventory can list such a plan without offering it
+// the resume directive an In Progress plan gets.
+test('classifyPlanStatus reads Ready as the whole value or the value plus a parenthetical', () => {
+    assert.strictEqual(classifyPlanStatus('# Plan\n\nStatus: Ready\n'), 'ready');
+    assert.strictEqual(classifyPlanStatus('# Plan\n\nstatus:   ready\n'), 'ready');
+    assert.strictEqual(classifyPlanStatus('# Plan\n\nStatus: Ready (parked pending the design round)\n'), 'ready',
+        'a parenthetical qualifies the value rather than replacing it');
+    assert.strictEqual(classifyPlanStatus('Status: Ready\r\n'), 'ready',
+        'a CRLF header reads the same as an LF one');
+    assert.strictEqual(classifyPlanStatus('# Plan\n\nStatus: Ready'), 'ready',
+        'a head window cut at the header still reads the value');
+
+    // Ready is the one leg that is not a bare prefix match, because this word
+    // has ordinary continuations that reverse what it claims. Every surface
+    // that reads 'ready' asserts the plan is written and not started, which is
+    // false of all three of these, and a plan they classified as parked would
+    // draw no unarchived nag either, so it would sit unreported indefinitely.
+    assert.strictEqual(classifyPlanStatus('Status: Ready for review\n'), 'unknown');
+    assert.strictEqual(classifyPlanStatus('Status: Ready to merge\n'), 'unknown');
+    assert.strictEqual(classifyPlanStatus('Status: Ready to archive\n'), 'unknown');
+
+    // The three existing readings are untouched by the addition.
+    assert.strictEqual(classifyPlanStatus('Status: Complete\n'), 'complete');
+    assert.strictEqual(classifyPlanStatus('Status: Complete (archived)\n'), 'complete');
+    assert.strictEqual(classifyPlanStatus('Status: In Progress\n'), 'in progress');
+    assert.strictEqual(classifyPlanStatus('Status: Parked\n'), 'unknown');
+
+    // The same anchoring the other legs take: the value must sit on the
+    // header's own line, and the word in body prose is not a header.
+    assert.strictEqual(classifyPlanStatus('Status:\nready once the review lands\n'), 'unknown');
+    assert.strictEqual(classifyPlanStatus('Status: In Progress\n\n## Chapters\nReady for review.\n'), 'in progress');
+
+    // A doc carrying a started value as well as Ready is a plan someone began:
+    // the started reading wins, so a run in flight is never reported as parked.
+    assert.strictEqual(classifyPlanStatus('Status: In Progress\nStatus: Ready\n'), 'in progress');
+    assert.strictEqual(classifyPlanStatus('Status: Ready\nStatus: Complete\n'), 'complete');
+});
+
+// Pin, not a red: planReadsTerminal compares the whole value to 'complete', so
+// a Ready header is non-terminal under the frozen contract however the loose
+// classifier names it. The two readings stay apart here because a terminal
+// reading of Ready would let a reporting surface count a plan nobody has
+// started as finished work.
+test('a Ready plan reads non-terminal under the frozen contract', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/parked.md', '# P\n\nStatus: Ready\n\n## Sections of Work\n');
+        const readings = planStatusReadings(repo, 'docs/plans/parked.md');
+        assert.strictEqual(readings.terminal, false, 'a parked plan is not a finished plan');
+        assert.strictEqual(readings.status, 'ready');
+
+        writePlan(repo, 'docs/plans/parked.md',
+            '# P\n\nStatus: Ready (parked pending the design round)\n\n## Sections of Work\n');
+        assert.strictEqual(planStatusReadings(repo, 'docs/plans/parked.md').terminal, false);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+// A parked plan is a plan that may still be armed: Ready is a pre-arm value,
+// and the only status arming refuses is complete.
+test('armGoal accepts a plan whose header is Status: Ready', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/parked.md', '# P\n\nStatus: Ready\n\n## Sections of Work\n');
+        assert.strictEqual(armGoal(repo, 'docs/plans/parked.md').ok, true);
+        assert.strictEqual(readGoal(repo).plan, 'docs/plans/parked.md');
     } finally {
         rmRepo(repo);
     }
@@ -3930,6 +4006,27 @@ test('a queued plan left in place but marked Status: Complete reports as finishe
         const out = statusStdout(repo);
         assert.match(out, /queue: plan 2 of 2/);
         assert.match(out, /the stored position still says plan 1/);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+// Pin, not a red: the position walk reads the frozen contract, under which
+// Ready is not Complete and so finishes nothing, whatever name the loose
+// classifier gives the value. The walk counts entries finished with no author
+// in the loop, which is why it holds to the strict reading. The per-entry
+// token beside it is the loose reading, so it prints the value the classifier
+// read.
+test('a queued plan flipped to Status: Ready leaves the position alone', () => {
+    const repo = makeRepo();
+    try {
+        armTwoPlans(repo);
+        writePlan(repo, 'docs/plans/a.md', '# A\n\nStatus: Ready\n\n## Sections of Work\n');
+        const out = statusStdout(repo);
+        assert.match(out, /queue: plan 1 of 2/, 'a parked plan is not a finished plan');
+        assert.doesNotMatch(out, /stored position/);
+        assert.match(out, /> docs\/plans\/a\.md \[ready\]/,
+            'the queue rendering prints the value the classifier read');
     } finally {
         rmRepo(repo);
     }

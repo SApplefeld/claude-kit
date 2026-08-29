@@ -120,6 +120,45 @@ test('a Complete spec still sitting in docs/plans/ is flagged as unarchived', ()
     } finally { rmDir(cwd); }
 });
 
+// Two pins, not reds: the Status question here is kit-goal-lib's
+// classifyPlanStatus, and a Ready plan is neither complete nor scratch, so
+// this hook leaves it alone on both counts. A parked plan is not a missed
+// close-out, and a header value is not what marks a file as leaked scratch.
+const READY = '# Title\n\nStatus: Ready\nCommit Model: Commit-and-Push\n';
+
+test('a Ready spec sitting in docs/plans/ is not flagged as unarchived', () => {
+    const cwd = makeDir('sdh-ready-');
+    try {
+        writeFile(path.join(cwd, 'docs', 'plans', 'neo_public-api_spec_v1.md'), READY);
+        const { blocked, reason } = runHook(cwd);
+        assert.strictEqual(blocked, false,
+            'a parked plan is not a missed close-out; reason was: ' + reason);
+    } finally { rmDir(cwd); }
+});
+
+// The plan-shaped-file check asks whether a Status header is present at all,
+// never what it says, so every value it does not classify still reads as a
+// curated plan rather than as leaked scratch.
+test('a Ready-headered doc with a scratch-ish name is exempted via the header contract', () => {
+    const cwd = makeDir('sdh-ready-header-');
+    try {
+        writeFile(path.join(cwd, 'docs', 'plans', 'neo_security_v2.md'), READY);
+        const { blocked, reason } = runHook(cwd);
+        assert.strictEqual(blocked, false,
+            'a Ready header is a plan header; reason was: ' + reason);
+
+        // The control: the same name with no header contract is still caught,
+        // so the allow above is the header being read rather than the scratch
+        // check having gone quiet.
+        writeFile(path.join(cwd, 'docs', 'plans', 'neo_security_v3.md'), '# leaked review\n');
+        const second = runHook(cwd);
+        assert.strictEqual(second.blocked, true);
+        assert.match(second.reason, /neo_security_v3\.md/);
+        assert.ok(!second.reason.includes('neo_security_v2.md'),
+            'the header-bearing sibling stays exempt: ' + second.reason);
+    } finally { rmDir(cwd); }
+});
+
 test('a clean docs/ tree (in-progress spec, no scratch) allows the stop', () => {
     const cwd = makeDir('sdh-clean-');
     try {

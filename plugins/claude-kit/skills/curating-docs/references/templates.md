@@ -43,7 +43,7 @@ This folder holds active plans only: specs that are open or in progress. A plan 
 
 - A plan lives here while it is being worked. When it reaches `Status: Complete` or is abandoned, it moves to `../archive/` in the same close-out that finished it (via `git mv`, so history is preserved).
 - Naming: `<project>_<content-type>_v<n>.md`. Increment the version rather than overwriting a prior one.
-- The `Status` header drives the lifecycle. `In Progress` plans are surfaced for resume; `Complete` plans still sitting here are flagged as unarchived.
+- The `Status` header drives the lifecycle. `Ready` plans are surfaced as authored and parked, with no resume push; `In Progress` plans are surfaced for resume; `Complete` plans still sitting here are flagged as unarchived.
 - When a plan relates to or supersedes another, cross-reference it in a `## Related` section.
 
 ## Current

@@ -1,10 +1,10 @@
 # A value nobody measured is prose wearing a number's clothes, and the kit stops asking for them
 
-Status: Draft
+Status: Ready
 Commit Model: Commit-and-Push
 Created: 2026-08-28
 
-**Authored and parked by the kaizen pass of 2026-08-28; sections to be briefed in a design round with the operator before arming.** Promoted from two kaizen notes the operator approved combining (decided 2026-08-28 at the expert session's keyboard): the measurement-expiry note and the incremented-series note, one root between them. Scheduled after the current four-plan queue (seat-infrastructure, memq-network-cwd-resolver, review-and-record-discipline, plan-lifecycle-and-diagnostics); scheduling is the coordinator's, arming is the operator's, and this plan carries no Dispatch Authorization section until he grants one. The Draft status is deliberate, keeping the parked plan out of the SessionStart resume inventory until armed.
+**Authored and parked by the kaizen pass of 2026-08-28; sections to be briefed in a design round with the operator before arming.** Promoted from two kaizen notes the operator approved combining (decided 2026-08-28 at the expert session's keyboard): the measurement-expiry note and the incremented-series note, one root between them. Scheduled after the current four-plan queue (seat-infrastructure, memq-network-cwd-resolver, review-and-record-discipline, plan-lifecycle-and-diagnostics); scheduling is the coordinator's, arming is the operator's, and this plan carries no Dispatch Authorization section until he grants one. The Ready status is the parked state's own value: session start lists the plan as authored and parked rather than offering it for resume, and the run that starts it sets the header to In Progress.
 
 ## Goal
 

@@ -1014,8 +1014,8 @@ function writeState(cwd, state) {
 }
 
 // Read the first 2KB of a plan file and classify its Status header.
-// Returns { exists, status } where status is 'complete', 'in progress', or
-// 'unknown'. exists is false when the file cannot be opened at all.
+// Returns { exists, status } where status is 'complete', 'in progress',
+// 'ready', or 'unknown'. exists is false when the file cannot be opened at all.
 //
 // The path must read as a plan doc before it is opened, judged by
 // planFileSize's kind rule, because the plan path arrives from the goal-state
@@ -1104,7 +1104,7 @@ function planHeadText(cwd, planRel) {
 }
 
 // The Stop hook's reading of a plan doc's Status header: 'complete', 'in
-// progress', or 'unknown'. Deliberately looser than the frozen machine
+// progress', 'ready', or 'unknown'. Deliberately looser than the frozen machine
 // contract planReadsTerminal below answers to, and the two are separate
 // because they decide different things. This one decides whether a leash
 // releases or advances, where a header carrying trailing text after Complete
@@ -1123,6 +1123,11 @@ function planHeadText(cwd, planRel) {
 // releases on it, and unfinished to both reporting surfaces, which keep
 // reporting it as the current position until the stop that moves the index.
 function classifyPlanStatus(head) {
+    // A non-string head has no header to classify, the same guard the strict
+    // twin below takes. Every caller today reads through planHeadText and
+    // checks for text first, so this is the shape of the contract rather than
+    // a live path.
+    if (typeof head !== 'string') return 'unknown';
     // Classify from the Status header only: anchored to a line start (m flag)
     // so body prose cannot match, and the value must sit on the same line as
     // the header ([^\S\r\n]* is horizontal whitespace only, never a newline),
@@ -1130,10 +1135,31 @@ function classifyPlanStatus(head) {
     // progress" does not misclassify the plan. A leading UTF-8 BOM (PowerShell
     // Set-Content writes one) is stripped by the reader so the anchor sees the
     // header. The Status header sits on its own line near the top by convention.
+    //
+    // Ready is the value of a plan that is authored and deliberately parked
+    // before any run starts. It is a value of its own rather than an
+    // unrecognized one so a reporting surface can list such a plan as parked
+    // instead of not listing it at all, which is what hides finished, ready
+    // work from every recovery surface. It ranks below the two started
+    // readings: a doc carrying Ready alongside In Progress or Complete is one
+    // somebody began, and reporting a run in flight as parked is the more
+    // expensive error.
+    //
+    // Ready is the one leg that does not take its siblings' bare prefix match.
+    // It must be the whole value, optionally followed by a parenthetical
+    // ("Ready (parked pending the design round)"), because unlike Complete and
+    // In Progress this word has ordinary English continuations that reverse
+    // what it claims: "Ready for review", "Ready to merge" and "Ready to
+    // archive" all name work somebody already did, and classifying them as
+    // parked would have every reporting surface assert of them that the plan
+    // is written and not started. Those fall through to 'unknown', the same
+    // answer any other unrecognized value gets.
     const inProgress = /^status:[^\S\r\n]*in[^\S\r\n]*progress/im.test(head);
     const complete = /^status:[^\S\r\n]*complete/im.test(head) && !inProgress;
+    const ready = /^status:[^\S\r\n]*ready[^\S\r\n]*(?:\([^)\r\n]*\)[^\S\r\n]*)?\r?$/im.test(head);
     if (complete) return 'complete';
     if (inProgress) return 'in progress';
+    if (ready) return 'ready';
     return 'unknown';
 }
 
@@ -2615,9 +2641,14 @@ function emitGoalEvent(details) {
 // refuse, and a doctor that silently corrected too would have nothing left to
 // report the defect with.
 // classifyPlanStatus and planStatusReadings ride along for the same
-// single-rule reason one level down. The SessionStart hook's plan inventory
-// asks the loose Status question of docs/plans/ entries and would otherwise
-// carry a second spelling of the regex in the same hook whose queue clause
-// reads the strict one; the CLI's queue rendering asks both questions of one
-// entry and must show which reading each of its lines used.
+// single-rule reason one level down. Three surfaces ask the loose Status
+// question and none of them spells it. The SessionStart hook's plan inventory
+// asks it of docs/plans/ entries and would otherwise carry a second spelling
+// of the regex in the same hook whose queue clause reads the strict one; the
+// Stop hook's docs-hygiene check asks it of the same directory to find plans
+// left unarchived, at every turn end; and the CLI's queue rendering asks both
+// questions of one entry and must show which reading each of its lines used.
+// A value the classifier learns reaches all three at once, which is the whole
+// point of naming them here: a fourth surface spelling its own regex is the
+// drift this export exists to prevent.
 module.exports = { goalPath, goalRoot, readGoal, armGoal, appendGoal, advanceGoal, bindSession, clearGoal, composeCondition, planHead, planStatusReadings, classifyPlanStatus, emitGoalEvent, normalizePlanArg, lastActivePhrase, isSessionIdShaped, planFileSize, planHeadText, planPathState, planDisplayRoot, recordExecutionTree, pathErrnoClass, safeForAuthorization, queuePosition, GOAL_STATE_MAX_BYTES };

@@ -22,7 +22,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { planHeadText } = require('./kit-goal-lib.js');
+const { planHeadText, classifyPlanStatus } = require('./kit-goal-lib.js');
 
 function readStdin() {
     try { return fs.readFileSync(0, 'utf8'); } catch { return ''; }
@@ -52,15 +52,20 @@ function findCompletedUnarchived(cwd) {
                 // strip and the decode are the shared reader's too.
                 const head = planHeadText(cwd, 'docs/plans/' + file);
                 if (!head.exists || head.text === null) continue;
-                // Classify from the Status header only: anchored to a line start
-                // (m flag) so body prose cannot match, and the value must sit on
-                // the same line as the header ([^\S\r\n]* is horizontal whitespace
-                // only, never a newline), so a bare "Status:" line above a line
-                // beginning "complete" or "in progress" does not misclassify the
-                // plan. A leading UTF-8 BOM (PowerShell Set-Content writes one) is
-                // stripped by the shared reader so the anchor sees the header. The
-                // header sits on its own line near the top by convention.
-                if (/^status:[^\S\r\n]*complete/im.test(head.text) && !/^status:[^\S\r\n]*in[^\S\r\n]*progress/im.test(head.text)) {
+                // The Status question is classifyPlanStatus's, the same rule
+                // session start's recovery inventory and the leash answer to,
+                // so no two surfaces that call the classifier can read one
+                // plan doc's header differently. That is a statement about
+                // those surfaces and not about the document: the strict
+                // contract predicate the position walk uses answers a
+                // different question and disagrees by design on a header like
+                // 'Complete (archived)', which is complete here and
+                // non-terminal there. The classifier owns the anchoring (the
+                // value must sit on the header's own line, so body prose
+                // cannot answer for the document) and the vocabulary, which is
+                // what keeps a value the classifier learns from needing a
+                // second spelling here.
+                if (classifyPlanStatus(head.text) === 'complete') {
                     files.push(file.replace(/[^\x20-\x7E]/g, '').slice(0, 120));
                 }
             } catch { /* skip unreadable */ }
@@ -74,6 +79,12 @@ function findCompletedUnarchived(cwd) {
 // or scratch report has neither. Head-read only, BOM-tolerant, never throws. This
 // is the definitive "curated plan, not scratch" signal, used to exempt a spec
 // whose project or topic name embeds a word the SCRATCH_NAME set matches.
+//
+// It asks whether the rows are present, never what they say, which is why it
+// spells its own presence test rather than going through classifyPlanStatus:
+// any Status value at all marks the file as a plan here, including one no
+// classifier has a name for, so a curated doc is never read as scratch on the
+// strength of a header value nothing recognizes yet.
 function hasPlanHeaderContract(full) {
     try {
         // The same shared kind-and-size reader the plans scan above goes
