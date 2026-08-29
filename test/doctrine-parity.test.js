@@ -339,6 +339,59 @@ test('the box-check bullet states the class in each copy and in the skill', () =
         + 'owned by a running engine, which the doctrine\'s copy of the same rule '
         + 'covers; the two are the same rule at two points of action and a '
         + 'session that loads only one of them must get the same check');
+
+    // The instrument limit itself, which the substrings above cannot reach:
+    // a surface can carry the engine-agnostic class in full and still
+    // present the poll as the whole check, which is the divergence that
+    // leaves one copy calling sufficient what the other calls insufficient.
+    // The two carriers word the limit in their own registers, so each leg is
+    // pinned on the shape both hold rather than on a literal one of them
+    // happens to use, and every leg carries its own negating token: a
+    // pattern matching `a sample and therefore a clearance`, or matching the
+    // fan-out noun in a sentence saying the poll sees it, goes quiet on the
+    // one rewrite that inverts the rule it is pinning. The spellings differ
+    // per file, so the neighbour leg accepts both rather than forcing one
+    // carrier onto the other's house spelling. The role skill states the
+    // same blind spots and is deliberately not a third carrier here: it
+    // words the limit as a property of the claim protocol rather than of a
+    // pre-suite check, so it shares the fan-out leg and neither of the other
+    // two, and its own pins sit below.
+    for (const [label, pattern] of [
+        ['the poll is a sample rather than a clearance',
+            /poll is a sample[^.]*(rather than|never|not) a clearance/],
+        ['a poll cannot see in-process agent fan-out',
+            /cannot see in-process agent fan-out/],
+        ['a poll cannot see a neighbour that starts after the sample',
+            /cannot see a neighbou?r that starts after the sample and before/],
+        ['a clean read licenses a spawn only alongside the claim protocol',
+            /licenses a spawn only alongside the claim protocol/],
+    ]) {
+        assert.match(inSkill[0], pattern,
+            'the doctrine box-check bullet no longer states that ' + label
+            + ', so a session that loads only the doctrine performs exactly '
+            + 'the check the skill calls insufficient');
+        assert.match(inTesting[0], pattern,
+            'the testing-discipline skill\'s box check no longer states that '
+            + label + ', while the doctrine\'s copy of the same rule does');
+    }
+
+    // The cost asymmetry is the doctrine's alone and cannot ride the loop
+    // above, which can only pin what both carriers already share. It is the
+    // leg that says what to do with each reading, so a bullet that lost it
+    // would state the limit and leave a reader to price it, and the two
+    // readings price out in opposite directions: waiting on residue costs
+    // bounded minutes, where starting into work the poll could not see costs
+    // an unbounded collision. The role skill owns the line and the doctrine
+    // states it here because the doctrine is the surface a session has
+    // loaded when it decides whether to start.
+    assert.match(inSkill[0], /drawn on cost rather than on evidence/,
+        'the box-check bullet no longer prices its two readings against each '
+        + 'other, so a clean poll reads as evidence for starting rather than '
+        + 'as the sample the sentence before it says it is');
+    assert.match(inSkill[0], /never a basis for starting/,
+        'the box-check bullet no longer states that a clean read is never a '
+        + 'basis for starting, which is the half the role skill calls '
+        + 'unbounded in cost and the half a reader in a hurry drops first');
 });
 
 // The far end of both pointers above, in the shape the style-skill pin uses:
@@ -380,6 +433,27 @@ test('the testing-discipline skill still carries what the doctrine routes to it'
             + 'section heading still stands: ' + lead);
     }
     assertTrackedInIndex(parts.join('/'));
+});
+
+// The far end of the box-check bullet's claim-protocol pointer, pinned on the
+// one leg the role skill's other far-end pins below do not take: the near end
+// still naming this target. What the target carries, and that it sits in the
+// index, are pinned once below rather than restated here, so a reworded
+// sentence has one site to move and the index coverage for this path does not
+// hang on a prose pointer surviving.
+test('the box-check bullet\'s claim-protocol pointer resolves and is tracked', () => {
+    const lead = '- **One heavy process at a time is a per-machine budget';
+    const bullets = skillBody().split('\n').filter((l) => l.startsWith(lead));
+    assert.strictEqual(bullets.length, 1,
+        'expected exactly one box-check bullet to read the pointer from');
+    assert.ok(bullets[0].includes('`skills/role/SKILL.md` under the kit plugin root'),
+        'the box-check bullet no longer points at the role skill for the claim '
+        + 'protocol, so either it restates the protocol it is supposed to defer '
+        + 'or it defers to nothing');
+    const parts = ['plugins', 'claude-kit', 'skills', 'role', 'SKILL.md'];
+    assert.ok(fs.existsSync(path.join(__dirname, '..', ...parts)),
+        'the box-check bullet routes its claim protocol to a skill that is not '
+        + 'on disk: ' + parts.join('/'));
 });
 
 // The peer-sessions bullet defers its whole operative content to the
@@ -672,12 +746,12 @@ test('the coordinator holds four functions, kaizen among them, and no surface st
 // contract's order, rather than a heading, because a heading survives while
 // the shape under it is renamed; the directory contract's four file forms
 // and its single-writer rule; and the delegation model's own load-bearing
-// phrases. The index-tracking assertion the sibling far ends carry is not
-// taken here: this pin's red-then-green protocol runs in a worktree whose
-// implementer does not stage, so an index assertion would hold the pin red
-// across exactly the runs that verify it; the existence check and the
-// content leads carry the deletion half, and the never-committed half rides
-// the section's own commit.
+// phrases. The index-tracking assertion is taken here, once for this path,
+// because this pin reaches the file through its own path constant rather
+// than through a prose pointer: a target present in a worktree but never
+// added passes on the machine that wrote it and resolves to nothing on a
+// fresh install, and that coverage should not end because some bullet
+// elsewhere was reworded.
 test('the role skill is pointed at by README and peer-sessions and carries what the pointers promise', () => {
     const readme = fs.readFileSync(path.join(__dirname, '..', 'README.md'), 'utf8');
     const mapLine = readme.split(/\r?\n/).find((l) => /^\s*role\//.test(l));
@@ -783,6 +857,7 @@ test('the role skill is pointed at by README and peer-sessions and carries what 
         'the role skill no longer states why a poll cannot backstop a claim, '
         + 'leaving the rule without the reason that stops a later pass '
         + 'restoring the poll as an improvement');
+    assertTrackedInIndex('plugins/claude-kit/skills/role/SKILL.md');
 });
 
 // The pin above covers the delegation model's spine (the chain, the
