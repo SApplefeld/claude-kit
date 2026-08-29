@@ -34,10 +34,7 @@ Decided 2026-08-29 by the operator in the design dialog.
 
 ## Execution surface
 
-Ruled at arming, not here. The leash's goal state is one file per checkout, and the goal library resolves `.kit/` against the main checkout even from a linked worktree (the library's own resolution rule), so a second leashed seat cannot arm on this repo while the implementation queue holds the leash. Two modes work:
-
-- **After the queue drains (recommended).** Arm in a fresh session once the current queue completes and the fleet update lands. This also fixes the moving-target problem: five queued plans edit the very skills under audit (memory-system, coordinator, peer-sessions among them) and two add new skills, so an audit run today reads text that is superseded within days and misses prose that will exist next week. Cost: the wait.
-- **Concurrent, against a pinned snapshot.** A second clone (its own checkout, its own goal state) at a pinned commit gives the readers a stable corpus while the queue advances; the adjudication then re-bases every surviving finding against HEAD before the brief. Choose this only if the audit cannot wait; it buys days at the price of a re-base pass and a third committer on origin.
+Ruled 2026-08-29 by the operator: the audit arms only after the implementation queue drains and the fleet update completes, so the audit reads the corpus at rest with the queue's new machinery both on disk and in the installed payload the audit session itself runs under. The plan stays parked outside the armed queue until then; the update's completion is the arming trigger, and the arming is the operator's word at that point, in a fresh session on this checkout, whose leash is free by then. The concurrent mode (a second clone at a pinned commit, findings re-based against HEAD at adjudication) was declined with the wait: the queue rewrites five of the skills under audit and adds two more, so a concurrent sweep spends readers on prose superseded within days and re-buys the difference at the re-base pass. The mechanical constraint stands recorded for the arming session: the leash's goal state is one file per checkout, and the goal library resolves `.kit/` against the main checkout even from a linked worktree (the library's own resolution rule), so no second leashed seat could have armed on this repo mid-queue in any case.
 
 ## Sections of Work
 
