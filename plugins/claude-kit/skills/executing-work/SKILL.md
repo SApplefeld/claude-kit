@@ -172,19 +172,23 @@ For each Section of Work, in order (sections run concurrently only where the dis
        verification grep's predicate, a complete sweep and a partial one
        leave behind the same clean grep. A referring document, a call
        site, an archived copy are instances; the class is any site the
-       sweep reached and the change did not touch. And a control you run
-       against an instance you named proves the instrument functions and
-       proves nothing about its coverage, so a check whose subject is a
-       class states what would catch a member you did not name, a
-       structural pattern over the class's shape where one exists; where
-       the class can be neither enumerated nor shaped, the report is that
-       the named members are swept and the class is not, never that the
-       sweep is clean. Build the control under the `.kit/` scratch path. A
-       control that must touch the tree under review is a tree-mutating
-       probe and takes this skill's exclusivity rule for one, carried here
-       because an agent holds no skills to resolve a pointer through: no
-       other agent reading the tree while it runs, and a restore from
-       copies taken before the first mutation
+       sweep reached and the change did not touch. And what a control
+       proves depends on what it was handed: one run against an instance
+       the pattern's own literals already name proves the instrument
+       functions and says nothing about its coverage, while one run
+       against an instance withheld from those literals, matched on its
+       shape rather than a string the pattern was handed, is coverage
+       evidence too. A check whose subject is a class owes the coverage
+       answer either way, so it states what would catch a member you did
+       not name, a structural pattern over the class's shape where one
+       exists; where the class can be neither enumerated nor shaped, the
+       report is that the named members are swept and the class is not,
+       never that the sweep is clean. Build the control under the
+       `.kit/` scratch path. A control that must touch the tree under
+       review is a tree-mutating probe and takes this skill's exclusivity
+       rule for one, carried here because an agent holds no skills to
+       resolve a pointer through: no other agent reading the tree while it
+       runs, and a restore from copies taken before the first mutation
      - Workaround bar: a workaround needing a paragraph to justify means fix the
        code or escalate
      - When returning NEEDS_CONTEXT on a hard question, state it consult-shaped:

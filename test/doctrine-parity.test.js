@@ -2420,9 +2420,20 @@ test('the owning-surface class sentence is one sentence on all three surfaces', 
 // registers, so this pins each surface's own wording rather than byte-identity.
 // Two registers carry it: the skill and the two doctrine copies share the
 // operative phrases verbatim, and the two sighted charters state the same duty
-// in the reviewer's voice. The charter leg deliberately pins only the durable
-// half, because the discriminator sentence beside it is itself scheduled to
-// change, and a pin over a sentence due to be corrected reds on the fix. What
+// in the reviewer's voice. Four legs run, because the rule has parts that
+// drift separately. The operative leg holds the coverage answer in the
+// register the skill and the doctrine share, and the charter leg holds the
+// same duty in the reviewer's voice. The discriminator leg spans all five,
+// because the phrase it carries decides the rule's outcome rather than how a
+// surface says it: what the pattern was handed is what separates a control
+// that proved the instrument from one that proved coverage. The verdict leg
+// carries that phrase through to what it concludes, over the three surfaces
+// that share a spelling for it, because a presence pin greens on a rewrite
+// that keeps the phrase and inverts its verdict. The downgrade gate rides on
+// the charter leg rather than the five-surface one: it fires on a class that
+// can be neither enumerated nor shaped rather than on a missing shape alone,
+// and a charter stating it one clause narrower than the surfaces that own it
+// would have a reviewer flag work that followed the doctrine exactly. What
 // makes the pin necessary is that the doctrine copies joined the set last and a
 // key-phrase grep run from the charters would have missed them: the review round
 // that produced this clause found the doctrine copies shipping "neither listed
@@ -2471,6 +2482,49 @@ test('the coverage-answer clause reaches every surface carrying the absence-chec
                 + ' times, not once; a reviewer that stops asking whether a '
                 + 'control proved coverage is the backstop this rule leans on');
         }
+    }
+
+    const discriminator = ['a string the pattern was handed'];
+    const charterPaths = [
+        ['plugins/claude-kit/agents/adversarial-reviewer.md',
+            path.join(__dirname, '..', 'plugins', 'claude-kit', 'agents',
+                'adversarial-reviewer.md')],
+        ['plugins/claude-kit/agents/prose-reviewer.md',
+            path.join(__dirname, '..', 'plugins', 'claude-kit', 'agents',
+                'prose-reviewer.md')],
+    ];
+    for (const [rel, p] of paths.concat(charterPaths)) {
+        const body = collapseWhitespace(fs.readFileSync(p, 'utf8'));
+        for (const phrase of discriminator) {
+            const hits = body.split(phrase).length - 1;
+            assert.strictEqual(hits, 1, rel + ' carries the discriminator '
+                + 'phrase \'' + phrase + '\' ' + hits + ' times, not once; '
+                + 'all five surfaces decide the same two questions, so one that '
+                + 'drops a phrase is licensing the opposite call from its '
+                + 'siblings: crediting a control the others discount, or '
+                + 'downgrading a class a complete enumeration already swept');
+        }
+    }
+
+    for (const [rel, p] of charterPaths) {
+        const body = collapseWhitespace(fs.readFileSync(p, 'utf8'));
+        const phrase = 'neither enumerated nor shaped';
+        const hits = body.split(phrase).length - 1;
+        assert.strictEqual(hits, 1, rel + ' gates the honest downgrade on '
+            + '\'' + phrase + '\' ' + hits + ' times, not once; a charter that '
+            + 'gates it on a missing shape alone downgrades a class a complete '
+            + 'enumeration already swept, and flags as unproven the work that '
+            + 'followed the surfaces owning this rule');
+    }
+
+    const verdict = 'a string the pattern was handed, is coverage evidence too';
+    for (const [rel, p] of [paths[0]].concat(charterPaths)) {
+        const body = collapseWhitespace(fs.readFileSync(p, 'utf8'));
+        const hits = body.split(verdict).length - 1;
+        assert.strictEqual(hits, 1, rel + ' carries the discriminator through '
+            + 'to its verdict ' + hits + ' times, not once; pinning the phrase '
+            + 'alone greens on a rewrite that keeps it and concludes the opposite, '
+            + 'so the token and the call it licenses are pinned together');
     }
 });
 

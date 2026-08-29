@@ -1,6 +1,6 @@
 # claude-kit
 
-Scott Applefeld's personal Claude Code marketplace. One repo that every project picks up: workflow skills (brainstorm, execute, finish) with a drive-to-completion contract and per-section model down-selection, discipline skills (systematic debugging, testing discipline, responding to review, skill authoring, kaizen self-improvement, a multi-lens design council, and cold judgment calls), fresh-context review agents, C# and T-SQL house-style guides, and a hardened compaction-recovery hook, packaged as the `claude-kit` plugin in the `applefeld` marketplace.
+Scott Applefeld's personal Claude Code marketplace. One repo that every project picks up: workflow skills (brainstorm, execute, finish) with a drive-to-completion contract and per-section model down-selection, discipline skills (systematic debugging, testing discipline, responding to review, skill and curated-prose authoring, kaizen self-improvement, a multi-lens design council, and cold judgment calls), fresh-context review agents, C# and T-SQL house-style guides, and a hardened compaction-recovery hook, packaged as the `claude-kit` plugin in the `applefeld` marketplace.
 
 ## STRUCTURE
 
@@ -20,7 +20,7 @@ claude-kit/                          (repo = the marketplace)
         systematic-debugging/        Root-cause discipline before any fix
         testing-discipline/          Litmus for what earns a test, the shape priced at authoring, the gate's lanes, red protocol, contention rule
         responding-to-review/        How to weigh and answer review findings; no performative agreement
-        writing-skills/              Authoring and testing the kit's own behavior-shaping skills
+        writing-skills/              Authoring and testing skills, and amending curated prose the kit ships
         kaizen/                      Capture kit friction, reflect into briefs, apply improvements
         design-council/              Opt-in multi-lens pressure-test for a hard-to-reverse design fork
         cold/                        Neutral evidence-first lens for non-code judgment calls
