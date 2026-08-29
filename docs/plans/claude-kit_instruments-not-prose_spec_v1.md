@@ -4,7 +4,11 @@ Status: Ready
 Commit Model: Commit-and-Push
 Created: 2026-08-28
 
-**Authored by the kaizen pass of 2026-08-28; design round completed 2026-08-29.** Promoted from two kaizen notes the operator approved combining (decided 2026-08-28 at the expert session's keyboard): the measurement-expiry note and the incremented-series note, one root between them. The design round ran 2026-08-29 at the operator's keyboard in the expert session and its rulings are the Decisions section below; arming is the operator's, and this plan carries no Dispatch Authorization section until he grants one. The Ready status is the parked state's own value: session start lists the plan as authored and parked rather than offering it for resume, and the run that starts it sets the header to In Progress.
+**Authored by the kaizen pass of 2026-08-28; design round completed 2026-08-29.** Promoted from two kaizen notes the operator approved combining (decided 2026-08-28 at the expert session's keyboard): the measurement-expiry note and the incremented-series note, one root between them. The design round ran 2026-08-29 at the operator's keyboard in the expert session and its rulings are the Decisions section below; the operator granted arming 2026-08-29, and the Dispatch Authorization section records the grant. The Ready status is the parked state's own value: session start lists the plan as authored and parked rather than offering it for resume, and the run that starts it sets the header to In Progress.
+
+## Dispatch Authorization
+
+Authorized 2026-08-29 by the operator: the moment-pin convention, the machine-epoch memory record, hook-stamping of the time fields a mechanical writer can own, and the two-direction review-charter clause, as ruled in the design round recorded under Decisions, given at the operator's keyboard in the expert seat's session. This section was authored by the KIT: Expert seat; per the peer-sessions trace rule it is a warrant only for a citing session that did not author it, and the receiving session performs its own trace: the grant is the operator's approval in the expert session's transcript, and the plan enters the armed queue only by the operator's word or the expert's append under it.
 
 ## Goal
 
