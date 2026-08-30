@@ -2679,7 +2679,7 @@ test('CLI status never opens a plan or queue entry that traverses out of the rep
 
 // A harness-shaped session id (the arm-time bind's gate accepts exactly this
 // shape) and a second one for the rebind direction.
-const SID = '2f4e97f8-5b7f-425e-8b33-076013d24873';
+const SID = '5f3a91c2-7d40-4b18-9e26-0ac4185d7b63';
 const SID2 = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
 
 // The state file as written, not as normalized at read. normalizeState nulls

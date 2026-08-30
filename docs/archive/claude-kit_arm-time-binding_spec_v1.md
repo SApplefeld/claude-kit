@@ -17,7 +17,7 @@ defers to the 800K safety ceiling instead of chapter boundaries, and every
 chapter checkpoint the run writes records `boundSession: null`, which never
 matches. Observed live on 2026-08-20 in the ai-os Warden Expand run (12 hours
 armed-unbound; transcript
-`C:\Users\LocalAdmin\.claude\projects\D--ai-os\2f4e97f8-5b7f-425e-8b33-076013d24873.jsonl`,
+`C:\Users\<account>\.claude\projects\D--ai-os\<session-id>.jsonl`,
 line 17 is the prose-shaped arm, line 2052 the single-line re-arm that
 recovered it).
 

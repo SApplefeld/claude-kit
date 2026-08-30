@@ -3422,9 +3422,9 @@ test('stop: a worktree held on an unestablished main-checkout path still blocks,
         // planPathState(main, planRel) reads 'unusable' here (a directory
         // stands where the plan doc should be), one of the three non-'gone'
         // answers the enforcement (planGoneHereOnly) treats alike. The reason
-        // text used to claim the doc was "still present in the main checkout";
-        // a directory is not that, and this fixture is chosen because it is
-        // the state where the old wording was demonstrably false. armGoal
+        // text must not claim the doc is "still present in the main checkout",
+        // because a directory is not that, and this fixture is the state that
+        // discriminates: any wording asserting presence is false here. armGoal
         // requires a readable plan doc at arm time, so the fixture arms
         // against a real file and replaces it with a directory afterward.
         const planRel = 'docs/plans/wrongtree_example.md';

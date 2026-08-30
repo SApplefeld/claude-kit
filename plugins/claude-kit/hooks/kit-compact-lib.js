@@ -577,7 +577,10 @@ function checkpointAdoptable(cp, goal) {
 // before the rename, and comparing the three fields that identify the record is
 // enough, because every writer of this file writes all four at once: a record
 // whose plan, opened timestamp and ownerlessness are unchanged is the record
-// that was read, and any newer boundary differs in openedAt and survives.
+// that was read. The verify narrows the window rather than closing it: there is
+// no lock, so a newer boundary landing before the verify reads survives, and one
+// landing between that read and the rename is overwritten. The residual is
+// bounded and fail-open, costing one further deferral rather than a lost plan.
 //
 // Returns { ok, adopted, reason } and never throws. adopted is true only when a
 // record was rewritten; every other outcome, an absent checkpoint included, is
