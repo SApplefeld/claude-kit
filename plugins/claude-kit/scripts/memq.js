@@ -483,7 +483,7 @@ function memoryRoot() {
 
 // Claude Code derives a project's state directory name from its absolute cwd
 // by replacing every character outside [A-Za-z0-9] with '-', case preserved
-// ("D:\personal\claude-kit" becomes "D--personal-claude-kit"). Reproducing
+// ("D:\projects\my-app" becomes "D--projects-my-app"). Reproducing
 // that rule is what lets memq land on the same memory directory the harness
 // writes. The one deliberate divergence is a git worktree, whose memories are
 // filed under the main checkout's directory (worktreeMainRoot below) while the
