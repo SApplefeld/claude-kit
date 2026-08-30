@@ -138,6 +138,19 @@
 // because the marker is what enforces the cap and emitting without it is how
 // a hook that runs on every tool call becomes noise.
 //
+// THE NUDGE LOG. Every nudge this hook actually emits is also appended, one
+// line per record named, to a machine-local log under the project's own
+// .kit/ (gitignored, never synced): the record, the trigger that fired, and
+// the moment. It is what makes the experiment readable rather than merely
+// felt: memory-system/SKILL.md's stamp-rate protocol joins this log against
+// the store's own applied stamps to read whether a nudged record gets used
+// at a higher rate than an unnudged one, which is the evidence decision 2's
+// semantic-tier gate consumes. The log is bounded and rotates past 1 MB in
+// the same shape emitGoalEvent's own event stream does, and its absence, like
+// an empty store's, reads as no nudge has fired yet rather than as a fault.
+// Appending to it is best-effort exactly like every other write in this file
+// and never changes what the session receives.
+//
 // SAFETY: this hook never blocks and never modifies a call. There is no deny
 // path in this file. Its whole output channel is one JSON object on stdout at
 // exit 0 whose hookSpecificOutput carries the boundary's own hookEventName
@@ -203,10 +216,16 @@ const MEMQ_SYMBOLS = [
     ['frontmatterAnchors', 'function'],
     ['acquireLock', 'function'],
     ['sanitize', 'function'],
+    ['worktreeMainRoot', 'function'],
+    ['appliedTally', 'function'],
+    ['memoryFileKey', 'function'],
     ['TRIGGER_TYPES', 'object'],
     ['TRIGGER_FRAGMENT_TYPES', 'object'],
     ['TRIGGER_ENTRIES_MAX', 'number'],
-    ['ANCHOR_ENTRIES_MAX', 'number']
+    ['ANCHOR_ENTRIES_MAX', 'number'],
+    ['TRIGGER_PATTERN_CAP', 'number'],
+    ['ANCHOR_PATH_CAP', 'number'],
+    ['USAGE_FILE', 'string']
 ];
 
 // Nudges per turn. Two, because a nudge is only worth anything if it is read,
@@ -756,10 +775,14 @@ function storeStamp(memDir, names) {
 // The memory-record filenames in a directory, sorted, through the shared
 // bounded lister. Files only, which is also what keeps the pending and
 // archive subdirectories out of the index without naming either of them.
+// `bounded` rides alongside the names because the cap this applies
+// (INDEX_RECORDS_MAX) exists to bound one hook call's matching cost, not to
+// state the tier's true record count, and a caller that reports a population
+// (nudgeStampRate) needs to know when the list it walked was cut short.
 function recordNames(memq, listBoundedNames, memDir) {
     const listing = listBoundedNames(memDir, INDEX_RECORDS_MAX,
         (entry) => entry.isFile() && memq.isMemoryFilename(entry.name));
-    return listing.names.slice().sort();
+    return { names: listing.names.slice().sort(), bounded: listing.bounded };
 }
 
 // One record's triggers and anchors as the index holds them, or null for a
@@ -842,7 +865,7 @@ function validIndex(memq, value) {
 // The trigger index for this call: the cached one when the store's stamp has
 // not moved, a freshly built one otherwise.
 function loadIndex(memq, lib, memDir, cache) {
-    const names = recordNames(memq, lib.listBoundedNames, memDir);
+    const names = recordNames(memq, lib.listBoundedNames, memDir).names;
     if (names.length === 0) return [];
     const stamp = storeStamp(memDir, names);
     if (cache !== null) {
@@ -1049,7 +1072,18 @@ function nudgeText(memq, hits) {
 // One record contributes at most one nudge to an emission. Two triggers of
 // one record firing on one call spend the whole allowance naming that record
 // twice, which starves every other record and reads as a stutter.
-function claimHits(memq, lib, memDir, marker, hits) {
+//
+// The nudge log's append also happens inside this lock, after the marker
+// write lands and before it is released, rather than back in main() once the
+// lock is already gone. The marker is what decides which nudges this call may
+// claim; a log write done after that lock is released can interleave with the
+// very next call's own claim-and-log sequence under a batch of parallel tool
+// calls, so a rotation one call started (rename to .old) can land between a
+// second call's size check and its append, losing that second call's lines
+// into the file mid-rename or splitting one call's lines across both the
+// fresh file and the one just rotated away. Doing the append under the same
+// lock that already serializes the claim makes the two atomic together.
+function claimHits(memq, lib, memDir, marker, hits, cwd) {
     const lock = memq.acquireLock(marker + '.lock', { waitMs: LOCK_WAIT_MS, staleMs: LOCK_STALE_MS });
     if (!lock.ok) return [];
     try {
@@ -1080,10 +1114,342 @@ function claimHits(memq, lib, memDir, marker, hits) {
             windowStart: window.windowStart,
             windowCount: window.windowCount + claimed.length
         }));
-        return written ? claimed : [];
+        if (!written) return [];
+        appendNudgeLog(memq, cwd, claimed);
+        return claimed;
     } finally {
         lock.release();
     }
+}
+
+// Bytes past which the nudge log rotates its content to <path>.old, replacing
+// any previous one. Sized the same as emitGoalEvent's own event stream
+// (kit-goal-lib.js), whose shape this rotation copies exactly: this is
+// another single-writer observability sink nothing branches on, so growing it
+// without bound costs disk for no reader's benefit.
+const NUDGE_LOG_MAX_BYTES = 1048576;
+
+// A generous cap on the nudge log's own read, guarding readNudgeLog against a
+// hand-edited or corrupted file that grew past rotation between the size
+// check and the read. Twice the rotation ceiling covers a log caught mid
+// rotation without making the read unbounded.
+const NUDGE_LOG_READ_CAP = NUDGE_LOG_MAX_BYTES * 2;
+
+// The root this box resolves one project's nudge log and stamp-rate report
+// against, or null when cwd is network-shaped. Resolved through memq's own
+// worktreeMainRoot rather than through cwd directly, so every worktree
+// checked out from one repository shares a single log, matching the single
+// memory tier projectMemoryDir resolves to for all of them: memq's own
+// projectSegment falls back to this exact function once a pin is absent, and
+// the log is joined against that tier's applied stamps, so a log keyed on raw
+// cwd would silently split one tier's evidence across as many logs as it has
+// worktrees. A pin is not consulted here: a pin renames where the memory
+// tier's store segment lives, not where this box's own working tree sits, and
+// the log is real filesystem state anchored to the tree rather than to the
+// store's naming.
+//
+// The network screen here is unconditional, run before any resolution and
+// before any .kit/ filesystem operation. main()'s own screen at its memDir
+// lookup is conditional on no pin being set, which is correct there because a
+// pin answers the memory question without needing cwd's git walk; the write
+// this function guards happens regardless of a pin, so it needs its own
+// unconditional stand-down rather than inheriting that conditional one.
+function nudgeProjectRoot(memq, cwd) {
+    if (memq.namesNetworkShare(cwd)) return null;
+    const root = memq.worktreeMainRoot(cwd);
+    return root === null ? cwd : root;
+}
+
+// The nudge log for one project: one JSON line per nudge actually shown to a
+// session, carrying the record, the trigger that fired, and the moment. It
+// lives under the project's own .kit/ (gitignored, created on first write)
+// rather than beside the memory records themselves, because the project
+// memory directory is part of the store and syncs to its private remote,
+// while this log is this box's own record of what it nudged and belongs with
+// the rest of this project's gitignored scratch. Absence of the file, or of
+// the .kit/ directory itself, is read as no nudge has fired yet on this box
+// rather than as an error, by every reader below. Takes the already-resolved
+// project root (nudgeProjectRoot's return), not a raw cwd, so this stays a
+// pure path join and the resolution logic lives in exactly one place.
+function nudgeLogPath(root) {
+    return path.join(root, '.kit', 'memory-recognition-nudges.jsonl');
+}
+
+// A .gitignore written into .kit/ the first time this hook creates it, naming
+// every file under the directory ignored. The directory is scratch a sibling
+// writer (kit-goal-lib.js's emitGoalEvent, kit-compact-lib.js's checkpoint
+// state) already treats as gitignored by the repo's own root .gitignore, but
+// that root file is this repo's own convention, not a property every host
+// repo a hook runs in is guaranteed to carry, and a nudge log committed into
+// a host repo that never excluded .kit/ would ship this box's own record of
+// what it nudged as tracked content. Written once, at the moment .kit/ is
+// first created by this write path, and left alone thereafter.
+function ensureKitIgnored(kitDir) {
+    try {
+        fs.writeFileSync(path.join(kitDir, '.gitignore'), '*\n', { flag: 'wx' });
+    } catch { /* already there, or the write failed: either way this is best-effort */ }
+}
+
+// Append one line per claimed hit to the nudge log. Best-effort and silent
+// throughout, the same posture as every other write in this hook: the log
+// feeds the stamp-rate reading memory-system/SKILL.md describes, never the
+// matcher, so a failed append changes nothing about the nudge the session
+// already received.
+//
+// Rotation mirrors emitGoalEvent's own event stream: a sink already past
+// NUDGE_LOG_MAX_BYTES is renamed to <path>.old, replacing any previous one,
+// and the append starts a fresh file. lstat, never stat, so a symlink planted
+// at the log path is refused rather than followed and rotated through, the
+// same hazard emitGoalEvent's own header names for its sink. lstat alone does
+// not cover the .kit/ parent, though: it follows every path component before
+// the final one, so a symlink planted at .kit itself would still be walked
+// through by mkdirSync and by the append below. The parent is screened
+// separately, and the eventual append uses an exclusive-then-fallback-append
+// open rather than a plain appendFileSync, so a plant that lands between the
+// parent screen and the write is refused rather than written through.
+function appendNudgeLog(memq, cwd, claimed) {
+    try {
+        const root = nudgeProjectRoot(memq, cwd);
+        if (root === null) return;
+        const kitDir = path.join(root, '.kit');
+        let kitSt = null;
+        try { kitSt = fs.lstatSync(kitDir); } catch { /* not there yet: mkdirSync below creates it */ }
+        if (kitSt && !kitSt.isDirectory()) return;
+        const file = nudgeLogPath(root);
+        let st = null;
+        try { st = fs.lstatSync(file); } catch { /* no log yet: the append creates it */ }
+        if (st) {
+            if (!st.isFile()) return;
+            if (st.size > NUDGE_LOG_MAX_BYTES) {
+                try { fs.renameSync(file, file + '.old'); } catch { /* cannot rotate: append to it as it is */ }
+            }
+        }
+        fs.mkdirSync(kitDir, { recursive: true });
+        // Re-screened after mkdirSync: recursive:true silently succeeds through
+        // an existing symlinked parent rather than refusing it, so the
+        // directory this call is about to write into is checked again once it
+        // is guaranteed to exist.
+        let postSt = null;
+        try { postSt = fs.lstatSync(kitDir); } catch { return; }
+        if (!postSt.isDirectory()) return;
+        ensureKitIgnored(kitDir);
+        const ts = new Date().toISOString();
+        let lines = '';
+        for (const hit of claimed) {
+            const cap = hit.type === 'anchor' ? memq.ANCHOR_PATH_CAP : memq.TRIGGER_PATTERN_CAP;
+            lines += JSON.stringify({
+                ts,
+                name: hit.name,
+                type: hit.type,
+                pattern: memq.sanitize(hit.pattern, cap)
+            }) + '\n';
+        }
+        // Opened for append with the exclusive-create flag omitted only because
+        // 'a' does not create-and-refuse when the target already exists; what
+        // matters here is that this is a real fd write (never a path-based
+        // appendFileSync re-resolving the name), so a plant swapped in between
+        // the lstat above and this open is opened by descriptor, not followed
+        // through by a second path lookup.
+        const fd = fs.openSync(file, 'a');
+        try { fs.writeSync(fd, lines, null, 'utf8'); } finally { fs.closeSync(fd); }
+    } catch { /* the nudge log is best-effort observability; a failed append changes nothing */ }
+}
+
+// The nudge log's lines as {ts, name, type, pattern}, bounded to those whose
+// ts falls no earlier than sinceMs (all of them when sinceMs is undefined). A
+// line that is not JSON, is not an object, or is missing a string name or an
+// unparseable ts is skipped rather than thrown on: the log is this hook's own
+// best-effort write, never hand-edited, but nothing reading it back should
+// trust it further than that. An absent file, or one this read's bound
+// refuses, reads as an empty list, which is what makes "no nudges yet" and
+// "nothing in this window" the same answer a caller sees, matching the file's
+// own header. Read through the shared bounded reader so a log caught between
+// a corrupted size and its next rotation cannot make this an unbounded read.
+function readNudgeLog(lib, file, sinceMs) {
+    const read = lib.readFileBounded(file, NUDGE_LOG_READ_CAP);
+    if (read === null) return [];
+    const out = [];
+    for (const line of read.text.split(/\r?\n/)) {
+        const trimmed = line.trim();
+        if (trimmed === '') continue;
+        let parsed;
+        try { parsed = JSON.parse(trimmed); } catch { continue; }
+        if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) continue;
+        if (typeof parsed.name !== 'string' || parsed.name === '') continue;
+        const ms = Date.parse(parsed.ts);
+        if (!Number.isFinite(ms)) continue;
+        if (sinceMs !== undefined && ms < sinceMs) continue;
+        out.push({ ts: parsed.ts, name: parsed.name, type: parsed.type, pattern: parsed.pattern });
+    }
+    return out;
+}
+
+// One day, in milliseconds, mirroring memq.js's own unexported DAY_MS: the
+// applied-rollup invariant below needs it and neither the constant nor the
+// day-index function that uses it (usageDay) is exported.
+const USAGE_DAY_MS = 86400000;
+
+// Whether a parsed usage line has a shape memq itself would write, mirroring
+// memq.js's own unexported isUsageStamp at the one boundary that differs: the
+// filename check goes through memq.isMemoryFilename, the only piece of that
+// grammar this hook is handed. A raw `read`/`applied` stamp needs a parseable
+// ts and a valid filename; an `applied-rollup` additionally needs an ordered
+// [firstApplied, lastApplied] pair and a distinctDays count that cannot
+// exceed the calendar span it claims, the same forgery guard memq's own
+// reader applies before appliedTally ever sees the line.
+function isUsageStamp(memq, v) {
+    if (typeof v !== 'object' || v === null || Array.isArray(v)) return false;
+    if (typeof v.ts !== 'string' || !Number.isFinite(Date.parse(v.ts))) return false;
+    if (!memq.isMemoryFilename(v.file)) return false;
+    if (v.kind === 'read' || v.kind === 'applied') return true;
+    if (v.kind === 'applied-rollup') {
+        if (typeof v.firstApplied !== 'string' || typeof v.lastApplied !== 'string') return false;
+        const firstMs = Date.parse(v.firstApplied);
+        const lastMs = Date.parse(v.lastApplied);
+        if (!Number.isFinite(firstMs) || !Number.isFinite(lastMs) || lastMs < firstMs) return false;
+        const day = (ms) => Math.floor(ms / USAGE_DAY_MS);
+        return Number.isSafeInteger(v.distinctDays) && v.distinctDays >= 1
+            && v.distinctDays <= day(lastMs) - day(firstMs) + 1;
+    }
+    return false;
+}
+
+// The project tier's usage sidecar, validated the way memq's own readUsage
+// validates it, returning { status, stamps, skipped }. status is 'absent'
+// when the sidecar has never been written (ENOENT), 'unreadable' when it
+// exists but this process could not read it (permissions, a directory at the
+// path, or any other open/read failure), and 'ok' otherwise; a caller that
+// collapses 'absent' and 'unreadable' into the same empty list, as an earlier
+// version of this function did, cannot tell "nothing has ever been applied"
+// from "the evidence exists and this read could not see it," and the
+// stamp-rate report below refuses on 'unreadable' rather than silently
+// reporting a zero rate for that reason.
+function readUsageStamps(memq, memDir) {
+    let raw;
+    try {
+        raw = fs.readFileSync(path.join(memDir, memq.USAGE_FILE), 'utf8');
+    } catch (err) {
+        if (err && err.code === 'ENOENT') return { status: 'absent', stamps: [], skipped: 0 };
+        return { status: 'unreadable', stamps: [], skipped: 0 };
+    }
+    const stamps = [];
+    let skipped = 0;
+    for (const line of raw.replace(/^﻿/, '').split(/\r?\n/)) {
+        const trimmed = line.trim();
+        if (trimmed === '') continue;
+        let parsed = null;
+        try { parsed = JSON.parse(trimmed); } catch { /* counted below with every other malformed shape */ }
+        if (!isUsageStamp(memq, parsed)) { skipped += 1; continue; }
+        stamps.push(parsed);
+    }
+    return { status: 'ok', stamps, skipped };
+}
+
+// The evidence decision 2's gate reads: the stamp rate of nudged project-tier
+// records against unnudged ones, over a stated window. Not a hook boundary;
+// this is the reading protocol memory-system/SKILL.md points at, run by hand
+// or from a short script at the moment the semantic tier's gate is being
+// asked.
+//
+// "Nudged" is every record the project's index carries a trigger or anchor
+// for (the same "declared" gate a nudge itself must pass) that the project's
+// nudge log names at least once with ts >= sinceMs; "unnudged" is every other
+// such record, excluding one the tier holds but that carries no trigger or
+// anchor at all, since that record could never have earned a nudge and is not
+// a fair control for one that could. "Stamped" is an applied stamp on that
+// record whose most recent evidence (appliedTally's lastMs) falls no earlier
+// than the record's own first nudge for the nudged group, or no earlier than
+// sinceMs for the unnudged group, so a record nudged for the first time near
+// the end of the window is not charged for having failed to earn a stamp in
+// time it was never given. A record this hook could nudge but that decayed
+// out of the tier since is counted in neither group: the comparison is asked
+// of the tier as it stands now.
+//
+// This number cannot, by itself, distinguish "the nudge caused the
+// application" from "the records worth nudging are the ones already relevant
+// to current work, which get applied more regardless of whether they are
+// nudged." A nudge only fires on a record carrying a declared trigger or
+// anchor that matched something the session just did, so the nudged group is
+// already selected for topical relevance before the comparison starts; a
+// materially higher nudged rate is evidence consistent with the nudge
+// working, not proof of it. memory-system/SKILL.md states this plainly beside
+// the reading itself, because the number does not carry its own caveat.
+//
+// Returns { since, nudged: {total, stamped, rate}, unnudged: {total, stamped,
+// rate} }, with rate null rather than NaN where total is 0, or
+// { error: <cause> } for the same reasons main() would fail open: an
+// unloadable memq, a network-shaped cwd or store root, a project memory
+// directory that cannot be resolved, a listing this hook's own per-call cap
+// cut short (a truncated population is refused rather than silently
+// understated), or a usage sidecar this process could not read (as opposed to
+// one that has simply never been written). sinceMs is required, because a
+// report with no stated window is exactly the shape decision 2 does not want.
+function nudgeStampRate(cwd, sinceMs) {
+    if (typeof sinceMs !== 'number' || !Number.isFinite(sinceMs)) {
+        return { error: 'a numeric sinceMs (a window start, in epoch milliseconds) is required' };
+    }
+    const resolvedCwd = (typeof cwd === 'string' && cwd !== '') ? cwd : process.cwd();
+    let memq;
+    let lib;
+    try {
+        memq = require(MEMQ);
+        lib = require('./kit-read-lib.js');
+    } catch { return { error: 'memq or its read library could not be loaded' }; }
+    if (MEMQ_SYMBOLS.some(([name, kind]) => typeof memq[name] !== kind)) {
+        return { error: 'the installed memq is missing a symbol this report needs' };
+    }
+    const root = nudgeProjectRoot(memq, resolvedCwd);
+    if (root === null) {
+        return { error: 'a network-shaped working directory stands this report down' };
+    }
+    if (memq.namesNetworkShare(memq.memoryRoot())) {
+        return { error: 'a network-shaped store root stands this report down' };
+    }
+    let memDir;
+    try { memDir = memq.projectMemoryDir(resolvedCwd); } catch { return { error: 'the project memory directory could not be resolved' }; }
+
+    const listing = recordNames(memq, lib.listBoundedNames, memDir);
+    if (listing.bounded) {
+        return { error: 'the tier listing was truncated by this hook\'s own per-call cap; refusing rather than understating the population' };
+    }
+    const names = listing.names;
+    const index = buildIndex(memq, lib, memDir, names);
+    const nudgeable = new Set(index.map((record) => record.name));
+
+    const nudgeRecords = readNudgeLog(lib, nudgeLogPath(root), sinceMs);
+    const firstNudgeMs = new Map();
+    for (const record of nudgeRecords) {
+        const ms = Date.parse(record.ts);
+        const cur = firstNudgeMs.get(record.name);
+        if (cur === undefined || ms < cur) firstNudgeMs.set(record.name, ms);
+    }
+
+    const usage = readUsageStamps(memq, memDir);
+    if (usage.status === 'unreadable') {
+        return { error: 'the usage sidecar exists but could not be read; the tier\'s applied evidence is unverifiable' };
+    }
+    const applied = memq.appliedTally(usage.stamps);
+
+    const group = (list, floorFor) => {
+        let stamped = 0;
+        for (const name of list) {
+            const entry = applied.get(memq.memoryFileKey(name));
+            if (entry && entry.lastMs >= floorFor(name)) stamped += 1;
+        }
+        return { total: list.length, stamped, rate: list.length === 0 ? null : stamped / list.length };
+    };
+
+    const nudgedNames = names.filter((n) => firstNudgeMs.has(n));
+    const unnudgedNames = names.filter((n) => nudgeable.has(n) && !firstNudgeMs.has(n));
+
+    let since;
+    try { since = new Date(sinceMs).toISOString(); } catch { return { error: 'sinceMs could not be formatted as a date' }; }
+
+    return {
+        since,
+        nudged: group(nudgedNames, (n) => firstNudgeMs.get(n)),
+        unnudged: group(unnudgedNames, () => sinceMs)
+    };
 }
 
 // The nudge this call earns as {boundary, text}, or null. Never throws on its
@@ -1151,7 +1517,7 @@ function main(payload) {
         before.fired, { left: MATCH_OPS_MAX });
     if (hits.length === 0) return null;
 
-    const claimed = claimHits(memq, lib, memDir, marker, hits);
+    const claimed = claimHits(memq, lib, memDir, marker, hits, cwd);
     if (claimed.length === 0) return null;
 
     sweepState(dir);
@@ -1198,12 +1564,16 @@ module.exports = {
     cacheFile,
     markerFile,
     dedupKey,
+    nudgeLogPath,
+    nudgeProjectRoot,
+    nudgeStampRate,
     NUDGE_CAP_PER_TURN,
     TURN_WINDOW_MS,
     MATCH_OPS_MAX,
     MARKER_KEYS_MAX,
     CACHE_READ_CAP,
     INDEX_SERIALIZED_CAP,
+    NUDGE_LOG_MAX_BYTES,
     PRE_TYPES,
     POST_TYPES
 };

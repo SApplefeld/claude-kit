@@ -1250,3 +1250,392 @@ test('two project stores never share an index cache', () => {
     assert.strictEqual(hook.cacheFile(dir, a), hook.cacheFile(dir, a));
     assert.ok(path.basename(hook.cacheFile(dir, a)).length < 80, 'the cache filename is bounded');
 });
+
+// --- The nudge log: what makes the stamp-rate experiment readable.
+
+function readLogLines(file) {
+    return fs.readFileSync(file, 'utf8').split('\n').filter((l) => l.trim() !== '');
+}
+
+// nudgeStampRate resolves the store from the working directory exactly as
+// the spawned hook does, but it runs in-process (the report is a reading
+// protocol, not a hook boundary), so the store signals ride process.env for
+// the call's duration and are restored after, the same discipline the state
+// directory resolver test above already takes with TMPDIR/TEMP/TMP.
+function withStoreEnv(store, fn) {
+    const keys = ['KIT_MEMORY_ROOT', 'KIT_MEMORY_ROOT_ALLOW_DATA', 'KIT_MEMORY_PROJECT'];
+    const prior = {};
+    for (const k of keys) prior[k] = process.env[k];
+    Object.assign(process.env, {
+        KIT_MEMORY_ROOT: store.root,
+        KIT_MEMORY_ROOT_ALLOW_DATA: '1',
+        KIT_MEMORY_PROJECT: ''
+    });
+    try {
+        return fn();
+    } finally {
+        for (const k of keys) {
+            if (prior[k] === undefined) delete process.env[k];
+            else process.env[k] = prior[k];
+        }
+    }
+}
+
+test('a nudge appends one line per record to the project\'s nudge log, carrying the record, the trigger and the moment', () => {
+    const store = makeStore();
+    try {
+        writeRecord(store, 'test-suite-invocation.md', { triggers: 'cmd:node --test' });
+        const before = Date.now();
+        assertNudge(runHook(store, prePayload(store, {
+            tool_input: { command: 'node --test "test/*.test.js"' }
+        })), 'PreToolUse', 'a call that nudges');
+        const logFile = hook.nudgeLogPath(store.cwd);
+        const lines = readLogLines(logFile);
+        assert.strictEqual(lines.length, 1, 'one nudge appends exactly one line');
+        const entry = JSON.parse(lines[0]);
+        assert.deepStrictEqual(Object.keys(entry).sort(), ['name', 'pattern', 'ts', 'type']);
+        assert.strictEqual(entry.name, 'test-suite-invocation.md');
+        assert.strictEqual(entry.type, 'cmd');
+        assert.strictEqual(entry.pattern, 'node --test');
+        const ms = Date.parse(entry.ts);
+        assert.ok(Number.isFinite(ms) && ms >= before - 1000 && ms <= Date.now() + 1000,
+            'ts is the moment the nudge fired');
+    } finally { rmStore(store); }
+});
+
+test('a claimed emission of two hits appends two log lines, one per record', () => {
+    const store = makeStore();
+    try {
+        writeRecord(store, 'first-of-two.md', { triggers: 'cmd:node --test' });
+        writeRecord(store, 'second-of-two.md', { triggers: 'cmd:--test' });
+        assertNudge(runHook(store, prePayload(store, {
+            tool_input: { command: 'node --test "test/*.test.js"' }
+        })), 'PreToolUse', 'a call two records match');
+        const lines = readLogLines(hook.nudgeLogPath(store.cwd)).map((l) => JSON.parse(l));
+        assert.strictEqual(lines.length, 2, 'both claimed hits are logged');
+        assert.deepStrictEqual(lines.map((l) => l.name).sort(), ['first-of-two.md', 'second-of-two.md']);
+    } finally { rmStore(store); }
+});
+
+test('a call that does not nudge appends nothing to the log', () => {
+    const store = makeStore();
+    try {
+        writeRecord(store, 'test-suite-invocation.md', { triggers: 'cmd:node --test' });
+        assertSilent(runHook(store, prePayload(store, {
+            tool_input: { command: 'echo nothing-in-particular' }
+        })), 'a call nothing matches');
+        assert.ok(!fs.existsSync(hook.nudgeLogPath(store.cwd)), 'no nudge fired, so no log file exists');
+    } finally { rmStore(store); }
+});
+
+test('the nudge log rotates only past 1 MB, and a rotation replaces the prior .old', () => {
+    const store = makeStore();
+    try {
+        writeRecord(store, 'rot-record.md', { triggers: 'cmd:node --test' });
+        const logFile = hook.nudgeLogPath(store.cwd);
+        fs.mkdirSync(path.dirname(logFile), { recursive: true });
+        const MB = 1024 * 1024;
+        // Exactly 1 MB is not "past 1 MB": the append lands in place, keeping
+        // the boundary off the rotation side, the same convention
+        // emitGoalEvent's own event stream takes.
+        const filler = 'a'.repeat(MB - 1) + '\n';
+        fs.writeFileSync(logFile, filler, 'utf8');
+        assert.strictEqual(fs.statSync(logFile).size, MB, 'setup: the sink sits exactly on the threshold');
+        assertNudge(runHook(store, prePayload(store, {
+            tool_input: { command: 'node --test "test/*.test.js"' }
+        })), 'PreToolUse', 'a nudge at the threshold');
+        assert.ok(!fs.existsSync(logFile + '.old'), 'a sink of exactly 1 MB is not rotated');
+        const grown = fs.readFileSync(logFile, 'utf8');
+        assert.ok(grown.startsWith(filler), 'the existing content is kept');
+        assert.strictEqual(readLogLines(logFile).length, 2, 'the new nudge is appended below the existing content');
+
+        // The sink now exceeds 1 MB, so the next nudge rotates it away and
+        // starts a fresh file.
+        writeRecord(store, 'rot-record-2.md', { triggers: 'cmd:pwsh -NoProfile' });
+        assertNudge(runHook(store, prePayload(store, {
+            tool_input: { command: 'pwsh -NoProfile -File build.ps1' }
+        })), 'PreToolUse', 'a nudge past the threshold');
+        assert.ok(fs.existsSync(logFile + '.old'), 'a sink past 1 MB is rotated');
+        assert.strictEqual(fs.readFileSync(logFile + '.old', 'utf8'), grown, 'the rotated file holds the prior stream');
+        const fresh = readLogLines(logFile).map((l) => JSON.parse(l));
+        assert.strictEqual(fresh.length, 1, 'the fresh sink holds only the newest nudge');
+        assert.strictEqual(fresh[0].name, 'rot-record-2.md');
+    } finally { rmStore(store); }
+});
+
+test('a second rotation replaces the prior .old rather than failing on an occupied destination', () => {
+    const store = makeStore();
+    try {
+        writeRecord(store, 'rot-a.md', { triggers: 'cmd:node --test' });
+        const logFile = hook.nudgeLogPath(store.cwd);
+        fs.mkdirSync(path.dirname(logFile), { recursive: true });
+        const MB = 1024 * 1024;
+        fs.writeFileSync(logFile, 'b'.repeat(MB + 1), 'utf8');
+        assertNudge(runHook(store, prePayload(store, {
+            tool_input: { command: 'node --test "test/*.test.js"' }
+        })), 'PreToolUse', 'a nudge that rotates an already-oversized sink');
+        assert.strictEqual(fs.readFileSync(logFile + '.old', 'utf8'), 'b'.repeat(MB + 1),
+            'the prior .old is replaced, not left in place');
+        const fresh = readLogLines(logFile).map((l) => JSON.parse(l));
+        assert.strictEqual(fresh.length, 1);
+        assert.strictEqual(fresh[0].name, 'rot-a.md');
+    } finally { rmStore(store); }
+});
+
+test('an absent nudge log reads as no nudges yet, not as an error', () => {
+    const store = makeStore();
+    try {
+        // Carries a trigger so it is nudgeable (report.unnudged is restricted to
+        // records the index would ever nudge; a bare record with no declared
+        // trigger or anchor could never earn a nudge and is not a fair control).
+        writeRecord(store, 'lonely.md', { triggers: 'cmd:node --test' });
+        assert.ok(!fs.existsSync(hook.nudgeLogPath(store.cwd)), 'setup: no log file exists');
+        const report = withStoreEnv(store, () => hook.nudgeStampRate(store.cwd, Date.now() - 60000));
+        assert.strictEqual(report.error, undefined, 'an absent log is not a report error: ' + JSON.stringify(report));
+        assert.strictEqual(report.nudged.total, 0, 'nothing has been nudged yet');
+        assert.strictEqual(report.nudged.stamped, 0);
+        assert.strictEqual(report.nudged.rate, null, 'a rate over zero records is null rather than NaN');
+        assert.strictEqual(report.unnudged.total, 1, 'the one live record is unnudged by default');
+    } finally { rmStore(store); }
+});
+
+test('nudgeStampRate joins the nudge log against the applied stamps: a nudged-and-stamped, a '
+    + 'nudged-unstamped, and an unnudged-stamped record each read as what they prove', () => {
+    const store = makeStore();
+    try {
+        // Three live records, each carrying a trigger so each is nudgeable (the
+        // restriction unnudged.total honors), each proving a different cell of
+        // the join.
+        writeRecord(store, 'nudged-stamped.md', { triggers: 'cmd:node --test' }); // proves: nudged AND stamped counts toward nudged.stamped
+        writeRecord(store, 'nudged-unstamped.md', { triggers: 'cmd:pwsh -NoProfile' }); // proves: nudged but unstamped counts toward nudged.total alone
+        writeRecord(store, 'unnudged-stamped.md', { triggers: 'cmd:git status' }); // proves: a stamp on a record the log never named still
+        // reaches unnudged.stamped, so the join reads applied evidence
+        // independent of whether this hook ever nudged that record.
+
+        const since = Date.now() - 60 * 60 * 1000;
+        const insideWindow = new Date(since + 60000).toISOString();
+        const logFile = hook.nudgeLogPath(store.cwd);
+        fs.mkdirSync(path.dirname(logFile), { recursive: true });
+        fs.writeFileSync(logFile, [
+            JSON.stringify({ ts: insideWindow, name: 'nudged-stamped.md', type: 'cmd', pattern: 'node --test' }),
+            JSON.stringify({ ts: insideWindow, name: 'nudged-unstamped.md', type: 'cmd', pattern: 'node --test' })
+        ].join('\n') + '\n', 'utf8');
+        fs.writeFileSync(path.join(store.memDir, memq.USAGE_FILE), [
+            JSON.stringify({ kind: 'applied', file: 'nudged-stamped.md', ts: insideWindow }),
+            JSON.stringify({ kind: 'applied', file: 'unnudged-stamped.md', ts: insideWindow })
+        ].join('\n') + '\n', 'utf8');
+
+        const report = withStoreEnv(store, () => hook.nudgeStampRate(store.cwd, since));
+        assert.strictEqual(report.error, undefined, 'the report resolves cleanly: ' + JSON.stringify(report));
+        assert.strictEqual(report.nudged.total, 2, 'two records were named in the log within the window');
+        assert.strictEqual(report.nudged.stamped, 1,
+            'only nudged-stamped.md carries an applied stamp; nudged-unstamped.md does not');
+        assert.strictEqual(report.nudged.rate, 0.5);
+        assert.strictEqual(report.unnudged.total, 1, 'unnudged-stamped.md is the only record the log never names');
+        assert.strictEqual(report.unnudged.stamped, 1,
+            'its applied stamp still counts, proving the join reads stamps independent of nudging');
+        assert.strictEqual(report.unnudged.rate, 1);
+    } finally { rmStore(store); }
+});
+
+// --- The fix round: worktree/pin siting, a stale memq, an unreadable usage
+// sidecar, the log-append's atomicity with the marker claim, the anchor cap
+// branch, and the PostToolUse boundary.
+
+// Whether a real git binary is on PATH. This is the acceptance case for the
+// worktree split: two `git worktree add` checkouts of one repository, so the
+// fixture is git's own wiring rather than this suite's reading of it.
+const GIT_ON_PATH = (() => {
+    try { return spawnSync('git', ['--version'], { encoding: 'utf8' }).status === 0; } catch { return false; }
+})();
+
+function git(args, cwd) {
+    return spawnSync('git', args, { cwd, encoding: 'utf8' });
+}
+
+test('the nudge log and its stamp-rate report resolve to the main checkout root, so every '
+    + 'worktree of one repository shares one log rather than splitting it per checkout', {
+    skip: GIT_ON_PATH ? false : 'git is not on PATH'
+}, () => {
+    const store = makeStore();
+    const main = fs.mkdtempSync(path.join(os.tmpdir(), 'recognition-wt-main-'));
+    const treeParent = fs.mkdtempSync(path.join(os.tmpdir(), 'recognition-wt-parent-'));
+    const tree = path.join(treeParent, 'wt');
+    try {
+        assert.strictEqual(git(['init', '-q'], main).status, 0, 'setup: git init');
+        fs.writeFileSync(path.join(main, 'seed.txt'), 'seed');
+        assert.strictEqual(git(['add', '.'], main).status, 0, 'setup: git add');
+        const committed = git(['-c', 'user.email=kit@test.invalid', '-c', 'user.name=kit',
+            'commit', '-q', '-m', 'seed'], main);
+        assert.strictEqual(committed.status, 0, 'setup: git commit: ' + committed.stderr);
+        const added = git(['worktree', 'add', '--detach', '-q', tree], main);
+        assert.strictEqual(added.status, 0, 'setup: git worktree add: ' + added.stderr);
+
+        // memq's own projectMemoryDir folds a linked worktree to its main
+        // checkout's root exactly as nudgeProjectRoot does (both bottom out in
+        // memq's worktreeMainRoot), so the record lives at the segment both
+        // cwd=main and cwd=tree resolve to.
+        const mainMemDir = path.join(store.root, 'projects', memq.sanitizeProjectPath(main), 'memory');
+        writeRecordIn(mainMemDir, 'wt-record.md', { triggers: 'cmd:node --test' });
+
+        const fromMain = { ...store, cwd: main, session: nextSession() };
+        assertNudge(runHook(fromMain, prePayload(fromMain, {
+            tool_input: { command: 'node --test "test/*.test.js"' }
+        })), 'PreToolUse', 'a call from the main checkout');
+
+        const fromTree = { ...store, cwd: tree, session: nextSession() };
+        assertNudge(runHook(fromTree, prePayload(fromTree, {
+            tool_input: { command: 'node --test "test/*.test.js"' }
+        })), 'PreToolUse', 'a call from the linked worktree');
+
+        const mainLog = hook.nudgeLogPath(hook.nudgeProjectRoot(memq, main));
+        const treeLog = hook.nudgeLogPath(hook.nudgeProjectRoot(memq, tree));
+        assert.strictEqual(mainLog, treeLog,
+            'the main checkout and its linked worktree resolve to the same nudge log path');
+        assert.strictEqual(readLogLines(mainLog).length, 2,
+            'both calls appended to the one shared log rather than one apiece under separate .kit/ trees');
+        assert.ok(!fs.existsSync(path.join(tree, '.kit', 'memory-recognition-nudges.jsonl')),
+            'no second log was ever created under the worktree\'s own .kit/');
+    } finally {
+        rmStore(store);
+        try { fs.rmSync(main, { recursive: true, force: true }); } catch { /* best effort */ }
+        try { fs.rmSync(treeParent, { recursive: true, force: true }); } catch { /* best effort */ }
+    }
+});
+
+test('nudgeStampRate refuses rather than silently succeeds against a memq missing a symbol '
+    + 'this report needs', () => {
+    const store = makeStore();
+    const memqPath = require.resolve('../plugins/claude-kit/scripts/memq.js');
+    const real = require(memqPath);
+    try {
+        writeRecord(store, 'skewed.md', { triggers: 'cmd:node --test' });
+        const skewed = { ...real };
+        delete skewed.appliedTally;
+        require.cache[memqPath].exports = skewed;
+        const report = withStoreEnv(store, () => hook.nudgeStampRate(store.cwd, Date.now() - 60000));
+        assert.strictEqual(typeof report.error, 'string',
+            'a memq missing a required symbol is refused, not silently trusted: ' + JSON.stringify(report));
+    } finally {
+        require.cache[memqPath].exports = real;
+        rmStore(store);
+    }
+});
+
+test('an unreadable usage sidecar refuses the report rather than reading as zero stamps, and a '
+    + 'malformed line among valid ones is skipped rather than trusted or thrown on', () => {
+    const store = makeStore();
+    try {
+        writeRecord(store, 'malformed-usage.md', { triggers: 'cmd:node --test' });
+        const since = Date.now() - 60 * 60 * 1000;
+        const insideWindow = new Date(since + 60000).toISOString();
+
+        // A malformed line (unparseable JSON) beside one well-formed, valid
+        // stamp: the read must skip the first without throwing and without
+        // letting it contribute evidence, while still counting the second.
+        fs.writeFileSync(path.join(store.memDir, memq.USAGE_FILE), [
+            '{not valid json',
+            JSON.stringify({ kind: 'applied', file: 'malformed-usage.md', ts: insideWindow })
+        ].join('\n') + '\n', 'utf8');
+        const okReport = withStoreEnv(store, () => hook.nudgeStampRate(store.cwd, since));
+        assert.strictEqual(okReport.error, undefined,
+            'a malformed line beside a valid one does not refuse the whole report: ' + JSON.stringify(okReport));
+        assert.strictEqual(okReport.unnudged.total, 1);
+        assert.strictEqual(okReport.unnudged.stamped, 1, 'the one well-formed stamp still counts');
+
+        // A directory sitting at the sidecar's own path: existing (so this is
+        // not the ordinary "never written" absence) but unreadable as a file.
+        // The old collapse of ENOENT and every other error into one empty
+        // list would report this identically to "nothing has ever been
+        // applied"; the fix must tell them apart.
+        fs.rmSync(path.join(store.memDir, memq.USAGE_FILE), { force: true });
+        fs.mkdirSync(path.join(store.memDir, memq.USAGE_FILE));
+        const badReport = withStoreEnv(store, () => hook.nudgeStampRate(store.cwd, since));
+        assert.strictEqual(typeof badReport.error, 'string',
+            'an unreadable (as opposed to absent) sidecar refuses rather than reporting a false zero: '
+                + JSON.stringify(badReport));
+    } finally { rmStore(store); }
+});
+
+test('a concurrent batch that forces a rotation loses no claimed nudge, and every surviving '
+    + 'line still parses, because the log append shares the marker\'s own lock', async () => {
+    const store = makeStore();
+    const names = [];
+    for (let i = 0; i < 6; i += 1) names.push('lock-batch-' + i + '.md');
+    try {
+        for (const n of names) writeRecord(store, n, { triggers: 'cmd:node --test' });
+        const logFile = hook.nudgeLogPath(store.cwd);
+        fs.mkdirSync(path.dirname(logFile), { recursive: true });
+        // Seeded one byte under the rotation threshold, so whichever call in
+        // the batch appends first is the one that crosses it and triggers a
+        // rotation while the rest of the batch is still in flight.
+        fs.writeFileSync(logFile, 'a'.repeat(hook.NUDGE_LOG_MAX_BYTES - 1) + '\n', 'utf8');
+        const payload = prePayload(store, { tool_input: { command: 'node --test "test/*.test.js"' } });
+        const results = await Promise.all(names.map(() => runHookAsync(store, payload)));
+        let emitted = 0;
+        const seen = new Set();
+        for (const res of results) {
+            assert.strictEqual(res.status, 0, 'every copy exits 0');
+            assert.strictEqual(res.stderr, '', 'every copy keeps stderr empty');
+            if (res.stdout === '') continue;
+            const text = JSON.parse(res.stdout).hookSpecificOutput.additionalContext;
+            for (const n of names) {
+                if (!text.includes(n)) continue;
+                emitted += 1;
+                assert.ok(!seen.has(n), 'no record is nudged twice across the batch: ' + n);
+                seen.add(n);
+            }
+        }
+        assert.ok(emitted > 0, 'the batch nudges at least once, so the check below is about a real emission');
+
+        const liveLines = fs.existsSync(logFile) ? readLogLines(logFile) : [];
+        const oldLines = fs.existsSync(logFile + '.old') ? readLogLines(logFile + '.old') : [];
+        // The seed line itself (not JSON) is expected in whichever file
+        // received it; only the JSON-shaped lines this batch wrote are
+        // counted against `emitted`.
+        const parsedNames = new Set();
+        for (const line of [...liveLines, ...oldLines]) {
+            let parsed;
+            try { parsed = JSON.parse(line); } catch { continue; }
+            if (parsed && typeof parsed.name === 'string') parsedNames.add(parsed.name);
+        }
+        assert.strictEqual(parsedNames.size, emitted,
+            'every claimed nudge\'s line survives somewhere across the live and rotated file, none lost: '
+                + 'emitted=' + emitted + ' found=' + JSON.stringify([...parsedNames]));
+        for (const n of seen) {
+            assert.ok(parsedNames.has(n), 'claimed record ' + n + ' has a surviving log line');
+        }
+    } finally { rmStore(store); }
+});
+
+test('an anchor hit\'s logged pattern is capped and sanitized through ANCHOR_PATH_CAP, not '
+    + 'TRIGGER_PATTERN_CAP', () => {
+    const store = makeStore();
+    try {
+        writeRecord(store, 'anchor-hit.md', { anchors: 'src/anchor-target.txt@' + SHA });
+        assertNudge(runHook(store, postPayload(store, {
+            tool_input: { file_path: path.join(store.cwd, 'src', 'anchor-target.txt') }
+        })), 'PostToolUse', 'a call whose touched path matches the anchor');
+        const lines = readLogLines(hook.nudgeLogPath(store.cwd)).map((l) => JSON.parse(l));
+        assert.strictEqual(lines.length, 1);
+        assert.strictEqual(lines[0].type, 'anchor');
+        assert.strictEqual(lines[0].pattern, 'src/anchor-target.txt',
+            'the anchor path is logged in full, under its own cap rather than the trigger cap');
+    } finally { rmStore(store); }
+});
+
+test('a PostToolUse-boundary nudge appends to the log exactly as a PreToolUse one does', () => {
+    const store = makeStore();
+    try {
+        writeRecord(store, 'post-boundary.md', { triggers: 'err:permission denied' });
+        assertNudge(runHook(store, postPayload(store, {
+            tool_name: 'Bash',
+            tool_input: { command: 'rm /root/secret' },
+            tool_response: { stdout: '', stderr: 'bash: permission denied', exit_code: 1 }
+        })), 'PostToolUse', 'a call whose failure output carries the err: trigger');
+        const lines = readLogLines(hook.nudgeLogPath(store.cwd)).map((l) => JSON.parse(l));
+        assert.strictEqual(lines.length, 1);
+        assert.strictEqual(lines[0].name, 'post-boundary.md');
+        assert.strictEqual(lines[0].type, 'err');
+    } finally { rmStore(store); }
+});
