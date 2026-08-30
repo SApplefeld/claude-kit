@@ -94,6 +94,19 @@ function errorCode(err) {
 // own clock firing. Anything else that threw did so before a response existed,
 // which is a connection failure however the runtime spelled it, so the default
 // is `unreachable` rather than a fifth outcome nobody has a policy for.
+//
+// THE NO-CODE CASE NEVER USES `err.message`. A malformed `config.url` (a
+// credential embedded in it, among other shapes) makes the runtime's own URL
+// constructor throw a TypeError whose message spells the request URL back out
+// in full, with no `.code` anywhere in its cause chain for the coded branches
+// above to catch. `config.url` is loaded from `~/.claude/kit-endpoint.json`,
+// and config.js's own header and docs/security-model.md both state that the
+// endpoint address reaches no log line, record or report; this detail string
+// is written into a gap record and rendered by sidecar/rollup.js, so a message
+// carrying the address would break that promise. A fixed sentence is used
+// instead, which loses only the fact that this specific shape of failure
+// happened; the coded branches above still name every failure this daemon can
+// usefully act on.
 function classifyThrow(err) {
     const name = (err && typeof err.name === 'string') ? err.name : '';
     if (name === 'AbortError' || name === 'TimeoutError') {
@@ -102,8 +115,7 @@ function classifyThrow(err) {
     const code = errorCode(err);
     if (SLOW_CODES.has(code)) return { status: 'timeout', detail: code };
     if (CONNECTION_CODES.has(code)) return { status: 'unreachable', detail: code };
-    const message = (err && typeof err.message === 'string') ? err.message : String(err);
-    return { status: 'unreachable', detail: code === '' ? neutralize(message).slice(0, MAX_DETAIL_CHARS) : code };
+    return { status: 'unreachable', detail: code === '' ? 'connection failed before a response, no error code' : code };
 }
 
 // Release a response body nobody is going to read. A fetch response holds its

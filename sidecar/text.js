@@ -66,7 +66,19 @@ function neutralize(text) {
     return text.replace(UNSAFE_RE, '').replace(/\s+/g, ' ').trim();
 }
 
+// The longest a neutralized field is let ride onto a rendered surface: a
+// terminal, a status round, the Discord relay. Every producer that reaches
+// this module first caps its own output privately (judge.js's
+// REASON_MAX_CHARS, endpoint.js's MAX_DETAIL_CHARS, inbox.js's ITEM_TEXT_CAP),
+// but a READER of a log line trusts no producer's cap, because CONTRACT.md
+// says a line can be hand-written by anything running as this user: nothing
+// stops a hand-written `note` or `detail` field from being a megabyte long. A
+// cap is a property of the output channel and belongs here beside neutralize,
+// not reimplemented by whichever reader needed it first.
+const TEXT_MAX_CHARS = 2000;
+
 module.exports = {
     UNSAFE_PATTERN,
+    TEXT_MAX_CHARS,
     neutralize
 };

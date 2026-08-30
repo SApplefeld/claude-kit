@@ -475,14 +475,33 @@ function sweepLogs(logsDir, options) {
     return report;
 }
 
+// The sentence a gap record's `note` states, built from its structured fields.
+// Exported so this is the ONLY place that spells it: gapRecord below calls it
+// to write the note, and sidecar/rollup.js calls it again to reconstruct the
+// sentence for a hand-written line that carries the structured fields but no
+// `note` of its own. Before this export existed, rollup.js re-implemented the
+// sentence and the test fixtures spelled it a third time, so a wording change
+// here could drift into two different reports with no test able to see it.
+//
+// Defensive against a hand-written or otherwise stripped record: a missing or
+// invalid `count` defaults to 1 (a single call), never to 0, because a rollup
+// tallying the same record's call count uses the same default and the two
+// numbers disagreeing is exactly the mismatch this shared builder exists to
+// close.
+function gapNote(fields) {
+    const count = (Number.isInteger(fields.count) && fields.count > 0) ? fields.count : 1;
+    const first = (typeof fields.firstCallId === 'string' && fields.firstCallId !== '') ? fields.firstCallId : '?';
+    const last = (typeof fields.lastCallId === 'string' && fields.lastCallId !== '') ? fields.lastCallId : '?';
+    const reason = (typeof fields.reason === 'string' && fields.reason !== '') ? fields.reason : 'unknown reason';
+    const range = count === 1 ? `call ${first}` : `calls ${first} to ${last}`;
+    return `${range} not judged, ${reason}`;
+}
+
 // A stretch of calls that were not judged, with the reason. The note is the
 // sentence a person reads in a rollup; the structured fields are what a rollup
 // counts. Both say NOT JUDGED rather than anything a reader could mistake for a
 // verdict.
 function gapRecord(gap, nowMs) {
-    const range = gap.count === 1
-        ? `call ${gap.firstCallId}`
-        : `calls ${gap.firstCallId} to ${gap.lastCallId}`;
     return {
         v: LOG_VERSION,
         type: 'gap',
@@ -493,7 +512,7 @@ function gapRecord(gap, nowMs) {
         firstCallId: gap.firstCallId,
         lastCallId: gap.lastCallId,
         detail: gap.detail || '',
-        note: `${range} not judged, ${gap.reason}`
+        note: gapNote(gap)
     };
 }
 
@@ -521,5 +540,6 @@ module.exports = {
     recognitionRecord,
     recognitionGapRecord,
     findingRecord,
+    gapNote,
     gapRecord
 };
