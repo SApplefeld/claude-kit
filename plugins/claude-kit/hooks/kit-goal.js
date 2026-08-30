@@ -33,8 +33,13 @@
 // session id naming no transcript on this machine arms unbound. The variable is
 // undocumented, so it can change shape or vanish upstream without notice; an
 // absent or non-UUID value arms unbound too, and the Stop hook's and compaction
-// gate's claim points bind the goal instead. Every arm reports which of the two
-// happened, because an armed-but-unbound goal is otherwise silent.
+// gate's claim points bind the goal instead. What those points can claim on
+// differs by which half failed: a shaped id is recorded as the arming session,
+// which the claim points bind on when a session carrying that id reaches one of
+// them, while a value of no usable shape leaves the typed arming command in
+// some session's transcript as the only route.
+// Every arm reports which of the three happened, because an armed-but-unbound
+// goal is otherwise silent.
 
 'use strict';
 
@@ -180,6 +185,44 @@ function armingNote(authority) {
         : '';
 }
 
+// What an arm that landed unbound says about how the leash can still be
+// claimed, which is two different answers because the state holds two different
+// things.
+//
+// Where the arm recorded an arming session's id (armingSession, which armGoal
+// writes whenever a shaped id reached it), the claim points bind on that id, so
+// a session carrying it takes the leash at its next stop or auto-compaction
+// offer. That is stated as conditional on such a session existing, because this
+// branch is exactly the one where the id could not be corroborated against a
+// transcript file on this machine, and the reasons for that include a stale or
+// inherited value naming no live session at all. Where no session holds the id,
+// nothing ever claims, and re-arming from the session that should hold the
+// leash is what recovers. The id is also not necessarily this process's own
+// session: a dispatched subagent's shell can carry the id of the session that
+// dispatched it, which is why the text says the arming session rather than this
+// one.
+//
+// Where no shaped id was readable in this process's environment, the state
+// records no arming identity, so the id route does not exist for this goal at
+// all and a session whose transcript carries the plan path typed as a kit-goal
+// command argument is the only route left. Whether the session reading this can
+// take that route is not something the CLI can see: it reads no transcript, and
+// an operator who typed the command has left that very text in a transcript.
+//
+// Both spellings are fixed text carrying no value from the result, so there is
+// nothing here to sanitize; the plan paths beside them go through sanitize at
+// their own interpolation.
+function unboundNote(armingSession) {
+    return armingSession
+        ? ' (unbound: no usable transcript file on this machine corroborated the id this arm'
+            + ' ran under, so the session holding that id claims the leash at its next stop or'
+            + ' auto-compaction offer; if no live session holds it, nothing claims, and a'
+            + ' re-arm from the session that should hold the leash is the recovery)'
+        : " (unbound: no session id of the harness's shape was readable here, so the state"
+            + ' records no arming identity, and the one remaining route is a session whose'
+            + ' transcript carries this plan path typed as a kit-goal command argument)';
+}
+
 // The self-armed plans whose docs record no Dispatch Authorization, named on
 // stderr beside a successful arm. A warning rather than a refusal because the
 // directed path reaches plans with no section: an unleashed run arming an
@@ -245,8 +288,7 @@ function cmdArm(planArgs, append, selfArmed) {
                     : '')
                 + (result.boundSession
                     ? ' (bound to this session)'
-                    : " (unbound; the leash binds at the arming session's first stop"
-                        + ' or auto-compaction offer)')
+                    : unboundNote(result.armingSession))
                 + armingNote(result.arming)
                 + '\n');
             process.exitCode = 0;
@@ -347,9 +389,18 @@ function cmdStatus() {
     // the leash holder is still working, never a verdict: a session can be
     // alive and quiet, and only the number and its unit reach the output.
     const phrase = lastActivePhrase(state.boundTranscript);
+    // The two unbound states are named apart, because they are claimable by
+    // different things and the arm's one-shot line that said which one this is
+    // does not survive the arming session. This says what the state file holds
+    // and stops there: whether any session still carries a recorded id is not
+    // something this report can read. The field is the normalizer's, so it is
+    // either shaped like a harness session id or null (normalizeState), and
+    // nothing here decides anything on it.
     const binding = state.boundSession
         ? 'bound to session ' + sanitize(state.boundSession) + (phrase ? ', last active ' + phrase : '')
-        : 'unbound';
+        : state.armingSession
+            ? 'unbound, arming session recorded'
+            : 'unbound, no arming session recorded';
 
     // The position is read from the plan docs rather than taken from the
     // stored index (queuePosition states the whole rule): the index only moves

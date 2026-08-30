@@ -492,6 +492,98 @@ test('gate: goal armed but unbound with no session id in the payload: allow', ()
     }
 });
 
+// Synthetic session ids of the harness's own shape, which the arming identity a
+// state records is held to. SESSION above is deliberately of another shape, so
+// no case here can claim on that route by accident.
+const ARMING_SESSION = '3b9c1d20-7a41-4e6d-8f25-11c0de4a7b90';
+const BYSTANDER_SESSION = '5d2e88a4-0c13-4f77-9ab6-62f0aa31c5de';
+
+// An unbound goal recording the session that armed it: an id of the right shape
+// with no transcript resolving for it, which is the state a run arming a plan
+// for itself lands in when its transcript file is not resolvable at the arm.
+// The transcript carries usage and no arming markup, so nothing in it can claim
+// by the typed route.
+function selfArmedRepo(armingId) {
+    const repo = makeDir('kit-compact-gate-repo-');
+    const planRel = 'docs/plans/example.md';
+    writeFile(path.join(repo, planRel), 'Status: In Progress\n\nbody\n');
+    const armed = armGoal(repo, planRel, { sessionId: armingId, transcriptPath: null });
+    assert.strictEqual(armed.ok, true, 'test setup: goal should arm');
+    assert.strictEqual(armed.boundSession, null, 'test setup: the goal should arm unbound');
+    const transcript = path.join(repo, 'transcript.jsonl');
+    writeUsageTranscript(transcript, 50000);
+    return { repo, planRel, transcript };
+}
+
+test('gate: unbound goal recording this session as the one that armed it: deny-boundary and the binding is claimed', () => {
+    // The claim point for a run that armed a plan for itself: it types no
+    // command, so the transcript route never fires for it, and the gate would
+    // otherwise treat the run holding the completion contract as a bystander.
+    const { repo, planRel, transcript } = selfArmedRepo(ARMING_SESSION);
+    try {
+        assertDeny(runGate(gatePayload(repo, transcript, { session_id: ARMING_SESSION })));
+        const state = readGoal(repo);
+        assert.strictEqual(state.boundSession, ARMING_SESSION, 'the gate claimed the binding for the arming session');
+        assert.strictEqual(state.boundTranscript, transcript, 'the claim records the payload transcript');
+        assert.strictEqual(state.plan, planRel, 'the claim leaves the armed plan alone');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: unbound goal recording another session: a bystander is not boundary-gated and does not claim', () => {
+    // Neither route is open to this session: its transcript shows no arming
+    // command and its id is not the recorded one, so it is classified by its own
+    // transcript like any other bystander and defers to the ceiling.
+    const { repo, transcript } = selfArmedRepo(ARMING_SESSION);
+    try {
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript, { session_id: BYSTANDER_SESSION })));
+        assert.strictEqual(readGoal(repo).boundSession, null, 'the goal stays unbound');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a payload session id that is not session-id shaped claims nothing against a shaped arming session', () => {
+    // The state side is intact: a properly shaped arming id the normalizer
+    // passes through untouched. What is malformed is the payload's own session
+    // id, which arrives as hook JSON this process does not control. The compare
+    // runs through String() and a trim, so a padded copy of the recorded id
+    // equals it; the shape test on the payload id is the only thing that refuses
+    // it, and a claim on it would write the padded value as the binding and
+    // return the boundary verdict to a session the leash does not cover.
+    const { repo, transcript } = selfArmedRepo(ARMING_SESSION);
+    try {
+        const statePath = path.join(repo, '.kit', 'goal-state.json');
+        assert.strictEqual(JSON.parse(fs.readFileSync(statePath, 'utf8')).armingSession, ARMING_SESSION,
+            'the recorded arming id is the shaped one, so only the payload id is under test');
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript, { session_id: ' ' + ARMING_SESSION })));
+        assert.strictEqual(readGoal(repo).boundSession, null, 'the goal stays unbound');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: an armingSession the state cannot support claims nothing, whatever session id meets it', () => {
+    // The recorded identity is hand-editable and is read through the shape rule
+    // the arm writes it under, so a value no harness session id can equal binds
+    // nothing even for a payload carrying that exact value.
+    const { repo, transcript } = selfArmedRepo(ARMING_SESSION);
+    try {
+        const statePath = path.join(repo, '.kit', 'goal-state.json');
+        for (const planted of ['ses-owner', ' ' + ARMING_SESSION]) {
+            const state = JSON.parse(fs.readFileSync(statePath, 'utf8'));
+            state.armingSession = planted;
+            fs.writeFileSync(statePath, JSON.stringify(state, null, 2) + '\n', 'utf8');
+            assertInteractiveDeny(runGate(gatePayload(repo, transcript, { session_id: planted })));
+            assert.strictEqual(readGoal(repo).boundSession, null,
+                JSON.stringify(planted) + ' must not claim the binding');
+        }
+    } finally {
+        rmDir(repo);
+    }
+});
+
 test('gate: a claim whose bind write fails still denies this offer', () => {
     // Enforcement never waits on the write: the verdict for this offer is the
     // boundary deny either way, and the next offer re-reads the transcript and

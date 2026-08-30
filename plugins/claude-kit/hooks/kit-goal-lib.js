@@ -409,6 +409,43 @@ function isSessionIdShaped(value) {
     return typeof value === 'string' && SESSION_ID_SHAPE.test(value);
 }
 
+// The session id the arming invocation ran under, or null where the state
+// records none. It re-applies the shape test rather than trusting what is on
+// disk: the state file is hand-editable, and a value that is not shaped like a
+// harness session id is one no session's own id can ever be.
+//
+// What it answers is which session ran the arm, which is a different question
+// from which session holds the leash: boundSession answers that one, and the
+// two disagree from the moment another session claims an unbound goal. The
+// claim points reach it only through armingSessionClaims below, so the lookup
+// has one spelling everywhere a claim is decided; the status report reads the
+// normalized field directly, to say which of the two unbound states the file
+// holds, and decides nothing on it.
+function armingSession(state) {
+    const value = state && state.armingSession;
+    return isSessionIdShaped(value) ? value : null;
+}
+
+// Whether the session a claim point is running for is the session that armed
+// the goal. This is the whole rule an unbound goal is claimed on, and both
+// claim points (kit-goal-stop.js and kit-compact-gate.js) call it, so the rule
+// cannot be spelled two ways or gain a gate on one route and not the other.
+//
+// The payload id is held to the session-id shape before the compare because
+// sameSessionId compares through String() and a trim: a claim point takes its
+// id from hook payload JSON whose shape it does not control, so without this
+// test a whitespace-padded string, or a one-element array wrapping the recorded
+// id, coerces into a match and the binding is then written from that coerced
+// value. The recorded side needs no such test, armingSession applies it.
+//
+// The comparison helper is required at call time rather than at module load:
+// kit-compact-lib.js destructures this module at its own load, so a top-level
+// require back is the cycle the local-copies note further down states.
+function armingSessionClaims(state, sessionId) {
+    const { sameSessionId } = require('./kit-compact-lib.js');
+    return isSessionIdShaped(sessionId) && sameSessionId(armingSession(state), sessionId);
+}
+
 // Normalize a parsed goal state to the current shape, so every reader can rely
 // on queue, queueIndex, history, and boundTranscript being present and on
 // queue[queueIndex] === plan. Path fields are re-validated on every read, not
@@ -443,6 +480,12 @@ function normalizeState(cwd, state) {
     }
     if (!Array.isArray(state.history)) state.history = [];
     if (!validTranscript(state.boundTranscript)) state.boundTranscript = null;
+    // The arming invocation's own session id, repaired to the rule its reader
+    // applies: anything not shaped like a harness session id records no arming
+    // identity at all, so a hand edit cannot park a value a claim point would
+    // read. A state predating the field reads back with none, which is the same
+    // reading an arm that could read no session id from its environment writes.
+    if (!isSessionIdShaped(state.armingSession)) state.armingSession = null;
     // executionTree is optional and display-trust only (recordExecutionTree
     // states the whole contract), so a value the screen refuses is removed
     // rather than nulled: absent is the field's ordinary state, and no reader
@@ -2004,7 +2047,10 @@ function validatePlanArg(cwd, arg) {
 // The armedBy map is measured rather than reserved: it is written at the arm,
 // one short value per queued plan, so the serialization below already counts
 // it, and an append that adds entries re-runs this whole judgment on the state
-// it is about to write.
+// it is about to write. armingSession is measured on the same terms and takes
+// no reservation of its own: it is a single arm-time field holding a
+// session-id-shaped value or null, no later write grows it, and the arm's own
+// judgment below runs on the state literal that already carries it.
 //
 // The reservation runs where a queue grows, so a queue armed before it existed
 // carries none: such a state reads back fine under the cap and can still meet
@@ -2054,16 +2100,22 @@ function queueFits(state) {
 // Anything short of both keys arms unbound exactly as an arm with no bind does:
 // that is a silent fallback, not a failure, because the stop and
 // auto-compaction-offer claim points still bind the goal, recording the hook
-// payload's own authoritative transcript path. The binding rides in the same
+// payload's own authoritative transcript path. Where the id itself was of the
+// right shape, it is recorded as armingSession (see the field), so the session
+// that ran the arm is one of the two things those claim points bind on; where
+// no shaped id reached this function at all, the typed arming command in some
+// session's transcript is the only route left. The binding rides in the same
 // single atomic write as the rest of the state, so arming never becomes a
 // read-modify-write and cannot race one.
 // Every path is validated before anything is written and the whole arm is
 // refused if any one fails, so a partial queue can never reach the state file;
 // the reason names the offending path. Duplicates are refused for the same
 // reason: a queue that visits a plan twice would advance past it the first
-// time and stall the second. Returns { ok:true, plan, queue, boundSession } on
-// success (boundSession is the id that was written, or null when the arm is
-// unbound, so the CLI reports the binding without restating the gate) or
+// time and stall the second. Returns { ok:true, plan, queue, boundSession,
+// armingSession } on success (boundSession is the id that was written, or null
+// when the arm is unbound, and armingSession is the arming id that was
+// recorded, or null when none was usable, so the CLI reports what the state
+// holds without restating either gate) or
 // { ok:false, reason } on any failure: a bad path, a missing or Complete plan,
 // a duplicate, or an unexpected filesystem error, which is caught and reported
 // rather than thrown. This keeps the whole exported surface non-throwing.
@@ -2130,6 +2182,10 @@ function armGoal(cwd, planArgs, bind, authority) {
     // absent or unusable arms unbound rather than failing the arm.
     const bindable = isSessionIdShaped(requestedBind.sessionId) && validTranscript(requestedBind.transcriptPath);
     const boundSession = bindable ? requestedBind.sessionId : null;
+    // The arming session's own id, recorded whenever the caller supplied one of
+    // the right shape, whether or not the bind landed. It is what the state
+    // carries about an arm the transcript leg could not corroborate.
+    const armingSessionId = isSessionIdShaped(requestedBind.sessionId) ? requestedBind.sessionId : null;
 
     const state = {
         // The current plan of the queue. Every other reader of this state
@@ -2158,6 +2214,22 @@ function armGoal(cwd, planArgs, bind, authority) {
         // written with the binding or not at all, so an unbound arm records
         // none and a bound one always has it.
         boundTranscript: bindable ? requestedBind.transcriptPath : null,
+        // Which session ran this arm, where the arm could read an id of the
+        // right shape from its own environment, and null where it could not.
+        // It is not a binding and never becomes one on its own: the two claim
+        // points read it only while boundSession is null, and there a session
+        // whose own id matches it claims the leash, which is what an arm a run
+        // made for itself has in place of the typed command text the other
+        // claim route reads. The two routes rest on different kinds of
+        // evidence deliberately. This one comes from the arming process's
+        // environment rather than from transcript content, so no text a
+        // session emits into its own transcript can produce it, and the typed
+        // route's own evidence bar is untouched by its existence.
+        //
+        // It rides beside a landed bind too, where no reader consults it,
+        // rather than being cleared there: the field records who armed, and a
+        // later claim or rebind by another session does not change that answer.
+        armingSession: armingSessionId,
         queue,
         queueIndex: 0,
         // One entry per finished plan: { plan, outcome, at } and, for a
@@ -2206,7 +2278,10 @@ function armGoal(cwd, planArgs, bind, authority) {
     const written = writeState(cwd, state);
     if (!written.ok) return written;
 
-    return { ok: true, plan: queue[0], queue, boundSession, dropped, arming, unauthorized };
+    return {
+        ok: true, plan: queue[0], queue, boundSession, armingSession: armingSessionId,
+        dropped, arming, unauthorized
+    };
 }
 
 // Append plans to the armed queue under the binding it already carries, in one
@@ -2957,4 +3032,4 @@ function emitGoalEvent(details) {
 // position walk itself votes on, so the note explaining a [missing] token and
 // the position it sits beside cannot drift apart from reading two spellings
 // of the same archive check.
-module.exports = { goalPath, goalRoot, goalPathKind, goalStateAbsent, readGoal, armGoal, appendGoal, advanceGoal, bindSession, clearGoal, composeCondition, planArmedBy, planHead, planStatusReadings, classifyPlanStatus, emitGoalEvent, normalizePlanArg, lastActivePhrase, isSessionIdShaped, planFileSize, planHeadText, planPathState, planDisplayRoot, recordExecutionTree, pathErrnoClass, safeForAuthorization, queuePosition, treeEntryState, GOAL_STATE_MAX_BYTES };
+module.exports = { goalPath, goalRoot, goalPathKind, goalStateAbsent, readGoal, armGoal, appendGoal, advanceGoal, bindSession, clearGoal, composeCondition, planArmedBy, armingSession, armingSessionClaims, planHead, planStatusReadings, classifyPlanStatus, emitGoalEvent, normalizePlanArg, lastActivePhrase, isSessionIdShaped, planFileSize, planHeadText, planPathState, planDisplayRoot, recordExecutionTree, pathErrnoClass, safeForAuthorization, queuePosition, treeEntryState, GOAL_STATE_MAX_BYTES };

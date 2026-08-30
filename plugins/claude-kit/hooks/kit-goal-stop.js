@@ -41,12 +41,18 @@
 //           plan is never leashed, and a run that somehow resumes under a new
 //           session id is recovered by re-arming (/kit-goal), which resets the
 //           binding for the new session to claim.
-//         - Unbound: the first session whose genuine user-typed text carries the
-//           plan path inside a <command-args> span (the /kit-goal arming
-//           invocation, including a re-arm after a crash) claims the binding and
-//           is enforced; every other session is allowed. Plain prose merely
-//           mentioning the path never claims, nor does harness-injected feedback
-//           (isMeta) or an assistant echo.
+//         - Unbound: two routes claim the binding, and every session matching
+//           neither is allowed. The first session whose genuine user-typed text
+//           carries the plan path inside a <command-args> span (the /kit-goal
+//           arming invocation, including a re-arm after a crash) claims and is
+//           enforced. Plain prose merely mentioning the path never claims, nor
+//           does harness-injected feedback (isMeta) or an assistant echo. The
+//           session whose own id equals the arming session id the state records
+//           claims on that instead, which is the route for an arm no keystroke
+//           produced: a run arming a plan for itself types no command, so its
+//           own leash would otherwise reach nobody. The state records that id
+//           only from the arming process's environment, so no transcript text
+//           can produce this claim either.
 //       Binding is best-effort: a failed bind write still enforces this stop and
 //       is retried at the next stop, so a persistence hiccup never releases a
 //       genuinely leashed session.
@@ -114,7 +120,7 @@ const path = require('path');
 const crypto = require('crypto');
 const {
     readGoal, goalRoot, planHead, planPathState, clearGoal, bindSession, advanceGoal, emitGoalEvent,
-    queuePosition, planArmedBy
+    queuePosition, planArmedBy, armingSessionClaims
 } = require('./kit-goal-lib.js');
 const {
     readTranscriptCapped, stripLocalCommandOutput, sameSessionId,
@@ -649,6 +655,23 @@ function main() {
         // path where this session has just claimed the goal. The PreCompact
         // gate refreshes it at exactly this point after its own bind, for the
         // same reason.
+        goal.boundSession = sessionId;
+    } else if (armingSessionClaims(goal, sessionId)) {
+        // Unbound, and this session is the one that ran the arm: the state
+        // records the arming session's id (armGoal's armingSession field)
+        // whenever the arm could read one of the right shape, and the session
+        // carrying that id claims the binding at its own first stop while the
+        // goal is still unbound, which is the state an arm whose transcript
+        // half went uncorroborated leaves. The evidence is the arming
+        // process's environment rather than
+        // transcript text, so this route reaches a run that armed a plan for
+        // itself and typed no command for the branch above to find, and no
+        // text a session emits can satisfy it. The whole match rule, the shape
+        // test this payload id is held to included, is armingSessionClaims's,
+        // shared with the PreCompact gate's copy of this branch. The bind is
+        // best-effort and the snapshot refresh is the one the branch above
+        // states.
+        bindSession(cwd, sessionId, transcriptPath);
         goal.boundSession = sessionId;
     } else {
         return;

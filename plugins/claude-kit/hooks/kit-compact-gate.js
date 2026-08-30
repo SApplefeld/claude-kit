@@ -66,7 +66,7 @@
 //      worker per section, so there is no mid-chapter context to protect:
 //      stand down (same marker as branch-reaper-nudge.js and hook-canary.js).
 //   3. A kit goal is armed for the project (.kit/goal-state.json has a plan).
-//   4. The compacting session HOLDS the leash, by either of two routes. It is
+//   4. The compacting session HOLDS the leash, by one of three routes. It is
 //      already bound: payload session_id equals the goal's boundSession,
 //      compared as opaque case-insensitive trimmed strings (the bound session
 //      keeps matching across a compaction because the harness preserves the
@@ -74,7 +74,15 @@
 //      shows the user typing the arming command against the armed plan
 //      (userCommandArgsClaimPlan in kit-compact-lib.js, the same predicate
 //      and the same anti-steal exclusions the Stop hook claims a binding
-//      with). That session claims the binding here, best-effort via
+//      with). Or the goal is UNBOUND and its recorded arming session id is
+//      this session's own (armingSessionClaims in kit-goal-lib.js owns the
+//      whole match rule and is shared with the Stop hook; the field it reads
+//      is written at the arm from the arming process's environment), which is
+//      the route that
+//      reaches a run that armed a plan for itself and so typed no command for
+//      the transcript route to find. Neither claim route rests on text a
+//      session can emit into its own transcript. That session claims the
+//      binding here, best-effort via
 //      bindSession, and is boundary-gated for this offer whether or not the
 //      write landed, mirroring bindSession's own posture that enforcement
 //      never depends on it. Claiming at the first compaction offer, rather
@@ -82,7 +90,8 @@
 //      executing-work's completion contract forbids stopping with unblocked
 //      work remaining, so a run behaving correctly never stops and a
 //      stop-only claim never fires. A goal bound to a DIFFERENT session, or
-//      unbound with no claim in this transcript (a bystander either way), is
+//      unbound with neither claim route open to this one (a bystander either
+//      way), is
 //      never boundary-gated; it falls through to the interactive path below,
 //      the same as no goal at all. A payload carrying no session id can be
 //      neither compared nor bound, so it allows outright.
@@ -218,7 +227,7 @@
 'use strict';
 
 const fs = require('fs');
-const { readGoal, bindSession } = require('./kit-goal-lib.js');
+const { readGoal, bindSession, armingSessionClaims } = require('./kit-goal-lib.js');
 const {
     readCheckpoint, clearCheckpoint, checkpointMatches, sameSessionId,
     transcriptShowsAutomation, userCommandArgsClaimPlan,
@@ -541,10 +550,11 @@ function main() {
     if (process.env.KIT_EXTERNAL_ENGINE === '1') return decide({ verdict: 'allow', reason: 'external-engine' });
 
     // Clauses 3 and 4: an armed goal held by THIS session, whether already
-    // bound to it or claimed here from its transcript, takes the
-    // boundary-gated path; an armed goal bound to ANOTHER session or unbound
-    // with no claim in this transcript (a bystander either way), or no armed
-    // goal at all, falls through to the interactive path.
+    // bound to it, claimed here from its transcript, or claimed here on the
+    // arming session id the state records, takes the boundary-gated path; an
+    // armed goal bound to ANOTHER session or unbound with neither claim
+    // available to this one (a bystander either way), or no armed goal at all,
+    // falls through to the interactive path.
     const goal = readGoal(cwd);
     const armed = !!(goal && typeof goal.plan === 'string' && goal.plan !== '');
     // An armed goal beside a payload carrying no session id is ambiguous: the
@@ -567,6 +577,20 @@ function main() {
     // which is where a .kit/ that rejects this write also leaves checkpoint
     // placement anyway.
     if (armed && !goal.boundSession && userCommandArgsClaimPlan(transcriptPath, goal.plan)) {
+        bindSession(cwd, sessionId, transcriptPath);
+        goal.boundSession = sessionId;
+        return decide(boundaryVerdict(cwd, goal, transcriptPath, sessionId));
+    }
+    // The same claim on the other evidence: an unbound goal whose state records
+    // the id of the session that armed it, met here by that session. A run that
+    // armed a plan for itself types no command for the branch above to read, so
+    // this is the route by which its own leash reaches it, and the id comes from
+    // the arming process's environment rather than from transcript text, which
+    // is why nothing a session emits can claim on it. The whole match rule, the
+    // shape test this payload id is held to included, is armingSessionClaims's,
+    // shared with the Stop hook's copy of this branch. Best-effort bind and
+    // stale-snapshot refresh on the same terms as above.
+    if (armed && !goal.boundSession && armingSessionClaims(goal, sessionId)) {
         bindSession(cwd, sessionId, transcriptPath);
         goal.boundSession = sessionId;
         return decide(boundaryVerdict(cwd, goal, transcriptPath, sessionId));

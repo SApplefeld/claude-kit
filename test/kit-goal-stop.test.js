@@ -1111,6 +1111,152 @@ test('a local-command-stdout echoing the plan path does NOT bind (a /kit-goal st
     }
 });
 
+// Synthetic session ids of the harness's own shape, which is what the arming
+// identity a state records is held to.
+const ARM_SESSION = '3b9c1d20-7a41-4e6d-8f25-11c0de4a7b90';
+const OTHER_SESSION = '5d2e88a4-0c13-4f77-9ab6-62f0aa31c5de';
+
+// Arm a goal whose bind could not be corroborated: an id of the right shape
+// with no transcript resolving for it. The goal is unbound and records that id
+// as the session that ran the arm, which is the state a run arming a plan for
+// itself lands in when its own transcript file is not resolvable at the arm.
+function unboundArmedRepo(armingId) {
+    const repo = makeDir('kit-goal-stop-repo-');
+    const local = makeDir('kit-goal-stop-local-');
+    const planRel = 'docs/plans/example.md';
+    writeFile(path.join(repo, planRel), 'Status: In Progress\n\nbody\n');
+    const armed = armGoal(repo, planRel, { sessionId: armingId, transcriptPath: null });
+    assert.strictEqual(armed.ok, true, 'test setup: goal should arm');
+    assert.strictEqual(armed.boundSession, null, 'test setup: the goal should arm unbound');
+    return { repo, planRel, local };
+}
+
+// A transcript carrying only the given entries, with none of the arming-command
+// markup writeTranscript prepends: the cases below isolate the claim route that
+// reads no transcript text at all, so any text that could claim on its own would
+// make them pass for the wrong reason.
+function writeBareTranscript(full, entries) {
+    writeFile(full, entries.map((e) => JSON.stringify(e)).join('\n') + '\n');
+}
+
+function assistantEntry(text) {
+    return { type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text }] } };
+}
+
+test('unbound goal recording this session as the one that armed it: it claims and is leashed', () => {
+    // The arming session's own id is the claim, so a run that armed a plan for
+    // itself and typed no command holds the leash it armed. Its transcript
+    // carries no arming markup, so nothing here could claim by the typed route.
+    const { repo, local } = unboundArmedRepo(ARM_SESSION);
+    try {
+        const tx = path.join(repo, 'self-armed.jsonl');
+        writeBareTranscript(tx, [assistantEntry('Working the section.')]);
+        const res = runHook({ cwd: repo, transcript_path: tx, session_id: ARM_SESSION }, local);
+        assert.strictEqual(res.status, 0);
+        const out = JSON.parse(res.stdout);
+        assert.strictEqual(out.decision, 'block', 'the arming session is leashed at its own first stop');
+        assert.strictEqual(readBoundSession(repo), ARM_SESSION, 'and the claim records the binding');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('unbound goal recording another session: a bystander naming the plan does NOT claim', () => {
+    const { repo, planRel, local } = unboundArmedRepo(ARM_SESSION);
+    try {
+        const tx = path.join(repo, 'prose-mention.jsonl');
+        writeBareTranscript(tx, [
+            { type: 'user', message: { role: 'user', content: 'Please work ' + planRel + ' to completion.' } },
+            assistantEntry('Reading the plan.')
+        ]);
+        const res = runHook({ cwd: repo, transcript_path: tx, session_id: OTHER_SESSION }, local);
+        assert.strictEqual(res.stdout, '', 'a session that is neither the arming one nor a typed claim is allowed');
+        assert.strictEqual(res.status, 0);
+        assert.strictEqual(readBoundSession(repo), null, 'the goal stays unbound');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('a bystander whose transcript names the recorded arming id does NOT claim', () => {
+    // The forgery control on this route: the evidence is the session's own id
+    // rather than anything in a transcript, so a session whose command output
+    // names the recorded arming id, in the shape most likely to be mistaken for
+    // evidence, still stops as a bystander.
+    const { repo, planRel, local } = unboundArmedRepo(ARM_SESSION);
+    try {
+        const tx = path.join(repo, 'echoed-arm.jsonl');
+        writeBareTranscript(tx, [
+            {
+                type: 'user',
+                message: {
+                    role: 'user',
+                    content: '<local-command-stdout>kit goal armed for ' + planRel
+                        + ' (unbound; arming session ' + ARM_SESSION + ')</local-command-stdout>'
+                }
+            },
+            assistantEntry('That is what the state says.')
+        ]);
+        const res = runHook({ cwd: repo, transcript_path: tx, session_id: OTHER_SESSION }, local);
+        assert.strictEqual(res.stdout, '', 'echoed text naming the arming id must not claim');
+        assert.strictEqual(res.status, 0);
+        assert.strictEqual(readBoundSession(repo), null, 'the goal stays unbound');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('a payload session id that is not session-id shaped claims nothing against a shaped arming session', () => {
+    // The state side is intact here: a properly shaped arming id the normalizer
+    // passes through untouched. What is malformed is the payload's own session
+    // id, which arrives as hook JSON this process does not control. The compare
+    // runs through String() and a trim, so a padded copy of the recorded id
+    // equals it; the shape test on the payload id is the only thing that refuses
+    // it, and a claim on it would write the padded value as the binding.
+    const { repo, local } = unboundArmedRepo(ARM_SESSION);
+    try {
+        const statePath = path.join(repo, '.kit', 'goal-state.json');
+        assert.strictEqual(JSON.parse(fs.readFileSync(statePath, 'utf8')).armingSession, ARM_SESSION,
+            'the recorded arming id is the shaped one, so only the payload id is under test');
+        const tx = path.join(repo, 'padded.jsonl');
+        writeBareTranscript(tx, [assistantEntry('Working the section.')]);
+        const res = runHook({ cwd: repo, transcript_path: tx, session_id: ' ' + ARM_SESSION }, local);
+        assert.strictEqual(res.stdout, '', 'a padded session id must not claim the binding');
+        assert.strictEqual(res.status, 0);
+        assert.strictEqual(readBoundSession(repo), null, 'the goal stays unbound');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('an armingSession the state cannot support claims nothing, whatever session id meets it', () => {
+    // The field is hand-editable, and the claim reads it through the shape rule
+    // the arm writes it under: a value no harness session id can equal binds
+    // nothing, even for a payload carrying that exact value.
+    const { repo, local } = unboundArmedRepo(ARM_SESSION);
+    try {
+        const statePath = path.join(repo, '.kit', 'goal-state.json');
+        const tx = path.join(repo, 'planted.jsonl');
+        writeBareTranscript(tx, [assistantEntry('Working the section.')]);
+        for (const planted of ['ses-owner', '', ' ' + ARM_SESSION, 42]) {
+            const state = JSON.parse(fs.readFileSync(statePath, 'utf8'));
+            state.armingSession = planted;
+            fs.writeFileSync(statePath, JSON.stringify(state, null, 2) + '\n', 'utf8');
+            const res = runHook({ cwd: repo, transcript_path: tx, session_id: planted }, local);
+            assert.strictEqual(res.stdout, '', JSON.stringify(planted) + ' must not claim the binding');
+            assert.strictEqual(res.status, 0);
+            assert.strictEqual(readBoundSession(repo), null, 'the goal stays unbound');
+        }
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
 test('isMeta stop-hook feedback carrying a command-args-wrapped plan path does NOT claim', () => {
     // Real shape: this hook's own block reason names the plan path in full, and
     // the harness replays a denied stop back into the transcript as an isMeta

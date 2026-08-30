@@ -137,7 +137,7 @@ test('armGoal success writes goal-state.json with the exact schema', () => {
         const state = readGoal(repo);
         assert.ok(state, 'goal state should be readable after arming');
         assert.deepStrictEqual(Object.keys(state).sort(),
-            ['armedAt', 'armedBy', 'authorizations', 'boundSession', 'boundTranscript',
+            ['armedAt', 'armedBy', 'armingSession', 'authorizations', 'boundSession', 'boundTranscript',
                 'condition', 'history', 'plan', 'queue', 'queueIndex']);
         assert.strictEqual(state.plan, 'docs/plans/foo.md');
         assert.strictEqual(state.boundSession, null, 'an arm carrying no bind is unbound');
@@ -1439,8 +1439,8 @@ test('a one-plan arm and a legacy state read back identically through the normal
         // downstream sees the same object an arm would have produced.
         writeLegacyState(repo, 'docs/plans/solo.md');
         const legacy = readGoal(repo);
-        for (const key of ['plan', 'boundSession', 'boundTranscript', 'queue', 'queueIndex', 'history', 'condition',
-            'armedBy']) {
+        for (const key of ['plan', 'boundSession', 'boundTranscript', 'armingSession', 'queue', 'queueIndex',
+            'history', 'condition', 'armedBy']) {
             assert.deepStrictEqual(legacy[key], armed[key], key + ' reads identically');
         }
     } finally {
@@ -2708,7 +2708,7 @@ test('armGoal binds the arming session when the session id and its transcript ar
         assert.strictEqual(raw.boundTranscript, transcript);
         assert.strictEqual(readGoal(repo).boundSession, SID);
         assert.deepStrictEqual(Object.keys(readGoal(repo)).sort(),
-            ['armedAt', 'armedBy', 'authorizations', 'boundSession', 'boundTranscript',
+            ['armedAt', 'armedBy', 'armingSession', 'authorizations', 'boundSession', 'boundTranscript',
                 'condition', 'history', 'plan', 'queue', 'queueIndex'],
             'the state shape is unchanged by the bind');
         assert.deepStrictEqual(tmpLeftovers(repo), [], 'the bound arm is one atomic write');
@@ -2796,6 +2796,177 @@ test('armGoal arms unbound for any session id that is not UUID-shaped, and never
             assert.strictEqual(raw.boundSession, null, why + ' must write no binding');
             assert.strictEqual(raw.boundTranscript, null, why + ' must write no transcript');
         }
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('an arm that cannot corroborate its transcript records the arming session and stays unbound', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
+        // The identity half of the bind survives the transcript half failing.
+        // The state is unbound, which is what every claim point answers to,
+        // and it carries the id of the session that ran the arm, which is the
+        // evidence the Stop hook and the PreCompact gate claim an unbound goal
+        // on when no user-typed arming command exists to read.
+        const result = armGoal(repo, 'docs/plans/foo.md', { sessionId: SID, transcriptPath: null });
+        assert.strictEqual(result.ok, true);
+        assert.strictEqual(result.boundSession, null, 'the uncorroborated id binds nothing');
+        assert.strictEqual(result.armingSession, SID, 'the caller learns what arming identity was recorded');
+
+        const raw = rawState(repo);
+        assert.strictEqual(raw.armingSession, SID, 'the arming identity is on disk');
+        assert.strictEqual(raw.boundSession, null, 'and it is not a binding');
+        assert.strictEqual(raw.boundTranscript, null, 'the pair rule is intact: neither half is written');
+        assert.strictEqual(readGoal(repo).armingSession, SID, 'and it survives the read normalizer');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('an arm that binds records the arming session beside the binding', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
+        const transcript = path.join(repo, 't.jsonl');
+        const result = armGoal(repo, 'docs/plans/foo.md', { sessionId: SID, transcriptPath: transcript });
+        assert.strictEqual(result.armingSession, SID, 'the field answers who armed, bound or not');
+        const raw = rawState(repo);
+        assert.strictEqual(raw.armingSession, SID);
+        assert.strictEqual(raw.boundSession, SID, 'the binding is the separate answer to who holds the leash');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('an arm with no session id of the harness shape records no arming session', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
+        const transcript = path.join(repo, 't.jsonl');
+        // An identity is recorded from a shaped id or not at all: the field is
+        // read back through the same shape rule, so a value no session's own
+        // id can equal is worth nothing to a claim point and is not stored.
+        const cases = [
+            [undefined, 'no bind argument at all'],
+            [{}, 'a bind carrying no session id'],
+            [{ sessionId: '' }, 'an empty value'],
+            [{ sessionId: 'sess-1' }, 'a value of another shape entirely'],
+            [{ sessionId: ' ' + SID }, 'a UUID with leading whitespace'],
+            [{ sessionId: 42 }, 'a number'],
+            [{ sessionId: { toString: () => SID } }, 'an object that stringifies to a UUID'],
+            [{ sessionId: [SID] }, 'an array holding a UUID']
+        ];
+        for (const [bind, why] of cases) {
+            const withTranscript = bind === undefined ? undefined : { ...bind, transcriptPath: transcript };
+            const result = armGoal(repo, 'docs/plans/foo.md', withTranscript);
+            assert.strictEqual(result.ok, true, why + ' must still arm');
+            assert.strictEqual(result.armingSession, null, why + ' records no arming identity');
+            assert.strictEqual(rawState(repo).armingSession, null, why + ' writes none');
+        }
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('readGoal repairs an armingSession the state file cannot support, and passes a shaped one through', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
+        assert.strictEqual(armGoal(repo, 'docs/plans/foo.md').ok, true);
+        const base = rawState(repo);
+        // The field is hand-editable like every other one in this file, and a
+        // claim point reads it, so the read normalizer holds it to the shape
+        // rule rather than trusting what is on disk.
+        for (const [planted, why] of [
+            [undefined, 'a state predating the field'],
+            ['', 'an empty string'],
+            ['sess-owner', 'a value of another shape'],
+            [SID + '\n', 'a shaped value with a trailing newline'],
+            [42, 'a number'],
+            [{ id: SID }, 'an object'],
+            [[SID], 'an array holding a UUID']
+        ]) {
+            const state = { ...base };
+            if (planted === undefined) delete state.armingSession;
+            else state.armingSession = planted;
+            fs.writeFileSync(goalPath(repo), JSON.stringify(state, null, 2) + '\n', 'utf8');
+            assert.strictEqual(readGoal(repo).armingSession, null, why + ' records no arming identity');
+        }
+
+        const good = { ...base, armingSession: SID.toUpperCase() };
+        fs.writeFileSync(goalPath(repo), JSON.stringify(good, null, 2) + '\n', 'utf8');
+        assert.strictEqual(readGoal(repo).armingSession, SID.toUpperCase(),
+            'a shaped value reads back verbatim, so the case-insensitive compare at the claim points decides');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('every writer that rewrites the state leaves the recorded arming session where the arm put it', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/one.md', 'Status: In Progress\n');
+        writePlan(repo, 'docs/plans/two.md', 'Status: In Progress\n');
+        assert.strictEqual(armGoal(repo, 'docs/plans/one.md',
+            { sessionId: SID, transcriptPath: null }).ok, true);
+
+        // Only armGoal composes the field; every other writer rebuilds the whole
+        // state it read, so the field rides through. That is a property each of
+        // them has to keep: the field is an unbound goal's only claim route, and
+        // a writer that dropped it would strand the run holding the leash.
+        assert.strictEqual(appendGoal(repo, 'docs/plans/two.md').ok, true);
+        let state = readGoal(repo);
+        assert.strictEqual(state.armingSession, SID, 'an append rewrites the state around the field');
+        assert.strictEqual(state.boundSession, null, 'and the goal is still unbound');
+
+        assert.strictEqual(advanceGoal(repo, { outcome: 'complete' }).advanced, true);
+        state = readGoal(repo);
+        assert.strictEqual(state.plan, 'docs/plans/two.md', 'the leash moved to the next plan');
+        assert.strictEqual(state.armingSession, SID, 'an advance rewrites the state around the field');
+        assert.strictEqual(state.boundSession, null, 'and an advance binds nothing');
+
+        // A claim is the one write that reads the field and then rewrites the
+        // state, so the two fields stand side by side afterwards: boundSession
+        // says who holds the leash and armingSession still says who armed it.
+        assert.strictEqual(bindSession(repo, SID2, null).ok, true);
+        state = readGoal(repo);
+        assert.strictEqual(state.boundSession, SID2, 'the bind records the holder');
+        assert.strictEqual(state.armingSession, SID, 'a bind rewrites the state around the field');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('CLI status tells the two unbound states apart by whether an arming session is recorded', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
+
+        // The two unbound states are claimable by different things, and the
+        // arm's one-shot line saying which one this is does not outlive the
+        // arming session, so the status report is where the difference is read
+        // afterwards.
+        armGoal(repo, 'docs/plans/foo.md');
+        let res = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(res.status, 0);
+        assert.match(res.stdout, /unbound, no arming session recorded/);
+
+        armGoal(repo, 'docs/plans/foo.md', { sessionId: SID, transcriptPath: null });
+        assert.strictEqual(readGoal(repo).boundSession, null, 'still unbound: the transcript half failed');
+        res = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(res.status, 0);
+        assert.match(res.stdout, /unbound, arming session recorded/);
+
+        // A recorded value the normalizer refuses reads as the state holding no
+        // arming identity, which is what every claim point answers to as well.
+        const state = JSON.parse(fs.readFileSync(goalPath(repo), 'utf8'));
+        state.armingSession = ' ' + SID;
+        fs.writeFileSync(goalPath(repo), JSON.stringify(state, null, 2) + '\n', 'utf8');
+        res = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(res.status, 0);
+        assert.match(res.stdout, /unbound, no arming session recorded/);
     } finally {
         rmRepo(repo);
     }
@@ -2895,26 +3066,41 @@ test('CLI arm reports an unbound arm and names the fallback claim points', () =>
         // value can still be stale or planted, which is why each of these arms
         // unbound rather than failing, and why the output names what will bind
         // it instead.
+        //
+        // What the report says then depends on which half failed, because the
+        // two states are claimable by different things. A shaped id is recorded
+        // as the arming session, so the session holding that id claims at its
+        // next stop or compaction offer. A value of no usable shape records no
+        // identity at all, and the only route left is a session whose transcript
+        // carries the plan path typed as a command argument.
+        //
+        // Which of the two was reported is read from one short token rather than
+        // from the sentence, so the wording stays free to improve: the typed
+        // route is named only where it is the one route left, and the machine-
+        // read field asserted below is what that report is about.
+        const TYPED_ROUTE = /typed as a kit-goal command argument/;
         const unbound = [
-            [{}, 'the variable unset'],
-            [{ CLAUDE_CODE_SESSION_ID: '' }, 'an empty value'],
-            [{ CLAUDE_CODE_SESSION_ID: 'not-a-uuid' }, 'a value of another shape'],
-            [{ CLAUDE_CODE_SESSION_ID: SID.slice(0, -1) }, 'a UUID one character short'],
-            [{ CLAUDE_CODE_SESSION_ID: SID }, 'a UUID naming no transcript on this machine'],
-            [{ CLAUDE_CODE_SESSION_ID: '../../evil' }, 'a value carrying a path separator']
+            [{}, 'the variable unset', null],
+            [{ CLAUDE_CODE_SESSION_ID: '' }, 'an empty value', null],
+            [{ CLAUDE_CODE_SESSION_ID: 'not-a-uuid' }, 'a value of another shape', null],
+            [{ CLAUDE_CODE_SESSION_ID: SID.slice(0, -1) }, 'a UUID one character short', null],
+            [{ CLAUDE_CODE_SESSION_ID: SID }, 'a UUID naming no transcript on this machine', SID],
+            [{ CLAUDE_CODE_SESSION_ID: '../../evil' }, 'a value carrying a path separator', null]
         ];
-        for (const [extra, why] of unbound) {
+        for (const [extra, why, recorded] of unbound) {
             const res = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md'], {
                 cwd: repo, encoding: 'utf8',
                 env: armEnv({ ...extra, USERPROFILE: fakeHome, HOME: fakeHome })
             });
             assert.strictEqual(res.status, 0, why + ': ' + res.stderr);
-            assert.match(res.stdout,
-                /armed for docs\/plans\/a\.md \(unbound; the leash binds at the arming session's first stop or auto-compaction offer\)/,
+            assert.match(res.stdout, /armed for docs\/plans\/a\.md \(unbound/,
                 why + ' must arm unbound and say so');
+            assert.strictEqual(TYPED_ROUTE.test(res.stdout), recorded === null,
+                why + ' must name the typed route exactly when it is the only one left');
             const raw = rawState(repo);
             assert.strictEqual(raw.boundSession, null, why + ' must write no binding');
             assert.strictEqual(raw.boundTranscript, null, why + ' must write no transcript');
+            assert.strictEqual(raw.armingSession, recorded, why + ' records exactly this arming identity');
         }
     } finally {
         rmRepo(repo);
@@ -3019,9 +3205,11 @@ test('CLI arm records the arming session\'s transcript when one exists under the
             env: armEnv({ CLAUDE_CODE_SESSION_ID: SID2, USERPROFILE: fakeHome, HOME: fakeHome })
         });
         assert.strictEqual(res.status, 0, res.stderr);
-        assert.match(res.stdout, /\(unbound; the leash binds/);
+        assert.match(res.stdout, /\(unbound/);
         assert.strictEqual(readGoal(repo).boundSession, null);
         assert.strictEqual(readGoal(repo).boundTranscript, null);
+        assert.strictEqual(readGoal(repo).armingSession, SID2,
+            'the shaped id is recorded, so that session claims at its own first stop');
 
         // And an unreadable projects tree (here, a file where the directory
         // would be) arms unbound silently rather than failing the arm: the
@@ -3035,10 +3223,12 @@ test('CLI arm records the arming session\'s transcript when one exists under the
                 env: armEnv({ CLAUDE_CODE_SESSION_ID: SID, USERPROFILE: brokenHome, HOME: brokenHome })
             });
             assert.strictEqual(res.status, 0, res.stderr);
-            assert.match(res.stdout, /\(unbound; the leash binds/);
+            assert.match(res.stdout, /\(unbound/);
             assert.strictEqual(res.stderr, '', 'a failed transcript lookup is silent');
             assert.strictEqual(readGoal(repo).boundSession, null);
             assert.strictEqual(readGoal(repo).boundTranscript, null);
+            assert.strictEqual(readGoal(repo).armingSession, SID,
+                'the shaped id is recorded even where the projects tree cannot be listed');
         } finally {
             rmRepo(brokenHome);
         }
