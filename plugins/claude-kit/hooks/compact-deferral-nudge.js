@@ -81,11 +81,23 @@
 //      path it opens, and kit-goal-lib.js applies the same rejection to its own
 //      stat paths.
 //   5. A kit goal is armed (readGoal from kit-goal-lib.js, the same read the
-//      gate uses) and goal.boundSession equals the payload's session id
-//      (sameSessionId, over session_id or sessionId, the pair the gate and the
-//      Stop hook both accept). Bound sessions only, since claiming a binding
-//      stays the business of the gate and the Stop hook, and an unbound or
-//      foreign session has no boundary of this run's to declare. Nothing here
+//      gate uses) and this session holds its leash (sessionHoldsLeash, over
+//      session_id or sessionId, the pair the gate and the Stop hook both
+//      accept): the bound session, or the session the state records as having
+//      armed a goal still unbound. Claiming stays the gate's and the Stop
+//      hook's business and this hook only reads the answer. Two states put an
+//      unbound goal beside a standing deferral episode, and they are what the
+//      second leg reaches: a claim whose best-effort bind write failed, which
+//      leaves the run held under an episode it opened while the state still
+//      reads unbound, and a re-arm that lands unbound while an episode is
+//      already standing. An episode is opened by a boundary deny alone, and the
+//      claim points bind before they take that verdict, so the ordinary
+//      self-armed first deferral is already bound and the first leg answers it.
+//      The user's typed arming text is NOT a leg here: it is a claim route the
+//      two hooks act on and this hook does not read transcripts, so an arm made
+//      outside any session, which records no arming id, leaves this hook silent
+//      for the session that will claim on that text. A foreign session has
+//      no boundary of this run's to declare. Nothing here
 //      compares transcript paths: the goal's boundTranscript and a payload's
 //      transcript_path come from different producers (the CLI composes its own
 //      path, a claim-point bind stores the harness's verbatim value), so any
@@ -93,11 +105,14 @@
 //      symlinked home) would be a permanent total stand-down with no log line
 //      and nothing in any status surface. Its only failure direction is
 //      silence. Guard 3 is the subagent stand-down.
-//   6. The gate state shows a deferral episode open FOR THIS BINDING
-//      (gateEpisodeOpen with checkpointOwner's answer, which is an explicit
-//      null for an unbound goal rather than the undefined that would let any
-//      bystander's hold fire this run's nudge). No episode means no offer is
-//      being held, and there is nothing to act on.
+//   6. The gate state shows a deferral episode open FOR THIS RUN'S LEASH
+//      (gateEpisodeOpen scoped to the holder guard 5 identified: the goal's
+//      binding where it has one, and otherwise this session's own id, which is
+//      what the gate recorded its denials under while the leash sat
+//      unclaimed). The scoping is always an explicit id rather than an
+//      omission, since an omitted one lets any bystander's hold fire this run's
+//      nudge. No episode means no offer is being held, and there is nothing to
+//      act on.
 //   7. No matching checkpoint is open (readCheckpoint plus checkpointMatches,
 //      given pendingOfferCorroborated's answer as its fourth argument, from
 //      the same state read guard 6 used). A matching checkpoint means the
@@ -106,7 +121,11 @@
 //      not optional: omitted, the match rule falls back to the ten-minute
 //      bound, and a boundary declared under a pending offer during a long tool
 //      call is exactly the case this hook exists to serve, so the fallback
-//      would make this guard wrong precisely there.
+//      would make this guard wrong precisely there. A record opened before the
+//      leash was claimed carries no owner, and the match is asked as the next
+//      offer's claim will leave it (that claim binds the leash and adopts such
+//      a record), so a boundary already banked in that window stands this hook
+//      down exactly as a bound run's does.
 //   8. The episode's nudgedAt is absent, unparseable, dated in the future, or
 //      older than NUDGE_INTERVAL_MS. The three illegible readings all fire,
 //      which is the fail-open direction here and self-healing: the stamp
@@ -323,12 +342,13 @@ function main() {
     if (typeof cwd !== 'string' || cwd === '') return null;
     if (namesNetworkShare(cwd)) return null;
 
-    // Guard 5: a kit goal is armed for that project and bound to this session.
+    // Guard 5: a kit goal is armed for that project and this session holds its
+    // leash, by either route a claim point acts on.
     // The lib requires are deferred to here so a damaged installed cache
     // degrades to silence rather than a crash (see the header).
-    let readGoal, lib;
+    let readGoal, sessionHoldsLeash, lib;
     try {
-        ({ readGoal } = require('./kit-goal-lib.js'));
+        ({ readGoal, sessionHoldsLeash } = require('./kit-goal-lib.js'));
         lib = require('./kit-compact-lib.js');
     } catch { return null; }
     const goal = readGoal(cwd);
@@ -337,12 +357,18 @@ function main() {
     // harness emitting camelCase would otherwise keep opening episodes this
     // hook could never speak about.
     const sessionId = payload.session_id || payload.sessionId;
-    if (!lib.sameSessionId(goal.boundSession, sessionId)) return null;
+    if (!sessionHoldsLeash(goal, sessionId)) return null;
 
     // One clock and one state read for guards 6, 7 and 8, so the three cannot
     // answer as of different moments or different files.
     const now = Date.now();
-    const owner = lib.checkpointOwner(goal);
+    // The session the three checkpoint questions below are scoped to: the
+    // goal's binding where it has one, and otherwise this session, which the
+    // guard above has just established holds a leash no claim point has written
+    // down yet and which the gate recorded its own denials under. Always a
+    // concrete id, never undefined, which those readers take as "any session's
+    // hold counts".
+    const owner = lib.checkpointOwner(goal) || sessionId;
     const state = lib.readGateState(cwd);
 
     // Guard 6: this binding is under a deferral episode right now.
@@ -352,7 +378,22 @@ function main() {
     // Guard 7: no checkpoint of this run's is already matching.
     const cp = lib.readCheckpoint(cwd);
     const corroborated = lib.pendingOfferCorroborated(cp, state, now, owner);
-    if (lib.checkpointMatches(cp, goal, now, corroborated).ok) return null;
+    // The question is the one the NEXT offer answers rather than the one a
+    // reader of the file would ask right now, because that offer carries the
+    // claim: it binds the leash to this session and adopts an ownerless record
+    // for it, so a boundary already banked in this window is honored there and
+    // a directive to bank one would be false. Both substitutions are the
+    // claim's own, the goal as it will be bound and the record as
+    // adoptCheckpoint would leave it, the second taken only where
+    // checkpointAdoptable says a claim would take it and only while no binding
+    // exists to claim over. With a binding in place, owner IS that binding and
+    // neither substitution changes anything, so a bound run asks exactly what
+    // it always asked.
+    const claimed = { ...goal, boundSession: owner };
+    const banked = (lib.checkpointOwner(goal) === null && lib.checkpointAdoptable(cp, goal).ok)
+        ? { ...cp, boundSession: owner }
+        : cp;
+    if (lib.checkpointMatches(banked, claimed, now, corroborated).ok) return null;
 
     // Guard 8: the interval since this episode was last spoken to.
     if (!intervalElapsed(episode.nudgedAt, now)) return null;

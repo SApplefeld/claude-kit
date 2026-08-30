@@ -31,7 +31,7 @@ const {
     checkpointPath, writeCheckpoint, automationInEffect, stripLocalCommandOutput,
     commandArgsSpans, readTranscriptCapped, userCommandArgsClaimPlan,
     gateStatePath, gateLogPath, gateEpisodeOpen, pendingOfferCorroborated, checkpointOwner,
-    recordEpisodeNudge, recordGateDecision, readCheckpoint, clearCheckpoint,
+    recordEpisodeNudge, recordGateDecision, readCheckpoint, clearCheckpoint, adoptCheckpoint,
     roleBoundaryPath, consentPath, writeRoleBoundary, writeConsent, markerMatches
 } = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
 
@@ -100,6 +100,29 @@ function writeRefusingPreload(dir) {
         '// fs.writeFileSync.',
         'fs.openSync = function (target) {',
         "    if (String(target).includes('goal-state.json.tmp')) {",
+        "        const err = new Error('EPERM: the fixture refuses this write');",
+        "        err.code = 'EPERM';",
+        '        throw err;',
+        '    }',
+        '    return realOpenSync.apply(fs, arguments);',
+        '};'
+    ].join('\n') + '\n');
+    return '--require "' + shim.replace(/\\/g, '/') + '"';
+}
+
+// The same refusal aimed at the checkpoint's own atomic write, which is what an
+// adoption meets when .kit/ will not take the rewrite. Separate from the state
+// shim above because a case needs one without the other: a claim whose binding
+// lands and whose adoption does not is exactly the state the deny note has to
+// describe.
+function checkpointWriteRefusingPreload(dir) {
+    const shim = path.join(dir, 'refuse-checkpoint-write.js');
+    writeFile(shim, [
+        "'use strict';",
+        "const fs = require('fs');",
+        'const realOpenSync = fs.openSync;',
+        'fs.openSync = function (target) {',
+        "    if (String(target).includes('compact-checkpoint.json.tmp')) {",
         "        const err = new Error('EPERM: the fixture refuses this write');",
         "        err.code = 'EPERM';",
         '        throw err;',
@@ -461,18 +484,85 @@ test('gate: goal armed but unbound, transcript claims the plan: deny-boundary an
     }
 });
 
-test('gate: a claim against a checkpoint opened while unbound still denies', () => {
-    // The checkpoint records boundSession null, which does not match the
-    // session that now holds the binding, so it is a wrong-session mismatch:
-    // the compaction defers one more chapter, and the next checkpoint, written
-    // bound, opens the gate. The mismatching checkpoint is left in place, since
-    // consumption is the boundary firing and this offer is not it.
+test('gate: a boundary opened while the goal was unbound is honored by the claim that adopts it', () => {
+    // A checkpoint opened before any session held the leash records no owner,
+    // there being no binding to copy. The claim adopts that ownerless record
+    // for the session it binds, so the boundary the run declared lands the
+    // compaction it was declared for, and the allow consumes it like any other
+    // matching checkpoint.
     const { repo, planRel, transcript } = armedRepo({ unbound: true, claiming: true });
     try {
         const wrote = writeCheckpoint(repo, planRel, null);
         assert.strictEqual(wrote.ok, true, 'test setup: checkpoint should write');
+        assertAllow(runGate(gatePayload(repo, transcript)));
+        assert.ok(!fs.existsSync(checkpointPath(repo)), 'the adopted checkpoint is consumed by the allow');
+        assert.strictEqual(readGoal(repo).boundSession, SESSION, 'the same offer claimed the binding');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: an adoption that cannot be written denies, says so, and leaves the claim standing', () => {
+    // The deny that follows a failed adoption reports wrong-session against the
+    // run's own boundary, which is a cause that did not fire, so the note names
+    // the rewrite that did not land. The binding is not held up by it: the claim
+    // stands, and the next boundary the run opens records it.
+    const { repo, planRel, transcript } = armedRepo({ unbound: true, claiming: true });
+    try {
+        const wrote = writeCheckpoint(repo, planRel, null);
+        assert.strictEqual(wrote.ok, true, 'test setup: checkpoint should write');
+        const res = runGate(gatePayload(repo, transcript),
+            { NODE_OPTIONS: checkpointWriteRefusingPreload(repo) });
+        assertDeny(res);
+        assert.ok(res.stderr.includes('could not be rewritten with the binding'),
+            'the note names the adoption that failed; stderr: ' + res.stderr);
+        assert.strictEqual(readGoal(repo).boundSession, SESSION, 'the claim stands either way');
+        assert.strictEqual(readCheckpoint(repo).boundSession, null, 'and the record is left as it was');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a deny with no failed adoption carries no adoption clause', () => {
+    // The control for the clause above: the ordinary mid-chapter deny must not
+    // grow a sentence about a rewrite nothing attempted.
+    const { repo, transcript } = armedRepo();
+    try {
+        const res = runGate(gatePayload(repo, transcript));
+        assertDeny(res);
+        assert.ok(!res.stderr.includes('could not be rewritten with the binding'),
+            'an ordinary deny says nothing about an adoption; stderr: ' + res.stderr);
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a claim leaves a checkpoint belonging to another session alone, and is denied by it', () => {
+    // The control on the adoption: only an ownerless record is taken. A record
+    // naming some other session is what wrong-session exists to refuse, and a
+    // claim arriving beside it neither rewrites it nor is opened by it.
+    const { repo, transcript } = armedRepo({ unbound: true, claiming: true });
+    try {
+        const wrote = writeCheckpoint(repo, 'docs/plans/example.md', 'ses-some-other-run');
+        assert.strictEqual(wrote.ok, true, 'test setup: checkpoint should write');
         assertDeny(runGate(gatePayload(repo, transcript)));
-        assert.ok(fs.existsSync(checkpointPath(repo)), 'a non-matching checkpoint is not consumed');
+        assert.strictEqual(readCheckpoint(repo).boundSession, 'ses-some-other-run',
+            'the other session keeps its record');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a claim leaves an ownerless checkpoint naming another plan alone, and is denied by it', () => {
+    // The second control: the adoption is scoped to the armed plan, so a
+    // leftover from a prior run cannot be adopted into the current one and then
+    // spend this run's first offer.
+    const { repo, transcript } = armedRepo({ unbound: true, claiming: true });
+    try {
+        const wrote = writeCheckpoint(repo, 'docs/plans/some-prior-run.md', null);
+        assert.strictEqual(wrote.ok, true, 'test setup: checkpoint should write');
+        assertDeny(runGate(gatePayload(repo, transcript)));
+        assert.strictEqual(readCheckpoint(repo).boundSession, null, 'the stale record is untouched');
     } finally {
         rmDir(repo);
     }
@@ -579,6 +669,39 @@ test('gate: an armingSession the state cannot support claims nothing, whatever s
             assert.strictEqual(readGoal(repo).boundSession, null,
                 JSON.stringify(planted) + ' must not claim the binding');
         }
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a boundary a self-armed run banked while unbound is honored when it claims on the arming id', () => {
+    // The run this route serves reaches its first boundary before anything has
+    // claimed its leash, so the checkpoint it opens records no owner. The claim
+    // on the arming id adopts it, and the offer that carried the claim lands at
+    // that boundary instead of deferring a further chapter.
+    const { repo, planRel, transcript } = selfArmedRepo(ARMING_SESSION);
+    try {
+        const wrote = writeCheckpoint(repo, planRel, null);
+        assert.strictEqual(wrote.ok, true, 'test setup: checkpoint should write');
+        assertAllow(runGate(gatePayload(repo, transcript, { session_id: ARMING_SESSION })));
+        assert.ok(!fs.existsSync(checkpointPath(repo)), 'the adopted checkpoint is consumed by the allow');
+        assert.strictEqual(readGoal(repo).boundSession, ARMING_SESSION, 'the same offer claimed the binding');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a bystander meeting an ownerless checkpoint adopts nothing and is not boundary-gated', () => {
+    // Adoption rides on a claim and nothing else: a session with neither claim
+    // route open takes the interactive path, and the record it never claimed is
+    // still ownerless afterwards for the session that can.
+    const { repo, planRel, transcript } = selfArmedRepo(ARMING_SESSION);
+    try {
+        const wrote = writeCheckpoint(repo, planRel, null);
+        assert.strictEqual(wrote.ok, true, 'test setup: checkpoint should write');
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript, { session_id: BYSTANDER_SESSION })));
+        assert.strictEqual(readCheckpoint(repo).boundSession, null, 'the record keeps no owner');
+        assert.strictEqual(readGoal(repo).boundSession, null, 'the goal stays unbound');
     } finally {
         rmDir(repo);
     }
@@ -1124,6 +1247,172 @@ test('gate: >1MB transcript, above ceiling: allow (valve trips off the capped ta
 // ---------------------------------------------------------------------------
 // Checkpoint semantics: open, consume, single-shot, stale, non-consumption.
 // ---------------------------------------------------------------------------
+
+// The adoption rule itself, read directly rather than through a gate run, so
+// what a claim carries over from the record it adopts is pinned field by
+// field.
+
+// Hand-write an ownerless checkpoint with an arbitrary openedAt, which is the
+// record a boundary declared while the goal was unbound leaves behind.
+function writeOwnerlessCheckpoint(repo, planRel, openedAt, pendingOffer) {
+    writeFile(checkpointPath(repo), JSON.stringify({
+        plan: planRel,
+        boundSession: null,
+        openedAt,
+        pendingOffer: pendingOffer === true
+    }) + '\n');
+}
+
+test('adoptCheckpoint: an ownerless record gains the owner and keeps its age and its pending flag', () => {
+    // The age is the record's own, carried over verbatim: an adoption gives a
+    // boundary an owner and nothing else, so a record cannot buy a fresh lease
+    // by being adopted late.
+    const { repo, planRel } = armedRepo();
+    try {
+        const openedAt = new Date(Date.now() - 4 * 60 * 1000).toISOString();
+        writeOwnerlessCheckpoint(repo, planRel, openedAt, true);
+        const result = adoptCheckpoint(repo, { plan: planRel }, SESSION);
+        assert.deepStrictEqual(result, { ok: true, adopted: true, reason: null });
+        assert.deepStrictEqual(readCheckpoint(repo), {
+            plan: planRel, boundSession: SESSION, openedAt, pendingOffer: true
+        });
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('adoptCheckpoint: a record replaced under the write is left alone rather than republished', () => {
+    // An adoption reads a record and writes it back with an owner, and it runs
+    // precisely while the goal is unbound, where the single-writer ordering the
+    // gate relies on elsewhere (everything serialized through the one bound
+    // session) is not established: a checkpoint CLI open in the same project
+    // can land between the read and the rename. The verify runs in the last
+    // moment before that rename, so the newer boundary survives and the stale
+    // record it read is not republished over it.
+    const { repo, planRel } = armedRepo();
+    const realOpenSync = fs.openSync;
+    try {
+        writeOwnerlessCheckpoint(repo, planRel, new Date(Date.now() - 4 * 60 * 1000).toISOString(), false);
+        const newer = new Date().toISOString();
+        // The concurrent open, landed at the moment the adoption creates its
+        // temporary file, which is inside the window the verify closes. The
+        // shim removes itself first, so the write it makes is an ordinary one.
+        fs.openSync = function (target) {
+            if (String(target).includes('compact-checkpoint.json.tmp')) {
+                fs.openSync = realOpenSync;
+                writeOwnerlessCheckpoint(repo, planRel, newer, false);
+            }
+            return realOpenSync.apply(fs, arguments);
+        };
+        const result = adoptCheckpoint(repo, { plan: planRel }, SESSION);
+        assert.strictEqual(result.ok, false, 'the adoption reports that it did not land');
+        assert.strictEqual(result.adopted, false, 'and adopted nothing');
+        assert.deepStrictEqual(readCheckpoint(repo), {
+            plan: planRel, boundSession: null, openedAt: newer, pendingOffer: false
+        }, 'the newer boundary is untouched');
+    } finally {
+        fs.openSync = realOpenSync;
+        rmDir(repo);
+    }
+});
+
+test('adoptCheckpoint: a record already naming a session is never rewritten', () => {
+    const { repo, planRel } = armedRepo();
+    try {
+        const wrote = writeCheckpoint(repo, planRel, 'ses-some-other-run');
+        assert.strictEqual(wrote.ok, true, 'test setup: checkpoint should write');
+        const result = adoptCheckpoint(repo, { plan: planRel }, SESSION);
+        assert.deepStrictEqual(result, { ok: true, adopted: false, reason: 'owned' });
+        assert.strictEqual(readCheckpoint(repo).boundSession, 'ses-some-other-run');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('adoptCheckpoint: an owner the writer could not have stored reads as no owner, and is adoptable', () => {
+    // One rule decides what counts as an owner, at the write and at the
+    // adoption: a value the writer would refuse is not a session that could own
+    // anything, so treating it as one would strand the record forever, matching
+    // nothing and adoptable by nobody.
+    const { repo, planRel } = armedRepo();
+    try {
+        const openedAt = new Date().toISOString();
+        for (const planted of ['', 0, false]) {
+            writeFile(checkpointPath(repo), JSON.stringify({
+                plan: planRel, boundSession: planted, openedAt, pendingOffer: false
+            }) + '\n');
+            assert.deepStrictEqual(adoptCheckpoint(repo, { plan: planRel }, SESSION),
+                { ok: true, adopted: true, reason: null }, JSON.stringify(planted) + ' reads as no owner');
+            assert.strictEqual(readCheckpoint(repo).boundSession, SESSION);
+        }
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('adoptCheckpoint: a plan path the writer would refuse is refused here too', () => {
+    // Every field this file stores passes one gate, in the single writer, so a
+    // second writer cannot store a path the first would have rejected. The
+    // record and the goal agree on the value, so only the path rule can refuse
+    // it.
+    const { repo } = armedRepo();
+    try {
+        const escaping = '../outside/example.md';
+        writeFile(checkpointPath(repo), JSON.stringify({
+            plan: escaping, boundSession: null, openedAt: new Date().toISOString(), pendingOffer: false
+        }) + '\n');
+        const result = adoptCheckpoint(repo, { plan: escaping }, SESSION);
+        assert.strictEqual(result.ok, false, 'the adoption does not land');
+        assert.match(result.reason, /plan path is invalid or outside the repo/);
+        assert.strictEqual(readCheckpoint(repo).boundSession, null, 'and the record is untouched');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('adoptCheckpoint: an ownerless record naming another plan, and an absent one, are both declined', () => {
+    const { repo, planRel } = armedRepo();
+    try {
+        assert.deepStrictEqual(adoptCheckpoint(repo, { plan: planRel }, SESSION),
+            { ok: true, adopted: false, reason: 'no-checkpoint' });
+        const openedAt = new Date().toISOString();
+        writeOwnerlessCheckpoint(repo, 'docs/plans/some-prior-run.md', openedAt, false);
+        assert.deepStrictEqual(adoptCheckpoint(repo, { plan: planRel }, SESSION),
+            { ok: true, adopted: false, reason: 'wrong-plan' });
+        assert.strictEqual(readCheckpoint(repo).boundSession, null, 'the other plan keeps its record');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('adoptCheckpoint: an ownerless record whose openedAt cannot be read is declined rather than restamped', () => {
+    // An illegible timestamp fails the match rule on its own terms, and an
+    // adoption that wrote one back would be storing a value no reader can use.
+    const { repo, planRel } = armedRepo();
+    try {
+        writeOwnerlessCheckpoint(repo, planRel, 'the day before yesterday', false);
+        assert.deepStrictEqual(adoptCheckpoint(repo, { plan: planRel }, SESSION),
+            { ok: true, adopted: false, reason: 'no-timestamp' });
+        assert.strictEqual(readCheckpoint(repo).boundSession, null, 'the record is left as it was');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: an ownerless boundary older than the age bound is adopted by the claim and still expires', () => {
+    // The end of the same rule at the gate: adoption is not a renewal, so a
+    // boundary that aged out before the claim reached it defers exactly as it
+    // would have with an owner on it.
+    const { repo, planRel, transcript } = armedRepo({ unbound: true, claiming: true });
+    try {
+        writeOwnerlessCheckpoint(repo, planRel, new Date(Date.now() - 30 * 60 * 1000).toISOString(), false);
+        assertDeny(runGate(gatePayload(repo, transcript)));
+        assert.strictEqual(readCheckpoint(repo).boundSession, SESSION,
+            'the claim adopted the record it could not use');
+    } finally {
+        rmDir(repo);
+    }
+});
 
 test('gate: matching checkpoint open: allow AND consume; the next attempt is denied again', () => {
     const { repo, planRel, transcript } = armedRepo();
@@ -1839,6 +2128,42 @@ test('cli: open with no episode open records no pending offer', () => {
     }
 });
 
+test('cli: open while unbound records the pending offer of the hold the caller is under', () => {
+    // A run that holds the leash by the arming id opens its boundary before any
+    // claim point has written the binding down, and the gate has been holding
+    // its offers under its own session id. Scoping the hold question to the
+    // binding alone answers null there, so the boundary would record no pending
+    // offer and take the ten-minute leg while an offer is genuinely waiting for
+    // it, and the next long tool call would expire the boundary the flag exists
+    // to keep alive.
+    const { repo } = selfArmedRepo(ARMING_SESSION);
+    try {
+        openEpisodeFor(repo, ARMING_SESSION);
+        const res = runCli(['open'], repo, { CLAUDE_CODE_SESSION_ID: ARMING_SESSION });
+        assert.strictEqual(res.status, 0, 'open succeeds; stderr: ' + res.stderr);
+        assert.strictEqual(openedCheckpoint(repo).pendingOffer, true, 'the pending offer is recorded');
+        assert.ok(res.stdout.includes('holding offers'), 'and named to the reader: ' + res.stdout);
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('cli: open by a caller who holds no leash records no pending offer out of another hold', () => {
+    // The gate on that fallback: the hold belongs to the session the arming id
+    // names, and a caller that is neither the bound session nor that one scopes
+    // the question to nobody rather than to itself.
+    const { repo } = selfArmedRepo(ARMING_SESSION);
+    try {
+        openEpisodeFor(repo, ARMING_SESSION);
+        const res = runCli(['open'], repo, { CLAUDE_CODE_SESSION_ID: BYSTANDER_SESSION });
+        assert.strictEqual(res.status, 0, 'open succeeds; stderr: ' + res.stderr);
+        assert.strictEqual(openedCheckpoint(repo).pendingOffer, false, 'no pending offer is claimed');
+        assert.ok(!res.stdout.includes('holding offers'), 'and none is named: ' + res.stdout);
+    } finally {
+        rmDir(repo);
+    }
+});
+
 test('cli: an episode another session is held under is not this boundary\'s pending offer', () => {
     // The ownership leg. A bystander's hold says nothing about whether an offer
     // is waiting for the leashed run's boundary, and reading it as one would
@@ -2043,6 +2368,52 @@ test('cli: status reports an open checkpoint, a mismatched one, and none', () =>
     }
 });
 
+test('cli: status parts the three states the session leg refuses, and the gate agrees on each', () => {
+    // The match rule reports one code whether a record names another session or
+    // names none, and the three states it covers are opposite news: an ownerless
+    // record beside an unbound goal is a boundary the next claim adopts and the
+    // gate then honors, an ownerless record beside a held leash is dead because
+    // an adoption rides on a claim, and a record naming another session is the
+    // crash orphan that leg exists for.
+    const { repo, planRel, transcript } = selfArmedRepo(ARMING_SESSION);
+    const statusLine = () => {
+        const res = runCli(['status'], repo);
+        assert.strictEqual(res.status, 0, 'status runs; stderr: ' + res.stderr);
+        return res.stdout.split('\n')[0];
+    };
+    try {
+        writeCheckpoint(repo, planRel, null);
+        let out = statusLine();
+        assert.ok(out.includes('the claim that binds one adopts this record'),
+            'an ownerless record beside an unbound goal is reported as adoptable: ' + out);
+        assert.ok(!out.includes('treats it as absent'),
+            'and is not reported dead, since the gate honors it at the claim: ' + out);
+
+        // The same record with no timestamp a claim could take it by: adoption
+        // declines it, so the report must not promise one.
+        writeFile(checkpointPath(repo), JSON.stringify({
+            plan: planRel, boundSession: null, openedAt: 'the day before yesterday', pendingOffer: false
+        }) + '\n');
+        out = statusLine();
+        assert.ok(out.includes('no opened timestamp a claim could adopt it by'), out);
+        assert.ok(out.includes('treats it as absent'), out);
+
+        // The gate agrees on the adoptable fixture: it claims, adopts and lands.
+        writeCheckpoint(repo, planRel, null);
+        assertAllow(runGate(gatePayload(repo, transcript, { session_id: ARMING_SESSION })));
+
+        // With the leash now held, an ownerless record is genuinely dead: no
+        // claim is coming to adopt it.
+        writeCheckpoint(repo, planRel, null);
+        out = statusLine();
+        assert.ok(out.includes('records no session while the leash is held'), out);
+        assert.ok(out.includes('treats it as absent'), out);
+        assertDeny(runGate(gatePayload(repo, transcript, { session_id: ARMING_SESSION })));
+    } finally {
+        rmDir(repo);
+    }
+});
+
 test('cli: status names each state the gate ignores, and the gate agrees on the same fixture', () => {
     // Status answers from the same checkpointMatches rule the gate decides
     // by, so every stage asserts both surfaces against one fixture: the
@@ -2063,7 +2434,8 @@ test('cli: status names each state the gate ignores, and the gate agrees on the 
         // Wrong session (the crash orphan).
         writeCheckpoint(repo, planRel, 'ses-crashed-previous-run');
         let out = statusLine();
-        assert.ok(out.includes('bound to a different session'), 'names the session mismatch: ' + out);
+        assert.ok(out.includes('names a session that does not hold the armed goal\'s leash'),
+            'names the session mismatch: ' + out);
         assert.ok(out.includes('treats it as absent'), out);
         assertDeny(runGate(payload()));
 

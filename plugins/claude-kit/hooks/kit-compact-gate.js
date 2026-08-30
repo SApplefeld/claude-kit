@@ -139,9 +139,11 @@
 //      until this gate has denied once, and the CLI reads that same absence
 //      at the open and writes the flag false, so the record does not claim a
 //      hold either. The leg engages from the first deny onward. A checkpoint
-//      with no boundSession field or no legible openedAt (written by an
-//      older version, or hand-made) is a mismatch, the
-//      fail-open-toward-status-quo direction. When a MATCHING checkpoint is
+//      recording no owner is the ordinary product of a boundary declared while
+//      the goal was unbound, and a claim adopts it here before the verdict
+//      runs; one that reaches the verdict still ownerless is a mismatch, as is
+//      one with no legible openedAt (written by an older version, or
+//      hand-made), the fail-open-toward-status-quo direction. When a MATCHING checkpoint is
 //      open the hook allows and consumes (deletes) it before exiting, so the
 //      next mid-chapter attempt is denied again: consumption is single-shot,
 //      and it happens only on this checkpoint-driven allow. Allowing for any
@@ -229,7 +231,7 @@
 const fs = require('fs');
 const { readGoal, bindSession, armingSessionClaims } = require('./kit-goal-lib.js');
 const {
-    readCheckpoint, clearCheckpoint, checkpointMatches, sameSessionId,
+    readCheckpoint, clearCheckpoint, adoptCheckpoint, checkpointMatches, sameSessionId,
     transcriptShowsAutomation, userCommandArgsClaimPlan,
     recordGateDecision, projectGateEpisode, episodePhrase,
     readGateState, pendingOfferCorroborated, checkpointOwner,
@@ -420,9 +422,14 @@ function latestConsumedTokens(transcriptPath) {
 // left in place (the next CLI write replaces it, and the expired case in
 // particular must NOT be consumed: an expiry deny is not the boundary firing).
 // A checkpoint opened while the goal was still unbound records boundSession
-// null and so does not match the session that has now claimed the binding: the
-// compaction defers one more chapter, and the next checkpoint, written bound,
-// opens the gate. The read here and the delete below are not atomic: this
+// null, and every claim point adopts such a record for the session it binds
+// (adoptCheckpoint in the lib, called from this hook's two claim branches and
+// the Stop hook's two) before this verdict reads it, so a boundary a run banked
+// before its leash reached it is matched here like any other. An arm-time bind
+// is not a claim point and adopts nothing; it writes the binding before any
+// boundary of that run exists. A record naming some other session is not
+// adoptable and still reads as absent, which is the crash-orphan case that leg
+// exists for. The read here and the delete below are not atomic: this
 // assumes the single-writer reality, where the CLI writer and this gate
 // serialize through the one bound session, so no checkpoint can land between
 // them and be consumed by an allow the previous one earned. A future
@@ -480,6 +487,20 @@ function boundaryVerdict(cwd, goal, transcriptPath, sessionId) {
     // boundary whose offer arrived too late, and so on), which is what makes a
     // run of denials in the log readable after the fact.
     return { verdict: 'deny-boundary', reason: match.reason, consumed, checkpoint };
+}
+
+// The boundary verdict, carrying what an adoption that could not land says
+// about it. An adoption that failed leaves the ownerless record on disk, so the
+// match rule refuses it on its session leg and the deny reports wrong-session
+// against the run's own boundary with nothing naming the write behind it, which
+// is the misleading diagnostic one layer down. The flag rides on the decision
+// for the operator note the entry wrapper composes; gateRecord's shape is
+// closed and drops it, which is deliberate, since this is a diagnostic for the
+// operator watching this deny rather than a new field in the journal contract
+// the CLI and the nudge both read.
+function boundaryDecision(cwd, goal, transcriptPath, sessionId, adoption) {
+    const verdict = boundaryVerdict(cwd, goal, transcriptPath, sessionId);
+    return (adoption && adoption.ok === false) ? { ...verdict, adoptFailed: true } : verdict;
 }
 
 // What the decision record keeps about the checkpoint file that was on disk:
@@ -579,7 +600,16 @@ function main() {
     if (armed && !goal.boundSession && userCommandArgsClaimPlan(transcriptPath, goal.plan)) {
         bindSession(cwd, sessionId, transcriptPath);
         goal.boundSession = sessionId;
-        return decide(boundaryVerdict(cwd, goal, transcriptPath, sessionId));
+        // A boundary banked while the goal was unbound records no owner,
+        // because the record copies the goal's binding at the open. The verdict
+        // below compares the two owners, so without this the run's own
+        // checkpoint reads as another session's and the boundary it declared is
+        // discarded. The adoption runs before the verdict for that reason, is
+        // best-effort like the bind above, and adoptCheckpoint owns which
+        // records it may take. An adoption that could not land does not hold up
+        // the verdict; it rides on it, so the deny says so (boundaryDecision).
+        return decide(boundaryDecision(cwd, goal, transcriptPath, sessionId,
+            adoptCheckpoint(cwd, goal, sessionId)));
     }
     // The same claim on the other evidence: an unbound goal whose state records
     // the id of the session that armed it, met here by that session. A run that
@@ -593,7 +623,12 @@ function main() {
     if (armed && !goal.boundSession && armingSessionClaims(goal, sessionId)) {
         bindSession(cwd, sessionId, transcriptPath);
         goal.boundSession = sessionId;
-        return decide(boundaryVerdict(cwd, goal, transcriptPath, sessionId));
+        // The ownerless-checkpoint adoption the branch above states, on the
+        // same terms. A run that armed a plan for itself reaches its first
+        // boundary unbound by construction, so this is the route where the
+        // adoption is the ordinary case rather than the unusual one.
+        return decide(boundaryDecision(cwd, goal, transcriptPath, sessionId,
+            adoptCheckpoint(cwd, goal, sessionId)));
     }
 
     // The interactive path (see the header): no kit goal covers this session,
@@ -680,6 +715,17 @@ const BOUNDARY_NOTE = 'kit-compact-gate: auto-compaction deferred to the next ch
     + 'prompt the session to close its '
     + 'boundary, or check yourself from the project directory with node "' + CHECKPOINT_CLI
     + '" status and open one at a true boundary with node "' + CHECKPOINT_CLI + '" open.';
+// The clause a boundary deny carries when this run's own ownerless boundary
+// record could not be given the binding. Two things produce that, an unwritable
+// .kit and a concurrent open replacing the record under the write, so it names
+// neither and states what the operator can act on: the record was judged as
+// another session's, and opening a boundary now records it under the binding
+// this offer just claimed. Fixed text interpolating nothing, on the same
+// provenance bound the notes it joins.
+const ADOPT_FAILED_NOTE = ' The boundary record this run opened before its leash was claimed could not be '
+    + 'rewritten with the binding, so this offer judged it as another session\'s; opening a boundary again '
+    + 'records it under the binding.';
+
 const INTERACTIVE_NOTE = 'kit-compact-gate: auto-compaction deferred to the context safety ceiling; '
     + 'this is the kit holding compaction out of an interactive session, not an error. Keep working. '
     + 'To land it sooner, bank the session\'s state at a natural boundary and open the release from '
@@ -714,6 +760,7 @@ if (require.main === module) {
     let note = null;
     if (decision.verdict === 'deny-boundary') {
         note = BOUNDARY_NOTE;
+        if (decision.adoptFailed === true) note += ADOPT_FAILED_NOTE;
         try { note += episodeNote(decision.cwd, decision); } catch { /* the figures are best-effort */ }
     } else if (decision.verdict === 'deny-interactive') {
         note = INTERACTIVE_NOTE;

@@ -37,7 +37,8 @@ const {
     lastActivePhrase,
     safeForAuthorization,
     recordExecutionTree,
-    queuePosition
+    queuePosition,
+    sessionHoldsLeash
 } = require('../plugins/claude-kit/hooks/kit-goal-lib.js');
 
 const CLI = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-goal.js');
@@ -2868,6 +2869,33 @@ test('an arm with no session id of the harness shape records no arming session',
     } finally {
         rmRepo(repo);
     }
+});
+
+test('sessionHoldsLeash answers for the binding where there is one and for the arming id where there is not', () => {
+    // The read-only spelling of the question the two claim points decide: a
+    // binding is the whole answer wherever one exists, compared the way every
+    // other surface compares session ids (harness UUIDs surface in mixed case);
+    // and only where there is none does the recorded arming id answer, which is
+    // the route by which a run that armed a plan for itself holds its own leash
+    // before any claim point has written the binding down.
+    const armed = { plan: 'docs/plans/foo.md', boundSession: null, armingSession: SID };
+    assert.strictEqual(sessionHoldsLeash(armed, SID), true, 'the recorded arming session holds it');
+    assert.strictEqual(sessionHoldsLeash(armed, SID.toUpperCase()), true, 'compared case-insensitively');
+    assert.strictEqual(sessionHoldsLeash(armed, ' ' + SID), false, 'a padded payload id claims nothing');
+    assert.strictEqual(sessionHoldsLeash(armed, 'ses-other'), false, 'nobody else does');
+
+    const bound = { plan: 'docs/plans/foo.md', boundSession: 'ses-holder', armingSession: SID };
+    assert.strictEqual(sessionHoldsLeash(bound, 'SES-HOLDER'), true, 'the bound session holds it');
+    assert.strictEqual(sessionHoldsLeash(bound, SID), false,
+        'and the arming id is a route to an unbound leash, never a second holder of a bound one');
+
+    // A binding no reader can support is nobody's: the claim points refuse to
+    // claim over it, so no surface tells a session it holds what they would not
+    // give it.
+    const damaged = { plan: 'docs/plans/foo.md', boundSession: 42, armingSession: SID };
+    assert.strictEqual(sessionHoldsLeash(damaged, SID), false, 'an unsupportable binding holds for nobody');
+    assert.strictEqual(sessionHoldsLeash({ boundSession: null, armingSession: SID }, SID), false,
+        'and no armed plan means no leash to hold');
 });
 
 test('readGoal repairs an armingSession the state file cannot support, and passes a shaped one through', () => {

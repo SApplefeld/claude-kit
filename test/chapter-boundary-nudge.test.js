@@ -245,6 +245,61 @@ test('silent when the goal is bound to another session', () => {
     }
 });
 
+// Synthetic session ids of the harness's own shape, which is what an arming
+// identity recorded in the state is held to. SESSION above is deliberately of
+// another shape, so no case can claim on that route by accident.
+const ARM_SESSION = '3b9c1d20-7a41-4e6d-8f25-11c0de4a7b90';
+const OTHER_SESSION = '5d2e88a4-0c13-4f77-9ab6-62f0aa31c5de';
+
+// A repo whose goal is unbound and records the given id as the session that
+// armed it: the state a run that armed a plan for itself lands in when the arm
+// could not corroborate its own transcript.
+function selfArmedRepo(armingId) {
+    const repo = makeDir('chapter-boundary-nudge-repo-');
+    const planRel = 'docs/plans/x_spec_v1.md';
+    writeFile(path.join(repo, planRel), 'Status: In Progress\n\nbody\n');
+    const armed = armGoal(repo, planRel, { sessionId: armingId, transcriptPath: null });
+    assert.strictEqual(armed.ok, true, 'test setup: goal should arm');
+    assert.strictEqual(armed.boundSession, null, 'test setup: the goal should arm unbound');
+    return repo;
+}
+
+test('fires for the session an unbound goal records as the one that armed it', () => {
+    // The leash holder is whoever the claim points would bind, and a run that
+    // armed a plan for itself is that session from the arm onward, so it gets
+    // the reminder in the window before its first stop or offer writes the
+    // binding down.
+    const repo = selfArmedRepo(ARM_SESSION);
+    try {
+        assertFires(runHook(firePayload(repo, { session_id: ARM_SESSION })), 'arming session');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('silent for a session that is neither bound nor the recorded arming session', () => {
+    const repo = selfArmedRepo(ARM_SESSION);
+    try {
+        assertSilent(runHook(firePayload(repo, { session_id: OTHER_SESSION })), 'bystander session');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('silent for the arming session once the goal is bound to another session', () => {
+    // A binding is the answer wherever there is one: the arming id is a route
+    // to claiming an UNBOUND leash, never a standing second holder of a bound
+    // one.
+    const repo = selfArmedRepo(ARM_SESSION);
+    try {
+        const bound = bindSession(repo, OTHER_SESSION);
+        assert.strictEqual(bound.ok, true, 'test setup: goal should bind');
+        assertSilent(runHook(firePayload(repo, { session_id: ARM_SESSION })), 'arming session, bound elsewhere');
+    } finally {
+        rmDir(repo);
+    }
+});
+
 test('silent when no goal is armed at all', () => {
     const repo = makeDir('chapter-boundary-nudge-repo-');
     try {

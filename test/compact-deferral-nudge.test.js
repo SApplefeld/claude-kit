@@ -453,6 +453,95 @@ test('silent when the goal is unbound and when none is armed', () => {
     }
 });
 
+// Synthetic session ids of the harness's own shape, which is what an arming
+// identity recorded in the state is held to. SESSION above is deliberately of
+// another shape, so no case can claim on that route by accident.
+const ARM_SESSION = '3b9c1d20-7a41-4e6d-8f25-11c0de4a7b90';
+const ARM_BYSTANDER = '5d2e88a4-0c13-4f77-9ab6-62f0aa31c5de';
+
+// A repo whose goal is unbound and records the given id as the session that
+// armed it, with a deferral episode open under the given owner: the state a run
+// that armed a plan for itself sits in while the gate holds its offers and no
+// claim point has been reached yet.
+function selfArmedRepo(armingId, episodeOwner) {
+    const repo = makeDir('compact-deferral-nudge-repo-');
+    writeFile(path.join(repo, PLAN_REL), 'Status: In Progress\n\nbody\n');
+    const armed = armGoal(repo, PLAN_REL, { sessionId: armingId, transcriptPath: null });
+    assert.strictEqual(armed.ok, true, 'test setup: goal should arm');
+    assert.strictEqual(armed.boundSession, null, 'test setup: the goal should arm unbound');
+    writeGateState(repo, openEpisode({ session: episodeOwner }));
+    return repo;
+}
+
+test('fires for the session an unbound goal records as the one that armed it', () => {
+    // A run holding a claimable leash is spoken to about the hold it is under:
+    // the goal reads unbound, and the denials holding this run are recorded
+    // under the session id the state records as having armed it. The fixture
+    // stages that pairing directly, which the hook's own header states the two
+    // routes to (a claim whose bind write failed, and a re-arm landing unbound
+    // beside a standing episode).
+    const repo = selfArmedRepo(ARM_SESSION, ARM_SESSION);
+    try {
+        const context = assertFires(runHook(firePayload(repo, { session_id: ARM_SESSION })), 'arming session');
+        assert.ok(context.includes('held 7 offers over 45 minutes'),
+            'the emitted context must carry the phrase built from the staged episode:\n' + context);
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('silent when the boundary this run banked before its claim is already open', () => {
+    // The directive tells a run to bank a boundary and open a checkpoint. A run
+    // holding a claimable leash has one open already: it carries no owner
+    // because none was held when it opened, and the claim the next offer
+    // carries adopts it and lands there. Emitting the directive against that
+    // state asks for work that is done.
+    const repo = selfArmedRepo(ARM_SESSION, ARM_SESSION);
+    try {
+        const { writeCheckpoint } = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
+        const written = writeCheckpoint(repo, PLAN_REL, null);
+        assert.strictEqual(written.ok, true, 'test setup: checkpoint should write');
+        assertSilent(runHook(firePayload(repo, { session_id: ARM_SESSION })), 'boundary already banked');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('fires when the checkpoint banked in that window names another plan', () => {
+    // The control for the case above: only this run's own boundary stands the
+    // directive down, and a leftover from a prior plan is not it.
+    const repo = selfArmedRepo(ARM_SESSION, ARM_SESSION);
+    try {
+        const { writeCheckpoint } = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
+        const written = writeCheckpoint(repo, 'docs/plans/some-prior-run.md', null);
+        assert.strictEqual(written.ok, true, 'test setup: checkpoint should write');
+        assertFires(runHook(firePayload(repo, { session_id: ARM_SESSION })), 'another plan\'s checkpoint');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('silent for a session that is neither bound nor the recorded arming session', () => {
+    const repo = selfArmedRepo(ARM_SESSION, ARM_BYSTANDER);
+    try {
+        assertSilent(runHook(firePayload(repo, { session_id: ARM_BYSTANDER })), 'bystander session');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('silent for the arming session while the open episode belongs to another session', () => {
+    // The episode question stays scoped to one id: holding a claimable leash
+    // says nothing about whose offers are being held, and a hold belonging to
+    // some other session is not this run's to be nudged about.
+    const repo = selfArmedRepo(ARM_SESSION, ARM_BYSTANDER);
+    try {
+        assertSilent(runHook(firePayload(repo, { session_id: ARM_SESSION })), 'another session\'s hold');
+    } finally {
+        rmDir(repo);
+    }
+});
+
 test('silent under KIT_EXTERNAL_ENGINE=1', () => {
     const repo = makeRepo();
     try {

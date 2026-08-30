@@ -125,7 +125,7 @@ const {
 const {
     readTranscriptCapped, stripLocalCommandOutput, sameSessionId,
     userCommandArgsClaimPlan,
-    readCheckpoint, writeCheckpoint, checkpointMatches,
+    readCheckpoint, writeCheckpoint, adoptCheckpoint, checkpointMatches,
     readGateState, gateEpisodeOpen, pendingOfferCorroborated, checkpointOwner
 } = require('./kit-compact-lib.js');
 
@@ -656,6 +656,13 @@ function main() {
         // gate refreshes it at exactly this point after its own bind, for the
         // same reason.
         goal.boundSession = sessionId;
+        // A boundary banked while the goal was unbound records no owner,
+        // because the record copies the goal's binding at the open, and every
+        // later reader compares that owner against the goal's. Adopting it at
+        // the claim is what keeps the boundary this run declared its own; the
+        // conditions are adoptCheckpoint's, and the call is best-effort like
+        // the bind above.
+        adoptCheckpoint(cwd, goal, sessionId);
     } else if (armingSessionClaims(goal, sessionId)) {
         // Unbound, and this session is the one that ran the arm: the state
         // records the arming session's id (armGoal's armingSession field)
@@ -673,6 +680,11 @@ function main() {
         // states.
         bindSession(cwd, sessionId, transcriptPath);
         goal.boundSession = sessionId;
+        // The ownerless-checkpoint adoption the branch above states, on the
+        // same terms. A run that armed a plan for itself reaches its first
+        // boundary unbound by construction, so this is the route where the
+        // adoption is the ordinary case rather than the unusual one.
+        adoptCheckpoint(cwd, goal, sessionId);
     } else {
         return;
     }

@@ -365,9 +365,11 @@ function atomicTmpPath(target) {
 // auto-compaction offer was already being held when the boundary was declared.
 // Returns { ok:true, plan } or { ok:false, reason }; never throws.
 //
-// The plan path is validated through kit-goal-lib's normalizePlanArg, the same
-// gate every stored plan path passes: it rejects control characters and any
-// path that escapes cwd, and the NORMALIZED form is what gets stored. For a
+// The plan path is validated through kit-goal-lib's normalizePlanArg, in
+// putCheckpoint below, where every writer of this file inherits it: it rejects
+// control characters and any path that escapes cwd, and the NORMALIZED form is
+// what gets stored, so the returned plan is that form rather than the argument
+// as given. For a
 // plan armGoal wrote, normalization is idempotent, so the stored value equals
 // the goal's and the gate's equality check matches; a hand-edited goal state
 // carrying a value armGoal would never have written either refuses here or
@@ -380,7 +382,8 @@ function atomicTmpPath(target) {
 // re-bound session that resumes the plan. The value is copied from the goal
 // state, so it is held to bindSession's own storage rules (a string, capped
 // length, no control characters); null is stored as null (an unbound goal),
-// which the gate likewise never matches.
+// which no binding equals, and such a record is given an owner by
+// adoptCheckpoint at the moment a claim point binds one.
 //
 // pendingOffer records whether an auto-compaction offer was already being held
 // when this boundary was declared, which is one of the two facts that select
@@ -390,75 +393,75 @@ function atomicTmpPath(target) {
 // than true stores false, so a caller with no answer records the conservative
 // one.
 //
-// The tmp name is unique per writer and unpredictable (see atomicTmpPath), and
-// a failed write or rename unlinks the tmp this writer created, so orphans do
-// not accumulate in .kit/; a create that never returned made no file, so
-// nothing is unlinked on that path.
+// The atomic write, the unpredictable tmp name and the cleanup that removes
+// only what this writer created are writeJsonAtomic's, reached through
+// putCheckpoint below, which owns every field this file stores.
 function writeCheckpoint(cwd, planRel, boundSession, pendingOffer) {
-    const normalized = normalizePlanArg(cwd, planRel);
-    if (normalized === null) {
-        return { ok: false, reason: 'plan path is invalid or outside the repo' };
-    }
-    let session = null;
-    if (boundSession !== undefined && boundSession !== null) {
-        if (typeof boundSession !== 'string' || boundSession === '' || boundSession.length > 128
-            || /[\x00-\x1F]/.test(boundSession)) {
-            return { ok: false, reason: 'bound session is invalid' };
-        }
-        session = boundSession;
-    }
-    const cp = checkpointPath(cwd);
-    const state = {
-        plan: normalized,
-        boundSession: session,
+    return putCheckpoint(cwd, {
+        plan: planRel,
+        boundSession,
         openedAt: new Date().toISOString(),
         pendingOffer: pendingOffer === true
-    };
+    });
+}
+
+// The storage rules the checkpoint's owner field is held to, as { ok, value }:
+// a string, non-empty, within the 128-character cap and free of control
+// characters, which is the shape bindSession stores a binding under, or an
+// explicit null for an unbound goal. Absent and null are the same answer, so a
+// caller with no owner records null rather than a coerced string. One
+// definition, because two writers store the field (an open and an adoption) and
+// a rule spelled twice is a rule one of them ends up spelling loosely.
+function storableCheckpointOwner(value) {
+    if (value === undefined || value === null) return { ok: true, value: null };
+    if (typeof value !== 'string' || value === '' || value.length > 128
+        || /[\x00-\x1F]/.test(value)) {
+        return { ok: false, value: null };
+    }
+    return { ok: true, value };
+}
+
+// Put a composed record at the checkpoint path, atomically. The sole writer of
+// that file, and the one gate every stored field passes: its callers supply the
+// plan, the owner, the timestamp and the flag, and this validates and writes
+// them, so a second writer cannot store a path or an owner the first one would
+// have refused. The plan goes through kit-goal-lib's normalizePlanArg (control
+// characters and any path escaping cwd are refused, and the NORMALIZED form is
+// what gets stored), and the owner through the storage rules above.
+//
+// verify is optional and is handed straight to writeJsonAtomic, which runs it in
+// the last moment before the rename with the temporary file already written:
+// returning anything but true abandons the write. A caller whose record is a
+// rewrite of something it read passes one; a caller publishing a record of its
+// own passes none.
+//
+// Returns { ok:true, plan } with the stored path, or { ok:false, reason }, and
+// never throws.
+function putCheckpoint(cwd, state, verify) {
+    const plan = normalizePlanArg(cwd, state && state.plan);
+    if (plan === null) {
+        return { ok: false, reason: 'plan path is invalid or outside the repo' };
+    }
+    const owner = storableCheckpointOwner(state.boundSession);
+    if (!owner.ok) {
+        return { ok: false, reason: 'bound session is invalid' };
+    }
+    const target = checkpointPath(cwd);
     try {
-        fs.mkdirSync(path.dirname(cp), { recursive: true });
-        const tmp = atomicTmpPath(cp);
-        let created = false;
-        try {
-            // The create is its own call so the flag below can mean what it says.
-            // A single writeFileSync carrying the exclusive flag creates, writes
-            // and closes together, so a failure in its write leg (a full disk, a
-            // quota, an IO error) leaves the flag false with the file already on
-            // disk, and the cleanup then skips the partial file it exists to
-            // remove. The same split is in kit-goal-lib.js's writeState.
-            const fd = fs.openSync(tmp, 'wx');
-            created = true;
-            let wrote = false;
-            try {
-                fs.writeFileSync(fd, JSON.stringify(state, null, 2) + '\n', 'utf8');
-                wrote = true;
-            } finally {
-                // The close is reached in two states and the flag tells them
-                // apart. With the write already failed, a throwing close would
-                // replace the error in flight and the reason would name the close
-                // rather than the cause, so it is swallowed. With the write
-                // returned, the close is the last point at which the OS can report
-                // a deferred write error (a network volume, a quota), so it throws:
-                // swallowing it would publish a torn file and report success.
-                try {
-                    fs.closeSync(fd);
-                } catch (closeErr) {
-                    if (wrote) throw closeErr;
-                }
-            }
-            fs.renameSync(tmp, cp);
-        } catch (err) {
-            // Only a file this writer created is this writer's to remove. The flag
-            // is set the moment the exclusive create returns, and a path that
-            // create failed on belongs to somebody else (see atomicTmpPath).
-            if (created) {
-                try { fs.unlinkSync(tmp); } catch { /* nothing to remove, or it is the unwritable path itself */ }
-            }
-            throw err;
+        fs.mkdirSync(path.dirname(target), { recursive: true });
+        const published = writeJsonAtomic(target, {
+            plan,
+            boundSession: owner.value,
+            openedAt: state.openedAt,
+            pendingOffer: state.pendingOffer === true
+        }, verify);
+        if (!published) {
+            return { ok: false, reason: 'the checkpoint on disk changed under this write, so it was left alone' };
         }
     } catch (err) {
         return { ok: false, reason: 'could not write checkpoint: ' + (err && err.message ? err.message : String(err)) };
     }
-    return { ok: true, plan: normalized };
+    return { ok: true, plan };
 }
 
 // Delete the checkpoint file if present. Returns { ok:true, cleared:true } when
@@ -510,6 +513,97 @@ function clearCheckpoint(cwd) {
             reason: 'could not clear checkpoint: ' + (err && err.message ? err.message : String(err))
         };
     }
+}
+
+// Whether a record on disk is one a claim would take over, as
+// { ok, reason }: the record-side half of the adoption rule, pure and doing no
+// IO, so the CLI's status report can describe a record's fate by the same rule
+// that decides it rather than by a second copy of the conditions.
+//
+// Each clause bounds what an adoption can reach:
+//   'no-checkpoint' nothing legible is there
+//   'no-goal'       no armed plan to adopt it for
+//   'wrong-plan'    the record names another plan, so a leftover from a prior
+//                   plan (or from a queue position already advanced past) is
+//                   never taken
+//   'owned'         the record already names a session, judged by the same
+//                   storage rule the writer stores owners under, so a value
+//                   that rule cannot support ('' and its neighbours) reads as
+//                   no owner rather than as an owner nothing can ever match
+//   'no-timestamp'  no parseable openedAt, which no reader could use anyway
+//
+// What it does NOT answer is whether a claim is still coming, which is the
+// goal's business rather than the record's: the claim points call this with a
+// goal whose binding they have just set, so a binding test here would decline
+// every real adoption. A caller asking "will anything ever adopt this" tests
+// the goal's own binding beside this answer.
+function checkpointAdoptable(cp, goal) {
+    if (!cp || typeof cp !== 'object' || typeof cp.plan !== 'string') {
+        return { ok: false, reason: 'no-checkpoint' };
+    }
+    if (!goal || typeof goal.plan !== 'string' || goal.plan === '') {
+        return { ok: false, reason: 'no-goal' };
+    }
+    if (cp.plan !== goal.plan) return { ok: false, reason: 'wrong-plan' };
+    if (storableCheckpointOwner(cp.boundSession).value !== null) {
+        return { ok: false, reason: 'owned' };
+    }
+    if (typeof cp.openedAt !== 'string' || !Number.isFinite(Date.parse(cp.openedAt))) {
+        return { ok: false, reason: 'no-timestamp' };
+    }
+    return { ok: true, reason: null };
+}
+
+// Give an ownerless checkpoint the owner of the leash, at the moment a claim
+// point binds one. A goal that is unbound when a chapter boundary is declared
+// records no owner on the checkpoint it opens, because the record copies the
+// goal's binding and there is none to copy; the match rule then reads that
+// record and the now-bound goal as two different sessions, so the boundary the
+// run banked is discarded under a reason naming a session mismatch that never
+// happened. Adopting the record at the claim keeps the match rule comparing two
+// concrete owners, which is the one comparison every other verdict runs.
+//
+// checkpointAdoptable owns which records may be taken. What this adds is the
+// owner to write and the write itself, and the write carries over openedAt
+// VERBATIM, so the record ages from the boundary it was opened at: an adoption
+// grants no freshness, a record already past its bound stays expired, and the
+// pending flag is copied as recorded rather than raised.
+//
+// The write is abandoned rather than published if the record on disk moved
+// between the read and the rename, which is not the single-writer case the gate
+// assumes elsewhere: that serialization runs through the one bound session, and
+// this runs precisely while there is none, so a checkpoint CLI open racing this
+// adoption is a real ordering. The verify runs in writeJsonAtomic's last moment
+// before the rename, and comparing the three fields that identify the record is
+// enough, because every writer of this file writes all four at once: a record
+// whose plan, opened timestamp and ownerlessness are unchanged is the record
+// that was read, and any newer boundary differs in openedAt and survives.
+//
+// Returns { ok, adopted, reason } and never throws. adopted is true only when a
+// record was rewritten; every other outcome, an absent checkpoint included, is
+// { ok: true, adopted: false } with the reason naming the clause that declined,
+// since a claim with no checkpoint open is the ordinary case rather than a
+// failure. A failed write is { ok: false }: the caller's claim stands either
+// way, and the boundary is lost to a deferral, which is the pre-adoption
+// behavior and the same degradation a .kit/ refusing checkpoint writes gives.
+function adoptCheckpoint(cwd, goal, sessionId) {
+    const owner = storableCheckpointOwner(sessionId);
+    if (!owner.ok || owner.value === null) return { ok: true, adopted: false, reason: 'no-session' };
+    const cp = readCheckpoint(cwd);
+    const adoptable = checkpointAdoptable(cp, goal);
+    if (!adoptable.ok) return { ok: true, adopted: false, reason: adoptable.reason };
+    const written = putCheckpoint(cwd, {
+        plan: goal.plan,
+        boundSession: owner.value,
+        openedAt: cp.openedAt,
+        pendingOffer: cp.pendingOffer === true
+    }, () => {
+        const now = readCheckpoint(cwd);
+        return !!now && now.plan === cp.plan && now.openedAt === cp.openedAt
+            && storableCheckpointOwner(now.boundSession).value === null;
+    });
+    if (!written.ok) return { ok: false, adopted: false, reason: written.reason };
+    return { ok: true, adopted: true, reason: null };
 }
 
 // ---------------------------------------------------------------------------
@@ -2418,7 +2512,7 @@ function transcriptShowsAutomation(transcriptPath) {
 
 module.exports = {
     checkpointPath, readCheckpoint, readCheckpointResult, writeCheckpoint, clearCheckpoint,
-    checkpointMatches, sameSessionId,
+    adoptCheckpoint, checkpointAdoptable, storableCheckpointOwner, checkpointMatches, sameSessionId,
     CHECKPOINT_MAX_AGE_MS, CHECKPOINT_PENDING_MAX_AGE_MS, CHECKPOINT_FUTURE_SKEW_MS,
     roleBoundaryPath, consentPath, ROLE_BOUNDARY_MAX_AGE_MS, CONSENT_MAX_AGE_MS,
     markerMatches, readRoleBoundary, readConsent, readRoleBoundaryResult, readConsentResult,

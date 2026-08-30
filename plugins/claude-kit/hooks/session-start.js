@@ -503,10 +503,21 @@ function composeGoalBlock(cwd, goal, sessionId) {
             + holdRule('the session') + `.${tail} ${skillPointer} Reminder, not a blocker. ${provenance}`;
     }
 
+    // What claims an unbound leash depends on what the arm was able to record,
+    // and this notice reads neither the state field that says so nor the
+    // transcript the other route rests on. So it states where a claim can
+    // happen at all, which holds for every route, and sends the reader to the
+    // skill for which sessions can claim there. It promises no claim: an arming
+    // that recorded no session id and whose text nobody typed is claimable by
+    // nobody, and a notice saying the arming session will claim would be false
+    // for exactly that state. The pointer sentence is the shared constant
+    // rather than a variant of it, so a reword of that constant reaches this
+    // branch too.
     return `A kit goal is armed for ${plan} in this project and no session holds its leash yet.${tail}`
-        + ` If you are working that plan, ` + holdRule('the session') + `; the session that armed it claims`
-        + ` the leash at its first stop or its first auto-compaction offer, whichever`
-        + ` comes first, and that one binding then rides the whole queue. ${skillPointer}`
+        + ` If you are working that plan, ` + holdRule('the session') + `; a leash is claimed only at a`
+        + ` session's first stop or its first auto-compaction offer, whichever comes first, and the`
+        + ` binding a claim makes rides the whole queue. ${skillPointer} Which sessions can claim it`
+        + ` depends on what the arm recorded, and that skill states it.`
         + ` Reminder, not a blocker. ${provenance}`;
 }
 

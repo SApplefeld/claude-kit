@@ -46,9 +46,10 @@
 
 'use strict';
 
-const { readGoal, recordExecutionTree } = require('./kit-goal-lib.js');
+const { readGoal, recordExecutionTree, sessionHoldsLeash } = require('./kit-goal-lib.js');
 const {
     readCheckpointResult, writeCheckpoint, clearCheckpoint, checkpointMatches,
+    checkpointAdoptable, storableCheckpointOwner,
     readGateStateResult, gateStatePath, gateEpisodeOpen, pendingOfferCorroborated, checkpointOwner,
     episodePhrase, wholeMinutesSince, gateCount,
     CHECKPOINT_MAX_AGE_MS, CHECKPOINT_PENDING_MAX_AGE_MS,
@@ -89,10 +90,28 @@ const CONSENT_HOURS = Math.round(CONSENT_MAX_AGE_MS / (60 * 60 * 1000));
 //             needs, which additionally requires the episode to predate the
 //             record on disk (pendingOfferCorroborated owns that whole rule).
 //
-// The owner is checkpointOwner's, which answers with an explicit null for an
-// unbound goal rather than undefined, for the reason stated there.
+// The owner is the leash holder, because that is whose offers the gate holds:
+// the goal's binding where it has one (checkpointOwner, which answers with an
+// explicit null rather than undefined, for the reason stated there), and
+// otherwise the calling session where it holds the leash by the other route the
+// claim points act on. Without that second leg the question is scoped to null
+// while a goal is unbound, no episode matches a null id, and a boundary opened
+// in that window records no pending offer while the gate is holding this run's
+// offers under its own session id: the adopted record then takes the short age
+// bound, and a long tool call after the Chapter expires the boundary the flag
+// exists to keep alive.
+//
+// The test is sessionHoldsLeash rather than armingSessionClaims, so this site
+// answers "does this session hold the leash" in the one spelling the nudges use
+// and cannot drift from them when that rule next changes; it also gates the
+// fallback, so a caller that holds no leash scopes the question to nobody
+// rather than to itself. Where no id is derivable from the environment at all,
+// the predicate answers false and the owner stays null, which is the same
+// conservative reading the unbound case had before.
 function pendingHold(cwd, goal) {
-    const owner = checkpointOwner(goal);
+    const bound = checkpointOwner(goal);
+    const caller = callerSessionId();
+    const owner = bound !== null ? bound : (sessionHoldsLeash(goal, caller) ? caller : null);
     const result = readGateStateResult(cwd);
     return {
         readable: result.ok,
@@ -149,10 +168,13 @@ function cmdOpen() {
     // The checkpoint records the goal's current boundSession alongside the
     // plan: the gate requires both to match, so a checkpoint orphaned by a
     // crash cannot open the gate for the re-bound session that resumes the
-    // plan. An unbound goal writes null, which the gate never matches; the
-    // open still succeeds because the binding is claimed at a stop or at an
-    // auto-compaction offer, either of which may simply not have happened yet
-    // in an unusual arming order.
+    // plan. An unbound goal writes null, which no session's binding equals;
+    // the record gains its owner when a claim point binds one and adopts the
+    // ownerless record (adoptCheckpoint in the lib), which is how a run that
+    // armed a plan for itself keeps the boundary it declared before its leash
+    // reached it. The open therefore succeeds while unbound rather than
+    // refusing: the binding is claimed at a stop or at an auto-compaction
+    // offer, either of which may simply not have happened yet.
     // Whether an auto-compaction offer is already being held is recorded in the
     // checkpoint, because it is one of the two facts that decide which age
     // bound the gate holds it to (see CHECKPOINT_MAX_AGE_MS in the lib; the
@@ -339,10 +361,40 @@ function cmdClear() {
 const ABSENT_REASONS = {
     'no-goal': 'no kit goal is armed, so the gate treats it as absent',
     'wrong-plan': 'does not match the armed goal, so the gate treats it as absent',
-    'wrong-session': 'bound to a different session than the armed goal, so the gate treats it as absent',
     'no-timestamp': 'its opened timestamp is missing or unreadable, so the gate treats it as absent',
     'future': 'its opened timestamp is in the future, so the gate treats it as absent'
 };
+
+// Why a record the match rule refused on its session leg gates nothing, which
+// is three states rather than one. That rule compares the record's owner against
+// the goal's and reports one code whether the record names another session or
+// names none at all, and the two are opposite news for an operator: a record
+// with no owner is the boundary a run banked before anything held its leash,
+// which the next claim adopts rather than discards, so calling it another
+// session's would send an operator to clear or re-open the one record that needs
+// neither. A record with no owner beside a leash already held is genuinely dead,
+// because an adoption rides on a claim and a held leash is claimed.
+//
+// The report stays in step with the gate by asking the gate's own predicates
+// rather than a second copy of them: the verdict above is still checkpointMatches',
+// and the two questions here are storableCheckpointOwner's (does the record name
+// an owner, by the rule the writer stores one under) and checkpointAdoptable's
+// (would a claim take this record), which is the step the claim points run
+// between the match and the next verdict.
+function unmatchedSessionReason(cp, goal) {
+    if (storableCheckpointOwner(cp.boundSession).value !== null) {
+        return 'names a session that does not hold the armed goal\'s leash, so the gate treats it as absent';
+    }
+    if (checkpointOwner(goal) !== null) {
+        return 'records no session while the leash is held, so the gate treats it as absent;'
+            + ' a boundary opened now records the binding';
+    }
+    return checkpointAdoptable(cp, goal).ok
+        ? 'records no session, no session holding the leash when it opened; the claim that binds one'
+            + ' adopts this record, and the gate honors it from then, within the age bound it already carries'
+        : 'records no session and carries no opened timestamp a claim could adopt it by,'
+            + ' so the gate treats it as absent';
+}
 
 // Why a record carrying the pending-offer flag was judged by the ordinary bound
 // anyway, as a clause. Null when it was not, so a caller says nothing.
@@ -431,7 +483,10 @@ function reportCheckpoint(cwd) {
     // A checkpoint the gate would read as absent is worth flagging here, with
     // the reason: the file exists but gates nothing, which status alone would
     // misreport. The verdict comes from the same checkpointMatches rule the
-    // gate itself decides by, so this report cannot drift from the gate.
+    // gate itself decides by, and the one refusal whose meaning depends on what
+    // happens after that rule runs, the session leg, is worded by the adoption's
+    // own predicates (see unmatchedSessionReason), so this report cannot drift
+    // from the gate's effective answer either.
     const goal = readGoal(cwd);
     const hold = pendingHold(cwd, goal);
     // The same corroboration the gate applies, from the same predicate, so this
@@ -439,9 +494,11 @@ function reportCheckpoint(cwd) {
     const corroborated = pendingOfferCorroborated(cp, hold.state, Date.now(), hold.owner);
     const verdict = checkpointMatches(cp, goal, Date.now(), corroborated);
     if (!verdict.ok) {
-        line += ' - ' + (verdict.reason === 'expired'
-            ? expiredReason(cp, hold, corroborated)
-            : (ABSENT_REASONS[verdict.reason] || 'the gate treats it as absent'));
+        let why;
+        if (verdict.reason === 'expired') why = expiredReason(cp, hold, corroborated);
+        else if (verdict.reason === 'wrong-session') why = unmatchedSessionReason(cp, goal);
+        else why = ABSENT_REASONS[verdict.reason] || 'the gate treats it as absent';
+        line += ' - ' + why;
     } else {
         // A live checkpoint stands on one of two age bounds, and an operator
         // asking why one is still honored an hour in (or why another died in

@@ -446,6 +446,39 @@ function armingSessionClaims(state, sessionId) {
     return isSessionIdShaped(sessionId) && sameSessionId(armingSession(state), sessionId);
 }
 
+// Whether this session holds the leash on an armed goal, by the two routes that
+// need no transcript: it is the bound session, or the goal is unbound and the
+// session is the one the state records as having armed it. The second route
+// answers true before any claim has been made, which is deliberate: a run that
+// armed a plan for itself holds the leash from the arm onward as far as every
+// surface that only reports or reminds is concerned, and the claim point it
+// next reaches is what writes that down.
+//
+// The claim points act on a third route this one leaves out, and a caller has
+// to know it: an unbound goal is also claimed by a session whose own arming
+// text names the plan, read out of its transcript. That read is too expensive
+// for a surface that runs on every covered tool return, so what this predicate
+// costs is that an arm made outside any session, which records no arming id,
+// answers false for the session that will claim on its typed text.
+//
+// This is the read-only spelling of the question, for surfaces that report or
+// remind rather than decide who binds: the two nudges call it. The claim points
+// do not, and that is not a second spelling of the rule but the same rule taken
+// apart, because they must know WHICH route claimed in order to bind on it and
+// to say so; both of their branches call armingSessionClaims above and
+// sameSessionId, which are the two legs this composes.
+//
+// The unbound test is the claim points' own (a falsy boundSession), so a state
+// carrying a binding this file cannot support answers false here exactly as it
+// claims nothing there: no session is told it holds a leash the claim points
+// would not give it.
+function sessionHoldsLeash(state, sessionId) {
+    const { sameSessionId } = require('./kit-compact-lib.js');
+    if (!state || typeof state.plan !== 'string' || state.plan === '') return false;
+    if (state.boundSession) return sameSessionId(state.boundSession, sessionId);
+    return armingSessionClaims(state, sessionId);
+}
+
 // Normalize a parsed goal state to the current shape, so every reader can rely
 // on queue, queueIndex, history, and boundTranscript being present and on
 // queue[queueIndex] === plan. Path fields are re-validated on every read, not
@@ -3032,4 +3065,4 @@ function emitGoalEvent(details) {
 // position walk itself votes on, so the note explaining a [missing] token and
 // the position it sits beside cannot drift apart from reading two spellings
 // of the same archive check.
-module.exports = { goalPath, goalRoot, goalPathKind, goalStateAbsent, readGoal, armGoal, appendGoal, advanceGoal, bindSession, clearGoal, composeCondition, planArmedBy, armingSession, armingSessionClaims, planHead, planStatusReadings, classifyPlanStatus, emitGoalEvent, normalizePlanArg, lastActivePhrase, isSessionIdShaped, planFileSize, planHeadText, planPathState, planDisplayRoot, recordExecutionTree, pathErrnoClass, safeForAuthorization, queuePosition, treeEntryState, GOAL_STATE_MAX_BYTES };
+module.exports = { goalPath, goalRoot, goalPathKind, goalStateAbsent, readGoal, armGoal, appendGoal, advanceGoal, bindSession, clearGoal, composeCondition, planArmedBy, armingSession, armingSessionClaims, sessionHoldsLeash, planHead, planStatusReadings, classifyPlanStatus, emitGoalEvent, normalizePlanArg, lastActivePhrase, isSessionIdShaped, planFileSize, planHeadText, planPathState, planDisplayRoot, recordExecutionTree, pathErrnoClass, safeForAuthorization, queuePosition, treeEntryState, GOAL_STATE_MAX_BYTES };

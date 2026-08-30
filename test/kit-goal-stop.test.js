@@ -1162,6 +1162,46 @@ test('unbound goal recording this session as the one that armed it: it claims an
     }
 });
 
+test('the claim at a stop adopts an ownerless checkpoint, and leaves another session\'s alone', () => {
+    // A boundary declared before anything held the leash records no owner. The
+    // claim adopts it, so the next auto-compaction offer reads a checkpoint
+    // whose owner is the session the leash now belongs to; a record already
+    // naming a session is another run's and is never rewritten.
+    const { repo, planRel, local } = unboundArmedRepo(ARM_SESSION);
+    try {
+        const tx = path.join(repo, 'self-armed.jsonl');
+        writeBareTranscript(tx, [assistantEntry('Working the section.')]);
+        assert.strictEqual(writeCheckpoint(repo, planRel, null).ok, true, 'test setup: checkpoint should write');
+        runHook({ cwd: repo, transcript_path: tx, session_id: ARM_SESSION }, local);
+        assert.strictEqual(readBoundSession(repo), ARM_SESSION, 'the stop claimed the binding');
+        assert.strictEqual(readCheckpoint(repo).boundSession, ARM_SESSION,
+            'and the boundary it banked while unbound is now its own');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('a claim at a stop leaves a checkpoint belonging to another session alone', () => {
+    // The control for the adoption above: wrong-session is the leg that keeps a
+    // crashed run's orphan from opening the gate for the run that resumes its
+    // plan, and a claim must not spend it.
+    const { repo, planRel, local } = unboundArmedRepo(ARM_SESSION);
+    try {
+        const tx = path.join(repo, 'self-armed.jsonl');
+        writeBareTranscript(tx, [assistantEntry('Working the section.')]);
+        assert.strictEqual(writeCheckpoint(repo, planRel, OTHER_SESSION).ok, true,
+            'test setup: checkpoint should write');
+        runHook({ cwd: repo, transcript_path: tx, session_id: ARM_SESSION }, local);
+        assert.strictEqual(readBoundSession(repo), ARM_SESSION, 'the stop claimed the binding');
+        assert.strictEqual(readCheckpoint(repo).boundSession, OTHER_SESSION,
+            'the other session keeps its record');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
 test('unbound goal recording another session: a bystander naming the plan does NOT claim', () => {
     const { repo, planRel, local } = unboundArmedRepo(ARM_SESSION);
     try {

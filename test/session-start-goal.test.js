@@ -146,7 +146,25 @@ test('unbound: the notice keeps the claimable framing and names both claim point
         assert.strictEqual(r.status, 0);
         const text = context(r);
         assert.match(text, /no session holds its leash yet/);
-        assert.match(text, /the session that armed it claims the leash at its first stop or its first auto-compaction offer, whichever comes first, and that one binding then rides the whole queue/);
+        assert.match(text, /a leash is claimed only at a session's first stop or its first auto-compaction offer, whichever comes first, and the binding a claim makes rides the whole queue/);
+        // Which sessions can claim at those two points depends on what the arm
+        // was able to record, and this notice reads neither the field that says
+        // so nor the transcript the other route rests on. So it states where a
+        // claim can happen, routes the reader to the skill that owns which
+        // sessions can make one, and promises a claim on behalf of nobody: an
+        // arming that recorded no session id and whose text nobody typed is
+        // claimable by no session at all.
+        assert.match(text, /Which sessions can claim it depends on what the arm recorded, and that skill states it\./);
+        assert.doesNotMatch(text, /the session that armed it claims/);
+        // The pointer is the shared constant every branch spells one way, not a
+        // variant of it, so a reword of that sentence cannot leave this branch
+        // behind. The bound-to-this-session branch carries the same string.
+        writeGoal(dir, queuedState('sess-B'));
+        const boundText = context(runHook(dir, 'sess-B'));
+        const pointer = 'The kit-goal skill states what an arming requests;'
+            + ' read it there rather than from this notice.';
+        assert.ok(text.includes(pointer), 'the unbound branch carries the shared pointer: ' + text);
+        assert.ok(boundText.includes(pointer), 'and so does the bound one: ' + boundText);
         assert.match(text, /It is plan 1 of 2 in the armed queue/);
         assert.doesNotMatch(text, /ANOTHER session/);
         assert.doesNotMatch(text, /THIS session/);

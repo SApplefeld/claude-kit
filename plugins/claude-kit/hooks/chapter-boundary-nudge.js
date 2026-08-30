@@ -69,9 +69,17 @@
 //      rejection to its own stat paths, for a different subject (a stored
 //      transcript path rather than a working directory), so it keeps its own
 //      copy rather than folding into this module.
-//   6. The goal's boundSession equals the payload's session_id (sameSessionId
-//      from kit-compact-lib.js). Bound sessions only: claiming a binding
-//      stays the business of the gate and the Stop hook.
+//   6. This session holds the goal's leash (sessionHoldsLeash from
+//      kit-goal-lib.js): it is the bound session, or the goal is unbound and
+//      this session is the one the state records as having armed it. Claiming a
+//      binding stays the gate's and the Stop hook's business; this hook reads
+//      the answer only, so a run whose leash is claimable but not yet claimed
+//      is reminded rather than passed over, an arm whose bind could not be
+//      corroborated and a claim whose bind write failed alike. The user's typed
+//      arming text is NOT a leg: it is a claim route those two hooks act on and
+//      this hook reads no transcript, so an arm made outside any session, which
+//      records no arming id, leaves this hook silent for the session that will
+//      claim on that text.
 //   7. The write ADDS a Chapter heading, per the curating-docs machine
 //      contract shape '### Chapter N'. Added means a Chapter NUMBER present
 //      in new_string and absent from old_string, not merely a heading
@@ -241,11 +249,10 @@ function main() {
     // share (see the header); the lib requires are deferred to here so a
     // damaged installed cache degrades to silence rather than a crash.
     const cwd = (typeof payload.cwd === 'string' && payload.cwd !== '') ? payload.cwd : process.cwd();
-    let readGoal, sameSessionId, namesNetworkShare;
+    let readGoal, sessionHoldsLeash, namesNetworkShare;
     try {
         ({ namesNetworkShare } = require('./kit-network-lib.js'));
-        ({ readGoal } = require('./kit-goal-lib.js'));
-        ({ sameSessionId } = require('./kit-compact-lib.js'));
+        ({ readGoal, sessionHoldsLeash } = require('./kit-goal-lib.js'));
     } catch { return null; }
     if (namesNetworkShare(cwd)) return null;
     const goal = readGoal(cwd);
@@ -254,8 +261,8 @@ function main() {
     // Guard 4, second half: the edited file is the armed plan, not a sibling.
     if (!namesArmedPlan(input.file_path, goal.plan)) return null;
 
-    // Guard 6: bound sessions only.
-    if (!sameSessionId(goal.boundSession, payload.session_id)) return null;
+    // Guard 6: the leash holder only, by any route the claim points act on.
+    if (!sessionHoldsLeash(goal, payload.session_id)) return null;
 
     // Guard 7: the write adds a Chapter.
     if (!writeAddsChapter(toolName, input)) return null;
