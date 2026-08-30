@@ -37,6 +37,7 @@ const path = require('path');
 
 const logs = require('./logs.js');
 const { neutralize } = require('./text.js');
+const { isRecordName } = require('./record-name.js');
 
 // The item schema version. Independent of the spool line's version and of the
 // log record's: three contracts, three writers. A reader that does not
@@ -75,6 +76,30 @@ function alertItem(record, nowMs) {
         sessionId: typeof record.sessionId === 'string' ? record.sessionId : '',
         intent: itemText(record.intent),
         reason: itemText(record.reason)
+    };
+}
+
+// A recognized memory record as one delivery item. Built from the spool entry
+// and the record's name, because a pointer is about the call rather than about
+// a verdict: the record name is the whole product and the `why` is one clause
+// from the recognition answer.
+//
+// The name is NOT neutralized and cut the way a free-text field is. It is
+// screened instead: the reading half spells it into a `memq get` line and drops
+// any item whose name falls outside the shared pattern, so a name that would be
+// repaired into something runnable-looking must be refused here rather than
+// queued undeliverable. A refused name returns null, which the caller reports
+// rather than queueing.
+function memoryItem(entry, record, why, nowMs) {
+    if (!isRecordName(record)) return null;
+    return {
+        v: INBOX_VERSION,
+        kind: 'memory',
+        ts: new Date(nowMs).toISOString(),
+        callId: typeof entry.callId === 'string' ? entry.callId : '',
+        sessionId: typeof entry.sessionId === 'string' ? entry.sessionId : '',
+        record,
+        why: itemText(why)
     };
 }
 
@@ -120,23 +145,65 @@ function writeItem(inboxDir, item) {
 // The key is the KIND and the call id together, never the call id alone. One
 // call can earn one item of each kind: a diverged verdict and a memory pointer
 // are two different things to say about the same call, and a set keyed on the
-// bare id would drop the second one silently, with no counter and no report,
-// the moment recognition starts writing pointers.
+// bare id would drop the second one silently, with no counter and no report.
+// A memory pointer is keyed on the record instead, never on the call: see
+// deliveryKeys.
 function deliveryKey(item) {
     const kind = (item && typeof item.kind === 'string') ? item.kind : '';
     const callId = (item && typeof item.callId === 'string') ? item.callId : '';
     return `${kind}:${callId}`;
 }
 
+// A memory pointer's key: one pointer per record per session, which is what the
+// contract states and is a different question from the per-call rule above. It
+// stops a session from being pointed at the same record by every call it makes,
+// which is what a memory that bears on the work at hand would otherwise do all
+// afternoon. The record has not changed since the first pointer and neither has
+// the reader's ability to run `memq get`, so a second pointer at it carries
+// nothing the first did not.
+//
+// The session is identified by the slug rather than by the raw id, because the
+// slug is the identity the pointer is actually filed under: it names the inbox
+// file the item lands in, so two ids that reduce to one file are one reader.
+function recordKey(item) {
+    const record = (item && typeof item.record === 'string') ? item.record : '';
+    return `memory-record:${logs.sessionSlug(item && item.sessionId)}:${record}`;
+}
+
+// Every key an item claims: exactly one, and which one depends on the kind.
+//
+// An alert is keyed on its call, because one call earns one alert. A memory
+// pointer is keyed on its RECORD and not on its call, because one call may
+// legitimately earn up to three pointers: the answer names up to three records
+// and each is a separate thing to say. Keyed on the call as well, the first
+// record queued would claim that key and the second and third would be dropped
+// in silence, which would make the schema's cap, the prompt's sentence and the
+// valve's three-item batch all quietly mean one.
+//
+// Dropping the call key costs nothing the record key does not already cover.
+// The per-call key's other job is the spool reset the contract names as
+// expected: a call read a second time re-queues what it queued before. A call
+// read twice names the same records both times, and those records hold their
+// keys, so the duplicate is refused on the record rule instead.
+//
+// One key per item also means one slot per item in the delivered set, so the
+// real per-record window is logs.DELIVERED_MAX items rather than half of it.
+function deliveryKeys(item) {
+    if (item && item.kind === 'memory') return [recordKey(item)];
+    return [deliveryKey(item)];
+}
+
 function alreadyDelivered(state, item) {
-    return Array.isArray(state.delivered) && state.delivered.includes(deliveryKey(item));
+    if (!Array.isArray(state.delivered)) return false;
+    return deliveryKeys(item).some((key) => state.delivered.includes(key));
 }
 
 function markDelivered(state, item) {
-    const key = deliveryKey(item);
     if (!Array.isArray(state.delivered)) state.delivered = [];
-    if (state.delivered.includes(key)) return;
-    state.delivered.push(key);
+    for (const key of deliveryKeys(item)) {
+        if (state.delivered.includes(key)) continue;
+        state.delivered.push(key);
+    }
     if (state.delivered.length > logs.DELIVERED_MAX) {
         state.delivered.splice(0, state.delivered.length - logs.DELIVERED_MAX);
     }
@@ -250,8 +317,11 @@ module.exports = {
     inboxBaseName,
     itemText,
     alertItem,
+    memoryItem,
     writeItem,
     deliveryKey,
+    recordKey,
+    deliveryKeys,
     alreadyDelivered,
     markDelivered,
     sweepInbox

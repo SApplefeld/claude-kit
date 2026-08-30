@@ -198,6 +198,44 @@ can rewrite the config, which is the same single principal the rest of this docu
 so what the warning buys is that a redirected endpoint is visible on a surface someone reads
 rather than invisible on every surface at once.
 
+### What recognition adds to the egress
+
+Judgment sends one call at a time: its stated intent, a bounded preview of its command,
+and a bounded result. Recognition sends something else alongside it. To ask which stored
+records bear on a call, the daemon sends that project's whole memory INDEX: one line per
+record, each carrying the record's human-authored title and its one-line description, for
+every record in that project tier. Record bodies never travel, and no other tier is sent.
+
+That index is a different kind of material from a command and its output. It is a curated
+list of what a project has learned, so its titles and descriptions name internal systems,
+recurring failures and operational habits in compressed form, and it goes off this machine,
+across the virtual switch to a model service on the virtualization host, in cleartext HTTP
+with no authentication in the default configuration, to a service shared with that host's
+other tenants. The same posture the spool takes applies, for the same reason: the transport
+is the exposure, and the bound on it is that the endpoint is machine-local configuration
+and a machine with no config file makes no call at all.
+
+The reach is bounded by the calls that were spooled. A project only has its index sent if a
+call from that project reached the spool, and a project whose index is absent, unreadable,
+or not a regular file produces no recognition call at all rather than an empty one. The
+index is read through a size-bounded read and refused when the path is a link or anything
+other than a regular file.
+
+Recognition runs in both injection directions and is guarded on both. Inbound, the index
+lines are file content that the model reads as data, and anyone who can write a memory
+record can therefore write text into a prompt; the prompt fences its sides with a per-call
+nonce so index content cannot pose as instruction, on the same reasoning the judgment
+prompt already uses. Outbound, the model's answer becomes a pointer delivered into a live
+session, so it is constrained rather than trusted: a returned name that the index which
+produced the answer does not itself hold is treated as an invention and dropped, counted
+rather than delivered, and every name is checked against the record-name pattern before it
+is queued, because that name is spelled into a `memq get <name>` line a reader may run. The
+answer's one-clause reason is neutralized and length-bounded like any other model text.
+
+The recognition log is a third machine-local plaintext concentration beside the verdict log
+and the findings file, and it is swept on the same bounded window as both, so it cannot
+outlive the material it describes.
+
 ## The delivery inbox
 
 The inbox is how the sidecar speaks back. The daemon appends one JSON item per session to

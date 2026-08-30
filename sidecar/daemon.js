@@ -32,12 +32,28 @@
 // sidecar/inbox.js owns that file and sidecar/CONTRACT.md states the schema and
 // the caps the reading half applies.
 //
-// WHERE THE DATA GOES. sidecar/judge.js is the module that puts spool content
-// on the wire, and its header states the posture in full: every judgment POSTs
-// the intent, the command and its output off this VM to the Hyper-V host across
-// the virtual switch, over plain HTTP with no authentication in the default
-// configuration, to a model service shared with other tenants of that host.
-// Nothing redacts. Running this daemon is that decision.
+// RECOGNITION. Beside the verdict, each call is checked against the memory
+// index of the project it was made in: does something this project already
+// learned bear on what the session is doing right now. The project is resolved
+// from the spool line's cwd through the store's own resolution
+// (sidecar/memory-index.js), the index is cached and re-read when its mtime
+// moves, and a hit is queued as a memory pointer in the same inbox the verdict
+// alerts go to. An empty answer is the normal result and costs one cheap call;
+// a project with no index at all costs no call, which is why the count of those
+// is kept apart from the count of empty answers. The answers land in a
+// recognition log beside the verdict log, and a call the index could not be
+// consulted about is recorded as NOT RECOGNIZED rather than passed over, for
+// the reason every gap in this daemon exists.
+//
+// WHERE THE DATA GOES. sidecar/endpoint.js is the module that puts spool
+// content on the wire, and its header states the posture in full: every
+// judgment POSTs the intent, the command and its output off this VM to the
+// Hyper-V host across the virtual switch, over plain HTTP with no
+// authentication in the default configuration, to a model service shared with
+// other tenants of that host. Every recognition call sends the same situation
+// text and the project's memory index with it, one line per record with its
+// title and description; record bodies never travel. Nothing redacts. Running
+// this daemon is that decision.
 //
 // GAPS, NOT SILENCE. When the endpoint cannot answer, the calls in that stretch
 // are written down as NOT JUDGED with their range and the reason, in the
@@ -80,17 +96,28 @@
 //
 // Usage:
 //   node sidecar/daemon.js [--once] [--state-dir <path>] [--config <path>]
-//                          [--poll-ms <n>] [--retention-days <n>]
+//                          [--memory-root <path>] [--poll-ms <n>]
+//                          [--retention-days <n>]
 //
 //   --once            drain the spool and exit; the default is a watch loop
 //   --state-dir       the sidecar state root, default ~/.claude/kit-sidecar
 //   --config          the endpoint config, default ~/.claude/kit-endpoint.json
+//   --memory-root     the memory store root recognition reads project indexes
+//                     under, default the store memq itself resolves
 //   --poll-ms         idle poll interval in the watch loop, default 2000
 //   --retention-days  the spool retention window, default 14
 //
-// --state-dir and --config together are what let a replay run, and every test
-// in this repository, work against a scratch directory rather than the live
-// store.
+// --state-dir, --config and --memory-root together are what let a replay run,
+// and every test in this repository, work against scratch directories rather
+// than the live store. The memory root is a READ-ONLY location for this daemon:
+// recognition opens one index file per project and nothing here ever writes
+// under it.
+//
+// It is also not subject to memq's environment gate on relocating a store,
+// deliberately: that gate exists so an inherited environment variable cannot
+// silently move where a session's memories are WRITTEN. This flag moves where
+// one process READS an index from, it is typed on the command line by whoever
+// started the daemon, and the root it resolves to is printed at startup.
 
 'use strict';
 
@@ -101,7 +128,10 @@ const spool = require('./spool.js');
 const logs = require('./logs.js');
 const inbox = require('./inbox.js');
 const judge = require('./judge.js');
+const recognize = require('./recognize.js');
+const memoryIndex = require('./memory-index.js');
 const prompt = require('./prompts/judgment-v2.js');
+const recognitionPrompt = require('./prompts/recognition-v1.js');
 
 // The idle poll interval in the watch loop. The fleet produces a few thousand
 // calls a day against a lane that clears one to two verdicts a second, so the
@@ -121,6 +151,11 @@ const RELOAD_WINDOW_MS = 7000;
 // thousand doomed requests.
 const MAX_CONSECUTIVE_FAILURES = 3;
 
+// The most index conditions this run remembers having reported. A machine works
+// in a handful of checkouts, so the bound is never reached in ordinary use; it
+// is there because the set is keyed on paths other sessions chose.
+const REPORTED_INDEX_MAX = 64;
+
 // A bound on chunks read from one file in one pass, so a pass over a huge
 // backlog still ends and the watch loop still gets its turn.
 const MAX_CHUNKS_PER_FILE = 512;
@@ -134,6 +169,7 @@ function parseArgs(argv) {
         once: false,
         stateDir: null,
         configPath: null,
+        memoryRoot: null,
         pollMs: DEFAULT_POLL_MS,
         retentionDays: spool.RETENTION_DAYS,
         help: false
@@ -150,6 +186,10 @@ function parseArgs(argv) {
         if (arg === '--config') {
             if (typeof value !== 'string' || value === '') return { ok: false, error: '--config needs a path' };
             options.configPath = value; i += 1; continue;
+        }
+        if (arg === '--memory-root') {
+            if (typeof value !== 'string' || value === '') return { ok: false, error: '--memory-root needs a path' };
+            options.memoryRoot = value; i += 1; continue;
         }
         if (arg === '--poll-ms') {
             const n = Number(value);
@@ -170,11 +210,13 @@ const USAGE = [
     'kit judgment sidecar: judge daemon',
     '',
     'usage: node sidecar/daemon.js [--once] [--state-dir <path>] [--config <path>]',
-    '                             [--poll-ms <n>] [--retention-days <n>]',
+    '                             [--memory-root <path>] [--poll-ms <n>]',
+    '                             [--retention-days <n>]',
     '',
     '  --once            drain the spool and exit (default: watch)',
     '  --state-dir       sidecar state root (default: ~/.claude/kit-sidecar)',
     '  --config          endpoint config (default: ~/.claude/kit-endpoint.json)',
+    '  --memory-root     memory store root, read only (default: memq\'s own)',
     '  --poll-ms         idle poll interval, milliseconds (default: 2000)',
     '  --retention-days  spool retention window, days (default: 14)'
 ].join('\n');
@@ -197,15 +239,22 @@ function makeContext(rawOptions, deps) {
         once: raw.once ?? false,
         stateDir: raw.stateDir ?? null,
         configPath: raw.configPath ?? null,
+        memoryRoot: raw.memoryRoot ?? null,
         pollMs: raw.pollMs ?? DEFAULT_POLL_MS,
         retentionDays: raw.retentionDays ?? spool.RETENTION_DAYS,
         maxReadBytes: raw.maxReadBytes ?? undefined
     };
     const stateDir = (typeof options.stateDir === 'string' && options.stateDir !== '')
         ? path.resolve(options.stateDir) : defaultStateDir();
+    // Null means the store memq itself resolves, which is the live one. It is
+    // spelled as null rather than resolved here so a caller passing nothing
+    // gets the store's own answer rather than a path this daemon decided on.
+    const memoryRoot = (typeof options.memoryRoot === 'string' && options.memoryRoot !== '')
+        ? path.resolve(options.memoryRoot) : null;
     return {
         options,
         paths: statePaths(stateDir),
+        memoryRoot,
         deps: {
             fetchImpl: (deps && deps.fetchImpl) || null,
             sleep: (deps && typeof deps.sleep === 'function') ? deps.sleep : sleepMs,
@@ -223,8 +272,22 @@ function makeContext(rawOptions, deps) {
             unusable: false,
             timeouts: 0,
             refusals: 0,
-            unusables: 0
+            unusables: 0,
+            // The recognition duty's own latch, kept apart from the judgment's
+            // four. The two duties share an endpoint and nothing else: a
+            // judgment that could not be made says nothing about whether the
+            // memory index can be consulted, and one latch for both would stand
+            // the second duty down on the first's history.
+            recognition: { stood: false, status: '', detail: '', kind: '', failures: 0 }
         },
+        // Index resolutions already reported on in this run, so a project whose
+        // index cannot be read is named once rather than on every call its
+        // sessions make. Bounded, because the key carries a path this daemon
+        // did not choose: a process meant to run for weeks may not hold a set
+        // that grows with the working directories other sessions happen to use.
+        // Past the bound the oldest entries go and their condition is named
+        // again, which is the harmless side to fail on.
+        reportedIndex: new Set(),
         // Files already reported unreadable in this run. A day file the daemon
         // cannot open is reported once and then held: at a two-second poll a
         // permanently unreadable file would otherwise print some forty thousand
@@ -251,6 +314,7 @@ function startup(ctx) {
 
     // Where the export is going, said out loud when it is leaving the private
     // network. Every judgment POSTs a command and its output in cleartext, and
+    // every recognition POSTs the project's memory index beside it, and
     // the configured address is a file anything running as this user can
     // rewrite, so a redirected endpoint would otherwise be invisible on every
     // surface this daemon has. The daemon does not refuse the host: prevention
@@ -258,7 +322,7 @@ function startup(ctx) {
     // was missing is detection. The address itself is not printed, here or
     // anywhere; the fingerprint is what identifies it.
     if (!ctx.config.endpointIsLocal) {
-        ctx.deps.report('WARNING: the configured endpoint host is neither loopback nor a private network address, so every captured command and its output is being posted off this network in cleartext');
+        ctx.deps.report('WARNING: the configured endpoint host is neither loopback nor a private network address, so every captured command and its output, and the title and description line of every record in the project memory index, is being posted off this network in cleartext');
     }
 
     // The logs and inbox directories are made BEFORE the spool root, so a state
@@ -526,12 +590,230 @@ function deliverAlert(ctx, entry, record) {
     inbox.markDelivered(ctx.state, item);
 }
 
+// Record one unrecognized call, before its offset moves.
+//
+// WHY THIS DOES NOT COALESCE, where the judgment side does. A gap record that
+// is still in memory is an outcome that is not on disk, so the offset of the
+// line it describes cannot pass, and offsets are sequential: one call held for
+// a coalescing window holds every call behind it too. The judgment side pays
+// that because its alternative is a call with no record of any kind. Here the
+// verdict for the same call is already written, so the only thing a window buys
+// is fewer lines; and it costs a pass that keeps judging while its offsets stop
+// moving, which a kill in that window turns into every call of the pass judged
+// and POSTed a second time.
+//
+// So each gap lands as it happens and the offset moves behind it. The volume an
+// outage produces is one line per call, which is the volume a healthy pass
+// produces anyway. Only the stderr line is rationed, to the first gap of a run
+// per session: on disk every call keeps its own record.
+//
+// The recognition log is the only surface. The findings file is the judgment
+// instrument's audit surface and its gap records count calls that were not
+// judged; a recognition gap counted among them would inflate that number with a
+// different fact about the same call.
+function recordRecGap(ctx, pass, entry, reason, detail) {
+    const record = logs.recognitionGapRecord({
+        sessionId: entry.sessionId,
+        callId: entry.callId,
+        reason,
+        detail: detail || ''
+    }, ctx.deps.now());
+    if (logs.appendJsonLine(logs.recognitionLogFile(ctx.paths.logsDir, entry.sessionId), record)) {
+        if (pass.recGapReasons.get(entry.sessionId) !== reason) {
+            ctx.deps.report(record.note);
+        }
+        pass.recGapReasons.set(entry.sessionId, reason);
+    } else {
+        ctx.state.counters.writeFailures += 1;
+        ctx.deps.report(`could not record a recognition gap for call ${entry.callId}: ${reason}`);
+    }
+    pass.counters.recognitionGapped += 1;
+}
+
+// One recognition call under the pass's own latch. No retry: the reload-window
+// retry belongs to the judgment path, which runs first on every entry, so a
+// runner restart has already been waited out and re-attempted by the time this
+// runs. A failure here latches after a few in a row exactly as the judgment's
+// do, which is what keeps "keep consuming" from becoming a second retry storm
+// against a host that is plainly unavailable.
+async function recognizeWithPolicy(ctx, entry, index) {
+    const rt = ctx.runtime.recognition;
+    if (rt.stood) return { status: rt.status, detail: rt.detail, latencyMs: 0 };
+
+    const outcome = await recognize.recognizeOnce(entry, index, ctx.config, ctx.deps);
+    if (outcome.status === 'ok') {
+        rt.kind = '';
+        rt.failures = 0;
+        return outcome;
+    }
+    // The counter says "consecutive of one kind", so a failure of a different
+    // kind starts the run over. Left shared, a lane alternating timeouts with
+    // refusals would latch a counter that never saw three of anything in a row.
+    if (rt.kind !== outcome.status) {
+        rt.kind = outcome.status;
+        rt.failures = 0;
+    }
+    rt.failures += 1;
+    if (rt.failures >= MAX_CONSECUTIVE_FAILURES) {
+        rt.stood = true;
+        rt.status = outcome.status;
+        rt.detail = `recognition already ${recognize.GAP_REASONS[outcome.status] || 'failing'} in this pass`;
+        ctx.deps.report(`${rt.failures} recognition calls in a row failed (${recognize.GAP_REASONS[outcome.status] || outcome.status}: ${outcome.detail}); the rest of this pass records recognition gaps without further calls`);
+    }
+    return outcome;
+}
+
+// A recognition timeout does not stop the pass the way a judgment timeout does.
+// The judgment path sets laneBusy and holds the backlog because a call with no
+// verdict is the thing this instrument exists to prevent, and the backlog is
+// worth re-reading to get one. Recognition runs second on every entry, so a
+// lane genuinely queued behind somebody else's generation has already shown up
+// as a judgment timeout and already stopped the pass. A recognition timeout
+// that arrives with judgment healthy is this duty's own slowness, and stopping
+// the drain for it would hold verdicts hostage to the optional half.
+
+// Queue one memory pointer per recognized record, and say which ones landed.
+//
+// Up to three pointers, because an answer may name up to three records and each
+// is a separate thing to say. What bounds the repetition is the rule inbox.js
+// owns: one pointer per record per session, which is what stops a memory that
+// bears on the afternoon's work from being pointed at on every call of the
+// afternoon. Marking follows the write rather than preceding it, because a mark
+// that landed on a write that did not would silence that record for the
+// session for good.
+//
+// A failed write is counted and reported, never thrown: the recognition log
+// already holds what the index said, so what is lost is the reminder and not
+// the record. An inbox directory an operator has deleted is one of those
+// failures by design, since recreating it here would re-arm in-band delivery
+// behind the operator's own off switch.
+function deliverPointers(ctx, entry, outcome) {
+    const queued = [];
+    for (const name of outcome.records) {
+        const item = inbox.memoryItem(entry, name, outcome.reason, ctx.deps.now());
+        if (item === null) {
+            // Unreachable through the index reader, which admits no name the
+            // delivery side would refuse. It is written out rather than assumed,
+            // because a pointer queued under a name no reader can spell into a
+            // `memq get` line is one the valve drops in silence.
+            ctx.deps.report(`recognition named a record for call ${entry.callId} whose name cannot be spelled into a memq get line; it is not queued`);
+            continue;
+        }
+        if (inbox.alreadyDelivered(ctx.state, item)) continue;
+        if (!inbox.writeItem(ctx.paths.inboxDir, item)) {
+            ctx.state.counters.writeFailures += 1;
+            ctx.deps.report(`could not queue the memory pointer for call ${entry.callId}`);
+            continue;
+        }
+        inbox.markDelivered(ctx.state, item);
+        queued.push(name);
+    }
+    return queued;
+}
+
+// Say once, per run, what stood recognition down for a project or for the
+// process. A project with no index is the ordinary case on most machines and is
+// counted rather than reported; a store this daemon cannot use at all, or an
+// index file that is there and unreadable, is a condition somebody can repair
+// and is named once. Once, because the alternative at a two-second poll is the
+// same line some tens of thousands of times a day.
+function reportIndexStatus(ctx, index) {
+    if (index.status !== 'nomemq' && index.status !== 'unreadable') return;
+    const key = `${index.status}:${index.file || ''}`;
+    if (ctx.reportedIndex.has(key)) return;
+    if (ctx.reportedIndex.size >= REPORTED_INDEX_MAX) ctx.reportedIndex.clear();
+    ctx.reportedIndex.add(key);
+    if (index.status === 'nomemq') {
+        ctx.deps.report(`memory recognition is standing down for this run: ${index.detail}`);
+        return;
+    }
+    ctx.deps.report(`memory recognition skipped a project whose index cannot be read (${index.detail}); further calls from it stay silent`);
+}
+
+// Check one entry against its project's memory index and write what came of it.
+//
+// `judged` is the judgment outcome for the same entry, or null when a verdict
+// came back. A judgment that did not come back means the endpoint has just
+// failed or the lane is queued behind somebody else's generation, and a second
+// call on the same entry would spend the same failure twice; so recognition
+// records the gap with the judgment's own reason and makes no call. That is a
+// recorded cannot-measure, which is the point: an empty recognition log for a
+// stretch the endpoint was down would read as a project with nothing to say.
+//
+// A project with no index produces NO CALL AT ALL, counted apart from the
+// answers. An empty answer means the model read the index and found nothing;
+// no index means there was nothing to read, and a rollup that could not tell
+// them apart would report a store's silence as a model's.
+async function recognizeEntry(ctx, pass, entry, judged) {
+    const index = memoryIndex.loadIndex(entry.cwd, { memoryRoot: ctx.memoryRoot });
+    if (index.status !== 'ok') {
+        // Two different facts, counted apart. A project with no index, or one
+        // whose index names no records, is a quiet store and the ordinary case;
+        // an unloadable memq, a cwd that resolves to no project, or an index
+        // that is there and unreadable is an instrument somebody can repair.
+        // One counter for both would report a broken resolver as a machine
+        // where nobody has written a memory down.
+        if (index.status === 'noindex' || index.status === 'empty') {
+            pass.counters.recognitionSkipped += 1;
+        } else {
+            pass.counters.recognitionUnavailable += 1;
+        }
+        reportIndexStatus(ctx, index);
+        return;
+    }
+
+    if (judged !== null) {
+        // The judgment instrument's own wording, because what failed was the
+        // judgment. The three transport reasons describe the call that was not
+        // made as well as the one that was, but an unusable ANSWER was a
+        // verdict, and recording it in recognition's words would send a reader
+        // of this log to the recognition prompt to repair the judgment one.
+        recordRecGap(ctx, pass, entry,
+            judge.GAP_REASONS[judged.status] || 'not recognized', judged.detail);
+        return;
+    }
+
+    const outcome = await recognizeWithPolicy(ctx, entry, index);
+    if (outcome.status !== 'ok') {
+        recordRecGap(ctx, pass, entry,
+            recognize.GAP_REASONS[outcome.status] || 'not recognized', outcome.detail);
+        return;
+    }
+
+    pass.recGapReasons.delete(entry.sessionId);
+
+    // The pointers go down before the record, so the record states what was
+    // actually queued rather than what was about to be.
+    const queued = deliverPointers(ctx, entry, outcome);
+    const record = logs.recognitionRecord(entry, outcome, {
+        nowMs: ctx.deps.now(),
+        queued,
+        indexRecords: index.records,
+        indexTruncated: index.truncated === true,
+        promptId: recognitionPrompt.PROMPT_ID,
+        model: ctx.config.model,
+        endpoint: ctx.config.endpointFingerprint
+    });
+    if (!logs.appendJsonLine(logs.recognitionLogFile(ctx.paths.logsDir, entry.sessionId), record)) {
+        ctx.state.counters.writeFailures += 1;
+        ctx.deps.report(`could not write the recognition record for call ${entry.callId}`);
+    }
+    if (outcome.invented.length > 0) {
+        ctx.deps.report(`recognition named ${outcome.invented.length} record(s) absent from the index it was given for call ${entry.callId}; they are recorded and not queued`);
+    }
+
+    pass.counters.recognized += 1;
+    pass.counters.pointed += queued.length;
+    pass.counters.invented += outcome.invented.length;
+}
+
 // Judge one entry and write what came of it. Returns nothing the caller branches
 // on: a gap is as complete an outcome as a verdict.
 async function processEntry(ctx, pass, entry) {
     const outcome = await judgeWithPolicy(ctx, entry);
     if (outcome.status !== 'ok') {
         accrueGap(ctx, pass, entry, outcome);
+        await recognizeEntry(ctx, pass, entry, outcome);
         return;
     }
 
@@ -555,6 +837,11 @@ async function processEntry(ctx, pass, entry) {
     }
     pass.counters.judged += 1;
     pass.verdicts[record.verdict] = (pass.verdicts[record.verdict] || 0) + 1;
+
+    // After the verdict, never before it and never instead of it. The two
+    // duties are independent: a recognition failure leaves the verdict written,
+    // counted and delivered exactly as it would have been.
+    await recognizeEntry(ctx, pass, entry, null);
 }
 
 // One line: parsed, judged if it is a call, counted if it is not. A skip is
@@ -620,6 +907,12 @@ function commitOffset(ctx, pass, fileName, offset) {
 //
 // Holding is per pass rather than per file because a gap can span files: while
 // any run is open, nothing advances anywhere.
+//
+// Recognition holds nothing here. Its gap records are written as they happen
+// rather than coalesced, so by the time a line's offset is offered the whole of
+// that line's recognition outcome is already on disk. That is what keeps a
+// recognition outage from freezing an offset that judgment is still moving:
+// see recordRecGap.
 function commitPending(ctx, pass) {
     if (pass.gaps.size > 0) return;
     for (const [fileName, offset] of pass.pendingOffsets) {
@@ -701,9 +994,18 @@ async function drainFile(ctx, pass, fileName) {
 
 // One pass over every day file in chronological order.
 function newPass() {
-    const counters = { parsed: 0, judged: 0, blank: 0, malformed: 0, unknownVersion: 0, oversized: 0, offsetResets: 0, gapped: 0 };
+    const counters = {
+        parsed: 0, judged: 0, blank: 0, malformed: 0, unknownVersion: 0,
+        oversized: 0, offsetResets: 0, gapped: 0,
+        recognized: 0, pointed: 0, invented: 0, recognitionGapped: 0,
+        recognitionSkipped: 0, recognitionUnavailable: 0
+    };
     return {
         gaps: new Map(),
+        // The reason each session's last recognition gap carried. Nothing is
+        // held here: the records are already on disk, and this is only what
+        // keeps one stderr line per run of like gaps instead of one per call.
+        recGapReasons: new Map(),
         // Offsets consumed but not yet safe to persist: see commitPending.
         pendingOffsets: new Map(),
         // Whether the pass stopped short because the lane was busy.
@@ -724,6 +1026,7 @@ async function drainOnce(ctx) {
     ctx.runtime.timeouts = 0;
     ctx.runtime.refusals = 0;
     ctx.runtime.unusables = 0;
+    ctx.runtime.recognition = { stood: false, status: '', detail: '', kind: '', failures: 0 };
 
     const scan = spool.scanDayFiles(ctx.paths.spoolDir);
     if (!scan.complete) {
@@ -760,6 +1063,15 @@ function passSummary(pass) {
     const parts = [`judged ${c.judged}`];
     if (verdicts !== '') parts.push(`(${verdicts})`);
     if (c.gapped > 0) parts.push(`not judged ${c.gapped}`);
+    if (c.recognized > 0) parts.push(`recognized ${c.recognized}`);
+    if (c.pointed > 0) parts.push(`pointers ${c.pointed}`);
+    if (c.invented > 0) parts.push(`invented names ${c.invented}`);
+    if (c.recognitionGapped > 0) parts.push(`not recognized ${c.recognitionGapped}`);
+    // Counted and said out loud rather than left silent: it is the difference
+    // between a project whose memories had nothing to say and a project that
+    // has no memories to ask.
+    if (c.recognitionSkipped > 0) parts.push(`no memory index ${c.recognitionSkipped}`);
+    if (c.recognitionUnavailable > 0) parts.push(`recognition unavailable ${c.recognitionUnavailable}`);
     if (c.malformed > 0) parts.push(`malformed ${c.malformed}`);
     if (c.unknownVersion > 0) parts.push(`unknown version ${c.unknownVersion}`);
     if (c.oversized > 0) parts.push(`oversized ${c.oversized}`);
@@ -825,6 +1137,10 @@ async function main(argv) {
     }
 
     ctx.deps.report(`state root ${ctx.paths.root}; model ${ctx.config.model}; endpoint ${ctx.config.endpointFingerprint}; timeout ${ctx.config.timeoutMs} ms; prompt ${prompt.PROMPT_ID}`);
+    const recognitionStandDown = memoryIndex.memqStandDown();
+    ctx.deps.report(recognitionStandDown === null
+        ? `recognition prompt ${recognitionPrompt.PROMPT_ID}; memory store root ${ctx.memoryRoot === null ? memoryIndex.defaultMemoryRoot() : ctx.memoryRoot}, read only`
+        : `recognition is off for this run: ${recognitionStandDown}`);
 
     for (const signal of ['SIGINT', 'SIGTERM']) {
         process.on(signal, () => {

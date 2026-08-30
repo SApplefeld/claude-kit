@@ -3,14 +3,18 @@
 //
 // Everything lives under `<stateDir>/logs/`, per sidecar/CONTRACT.md:
 //
-//   logs/offsets.json          the offset map, the cumulative counters, and the
-//                              call ids whose delivery item is already queued
-//   logs/verdicts-<sid>.jsonl  one file per observed session
-//   logs/findings.jsonl        diverged verdicts and every gap, the audit surface
+//   logs/offsets.json            the offset map, the cumulative counters, and
+//                                the delivery keys already queued
+//   logs/verdicts-<sid>.jsonl    one file per observed session
+//   logs/recognition-<sid>.jsonl what the memory index said about that session's
+//                                calls, one file per observed session
+//   logs/findings.jsonl          diverged verdicts and every judgment gap, the
+//                                audit surface
 //
 // These files are a second plaintext concentration beside the spool itself: a
 // verdict record carries the intent the session wrote and a bounded preview of
-// the command it ran. They are machine-local, never synced and never committed,
+// the command it ran, and a recognition record carries the same two fields
+// beside the names of the memory records a call was pointed at. They are machine-local, never synced and never committed,
 // the preview is bounded rather than whole, and they expire on the spool's own
 // window: sweepLogs below is what keeps the second copy from outliving the
 // first, since the day the spool file goes is the day the preview in a log
@@ -109,6 +113,16 @@ function sessionLogFile(logsDir, sessionId) {
     return path.join(logsDir, `verdicts-${sessionSlug(sessionId)}.jsonl`);
 }
 
+// The recognition log for one session, beside its verdict log. Two files rather
+// than one because they answer different questions and are read by different
+// readers: a verdict log is the record of whether calls did what they meant to,
+// and a recognition log is the record of what the project's memory had to say
+// about them. Both take the same session slug, so a reader holding one file
+// name holds the other.
+function recognitionLogFile(logsDir, sessionId) {
+    return path.join(logsDir, `recognition-${sessionSlug(sessionId)}.jsonl`);
+}
+
 // Append one JSON line. Returns whether it landed; a failure is the caller's to
 // report and count, never an exception to unwind a drain with.
 function appendJsonLine(file, record) {
@@ -149,6 +163,25 @@ function emptyState() {
             offsetResets: 0,
             stateResets: 0,
             gapped: 0,
+            // The recognition duty's own counts, apart from the judgment's
+            // because they answer different questions. `recognized` is calls a
+            // recognition answer came back for, `pointed` is memory pointers
+            // queued (dedup drops the rest), `invented` is names returned that
+            // the index that produced them does not hold, `recognitionGapped`
+            // is calls recognition could not be measured for,
+            // `recognitionSkipped` is calls whose project has no index to ask
+            // about, which is the ordinary case and costs no call at all, and
+            // `recognitionUnavailable` is calls where the resolver itself could
+            // not answer: no usable memq, no project for the working directory,
+            // or an index file that is there and unreadable. The last two are
+            // apart because a quiet store and a broken instrument look the same
+            // in a single number, and only one of them is somebody's to fix.
+            recognized: 0,
+            pointed: 0,
+            invented: 0,
+            recognitionGapped: 0,
+            recognitionSkipped: 0,
+            recognitionUnavailable: 0,
             writeFailures: 0
         }
     };
@@ -265,6 +298,75 @@ function verdictRecord(entry, judged, meta) {
     };
 }
 
+// What the project's memory said about one call, for the recognition log.
+// `promptId` and `model` ride in every record for the verdict record's reason:
+// an answer is only comparable to another answer produced by the same prompt
+// against the same model. `records` is what the index was asked about and
+// answered with, `queued` is the subset that became a pointer (dedup holds the
+// rest back), and `invented` is what the model named that the index does not
+// hold, kept in the record rather than only counted: a rising invented count
+// with an empty record is a prompt or a model that has drifted, and a reader
+// cannot tell which without the names.
+//
+// `indexRecords` and `indexTruncated` describe the list the answer was formed
+// against, and they are two different facts. The count says how many records
+// were shown; the flag says the store holds more than that, because the index
+// was cut at the reader's line bound or its byte cap. An empty answer against a
+// cut index is a weaker statement than an empty answer against a whole one, and
+// a reader with the count alone cannot tell the two apart.
+//
+// NAMES, NEVER BODIES, here as everywhere. A record's text is not read by this
+// daemon and appears in no log it writes.
+function recognitionRecord(entry, result, meta) {
+    return {
+        v: LOG_VERSION,
+        type: 'recognition',
+        ts: new Date(meta.nowMs).toISOString(),
+        callId: entry.callId,
+        capturedAt: entry.ts,
+        sessionId: entry.sessionId,
+        cwd: entry.cwd,
+        tool: entry.tool,
+        intent: entry.intent,
+        commandPreview: commandPreview(entry.command),
+        records: Array.isArray(result.records) ? result.records.slice() : [],
+        queued: Array.isArray(meta.queued) ? meta.queued.slice() : [],
+        invented: Array.isArray(result.invented) ? result.invented.slice() : [],
+        reason: typeof result.reason === 'string' ? result.reason : '',
+        reasonTruncated: result.reasonTruncated === true,
+        indexRecords: Number.isInteger(meta.indexRecords) ? meta.indexRecords : 0,
+        indexTruncated: meta.indexTruncated === true,
+        promptId: meta.promptId,
+        model: meta.model,
+        endpoint: typeof meta.endpoint === 'string' ? meta.endpoint : '',
+        latencyMs: result.latencyMs
+    };
+}
+
+// One call the memory index was not consulted about, with the reason.
+//
+// It exists for the reason gapRecord exists: an instrument that went quiet
+// while the endpoint was down would report a project with nothing to say, and a
+// project with nothing to say is exactly what an unmeasured one looks like. The
+// note says NOT RECOGNIZED rather than anything a reader could mistake for an
+// empty answer, which is the normal result and a different fact entirely.
+//
+// One call rather than a range, unlike gapRecord: this record is written as the
+// call is read, so a run of them is a run of lines, and the offset behind them
+// never waits on a window that has not closed.
+function recognitionGapRecord(gap, nowMs) {
+    return {
+        v: LOG_VERSION,
+        type: 'recognition-gap',
+        ts: new Date(nowMs).toISOString(),
+        sessionId: gap.sessionId,
+        callId: gap.callId,
+        reason: gap.reason,
+        detail: gap.detail || '',
+        note: `call ${gap.callId} not recognized, ${gap.reason}`
+    };
+}
+
 // A finding, for the findings file: a diverged verdict, the quiet failure this
 // instrument exists to make countable.
 function findingRecord(record) {
@@ -309,9 +411,17 @@ const FINDINGS_MAX_BYTES = 4 * 1024 * 1024;
 
 const VERDICT_LOG_RE = /^verdicts-[A-Za-z0-9._-]+\.jsonl$/;
 
+// The recognition logs expire on the same window and in the same pass as the
+// verdict logs. They are the same kind of concentration, an intent and a
+// bounded command preview per call, and a per-file-kind sweep that expired one
+// and not the other would leave the newer surface permanent for no reason a
+// reader could find.
+const RECOGNITION_LOG_RE = /^recognition-[A-Za-z0-9._-]+\.jsonl$/;
+
 const MS_PER_DAY_LOGS = 24 * 60 * 60 * 1000;
 
-// Delete expired verdict logs and the expired rotated findings file, and rotate
+// Delete expired verdict logs, expired recognition logs and the expired rotated
+// findings file, and rotate
 // findings.jsonl when it is past its bound. Never throws; reports what it did,
 // what it refused to do and why, on the same footing as the spool's retention:
 // a sweep that silently deleted nothing and one that silently deleted the lot
@@ -337,7 +447,7 @@ function sweepLogs(logsDir, options) {
     }
 
     for (const name of names) {
-        if (!VERDICT_LOG_RE.test(name) && name !== FINDINGS_ROTATED_NAME) continue;
+        if (!VERDICT_LOG_RE.test(name) && !RECOGNITION_LOG_RE.test(name) && name !== FINDINGS_ROTATED_NAME) continue;
         const file = path.join(logsDir, name);
         let st = null;
         try { st = fs.lstatSync(file); } catch { continue; }
@@ -395,16 +505,21 @@ module.exports = {
     FINDINGS_NAME,
     FINDINGS_ROTATED_NAME,
     FINDINGS_MAX_BYTES,
+    VERDICT_LOG_RE,
+    RECOGNITION_LOG_RE,
     sweepLogs,
     ensureDir,
     sessionSlug,
     sessionLogFile,
+    recognitionLogFile,
     appendJsonLine,
     emptyState,
     loadState,
     saveState,
     commandPreview,
     verdictRecord,
+    recognitionRecord,
+    recognitionGapRecord,
     findingRecord,
     gapRecord
 };

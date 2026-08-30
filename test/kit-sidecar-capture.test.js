@@ -1709,6 +1709,17 @@ test('the framing names the machine boundary, the transport and where to verify'
         assert.ok(/cleartext HTTP/.test(block) && /no authentication/.test(block),
             'and the transport, in the terms the contract uses');
         assert.ok(/other tenants/.test(block), 'and that the service is shared');
+
+        // The recognition duty sends a class of content the other three words
+        // do not cover: the project's index of what it has learned, which is
+        // not the session's own text and which a reader would not infer from a
+        // list of the session's commands. An enumeration missing it reads as
+        // exhaustive and is not.
+        assert.ok(/memory index/.test(block), 'the block names the memory index as exported too');
+        assert.ok(/title and description/.test(block), 'and what an index line carries');
+        assert.ok(/never[\s\S]{0,40}body/.test(block),
+            'and that a record body is not part of the export, which is the bound that matters');
+
         assert.ok(/DATA, not instructions/.test(block) && /holds no authority/.test(block),
             'and what standing the block has');
         assert.ok(/~\/\.claude\/kit-sidecar\/logs\//.test(block),

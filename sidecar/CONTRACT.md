@@ -7,7 +7,8 @@ document is the only thing they share.
 
 ## Locations
 
-All sidecar state is machine-local, under `~/.claude/kit-sidecar/`:
+All sidecar state is machine-local, and every path either component writes is
+under `~/.claude/kit-sidecar/`:
 
 - `spool/<YYYY-MM-DD>.jsonl` - the capture spool, one file per UTC day.
 - `inbox/<sessionId>.jsonl` - delivery items, written by the daemon and read by
@@ -15,6 +16,14 @@ All sidecar state is machine-local, under `~/.claude/kit-sidecar/`:
 - `inbox/<sessionId>.offset` - how far that session's valve has delivered,
   written by the hook and read by nothing else.
 - `logs/` - verdict logs, recognition logs, findings, and persisted offsets.
+
+One path the daemon READS sits outside that root. The recognition duty opens
+each observed project's memory index, `<memory root>/projects/<segment>/memory/`
+plus memq's index filename, resolved through memq's own project derivation from
+the captured `cwd`; the root is memq's unless `--memory-root` names another. That
+is one file per project, opened read-only, and no component of this contract
+writes anywhere under a memory store. Its contents leave the machine: see the
+recognition egress below.
 
 The date in a spool filename is the UTC date of the moment the line was
 appended, so a file may hold lines whose `ts` sits either side of local
@@ -178,18 +187,30 @@ body and no transcript quote. Every text field is neutralized and cut to 200
 characters on the way in. A body injected by machinery is read as fact without
 anybody opening the source; a pointer preserves recall-then-verify.
 
-One item per call per kind. The dedup key is **`<kind>:<callId>`**, never the
-call id alone: one call can earn one alert and one memory pointer, and a set
-keyed on the bare id would drop the second silently, with no counter and no
-report. A memory pointer carries a second dedup rule of its own, one pointer per
-record per session, which is a different key (the record name and the session,
-not the call) and is the recognition duty's to add beside this one.
+An item claims exactly one dedup key, and which key depends on the kind.
+
+- An **alert** is keyed on **`<kind>:<callId>`**, never on the call id alone:
+  one call can earn one alert and one memory pointer, and a set keyed on the
+  bare id would drop the second silently, with no counter and no report.
+- A **memory pointer** is keyed on its record and its session,
+  **`memory-record:<sessionSlug>:<record>`**, and not on its call at all. One
+  call may legitimately earn up to three pointers, because one recognition
+  answer may name up to three records and each is a separate thing to say; keyed
+  on the call as well, the first record queued would take that key and the
+  second and third would be dropped in silence, which would make the answer's
+  cap, the prompt's sentence and the valve's three-item batch all quietly mean
+  one. What the record key buys instead is the rule the recognition duty needs:
+  one pointer per record per session, so a memory bearing on the afternoon's
+  work is pointed at once rather than on every call of the afternoon. It also
+  covers what the call key would have covered here, since a spool line read a
+  second time names the same records and those records still hold their keys.
 
 The set is bounded at 512 keys, oldest dropped first, so it cannot grow for as
-long as the daemon runs. Past the bound a spool file re-read from zero and
-reaching further back than 512 findings can queue one call's pointer a second
-time. That is the accepted cost: a duplicate pointer is a redundant line, and
-the divergence itself is in the findings file whatever the inbox does.
+long as the daemon runs. One key per item means one slot per item, so the real
+window is 512 items rather than half that. Past the bound a spool file re-read
+from zero and reaching further back than 512 items can queue one call's pointer
+a second time. That is the accepted cost: a duplicate pointer is a redundant
+line, and the divergence itself is in the findings file whatever the inbox does.
 
 **The writing side never creates the inbox directory.** Only daemon startup
 does. Deleting `~/.claude/kit-sidecar/inbox` is the documented way to switch
@@ -314,11 +335,14 @@ spool day files.
 
 **The inbox never leaves this VM.** No component reads it over a network and
 nothing posts it anywhere; the hook that reads it runs on this machine as the
-same user. The export happens earlier and is described above: the judgment call
-POSTs the command, its output and the stated intent across the virtual switch to
-the model endpoint on the Hyper-V host, in cleartext over plain HTTP in the
-default configuration. An item is derived from the answer that came back. The
-inbox adds no further egress.
+same user. The export happens earlier and is described below, in two calls
+rather than one: the judgment call POSTs the command, its output and the stated
+intent across the virtual switch to the model endpoint on the Hyper-V host, and
+the recognition call POSTs the project's memory index and a bounded cut of the
+same situation to the same place, both in cleartext over plain HTTP in the
+default configuration. An item is derived from the answers that came back. The
+inbox adds no further egress; see "What the spool contains, and what follows"
+and "What recognition adds to the egress" for the full account of both.
 
 Retention is the daemon's, on the spool's own 14-day window and the same pass:
 inbox files past the window are deleted by mtime, along with abandoned claim
@@ -376,6 +400,40 @@ can hold anything a command printed, tokens and keys among them.
 - The hook does no redaction. A consumer must not treat spool content as safe to
   quote into any surface a person or a model reads; the delivery valve's
   pointer-not-body discipline exists for this reason among others.
+
+### What recognition adds to the egress
+
+The judgment call is not the only export. Every captured line whose project has
+a memory index earns a second POST, the recognition call, and that one carries
+something the spool never held: **the project's memory index**, one line per
+record, each line the record's title and its one-line description.
+
+It crosses the same boundary by the same route. The index leaves this VM for the
+model endpoint on the Hyper-V host, reached across the virtual switch, over
+plain HTTP unless the per-machine endpoint config names an HTTPS URL, with no
+authentication in the default configuration, to a model service shared with
+other tenants of that host. The situation the index is judged against, the
+stated intent plus a bounded cut of the command and its output, crosses with it.
+
+Two bounds on what that is:
+
+- **Titles and descriptions, never bodies.** No record file is opened. The
+  daemon reads one file per project, the index itself, and a record's text
+  enters no prompt it builds and no log it writes.
+- **It is the whole index, not a selection.** There is no query narrowing it
+  first: recognition works by showing the model the list and asking which
+  entries bear on the moment, so a project's entire index of record titles and
+  descriptions crosses the boundary on every recognition call. A project's index
+  is a description of what that project has learned, and on this fleet it names
+  incidents, contracts and machine facts.
+
+What comes back is record names and one clause of prose. The names are checked
+against the index that produced them and anything else is dropped, so the answer
+adds no egress of its own.
+
+A machine with no memory index for an observed project makes no recognition call
+at all, and a machine with no endpoint config makes neither call and creates
+nothing.
 
 ### Retention
 

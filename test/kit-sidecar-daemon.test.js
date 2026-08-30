@@ -2,13 +2,18 @@
 //
 // Node's built-in test runner, no framework (Node v24).
 //
-// TWO THINGS NO CASE HERE MAY TOUCH. The live endpoint: every judgment goes to
-// a mock HTTP server this file starts, or to an injected fetch, so nothing in
-// the suite POSTs a byte off this machine. And the live store: every case owns
-// a temp state root under os.tmpdir() and passes it as `stateDir`, with the
-// endpoint config passed as `configPath`, so no case reads, writes or creates
-// anything under the real ~/.claude. The daemon's `--state-dir` and `--config`
-// exist for exactly this.
+// TWO THINGS NO CASE HERE MAY TOUCH. The live endpoint: every judgment and
+// every recognition call goes to a mock HTTP server this file starts, or to an
+// injected fetch, so nothing in the suite POSTs a byte off this machine. And the
+// live store: every case owns a temp state root under os.tmpdir() and passes it
+// as `stateDir`, with the endpoint config passed as `configPath` and the memory
+// store root passed as `memoryRoot`, so no case reads, writes or creates
+// anything under the real ~/.claude. The daemon's `--state-dir`, `--config` and
+// `--memory-root` exist for exactly this, and the memory root matters as much as
+// the other two: recognition resolves a project from the spool line's cwd, and
+// this repository's own path is what the fixtures carry, so a case that let the
+// root default would read the operator's real memory index and put it on the
+// wire.
 //
 // The mock server listens on port 0 and reads back the port the operating
 // system assigned. Never a fixed port: a fixed one would serialize this whole
@@ -64,7 +69,12 @@ function makeFixture(t, endpoint) {
     t.after(() => rmDir(dir));
     const stateDir = path.join(dir, 'state');
     const configPath = path.join(dir, 'kit-endpoint.json');
+    // An empty memory store root: it exists, it holds no project, so every
+    // recognition resolution lands on "this project has no index" and no case
+    // reaches the real store. A case that wants an index seeds one under here.
+    const memoryRoot = path.join(dir, 'store');
     fs.mkdirSync(stateDir, { recursive: true });
+    fs.mkdirSync(memoryRoot, { recursive: true });
     fs.writeFileSync(configPath, JSON.stringify({
         url: (endpoint && endpoint.url) || 'http://127.0.0.1:1',
         model: (endpoint && endpoint.model) || 'test-model',
@@ -74,6 +84,7 @@ function makeFixture(t, endpoint) {
         dir,
         stateDir,
         configPath,
+        memoryRoot,
         paths: config.statePaths(stateDir),
         spoolDir: path.join(stateDir, 'spool'),
         logsDir: path.join(stateDir, 'logs')
@@ -193,6 +204,7 @@ async function drain(fixture, extra) {
         once: true,
         stateDir: fixture.stateDir,
         configPath: fixture.configPath,
+        memoryRoot: fixture.memoryRoot,
         ...(extra && extra.options ? extra.options : {})
     }, {
         sleep: async (ms) => { sleeps.push(ms); },
@@ -1147,8 +1159,21 @@ test('the daemon deletes expired spool day files on startup and forgets their of
 
 // -------------------------------------------------------------- the CLI path --
 
+// A memory store root that is not there. Every CLI case below is about the
+// judgment path, so what it needs from recognition is a resolution that reaches
+// no store at all: an absent root resolves to an absent index for every cwd,
+// which costs no model call and cannot read the operator's own memories. It is
+// never created, so nothing here has anything to clean up.
+const NO_STORE_ROOT = path.join(os.tmpdir(), 'kit-sidecar-absent-store');
+
+// The memory root is injected unless the case named one itself, so a case
+// cannot reach the live store by forgetting it.
+function withMemoryRoot(args) {
+    return args.includes('--memory-root') ? args : [...args, '--memory-root', NO_STORE_ROOT];
+}
+
 function runCli(args) {
-    return spawnSync(process.execPath, [DAEMON_CLI, ...args], { encoding: 'utf8' });
+    return spawnSync(process.execPath, [DAEMON_CLI, ...withMemoryRoot(args)], { encoding: 'utf8' });
 }
 
 // The same spawn without blocking this process. A case whose mock endpoint
@@ -1157,7 +1182,7 @@ function runCli(args) {
 // out against a server that is running and cannot answer.
 function runCliAsync(args) {
     return new Promise((resolve) => {
-        const child = spawn(process.execPath, [DAEMON_CLI, ...args], { encoding: 'utf8' });
+        const child = spawn(process.execPath, [DAEMON_CLI, ...withMemoryRoot(args)], { encoding: 'utf8' });
         let stdout = '';
         let stderr = '';
         child.stdout.on('data', (chunk) => { stdout += chunk; });
@@ -1441,7 +1466,7 @@ test('the watch loop runs retention again on a day boundary, not at startup alon
     let clock = Date.parse('2026-08-30T12:00:00.000Z');
     const reports = [];
     const ctx = daemon.makeContext(
-        { stateDir: fixture.stateDir, configPath: fixture.configPath, pollMs: 1 },
+        { stateDir: fixture.stateDir, configPath: fixture.configPath, memoryRoot: fixture.memoryRoot, pollMs: 1 },
         { now: () => clock, report: (text) => { reports.push(text); }, sleep: async () => {} }
     );
     const started = daemon.startup(ctx);
@@ -1764,19 +1789,27 @@ test('an endpoint host outside this network is reported loudly at startup', asyn
     const fixture = makeFixture(t, { url: 'http://203.0.113.7:11434' });
     const reports = [];
     const ctx = daemon.makeContext(
-        { stateDir: fixture.stateDir, configPath: fixture.configPath },
+        { stateDir: fixture.stateDir, configPath: fixture.configPath, memoryRoot: fixture.memoryRoot },
         { report: (text) => { reports.push(text); } }
     );
     assert.strictEqual(daemon.startup(ctx).ok, true);
     const warned = reports.filter((r) => /WARNING: the configured endpoint host/.test(r));
     assert.strictEqual(warned.length, 1, 'a public endpoint is named on stderr');
     assert.ok(!warned[0].includes('203.0.113.7'), 'and the address is still not printed');
+    // What is being exported, in full. The recognition duty adds the project's
+    // memory index to what crosses, which is a different class of content from
+    // the session's own commands, so a warning naming only the commands
+    // understates the export it exists to disclose.
+    assert.ok(/command/.test(warned[0]) && /output/.test(warned[0]),
+        'the warning says the commands and their output cross');
+    assert.ok(/memory index/.test(warned[0]),
+        'and that the project memory index crosses with them');
 
     // The control: the fleet's own loopback endpoint warns about nothing.
     const quiet = makeFixture(t, { url: 'http://127.0.0.1:11434' });
     const quietReports = [];
     const quietCtx = daemon.makeContext(
-        { stateDir: quiet.stateDir, configPath: quiet.configPath },
+        { stateDir: quiet.stateDir, configPath: quiet.configPath, memoryRoot: quiet.memoryRoot },
         { report: (text) => { quietReports.push(text); } }
     );
     assert.strictEqual(daemon.startup(quietCtx).ok, true);
@@ -1892,7 +1925,7 @@ test('a day file that cannot be read is reported once per run, not once per pass
     const fixture = makeFixture(t);
     const reports = [];
     const ctx = daemon.makeContext(
-        { stateDir: fixture.stateDir, configPath: fixture.configPath },
+        { stateDir: fixture.stateDir, configPath: fixture.configPath, memoryRoot: fixture.memoryRoot },
         { report: (text) => { reports.push(text); }, sleep: async () => {} }
     );
     assert.strictEqual(daemon.startup(ctx).ok, true);
@@ -2442,4 +2475,764 @@ test('no sidecar source file carries a raw control byte a line-printing sweep wo
             `${path.basename(file)} holds a NUL byte, which makes grep read it as binary and every line-printing hygiene pass go silent on it`);
         assert.strictEqual(raw.includes(0x1b), false, `${path.basename(file)} holds an escape character`);
     }
+});
+
+// ------------------------------------------------------ memory recognition --
+
+// Every case below owns its store root (makeFixture's `memoryRoot`), so the
+// index a recognition call reads is one this file wrote. The segment a fixture
+// index is filed under is spelled by memq rather than by the module under test:
+// a fixture derived from the code it tests agrees with that code by
+// construction and would pass with the resolution deleted.
+
+const memoryIndex = require('../sidecar/memory-index.js');
+const recognize = require('../sidecar/recognize.js');
+const recognitionPrompt = require('../sidecar/prompts/recognition-v1.js');
+const recordName = require('../sidecar/record-name.js');
+const memq = require('../plugins/claude-kit/scripts/memq.js');
+
+const CAPTURE_HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-sidecar-capture.js');
+
+function indexLine(name, description) {
+    return `- [${name}](${name}.md) - ${description || 'a record about something'}`;
+}
+
+// Write a project index into a fixture's store, for the project a cwd resolves
+// to. Returns the file, so a case can change it under a running daemon.
+function seedIndex(fixture, cwd, lines) {
+    const dir = path.join(fixture.memoryRoot, 'projects', memq.sanitizeProjectPath(cwd), 'memory');
+    fs.mkdirSync(dir, { recursive: true });
+    const file = path.join(dir, memq.INDEX_FILE);
+    fs.writeFileSync(file, `# Memory Index\n\n${lines.join('\n')}\n`, 'utf8');
+    return file;
+}
+
+// Which duty a request belongs to, read off the schema it carries rather than
+// off the order it arrived in: the two duties send different `format` objects,
+// and a case that counted requests by position would mis-attribute every one of
+// them the moment a judgment gapped.
+function isRecognition(body) {
+    return body !== null && typeof body === 'object' && body.format !== undefined
+        && body.format.properties !== undefined
+        && body.format.properties.applicable !== undefined;
+}
+
+function recognitionAnswer(applicable, reason) {
+    return { body: { response: JSON.stringify({ applicable, reason: reason || 'it bears on the situation' }) } };
+}
+
+// A handler answering both duties. `verdict(n, body)` and `recognition(n, body)`
+// each see the count of their OWN kind; either may return undefined for the
+// ordinary answer.
+function bothDuties(verdict, recognition) {
+    let judged = 0;
+    let recognized = 0;
+    return (body) => {
+        if (isRecognition(body)) {
+            recognized += 1;
+            const out = recognition === undefined ? undefined : recognition(recognized, body);
+            return out === undefined ? recognitionAnswer([], 'nothing in the index bears on it') : out;
+        }
+        judged += 1;
+        const out = verdict === undefined ? undefined : verdict(judged, body);
+        return out === undefined ? answer('achieved', 'the listing is there') : out;
+    };
+}
+
+function recognitionRequests(server) {
+    return server.requests.filter((r) => isRecognition(r.body));
+}
+
+function recognitionRecordsOf(fixture, sessionId) {
+    return readJsonl(logs.recognitionLogFile(fixture.logsDir, sessionId === undefined ? 'ses-test' : sessionId));
+}
+
+test('a project with no memory index produces no recognition call at all', async (t) => {
+    const server = await startServer(t, bothDuties());
+    const fixture = makeFixture(t, { url: server.url });
+    // The cwd resolves to a project directory that does not exist under this
+    // fixture's store root, which is the ordinary case on most machines.
+    seedSpool(fixture, [makeLine({ cwd: fixture.dir })]);
+
+    const run = await drain(fixture);
+
+    assert.strictEqual(run.pass.counters.judged, 1, 'the call is still judged');
+    assert.strictEqual(recognitionRequests(server).length, 0,
+        'no index means no call, not an empty call');
+    assert.strictEqual(run.pass.counters.recognitionSkipped, 1);
+    assert.strictEqual(run.pass.counters.recognized, 0);
+    assert.strictEqual(fs.existsSync(logs.recognitionLogFile(fixture.logsDir, 'ses-test')), false,
+        'and nothing is written about a project with nothing to say');
+
+    // The control, on the same fixture and the same cwd: with an index in
+    // place the call is made, so the silence above is the branch and not the
+    // wiring.
+    seedIndex(fixture, fixture.dir, [indexLine('test-suite-invocation')]);
+    seedSpool(fixture, [makeLine({ cwd: fixture.dir })]);
+    const armed = await drain(fixture);
+    assert.strictEqual(recognitionRequests(server).length, 1);
+    assert.strictEqual(armed.pass.counters.recognized, 1);
+    assert.strictEqual(armed.pass.counters.recognitionSkipped, 0);
+});
+
+test('a recognized record reaches the inbox as a pointer, and its body does not', async (t) => {
+    const server = await startServer(t, bothDuties(undefined,
+        () => recognitionAnswer(['reading-a-running-suite'], 'the run is backgrounded and its log is idle')));
+    const fixture = makeFixture(t, { url: server.url });
+    seedIndex(fixture, fixture.dir, [
+        indexLine('reading-a-running-suite', 'a redirected stdout block-buffers, so a frozen line count is a buffer'),
+        indexLine('suite-baseline-is-not-zero-fail', 'this machine has one permanent red')
+    ]);
+    seedSpool(fixture, [makeLine({ cwd: fixture.dir, intent: 'check whether the suite is still alive' })]);
+
+    const run = await drain(fixture);
+
+    const items = inboxItems(fixture);
+    assert.strictEqual(items.length, 1);
+    assert.strictEqual(items[0].kind, 'memory');
+    assert.strictEqual(items[0].record, 'reading-a-running-suite');
+    assert.strictEqual(items[0].why, 'the run is backgrounded and its log is idle');
+    assert.strictEqual(items[0].sessionId, 'ses-test');
+    const line = fs.readFileSync(inbox.inboxFile(inboxDirOf(fixture), 'ses-test'), 'utf8');
+    assert.ok(!line.includes('block-buffers'), 'the record description does not travel with the pointer');
+    assert.ok(!line.includes('ls -la'), 'and neither does the command');
+
+    const records = recognitionRecordsOf(fixture);
+    assert.strictEqual(records.length, 1);
+    assert.strictEqual(records[0].type, 'recognition');
+    assert.deepStrictEqual(records[0].records, ['reading-a-running-suite']);
+    assert.deepStrictEqual(records[0].queued, ['reading-a-running-suite']);
+    assert.strictEqual(records[0].indexRecords, 2, 'the record says how big the index was');
+    assert.strictEqual(records[0].promptId, recognitionPrompt.PROMPT_ID);
+    assert.strictEqual(run.pass.counters.pointed, 1);
+});
+
+test('the index and the situation go over the wire fenced, under the names-only schema', async (t) => {
+    const server = await startServer(t, bothDuties());
+    const fixture = makeFixture(t, { url: server.url });
+    seedIndex(fixture, fixture.dir, [indexLine('memq-display-normalizes-where-filters-do-not')]);
+    seedSpool(fixture, [makeLine({
+        cwd: fixture.dir,
+        intent: 'read the rendered listing',
+        command: 'memq find decay --tag lifecycle'
+    })]);
+
+    await drain(fixture);
+
+    const sent = recognitionRequests(server)[0].body;
+    assert.strictEqual(sent.system, recognitionPrompt.SYSTEM, 'the shipped prompt file is what goes');
+    assert.strictEqual(sent.format.properties.applicable.maxItems, recognitionPrompt.MAX_RECORDS);
+    assert.strictEqual(sent.format.properties.applicable.items.type, 'string',
+        'names, never objects carrying bodies');
+    assert.ok(sent.prompt.includes('memq-display-normalizes-where-filters-do-not'), 'the index is in the prompt');
+    assert.ok(sent.prompt.includes('memq find decay --tag lifecycle'), 'and so is what the session ran');
+    assert.ok(sent.prompt.includes('read the rendered listing'), 'and what it said it was doing');
+    const itag = /<<<INDEX ([0-9a-f]{24})>>>/.exec(sent.prompt);
+    const stag = /<<<SITUATION ([0-9a-f]{24})>>>/.exec(sent.prompt);
+    assert.ok(itag !== null, 'the index is fenced');
+    assert.ok(stag !== null, 'the situation is fenced');
+    assert.notStrictEqual(itag[1], stag[1], 'the two fences carry different tags');
+    assert.ok(sent.prompt.includes(`<<<END INDEX ${itag[1]}>>>`), 'the index fence closes on its own tag');
+    assert.ok(sent.prompt.includes(`<<<END SITUATION ${stag[1]}>>>`), 'and the situation on its own');
+});
+
+test('the prompt is byte-identical ahead of the situation, which is what the endpoint can cache', async (t) => {
+    const server = await startServer(t, bothDuties());
+    const fixture = makeFixture(t, { url: server.url });
+    seedIndex(fixture, fixture.dir, [indexLine('reading-a-running-suite'), indexLine('test-suite-invocation')]);
+    seedSpool(fixture, [
+        makeLine({ cwd: fixture.dir, intent: 'the first thing' }),
+        makeLine({ cwd: fixture.dir, intent: 'the second thing' })
+    ]);
+
+    await drain(fixture);
+
+    const sent = recognitionRequests(server).map((r) => r.body.prompt);
+    assert.strictEqual(sent.length, 2, 'two calls against one index');
+    const head = (p) => p.slice(0, p.indexOf('SITUATION (data'));
+    assert.strictEqual(head(sent[0]), head(sent[1]),
+        'everything up to the situation is the same bytes, so the endpoint has a prefix to reuse');
+    assert.ok(head(sent[0]).length > 100, 'and that constant head is the long part: the index');
+    assert.notStrictEqual(sent[0], sent[1], 'while the situations themselves differ');
+
+    // The index fence's tag moves when the index does, and the situation's
+    // moves on every call regardless.
+    const itag = (p) => /<<<INDEX ([0-9a-f]{24})>>>/.exec(p)[1];
+    const stag = (p) => /<<<SITUATION ([0-9a-f]{24})>>>/.exec(p)[1];
+    assert.strictEqual(itag(sent[0]), itag(sent[1]), 'one index, one index tag');
+    assert.notStrictEqual(stag(sent[0]), stag(sent[1]),
+        'the situation tag is drawn per call, so the observed session cannot predict the marker that closes its own text');
+    assert.notStrictEqual(
+        recognitionPrompt.indexTag('- [One](one.md) - a'),
+        recognitionPrompt.indexTag('- [Two](two.md) - b'),
+        'a different index is a different tag');
+});
+
+test('an empty recognition answer is the normal case and queues nothing', async (t) => {
+    const server = await startServer(t, bothDuties(undefined, () => recognitionAnswer([], 'nothing bears on it')));
+    const fixture = makeFixture(t, { url: server.url });
+    seedIndex(fixture, fixture.dir, [indexLine('doctor-fix-is-never-a-neutral-committer')]);
+    seedSpool(fixture, [makeLine({ cwd: fixture.dir })]);
+
+    const run = await drain(fixture);
+
+    assert.strictEqual(run.pass.counters.recognized, 1, 'the call was made and answered');
+    assert.strictEqual(run.pass.counters.pointed, 0);
+    assert.strictEqual(inboxItems(fixture).length, 0);
+    const records = recognitionRecordsOf(fixture);
+    assert.deepStrictEqual(records[0].records, [], 'an empty answer is recorded rather than skipped');
+    assert.strictEqual(records[0].reason, 'nothing bears on it');
+});
+
+test('a name the index does not hold is dropped, counted and recorded, never queued', async (t) => {
+    const server = await startServer(t, bothDuties(undefined,
+        () => recognitionAnswer(['a-record-nobody-wrote', 'manual-compact-never-reaches-the-gate'])));
+    const fixture = makeFixture(t, { url: server.url });
+    seedIndex(fixture, fixture.dir, [indexLine('manual-compact-never-reaches-the-gate')]);
+    seedSpool(fixture, [makeLine({ cwd: fixture.dir })]);
+
+    const run = await drain(fixture);
+
+    const items = inboxItems(fixture);
+    assert.strictEqual(items.length, 1, 'only the record the index actually holds is queued');
+    assert.strictEqual(items[0].record, 'manual-compact-never-reaches-the-gate');
+    const record = recognitionRecordsOf(fixture)[0];
+    assert.deepStrictEqual(record.invented, ['a-record-nobody-wrote'],
+        'the invented name is kept in the record, so a drift is legible');
+    assert.deepStrictEqual(record.queued, ['manual-compact-never-reaches-the-gate']);
+    assert.strictEqual(run.pass.counters.invented, 1);
+    assert.match(run.reports.join('\n'), /absent from the index/);
+});
+
+test('one pointer per record per session, however many calls name it', async (t) => {
+    const server = await startServer(t, bothDuties(undefined, () => recognitionAnswer(['two-sessions-one-checkout-commit-freeze'])));
+    const fixture = makeFixture(t, { url: server.url });
+    seedIndex(fixture, fixture.dir, [
+        indexLine('two-sessions-one-checkout-commit-freeze'),
+        indexLine('a-restated-count-is-a-cross-file-invariant')
+    ]);
+    seedSpool(fixture, [
+        makeLine({ cwd: fixture.dir, sessionId: 'ses-one' }),
+        makeLine({ cwd: fixture.dir, sessionId: 'ses-one' })
+    ]);
+
+    const run = await drain(fixture);
+
+    assert.strictEqual(run.pass.counters.recognized, 2, 'both calls were recognized');
+    assert.strictEqual(inboxItems(fixture, 'ses-one').length, 1,
+        'the second call names the same record and says nothing new');
+    assert.strictEqual(run.pass.counters.pointed, 1);
+    const second = recognitionRecordsOf(fixture, 'ses-one')[1];
+    assert.deepStrictEqual(second.records, ['two-sessions-one-checkout-commit-freeze']);
+    assert.deepStrictEqual(second.queued, [], 'and the record says the pointer was held rather than sent');
+});
+
+test('the per-record rule is per record and per session, not a mute button', async (t) => {
+    // Three controls against the rule above being too wide: another record in
+    // the same session, the same record in another session, and the alert kind
+    // on a call that already earned a pointer. Each must still be delivered.
+    let call = 0;
+    const server = await startServer(t, bothDuties(
+        () => answer('diverged', 'the exit code belongs to the last command'),
+        () => {
+            call += 1;
+            if (call === 1) return recognitionAnswer(['merging-hook-edits-staleness-the-build-stamp']);
+            if (call === 2) return recognitionAnswer(['archiving-a-plan-touches-two-indexes-not-three']);
+            return recognitionAnswer(['merging-hook-edits-staleness-the-build-stamp']);
+        }));
+    const fixture = makeFixture(t, { url: server.url });
+    seedIndex(fixture, fixture.dir, [
+        indexLine('merging-hook-edits-staleness-the-build-stamp'),
+        indexLine('archiving-a-plan-touches-two-indexes-not-three')
+    ]);
+    seedSpool(fixture, [
+        makeLine({ cwd: fixture.dir, sessionId: 'ses-a' }),
+        makeLine({ cwd: fixture.dir, sessionId: 'ses-a' }),
+        makeLine({ cwd: fixture.dir, sessionId: 'ses-b' })
+    ]);
+
+    await drain(fixture);
+
+    const a = inboxItems(fixture, 'ses-a');
+    assert.deepStrictEqual(a.filter((i) => i.kind === 'memory').map((i) => i.record),
+        ['merging-hook-edits-staleness-the-build-stamp', 'archiving-a-plan-touches-two-indexes-not-three'],
+        'a second record in the same session is a second pointer');
+    assert.strictEqual(a.filter((i) => i.kind === 'alert').length, 2,
+        'and the diverged alerts ride beside the pointers, one per call');
+    const b = inboxItems(fixture, 'ses-b');
+    assert.deepStrictEqual(b.filter((i) => i.kind === 'memory').map((i) => i.record),
+        ['merging-hook-edits-staleness-the-build-stamp'],
+        'another session has not been told, so it is told');
+});
+
+test('a re-read spool line queues one pointer, not two', async (t) => {
+    const server = await startServer(t, bothDuties(undefined, () => recognitionAnswer(['worktree-guard-refuses-compound-commands'])));
+    const fixture = makeFixture(t, { url: server.url });
+    seedIndex(fixture, fixture.dir, [indexLine('worktree-guard-refuses-compound-commands')]);
+    const line = makeLine({ cwd: fixture.dir });
+    seedSpool(fixture, [line]);
+
+    await drain(fixture);
+    assert.strictEqual(inboxItems(fixture).length, 1);
+
+    // The spool file re-read from zero, which the contract names as an expected
+    // event: the call is recognized again and the pointer is not queued twice.
+    const state = JSON.parse(fs.readFileSync(path.join(fixture.logsDir, 'offsets.json'), 'utf8'));
+    state.offsets = {};
+    fs.writeFileSync(path.join(fixture.logsDir, 'offsets.json'), JSON.stringify(state), 'utf8');
+    const again = await drain(fixture);
+
+    assert.strictEqual(again.pass.counters.recognized, 1, 'the line was read and recognized again');
+    assert.strictEqual(inboxItems(fixture).length, 1, 'and the session is not told twice');
+});
+
+test('the index is served from the cache while it is unchanged and re-read when it moves', (t) => {
+    const dir = makeDir('kit-sidecar-index-');
+    t.after(() => rmDir(dir));
+    memoryIndex.clearCache();
+    const cwd = path.join(dir, 'checkout');
+    fs.mkdirSync(cwd);
+    const root = path.join(dir, 'store');
+    const memDir = path.join(root, 'projects', memq.sanitizeProjectPath(cwd), 'memory');
+    fs.mkdirSync(memDir, { recursive: true });
+    const file = path.join(memDir, memq.INDEX_FILE);
+    fs.writeFileSync(file, `${indexLine('first-record')}\n`, 'utf8');
+
+    const first = memoryIndex.loadIndex(cwd, { memoryRoot: root });
+    assert.strictEqual(first.status, 'ok');
+    assert.strictEqual(first.cached, false);
+    assert.deepStrictEqual([...first.names], ['first-record']);
+
+    assert.strictEqual(memoryIndex.loadIndex(cwd, { memoryRoot: root }).cached, true,
+        'an unchanged index is not re-read');
+
+    // A change of the same size, so only the mtime can tell it apart. A cache
+    // keyed on size alone would hand back the old names here.
+    const sameSize = `${indexLine('secnd-record')}\n`;
+    assert.strictEqual(Buffer.byteLength(sameSize), Buffer.byteLength(`${indexLine('first-record')}\n`));
+    fs.writeFileSync(file, sameSize, 'utf8');
+    const bumped = new Date(Date.now() + 4000);
+    fs.utimesSync(file, bumped, bumped);
+
+    const second = memoryIndex.loadIndex(cwd, { memoryRoot: root });
+    assert.strictEqual(second.cached, false, 'an index edited under a running daemon is re-read');
+    assert.deepStrictEqual([...second.names], ['secnd-record']);
+});
+
+test('a recognition failure leaves the verdict written and records a gap of its own', async (t) => {
+    const server = await startServer(t, bothDuties(undefined, () => ({ status: 500, body: { error: 'no' } })));
+    const fixture = makeFixture(t, { url: server.url });
+    seedIndex(fixture, fixture.dir, [indexLine('skill-amendments-collide-with-neighbours')]);
+    seedSpool(fixture, [makeLine({ cwd: fixture.dir })]);
+
+    const run = await drain(fixture);
+
+    const verdicts = sessionRecords(fixture).filter((r) => r.type === 'verdict');
+    assert.strictEqual(verdicts.length, 1, 'the two duties are independent');
+    assert.strictEqual(run.pass.counters.judged, 1);
+    const gaps = recognitionRecordsOf(fixture).filter((r) => r.type === 'recognition-gap');
+    assert.strictEqual(gaps.length, 1);
+    assert.strictEqual(gaps[0].reason, recognize.GAP_REASONS.refused);
+    assert.match(gaps[0].note, /not recognized/);
+    assert.strictEqual(run.pass.counters.recognitionGapped, 1);
+    assert.strictEqual(findings(fixture).filter((r) => r.type === 'recognition-gap').length, 0,
+        'the findings file counts calls that were not judged, which is a different fact');
+});
+
+test('a call whose judgment did not come back costs no recognition call and is recorded as a gap', async (t) => {
+    const server = await startServer(t, bothDuties(() => ({ status: 503, body: { error: 'busy' } })));
+    const fixture = makeFixture(t, { url: server.url });
+    seedIndex(fixture, fixture.dir, [indexLine('suite-baseline-is-not-zero-fail')]);
+    seedSpool(fixture, [makeLine({ cwd: fixture.dir })]);
+
+    const run = await drain(fixture);
+
+    assert.strictEqual(recognitionRequests(server).length, 0,
+        'a second call on the same entry would spend the same failure twice');
+    const gaps = recognitionRecordsOf(fixture).filter((r) => r.type === 'recognition-gap');
+    assert.strictEqual(gaps.length, 1, 'and the silence is written down rather than left');
+    assert.strictEqual(gaps[0].reason, recognize.GAP_REASONS.refused);
+    assert.strictEqual(run.pass.counters.recognitionGapped, 1);
+    assert.strictEqual(run.pass.counters.recognitionSkipped, 0,
+        'a project with an index was not counted as one without');
+});
+
+test('a gap inherited from an unusable verdict is worded as the judgment instrument words it', async (t) => {
+    // The three transport reasons describe the call that was not made as well
+    // as the one that was. `unusable` does not: the unusable answer here was a
+    // VERDICT, and recognition's own sentence would send a reader of this log
+    // to the recognition prompt to repair the judgment one.
+    const server = await startServer(t, bothDuties(() => ({ body: { response: 'not json at all' } })));
+    const fixture = makeFixture(t, { url: server.url });
+    seedIndex(fixture, fixture.dir, [indexLine('suite-baseline-is-not-zero-fail')]);
+    seedSpool(fixture, [makeLine({ cwd: fixture.dir })]);
+
+    const run = await drain(fixture);
+
+    assert.strictEqual(recognitionRequests(server).length, 0);
+    const gaps = recognitionRecordsOf(fixture).filter((r) => r.type === 'recognition-gap');
+    assert.strictEqual(gaps.length, 1);
+    assert.strictEqual(gaps[0].reason, judge.GAP_REASONS.unusable,
+        'the verdict was unusable, and that is what the record says');
+    assert.notStrictEqual(gaps[0].reason, recognize.GAP_REASONS.unusable,
+        'never the recognition answer, which was never asked for');
+    assert.strictEqual(run.pass.counters.recognitionGapped, 1);
+});
+
+test('one call can queue a pointer for each record its answer names', async (t) => {
+    const server = await startServer(t, bothDuties(undefined,
+        () => recognitionAnswer(['reading-a-running-suite', 'test-suite-invocation', 'suite-baseline-is-not-zero-fail'],
+            'all three bear on a suite run')));
+    const fixture = makeFixture(t, { url: server.url });
+    seedIndex(fixture, fixture.dir, [
+        indexLine('reading-a-running-suite'),
+        indexLine('test-suite-invocation'),
+        indexLine('suite-baseline-is-not-zero-fail')
+    ]);
+    seedSpool(fixture, [makeLine({ cwd: fixture.dir })]);
+
+    const run = await drain(fixture);
+
+    const pointers = inboxItems(fixture).filter((i) => i.kind === 'memory');
+    assert.strictEqual(pointers.length, 3,
+        'the schema caps an answer at three records and each is a separate thing to say');
+    assert.deepStrictEqual(pointers.map((p) => p.record).sort(),
+        ['reading-a-running-suite', 'suite-baseline-is-not-zero-fail', 'test-suite-invocation']);
+    assert.strictEqual(run.pass.counters.pointed, 3);
+    assert.deepStrictEqual(recognitionRecordsOf(fixture)[0].queued.length, 3,
+        'and the record states what actually landed');
+});
+
+test('an unusable recognition answer is gap-marked as unusable, never as a refusal', async (t) => {
+    const server = await startServer(t, bothDuties(undefined,
+        () => ({ body: { response: JSON.stringify({ reason: 'I could not decide' }) } })));
+    const fixture = makeFixture(t, { url: server.url });
+    seedIndex(fixture, fixture.dir, [indexLine('memq-display-normalizes-where-filters-do-not')]);
+    seedSpool(fixture, [makeLine({ cwd: fixture.dir })]);
+
+    await drain(fixture);
+
+    const gap = recognitionRecordsOf(fixture).filter((r) => r.type === 'recognition-gap')[0];
+    assert.strictEqual(gap.reason, recognize.GAP_REASONS.unusable);
+    assert.notStrictEqual(gap.reason, recognize.GAP_REASONS.refused,
+        'an answer that is not a list of names names a different repair from a server saying no');
+});
+
+test('recognition latches after a run of failures, and the calls behind it cost nothing', async (t) => {
+    const server = await startServer(t, bothDuties(undefined, () => ({ status: 500, body: { error: 'no' } })));
+    const fixture = makeFixture(t, { url: server.url });
+    seedIndex(fixture, fixture.dir, [indexLine('a-restated-count-is-a-cross-file-invariant')]);
+    seedSpool(fixture, [
+        makeLine({ cwd: fixture.dir }), makeLine({ cwd: fixture.dir }),
+        makeLine({ cwd: fixture.dir }), makeLine({ cwd: fixture.dir }),
+        makeLine({ cwd: fixture.dir })
+    ]);
+
+    const run = await drain(fixture);
+
+    assert.strictEqual(recognitionRequests(server).length, daemon.MAX_CONSECUTIVE_FAILURES,
+        'the latch stops the calls rather than the consuming');
+    assert.strictEqual(run.pass.counters.judged, 5, 'every call is still judged');
+    assert.strictEqual(run.pass.counters.recognitionGapped, 5, 'and every one is recorded as not recognized');
+    const gaps = recognitionRecordsOf(fixture).filter((r) => r.type === 'recognition-gap');
+    assert.strictEqual(gaps.length, 5, 'one record per call, so no call waits on a window to be recorded');
+    assert.strictEqual(new Set(gaps.map((g) => g.callId)).size, 5, 'each names its own call');
+    const said = run.reports.filter((r) => /not recognized/.test(r));
+    assert.strictEqual(said.length, 1, 'while stderr says it once for the run of them');
+});
+
+test('a recognition outage records each call as it is read and never freezes the offset behind it', async (t) => {
+    // The invariant is that an offset may only pass a line whose outcome is on
+    // disk. Recognition meets it by writing each gap as it happens rather than
+    // by holding the offset: a pass that kept judging while its offsets stopped
+    // moving would, on a kill, re-judge and re-POST every call of that pass.
+    const seen = [];
+    const server = await startServer(t, bothDuties((n) => {
+        // Read on each judgment after the first, by which point the calls
+        // before it have been judged and their recognition has gapped.
+        if (n > 1) {
+            let offsets = {};
+            try { offsets = readOffsets(fixture).offsets; } catch { offsets = {}; }
+            seen.push(offsets[`${TODAY}.jsonl`]);
+        }
+        return undefined;
+    }, () => ({ status: 500, body: { error: 'no' } })));
+    const fixture = makeFixture(t, { url: server.url });
+    seedIndex(fixture, fixture.dir, [indexLine('reading-a-running-suite')]);
+    seedSpool(fixture, [
+        makeLine({ cwd: fixture.dir }), makeLine({ cwd: fixture.dir }),
+        makeLine({ cwd: fixture.dir }), makeLine({ cwd: fixture.dir })
+    ]);
+
+    const run = await drain(fixture);
+
+    assert.strictEqual(seen.length, 3, 'the later judgments ran');
+    assert.ok(seen[0] > 0, 'the first line\'s offset was persisted before the second call was made');
+    assert.ok(seen[2] > seen[0],
+        `the offset kept moving through the outage, ${seen[0]} then ${seen[2]}, rather than freezing at the first gap`);
+    assert.strictEqual(run.pass.counters.recognitionGapped, 4);
+    // Every offset that moved had its call's recognition outcome on disk first.
+    const gaps = recognitionRecordsOf(fixture).filter((r) => r.type === 'recognition-gap');
+    assert.strictEqual(gaps.length, 4, 'each call recorded, none waiting on a flush');
+});
+
+test('a judgment gap still holds the offset, which is what recognition no longer has to do', async (t) => {
+    // The control for the case above: the hold is not gone, it is the judgment
+    // instrument's, where a call would otherwise have no record at all.
+    const seen = [];
+    const server = await startServer(t, (body, n) => {
+        if (n > 1) {
+            let offsets = {};
+            try { offsets = readOffsets(fixture).offsets; } catch { offsets = {}; }
+            seen.push(offsets[`${TODAY}.jsonl`]);
+        }
+        return { status: 500, body: { error: 'no' } };
+    });
+    const fixture = makeFixture(t, { url: server.url });
+    seedIndex(fixture, fixture.dir, [indexLine('reading-a-running-suite')]);
+    seedSpool(fixture, [
+        makeLine({ cwd: fixture.dir }), makeLine({ cwd: fixture.dir }),
+        makeLine({ cwd: fixture.dir })
+    ]);
+
+    await drain(fixture);
+
+    assert.ok(seen.length >= 1, 'a later judgment ran');
+    assert.ok(seen.every((v) => v === undefined || v === 0),
+        `the offset moved to ${seen} while a judgment gap was still in memory`);
+    assert.ok(readOffsets(fixture).offsets[`${TODAY}.jsonl`] > 0,
+        'and it advances once the pass flushes that gap to disk');
+});
+
+test('an index path that is not a readable regular file is refused and named once', async (t) => {
+    const server = await startServer(t, bothDuties());
+    const fixture = makeFixture(t, { url: server.url });
+    // A directory wearing the index file's name: the read fails, and reading
+    // through whatever sits at that path into a prompt that leaves this machine
+    // is the thing being refused.
+    const memDir = path.join(fixture.memoryRoot, 'projects', memq.sanitizeProjectPath(fixture.dir), 'memory');
+    fs.mkdirSync(path.join(memDir, memq.INDEX_FILE), { recursive: true });
+    seedSpool(fixture, [makeLine({ cwd: fixture.dir }), makeLine({ cwd: fixture.dir })]);
+
+    const run = await drain(fixture);
+
+    assert.strictEqual(recognitionRequests(server).length, 0);
+    assert.strictEqual(run.pass.counters.recognitionUnavailable, 2,
+        'an index that is there and unreadable is a condition somebody can repair');
+    assert.strictEqual(run.pass.counters.recognitionSkipped, 0,
+        'and is not counted as a project that simply has no memories yet');
+    const named = run.reports.filter((r) => /index cannot be read/.test(r));
+    assert.strictEqual(named.length, 1, 'named once per run, not once per call');
+});
+
+test('a quiet store and a broken resolver are counted apart', async (t) => {
+    const server = await startServer(t, bothDuties());
+    const fixture = makeFixture(t, { url: server.url });
+    // No index for this project at all: the ordinary case on most machines.
+    seedSpool(fixture, [makeLine({ cwd: fixture.dir })]);
+    const quiet = await drain(fixture);
+    assert.strictEqual(quiet.pass.counters.recognitionSkipped, 1);
+    assert.strictEqual(quiet.pass.counters.recognitionUnavailable, 0);
+    assert.ok(!/recognition unavailable/.test(daemon.passSummary(quiet.pass) || ''),
+        'a project with no memories is not reported as an instrument fault');
+
+    // A working directory that resolves to no project at all: the resolver
+    // could not answer, which is a different fact about a different thing.
+    const other = makeFixture(t, { url: server.url });
+    seedSpool(other, [makeLine({ cwd: '//fileserver/share/project' })]);
+    const broken = await drain(other);
+    assert.strictEqual(broken.pass.counters.recognitionUnavailable, 1);
+    assert.strictEqual(broken.pass.counters.recognitionSkipped, 0);
+    assert.ok(/recognition unavailable 1/.test(daemon.passSummary(broken.pass) || ''),
+        'and the summary says so in its own words');
+});
+
+test('recognition logs expire on the same window as the verdict logs', async (t) => {
+    const fixture = makeFixture(t, { url: 'http://127.0.0.1:1' });
+    fs.mkdirSync(fixture.logsDir, { recursive: true });
+    const stale = logs.recognitionLogFile(fixture.logsDir, 'ses-old');
+    const fresh = logs.recognitionLogFile(fixture.logsDir, 'ses-new');
+    fs.writeFileSync(stale, '{}\n', 'utf8');
+    fs.writeFileSync(fresh, '{}\n', 'utf8');
+    const old = new Date(Date.now() - (40 * MS_PER_DAY));
+    fs.utimesSync(stale, old, old);
+
+    const swept = logs.sweepLogs(fixture.logsDir, { nowMs: Date.now(), retentionDays: 14 });
+
+    assert.ok(swept.deleted.includes(path.basename(stale)),
+        'the newer surface expires too, or it is the one thing here that is permanent');
+    assert.strictEqual(fs.existsSync(fresh), true, 'and a live one is kept');
+});
+
+// ------------------------------------------- resolution, index and answers --
+
+test('the project a call belongs to is the one the store itself resolves', (t) => {
+    const dir = makeDir('kit-sidecar-seg-');
+    t.after(() => rmDir(dir));
+    assert.strictEqual(memoryIndex.projectSegment(dir), memq.sanitizeProjectPath(dir),
+        'the segment is memq\'s own derivation, not a second spelling of it');
+    assert.strictEqual(memoryIndex.indexFileForCwd(dir, memoryIndex.defaultMemoryRoot()),
+        path.join(memq.projectMemoryDirFor(memq.sanitizeProjectPath(dir)), memq.INDEX_FILE),
+        'and the file under it is the one memq would name');
+
+    // A working directory on a share is refused before anything stats it: the
+    // resolution walks <cwd>/.git, and an unreachable share blocks there for
+    // the SMB timeout on a path the daemon did not choose.
+    assert.strictEqual(memoryIndex.projectSegment('\\\\some-host\\share\\checkout'), null);
+    assert.strictEqual(memoryIndex.projectSegment(''), null);
+    assert.strictEqual(memoryIndex.projectSegment(null), null);
+});
+
+test('what the model is shown and what it may answer with are one list', () => {
+    const parsed = memoryIndex.parseIndex([
+        '# Memory Index',
+        '',
+        'Some prose that is not a record.',
+        indexLine('a-good-record'),
+        '- [Spaced](not a name.md) - a name no memq get line could carry',
+        '- [Bare](another-good.md)',
+        '* [Wrong bullet](nope.md) - not a record line'
+    ].join('\n'));
+
+    assert.strictEqual(parsed.lines, 2, 'only lines naming a deliverable record are records');
+    assert.deepStrictEqual([...parsed.names].sort(), ['a-good-record', 'another-good'],
+        'a name the reader could not spell into a memq get line is not offered');
+    assert.ok(!parsed.text.includes('not a name.md'),
+        'and it is not shown either: shown and then refused, it would arrive as an invented name');
+    assert.ok(!parsed.text.includes('Wrong bullet'));
+    assert.strictEqual(parsed.truncated, false);
+});
+
+test('an index cut short says so in the prompt and in the record', async (t) => {
+    const server = await startServer(t, bothDuties());
+    const fixture = makeFixture(t, { url: server.url });
+    const many = [];
+    for (let i = 0; i < memoryIndex.INDEX_LINES_MAX + 5; i += 1) many.push(indexLine(`record-number-${i}`));
+    seedIndex(fixture, fixture.dir, many);
+    seedSpool(fixture, [makeLine({ cwd: fixture.dir })]);
+
+    await drain(fixture);
+
+    const sent = recognitionRequests(server)[0].body.prompt;
+    assert.ok(sent.includes('was cut'),
+        'a model told the list is complete when it is not answers about records it was never shown');
+    assert.ok(!sent.includes(`record-number-${memoryIndex.INDEX_LINES_MAX + 4}`), 'the tail really is absent');
+    const rec = recognitionRecordsOf(fixture)[0];
+    assert.strictEqual(rec.indexTruncated, true, 'and the record says the answer was formed against less than the store holds');
+    assert.strictEqual(rec.indexRecords, memoryIndex.INDEX_LINES_MAX);
+
+    // The cache serves every read after the first, so it is the path almost
+    // every production record is written from. It carries the flag or the flag
+    // is true once and false for the rest of the daemon's life, which is worse
+    // than never having it: a reader would see one cut record among thousands
+    // and conclude the cut was a one-off.
+    seedSpool(fixture, [makeLine({ cwd: fixture.dir })]);
+    await drain(fixture);
+    const cached = recognitionRecordsOf(fixture)[1];
+    assert.strictEqual(cached.indexTruncated, true, 'the cached read says it too');
+    assert.strictEqual(cached.indexRecords, memoryIndex.INDEX_LINES_MAX);
+});
+
+test('the record name pattern is the one the delivery half applies', () => {
+    const src = fs.readFileSync(CAPTURE_HOOK, 'utf8');
+    const found = /const RECORD_NAME_RE = (\/\^[^\n]*\/);/.exec(src);
+    assert.ok(found !== null, 'the hook still states a record name pattern');
+    assert.strictEqual(found[1], String(recordName.RECORD_NAME_RE),
+        'the daemon refuses exactly what the reader would drop');
+
+    // The control: the pin is live because both sides really do refuse this.
+    assert.strictEqual(recordName.isRecordName('-leading-dash'), false);
+    assert.strictEqual(new RegExp(found[1].slice(1, -1)).test('-leading-dash'), false);
+    assert.strictEqual(recordName.isRecordName('a-good-record'), true);
+});
+
+test('a recognition answer is parsed as names, and anything else is unusable', () => {
+    const names = new Set(['one-record', 'two-record']);
+    const ok = recognize.parseAnswer({ response: JSON.stringify({ applicable: ['one-record.md'], reason: 'because' }) }, names);
+    assert.strictEqual(ok.status, 'ok');
+    assert.deepStrictEqual(ok.records, ['one-record'], 'a .md the model added is stripped');
+    assert.strictEqual(ok.reason, 'because');
+
+    const empty = recognize.parseAnswer({ response: JSON.stringify({ applicable: [], reason: 'none' }) }, names);
+    assert.strictEqual(empty.status, 'ok');
+    assert.deepStrictEqual(empty.records, []);
+
+    // An absent list is not an empty one: reading it as "nothing bears on this"
+    // would turn a broken decode into a clean result.
+    assert.strictEqual(recognize.parseAnswer({ response: JSON.stringify({ reason: 'none' }) }, names).status, 'unusable');
+    assert.strictEqual(recognize.parseAnswer({ response: 'not json' }, names).status, 'unusable');
+    assert.strictEqual(recognize.parseAnswer({ response: '[1,2]' }, names).status, 'unusable');
+    assert.strictEqual(recognize.parseAnswer({ response: '   ' }, names).status, 'unusable');
+    assert.strictEqual(recognize.parseAnswer({}, names).status, 'unusable');
+
+    const invented = recognize.parseAnswer({ response: JSON.stringify({ applicable: ['nope', 7, 'two-record'], reason: 'x' }) }, names);
+    assert.deepStrictEqual(invented.records, ['two-record']);
+    assert.deepStrictEqual(invented.invented, ['nope', '(not a string)']);
+
+    const many = recognize.parseAnswer({
+        response: JSON.stringify({ applicable: ['one-record', 'two-record', 'one-record'], reason: 'x' })
+    }, names);
+    assert.deepStrictEqual(many.records, ['one-record', 'two-record'], 'a repeat is not a second pointer');
+
+    const dirty = recognize.parseAnswer({
+        response: JSON.stringify({ applicable: [], reason: `a${ESC}[31mb${'x'.repeat(400)}` })
+    }, names);
+    assert.ok(!dirty.reason.includes(ESC), 'the reason is neutralized where it is parsed');
+    assert.strictEqual(dirty.reason.length, recognitionPrompt.REASON_MAX_CHARS);
+    assert.strictEqual(dirty.reasonTruncated, true);
+});
+
+test('a memory pointer refuses a record name the reader could not run', () => {
+    const entry = { callId: 'abcdef0123456789', sessionId: 'ses-test' };
+    assert.strictEqual(inbox.memoryItem(entry, 'not a name', 'why', Date.now()), null);
+    assert.strictEqual(inbox.memoryItem(entry, '', 'why', Date.now()), null);
+    const item = inbox.memoryItem(entry, 'a-good-record', `a${BELL}b   c`, Date.now());
+    assert.strictEqual(item.kind, 'memory');
+    assert.strictEqual(item.record, 'a-good-record');
+    assert.strictEqual(item.why, 'ab c', 'the why is neutralized on the way in');
+    assert.strictEqual(item.why.length <= inbox.ITEM_TEXT_CAP, true);
+});
+
+test('a pointer is keyed on its record and an alert on its call', () => {
+    const call = { callId: 'abcdef0123456789', sessionId: 'ses-one' };
+    const item = inbox.memoryItem(call, 'a-record', 'why', Date.now());
+    assert.deepStrictEqual(inbox.deliveryKeys(item), ['memory-record:ses-one:a-record'],
+        'not the call, or the second and third record of one answer would be dropped in silence');
+    const alert = inbox.alertItem({ ...call, intent: 'i', reason: 'r' }, Date.now());
+    assert.deepStrictEqual(inbox.deliveryKeys(alert), ['alert:abcdef0123456789']);
+
+    // Two records named by ONE call are two different things to say.
+    const second = inbox.memoryItem(call, 'another-record', 'why', Date.now());
+    const state = { delivered: [] };
+    assert.strictEqual(inbox.alreadyDelivered(state, item), false);
+    inbox.markDelivered(state, item);
+    assert.strictEqual(inbox.alreadyDelivered(state, second), false,
+        'the second record of the same call is not held back by the first');
+    assert.strictEqual(inbox.alreadyDelivered(state, item), true, 'while the same record is');
+    assert.strictEqual(inbox.alreadyDelivered(state, inbox.memoryItem({ callId: 'ff', sessionId: 'ses-two' }, 'a-record', 'why', Date.now())), false,
+        'and another session is another reader');
+    assert.strictEqual(state.delivered.length, 1, 'one slot per item, so the window is DELIVERED_MAX items');
+});
+
+test('the recognition prompt ships as a versioned file carrying the measured wording', () => {
+    assert.strictEqual(recognitionPrompt.PROMPT_ID, 'recognition-v1');
+    assert.ok(recognitionPrompt.SYSTEM.includes('do not invent relevance'),
+        'the zero-invention paragraph is the measured text');
+    assert.ok(recognitionPrompt.SYSTEM.includes('file basename without the .md extension'));
+    assert.strictEqual(recognitionPrompt.responseSchema().properties.applicable.maxItems, 3);
+
+    const entry = { intent: 'i', command: 'c', result: 'r', isError: false };
+    const one = recognitionPrompt.formatSituation(entry, 'index');
+    const two = recognitionPrompt.formatSituation(entry, 'index');
+    const stag = (p) => /<<<SITUATION ([0-9a-f]{24})>>>/.exec(p)[1];
+    assert.notStrictEqual(stag(one), stag(two),
+        'the situation tag is drawn per call, so a forged marker can only match by guessing it');
+    assert.notStrictEqual(recognitionPrompt.indexTag('index'), recognitionPrompt.indexTag('index '),
+        'and the index tag moves with the index');
+
+    const long = recognitionPrompt.formatSituation(entry, 'x'.repeat(recognitionPrompt.INDEX_PROMPT_CAP + 10));
+    assert.ok(long.includes('was cut'), 'an index too long to send says so rather than reading as complete');
+    assert.ok(!recognitionPrompt.formatSituation(entry, 'short').includes('was cut'));
+    assert.ok(recognitionPrompt.formatSituation(entry, 'short', true).includes('was cut'),
+        'and an index the reader cut says so too');
 });
