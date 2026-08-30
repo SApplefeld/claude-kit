@@ -19,12 +19,13 @@ The defect class it exists for is the quiet one: an exit code that belongs to th
 The design rests on a measured audition, journaled end to end under the project journal key `local-model-audition` (query: `memq get local-model-audition`). The constants:
 
 - Endpoint: Ollama on the Hyper-V host GPU, `http://192.168.58.245:11434`, recorded in the operator memory tier (`the-host-serves-a-local-llm-endpoint-for-all-vms`). Probe `/api/tags` for liveness before leaning on it.
-- Model: `qwen3.8:27b` (Q4_K_M, 17.5 GB weights, fully VRAM-resident, keep-alive forever). Standing context 32768, one serial slot; `OLLAMA_NUM_PARALLEL` is parsed but inert in the installed version, so the lane is serial by construction.
-- Performance: roughly 90 tok/s generation, 320 tok/s prefill, 200 to 700 ms per verdict, about 5 verdicts/second sustained on the serial lane. Fleet tool-call volume is orders of magnitude below that ceiling.
+- Model: `qwen3.8:27b` (Q4_K_M, 17.5 GB weights, fully VRAM-resident, keep-alive forever). Standing context 65536, one serial slot; `OLLAMA_NUM_PARALLEL` is parsed but inert in the installed version, so the lane is serial by construction.
+- Performance: roughly 90 to 104 tok/s generation (VM-side measurement and the operator's own harness respectively), 320 tok/s prefill, 200 to 700 ms per verdict, about 5 verdicts/second sustained on an uncontended lane. Fleet tool-call volume is orders of magnitude below that ceiling.
+- The lane has a standing second tenant: the operator's own agent harness runs full sessions against the endpoint from a VM over HTTP, so verdict calls queue behind its generations (a 2,000-token generation holds the serial lane on the order of 20 seconds). The contended-lane resilience rule below is load-bearing under normal operation, not a precaution.
 - Capability: 14/14 on policied event triage; 9/10 on hand-written action-awareness cases; 12 to 13 of 13 substance on real production tool calls harvested from fleet transcripts, including inverted semantics (a deliberately-derived test failure judged achieved), a trap-shaped-but-honest exit echo (no false alarm), and observation intents (a faithfully read red gate judged achieved).
 - Format: prose output breaks its contract on non-achieved verdicts; JSON-schema-constrained output with a verdict enum eliminates the failure class. Constrained decoding is mandatory, not advisory.
-- VRAM ledger, operator-measured: 7 GB non-model host floor, 17.5 GB weights, KV near 65 to 70 KB per token. Context 16K to 32K holds total GPU use at 23 to 28 GB under genuine workday load (work VM on GPU-P plus a live Teams call). 128K over-commits and pages softly to system RAM while the API still claims full residency.
-- Runner behavior under sustained load: `llama-server.exe` host RAM climbs (observed to 8 GB); an Ollama restart clears it at a measured cost of about 6.5 s reload. Operational posture: budget host RAM headroom and restart on threshold.
+- VRAM ledger, operator-measured: 7 GB non-model host floor, 17.5 GB weights, KV near 65 to 70 KB per token. The standing 64K context holds total GPU use steady at 27.3 of 31.5 GB under genuine full load (work VM on GPU-P, a live Teams call, local video). 128K over-commits and pages softly to system RAM while the API still claims full residency.
+- Runner behavior under sustained load: `llama-server.exe` host RAM rises to a plateau near 8 GB and holds; an Ollama restart clears it at a measured cost of about 6.5 s reload. Operational posture: budget host RAM headroom and restart on threshold.
 
 Audition scripts live at `.kit/round2-policy.mjs`, `.kit/round3-action.mjs`, `.kit/round5-real.mjs`, and `.kit/harvest-cases.mjs` in this repo's gitignored scratch; section 5 promotes their content into the sidecar repo as regression fixtures.
 
@@ -85,7 +86,7 @@ Acceptance: the frozen batteries reproduce at least the audition scores against 
 
 ### 6. Transcript distiller (v1.5, gated). Model: fable design pass, then per that pass
 
-Gated on the operator's call after a v1 field trial. Scope sketch to be specified by the design pass: end-of-session transcript extraction, chunked map-reduce distillation (chunks sized well inside the 32K context), candidate memory drafts and contradiction flags written to a pending file for session or operator adjudication. Interaction with the kit's memory-recognition machinery (in execution now, a separate plan) is evaluated then, not designed here.
+Gated on the operator's call after a v1 field trial. Scope sketch to be specified by the design pass: end-of-session transcript extraction, chunked map-reduce distillation (chunks sized well inside the standing context), candidate memory drafts and contradiction flags written to a pending file for session or operator adjudication. Interaction with the kit's memory-recognition machinery (in execution now, a separate plan) is evaluated then, not designed here.
 
 Acceptance: deferred to the design pass.
 
@@ -95,7 +96,7 @@ Acceptance: deferred to the design pass.
 - Decided 2026-08-30: capture by PostToolUse hook, judgment by external daemon. The hook wins capture on push-over-poll, structured payloads, subagent coverage, and kit distribution; the daemon keeps the model call out of every session's critical path. Producer/consumer split; the spool is the contract.
 - Decided 2026-08-30: advisory-only permanently in this design. Authority adds failure modes; observation adds evidence. The board rollup, not intervention, is the product.
 - Decided 2026-08-30: new repo for the daemon; the kit ships only the hook and the spool contract. Different substrate, different lifecycle.
-- Decided 2026-08-30: standing endpoint configuration context 32768, serial, keep-alive forever, per the operator's own workday measurement (16K to 32K sweet spot, 23 to 28 GB total GPU under real load).
+- Decided 2026-08-30: standing endpoint configuration context 65536, serial, keep-alive forever, per the operator's own sustained measurement under full real load (27.3 of 31.5 GB total GPU with the work VM on GPU-P, a live Teams call, and local video; about 104 tok/s; host RAM at 112 of 127 GB with the runner's 8 GB plateau included). An earlier same-day reading put the sweet spot at 16K to 32K; the settled figure comes from longer operation at 64K holding steady.
 - Declared assumptions, override freely: the sidecar repo lands at `D:\kit-sidecar` under that name; findings delivery beyond the file waits for field volume; the hook ships in the next kit release dormant-by-default via the spool-root check, needing no setting.
 
 ## Out of scope for this document
