@@ -1760,7 +1760,17 @@ test('an endpoint host is read as loopback, private, or neither', () => {
         'http://172.16.0.9:1', 'http://172.31.255.255:1', 'http://192.168.1.50:11434', 'http://[::1]:1']) {
         assert.strictEqual(config.hostIsLocal(new URL(local).hostname), true, `${local} is on this network`);
     }
+    // A dotted quad whose octets carry leading zeros is in this list rather
+    // than the one above, and it is the case the range check alone gets wrong.
+    // The resolver that dials the address reads a leading-zero component as
+    // octal while a decimal parse reads it as denary, so 172.016.0.1 is dialled
+    // as the public 172.14.0.1 and 010.1.2.3 as the public 8.1.2.3 while a
+    // decimal reading of either lands inside a private range. 192.168.001.1 is
+    // here too, and it is the honest cost of the rule: octal or decimal it is a
+    // private address, and it is refused anyway because the screen answers about
+    // spellings it can read the same way the dialer does and about no others.
     for (const remote of ['203.0.113.7', '8.8.8.8', '172.32.0.1', '172.15.0.1', '192.169.1.1',
+        '172.016.0.1', '010.1.2.3', '192.168.001.1', '00.0.0.0',
         'models.example.com', '']) {
         assert.strictEqual(config.hostIsLocal(remote), false, `${remote} is not provably on this network`);
     }

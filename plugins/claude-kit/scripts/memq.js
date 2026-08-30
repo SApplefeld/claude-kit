@@ -134,7 +134,24 @@
 // semantic channel over every store on the machine (memory-index.js owns the
 // index; cmdFind below owns the merge and the ranking). An absent or broken
 // embedder degrades find to its lexical results with one loud stderr line
-// naming the remedy, never a failure.
+// naming the remedy, never a failure. A third channel joins them on a machine
+// whose operator has configured a model endpoint in `~/.claude/kit-endpoint.json`:
+// find sends the query and the records the other two channels found to that
+// endpoint to be ranked by relevance, and prints the ranking above the
+// embedder's under a fence naming it as model-judged.
+//
+// THAT THIRD CHANNEL IS THE ONE PLACE ANY memq VERB SENDS ANYTHING OFF THIS
+// MACHINE. The endpoint does not run on this VM: in the fleet's configuration
+// it runs on the Hyper-V host, reached across the virtual switch over plain
+// HTTP with no authentication, and shared with other tenants of that host. What
+// crosses that boundary is the query text and, per candidate record, its name,
+// its bare tier token and its index description. A record body never crosses,
+// and neither does the store segment a record's provenance label is built from,
+// which for the project tier is a flattened absolute path. With no config file
+// nothing is sent, no socket is opened, and find behaves exactly as it does
+// without the channel; every failure of the endpoint costs one stderr line and
+// leaves both other blocks untouched. The judged channel region below carries
+// the full posture, and docs/security-model.md inventories the egress.
 //
 // SAFETY: reads never destroy data. A malformed journal or usage line is
 // skipped with a stderr note and reading continues; a journal or registry
@@ -606,16 +623,63 @@ function readHead(file, cap) {
 // Memoized per working directory: projectMemoryDir resolves the segment dozens
 // of times in a single command, and each resolution would otherwise stat and
 // read several files.
+//
+// Bounded, because the module is required in-process by long-lived readers as
+// well as run as a one-shot CLI, and an unbounded memo in a resident process
+// grows for as long as it runs. The cap is far above what any one command
+// reaches (a command resolves a handful of distinct working directories), so
+// eviction costs nothing an ordinary run can notice, and an evicted key is
+// simply resolved again: the memo holds no state the resolution needs, so
+// dropping an entry changes what is read, never what is answered.
+const WORKTREE_ROOT_MEMO_CAP = 64;
 const worktreeMainRoots = new Map();
 let worktreeHandshakeNoted = false;
 let worktreeOrphanNoted = false;
 
 function worktreeMainRoot(cwd) {
     const key = String(cwd);
-    if (worktreeMainRoots.has(key)) return worktreeMainRoots.get(key);
+    if (worktreeMainRoots.has(key)) {
+        // A hit is re-inserted, which moves it to the end of the Map's
+        // insertion order and makes the eviction below least-recently-used
+        // rather than first-in. The distinction is the whole value of the memo
+        // here: one key, the process's own working directory, is resolved many
+        // times per command, and under first-in eviction a resident reader that
+        // crossed the cap would evict exactly that key first and re-resolve the
+        // hot path on every call.
+        const cached = worktreeMainRoots.get(key);
+        worktreeMainRoots.delete(key);
+        worktreeMainRoots.set(key, cached);
+        return cached;
+    }
     const main = resolveWorktreeMainRoot(key);
-    worktreeMainRoots.set(key, main);
+    // Least recently used out. The cap is read as a positive number or the memo
+    // is simply not kept: a cap of zero under a `while` that waits for the size
+    // to fall below it never terminates, because deleting from an empty Map
+    // shrinks nothing.
+    if (WORKTREE_ROOT_MEMO_CAP > 0) {
+        while (worktreeMainRoots.size >= WORKTREE_ROOT_MEMO_CAP) {
+            const oldest = worktreeMainRoots.keys().next();
+            if (oldest.done) break;
+            worktreeMainRoots.delete(oldest.value);
+        }
+        worktreeMainRoots.set(key, main);
+    }
     return main;
+}
+
+// How many working directories the memo currently holds, and whether it holds a
+// given one. Both are exported for the same reason: an evicted entry is simply
+// resolved again and answers identically, so from every other door in this
+// module the memo's bound and its eviction order are invisible, and a memo that
+// stopped evicting, or that evicted first-in while claiming least-recently-used,
+// would look exactly like one doing what it says. Residency is the only
+// observation that separates those, so it has a door.
+function worktreeMemoSize() {
+    return worktreeMainRoots.size;
+}
+
+function worktreeMemoHolds(cwd) {
+    return worktreeMainRoots.has(String(cwd));
 }
 
 function resolveWorktreeMainRoot(cwd) {
@@ -4446,6 +4510,12 @@ async function cmdFind(argv) {
     // rung in cmdTouch stats the run's own pending file first).
     const lexicalShown = new Set();
     const reachableTiers = new Set();
+    // The same lexical hits as the structured records the model-judged channel
+    // ranks, in the order they printed. They are collected whether or not that
+    // channel runs, because the collection is the listing this loop already
+    // made and the channel's own first act is to find out whether this machine
+    // has an endpoint at all.
+    const lexicalCandidates = [];
     // The shared-tier resolutions serve both channels: the lexical listing
     // below, and the semantic reachability question of whether a hit's type
     // tier is the one this project declares.
@@ -4496,6 +4566,27 @@ async function cmdFind(argv) {
                 if (tier !== null) {
                     lexicalShown.add(recordIdentity(storeSegment, tier, m.name));
                 }
+                // The pending tier has no index identity, so it carries the
+                // label the display uses and an empty store: it is a candidate
+                // like any other record on screen, and the judged block names
+                // it by the same provenance a reader just read above.
+                lexicalCandidates.push({
+                    name: m.name,
+                    tier: tier === null ? 'pending' : tier,
+                    store: tier === null ? '' : storeSegment,
+                    description: m.description,
+                    // The same two markers a semantic candidate carries, taken
+                    // from the same map that just labelled this record's own
+                    // line above. Without them the judged block prints a
+                    // superseded record at the top with nothing to say so while
+                    // the lexical line below it reads "superseded by", and the
+                    // top block is the one a reader acts on. `archived` is
+                    // false because this closure walks live tier directories
+                    // only: the archive is the semantic channel's reach.
+                    archived: false,
+                    superseded: supersedes !== null
+                        && supersededBy(supersedes, m.name, false) !== null
+                });
             }
         };
         const pendingDir = pendingDirFor(process.cwd());
@@ -4513,6 +4604,7 @@ async function cmdFind(argv) {
     }
 
     const semanticLines = [];
+    const semanticHits = [];
     let withheld = null;
     if (scope !== 'outcomes') {
         const semantic = await semanticChannel(term, tag, lexicalShown, showArchived);
@@ -4520,6 +4612,7 @@ async function cmdFind(argv) {
         withheld = semantic.withheld;
         for (const h of semantic.hits) {
             semanticLines.push(semanticHitLine(h, now));
+            semanticHits.push(h);
             // A semantic hit feeds the reminder only where `touch` can stamp
             // it from this working directory, cmdTouch's own resolution: the
             // plain form stats this cwd's live project tier, --type the
@@ -4547,7 +4640,38 @@ async function cmdFind(argv) {
         process.stderr.write('memq: no matches for \'' + sanitize(term, NAME_CAP) + '\'\n');
         return;
     }
+
+    // The model-judged channel runs last and only over records already found,
+    // so a find with nothing to rank has already returned above and no endpoint
+    // was contacted for it. Its whole failure surface is stderr notes: whatever
+    // the config, the probe, the call or the answer did, the blocks below are
+    // the ones this command would have printed without it.
+    const judgedLines = [];
+    let judged = null;
+    if (scope !== 'outcomes') {
+        // The candidate set is built inside the channel, after its config gate,
+        // so a machine with no endpoint pays neither the index reads that build
+        // it nor the module load that formats it. An argument expression would
+        // run both outside the guard that promises this channel never fails a
+        // find.
+        judged = await judgedChannel(term, lexicalCandidates, semanticHits);
+        for (const note of judged.notes) process.stderr.write(note + '\n');
+        // The clause budget comes back with the hits rather than being read
+        // here, because this loop runs outside the channel's guard and reading
+        // it here would be a module load on a path that promises it cannot
+        // throw.
+        for (const h of judged.hits) judgedLines.push(judgedHitLine(h, judged.reasonCap));
+    }
+
     const out = lines.slice();
+    // The judged block sits above the embedder's rather than in place of it. A
+    // model outranks cosine similarity when it answers, and a reader still gets
+    // to see what the store's own ranking said, which is the only way to notice
+    // that the two disagree.
+    if (judgedLines.length > 0) {
+        out.push(fenceLine([judgedClause(judged.endpointIsLocal)]));
+        for (const l of judgedLines) out.push(l);
+    }
     if (semanticLines.length > 0 || withheldTotal > 0) {
         out.push(fenceLine([semanticClause()]));
         for (const l of semanticLines) out.push(l);
@@ -4783,6 +4907,10 @@ async function semanticChannel(term, tag, alreadyShown, showArchived) {
             name: h.name,
             tier: h.tier,
             store: h.store,
+            // The resolved path, carried so a later reader of these hits can
+            // reach the record's own tier directory without resolving the
+            // identity a second time. The hit line never prints it.
+            file,
             archived: h.archived === true,
             superseded,
             score: h.score,
@@ -4861,14 +4989,7 @@ async function semanticChannel(term, tag, alreadyShown, showArchived) {
 // here, and its provenance label is the address for opening the file by
 // path.
 function semanticHitLine(h, now) {
-    let label;
-    if (h.tier === 'project' || h.tier === 'project-archive') {
-        label = 'project:' + sanitize(h.store, NAME_CAP);
-    } else if (h.tier === 'type' || h.tier === 'type-archive') {
-        label = 'type:' + sanitize(h.store, TYPE_CAP);
-    } else {
-        label = 'operator';
-    }
+    let label = tierProvenanceLabel(h.tier, h.store);
     if (h.archived) label += ', retired';
     if (h.superseded) label += ', superseded';
     let line = '  ' + sanitize(h.name, NAME_CAP) + '  ' + h.score.toFixed(2)
@@ -4886,6 +5007,48 @@ function semanticHitLine(h, now) {
         line += '  applied x' + h.appliedDays + ', last ' + recallAgeColumn(h.appliedLastMs, now);
     }
     return line;
+}
+
+// The address of the tier a hit sits in: which tier, and which instance of it.
+// Single-sourced because two blocks print it now, the semantic one and the
+// model-judged one, and a reader comparing the two rankings line by line is
+// comparing these labels; two spellings of one tier would read as two places.
+// The operator tier needs no instance name because there is one of it, and the
+// pending tier is the display's own label for records that have no index
+// identity at all.
+function tierProvenanceLabel(tier, store) {
+    if (tier === 'project' || tier === 'project-archive') {
+        return 'project:' + sanitize(store, NAME_CAP);
+    }
+    if (tier === 'type' || tier === 'type-archive') {
+        return 'type:' + sanitize(store, TYPE_CAP);
+    }
+    if (tier === 'pending') return 'pending';
+    return 'operator';
+}
+
+// The tier token that crosses the machine boundary, as against the provenance
+// label above, which does not.
+//
+// The label carries the store segment, and for the project tier that segment is
+// a flattened absolute path: it holds the OS account name and the directory
+// name of whatever repository the record's store belongs to. Because the
+// candidate set draws on the semantic channel, which spans every store on this
+// machine, those are the paths of repositories the reading project never
+// opened. That is a reader-convenience field, not a ranking input, and a
+// candidate's identity on the wire is already its position in the list, which
+// is what the answer resolves on. So the model is told which tier a record
+// sits in and nothing about where on this disk it sits, and the full label
+// still prints on the rendered line, which is where a human reads it.
+//
+// The type token keeps the type's name because a project type is a declared
+// category, not a path, and which category a record belongs to is a thing a
+// relevance judgment can use.
+function tierWireToken(tier, store) {
+    if (tier === 'type' || tier === 'type-archive') return 'type:' + sanitize(store, TYPE_CAP);
+    if (tier === 'operator' || tier === 'operator-archive') return 'operator';
+    if (tier === 'pending') return 'pending';
+    return 'project';
 }
 
 // The semantic block's provenance clause. The channel spans stores and
@@ -4933,6 +5096,553 @@ function withheldLine(w) {
     return head
         + (w.total > w.shown ? ', ' + w.shown + ' inside the rerun\'s cut' : '')
         + ' (best ' + w.best.toFixed(2) + '); rerun with --archived';
+}
+
+// ---------------------------------------------- the model-judged channel --
+//
+// `find`'s third channel: the query and the records the other two channels
+// already found, sent to the operator's model endpoint to be ranked by whether
+// they bear on what was asked. Cosine similarity answers proximity of wording;
+// this asks the question a reader actually has.
+//
+// WHERE THE DATA GOES. This is the only part of memq that sends anything off
+// this machine. When `~/.claude/kit-endpoint.json` exists, the query text and,
+// for each candidate record, its name, its bare tier token (project, type:<name>,
+// operator) and its index description are POSTed to the endpoint it names. The
+// store segment does not go: for the project tier it is a flattened absolute
+// path carrying this account's name and the directory name of whatever
+// repository the record's store belongs to, and since the candidate set draws
+// on the semantic channel those are repositories this project never opened. It
+// is a field a reader uses to open a file rather than one a ranking needs, and
+// the answer is resolved on a candidate's position in the list, so it stays on
+// the rendered line and off the wire. That endpoint does not run on this VM:
+// in the fleet's configuration it runs on the Hyper-V host, reached across the
+// virtual switch, over plain HTTP with no authentication, and it is shared with
+// other tenants of that host including the operator's own agent harness. Record
+// bodies never travel; the descriptions do, and they can come from stores this
+// project never opened, because that is the reach the semantic channel already
+// has. With no config file nothing is sent, no socket is opened and no file is
+// created, and the command's output is what it was before this channel existed.
+//
+// THE ENDPOINT IS NEVER A DEPENDENCY. Every failure of it, from an unreadable
+// config to an answer that is not a ranking, costs one stderr line and leaves
+// both other blocks exactly as they were. Nothing here throws, on the same
+// terms as semanticChannel: whatever the endpoint did, the caller still owes
+// its lexical and semantic results.
+//
+// THE MODEL SUPPLIES A RANKING AND A CLAUSE, NOTHING ELSE. The names it returns
+// are matched back to the candidates it was sent and dropped otherwise, and the
+// name that prints is the store's own spelling rather than the returned one, so
+// no record this store does not hold can be spelled into a line a reader acts
+// on. The clause is the one piece of model prose on the surface, sanitized and
+// capped like every other untrusted string this file prints.
+
+// How long the liveness probe waits. Short by design: it exists to keep a dead
+// or absent endpoint from spending an interactive command's whole budget, so it
+// has to cost less than the fact it establishes is worth.
+const JUDGED_PROBE_TIMEOUT_MS = 400;
+
+// How long the ranking call waits. Three orders of magnitude below the judge
+// daemon's, and deliberately so: the daemon is a batch pass behind a serial
+// contended lane where a minute's queue is normal, while this is a command
+// typed at a prompt. A call that outruns this budget degrades to the store's
+// own ranking rather than making a person wait for the endpoint's queue.
+const JUDGED_CALL_TIMEOUT_MS = 2000;
+
+// The generation ceiling, sized above the schema's own worst case rather than
+// near it. Five entries, each carrying a number, a name at this store's naming
+// habit of 40 to 65 characters, a clause at its full budget, and the JSON
+// around them, runs past 250 tokens; a ceiling set near that turns a complete
+// answer into a truncated one, and a truncated JSON object is indistinguishable
+// at the parse from an endpoint that answered badly. It is a bound on a model
+// that will not stop, not a target, so it costs nothing when the answer is the
+// ordinary short one.
+const JUDGED_NUM_PREDICT = 512;
+
+// The most of the model's `response` string that is parsed. The object the
+// schema describes is a few hundred characters; a string past this is something
+// else and is refused without being parsed.
+const JUDGED_MAX_ANSWER_CHARS = 4096;
+
+// The judged block's provenance clause, under the same fence every other
+// untrusted-content block rides. It says the things a reader needs before
+// weighing the lines: that a model produced this order, where that model ran,
+// and that the block is advisory beside the store's own ranking below it.
+//
+// Where it ran is read from the config rather than asserted. A configured
+// loopback endpoint is a model on this machine, and a clause telling a reader
+// their content went off this VM when it did not is an untrue sentence on a
+// shipped surface. That costs more than the disclosure buys: a reader who
+// catches the clause overstating its case once discounts it on the run where it
+// is right.
+function judgedClause(endpointIsLocal) {
+    return 'a model at this machine\'s configured endpoint, '
+        + (endpointIsLocal ? 'on this machine' : 'off this VM')
+        + ', asked which of these memories bear on the query: advisory, and'
+        + ' derived from a model rather than from the store';
+}
+
+// One displayed line per judged hit: the record's name, its provenance, and the
+// model's one clause of why. Names, labels and one bounded clause, the same
+// discipline the semantic hit line states and for the same reason, with one
+// addition that matters more here: the name is the candidate's own, taken from
+// the store, and the clause is the only fragment on the line the model wrote.
+// It is sanitized to short printable ASCII and capped, because it reaches a
+// terminal and anything quoting it.
+//
+// The retirement and supersession tokens ride here exactly as they do on a
+// semantic hit line, and for a sharper reason: under `--archived` a retired
+// record can be ranked first by the model, and a top line indistinguishable
+// from a live one is how a reader acts on a record the store retired. A cut
+// clause is marked, because this module's own failureText marks its cut for the
+// same reason: a sentence that ends where it means to and one the renderer
+// stopped mid-phrase are two different facts about the answer.
+// The clause budget arrives as an argument rather than being read from the
+// prompt module here. Reading it here puts a require on a render loop that runs
+// outside judgedChannel's try/catch, which survives only because a non-empty
+// hits list implies the module was already loaded inside that guard. That is an
+// ordering invariant nothing states and nothing enforces, and it is the exact
+// defect class this channel's own comment claims to prevent, so the caller
+// resolves the cap once inside the guard and passes it here.
+function judgedHitLine(h, reasonCap) {
+    let label = tierProvenanceLabel(h.tier, h.store);
+    if (h.archived) label += ', retired';
+    if (h.superseded) label += ', superseded';
+    const line = '  ' + sanitize(h.name, NAME_CAP) + '  (' + label + ')';
+    const cap = reasonCap;
+    const why = sanitize(h.why, cap + 1);
+    if (why === '') return line;
+    return line + '  ' + (why.length > cap ? why.slice(0, cap) + ' [cut]' : why);
+}
+
+// The prompt module, required on use. It is one small file and this is the only
+// caller, so loading it on every non-find command would be a cost for nothing.
+let relevancePromptModule = null;
+function relevancePrompt() {
+    if (relevancePromptModule === null) {
+        relevancePromptModule = require('./prompts/relevance-v1.js');
+    }
+    return relevancePromptModule;
+}
+
+// The candidate set: the lexical hits in the order they printed, then the
+// embedder's admitted ranking in its own order, deduplicated on the identity
+// the two channels already share and capped.
+//
+// The embedder's hits are given their slots first when the two together would
+// overflow the cap, because a term matching dozens of names lexically would
+// otherwise fill the whole set with one channel's answer and leave the model
+// ranking a list the other channel never saw. Both channels reaching the model
+// is the point of asking it.
+function judgedCandidates(lexical, semanticHits) {
+    const prompt = relevancePrompt();
+    const descriptions = new Map();
+    // The clip notes those index reads produce, returned to the caller rather
+    // than written to stderr from in here. Written directly they land ahead of
+    // the channel's own disclosure, which is the statement they are a footnote
+    // to, so a reader meets the caveat before the sentence it qualifies.
+    const notes = [];
+    // One index read per distinct tier directory, and only for records the
+    // semantic channel found: the lexical hits carry their descriptions from
+    // the listing that printed them.
+    //
+    // An archive directory is read through the store's own bounded reader
+    // rather than the tier one. A tier index holds a line per live record and a
+    // store bounds that by what it keeps; an archive index gains a line for
+    // every record a decay pass ever retires and nothing prunes it, so it has
+    // no natural bound and `find --archived` on a mature store is what reaches
+    // it. That reader takes a fixed-size prefix and says on stderr when it cut,
+    // which is why the tag names this channel: a caller reading that line needs
+    // to know which surface asked.
+    //
+    // The lookup folds the name the way the platform's filesystem compares one,
+    // the same fold the identity twelve lines below uses, because both sides are
+    // filenames and an index spelling a record in a different case than its file
+    // resolves the same record on a case-folding filesystem.
+    const describe = (hit) => {
+        if (typeof hit.file !== 'string' || hit.file === '') return '';
+        const dir = path.dirname(hit.file);
+        let map = descriptions.get(dir);
+        if (map === undefined) {
+            const raw = readCappedDescriptions(dir,
+                fsEq(path.basename(dir), ARCHIVE_DIR) ? 'archive index' : 'memory index',
+                ' (the model-judged channel\'s candidate set)', notes);
+            map = new Map();
+            for (const [file, description] of raw) map.set(memoryFileKey(file), description);
+            descriptions.set(dir, map);
+        }
+        return map.get(memoryFileKey(hit.name + '.md')) || '';
+    };
+
+    const seen = new Set();
+    const out = [];
+    const add = (candidate) => {
+        const key = recordIdentity(candidate.store, candidate.tier, candidate.name);
+        if (seen.has(key)) return;
+        seen.add(key);
+        // `where` is the bare tier token and not the rendered line's provenance
+        // label, because the label carries the store segment and for the project
+        // tier that segment is a flattened absolute path. Sending it would put
+        // this account's name and the directory names of unrelated repositories
+        // across a machine boundary for a field the ranking does not use: the
+        // model is told which tier a record sits in, the answer is resolved on
+        // the candidate's position, and the full label prints on the line a
+        // person reads.
+        out.push({ ...candidate, where: tierWireToken(candidate.tier, candidate.store) });
+    };
+    const semantic = semanticHits.slice(0, prompt.MAX_CANDIDATES);
+    const room = Math.max(0, prompt.MAX_CANDIDATES - semantic.length);
+    // The pending tier is excluded, and this is the one exclusion in the set.
+    //
+    // A run's pending records are unadjudicated drafts the run itself wrote, and
+    // the store's own policy already keeps them out of the semantic index so
+    // that a run's writes never reach another session's search. Posting them to
+    // a multi-tenant service on another machine is further than the reach that
+    // policy refuses, not nearer, so the tier that is deliberately unsearchable
+    // locally is not a tier this channel exports. They still print in the
+    // lexical block, which is the session reading back its own drafts.
+    for (const c of lexical.filter((c) => c.tier !== 'pending').slice(0, room)) add(c);
+    for (const h of semantic) {
+        add({
+            name: h.name,
+            tier: h.tier,
+            store: h.store,
+            archived: h.archived === true,
+            superseded: h.superseded === true,
+            description: describe(h)
+        });
+    }
+    return { set: out.slice(0, prompt.MAX_CANDIDATES), notes };
+}
+
+// The endpoint's answer as ranked candidates, or a described refusal.
+//
+// `candidates` is the list this call was made against, in the order it was
+// sent, and it is required: the model ranks what it was sent, and an entry that
+// does not resolve into that list is dropped, counted and reported rather than
+// printed. A line naming a record this store does not hold is worse than a
+// shorter block, and the check costs an array index.
+//
+// AN ENTRY IS RESOLVED BY POSITION AND CONFIRMED BY NAME, never by name alone.
+// A record name is unique inside a tier and not across them, so the same name
+// can sit in the project tier and the operator tier and a name-keyed lookup
+// resolves to whichever was indexed first: the rendered line then carries a
+// provenance label, the very address a reader opens the file by, for a record
+// the model may not have meant, and the other one can never be ranked at all.
+// The candidate lines are numbered for this reason, and an entry whose number
+// and name disagree is refused rather than resolved on one of them, which also
+// makes a fabricated name a refusal rather than a coincidence.
+//
+// The name is held to the store's own definition of a memory file, the single
+// predicate every writer and reader here answers to, rather than to a copy of
+// its charset rule: a copy drifts, and this one had already lost the `.`/`..`
+// stem refusal and the index-file refusal that predicate carries.
+//
+// The name that reaches the line is always the candidate's own spelling out of
+// the store, so even an accepted answer supplies the ordering and the clause
+// and never the identifier.
+function parseJudgedAnswer(body, candidates) {
+    const prompt = relevancePrompt();
+    const known = Array.isArray(candidates) ? candidates : [];
+    const raw = (body !== null && typeof body === 'object' && typeof body.response === 'string')
+        ? body.response : '';
+    if (raw.length > JUDGED_MAX_ANSWER_CHARS) {
+        return { status: 'unusable', detail: 'response past ' + JUDGED_MAX_ANSWER_CHARS + ' characters' };
+    }
+    const text = raw.trim();
+    if (text === '') return { status: 'unusable', detail: 'empty response' };
+
+    let answer = null;
+    try {
+        answer = JSON.parse(text);
+    } catch {
+        return { status: 'unusable', detail: 'response is not JSON' };
+    }
+    if (answer === null || typeof answer !== 'object' || Array.isArray(answer)) {
+        return { status: 'unusable', detail: 'response is not a JSON object' };
+    }
+    // An absent list is not an empty one. Empty is an ordinary answer and says
+    // the model read the candidates and found none of them relevant; a missing
+    // key says the answer did not have the shape the schema asked for, and
+    // reading it as "nothing bears on this" would turn a broken decode into a
+    // clean result.
+    if (!Array.isArray(answer.ranked)) {
+        return { status: 'unusable', detail: 'ranked is not a list' };
+    }
+
+    const hits = [];
+    const seen = new Set();
+    // Two counts, because one number cannot answer both questions a reader has.
+    // `unresolved` is entries that named no candidate in this set, which is the
+    // invention question; `repeated` is entries naming a candidate already
+    // ranked, which is the model listing one record twice and costs the block a
+    // line rather than raising any question about the store. A single tally
+    // reported as records the set did not hold would be false about every entry
+    // in the second class and about a malformed entry that named nothing at all.
+    // A third count, for the same reason. The schema asks for at most MAX_RANKED
+    // entries and an endpoint that ignores maxItems returns more; those are
+    // dropped, and dropping them without saying so, on a surface whose whole
+    // design is counts that say what they count, would leave the block quietly
+    // shorter than the answer that produced it.
+    let unresolved = 0;
+    let repeated = 0;
+    let overflowed = 0;
+    for (const item of answer.ranked) {
+        if (hits.length >= prompt.MAX_RANKED) {
+            overflowed += 1;
+            continue;
+        }
+        if (item === null || typeof item !== 'object' || Array.isArray(item)
+            || typeof item.name !== 'string' || item.name.length > MEMORY_FILE_CAP
+            || !Number.isInteger(item.n)) {
+            unresolved += 1;
+            continue;
+        }
+        // The `.md` is stripped because the candidate lines spell names without
+        // it and a model that includes it is naming the right record; the name
+        // is then held to the store's own file rule with it put back, since
+        // that predicate's subject is a filename.
+        const name = item.name.trim().replace(/\.md$/i, '');
+        if (!isMemoryFilename(name + '.md')) {
+            unresolved += 1;
+            continue;
+        }
+        const candidate = known[item.n - 1];
+        if (candidate === undefined || memoryFileKey(candidate.name) !== memoryFileKey(name)) {
+            unresolved += 1;
+            continue;
+        }
+        const key = recordIdentity(candidate.store, candidate.tier, candidate.name);
+        if (seen.has(key)) {
+            repeated += 1;
+            continue;
+        }
+        seen.add(key);
+        hits.push({
+            name: candidate.name,
+            tier: candidate.tier,
+            store: candidate.store,
+            archived: candidate.archived === true,
+            superseded: candidate.superseded === true,
+            why: typeof item.why === 'string' ? item.why : ''
+        });
+    }
+    return { status: 'ok', hits, unresolved, repeated, overflowed };
+}
+
+// What each probe outcome says happened, in the probe's own terms.
+//
+// The transport's shared reason map is the daemon's vocabulary for a generation
+// call: "lane busy" names a queued generation behind a serial lane, which is
+// not what a GET that never completed did, and "endpoint refused the call" is
+// an answer, so a sentence built around "nothing answered" would contradict
+// itself. A probe asks one question, whether anything is there, and each
+// outcome is a different answer to it.
+// `refused` is here for completeness of the transport's own vocabulary and is
+// not reachable through it: probeEndpoint answers refused only for a response
+// carrying no numeric status, which the global fetch this module calls does not
+// produce. A test that drove it would be pinning a branch reached only by
+// replacing the transport, so nothing here claims it is exercised.
+const JUDGED_PROBE_CONDITIONS = {
+    timeout: 'the endpoint did not answer a ' + JUDGED_PROBE_TIMEOUT_MS + ' ms liveness probe',
+    unreachable: 'nothing answered at the endpoint\'s address',
+    refused: 'the endpoint\'s address answered the liveness probe with no usable response'
+};
+
+// The one line that says this channel stood down, in memq's own voice on
+// stderr, where the embedder's own absence line goes: stdout stays the answer,
+// and a degrade that printed into the answer would be a line a reader has to
+// tell apart from a hit.
+function judgedOffLine(condition) {
+    return 'memq: model-judged ranking off (' + condition
+        + '); the lexical and semantic blocks are unchanged';
+}
+
+// The model-judged half of `find`, answered as displayable hits plus stderr
+// notes. Never a throw and never a nonzero exit: this channel is the last thing
+// `find` does and the least of what it owes.
+//
+// The order of the three gates is what keeps a machine with no endpoint at the
+// behavior it had before this existed. The config read comes first and an
+// absent file returns silently, having opened no socket and created nothing. A
+// config that exists but cannot be used is reported, because there the operator
+// meant to have an endpoint here. Only then is anything sent, and the probe
+// goes first so a dead address costs the probe's clock instead of the call's.
+async function judgedChannel(term, lexicalCandidates, semanticHits) {
+    try {
+        const client = require('./kit-endpoint-lib.js');
+        const config = client.loadEndpointConfig();
+        if (!config.ok) {
+            // No file is the ordinary case on a machine with no endpoint, and
+            // it is silent: a line every find printed would be noise about a
+            // channel nobody configured.
+            if (config.reason === 'absent') return { hits: [], notes: [] };
+            return {
+                hits: [],
+                notes: [judgedOffLine('the endpoint config is ' + config.reason + ': '
+                    + sanitize(config.detail || 'unusable', 120))]
+            };
+        }
+
+        // The candidate set is built here rather than by the caller, and the
+        // ordering is the point: everything above this line is a config read,
+        // so a machine with no endpoint reaches none of the work below. The
+        // build reads an index per distinct semantic-hit directory, which is
+        // I/O no find without an endpoint should pay, and it loads the prompt
+        // module, which is a require that must sit inside this function's
+        // guard: an installed copy missing the prompts directory would
+        // otherwise throw out of an argument expression, past the try/catch
+        // that promises this channel can never fail a find, and take the
+        // lexical and semantic blocks down with it.
+        const built = judgedCandidates(lexicalCandidates, semanticHits);
+        const candidates = built.set;
+        // Nothing to rank is nothing to export, and it returns before a word is
+        // said about what crosses the wire. Every line below this one describes
+        // an export that is about to happen, and a run that posts nothing while
+        // announcing that data is leaving the network trains a reader straight
+        // past the announcement on the run where it is true.
+        if (candidates.length === 0) return { hits: [], notes: [] };
+
+        const notes = built.notes;
+        // What the config read had to say about itself, said out loud. An
+        // ignored key is the operator's typo and the reader who can fix it is
+        // the one at this terminal. The timeout key gets a sentence of memq's
+        // own beside the client's, because this channel forces its own probe
+        // and call budgets: a reader told only that the key was ignored would
+        // go and fix a value that changes nothing on this path.
+        for (const warning of (config.warnings || [])) {
+            const mine = warning.startsWith(client.TIMEOUT_WARNING_PREFIX)
+                ? '; find sets its own probe and call budgets, so that key changes'
+                    + ' nothing on this path'
+                : '';
+            notes.push('memq: endpoint config: ' + sanitize(warning, 200) + mine);
+        }
+        // The disclosure this channel owes when the configured host is off this
+        // network, composed by the shared client so both producers on this
+        // channel say it. The config file is rewritable by anything running as
+        // this user, so prevention is already lost and this line is the whole
+        // of the control: without it a redirected endpoint sends every query
+        // and every candidate record's name and description to an arbitrary
+        // address with no surface anywhere reporting it. It rides ahead of the
+        // probe, so it is said even when the redirected endpoint is dead.
+        const remoteWarning = client.remoteEndpointWarning(config,
+            'this query and the name, tier and description of every candidate record');
+        if (remoteWarning !== null) notes.push('memq: ' + remoteWarning);
+
+        const probe = await client.probeEndpoint({
+            url: config.url,
+            timeoutMs: JUDGED_PROBE_TIMEOUT_MS
+        });
+        if (probe.status !== 'ok') {
+            // The probe's own vocabulary, not the daemon's. A GET that never
+            // completes is a hung connection and not the "lane busy" a queued
+            // generation earns, and a probe the endpoint answered with a
+            // refusal was answered, so "nothing answered" would be false about
+            // it. Each outcome says what happened to the probe.
+            notes.push(judgedOffLine(JUDGED_PROBE_CONDITIONS[probe.status]
+                || 'the ' + JUDGED_PROBE_TIMEOUT_MS + ' ms probe of the endpoint did not succeed'));
+            return { hits: [], notes };
+        }
+
+        const prompt = relevancePrompt();
+        // Which endpoint answered, named the way the daemon's startup line names
+        // it. The locality warning above fires only for a host outside every
+        // private range, and this fleet's endpoint is itself on a private
+        // address across the virtual switch, so a config rewritten from that
+        // address to another private one changes where every query goes while
+        // leaving this command's output identical. The fingerprint is what makes
+        // that visible: it is a change detector, and a reader who sees a
+        // different one from yesterday's knows a different endpoint answered.
+        // The address itself is never printed, which is the whole reason the
+        // endpoint is fingerprinted rather than named.
+        notes.push('memq: model-judged ranking calling the endpoint fingerprinted '
+            + sanitize(config.endpointFingerprint, 32));
+        const sent = await client.postGenerate({
+            model: config.model,
+            system: prompt.SYSTEM,
+            prompt: prompt.formatQuery(term, candidates),
+            stream: false,
+            think: false,
+            format: prompt.responseSchema(),
+            options: { num_predict: JUDGED_NUM_PREDICT, temperature: client.TEMPERATURE }
+        }, { url: config.url, model: config.model, timeoutMs: JUDGED_CALL_TIMEOUT_MS });
+        if (sent.status !== 'ok') {
+            const condition = sent.status === 'timeout'
+                ? 'the ranking call outran its ' + JUDGED_CALL_TIMEOUT_MS + ' ms budget'
+                : sanitize(client.GAP_REASONS[sent.status] || sent.status, 120)
+                    + ': ' + sanitize(sent.detail || 'no detail', 120);
+            notes.push(judgedOffLine(condition));
+            return { hits: [], notes };
+        }
+
+        const parsed = parseJudgedAnswer(sent.body, candidates);
+        if (parsed.status !== 'ok') {
+            // A generation the endpoint stopped at OUR ceiling is our fault and
+            // says so. The API reports why it stopped, and `length` means the
+            // answer ran into num_predict rather than finishing, which leaves a
+            // JSON object cut mid-structure: reporting that as an endpoint that
+            // answered badly is the instrument blaming another party for its
+            // own limit, which is exactly the class of quiet wrongness this
+            // channel exists to help catch. The ceiling is set well above the
+            // schema's worst case, so this path is a bound being wrong rather
+            // than an answer being long.
+            const truncated = sent.body !== null && typeof sent.body === 'object'
+                && sent.body.done_reason === 'length';
+            notes.push(judgedOffLine(truncated
+                ? 'the answer hit this command\'s own ' + JUDGED_NUM_PREDICT
+                    + '-token generation ceiling and was cut off mid-object,'
+                    + ' which is a bound set here rather than a fault of the endpoint'
+                : 'the endpoint\'s answer was not a ranking: ' + sanitize(parsed.detail, 120)));
+            return { hits: [], notes };
+        }
+
+        // Each count says what it counts. An entry that resolved to no
+        // candidate is the invention question and is the one worth a reader's
+        // attention; an entry naming a record already ranked is the model
+        // listing one record twice and costs the block a line. The names
+        // themselves are not printed: what is established about an unresolved
+        // one is that this candidate set did not hold it, which the count
+        // carries and a name would not.
+        if (parsed.unresolved > 0) {
+            notes.push('memq: the model-judged ranking returned ' + parsed.unresolved
+                + ' entr' + (parsed.unresolved === 1 ? 'y' : 'ies')
+                + ' naming no record in the candidate set; dropped');
+        }
+        if (parsed.repeated > 0) {
+            notes.push('memq: the model-judged ranking named ' + parsed.repeated
+                + ' record' + (parsed.repeated === 1 ? '' : 's')
+                + ' twice; the repeat' + (parsed.repeated === 1 ? ' was' : 's were') + ' dropped');
+        }
+        if (parsed.overflowed > 0) {
+            notes.push('memq: the model-judged ranking returned ' + parsed.overflowed
+                + ' entr' + (parsed.overflowed === 1 ? 'y' : 'ies') + ' past the '
+                + prompt.MAX_RANKED + ' this command asks for; dropped');
+        }
+        // An empty ranking is an ordinary answer and not a failure, so it takes
+        // its own line rather than the degrade one: silence here would read
+        // exactly like a channel that never ran.
+        if (parsed.hits.length === 0) {
+            notes.push('memq: the model judged none of the ' + candidates.length
+                + ' candidate' + (candidates.length === 1 ? '' : 's')
+                + ' relevant to this query');
+        }
+        // The clause budget and the endpoint's locality ride out with the hits
+        // because the caller renders them and must not reach back into this
+        // module's prompt or its config to find them: the render loop runs
+        // outside this try/catch, so a require or a config read taken there is
+        // a throw this channel promised could not happen.
+        return {
+            hits: parsed.hits,
+            notes,
+            reasonCap: prompt.REASON_MAX_CHARS,
+            endpointIsLocal: config.endpointIsLocal === true
+        };
+    } catch (err) {
+        // Every expected condition above is answered as a status, so a throw
+        // here is a genuine bug in this channel or in the client it loads. It
+        // still degrades, because nothing about the endpoint may fail a find.
+        return { hits: [], notes: [judgedOffLine(failureText(err))] };
+    }
 }
 
 // The standing stamp reminder closing a find whose shown hits include at
@@ -5598,26 +6308,40 @@ function cmdGet(argv) {
     process.stderr.write('memq: nothing named \'' + sanitize(target, NAME_CAP) + '\'\n');
 }
 
-// The archived memories' descriptions, keyed by filename, from a bounded
-// prefix of one archive directory's own index. That index gains a line for
-// every memory a decay pass ever retires and nothing prunes it, so unlike a
-// tier index it has no natural bound: the read is a fixed-size prefix (the
-// session hook's posture for the type index), a clipped read drops its torn
-// tail line, and the clip is said on stderr rather than left silent, because
-// a description this read missed would otherwise be indistinguishable from
-// one the store never had. The note says stale or absent, not just absent:
-// later index lines shadow earlier ones by file key, so a clip can leave an
-// earlier, superseded line standing as a file's description rather than
-// merely losing the current one. `tag` labels the tier the way
-// usageEvidenceLine's does ('' for the project tier). An absent or
-// unreadable index is empty descriptions, the answer readIndexDescriptions
-// gives for a tier index.
+// The archived memories' descriptions, keyed by filename, for a caller whose
+// surface is stderr. An archive index gains a line for every memory a decay
+// pass ever retires and nothing prunes it, so unlike a tier index it has no
+// natural bound, which is why this read is the bounded one. The reader below
+// carries that posture and the reasoning behind it; this wrapper decides only
+// where the clip note goes.
 function readArchiveDescriptions(archiveDir, tag) {
+    const notes = [];
+    const map = readCappedDescriptions(archiveDir, 'archive index', tag, notes);
+    for (const note of notes) process.stderr.write(note + '\n');
+    return map;
+}
+
+// The same bounded read, with the clip handed back to the caller instead of
+// written to stderr, and with the kind of index it read named in the note.
+//
+// Every caller that reads an index it did not write takes this rather than the
+// whole-file reader: the size of a file this process did not produce is not a
+// caller's to assume, and the reads on the judged channel's path cross stores
+// this project never opened, whose indexes are as large as their own histories
+// made them. A clipped read drops its torn tail line and says so, because a
+// description this read missed would otherwise be indistinguishable from one
+// the store never had, and the note says stale or absent rather than absent:
+// later index lines shadow earlier ones by file key, so a clip can leave an
+// earlier, superseded line standing as a file's description rather than merely
+// losing the current one. \`tag\` labels the surface that asked, the way
+// usageEvidenceLine's does. An absent or unreadable index is empty
+// descriptions, not an error.
+function readCappedDescriptions(dir, what, tag, notes) {
     const map = new Map();
     let raw;
     let clipped = false;
     try {
-        const fd = fs.openSync(path.join(archiveDir, INDEX_FILE), 'r');
+        const fd = fs.openSync(path.join(dir, INDEX_FILE), 'r');
         try {
             // One byte past the cap tells a file of exactly the cap
             // (complete: nothing dropped, nothing to report) from one that
@@ -5636,8 +6360,8 @@ function readArchiveDescriptions(archiveDir, tag) {
     const lines = raw.split(/\r?\n/);
     if (clipped) {
         lines.pop();
-        process.stderr.write('memq: archive index read capped at ' + ARCHIVE_INDEX_READ_CAP
-            + ' bytes; descriptions past the cap may be stale or absent' + tag + '\n');
+        notes.push('memq: ' + what + ' read capped at ' + ARCHIVE_INDEX_READ_CAP
+            + ' bytes; descriptions past the cap may be stale or absent' + tag);
     }
     for (const line of lines) {
         const parsed = parseIndexLine(line);
@@ -13263,6 +13987,13 @@ module.exports = {
     recallDigest,
     recentDigest,
     withheldLine,
+    judgedClause,
+    judgedHitLine,
+    judgedCandidates,
+    tierWireToken,
+    parseJudgedAnswer,
+    JUDGED_PROBE_TIMEOUT_MS,
+    JUDGED_CALL_TIMEOUT_MS,
     SEMANTIC_SHOWN,
     SEMANTIC_SUPERSEDED_DEMOTION,
     parseSince,
@@ -13271,6 +14002,9 @@ module.exports = {
     memoryRoot,
     sanitizeProjectPath,
     worktreeMainRoot,
+    worktreeMemoSize,
+    worktreeMemoHolds,
+    WORKTREE_ROOT_MEMO_CAP,
     projectsRootPath,
     projectMemoryDirFor,
     projectMemoryDir,

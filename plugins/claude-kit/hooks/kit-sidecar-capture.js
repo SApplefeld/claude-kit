@@ -627,14 +627,20 @@ const RECORD_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,120}$/;
 // collapse that follows and become single spaces rather than running two words
 // together.
 //
-// sidecar/text.js in the kit repo is the other implementation of this same
-// property, and the daemon applies it at the producing end. Two exist because a
-// process boundary sits between them: `sidecar/` is the daemon's tree, this file
-// ships inside the plugin, and the contract between them is stated in terms of a
-// file on disk rather than a shared module, so neither may import the other.
+// The kit repo holds the other implementation of this same property, in
+// scripts/kit-endpoint-lib.js, which the daemon applies at the producing end.
+// Two exist by choice rather than by necessity: that module ships inside this
+// plugin and this file could import it, and the reason it does not is cost. A
+// PreToolUse hook runs on the way to every tool call a session makes, and
+// loading a module carrying a config reader, a transport and a locality screen
+// to answer one question about a string is a load the hot path pays on every
+// invocation for a few lines of predicate.
+//
 // Both are needed rather than either being redundant, since the daemon guards
-// what the daemon wrote and the inbox is a file any process running as this user
-// can append to.
+// what the daemon wrote and the inbox is a file any process running as this
+// user can append to. What keeps the two from drifting is the equality pin in
+// the tests, which compares this pattern against the shared module's own, so a
+// change made to one and not the other reds rather than shipping.
 //
 // The class is built from a string of escapes rather than written as a literal
 // character class, so this file stays plain text a line-printing sweep can read:

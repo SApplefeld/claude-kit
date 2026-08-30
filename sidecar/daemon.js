@@ -123,7 +123,7 @@
 
 const path = require('path');
 
-const { loadEndpointConfig, defaultStateDir, statePaths } = require('./config.js');
+const { loadEndpointConfig, remoteEndpointWarning, defaultStateDir, statePaths } = require('./config.js');
 const spool = require('./spool.js');
 const logs = require('./logs.js');
 const inbox = require('./inbox.js');
@@ -321,9 +321,18 @@ function startup(ctx) {
     // against an actor with write access to ~/.claude is already lost, and what
     // was missing is detection. The address itself is not printed, here or
     // anywhere; the fingerprint is what identifies it.
-    if (!ctx.config.endpointIsLocal) {
-        ctx.deps.report('WARNING: the configured endpoint host is neither loopback nor a private network address, so every captured command and its output, and the title and description line of every record in the project memory index, is being posted off this network in cleartext');
-    }
+    //
+    // The sentence is composed by the shared endpoint client rather than spelled
+    // here, because this daemon is no longer the only producer on this channel:
+    // memq's model-judged block posts to the same endpoint, and a disclosure
+    // written into whichever producer needed it first is one the next producer
+    // inherits by not inheriting it. What each producer supplies is its own
+    // payload, since a warning naming the wrong content understates the export
+    // it exists to disclose.
+    const remoteWarning = remoteEndpointWarning(ctx.config,
+        'every captured command and its output, and the title and description line'
+        + ' of every record in the project memory index');
+    if (remoteWarning !== null) ctx.deps.report(remoteWarning);
 
     // The logs and inbox directories are made BEFORE the spool root, so a state
     // root the daemon cannot log into never has capture switched on for it:

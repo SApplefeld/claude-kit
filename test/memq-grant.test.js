@@ -803,21 +803,71 @@ test('memq loads code out of a directory in one place, and that place is find', 
             dynamic.push({ line: i + 1, text: line.trim() });
         }
     });
-    assert.strictEqual(dynamic.length, 1,
-        'exactly one code load past the top-of-file built-ins: '
+    // Each load, by the module it names and the function it sits in. Three
+    // rather than one because find answers from three channels now, and each
+    // loads its own optional stack: the embedder's index, the model endpoint's
+    // client, and the relevance prompt that client posts. A fourth entry, or
+    // any of these three moving to another function, reds here.
+    assert.deepStrictEqual(
+        dynamic.map((d) => ({ module: d.text.replace(/^.*require\('([^']+)'\).*$/, '$1'), in: enclosing(d.line) })),
+        [
+            { module: './memory-index.js', in: 'semanticChannel' },
+            { module: './prompts/relevance-v1.js', in: 'relevancePrompt' },
+            { module: './kit-endpoint-lib.js', in: 'judgedChannel' }
+        ],
+        'the code loads past the built-in block, and where each one sits: '
             + JSON.stringify(dynamic));
-    assert.match(dynamic[0].text, /require\('\.\/memory-index\.js'\)/);
-    assert.strictEqual(enclosing(dynamic[0].line), 'semanticChannel',
-        'the one dynamic require sits in semanticChannel');
-    const callers = [];
-    src.forEach((line, i) => {
-        if (/\bsemanticChannel\(/.test(line) && isCode(line)) {
+
+    // And the property those loads are policed for: no verb but find can reach
+    // one. Asked as the transitive closure of callers rather than one function's
+    // direct callers, because a load now sits three functions deep and a
+    // one-level check would go quiet the moment a helper picked up a second
+    // caller under another verb. The closure's only dispatch function is
+    // cmdFind, which is the whole claim the grant's withheld-verb list rests on.
+    const callersOf = (name) => {
+        const found = new Set();
+        const pattern = new RegExp('\\b' + name + '\\s*\\(');
+        src.forEach((line, i) => {
+            if (!pattern.test(line) || !isCode(line)) return;
             const where = enclosing(i + 1);
-            if (where !== 'semanticChannel') callers.push(where);
-        }
-    });
-    assert.deepStrictEqual(callers, ['cmdFind'],
-        'semanticChannel is reached from cmdFind alone');
+            if (where !== null && where !== name) found.add(where);
+        });
+        return found;
+    };
+    const closure = new Set(dynamic.map((d) => enclosing(d.line)));
+    for (const name of closure) {
+        // cmdFind is the accepted root: the dispatch reaches it by name and the
+        // walk stops there rather than climbing into main. That stop is what
+        // gives main's presence in the finished set its meaning, since main
+        // calls every verb and would otherwise be in the closure of any load at
+        // all. With the stop in place, main appears only when a load is
+        // reachable from main by some path that is not through find, which is
+        // the failure this test exists to catch.
+        if (name === 'cmdFind') continue;
+        for (const caller of callersOf(name)) closure.add(caller);
+    }
+    // The whole closure, compared against the set named here rather than
+    // filtered first. A filter is the wrong instrument for this question: any
+    // predicate narrow enough to describe the expected members also describes
+    // away the members that signal the defect. main carries no cmd prefix and a
+    // load written as a top-level statement encloses to null, so both are
+    // dropped by a name-shaped filter and neither can be dropped by a
+    // comparison against the whole set.
+    // judgedHitLine is deliberately not in this set. It renders one line per
+    // judged hit, and the loop that calls it runs outside the channel's
+    // try/catch, so a module load reached from there is a throw on a path that
+    // promises it cannot throw. The clause budget it once loaded the prompt
+    // module for is resolved inside the guard and passed in instead, and its
+    // reappearance here is that regression.
+    assert.deepStrictEqual([...closure].sort(), [
+        'cmdFind',
+        'judgedCandidates',
+        'judgedChannel',
+        'parseJudgedAnswer',
+        'relevancePrompt',
+        'semanticChannel'
+    ], 'every function that can reach a code load is one of find\'s own, and find is '
+        + 'the only dispatch root among them: ' + JSON.stringify([...closure]));
 });
 
 test('the granted verbs are memq\'s own dispatch minus the five withheld', () => {
