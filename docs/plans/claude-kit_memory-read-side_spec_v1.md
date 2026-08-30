@@ -1,0 +1,72 @@
+# The store learns to speak up: triggers reach the shared tiers, resolution obeys one contract, and recognition meets the moment
+
+Status: Ready
+Commit Model: Commit-and-Push
+Created: 2026-08-30
+
+Session model: any executor session in the kit repo; three sections, tiers per section. Authored by the KIT: Expert seat from a design dialog with the operator, 2026-08-30. Anchors are authoring-time; re-locate every hit by content, since the judgment-sidecar and durable-boundary plans run first and both touch neighboring surfaces.
+
+## Dispatch Authorization
+
+Authorized 2026-08-30 by the operator at the keyboard in the expert seat's session: shared-tier trigger authoring with the widened recognition reading surface, the single resolution contract, and lifecycle recognition surfacing, inserted into the armed queue third (after the judgment-sidecar and durable-boundary plans) by the operator's ordering ruling that memory and semantic work is critical to everything else in flight. This section was authored by the KIT: Expert seat; per the peer-sessions trace rule it is a warrant only for a citing session that did not author it, and the receiving session performs its own trace: the grant is the operator's approval and ordering ruling in the expert session's transcript, and the plan entered the queue by the expert's splice under that same instruction.
+
+## Goal
+
+The store's write side has machinery and its read side has almost none. Writing has a trigger, the moment a lesson is learned; reading has no moment of its own, so nothing volunteers a relevant record while a session works. Three gaps compose into that asymmetry. A trigger cannot be authored on a shared-tier record, and the recognition surface reads the project tier alone, so the cross-machine lessons the board-routing plan will home into shared tiers are structurally incapable of ever nudging anyone. The project tier memq resolves can differ from the tier SessionStart names, so a seat following the session's own instruction can write records where nothing will ever read them. And the only forced read in the kit is SessionStart's index injection, when the session knows least about what it will need. When this plan is done: a trigger authors on any tier and recognition reads every tier it can match; one stated resolution contract governs every resolver; and recognition fires at the moments a session is processing something new, the prompt arriving and the subagent dispatching, in the same pointer-not-body discipline the kit already proves works.
+
+## Evidence
+
+- Shared-tier trigger refusal, confirmed twice over: the memory-system skill's own `triggers` contract states the project tier only, with `--type` and `--operator` refused "because recognition reads the project tier alone", and the machine coordinator measured the refusal live 2026-08-30 with a positive control that spoke (a project-tier `cmd:` trigger fired its nudge into PreToolUse context; the same authoring against a shared-tier record was refused by name).
+- Recognition's reading surface, confirmed in code: `plugins/claude-kit/hooks/memory-recognition-nudge.js:1163` (authoring-time) resolves a single project root from cwd via memq's own resolver; no shared tier is consulted.
+- The resolution split, reported 2026-08-30 by the machine coordinator from a two-way experiment on its own machine-scoped seat: a record written to the SessionStart-named tier was invisible to `memq get`, and a record in the cwd-resolved tier was found, two tiers under one seat with memq reading only one. Independently confirmed on this box: `~/.claude/projects/undefined/memory/drive-probe.md` exists, a record stranded under a directory whose name is a JavaScript `undefined` interpolated into a path, which is the same resolution family misfiring in a second way.
+- The read-side asymmetry, reported from the same seat's own day: roughly eleven shared-tier records banked against about one query issued, and the cause is structural rather than discipline, no skill tick order containing a recall step and no machinery volunteering records outside the project-tier tool-use nudge.
+- The lifecycle surface, verified 2026-08-30 against harness v2.1.251 (installed, version read from the CLI) via a docs pass: `UserPromptSubmit` injects `additionalContext` the model sees before processing; `SubagentStart` is a dedicated dispatch-time event carrying both `additionalContext` and `updatedInput`; `Notification` and `MessageDisplay` discard hook output and cannot surface anything. One cell of that docs pass was contradicted by live behavior and the live behavior governs: the pass claimed the tool-use events inject nothing, while the kit's own recognition nudge demonstrably injects context on both `PreToolUse` and `PostToolUse` on this machine. The lesson rides as the probe rule in section 3: no event's injection mechanics are trusted from a table, each is proven by a watched firing before code builds on it.
+- memq's pull path needs nothing: its semantic block already ranks every store and archive on the machine, shared tiers included, confirmed in this seat's own queries. The gap is push, not pull.
+
+## Approach
+
+Section 1 is store-and-hook code extending an existing proven mechanism to more tiers. Section 2 is a root-cause investigation with a fix, the only section whose shape depends on what it finds. Section 3 is new hook surface in the kit's established nudge idiom. The board-routing plan runs after this one by the operator's ordering ruling, so homed shared-tier records are trigger-capable before the first homing round; that interaction is the reason for this plan's queue position and is recorded in Decisions.
+
+## Decisions
+
+- Decided 2026-08-30 (operator): this plan runs third, after the judgment-sidecar and durable-boundary plans and ahead of everything else queued, because memory and semantic work is critical to everything currently in flight. The coordinator's ordering argument (homing with no residue before shared-tier recognition exists would produce boards that correctly forget what nothing will ever volunteer) is satisfied by the same ruling and was adjudicated correct by this seat.
+- Decided 2026-08-30 (operator): recognition surfacing over recall enforcement. The operator weighed hook-enforced recall and chose machinery that surfaces relevant records at processing moments instead; no gate holds a turn hostage to a recall verb. The operator's candidate moments were named off the cuff and mapped by this seat to the real event surface: `UserPromptSubmit` and `SubagentStart` adopted; `TaskCreated` excluded (no context injection); `Notification` and `MessageDisplay` excluded (output discarded, confirmed by the docs pass).
+- Decided 2026-08-30 (expert seat, within the delegated design): anchors stay project-only. An anchor is a file hash, repo-scoped by construction; portability belongs to triggers, whose patterns (commands, error shapes, skill names) are machine-portable. A reviewer proposing shared-tier anchors argues against this entry.
+- Context: this plan instantiates the operator's product direction in the project memory `memory-evolution-is-the-kits-cornerstone`; a proposal that narrows the store's reach argues against that record.
+
+## Sections of Work
+
+### 1. Triggers author on shared tiers and recognition reads them. Model: opus
+
+Two halves of one reach extension. `memq triggers` gains `--type` and `--operator`, with the same grammar, the same merge and refusal behavior, and the same 32-entry cap the project tier has; the memory-system skill's `triggers` row is amended in the same change, including removing its stated reason for the old refusal, which section makes false. The recognition reading surface widens to match: `memory-recognition-nudge.js` loads the operator and type tiers' trigger-carrying records beside the project tier's, with the shared tiers' reads tolerant of absence exactly as the store's other readers are, and per-session dedup unchanged so a record still points at most once per session. The sidecar daemon's recognition (shipped by the judgment-sidecar plan before this section runs) is checked against what actually landed and widened the same way where its index loader is tier-scoped; that check is against the shipped code, not the sidecar spec. Engine-store-signal sessions keep their existing grants: this section widens what recognition reads, not what a fleet worker may author. Tests red-first: authoring on each shared tier lands the frontmatter line and refuses the same bad shapes the project tier refuses; a shared-tier record with a matching trigger nudges in a session whose project tier holds no match (the cross-tier case the old surface could never produce); the project-tier path is byte-unchanged in its own tests.
+
+Acceptance: a trigger authored on an operator-tier record fires a watched nudge from a project whose own tier is empty of matches; the memory-system skill's row reads true against the new code; existing recognition and memq suites green; whole gate delta against a recorded baseline.
+
+### 2. One resolution contract, and the stranded tier dispositioned. Model: opus
+
+Root-cause first, from the real state: reproduce the coordinator's split on a machine-scoped seat (SessionStart names one tier, memq resolves another from the shell's cwd) and establish where `~/.claude/projects/undefined/` came from, which is a second symptom of the same resolution family until shown otherwise. Then state the contract once, where the resolvers can share it: which input names the project tier (the session's working directory as the harness reports it, not whichever cwd a shell has drifted to), and every resolver honors it, SessionStart, memq, the recognition hook, and any sidecar component found reading the same family. The fix's shape depends on the finding and is not prescribed here; what is prescribed is the invariant, that a record written where SessionStart said to write is readable by the memq the same session runs, and the disposition of the stranded directory (rehome its record and remove the directory, or record why it stays, never silence). Tests red-first: a fixture reproducing the split fails before the fix and passes after; the `undefined` shape is pinned against recurrence at whatever layer the root cause names.
+
+Acceptance: the coordinator's two-way experiment re-run on a machine-scoped seat finds one tier, written and read by the same name; the invariant test watched red first; the stranded directory dispositioned with its record named; whole gate delta against the baseline.
+
+### 3. Recognition meets the moment: the prompt and the dispatch. Model: opus
+
+Two new hook registrations in the kit's established nudge idiom, both dormant-tolerant and fail-open like every kit nudge. On `UserPromptSubmit`: the prompt text is matched against the recognition surface (all tiers, per section 1), and hits inject as `additionalContext` in pointer-not-body discipline, the record name, one clause of why, and the `memq get` spelling, capped (at most 3 pointers, bounded bytes, the sidecar valve's caps are the precedent) and deduplicated per session with the existing nudge's dedup. On `SubagentStart`: the dispatch's input is matched the same way and hits inject as `additionalContext` so the orchestrator's brief gains what the store knows; `updatedInput` is not used, a suggestion being this machinery's whole authority, and that restraint is stated in the hook's header. Semantic matching rides only where the machine's endpoint config exists, degrading to trigger-and-lexical matching exactly as the sidecar contract degrades, never erroring. The probe rule from Evidence binds the section: before building on either event, a trivial probe hook is registered and its injection watched to arrive in a real session, because the docs pass that mapped this surface was wrong about events the kit already uses; the probe result for each event is recorded in the chapter. Version reality is handled by construction: a machine whose harness lacks an event never fires it, and the hooks must load without error on such a machine. Tests red-first: a prompt carrying a known trigger's text yields the capped pointer block; a dispatch input carrying one yields the same at `SubagentStart`; a session with no matches injects nothing and no bytes; caps hold under a fixture with many matches.
+
+Acceptance: both probes watched firing before implementation and recorded; a live session demonstrates a prompt-time pointer from a shared-tier record end to end (the full read-side path this plan exists for); no-match sessions inject zero bytes; whole gate delta against the baseline.
+
+## Out of Scope
+
+- Recall enforcement of any kind: no gate, no Stop-hook compliance check; the operator chose surfacing (Decisions).
+- Shared-tier anchors (Decisions) and any change to memq's pull path, which already reaches every store on the machine.
+- `TaskCreated`, `Notification`, and `MessageDisplay` surfacing (no injection capability; Decisions).
+- The sidecar's judgment lane and delivery valve: this plan touches its recognition index loader only where section 1 finds it tier-scoped.
+- Skill tick-order recall prose: the board pass's store read arrives with the board-routing plan's section 4; duplicating it here would create the two-surface drift the kit's single-sourcing rule exists to prevent.
+
+## Related
+
+- `docs/plans/claude-kit_board-routing-and-homing_spec_v1.md`: runs after this plan by the operator's ordering ruling; its homing writes become trigger-capable because this plan ran first.
+- `docs/plans/claude-kit_judgment-sidecar_spec_v1.md`: ships the recognition daemon this plan's section 1 checks and may widen.
+- Kaizen notes at commits `0aca442` and `1d8fe09`, and the coordinator's cwd-split note filed 2026-08-30: the findings this plan dispositions.
+- Project memories `memory-evolution-is-the-kits-cornerstone` and `an-unchallenged-claim-drifts-because-nothing-exercises-it`: the direction and the mechanism.
+
+## Chapters

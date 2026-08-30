@@ -8,7 +8,7 @@ Session model: any executor session in the kit repo; four sections, tiers per se
 
 ## Dispatch Authorization
 
-Authorized 2026-08-30 by the operator at the keyboard in the expert seat's session: the four-way routing test, the homing operation with no board residue, the readability instrument, and the read-side fold, authored now and appended to the armed queue as its seventh plan by the operator's direct instruction. This section was authored by the KIT: Expert seat; per the peer-sessions trace rule it is a warrant only for a citing session that did not author it, and the receiving session performs its own trace: the grant is the operator's instruction in the expert session's transcript, and the plan entered the armed queue by the expert's append under that same instruction.
+Authorized 2026-08-30 by the operator at the keyboard in the expert seat's session: the four-way routing test, the homing operation with no board residue, the readability instrument, and the read-side fold, authored now and appended to the armed queue by the operator's direct instruction (appended seventh; ordered last the same day when the operator ruled the memory-read-side plan runs earlier, so shared-tier triggers exist before the first homing round). This section was authored by the KIT: Expert seat; per the peer-sessions trace rule it is a warrant only for a citing session that did not author it, and the receiving session performs its own trace: the grant is the operator's instruction in the expert session's transcript, and the plan entered the armed queue by the expert's append under that same instruction.
 
 ## Goal
 
