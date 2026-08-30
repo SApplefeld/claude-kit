@@ -305,3 +305,63 @@ Gate: 2524 / 2519 / 1 / 4, suites 0, exit 1, read from the run's own exit marker
 Acceptance: met, on both halves and against a control built before the instrument was run. The rollup's totals over the section-4 replay reproduce a hand count taken by grep over the JSONL rather than from the command under test: 17 verdicts as 14 diverged and 3 failed, 14 findings cross-checking the diverged count, 17 recognition calls with 14 pointed, and 28 queued pointers against no offset file. The gaps-included clause was met on a fixture built for it, since section 2's own replay logs are gone: the shipped daemon re-run against a dead port produced two gap records covering 16 and 1 calls and 17 recognition-gaps, and the rollup renders both the single-call and the multi-call range forms and reports 17 gapped calls, matching the daemon's own console figure. The delivered-pointer path was exercised on the one fixture carrying a real inbox offset, section 3's end-to-end, where an offset equal to the queue file's own length yields delivered 1 and queued 0. One corroboration came free and from a different file: the daemon-counters section reads `logs/offsets.json` and independently reports parsed 17 and gapped 17, which is a second instrument agreeing with the hand count rather than the same derivation path twice.
 Next: 6. memq semantic channel with graceful degrade
 Commit Model: Commit-and-Push
+
+### Interim board 1 - 2026-08-30
+Section 6 (memq semantic channel with graceful degrade) is in its second fix round and has
+not closed. This entry exists because the closure-drought rule earns one: two review-round
+adjudications have now passed with no section closing, and the compaction gate has been
+holding offers against that same drought.
+
+In flight: section 6 only. Sections 1 through 5 are closed and pushed. Stage: built, reviewed
+once, fixed once, reviewed again, and now in fix round 2. Base ref for the review is 1219a7a,
+which is 11 commits past the base the implementer built on; every one of those commits is a
+peer session's and touches only docs/, docs/plans/ and kaizen/, no code and no test file, so
+nothing moved under this section's work.
+
+Live dispatches: one, implementer-opus a20d65313e01034da, resumed against .kit/s6-fixes-2.md
+and asked for five Majors and eleven Minors plus the lanes. The review round that produced
+that list has returned and is closed: adversarial, blind and security, all at model opus and
+effort max through Workflow, verdicts CHANGES_REQUIRED, CHANGES_REQUIRED and CONCERNS, no
+Criticals.
+
+Gate baseline, mine, run under this session's own claim on this box at 19:11Z and read from
+the run's own exit marker: 2544 tests, 2539 passing, 1 failing, 4 skipped, exit 1. Against
+Chapter 5's 2524 / 2519 / 1 / 4 that is plus 20 tests and plus 20 passing with failures and
+skips unchanged, the one red being this machine's known permanent failure at
+test/memory-session.test.js:865. The comparison crosses a base-ref boundary, which is sound
+here only because those 11 peer commits touch no test file.
+
+Rulings adopted since Chapter 5, each already in the fix brief and each owed a Chapter entry:
+
+1. The first round's Critical was that the judged channel read the endpoint config and never
+   read its non-local-host flag, while the security document credited exactly that warning as
+   the compensating control. Ruled to lift the check into the shared endpoint client as a
+   channel-level duty both producers call, rather than repair it in memq alone. Confirmed
+   landed, and confirmed closed by the second round's security lens.
+2. The provenance value crossing the machine boundary is a flattened absolute project path
+   carrying the account name and unrelated repositories' directory names. Ruled a reduction
+   rather than a better disclosure: the prompt gets the bare tier token and the full label
+   stays on the rendered line. A candidate is already identified on the wire by its index.
+3. Pending-tier records are excluded from the candidate set. The store already keeps them out
+   of the local semantic index, and exporting them to a multi-tenant service off the machine
+   is further than the reach that policy refuses rather than nearer.
+4. The judged answer must carry both an index and a name, and the two must agree, rather than
+   a name alone. Requiring both makes a fabricated record unrepresentable rather than merely
+   improbable, since an invented name has no index that resolves to it and a bare index has
+   named nothing to check.
+5. Two fenced blocks in one find output is acceptable. They are sequential rather than
+   interleaved, so a reader can tell which fence frames which line.
+6. The worktreeMainRoot memo sits outside the section's stated bound on memq's store verbs.
+   Chapter 4's recorded assumption routes it here, so it is a declared fold rather than a
+   scope slip.
+
+Deferred deliberately, owed a backlog entry at section close: the store root is gated behind
+an explicit allow-data flag while the endpoint config path reads a bare home directory. A real
+asymmetry an auditor would ask about, and outside this section's bound to change.
+
+Next action: await fix round 2, re-run the whole gate under a fresh claim, then Chapter 6,
+commit and push, then section 7. Two of the second round's findings were this session's own
+documentation rather than the implementer's code, and both are already fixed: the skill file
+documented the absent-endpoint case as emitting a line the code deliberately does not emit,
+and the architecture document called the off-machine endpoint machine-local, which is Standing
+Brief Amendment 3's failure shape appearing in text written by the session that adopted it.
