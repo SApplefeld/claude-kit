@@ -384,3 +384,86 @@ Gate: 2554 / 2549 / 1 / 4, suites 0, exit 1, read from the run's own exit marker
 Acceptance: met in full, on all three states and against the live endpoint rather than a mock, run from a fixture home per Standing Brief Amendment 5 with the real store copied in read-only and the live `~/.claude` never read as the run's own home. Endpoint up: the judged block renders fenced and framed as advisory data, ranking five candidates with reasons, each line carrying provenance as a bare tier token and no absolute path anywhere, preceded by the fingerprint line naming an eight-hex digest and never the address. Endpoint stopped, the fixture config repointed at a dead loopback port: one honest degrade line naming that nothing answered, the lexical block unchanged, exit 0, and no fingerprint line at all, which is the call declining to happen rather than a config read speaking. Config absent: the channel is silent, the output carries no mention of it, and exit is 0, which is the behaviour `plugins/claude-kit/skills/memory-system/SKILL.md` now documents after this round corrected it. One live observation is recorded rather than smoothed over: the first judged call after a cold prefix outran its 2000 ms budget and degraded honestly, and three consecutive runs after it returned the judged block, so the budget is tight against a cold cache by design and the degrade is the designed answer rather than a defect. The existing memq suite stayed green untouched throughout, which the whole gate carries.
 Next: 7. Regression batteries and replay harness
 Commit Model: Commit-and-Push
+
+### Interim board 2 - 2026-08-30
+Section 7 (regression batteries and replay harness) is in its second fix round and has not
+closed. This entry exists because the closure-drought rule earns one: two review-round
+adjudications have now passed with no section closing, and the compaction gate has been
+holding offers against that same drought.
+
+In flight: section 7 only. Sections 1 through 6 are closed and pushed. Stage: built,
+reviewed once, fixed once, reviewed again, and now in fix round 2 at an escalated tier.
+
+Live dispatches: one, implementer-opus, resumed against nothing and dispatched fresh against
+`.kit/s7-fixes-2.md`, asked for 2 Criticals, 10 Majors and 13 Minors, minus the two findings
+that land under `docs/` and are the controller's own. The review round that produced that
+list has returned and is closed: adversarial, blind and security, all at model opus and
+effort xhigh through Workflow, which is the one-tier-above-the-writer row of the
+reviewer-effort table since this section's writer tier is sonnet. Verdicts CHANGES_REQUIRED,
+CHANGES_REQUIRED and CONCERNS.
+
+The tier escalation is the entry's most important content, because the rule that governs it
+demands the comparison be named rather than assumed. Round 2 returned Criticals after round 1
+did, which forks two ways: a repeating finding class indicts the implementer and makes the
+tier the lever, while Criticals landing on new ground indict the spec's premise and earn a
+consult instead. The comparison was run and a class repeats, twice over. Round 1's Critical 1
+was that a gapped case scored as PASS because the scorer never counted it as unmeasured; round
+2's is that a gapped run scores as PASS because scoring reads the whole accumulated session
+log while the fixture builder appends to an existing spool, so a re-used state directory lets
+the previous run's verdicts answer for this one. Different door, same class, and it is the
+cannot-measure-versus-clean inversion this entire plan exists to close, now on its third
+appearance in the effort and its second in this section. Separately, round 1's Major 4 was the
+state-directory refusal and round 2's other Critical is that same refusal scoped one directory
+too narrow, which is a fix that landed and does not reach. A class repeats, so the section
+escalated from sonnet to implementer-opus with both rounds' evidence carried into the brief.
+
+Both Criticals were confirmed by the controller before the brief was written rather than taken
+from the reports. The state-directory guard was reproduced by running its predicate directly
+with no writes: with the account name elided, `<home>\.claude`, `<home>` itself and
+`<home>\.claude\projects` are all accepted, and only the `kit-sidecar` subtree is refused,
+while both output paths print "state root (fixture, not the live store)" unconditionally. So
+the check that cites Standing Brief Amendment 5 as holding "by a check that ran" is the check
+that breaks it. The stale-verdict Critical was confirmed by reading the path end to end: fixed
+session constants, deterministic call ids derived from the case number and the case count, a
+fixture builder that appends, and a reader that takes the whole file.
+
+Two of round 2's findings are the controller's own round-1 rulings rather than the
+implementer's errors, and the brief says so plainly so the next round does not read them as
+sloppiness. Round 1 ruled that `neutralize()` be applied inside the harvest command's field
+cut; `neutralize` collapses every whitespace run, so a harvested multi-line command can no
+longer reproduce what the capture hook would have written, and the judgment fixtures are
+scored on exactly that line structure. The corrected ruling splits the guard: the unsafe
+character strip belongs in the stored field and the whitespace collapse belongs at the print
+boundary only. Round 1 also accepted a local duplication of the capture hook's cap constants
+over a require across the packaging boundary; that half stands on Chapter 6's boundary
+reasoning, but section 3's precedent has a second half, that two implementations in separate
+processes are pinned equal by a test, and no such pin was added.
+
+Gate baseline, mine, run under this session's own claim on this box at 21:32Z and read from
+the run's own exit marker: 2587 tests, 2582 passing, 1 failing, 4 skipped, exit 1. Against
+Chapter 6's 2554 / 2549 / 1 / 4 that is plus 33 tests and plus 33 passing with failures and
+skips unchanged, and plus 33 is exactly the battery suite's own count, which is a second
+reading agreeing that no other suite moved. The one red is this machine's known permanent
+failure at `test/memory-session.test.js:865`. The comparison crosses a base-ref boundary,
+sound here because the five peer commits between Chapter 6's base and current HEAD touch only
+`docs/`, `docs/plans/` and `kaizen/`, no code and no test file. The box was claimed at
+21:32:27Z by exclusive create with `Started:` interpolated from a clock read at the write, and
+released by a session-scoped delete at 21:37:22Z.
+
+Uncommitted and deliberately so, named here because a worktree state with no record is what a
+fresh session cannot recover: the two `docs/` findings from round 2 are already fixed in the
+working tree and ride with the section's close commit rather than landing alone. The
+architecture document's `sidecar/` bullet claimed all of the component's state lives under the
+user's home directory and none in the repo, which this section falsifies twice over, since
+`sidecar/batteries/` is committed fixture content and a battery run builds its state root
+under the system temporary directory; the bullet also enumerated the daemon and the rollup and
+omitted the two new commands. The security model gains an evaluation-batteries section,
+because this section creates two new plaintext concentrations of real fleet command output and
+that document is the inventory of them: one published permanently to a public git repository,
+one machine-local, outside `~/.claude`, and outside the daemon's retention sweep.
+
+Next action: await fix round 2, verify the fixes against the code rather than the report,
+re-run the whole gate under a fresh claim, run the section 7 live acceptance (the frozen
+batteries against the live endpoint plus a fresh harvest end to end), then Chapter 7, flip the
+plan to Complete, move section 8's substance to `docs/backlog.md` as a parked item, archive
+via curating-docs, commit and push.
