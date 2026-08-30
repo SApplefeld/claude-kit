@@ -1217,7 +1217,11 @@ else {
 # --- marker comment and the next `if ($isClone) {`, then asserting on the
 # --- reports that region emits, so a check placed in this gap silently joins
 # --- that extracted section and fails those cases with a report count they
-# --- never asked for. Add new checks after the goal state block instead.
+# --- never asked for. The goal state block below is itself extracted the
+# --- same way, from that `if ($isClone) {` line to the `# --- .kit/
+# --- exposure.` marker below it, by test/doctor-goal-state.test.js, so a
+# --- check placed inside that range joins its extracted section too. Add
+# --- new checks after the `# --- .kit/ exposure.` marker instead.
 
 if ($isClone) {
     $goalStatePath = Join-Path $repoRoot ".kit\goal-state.json"
@@ -1278,6 +1282,61 @@ if ($isClone) {
                 Report "WARN" "Kit goal state" @("$goalStatePath names a plan path containing '..' ($planSafe); refusing to inspect it. Clear the goal (/kit-goal clear) if it is stale.")
             }
             else {
+                # Who armed this plan. The lookup is ordinal on the outer
+                # field name, the entry name and the value, because
+                # PowerShell's member indexer ($goalState.armedBy) resolves a
+                # field name case-insensitively, and -ceq, despite its name,
+                # is case-sensitive but culture-sensitive rather than
+                # ordinal: it answers true for two strings that differ only
+                # by a collation-ignorable character (a soft hyphen, for
+                # one). The JavaScript readers this mirrors
+                # (kit-goal-lib.js's normalizeArmedBy and planArmedBy) use
+                # hasOwnProperty and ===, which are ordinal, so every
+                # comparison below uses [string]::Equals(..., Ordinal)
+                # instead of -eq/-ceq, and the outer field is found by
+                # enumerating PSObject.Properties rather than read through
+                # the indexer. An entry present but not the exact string
+                # 'self' and an entry absent both behave as the operator's
+                # arming everywhere it matters; only the emitted sentence
+                # distinguishes the two, since a state predating the field
+                # and a hand edit both leave no entry to find.
+                #
+                # This is attribution only: who ran the arm invocation. It is
+                # not the plan's authorization, which is a separate field the
+                # `status` command already renders; nothing here should be read
+                # as saying whether the plan doc authorizes this leash.
+                $armedByFound = $false
+                $armedBySelf = $false
+                if ($goalState.PSObject -and $goalState.PSObject.Properties) {
+                    $armedByMap = $null
+                    foreach ($outerProp in $goalState.PSObject.Properties) {
+                        if ([string]::Equals($outerProp.Name, 'armedBy', [System.StringComparison]::Ordinal)) {
+                            $armedByMap = $outerProp.Value
+                            break
+                        }
+                    }
+                    if ($armedByMap -is [System.Management.Automation.PSCustomObject]) {
+                        foreach ($prop in $armedByMap.PSObject.Properties) {
+                            if ([string]::Equals($prop.Name, $planRaw, [System.StringComparison]::Ordinal)) {
+                                $armedByFound = $true
+                                if ($prop.Value -is [string] -and [string]::Equals([string]$prop.Value, 'self', [System.StringComparison]::Ordinal)) {
+                                    $armedBySelf = $true
+                                }
+                                break
+                            }
+                        }
+                    }
+                }
+                $armedByLine = if ($armedBySelf) {
+                    "Arming of ${planSafe}: recorded as a run's own arming (armedBy: self), not typed by the operator."
+                }
+                elseif ($armedByFound) {
+                    "Arming of ${planSafe}: recorded as the operator's arming (armedBy: operator)."
+                }
+                else {
+                    "Arming of ${planSafe}: nothing recorded, which reads as the operator's arming. A state predating the field and a hand edit both read this way."
+                }
+
                 $planFull = Join-Path $repoRoot $planRaw
                 $planExists = Test-Path -LiteralPath $planFull
                 $planStatus = "unknown"
@@ -1301,21 +1360,34 @@ if ($isClone) {
                         # finished: either the run is mid-turn, or it died
                         # before its next stop and the queue needs re-arming
                         # with the remainder.
+                        #
+                        # A re-arm from here records the operator's arming
+                        # regardless of who currently holds the goal, so when
+                        # the current arming reads self the sentence above
+                        # would silently flip if the operator followed the
+                        # re-arm instruction without knowing that; the extra
+                        # line is added only in that case, since the operator
+                        # case has no attribution to flip.
+                        $reArmNote = @()
+                        if ($armedBySelf) {
+                            $reArmNote = @("Re-arming records the arming of whoever runs it, so a re-arm from here would record the operator's.")
+                        }
                         Report "WARN" "Kit goal state" ($queueLines + @(
                             "The current plan $planSafe is Complete or archived, but $remainingCount plan(s) remain in the queue.",
                             "The Stop hook advances at the bound session's next stop, so this is normal mid-turn and a stalled advance otherwise.",
                             "If the bound run has died, re-arm with the remaining plans (/kit-goal <plan paths>), which resets the binding."
-                        ))
+                        ) + $reArmNote + @($armedByLine))
                     }
                     else {
                         Report "WARN" "Kit goal state" ($queueLines + @(
                             "A kit goal is armed for $planSafe but that plan is Complete or archived.",
-                            "Clear it (node `"$pluginRoot\hooks\kit-goal.js`" clear, or /kit-goal clear) or it will leash this repo's sessions."
+                            "Clear it (node `"$pluginRoot\hooks\kit-goal.js`" clear, or /kit-goal clear) or it will leash this repo's sessions.",
+                            $armedByLine
                         ))
                     }
                 }
                 else {
-                    Report "PASS" "Kit goal state" (@("Armed for $planSafe (active).") + $queueLines)
+                    Report "PASS" "Kit goal state" (@("Armed for $planSafe (active).") + $queueLines + @($armedByLine))
                 }
             }
         }
