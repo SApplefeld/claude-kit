@@ -337,7 +337,7 @@ function Get-DoctrineBody {
 $claudeMd = Join-Path $claudeDir "CLAUDE.md"
 $doctrineFile = Join-Path $claudeDir "claude-kit-doctrine.md"
 $doctrineSkill = Join-Path $pluginRoot "skills\operating-instructions\SKILL.md"
-$importPresent = (Test-Path $claudeMd) -and ((Get-Content $claudeMd -Raw -ErrorAction SilentlyContinue) -match "@claude-kit-doctrine\.md")
+$importPresent = (Test-Path $claudeMd) -and ((Get-Content $claudeMd -Raw -Encoding UTF8 -ErrorAction SilentlyContinue) -match "@claude-kit-doctrine\.md")
 if (-not $importPresent) {
     Report "WARN" "Doctrine import" @("Add this line to $claudeMd so the doctrine loads always-on:  @claude-kit-doctrine.md")
 }
@@ -375,7 +375,7 @@ if ($isClone) {
     }
     $signpostData = $null
     if (Test-Path $signpost) {
-        try { $signpostData = Get-Content $signpost -Raw | ConvertFrom-Json } catch {}
+        try { $signpostData = Get-Content $signpost -Raw -Encoding UTF8 | ConvertFrom-Json } catch {}
     }
     $signpostValid = ($null -ne $signpostData) -and $signpostData.kitRepoPath -and (Test-Path $signpostData.kitRepoPath)
     $needSignpost = -not $signpostValid
@@ -421,7 +421,7 @@ if ($isClone) {
 else {
     if (Test-Path $signpost) {
         $signpostData = $null
-        try { $signpostData = Get-Content $signpost -Raw | ConvertFrom-Json } catch {}
+        try { $signpostData = Get-Content $signpost -Raw -Encoding UTF8 | ConvertFrom-Json } catch {}
         if ($null -ne $signpostData -and (Test-Path $signpostData.kitRepoPath)) {
             Report "PASS" "Kaizen signpost" @("kitRepoPath: $($signpostData.kitRepoPath) (registered clone found on disk).")
         }
@@ -448,7 +448,7 @@ $hookWired = $false
 $hooksJsonError = $null
 if (Test-Path -LiteralPath $hooksJsonPath) {
     try {
-        $hooksJsonData = Get-Content -LiteralPath $hooksJsonPath -Raw | ConvertFrom-Json
+        $hooksJsonData = Get-Content -LiteralPath $hooksJsonPath -Raw -Encoding UTF8 | ConvertFrom-Json
         foreach ($entry in @($hooksJsonData.hooks.Stop)) {
             foreach ($h in @($entry.hooks)) {
                 if ($h.command -match "kit-goal-stop\.js") { $hookWired = $true }
@@ -484,7 +484,7 @@ $canaryWired = $false
 $canaryHooksJsonError = $null
 if (Test-Path -LiteralPath $canaryHooksJsonPath) {
     try {
-        $canaryHooksJsonData = Get-Content -LiteralPath $canaryHooksJsonPath -Raw | ConvertFrom-Json
+        $canaryHooksJsonData = Get-Content -LiteralPath $canaryHooksJsonPath -Raw -Encoding UTF8 | ConvertFrom-Json
         foreach ($entry in @($canaryHooksJsonData.hooks.SessionStart)) {
             foreach ($h in @($entry.hooks)) {
                 if ($h.command -match "hook-canary\.js") { $canaryWired = $true }
@@ -1230,7 +1230,7 @@ if ($isClone) {
     }
     else {
         $goalState = $null
-        try { $goalState = Get-Content $goalStatePath -Raw | ConvertFrom-Json } catch {}
+        try { $goalState = Get-Content $goalStatePath -Raw -Encoding UTF8 | ConvertFrom-Json } catch {}
         if ($null -eq $goalState -or -not $goalState.plan) {
             Report "WARN" "Kit goal state" @("$goalStatePath exists but is unparseable or missing a 'plan' field; a stuck goal may be leashing sessions with no readable state.")
         }
@@ -1342,7 +1342,7 @@ if ($isClone) {
                 $planStatus = "unknown"
                 if ($planExists) {
                     try {
-                        $head = Get-Content -LiteralPath $planFull -Raw -ErrorAction Stop
+                        $head = Get-Content -LiteralPath $planFull -Raw -Encoding UTF8 -ErrorAction Stop
                         if ($head.Length -gt 2048) { $head = $head.Substring(0, 2048) }
                         $inProgress = $head -match "(?im)^status:[^\S\r\n]*in[^\S\r\n]*progress"
                         $complete = ($head -match "(?im)^status:[^\S\r\n]*complete") -and -not $inProgress
@@ -1502,7 +1502,7 @@ $settingsPath = Join-Path $claudeDir "settings.json"
 # result.
 $valveCeiling = $null
 try {
-    $gateSource = Get-Content -LiteralPath (Join-Path $pluginRoot "hooks\kit-compact-gate.js") -Raw -ErrorAction Stop
+    $gateSource = Get-Content -LiteralPath (Join-Path $pluginRoot "hooks\kit-compact-gate.js") -Raw -Encoding UTF8 -ErrorAction Stop
     if ($gateSource -match 'SAFETY_CEILING_TOKENS\s*=\s*(\d+)') { $valveCeiling = [int]$Matches[1] }
 }
 catch {}
@@ -1514,11 +1514,16 @@ $configuredWindow = $null
 $configuredWindowRaw = $null
 $settingsReadable = $false
 if (Test-Path -LiteralPath $settingsPath) {
-    # Explicit UTF-8, matching the installer: Get-Content -Raw on Windows
-    # PowerShell 5.1 decodes a UTF-8 file with the ANSI codepage.
+    # Windows PowerShell 5.1's default Get-Content decoding mis-decodes a
+    # BOM-less UTF-8 file with the ANSI codepage, so the encoding is explicit
+    # here. -ErrorAction Stop turns a locked or unreadable file into a
+    # terminating error the catch below can see (ConvertFrom-Json alone is
+    # non-terminating), and $settingsReadable gates on an actual parsed
+    # object rather than on the pipeline merely finishing, so a read that
+    # silently produced nothing is not reported as readable.
     try {
-        $settingsObj = [System.IO.File]::ReadAllText($settingsPath, (New-Object System.Text.UTF8Encoding($false))) | ConvertFrom-Json
-        $settingsReadable = $true
+        $settingsObj = Get-Content -LiteralPath $settingsPath -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json
+        $settingsReadable = ($null -ne $settingsObj)
     }
     catch {}
     if ($settingsReadable -and $settingsObj.PSObject.Properties.Name -contains "autoCompactWindow") {

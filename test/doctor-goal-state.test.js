@@ -69,17 +69,14 @@ function writePlanDoc(repoRoot, status, rel) {
 
 // Writes .kit\goal-state.json verbatim from a JS value (or, when goalState is
 // already a string, verbatim as text, which is what the unparseable-state
-// case needs to plant invalid JSON). withBom is for a fixture carrying a
-// non-ASCII character: doctor.ps1 reads the file with a plain Get-Content
-// and no -Encoding, and Windows PowerShell 5.1's default for a BOM-less file
-// is the system codepage, not UTF-8, which would otherwise turn the single
-// soft hyphen these fixtures plant into two mismatched codepage characters
-// before the comparison under test ever sees it. A leading UTF-8 BOM makes
-// Get-Content decode the file as UTF-8, isolating the ordinal-vs-culture
-// comparison this suite is testing from that separate, unrelated encoding
-// behavior. kit-goal-lib.js itself never writes a BOM and never places a
-// non-ASCII character in a plan path, so this is a property of the fixture,
-// not of what the doctor is fed in production.
+// case needs to plant invalid JSON). withBom writes a leading UTF-8 BOM.
+// doctor.ps1 reads the file with Get-Content -Encoding UTF8, which decodes a
+// BOM-less file as UTF-8 and strips a leading BOM when one is present, so a
+// fixture carrying the soft hyphen these tests plant round-trips correctly
+// either way; withBom exists to prove the BOM-present path round-trips too,
+// not to work around a decoding defect. kit-goal-lib.js itself never writes a
+// BOM and never places a non-ASCII character in a plan path, so this is a
+// property of the fixture, not of what the doctor is fed in production.
 function writeGoalState(repoRoot, goalState, withBom) {
     const text = typeof goalState === 'string' ? goalState : JSON.stringify(goalState);
     const payload = withBom ? '﻿' + text : text;
@@ -94,6 +91,14 @@ function writeGoalState(repoRoot, goalState, withBom) {
 // to prove a test fails on the code it is meant to catch) passes one, which
 // is how the red-then-green cases below exercise this parameter for real.
 function runGoalStateSection(repoRoot, doctorPath) {
+    // Output travels through a temp file, not stdout: Windows PowerShell
+    // 5.1's default console output encoding on a redirected stdout is the
+    // OEM codepage, not UTF-8, and setting [Console]::OutputEncoding to fix
+    // that leaks past the process (it changes the console mode, which a
+    // later, unrelated process on this host inherits) and can throw "The
+    // handle is invalid" where no console is attached. Writing the result
+    // with an explicit encoding sidesteps both.
+    const outFile = path.join(os.tmpdir(), 'doctor-goal-state-' + process.pid + '-' + Date.now() + '-' + Math.random().toString(36).slice(2) + '.json');
     const script = [
         '$src = [System.IO.File]::ReadAllText(' + q(doctorPath || DOCTOR) + ')',
         '$guardMarker = "# --- Nothing may be inserted between the embedder section above"',
@@ -120,17 +125,22 @@ function runGoalStateSection(repoRoot, doctorPath) {
         '',
         'Invoke-Expression $section',
         '',
-        '@{ Reports = @($script:Reports) } | ConvertTo-Json -Compress -Depth 6'
+        '$__json = @{ Reports = @($script:Reports) } | ConvertTo-Json -Compress -Depth 6',
+        '[System.IO.File]::WriteAllText(' + q(outFile) + ', $__json, (New-Object System.Text.UTF8Encoding($false)))'
     ].join('\n');
     const res = pwsh(script);
-    assert.strictEqual(res.status, 0, res.stdout + res.stderr);
-    const parsed = JSON.parse(res.stdout);
-    // A section that reported zero Reports must fail this assertion loudly
-    // rather than be coerced into a one-element array holding undefined,
-    // which would let the count assertion below pass and then die on
-    // .Detail with an unreadable TypeError.
-    assert.ok(Array.isArray(parsed.Reports), 'Reports must be an array: ' + res.stdout);
-    return parsed.Reports;
+    try {
+        assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+        const parsed = JSON.parse(fs.readFileSync(outFile, 'utf8'));
+        // A section that reported zero Reports must fail this assertion loudly
+        // rather than be coerced into a one-element array holding undefined,
+        // which would let the count assertion below pass and then die on
+        // .Detail with an unreadable TypeError.
+        assert.ok(Array.isArray(parsed.Reports), 'Reports must be an array: ' + res.stdout);
+        return parsed.Reports;
+    } finally {
+        try { fs.unlinkSync(outFile); } catch { /* best effort */ }
+    }
 }
 
 // A wording matcher for the three-way armedByLine text, used by the mutual-
@@ -337,15 +347,13 @@ test('a mixed-arming queue names the reported plan\'s own arming, not the other 
     }
 });
 
-// --- The ordinal-comparison cases below (defect class fixed this round).
+// --- The ordinal-comparison cases below.
 // The soft-hyphen cases prove their direction two ways: red against the
 // saved pre-fix copy of doctor.ps1 (DOCTOR_PREFIX, which used -ceq and the
 // plain member indexer), green against the shipped one. Both halves skip
 // together when the pre-fix copy is not present, since the red half has
-// nothing to run against. Their fixtures carry a UTF-8 BOM (see
-// writeGoalState) so the soft hyphen they plant survives doctor.ps1's plain,
-// no-encoding Get-Content read intact, isolating the comparison this suite
-// targets from that separate encoding behavior.
+// nothing to run against. Their fixtures carry a UTF-8 BOM; see writeGoalState
+// above for what that does and does not depend on.
 
 test('a key differing from the plan path only by case reads as nothing recorded', { skip: !isWin }, () => {
     const repoRoot = makeRepoRoot('doctor-goal-casekey-');
@@ -473,6 +481,67 @@ test('a map holding an entry only for a different plan reads as nothing recorded
         assert.strictEqual(reports.length, 1, JSON.stringify(reports));
         assert.match(reports[0].Detail, ABSENT_WORDING, reports[0].Detail);
         assert.doesNotMatch(reports[0].Detail, SELF_WORDING, reports[0].Detail);
+    } finally {
+        rmRepoRoot(repoRoot);
+    }
+});
+
+// --- Encoding round-trip: the goal-state read and the plan-head read both
+// decode a BOM-less file with Get-Content -Encoding UTF8. These two prove
+// each read round-trips a non-ASCII payload, with an ASCII control already
+// carried by every test above (all of them exercise the same two reads
+// against plain-ASCII fixtures).
+
+test('a plan path holding a non-ASCII character resolves to the file it names, not a mis-decoded one', { skip: !isWin }, () => {
+    const repoRoot = makeRepoRoot('doctor-goal-nonascii-');
+    try {
+        const nonAsciiRel = 'docs/plans/café_v1.md';
+        writePlanDoc(repoRoot, 'In Progress', nonAsciiRel);
+        writeGoalState(repoRoot, { plan: nonAsciiRel, queue: [nonAsciiRel], queueIndex: 0, armedBy: { [nonAsciiRel]: 'operator' } });
+        const reports = runGoalStateSection(repoRoot);
+        assert.strictEqual(reports.length, 1, JSON.stringify(reports));
+        // A mis-decoded path (ANSI-codepage mojibake) does not resolve to the
+        // file on disk, so the plan reads as missing and this WARNs "Complete
+        // or archived" instead of PASSing "(active)": a live leash reported
+        // stale on a correctly-named plan. The harness stubs Get-SanitizedLine
+        // to identity (see runGoalStateSection above), so this asserts the raw
+        // decoded plan path directly; the shipped doctor's real sanitizer
+        // strips the accent before printing.
+        assert.strictEqual(reports[0].Status, 'PASS', 'a correctly decoded non-ASCII plan path must resolve to the file it names: ' + reports[0].Detail);
+        assert.match(reports[0].Detail, /\(active\)/, reports[0].Detail);
+        assert.match(reports[0].Detail, /café/, 'the plan path must round-trip intact, not mis-decode to cafÃ©: ' + reports[0].Detail);
+
+        if (hasPrefix) {
+            const reportsRed = runGoalStateSection(repoRoot, DOCTOR_PREFIX);
+            assert.strictEqual(reportsRed.length, 1, JSON.stringify(reportsRed));
+            assert.match(reportsRed[0].Detail, /Complete or archived/, 'pre-fix doctor.ps1 must mis-decode the non-ASCII path and misreport the live plan as stale: ' + reportsRed[0].Detail);
+        }
+    } finally {
+        rmRepoRoot(repoRoot);
+    }
+});
+
+test('a non-breaking space between "Status:" and "Complete" still reads as Complete, not active', { skip: !isWin }, () => {
+    const repoRoot = makeRepoRoot('doctor-goal-nbsp-');
+    try {
+        // U+00A0 is two UTF-8 bytes (0xC2 0xA0); mis-decoded under the ANSI
+        // codepage they become 'Â' (not whitespace) followed by a literal
+        // NBSP, which breaks the Status regex's leading `[^\S\r\n]*` match
+        // right after "Status:" and makes a genuinely Complete plan read as
+        // active instead of warning.
+        write(path.join(repoRoot, PLAN_REL), 'Status: Complete\n\nFake plan body.\n');
+        writeGoalState(repoRoot, { plan: PLAN_REL, queue: [PLAN_REL], queueIndex: 0, armedBy: { [PLAN_REL]: 'operator' } });
+        const reports = runGoalStateSection(repoRoot);
+        assert.strictEqual(reports.length, 1, JSON.stringify(reports));
+        assert.strictEqual(reports[0].Status, 'WARN', 'a Complete plan misread as active means the Status match broke on the non-breaking space: ' + reports[0].Detail);
+        assert.match(reports[0].Detail, /Complete or archived/, reports[0].Detail);
+
+        if (hasPrefix) {
+            const reportsRed = runGoalStateSection(repoRoot, DOCTOR_PREFIX);
+            assert.strictEqual(reportsRed.length, 1, JSON.stringify(reportsRed));
+            assert.strictEqual(reportsRed[0].Status, 'PASS', 'pre-fix doctor.ps1 must mis-decode the non-breaking space and misreport the Complete plan as active: ' + reportsRed[0].Detail);
+            assert.match(reportsRed[0].Detail, /\(active\)/, reportsRed[0].Detail);
+        }
     } finally {
         rmRepoRoot(repoRoot);
     }
