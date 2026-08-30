@@ -1,4 +1,4 @@
-# KIT: Messaging — Seat Handoff
+# KIT: Messaging - Seat Handoff
 
 Written 2026-08-26 for a deliberate session restart. The reader is the fresh session taking over this seat. Consume it, run the first moves, then archive it per curating-docs at the next natural close-out. This is a notes/handoff doc, not a plan: it has no sections of work and no leash.
 
@@ -11,7 +11,7 @@ Written 2026-08-26 for a deliberate session restart. The reader is the fresh ses
 ## First moves on wake
 
 1. `memq recall` from the kit repository root.
-2. `memq get kit.kaizen.pass` and `memq get kit.mesh.peer-experiment` — the round-by-round record of the peer experiment, the status rounds, and the open handoff.
+2. `memq get kit.kaizen.pass` and `memq get kit.mesh.peer-experiment` - the round-by-round record of the peer experiment, the status rounds, and the open handoff.
 3. `git fetch origin`. The shared main checkout runs well behind origin and a sibling session (KIT: Opus Updates) holds dirty files in it. Never pull, stage, or commit in this tree. Land any file via a temp worktree: `git worktree add --detach "$HOME/<name>" origin/main`, edit there, `git -C <wt> add <paths>`, read `git -C <wt> diff --cached --name-only` as its own step, `git -C <wt> commit -F <msgfile>`, `git -C <wt> push origin HEAD:main`, then `git worktree remove` from outside the worktree (removing from inside fails with Permission denied).
 4. `ListAgents` for the live roster; poll rather than trust this doc's board, which ages fast.
 
@@ -24,9 +24,9 @@ Written 2026-08-26 for a deliberate session restart. The reader is the fresh ses
 
 ## Board at handoff (all three sessions polled 2026-08-26 ~13:00 local; re-verify before relying)
 
-- **KIT: Shared Messages** — kaizen-batch-2 (`docs/plans/claude-kit_kaizen-batch-2_spec_v1.md`), section 3 of 4 in flight (queue-position self-heal, opus-tier); sections 4, 1, 2 closed and pushed (`156b688`, `07737e3`, `ee2031f` on `origin/worktree-kaizen-batch`). Self-estimate to full leash drain: 2.5–4 hours (wide end = one tier escalation or one extra fix round on section 3). Then the finishing merge, at which the blocked-escalation plan arms and runs. Nothing waits on the operator.
-- **KIT: Opus Updates** (bound session 8efaf29e) — memory-anchors (`docs/plans/claude-kit_memory-anchors-and-frontmatter-guard_spec_v1.md`), section 7 of 7, fix round 2 against ~18 findings from a triple CHANGES_REQUIRED review round. Self-estimate: plan drained in 2.5–3 hours. Plan 3 on its leash, verification-artifacts, is explicitly unsized; it will size it in ~10 minutes after plan 2 closes. Two operator commitments ride to its close: a walk-through of the merge back to origin/main, and the already-ruled pinned-record hatch. Its goal queue's `queueIndex` reads 0 but plan 1 (compaction-deferral-signal) is Complete and archived; the index advances at the next stop attempt.
-- **AI-OS: Opus Plans** — operator-window plan DELIVERED and archived; PR #51 open and awaiting the operator's merge/iterate/discard call, with two deliberate residuals in the PR body and a pushed commit whose defective subject it recommends leaving. Now on spawn-surface-pinning (`ai-os-spawn-surface-pinning_spec_v1.md`), section 1 of 3, self-estimate 3–4 hours, dominated by its ~15-minute full gates.
+- **KIT: Shared Messages** - kaizen-batch-2 (`docs/plans/claude-kit_kaizen-batch-2_spec_v1.md`), section 3 of 4 in flight (queue-position self-heal, opus-tier); sections 4, 1, 2 closed and pushed (`156b688`, `07737e3`, `ee2031f` on `origin/worktree-kaizen-batch`). Self-estimate to full leash drain: 2.5-4 hours (wide end = one tier escalation or one extra fix round on section 3). Then the finishing merge, at which the blocked-escalation plan arms and runs. Nothing waits on the operator.
+- **KIT: Opus Updates** (bound session 8efaf29e) - memory-anchors (`docs/plans/claude-kit_memory-anchors-and-frontmatter-guard_spec_v1.md`), section 7 of 7, fix round 2 against ~18 findings from a triple CHANGES_REQUIRED review round. Self-estimate: plan drained in 2.5-3 hours. Plan 3 on its leash, verification-artifacts, is explicitly unsized; it will size it in ~10 minutes after plan 2 closes. Two operator commitments ride to its close: a walk-through of the merge back to origin/main, and the already-ruled pinned-record hatch. Its goal queue's `queueIndex` reads 0 but plan 1 (compaction-deferral-signal) is Complete and archived; the index advances at the next stop attempt.
+- **AI-OS: Opus Plans** - operator-window plan DELIVERED and archived; PR #51 open and awaiting the operator's merge/iterate/discard call, with two deliberate residuals in the PR body and a pushed commit whose defective subject it recommends leaving. Now on spawn-surface-pinning (`ai-os-spawn-surface-pinning_spec_v1.md`), section 1 of 3, self-estimate 3-4 hours, dominated by its ~15-minute full gates.
 - **Waiting on the operator:** the PR #51 call; kaizen-pass authorization when he wants it; the /loop re-arm.
 
 ## Facts that bite
