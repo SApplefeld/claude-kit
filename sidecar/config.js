@@ -105,6 +105,7 @@ function statePaths(stateDir) {
     return {
         root: stateDir,
         spoolDir: path.join(stateDir, 'spool'),
+        inboxDir: path.join(stateDir, 'inbox'),
         logsDir: path.join(stateDir, 'logs'),
         stateFile: path.join(stateDir, 'logs', 'offsets.json'),
         findingsFile: path.join(stateDir, 'logs', 'findings.jsonl')

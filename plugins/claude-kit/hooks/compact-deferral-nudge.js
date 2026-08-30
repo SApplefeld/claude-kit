@@ -269,11 +269,23 @@ function readStdin() {
     try { return fs.readFileSync(0, 'utf8'); } catch { return ''; }
 }
 
-// Guard 3: the subagent marker, read as truthiness the way the two sibling
-// detectors read theirs.
+// Guard 3: the subagent marker, read as truthiness the way the sibling
+// detectors read theirs, and returning WHICH identity was seen.
+//
+// The key set lives in hooks/kit-agent-identity-lib.js rather than here, on the
+// same reasoning as guard 4's network predicate below: four hooks ask this
+// question on a per-tool-call boundary, and a hand-copied set that gains a
+// spelling in three places out of four leaks silently, because the site that
+// kept the old set simply keeps answering. A cache too damaged to supply the
+// module answers "a subagent", which stands the nudge down: a deferral reminder
+// spent inside a subagent is spent on a context that cannot act on it, so
+// refusing is the cheaper error here exactly as it is for guard 4.
 function agentIdentity(payload) {
-    return payload.agent_id || payload.agent_type || payload.agentType
-        || payload.subagent_type || payload.subagentType || null;
+    try {
+        return require('./kit-agent-identity-lib.js').agentIdentity(payload);
+    } catch {
+        return 'unknown-agent';
+    }
 }
 
 // Guard 4: the UNC and //server forms, which are what a synchronous open can

@@ -130,11 +130,6 @@ const REMINDER = 'chapter-boundary-nudge: a Chapter was just appended to a plan 
 const CHAPTER_HEADING_SRC = '^###[ \\t]+Chapter[ \\t]+(\\d+)';
 const CHAPTER_HEADING_RE = new RegExp(CHAPTER_HEADING_SRC, 'm');
 
-// The agent-identity keys whose presence marks a subagent's tool call. The
-// four type spellings are the set the sibling subagent detectors defend
-// (readonly-agent-guard.js, docs-write-guard.js); agent_id rides with them.
-const AGENT_KEYS = ['agent_id', 'agent_type', 'agentType', 'subagent_type', 'subagentType'];
-
 function readStdin() {
     try { return fs.readFileSync(0, 'utf8'); } catch { return ''; }
 }
@@ -234,10 +229,18 @@ function main() {
     if (process.env.KIT_EXTERNAL_ENGINE === '1') return null;
 
     // Guard 3: a subagent's tool call stands down on the agent keys alone;
-    // its session_id is the parent's, so guard 6 cannot tell it apart.
-    for (const key of AGENT_KEYS) {
-        if (key in payload) return null;
-    }
+    // its session_id is the parent's, so guard 6 cannot tell it apart. The key
+    // set is one shared module rather than a copy here, so a spelling added
+    // for one detector cannot go missing from another; this site reads
+    // PRESENCE rather than truthiness, which is the wider stand-down and the
+    // cheaper error for a nudge fired at a plan-doc write. A cache too damaged
+    // to supply the module stands the nudge down, on the same terms as guard
+    // 5's lib requires below.
+    let carriesAgentKey;
+    try {
+        ({ carriesAgentKey } = require('./kit-agent-identity-lib.js'));
+    } catch { return null; }
+    if (carriesAgentKey(payload)) return null;
 
     // Guard 4, first half: only a plan doc is a boundary surface.
     const input = payload.tool_input;

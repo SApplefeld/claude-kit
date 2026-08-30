@@ -3,7 +3,8 @@
 //
 // Everything lives under `<stateDir>/logs/`, per sidecar/CONTRACT.md:
 //
-//   logs/offsets.json          the offset map and the cumulative counters
+//   logs/offsets.json          the offset map, the cumulative counters, and the
+//                              call ids whose delivery item is already queued
 //   logs/verdicts-<sid>.jsonl  one file per observed session
 //   logs/findings.jsonl        diverged verdicts and every gap, the audit surface
 //
@@ -40,6 +41,15 @@ const LOG_VERSION = 1;
 // a verdict belongs to when reading the log by eye; short enough that the log
 // is not a second copy of the spool.
 const COMMAND_PREVIEW_CHARS = 200;
+
+// How many delivered call ids the state carries. The set is what stops one
+// call's inbox item from being written twice when a spool file is re-read from
+// zero, which the contract names as an expected event; bounding it is what
+// stops the state file from growing for as long as the daemon runs. Only
+// diverged verdicts enter it, so five hundred and twelve ids covers a long
+// stretch of findings, and past the bound the oldest fall off and a reset
+// reaching further back than that can queue one duplicate pointer.
+const DELIVERED_MAX = 512;
 
 // The longest session id accepted into a file name, before the prefix and the
 // extension. A session id is an opaque string from another process, so it is
@@ -124,6 +134,8 @@ function emptyState() {
     return {
         v: LOG_VERSION,
         offsets: {},
+        // Call ids whose delivery item is already in an inbox, oldest first.
+        delivered: [],
         counters: {
             // Lines that parsed into a call to judge. The skip categories below
             // are counted apart from it, so `parsed` plus the skips is what the
@@ -182,6 +194,14 @@ function loadState(stateFile) {
             // reading from a position nothing can vouch for.
             if (Number.isInteger(value) && value >= 0) state.offsets[name] = value;
         }
+    }
+    // A delivered set that is not a list of strings is no set at all, and the
+    // tail is what is kept when a file carries more than the bound: the ids at
+    // the end are the recent ones, which are the ones a spool reset can reach.
+    if (Array.isArray(parsed.delivered)) {
+        state.delivered = parsed.delivered
+            .filter((id) => typeof id === 'string' && id !== '')
+            .slice(-DELIVERED_MAX);
     }
     const counters = parsed.counters;
     if (counters !== null && typeof counters === 'object' && !Array.isArray(counters)) {
@@ -370,6 +390,7 @@ function gapRecord(gap, nowMs) {
 module.exports = {
     LOG_VERSION,
     COMMAND_PREVIEW_CHARS,
+    DELIVERED_MAX,
     SESSION_NAME_CAP,
     FINDINGS_NAME,
     FINDINGS_ROTATED_NAME,

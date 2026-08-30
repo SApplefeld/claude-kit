@@ -2015,6 +2015,412 @@ test('the state directories are created for this user alone where the platform h
     }
 });
 
+// ------------------------------------------------------- the delivery inbox --
+
+const inbox = require('../sidecar/inbox.js');
+
+function inboxDirOf(fixture) {
+    return path.join(fixture.stateDir, 'inbox');
+}
+
+function inboxItems(fixture, sessionId) {
+    return readJsonl(inbox.inboxFile(inboxDirOf(fixture), sessionId === undefined ? 'ses-test' : sessionId));
+}
+
+test('the daemon creates the inbox root at startup, beside the spool root', async (t) => {
+    const server = await startServer(t, () => answer('achieved', 'ok'));
+    const fixture = makeFixture(t, { url: server.url });
+
+    await drain(fixture);
+
+    assert.strictEqual(fs.lstatSync(inboxDirOf(fixture)).isDirectory(), true,
+        'creating the inbox is the valve\'s activation act, on the daemon\'s side of it');
+});
+
+test('a diverged verdict is queued for delivery and an achieved one is not', async (t) => {
+    const server = await startServer(t, (body, n) => answer(n === 1 ? 'diverged' : 'achieved', `reason ${n}`));
+    const fixture = makeFixture(t, { url: server.url });
+    const quiet = makeLine({ intent: 'the quiet failure', command: 'grep -r secret . | head -1' });
+    const fine = makeLine({ intent: 'the honest one' });
+    seedSpool(fixture, [quiet, fine]);
+
+    await drain(fixture);
+
+    const items = inboxItems(fixture);
+    assert.strictEqual(items.length, 1, 'one item for the one divergence');
+    assert.strictEqual(items[0].v, 1);
+    assert.strictEqual(items[0].kind, 'alert');
+    assert.strictEqual(items[0].callId, quiet.callId);
+    assert.strictEqual(items[0].sessionId, 'ses-test');
+    assert.strictEqual(items[0].intent, 'the quiet failure');
+    assert.strictEqual(items[0].reason, 'reason 1');
+
+    // Pointers, never bodies: the command and its output stay in the spool and
+    // the verdict log, and a reader goes there to verify.
+    const line = JSON.stringify(items[0]);
+    assert.ok(!line.includes('grep -r secret'), 'no command reaches the inbox');
+    assert.ok(!line.includes('total 0'), 'no output reaches the inbox');
+    assert.deepStrictEqual(Object.keys(items[0]).sort(),
+        ['callId', 'intent', 'kind', 'reason', 'sessionId', 'ts', 'v'],
+        'the item carries exactly the keys the contract names for an alert');
+});
+
+test('one item per diverged call, across a re-drain that judges the same line twice', async (t) => {
+    // A spool file reset is an expected event: the contract has the daemon
+    // re-read from zero when a file is shorter than its recorded offset, and
+    // the call reaches the writing path a second time. The verdict is written
+    // again, deliberately, and the pointer is not.
+    const server = await startServer(t, () => answer('diverged', 'the same divergence'));
+    const fixture = makeFixture(t, { url: server.url });
+    const first = makeLine({ intent: 'the quiet failure' });
+    const second = makeLine({ intent: 'a second call' });
+    const file = seedSpool(fixture, [first, second]);
+
+    await drain(fixture);
+    assert.strictEqual(inboxItems(fixture).length, 2, 'both divergences are queued');
+
+    // The reset: the file is now shorter than the offset that consumed it.
+    fs.writeFileSync(file, JSON.stringify(first) + '\n', 'utf8');
+    const again = await drain(fixture);
+
+    assert.strictEqual(again.pass.counters.offsetResets, 1, 'the fixture genuinely reset the file');
+    assert.strictEqual(again.pass.counters.judged, 1, 'and the line was genuinely judged again');
+    assert.strictEqual(findings(fixture).length, 3, 'the durable record takes the second verdict');
+    const items = inboxItems(fixture);
+    assert.strictEqual(items.length, 2, 'the inbox does not, because the call id is already delivered');
+    assert.strictEqual(items.filter((i) => i.callId === first.callId).length, 1,
+        'exactly one pointer for the re-judged call');
+});
+
+test('the delivered call ids are persisted, so a restart does not re-queue', async (t) => {
+    const server = await startServer(t, () => answer('diverged', 'why'));
+    const fixture = makeFixture(t, { url: server.url });
+    const line = makeLine();
+    const file = seedSpool(fixture, [line]);
+
+    await drain(fixture);
+    assert.deepStrictEqual(readOffsets(fixture).delivered, ['alert:' + line.callId],
+        'the key rides in the state file beside the offset it was consumed with');
+
+    fs.writeFileSync(file, '', 'utf8');
+    fs.appendFileSync(file, JSON.stringify(line) + '\n', 'utf8');
+    await drain(fixture);
+    assert.strictEqual(inboxItems(fixture).length, 1, 'a fresh process reads the same set');
+});
+
+test('the item is on disk before the offset that consumed it moves', async (t) => {
+    // The ordering the section-2 Critical established, applied to the third
+    // write: an offset that passed a call whose record had not reached disk
+    // leaves a kill with a call the daemon never speaks about and never reads
+    // again. The observation is taken from inside the SECOND judgment call, by
+    // which time the first line's offset has been committed.
+    const fixture = makeFixture(t);
+    const first = makeLine({ intent: 'the diverged one' });
+    const second = makeLine({ intent: 'the one after it' });
+    const file = seedSpool(fixture, [first, second]);
+    const name = path.basename(file);
+    let seen = null;
+
+    let call = 0;
+    await drain(fixture, {
+        deps: {
+            fetchImpl: async () => {
+                call += 1;
+                if (call === 2) {
+                    seen = {
+                        offset: readOffsets(fixture).offsets[name],
+                        items: inboxItems(fixture).map((i) => i.callId)
+                    };
+                }
+                return {
+                    ok: true,
+                    status: 200,
+                    json: async () => ({ response: JSON.stringify({ verdict: call === 1 ? 'diverged' : 'achieved', reason: 'r' }) })
+                };
+            }
+        }
+    });
+
+    assert.ok(seen !== null, 'the second call was reached');
+    assert.ok(seen.offset > 0, 'the first line\'s offset had been committed by then');
+    assert.deepStrictEqual(seen.items, [first.callId],
+        'and its delivery item was already on disk when that offset moved');
+});
+
+test('a delivery item that cannot be written is counted and reported, and the pass goes on', async (t) => {
+    const server = await startServer(t, () => answer('diverged', 'why'));
+    const fixture = makeFixture(t, { url: server.url });
+    seedSpool(fixture, [makeLine(), makeLine()]);
+    // A directory wearing the inbox file's name: the append fails, the daemon
+    // does not.
+    fs.mkdirSync(inbox.inboxFile(inboxDirOf(fixture), 'ses-test'), { recursive: true });
+
+    const run = await drain(fixture);
+
+    assert.strictEqual(run.pass.counters.judged, 2, 'both calls are still judged');
+    assert.strictEqual(findings(fixture).length, 2, 'and the durable record still lands');
+    assert.ok(run.ctx.state.counters.writeFailures >= 2, 'the failures are counted');
+    assert.ok(run.reports.some((r) => /could not queue the delivery item/.test(r)),
+        'and reported, rather than swallowed');
+    assert.deepStrictEqual(readOffsets(fixture).delivered, [],
+        'a call whose item did not land is not marked delivered');
+});
+
+test('an item is neutralized at the writing end and capped', () => {
+    const nasty = `red ${ESC}[31m and ${BIDI_OVERRIDE} flipped\nwrapped`;
+    const item = inbox.alertItem({
+        callId: 'a'.repeat(16), sessionId: 's', intent: nasty, reason: 'x'.repeat(500)
+    }, Date.parse('2026-08-30T00:00:00.000Z'));
+
+    assert.ok(!item.intent.includes(ESC), 'no escape character survives');
+    assert.ok(!item.intent.includes(BIDI_OVERRIDE));
+    assert.strictEqual(item.intent, 'red [31m and flipped wrapped');
+    assert.strictEqual(item.reason.length, inbox.ITEM_TEXT_CAP,
+        'a field long enough to spend the whole delivery budget is cut before it is queued');
+    assert.strictEqual(item.ts, '2026-08-30T00:00:00.000Z');
+});
+
+test('the delivered set is bounded and keeps the recent end', () => {
+    const state = logs.emptyState();
+    const item = (i) => ({ kind: 'alert', callId: 'id-' + i });
+    for (let i = 0; i < logs.DELIVERED_MAX + 100; i += 1) inbox.markDelivered(state, item(i));
+
+    assert.strictEqual(state.delivered.length, logs.DELIVERED_MAX,
+        'the set cannot grow for as long as the daemon runs');
+    assert.strictEqual(inbox.alreadyDelivered(state, item(0)), false, 'the oldest fell off');
+    assert.strictEqual(inbox.alreadyDelivered(state, item(logs.DELIVERED_MAX + 99)), true,
+        'the newest is kept, because a spool reset reaches the recent end');
+
+    inbox.markDelivered(state, item(logs.DELIVERED_MAX + 99));
+    assert.strictEqual(state.delivered.length, logs.DELIVERED_MAX, 'marking twice adds nothing');
+});
+
+test('the dedup key is the kind and the call id, so one call can earn one of each', () => {
+    // Section 4 writes a memory pointer for a call this section may already
+    // have written an alert for. Keyed on the bare call id, that second item is
+    // dropped with no counter and no report: the failure is silent by
+    // construction, which is why the key is fixed here rather than there.
+    const state = logs.emptyState();
+    const callId = 'abcdef0123456789';
+    const alert = { kind: 'alert', callId };
+    const pointer = { kind: 'memory', callId };
+
+    inbox.markDelivered(state, alert);
+    assert.strictEqual(inbox.alreadyDelivered(state, alert), true, 'the same kind is deduplicated');
+    assert.strictEqual(inbox.alreadyDelivered(state, pointer), false,
+        'a different kind about the same call is not');
+    assert.strictEqual(inbox.deliveryKey(alert), 'alert:' + callId);
+    assert.deepStrictEqual(state.delivered, ['alert:' + callId]);
+});
+
+test('a delivered set that is not a list of ids is discarded rather than trusted', (t) => {
+    const dir = makeDir('kit-sidecar-state-');
+    t.after(() => rmDir(dir));
+    const file = path.join(dir, 'offsets.json');
+
+    fs.writeFileSync(file, JSON.stringify({ v: 1, offsets: {}, delivered: 'everything' }), 'utf8');
+    assert.deepStrictEqual(logs.loadState(file).state.delivered, []);
+
+    fs.writeFileSync(file, JSON.stringify({ v: 1, offsets: {}, delivered: ['a', 7, '', 'b'] }), 'utf8');
+    assert.deepStrictEqual(logs.loadState(file).state.delivered, ['a', 'b'],
+        'the entries that are ids are kept and the rest are dropped');
+
+    const many = [];
+    for (let i = 0; i < logs.DELIVERED_MAX + 50; i += 1) many.push('id-' + i);
+    fs.writeFileSync(file, JSON.stringify({ v: 1, offsets: {}, delivered: many }), 'utf8');
+    const loaded = logs.loadState(file).state.delivered;
+    assert.strictEqual(loaded.length, logs.DELIVERED_MAX, 'a longer file is cut to the bound');
+    assert.strictEqual(loaded[loaded.length - 1], 'id-' + (logs.DELIVERED_MAX + 49),
+        'and it is the recent end that is kept');
+});
+
+test('an inbox directory the operator deleted is not recreated by a write', async (t) => {
+    // Deleting the inbox root is the documented way to switch in-band delivery
+    // off, and it works on the spool half because only startup creates that
+    // root. A writer that recreated the directory per item would re-arm the
+    // valve at the next diverged verdict, with no restart and no signal.
+    // The deletion happens INSIDE one pass, between two judgments, because a
+    // second drain is a restart and startup legitimately creates the root
+    // again. What is under test is the writing path, which must never be the
+    // thing that brings the directory back.
+    const fixture = makeFixture(t);
+    seedSpool(fixture, [makeLine({ intent: 'before' }), makeLine({ intent: 'after' })]);
+
+    let call = 0;
+    const run = await drain(fixture, {
+        deps: {
+            fetchImpl: async () => {
+                call += 1;
+                if (call === 2) fs.rmSync(inboxDirOf(fixture), { recursive: true, force: true });
+                return { status: 200, json: async () => ({ response: '{"verdict":"diverged","reason":"why"}' }) };
+            }
+        }
+    });
+
+    assert.strictEqual(call, 2, 'both lines were judged');
+    assert.strictEqual(fs.existsSync(inboxDirOf(fixture)), false,
+        'the off switch stays off: no write recreates the root');
+    assert.strictEqual(findings(fixture).length, 2, 'and the durable record is unaffected');
+    assert.ok(run.reports.some((r) => /could not queue the delivery item/.test(r)),
+        'the refusal is reported rather than silent');
+    assert.deepStrictEqual(readOffsets(fixture).delivered.length, 1,
+        'only the item that actually landed is marked delivered');
+});
+
+test('an expired offset is kept while its queue is still live', (t) => {
+    // The two files age on different clocks: the hook stops touching the offset
+    // once the queue is drained, while the daemon keeps appending to the queue.
+    // Deleting the offset alone resets that session to byte zero and its next
+    // tool call re-delivers the whole file. The mtimes here are deliberately
+    // set apart, because a fixture that ages both together cannot reach this
+    // branch at all.
+    const dir = makeDir('kit-sidecar-inbox-');
+    t.after(() => rmDir(dir));
+    const now = Date.now();
+    const write = (name, mtime) => {
+        const file = path.join(dir, name);
+        fs.writeFileSync(file, '{}\n', 'utf8');
+        fs.utimesSync(file, mtime / 1000, mtime / 1000);
+    };
+    write('live.jsonl', now);
+    write('live.offset', now - (20 * MS_PER_DAY));
+    write('gone.jsonl', now - (20 * MS_PER_DAY));
+    write('gone.offset', now - (20 * MS_PER_DAY));
+
+    const report = inbox.sweepInbox(dir, { nowMs: now, retentionDays: 14 });
+
+    assert.deepStrictEqual(report.held, ['live.offset'],
+        'the stale offset of a live queue is held, and the sweep says so');
+    assert.deepStrictEqual(report.deleted.sort(), ['gone.jsonl', 'gone.offset'],
+        'a session whose queue is expiring loses both halves together');
+    assert.deepStrictEqual(fs.readdirSync(dir).sort(), ['live.jsonl', 'live.offset']);
+});
+
+test('an abandoned claim file and an orphaned temporary are swept', (t) => {
+    const dir = makeDir('kit-sidecar-inbox-');
+    t.after(() => rmDir(dir));
+    const now = Date.now();
+    const old = now - (20 * MS_PER_DAY);
+    for (const name of ['s.lock', 's.offset.tmp.4242.a1b2c3d4e5f6', 's.jsonl']) {
+        const file = path.join(dir, name);
+        fs.writeFileSync(file, '1', 'utf8');
+        fs.utimesSync(file, old / 1000, old / 1000);
+    }
+
+    const report = inbox.sweepInbox(dir, { nowMs: now, retentionDays: 14 });
+
+    assert.deepStrictEqual(report.deleted.sort(),
+        ['s.jsonl', 's.lock', 's.offset.tmp.4242.a1b2c3d4e5f6'],
+        'a name nothing sweeps is a name that accumulates for as long as the machine runs');
+    assert.deepStrictEqual(inbox.inboxBaseName('s.offset.tmp.4242.a1b2c3d4e5f6'),
+        { base: 's', kind: 'offset', temp: true });
+    assert.strictEqual(inbox.inboxBaseName('notes.txt'), null);
+});
+
+test('inbox files expire on the same window as the spool, offsets with them', (t) => {
+    const dir = makeDir('kit-sidecar-inbox-');
+    t.after(() => rmDir(dir));
+    const now = Date.now();
+    const old = now - (20 * MS_PER_DAY);
+
+    const write = (name, mtime) => {
+        const file = path.join(dir, name);
+        fs.writeFileSync(file, '{}\n', 'utf8');
+        fs.utimesSync(file, mtime / 1000, mtime / 1000);
+        return file;
+    };
+    write('stale.jsonl', old);
+    write('stale.offset', old);
+    write('fresh.jsonl', now);
+    write('other.txt', old);
+
+    const report = inbox.sweepInbox(dir, { nowMs: now, retentionDays: 14 });
+
+    assert.deepStrictEqual(report.deleted.sort(), ['stale.jsonl', 'stale.offset']);
+    assert.deepStrictEqual(fs.readdirSync(dir).sort(), ['fresh.jsonl', 'other.txt'],
+        'a live session\'s inbox stays, and a file that is not one is not touched');
+});
+
+test('an inbox retention window the sweep cannot use deletes nothing at all', (t) => {
+    const dir = makeDir('kit-sidecar-inbox-');
+    t.after(() => rmDir(dir));
+    const now = Date.now();
+    const file = path.join(dir, 'stale.jsonl');
+    fs.writeFileSync(file, '{}\n', 'utf8');
+    fs.utimesSync(file, (now - 400 * MS_PER_DAY) / 1000, (now - 400 * MS_PER_DAY) / 1000);
+
+    for (const days of [0, -1, 4000, 1.5, undefined]) {
+        const report = inbox.sweepInbox(dir, { nowMs: now, retentionDays: days === undefined ? null : days });
+        assert.strictEqual(report.skipped !== null, true, `retentionDays ${days} must skip`);
+        assert.deepStrictEqual(report.deleted, []);
+    }
+    // The control: the same fixture with a usable window is deleted, so the
+    // skips above are the guard rather than an undeletable file.
+    assert.deepStrictEqual(inbox.sweepInbox(dir, { nowMs: now, retentionDays: 14 }).deleted, ['stale.jsonl']);
+});
+
+test('the daemon sweeps the inbox on the same pass that runs spool retention', async (t) => {
+    const server = await startServer(t, () => answer('achieved', 'ok'));
+    const fixture = makeFixture(t, { url: server.url });
+    fs.mkdirSync(inboxDirOf(fixture), { recursive: true });
+    const stale = path.join(inboxDirOf(fixture), 'gone.jsonl');
+    fs.writeFileSync(stale, '{}\n', 'utf8');
+    const old = (Date.now() - 40 * MS_PER_DAY) / 1000;
+    fs.utimesSync(stale, old, old);
+
+    await drain(fixture);
+
+    assert.strictEqual(fs.existsSync(stale), false,
+        'an item nobody is left to read does not outlive the spool it came from');
+});
+
+test('a link where the inbox goes is refused rather than written through', (t) => {
+    const dir = makeDir('kit-sidecar-inbox-');
+    const target = makeDir('kit-sidecar-target-');
+    t.after(() => { rmDir(dir); rmDir(target); });
+    const link = path.join(dir, 'inbox');
+    fs.symlinkSync(target, link, process.platform === 'win32' ? 'junction' : 'dir');
+
+    const item = inbox.alertItem({ callId: 'a'.repeat(16), sessionId: 's', intent: 'i', reason: 'r' }, Date.now());
+    assert.strictEqual(inbox.writeItem(link, item), false, 'the write is refused');
+    assert.deepStrictEqual(fs.readdirSync(target), [],
+        'and nothing lands wherever the link pointed');
+
+    // The control: a real directory takes the same item, so the refusal above
+    // is the screen rather than a broken fixture.
+    const real = path.join(dir, 'real-inbox');
+    fs.mkdirSync(real);
+    assert.strictEqual(inbox.writeItem(real, item), true);
+});
+
+test('a link wearing a session inbox file name is refused rather than written through', (t) => {
+    // The hook screens this same path on its reading side, so an unscreened
+    // write here would send every pointer wherever the link pointed while
+    // delivery went quiet at the other end for a reason nothing connects to it.
+    const dir = makeDir('kit-sidecar-inbox-');
+    const target = makeDir('kit-sidecar-target-');
+    t.after(() => { rmDir(dir); rmDir(target); });
+    const item = inbox.alertItem({ callId: 'a'.repeat(16), sessionId: 'ses-1', intent: 'i', reason: 'r' }, Date.now());
+    const decoy = path.join(target, 'decoy.jsonl');
+
+    if (process.platform === 'win32') {
+        fs.symlinkSync(target, inbox.inboxFile(dir, 'ses-1'), 'junction');
+    } else {
+        fs.writeFileSync(decoy, 'decoy\n', 'utf8');
+        fs.symlinkSync(decoy, inbox.inboxFile(dir, 'ses-1'), 'file');
+    }
+
+    assert.strictEqual(inbox.writeItem(dir, item), false, 'the write is refused');
+    if (process.platform === 'win32') {
+        assert.deepStrictEqual(fs.readdirSync(target), [], 'nothing is written through the junction');
+    } else {
+        assert.strictEqual(fs.readFileSync(decoy, 'utf8'), 'decoy\n', 'nothing is written through the link');
+    }
+    assert.strictEqual(inbox.writeItem(dir, inbox.alertItem({
+        callId: 'b'.repeat(16), sessionId: 'ses-2', intent: 'i', reason: 'r'
+    }, Date.now())), true, 'the control: an unlinked session name still takes its item');
+});
+
 // -------------------------------------------------------- the source text --
 
 test('no sidecar source file carries a raw control byte a line-printing sweep would choke on', () => {

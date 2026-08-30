@@ -22,6 +22,16 @@
 // deliberate: switching capture on where nothing can ever consume it would
 // accrue plaintext command output for no reader.
 //
+// SPEAKING BACK. A diverged verdict is also queued as one item in the observed
+// session's inbox under the state root, which the kit's capture hook reads on
+// that session's next tool call and puts in front of the model as advisory
+// text. The item is a pointer: the stated intent, the one clause of reason, and
+// the call id, never the command, the output or anything else the spool holds.
+// One item per call per kind, deduplicated on the two together so a re-read
+// spool does not speak twice while a call can still earn one item of each kind.
+// sidecar/inbox.js owns that file and sidecar/CONTRACT.md states the schema and
+// the caps the reading half applies.
+//
 // WHERE THE DATA GOES. sidecar/judge.js is the module that puts spool content
 // on the wire, and its header states the posture in full: every judgment POSTs
 // the intent, the command and its output off this VM to the Hyper-V host across
@@ -89,6 +99,7 @@ const path = require('path');
 const { loadEndpointConfig, defaultStateDir, statePaths } = require('./config.js');
 const spool = require('./spool.js');
 const logs = require('./logs.js');
+const inbox = require('./inbox.js');
 const judge = require('./judge.js');
 const prompt = require('./prompts/judgment-v2.js');
 
@@ -250,11 +261,14 @@ function startup(ctx) {
         ctx.deps.report('WARNING: the configured endpoint host is neither loopback nor a private network address, so every captured command and its output is being posted off this network in cleartext');
     }
 
-    // The logs directory is made BEFORE the spool root, so a state root the
-    // daemon cannot log into never has capture switched on for it: activating
-    // the hook with nowhere to record what it captures would accrue plaintext
-    // command output that nothing ever reads.
-    for (const dir of [ctx.paths.root, ctx.paths.logsDir, ctx.paths.spoolDir]) {
+    // The logs and inbox directories are made BEFORE the spool root, so a state
+    // root the daemon cannot log into never has capture switched on for it:
+    // activating the hook with nowhere to record what it captures would accrue
+    // plaintext command output that nothing ever reads. Creating the inbox is
+    // also the valve's activation act, on the same lever: the capture hook's
+    // delivery duty lstats that directory and stays dormant while it is absent,
+    // so no session is spoken to on a machine where nothing is judging.
+    for (const dir of [ctx.paths.root, ctx.paths.logsDir, ctx.paths.inboxDir, ctx.paths.spoolDir]) {
         const made = logs.ensureDir(dir);
         if (!made.ok) return { ok: false, standDown: false, reason: 'state', detail: made.reason };
     }
@@ -313,9 +327,28 @@ function runRetention(ctx) {
         ctx.deps.report(`log sweep could not handle ${failure.name}: ${failure.detail}`);
     }
 
+    // The inbox, on the same window. An item holds a stated intent and one
+    // clause about what the call did, and a session that stopped running leaves
+    // its undelivered items behind with no reader left to consume them.
+    const inboxSweep = inbox.sweepInbox(ctx.paths.inboxDir, {
+        nowMs,
+        retentionDays: ctx.options.retentionDays
+    });
+    if (inboxSweep.skipped !== null) {
+        ctx.deps.report(`inbox sweep skipped: ${inboxSweep.skipped}`);
+    } else if (inboxSweep.deleted.length > 0) {
+        ctx.deps.report(`inbox sweep deleted ${inboxSweep.deleted.length} file(s) older than ${ctx.options.retentionDays} days`);
+    }
+    if (inboxSweep.held.length > 0) {
+        ctx.deps.report(`inbox sweep kept ${inboxSweep.held.length} expired delivered-offset file(s) whose queue is still live; deleting one re-delivers that session's whole inbox`);
+    }
+    for (const failure of inboxSweep.failed) {
+        ctx.deps.report(`inbox sweep could not handle ${failure.name}: ${failure.detail}`);
+    }
+
     ctx.retentionDay = spool.utcDay(nowMs);
     logs.saveState(ctx.paths.stateFile, ctx.state);
-    return { ...retention, sweep };
+    return { ...retention, sweep, inboxSweep };
 }
 
 // Accrue one unjudged call into the open gap for its session. Consecutive calls
@@ -461,6 +494,38 @@ async function judgeWithPolicy(ctx, entry) {
     return outcome;
 }
 
+// Queue one diverged verdict for delivery back to the session that produced it.
+//
+// The item goes down before the offset that consumed this entry advances, which
+// is the same ordering the verdict and the finding take and the same reason: an
+// offset that passed a call whose record had not reached disk would leave a
+// kill with a call the daemon never speaks about and never reads again.
+//
+// The item's kind and call id together are marked delivered in the state, so a
+// spool file re-read from zero (rotated or truncated outside this daemon, which
+// the contract names as an expected event) judges the call again without
+// queueing a second identical pointer, while leaving room for the one item of
+// each other kind the same call may earn. Marking follows the write rather than
+// preceding it, because a mark that landed on a write that did not would
+// silence the call for good; the reverse order costs at worst a duplicate
+// pointer after a kill in between.
+//
+// A failed write is counted and reported, never thrown: the findings file
+// already holds the divergence, so what is lost is the reminder and not the
+// record. An inbox directory an operator has deleted is one of those failures
+// by design, since recreating it here would re-arm in-band delivery behind the
+// operator's own off switch.
+function deliverAlert(ctx, entry, record) {
+    const item = inbox.alertItem(record, ctx.deps.now());
+    if (inbox.alreadyDelivered(ctx.state, item)) return;
+    if (!inbox.writeItem(ctx.paths.inboxDir, item)) {
+        ctx.state.counters.writeFailures += 1;
+        ctx.deps.report(`could not queue the delivery item for call ${entry.callId}`);
+        return;
+    }
+    inbox.markDelivered(ctx.state, item);
+}
+
 // Judge one entry and write what came of it. Returns nothing the caller branches
 // on: a gap is as complete an outcome as a verdict.
 async function processEntry(ctx, pass, entry) {
@@ -486,6 +551,7 @@ async function processEntry(ctx, pass, entry) {
             ctx.state.counters.writeFailures += 1;
             ctx.deps.report(`could not write the finding for call ${entry.callId}`);
         }
+        deliverAlert(ctx, entry, record);
     }
     pass.counters.judged += 1;
     pass.verdicts[record.verdict] = (pass.verdicts[record.verdict] || 0) + 1;

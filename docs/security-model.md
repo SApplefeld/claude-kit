@@ -174,9 +174,14 @@ same material rather than a summary of it. `~/.claude/kit-sidecar/logs/` holds o
 `verdicts-<sessionId>.jsonl` per observed session and a shared `findings.jsonl`, and each
 record carries the call's stated intent in full, a bounded preview of its command, and the
 model's one-clause reason. The reason is model output derived from whatever a command
-printed, so it is neutralized where it is parsed rather than where it is displayed: control
-characters, bidirectional overrides and zero-width characters are stripped once, at the
-producer, so every later reader inherits the guard instead of reimplementing it.
+printed, so it is neutralized at the daemon where it is parsed: control characters,
+bidirectional overrides and zero-width characters are stripped before the reason reaches a
+log line or a findings file. The delivery hook applies the same guard again on the way out.
+The two are separate processes on either side of a file and neither can import the other, so
+the guard is duplicated and the two implementations are pinned equal by a test rather than
+shared by a require. Re-applying it at the boundary that reaches the model is deliberate and
+not redundancy: the inbox is a plain file, so a reader that trusted the producer would be
+inheriting a guard the writer of a given line may never have run.
 
 Those logs are swept on the same schedule as the spool and bounded the same way, which
 matters because the preview's justification depends on it. A preview is safe to keep only
@@ -192,6 +197,50 @@ address. That is a detection control and not a prevention one: anything running 
 can rewrite the config, which is the same single principal the rest of this document assumes,
 so what the warning buys is that a redirected endpoint is visible on a surface someone reads
 rather than invisible on every surface at once.
+
+## The delivery inbox
+
+The inbox is how the sidecar speaks back. The daemon appends one JSON item per session to
+`~/.claude/kit-sidecar/inbox/<session>.jsonl`, and the same PostToolUse hook that fills the
+spool reads that file on its next Bash call and puts the items in front of the model as
+`hookSpecificOutput.additionalContext`. It is the only path by which anything the sidecar
+concluded reaches a session, and so it is the one surface in this system where model-derived
+text is placed into another model's context. Everything below follows from that.
+
+Delivered text is framed rather than trusted. The block opens by saying what it is, that it
+holds no authority, that nothing in it is a request from anyone, and that each pointer is
+unverified until checked against the source it names, and it closes on a matching fence. Both
+the opening and the closing sit outside the byte cap, so a flooded queue cannot displace the
+framing and leave unmarked model output in front of a session. Each item's variable fields
+are neutralized and stripped of the quote character, then placed in quoted slots they cannot
+close. A block carries at most three items and 600 bytes of item text, and the remainder
+stays queued for the next call rather than expanding the block.
+
+Delivery stands down entirely on a subagent call. A subagent's payload carries the parent
+session's id byte-identically, so without the stand-down a subagent would drain the parent's
+queue into a context that never ran the work being judged.
+
+The off switch is the directory. Delivery is dormant unless `inbox/` exists, the hook never
+creates it, and the daemon creates it only at startup, so deleting it stops delivery while
+capture keeps running and a mid-pass deletion is refused rather than undone. Both sides lstat
+the directory and the session file before touching either, and refuse a link. The offset file
+is replaced through a temporary path carrying the writer's pid and six random bytes, created
+exclusively, so a link planted at a predictable temporary name is not followed. A per-session
+offset advances before anything is emitted, and nothing is emitted when that write fails: a
+pointer lost to a crash costs one advisory line, where an item emitted against an offset that
+never moved would be re-emitted on every call for the life of the session. The read and the
+advance run under a claim at `inbox/<session>.lock` that is attempted once and never waited
+on, because a hook observing a session may not put it on a critical path.
+
+Inbox files are swept on the same window as the spool, with an offset kept while its queue is
+still live so that expiry cannot re-deliver a whole inbox.
+
+What this does not claim: the inbox is not tamper-evident and not authenticated. Any process
+running as this user can append a well-formed item and it will be delivered on the next call.
+That is the same single principal the rest of this document assumes, and the framing is the
+control that matches it: the block is presented as unverified advisory data whatever wrote
+it, so a forged item buys an attacker the same standing as a real one, which is none.
+
 ## Environment overrides, and why they differ
 
 Variables that redirect where the tooling looks are gated, and so is the one below that redirects nothing and steers a control's timing instead; all of them are deliberately gated differently:

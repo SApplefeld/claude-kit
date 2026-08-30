@@ -330,16 +330,6 @@ const STATE_SWEEP_MAX_ENTRIES = 4096;
 const PRE_TYPES = ['cmd', 'skill', 'agent', 'tool'];
 const POST_TYPES = ['err', 'glob'];
 
-// The agent-identity keys whose presence marks a subagent's tool call, the set
-// the sibling subagent detectors defend. A subagent's payload carries the
-// PARENT session's session_id, so its calls would spend the parent's
-// once-per-session dedup budget on triggers the parent never saw, silencing
-// the session the nudge is for. Read as truthiness rather than key presence,
-// the reading compact-deferral-nudge.js takes: a harness emitting a null
-// agent_id on a main-session payload would otherwise stand this hook down on
-// every call and kill the feature outright.
-const AGENT_KEYS = ['agent_id', 'agent_type', 'agentType', 'subagent_type', 'subagentType'];
-
 // The keys a tool call names a path under. The breadth is deliberate and
 // matches the sibling detectors' breadth over the agent-type spellings: the
 // cost of reading one key too many is a path that matches no glob, and the
@@ -1512,10 +1502,21 @@ function main(payload) {
     if (process.env.KIT_EXTERNAL_ENGINE === '1') return null;
 
     // A subagent's call: the nudge belongs to the session, and its dedup
-    // budget is keyed on a session id a subagent shares with its parent.
-    for (const key of AGENT_KEYS) {
-        if (payload[key]) return null;
-    }
+    // budget is keyed on a session id a subagent shares with its parent, so a
+    // subagent's calls would spend the parent's once-per-session budget on
+    // triggers the parent never saw.
+    //
+    // The key set is one shared module rather than a copy here, so a spelling
+    // added for one detector cannot go missing from another. Read as truthiness
+    // rather than key presence: a harness emitting a null agent_id on a
+    // main-session payload would otherwise stand this hook down on every call
+    // and kill the feature outright. A cache too damaged to supply the module
+    // stands the nudge down, like every other lib this hook needs.
+    let isSubagentCall;
+    try {
+        ({ isSubagentCall } = require('./kit-agent-identity-lib.js'));
+    } catch { return null; }
+    if (isSubagentCall(payload)) return null;
 
     const boundary = payload.hook_event_name;
     if (boundary !== 'PreToolUse' && boundary !== 'PostToolUse') return null;

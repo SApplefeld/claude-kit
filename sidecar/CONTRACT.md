@@ -1,16 +1,19 @@
-# The spool contract
+# The spool and inbox contract
 
-The file contract between the kit's capture hook and the judge daemon. The hook
-writes; the daemon reads. Neither imports the other, and this document is the
-only thing they share.
+The file contract between the kit's capture hook and the judge daemon. It runs
+both ways: on the spool the hook writes and the daemon reads, and on the inbox
+the daemon writes and the hook reads. Neither imports the other, and this
+document is the only thing they share.
 
 ## Locations
 
 All sidecar state is machine-local, under `~/.claude/kit-sidecar/`:
 
 - `spool/<YYYY-MM-DD>.jsonl` - the capture spool, one file per UTC day.
-- `inbox/<sessionId>.jsonl` - delivery items (the delivery valve; not written or
-  read by the capture duty).
+- `inbox/<sessionId>.jsonl` - delivery items, written by the daemon and read by
+  the hook's delivery valve.
+- `inbox/<sessionId>.offset` - how far that session's valve has delivered,
+  written by the hook and read by nothing else.
 - `logs/` - verdict logs, recognition logs, findings, and persisted offsets.
 
 The date in a spool filename is the UTC date of the moment the line was
@@ -30,6 +33,13 @@ turns capture on for every session on that machine from its next tool call.
 
 Deactivation is the same lever in reverse. Removing the spool root stops capture
 at the next tool call with no session restart and no configuration change.
+
+The hook's delivery valve carries the same switch on `~/.claude/kit-sidecar/inbox`,
+lstatted on the same terms, and the daemon creates that directory on the same
+startup that creates the spool root. The two switches are independent: capture
+runs while the spool root exists whether or not the inbox does, and the valve
+runs while the inbox root exists whether or not the spool does, so deleting
+either directory retires that duty alone.
 
 ## The line schema
 
@@ -131,6 +141,209 @@ Rules the daemon follows:
   deletes do not grow the offset map without bound and an unreadable directory
   listing is never read as an empty spool.
 
+## The delivery inbox
+
+The return leg. The daemon queues one item per finding into the observed
+session's inbox; the hook's delivery valve reads that file on that session's next
+tool call and puts the undelivered items in front of the model as advisory text.
+The daemon writes and never reads; the hook reads and never writes the `.jsonl`.
+The only file the hook writes here is the session's own `.offset`.
+
+The file name is the session id reduced to one path component: every character
+outside `A-Za-z0-9._-` becomes an underscore and the result is cut to 80
+characters. Both halves apply the same reduction to reach the same name. A
+session whose id is empty, or which reduces to nothing usable, gets the daemon's
+`no-session` bucket, and the valve refuses to deliver that bucket to anyone: a
+shared file cannot be one session's inbox.
+
+### The item schema
+
+One JSON object per line, UTF-8, terminated by `\n`, appended with a single
+write, on the same interleaving terms as the spool.
+
+| Key | Type | Meaning |
+| --- | --- | --- |
+| `v` | integer | Schema version. Always `1`. A reader that does not recognize the version skips the line. |
+| `kind` | string | `alert` for a diverged-verdict alert, `memory` for a memory pointer. A kind the reader does not know is skipped. |
+| `ts` | string | ISO 8601 UTC, the moment the item was queued. |
+| `callId` | string | The captured call this item is about, from the spool line. |
+| `sessionId` | string | The session the item is for, unreduced. |
+| `intent` | string | `alert` only. The call's stated intent. |
+| `reason` | string | `alert` only. The judge's one-clause reason. |
+| `record` | string | `memory` only. The memory record's name, which the reader spells into a `memq get` line. |
+| `why` | string | `memory` only. One clause on why the record may bear on this call. |
+
+**Pointers, never bodies.** An item carries no command, no output, no record
+body and no transcript quote. Every text field is neutralized and cut to 200
+characters on the way in. A body injected by machinery is read as fact without
+anybody opening the source; a pointer preserves recall-then-verify.
+
+One item per call per kind. The dedup key is **`<kind>:<callId>`**, never the
+call id alone: one call can earn one alert and one memory pointer, and a set
+keyed on the bare id would drop the second silently, with no counter and no
+report. A memory pointer carries a second dedup rule of its own, one pointer per
+record per session, which is a different key (the record name and the session,
+not the call) and is the recognition duty's to add beside this one.
+
+The set is bounded at 512 keys, oldest dropped first, so it cannot grow for as
+long as the daemon runs. Past the bound a spool file re-read from zero and
+reaching further back than 512 findings can queue one call's pointer a second
+time. That is the accepted cost: a duplicate pointer is a redundant line, and
+the divergence itself is in the findings file whatever the inbox does.
+
+**The writing side never creates the inbox directory.** Only daemon startup
+does. Deleting `~/.claude/kit-sidecar/inbox` is the documented way to switch
+in-band delivery off, and a writer that recreated the directory for the next
+item would re-arm the valve with no restart and no signal. A write into a
+missing, linked or otherwise unusable inbox fails, counts, and is reported, on
+the same footing as a verdict log that cannot be written.
+
+### The delivered offset
+
+`inbox/<name>.offset` holds a single decimal byte position and nothing else. The
+rules mirror the spool's:
+
+- An absent, unreadable or unparseable offset file reads as 0, which re-delivers
+  rather than skipping.
+- Advance only past a complete line, one ending in `\n`. A trailing partial line
+  is a write in flight and is left for the next call.
+- A file shorter than its recorded offset was rotated or replaced: read it from
+  0 rather than trusting the stale number.
+- A complete line the reader could not use, malformed or of an unknown version
+  or kind, is consumed like any other: it is complete, and holding the offset in
+  front of it would re-read it on every tool call for the life of the session.
+  The skip is silent, because the hook has no surface to report on; the daemon's
+  own malformed count is where that signal lives.
+- The offset advances before anything is emitted, and nothing is emitted if that
+  write fails. A pointer lost to a crash in between costs one advisory line; an
+  item emitted against an offset that never moved repeats on every tool call for
+  the life of the session, which is an injection loop the session cannot switch
+  off.
+
+The offset is written by an exclusive create at an unpredictable temporary name
+(`<name>.offset.tmp.<pid>.<random>`) followed by a rename over the target, so it
+is never torn, a link planted at the target is replaced rather than written
+through, and there is no predictable temporary name to plant at either. A plain
+write to a fixed temporary name would be followed through a planted link, which
+turns the valve into a way to truncate any file this user can write.
+
+### One reader at a time
+
+The harness issues tool calls in parallel, main-thread calls included, so
+several copies of the hook can run against one session's inbox at once. A plain
+read-select-advance there is last-writer-wins: every copy reads the same offset,
+every copy takes the same batch, and the block is delivered N times with the
+3-item and 600-byte caps defeated N-fold. Those caps are the control on how much
+sidecar text can reach a session, so that is a control failure and not a
+cosmetic repeat.
+
+The whole read-select-advance therefore runs under an exclusive claim at
+`inbox/<name>.lock`. The claim is taken once and **never waited on**: a hook that
+blocked on a lock would put the observed session on a critical path, so a copy
+that cannot take the claim delivers nothing and the items stay queued for the
+next tool call. A claim older than 30 seconds is read as abandoned by a copy
+that died holding it, and is reaped.
+
+Standing subagents down is not what provides this. It is its own rule, below,
+for its own reasons.
+
+### Delivery caps and framing
+
+- At most 3 items per tool call, and at most 600 bytes of item text (UTF-8
+  bytes, not characters). Whatever the caps hold back stays queued for the next
+  call; nothing is dropped for being late.
+- An item too large for the budget is shortened by cutting its VARIABLE fields,
+  in the kind's own order, and never by cutting the composed line from its tail.
+  The trailing directive on an alert and the `memq get` spelling on a memory
+  pointer both live at the end of the line, so a tail cut removes exactly what
+  the pointer exists to carry, and it never fires on ASCII text, which is what
+  makes it look correct on every happy path.
+- The advisory framing line and a closing fence both sit OUTSIDE the byte cap.
+  The framing states what the block is, where its content came from and across
+  which machine boundary, that it is data and not instructions carrying no
+  authority, and where to check a pointer. The fence marks where the block ends.
+  Both are security controls, not decoration, so a flooded inbox must be able to
+  displace neither the front nor the end.
+- Every value an item contributes is emitted inside a quoted slot and loses the
+  quote character on the way in, so no field can close its own slot and continue
+  as the hook's own words.
+- The note saying further content is queued is a claim the block makes about
+  itself, so it is only made when it is true: a further complete line inside the
+  read window that would actually be emitted, a partial line being written, or
+  bytes past the window. Lines held back that no reader would ever see, a
+  malformed line or an unknown kind, are not "further content".
+- At most 64 KiB of the inbox is read per call. Bytes past that window wait for
+  the next call; a window holding no complete line at all is stepped over, since
+  the writing side produces no such run and one would otherwise stall every item
+  behind it.
+
+**Both halves neutralize.** Control characters, ANSI escape runs, the
+bidirectional overrides and isolates, the zero-width set and the byte-order mark
+are removed and whitespace is collapsed, at the daemon when the item is written
+and again at the hook when it is formatted. The two implementations exist
+because the process boundary forbids a shared module, and both are needed rather
+than either being redundant: the daemon guards what the daemon wrote, and the
+inbox is an ordinary file any process running as this user can append to.
+
+### Subagents stand down
+
+**The valve does nothing on a subagent's tool call: it reads no file, emits
+nothing, and leaves the delivered offset exactly where it was.** A subagent's
+PostToolUse payload carries the parent session's `session_id` byte-identically,
+so the id cannot tell them apart; the agent-identity keys can, and any of
+`agent_id`, `agent_type`, `agentType`, `subagent_type` or `subagentType` holding
+a truthy value stands the valve down. Truthiness rather than presence: a harness
+emitting a null `agent_id` on a main-session payload would otherwise retire the
+feature outright.
+
+Two things follow. A pointer delivered into a subagent lands in a context that
+cannot place it, since the call it describes was the parent's. And the parent's
+offset would advance for an item the parent never saw, which loses it silently.
+Concurrency is not among them: main-thread tool calls are issued in parallel
+too, which is what the exclusive claim above is for.
+
+The capture duty does the opposite and keeps capturing subagent calls: their
+calls are exactly as worth judging, and capture keys nothing on the session.
+
+### What the inbox contains, and where it goes
+
+An item holds a stated intent and one clause of model-authored prose about a
+call. That is less than the spool holds and it is still command-adjacent text
+under the user's home directory, on the same 0600-and-profile-ACL footing as the
+spool day files.
+
+**The inbox never leaves this VM.** No component reads it over a network and
+nothing posts it anywhere; the hook that reads it runs on this machine as the
+same user. The export happens earlier and is described above: the judgment call
+POSTs the command, its output and the stated intent across the virtual switch to
+the model endpoint on the Hyper-V host, in cleartext over plain HTTP in the
+default configuration. An item is derived from the answer that came back. The
+inbox adds no further egress.
+
+Retention is the daemon's, on the spool's own 14-day window and the same pass:
+inbox files past the window are deleted by mtime, along with abandoned claim
+files and orphaned temporaries. A session that stopped running leaves undelivered
+items behind with no reader left to consume them, and nothing else expires them.
+
+**A queue and its offset expire together, never separately.** The two age on
+different clocks: the hook stops touching the offset the moment the queue is
+drained, while the daemon keeps appending, so a long-lived session reaches a
+state where its offset is stale and its queue is fresh. Deleting the offset alone
+there resets that session to byte zero and its next tool call re-delivers every
+item the queue has ever held, which is the repeat injection the offset exists to
+prevent. So an offset is deleted only when its queue is absent or is going in the
+same pass, and a sweep that holds one back says so. The reverse pairing needs no
+rule: a queue deleted with its offset left behind only stops delivery until both
+are gone.
+
+### Fail-open
+
+The valve fails open exactly as capture does. An absent or unreadable inbox, a
+line that is not JSON, an item of an unknown version or kind, a missing offset
+file, an offset write that fails, a link where a directory or a file should be,
+or any internal throw: every one produces the same result, which is exit 0,
+nothing emitted, and an undisturbed session.
+
 ## What the spool contains, and what follows
 
 Every captured line holds the full text of a shell command and its output. That
@@ -219,16 +432,23 @@ line, so a count is never read as coverage.
 
 ## Error posture
 
-The hook exits 0 on every path, writes nothing to stdout in the capture duty,
-and never blocks. A malformed payload, an unreadable stdin, a permission error,
-a full disk, or any internal throw all produce the same result: exit 0, nothing
-captured, the observed session undisturbed. Capture is best-effort by design. A
-missing line is an acceptable cost; a disturbed session is not.
+The hook exits 0 on every path and never blocks. A malformed payload, an
+unreadable stdin, a permission error, a full disk, or any internal throw all
+produce the same result: exit 0, nothing captured, nothing emitted, the observed
+session undisturbed. Both duties are best-effort by design. A missing line and
+an undelivered pointer are acceptable costs; a disturbed session is not.
+
+The capture duty puts no byte on either channel. The only thing the process ever
+writes to stdout is the delivery valve's answer, and only when the valve has an
+item: a single JSON object whose `hookSpecificOutput` holds `hookEventName` set
+to `PostToolUse` and `additionalContext` set to the framed block. There is no
+deny path, no non-zero exit, and nothing on stderr.
 
 Never blocking is not the same as costing nothing. The hook is a Node process
 spawned on every matched tool call, a third one on this fleet's Bash boundary,
 and the dormant path pays that startup in full to stat one directory and exit.
 "Installing the kit turns nothing on" means it writes nothing and sends nothing,
 not that it costs nothing: the price of a dormant install is one process
-startup, tens of milliseconds, per Bash call. What the hook does not do is wait
-on anything: no lock, no network, no retry.
+startup, tens of milliseconds, per Bash call. What the hook does not do is WAIT
+on anything: no network, no retry, and no blocking on the delivery valve's
+exclusive claim, which is attempted once and abandoned rather than waited for.
