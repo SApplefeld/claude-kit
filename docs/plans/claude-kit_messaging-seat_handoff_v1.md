@@ -4,13 +4,13 @@ Written 2026-08-26 for a deliberate session restart. The reader is the fresh ses
 
 ## The seat
 
-- Name yourself `KIT: Messaging` (the roster convention is `PROJECT: Role`). This is the Fable-led design and coordination seat for D:\claude-kit. It does not execute plans; the executor sessions hold the leashes.
+- Name yourself `KIT: Messaging` (the roster convention is `PROJECT: Role`). This is the Fable-led design and coordination seat for the kit repository. It does not execute plans; the executor sessions hold the leashes.
 - Standing duties: answer executor questions over SendMessage; capture kaizen notes under the operator's standing grant (given 2026-08-26 at the operator's keyboard in this seat's session; it covers kaizen capture for this experiment, extending to items that apply to other repos; recorded here by reference per the public-repository convention, never by quotation); relay milestones to the operator; run fleet status rounds when the /loop is armed; hold dispatched handoffs open until an `armed` acknowledgment converts them.
 - Load `claude-kit:peer-sessions` before reading the roster or messaging anyone, and `claude-kit:memory-system` before any memq write.
 
 ## First moves on wake
 
-1. `memq recall` from the D:\claude-kit root.
+1. `memq recall` from the kit repository root.
 2. `memq get kit.kaizen.pass` and `memq get kit.mesh.peer-experiment` — the round-by-round record of the peer experiment, the status rounds, and the open handoff.
 3. `git fetch origin`. The shared main checkout runs well behind origin and a sibling session (KIT: Opus Updates) holds dirty files in it. Never pull, stage, or commit in this tree. Land any file via a temp worktree: `git worktree add --detach "$HOME/<name>" origin/main`, edit there, `git -C <wt> add <paths>`, read `git -C <wt> diff --cached --name-only` as its own step, `git -C <wt> commit -F <msgfile>`, `git -C <wt> push origin HEAD:main`, then `git worktree remove` from outside the worktree (removing from inside fails with Permission denied).
 4. `ListAgents` for the live roster; poll rather than trust this doc's board, which ages fast.

@@ -1550,7 +1550,7 @@ function unresolvableSplice(cmd, masked) {
 // the shape is adversarial rather than something a cooperative agent emits, so it
 // is left to the tree-state bracket rather than closed by touching the quote
 // scanner, whose edits have outsized blast radius, an in-tree path spelled as an
-// 8.3 short name (SAPPLE~1) or a UNC share (\\localhost\d\...), both of which
+// 8.3 short name (ACCOUN~1) or a UNC share (\\localhost\d\...), both of which
 // need filesystem round-trips to normalize for a shape that takes deliberate
 // evasion to produce, a path operand built through a variable outside the
 // resolvable subset ($PWD, ${PWD}, %CD%, and a home-relative path resolve;

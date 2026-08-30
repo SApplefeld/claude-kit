@@ -33,7 +33,7 @@ recorded in `docs/archive/claude-kit_operating-model_spec_v1.md`.
 ## Run
 
 ```
-node scan.mjs C:\Shared\Transcripts scan-results.json
+node scan.mjs C:\path\to\transcripts scan-results.json
 node analyze.mjs scan-results.json > analysis.json
 ```
 

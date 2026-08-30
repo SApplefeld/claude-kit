@@ -278,7 +278,7 @@ const GRANTED_VERBS = new Set(['log', 'get', 'recall', 'recent', 'unstamped', 't
 // literal, and admitting it is what keeps this splitter's word equal to the
 // shell's: bash leaves a:~/y, --f=~/x and /a/~/b exactly as they are, so
 // refusing one here would withhold the grant over a word nothing rewrites.
-// (A Windows 8.3 short path such as C:\\Users\\LOCALA~1\\... is one such word,
+// (A Windows 8.3 short path such as C:\\Users\\ACCOUN~1\\... is one such word,
 // though it is not one the grant covers: the target is judged by
 // path.resolve equality with no realpathSync anywhere, so an 8.3 spelling of
 // the script path is refused at the path check like any other spelling that
