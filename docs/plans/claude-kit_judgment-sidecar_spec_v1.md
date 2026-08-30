@@ -467,3 +467,104 @@ re-run the whole gate under a fresh claim, run the section 7 live acceptance (th
 batteries against the live endpoint plus a fresh harvest end to end), then Chapter 7, flip the
 plan to Complete, move section 8's substance to `docs/backlog.md` as a parked item, archive
 via curating-docs, commit and push.
+
+### Interim board 3 - 2026-08-30
+Section 7 (regression batteries and replay harness) is in its third fix round and has not
+closed. The entry exists because the closure-drought rule earns one and because the compaction
+gate raised its own signal: eight offers held over thirty-five minutes waiting for a boundary.
+
+In flight: section 7 only. Sections 1 through 6 are closed and pushed. Stage: built, reviewed
+three times, fixed twice, and now in fix round 3 at the same tier, which is the entry's most
+important content.
+
+Live dispatches: one, implementer-opus, dispatched against `.kit/s7-fixes-3.md` with 2
+Criticals, 6 Majors and 15 Minors. Its predecessor returned DONE_WITH_CONCERNS and both of its
+Criticals were confirmed fixed here by reading the code rather than the report: the state-root
+refusal now covers the whole `~/.claude` tree including the traversal spelling, and the
+reassurance sentence is unreachable except through an `ok` status because both other statuses
+return first; and the per-run token threads writer to reader through one object, so the log a
+run scores is a file no earlier run could have written to.
+
+The third review round is returned and closed: adversarial, blind and security, all at model
+opus and effort max through `Workflow`, the no-headroom row of the reviewer-effort table since
+the escalated writer tier is opus. Verdicts CHANGES_REQUIRED, CHANGES_REQUIRED and CONCERNS,
+with 2 Criticals, both confirmed at source here before the brief was written. The first: the
+screen resolves links on the candidate side while comparing against a lexical live tree, so a
+`~/.claude` sitting behind a link is accepted while the run prints a sentence claiming it
+compared by spelling and by realpath. The second: no lock exists anywhere in the battery or
+the daemon, and the daemon routes each verdict by the session id read off the spool entry
+rather than its own, so two concurrent runs on one state directory cross-feed and a run that
+made zero endpoint calls prints PASS off the other run's verdicts.
+
+The lever decision is the entry's real content, and it went against this session's own
+framing. Both Critical classes repeat, which the escalation rule reads as indicting the
+implementer and making the tier the lever. The comparison was run and the reading was that the
+rule's surface answer aimed at the wrong target, because each round's brief had named the
+instance and the implementer had closed the instance exactly, declaring in writing where it
+had stopped. A consult was convened to test that framing rather than to ratify it, and it
+refuted the framing on evidence out of this session's own brief. The round-2 brief's Class 1
+fix shape named one operand for resolution and handed the other over as a lexical literal, so
+the asymmetry the blind lens found was specified rather than missed. The round-2 brief already
+stated the Class 2 invariant verbatim, in the words this session proposed as the new lever, so
+that lever had already run and had not closed the class. The actual generator is neither the
+brief's nouns nor the implementer's tier: it is that every round's control was drawn from the
+instance the finding named, which is the failure `a-control-from-inside-the-patterns-own-
+vocabulary-proves-nothing` names and which this plan stamped in Chapter 6. The ruling is to
+spend the second and last opus dispatch rather than the Fable bump, since a tier bump cannot
+reach a controller-authored control defect, and to specify each fix as a property with a
+control drawn from a withheld instance. Adopted in full. The reach of both classes has also
+collapsed monotonically across the three rounds, from no guard at all to a guard covering all
+but a link on the live side, and from contamination on ordinary documented re-use to
+contamination requiring two simultaneous runs against one explicitly named root, which reads
+as convergence rather than a stuck implementer.
+
+Two rulings on direction were this session's rather than the reviewers', and both went against
+the reviewer's proposed fix. A frozen field longer than the field cap is not refused, because
+the capture hook cuts at that same cap and refusing would be refusing correct behaviour and
+would make the shipped fixture unloadable; it is named per case in the run report instead, with
+the README stating that a frozen field may legitimately exceed any real spool line. And the
+live-store refusal keeps one predicate-only case aimed at the real path, which makes no writes
+and spawns no child, while both process-spawning cases move to a fixture home, because a case
+that names the real path is what proves the refusal reaches it and a case that spawns the
+command there is what could create the fleet-wide capture lever if the screen ever regressed.
+
+Two further findings were confirmed here rather than taken from the reports. Four of the
+thirteen frozen judgment cases carry a `corrected` field whose own text says the original hand
+adjudication was wrong, while the command's header and the fixture README both claim every
+expected verdict was adjudicated before the daemon existed, which is an honesty gate failing in
+two shipped artifacts. And case 9's command field is 3,478 characters against a 2,000-character
+cap, so it is cut at replay with nothing reporting it.
+
+Gate, this session's own, run under its own claim at 22:22Z and read from the run's own exit
+marker: 2614 tests, 2608 passing, 1 failing, 5 skipped, exit 1. Against Interim board 2's
+2587 / 2582 / 1 / 4 that is plus 27 tests, plus 26 passing and plus 1 skip, with failures
+unchanged, and those figures are exactly the battery lane's own reported delta, a second
+reading agreeing no other suite moved. The one red is this machine's known permanent failure at
+`test/memory-session.test.js:865`. The background wrapper reported exit 0 while the run's own
+marker held EXIT=1, which is the wrapper-exit trap rather than a discrepancy. The box was
+claimed at 22:22:27Z by exclusive create with `Started:` interpolated from a clock read at the
+write, and released at 22:33:58Z by a session-scoped delete after matching the file's own
+`Session:` line.
+
+Honesty sweeps were run here rather than accepted from the report, each with a control proven
+to speak first: em dashes, raw control bytes and a structural private-address shape over the
+changed files, and the configured endpoint address over the whole repository. All four came
+back empty against controls that spoke. The scope is stated at its real strength: the literal
+address is swept and the class of addresses is covered only by the structural pattern.
+
+A residual is recorded rather than closed. After the reconciliation fix lands, two concurrent
+runs on one state directory can still interleave such that a run parses exactly its own line
+count while some of its cases were judged by the other run's process. The verdicts are real
+measurements of identical frozen content, so the harm reduces from a false pass to provenance
+misattribution, the printed fingerprint and model naming one config while some records came
+from another. Marked inferred by the consultant and not verified here.
+
+Uncommitted and deliberately so: the two `docs/` findings from round 2 remain fixed in the
+working tree and ride with the section's close commit, as Interim board 2 already records.
+
+Next action: await fix round 3, verify both Criticals against the code with their controls run
+red then green rather than against the report, re-run the whole gate under a fresh claim, then
+take the operator fork the consult surfaced, which is whether a fourth review round is worth
+three reviewer dispatches against a residual now narrowed to one recorded Minor. Then the
+section 7 live acceptance, Chapter 7, flip the plan to Complete, move section 8's substance to
+`docs/backlog.md` as a parked item, archive via curating-docs, commit and push.
