@@ -320,6 +320,26 @@ test('anchor gets no grant, in the shape that grants its neighbours', () => {
     assertGrant(runHook('node "' + MEMQ + '" get fact'), 'the read of the record anchor writes');
 });
 
+test('triggers gets no grant, in the shape that grants its neighbours', () => {
+    // The verb rewrites a record of the project tier in place, at a name the
+    // command line gives it, and the line it writes is what decides when that
+    // memory is put in front of a session. A worker could aim a record's
+    // recognition wherever it liked with nobody in the loop, so the grant
+    // does not cover it, exactly as it does not cover anchor. memq has no
+    // second refusal for the verb, so this screen is the only one.
+    assertNoDecision(runHook('node "' + MEMQ + '" triggers fact cmd:git stash'),
+        'triggers with an entry');
+    assertNoDecision(runHook('node "' + MEMQ + '" triggers fact'),
+        'triggers short of its arity is refused the grant just the same');
+    // The control the deny rests on: the same harness, the same command
+    // shape, a verb the allowlist does name. Without it a fixture broken in
+    // any of the ways this file tests elsewhere would produce the same
+    // silence and read as the screen doing its job.
+    assertGrant(runHook('node "' + MEMQ + '" touch fact --applied'),
+        'a listed verb of the same shape, taking a name and a word after it');
+    assertGrant(runHook('node "' + MEMQ + '" get fact'), 'the read of the record triggers writes');
+});
+
 test('--rollup gets no grant, while the archive flags and a bare prune keep theirs', () => {
     // The rollup replaces every expired journal group with one tally line and
     // drops the prose of each entry in it. Nothing in the store keeps that
@@ -800,7 +820,7 @@ test('memq loads code out of a directory in one place, and that place is find', 
         'semanticChannel is reached from cmdFind alone');
 });
 
-test('the granted verbs are memq\'s own dispatch minus the four withheld', () => {
+test('the granted verbs are memq\'s own dispatch minus the five withheld', () => {
     // The list in the hook mirrors memq's subcommands by hand, and each side is
     // otherwise tested only against its own literal, so a verb renamed in the
     // CLI leaves both suites green while a fleet worker's command silently
@@ -821,11 +841,12 @@ test('the granted verbs are memq\'s own dispatch minus the four withheld', () =>
     assert.ok(listed, 'the hook declares its verb list as a Set literal');
     const granted = new Set([...listed[1].matchAll(/'([^']+)'/g)].map((m) => m[1]));
 
-    // The four the grant withholds, each for a reason stated in the hook: the
+    // The five the grant withholds, each for a reason stated in the hook: the
     // deletes remove a shared-tier record outright, find loads an embedder
-    // out of a directory the command line does not name, and anchor rewrites
-    // a project-tier record in place.
-    const withheld = ['delete-type', 'delete-operator', 'find', 'anchor'];
+    // out of a directory the command line does not name, and anchor and
+    // triggers each rewrite a project-tier record in place, at a name the
+    // command line gives them.
+    const withheld = ['delete-type', 'delete-operator', 'find', 'anchor', 'triggers'];
     assert.deepStrictEqual([...granted].sort(),
         [...dispatched].filter((v) => !withheld.includes(v)).sort(),
         'the granted verbs are exactly memq\'s dispatch minus ' + withheld.join(', '));

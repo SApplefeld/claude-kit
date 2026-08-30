@@ -6,7 +6,8 @@
 // frontmatter passes through none of the refusals memq's own verbs apply: a
 // hand-written `supersedes:` naming a record that does not exist, a `tags:`
 // list in the YAML form memq reads as no tags at all, an indented `pinned:`
-// that pins nothing, a malformed date, an `anchors:` entry outside the grammar,
+// that pins nothing, a malformed date, an `anchors:` or `triggers:` entry
+// outside the grammar,
 // and a frontmatter fence that does not close inside the line bound memq reads
 // a block within, or that never starts on line 1, all land
 // with nothing said. This is the write-door check for those, and it is the only
@@ -20,8 +21,9 @@
 // Every judgment about where a record's fields may sit is memq's own. The tier
 // directories, what may be a memory filename, the frontmatter block grammar,
 // which line a field is read off (the top level, or the harness's `metadata:`
-// map, and nowhere else), the pointer grammar, the anchor path grammar and the
-// anchor root all come from scripts/memq.js through its exports, so this guard
+// map, and nowhere else), the pointer grammar, the anchor path grammar, the
+// anchor root and the recognition-trigger grammar all come from
+// scripts/memq.js through its exports, so this guard
 // and the readers it guards for cannot come to disagree about what a record
 // says. Three rules are spelled here because memq decides none of them: the
 // house date form a `pinned:` or `created:` value takes, the `- ` item that
@@ -143,7 +145,24 @@ const MEMQ = path.join(__dirname, '..', 'scripts', 'memq.js');
 // The fields memq reads out of a memory record's frontmatter, all of them: the
 // placement rule below is asked of these and nothing else, so a key the store
 // does not read cannot be refused for where it sits.
-const MEMQ_FIELDS = ['pinned', 'supersedes', 'anchors', 'tags', 'created', 'machine'];
+const MEMQ_FIELDS = ['pinned', 'supersedes', 'anchors', 'triggers', 'tags', 'created', 'machine'];
+
+// The memq exports whose absence this guard tells apart from an answer, each
+// with the typeof its caller here needs. They are the ones newer than
+// isMemoryFilename, which is what a plugin cache one version behind can supply
+// while lacking these: a symbol older than that cannot be missing from a memq
+// this guard was able to require at all. The gate in main() reads this list.
+const MEMQ_SYMBOLS = [
+    ['tierDirFor', 'function'],
+    ['tierNameFor', 'function'],
+    ['namesNetworkShare', 'function'],
+    ['frontmatterTriggers', 'function'],
+    ['parseTriggers', 'function'],
+    ['TRIGGER_TYPES', 'object'],
+    ['TRIGGER_FRAGMENT_TYPES', 'object'],
+    ['TRIGGER_PATTERN_MIN', 'number'],
+    ['TRIGGER_ENTRY_CAP', 'number']
+];
 
 // Whether a value is the date form this store writes: YYYY-MM-DD naming a day
 // the calendar holds. It is this guard's own rule rather than something memq
@@ -525,17 +544,24 @@ function quoted(memq, value) {
     return notes.length === 0 ? kept : kept + ' [' + notes.join('; ') + ']';
 }
 
-// The longest text a refused anchors: entry can carry once memq's own
-// reduction has annotated it, measured from that reduction rather than
-// declared here: three probe entries drive it (via parseAnchors) through each
-// fault it can name, the cut case carrying every note it can join, and the
-// longest text handed back is the bound. Measuring keeps a refused entry
+// The longest text a refused anchors: or triggers: entry can carry once
+// memq's own reduction has annotated it, measured from that reduction rather
+// than declared here: probe entries drive each field's parse through the
+// faults it can name, the cut cases carrying every note they can join, and
+// the longest text handed back is the bound. Measuring keeps a refused entry
 // shown whole through its own annotation, and moves with memq's wording
 // instead of drifting from it.
+//
+// One bound covers both fields because one `shown` prints them, and their
+// reductions are the same reduction over different grammars, so the max is
+// the honest answer for either: a bound taken from anchors alone would cut a
+// refused trigger mid-annotation on the strength of a measurement of another
+// field.
 let refusedTextCap = null;
 function shownCap(memq) {
     if (refusedTextCap !== null) return refusedTextCap;
     const cap = memq.ANCHOR_ENTRY_CAP;
+    const triggerCap = memq.TRIGGER_ENTRY_CAP;
     // Each probe opens with one character of the invisible class (BEL), so
     // every measured answer carries the reduction's removed-characters note.
     const probes = [
@@ -543,10 +569,43 @@ function shownCap(memq) {
         '\u0007' + 'a'.repeat(cap - 42) + '@' + '0'.repeat(40),  // at the cap: a path the grammar refuses
         '\u0007' + 'a'.repeat(cap - 1)                           // at the cap: not <path>@<sha> at all
     ];
-    const parsed = memq.parseAnchors(probes.join(', '));
-    const lengths = (parsed && Array.isArray(parsed.items) ? parsed.items : [])
-        .map((it) => String(it.text).length);
-    refusedTextCap = Math.max(cap, ...lengths);
+    // The trigger probes, each written to reach one named fault, which is a
+    // property worth stating because getting it wrong is silent: a probe that
+    // trips an earlier bar than the one it is named for still returns a
+    // string and still contributes a length, so the bound stays plausible
+    // while measuring nothing it claims to. Two rules keep them honest, and
+    // shownCap's own test asserts the fault each one yields.
+    //
+    // Where the BEL sits decides whether the type parses at all. An entry is
+    // read as <type>:<pattern>, so a lead written ahead of the type leaves no
+    // recognizable type and the probe comes back carrying the not-a-type
+    // fault whatever else was wrong with it. It goes after the type prefix,
+    // except in the probe that is for that fault.
+    //
+    // And the lead is only on the probes whose fault it cannot pre-empt. The
+    // BEL is in the invisible class the pattern charset refuses, so a probe
+    // carrying one can never reach the specificity floor or the bare-token
+    // bar, both of which are asked after the charset. Those three probes
+    // carry no lead and so no removed-characters note, which costs the
+    // measurement nothing: their faults are reachable only by short patterns,
+    // and the bound is set by the long ones above them.
+    const lead = String.fromCharCode(7);
+    const triggerProbes = [
+        'cmd:' + lead + 'a'.repeat(triggerCap),      // past the entry cap: cut, both notes
+        'cmd:' + lead + 'a'.repeat(triggerCap - 5),  // at the cap: the pattern charset
+        lead + 'x'.repeat(triggerCap - 1),           // at the cap: no type prefix at all
+        'cmd:git',                                   // under the floor, a fragment type
+        'tool:ls',                                   // under the floor, an identifier type
+        'cmd:node'                                   // a bare common token
+    ];
+    const lengths = [];
+    for (const [parse, list] of [[memq.parseAnchors, probes], [memq.parseTriggers, triggerProbes]]) {
+        const parsed = parse(list.join(', '));
+        for (const item of (parsed && Array.isArray(parsed.items) ? parsed.items : [])) {
+            lengths.push(String(item.text).length);
+        }
+    }
+    refusedTextCap = Math.max(cap, triggerCap, ...lengths);
     return refusedTextCap;
 }
 
@@ -765,7 +824,49 @@ function fenceIsLate(block) {
 // that could not run, or null when it breaks none of them. Every question here
 // is asked of memq's own readers, so a field this refuses is a field the store
 // would read (or fail to read) exactly this way.
+//
+// A fault outranks a cause, and that is the whole reason the checks are a list
+// rather than a run of early returns. A cause is an allow: it says one field
+// could not be looked at. A fault is a deny. So a check that stops the run the
+// moment it produces a cause takes every deny below it down with it, and which
+// denies those are is decided by whichever field happens to sit first in the
+// source. Every check here runs until one produces a fault, which makes the
+// order below a matter of which fault is reported rather than of which faults
+// are reachable.
+//
+// The cause kept is the first one produced, the checks running in the order a
+// record is read: the earliest field the store could not read is the one whose
+// repair is likeliest to let the rest be read at all, and reporting a later
+// one would send its author past the field that is actually in the way.
+//
+// The list costs nothing extra on a clean record and nothing extra on a
+// denied one, because the loop returns at the first fault: the checks past a
+// filesystem-touching one run only when that one answered a cause, which is
+// exactly the case this exists for.
 function frontmatterFault(memq, text, block, dir, file, cwd) {
+    const checks = [
+        () => unclosedFault(memq, block),
+        () => lateFenceFault(block),
+        () => placementFault(memq, text),
+        () => triggersFault(memq, text),
+        () => supersedesCheck(memq, text, dir, file),
+        () => anchorsFault(memq, text, cwd),
+        () => tagsFault(memq, text, block),
+        () => dateFault(memq, text)
+    ];
+    let cause = null;
+    for (const check of checks) {
+        const answer = check();
+        if (answer === null || answer === undefined) continue;
+        if (typeof answer.fault === 'string') return answer;
+        if (cause === null) cause = answer;
+    }
+    return cause;
+}
+
+// A frontmatter block that opens and never closes inside the bound memq reads
+// a block within, which is every field of the record gone unread.
+function unclosedFault(memq, block) {
     if (memq.frontmatterUnclosed(block)) {
         // The repair is memq's own, because there are two shapes of this
         // state and they take opposite instructions: a block whose closing
@@ -801,6 +902,12 @@ function frontmatterFault(memq, text, block, dir, file, cwd) {
                         + 'the record is to carry above the closing line') + '.'
         };
     }
+    return null;
+}
+
+// A fence that is not the record's first line, which memq reads as no block
+// at all, every field inside it included.
+function lateFenceFault(block) {
     if (fenceIsLate(block)) {
         return {
             fault: 'Its frontmatter fence is not the record\'s first line, and memq reads a block '
@@ -809,9 +916,13 @@ function frontmatterFault(memq, text, block, dir, file, cwd) {
                 + 'included.'
         };
     }
+    return null;
+}
 
-    // Placement first, since a misplaced field is why the value checks below
-    // would otherwise see nothing at all.
+// A memq field indented under a key of the author's own, where memq does not
+// read it. Placement is asked before any value, since a misplaced field is why
+// the value checks would otherwise see nothing at all.
+function placementFault(memq, text) {
     for (const name of MEMQ_FIELDS) {
         if (memq.frontmatterValue(text, name) === memq.FRONTMATTER_INDENTED) {
             return {
@@ -821,13 +932,33 @@ function frontmatterFault(memq, text, block, dir, file, cwd) {
             };
         }
     }
+    return null;
+}
 
+// The pointer, asked only of a record that declares one.
+function supersedesCheck(memq, text, dir, file) {
     const supersedes = memq.frontmatterValue(text, 'supersedes');
     if (typeof supersedes === 'string' && supersedes.trim() !== '') {
-        const answer = supersedesFault(memq, supersedes, dir, file);
-        if (answer !== null) return answer;
+        return supersedesFault(memq, supersedes, dir, file);
     }
+    return null;
+}
 
+// The tags line in the one shape memq reads as no tags at all.
+function tagsFault(memq, text, block) {
+    if (tagsAreListForm(memq, text, block)) {
+        return {
+            fault: 'Its tags: carries a YAML list rather than an inline value, which memq reads as '
+                + 'no tags at all. Write them on the key\'s own line, comma separated: tags: a, b.'
+        };
+    }
+    return null;
+}
+
+// The anchors line: its grammar, then the containment of what it names, then
+// whether the whole of it was read. This is the one check here that touches
+// the filesystem, and only for a record that names an anchor.
+function anchorsFault(memq, text, cwd) {
     const anchors = memq.frontmatterAnchors(text);
     if (anchors === null) {
         return { cause: 'this record\'s anchors could not be read' };
@@ -903,15 +1034,7 @@ function frontmatterFault(memq, text, block, dir, file, cwd) {
         return { cause: 'this record\'s anchors: line was cut at memq\'s bound before its end, so '
             + 'the anchors on its unread tail were not checked' };
     }
-
-    if (tagsAreListForm(memq, text, block)) {
-        return {
-            fault: 'Its tags: carries a YAML list rather than an inline value, which memq reads as '
-                + 'no tags at all. Write them on the key\'s own line, comma separated: tags: a, b.'
-        };
-    }
-
-    return dateFault(memq, text);
+    return null;
 }
 
 // The date rules, which are two different rules and say so. A `created:` memq
@@ -940,6 +1063,46 @@ function dateFault(memq, text) {
                     + 'calendar holds.'
             };
         }
+    }
+    return null;
+}
+
+// Why a `triggers:` line is one memq will not read whole as `{fault}`,
+// `{cause}` when the record says nothing this can read, or null when every
+// entry on it is inside the grammar.
+//
+// The whole check is memq's own parse, because the field has no second half
+// to resolve: an anchor names a path that then has to be found under a root,
+// and a trigger is a pattern that is judged entirely by its own text. So
+// there is no containment check here and no root derived, and a record
+// declaring triggers costs this guard no filesystem walk at all.
+//
+// A record whose frontmatter could not be read is a cause rather than a
+// fault, for the reason the anchors branch above gives: silence there would
+// be the checked-and-clean answer for a line nobody looked at.
+function triggersFault(memq, text) {
+    const triggers = memq.frontmatterTriggers(text);
+    if (triggers === null) return { cause: 'this record\'s triggers could not be read' };
+    if (triggers.bad.length) {
+        return {
+            fault: 'Its triggers: carries an entry outside the grammar: '
+                + shown(memq, triggers.bad[0]) + '. An entry is <type>:<pattern>, the type one of '
+                + memq.TRIGGER_TYPES.join(', ') + ', and the pattern at least '
+                + memq.TRIGGER_PATTERN_MIN + ' characters, not a bare common token on the '
+                + memq.TRIGGER_FRAGMENT_TYPES.join('/') + ' types, and free of the quote, the '
+                + 'opening bracket and the \': \', \' #\' and trailing \':\' sequences a YAML '
+                + 'line reads as syntax. The refused entry names the rule it met. '
+                + 'memq triggers <name> <type>:<pattern>... writes the line and names every '
+                + 'entry it refuses.'
+        };
+    }
+    if (triggers.truncated) {
+        // The parse reads a bounded head of the line and flags the cut, so
+        // the entries past it exist in the record and were never checked;
+        // silence here would be the checked-and-clean answer for triggers
+        // nobody looked at.
+        return { cause: 'this record\'s triggers: line was cut at memq\'s bound before its end, '
+            + 'so the triggers on its unread tail were not checked' };
     }
     return null;
 }
@@ -1101,22 +1264,32 @@ function main() {
 
     // tierDirFor, tierNameFor and namesNetworkShare are newer than
     // isMemoryFilename, so a plugin cache carrying an older memq.js can
-    // supply an isMemoryFilename that works while lacking any of the three.
-    // namesNetworkShare belongs in this same gate rather than a separate one:
-    // placeTarget below calls it, and placeTarget runs
-    // before placedTier is ever set (placedTier = 'memory' is the line right
-    // after it), so a throw out of a missing namesNetworkShare reaches the
-    // outer catch around main() with placedTier still null, and notChecked
-    // never runs there either - the exact silent-allow this gate exists to
-    // close, left open for its own sibling symbol. Checked here, before any
-    // of the three is called, so an export skew is told apart from a deny
-    // that ran and found nothing, the same way memory-session.js's
-    // DRIFT_MEMQ_SYMBOLS tells a skewed memq apart from a clean drift answer.
-    if (typeof memq.tierDirFor !== 'function' || typeof memq.tierNameFor !== 'function'
-            || typeof memq.namesNetworkShare !== 'function') {
+    // supply an isMemoryFilename that works while lacking any of them, and
+    // the triggers exports are newer again. namesNetworkShare belongs in this
+    // same gate rather than a separate one: placeTarget below calls it, and
+    // placeTarget runs before placedTier is ever set (placedTier = 'memory'
+    // is the line right after it), so a throw out of a missing
+    // namesNetworkShare reaches the outer catch around main() with placedTier
+    // still null, and notChecked never runs there either - the exact
+    // silent-allow this gate exists to close, left open for its own sibling
+    // symbol. The triggers exports are here for the same reason a step later:
+    // frontmatterFault reaches for them on every project-tier record, and a
+    // throw out of one of them reaches the outer catch too, where the whole
+    // project-tier check set degrades through a generic answer that cannot
+    // say a skew was what happened.
+    //
+    // Checked here, before any of them is called, so an export skew is told
+    // apart from a deny that ran and found nothing, the same way
+    // memory-session.js's DRIFT_MEMQ_SYMBOLS tells a skewed memq apart from a
+    // clean drift answer. The answer names the symbols that are missing
+    // rather than the set they came from, so a cache one export behind says
+    // which one.
+    const missing = MEMQ_SYMBOLS.filter(([name, kind]) => typeof memq[name] !== kind)
+        .map(([name]) => name);
+    if (missing.length > 0) {
         placedTier = 'memory';
-        notChecked('memq\'s tierDirFor, tierNameFor and namesNetworkShare symbols are not all '
-            + 'there, which a version skew between this guard and its cached memq.js can cause');
+        notChecked('memq\'s ' + missing.join(', ') + (missing.length === 1 ? ' symbol is' : ' symbols are')
+            + ' not there, which a version skew between this guard and its cached memq.js can cause');
         return;
     }
 

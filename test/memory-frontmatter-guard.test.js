@@ -34,6 +34,8 @@ const os = require('os');
 
 const GUARD = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'memory-frontmatter-guard.js');
 
+const MEMQ_MODULE = require('../plugins/claude-kit/scripts/memq.js');
+
 const SHA = 'ce013625030ba8dba906f756967f9e9ca394464a';
 const WIN32_ONLY = { skip: process.platform === 'win32' ? false : 'a win32 path spelling' };
 
@@ -325,6 +327,35 @@ test('a refused anchor entry is quoted back with its own characters and its own 
     } finally { rmStore(store); }
 });
 
+test('a triggers: entry outside the grammar is denied, and a well-formed one allows', () => {
+    const store = makeStore();
+    try {
+        const target = path.join(store.project, 'new-record.md');
+        // One entry per bar the grammar holds: the shape, the type, the two
+        // specificity bars, and the glob's path rules. Neither specificity bar
+        // subsumes the other, so both are named here: `cmd:git` clears no
+        // length floor and `cmd:node` clears it and is a bare common token.
+        for (const bad of ['not-an-entry', 'shell:git stash', 'cmd:git', 'cmd:node',
+            'glob:../outside/*.js']) {
+            const res = runGuard(store, writeTo(store, target, record(['triggers: ' + bad])));
+            assertDeny(res, /triggers: carries an entry outside the grammar/,
+                'expected a deny for trigger entry ' + bad);
+            assert.match(res.stderr, /memq triggers/);
+        }
+        // The control that earns those denies: the same field carrying entries
+        // of every type, at the same path, is checked and clean. Without it a
+        // guard that denied every triggers: line would read the same.
+        assertAllow(runGuard(store, writeTo(store, target,
+            record(['triggers: cmd:git stash, err:module not found, skill:memory-system, '
+                + 'agent:code-reviewer, tool:WebFetch, glob:plugins/**/*.js']))),
+            'one entry of each type');
+        // The bare-token bar is about the whole pattern, so the same word
+        // inside a longer one lands.
+        assertAllow(runGuard(store, writeTo(store, target,
+            record(['triggers: cmd:node --test']))), 'a bare token inside a longer pattern');
+    } finally { rmStore(store); }
+});
+
 test('a list-form tags: is denied at the top level and under metadata:, an inline one allows', () => {
     const store = makeStore();
     try {
@@ -349,6 +380,7 @@ test('a memq field indented under any key other than metadata: is denied, and un
             ['created', 'created: 2026-08-25'],
             ['machine', 'machine: some-box'],
             ['anchors', 'anchors: src/a.js@' + SHA],
+            ['triggers', 'triggers: cmd:git stash'],
             ['supersedes', 'supersedes: live-record']
         ];
         for (const [field, line] of cases) {
@@ -1217,30 +1249,45 @@ test("tierOf names the tier memq's own tierNameFor answers, so a shape memq move
     } finally { rmStore(store); }
 });
 
-// tierDirFor, tierNameFor and namesNetworkShare are this section's own
-// additions, so a cached memq.js from before they existed can supply
-// isMemoryFilename (older, unrelated) while lacking any of the three. Unlike
-// the throwing-function case above (still typeof 'function', still caught by
-// the outer catch with placedTier left null, and rightly silent for a target
-// that was never going to be judged), a MISSING export is checked for before
-// any of the three is called at all, so a shared-tier target that would
-// otherwise deny gets a Not checked line instead of vanishing into the same
-// silence the throwing case earns for a target outside the store.
-// namesNetworkShare belongs on this gate: placeTarget calls
-// it and runs before placedTier is ever set, so a missing namesNetworkShare
-// would reach the outer catch with placedTier still null, the exact
-// silent-allow this test's own sibling case (dropping tierDirFor or
-// tierNameFor) was written to catch, left open for this one symbol.
-test("a memq missing tierDirFor, tierNameFor or namesNetworkShare is reported rather than "
+// Every symbol on the guard's gate is newer than isMemoryFilename, so a
+// cached memq.js from before they existed can supply isMemoryFilename (older,
+// unrelated) while lacking any of them. Unlike the throwing-function case
+// above (still typeof 'function', still caught by the outer catch with
+// placedTier left null, and rightly silent for a target that was never going
+// to be judged), a MISSING export is checked for before any of them is called
+// at all, so a shared-tier target that would otherwise deny gets a Not checked
+// line instead of vanishing into the same silence the throwing case earns for
+// a target outside the store.
+//
+// namesNetworkShare belongs on this gate: placeTarget calls it and runs before
+// placedTier is ever set, so a missing namesNetworkShare would reach the outer
+// catch with placedTier still null, the exact silent-allow the tierDirFor and
+// tierNameFor cases were written to catch. The triggers exports belong on it
+// one step later, frontmatterFault reaching for them on every project-tier
+// record, where a throw degrades the whole check set through a generic answer
+// that cannot say a skew was what happened.
+test('a memq missing any symbol the guard is newer than is reported rather than '
     + 'silently allowed', () => {
+    // The list is read out of the guard rather than restated, so a symbol
+    // added to the gate is covered here without a second edit, and a symbol
+    // the guard starts calling without gating it shows up as an uncovered
+    // name in the source scan below rather than as a silent allow in the
+    // field.
     const store = makeStore();
     try {
         const target = path.join(store.type, 'a-type-record.md');
-        for (const dropped of ['tierDirFor', 'tierNameFor', 'namesNetworkShare']) {
+        const src = fs.readFileSync(GUARD, 'utf8');
+        const declared = /const MEMQ_SYMBOLS = \[([\s\S]*?)\n\];/.exec(src);
+        assert.ok(declared, 'the guard declares its required memq symbols as an array literal');
+        const gated = new Function('return [' + declared[1] + '];')().map(([name]) => name);
+        assert.ok(gated.includes('frontmatterTriggers') && gated.includes('parseTriggers')
+            && gated.includes('TRIGGER_ENTRY_CAP'),
+        'the triggers exports frontmatterFault reaches for are gated: ' + gated.join(', '));
+        for (const dropped of gated) {
             const res = runGuard(store, writeTo(store, target, CLEAN), undefined,
                 { NODE_OPTIONS: memqMissingExportPreload(store.base, dropped) });
             assertNotChecked(res,
-                /tierDirFor, tierNameFor and namesNetworkShare symbols are not all there/,
+                new RegExp('memq\'s ' + dropped + ' symbol is not there'),
                 'a memq missing ' + dropped + ' is reported: ' + res.stdout + res.stderr);
         }
         // The control: the same target, memq whole, still denies the
@@ -1281,6 +1328,166 @@ test('an anchors: line cut at memq\'s bound is allowed and says the unread tail 
         // whole, so the line above is the cut speaking.
         const atCap = Array.from({ length: 32 }, (_, i) => 'src/f' + i + '.js@' + SHA).join(', ');
         assertAllow(runGuard(store, writeTo(store, target, record(['anchors: ' + atCap]))),
+            'a line at the bound is checked and clean');
+    } finally { rmStore(store); }
+});
+
+test('a bad triggers: entry is denied whatever else the record declares', () => {
+    // Order inside frontmatterFault is load-bearing, and getting it wrong is
+    // an allow rather than a crash. The supersedes check and the anchors
+    // block can each stop early with a `cause`, which allows the write, so a
+    // triggers check placed after them is skipped for exactly the records
+    // that also declare a pointer or an anchor. The record then lands
+    // unrefused at the only write door this field has, under a not-checked
+    // note naming a different field, which reads as though the triggers had
+    // been looked at.
+    //
+    // The triggers check asks nothing of the filesystem, so it is owed to
+    // every payload whatever the filesystem says about the rest of the
+    // record. Each case below pairs a valid companion field with an
+    // out-of-grammar triggers entry, and each is a cause-returning branch
+    // that used to swallow it.
+    const store = makeStore();
+    try {
+        seed(store);
+        const target = path.join(store.project, 'new-record.md');
+        const bad = 'triggers: cmd:node';
+        const cases = [
+            ['a valid anchor beside it', ['anchors: src/a.js@' + SHA, bad]],
+            ['a supersedes pointer beside it', ['supersedes: live-record', bad]],
+            ['an anchors line cut at the bound beside it',
+                ['anchors: ' + Array.from({ length: 33 }, (_, i) => 'src/f' + i + '.js@' + SHA).join(', '),
+                    bad]],
+            ['every companion at once',
+                ['supersedes: live-record', 'anchors: src/a.js@' + SHA, 'tags: convention', bad]]
+        ];
+        for (const [label, lines] of cases) {
+            assertDeny(runGuard(store, writeTo(store, target, record(lines))),
+                /triggers: carries an entry outside the grammar/,
+                'expected a deny with ' + label);
+        }
+        // The no-project-root branch is the same shape reached through the
+        // payload's cwd rather than through the record, so it is exercised
+        // the way the anchors tests reach it: with a store pin in the
+        // environment, which takes the root away.
+        const pinned = { KIT_MEMORY_PROJECT: 'inst-a' };
+        assertDeny(runGuard(store, writeTo(store, target,
+            record(['anchors: src/a.js@' + SHA, bad])), undefined, pinned),
+            /triggers: carries an entry outside the grammar/,
+            'expected a deny where no project root resolves');
+        // The controls: the same companions with a valid triggers line are
+        // checked and clean, so the denies above are the triggers entry and
+        // not the companion.
+        assertAllow(runGuard(store, writeTo(store, target,
+            record(['supersedes: live-record', 'anchors: src/a.js@' + SHA,
+                'triggers: cmd:node --test']))),
+            'the same record with a valid triggers line lands');
+    } finally { rmStore(store); }
+});
+
+test('a cause from one field never swallows a fault from another', () => {
+    // The general shape, of which the triggers ordering above is one
+    // instance: a `cause` is an allow, so any check that returns one and
+    // stops the run takes every deny below it down with it. Ordering the
+    // checks by hand only chooses which field is victimised, so a fault
+    // outranks a cause and every check runs until one produces a fault.
+    //
+    // The triggers check is the probe because it is the earliest cause-
+    // returning check in the run: its truncation branch fires on a line of 33
+    // well-formed entries, where `bad` is empty because only the first 32 are
+    // examined. Each companion below is a fault from a check that runs after
+    // it, so under an early-return-on-cause each of these records would land.
+    const store = makeStore();
+    try {
+        seed(store);
+        const target = path.join(store.project, 'new-record.md');
+        const cut = 'triggers: '
+            + Array.from({ length: 33 }, (_, i) => 'cmd:run-' + i).join(', ');
+        const cases = [
+            ['a dangling supersedes', [cut, 'supersedes: not-a-record'], /holds no such record/],
+            ['an anchors entry outside the grammar', [cut, 'anchors: src/a.js@nothex'],
+                /anchors: carries an entry outside the grammar/],
+            ['a list-form tags', [cut, 'tags:', '- convention'], /YAML list/],
+            ['an unparseable created', [cut, 'created: someday'], /cannot parse/],
+            ['a created outside the house form', [cut, 'created: 2026-02-30'],
+                /not the date form this store writes/]
+        ];
+        for (const [label, lines, pattern] of cases) {
+            assertDeny(runGuard(store, writeTo(store, target, record(lines))), pattern,
+                'expected a deny with ' + label + ' below a cut triggers line');
+        }
+        // The other direction, which is what makes the denies above the
+        // companion rather than the cut line: the same cut line with no
+        // deniable field beside it is the not-checked allow it was always
+        // meant to be, and it still names the tail nobody read.
+        assertNotChecked(runGuard(store, writeTo(store, target, record([cut]))),
+            /triggers on its unread tail were not checked/);
+        // And the cause is still reported when it is the only answer there
+        // is, even with a clean companion field beside it.
+        assertNotChecked(runGuard(store, writeTo(store, target,
+            record([cut, 'supersedes: live-record', 'tags: convention']))),
+            /triggers on its unread tail were not checked/);
+    } finally { rmStore(store); }
+});
+
+test('each shownCap trigger probe reaches the fault it is named for', () => {
+    // shownCap measures the display bound from memq's own reduction rather
+    // than declaring it, which only works while each probe reaches the fault
+    // it was written for. The failure mode is silent: a probe that trips an
+    // earlier bar still returns a string and still contributes a length, so
+    // the bound stays plausible while the fault it claims to track goes
+    // unmeasured and can drift freely. Two bars pre-empt the ones a probe
+    // aims at, and both have caught a probe in this file: a lead written
+    // ahead of the type prefix leaves no recognizable type, and an invisible
+    // character anywhere in a pattern trips the charset before either
+    // specificity bar is asked.
+    //
+    // The probes are read out of the guard rather than restated here, so this
+    // pins the list the guard actually measures with instead of a copy of it.
+    const src = fs.readFileSync(GUARD, 'utf8');
+    const declared = /const triggerProbes = \[([\s\S]*?)\n {4}\];/.exec(src);
+    assert.ok(declared, 'the guard declares its trigger probes as an array literal');
+    const build = new Function('triggerCap', 'lead', 'return [' + declared[1] + '];');
+    const probes = build(MEMQ_MODULE.TRIGGER_ENTRY_CAP, String.fromCharCode(7));
+    const items = MEMQ_MODULE.parseTriggers(probes.join(', ')).items;
+    assert.strictEqual(items.length, probes.length,
+        'every probe is refused and read back as its own entry');
+
+    // One probe per fault the grammar can name, which is what makes the
+    // measurement cover the wording of each. Distinctness is the assertion
+    // that catches the collapse: probes falling onto one bar share a fault.
+    const faults = items.map((it) => /\[(?:[^\]]*; )?([^\];]+)\]$/.exec(it.text)[1]);
+    assert.strictEqual(new Set(faults).size, faults.length,
+        'each probe yields a distinct fault, so none has collapsed onto an earlier bar: '
+            + JSON.stringify(faults));
+    for (const expected of ['longer than an entry can be', 'not one a trigger may name',
+        'not <type>:<pattern>', 'the pattern is shorter than', 'the name is shorter than',
+        'bare token']) {
+        assert.ok(faults.some((f) => f.includes(expected)),
+            'no probe reaches ' + JSON.stringify(expected) + ': ' + JSON.stringify(faults));
+    }
+    // The two long probes are what actually set the bound, so they carry the
+    // reduction's removed-characters note; a probe that stopped doing so
+    // would measure a shorter annotation than a real refusal can produce.
+    assert.strictEqual(items.filter((it) => it.text.includes('characters removed for display')).length, 3,
+        'the three lead-carrying probes each carry the reduction note');
+});
+
+test('a triggers: line cut at memq\'s bound is allowed and says the unread tail was not checked', () => {
+    // parseTriggers reads a bounded head of the line and flags the cut; a
+    // guard that consulted only the head would answer the byte-identical
+    // silence of a record whose triggers were all checked, while the tail was
+    // never checked against the grammar at all.
+    const store = makeStore();
+    try {
+        const target = path.join(store.project, 'new-record.md');
+        const over = Array.from({ length: 33 }, (_, i) => 'cmd:pattern-' + i).join(', ');
+        assertNotChecked(runGuard(store, writeTo(store, target, record(['triggers: ' + over]))),
+            /unread tail/);
+        // The control: one entry fewer sits inside the bound and is checked
+        // whole, so the line above is the cut speaking.
+        const atCap = Array.from({ length: 32 }, (_, i) => 'cmd:pattern-' + i).join(', ');
+        assertAllow(runGuard(store, writeTo(store, target, record(['triggers: ' + atCap]))),
             'a line at the bound is checked and clean');
     } finally { rmStore(store); }
 });
@@ -2095,6 +2302,27 @@ test('a record whose anchors memq could not read is allowed and says it checked 
         // The control: the same payload with every reader real is checked and
         // clean, so the line above is the null speaking.
         assertAllow(runGuard(store, writeTo(store, target, anchored)), 'the untrapped control');
+    } finally { rmStore(store); }
+});
+
+test('a record whose triggers memq could not read is allowed and says it checked nothing', () => {
+    // memq.frontmatterTriggers answers null for a text that is not a string
+    // and for a block that never closes, and this guard refuses the unclosed
+    // block before it asks, so no payload reaches this door against today's
+    // memq. It is held in the not-checked direction because a reader
+    // answering null for a reason this guard does not screen first would
+    // otherwise exit in the clean record's silence, with the triggers line
+    // unexamined.
+    const store = makeStore();
+    try {
+        const target = path.join(store.project, 'new-record.md');
+        const declared = record(['triggers: cmd:git stash']);
+        const env = memqTrap(store, 'memq.frontmatterTriggers = () => null;');
+        assertNotChecked(runGuard(store, writeTo(store, target, declared), undefined, env),
+            /triggers could not be read/);
+        // The control: the same payload with every reader real is checked and
+        // clean, so the line above is the null speaking.
+        assertAllow(runGuard(store, writeTo(store, target, declared)), 'the untrapped control');
     } finally { rmStore(store); }
 });
 

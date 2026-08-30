@@ -2957,13 +2957,18 @@ test('get states each anchor after the body, and names the cause when it could n
 
         // A frontmatter block that opens and never closes is read by nothing,
         // so what the record anchors is unknown and the line says which cause
-        // it was rather than printing no anchors.
+        // it was rather than printing no anchors. Both fields answer for
+        // themselves on such a record: one line saying the anchors went
+        // unchecked leaves the triggers reading as a record that declares
+        // none, which is the false-clean answer this surface exists to
+        // refuse.
         const openBody = '---\nname: ""\nanchors: src/a.js@' + HELLO_SHA + '\nstill open\n';
         writeMemoryFile(store, 'unterminated.md', openBody);
         const unread = run(store, ['get', 'unterminated']);
         assert.strictEqual(unread.status, 0, unread.stderr);
         assert.strictEqual(unread.stdout, openBody
-            + 'anchors: not checked (this record\'s frontmatter could not be read)\n');
+            + 'anchors: not checked (this record\'s frontmatter could not be read)\n'
+            + 'triggers: not listed (this record\'s frontmatter could not be read)\n');
     } finally {
         rmStore(store);
     }
@@ -3680,13 +3685,15 @@ test('decay-done stands down for an unpinned network working directory and write
 // spelled once per gated door, never a second inline copy of the leading-
 // separator test (that copy is pinned separately, at exactly
 // hooks/kit-network-lib.js, by test/compact-deferral-nudge.test.js). A
-// behavioral test above only proves these eleven verbs currently refuse; it
-// cannot prove a twelfth verb was not quietly given its own hand-rolled
-// check, or that one of the eleven was not duplicated into two gates inside
-// its own body. This widens Section 7's four doors (cmdGet, cmdRecall,
-// cmdAnchor, cmdDecayScan) to the seven this section adds.
+// behavioral test above only proves these verbs currently refuse; it cannot
+// prove a further verb was not quietly given its own hand-rolled check, or
+// that one of them was not duplicated into two gates inside its own body.
+// The gated set is every verb that resolves the project memory directory from
+// the working directory, `triggers` among them: it derives no root of its
+// own, and the walk the gate is about is the store resolution rather than a
+// root, which is why a verb that wants no root is on this list all the same.
 test('the network-share stand-down check is spelled once per gated verb, at exactly the '
-    + 'eleven doors Section 7 and this section cover', () => {
+    + 'twelve doors that resolve a project memory directory from cwd', () => {
     const source = fs.readFileSync(MEMQ, 'utf8').split(/\r?\n/);
     const enclosing = (lineNo) => {
         for (let i = lineNo - 1; i >= 0; i--) {
@@ -3704,8 +3711,8 @@ test('the network-share stand-down check is spelled once per gated verb, at exac
     });
     assert.deepStrictEqual(gates.map((g) => g.fn).sort(), [
         'cmdAnchor', 'cmdDecayDone', 'cmdDecayPrune', 'cmdDecayScan', 'cmdFind',
-        'cmdGet', 'cmdLog', 'cmdRecall', 'cmdRecent', 'cmdTouch', 'cmdUnstamped'
-    ], 'the stand-down check gates exactly these eleven verbs, no more, no fewer: '
+        'cmdGet', 'cmdLog', 'cmdRecall', 'cmdRecent', 'cmdTouch', 'cmdTriggers', 'cmdUnstamped'
+    ], 'the stand-down check gates exactly these twelve verbs, no more, no fewer: '
         + JSON.stringify(gates));
 });
 
@@ -3854,10 +3861,17 @@ test('get on a shared tier says so and checks nothing, whatever the record decla
         const SHARED = 'anchors: not checked (this record is on a shared tier, whose anchors do not'
             + ' resolve against this project\'s root)\n';
 
+        // A record nobody could read says nothing about its triggers either,
+        // and says so in its own line: this tier is reason enough for both
+        // fields, and one field's silence would read as a declaration of
+        // none.
+        const SHARED_TRIGGERS = 'triggers: not listed (this record is on a shared tier, and'
+            + ' recognition reads the project tier only)\n';
         for (const name of ['shared', 'unterminated', 'op-shared']) {
             const got = run(store, ['get', name]);
             assert.strictEqual(got.status, 0, got.stderr);
-            assert.ok(got.stdout.endsWith(SHARED), name + ' says its tier is why:\n' + got.stdout);
+            assert.ok(got.stdout.endsWith(name === 'unterminated' ? SHARED + SHARED_TRIGGERS : SHARED),
+                name + ' says its tier is why:\n' + got.stdout);
             // The sentence is memq's own words at column zero, outside the
             // provenance fence the body printed under, so no path from a tier
             // every project on this machine writes to reaches that line.
@@ -4831,6 +4845,7 @@ test('one frontmatter key regex, and every field call site goes through the shar
         "frontmatterField(file, 'pinned')",
         "frontmatterField(file, 'machine')",
         "frontmatterValue(raw, 'anchors')",
+        "frontmatterValue(raw, 'triggers')",
         "frontmatterField(targetPath, 'supersedes')"
     ]) {
         assert.ok(source.includes(site),
@@ -20307,7 +20322,8 @@ test('a record whose frontmatter never closes is told apart from one that declar
                 'the unclosed answer is distinct from every other answer that is not a value');
         }
 
-        for (const field of ['pinned', 'tags', 'created', 'supersedes', 'machine', 'anchors']) {
+        for (const field of ['pinned', 'tags', 'created', 'supersedes', 'machine', 'anchors',
+            'triggers']) {
             assert.deepStrictEqual(
                 [memq.frontmatterValue(unclosedRaw, field), memq.frontmatterValue(cleanRaw, field)],
                 [memq.FRONTMATTER_UNCLOSED, null],
@@ -20764,6 +20780,901 @@ test('a CRLF record with no frontmatter block gains a CRLF block', () => {
         assert.deepStrictEqual(
             memq.readFrontmatterAnchors(path.join(store.memDir, 'fact.md')).entries.map((e) => e.path),
             ['src/a.js'], 'and the block a reader reads is the block that was written');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// --- memq triggers ---------------------------------------------------------
+//
+// The verb writes one frontmatter line into a project-tier record and leaves
+// every other byte of it alone, so these cases assert on the record's bytes
+// wherever the distinction can be made, exactly as the anchor cases above do.
+//
+// What they do not assert on is any matching: this field's grammar and its
+// storage are the whole of what exists here, and what a pattern means against
+// a running session's tool stream belongs to the surface that matches.
+
+// Entries used across these cases, each clearing both specificity bars, and
+// spelled here so a case reads as being about the merge or the refusal rather
+// than about which text was picked.
+const T_CMD = 'cmd:git stash';
+const T_ERR = 'err:module not found';
+const T_GLOB = 'glob:plugins/claude-kit/hooks/*.js';
+const T_SKILL = 'skill:memory-system';
+
+test('triggers writes the line it prints, keeping order and appending', () => {
+    const store = makeStore();
+    try {
+        // The record already declares two triggers. What the merge owes them
+        // is their position, which is the author's own ordering, and the
+        // entry the command line adds that the record never carried goes to
+        // the end.
+        writeMemoryFile(store, 'fact.md', '---\nname: ""\n'
+            + 'triggers: ' + T_CMD + ', ' + T_ERR + '\n'
+            + '---\n\n# Fact\n\nbody\n');
+        const res = run(store, ['triggers', 'fact', T_ERR, T_GLOB]);
+        assert.strictEqual(res.status, 0, res.stderr);
+        const expected = 'triggers: ' + T_CMD + ', ' + T_ERR + ', ' + T_GLOB;
+        assert.strictEqual(res.stdout, expected + '\n',
+            'the verb prints the line it wrote and nothing else');
+        assert.strictEqual(fs.readFileSync(path.join(store.memDir, 'fact.md'), 'utf8'),
+            '---\nname: ""\n' + expected + '\n---\n\n# Fact\n\nbody\n');
+        // Read back through the reader rather than by eye: what the line is
+        // for is what that reader makes of it.
+        assert.deepStrictEqual(
+            memq.readFrontmatterTriggers(path.join(store.memDir, 'fact.md')).entries
+                .map((e) => e.type + '|' + e.pattern),
+            ['cmd|git stash', 'err|module not found', 'glob|plugins/claude-kit/hooks/*.js']);
+        // An entry the record already carried is not a second entry, and the
+        // stderr line is where a run says which part of the printed line it
+        // put there, since the line itself does not.
+        assert.strictEqual(res.stderr, 'memq: added: ' + T_GLOB
+            + '; already on the record: ' + T_CMD + ', ' + T_ERR + '\n');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('the same trigger named twice is one entry, at its first mention', () => {
+    const store = makeStore();
+    try {
+        writeMemoryFile(store, 'fact.md', '---\nname: ""\n---\n\nbody\n');
+        const res = run(store, ['triggers', 'fact', T_ERR, T_CMD, T_ERR]);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout, 'triggers: ' + T_ERR + ', ' + T_CMD + '\n',
+            'the repeat keeps the position of its first mention and adds no second entry');
+        // Casing is not folded, because a pattern is matched against a
+        // command line and a tool name, both of which carry their own casing:
+        // two spellings are two patterns, and merging them would drop one.
+        const cased = run(store, ['triggers', 'fact', 'cmd:Git Stash']);
+        assert.strictEqual(cased.status, 0, cased.stderr);
+        assert.strictEqual(cased.stdout,
+            'triggers: ' + T_ERR + ', ' + T_CMD + ', cmd:Git Stash\n');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a record\'s body comes through a triggers rewrite byte for byte, its line endings with it', () => {
+    const store = makeStore();
+    try {
+        // A record as the harness writes one on this platform: CRLF
+        // throughout, with a body carrying a lone carriage return, a
+        // non-ASCII character and no trailing newline, all of which a rebuild
+        // from split lines would rewrite.
+        const body = Buffer.from('\r\n# Fact\r\n\r\nein Übersicht\rtail line', 'utf8');
+        const head = Buffer.from('---\r\nname: ""\r\ntriggers: ' + T_CMD + '\r\n---\r\n', 'utf8');
+        fs.mkdirSync(store.memDir, { recursive: true });
+        fs.writeFileSync(path.join(store.memDir, 'fact.md'), Buffer.concat([head, body]));
+        const before = recordBuf(store, 'fact.md');
+
+        const res = run(store, ['triggers', 'fact', T_ERR]);
+        assert.strictEqual(res.status, 0, res.stderr);
+        const after = recordBuf(store, 'fact.md');
+        assert.ok(after.subarray(after.length - body.length).equals(body),
+            'the body is the bytes that were there, compared as bytes');
+        assert.ok(after.subarray(0, 20).equals(before.subarray(0, 20)),
+            'the lines ahead of the triggers: line are untouched');
+        assert.ok(after.includes(Buffer.from('triggers: ' + T_CMD + ', ' + T_ERR + '\r\n', 'utf8')),
+            'the rewritten line carries the record\'s own line ending, not this file\'s');
+
+        // A byte order mark is the file's mark rather than the block's, so it
+        // stays at byte 0 across the rewrite, and a record with no block at
+        // all gains one built with the record's own separator.
+        const bom = Buffer.from('\uFEFF', 'utf8');
+        const plain = Buffer.from('# Fact\r\n\r\nbody, no frontmatter at all\r\n', 'utf8');
+        fs.writeFileSync(path.join(store.memDir, 'marked.md'), Buffer.concat([bom, plain]));
+        assert.strictEqual(run(store, ['triggers', 'marked', T_CMD]).status, 0);
+        const marked = recordBuf(store, 'marked.md');
+        assert.ok(marked.subarray(0, 3).equals(bom), 'the mark still leads the file');
+        assert.strictEqual(marked.toString('utf8'),
+            '\uFEFF---\r\ntriggers: ' + T_CMD + '\r\n---\r\n' + plain.toString('utf8'));
+        assert.deepStrictEqual(
+            memq.readFrontmatterTriggers(path.join(store.memDir, 'marked.md')).entries
+                .map((e) => e.text), [T_CMD], 'and the line it now carries is read');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a triggers line the harness moved under metadata is rewritten where it sits', () => {
+    const store = makeStore();
+    try {
+        // The harness relocates an author's top-level keys under its own
+        // metadata: map. Rewriting at the top level instead would leave the
+        // map's stale line behind and put a second one above it; writing the
+        // member back at column 0 would take it out of the map. Either way
+        // the record would carry two answers.
+        writeMemoryFile(store, 'fact.md',
+            harnessShaped(['triggers: "' + T_CMD + '"'], '\nbody\n'));
+        const res = run(store, ['triggers', 'fact', T_GLOB]);
+        assert.strictEqual(res.status, 0, res.stderr);
+        const text = fs.readFileSync(path.join(store.memDir, 'fact.md'), 'utf8');
+        assert.ok(text.includes('\n  triggers: ' + T_CMD + ', ' + T_GLOB + '\n'),
+            'the member keeps the map\'s indentation: ' + JSON.stringify(text));
+        assert.strictEqual(text.split('triggers:').length - 1, 1,
+            'one line says what this record recognizes, not two');
+        assert.deepStrictEqual(
+            memq.readFrontmatterTriggers(path.join(store.memDir, 'fact.md')).entries
+                .map((e) => e.text), [T_CMD, T_GLOB],
+            'and it is still the line the reader reads');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('an entry the reader would refuse is refused at the writer, and nothing is written', () => {
+    const store = makeStore();
+    try {
+        writeMemoryFile(store, 'fact.md', '---\nname: ""\n---\n\nbody\n');
+        const before = recordBuf(store, 'fact.md');
+        // One case per rule the grammar judges by, each named in its own
+        // words: a caller who typed a bare token learns nothing from being
+        // told the entry is refused.
+        const cases = [
+            ['git stash', /not <type>:<pattern>, where <type> is one of cmd, err, skill, agent, tool, glob/],
+            ['shell:git stash', /not <type>:<pattern>/],
+            ['cmd: git stash', /the pattern is not one a trigger may name/],
+            ['cmd:git' + String.fromCharCode(9) + 'stash', /the pattern is not one a trigger may name/],
+            ['cmd:' + 'a'.repeat(memq.TRIGGER_PATTERN_CAP + 1), /the pattern is not one a trigger may name/],
+            ['glob:../outside/*.js', /the pattern is not a path glob this may name/],
+            ['glob:C:/abs/*.js', /the pattern is not a path glob this may name/],
+            ['glob:src/a b.js', /the pattern is not a path glob this may name/]
+        ];
+        for (const [given, reason] of cases) {
+            const res = run(store, ['triggers', 'fact', given]);
+            assert.strictEqual(res.status, 1, given + ': ' + res.stdout);
+            assert.strictEqual(res.stdout, '', given + ' printed a line for a refused write');
+            assert.match(res.stderr, /^memq: nothing was written; this entry was refused: /,
+                given + ': ' + res.stderr);
+            assert.match(res.stderr, reason, given + ': ' + res.stderr);
+            assert.ok(recordBuf(store, 'fact.md').equals(before),
+                given + ' left the record changed');
+        }
+        // The control that earns those refusals: one entry of each type, all
+        // through the same door, lands. Without it every refusal above would
+        // read the same as a verb that refuses everything.
+        const admitted = [T_CMD, T_ERR, T_SKILL, 'agent:code-reviewer', 'tool:WebFetch', T_GLOB];
+        const ok = run(store, ['triggers', 'fact'].concat(admitted));
+        assert.strictEqual(ok.status, 0, ok.stderr);
+        assert.strictEqual(ok.stdout, 'triggers: ' + admitted.join(', ') + '\n');
+
+        // One bad entry among good ones refuses the whole command, and both
+        // refusals are named: a caller who mistyped two fixes both on one
+        // re-run rather than meeting them one at a time.
+        writeMemoryFile(store, 'two.md', '---\nname: ""\n---\n\nbody\n');
+        const mixed = run(store, ['triggers', 'two', T_CMD, 'cmd:git', 'nope:whatever']);
+        assert.strictEqual(mixed.status, 1, mixed.stdout);
+        assert.match(mixed.stderr, /these entries were refused: cmd:git \[[^\]]+\]; nope:whatever \[/);
+        assert.strictEqual(fs.readFileSync(path.join(store.memDir, 'two.md'), 'utf8'),
+            '---\nname: ""\n---\n\nbody\n', 'the good entry in that list wrote nothing either');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('the specificity floor and the bare-token bar are two bars, and neither subsumes the other', () => {
+    const store = makeStore();
+    try {
+        writeMemoryFile(store, 'fact.md', '---\nname: ""\n---\n\nbody\n');
+        const before = recordBuf(store, 'fact.md');
+        // Short and on no list: the floor is what refuses it, so the denylist
+        // alone would admit it.
+        const short = run(store, ['triggers', 'fact', 'cmd:zfs']);
+        assert.strictEqual(short.status, 1, short.stdout);
+        assert.match(short.stderr, new RegExp('the pattern is shorter than '
+            + memq.TRIGGER_PATTERN_MIN + ' characters'));
+        // Past the floor and on the list: the denylist is what refuses it, so
+        // the floor alone would admit it. `node` is the named example of
+        // exactly that cell.
+        const common = run(store, ['triggers', 'fact', 'cmd:node']);
+        assert.strictEqual(common.status, 1, common.stdout);
+        assert.match(common.stderr, /the pattern is a bare token common enough to match unrelated work/);
+        assert.match(common.stderr, /`cmd:node --test` is admitted where `cmd:node` is not/);
+        // Compared case-insensitively, because a command's own casing is not
+        // what makes a pattern specific.
+        assert.strictEqual(run(store, ['triggers', 'fact', 'cmd:NODE']).status, 1);
+        for (const res of [short, common]) {
+            assert.strictEqual(res.stdout, '', 'a refused write prints no line');
+        }
+        assert.ok(recordBuf(store, 'fact.md').equals(before), 'neither bar wrote anything');
+
+        // The two controls, one per bar, in the same shape. Without them a
+        // verb that refused every entry would read exactly like these bars
+        // doing their job.
+        const past = run(store, ['triggers', 'fact', 'cmd:zpool']);
+        assert.strictEqual(past.status, 0, past.stderr);
+        assert.strictEqual(past.stdout, 'triggers: cmd:zpool\n',
+            'a pattern past the floor and on no list lands');
+        const inLonger = run(store, ['triggers', 'fact', 'cmd:node --test']);
+        assert.strictEqual(inLonger.status, 0, inLonger.stderr);
+        assert.strictEqual(inLonger.stdout, 'triggers: cmd:zpool, cmd:node --test\n',
+            'it is the bare token that is refused, never the word inside a pattern');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('triggers refuses the shared tiers and an arity it cannot answer, before any store read', () => {
+    const store = makeStore();
+    try {
+        writeMemoryFile(store, 'fact.md', '---\nname: ""\n---\n\nbody\n');
+        const before = recordBuf(store, 'fact.md');
+        const cases = [
+            [['triggers', 'fact', T_CMD, '--type'],
+                /triggers writes the project tier only: recognition reads the project tier alone/],
+            [['triggers', 'fact', T_CMD, '--operator'],
+                /widening it to the tiers that sync across machines/],
+            [['triggers', 'fact'], /triggers needs at least one <type>:<pattern> entry/],
+            [['triggers'], /triggers needs a <name>/],
+            [['triggers', 'fact', T_CMD, '--drop'], /unknown option --drop/],
+            [['triggers', '../elsewhere', T_CMD], /name must be characters from/]
+        ];
+        for (const [args, reason] of cases) {
+            const res = run(store, args);
+            assert.strictEqual(res.status, 1, args.join(' ') + ': ' + res.stdout);
+            assert.strictEqual(res.stdout, '', args.join(' ') + ' printed a line');
+            assert.match(res.stderr, reason, args.join(' ') + ': ' + res.stderr);
+            assert.match(res.stderr, /usage: memq log/, args.join(' ') + ': ' + res.stderr);
+            assert.ok(recordBuf(store, 'fact.md').equals(before),
+                args.join(' ') + ' left the record changed');
+        }
+        const tier = run(store, ['triggers', 'fact', T_CMD, '--type']);
+        assert.match(tier.stderr, /memq triggers <name> <type>:<pattern>/,
+            'the option list names the verb');
+        // The tier refusal states its own reason and not the anchor verb's: a
+        // trigger needs no project root and no tree, so a reader sent to fix
+        // a root would be sent to fix what was never the problem.
+        assert.doesNotMatch(tier.stderr.split('usage: memq log')[0], /project root|tree to hash/,
+            'the refusal must not borrow the anchor verb\'s reason');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a record nothing could read takes no triggers rather than being written into', () => {
+    const store = makeStore();
+    try {
+        // Each of these is a record every triggers reader answers 'not
+        // listed' for. Writing a line into one would mint a record declaring
+        // recognition triggers no surface reads, with nothing saying why.
+        const cases = [
+            ['unterminated.md', '---\nname: ""\nno closing fence here\n',
+                /opens a frontmatter block that does not close inside the first 40 lines/],
+            ['misplaced.md', '---\nname: x\nprovenance:\n  triggers: ' + T_CMD + '\n---\n\nbody\n',
+                /has a triggers: field under a key other than the harness's metadata: map/],
+            ['refused-entry.md', '---\nname: ""\ntriggers: not-an-entry\n---\n\nbody\n',
+                /already carries a triggers: entry this cannot read, and a rewrite would drop it/]
+        ];
+        for (const [file, contents, reason] of cases) {
+            writeMemoryFile(store, file, contents);
+            const before = recordBuf(store, file);
+            const res = run(store, ['triggers', file.replace(/\.md$/, ''), T_CMD]);
+            assert.strictEqual(res.status, 1, file + ': ' + res.stdout);
+            assert.strictEqual(res.stdout, '', file + ' printed a line for a refused write');
+            assert.match(res.stderr, reason, file + ': ' + res.stderr);
+            assert.match(res.stderr, /nothing written/, file + ': ' + res.stderr);
+            assert.ok(recordBuf(store, file).equals(before), file + ' was written to');
+            assert.ok(!fs.existsSync(path.join(store.memDir, file + '.bak')),
+                file + ': a refusal before the write spends no backup generation');
+        }
+        // The control the three refusals rest on: a record whose block reads
+        // fine takes the same entry through the same door.
+        writeMemoryFile(store, 'ok.md', '---\nname: ""\n---\n\nbody\n');
+        assert.strictEqual(run(store, ['triggers', 'ok', T_CMD]).status, 0);
+
+        // A record that is not there at all is its own answer: the name is
+        // the thing to fix.
+        const absent = run(store, ['triggers', 'no-such', T_CMD]);
+        assert.strictEqual(absent.status, 1);
+        assert.match(absent.stderr, /^memq: no memory file named 'no-such' in the project tier\n$/);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a triggers merge past what a reader reads is refused, and the write spends one generation', () => {
+    const store = makeStore();
+    try {
+        // Bytes that are not valid UTF-8 do not survive the decode and
+        // re-encode a splice goes through, so the body this verb promises to
+        // leave alone is the thing that would be rewritten.
+        fs.mkdirSync(store.memDir, { recursive: true });
+        const invalid = Buffer.concat([Buffer.from('---\nname: ""\n---\n\nbody ', 'utf8'),
+            Buffer.from([0xff, 0xfe]), Buffer.from('\n', 'utf8')]);
+        fs.writeFileSync(path.join(store.memDir, 'raw.md'), invalid);
+        const bad = run(store, ['triggers', 'raw', T_CMD]);
+        assert.strictEqual(bad.status, 1, bad.stdout);
+        assert.match(bad.stderr, /holds bytes that are not valid UTF-8/);
+        assert.ok(recordBuf(store, 'raw.md').equals(invalid), 'the record kept its bytes');
+
+        // A merge that would push the line past what a reader reads is
+        // refused rather than written: the entries past the cap would go
+        // unread forever, which is the outcome this refusal exists to avoid.
+        const full = [];
+        for (let i = 0; i < memq.TRIGGER_ENTRIES_MAX; i++) full.push('cmd:pattern-' + i);
+        writeMemoryFile(store, 'full.md', '---\nname: ""\ntriggers: ' + full.join(', ')
+            + '\n---\n\nbody\n');
+        const before = recordBuf(store, 'full.md');
+        const over = run(store, ['triggers', 'full', T_CMD]);
+        assert.strictEqual(over.status, 1, over.stdout);
+        assert.strictEqual(over.stdout, '');
+        assert.match(over.stderr, new RegExp('would carry ' + (memq.TRIGGER_ENTRIES_MAX + 1)
+            + ' triggers and a reader reads ' + memq.TRIGGER_ENTRIES_MAX));
+        assert.ok(recordBuf(store, 'full.md').equals(before), 'the record kept its line');
+        assert.ok(!fs.existsSync(path.join(store.memDir, 'full.md.bak')),
+            'a refusal before the write spends no backup generation');
+        // The control: one of those same entries re-declared fits, since it
+        // is already on the line, so the refusal above is the count.
+        const fits = run(store, ['triggers', 'full', 'cmd:pattern-0']);
+        assert.strictEqual(fits.status, 0, fits.stderr);
+        assert.match(fits.stderr, /^memq: added: nothing new, every entry was already on the record;/);
+        assert.ok(recordBuf(store, 'full.md').equals(before),
+            'a call that adds nothing writes nothing');
+        assert.ok(!fs.existsSync(path.join(store.memDir, 'full.md.bak')),
+            'and spends no backup generation on a byte-identical copy');
+        // The write that does land spends exactly one generation and never a
+        // second, two writes in a row being what makes that an assertion.
+        writeMemoryFile(store, 'room.md', '---\nname: ""\ntriggers: ' + T_CMD + '\n---\n\nbody\n');
+        for (const entry of [T_ERR, T_GLOB]) {
+            const res = run(store, ['triggers', 'room', entry]);
+            assert.strictEqual(res.status, 0, res.stderr);
+        }
+        assert.ok(fs.existsSync(path.join(store.memDir, 'room.md.bak')),
+            'the rewrite leaves one generation beside the record');
+        assert.ok(!fs.existsSync(path.join(store.memDir, 'room.md.bak.bak')),
+            'and never a second');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('the triggers rewrite is under both project locks, released on the way out', () => {
+    const store = makeStore();
+    try {
+        writeMemoryFile(store, 'fact.md', '---\nname: ""\n---\n\nbody\n');
+        const before = recordBuf(store, 'fact.md');
+        // A decay pass rewrites this tier under decay.lock and takes no
+        // store.lock, so store.lock alone excludes nothing it does. Both
+        // locks, in the pass's own order, which is the only thing keeping two
+        // lock-takers from inverting into a deadlock.
+        const decayPath = path.join(store.memDir, 'decay.lock');
+        const storePath = path.join(store.memDir, 'store.lock');
+        const payload = JSON.stringify({ pid: 0, token: 'holder', ts: new Date().toISOString() }) + '\n';
+        fs.writeFileSync(decayPath, payload, 'utf8');
+        const held = run(store, ['triggers', 'fact', T_CMD]);
+        assert.strictEqual(held.status, 1, held.stdout);
+        assert.strictEqual(held.stdout, '');
+        assert.match(held.stderr, /^memq: project store locked by a decay pass, nothing written: /);
+        assert.ok(recordBuf(store, 'fact.md').equals(before), 'nothing was written under the pass\'s lock');
+        assert.ok(!fs.existsSync(storePath), 'the second lock is never taken when the first is refused');
+
+        fs.unlinkSync(decayPath);
+        fs.writeFileSync(storePath, payload, 'utf8');
+        const heldStore = run(store, ['triggers', 'fact', T_CMD]);
+        assert.strictEqual(heldStore.status, 1, heldStore.stdout);
+        assert.match(heldStore.stderr, /^memq: project store locked, nothing written: /);
+        assert.ok(recordBuf(store, 'fact.md').equals(before), 'nor under another writer\'s lock');
+        assert.ok(!fs.existsSync(decayPath), 'the outer lock is released when the inner one refuses');
+
+        fs.unlinkSync(storePath);
+        assert.strictEqual(run(store, ['triggers', 'fact', T_CMD]).status, 0);
+        for (const p of [decayPath, storePath]) {
+            assert.ok(!fs.existsSync(p), path.basename(p) + ' is released after the write');
+        }
+        // And on the refusal path, which is where a release in a finally
+        // earns its keep: the inner refusal must not strand the outer lock.
+        writeMemoryFile(store, 'broken.md', '---\nname: ""\ntriggers: not-an-entry\n---\n\nbody\n');
+        assert.strictEqual(run(store, ['triggers', 'broken', T_CMD]).status, 1);
+        for (const p of [decayPath, storePath]) {
+            assert.ok(!fs.existsSync(p), path.basename(p) + ' is released after a refusal too');
+        }
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a run declares triggers on the record in its own pending tier, and says which tier it wrote', () => {
+    const store = makeStore();
+    try {
+        // The same name in both tiers. A memory a run wrote lives in its
+        // pending tier, so resolving the project tier alone would rewrite a
+        // different record that happens to share the name.
+        writeMemoryFile(store, 'fact.md', '---\nname: ""\n---\n\nproject body\n');
+        writePendingMemory(store, 'r1', 'fact.md', '---\nname: ""\n---\n\npending body\n');
+        const projectBefore = recordBuf(store, 'fact.md');
+        const res = runIn(store, 'r1', ['triggers', 'fact', T_CMD]);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout, 'triggers: ' + T_CMD + '\n');
+        assert.match(res.stderr, /\(pending tier\)$/m,
+            'the line alone does not say which of two records took it');
+        assert.strictEqual(
+            fs.readFileSync(path.join(pendingDirPath(store, 'r1'), 'fact.md'), 'utf8'),
+            '---\ntriggers: ' + T_CMD + '\nname: ""\n---\n\npending body\n');
+        assert.ok(recordBuf(store, 'fact.md').equals(projectBefore),
+            'the shared project-tier record of the same name is untouched');
+
+        // The control, the same store outside a run: no pending tier is
+        // resolved and the project tier is the record that takes the line.
+        const plain = run(store, ['triggers', 'fact', T_ERR]);
+        assert.strictEqual(plain.status, 0, plain.stderr);
+        assert.doesNotMatch(plain.stderr, /pending tier/);
+        assert.strictEqual(fs.readFileSync(path.join(store.memDir, 'fact.md'), 'utf8'),
+            '---\ntriggers: ' + T_ERR + '\nname: ""\n---\n\nproject body\n');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a run whose pending tier cannot be examined takes no triggers, and is not sent to the project tier', () => {
+    const store = makeStore();
+    try {
+        // A stat that fails for a reason other than absence says nothing
+        // about which tier holds the record. Read as absence it sends the
+        // write to the shared project-tier record of the same name and
+        // reports success, which is the precedence failing silently at a
+        // write door.
+        writeMemoryFile(store, 'fact.md', '---\nname: ""\n---\n\nproject body\n');
+        writePendingMemory(store, 'r1', 'fact.md', '---\nname: ""\n---\n\npending body\n');
+        const projectBefore = recordBuf(store, 'fact.md');
+        const pendingPath = path.join(pendingDirPath(store, 'r1'), 'fact.md');
+        const pendingBefore = fs.readFileSync(pendingPath);
+
+        const shim = path.join(store.root, 'refuse-pending-stat-triggers.js');
+        fs.writeFileSync(shim, [
+            "'use strict';",
+            "const fs = require('fs');",
+            'const realStatSync = fs.statSync;',
+            'fs.statSync = function (target) {',
+            "    if (String(target).indexOf('pending') !== -1) {",
+            "        const err = new Error('EACCES: the fixture refuses this stat');",
+            "        err.code = 'EACCES';",
+            '        throw err;',
+            '    }',
+            '    return realStatSync.apply(fs, arguments);',
+            '};'
+        ].join('\n') + '\n', 'utf8');
+
+        const res = runIn(store, 'r1', ['triggers', 'fact', T_CMD],
+            { NODE_OPTIONS: '--require "' + shim.split(path.sep).join('/') + '"' });
+        assert.strictEqual(res.status, 1, res.stdout);
+        assert.strictEqual(res.stdout, '', 'a tier this could not identify has no line to print');
+        assert.match(res.stderr, /this run's pending tier could not be examined \(EACCES\)/);
+        assert.match(res.stderr, /nothing was written/);
+        assert.ok(recordBuf(store, 'fact.md').equals(projectBefore),
+            'the project-tier record of the same name is not the fallback');
+        assert.ok(fs.readFileSync(pendingPath).equals(pendingBefore),
+            'and the pending record is untouched too');
+
+        // The control, the same run without the shim: the pending record is
+        // the one that takes the line, so the refusal above is the stat and
+        // not the run.
+        const ok = runIn(store, 'r1', ['triggers', 'fact', T_CMD]);
+        assert.strictEqual(ok.status, 0, ok.stderr);
+        assert.ok(fs.readFileSync(pendingPath, 'utf8').includes('triggers: ' + T_CMD));
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a store pin is no obstacle to a trigger, where it leaves an anchor with no root', () => {
+    const store = makeStore();
+    const projB = makeSecondProject();
+    try {
+        // The deliberate difference between the two fields. An anchor path
+        // resolves against a project root, and a pin names the store rather
+        // than the working directory, so there is nothing for the path to be
+        // relative to. A trigger resolves nothing, so the pinned record takes
+        // its line and this verb has no reason to refuse.
+        const memDir = pinnedMemDir(store, PIN);
+        fs.mkdirSync(memDir, { recursive: true });
+        fs.writeFileSync(path.join(memDir, 'fact.md'), '---\nname: ""\n---\n\nbody\n', 'utf8');
+
+        const res = runFrom(store, projB, ['triggers', 'fact', T_CMD], { KIT_MEMORY_PROJECT: PIN });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout, 'triggers: ' + T_CMD + '\n');
+        assert.strictEqual(fs.readFileSync(path.join(memDir, 'fact.md'), 'utf8'),
+            '---\ntriggers: ' + T_CMD + '\nname: ""\n---\n\nbody\n');
+        // The control that gives that pass its meaning: the same pin, the
+        // same cwd, the anchor verb, which does need a root and says so.
+        const anchored = runFrom(store, projB, ['anchor', 'fact', 'src/a.js'],
+            { KIT_MEMORY_PROJECT: PIN });
+        assert.strictEqual(anchored.status, 1, anchored.stdout);
+        assert.match(anchored.stderr, /this store is pinned \(KIT_MEMORY_PROJECT\)/);
+    } finally {
+        rmStore(store);
+        try { fs.rmSync(projB, { recursive: true, force: true }); } catch { /* best effort */ }
+    }
+});
+
+test('triggers stands down for an unpinned network working directory and writes nothing; '
+    + 'the same command from an ordinary local cwd lands', NETWORK_SKIP, () => {
+    const store = makeStore();
+    try {
+        // The gate is about the walk that resolves this project's memory
+        // directory from cwd, which this verb takes like every other writer,
+        // and not about a root, which this verb never derives.
+        writeMemoryFile(store, 'fact.md', '---\nname: ""\n---\n\nbody\n');
+        const before = recordBuf(store, 'fact.md');
+        const res = runFrom(store, localUncPath(store.proj), ['triggers', 'fact', T_CMD], {});
+        assert.strictEqual(res.status, 1, res.stdout);
+        assert.strictEqual(res.stdout, '');
+        assert.match(res.stderr, /working directory names a network share/);
+        assert.match(res.stderr, /nothing was written/);
+        assert.ok(recordBuf(store, 'fact.md').equals(before), 'the record is untouched');
+
+        const local = run(store, ['triggers', 'fact', T_CMD]);
+        assert.strictEqual(local.status, 0, local.stderr);
+        assert.strictEqual(local.stdout, 'triggers: ' + T_CMD + '\n');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('get lists a record\'s triggers after its body, and says nothing for a record with none', () => {
+    const store = makeStore();
+    try {
+        const body = '---\nname: ""\ntriggers: ' + T_CMD + ', ' + T_GLOB + '\n---\n\n# t\n';
+        writeMemoryFile(store, 'declared.md', body);
+        const got = run(store, ['get', 'declared']);
+        assert.strictEqual(got.status, 0, got.stderr);
+        assert.strictEqual(got.stdout, body
+            + 'triggers: ' + T_CMD + '\n'
+            + 'triggers: ' + T_GLOB + '\n');
+
+        // A record that declares none says nothing: there is no state to
+        // report and nothing was left unread.
+        const plainBody = '# plain\n';
+        writeMemoryFile(store, 'plain.md', plainBody);
+        const plain = run(store, ['get', 'plain']);
+        assert.strictEqual(plain.status, 0, plain.stderr);
+        assert.strictEqual(plain.stdout, plainBody);
+
+        // An entry the grammar refuses prints through the parse's own
+        // reduction, annotated, so nothing a record's text carries can forge
+        // one of these column-zero lines.
+        const badBody = '---\nname: ""\ntriggers: not-an-entry, ' + T_CMD + '\n---\n\n# b\n';
+        writeMemoryFile(store, 'bad.md', badBody);
+        const bad = run(store, ['get', 'bad']);
+        assert.strictEqual(bad.status, 0, bad.stderr);
+        assert.strictEqual(bad.stdout, badBody
+            + 'triggers: not-an-entry [not <type>:<pattern>, where <type> is one of '
+            + memq.TRIGGER_TYPES.join(', ') + ']\n'
+            + 'triggers: ' + T_CMD + '\n');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('parseTriggers reads past a refused entry, in order, and names every one it refused', () => {
+    const parsed = memq.parseTriggers(T_CMD + ', cmd:git, ' + T_GLOB + ' , , bogus:xxxx');
+    assert.deepStrictEqual(parsed.items.map((it) => it.type),
+        ['cmd', null, 'glob', null], 'every entry is read and kept in the line\'s order');
+    assert.deepStrictEqual(parsed.entries.map((e) => e.text), [T_CMD, T_GLOB]);
+    assert.strictEqual(parsed.bad.length, 2, 'both refusals are named: ' + parsed.bad.join('; '));
+    assert.strictEqual(parsed.truncated, false);
+
+    // A value that is not a value at all is not a record with no triggers:
+    // that answer belongs to the record that declares none.
+    for (const notText of [undefined, 0, {}, [], Symbol('x')]) {
+        assert.strictEqual(memq.parseTriggers(notText), null, 'parseTriggers(' + String(notText) + ')');
+    }
+    assert.deepStrictEqual(memq.parseTriggers(null).items, []);
+
+    // The line's two bounds, each flagged rather than silently dropping the
+    // tail: a clean list here would report a record as read whole while part
+    // of what it declares was never looked at.
+    const many = [];
+    for (let i = 0; i < memq.TRIGGER_ENTRIES_MAX + 1; i++) many.push('cmd:pattern-' + i);
+    const cutByCount = memq.parseTriggers(many.join(', '));
+    assert.strictEqual(cutByCount.entries.length, memq.TRIGGER_ENTRIES_MAX);
+    assert.strictEqual(cutByCount.truncated, true);
+    // The value cap is the other bound, and it is a bound on the split rather
+    // than on the entry count: it is answered before the line is cut into
+    // pieces, so it holds for a line the entry count could never reach. A
+    // single comma-free blob is that line, and it is what discriminates the
+    // two causes, because the entry count is nowhere near its maximum here.
+    // A line of maximum-length entries cannot discriminate them at all: the
+    // value cap is defined as the entry maximum times the entry cap plus its
+    // separator, so on that line the two bounds are met at the same piece by
+    // construction.
+    const blob = 'cmd:' + 'a'.repeat(memq.TRIGGER_VALUE_CAP * 2);
+    const cutByLength = memq.parseTriggers(blob);
+    assert.strictEqual(cutByLength.truncated, true,
+        'a value past the cap is flagged as cut whatever its entry count');
+    assert.strictEqual(cutByLength.items.length, 0,
+        'the last piece is dropped whole rather than presented as an entry the record does not '
+            + 'carry, so a comma-free line past the cap yields no entry at all');
+    const long = 'cmd:' + 'a'.repeat(memq.TRIGGER_PATTERN_CAP);
+    const both = memq.parseTriggers(new Array(40).fill(long).join(', '));
+    assert.strictEqual(both.truncated, true);
+    assert.ok(both.items.length <= memq.TRIGGER_ENTRIES_MAX,
+        'and no line of any shape reads back more entries than a reader reads: ' + both.items.length);
+
+    // The gate is exported so a caller holding an unvalidated value asks it
+    // rather than re-spelling the rule.
+    assert.strictEqual(memq.isTriggerEntry(T_SKILL), true);
+    for (const bad of ['cmd:git', 'cmd:node', 'nope:whatever', 'cmd:', '', null, 42]) {
+        assert.strictEqual(memq.isTriggerEntry(bad), false,
+            JSON.stringify(bad) + ' is not a triggers entry');
+    }
+});
+
+test('a trigger pattern may not carry the sequences that make a YAML line something else', () => {
+    // The line this field lands on is a YAML plain scalar, and the grammar
+    // admits the space, so three two-character sequences carry syntax that a
+    // pattern must not spell. The cost of getting this wrong is not confined
+    // to the field: a record whose frontmatter no longer parses loses every
+    // field in the block, the pinned: that keeps it out of the decay pass
+    // included, and the comment form is worse still because it parses and
+    // silently stores a shortened pattern.
+    //
+    // These are pinned at the predicate rather than only at the CLI because
+    // the guard screens hand-written records through the same predicate, and
+    // a bar that held at one door and not the other is the gap both doors
+    // exist to close.
+    for (const bad of [
+        'err:Error: cannot find module',   // ': ' opens a mapping value
+        'cmd:foo: bar',
+        'err:trailing:',                   // a trailing ':' is a mapping indicator at end of line
+        'cmd:foo #bar',                    // ' #' opens a comment
+        'skill:a #b'
+    ]) {
+        assert.strictEqual(memq.isTriggerEntry(bad), false,
+            JSON.stringify(bad) + ' is not a trigger entry');
+    }
+    // The controls, and they matter as much as the refusals: the bars are
+    // spelled at the sequences rather than at the characters, because an
+    // error signature has colons in it by nature and refusing the colon
+    // outright would take the type this field exists for. A colon or a hash
+    // with no space beside it is ordinary text to a YAML reader.
+    for (const good of ['err:Error:cannot find module', 'cmd:foo#bar', 'cmd:git stash',
+        'err:EADDRINUSE:address already in use']) {
+        assert.strictEqual(memq.isTriggerEntry(good), true,
+            JSON.stringify(good) + ' is a trigger entry');
+    }
+});
+
+test('a trigger pattern may not spell memq\'s own refusal annotation, or a quote either way', () => {
+    // `get` prints an admitted entry verbatim at column zero and prints a
+    // refused one beside it as '<text> [note; note]'. A pattern free to spell
+    // '[' can therefore forge an annotation byte for byte, and a reader has
+    // nothing on the line to tell the store's text from memq's own voice.
+    // This is reader deception rather than injection: no reader executes it.
+    const forged = 'cmd:xyz [shown to 261 characters; the pattern is a bare token]';
+    assert.strictEqual(memq.isTriggerEntry(forged), false,
+        'a pattern may not spell the annotation memq prints beside a refusal');
+    // The single quote goes with it for a different reason: unquoteScalar
+    // strips a surrounding pair off a value read out of the harness's map, so
+    // a pattern carrying one can come back from a round trip as text this
+    // grammar refuses, wedging the merge on a record nobody edited. The
+    // double quote is already barred through the invisible class.
+    for (const bad of ['cmd:it\'s here', 'err:can"t open', 'cmd:a [b']) {
+        assert.strictEqual(memq.isTriggerEntry(bad), false,
+            JSON.stringify(bad) + ' is not a trigger entry');
+    }
+    // The control: the same shapes without the barred character land, so the
+    // refusals above are those characters and not the words around them.
+    for (const good of ['cmd:xyz shown to 261 characters', 'cmd:its here', 'err:cant open',
+        'cmd:a ]b']) {
+        assert.strictEqual(memq.isTriggerEntry(good), true,
+            JSON.stringify(good) + ' is a trigger entry');
+    }
+});
+
+test('the bare-token bar is asked of the fragment types alone, and the floor of all six', () => {
+    // The two bars are not true of the same things. A cmd, err or glob
+    // pattern is a fragment of something longer, so a bare token is an author
+    // having stopped too early and lengthening it is a remedy. A skill, agent
+    // or tool pattern is the whole identifier: there is no longer spelling to
+    // reach for, so the same bar does not ask for a better pattern, it makes
+    // the trigger unauthorable and returns advice its reader cannot act on.
+    for (const good of ['tool:Bash', 'tool:Grep', 'skill:node', 'agent:test', 'skill:build']) {
+        assert.strictEqual(memq.isTriggerEntry(good), true,
+            JSON.stringify(good) + ' names an identifier and is admitted');
+    }
+    // The control that keeps that from reading as the bar being gone: the
+    // same tokens on the fragment types are still refused.
+    for (const bad of ['cmd:node', 'cmd:Bash', 'err:build', 'glob:node', 'cmd:NODE']) {
+        assert.strictEqual(memq.isTriggerEntry(bad), false,
+            JSON.stringify(bad) + ' is a bare token on a fragment type and is refused');
+    }
+    // The length floor stays universal, four characters being low enough that
+    // no real identifier is lost, and the two classes say so in different
+    // words because their remedies differ: a fragment can be lengthened and a
+    // name cannot.
+    assert.strictEqual(memq.isTriggerEntry('tool:ls'), false, 'the floor reaches an identifier too');
+    assert.strictEqual(memq.isTriggerEntry('skill:cold'), true, 'and a four-character name clears it');
+});
+
+test('the glob grammar relaxes the anchor path grammar by the two wildcards and nothing else', () => {
+    // The glob type reuses the anchor path grammar through one predicate, so
+    // the assertion worth making is that the relaxation is exactly the two
+    // wildcard characters: every other bar the anchor grammar holds is still
+    // held here. Without this the shared predicate could quietly widen on the
+    // glob side and each side's own test would stay green.
+    for (const bad of ['src\\a.js', '/src/a.js', 'C:/a.js', '../a.js', './a.js', 'a//b.js',
+        'a,b.js', 'a@b.js', 'a"b.js', 'a b.js', 'NUL', 'src/COM1', 'src/lpt9.txt',
+        'src/CONIN$', 'src/.../a.js', 'src/a./b.js', 'a.',
+        'a\u00a0b.js', 'a\u200bb.js', 'a\u0001b.js', 'a<b.js', 'a>b.js', 'a|b.js',
+        '#lead.js', '[lead].js']) {
+        assert.strictEqual(memq.isTriggerEntry('glob:' + bad), false,
+            JSON.stringify(bad) + ' is no more a glob than it is an anchor path');
+        assert.strictEqual(memq.isAnchorPath(bad), false,
+            JSON.stringify(bad) + ' is not an anchor path either, so the pair is the same rule');
+    }
+    // The relaxation itself, both characters, since `?` is documented and
+    // would otherwise never be exercised.
+    for (const good of ['src/*.js', 'plugins/**/*.js', 'src/a?.js', 'src/?/a.js', '*.md']) {
+        assert.strictEqual(memq.isTriggerEntry('glob:' + good), true,
+            JSON.stringify(good) + ' is a glob');
+        assert.strictEqual(memq.isAnchorPath(good), false,
+            JSON.stringify(good) + ' is still not an anchor path, which is the relaxation');
+    }
+});
+
+test('a trigger pattern carries no character a round trip through the map would change', () => {
+    // An entry is compared as text on every merge, so a pattern that comes
+    // back from a round trip spelled differently is not the same entry: the
+    // author re-declaring it appends a second one instead of matching the
+    // first. Two characters do that, and they are refused for that reason
+    // rather than for anything they could do to a reader.
+    //
+    // The backslash, on the five types whose grammar is free text: a
+    // double-quoted scalar spells one as a pair and unquoteScalar takes the
+    // quotes off without undoing the escape, so the pattern reads back
+    // doubled, and doubled again on the pass after that.
+    for (const bad of ['cmd:dotnet build .\\src', 'err:at C:\\x', 'skill:a\\b', 'agent:a\\b',
+        'tool:a\\b']) {
+        assert.strictEqual(memq.isTriggerEntry(bad), false,
+            JSON.stringify(bad) + ' carries a backslash and is not a trigger entry');
+    }
+    // The cost, and the spelling that pays it: a win32 path in a pattern is
+    // written forward-slashed, which the same round trip returns unchanged.
+    for (const good of ['cmd:dotnet build ./src', 'err:at C:/x', 'skill:sub/name']) {
+        assert.strictEqual(memq.isTriggerEntry(good), true,
+            JSON.stringify(good) + ' is the forward-slashed spelling and is admitted');
+    }
+    // The single quote on a glob, which the five other types already refuse
+    // anywhere in the pattern. The path grammar bars a quote in the lead
+    // position alone, that being where it is a YAML indicator, so a glob
+    // inherited a quote-bearing pattern that reads back through the
+    // single-quoted spelling as the type 'glob and is then refused, wedging
+    // the verb on a record nobody edited.
+    assert.strictEqual(memq.isTriggerEntry('glob:docs/scott\'s-notes.md'), false,
+        'a glob carries no quote either');
+    assert.strictEqual(memq.isTriggerEntry('glob:docs/*.md'), true,
+        'and the same glob without one is admitted');
+    // Which makes this bar the trigger field's own rather than the path
+    // grammar's: the identical path is still an anchor, because an anchor is
+    // written back by a reader that never re-parses its text.
+    assert.strictEqual(memq.isAnchorPath('docs/scott\'s-notes.md'), true,
+        'the path grammar admits it, so the bar above belongs to this field');
+});
+
+test('a refused glob is told how to fix it in a glob\'s own words', () => {
+    const store = makeStore();
+    try {
+        writeMemoryFile(store, 'fact.md', '---\nname: ""\n---\n\nbody\n');
+        // A glob is a fragment type, so it meets both specificity bars, and
+        // both remedies are otherwise spelled in a command line's vocabulary:
+        // a glob grammar bars the space, so an author told to name more of
+        // the command cannot do it.
+        const token = run(store, ['triggers', 'fact', 'glob:test']);
+        assert.strictEqual(token.status, 1, token.stdout);
+        assert.match(token.stderr, /glob:test\/\*\.js` is admitted where `glob:test` is not/,
+            token.stderr);
+        assert.doesNotMatch(token.stderr.split('usage: memq log')[0], /cmd:node --test/,
+            'a glob refusal does not hand back a remedy spelled with a space');
+        const short = run(store, ['triggers', 'fact', 'glob:*.j']);
+        assert.strictEqual(short.status, 1, short.stdout);
+        assert.match(short.stderr, /name a directory or an extension with it/, short.stderr);
+        assert.doesNotMatch(short.stderr.split('usage: memq log')[0], /the command or the error/,
+            'nor does the floor send a glob author after a command');
+        // The control: the same two bars on a cmd pattern still give the
+        // command-shaped remedies, so the wording above is the type and not
+        // the bars having changed.
+        const cmd = run(store, ['triggers', 'fact', 'cmd:node', 'cmd:git']);
+        assert.strictEqual(cmd.status, 1, cmd.stdout);
+        assert.match(cmd.stderr, /`cmd:node --test` is admitted where `cmd:node` is not/, cmd.stderr);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a triggers call that adds nothing leaves the record\'s bytes and its clock alone', () => {
+    const store = makeStore();
+    try {
+        writeMemoryFile(store, 'fact.md', '---\nname: ""\ntriggers: ' + T_CMD + ', ' + T_ERR
+            + '\n---\n\nbody\n');
+        const file = path.join(store.memDir, 'fact.md');
+        const before = recordBuf(store, 'fact.md');
+        // A record's mtime is the idle clock the decay pass reads, so a
+        // rewrite that changes no byte still moves the record out of the
+        // pass's reach. Backdated so a preserved mtime is distinguishable
+        // from one set to now.
+        const stale = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+        fs.utimesSync(file, stale, stale);
+        const was = fs.statSync(file).mtimeMs;
+
+        const res = run(store, ['triggers', 'fact', T_ERR, T_CMD]);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout, 'triggers: ' + T_CMD + ', ' + T_ERR + '\n',
+            'the line is still reported, because nothing added is not nothing to say');
+        assert.match(res.stderr, /^memq: added: nothing new, every entry was already on the record;/);
+        assert.ok(recordBuf(store, 'fact.md').equals(before), 'no byte of the record changed');
+        assert.strictEqual(fs.statSync(file).mtimeMs, was,
+            'and the mtime the decay pass reads as the idle clock did not move');
+        assert.ok(!fs.existsSync(file + '.bak'),
+            'nor was the record\'s one backup generation spent on a copy of itself');
+
+        // The other direction: one entry the record does not carry, and the
+        // same call writes, spends the generation and moves the clock.
+        const added = run(store, ['triggers', 'fact', T_ERR, T_GLOB]);
+        assert.strictEqual(added.status, 0, added.stderr);
+        assert.ok(!recordBuf(store, 'fact.md').equals(before), 'a real addition rewrites the line');
+        assert.ok(fs.statSync(file).mtimeMs > was, 'and moves the clock');
+        assert.ok(fs.existsSync(file + '.bak'), 'and spends the generation');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('get says a triggers line was cut rather than printing its head as the whole', () => {
+    const store = makeStore();
+    try {
+        // The parse reads a bounded head of the line and flags the cut. A
+        // listing that printed only the entries it read would answer the
+        // byte-identical shape of a record whose triggers were all listed,
+        // with the tail never looked at, which is the false-clean reading
+        // every surface of this field is built to refuse.
+        const over = Array.from({ length: memq.TRIGGER_ENTRIES_MAX + 1 },
+            (_, i) => 'cmd:pattern-' + i).join(', ');
+        const body = '---\nname: ""\ntriggers: ' + over + '\n---\n\n# t\n';
+        writeMemoryFile(store, 'cut.md', body);
+        const got = run(store, ['get', 'cut']);
+        assert.strictEqual(got.status, 0, got.stderr);
+        assert.ok(got.stdout.endsWith('triggers: ' + memq.TRIGGER_TRUNCATED_TEXT + '\n'),
+            'the cut is the last thing said about the record: ' + got.stdout.slice(-200));
+        // Counted over memq's own status lines rather than the whole of
+        // stdout, since the record's body carries a `triggers:` line of its
+        // own and the two are spelled alike at column zero, which is the
+        // conflation the skill warns a reader of this output about.
+        const status = got.stdout.slice(body.length);
+        assert.strictEqual(status.split('triggers: ').length - 1,
+            memq.TRIGGER_ENTRIES_MAX + 1,
+            'every entry read is listed, and the cut row rides after them: ' + status.slice(0, 120));
+
+        // The control: one entry fewer sits inside the bound, so the row
+        // above is the cut speaking and not something every record gets.
+        const atCap = Array.from({ length: memq.TRIGGER_ENTRIES_MAX },
+            (_, i) => 'cmd:pattern-' + i).join(', ');
+        writeMemoryFile(store, 'full.md', '---\nname: ""\ntriggers: ' + atCap + '\n---\n\n# t\n');
+        const fits = run(store, ['get', 'full']);
+        assert.strictEqual(fits.status, 0, fits.stderr);
+        assert.ok(!fits.stdout.includes(memq.TRIGGER_TRUNCATED_TEXT),
+            'a line at the bound is listed whole with no cut row');
     } finally {
         rmStore(store);
     }

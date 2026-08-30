@@ -11,6 +11,7 @@
 //   memq unstamped [--since <n>d|<n>h]
 //   memq touch <name> --applied [--type|--operator]
 //   memq anchor <name> <path>...
+//   memq triggers <name> <type>:<pattern>...
 //   memq add-type <type> <name> "<description>" [--tag t]...
 //                 [--supersedes <name>] [--body "..."|--body-file "<path>"]
 //   memq add-type <type> <name> "<description>" --update
@@ -297,14 +298,14 @@ const DECAY_STAMP_FILE = 'decay-stamp';   // mtime records when a decay pass las
 // operator-tier file takes it in that tier's own directory, and those are all
 // of its holders but one. decay.lock is the project tier's, taken by the
 // decay pass over its project-tier work, and the pass takes no store.lock.
-// The one caller of both is `anchor`, which rewrites a project-tier record:
-// it takes decay.lock and then store.lock in the project memory directory,
-// because decay.lock is what excludes the pass and store.lock is what
-// excludes another `anchor`.
+// The callers of both are the project-tier record rewriters, `anchor` and
+// `triggers`: each takes decay.lock and then store.lock in the project memory
+// directory, because decay.lock is what excludes the pass and store.lock is
+// what excludes the other rewriter of the same record.
 //
 // So a project-tier writer arriving later cannot get its exclusion from
 // store.lock: the pass does not hold it. It takes decay.lock, and it takes it
-// first, which is the order `anchor` uses and the only thing keeping two
+// first, which is the order both of them use and the only thing keeping two
 // lock-takers from inverting into a deadlock.
 const STORE_LOCK_FILE = 'store.lock';
 const DECAY_LOCK_FILE = 'decay.lock';
@@ -342,6 +343,65 @@ const ANCHOR_TRUNCATED_TEXT = 'the rest of the line is unread past '
 // comma, so the value is bounded before that runs rather than after.
 const ANCHOR_VALUE_CAP = (ANCHOR_ENTRY_CAP + 2) * ANCHOR_ENTRIES_MAX;
 const ANCHOR_READ_CAP = 4194304;        // bytes of an anchored file hashed; a larger one is unchecked
+// The recognition triggers a record may declare, the sibling field to
+// anchors:. An anchor names a file at the bytes it held, so it has a sha and a
+// tree behind it; a trigger names a pattern, which has neither, and that is
+// the whole difference between the two fields. Everything bounded below is
+// therefore text rather than a filesystem answer.
+const TRIGGER_TYPES = ['cmd', 'err', 'skill', 'agent', 'tool', 'glob'];
+const TRIGGER_PATTERN_CAP = 256;   // characters of the pattern half of a triggers: entry
+const TRIGGER_ENTRIES_MAX = 32;    // triggers read from one record's line
+// Characters of one triggers: entry, the pattern cap plus the longest type
+// prefix and the colon after it. Past it no entry can parse, so the length
+// answers before the pattern and the display reduction run over a line of
+// unbounded store text, which is ANCHOR_ENTRY_CAP's reason as well.
+const TRIGGER_ENTRY_CAP = TRIGGER_PATTERN_CAP + 1
+    + TRIGGER_TYPES.reduce((n, t) => Math.max(n, t.length), 0);
+// Characters of the whole triggers: value, bounded before the comma split
+// that reads it allocates a piece per comma, exactly as ANCHOR_VALUE_CAP is.
+const TRIGGER_VALUE_CAP = (TRIGGER_ENTRY_CAP + 2) * TRIGGER_ENTRIES_MAX;
+// What a line cut at TRIGGER_ENTRIES_MAX says about itself, on the one
+// surface that reports a cut rather than refusing over it: the row `get`
+// prints under a record whose line runs past what a reader reads. Its anchors
+// counterpart is shared by three surfaces and is a constant so they cannot
+// drift; this one has a single consumer and is a constant for the narrower
+// reason that the sentence is a reader-facing row rather than a fragment of
+// the code that builds it. The writer's own truncation refusal deliberately
+// does not reuse it: that message tells an operator which of two bounds was
+// met and what to shorten, which is a different statement to a different
+// reader, and folding the two would make one of them worse.
+const TRIGGER_TRUNCATED_TEXT = 'the rest of the line is unread past '
+    + TRIGGER_ENTRIES_MAX + ' entries';
+// The specificity floor, in characters of the pattern. A trigger fires on a
+// match against a session's own tool stream, so a pattern short enough to
+// appear inside unrelated work nudges on everything and is read as noise
+// within an hour, which costs more than the memory it was pointing at.
+const TRIGGER_PATTERN_MIN = 4;
+// Which types the bare-token bar below is true of, and it is true of exactly
+// these three. A `cmd:`, `err:` or `glob:` pattern is a fragment of something
+// longer (a command line, a failure's output, a path), so a bare token is an
+// author having stopped too early and lengthening it is a remedy they can
+// act on.
+//
+// The other three are the opposite: a `skill:`, `agent:` or `tool:` pattern
+// is the whole identifier, and there is no longer spelling of it to reach
+// for. `tool:Bash` and `tool:Grep` name the tools they name, so a bar applied
+// there does not ask for a better pattern, it makes the trigger unauthorable
+// and hands back advice its reader cannot follow. The length floor stays
+// universal because four characters loses no real identifier; this second bar
+// does not, because what it screens for is a property of a fragment.
+const TRIGGER_FRAGMENT_TYPES = ['cmd', 'err', 'glob'];
+// The second bar, and it is a second bar rather than a longer first one: a
+// bare token here is the *whole* pattern, so `cmd:node` is refused and
+// `cmd:node --test` is admitted. Length alone cannot express that, since the
+// tokens that fire on everything are not the short ones (`node` clears the
+// four-character floor and `cmd:git` does not clear it), and a floor raised
+// far enough to catch them would refuse the specific short patterns worth
+// having. Compared case-insensitively, because a command's own casing is not
+// what makes it specific.
+const TRIGGER_COMMON_TOKENS = new Set(['git', 'npm', 'node', 'cd', 'ls', 'cat', 'echo', 'sed',
+    'grep', 'find', 'rm', 'cp', 'mv', 'pwsh', 'bash', 'sh', 'dotnet', 'python', 'curl', 'test',
+    'run', 'build']);
 const DAY_MS = 86400000;
 const HOUR_MS = 3600000;
 const MAX_DATE_MS = 8.64e15;   // the widest moment Date can render, either side of the epoch
@@ -2560,10 +2620,26 @@ const YAML_INDICATOR_LEAD = /^[#&!%[\]{}'`]/;
 // exported so that a caller holding an unvalidated value asks it rather than
 // re-spelling the rule.
 function isAnchorPath(value) {
+    return isPathGrammar(value, ANCHOR_PATH_CAP, false);
+}
+
+// The path grammar both `anchors:` and a `glob:` trigger answer to, with the
+// one difference between them passed in: a glob admits `*` and `?`, and an
+// anchor names a single file so it admits neither.
+//
+// Factoring the rule rather than restating it at the second call site is an
+// assertion that the two really are one rule, which here they deliberately
+// are: a glob names paths under the same project root, spelled the same way,
+// read back off the same one-line comma-separated field, and every bar above
+// (the separator, the quote, the invisible class, the device stem, the YAML
+// indicator) is about that line and that root rather than about hashing. A
+// later change that made only one of them true would have to split this
+// again rather than add a parameter.
+function isPathGrammar(value, cap, wildcards) {
     if (typeof value !== 'string') return false;
-    if (value.length === 0 || value.length > ANCHOR_PATH_CAP) return false;
+    if (value.length === 0 || value.length > cap) return false;
     if (value.search(ANCHOR_WHITESPACE) !== -1 || value.search(ANCHOR_INVISIBLE) !== -1) return false;
-    if (/[\\:@,*?<>|]/.test(value)) return false;
+    if (wildcards ? /[\\:@,<>|]/.test(value) : /[\\:@,*?<>|]/.test(value)) return false;
     if (YAML_INDICATOR_LEAD.test(value)) return false;
     return value.split('/').every((s) => s !== '' && !/^\.+$/.test(s)
         && !s.endsWith('.') && !isReservedDeviceSegment(s));
@@ -2728,6 +2804,240 @@ function readFrontmatterAnchors(file) {
         return null;
     }
     return frontmatterAnchors(raw);
+}
+
+// Whether a pattern is one of the five non-glob types' patterns: printable
+// text within the cap, with no comma, since the comma is the line's own
+// separator and the split that reads the line runs before any pattern exists.
+//
+// A space is admitted here where the anchor grammar refuses one, and the
+// difference is what the text is: an anchor path names a file, where a stray
+// space produces an entry indistinguishable from the one the author meant,
+// while a command pattern is a fragment of a command line and `node --test`
+// has a space in the middle of it by nature. What is refused instead is a
+// space at either end, which is the invisible case the anchor grammar's own
+// bar is about, and every whitespace character other than the plain space,
+// since a tab or a line separator inside a pattern is invisible on a report
+// line in exactly the way the anchor grammar refuses.
+//
+// The YAML indicator bar the path grammar carries is not asked here, and the
+// reason is positional: every entry of this field opens with its type prefix,
+// so no pattern of any type is ever the first character of the value, which
+// is the only position a YAML indicator decides anything from. The glob type
+// keeps the bar because it comes with the shared path grammar whole.
+//
+// Admitting the space is what makes the next three bars necessary, and they
+// are the price of it rather than an extra caution. The line this pattern
+// lands on is a YAML plain scalar, and inside one a space is what turns three
+// ordinary characters into syntax:
+//
+//   ': '  opens a mapping value, so `err:Error: cannot find module` writes a
+//         line no YAML reader parses, and the failure is not confined to this
+//         field: the record's whole frontmatter block goes down with it, the
+//         `pinned:` that keeps it out of the decay pass included.
+//   ' #'  opens a comment, so `cmd:foo #bar` parses and silently stores
+//         `cmd:foo`, which is the worse of the two, a wrong value being
+//         harder to notice than an unreadable one.
+//   a trailing ':' is a mapping indicator wherever the entry ends the line,
+//         which merge order decides rather than the author, so it is refused
+//         at every position instead of at the one that is fatal today.
+//
+// The anchor grammar closes this whole class by refusing whitespace and the
+// colon outright. This field cannot: a command fragment has spaces in it by
+// nature, and an error signature has colons in it by nature. So the bars are
+// spelled at the two-character sequences that carry the syntax, which leaves
+// `cmd:foo#bar` and `err:Error:cannot` admitted, both of which are ordinary
+// text to a YAML reader.
+//
+// Three single characters go with them, each for its own reason and each
+// costing a real pattern. The single quote, because `unquoteScalar` strips a
+// surrounding pair off a value read out of the harness's map, so a pattern
+// carrying one can come back from a round trip as text this grammar then
+// refuses, wedging the merge on a record nobody edited; `cmd:it's here` is
+// the cost. The opening bracket, because `get` prints an admitted entry
+// verbatim at column zero and the refusal annotation it prints beside it is
+// ' [note; note]', so a pattern free to spell '[' can forge one of those
+// annotations byte for byte; `err:[ERROR]` is the cost. The backslash,
+// because a double-quoted scalar spells one `\\` and `unquoteScalar` takes
+// the pair off without undoing the escape, so a pattern carrying a backslash
+// reads back with it doubled: the entry no longer equals the one the author
+// re-declares, which appends a second entry rather than recognising the
+// first, and the doubling compounds on every pass. A win32 path in a `cmd:`
+// pattern is spelled forward-slashed, which is what that costs, and the glob
+// grammar already refuses the character for its own reason.
+//
+// None of the three is a containment hole (a pattern reaches no reader as
+// anything but text) and each is a reading a report line exists to prevent.
+function isTriggerPattern(value) {
+    if (typeof value !== 'string') return false;
+    if (value.length === 0 || value.length > TRIGGER_PATTERN_CAP) return false;
+    if (value.search(ANCHOR_INVISIBLE) !== -1) return false;
+    if (/[^\S ]/.test(value)) return false;
+    if (value !== value.trim()) return false;
+    if (value.indexOf(': ') !== -1 || value.endsWith(':')) return false;
+    if (value.indexOf(' #') !== -1) return false;
+    if (value.indexOf('\'') !== -1 || value.indexOf('[') !== -1) return false;
+    if (value.indexOf('\\') !== -1) return false;
+    return value.indexOf(',') === -1;
+}
+
+// Why an entry is not one this field may carry, in the short words `get` and
+// the guard quote back, or null for an entry the grammar admits. The writer
+// turns each of these into a sentence naming the rule it met, since a caller
+// who typed `cmd:git` learns nothing from being told the entry is refused.
+//
+// The two specificity bars are asked after the charset rather than before it,
+// so an entry that is malformed and also short is reported as malformed: the
+// shape is what the author has to fix first, and a floor named over a pattern
+// that was never read as one would send them to lengthen the wrong text.
+function triggerEntryFault(entry) {
+    if (typeof entry !== 'string') return 'not a triggers: entry at all';
+    if (entry.length > TRIGGER_ENTRY_CAP) return 'longer than an entry can be';
+    const at = entry.indexOf(':');
+    const type = at === -1 ? null : entry.slice(0, at);
+    if (type === null || !TRIGGER_TYPES.includes(type)) {
+        return 'not <type>:<pattern>, where <type> is one of ' + TRIGGER_TYPES.join(', ');
+    }
+    const pattern = entry.slice(at + 1);
+    // The glob type takes the path grammar with wildcards, plus this field's
+    // own quote bar. `isPathGrammar` refuses a quote in the lead position
+    // only, that being where it is a YAML indicator, which is the whole of
+    // what an anchor path needs: an anchor is read back by a reader that
+    // never re-parses its text. A trigger is re-parsed on every merge, and a
+    // quote anywhere inside the value survives a round trip through the
+    // harness's map as text this grammar then refuses, which wedges the verb
+    // on a record nobody edited. So the bar covers the whole pattern here,
+    // exactly as it does for the other five types.
+    const admitted = type === 'glob'
+        ? isPathGrammar(pattern, TRIGGER_PATTERN_CAP, true) && pattern.indexOf('\'') === -1
+        : isTriggerPattern(pattern);
+    if (!admitted) {
+        return type === 'glob'
+            ? 'the pattern is not a path glob this may name'
+            : 'the pattern is not one a trigger may name';
+    }
+    // The floor is universal and the bare-token bar is not, and the two say so
+    // in different words, because their remedies differ by type. A fragment
+    // type's refusal asks for more of the command or the error; an identifier
+    // type's cannot, the name being the whole of what there is, so it names
+    // the identifier as too short to be about one memory rather than telling
+    // its author to lengthen something they do not control.
+    const fragment = TRIGGER_FRAGMENT_TYPES.includes(type);
+    if (pattern.length < TRIGGER_PATTERN_MIN) {
+        return (fragment ? 'the pattern is shorter than ' : 'the name is shorter than ')
+            + TRIGGER_PATTERN_MIN + ' characters';
+    }
+    if (fragment && TRIGGER_COMMON_TOKENS.has(pattern.toLowerCase())) {
+        return 'the pattern is a bare token common enough to match unrelated work';
+    }
+    return null;
+}
+
+// The gate, for a caller holding an unvalidated value: it asks rather than
+// re-spelling the rule, which is why `isAnchorPath` is exported too.
+function isTriggerEntry(value) {
+    return triggerEntryFault(value) === null;
+}
+
+// A refused entry reduced to what may be shown, each reduction named, exactly
+// as `anchorRefusalText` does it and for the same reasons: the text is store
+// text bound for a report line, a stripped entry can read like a valid one, and
+// the fault names what the entry was refused for since the text alone often
+// looks fine.
+//
+// The reduction strips both of the unshowable classes even though this
+// grammar admits an interior space, because what it is reducing is text the
+// grammar refused: an entry carrying a tab or a non-breaking space is exactly
+// the entry whose whitespace must not be echoed back intact.
+function triggerRefusalText(entry, fault) {
+    const cut = entry.length > TRIGGER_ENTRY_CAP;
+    const head = cut ? entry.slice(0, TRIGGER_ENTRY_CAP) : entry;
+    const shown = head.replace(ANCHOR_INVISIBLE, '').replace(ANCHOR_WHITESPACE, '');
+    const notes = [];
+    if (shown !== head) notes.push('characters removed for display');
+    if (cut) notes.push('shown to ' + TRIGGER_ENTRY_CAP + ' characters');
+    notes.push(fault);
+    return shown + ' [' + notes.join('; ') + ']';
+}
+
+// The `triggers:` value read as its entries, or null when the value is not one
+// this can read at all. The answer's shape is `parseAnchors`'s, member for
+// member, because the same three surfaces consume both (the writer's merge,
+// the guard's screen and `get`'s listing) and one shape is what lets them
+// treat the two fields alike:
+//
+//   items      every entry in order, each `{text, type, pattern}`, with `type`
+//              and `pattern` null on one the grammar refused
+//   entries    the items that parsed
+//   bad        the refused items' text, for a caller naming one refusal
+//   truncated  whether the line carried more than this reads
+//
+// A refusal does not end the parse, for `parseAnchors`'s reason: the entries
+// after a typo are triggers the record still carries, and a reader that
+// stopped would report on a record while part of what it declares was never
+// looked at.
+function parseTriggers(value) {
+    if (value !== null && typeof value !== 'string') return null;
+    const items = [];
+    let truncated = false;
+    if (typeof value === 'string') {
+        // Bounded before the split, which allocates a piece per comma over a
+        // line of hand-written text with no length this file can assume. A
+        // line cut here loses its last piece whole rather than as a fragment
+        // presented as an entry the record does not carry.
+        const pieces = value.slice(0, TRIGGER_VALUE_CAP).split(',');
+        if (value.length > TRIGGER_VALUE_CAP) {
+            pieces.pop();
+            truncated = true;
+        }
+        for (const piece of pieces) {
+            const entry = piece.trim();
+            if (entry === '') continue;
+            if (items.length >= TRIGGER_ENTRIES_MAX) {
+                truncated = true;
+                break;
+            }
+            const fault = triggerEntryFault(entry);
+            if (fault !== null) {
+                items.push({ text: triggerRefusalText(entry, fault), type: null, pattern: null });
+                continue;
+            }
+            const at = entry.indexOf(':');
+            items.push({ text: entry, type: entry.slice(0, at), pattern: entry.slice(at + 1) });
+        }
+    }
+    return {
+        items,
+        entries: items.filter((it) => it.type !== null),
+        bad: items.filter((it) => it.type === null).map((it) => it.text),
+        truncated
+    };
+}
+
+// The triggers in a record's text, for a walk that already holds it, or null
+// when the record says nothing this can read. The block is asked rather than
+// the value, for `frontmatterAnchors`'s reason: a record whose fence never
+// closes has a frontmatter block nobody could read, and this reader's null
+// then states that on the record's own terms rather than depending on what a
+// value reader happens to hand back for it.
+function frontmatterTriggers(raw) {
+    if (typeof raw !== 'string') return null;
+    if (frontmatterUnclosed(frontmatterBlock(raw))) return null;
+    return parseTriggers(frontmatterValue(raw, 'triggers'));
+}
+
+// The same answer for a record on disk, and null for one that could not be
+// read at all, at most FRONTMATTER_READ_CAP bytes of it, which is what lets a
+// caller ask this of a whole tier at a cost per record it can state ahead of
+// time.
+function readFrontmatterTriggers(file) {
+    let raw;
+    try {
+        raw = readHead(file, FRONTMATTER_READ_CAP);
+    } catch {
+        return null;
+    }
+    return frontmatterTriggers(raw);
 }
 
 // The directory an anchor's path resolves against, or null when there is
@@ -3720,6 +4030,7 @@ function usage(problem) {
         + '       memq unstamped [--since <n>d|<n>h]\n'
         + '       memq touch <name> --applied [--type|--operator]\n'
         + '       memq anchor <name> <path>...\n'
+        + '       memq triggers <name> <type>:<pattern>...\n'
         + '       memq add-type <type> <name> "<description>" [--tag t]...\n'
         + '                     [--supersedes <name>] [--body "..."|--body-file "<path>"]\n'
         + '       memq add-type <type> <name> "<description>" --update\n'
@@ -5021,6 +5332,50 @@ function anchorReport(file, raw, sharedTier) {
     return states.map((s) => 'anchors: ' + anchorStateText(s) + '\n').join('');
 }
 
+// The `triggers:` lines `get` prints under a record's body: one per trigger
+// the record declares, and nothing at all for a record that declares none.
+//
+// There is no state to report here, which is the whole difference from
+// `anchorReport` above. A trigger is a pattern, so nothing is resolved, no
+// root is derived and no file is read: what the record declares is the whole
+// of what there is to say, and the only answers short of the list are that
+// the record's frontmatter could not be read and that the line was cut before
+// its end.
+//
+// A shared tier's record is listed no more than its anchors are checked, and
+// for a reason of the same shape rather than the same reason: these lines sit
+// at column zero on stdout, outside the provenance fence the body printed
+// under, which is memq's own voice, and a pattern from a tier any project on
+// the machine can write is not that. The sentence such a record gets says
+// what is true of the store rather than of the record, since recognition
+// reads the project tier alone.
+//
+// `raw` is the record's text where the caller already read it, which spares
+// this a second read of a file just printed; without it the record is read
+// here.
+function triggerReport(file, raw, sharedTier) {
+    const parsed = typeof raw === 'string' ? frontmatterTriggers(raw) : readFrontmatterTriggers(file);
+    if (sharedTier) {
+        // A record whose frontmatter could not be read takes this branch too:
+        // what it declares is unknown, and the tier is reason enough on its
+        // own for the same sentence either way.
+        return parsed === null || parsed.items.length > 0 || parsed.truncated
+            ? 'triggers: not listed (this record is on a shared tier, and recognition reads the'
+                + ' project tier only)\n'
+            : '';
+    }
+    if (parsed === null) return 'triggers: not listed (' + ANCHOR_CAUSE.frontmatter + ')\n';
+    if (parsed.items.length === 0 && !parsed.truncated) return '';
+    // A parsed entry prints as the record wrote it, never through `sanitize`:
+    // the grammar admits visible non-ASCII, and the reduction that strips it
+    // would print a pattern the record does not carry. A refused entry prints
+    // the text `parseTriggers` already reduced and annotated, which is what
+    // keeps a record's own text from forging one of these column-zero lines.
+    const lines = parsed.items.map((it) => 'triggers: ' + it.text + '\n');
+    if (parsed.truncated) lines.push('triggers: ' + TRIGGER_TRUNCATED_TEXT + '\n');
+    return lines.join('');
+}
+
 // memq get: the full record behind a find line. Precedence on a name
 // collision: a journal key wins (keys are the primary namespace `get`
 // serves), then this run's pending memory, then a project-tier memory, then
@@ -5187,6 +5542,13 @@ function cmdGet(argv) {
                 // rather than a fact about the fetch. It is built from the
                 // text the body was printed from, so the record is read once.
                 process.stdout.write(anchorReport(path.join(rung.dir, file), read.raw,
+                    rung.sharedTier));
+                // The triggers listing follows the anchors report, on the
+                // same stream and at the same column, because the two fields
+                // are read together: what a record is about is its files and
+                // its patterns, and a reader deciding whether this memory
+                // covers the work in front of them wants both under one body.
+                process.stdout.write(triggerReport(path.join(rung.dir, file), read.raw,
                     rung.sharedTier));
                 // The retirement note follows the body rather than leading it,
                 // because until printMemoryBody returns there is no knowing
@@ -7489,6 +7851,515 @@ function cmdAnchor(argv) {
         + (inPending ? ' (pending tier)' : '') + '\n');
 }
 
+// The record's own half of `triggers`, run with the tier lock held: read the
+// record, merge the given entries into whatever it already said, and rewrite
+// the one line. It answers with the line it wrote, or null having written a
+// refusal of its own, and it throws for nothing, so the caller's only duty
+// after it returns is to release the lock.
+//
+// This is `anchorRecord`'s shape and, past the field name, its rules: the
+// record is read here rather than before the lock so that what is merged is
+// what is on disk at the moment of the write, and the rewrite refuses any
+// length change (`refuseGrowth`), because the splice is stale the moment the
+// file moves and a stop is the only answer that keeps the body promise.
+function triggerRecord(memPath, name, where, wanted) {
+    const shown = '\'' + sanitize(name, NAME_CAP) + '\'' + where;
+    let original;
+    let text;
+    try {
+        refuseNonRegularStoreFile(memPath);
+        original = fs.readFileSync(memPath);
+        text = original.toString('utf8');
+    } catch (err) {
+        process.stderr.write('memq: ' + shown + ' took no triggers: ' + failureText(err) + '\n');
+        process.exitCode = 1;
+        return null;
+    }
+    // A record whose bytes are not valid UTF-8 cannot be spliced: the decode
+    // and the re-encode below would not give back the bytes that came in, so
+    // the body this verb promises to leave alone would be rewritten.
+    if (!Buffer.from(text, 'utf8').equals(original)) {
+        process.stderr.write('memq: ' + shown + ' holds bytes that are not valid UTF-8, so its'
+            + ' body cannot be carried across a rewrite unchanged; nothing written\n');
+        process.exitCode = 1;
+        return null;
+    }
+
+    // Every way a record can say nothing this can read, refused rather than
+    // written into. A triggers: line added to a block nobody could parse
+    // would mint a record declaring recognition triggers that no reader ever
+    // reads, with nothing anywhere saying why.
+    const site = frontmatterSite(text, 'triggers');
+    if (frontmatterUnclosed(site.block)) {
+        // The verb writes to the project tier only, so the repair is one the
+        // session's own write tools can make.
+        process.stderr.write('memq: ' + shown + ' opens a frontmatter block that does not close'
+            + ' inside the first ' + FRONTMATTER_MAX_LINES + ' lines, so no reader can read its'
+            + ' fields; ' + frontmatterUnclosedRepair(site.block, false)
+            + ', then rerun (nothing written)\n');
+        process.exitCode = 1;
+        return null;
+    }
+    if (site.value === FRONTMATTER_INDENTED) {
+        process.stderr.write('memq: ' + shown + ' has a triggers: field under a key other than'
+            + ' the harness\'s metadata: map, where no reader reads it; move it to the'
+            + ' frontmatter block\'s top level, where it reads whether or not the harness then'
+            + ' moves it under metadata:, and rerun (nothing written)\n');
+        process.exitCode = 1;
+        return null;
+    }
+
+    // What the record already says, which this verb adds to rather than
+    // replaces. A line carrying an entry the grammar refuses, or more entries
+    // than a reader reads, is refused instead of merged: the rewrite would
+    // drop that text, and text dropped out of a record is the one outcome no
+    // .bak beside it makes good in the store's own answers.
+    const parsed = parseTriggers(typeof site.value === 'string' ? site.value : null);
+    if (parsed.bad.length > 0) {
+        process.stderr.write('memq: ' + shown + ' already carries a triggers: entry this cannot'
+            + ' read, and a rewrite would drop it: ' + parsed.bad.join('; ')
+            + '. Correct the line by hand and rerun (nothing written)\n');
+        process.exitCode = 1;
+        return null;
+    }
+    // Truncation has two causes and the message names both, because the entry
+    // count is the one an operator counts and the other is the one that
+    // surprises: a line of few but long entries reaches the value cap first.
+    if (parsed.truncated) {
+        process.stderr.write('memq: ' + shown + ' carries a triggers: line past what a reader'
+            + ' reads (' + TRIGGER_ENTRIES_MAX + ' entries, or ' + TRIGGER_VALUE_CAP
+            + ' characters of value, whichever it met first), and a rewrite would drop the'
+            + ' rest; shorten the line by hand and rerun (nothing written)\n');
+        process.exitCode = 1;
+        return null;
+    }
+
+    // The merge. An entry the record already carries keeps its position and
+    // an entry it does not carry is appended, which is the anchor merge's
+    // rule with its second half degenerate: an anchor carries a sha that can
+    // go stale, so re-anchoring a path in place refreshes it, while a trigger
+    // is its own value whole and re-declaring one has nothing to refresh. So
+    // what the merge preserves here is the author's ordering and the absence
+    // of a duplicate, and nothing on the line changes for an entry already on
+    // it.
+    //
+    // Entries are compared as text, exactly, where the anchor merge compares
+    // paths the way the filesystem does. There is no filesystem in this
+    // field: a pattern is matched against a command line or a tool name, both
+    // of which are case-bearing, so `cmd:Push-Location` and
+    // `cmd:push-location` are two different patterns and folding them would
+    // silently drop one of them.
+    const merged = parsed.entries.map((e) => e.text);
+    const added = [];
+    for (const entry of wanted) {
+        if (merged.includes(entry)) continue;
+        merged.push(entry);
+        added.push(entry);
+    }
+    if (merged.length > TRIGGER_ENTRIES_MAX) {
+        process.stderr.write('memq: ' + shown + ' would carry ' + merged.length
+            + ' triggers and a reader reads ' + TRIGGER_ENTRIES_MAX + ', so the rest would go'
+            + ' unread; declare fewer triggers (nothing written)\n');
+        process.exitCode = 1;
+        return null;
+    }
+    // Written unquoted at either placement, for the reason the anchors line is:
+    // a plain scalar carrying commas is what the field's grammar reads at the
+    // top level, where nothing unquotes, and equally what the map reads, where
+    // the unquoting takes a pair off only when there is one.
+    const value = merged.join(', ');
+    const line = 'triggers: ' + value;
+
+    // A call that adds nothing writes nothing. The merge above leaves an
+    // entry the record already carries exactly where it was, so with nothing
+    // added the splice would write back the bytes it read: it would spend the
+    // record's one backup generation on a byte-identical copy, and it would
+    // move the record's mtime, which is the idle clock the decay pass reads,
+    // making a re-run of the same command a way to hold a stale record out of
+    // a pass without changing anything about it. `anchor`'s own re-declaration
+    // does write, because an anchor carries a sha and re-hashing a path is a
+    // verification act with a result; a trigger is its own value whole and
+    // has nothing to refresh. Nothing added is not nothing to say, so the
+    // line and its carried entries are still reported.
+    if (added.length === 0) return { line, added, carried: merged };
+
+    // The splice. One line of the record changes and every other byte of it,
+    // its line endings and its body included, is the byte that was there: a
+    // rebuild from split lines would rewrite the record's line endings on any
+    // checkout whose records are not the separator this file joins with.
+    let rewritten;
+    if (site.line !== -1) {
+        const spans = frontmatterLineSpans(text, site.block);
+        const span = spans[site.line];
+        // The line's own indentation is kept. Under the harness's map the
+        // field is a member of that map, and a member rewritten at column 0
+        // would leave it and stop being read as the author's key.
+        const indent = /^\s*/.exec(site.block.lines[site.line])[0];
+        rewritten = text.slice(0, span.start) + indent + line + text.slice(span.end);
+    } else if (site.block.opened) {
+        // No line to rewrite, so a new one at the block's top level, directly
+        // under the opening fence: the top level is where a hand writes a
+        // field, and a field written there reads whether or not the harness
+        // later moves it under metadata:. The separator that already follows
+        // the fence is the one the new line takes, so a record written with
+        // either line ending keeps the one it has.
+        const spans = frontmatterLineSpans(text, site.block);
+        const at = spans[1].start;
+        rewritten = text.slice(0, at) + line + text.slice(spans[0].end, at) + text.slice(at);
+    } else {
+        // No block at all, so one is created around the line and the whole of
+        // the record follows it untouched. A byte order mark stays at the head
+        // of the file, where it is the file's mark rather than the block's.
+        const eol = text.indexOf('\r\n') === -1 ? '\n' : '\r\n';
+        rewritten = site.block.bom + '---' + eol + line + eol + '---' + eol
+            + text.slice(site.block.bom.length);
+    }
+
+    // The post-condition, asked of the bytes about to be written and through
+    // the reader that will read them back off disk. The failure it catches is
+    // not that the record reports something wrong, it is that the record stops
+    // being readable at all, and every field goes with it: a block whose
+    // closing fence already sits at the reader's last line has that fence
+    // pushed one line past the bound by the inserted line, after which every
+    // field of the record goes unread, the `pinned:` that keeps it out of the
+    // decay pass's classification included. It refuses rather than trimming to
+    // fit, because what would have to be dropped is the record's own text.
+    const readBack = frontmatterTriggers(rewritten);
+    const wroteValue = readBack === null || readBack.bad.length > 0 || readBack.truncated
+        ? null
+        : readBack.entries.map((e) => e.text).join(', ');
+    if (wroteValue !== value) {
+        process.stderr.write('memq: ' + shown + ' took no triggers, because the record with the'
+            + ' line added does not read back as the record this wrote: '
+            + (readBack === null
+                ? 'its frontmatter block ends at the last line a reader reads ('
+                    + FRONTMATTER_MAX_LINES + '), so one more line in it closes nothing and'
+                    + ' every field of the record goes unread, a pinned: field included. To'
+                    + ' make room, ' + frontmatterUnclosedRepair(frontmatterBlock(rewritten),
+                        false) + ', then rerun'
+                : 'the triggers: line reads back as something else')
+            + ' (nothing written)\n');
+        process.exitCode = 1;
+        return null;
+    }
+
+    const backedUp = [];
+    try {
+        rewriteWithBackup(memPath, original, rewritten, {
+            concurrentAppends: false,
+            refuseGrowth: true,
+            onBackup: (f) => { backedUp.push(backupLabel(f)); }
+        });
+    } catch (err) {
+        process.stderr.write('memq: ' + shown + ' took no triggers: ' + failureText(err)
+            + (backedUp.length > 0 ? '. ' + backupClause(backedUp) : '') + '\n');
+        process.exitCode = 1;
+        return null;
+    }
+    // The line, and which of its entries this run put there. The line alone
+    // does not say: a record that already declared every entry the command
+    // named prints the same line as one that declared none of them, and the
+    // difference is the whole of what this run did.
+    return { line, added, carried: merged.filter((e) => !added.includes(e)) };
+}
+
+// memq triggers <name> <entry>...: record the deterministic recognition
+// triggers a project memory is about, so a later pass can nudge when the
+// session's own work touches one.
+//
+// The verb writes one frontmatter line and nothing else. Everything else
+// about the record, its body most of all, is left where it was, which is why
+// this is a splice rather than a rebuild.
+//
+// An entry is `<type>:<pattern>`, the type one of TRIGGER_TYPES and the
+// pattern stored verbatim. Nothing here matches anything: what this verb
+// fixes is the grammar and the storage, and what a pattern means against a
+// running session's tool stream belongs to the surface that does the
+// matching.
+//
+// The project's own tiers only, the run-scoped pending tier first and then
+// the project tier, which is `get`'s and `touch`'s precedence. `--type` and
+// `--operator` are refused, and not for `anchor`'s reason: a trigger needs no
+// project root and no tree, so the shared tiers could hold one. What refuses
+// them is that recognition reads the project tier alone, and widening it to
+// tiers that sync across machines and across every project on one is a
+// question about the reading surface rather than about this field's grammar.
+//
+// Two of `anchor`'s gates are deliberately absent, because both are about
+// resolving a path against a project root and this verb resolves none. A
+// store pin is not a refusal here: a pin says the records were chosen by the
+// environment rather than by this working directory, which leaves an anchor
+// with nothing to be relative to and leaves a pattern entirely unaffected.
+// And no root is derived at all, so nothing here walks a tree.
+function cmdTriggers(argv) {
+    let name = null;
+    const given = [];
+    for (const a of argv) {
+        if (a === '--type' || a === '--operator') {
+            return usage('triggers writes the project tier only: recognition reads the project'
+                + ' tier alone, and widening it to the tiers that sync across machines and'
+                + ' across every project on one is not this verb\'s to decide');
+        }
+        else if (a.startsWith('--')) return usage('unknown option ' + sanitize(a, 40));
+        else if (name === null) name = a;
+        else given.push(a);
+    }
+    if (name === null) return usage('triggers needs a <name>');
+    if (given.length === 0) return usage('triggers needs at least one <type>:<pattern> entry');
+    // The store's own definition of a memory file decides what may declare a
+    // trigger, so the index and any name that could leave the memory
+    // directory are refused here exactly as they are everywhere else.
+    const file = name + '.md';
+    if (!isMemoryFilename(file)) {
+        return usage('name must be characters from [A-Za-z0-9_.-], at most '
+            + (MEMORY_FILE_CAP - 3) + ', and not the memory index');
+    }
+
+    // This hoist sits ahead of memDirOrNote(): that call's own first statement
+    // is projectMemoryDir(process.cwd()), which reaches worktreeMainRoot's
+    // fs.statSync(cwd/.git) whenever no pin is set, the walk that hangs for
+    // the SMB timeout on an unreachable host. The gate is about that walk
+    // rather than about anything a trigger needs, which is why it is here in a
+    // verb that derives no root at all: what it protects is the resolution of
+    // the memory directory this command writes into, the same resolution
+    // `touch` takes and gates for the same reason. A pin answers
+    // projectSegment before worktreeMainRoot is ever reached, so it is
+    // specifically an unpinned network cwd that rides the walk, and under a
+    // pin this verb runs through to the end, having no root to want.
+    const cwd = process.cwd();
+    if (pinnedProjectSegment() === null && namesNetworkShare(cwd)) {
+        process.stderr.write('memq: this call\'s working directory names a network share, so the '
+            + 'project memory directory this would write into was not resolved from it (a '
+            + 'synchronous walk under it risks hanging for the SMB timeout on an unreachable '
+            + 'host); there is no route to run this command from a network working directory, '
+            + 'so nothing was written\n');
+        process.exitCode = 1;
+        return;
+    }
+
+    const memDir = memDirOrNote();
+    if (memDir === null) {
+        process.exitCode = 1;
+        return;
+    }
+
+    // Which record the name means, on `get`'s and `touch`'s precedence: the
+    // run's own pending tier first, then the project tier. A memory a run
+    // wrote lives in its pending tier and nowhere else, so resolving the
+    // project tier alone would answer for a different record of the same
+    // name, and a session declaring triggers on the memory it just wrote
+    // would rewrite the shared project-tier record instead.
+    let recordDir = memDir;
+    let inPending = false;
+    const pendingDir = pendingDirFor(cwd);
+    if (pendingDir !== null) {
+        // Only absence means the project tier. A stat that failed for any
+        // other reason says nothing about which tier holds the record, and
+        // reading one as absence sends the write to the shared project-tier
+        // record of the same name, reported as a success with nothing on
+        // either channel saying which record was rewritten.
+        let pendingSt = null;
+        let pendingCode = null;
+        try {
+            pendingSt = fs.statSync(path.join(pendingDir, file));
+        } catch (err) {
+            pendingCode = err && err.code ? err.code : String(err);
+        }
+        if (pendingCode !== null && pendingCode !== 'ENOENT') {
+            process.stderr.write('memq: this run\'s pending tier could not be examined ('
+                + sanitize(pendingCode, 40) + '), so which tier holds \''
+                + sanitize(name, NAME_CAP) + '\' is unknown and nothing was written\n');
+            process.exitCode = 1;
+            return;
+        }
+        if (pendingSt && pendingSt.isFile()) {
+            recordDir = pendingDir;
+            inPending = true;
+        }
+    }
+    const where = inPending ? ' in the pending tier' : ' in the project tier';
+    const memPath = path.join(recordDir, file);
+    // Answered before the entries are judged, so a mistyped name costs no
+    // reading. It is answered again under the lock by the read itself, which
+    // is the answer that counts; this one is here to say 'no such memory' in
+    // those words rather than as a failed read.
+    let st = null;
+    let code = null;
+    try {
+        st = fs.statSync(memPath);
+    } catch (err) {
+        code = err && err.code ? err.code : String(err);
+    }
+    if (code !== null && code !== 'ENOENT') {
+        process.stderr.write('memq: \'' + sanitize(name, NAME_CAP) + '\'' + where
+            + ' could not be examined (' + sanitize(code, 40) + '), so nothing was written\n');
+        process.exitCode = 1;
+        return;
+    }
+    if (!st || !st.isFile()) {
+        process.stderr.write('memq: no memory file named \'' + sanitize(name, NAME_CAP)
+            + '\' in the project tier\n');
+        process.exitCode = 1;
+        return;
+    }
+
+    // Every entry judged, and every refusal collected rather than the first
+    // one returned: a caller who named four entries and mistyped two of them
+    // fixes both on one re-run.
+    const wanted = [];
+    const seen = new Set();
+    const refusals = [];
+    for (const one of given) {
+        const fault = triggerEntryFault(one);
+        if (fault !== null) {
+            refusals.push(triggerRefusalText(one, triggerFaultWords(fault, one)));
+            continue;
+        }
+        // The same entry named twice is one mention at its first position,
+        // which is the rule the merge below follows for an entry the record
+        // already carries.
+        if (seen.has(one)) continue;
+        seen.add(one);
+        wanted.push(one);
+    }
+    if (refusals.length > 0) {
+        process.stderr.write('memq: nothing was written; '
+            + (refusals.length === 1 ? 'this entry was refused' : 'these entries were refused')
+            + ': ' + refusals.join('; ') + '\n');
+        process.exitCode = 1;
+        return;
+    }
+
+    // Both of the project tier's locks, in the order the decay pass takes
+    // them, decay.lock first. Neither one alone excludes the other's holder:
+    // a decay pass rewrites this tier under decay.lock and takes no store.lock
+    // here, so a rewrite holding only store.lock can rename a record back over
+    // a name a pass has just archived, leaving a live file no index lists.
+    // Taking both in the pass's own order is what keeps the two from
+    // inverting into a deadlock.
+    //
+    // They are the project memory directory's locks whichever tier the record
+    // is in, because the pending tier is a directory under it and its records
+    // are written by these same commands.
+    const decayLock = acquireLock(path.join(memDir, DECAY_LOCK_FILE));
+    if (!decayLock.ok) {
+        process.stderr.write('memq: project store locked by a decay pass, nothing written: '
+            + sanitize(decayLock.reason, 260) + '\n');
+        process.exitCode = 1;
+        return;
+    }
+    let written;
+    try {
+        const lock = acquireLock(path.join(memDir, STORE_LOCK_FILE));
+        if (!lock.ok) {
+            process.stderr.write('memq: project store locked, nothing written: '
+                + sanitize(lock.reason, 260) + '\n');
+            process.exitCode = 1;
+            return;
+        }
+        try {
+            written = triggerRecord(memPath, name, where, wanted);
+        } finally {
+            lock.release();
+        }
+    } finally {
+        decayLock.release();
+    }
+    // Null is a refusal that has already said what it was, in its own line.
+    if (!written) return;
+    // Printed as written. Every entry on it passed the grammar, which bars
+    // the invisible characters and the quote a display gate exists to remove,
+    // and `sanitize` would strip the non-ASCII characters the grammar
+    // deliberately admits, naming a different pattern than the one declared.
+    process.stdout.write(written.line + '\n');
+    // What this run actually added, on stderr, where this file puts a fact
+    // about a result rather than the result. The line on stdout is the
+    // record's whole declaration and says nothing about which part of it
+    // arrived just now.
+    process.stderr.write('memq: added: ' + (written.added.length > 0
+        ? written.added.join(', ')
+        : 'nothing new, every entry was already on the record')
+        + (written.carried.length > 0
+            ? '; already on the record: ' + written.carried.join(', ')
+            : '')
+        + (inPending ? ' (pending tier)' : '') + '\n');
+}
+
+// A refused entry's fault in the words a caller can act on, built from the
+// short label the parse uses. The short label is what a report line quotes
+// back inside a record's own listing, where the record is the subject and the
+// space is a line; here the subject is a command somebody just typed, and the
+// rules are worth spelling out, since a caller who typed `cmd:git` learns
+// nothing from being told the pattern is short.
+//
+// The entry the fault came from is read for its type alone, because two of
+// the specificity remedies below are spelled in the vocabulary of the type
+// they are given to: a remedy naming the command or the error is one a glob
+// author cannot follow, the glob grammar barring the space that a longer
+// command fragment is written with.
+function triggerFaultWords(fault, entry) {
+    const at = typeof entry === 'string' ? entry.indexOf(':') : -1;
+    const type = at === -1 ? null : entry.slice(0, at);
+    if (fault.startsWith('the pattern is shorter')) {
+        if (type === 'glob') {
+            return fault + '. A glob fires on the paths the session reads and writes, so one'
+                + ' this short matches files all over the tree and its nudge is read as noise;'
+                + ' name a directory or an extension with it, the way docs/plans/*.md does';
+        }
+        return fault + '. A trigger fires against the session\'s own tool stream, so a pattern'
+            + ' this short matches unrelated work and its nudge is read as noise; name enough'
+            + ' of the command or the error to be about this memory';
+    }
+    // The identifier types get their own words because the remedy above is
+    // one their author cannot act on: a skill, an agent type and a tool are
+    // named by whatever names them, so there is no longer spelling to reach
+    // for and the honest answer is that this trigger is not the one to use.
+    if (fault.startsWith('the name is shorter')) {
+        return fault + '. A skill, agent or tool name is the whole of the pattern rather than a'
+            + ' fragment of one, so there is nothing to lengthen: a name this short matches'
+            + ' unrelated work, and this memory wants a different trigger';
+    }
+    if (fault.startsWith('the pattern is a bare token')) {
+        if (type === 'glob') {
+            return fault + '. It is the bare token that is refused rather than the word: '
+                + '`glob:test/*.js` is admitted where `glob:test` is not, a glob being one of '
+                + 'the ' + TRIGGER_FRAGMENT_TYPES.join(', ') + ' types the bar is asked of, '
+                + 'whose pattern is a fragment of something longer';
+        }
+        return fault + '. It is the bare token that is refused rather than the word: '
+            + '`cmd:node --test` is admitted where `cmd:node` is not. The bar is asked of '
+            + TRIGGER_FRAGMENT_TYPES.join(', ') + ' alone, those being the types whose pattern'
+            + ' is a fragment of something longer';
+    }
+    if (fault === 'the pattern is not a path glob this may name') {
+        return fault + '. The rules, so a refusal names the one it met: forward slashes only,'
+            + ' relative to the project root, at most ' + TRIGGER_PATTERN_CAP + ' characters,'
+            + ' * and ? admitted and no other wildcard, no whitespace and no invisible'
+            + ' character, none of : @ , < > | or a backslash, no segment that is only dots or'
+            + ' ends in one, no segment whose name before its extension is a win32 device'
+            + ' (CON, PRN, AUX, NUL, COM1-9, LPT1-9, CONIN$, CONOUT$), and no leading'
+            + ' # & ! % [ ] { } \' or backtick, which decide how the line is read back';
+    }
+    if (fault === 'the pattern is not one a trigger may name') {
+        return fault + '. The rules, so a refusal names the one it met: at most '
+            + TRIGGER_PATTERN_CAP + ' characters, no comma, which is the line\'s own separator,'
+            + ' no invisible character and no quote of either kind, no opening bracket, and no'
+            + ' whitespace but the plain space, which is admitted inside a pattern and never at'
+            + ' either end. Three sequences go with them, because the line is a YAML plain'
+            + ' scalar and a space is what makes them syntax: no \': \', which would open a'
+            + ' mapping value and take the record\'s whole frontmatter block down; no \' #\','
+            + ' which would open a comment and store a silently shortened pattern; and no'
+            + ' trailing \':\'. A colon or a # with no space beside it is ordinary text and is'
+            + ' admitted, so err:Error:cannot find module carries the same signature';
+    }
+    if (fault.startsWith('not <type>')) {
+        return fault + '. An entry names what to recognize and what kind of thing it is: a'
+            + ' Bash command (cmd), a failed call\'s output (err), a skill (skill), an agent'
+            + ' type (agent), a tool name (tool), or a path glob (glob)';
+    }
+    return fault;
+}
+
 // memq decay-scan: report the store's decay candidates, one deterministic
 // line each, and write nothing. Line shapes:
 //
@@ -8261,8 +9132,12 @@ function rewriteWithBackup(filePath, origBuf, newContent, options) {
     // a shared tier's MEMORY.md, where the growth is a sync pull and
     // last-writer-wins is the failure chosen a few lines above. It is the
     // wrong answer for a caller whose new content is a splice of the bytes it
-    // read, since the splice is stale the moment the file moved. The one
-    // caller passing it today is `anchor`.
+    // read, since the splice is stale the moment the file moved. The callers
+    // passing it today are the two frontmatter-line writers, `anchor` and
+    // `triggers`, which is what every splicing caller has in common rather
+    // than a coincidence of who exists: a verb that rewrites one line of a
+    // record and promises the rest of it unchanged cannot let the rest move
+    // underneath it.
     //
     // The read and the check come before the backup copy, so a stop here
     // leaves the target and its .bak both as they were. Copying first would
@@ -12320,6 +13195,7 @@ function main() {
     else if (cmd === 'unstamped') cmdUnstamped(rest);
     else if (cmd === 'touch') cmdTouch(rest);
     else if (cmd === 'anchor') cmdAnchor(rest);
+    else if (cmd === 'triggers') cmdTriggers(rest);
     else if (cmd === 'add-type') cmdAddType(rest);
     else if (cmd === 'add-operator') cmdAddOperator(rest);
     else if (cmd === 'delete-type') cmdDeleteType(rest);
@@ -12359,6 +13235,18 @@ module.exports = {
     ANCHOR_READ_CAP,
     ANCHOR_ENTRY_CAP,
     ANCHOR_TRUNCATED_TEXT,
+    frontmatterTriggers,
+    readFrontmatterTriggers,
+    parseTriggers,
+    isTriggerEntry,
+    TRIGGER_TYPES,
+    TRIGGER_FRAGMENT_TYPES,
+    TRIGGER_PATTERN_CAP,
+    TRIGGER_PATTERN_MIN,
+    TRIGGER_ENTRIES_MAX,
+    TRIGGER_ENTRY_CAP,
+    TRIGGER_VALUE_CAP,
+    TRIGGER_TRUNCATED_TEXT,
     anchorStatesFrom,
     anchorStates,
     anchorRoot,

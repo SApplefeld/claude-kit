@@ -222,10 +222,11 @@ const ESCAPED_QUOTE = /\\["']/;
 const PRELOAD_ENV = ['NODE_OPTIONS', 'NODE_PATH', 'NODE_REPL_EXTERNAL_MODULE'];
 
 // The verbs a prompt-free allow covers, which is memq's own subcommand list
-// minus the four this grant does not extend to. memq dispatches log, find,
-// get, recall, recent, unstamped, touch, anchor, add-type, add-operator,
-// delete-type, delete-operator, decay-scan, decay-prune and decay-done, and
-// the four absent here are the two deletes, find, and anchor.
+// minus the five this grant does not extend to. memq dispatches log, find,
+// get, recall, recent, unstamped, touch, anchor, triggers, add-type,
+// add-operator, delete-type, delete-operator, decay-scan, decay-prune and
+// decay-done, and the five absent here are the two deletes, find, anchor, and
+// triggers.
 //
 // anchor is the fourth, and it is withheld on what it authors rather than on
 // what it destroys: it rewrites a record of the project tier in place, at a
@@ -235,6 +236,15 @@ const PRELOAD_ENV = ['NODE_OPTIONS', 'NODE_PATH', 'NODE_REPL_EXTERNAL_MODULE'];
 // would then report that memory as verified when nobody read it. The CLI has
 // no second refusal for the verb, since it is the operator's own, so this
 // screen is the only one.
+//
+// triggers is the fifth and is withheld on the same account, at the record's
+// other half: it rewrites a project-tier record in place too, and the line it
+// writes is what decides when that memory is put in front of a session. A
+// worker could aim a record's recognition at whatever it liked, or crowd the
+// line to the entry cap so the triggers the operator wrote go unread, with
+// nothing on any surface saying the declaration changed. It has no second
+// refusal in the CLI either, for anchor's reason, so this screen is again the
+// only one.
 //
 // An allowlist rather than a denylist, because the two fail in opposite
 // directions: a verb added to the CLI later is not covered until this list
