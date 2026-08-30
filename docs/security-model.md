@@ -168,6 +168,30 @@ whatever transport the configured URL names, which for the usual local-inference
 plain HTTP with no authentication, and it serves other tenants besides the sidecar. Nothing on
 that path redacts, and no section of the sidecar plan screens what goes. A command that echoed a
 secret therefore puts that secret in a prompt on another machine.
+
+The daemon writes its own records beside the spool, and they are a second copy of the
+same material rather than a summary of it. `~/.claude/kit-sidecar/logs/` holds one
+`verdicts-<sessionId>.jsonl` per observed session and a shared `findings.jsonl`, and each
+record carries the call's stated intent in full, a bounded preview of its command, and the
+model's one-clause reason. The reason is model output derived from whatever a command
+printed, so it is neutralized where it is parsed rather than where it is displayed: control
+characters, bidirectional overrides and zero-width characters are stripped once, at the
+producer, so every later reader inherits the guard instead of reimplementing it.
+
+Those logs are swept on the same schedule as the spool and bounded the same way, which
+matters because the preview's justification depends on it. A preview is safe to keep only
+while the full command still sits in the spool, and past the retention window the log copy
+would otherwise be the only copy and would outlive the material it was taken from.
+
+The endpoint the daemon sends to is named only by the machine-local config file, and no
+component writes the address to a log line, a record, or a report. What the records and the
+startup line carry instead is a truncated hash of the host, which is enough to tell two runs
+apart or to notice that an endpoint changed between them, and not enough to name it. The
+daemon reports loudly at startup when the configured host is neither loopback nor a private
+address. That is a detection control and not a prevention one: anything running as this user
+can rewrite the config, which is the same single principal the rest of this document assumes,
+so what the warning buys is that a redirected endpoint is visible on a surface someone reads
+rather than invisible on every surface at once.
 ## Environment overrides, and why they differ
 
 Variables that redirect where the tooling looks are gated, and so is the one below that redirects nothing and steers a control's timing instead; all of them are deliberately gated differently:

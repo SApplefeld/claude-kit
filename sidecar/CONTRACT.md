@@ -127,8 +127,9 @@ Rules the daemon follows:
 - A file shorter than its recorded offset has been rotated or truncated
   externally: reset that file's offset to 0 and count the event rather than
   trusting the stale number.
-- Drop map entries for files that no longer exist, so retention deletes do not
-  grow the offset map without bound.
+- Drop a map entry only when the file it names is confirmed absent, so retention
+  deletes do not grow the offset map without bound and an unreadable directory
+  listing is never read as an empty spool.
 
 ## What the spool contains, and what follows
 
@@ -165,9 +166,10 @@ can hold anything a command printed, tokens and keys among them.
 
 ### Retention
 
-Retention is a delete, and the daemon owns it. On every startup the daemon
-deletes spool day files older than **14 days** and drops their offset-map
-entries. Nothing else expires a spool file: the hook only appends, and no
+Retention is a delete, and the daemon owns it. On startup, and again on every UTC day boundary it
+crosses while running, the daemon deletes spool day files older than **14
+days**, drops their offset-map entries, and sweeps its own logs under the same
+window. Nothing else expires a spool file: the hook only appends, and no
 component rewrites one.
 
 Fourteen days holds long enough for a rollup to cover a fortnight of fleet
