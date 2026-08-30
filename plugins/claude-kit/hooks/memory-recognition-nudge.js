@@ -352,16 +352,6 @@ const PATH_KEYS = ['file_path', 'filePath', 'notebook_path', 'notebookPath', 'pa
 const SKILL_KEYS = ['skill', 'skill_name', 'skillName', 'name', 'command'];
 const AGENT_TYPE_KEYS = ['subagent_type', 'subagentType', 'agent_type', 'agentType', 'type'];
 
-// The keys that mark a call as having failed, read off the response and off
-// the payload. An `err:` pattern is matched against a FAILED call's output,
-// so what makes a channel failure output is one of these rather than the
-// channel's name: a successful `git` or `npm` call writes progress to stderr,
-// and a trigger firing on that is the noise this whole hook cannot afford. A
-// non-zero exit code counts, which is what a failing shell call carries when
-// nothing else about the response says so.
-const ERROR_FLAG_KEYS = ['is_error', 'isError', 'error'];
-const EXIT_CODE_KEYS = ['exit_code', 'exitCode', 'code', 'returnCode', 'status'];
-
 function readStdin() {
     try { return fs.readFileSync(0, 'utf8'); } catch { return ''; }
 }
@@ -541,22 +531,38 @@ function touchedPaths(payload) {
 // flags are read as booleans; a `success` of exactly false is one; an
 // interrupted call is one; and an exit code that is a non-zero number is one,
 // which is what a failing shell call carries when nothing else says so.
+//
+// The canonical definition lives in hooks/kit-tool-payload-lib.js rather than
+// here: a module of a few lines, required by this hook and by
+// hooks/kit-sidecar-capture.js, whose spool line records the same flag. That
+// hook would otherwise pay a require of this whole 1,600-line file on every
+// captured call to ask one question, and would go silently dark whenever any
+// part of this file failed to load. Re-exported under this hook's own name so
+// its own suite and failureOutput below keep calling one function.
+//
+// The require is deferred to inside this function rather than hoisted to
+// module scope, on the same fail-toward-silence reasoning every other kit
+// library require in this file carries: a damaged or incomplete installed
+// cache must not end a hook that runs on both boundaries of every tool call.
+//
+// A require failure answers false, not true: false is the value that yields
+// no failure output, so an `err:` trigger simply does not fire and the
+// session hears nothing, which is this hook's posture on every other
+// unreadable input. Answering true would send the matcher over the output of
+// calls that succeeded, which is the noise the whole failure gate exists to
+// keep out.
+// The catch covers the require alone rather than the call: the predicate's own
+// behavior on a payload it cannot read, including the throw a non-object one
+// produces, is the extracted definition's and is not softened on the way
+// through here.
 function callFailed(payload) {
-    if (payload.is_error === true) return true;
-    const response = payload.tool_response;
-    if (response === null || typeof response !== 'object' || Array.isArray(response)) return false;
-    for (const key of ERROR_FLAG_KEYS) {
-        if (key === 'error' ? response[key] !== undefined && response[key] !== null : response[key] === true) {
-            return true;
-        }
+    let lib;
+    try {
+        lib = require('./kit-tool-payload-lib.js');
+    } catch {
+        return false;
     }
-    if (response.success === false) return true;
-    if (response.interrupted === true) return true;
-    for (const key of EXIT_CODE_KEYS) {
-        const value = response[key];
-        if (typeof value === 'number' && Number.isFinite(value) && value !== 0) return true;
-    }
-    return false;
+    return lib.callFailed(payload);
 }
 
 // The call's failure output, as the text an err: pattern is matched against,

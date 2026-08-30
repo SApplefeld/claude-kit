@@ -1180,14 +1180,17 @@ test('a long failure stream is matched as its head and its tail, and the seam sp
     } finally { rmStore(store); }
 });
 
+// The failure predicate itself is pinned branch by branch in
+// test/kit-tool-payload-lib.test.js, on the module that defines it: this hook
+// and hooks/kit-sidecar-capture.js both read that one answer, and a pin taken
+// through either of them would keep passing on a re-export that had stopped
+// delegating. What is this file's own is the gate above failureOutput.
 test('a call that did not fail has no failure output at all', () => {
-    assert.strictEqual(hook.callFailed({ tool_response: { stdout: 'ok', stderr: 'progress' } }), false);
     assert.strictEqual(hook.failureOutput({ tool_response: { stdout: 'ok', stderr: 'progress' } }), '');
-    assert.strictEqual(hook.callFailed({ tool_response: { exit_code: 0, stderr: 'progress' } }), false);
-    assert.strictEqual(hook.callFailed({ tool_response: { exit_code: 1 } }), true);
-    assert.strictEqual(hook.callFailed({ is_error: true, tool_response: 'boom' }), true);
-    assert.strictEqual(hook.callFailed({ tool_response: { error: 'boom' } }), true);
-    assert.strictEqual(hook.callFailed({ tool_response: null }), false);
+    assert.strictEqual(hook.failureOutput({ tool_response: { exit_code: 0, stderr: 'progress' } }), '');
+    assert.strictEqual(hook.failureOutput({ tool_response: { stdout: 'out', stderr: 'err', exit_code: 1 } }),
+        'err\nout', 'a failed call answers with its channels');
+    assert.strictEqual(hook.failureOutput({ is_error: true, tool_response: 'boom' }), 'boom');
 });
 
 // --- The wiring, pinned as a cross-surface fact rather than as a claim in a

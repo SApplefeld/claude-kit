@@ -118,6 +118,56 @@ error.
 
 A credential, connection string, or token written into a memory file, a journal entry, or any file of the machine coordinator directory is committed, and on a store with a remote pushed, with no further deliberate act: on Windows the background sync runner does both at the next session start, and the doctor's `-Fix` does both on demand. From there it persists like any other tracked content: a later edit or local delete leaves the earlier blob reachable in history, and once pushed it reaches the remote object history too, recoverable by anyone who can read that repository until the history is rewritten everywhere that cloned it and the credential rotated. The sync boundary is path-shaped rather than content-shaped: the allowlist probes prove a path sits inside a memory tier or the coordinator directory and takes one of the admitted forms, and nothing on the commit, push, or check path reads a byte of content looking for a secret. The only control preventing the write in the first place is the instruction in the `memory-system` skill telling the model not to record one, and that instruction reaches the memory tiers alone, because it is an instruction to that skill's writers and the coordinator directory's writers are seats, a Stop hook, claim-writing subagents, and inbox appenders, none of which load it to write a board line, a registry entry, a claim, or an inbox request. Nothing states the equivalent for that directory. Its own content rules are per file form rather than one rule over the directory, and none of them is about secrets. The board bars The coordinator board section below states, no absolute path and none of the operator's words, reach the board alone and bound two named disclosures rather than content in general. A registry entry takes its own bar from the role skill's contract, and that one is conditional: an absolute `Workdir:` is permitted where the operator has answered who reads the store's remote, the default state being unanswered. The claim file and the Admin inbox carry no content bars at all. So a credential in a board line, a registry `Status:` line, a claim, or an inbox request is refused by nothing and syncs like any other admitted content. Sync does not weaken the memory-system instruction where it reaches, but it changes what a lapse costs: what stayed on one machine now reaches every machine that pulls. There is no redaction, no scanning, and no mechanical guard, on write or on sync.
 
+## The capture spool
+
+`kit-sidecar-capture.js` is a PostToolUse hook that appends one JSON line per completed Bash
+tool call to `~/.claude/kit-sidecar/spool/<UTC-date>.jsonl`. The line carries the call's stated
+intent, its command text, and its output, so the spool holds verbatim whatever any command
+printed, credentials and tokens among it. It is the same single principal as every other surface
+here: no privilege boundary separates the sessions being observed from the file observing them.
+
+The hook is dormant unless the spool root already exists, and it never creates it. The judge
+daemon does, which makes the root the activation lever in both directions: running the daemon
+once turns capture on for every session on the machine from its next tool call, and deleting the
+root turns it off at the next one, with no restart and no setting.
+
+The spool does not reach the store remote, and by construction rather than by a rule anyone has
+to remember. `Get-MemorySyncAttributesText`'s allowlist in
+`plugins/claude-kit/doctor/install-memory-sync.ps1` opens with `/*`, excluding the whole store
+root, and re-includes only the memory tiers and the coordinator directory; `kit-sidecar` is not
+among them and appears nowhere in the doctor. So the spool is machine-local in the strong sense
+the memory tiers are not.
+
+At rest it is protected by the profile directory's ACL and by nothing else on Windows, which is
+this fleet's primary platform. Day files are created with mode `0600`, and Node maps a mode to
+the read-only attribute alone on Windows: `0o600` carries write permission, so no attribute is
+set and the file inherits whatever the containing tree grants. The mode is a real control on a
+POSIX host and an inert argument here, so the ACL is the whole story on the machines actually
+holding the data. That posture is roughly the one the session transcripts in the same tree
+already have, which is why the spool is not a new class of exposure so much as a second
+concentration of one.
+
+Retention is bounded in two places and neither is a guarantee about the past. The hook stops
+appending to a day file past a size cap, and the daemon sweeps day files older than the window
+`sidecar/CONTRACT.md` states. A machine whose daemon is stopped or uninstalled keeps its existing
+spool with nothing sweeping it.
+
+**The spool is not tamper-evident, and nothing here claims otherwise.** Removing the spool root
+stops capture instantly, and the tool call that removed it is itself uncaptured, so a spool that
+was switched off reads exactly like a fleet that was idle. Any session can append hand-written
+lines as easily as real ones, and the intent side of every line is authored by the same party the
+line is evidence about. Full closure is out of reach under the single-principal model this
+document opens with, so the limit is stated rather than engineered around: a verdict count is
+evidence about calls that were captured, and it is not evidence that all calls were.
+
+Egress belongs to the daemon rather than to the hook, and it crosses a machine boundary. The
+daemon sends the intent, action and result triple to a local-model endpoint named by
+`~/.claude/kit-endpoint.json`, a machine-local file the operator authors per machine. On this
+fleet that endpoint runs on a different machine reached over a private network switch, over
+whatever transport the configured URL names, which for the usual local-inference default is
+plain HTTP with no authentication, and it serves other tenants besides the sidecar. Nothing on
+that path redacts, and no section of the sidecar plan screens what goes. A command that echoed a
+secret therefore puts that secret in a prompt on another machine.
 ## Environment overrides, and why they differ
 
 Variables that redirect where the tooling looks are gated, and so is the one below that redirects nothing and steers a control's timing instead; all of them are deliberately gated differently:

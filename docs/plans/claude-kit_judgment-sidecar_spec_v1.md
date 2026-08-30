@@ -1,6 +1,6 @@
 # The judgment sidecar: a local-model second reader over fleet tool calls
 
-Status: Ready
+Status: In Progress
 Commit Model: Commit-and-Push
 Session model: opus or above; section 8 requires a fable design pass before implementation
 
@@ -59,11 +59,45 @@ One repo (this one), three components, file contracts between them. All machine-
 - **A model cascade.** One model serves all roles; a smaller model returns only if VRAM pressure demands it.
 - **Store writes by any component.** The daemon points, the distiller drafts; sessions and the operator author. Nothing in this plan writes to the memory store.
 
+## Standing Brief Amendments
+
+Binding on every section opened after the amendment, dispatched or inline. Each entry
+names the class rather than the instance that produced it.
+
+1. **A predicate a second hook needs is extracted to a `kit-*-lib.js`, never reached by
+   requiring the sibling hook that happens to hold it.** A hot hook path pays the whole
+   module load for one answer, and a sibling that fails to load takes the borrower down
+   with it silently. The repository already ruled this and wrote the reasoning into
+   `plugins/claude-kit/hooks/kit-network-lib.js`, which exists as 41 lines precisely so a
+   PostToolUse hook need not load an 11,880-line module to answer one question at a
+   measured 8.7 to 11.4 ms. Adopted 2026-08-30 on the spec author's consult.
+
+2. **A branch is not tested until a case exists that can only pass if that branch works.**
+   The failure shape this closes is a shared fixture: every case reuses one payload shape,
+   one warmed require, or one field small enough that later cut stages never run, so the
+   suite is structurally blind to the branches it names in its own test titles. Cost
+   measurements take the path production takes, which for a hook is a cold spawn and never
+   a warmed in-process call. Adopted 2026-08-30 after one review round found three
+   instances in a single section.
+
+3. **A shipped document that says where data goes names the machine boundary and the
+   transport, not a role word that can read as either.** "The host" naming both this
+   machine and the hypervisor turns a cleartext cross-machine POST to a multi-tenant
+   service into a sentence that reads as no egress at all. Adopted 2026-08-30 from the
+   section 1 security round.
 ## Sections of Work
 
 ### 1. Spool contract and capture hook. Model: opus
 
 The spool line schema documented in `sidecar/CONTRACT.md` and mirrored in the hook's header comment; the PostToolUse hook implemented per Design (capture duty only; the valve arrives in section 3) with tests: a well-formed line for a Bash call, dormant when the spool root is absent, exits 0 on malformed payloads and write failures, latency under a generous asserted ceiling. Ships in the kit's hooks directory through the normal build.
+
+The section as built also carries three things its original text did not name, each recorded here so the
+document matches what shipped. The harness error-flag normalization is extracted to
+`plugins/claude-kit/hooks/kit-tool-payload-lib.js` and required by both the capture hook and
+`memory-recognition-nudge.js`, per Standing Brief Amendment 1. `docs/security-model.md` gains a
+`## The capture spool` section, because the changeset adds a machine-local plaintext concentration of every
+shell command and its output to `~/.claude` and that document is the inventory of what lives there.
+`docs/architecture.md`'s PostToolUse enumeration gains the hook.
 
 Acceptance: hook tests green in the kit suite; a manual session on this VM with the spool root present produces schema-valid spool lines for real calls.
 
@@ -119,8 +153,30 @@ Acceptance: deferred to the design pass.
 - Decided 2026-08-30 (operator ruling, reversing the same-day new-repo decision): one plan, one repo; the daemon lives in this repo under `sidecar/`. The separate-repo decision rested on the kit not owning the endpoint relationship; the memq channel gives the kit that relationship anyway, and a single repo makes the plan executable hands-off by the armed queue without cross-repo permission walls.
 - Decided 2026-08-30 (operator instruction): this plan joins the armed queue immediately after public-surface-hygiene, by direct insertion into the armed goal state rather than a re-arm.
 - Decided 2026-08-30: standing endpoint configuration context 65536, serial, keep-alive forever, per the operator's sustained full-load measurement (27.3 of 31.5 GB GPU, about 104 tok/s, runner RAM plateau near 8 GB). An earlier same-day reading put the sweet spot at 16K to 32K; longer operation at 64K settled it.
+- Decided 2026-08-30 (spec author consult): section 8 is deferred by design, not a blocker, so this plan
+  reaches Complete at section 7. Section 8 carries a gate plus a scope sketch and its own acceptance reads
+  "deferred to the design pass", so there is no buildable acceptance a run could reach; declaring BLOCKED on
+  it would misfile a designed deferral as a failure state and leave the plan tripping every session-start
+  recovery advisory. Its substance moves to `docs/backlog.md` as a parked item naming its driving signal: the
+  field trial of sections 1 through 7 elapsed, plus the operator's call.
+- Decided 2026-08-30 (spec author consult): the harness error-flag normalization is extracted to a shared
+  hook library rather than reached by requiring a sibling hook, per Standing Brief Amendment 1.
 - Declared assumptions, override freely: machine-local state under `~/.claude/kit-sidecar/`; endpoint config at `~/.claude/kit-endpoint.json`, operator-authored; v1 daemon manually started, no service install; fleet-wide daemon distribution decided post-field-trial; the hook ships dormant-by-default via the spool-root check, needing no setting.
 
 ## Out of scope for this document
 
 The PIANO-organism substrate (Agent SDK host, streaming-input sessions, module scheduling) is a separate future effort. This spec is deliberately the smallest organ set that earns rent on the existing fleet.
+
+## Chapters
+### Chapter 1 - 2026-08-30
+Completed: 1. Spool contract and capture hook
+Implemented By: implementer-opus for the build and again for the fix round, with the review round dispatched through `Workflow` (adversarial, blind and security reviewers, model `opus`, effort `max`, the no-headroom row of the reviewer-effort table since this section's writer tier is opus). Base ref `9ab34a2`. The `docs/` writes were taken in the main thread, which the docs-write-guard requires.
+Metrics: 2 implementer dispatches; 1 review round of 3 reviewers; 16 findings, all fixed; 1 fix round; NEEDS_CONTEXT 0; escalations 0; consults 2, both expert asks to the seat that authored this spec.
+Decisions / Surprises: The `Status:` header read `Ready`, which is outside the two values the kit tooling reads, so it was normalized to `In Progress` at the start; a plan carrying any other value drops out of the SessionStart recovery inventory. Two expert asks went to the spec author and both were ruled at the source. The first ruled the shared-predicate extraction into this section rather than a later one, and the repository turned out to have written the argument down already: `hooks/kit-network-lib.js` exists as 41 lines with a header stating that an 11,880-line module must not sit on a hot hook path, at a measured 8.7 to 11.4 ms warm require, which is the same trade this section had made in the other direction. The second ruled section 8 deferred by design, so this plan reaches Complete at section 7; both rulings are recorded as dated decisions above. The surprise that mattered came at the acceptance step rather than in the code. Section 1 asks for a live pass on this VM, and live sessions run hooks from the installed plugin cache rather than from the working tree; that cache is pinned at commit `5edb4483fd03` and carries neither the new hook nor a `hooks.json` entry wiring it. Creating the spool root would therefore have produced an empty file, which is indistinguishable from a correctly dormant hook, so the check could not have answered the question it was run to answer. The window was announced to all four seats, cancelled before anything was created, and the all-clear sent.
+Assumptions: (2026-08-30, section 1) `~/.claude/kit-endpoint.json` was absent on this machine and sections 2, 4 and 6 cannot be accepted without it, so it was authored from the canonical address in the operator memory tier; rollback is deleting that one file, and the operator may overwrite it. (2026-08-30, section 1) The spool retention window is 14 days, chosen by the implementer and stated in `sidecar/CONTRACT.md` as the rule the daemon must meet on startup; override freely. (2026-08-30, section 1) The day-file size bound is 64 MiB, following the sibling nudge's own log cap as precedent.
+Review Findings: Three CONCERNS verdicts, no Criticals, 16 findings, every one fixed. The five security Majors: no retention owner, so the spool grew without bound; no tamper evidence, with removing the spool root stopping capture in a call that is itself uncaptured; an egress claim that read as no egress at all; `statSync` following a directory junction where this repository's own `kit-goal-lib.js` already ships the `lstatSync` guard with the reasoning written out; and the absence of any entry for this new surface in `docs/security-model.md`. The egress finding was the sharpest of the round and it lived in prose rather than code: the contract said the spool never leaves the host except in the prompt the daemon sends to the host's local endpoint, where "host" meant this machine in one clause and the hypervisor in the next, so a sentence describing an unauthenticated cleartext cross-machine POST of unredacted command output to a multi-tenant service read as reassurance. The implementer marked its rewrite reported-from-the-spec; it is upgraded to confirmed here, since the endpoint config on this machine carries an `http://` URL and no token and answers a probe with no auth header. Three further findings were one class rather than three: a test whose shared fixture makes it structurally blind to the branch its own title names, found in `resultText`'s untested response shapes, in `CUT_ORDER`'s second and third stages never being reached, and in a latency ceiling measured on a warmed in-process call where production takes a cold spawn. That class became Standing Brief Amendment 2. The fix round ran 16 probes; two came back green on the first pass and were re-cut rather than accepted, and one probe caught a defect in the implementer's own fix. Two reviewer framings were pushed back on with evidence and the pushback accepted: the header comment was silent about directory links rather than false about them, and the day-file link screen mostly formalizes on Windows a refusal `EISDIR` already produced, biting for real only on POSIX. The blind reviewer also flagged contamination in its own dispatch, correctly: the changed-file list carried the parenthetical "one added PostToolUse entry", which would not read identically for every diff in this repository and so failed the standing-property test. It disregarded the annotation and enumerated the file itself.
+Stamps: Adjudicated 2, stamped 1. `this-vm-rides-a-host-with-an-idle-rtx-5090` stamped, since the VM-versus-host split is what made the egress paragraph a machine-boundary crossing rather than a local call. `doctor-fix-is-never-a-neutral-committer` skipped: read in the window by a hook rather than by this work, and nothing in this section runs the doctor. Two further operator records were stamped at intake as they were applied, the endpoint record that supplied the address and the probe-before-leaning rule, and the build-stamp record that is why a rebuild rode with every hook edit.
+Gate: 2260 / 2256 / 1 / 3, exit 1, read from the run's own exit marker, with the box polled for a foreign test runner first and none found. Baseline 2223 / 2220 / 1 / 2, exit 1, from the previous plan's close on this same suite. Delta: plus 37 tests (29 in the capture hook's file, 8 in the new library's), plus 1 skip, a POSIX-only file-mode assertion this platform cannot honor, and the failure count unchanged at 1. Failures by name: a pinned directory too long to name faithfully stands the session down, this machine's one known permanent red. The whole gate ran because this section's delta touched a shared module, `memory-recognition-nudge.js`, and it also closes the one gap the implementer named in its own evidence: no pre-edit baseline of that file's suite was captured, and the whole-gate run shows its 74 cases green inside a total carrying no new failures.
+Acceptance: met on its test half, open on its live half, and recorded that way rather than counted as done. A manual session on this VM producing schema-valid spool lines for real calls cannot run until the plugin installed on this machine carries the hook. What is confirmed instead, from two sources sharing no derivation path: `memory-recognition-nudge.js` has read `tool_input`, `tool_response`, `session_id` and `cwd` off this envelope in production for weeks, and this session's own harness transcript carries 2,814 real Bash tool_use blocks whose input keys are exactly `["command","description"]`, which is the intent field the judgment triple depends on. The live pass routes to section 2, where the daemon exists and a plugin update is warranted on its own terms.
+Next: 2. Judge daemon core
+Commit Model: Commit-and-Push
