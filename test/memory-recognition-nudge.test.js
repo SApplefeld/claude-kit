@@ -1639,3 +1639,147 @@ test('a PostToolUse-boundary nudge appends to the log exactly as a PreToolUse on
         assert.strictEqual(lines[0].type, 'err');
     } finally { rmStore(store); }
 });
+
+// --- The stamp-rate report's own guards: the floor a stamp is measured
+// against, the nudgeable gate on both arms, and the three refusals that stand
+// the report down rather than let a bound shrink one arm of the comparison.
+
+test('a stamp that lands before the record\'s own first nudge is not counted as a nudged '
+    + 'success, so the rate reads applications the nudge could have caused', () => {
+    const store = makeStore();
+    try {
+        writeRecord(store, 'stamped-before-nudge.md', { triggers: 'cmd:node --test' });
+        const since = Date.now() - 60 * 60 * 1000;
+        // Both moments sit inside the window; only their order is the subject.
+        const stampedAt = new Date(since + 10 * 60 * 1000).toISOString();
+        const nudgedAt = new Date(since + 30 * 60 * 1000).toISOString();
+        const logFile = hook.nudgeLogPath(store.cwd);
+        fs.mkdirSync(path.dirname(logFile), { recursive: true });
+        fs.writeFileSync(logFile, JSON.stringify({
+            ts: nudgedAt, name: 'stamped-before-nudge.md', type: 'cmd', pattern: 'node --test'
+        }) + '\n', 'utf8');
+        fs.writeFileSync(path.join(store.memDir, memq.USAGE_FILE), JSON.stringify({
+            kind: 'applied', file: 'stamped-before-nudge.md', ts: stampedAt
+        }) + '\n', 'utf8');
+
+        const report = withStoreEnv(store, () => hook.nudgeStampRate(store.cwd, since));
+        assert.strictEqual(report.error, undefined, 'the report resolves cleanly: ' + JSON.stringify(report));
+        assert.strictEqual(report.nudged.total, 1, 'the record is in the nudged arm');
+        assert.strictEqual(report.nudged.stamped, 0,
+            'its only applied evidence predates its first nudge, so it is not a nudged success');
+        assert.strictEqual(report.nudged.rate, 0);
+    } finally { rmStore(store); }
+});
+
+test('a record carrying neither trigger nor anchor is excluded from the control arm, which no '
+    + 'nudge could ever have reached', () => {
+    const store = makeStore();
+    try {
+        writeRecord(store, 'declares-a-trigger.md', { triggers: 'cmd:node --test' });
+        writeRecord(store, 'declares-nothing.md', {});
+        const report = withStoreEnv(store, () => hook.nudgeStampRate(store.cwd, Date.now() - 60000));
+        assert.strictEqual(report.error, undefined, 'the report resolves cleanly: ' + JSON.stringify(report));
+        assert.strictEqual(report.unnudged.total, 1,
+            'only the record the index would ever consider nudging is a fair control');
+        assert.strictEqual(report.nudged.total, 0, 'nothing was nudged');
+    } finally { rmStore(store); }
+});
+
+test('a record the log names that declares neither trigger nor anchor is in neither arm, so a '
+    + 'record whose triggers were removed cannot inflate the nudged rate', () => {
+    const store = makeStore();
+    try {
+        // The log names it and the tier still holds it, but it declares
+        // nothing the matcher could fire on today: it is not nudgeable now,
+        // and the split is over nudgeable records on both sides.
+        writeRecord(store, 'nudged-then-stripped.md', {});
+        writeRecord(store, 'still-declares.md', { triggers: 'cmd:node --test' });
+        const since = Date.now() - 60 * 60 * 1000;
+        const insideWindow = new Date(since + 60000).toISOString();
+        const logFile = hook.nudgeLogPath(store.cwd);
+        fs.mkdirSync(path.dirname(logFile), { recursive: true });
+        fs.writeFileSync(logFile, JSON.stringify({
+            ts: insideWindow, name: 'nudged-then-stripped.md', type: 'cmd', pattern: 'node --test'
+        }) + '\n', 'utf8');
+        fs.writeFileSync(path.join(store.memDir, memq.USAGE_FILE), JSON.stringify({
+            kind: 'applied', file: 'nudged-then-stripped.md', ts: insideWindow
+        }) + '\n', 'utf8');
+
+        const report = withStoreEnv(store, () => hook.nudgeStampRate(store.cwd, since));
+        assert.strictEqual(report.error, undefined, 'the report resolves cleanly: ' + JSON.stringify(report));
+        assert.strictEqual(report.nudged.total, 0,
+            'a record that declares nothing today is not in the nudged arm, even though the log names it');
+        assert.strictEqual(report.nudged.stamped, 0, 'so its applied stamp cannot inflate the nudged rate');
+        assert.strictEqual(report.unnudged.total, 1,
+            'and it is not in the control arm either: still-declares.md is the whole of it');
+    } finally { rmStore(store); }
+});
+
+test('a tier listing cut short by this hook\'s own per-call cap refuses the report rather than '
+    + 'understating the population', () => {
+    const store = makeStore();
+    try {
+        // One record past the listing cap, so the walk stops with names left
+        // unread and every one of them would have been a control.
+        for (let i = 0; i <= 512; i += 1) {
+            const name = 'bulk-listing-' + String(i).padStart(4, '0') + '.md';
+            fs.writeFileSync(path.join(store.memDir, name),
+                '---\ntriggers: cmd:node --test\n---\n\nbulk\n', 'utf8');
+        }
+        const report = withStoreEnv(store, () => hook.nudgeStampRate(store.cwd, Date.now() - 60000));
+        assert.strictEqual(report.nudged, undefined, 'a truncated listing yields no numbers at all');
+        assert.match(report.error, /listing was truncated/,
+            'the refusal names the truncation: ' + JSON.stringify(report));
+    } finally { rmStore(store); }
+});
+
+test('a tier index cut short by this hook\'s own byte budget refuses the report rather than '
+    + 'dropping the trailing records out of the control arm alone', () => {
+    const store = makeStore();
+    try {
+        // Each record fills the per-record read cap, so the index's byte
+        // budget is spent before the last name is reached: at the budget's own
+        // record count the walk ends honestly, and one record past it it stops
+        // early with names left unindexed.
+        const pad = 'x'.repeat(hook.RECORD_READ_CAP);
+        for (let i = 0; i <= 64; i += 1) {
+            const name = 'bulk-bytes-' + String(i).padStart(4, '0') + '.md';
+            fs.writeFileSync(path.join(store.memDir, name),
+                '---\ntriggers: cmd:node --test\n---\n\n' + pad + '\n', 'utf8');
+        }
+        const report = withStoreEnv(store, () => hook.nudgeStampRate(store.cwd, Date.now() - 60000));
+        assert.strictEqual(report.nudged, undefined, 'a truncated index yields no numbers at all');
+        assert.match(report.error, /index was truncated/,
+            'the refusal names the truncation: ' + JSON.stringify(report));
+    } finally { rmStore(store); }
+});
+
+test('a nudge log past this read\'s own bound refuses the report rather than reading its '
+    + 'surviving head as the whole log', () => {
+    const store = makeStore();
+    try {
+        writeRecord(store, 'past-the-bound.md', { triggers: 'cmd:node --test' });
+        const since = Date.now() - 60 * 60 * 1000;
+        const insideWindow = new Date(since + 60000).toISOString();
+        const logFile = hook.nudgeLogPath(store.cwd);
+        fs.mkdirSync(path.dirname(logFile), { recursive: true });
+        // The bound reads from the front, so what a cut drops is the newest
+        // lines: the very nudges a window is most likely to be asked about.
+        const line = JSON.stringify({
+            ts: insideWindow, name: 'past-the-bound.md', type: 'cmd', pattern: 'node --test'
+        }) + '\n';
+        const handle = fs.openSync(logFile, 'w');
+        try {
+            let written = 0;
+            const target = hook.NUDGE_LOG_MAX_BYTES * 2 + line.length;
+            while (written < target) written += fs.writeSync(handle, line);
+        } finally { fs.closeSync(handle); }
+        assert.ok(fs.statSync(logFile).size > hook.NUDGE_LOG_MAX_BYTES * 2,
+            'setup: the sink sits past the read bound');
+
+        const report = withStoreEnv(store, () => hook.nudgeStampRate(store.cwd, since));
+        assert.strictEqual(report.nudged, undefined, 'a truncated log yields no numbers at all');
+        assert.match(report.error, /nudge log/,
+            'the refusal names the log: ' + JSON.stringify(report));
+    } finally { rmStore(store); }
+});

@@ -8343,7 +8343,7 @@ function triggerFaultWords(fault, entry) {
     if (fault === 'the pattern is not one a trigger may name') {
         return fault + '. The rules, so a refusal names the one it met: at most '
             + TRIGGER_PATTERN_CAP + ' characters, no comma, which is the line\'s own separator,'
-            + ' no invisible character and no quote of either kind, no opening bracket, and no'
+            + ' no invisible character and no quote of either kind, no opening bracket, no backslash, and no'
             + ' whitespace but the plain space, which is admitted inside a pattern and never at'
             + ' either end. Three sequences go with them, because the line is a YAML plain'
             + ' scalar and a space is what makes them syntax: no \': \', which would open a'

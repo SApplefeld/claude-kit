@@ -807,28 +807,38 @@ function recordEntry(memq, text, name) {
     return (entry.triggers.length === 0 && entry.anchors.length === 0) ? null : entry;
 }
 
-// The index built from the store, spending a bounded byte budget across the
-// tier's records and stopping once the serialized index would pass the
-// reader's ceiling. Both bounds are checked as the walk goes rather than
-// after it, so neither a large tier nor a large record can produce an index
-// this hook would then refuse to read back.
+// The index built from the store as {records, bounded}, spending a bounded
+// byte budget across the tier's records and stopping once the serialized
+// index would pass the reader's ceiling. Both bounds are checked as the walk
+// goes rather than after it, so neither a large tier nor a large record can
+// produce an index this hook would then refuse to read back.
+//
+// `bounded` says the walk stopped on one of those two bounds with names left
+// unindexed, and it has exactly one reader: nudgeStampRate, which refuses a
+// report rather than compare two arms of which one is silently short. The
+// matching path reads `records` alone and keeps its best-effort posture, an
+// index cut short in front of a tool call costing a nudge that does not fire
+// rather than an error. A record the walk skips rather than stops at, one it
+// cannot read and one carrying neither trigger nor anchor, is not truncation
+// and sets nothing: neither is a record any nudge could have reached.
 function buildIndex(memq, lib, memDir, names) {
     const records = [];
+    let bounded = false;
     let budget = INDEX_BYTES_MAX;
     let serialized = 2;
     for (const name of names) {
-        if (budget <= 0) break;
+        if (budget <= 0) { bounded = true; break; }
         const read = lib.readFileBounded(path.join(memDir, name), Math.min(RECORD_READ_CAP, budget));
         if (read === null) continue;
         budget -= read.bytesRead;
         const entry = recordEntry(memq, read.text, name);
         if (entry === null) continue;
         const cost = Buffer.byteLength(JSON.stringify(entry), 'utf8') + 1;
-        if (serialized + cost > INDEX_SERIALIZED_CAP) break;
+        if (serialized + cost > INDEX_SERIALIZED_CAP) { bounded = true; break; }
         serialized += cost;
         records.push(entry);
     }
-    return records;
+    return { records, bounded };
 }
 
 // A cached index read back as untrusted text: every field is asked of memq's
@@ -876,7 +886,7 @@ function loadIndex(memq, lib, memDir, cache) {
             if (records !== null) return records;
         }
     }
-    const records = buildIndex(memq, lib, memDir, names);
+    const { records } = buildIndex(memq, lib, memDir, names);
     if (cache !== null) writeState(cache, JSON.stringify({ stamp, records }));
     return records;
 }
@@ -1204,9 +1214,14 @@ function ensureKitIgnored(kitDir) {
 // not cover the .kit/ parent, though: it follows every path component before
 // the final one, so a symlink planted at .kit itself would still be walked
 // through by mkdirSync and by the append below. The parent is screened
-// separately, and the eventual append uses an exclusive-then-fallback-append
-// open rather than a plain appendFileSync, so a plant that lands between the
-// parent screen and the write is refused rather than written through.
+// separately, on both sides of the create, and the append's own open carries
+// O_NOFOLLOW where the platform defines it, which is what refuses a link
+// planted at the log path itself between the lstat above and the open. Where
+// the constant is absent, win32 being the case that matters here, the open
+// falls back to a plain append and the window between that lstat and the open
+// stays open: on that platform the lstat is the whole of the screen, and what
+// a plant in that window buys is this box's own record of what it nudged
+// appended to a file of the planter's choosing.
 function appendNudgeLog(memq, cwd, claimed) {
     try {
         const root = nudgeProjectRoot(memq, cwd);
@@ -1244,30 +1259,46 @@ function appendNudgeLog(memq, cwd, claimed) {
                 pattern: memq.sanitize(hit.pattern, cap)
             }) + '\n';
         }
-        // Opened for append with the exclusive-create flag omitted only because
-        // 'a' does not create-and-refuse when the target already exists; what
-        // matters here is that this is a real fd write (never a path-based
-        // appendFileSync re-resolving the name), so a plant swapped in between
-        // the lstat above and this open is opened by descriptor, not followed
-        // through by a second path lookup.
-        const fd = fs.openSync(file, 'a');
+        // Two properties, and they are separate. The write goes through a real
+        // descriptor rather than a path-based appendFileSync, so the file this
+        // call writes into is the one the open resolved and no second path
+        // lookup happens between them. The open itself is where a final-
+        // component symlink would be followed, and O_NOFOLLOW is what refuses
+        // one: the flags below are the append open spelled out so the constant
+        // can join them. Node exposes O_NOFOLLOW only where the platform has
+        // it, so on win32 this is a plain 'a' open and a link swapped in
+        // between the lstat above and this line is still followed. Both paths
+        // sit inside this function's catch, so a refusal is a silent no-append
+        // like every other failure here.
+        const noFollow = fs.constants.O_NOFOLLOW;
+        const flags = typeof noFollow === 'number'
+            ? (fs.constants.O_WRONLY | fs.constants.O_APPEND | fs.constants.O_CREAT | noFollow)
+            : 'a';
+        const fd = fs.openSync(file, flags);
         try { fs.writeSync(fd, lines, null, 'utf8'); } finally { fs.closeSync(fd); }
     } catch { /* the nudge log is best-effort observability; a failed append changes nothing */ }
 }
 
-// The nudge log's lines as {ts, name, type, pattern}, bounded to those whose
-// ts falls no earlier than sinceMs (all of them when sinceMs is undefined). A
-// line that is not JSON, is not an object, or is missing a string name or an
-// unparseable ts is skipped rather than thrown on: the log is this hook's own
-// best-effort write, never hand-edited, but nothing reading it back should
-// trust it further than that. An absent file, or one this read's bound
-// refuses, reads as an empty list, which is what makes "no nudges yet" and
-// "nothing in this window" the same answer a caller sees, matching the file's
-// own header. Read through the shared bounded reader so a log caught between
-// a corrupted size and its next rotation cannot make this an unbounded read.
+// The nudge log's lines as {entries, bounded}, each entry {ts, name, type,
+// pattern} and the list held to those whose ts falls no earlier than sinceMs
+// (all of them when sinceMs is undefined). A line that is not JSON, is not an
+// object, or is missing a string name or an unparseable ts is skipped rather
+// than thrown on: the log is this hook's own best-effort write, never
+// hand-edited, but nothing reading it back should trust it further than that.
+// An absent file, or one this read cannot open at all, reads as an empty list
+// and not as bounded, which is what makes "no nudges yet" and "nothing in
+// this window" the same answer a caller sees, matching the file's own header.
+//
+// `bounded` is the other case, and it is not an empty list: the read fills
+// from offset 0, so a file past the bound comes back holding its oldest lines
+// with its newest ones cut off, which is the opposite of what a window is
+// asked about. Every caller refuses on it rather than reads the surviving
+// head as the whole log, because a dropped nudge scores its record into the
+// control arm and moves a success out of the treatment arm.
 function readNudgeLog(lib, file, sinceMs) {
     const read = lib.readFileBounded(file, NUDGE_LOG_READ_CAP);
-    if (read === null) return [];
+    if (read === null) return { entries: [], bounded: false };
+    if (read.bounded) return { entries: [], bounded: true };
     const out = [];
     for (const line of read.text.split(/\r?\n/)) {
         const trimmed = line.trim();
@@ -1281,7 +1312,7 @@ function readNudgeLog(lib, file, sinceMs) {
         if (sinceMs !== undefined && ms < sinceMs) continue;
         out.push({ ts: parsed.ts, name: parsed.name, type: parsed.type, pattern: parsed.pattern });
     }
-    return out;
+    return { entries: out, bounded: false };
 }
 
 // One day, in milliseconds, mirroring memq.js's own unexported DAY_MS: the
@@ -1379,11 +1410,16 @@ function readUsageStamps(memq, memDir) {
 // rate} }, with rate null rather than NaN where total is 0, or
 // { error: <cause> } for the same reasons main() would fail open: an
 // unloadable memq, a network-shaped cwd or store root, a project memory
-// directory that cannot be resolved, a listing this hook's own per-call cap
-// cut short (a truncated population is refused rather than silently
-// understated), or a usage sidecar this process could not read (as opposed to
-// one that has simply never been written). sinceMs is required, because a
-// report with no stated window is exactly the shape decision 2 does not want.
+// directory that cannot be resolved, or a usage sidecar this process could
+// not read (as opposed to one that has simply never been written). Three more
+// are this report's own, and all three are a bound that would shorten one
+// side of the comparison without saying so: a tier listing this hook's
+// per-call cap cut short, an index its byte bounds cut short, and a nudge log
+// past the read bound, whose cut takes the newest lines and so the most
+// recent nudges. Each is refused rather than silently understated, because a
+// number that flatters the feature it gates is worse than no number.
+// sinceMs is required, because a report with no stated window is exactly the
+// shape decision 2 does not want.
 function nudgeStampRate(cwd, sinceMs) {
     if (typeof sinceMs !== 'number' || !Number.isFinite(sinceMs)) {
         return { error: 'a numeric sinceMs (a window start, in epoch milliseconds) is required' };
@@ -1414,11 +1450,19 @@ function nudgeStampRate(cwd, sinceMs) {
     }
     const names = listing.names;
     const index = buildIndex(memq, lib, memDir, names);
-    const nudgeable = new Set(index.map((record) => record.name));
+    if (index.bounded) {
+        return { error: 'the tier index was truncated by this hook\'s own per-call byte bounds; '
+            + 'refusing rather than dropping the records past the cut out of one arm alone' };
+    }
+    const nudgeable = new Set(index.records.map((record) => record.name));
 
-    const nudgeRecords = readNudgeLog(lib, nudgeLogPath(root), sinceMs);
+    const nudgeLog = readNudgeLog(lib, nudgeLogPath(root), sinceMs);
+    if (nudgeLog.bounded) {
+        return { error: 'the nudge log is larger than this read\'s own bound, which drops its '
+            + 'newest lines; refusing rather than scoring recently nudged records as unnudged' };
+    }
     const firstNudgeMs = new Map();
-    for (const record of nudgeRecords) {
+    for (const record of nudgeLog.entries) {
         const ms = Date.parse(record.ts);
         const cur = firstNudgeMs.get(record.name);
         if (cur === undefined || ms < cur) firstNudgeMs.set(record.name, ms);
@@ -1439,7 +1483,7 @@ function nudgeStampRate(cwd, sinceMs) {
         return { total: list.length, stamped, rate: list.length === 0 ? null : stamped / list.length };
     };
 
-    const nudgedNames = names.filter((n) => firstNudgeMs.has(n));
+    const nudgedNames = names.filter((n) => nudgeable.has(n) && firstNudgeMs.has(n));
     const unnudgedNames = names.filter((n) => nudgeable.has(n) && !firstNudgeMs.has(n));
 
     let since;
@@ -1572,6 +1616,7 @@ module.exports = {
     MATCH_OPS_MAX,
     MARKER_KEYS_MAX,
     CACHE_READ_CAP,
+    RECORD_READ_CAP,
     INDEX_SERIALIZED_CAP,
     NUDGE_LOG_MAX_BYTES,
     PRE_TYPES,

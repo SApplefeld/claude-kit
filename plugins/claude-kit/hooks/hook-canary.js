@@ -632,9 +632,9 @@ function memqGrantProbes(root, failures) {
     // still passes both probes above. The deletes are the contrast, each
     // refused a second time by deleteRefusedByStoreSignals, which is the stated
     // ground for leaving a withheld shape unprobed. That ground reaches two of
-    // the four withheld verbs: cmdAnchor carries no store-signals refusal of
-    // its own, so anchor sits in find's class and is unprobed all the same.
-    // docs/security-model.md tabulates all nine withheld shapes against it,
+    // the five withheld verbs: cmdAnchor and cmdTriggers carry no store-signals
+    // refusal of their own, so both sit in find's class and neither is probed.
+    // docs/security-model.md tabulates all ten withheld shapes against it,
     // and docs/backlog.md carries the missing anchor probe as an item.
     const withheld = runHook(file, {
         tool_name: 'Bash',
