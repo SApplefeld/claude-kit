@@ -26,10 +26,11 @@ The `curating-docs` skill owns the mechanics: it archives a plan when it complet
 
 ## Active plans
 
-Nine plan documents sit in `plans/`. `plans/README.md` carries each one's full description and the go state of its header; the running order of the armed plans rides in their own entries.
+Ten plan documents sit in `plans/`. `plans/README.md` carries each one's full description and the go state of its header; the running order of the armed plans rides in their own entries.
 
 - **`plans/claude-kit_corpus-audit_spec_v1.md`** (Ready, seven sections) has the kit's behavior-shaping prose swept by cold readers who never loaded it, because a session that has loaded the corpus grades with the judgment that corpus shaped. Four defect classes are in scope: cross-document conflicts, incident-born density later machinery superseded, operator-approval gates installed before the loop could maintain itself, and assumptions about the harness that upstream releases have falsified.
 - **`plans/claude-kit_judgment-sidecar_spec_v1.md`** (Ready, not armed; six sections) specifies a local-model second reader over fleet tool calls, judging after the fact whether an action did what the stated intent required. It holds no authority and only observes, judges and reports, turning claims the fleet can today only assert into logged, countable facts.
+- **`plans/claude-kit_durable-boundary_spec_v1.md`** (Ready, three sections; queued after the judgment sidecar) lets a seat on a shared tree declare its context durable by CLI verb and have the next auto-compaction land at that boundary, with the deferral nudge speaking only above an operator-set context floor.
 - **`plans/claude-kit_park-and-quiesce_spec_v1.md`** (Ready, three sections) lets a session be asked to park at its next safe point with everything durable committed and a resume path recorded, so taking a payload update no longer means killing sessions cold.
 - **`plans/claude-kit_recap_spec_v1.md`** (Ready, one section) makes `/recap` a kit skill that reports where a session actually stands, restating its goal from working memory before re-reading the record and starting no new work.
 - **`plans/claude-kit_standing-lines-and-honest-reports_spec_v1.md`** (Ready, four sections) closes an audience gap, where a protection is stated to the party that understands it rather than the party that acts, and an honesty gap, where a shipped surface asserts something the code does not do.
