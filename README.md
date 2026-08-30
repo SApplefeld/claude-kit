@@ -73,6 +73,10 @@ claude-kit/                          (repo = the marketplace)
         compact-deferral-nudge.js    PostToolUse nudge that tells a leashed run the compaction gate is
                                      holding auto-compaction offers, and names the boundary steps that
                                      let one land, at most once per 30-minute interval per tool batch
+        memory-recognition-nudge.js  PreToolUse and PostToolUse nudge that names a stored memory when the
+                                     tool stream touches what it is about, deduplicated per session and
+                                     capped per rolling window, pointing at memq get and never carrying
+                                     the record itself
         docs-write-guard.js          Denies non-curator subagent writes into docs/
         stop-docs-hygiene.js         Stop-time docs-library backstop
         seat-stop.js                 Stop hook for a registered seat: stamps its registry heartbeat and,
