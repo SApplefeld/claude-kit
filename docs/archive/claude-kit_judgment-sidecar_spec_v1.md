@@ -1234,7 +1234,7 @@ run by the controller:
 LANE, run by the controller rather than accepted from the report:
 node --test test/kit-sidecar-battery.test.js gives 111 tests / 109 pass / 0 fail / 2 skipped, exit 0,
 read from the run own exit code. The two skips are the pre-existing Windows file-mode skips. Run
-beside a live foreign claim (KIT: Skills Worker, session 42054c5f, handoff whole gate re-run on the
+beside a live foreign claim (a peer seat, handoff whole gate re-run on the
 final tree, started 05:52:30Z), named rather than waited on, and no claim was written. Wall clock
 is not comparable across this section runs under differing contention and nothing is read into it.
 
@@ -1269,7 +1269,7 @@ gating. Three sessions saw it from three sides: this one at 05:34:14Z; KIT: Skil
 05:36:26Z, which queued behind it and lost about eight minutes waiting on a session running nothing;
 and AI-OS: Worker, whose claim it destroyed and which saw the file swing back at 05:41:51Z. AI-OS:
 Worker closed the mechanism from the store repo own history: the path is tracked in the synced
-store, commit 2344233 lands at 05:33:42Z, and its predecessor ff1a4b9 holds this session stale
+store, one commit lands at 05:33:42Z, and its predecessor holds this session stale
 claim, so the bytes that materialised are a version-control restore of an older revision rather than
 any seat write. Occupancy was read correctly from the process list instead, six live dotnet and
 testhost processes from the ai-os worktree, which was the only reading true throughout.

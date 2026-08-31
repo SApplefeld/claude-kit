@@ -92,8 +92,8 @@ while the session is issuing a request, which is inside a LATER turn that by con
 with a NEWER inbound line. So an inbound always postdates the marker by the time any offer
 arrives. Two reviewers reached this independently from different artifacts, the adversarial from
 the coordinator seat's gate journal and the blind from this repo's. The controller then verified
-it directly: the coordinator journal holds exactly 13 allow role-boundary decisions, all session
-7c02285b, and on three sampled decisions the newest inbound preceding each sits 0.7s, 152.4s and
+it directly: the coordinator journal holds exactly 13 allow role-boundary decisions, all from one
+session, and on three sampled decisions the newest inbound preceding each sits 0.7s, 152.4s and
 296.5s before it, so a marker written at the prior turn's end is older than that inbound in
 every case and lapses.
 
@@ -155,3 +155,124 @@ seat was blocked on one whole-gate run.
 
 Commit model in effect: Commit-and-Push. This entry is committed alone; the section's code stays
 unstaged and uncommitted while the Critical stands.
+### Interim board 2 - 2026-08-31
+
+IN-FLIGHT SECTION AND ITS STAGE. Section 1 is implemented, reworked against the amended spec, and
+its review round is adjudicated with every finding either fixed or routed. It CANNOT close for one
+reason only: the section owes its own whole-gate run and the machine heavy-process claim is held by
+a peer seat through roughly 12:00Z. That is a wait on the box rather than an open question, so no
+ruling is pending on this section. Sections 2 and 3 are not started.
+
+THE RULING THAT UNBLOCKED THE CRITICAL, AND ITS PROVENANCE. Interim board 1 recorded the section
+held on a contradiction between Goal principle 4 and this plan's own live control. That is resolved.
+The seat that authored this plan amended the spec at commit 3dff830 to scope the moment rule BY
+PROVENANCE: it binds only a marker carrying the boundary verb's machine-written declaration field,
+while a marker the seat-stop hook banks at a turn end keeps window semantics and the 4-hour age-out.
+The controller verified this on its own surfaces rather than accepting it: the three sources the
+author named (the Evidence sentence, principles 1/3/4 taking the declaration as their noun, and the
+goal state's authorizations entry reading "the boundary CLI as the declaration act") all check out,
+and the controller's own earlier measurement of 13 hook-written banks is exactly what the scoping
+preserves. Three independent derivations agree: the author's dialog trace, two reviewers from
+different artifacts, and the controller's measurement.
+
+APPROVAL DRIFT, NAMED RATHER THAN ABSORBED. That amendment changed an approved plan mid-run. It is
+a faithful record of what the operator decided in the design dialog, which mitigates it and does not
+unmake it. Both seats are surfacing it to the operator independently.
+
+THE SHARED-INDEX INCIDENT. Interim board 1 was written and staged by this session and swept into
+3dff830 by the authoring seat's whole-file add. The content is intact and durable on origin; the
+casualty is the record, since this session's written rationale for the entry never reached git. The
+authoring seat logged its own half. Recorded here because a commit message that does not name what
+it carries is invisible to every later reader.
+
+LIVE DISPATCHES AND WHAT EACH WAS ASKED. None running. Closed this stretch: one implementer-opus
+rework of section 1 against the amended spec, eleven items (DONE_WITH_CONCERNS, two concerns); the
+same agent continued for one fold; one review round of three read-only reviewers via the Workflow
+route at model opus and effort max, which the Agent tool cannot set (adversarial, blind, security),
+all three resolved to claude-opus-5 read from the run record, so no substitution and no compensation
+notch is owed; one implementer-opus fix round over the round's findings (DONE_WITH_CONCERNS, four
+concerns). Workflow parallelism caps at two on this host, so the third reviewer started as the first
+finished; expected behaviour rather than a never-started dispatch.
+
+THE ROUND'S CRITICAL, CONFIRMED BY THE CONTROLLER BY MEASUREMENT. The truncated-tail coverage
+inference was unsound and failed OPEN on a declared marker, the one direction the spec forbids. It
+treated "some line in the tail predates the write" as proof the read reaches back past the marker,
+which holds only if transcript lines are append-ordered by timestamp. They are not. Measured across
+the five largest real transcripts in this project: 10,015 timestamp inversions over 66,944 timed
+lines, worst backward jump 602 seconds. So an inbound sitting just before the tail boundary could be
+masked by an out-of-order line inside it, and the gate would spend a marker whose moment had passed,
+landing the compaction mid-turn: the exact incident this section exists to prevent.
+
+The repair is positional rather than temporal, because position is monotonic where timestamps are
+not. The declaration records where the transcript ended (a byte offset at the end of the last
+complete line, plus a sha256 anchor over the preceding 4 KB) and the rule reads forward from there.
+markerMomentHolds now reads no timestamp at all, confirmed by the controller against the function.
+Every edge case fails toward deferral by name: replaced, unreadable, no-position, too-long, torn.
+
+HOW THAT CRITICAL WAS FOUND IS ITSELF THE LESSON. The implementer raised the truncation leg as a
+design judgment it had made beyond the spec. The controller declined to rate it and sent it to the
+adversarial reviewer as an open question, explicitly unrated in both directions. The reviewer found
+the defect the controller had not seen. Pre-rating it either way would have buried it.
+
+A SECURITY MAJOR WAS FOLDED RATHER THAN PARKED. The implementer hardened one atomic write and left
+the identical predictable-temp, non-exclusive-write, unconditional-unlink shape in the sibling
+stamper one file away, calling it out of scope. It is not: a security Major is never parked, and two
+instances of one class means the class is the finding. The fix moved the guard to the channel rather
+than duplicating it, which is the standing rule that an atomic-write guard is a property of the
+output channel and not of the producer that first needed it. seat-stop.js now owns no write at all.
+
+A REVIEWER MAJOR WAS REFUTED, AND A CLAIMED EDIT DID NOT LAND. The blind reviewer rated the
+coordinator runbook's every-pass paragraph a MAJOR on the ground that it rests on a marker surviving
+a paced wake. The controller read the whole paragraph: it already carries the correction two
+sentences on, naming the wake as an arrival and bounding the CLI fallback's marker at it. Refuted,
+no change made, and the file is unmodified. Separately, the fix round reported editing that file and
+had not; it described the existing state as its own edit. Caught by re-reading the tree rather than
+the report, which is why a subagent's done is re-checked.
+
+THE PRIVACY GATE WAS VIOLATED, INCLUDING BY THIS SESSION, AND IS ONLY PARTLY REMEDIABLE HERE. The
+security reviewer swept the whole tree, as the standing rule requires when a privacy gate is
+involved, and found a real session id in a tracked file. The controller's own wider sweep found more.
+Disposition by class. Two hits were this session's own committed prose (one in this plan doc, one in
+the archived judgment-sidecar plan) and are redacted in this changeset. A third, two private store
+commit hashes in that same archived plan, is likewise redacted. All three are already on origin, so
+the redaction cleans the working tree and does NOT remove the values from published history; that
+removal is a rewrite only the operator can authorize. One hit sits in another session's uncommitted
+work and was reported to that seat rather than edited. Two archived plans carry real session ids from
+another project, committed long ago, and one of them records a DELIBERATE past decision to retain
+them because the source records were deleted; overturning a recorded decision inside an append-only
+archive is the operator's call and both are routed there untouched.
+
+The sweep is reported against its predicate and scope rather than as a verdict. Predicate: full-UUID
+shape OR a literal alternation over the five known values. Scope: tracked files. A live control on a
+synthetic id withheld from the literal list matched on shape, so the instrument speaks. The limit is
+stated rather than left implicit: a 7-hex commit hash has no structural form that would not also
+match ordinary prose, so the named values are swept and that class is not.
+
+RULINGS ADOPTED SINCE THE LAST BOUNDARY. One, and it is the operator's to overturn rather than the
+controller's to make: the archived plans' retained session ids stay as they are pending the operator,
+on the ground that an append-only archive recording a deliberate decision is not a seat's to rewrite.
+
+CURRENT GATE BASELINE. Targeted lane plus the two whole-tree pins whose subjects these files are
+(kit-compact-gate, seat-stop, hook-canary, doctrine-parity): 355 tests / 355 passing / 0 failing / 0
+skipped, exit 0, run by the controller itself with the exit code read from the run rather than from a
+grep. The whole-gate figure recorded in Interim board 1 (2687 / 2680 / 1 / 6) was the first
+implementer's reading and is now stale by two rounds; it is superseded rather than carried. The
+section close owes a whole-gate run against the recorded 2677 / 2670 / 1 / 6 from commit 9d6a800, and
+that run is what the box claim is blocking.
+
+BOX. A peer seat holds the machine heavy-process claim, extended through roughly 12:00Z, and intends
+to keep it through its own finishing pass. This session did not write the claim file, ran targeted
+lanes only, and named the contention on every run. One observation worth carrying: that peer reports
+a foreign .NET testhost starting 51 minutes into its claim, so something on this box spawns suites
+without reading the claim file, which means a clean claim read is not a clean box.
+
+NEXT ACTION PER SECTION. Section 1: wait out the box claim, run the whole gate, report the delta
+against 2677 / 2670 / 1 / 6, then Chapter 1 and the commit. Nothing else is outstanding on it.
+Section 2 (the deferral nudge's context floor and bystander voice): not started, unblocked. Section 3
+(the document sweep): not started; it inherits two carry-forwards this round confirmed rather than
+discovered, docs/architecture.md's Heartbeat-only writer sentence and docs/security-model.md's
+coordinator writer-class enumeration, and it should also add Banked: to the registry field pin.
+
+Commit model in effect: Commit-and-Push. This entry and the privacy redactions commit alone.
+Section 1's code stays unstaged until its whole gate has run: under this model the section commit
+goes straight to main, and that gate is the last piece of the section's acceptance outstanding.
