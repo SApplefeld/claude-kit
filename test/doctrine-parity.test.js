@@ -212,8 +212,9 @@ test('the Chapter template carries the gate field the doctrine requires', () => 
 });
 
 // The close gate's place in the section loop is a cross-step invariant inside
-// one file, and nothing else pins it. Step 3 dispatches the reviewers to
-// overlap step 2's own run, step 4 lands their fixes and runs the close gate,
+// one file, and nothing else pins it. Step 2 runs its targeted lane, step 3
+// dispatches the reviewers over the state that run verified, step 4 lands
+// their fixes and runs the close gate,
 // and step 4's fold predicate spends that gate ("the gate you are about to run
 // covers it"). A rewrite that moves the gate back beside the review round
 // reads fine in isolation while leaving every review fix and every folded
@@ -1638,22 +1639,71 @@ function readRepoFile(relPath) {
     return fs.readFileSync(path.join(__dirname, '..', ...relPath.split('/')), 'utf8');
 }
 
+// The carriers are keyed by path rather than by content, so the membership
+// leg below can compare a file the tree holds against this list. Both doctrine
+// copies are read from their own paths here: the frontmatter the skill copy
+// carries is immaterial to a substring check.
+const INSTALL_SURFACE_CARRIERS = [
+    ['the skill-body doctrine copy',
+        'plugins/claude-kit/skills/operating-instructions/SKILL.md'],
+    ['the doctrine mirror', 'home/claude-kit-doctrine.md'],
+    ['the testing-discipline skill',
+        'plugins/claude-kit/skills/testing-discipline/SKILL.md'],
+    ['executing-work\'s Commit-and-Push bullet',
+        'plugins/claude-kit/skills/executing-work/SKILL.md'],
+    ['finishing-work\'s Commit-and-Push bullet',
+        'plugins/claude-kit/skills/finishing-work/SKILL.md'],
+    ['kaizen\'s applied-brief push and its capture exemption',
+        'plugins/claude-kit/skills/kaizen/SKILL.md'],
+    ['docs/architecture.md\'s cadence paragraph', 'docs/architecture.md'],
+];
+
+// A surface stating the condition in some other wording is the drift this
+// pin exists to catch, and a list of names cannot see one that was never
+// added to it. So the condition's own shape is swept over the live surfaces
+// and every hit has to be a listed carrier: a file describing the same trunk
+// property under different words reddens here, and the wording loop above
+// then reddens on it too. Journey surfaces are outside the sweep by the
+// spec's own exemption, since a plan doc and an archive quote the retired and
+// the current wording alike as a record.
+const INSTALL_SURFACE_SHAPE = /trunk consumers install from|no CI gating/i;
+
+function installSurfaceCandidates() {
+    const files = shippedKitMarkdown().map((f) => 'plugins/claude-kit/'
+        + path.relative(path.join(__dirname, '..', 'plugins', 'claude-kit'), f)
+            .replace(/\\/g, '/'));
+    return files.concat(['home/claude-kit-doctrine.md', 'README.md',
+        'docs/README.md', 'docs/architecture.md']);
+}
+
 test('every surface stating the install-surface condition words it alike', () => {
-    const carriers = [
-        ['the skill-body doctrine copy', skillBody()],
-        ['the doctrine mirror', mirrorBody()],
-        ['the testing-discipline skill', readRepoFile('plugins/claude-kit/skills/testing-discipline/SKILL.md')],
-        ['executing-work\'s Commit-and-Push bullet', readRepoFile('plugins/claude-kit/skills/executing-work/SKILL.md')],
-        ['finishing-work\'s Commit-and-Push bullet', readRepoFile('plugins/claude-kit/skills/finishing-work/SKILL.md')],
-        ['docs/architecture.md\'s cadence paragraph', readRepoFile('docs/architecture.md')],
-    ];
-    for (const [label, body] of carriers) {
-        assert.ok(body.includes(INSTALL_SURFACE_CONDITION), label + ' no longer '
+    for (const [label, relPath] of INSTALL_SURFACE_CARRIERS) {
+        assert.ok(readRepoFile(relPath).includes(INSTALL_SURFACE_CONDITION),
+            label + ' (' + relPath + ') no longer '
             + 'states the install-surface condition in the shared wording ("'
             + INSTALL_SURFACE_CONDITION + '"). The condition keys on a property '
             + 'of the trunk rather than on a repo name, so a reword that reaches '
             + 'some surfaces and not others leaves the rest gating on a '
             + 'condition the reworded ones no longer describe');
+    }
+
+    // The instrument leg, so the membership sweep's silence is readable: the
+    // shape has to select a carrier stating the condition in wording the
+    // shared literal does not supply.
+    assert.match('main is a trunk consumers install from with nothing gating '
+        + 'the merge', INSTALL_SURFACE_SHAPE, 'the install-surface shape no '
+        + 'longer selects a paragraph describing the trunk property in its own '
+        + 'words, so the membership sweep below cannot see an unlisted carrier');
+
+    const listed = new Set(INSTALL_SURFACE_CARRIERS.map(([, p]) => p));
+    for (const relPath of installSurfaceCandidates()) {
+        if (!INSTALL_SURFACE_SHAPE.test(readRepoFile(relPath))) continue;
+        assert.ok(listed.has(relPath), relPath + ' describes the trunk property '
+            + 'the install-surface condition keys on and is not among the '
+            + 'carriers above, so a reword through the shared wording leaves it '
+            + 'asserting a condition no other surface describes. Add it to '
+            + 'INSTALL_SURFACE_CARRIERS, or state the property somewhere that '
+            + 'is a carrier');
     }
 });
 
@@ -3079,7 +3129,16 @@ const INTEGRATION_ACTION = new RegExp([
     '(?<![-\\w])(?:committed and pushed|commit and push|push and open)\\b',
     '\\b(?:is|runs|takes) Commit-and-Push\\b',
 ].join('|'), 'i');
-const GATE_STATED = /whole gate|targeted lane|contention lane|install surface|takes no gate/i;
+// A lane named, and never a paragraph's assertion that it owes none. A
+// no-gate claim is exactly the thing this sweep exists to adjudicate, so it
+// clears only through INTEGRATION_EXEMPT, where the paragraph is anchored and
+// its rule is written down beside it. Read as a clearing phrase instead, the
+// claim certifies itself: any line performing an integration passes by
+// carrying the words, with no rule stated anywhere and nothing to redden.
+// What stays honest about the rest of the list is stated rather than implied:
+// these are lane words, so a match is presence of the words in the line and
+// never proof that the lane named is the one that action takes.
+const GATE_STATED = /whole gate|targeted lane|contention lane|install surface/i;
 
 const INTEGRATION_EXEMPT = [
     ['skills/brainstorming/SKILL.md', 'land it on main and leave no mess',
@@ -3105,6 +3164,14 @@ const INTEGRATION_EXEMPT = [
     ['skills/kaizen/SKILL.md', 'Per-machine files mean three workstations',
         'describes the sync mechanism; the pull is performed at step 1 of the '
         + 'pass, which names its lane'],
+    ['skills/kaizen/SKILL.md', 'the rule is what the push can break rather than the path it lands on',
+        'the capture push runs no gate, and the exemption is the one class of '
+        + 'claim this sweep adjudicates rather than clears: it holds only while '
+        + 'the branch delta is the note commit alone, an appended line to an '
+        + 'inbox no test takes as a subject, and the paragraph states that '
+        + 'condition and the check that establishes it. A delta carrying '
+        + 'anything else is a different push and takes the lane its own surface '
+        + 'earns'],
     ['skills/operating-instructions/SKILL.md', 'the index is a window rather than a resting place',
         'a doctrine bullet on staging and the commit window rather than a '
         + 'procedure that pushes; the lane a push takes is the gate bullet\'s, '
@@ -3158,6 +3225,21 @@ test('every kit procedure performing a git integration names that action\'s lane
         'the sweep\'s predicate now selects a paragraph that describes a merged '
         + 'branch without performing an integration, so its hits are git prose '
         + 'rather than gate-earning actions');
+    // The self-exempting control, in the shape the clearing branch is most
+    // easily widened back into: a paragraph that performs an integration and
+    // asserts its own exemption in the same breath. It is selected and not
+    // cleared, so it reaches the unnamed list and reddens unless a maintainer
+    // anchors it in INTEGRATION_EXEMPT with its rule. A clearing phrase that
+    // admitted such a claim would let every paragraph in the tree exempt
+    // itself by saying so.
+    const selfExempting = 'Then commit and push to origin; that push takes no gate.';
+    assert.ok(INTEGRATION_ACTION.test(selfExempting)
+        && !GATE_STATED.test(selfExempting),
+        'a paragraph asserting its own exemption now clears the sweep in '
+        + 'content, so the one claim this sweep exists to adjudicate certifies '
+        + 'itself: the exemption belongs in INTEGRATION_EXEMPT, anchored on the '
+        + 'paragraph and carrying its rule, where a later reader can tell it '
+        + 'from an oversight and a stale entry reddens');
 
     const exemptHits = new Map(INTEGRATION_EXEMPT.map(([f, anchor]) => [f + '|' + anchor, 0]));
     const unnamed = [];
