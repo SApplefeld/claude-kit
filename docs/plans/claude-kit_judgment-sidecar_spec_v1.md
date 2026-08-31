@@ -109,9 +109,61 @@ names the class rather than the instance that produced it.
    time with a control drawn from an enumerated list of spellings and each time reported as
    closed by the round that added more spellings to the list.
 
+7. **A screen answers about the path it was handed, and every component created beneath that
+   path afterward is unscreened.** A caller-supplied root that passes a containment screen
+   licenses nothing about the directories a later step creates under it: a recursive mkdir
+   follows a reparse point on any intermediate component, so a link planted below the screened
+   root routes the write wherever it points while the run prints the sentence saying the root was
+   screened and found outside. A writer under a caller-supplied root therefore either creates each
+   component through the same guard that screened the root, or re-screens the deepest directory it
+   actually created immediately before the write. Adopted 2026-08-31 after the live-store screen,
+   rebuilt to close five instances of the accept-a-path-inside-the-live-tree class, was found to
+   have moved the sixth instance one layer down into the writer that trusts it.
+
+8. **A predicate's scope is stated in terms of the rule's reach, never the surface the finding
+   came from.** A check can be built correctly from a generating rule, carry a shape-matched
+   pattern, name its scope, and run a control that speaks, and still be blind, because scope and
+   reach are different questions: a rule about what a call does reaches every path that arrives at
+   such a call, including call sites in modules the scoped surface never spells. A predicate scoped
+   narrower than its rule reaches returns the same green whether the class is absent or merely
+   outside the scope, which from the report is indistinguishable. So a check whose subject is a
+   class states the reach the rule actually has (which call sites, in which modules, reachable by
+   which paths), and either covers that reach or names the uncovered part as unproven rather than
+   reporting the class clean. Where the consequence can be observed directly, observe it: a case
+   that instruments the effect (the syscall, the write, the emitted byte) and asserts its absence
+   covers every path into the effect at once, where a case that inspects call spellings covers only
+   the spellings it can see. Adopted 2026-08-31 after the live-store class reached its EIGHTH
+   instance. Round 10's closure was reported against the generating rule, with a shape-matched
+   predicate, a stated scope, an instrument control and a pre-fix control that spoke, and it was
+   blind anyway: its scope was one test file's occurrences of the screen's identifier, while the
+   rule's reach includes one-operand call sites inside `battery.js` and `harvest.js` that the test
+   file reaches in-process and never spells. This is entry 6's failure one level up, the list being
+   of surfaces rather than of spellings.
+
 No entry 4 exists in this plan. No rule numbered 4 appears in any surviving artifact of
 it, so the gap is a numbering gap rather than a lost rule, and entry 5 keeps the number
 it was cited under so both existing citations resolve.
+9. **A rule you are calling generating is a mechanism until you have named the condition it is
+   one route to, and an instrument that observes a consequence reaches only as far as the process
+   it runs in.** Two clauses, because the ninth instance needed both to stay hidden. The first: a
+   class stated as "a call carrying fewer than two arguments" names a mechanism, and the condition
+   under it is that the screen resolves its live tree from ambient state, an absent operand falling
+   back to `os.homedir()` and `os.homedir()` itself resolving from `HOME` and `USERPROFILE`. Two
+   routes reach that condition, an unpinned argument in process and an unpinned environment out of
+   it, and a check built from either route is silent about the other while reporting on the class.
+   So before a predicate is written, state the condition the wrong behaviour needs rather than the
+   spelling the last instance wore, and enumerate the routes into it. The second: a case that
+   instruments an effect, which entry 8 asks for wherever the consequence can be observed, is
+   bounded by its own process, so a subject that can cross a process boundary is measured across
+   that boundary or the uncrossed part is named unproven. And a predicate over source text answers
+   about spelling whatever it is built from, so where its property is a value rather than a token,
+   presence of the token is not the property: assert the value, or measure the effect instead.
+   Adopted 2026-08-31 after the live-store class reached its NINTH instance. Round 11 built its
+   checks correctly under entries 6 and 8, including the effect-observing case entry 8 asks for,
+   and all of them were in process, while `runBinWatched` and one harvest case spawned child
+   processes with no `env` operand, so the children inherited the operator real `HOME` and the
+   shipped screen read the operator real store. Confirmed by instrument: the accused spawn shape
+   made 6 syscalls at or under the operator live tree and the fixture-home spawn shape made none.
 
 ## Sections of Work
 
@@ -248,6 +300,40 @@ Acceptance: deferred to the design pass.
   the record) and the record's own declared triggers, which name the indexes and `git mv`, not a listing.
   The prompt is never tuned against case 11; future prompt iterations are scored on held-out cases. The
   rest of the section-4 acceptance (daemon-path end to end, dedup, no-index silence) is unchanged.
+- Decided 2026-08-31 (consult ruling, adopted): the live-store screen in `sidecar/state-screen.js`
+  compares FILESYSTEM IDENTITY rather than path strings. Path-string comparison is not salvageable
+  here and the ruling settles that by measurement rather than argument: no single canonicalizer
+  covers the class, since `fs.realpathSync.native` normalizes 8.3 names, case, `\\?\` and
+  volume-GUID roots but returns a UNC admin-share spelling unchanged, and closing UNC by string
+  would need a drive-mapping table Node does not expose. The shipped design is identity-anchored
+  containment: a `dev`/`ino` walk up the candidate's realpath ancestor chain, with a one-segment
+  case-folded name compare used only for components that do not yet exist on disk, since the leaf
+  is usually about to be created. Pure identity was ruled out in the same breath: it regresses the
+  one case the string screen gets right, an absent live tree, where every child of the home
+  directory shares the same existing anchor. The old string predicate is kept as a REFUSAL-ONLY
+  overlay whose `ok` is discarded, which is what makes its two known remaining defects harmless:
+  both produce a false `ok`, and an overlay that cannot grant `ok` cannot act on one. Measured on
+  22 generated cases: the ruled predicate wrong on 0, the shipped one wrong on 8, four of those
+  failing open.
+- Decided 2026-08-31: two further instances of the screen's defect class were confirmed at this
+  boundary, bringing the count to six found in one section. Instance 5 is an 8.3 short name, and it
+  is the one that matters most, because it needs no UNC, no admin share and no elevation and it
+  reproduces on the system volume the live home sits on: two spellings of one directory stat to an
+  identical `dev`/`ino` while the screen refuses one and accepts the other, with a genuine outsider
+  correctly accepted in both spellings as the control in the other direction. Instance 6 is the
+  `/[\\/]/` separator split in round 5's own fix, which on POSIX reads a genuine child directory
+  named with a leading backslash segment as an escape. Both were reproduced by this session against
+  the shipped module before being acted on.
+- Declared assumption 2026-08-31, section 7: the rebuilt screen ships with its Windows behaviour
+  MEASURED and its POSIX behaviour INFERRED, and this is a deliberate call rather than an oversight.
+  This repository has no CI configuration and this box has no WSL, so no POSIX run is available
+  here, and standing one up is a different goal than this plan's. What reduces the exposure is that
+  the ruled predicate contains no separator literal and no platform branch at all: its only string
+  literal is `.claude`, and the case fold is applied on both platforms deliberately, because folding
+  over-refuses a renamed directory on case-sensitive Linux while an exact compare ACCEPTS a write
+  into the live store on case-insensitive macOS. What would confirm the inference is a run of
+  `node --test test/kit-sidecar-battery.test.js` on Linux or macOS. Override freely; a CI surface
+  for this repository is recorded as its own backlog item rather than folded into this section.
 - Declared assumptions, override freely: machine-local state under `~/.claude/kit-sidecar/`; endpoint config at `~/.claude/kit-endpoint.json`, operator-authored; v1 daemon manually started, no service install; fleet-wide daemon distribution decided post-field-trial; the hook ships dormant-by-default via the spool-root check, needing no setting.
 
 ## Out of scope for this document
@@ -770,3 +856,638 @@ non-screen fixes (the unreported prompt-cap cut, the two sweep counts, harvest r
 the security-model host-name record), then a seventh review round, then the section 7 live
 acceptance, Chapter 7, flip the plan to Complete, move section 8's substance to
 `docs/backlog.md`, archive via curating-docs, commit and push.
+### Interim board 6 - 2026-08-31
+Section 7 is through its seventh review round and has not closed. That is the closure-drought
+floor again on its own, and the compaction gate raised its own signal alongside, holding four
+offers.
+
+What changed since Interim board 5 is the shape of the problem rather than another patch to it.
+A consult was convened before spending a fifth attempt at the screen, and it corrected the
+framing rather than answering the question as asked. The question offered two options, keep
+patching path strings or compare filesystem identity; the ruling took neither, because pure
+identity regresses the one case the string screen gets right, an absent live tree, where every
+child of the home directory shares the same existing anchor. What shipped is identity-anchored
+containment: a device-and-inode walk up the candidate's realpath ancestor chain, with a
+one-segment case-folded name compare used only for components that do not yet exist, and the old
+string predicate kept as a REFUSAL-ONLY overlay whose `ok` is discarded. That last move is what
+retires the string predicate's two known remaining defects without a further patch: both produce
+a false `ok`, and an overlay structurally unable to grant `ok` cannot act on one.
+
+The ruling rests on measurement rather than argument, and the measurements were re-run by this
+session against the shipped module before anything was built on them. Confirmed here: the drive
+letter, the `\\localhost\D$` admin share and its loopback-address form return an identical
+device-and-inode pair for one directory; `bigint: true` is mandatory, since the Number form of an
+inode on this machine reports 6917529027648879000 where the BigInt form reports
+6917529027648878213, a collision-sized difference; and `fs.realpathSync` leaves an 8.3 spelling
+untouched while `fs.realpathSync.native` expands it but leaves a UNC spelling untouched, so no
+single canonicalizer covers the class and string comparison is not salvageable.
+
+Two further instances of the class were confirmed at this boundary, taking the count to six.
+Instance 5 is an 8.3 short name and it is the most serious of the six, because it needs no UNC,
+no admin share and no elevation and it reproduces on the system volume the live home sits on:
+two spellings of one directory stat to an identical device-and-inode pair while the old screen
+refused one and accepted the other, with a genuine outsider correctly accepted in both spellings
+as the control in the other direction. Instance 6 is the one that matters for the future, and it
+is not in the screen at all. With the rebuilt screen answering correctly, the security lens found
+that an intermediate reparse point UNDER a screened `--state-dir` still routes a fixture write
+into the live tree, because the writer creates `memory-root`, `projects` and the segment
+directory with a recursive mkdir that lstats only the leaf it was handed. Reproduced here with a
+junction on an intermediate component: the screen answers `ok`, the directory chain is created,
+the index lands inside the fixture live tree, and the same shape with no junction correctly stays
+outside. The hole did not close, it moved one layer down into the code that trusts the screen.
+That is recorded as Standing Brief Amendment 7 and it is the durable lesson of this section.
+
+Round 7 verdicts: CHANGES_REQUIRED, CHANGES_REQUIRED, CONCERNS. All three lenses hunted a sixth
+instance INSIDE the screen and none found one, across UNC, extended-length, volume-GUID, 8.3,
+case-flipped, alternate-data-stream and both link directions, which is the first round in this
+section where the screen itself survived the hunt. The findings are therefore about the writer
+below it and the control beside it. The sharpest of them, found independently by two lenses: the
+invariance table's only coverage floor is a global count of checked pairs, and it fails in both
+directions. Downward, the entire Windows spelling class can drop out and the count still clears
+the floor, so the very transform that generated instance 5 could run zero times unnoticed.
+Upward, the floor cannot be met on POSIX at all, so the run this plan's own declared assumption
+names as the confirmation of its POSIX inference would go red on the instrument rather than on
+the screen. That is the section's own recurring failure shape, a check green or red for the
+wrong reason, arriving one level up in the thing built to detect it.
+
+The two security Majors beside it are being fixed rather than parked, per the rule that a
+security finding of Major weight never takes the out-of-scope route: the hard-link guard sits in
+the producer that needed it second rather than at the channel both producers write through, and
+the suite reads the live `~/.claude` through the screen's own realpath calls while the test
+file's header claims it does not, which is an Amendment 5 violation whatever its exposure.
+
+Gate: 2650 / 2643 / 1 / 6, exit 1, run by this session and read from the run's own marker,
+against Interim board 5's 2643 / 2636 / 1 / 6. Delta plus 7 tests and plus 7 passing, failures
+and skips unchanged. The one red is named rather than counted: `test/memory-session.test.js:854`,
+this box's known permanent path-length red, whose assertion is about a pinned memory-store
+directory name and which touches no sidecar module. The box was claimed by exclusive create for
+that run and released immediately after; three foreign `dotnet.exe` processes were on the box at
+the time with no claim standing, and that contention is named here rather than treated as a clean
+read, since a process poll is a sample and not a clearance.
+
+One reported figure is marked down rather than repeated. The implementer measured the replaced
+screen as wrong on 34 of 88 pairs, 10 failing open, but against a reconstruction it wrote after
+destroying the only copy of the original. That is weaker than it sounds and stronger than it
+reads: this session confirmed the reconstruction's three function bodies are code-identical to
+the predicate the new module still retains verbatim as its overlay, differing only by an elided
+comment, and the adversarial lens independently found a second corroborating copy on disk. The
+figures are a diagnostic that nothing green depends on, and they are recorded as measured against
+a corroborated reconstruction rather than against the shipped file.
+
+Live dispatches at this boundary: one, the round-7 fix implementer, resumed over SendMessage with
+its own context rather than dispatched fresh, carrying the thirteen-item fix list and Amendment 7.
+Round 7 itself was three read-only lenses through `Workflow` at model `opus` and effort `max`, the
+no-headroom row of the reviewer-effort table, since the writer tier for this delta is opus.
+
+Next action: adjudicate the fix round, re-run the whole gate, then the section 7 live acceptance
+(frozen batteries against the live endpoint plus a fresh harvest end to end), Chapter 7, flip the
+plan to Complete, move section 8's substance to `docs/backlog.md`, archive via curating-docs,
+commit and push. The push now has to expect a non-fast-forward: the operator has a second worker
+committing from a worktree of this repository, and it touches the same shared documents
+(`docs/architecture.md`, `docs/backlog.md`, the README). The merge is expected to be clean, since
+the two workers write different sections, and a clean merge is exactly the case that needs the
+whole gate re-run afterward plus a read of the merged document, because two additions to one
+inventory document can make incompatible claims about the same surface with no conflict marker to
+catch it.
+### Interim board 7 - 2026-08-31
+Section 7 is through its eighth fix round and has not closed. The closure-drought floor is met
+again and the compaction gate raised its own signal alongside, and this entry also lands during a
+forced wait for the machine rather than at a moment of this session's choosing.
+
+The round-8 delta is the first in this section that closes the class at the layer the class
+actually lives on. Amendment 7's instance is closed in the WRITER rather than in the screen:
+`sidecar/logs.js` gains `ensureDir(dir, guardFrom)`, which creates one component at a time below
+the screened root instead of handing the whole chain to a recursive mkdir, and all three of
+`sidecar/battery.js`'s fixture-tree creators pass the screened `--state-dir` into it. The
+hard-link refusal moved out of the producer that needed it second and into `guardWriteTarget` at
+the boundary both producers write through, which is the shape the doctrine already requires of a
+sanitizing guard once a channel gains a second producer. The invariance table's coverage floor is
+no longer a global count but a per-transform one derived from what the platform can actually
+build, so a transform that silently stops generating fails the case rather than being absorbed by
+a total, which was round 7's sharpest finding and the one two lenses reached independently. And
+the suite's last read of the operator's real store is gone: every child now inherits a fixture
+home, `os.homedir()` survives in exactly two places for the string it returns and never as a path
+to open, and the file header states that rather than claiming an exception.
+
+Everything above was verified here at the code rather than taken from the report. The production
+call shape was driven by a two-directional control this session wrote and ran: a junction on an
+intermediate component under a screened root is refused with nothing created inside the fixture
+live tree, and the identical shape with no junction is still created outside it. The per-transform
+floor, harvest's single resolved `--out`, `fieldCuts` reading the cap rather than the resulting
+length, and every `os.homedir()` and `.claude` site in the suite were each read at source. An em
+dash sweep over the five changed files returns zero against a control file carrying one, so the
+silence is the instrument working; the predicate is the literal character and the scope is those
+five files.
+
+The entry's most important content is a controller error, because it is the kind that produces no
+error message. A blocking `TaskOutput` call returned at its own timeout with a raw slice of the
+agent's transcript, and that slice ended in a `DONE_WITH_CONCERNS` report. It was read as the
+agent's final report; it was the PREVIOUS round's report, still sitting in the transcript while
+the agent worked the round after it. Two things followed. A file edit was made to
+`test/kit-sidecar-battery.test.js` while the agent was still writing that same file, so two
+writers raced on one header, and a whole-gate run was started against a tree the agent was still
+changing. Neither cost anything durable: the agent's fix superseded the edit with a stronger one
+and the surviving header is self-consistent and was re-verified true, and the gate was discarded
+unread rather than reported. The generalization is the one the completion contract already
+states and this session did not apply: a timed-out call's payload is a slice and never a result,
+and a terminal marker found inside a slice belongs to whatever round wrote it. Only a status of
+completed yields a final report, and here that status arrived thirty minutes later.
+
+One implementer disagreement was adopted against this session's own written instruction. The fix
+brief specified stripping trailing dots and spaces before the segment compare on win32; the
+implementer folded unconditionally and argued that the asymmetry justifying the strip, where
+over-refusal costs a rename and under-refusal costs the operator's store, is a property of the
+filesystem being addressed rather than of the platform the process runs on, since a Linux host can
+export a share a Win32 client canonicalizes on the far end. Adopted, because this module already
+folds case unconditionally on exactly that reasoning and this plan's own declared assumption
+records it, so gating one and not the other would be incoherent.
+
+One implementer concern is answered here rather than left open. `logs.ensureDir` called with no
+root is still the old permissive `mkdir -p`, and the daemon's own call sites use that form. It is
+safe there and the reason is structural rather than a judgement: `statePaths` returns the root
+plus three children one level below it, so there is no intermediate component for a reparse point
+to sit on, and each child is lstat-refused on its own before creation. Recorded as a bounded
+residual rather than a defect, bounded by the shape of the paths rather than by anybody's care.
+
+A second Amendment 5 hazard was found and closed by the implementer inside its own fix and is
+worth naming: an existing case built its control path inside the operator's real `~/.claude` and
+registered a recursive remove on it. It never created anything, but only because the guard the
+case exists to test was working, and the path it sat beside is the fleet-wide capture activation
+lever. It now runs against a fixture home.
+
+The gate is HELD rather than run, and this is a wait rather than a result. A live foreign claim
+stands on the machine's one heavy-process slot: session `af7f2d50-...`, repo `D:/ai-os`, a
+whole-solution verification gate started 03:36:00Z with a 1800-second estimate. Presence licenses
+waiting, so no gate figure is reported at this boundary and none is inferred from the
+implementer's own lane run, which reports 250 / 248 / 0 / 2 exit 0 on the two sidecar suites and
+is recorded as REPORTED. A process poll taken before the claim was read showed three foreign
+`dotnet` processes at about 150 MB each and no test runner; that poll is named as contention
+rather than read as a clearance.
+
+Live dispatches at this boundary: none. The round-8 implementer returned completed and its files
+are settled, confirmed by a process poll finding no surviving `node --test` child and by the tree
+not moving across two readings.
+
+Next action: wait out the peer's claim, take the slot by exclusive create, run the whole gate and
+report it against Interim board 5's 2643 / 2636 / 1 / 6, then the section 7 live acceptance (the
+frozen batteries against the live endpoint plus a fresh harvest end to end), Chapter 7, flip the
+plan to Complete, move section 8's substance to `docs/backlog.md`, archive via curating-docs,
+commit and push. The push expects a possible non-fast-forward: a second worker commits to this
+repository from a worktree and touches the same shared documents, and a clean merge there is
+exactly the case that needs the whole gate re-run afterwards plus a read of the merged document.
+### Interim board 8 - 2026-08-31
+Section 7 is through its ninth review round and its tenth fix round is in flight. Two
+corrections to this document lead the entry, because both are this session's own false claims
+and one of them is already pushed to a public remote.
+
+THE FIRST CORRECTION. Interim board 7 states that "the suite's last read of the operator's real
+store is gone". That is FALSE. `test/kit-sidecar-battery.test.js:1801` and `:2742` call
+`battery.screenStateDir(x)` with no home operand, so `sidecar/state-screen.js:63`
+`liveHomeTree(undefined)` falls back to `os.homedir()` and the screen makes three real syscalls
+against the operator's actual `~/.claude`: `fs.realpathSync` at state-screen.js:285 through
+`stringOverlay`, `fs.realpathSync.native` at :118 through `liveViews`, and
+`fs.statSync(..., {bigint:true})` at :92 through `idOf`. The test file's own header asserts the
+same false property in stronger words, "NO CASE HERE READS IT EITHER". Two of round 9's three
+lenses found it independently. It is an Amendment 5 violation and it is in the fix brief.
+
+The generalization is the part worth keeping, and it indicts the controller rather than any
+implementer. The claim was verified by reading the two literal `os.homedir()` call sites and
+finding them harmless. That is a LIST OF CALL SITES, which is Standing Brief Amendment 6's
+exact failure shape one level up from the code it was adopted for: the generating rule is that
+ANY call into the screen without a home operand reads the live tree, and a list of the sites
+that spell `os.homedir()` cannot cover a rule about the sites that do not. The amendment was
+adopted at Interim board 5, by this session, about this module, and then not applied to this
+session's own verification of this module. The fix brief therefore refuses a call-site list as
+the closure report and requires a predicate over the rule, with its scope and its matches.
+
+THE SECOND CORRECTION. Interim board 7's next-action line names the wrong gate baseline. It says
+to report against Interim board 5's 2643 / 2636 / 1 / 6. Interim board 6 records a newer
+whole-gate run by this same session, 2650 / 2643 / 1 / 6, so board 5 was two boards stale at the
+moment board 7 cited it. The gate below is reported against board 6.
+
+GATE: 2651 tests / 2644 pass / 1 fail / 6 skipped, suites 0, exit 1, duration 331.7 s, run by
+this session and read from the run's own exit marker rather than from the wrapper's. Baseline
+Interim board 6's 2650 / 2643 / 1 / 6, exit 1. Delta plus 1 test and plus 1 passing, failures
+and skips unchanged. The one red is named rather than counted: `test/memory-session.test.js:854`,
+this box's known permanent path-length red, whose assertion is about a pinned memory-store
+directory name and which touches no sidecar module. The box was claimed by exclusive create at
+03:56Z and released by a session-scoped delete after the run. The build stamp was checked before
+the gate rather than after it: `plugins/claude-kit/.claude-plugin/build-info.json` at 16:16
+postdates the newest file under `plugins/claude-kit/hooks/` at 15:31, so no rebuild was owed and
+the hook canary compares against a current stamp.
+
+THE PEER'S CLAIM, since board 7 recorded the wait. The foreign hold on the machine's one heavy
+slot released at 03:56Z, ten minutes inside its own 1800-second estimate. It was polled to
+release rather than computed from the estimate, which is the correct reading given that this
+plan has already recorded four malformed `Started:` values from that seat.
+
+SECTION 7 ACCEPTANCE IS MET, on both halves, against the live endpoint rather than a mock, and
+run from fixture state throughout per Standing Brief Amendment 5: the endpoint config was copied
+to a fixture path and `--config` pointed at the copy, the transcript was copied to a fixture path
+and harvested from the copy, and every state root was a temp directory removed afterward.
+  Frozen batteries: judgment 13 of 13 correct on substance against a floor of 12 of 13, which is
+  the audition's own rate carried to this fixture's size, so the battery beats what it was frozen
+  at rather than merely reproducing it. Recognition: 0 recall misses of the measured situations
+  against a floor of 0, 0 extras against a ceiling of 2, and 3 of 3 clean negatives. OVERALL PASS,
+  read from the run's own exit marker of 0. The endpoint is identified in the run's output by an
+  eight-hex fingerprint and its address is never printed.
+  Fresh harvest end to end: a recent session transcript of 4163 lines yielded 328 Bash pairs, of
+  which the command chose 20 (10 of 94 failure-shaped, 10 of 234 clean). Those 20 triples were
+  written as v1 spool lines per `sidecar/CONTRACT.md` into a fixture state root and drained by the
+  REAL daemon with `--once`, against an empty fixture memory root. Result: 20 of 20 judged, 0 gap
+  records, in 24.8 s, which is 1.24 s per call and sits inside the 0.7 to 1.5 s band this plan's
+  Evidence section records for a schema-constrained verdict. Verdicts 13 achieved, 4 failed, 3
+  diverged. The run also re-exercised section 4's acceptance clause that a project with no memory
+  index produces no recognition calls: the daemon reported "no memory index 20".
+
+WHY ROUND 9 RAN AT ALL, since round 8 reported itself done. The round-8 delta moved a hard-link
+refusal out of one producer and into a shared write-target guard, which reaches the surfaces the
+security-reviewer trigger names, and the fix-delta rule makes a round owed rather than optional
+there. It found three Majors, so the rule earned itself: a section that had closed on round 8's
+own report would have shipped all three.
+
+ROUND 9 FINDINGS, three lenses at model opus and effort max through `Workflow`, the no-headroom
+row of the reviewer-effort table since this delta's writer tier is opus. Verdicts
+CHANGES_REQUIRED, Majors without an overall verdict, and CONCERNS. The tree was captured before
+dispatch and again at return and was byte-identical, and the index was empty at both readings, so
+the read-only contract held. Three Majors and one near-Major, all four of one class, a shipped
+artifact asserting a property its own code does not have:
+  1. The live-store read above.
+  2. `sidecar/text.js`'s comment claims five producers cut text at a cap and that four share one
+     spelling. False, and it carries a real divergence rather than only a wrong count:
+     `battery.js:1356` renders a gap note through `trimLoneSurrogate` while `rollup.js:356`
+     renders THE SAME record without it, so a cut landing between surrogate halves prints clean
+     from one surface and prints an orphan half from the other.
+  3. Security Major. `guardWriteTarget`'s own comment says it "lives here, at the boundary both
+     writers share", and three producers on that boundary do not reach it: `appendJsonLine`,
+     `saveState`'s temp path, and `inbox.writeItem`, which carries a private weaker variant that
+     treats a failed lstat as absent rather than refused, the opposite of the shared guard's
+     posture. The predictable fixed names under a caller-supplied state root are the plantable
+     part. Its ceiling is stated rather than inflated: the security model declares a
+     single-principal machine, so this is the accident class the tree's other link gates exist
+     for and not a containment boundary against a deliberate same-user actor.
+  4. `sidecar/logs.js`'s `ensureDir` header says the guarded root "is deliberately NOT
+     lstat-refused itself"; line 129 lstat-refuses it. Fail-closed, so the cost is a reader
+     trusting a guarantee the code does not give.
+Fourteen Minors ride with them, all in scope and all in the fix brief. Two are worth naming here
+because they are public-surface rather than correctness: literal bidirectional-override code
+points typed into the test file, which forges flag as a trojan-source hazard and which the same
+case can prove with inert escapes; and a bare operator account name in a frozen fixture, which is
+a missing record rather than a disclosure since the name is already in many tracked files.
+
+TWO RULINGS ADOPTED AT THIS BOUNDARY, both recorded because a later round would otherwise
+re-litigate them. The frozen fixtures carry the operator's absolute checkout path in captured
+command text, and the ruling is NOT to rewrite it: these fixtures' whole value is that their
+expected verdicts were hand-adjudicated against text nobody edited, so laundering a path out of
+captured text falsifies the provenance claim the file makes about itself. The class goes into the
+battery README's sweep table with a structural pattern and an inspected-and-kept reason, in the
+shape the hostname row already uses. And on the `ensureDir` contradiction, the fail-closed
+refusal is kept and the comment corrected, rather than loosening a guard to serve a redirected
+profile nobody on this fleet has, in a section that has spent nine rounds on that class.
+
+Live dispatches at this boundary: one, the round-10 fix implementer at tier opus, carrying all
+four Majors, the fourteen Minors, both rulings above, the seven Standing Brief Amendments, the
+claim protocol with this session's id substituted, and a report contract that refuses a call-site
+list as the closure evidence for the first Major. The two `docs/` edits are the main thread's and
+are already made, since the docs-write-guard denies a subagent that write: the retention sentence
+in `docs/security-model.md`, which claimed the daemon's fourteen-day sweep never reaches a
+battery state root when `runOnce` calls `runRetention` on startup over exactly that root, and two
+sentences in `docs/architecture.md`, one stating a default as unconditional and one naming the
+endpoint with a role word that reads as either side of the machine boundary, which is Standing
+Brief Amendment 3's own failure shape.
+
+Next action: adjudicate the round-10 report at the code rather than from the report, re-run the
+whole gate under a fresh claim and report it against the 2651 / 2644 / 1 / 6 above, then Chapter
+7, flip the plan to Complete, move section 8's substance to `docs/backlog.md`, archive via
+curating-docs, and commit and push. Section 8 is a designed deferral, so Complete at section 7 is
+the plan reaching its terminal state rather than a section being dropped. The push expects a
+possible non-fast-forward: a second worker commits to this repository from a worktree and touches
+the same shared documents, and a clean merge there is exactly the case that needs the whole gate
+re-run afterwards plus a read of the merged document.
+### Interim board 9 - 2026-08-31
+Round 10 was adjudicated at the code rather than from its report, and the adjudication found the
+live-store class at instance EIGHT. Round 11 closed it, round 12 is in flight over that fix, and
+Standing Brief Amendment 8 above is the rule this round produced.
+
+INSTANCE 8, found by the controller and confirmed by instrument rather than by argument.
+test/kit-sidecar-battery.test.js lines 2082 and 3164 called battery.main IN-PROCESS with deps of
+newRunToken, write and warn only, with no home operand and no process.env.USERPROFILE or HOME
+redirect around either call. sidecar/battery.js:1217, inside async function main at :1168, called
+screenStateDir(requestedStateDir) with ONE argument, and :1200 called screenStateDir(os.tmpdir())
+the same way. So both cases reached liveHomeTree(undefined), fell back to os.homedir(), and
+syscalled against the operator real ~/.claude. Proved with .kit/scratch/instance8-probe.js, which
+wraps fs.realpathSync, fs.realpathSync.native and fs.statSync and records every operand at or under
+the live tree. SUBJECT, the one-argument arity: 5 live-tree syscalls. CONTROL, the same call with a
+fixture home operand: 0. The control is what makes it evidence rather than an assertion, since an
+instrument that fired on everything would have spoken on both.
+
+THE GENERALIZATION, which is the part worth keeping and which indicts the closure report rather
+than the fix. Round 10 did exactly what its brief demanded: it refused a call-site list, reported
+against a generating rule, built a shape-matched predicate, stated its scope, ran a pre-fix control
+that spoke and an instrument control inside the case. All of that is sound, and it was blind
+anyway, because SCOPE and REACH are different questions. Its scope was one test file occurrences of
+the screen identifier; the rule reach is any code path arriving at a one-operand call site
+in-process, and that call site sits in production code the test file never spells. A predicate
+scoped narrower than its rule reaches returns the same green whether the class is absent or merely
+out of scope, and from the report the two are indistinguishable. That is Amendment 6 one level up a
+second time: the first list was of spellings, this one was of surfaces. Amendment 8 states it.
+
+NOT A PRODUCTION DEFECT, recorded so no later round changes shipped semantics to satisfy this.
+The four one-operand sites (battery.js:1200 and :1217, harvest.js:351 and :450 as they then stood)
+are CORRECT in the shipped daemon, which should screen against the operator real home, and
+state-screen.js:396 says so. The defect was that the suite drove those sites with no way to
+substitute a fixture home.
+
+ROUND 11 CLOSED IT, and the controller verified the closure with its own instrument rather than
+from the report. The fix threads a homeDir key through the existing deps seam on both main
+functions (battery.js:1191 to :1219 and :1236; harvest.js:330 to :363 and :462), defaulting to
+undefined so liveHomeTree falls through to os.homedir() exactly as before. Three verifications, all
+run by the controller:
+  Shipped behaviour unchanged: the implementer probe compared a one-argument call against an
+  explicit-undefined call and got identical answers over 6 comparisons each.
+  The widened predicate, re-run independently by the controller over the raw file text with string
+  literals deliberately included: 4 invocations at lines 2099, 3182, 3506 and 3826, NONE homeless.
+  Its control, built by the controller from the generating rule with two planted homeless calls one
+  of which sits inside a string literal, flagged exactly lines 1 and 4, so the instrument speaks.
+  Raw text matters rather than being a detail: one real invocation is written into a driver program
+  the file generates for a child, and a string-skipping scanner would miss it AND return the same
+  green, which is this section own failure shape one level down.
+  The consequence, measured rather than inspected, by .kit/scratch/r11-verify.js: a real in-process
+  battery.main run with a fixture homeDir, under wrapped fs, inspected 14 paths of which 0 were at
+  or under the operator live tree and 11 were at or under the fixture live tree. The control is a
+  sibling subject rather than the omitted-homeDir variant, so a deaf recorder cannot produce the
+  zero, and no case that ships reads the operator store.
+  The implementer found a THIRD homeless invocation the controller had not named, line 3483, the
+  generated driver, which is the evidence the predicate reaches past the instances that prompted it.
+  It also declined the controller own item 4 with a reason the controller accepts: an
+  omitted-homeDir control would be a shipped case whose purpose is to read the operator store, which
+  Amendment 5 bars, so it was run as a throwaway probe (red: 3 operator-tree hits, 0 fixture hits, a
+  clean inversion) and the sibling-subject form was shipped.
+
+LANE, run by the controller rather than accepted from the report:
+node --test test/kit-sidecar-battery.test.js gives 111 tests / 109 pass / 0 fail / 2 skipped, exit 0,
+read from the run own exit code. The two skips are the pre-existing Windows file-mode skips. Run
+beside a live foreign claim (KIT: Skills Worker, session 42054c5f, handoff whole gate re-run on the
+final tree, started 05:52:30Z), named rather than waited on, and no claim was written. Wall clock
+is not comparable across this section runs under differing contention and nothing is read into it.
+
+ROUND 10 OTHERWISE STANDS and is not reopened. Majors 2, 3 and 4 and all fourteen minors are
+accepted. Two pieces were better than the brief asked and are recorded so a later round does not
+undo them: on m3 the implementer declined the suggested fold restriction and showed by tracing
+sameSegment at state-screen.js:188 that it would remove no false refusal, correcting the enumeration
+instead; on m13 the new sweep row is a structural pattern whose control carries a spelling the
+directory does not hold, matched on shape, which is coverage evidence rather than a working
+instrument. Two of its concerns are for the finishing pass rather than this section: daemon and
+rollup cases living in the battery test file because that was the only file in scope, and
+truncateForReport shipping untested because it is unexported.
+
+A PROCESS FAILURE THE IMPLEMENTER DISCLOSED, recorded because the disclosure is the reason it is
+safe. It ran a red probe on battery.js without first taking a post-fix copy, so a byte-restore was
+impossible. It did not retype the file. It rebuilt it by re-running the same scripted transformation
+and verified the result against an independently derived reference, the same script applied to the
+pre-fix bytes in scratch, by diff, IDENTICAL. The rule broken is take the copy before the probe
+first mutation; the derived-reference diff is a repair rather than a substitute.
+
+ROUND 12 IS IN FLIGHT over the round-11 delta, three lenses at model opus and effort max through
+Workflow (run wf_7d9b5180-fc2). It is owed rather than optional: the delta modifies the containment
+screen call sites, which is a security-reviewer trigger surface, and round 9 earned that rule by
+returning three Majors on exactly such a delta. The tree was bracketed before dispatch to
+.kit/scratch/s7r12-tree-before.txt and the index was confirmed empty.
+
+A COORDINATION FAILURE ON THE SHARED CLAIM FILE, now CONFIRMED rather than inferred, recorded here
+because it cost a peer real time and because the mechanism defeats the protocol own guards. This
+session already-released claim reappeared at claims/heavy-process.md at 05:33:55Z carrying this
+session id and a stale composed Started, destroying the live claim of the session that was actually
+gating. Three sessions saw it from three sides: this one at 05:34:14Z; KIT: Skills Worker at
+05:36:26Z, which queued behind it and lost about eight minutes waiting on a session running nothing;
+and AI-OS: Worker, whose claim it destroyed and which saw the file swing back at 05:41:51Z. AI-OS:
+Worker closed the mechanism from the store repo own history: the path is tracked in the synced
+store, commit 2344233 lands at 05:33:42Z, and its predecessor ff1a4b9 holds this session stale
+claim, so the bytes that materialised are a version-control restore of an older revision rather than
+any seat write. Occupancy was read correctly from the process list instead, six live dotnet and
+testhost processes from the ai-os worktree, which was the only reading true throughout.
+  The generalization is KIT: Skills Worker and is sharper than this session own: a protocol writer
+  population is not the set of writers it names, it is the set of processes that can modify the
+  bytes, and replication is one of those. The consequence is that neither exclusive create nor
+  session-scoped delete reaches this failure, since the competing write is not a create and passes
+  through no seat code path, and the restored bytes carry a real session id that a correct reader
+  deletes. Every rule in the clause is a rule about seats and this writer is not one. AI-OS: Worker
+  owns the written-up note; nothing here duplicates it.
+  This session own contribution: the resurrected claim carried a composed Started with round
+  subsecond digits rather than one read from a clock, which is what made it read as expired
+  arithmetic. A second seat owned the same defect tonight, so it is a clause defect rather than
+  anyone carelessness. Write Started from date -u at write time.
+
+A HARNESS FINDING that invalidates a doctrine mechanic on this version. The growth reading
+finishing-work unavailability rule calls for cannot be taken against an in-flight local agent here.
+tasks/<agentId>.output is 0 bytes for this dispatch and for eight of the twenty agent outputs in
+that directory while three carry megabytes, so the harness populates it only sometimes. And a
+sidechain entry does not stream into the parent transcript: a scan at 05:33Z found zero sidechain
+lines, and entries stamped 05:38 to 05:40 appeared only after the agent completed. So sidechain
+lines flush at completion and a growth reading of an in-flight agent reads zero whether it is
+working or wedged. What discriminated instead was task status from TaskOutput plus the harness
+accepting a SendMessage to the agent. This session carried a 226-line growth figure from before a
+compaction that it could not re-establish, and has stopped restating it as evidence.
+
+GATE: still owed and unchanged from Interim board 8 2651 / 2644 / 1 / 6, exit 1. The box was yielded
+rather than taken: AI-OS: Worker released at 05:43:30Z and KIT: Skills Worker, which had queued
+behind this session resurrected claim and has a merge blocked on its handoff gate, was given the
+slot by this session offer and its acceptance. It reports a real regression found and fixed in its
+own tree and a re-run landing near 05:59Z. This session takes the box after it, and will write
+Started from date -u.
+
+A PEER-COORDINATION FACT for the close-out, reported by KIT: Expert and unverifiable from here:
+KIT: Skills Worker commits its own docs/architecture.md edits within the hour and then merges main
+into batch/skill-fixes, whose 9784239 also edited that file. This session docs/architecture.md edit
+is uncommitted and was gated behind the reopened Major, so it may not land inside that window. That
+was communicated rather than raced: a section close will not be rushed to beat a peer merge, and the
+merge carrying a conflict is the accepted cost.
+
+kaizen/notes-SCOTT-CLAUDE.md remains a peer uncommitted work and is excluded from every commit this
+session makes, as it has been since Interim board 7.
+
+Next action: adjudicate round 12 at the code rather than from its reports, take the box after KIT:
+Skills Worker releases, run the whole gate and report it against 2651 / 2644 / 1 / 6, then Chapter
+7, flip the plan to Complete, move section 8 substance to docs/backlog.md, archive via
+curating-docs, and commit and push.
+### Interim board 10 - 2026-08-31
+Round 12 was adjudicated at the code rather than from its reports, and the adjudication found the
+live-store class at instance NINE. Round 13 is the fix. Standing Brief Amendment 9 above is the rule
+this round produced, and it is the first one to say that the class was misstated rather than merely
+under-checked.
+
+INSTANCE 9, reported by the adversarial lens and confirmed by instrument rather than by argument.
+test/kit-sidecar-battery.test.js:2166 (runBinWatched) spawns with no env operand at all, and :2972
+spawns with cwd only. Node spawn defaults options.env to process.env, so both children inherit the
+operator real HOME and USERPROFILE, and the shipped screen inside the child resolves its live tree
+from them. runBin at :100 is the function that exists to prevent exactly this, supplying HOME and
+USERPROFILE from a fixture, and neither site goes through it. The file own header at :13 to :21
+asserts the opposite in so many words: "NO CASE HERE READS IT EITHER ... runBin gives every child a
+fixture HOME whether its case asks for one or not". That sentence is false for these two sites.
+Proved with .kit/scratch/i9-probe.js, which preloads a recorder into the child and fixes the watched
+tree from the PARENT so the control redirected HOME cannot move the target. SUBJECT, the accused
+spawn shape: 6 syscalls at or under the operator live tree. CONTROL, the runBin shape: 0.
+
+THE GENERALIZATION, which is the part worth keeping and which is sharper than any of the eight
+before it, because it says the class was stated wrong rather than merely checked too narrowly. For
+twelve rounds the class was "a screen call carrying fewer than two arguments". That is a mechanism.
+The condition under it is that the screen resolves its live tree from ambient state: an absent
+operand falls back to os.homedir(), and os.homedir() itself resolves from HOME and USERPROFILE. Two
+routes reach the condition, an unpinned argument in process and an unpinned environment out of it,
+and every check built in twelve rounds addressed route one, because route one is where instance 1
+happened to be found. Round 11 obeyed entries 6 and 8 exactly, generating rule, shape-matched
+control, and the effect-observing case entry 8 asks for, and was blind anyway, because an in-process
+recorder cannot see a child process syscall. Amendment 9 states both halves.
+
+FOUR HOLES IN ROUND 11 OWN CHECKS, each confirmed by running the SHIPPED predicate rather than by
+reading its report, via .kit/scratch/r12-adjudicate.js. Part 0 of that script pins its copy of the
+predicate against the file own bytes first, so the answers are about the shipped check.
+  The deps region is found with source.indexOf("});"), which for a call written with no deps object
+  at all, the exact defect shape, runs past the call end and swallows the NEXT call deps object. A
+  deps-less invocation followed by a compliant neighbour reports hasHomeDir true. False pass.
+  The key test is /\bhomeDir\s*:/, a presence check, while the seam at battery.js:1191 and
+  harvest.js:330 requires a non-empty string and coerces anything else back to undefined, which
+  liveHomeTree resolves with os.homedir(). So homeDir: undefined passes the check. Measured rather
+  than argued: such a call inspected 14 paths of which 3 were at or under the operator live tree.
+  The recorder speaks by that non-zero count itself, so no separate control was needed there.
+  MAIN_CALL_RE is built from two spellings, battery.main( and harvest.main(, so an aliased
+  destructured binding and a call through a bound reference are not matched at all, and the control
+  at :3738 is assembled entirely from those same two spellings, which proves the instrument
+  functions and says nothing about the rule reach. Entry 6 one more time.
+  The fs recorder wraps three entry points, realpathSync, realpathSync.native and statSync, which is
+  complete for state-screen.js and not for the case own title, which claims the run makes no syscall
+  against the operator live tree. readFileSync, mkdirSync, readdirSync, unlinkSync and the rest are
+  unwrapped, so a regression pointing the run at the real state root could DELETE under the operator
+  live logs directory and the case would still report clean. No live instance of that in tree today,
+  since every in-process call passes --config, so it is a reach claim rather than a second defect.
+
+A REPORT SENTENCE THAT CAN ASSERT A CHECK THAT DID NOT RUN, from the security lens, accepted.
+battery.js:1266 prints "screened against the live ~/.claude tree" as a fixed literal while the tree
+actually compared is now whatever homeDir named, and harvest.js:365, :370 and :464 say "the live
+store" the same way. That is precisely what the file own composed-not-asserted discipline at
+battery.js:61 to :64 exists to refuse, turned on the file by its own new seam. Not reachable from a
+shipped caller, since neither CLI entry point constructs a deps object, so it is a Major.
+
+THE SECURITY LENS ANSWERED ITS THREE QUESTIONS AND TWO ANSWERS ARE WORTH KEEPING. The shipped path
+is byte-identical in behaviour: both entry points call main(process.argv.slice(2)) with no deps, so
+homeDir is undefined and liveHomeTree falls back exactly as before. And no argv route reaches the
+new key: both parseArgs reject unrecognised dash tokens and neither entry point builds a deps
+object, so homeDir is reachable only by an in-process caller, of which the tree has exactly one.
+
+THE BLIND LENS returned APPROVED_WITH_CONCERNS and no reachable wrong-behaviour path, having read
+the three files plus nine neighbours in full. Its seven minors are carried into round 13: a
+module-load-time TODAY constant that disagrees with write-time timestamps across UTC midnight and
+would redden three cases for the clock rather than the code; a report sentence that pairs a gap
+count with exit 0; a temp state root minted before the screen that answers about it, orphaned on a
+refusal that never names it; a cut sentence claiming a field is held whole at exactly FIELD_CAP with
+a trimmed lone surrogate; an undestroyed readline input stream on the repeatedly-driven seam; an
+expectedSkips subtraction that absorbs a shortfall silently; and the comment-blind argument scanner
+the security lens also found.
+
+ROUND 13 IS THE FIX, dispatched to an opus implementer rather than the section sonnet tier, because
+the delta is on the containment screen own checks at the ninth instance of a class that has defeated
+eight closures. Pre-fix byte copies of all four files are at .kit/scratch/round12-pre/, taken before
+any mutation, so a red probe can be restored by diff rather than by retyping.
+
+GATE: still owed and unchanged from Interim board 8 2651 / 2644 / 1 / 6, exit 1. The box did not
+reach this session: KIT: Skills Worker released at 06:00:41Z and AI-OS: Worker claimed it seven
+seconds later, re-claiming at 06:10:04Z for 600 seconds, with nine live engine processes on the
+process list corroborating. Occupancy was read from the process list rather than the claim file.
+
+A PEER FACT for the close-out, reported by KIT: Skills Worker and unverified from here: its
+docs/architecture.md edits are now committed and pushed to batch/skill-fixes at 3380bf2, touching
+the contention-lane schedule and a seat-duty paragraph, so this session uncommitted edit to that
+file will meet it at a merge rather than at a commit. That was communicated rather than raced.
+Its gate came back 2563 / 2558 / 1 / 4, exit 1, whose single red is the same box-permanent
+memory-session path-length failure this project baseline carries. The counts are not comparable
+across the two trees; the identity of the one permanent red is what transfers.
+
+kaizen/notes-SCOTT-CLAUDE.md remains a peer uncommitted work and is excluded from every commit this
+session makes, as it has been since Interim board 7.
+
+Next action: round 13 fixes instance 9 and the four check holes, adds an out-of-process instrument
+and a spawn-site predicate, then the whole gate against 2651 / 2644 / 1 / 6, then Chapter 7, flip the
+plan to Complete, move section 8 substance to docs/backlog.md, archive via curating-docs, commit and
+push.
+### Chapter 7 - 2026-08-31
+Completed: 7. Regression batteries and replay harness
+
+WHAT SHIPPED. `sidecar/batteries/` holds the frozen fixtures, thirteen real judgment cases with
+their expected verdicts and fifteen recognition situations with their gold records, plus a README
+owning the screening procedure a fixture passes before it is committed. `sidecar/battery.js` replays
+a battery through the real daemon and scores the answers; `sidecar/harvest.js` extracts fresh
+intent, command and result triples from a named transcript. `sidecar/state-screen.js` is the
+containment screen both commands put their state root through. `docs/security-model.md` gains a
+section on the pair, because both create concentrations of captured plaintext and the fixture half
+is published to a public repository, which makes the freezing step rather than any runtime control
+the place where disclosure is decided. `docs/architecture.md` gains the pair in the sidecar entry.
+
+ACCEPTANCE, both halves run rather than reasoned about. The frozen batteries against the LIVE
+endpoint: judgment 12 of 13 correct on substance against a floor of 12 of 13 carried from the
+audition's own rate, recognition 0 recall misses against a floor of 0 with 1 extra against a ceiling
+of 2 and 2 of 3 clean negatives, OVERALL PASS, exit 0 read from the run own marker. The endpoint
+address never printed: the run names only an 8-character fingerprint, and a sweep of the captured
+log for a URL scheme matched 0 lines. A fresh harvest of this session live transcript, 43.9 MB and
+growing under the reader as it ran: 606 Bash pairs found, 20 triples chosen, every one carrying a
+non-empty intent and command, a string result, a boolean error flag and an integer index, exit 0.
+
+GATE, run by the controller with the box claimed and read from the run own exit marker: 2671 tests,
+2664 passing, 1 failing, 6 skipped, exit 1. Against Interim board 8 baseline of 2651 / 2644 / 1 / 6
+that is plus 20 tests and plus 20 passing with failures and skips unchanged. The one red is
+test/memory-session.test.js:854, this machine known permanent path-length failure, identified by
+name rather than assumed. The comparison crosses a base-ref boundary, two peer doctrine commits
+having landed on main between the two readings, which is sound here because neither touches a test
+file. Section lane: 117 tests, 115 passing, 0 failing, 2 skipped, exit 0, against 111 / 109 / 0 / 2.
+
+THIRTEEN REVIEW ROUNDS, and one class accounts for nine of the findings. The live-store class was
+reported closed eight times and reopened eight times, which is the whole story of this section and
+the reason four Standing Brief Amendments came out of it. Entry 6: a control for a predicate over a
+class is built from the class generating rule, never from a list of spellings. Entry 7: a screen
+answers about the path it was handed, and every component created beneath it afterward is
+unscreened. Entry 8: a predicate scope is stated in terms of the rule reach, and where the
+consequence can be observed, observe it. Entry 9, the one that says the class itself was misstated:
+a rule you are calling generating is a mechanism until you have named the condition it is one route
+to, and an instrument that observes a consequence reaches only as far as the process it runs in.
+
+THE CONDITION, stated once so no later reader has to reconstruct it. The screen resolves its live
+tree from ambient state: an absent operand falls back to os.homedir(), and os.homedir() itself
+resolves from HOME and USERPROFILE. Two routes reach it, an unpinned argument in process and an
+unpinned environment out of it. Every check built across twelve rounds addressed route one, because
+route one is where the first instance was found. Route two was closed in round 13 and the closure
+was measured by the controller rather than accepted: a recorder preloaded into every process of a
+suite run, watching a decoy home the parent fixed so no real store is read, recorded 6 fs calls at
+the watched tree for the pre-fix spawn shape, which is what proves it sees across a process
+boundary, and 0 for the whole suite. The suite own new cases agree from inside, reporting 92 fs
+entry points wrapped, 0 operator-tree calls in process and 0 in a child.
+
+THREE RESIDUES ACCEPTED RATHER THAN FIXED, each with its reversal cost, so none is rediscovered as a
+surprise. `state-screen.js` own comparisonLabel strings still spell "the live ~/.claude tree"
+schematically inside a sentence whose caller clause now names the actual tree first; the phrase is
+true on every shipped path, since only a supplied home operand can make it false and no CLI entry
+point constructs one, and composing those two strings is a contained follow-up. The temp-root
+cleanup and the harvest stream teardown ship without Amendment 2 pins, the implementer having been
+unable to construct a case that reaches either branch and having said so rather than claiming a pin;
+both are resource hygiene rather than fixes for an observed defect, and removing either is a
+one-line revert. A harvest observation not chased: the run reports 10 of 239 chosen as
+failure-shaped while only 1 of the 20 triples carries a true error flag, which is consistent with a
+content heuristic rather than the flag deciding the shape, and is recorded as an observation rather
+than a defect claim because it was not run down.
+
+A PROCESS FAILURE THE ROUND-13 IMPLEMENTER DISCLOSED, recorded because the disclosure is the reason
+it is bounded. During its red probe it restored the unpinned spawn and ran the case, so a child
+inherited its home and the screen read the operator real ~/.claude: stat and realpath only, no
+write, and the tree was restored by byte copy immediately after and verified IDENTICAL by diff. The
+rule it broke is that a probe of this class sets a fixture home on the probe process itself.
+
+PEER COORDINATION for the close-out. KIT: Skills Worker has committed and pushed its own
+docs/architecture.md edits to batch/skill-fixes at 3380bf2, touching the contention-lane schedule
+and a seat-duty paragraph; this session edit to that file is in the sidecar entry and lands here on
+main, so the two meet at that worker merge rather than at a commit. Communicated rather than raced,
+and the section close was not hurried to beat it. Reported and unverified from here.
+kaizen/notes-SCOTT-CLAUDE.md is a peer uncommitted work and is excluded from every commit this
+session makes, as it has been since Interim board 7.
+
+Commit model in effect: Commit-and-Push.
+Next: the whole-effort finishing pass, then this plan flips to Complete. Section 8 is a designed
+deferral rather than work left undone: it is gated on the operator call after a field trial of
+sections 1 through 7, and its substance moves to docs/backlog.md at the close-out.

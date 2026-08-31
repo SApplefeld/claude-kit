@@ -29,7 +29,7 @@ Two principles, binding on every section:
 
 ## Approach
 
-Prose contract end to end; no code ships. The role skill gains the generalized rail with delegation as its first instance; the coordinator skill gains the store-git carve-out keyed on the grant record; the doctrine's authorization sentence gains the rail as a second named exception, in the three parity copies; a sweep reconciles remaining flat statements and consolidates the grant records. Skill amendments are reviewed whole-file per the recorded amendment defect mode.
+Prose contract end to end; no code ships. The role skill gains the generalized rail with delegation as its first instance; the coordinator skill gains the store-git carve-out keyed on the grant record; the doctrine's authorization sentence gains the rail as a second named exception, in both repo parity copies; a sweep reconciles remaining flat statements and consolidates the grant records. Skill amendments are reviewed whole-file per the recorded amendment defect mode.
 
 ## Decisions
 
@@ -62,9 +62,9 @@ with exactly this text, verbatim, no redrafting:
 
 > By default, commit and push only when asked - but a plan header marked Commit-and-Push is that authorization for that plan's sections, and a standing-grant record resolved under the role skill's rail is that authorization for the operational surface its owning skill names, the memory store's sanctioned sync path being the standing instance.
 
-Every other sentence of the bullet is untouched. The three parity copies are `~/.claude/claude-kit-doctrine.md` (source), `plugins/claude-kit/claude-kit-doctrine.md` (build staging), and `plugins/claude-kit/skills/operating-instructions/SKILL.md`; `test/doctrine-parity.test.js` is the self-surfacing gate, red-first (edit one copy, watch the pin red, land the other two, watch it green).
+Every other sentence of the bullet is untouched. The parity pair is two repo copies, `home/claude-kit-doctrine.md` and the body of `plugins/claude-kit/skills/operating-instructions/SKILL.md`; the installed machine copy (`~/.claude/claude-kit-doctrine.md`) sits deliberately outside the pin and follows through the plugin install pipeline, and `plugins/claude-kit/claude-kit-doctrine.md` is untracked build output rather than an edit surface. `test/doctrine-parity.test.js` is the self-surfacing gate, red-first (edit one copy, watch the pin red, land the other, watch it green).
 
-Acceptance: the replacement byte-identical in all three copies, parity pin green, diff exactly one sentence per file; suite delta against a recorded baseline.
+Acceptance: the replacement byte-identical in both repo copies, parity pin green, diff exactly one sentence per file; suite delta against a recorded baseline.
 
 ### 4. The sweep and the record consolidation. Model: sonnet
 

@@ -1,0 +1,102 @@
+[
+  {
+    "n": 1,
+    "situation": "The agent ran `node --test test/` and Node 24 died with ERR_MODULE_NOT_FOUND before running a single test.",
+    "gold": [
+      "test-suite-invocation"
+    ]
+  },
+  {
+    "n": 2,
+    "situation": "The full suite just finished: 1874 passing, 1 failing (a memory-session path-length test). The agent is deciding whether its change caused a regression.",
+    "gold": [
+      "suite-baseline-is-not-zero-fail"
+    ]
+  },
+  {
+    "n": 3,
+    "situation": "The agent is about to run `git add docs/` to stage its work. A sibling session is live in the same checkout and has uncommitted edits somewhere under docs/.",
+    "gold": [
+      "two-sessions-one-checkout-commit-freeze"
+    ]
+  },
+  {
+    "n": 4,
+    "situation": "The agent just merged a branch whose diff touches plugins/claude-kit/hooks/, and is about to run the whole test gate on the merged tree.",
+    "gold": [
+      "merging-hook-edits-staleness-the-build-stamp"
+    ]
+  },
+  {
+    "n": 5,
+    "situation": "A backgrounded `node --test` run redirects stdout to a file. The file's line count has not moved in three minutes, and the agent is deciding whether the run is dead.",
+    "gold": [
+      "reading-a-running-suite"
+    ]
+  },
+  {
+    "n": 6,
+    "situation": "In a worktree-isolated session, the agent's compound Bash command `until curl -s localhost:3000; do sleep 1; done` was refused by the isolation guard.",
+    "gold": [
+      "worktree-guard-refuses-compound-commands"
+    ]
+  },
+  {
+    "n": 7,
+    "situation": "The agent edited one section of a skill's SKILL.md and is about to dispatch a reviewer with just the diff.",
+    "gold": [
+      "skill-amendments-collide-with-neighbours"
+    ]
+  },
+  {
+    "n": 8,
+    "situation": "The agent is updating a hook count stated in docs/README.md; the same number is also stated in docs/architecture.md.",
+    "gold": [
+      "a-restated-count-is-a-cross-file-invariant"
+    ]
+  },
+  {
+    "n": 9,
+    "situation": "A store record needs committing, and the agent is about to run the kit doctor with -Fix to do it, while an operator decision about drifted store dotfiles is still pending.",
+    "gold": [
+      "doctor-fix-is-never-a-neutral-committer"
+    ]
+  },
+  {
+    "n": 10,
+    "situation": "The agent typed /compact manually, expecting the kit's compaction gate to defer it to the open checkpoint.",
+    "gold": [
+      "manual-compact-never-reaches-the-gate"
+    ]
+  },
+  {
+    "n": 11,
+    "situation": "The agent runs `ls docs/plans/` to see which plan documents exist.",
+    "gold": [],
+    "note": "case 11: a known real false positive, affirmed by the battery owner on two surfaces, the recognition prompt's own bears-on rule (an agent already listing docs/plans/ gains no change of next action from the record) and archiving-a-plan-touches-two-indexes-not-three.md's own declared triggers, which name the index files and git mv, not a listing. The prompt is never tuned against this case; up to 2 non-gold pointers across the battery are within the amended acceptance."
+  },
+  {
+    "n": 12,
+    "situation": "The agent fetches the README of an unrelated open-source repo on GitHub to answer a user question about that project.",
+    "gold": []
+  },
+  {
+    "n": 13,
+    "situation": "The agent runs `git log --oneline -5` to see recent commits.",
+    "gold": []
+  },
+  {
+    "n": 14,
+    "situation": "The agent ran `memq find decay --tag lifecycle` and is reading the rendered listing to decide whether the tag filter matched a record.",
+    "gold": [
+      "memq-display-normalizes-where-filters-do-not"
+    ]
+  },
+  {
+    "n": 15,
+    "situation": "The agent is archiving a completed plan and, while updating indexes, is adding a per-plan entry line to docs/archive/README.md.",
+    "gold": [
+      "archiving-a-plan-touches-two-indexes-not-three"
+    ]
+  }
+]
