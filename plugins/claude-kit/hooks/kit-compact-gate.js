@@ -202,8 +202,17 @@
 // marker naming it does the same on the operator's word. The boundary marker's
 // ordinary writer is the seat-stop.js Stop hook, which opens it at a turn end
 // off the registered seat's own status push over a clean tree; the
-// kit-compact-checkpoint.js boundary subcommand writes the same marker by hand
-// and is the fallback for a seat the registry does not carry. Each allow
+// kit-compact-checkpoint.js boundary subcommand writes the same marker by hand,
+// for a seat the registry does not carry and for a registered one whose project
+// tree holds work it does not own, and stamps that marker as a declaration.
+// A declared marker carries a second condition besides the shared match rule,
+// because it names a moment rather than a window: it is honored only while no
+// new turn has begun in the session it names since it was written, read from
+// that session's transcript by markerMomentHolds in kit-compact-lib.js, which
+// owns the provenance scoping, the inbound shapes and the reading of every
+// unanswerable question as lapsed. The hook's turn-end marker declares no
+// moment and is governed by its age bound alone, so this leg opens no
+// transcript for one. Each allow
 // consumes its marker, single-shot, and journals its own reason (role-boundary,
 // operator-consent); a marker naming another session, a consumed one, and a
 // stale one release nothing and are left in place under a deny, so a
@@ -235,7 +244,8 @@ const {
     transcriptShowsAutomation, userCommandArgsClaimPlan,
     recordGateDecision, projectGateEpisode, episodePhrase,
     readGateState, pendingOfferCorroborated, checkpointOwner,
-    markerMatches, readRoleBoundary, readConsent, clearRoleBoundary, clearConsent,
+    markerMatches, markerMomentHolds,
+    readRoleBoundary, readConsent, clearRoleBoundary, clearConsent,
     ROLE_BOUNDARY_MAX_AGE_MS, CONSENT_MAX_AGE_MS
 } = require('./kit-compact-lib.js');
 
@@ -660,10 +670,24 @@ function main() {
     // through a String() coercion, so a coercible non-string (an array of one
     // id) would otherwise match and spend a marker. A payload whose session
     // id is not a non-empty string reads neither marker and releases nothing.
+    //
+    // A role-boundary marker the boundary verb declared carries a second
+    // condition the consent marker does not: it names a moment, so it is
+    // honored only while no new turn has begun in the session it names since it
+    // was written (markerMomentHolds, read against that session's own
+    // transcript, which is the one this payload names). A marker that outlived
+    // its moment is ignored and left in place, for the status verb to report as
+    // lapsed and the age bound to clear; every unreadable answer counts as
+    // lapsed, so this leg fails toward deferral like the rest. Which markers
+    // the rule governs is markerMomentHolds's own to decide rather than a
+    // condition spelled again here: it holds by return for a marker that
+    // declared no moment, the seat-stop hook's turn-end bank, and reads no
+    // transcript for one.
     if (typeof sessionId === 'string' && sessionId !== '') {
         const now = Date.now();
         const boundary = readRoleBoundary(cwd);
-        if (markerMatches(boundary, sessionId, now, ROLE_BOUNDARY_MAX_AGE_MS).ok) {
+        if (markerMatches(boundary, sessionId, now, ROLE_BOUNDARY_MAX_AGE_MS).ok
+            && markerMomentHolds(boundary, transcriptPath).ok) {
             clearRoleBoundary(cwd);
             return decide({ verdict: 'allow', reason: 'role-boundary', consumed });
         }

@@ -88,14 +88,46 @@ function writeEntry(f, overrides) {
     return full;
 }
 
-function runHook(f, overrides) {
+// Make the hook see a non-regular file at a path without staging one: a
+// preload patches fs.lstatSync to report an EXISTING path as a symlink. A file
+// symlink cannot be created on this platform without a privilege the suite must
+// not require, and a directory in its place is not a control for it (every read
+// fails on one whether or not the guard exists). This shim discriminates: the
+// path is an ordinary readable file, so only the guard can refuse it. Same
+// shape as the compaction suite's, which screens the marker files this way.
+function symlinkReportingPreload(dir, basename) {
+    const shim = path.join(dir, 'report-symlink.js');
+    writeFile(shim, [
+        "'use strict';",
+        "const fs = require('fs');",
+        'const realLstatSync = fs.lstatSync;',
+        'fs.lstatSync = function (target) {',
+        '    const st = realLstatSync.apply(fs, arguments);',
+        '    if (String(target).endsWith(' + JSON.stringify(basename) + ')) {',
+        '        return {',
+        '            size: st.size,',
+        '            isFile: () => false,',
+        '            isDirectory: () => false,',
+        '            isSymbolicLink: () => true',
+        '        };',
+        '    }',
+        '    return st;',
+        '};'
+    ].join('\n') + '\n');
+    return '--require "' + shim.replace(/\\/g, '/') + '"';
+}
+
+// One spawn site, and the fixture home is pinned inside it rather than at the
+// call sites. extraEnv rides on top for the preload cases; it cannot reach HOME
+// or USERPROFILE, which are applied after it.
+function runHook(f, overrides, extraEnv) {
     const payload = {
         session_id: SESSION,
         cwd: f.project,
         hook_event_name: 'Stop',
         ...(overrides || {})
     };
-    const env = { ...process.env, USERPROFILE: f.home, HOME: f.home };
+    const env = { ...process.env, ...(extraEnv || {}), USERPROFILE: f.home, HOME: f.home };
     return spawnSync(process.execPath, [HOOK], {
         input: JSON.stringify(payload),
         env,
@@ -225,6 +257,82 @@ test('seat-stop: an entry carrying no Heartbeat line is not restructured, and th
         rmDir(repo);
         cleanup(f);
     }
+});
+
+test('seat-stop: an entry path reported as a link is refused rather than followed', () => {
+    // The hook renames over the path it read, so it judges that path with
+    // lstat: a link there is a link rather than whatever it points at. This is
+    // the same screen the boundary verb's `Banked:` stamp takes, and it is the
+    // same code, both stamps reading and writing the entry through one shared
+    // channel in kit-compact-lib.js rather than through two copies of it.
+    //
+    // The refusal is total by design: an entry the screen refuses tells the
+    // hook nothing about the seat's status push either, so neither leg runs.
+    const f = fixture();
+    const repo = makeCleanRepo();
+    const shimDir = makeDir('seat-stop-shim-');
+    try {
+        const entry = writeEntry(f, { heartbeat: iso(30 * 60 * 1000) });
+        const before = fs.readFileSync(entry, 'utf8');
+        assert.ok(/^Heartbeat:/m.test(before), 'setup: a stale heartbeat the hook would restamp');
+
+        assertAllowsStop(runHook(f, { cwd: repo },
+            { NODE_OPTIONS: symlinkReportingPreload(shimDir, SESSION + '.md') }));
+
+        assert.strictEqual(fs.readFileSync(entry, 'utf8'), before,
+            'nothing is written through the refused path');
+        assert.ok(!fs.existsSync(markerFile(repo)),
+            'and the marker leg, which rests on that same unread entry, opens nothing');
+    } finally {
+        rmDir(shimDir);
+        rmDir(repo);
+        cleanup(f);
+    }
+});
+
+test('seat-stop: the heartbeat stamp has no atomic write of its own', () => {
+    // The lstat case above pins the read screen behaviourally. The write's own
+    // three defences (an unguessable temporary, an exclusive create, a cleanup
+    // that removes only what this writer made) cannot be staged from outside
+    // the process, so what is pinned instead is that there is nothing here to
+    // stage: this hook owns no write of its own and goes out through the shared
+    // channel, where those defences live once. A re-inlined write is how the
+    // defect this replaced got in, one copy drifting from its sibling, so the
+    // pin is over the absence of a second copy rather than over its contents.
+    const source = fs.readFileSync(HOOK, 'utf8');
+    assert.ok(/writeRegistryEntryAtomic\(/.test(source),
+        'the hook no longer writes the entry through the shared atomic write');
+
+    // The patterns are over the CLASS of writes rather than over the three
+    // calls the drifted copy happened to use: a re-inlined plain
+    // fs.writeFileSync onto the entry path is worse than what was removed, and
+    // a pattern naming a rename and a temporary suffix reads it as clean. Every
+    // way this module could put bytes on disk is what is forbidden, and the
+    // hook's own reads (fs.readFileSync of stdin) are untouched by it.
+    const WRITE_FORMS = [
+        [/fs\.write\w*\(/, 'a write of its own'],
+        [/fs\.rename\w*\(/, 'a rename of its own'],
+        [/fs\.copyFile\w*\(/, 'a copy of its own'],
+        [/fs\.unlink\w*\(/, 'a cleanup unlink of its own'],
+        [/\.tmp\./, 'a temporary path of its own']
+    ];
+    for (const [pattern, what] of WRITE_FORMS) {
+        assert.ok(!pattern.test(source),
+            'the hook has grown ' + what + ', which is a second implementation of '
+            + 'the shared registry-entry write and the shape that drifted before');
+    }
+
+    // The control is the defect a narrower pin would have missed: a plain
+    // rewrite of the entry in place, naming no temporary and no rename, which
+    // the three literals this pin used to carry do not reach. It is matched on
+    // the shape of an fs write rather than on any literal handed to the test,
+    // and it is composed rather than written out, so it is not itself a hit in
+    // the source read above.
+    const inlined = source + '\nfs.write' + 'FileSync(full, stamped, \'utf8\');\n';
+    assert.ok(WRITE_FORMS.some(([pattern]) => pattern.test(inlined)),
+        'the patterns speak for a plain in-place rewrite, the form the old literals missed');
+    assert.ok(!/renameSync|\.tmp\./.test(inlined),
+        'and that form carries neither of the marks the old pin looked for');
 });
 
 test('seat-stop: a fresh status push over a clean tree opens the boundary marker', () => {

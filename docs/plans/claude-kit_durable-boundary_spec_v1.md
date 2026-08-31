@@ -276,3 +276,63 @@ coordinator writer-class enumeration, and it should also add Banked: to the regi
 Commit model in effect: Commit-and-Push. This entry and the privacy redactions commit alone.
 Section 1's code stays unstaged until its whole gate has run: under this model the section commit
 goes straight to main, and that gate is the last piece of the section's acceptance outstanding.
+### Chapter 1 - 2026-08-31
+Completed: 1. The boundary verb serves a registered seat and stamps the record itself
+Implemented By: implementer-opus (initial build), the same agent continued for one fold, then
+implementer-opus again for the fix round over the review findings; no tier escalation.
+Metrics: review rounds 2; NEEDS_CONTEXT 0; escalations 0; consults 0.
+Decisions / Surprises: The moment rule is scoped BY PROVENANCE, per the spec amendment at 3dff830:
+it binds only a marker carrying the boundary verb's machine-written declaration field, while a
+marker seat-stop.js banks at a turn end keeps window semantics and the 4-hour age-out. That
+amendment changed an approved plan mid-run and is named as approval drift, faithful to the
+operator's recorded design decision but not unmade by that. The round's Critical was the
+truncated-tail coverage inference, which failed OPEN on a declared marker: it held only if
+transcript lines were append-ordered by timestamp, and measurement across the five largest real
+transcripts found 10,015 inversions over 66,944 timed lines, worst backward jump 602s. Repaired
+positionally, position being monotonic where timestamps are not; markerMomentHolds and its whole
+call closure now read no timestamp at all, re-confirmed here against the functions with a control
+proving the absence-grep can speak. A security Major was folded rather than parked: the same
+predictable-temp, non-exclusive-write, unconditional-unlink shape sat in the sibling stamper one
+file away, so the guard moved to the shared channel and seat-stop.js now owns no write at all.
+Assumptions: The freshness read's inbound set is non-tool-result user lines PLUS queue-operation
+lines (declared 2026-08-31, section 1; route (b), rulable from fact): 416 of 438 type:user lines
+in a real transcript tail are tool results, so a check reading the last user line would mark every
+marker stale on arrival, and a peer message lands under two types of which queue-operation is the
+shape of this plan's own founding incident.
+Review Findings: One Critical (the unsound truncated-tail inference) fixed. Security Majors fixed,
+including the folded sibling. Majors fixed: the harness-injection classifier, the tail cap, the
+status-verb transcript path, and the re-staged seat-stop fixture. One blind-reviewer MAJOR on the
+coordinator runbook was REFUTED against the whole paragraph, which already carries the correction
+two sentences on; the file is unmodified. The fix round separately reported an edit to that file
+that never landed, caught by re-reading the tree rather than the report.
+Stamps: adjudicated 13 (1 project tier, 12 operator tier), stamped 0 from the list. None steered
+this section: the project-tier record is product direction on memory forks, four operator records
+are another machine's facts, and the two read within the hour belong to the two peer sessions
+executing the plans those records are named for. Two were stamped by name earlier in the stretch,
+test-suite-invocation and suite-baseline-is-not-zero-fail, which decided the gate command and how
+its delta is read.
+Next: 2. The deferral nudge gains a context floor and a bystander voice
+Commit Model: Commit-and-Push
+
+GATE. Whole suite, node --test "test/*.test.js": 2695 tests / 2688 passing / 1 failing / 6 skipped,
+exit 1, read from the run's own exit marker rather than from the completion notification, which
+reports the wrapper. Against the recorded baseline 2677 / 2670 / 1 / 6 from commit 9d6a800: plus 18
+tests, plus 18 passing, failing unchanged at 1 and skipped unchanged at 6. No regressions. The one
+failure is the known permanent red on this box, test/memory-session.test.js:854, whose fixture pads
+a path expecting the host temp prefix to carry it past PATH_EMIT_CAP = 260; this machine's TEMP is
+seven characters, so the fixture lands at 254 and never reaches the guard. That is the guard going
+unexercised rather than broken, and the defect is the test's. The delta is NOT this section's
+alone: four peer commits landed between the baseline and this run (3dff830, 3074425, 78ae004,
+db87ce2) plus this session's own 6b9e6cd, so the added tests are shared and only the unchanged
+failure count is attributable as a no-regression reading.
+
+BOX, NAMED RATHER THAN ASSUMED AWAY. The run was taken under declared contention, which the claim
+protocol permits so long as the contention is named and the claim file is not written. A peer seat
+held the machine heavy-process claim and extended it mid-wait from 6300 to 11700 seconds, moving
+its release an hour out; this session waited 25 minutes on the claim, then proceeded rather than
+leave reviewed work living only in the worktree for another hour. Beside that declared hold the box
+carried 6 to 9 foreign dotnet processes and a live testhost from another project's session, running
+under no claim at all, which is the second observation of something on this box spawning suites
+without reading the claim file. The reading survived it: the run completed whole in 19.9 minutes
+with no partial death, and the known memq-shim intermittent did not fire. This session did not
+write the claim file at any point.

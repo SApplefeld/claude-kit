@@ -6,8 +6,10 @@
 //   kit-compact-checkpoint.js clear     remove any open checkpoint
 //   kit-compact-checkpoint.js status    report the checkpoint, the release
 //                                       markers, and the gate state
-//   kit-compact-checkpoint.js boundary  open the role-boundary marker for the
-//                                       calling session (no goal required)
+//   kit-compact-checkpoint.js boundary [--cancel]
+//                                       open the role-boundary marker for the
+//                                       calling session (no goal required), or
+//                                       retract the one it opened
 //   kit-compact-checkpoint.js consent [--session <id>] [--project <path>]
 //                                       record the operator's release for the
 //                                       caller's session, or the named one, in
@@ -29,8 +31,19 @@
 // armed goal is required and the no-goal refusal stays the leashed mode's
 // alone. The ordinary writer of that marker is the seat-stop.js Stop hook,
 // which opens it at a turn end off the seat's own registry status push; this
-// subcommand is the fallback for a seat the machine's session registry does
-// not carry, and it writes the same file the hook does. `consent`
+// subcommand writes the same file the hook does, and it serves the two seats
+// the hook cannot: one the machine's session registry does not carry, and a
+// registered one whose project tree holds work it does not own, which the
+// hook's clean-tree test refuses. Where the caller does have a registry entry,
+// the run stamps that entry's `Banked:` line, a record of the declaration
+// rather than a precondition for it: an absent directory or entry is a silent
+// no-op and the marker opens either way. What this verb writes is stamped as a
+// declaration, and that field is what puts it under the gate's moment rule,
+// where the hook's turn-end marker stands on its age bound alone.
+// `boundary --cancel` retracts this session's own marker; nothing depends on it
+// being run, since the gate stops honoring a declared marker the moment a new
+// turn begins in the session it names.
+// `consent`
 // writes the operator-release marker; the rule for WHEN it may be run (only
 // on the operator's explicit word over a warranted channel, never on the
 // session's own judgment) is the role skills' prose, while this CLI bounds
@@ -46,6 +59,7 @@
 
 'use strict';
 
+const os = require('os');
 const { readGoal, recordExecutionTree, sessionHoldsLeash } = require('./kit-goal-lib.js');
 const {
     readCheckpointResult, writeCheckpoint, clearCheckpoint, checkpointMatches,
@@ -54,7 +68,9 @@ const {
     episodePhrase, wholeMinutesSince, gateCount,
     CHECKPOINT_MAX_AGE_MS, CHECKPOINT_PENDING_MAX_AGE_MS,
     readRoleBoundaryResult, readConsentResult, writeRoleBoundary, writeConsent,
-    markerMatches, projectHoldsSessionTranscript, usableSessionId,
+    clearRoleBoundary, sameSessionId,
+    markerMatches, markerMomentHolds, markerDeclaresMoment, stampRegistryBanked,
+    projectHoldsSessionTranscript, sessionTranscriptPath, usableSessionId,
     ROLE_BOUNDARY_MAX_AGE_MS, CONSENT_MAX_AGE_MS
 } = require('./kit-compact-lib.js');
 
@@ -129,8 +145,23 @@ function sanitize(s) {
     return String(s).replace(/[^\x20-\x7E]/g, '').slice(0, 120);
 }
 
+// A filesystem path for the operator's eye. Two things a bare sanitize does
+// wrong to one. The home prefix is elided to `~`, because the OS account name
+// is in it and this output is read by a model; and a path the cap would cut is
+// marked as cut, because a silently shortened path reads as the whole name of
+// the file that answered. Eliding is what keeps a realistic path inside the
+// cap, so the mark is the rare case rather than the ordinary one.
+function displayPath(full) {
+    const text = String(full);
+    let home = '';
+    try { home = os.homedir(); } catch { home = ''; }
+    const shown = (home !== '' && text.startsWith(home)) ? '~' + text.slice(home.length) : text;
+    return sanitize(shown) + (shown.length > 120 ? ' [path cut to fit]' : '');
+}
+
 function usage() {
-    process.stderr.write('usage: kit-compact-checkpoint.js open | clear | status | boundary'
+    process.stderr.write('usage: kit-compact-checkpoint.js open | clear | status'
+        + ' | boundary [--cancel]'
         + ' | consent [--session <id>] [--project <path>]\n');
     process.exitCode = 1;
 }
@@ -235,11 +266,14 @@ function cmdBoundary(rest) {
     // --session <id>` is the natural misreading of the consent form, and a
     // parser that ignored the tail would do two wrong things at once, denying
     // the named session its release and handing the ambient session one it
-    // never asked for. The boundary marker is the calling session's own
-    // declaration, so this mode takes no arguments at all.
-    if (rest.length !== 0) {
-        process.stderr.write('usage: kit-compact-checkpoint.js boundary (no arguments: the marker is'
-            + ' scoped to the calling session; consent is the mode that takes --session)\n');
+    // never asked for. Exactly one argument form is accepted, --cancel, and
+    // it takes no value: the boundary marker is the calling session's own
+    // declaration, whether it is being made or retracted.
+    const cancel = rest.length === 1 && rest[0] === '--cancel';
+    if (rest.length !== 0 && !cancel) {
+        process.stderr.write('usage: kit-compact-checkpoint.js boundary [--cancel] (no other arguments:'
+            + ' the marker is scoped to the calling session; consent is the mode that takes'
+            + ' --session)\n');
         process.exitCode = 1;
         return;
     }
@@ -247,23 +281,117 @@ function cmdBoundary(rest) {
     if (session === null) {
         process.stderr.write('kit-compact-checkpoint: no usable session id in this shell'
             + ' (CLAUDE_CODE_SESSION_ID is unset or not id-shaped), so a session-scoped'
-            + ' marker cannot be written; nothing written\n');
+            + ' marker cannot be ' + (cancel ? 'retracted' : 'written') + '; nothing written\n');
         process.exitCode = 1;
         return;
     }
-    const result = writeRoleBoundary(process.cwd(), session);
+    if (cancel) {
+        cancelBoundary(session);
+        return;
+    }
+    // Written as a declaration, which is the field the gate's moment rule is
+    // scoped by: this verb is a seat's deliberate word about one instant, where
+    // the seat-stop hook's turn-end marker is a standing window it rewrites
+    // every turn. The tool writes the field; nothing asks a model to.
+    const result = writeRoleBoundary(process.cwd(), session, true);
     if (result.ok) {
+        // The registry record of the declaration, best-effort and after the
+        // marker: a seat the registry does not carry declares exactly as well
+        // as one it does, so an absent directory or entry is a silent no-op
+        // and nothing about the marker turns on it.
+        //
+        // One refusal is not silent. An entry that exists at this session's own
+        // path while naming a different session is a state nobody should meet
+        // by accident: either the id this shell carries is not this session's,
+        // or a peer's entry is sitting at it, and both are worth a word to the
+        // operator. The declaration still stands, so this is a note on stderr
+        // rather than a failure, and it names neither the entry's session nor
+        // its path, since the point is that neither is this caller's.
+        const stamp = stampRegistryBanked(session);
+        if (!stamp.stamped && stamp.reason === 'the entry at that path names a different session') {
+            process.stderr.write('kit-compact-checkpoint: the registry entry for this session id names a'
+                + ' different session, so it is not this session\'s to stamp and was left untouched;'
+                + ' the boundary itself is declared\n');
+        }
         // Environment-derived values print indented and sanitized, the same
         // handling cmdOpen gives the plan path; the duration comes from the
         // constant, so the sentence cannot promise what the rule does not do.
+        // The moment clause is stated beside the age bound because the two
+        // bound the marker together, and the shorter one is the one a seat
+        // will meet: the gate stops honoring this marker the moment a new turn
+        // begins in this session.
         process.stdout.write('  role-boundary marker open for session ' + sanitize(session)
-            + ' (that session\'s next deferred auto-compaction lands at this boundary;'
-            + ' it ages out in ' + BOUNDARY_HOURS + ' hours)\n');
+            + ' (that session\'s next deferred auto-compaction lands at this boundary,'
+            + ' until a new turn begins there; it ages out in ' + BOUNDARY_HOURS + ' hours)\n');
+        // A declaration the gate cannot position is one it will never honor, so
+        // it is said here rather than left to look like a marker that works.
+        // The ordinary cause is a run from a directory this session's own
+        // transcript is not filed under, which is the same working-directory
+        // mistake the marker's own path can make.
+        if (result.positioned === false) {
+            process.stderr.write('kit-compact-checkpoint: no transcript for this session could be measured'
+                + ' from this directory, so the gate has nothing to read the moment against and will'
+                + ' treat this marker as lapsed; run the verb from the session\'s own project directory\n');
+        }
         process.exitCode = 0;
     } else {
         process.stderr.write('kit-compact-checkpoint: ' + sanitize(result.reason) + '\n');
         process.exitCode = 1;
     }
+}
+
+// Retract this session's own declaration. The marker file is per project
+// directory and names one session, so the scope is read before anything is
+// removed: a marker naming another session is that session's declaration and
+// is left standing, exactly as the gate leaves one it does not match. Nothing
+// in the design depends on this being run, the moment rule above retiring a
+// marker that outlived its lull with no act from anyone; this is the explicit
+// retraction, for an operator at a shell and for a session withdrawing a
+// declaration it has just made.
+//
+// A marker whose owner cannot be read is not removed either, and it is the
+// leg worth stating: an illegible or oversized file reads as no marker at all,
+// so a clear that ran on it would delete whatever a peer had written there and
+// report it as this session's own retraction. The scope guard can only protect
+// a scope it can see, so where it cannot see one the answer is to leave the
+// file alone and say what is there.
+function cancelBoundary(session) {
+    const read = readRoleBoundaryResult(process.cwd());
+    const marker = read.marker;
+    if (marker === null && read.reason !== 'absent') {
+        process.stderr.write('kit-compact-checkpoint: a role-boundary marker file is present here that'
+            + ' cannot be read (' + sanitize(read.reason) + '), so whose declaration it is cannot be'
+            + ' established and it is left in place; move it aside by hand (nothing was retracted)\n');
+        process.exitCode = 1;
+        return;
+    }
+    if (marker !== null && typeof marker.session !== 'string') {
+        process.stderr.write('kit-compact-checkpoint: the role-boundary marker file here names no session,'
+            + ' so whose declaration it is cannot be established and it is left in place; the next'
+            + ' boundary write replaces it (nothing was retracted)\n');
+        process.exitCode = 1;
+        return;
+    }
+    if (marker && typeof marker.session === 'string' && !sameSessionId(marker.session, session)) {
+        process.stdout.write('  a role-boundary marker for session ' + sanitize(marker.session)
+            + ' is open here and is left in place: this session declared no boundary to retract\n');
+        process.exitCode = 0;
+        return;
+    }
+    const result = clearRoleBoundary(process.cwd());
+    if (!result.ok) {
+        // Nothing was removed, so this must not read as a successful retraction,
+        // and what is left behind is not asserted: cmdClear's own wording at the
+        // same leg of the same question.
+        process.stderr.write('kit-compact-checkpoint: ' + sanitize(result.reason)
+            + ' (nothing was retracted)\n');
+        process.exitCode = 1;
+        return;
+    }
+    process.stdout.write((result.cleared
+        ? 'role-boundary marker retracted'
+        : 'no role-boundary marker was open') + '\n');
+    process.exitCode = 0;
 }
 
 // Record the operator's release for the caller's session, or an explicitly
@@ -535,6 +663,21 @@ const MARKER_DEAD_REASONS = {
     'future': 'its written timestamp is in the future, so the gate treats it as absent'
 };
 
+// Why a live marker no longer describes the moment it declared, per
+// markerMomentHolds reason code. A declaration is about a moment, so a marker
+// lapses the instant a new turn begins in the session it names, and every
+// question the rule cannot answer lapses it too, which is the direction that
+// keeps the gate deferring rather than landing a compaction mid-turn. An
+// unknown future code falls back to the bare lapsed clause.
+const MARKER_LAPSED_REASONS = {
+    'inbound': 'lapsed: a message arrived in that session after it was declared',
+    'no-position': 'lapsed: the declaration records no place in that session\'s transcript, so nothing can vouch for the moment',
+    'unreadable': 'lapsed: that session\'s transcript cannot be read, so nothing can vouch for the moment',
+    'replaced': 'lapsed: that session\'s transcript no longer matches what was there when the boundary was declared',
+    'too-long': 'lapsed: that session\'s transcript has grown past what the read covers, so what arrived since is unknown',
+    'torn': 'lapsed: a line of that session\'s transcript cannot be read, so what arrived since is unknown'
+};
+
 // One marker kind's half of the status report, mirroring reportCheckpoint's
 // legs: the read refusals are told apart by the reader's own reason (a second
 // lstat here could not see the 'unreadable' leg at all), a present marker is
@@ -549,7 +692,16 @@ const MARKER_DEAD_REASONS = {
 // this report's question to answer. What it answers is whether the marker
 // would release the session it names, and it prints that session so the
 // operator can judge the scoping half themselves.
-function reportMarker(read, label, verb, maxAgeMs, boundPhrase) {
+//
+// `momentCwd` is the project directory the moment rule is read at, passed for
+// the marker kind that can carry a declaration (a role-boundary marker) and
+// null for the one that cannot (a consent is the operator's word rather than a
+// seat's moment). Within that kind the rule still applies only to the boundary
+// verb's declared marker, which markerDeclaresMoment decides. A marker the
+// moment rule has retired is reported as lapsed rather than as live: it is
+// still on disk, the gate ignores it, and its age bound is what eventually
+// removes it, which is exactly the state an operator has no other way to see.
+function reportMarker(read, label, verb, maxAgeMs, boundPhrase, momentCwd) {
     const marker = read.marker;
     if (!marker || typeof marker !== 'object' || Array.isArray(marker)
         || typeof marker.session !== 'string') {
@@ -579,15 +731,44 @@ function reportMarker(read, label, verb, maxAgeMs, boundPhrase) {
         ? ' (written ' + sanitize(marker.writtenAt) + ')'
         : ' (no written timestamp recorded)';
     const verdict = markerMatches(marker, marker.session, Date.now(), maxAgeMs);
+    // The moment rule governs a declared marker only, so a hook-written one is
+    // reported on its age bound alone and no transcript is read for it.
+    const declares = markerDeclaresMoment(marker) && momentCwd !== null && momentCwd !== undefined;
+    // The moment is read only where the match rule has already passed, since a
+    // marker the gate treats as absent is not one any transcript can speak for,
+    // and the line below reports the read rather than the marker's provenance:
+    // one condition governs the call and the report of it, so the report can
+    // never assert a read that did not happen.
+    const reads = declares && verdict.ok;
+    const transcript = reads ? sessionTranscriptPath(momentCwd, marker.session) : null;
+    const moment = reads
+        ? markerMomentHolds(marker, transcript)
+        : { ok: true, reason: null };
     if (!verdict.ok) {
         line += ' - ' + (verdict.reason === 'expired'
             ? 'expired (past the ' + boundPhrase + ' bound), so the gate treats it as absent'
             : (MARKER_DEAD_REASONS[verdict.reason] || 'the gate treats it as absent'));
+    } else if (!moment.ok) {
+        line += ' - ' + (MARKER_LAPSED_REASONS[moment.reason] || 'lapsed')
+            + ', so the gate treats it as absent; declare again at the next real boundary';
     } else {
         line += ' - the gate honors it once for that session\'s next deferred auto-compaction, '
             + 'within the ' + boundPhrase + ' bound';
     }
     process.stdout.write(line + '\n');
+    // Which transcript answered the moment question, named rather than left to
+    // be assumed. This report derives the path from the directory it is run in;
+    // the gate reads the path its own PreCompact payload carries. The two are
+    // the same file for a session working the directory this report is run
+    // from, and a session that is not makes them differ, so a verdict here that
+    // disagrees with the gate's is readable as the different subject it is
+    // rather than as a contradiction.
+    if (reads) {
+        process.stdout.write('    moment read against ' + (transcript === null
+            ? '(no transcript path derives from this directory and that session id)'
+            : displayPath(transcript))
+            + ', this directory\'s transcript for that session\n');
+    }
 }
 
 // The compaction gate's own record: what it decided last, and whether it is
@@ -681,9 +862,9 @@ function cmdStatus() {
     const cwd = process.cwd();
     reportCheckpoint(cwd);
     reportMarker(readRoleBoundaryResult(cwd), 'role-boundary', 'open',
-        ROLE_BOUNDARY_MAX_AGE_MS, BOUNDARY_HOURS + '-hour');
+        ROLE_BOUNDARY_MAX_AGE_MS, BOUNDARY_HOURS + '-hour', cwd);
     reportMarker(readConsentResult(cwd), 'operator-consent', 'present',
-        CONSENT_MAX_AGE_MS, CONSENT_HOURS + '-hour');
+        CONSENT_MAX_AGE_MS, CONSENT_HOURS + '-hour', null);
     reportGateState(cwd);
     process.exitCode = 0;
 }

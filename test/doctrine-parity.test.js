@@ -816,7 +816,8 @@ test('the role skill is pointed at by README and peer-sessions and carries what 
     const bodyLines = body.split(/\r?\n/);
     let lastIdx = -1;
     for (const field of ['Name:', 'Role:', 'Repo:', 'Workdir:', 'Session:',
-        'Started:', 'Status-updated:', 'Remaining:', 'Heartbeat:', 'Status:']) {
+        'Started:', 'Status-updated:', 'Remaining:', 'Heartbeat:', 'Banked:',
+        'Status:']) {
         const idx = bodyLines.findIndex((l, i) => i > lastIdx && l.startsWith(field));
         assert.ok(idx !== -1,
             'the role skill\'s registry entry shape no longer carries the '

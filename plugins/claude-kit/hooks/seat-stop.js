@@ -47,10 +47,11 @@
 'use strict';
 
 const fs = require('fs');
-const os = require('os');
-const path = require('path');
 const { gitOutput } = require('./kit-git-lib.js');
-const { writeRoleBoundary, usableSessionId } = require('./kit-compact-lib.js');
+const {
+    writeRoleBoundary, registryEntryPath,
+    readRegistryEntryText, writeRegistryEntryAtomic
+} = require('./kit-compact-lib.js');
 
 // How often the heartbeat is rewritten. The stamp's only reader asks whether
 // the session was alive recently, so a stamp per turn would buy nothing and
@@ -64,37 +65,11 @@ const HEARTBEAT_THROTTLE_MS = 10 * 60 * 1000;
 // one above bounds a write rate.
 const STATUS_FRESH_MS = 10 * 60 * 1000;
 
-// A registry entry is a handful of short lines. Anything past this is not one,
-// and is left untouched rather than parsed.
-const ENTRY_MAX_BYTES = 64 * 1024;
-
 // How long the tree read may take before the turn end stops waiting on it.
 const GIT_TIMEOUT_MS = 5000;
 
 function readStdin() {
     try { return fs.readFileSync(0, 'utf8'); } catch { return ''; }
-}
-
-// The registry entry for a session, or null. The id is held to the shared
-// marker-scope rule before it is joined to anything, so a value carrying a
-// separator or a parent segment never composes a path here at all.
-function entryPath(sessionId) {
-    if (usableSessionId(sessionId) === null) return null;
-    return path.join(os.homedir(), '.claude', 'coordinator', os.hostname(),
-        'registry', sessionId + '.md');
-}
-
-// The entry's text, or null where there is no entry to act on: an absent path,
-// something that is not a regular file, or a file too large to be one of ours.
-// This is the leg that makes an unregistered session cost one stat.
-function readEntry(full) {
-    try {
-        const st = fs.statSync(full);
-        if (!st.isFile() || st.size > ENTRY_MAX_BYTES) return null;
-        return fs.readFileSync(full, 'utf8');
-    } catch {
-        return null;
-    }
 }
 
 // The value of a `<Field>: <value>` line, or null where the entry carries no
@@ -116,13 +91,14 @@ function stampIsFresh(value, maxAgeMs) {
     return age >= 0 && age <= maxAgeMs;
 }
 
-// Rewrite the entry's existing `Heartbeat:` line in place, atomically. The
-// session that registered is the entry's only writer bar this line, so nothing
-// else in the file is touched and a missing line is left missing rather than
-// added: an entry without one is not the shape the contract defines, and
-// restructuring a peer's single-writer artifact is not this hook's to do.
-// The temporary takes a transient name the store's sync allowlist refuses, so
-// a crash between the write and the rename leaves nothing that replicates.
+// Rewrite the entry's existing `Heartbeat:` line in place, through the shared
+// atomic write every mechanical stamp of a registry entry goes out by, which
+// owns the unguessable temporary, the exclusive create and the cleanup that
+// removes only what this writer made. The session that registered is the
+// entry's only writer bar this line, so nothing else in the file is touched
+// and a missing line is left missing rather than added: an entry without one is
+// not the shape the contract defines, and restructuring a peer's single-writer
+// artifact is not this hook's to do.
 //
 // The read behind `text` and this rewrite are not locked against each other, a
 // second residual named here rather than left for a reader to find: an entry
@@ -134,13 +110,7 @@ function stampIsFresh(value, maxAgeMs) {
 function stampHeartbeat(full, text) {
     if (!/^Heartbeat:/m.test(text)) return;
     const stamped = text.replace(/^Heartbeat:.*$/m, 'Heartbeat: ' + new Date().toISOString());
-    const tmp = full + '.tmp.' + process.pid;
-    try {
-        fs.writeFileSync(tmp, stamped, 'utf8');
-        fs.renameSync(tmp, full);
-    } catch {
-        try { fs.unlinkSync(tmp); } catch { /* nothing left to clean up */ }
-    }
+    writeRegistryEntryAtomic(full, stamped);
 }
 
 // Whether the project directory holds no uncommitted work. A non-git directory
@@ -158,10 +128,19 @@ function main() {
     let payload = {};
     try { payload = JSON.parse(readStdin() || '{}'); } catch { /* defaults */ }
 
+    // One spelling of the entry's location serves this hook and the checkpoint
+    // CLI's `Banked:` stamp, from kit-compact-lib.js, which this hook already
+    // loads for the marker write: the id is held to the shared marker-scope
+    // rule there before it composes anything, so a value carrying a separator
+    // or a parent segment never reaches a path join.
     const sessionId = payload.session_id || payload.sessionId;
-    const full = entryPath(sessionId);
+    const full = registryEntryPath(sessionId);
     if (full === null) return;
-    const text = readEntry(full);
+    // The same screen the boundary verb's stamp reads through: lstat rather
+    // than stat, so a link at the entry path is refused rather than followed by
+    // the rewrite below, plus the kind and size bounds. This is also the leg
+    // that makes an unregistered session cost one syscall.
+    const text = readRegistryEntryText(full).text;
     if (text === null) return;
 
     if (!stampIsFresh(field(text, 'Heartbeat'), HEARTBEAT_THROTTLE_MS)) {
