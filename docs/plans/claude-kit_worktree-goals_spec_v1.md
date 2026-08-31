@@ -8,7 +8,7 @@ Session model: any executor session in the kit repo; three sections, tiers per s
 
 ## Dispatch Authorization
 
-Authorized 2026-08-31 by the operator at the keyboard in the expert seat's session ("Shouldn't it reflect the worktree you're currently working in?", ruled yes in the same dialog), for any session holding this plan. Authored parked, in no queue; it arms when the operator queues it. Per the trace rule, this section is a warrant only for a citing session that did not author it.
+Authorized 2026-08-31 by the operator at the keyboard in the expert seat's session ("Shouldn't it reflect the worktree you're currently working in?", ruled yes in the same dialog), for any session holding this plan. Queued the same day by the operator's instruction ("append it to whatever is the best fit", the expert seat's fit ruling being the worktree batch): seventh and last in the worktree batch, after the instruments-not-prose plan, run by the KIT: Skills Worker seat under the same unleashed arrangement as the rest of that batch. Per the trace rule, this section is a warrant only for a citing session that did not author it.
 
 ## Goal
 
