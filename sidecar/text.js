@@ -47,8 +47,44 @@ const lib = require('../plugins/claude-kit/scripts/kit-endpoint-lib.js');
 // neutralize, not reimplemented by whichever reader needed it first.
 const TEXT_MAX_CHARS = 2000;
 
+// A string with a trailing unpaired high surrogate removed.
+//
+// This belongs to the CUT rather than to whichever producer cuts first. A
+// JavaScript slice counts UTF-16 code units, so a cut landing between the two
+// halves of a surrogate pair leaves an orphan half, and every consumer
+// downstream (JSON.stringify, a terminal, another process's parser) then
+// carries a character that is not a character.
+//
+// The trim is a property of the RENDERED CHANNEL, so every cut in this
+// directory that puts text where a person or another program reads it carries
+// it, and they carry this one spelling rather than a copy: sidecar/battery.js's
+// fixture spool writer, its per-field report render (truncateForReport) and the
+// gap-note lines it re-prints; sidecar/harvest.js's transcript reader;
+// sidecar/rollup.js's gap note, gap detail and recognition-gap note; and
+// sidecar/inbox.js's item text. The capture hook holds the other
+// implementation, across the process boundary it cannot require across
+// (plugins/claude-kit/hooks/kit-sidecar-capture.js, pinned equal by a test).
+//
+// The cuts that do NOT carry it are the ones whose output is a prompt or a
+// stored field rather than a rendered one: sidecar/judge.js's and
+// sidecar/recognize.js's per-field prompt caps, and sidecar/spool.js's line
+// caps. Text cut there reaches a reader only through one of the rendered sites
+// above, which cuts and trims it again, so an orphan half made by a prompt cap
+// cannot reach a surface without passing this function on the way.
+//
+// This list is what shares the trim, not an inventory of every slice in the
+// repository. A new rendered surface joins it; a producer whose output is
+// re-cut at a rendered surface does not need to.
+function trimLoneSurrogate(text) {
+    if (typeof text !== 'string' || text === '') return '';
+    const last = text.charCodeAt(text.length - 1);
+    if (last >= 0xd800 && last <= 0xdbff) return text.slice(0, text.length - 1);
+    return text;
+}
+
 module.exports = {
     UNSAFE_PATTERN: lib.UNSAFE_PATTERN,
     TEXT_MAX_CHARS,
-    neutralize: lib.neutralize
+    neutralize: lib.neutralize,
+    trimLoneSurrogate
 };

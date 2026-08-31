@@ -1409,3 +1409,85 @@ Next action: round 13 fixes instance 9 and the four check holes, adds an out-of-
 and a spawn-site predicate, then the whole gate against 2651 / 2644 / 1 / 6, then Chapter 7, flip the
 plan to Complete, move section 8 substance to docs/backlog.md, archive via curating-docs, commit and
 push.
+### Chapter 7 - 2026-08-31
+Completed: 7. Regression batteries and replay harness
+
+WHAT SHIPPED. `sidecar/batteries/` holds the frozen fixtures, thirteen real judgment cases with
+their expected verdicts and fifteen recognition situations with their gold records, plus a README
+owning the screening procedure a fixture passes before it is committed. `sidecar/battery.js` replays
+a battery through the real daemon and scores the answers; `sidecar/harvest.js` extracts fresh
+intent, command and result triples from a named transcript. `sidecar/state-screen.js` is the
+containment screen both commands put their state root through. `docs/security-model.md` gains a
+section on the pair, because both create concentrations of captured plaintext and the fixture half
+is published to a public repository, which makes the freezing step rather than any runtime control
+the place where disclosure is decided. `docs/architecture.md` gains the pair in the sidecar entry.
+
+ACCEPTANCE, both halves run rather than reasoned about. The frozen batteries against the LIVE
+endpoint: judgment 12 of 13 correct on substance against a floor of 12 of 13 carried from the
+audition's own rate, recognition 0 recall misses against a floor of 0 with 1 extra against a ceiling
+of 2 and 2 of 3 clean negatives, OVERALL PASS, exit 0 read from the run own marker. The endpoint
+address never printed: the run names only an 8-character fingerprint, and a sweep of the captured
+log for a URL scheme matched 0 lines. A fresh harvest of this session live transcript, 43.9 MB and
+growing under the reader as it ran: 606 Bash pairs found, 20 triples chosen, every one carrying a
+non-empty intent and command, a string result, a boolean error flag and an integer index, exit 0.
+
+GATE, run by the controller with the box claimed and read from the run own exit marker: 2671 tests,
+2664 passing, 1 failing, 6 skipped, exit 1. Against Interim board 8 baseline of 2651 / 2644 / 1 / 6
+that is plus 20 tests and plus 20 passing with failures and skips unchanged. The one red is
+test/memory-session.test.js:854, this machine known permanent path-length failure, identified by
+name rather than assumed. The comparison crosses a base-ref boundary, two peer doctrine commits
+having landed on main between the two readings, which is sound here because neither touches a test
+file. Section lane: 117 tests, 115 passing, 0 failing, 2 skipped, exit 0, against 111 / 109 / 0 / 2.
+
+THIRTEEN REVIEW ROUNDS, and one class accounts for nine of the findings. The live-store class was
+reported closed eight times and reopened eight times, which is the whole story of this section and
+the reason four Standing Brief Amendments came out of it. Entry 6: a control for a predicate over a
+class is built from the class generating rule, never from a list of spellings. Entry 7: a screen
+answers about the path it was handed, and every component created beneath it afterward is
+unscreened. Entry 8: a predicate scope is stated in terms of the rule reach, and where the
+consequence can be observed, observe it. Entry 9, the one that says the class itself was misstated:
+a rule you are calling generating is a mechanism until you have named the condition it is one route
+to, and an instrument that observes a consequence reaches only as far as the process it runs in.
+
+THE CONDITION, stated once so no later reader has to reconstruct it. The screen resolves its live
+tree from ambient state: an absent operand falls back to os.homedir(), and os.homedir() itself
+resolves from HOME and USERPROFILE. Two routes reach it, an unpinned argument in process and an
+unpinned environment out of it. Every check built across twelve rounds addressed route one, because
+route one is where the first instance was found. Route two was closed in round 13 and the closure
+was measured by the controller rather than accepted: a recorder preloaded into every process of a
+suite run, watching a decoy home the parent fixed so no real store is read, recorded 6 fs calls at
+the watched tree for the pre-fix spawn shape, which is what proves it sees across a process
+boundary, and 0 for the whole suite. The suite own new cases agree from inside, reporting 92 fs
+entry points wrapped, 0 operator-tree calls in process and 0 in a child.
+
+THREE RESIDUES ACCEPTED RATHER THAN FIXED, each with its reversal cost, so none is rediscovered as a
+surprise. `state-screen.js` own comparisonLabel strings still spell "the live ~/.claude tree"
+schematically inside a sentence whose caller clause now names the actual tree first; the phrase is
+true on every shipped path, since only a supplied home operand can make it false and no CLI entry
+point constructs one, and composing those two strings is a contained follow-up. The temp-root
+cleanup and the harvest stream teardown ship without Amendment 2 pins, the implementer having been
+unable to construct a case that reaches either branch and having said so rather than claiming a pin;
+both are resource hygiene rather than fixes for an observed defect, and removing either is a
+one-line revert. A harvest observation not chased: the run reports 10 of 239 chosen as
+failure-shaped while only 1 of the 20 triples carries a true error flag, which is consistent with a
+content heuristic rather than the flag deciding the shape, and is recorded as an observation rather
+than a defect claim because it was not run down.
+
+A PROCESS FAILURE THE ROUND-13 IMPLEMENTER DISCLOSED, recorded because the disclosure is the reason
+it is bounded. During its red probe it restored the unpinned spawn and ran the case, so a child
+inherited its home and the screen read the operator real ~/.claude: stat and realpath only, no
+write, and the tree was restored by byte copy immediately after and verified IDENTICAL by diff. The
+rule it broke is that a probe of this class sets a fixture home on the probe process itself.
+
+PEER COORDINATION for the close-out. KIT: Skills Worker has committed and pushed its own
+docs/architecture.md edits to batch/skill-fixes at 3380bf2, touching the contention-lane schedule
+and a seat-duty paragraph; this session edit to that file is in the sidecar entry and lands here on
+main, so the two meet at that worker merge rather than at a commit. Communicated rather than raced,
+and the section close was not hurried to beat it. Reported and unverified from here.
+kaizen/notes-SCOTT-CLAUDE.md is a peer uncommitted work and is excluded from every commit this
+session makes, as it has been since Interim board 7.
+
+Commit model in effect: Commit-and-Push.
+Next: the whole-effort finishing pass, then this plan flips to Complete. Section 8 is a designed
+deferral rather than work left undone: it is gated on the operator call after a field trial of
+sections 1 through 7, and its substance moves to docs/backlog.md at the close-out.

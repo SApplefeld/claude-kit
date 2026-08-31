@@ -36,7 +36,7 @@ const fs = require('fs');
 const path = require('path');
 
 const logs = require('./logs.js');
-const { neutralize } = require('./text.js');
+const { neutralize, trimLoneSurrogate } = require('./text.js');
 const { isRecordName } = require('./record-name.js');
 
 // The item schema version. Independent of the spool line's version and of the
@@ -59,8 +59,13 @@ function inboxFile(inboxDir, sessionId) {
     return path.join(inboxDir, `${logs.sessionSlug(sessionId)}.jsonl`);
 }
 
+// An item's text field, neutralized, capped and trimmed of a lone surrogate
+// half the cap may have left. An item is read back out by the delivery valve
+// and spoken into a session, so it is a rendered surface and takes the trim
+// that belongs to one: the cap counts UTF-16 code units and can land between
+// the halves of a surrogate pair.
 function itemText(text) {
-    return neutralize(text).slice(0, ITEM_TEXT_CAP);
+    return trimLoneSurrogate(neutralize(text).slice(0, ITEM_TEXT_CAP));
 }
 
 // A diverged verdict as one delivery item. Built from the verdict record rather
@@ -113,20 +118,20 @@ function memoryItem(entry, record, why, nowMs) {
 // would re-arm the valve with no restart and no signal, which is the opposite
 // of the lever the contract describes and the opposite of how the spool half
 // behaves. A symlink or a Windows junction in its place is refused for the
-// usual reason, and so is a link wearing the session's own file name, which
-// would otherwise send every pointer wherever it pointed while the hook, which
-// screens that same path on its side, quietly read nothing.
+// usual reason.
+//
+// The FILE at the session's own name is screened by logs.appendJsonLine, which
+// runs logs.guardWriteTarget on every path it appends to. This function holds
+// no second spelling of that guard: a private variant here drifted weaker than
+// the shared one (no link-count test, and a failed lstat read as absent rather
+// than refused), and two spellings of one guard is how the weaker one becomes
+// the only one some caller gets.
 function writeItem(inboxDir, item) {
     let dst = null;
     try { dst = fs.lstatSync(inboxDir); } catch { return false; }
     if (dst.isSymbolicLink() || !dst.isDirectory()) return false;
 
-    const file = inboxFile(inboxDir, item.sessionId);
-    let fst = null;
-    try { fst = fs.lstatSync(file); } catch { fst = null; }
-    if (fst !== null && (fst.isSymbolicLink() || !fst.isFile())) return false;
-
-    return logs.appendJsonLine(file, item);
+    return logs.appendJsonLine(inboxFile(inboxDir, item.sessionId), item);
 }
 
 // Whether this call has already had an item written for it, and the record that

@@ -372,6 +372,60 @@ ranking each cost one line naming that condition, and in every case the lexical 
 blocks print exactly as they would have. The endpoint is never a dependency of a store
 operation, and nothing on this path writes to the memory store.
 
+## The evaluation batteries and the harvest command
+
+`sidecar/battery.js` and `sidecar/harvest.js` are the sidecar's evaluation pair. Both are
+on-demand developer commands rather than anything the fleet runs, and both create
+concentrations of the same material the capture spool holds. Neither is covered by the spool
+section's properties above, so they are inventoried here on their own terms.
+
+`sidecar/batteries/` is frozen fixture content committed to this repository, which is public.
+`judgment-v1/cases.json` holds thirteen real production tool calls harvested from real
+sessions: each one's stated intent, its command text, and its output. `recognition-v1/index.md`
+is a verbatim copy of a project's `MEMORY.md` index. What is frozen there is therefore
+published, permanently and to anyone, and git is the whole of that exposure: `build.ps1`
+packages recursively under `plugins/claude-kit/` and nothing else, so `sidecar/` is absent from
+the plugin zip by construction.
+
+That makes the freezing step, rather than any runtime control, the place where disclosure is
+decided. A fixture is screened before it is committed, structurally rather than by keyword: a
+real account name, session identifier, agent identifier, endpoint address, or credential
+appearing in harvested output is redacted and the redaction is stated in the case's own note,
+with the sweep's predicate and its positive control recorded. `sidecar/batteries/README.md`
+owns that procedure. The control matters more than the sweep, because a sweep whose pattern is
+wrong returns the same empty result as a clean one.
+
+One identifier class is screened by inspection and kept rather than redacted, and the decision
+is recorded here because the freezing step is where disclosure is decided. A machine hostname
+appears in the frozen judgment cases inside a `kaizen/notes-<machine>.md` path, where it names a
+file in this repository rather than a network destination. That is the per-machine-artifact
+class the public-repository section below already accepts, and the path is tracked content here
+already, so the fixture copy adds no exposure. It is recorded here rather than left to the
+case's own note because the sweep cannot carry the class: a bare hostname has no structural
+shape, so the all-caps hyphenated pattern catches this one only because this machine's name
+happens to take that form, and a host named as an ordinary word passes it untouched. For that
+class the hand read of every field is the whole screen, and `sidecar/batteries/README.md`
+carries the per-case record.
+
+A battery run writes a second concentration that is machine-local rather than published. It
+builds a throwaway state root, under the system temporary directory by default, holding a spool
+of the fixture calls plus the verdict logs, recognition logs and inbox items the daemon
+produces from them, and it leaves that root in place when it exits so the run can be read
+afterwards. None of the spool's own properties apply to it: it is outside `~/.claude`, so the
+profile directory's ACL is not what protects it. The daemon's fourteen-day retention sweep does
+run over that root, since a battery run is the daemon running against it and the sweep covers
+whatever spool, logs and inbox the state root it was handed derives; what the sweep never does
+is reap the run's own material, none of which is older than the window while the run is
+happening, and nothing sweeps the root at all once the run exits. So retention is not what
+removes it either way: removal is the operator's, and the command prints the path and says so.
+`harvest.js`'s optional output file is the same class and the same posture.
+
+The egress is the daemon's, unchanged: a battery run is the daemon judging fixture calls, so
+every fixture command, its output, and the whole frozen memory index are posted to the model
+endpoint over the same cleartext cross-machine HTTP request the sections above describe. What
+differs is only that the material is fixture content chosen in advance rather than whatever the
+fleet happened to run.
+
 ## Environment overrides, and why they differ
 
 Variables that redirect where the tooling looks are gated, and so is the one below that redirects nothing and steers a control's timing instead; all of them are deliberately gated differently:
@@ -602,7 +656,7 @@ The gate's decision writer is the one path where that same restoration is still 
 
 ## What the public repository discloses
 
-The plugin distributes from this public repository, so the tracked tree is itself a disclosure surface, and two identity classes ride in it by design rather than by accident. The operator's account name appears wherever it is design language: the three owner and author email fields and the author names across the two plugin manifests, the marketplace name, the README, and the shipped skill whose whole subject is that person's writing voice. A personally-published plugin names its author on every surface a consumer meets it through, and withholding the name there produces a worse artifact and conceals nothing, the account being the repository's own owner. Machine hostnames appear where a per-machine artifact's own name carries them: each `kaizen/notes-<machine>.md` filename, the machine column each of its note lines carries as the format's provenance field, and live-document references to those filenames, because a reference reworded vaguer than the name it points at leaves the identifier public in the tree listing and only costs precision. The two archives, `docs/archive/` and `kaizen/archive/`, keep whatever identifiers they were published with: both are append-only history, and a rewrite cannot recall what a clone already holds.
+The plugin distributes from this public repository, so the tracked tree is itself a disclosure surface, and two identity classes ride in it by design rather than by accident. The operator's account name appears wherever it is design language: the three owner and author email fields and the author names across the two plugin manifests, the marketplace name, the README, and the shipped skill whose whole subject is that person's writing voice. A personally-published plugin names its author on every surface a consumer meets it through, and withholding the name there produces a worse artifact and conceals nothing, the account being the repository's own owner. Machine hostnames appear where a per-machine artifact's own name carries them: each `kaizen/notes-<machine>.md` filename, the machine column each of its note lines carries as the format's provenance field, live-document references to those filenames, because a reference reworded vaguer than the name it points at leaves the identifier public in the tree listing and only costs precision, and the same filenames where a frozen evaluation fixture quotes a real command that named one, which is the same identifier of the same class arriving through captured text rather than through prose. The two archives, `docs/archive/` and `kaizen/archive/`, keep whatever identifiers they were published with: both are append-only history, and a rewrite cannot recall what a clone already holds.
 
 The boundary of the accepted class is provenance. An identifier reaching the shipped payload or a live document as an accident of where the work happened (the machine a measurement was taken on, an operator checkout path standing as a worked example, the account name compressed into a machine-generated 8.3 form) teaches nothing a role or a placeholder does not, so those surfaces carry roles and placeholders (`HOSTNAME`, `ACCOUN~1`, a generic path) rather than real values. The split is prose-enforced, and saying so is the point: no hook and no test screens the tracked tree for identifier shapes, so the boundary holds by review, and a surface class new to the tree joins it unguarded.
 

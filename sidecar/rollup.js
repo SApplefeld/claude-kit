@@ -129,7 +129,7 @@ const path = require('path');
 const config = require('./config.js');
 const logs = require('./logs.js');
 const inboxModule = require('./inbox.js');
-const { neutralize, TEXT_MAX_CHARS } = require('./text.js');
+const { neutralize, TEXT_MAX_CHARS, trimLoneSurrogate } = require('./text.js');
 
 const KNOWN_VERDICTS = ['achieved', 'failed', 'diverged'];
 
@@ -163,6 +163,20 @@ const DELIVERED_LINE = '"delivered" below means bytes the valve has CONSUMED '
     + 'past its offset: the offset advances before a batch is emitted and past '
     + 'malformed lines, unknown kinds and empty batches, so this is not a count '
     + 'of what a session actually saw.';
+
+// One log-record field on its way onto this report. Neutralized, capped at the
+// channel's own bound, and trimmed of a lone surrogate half the cap may have
+// left, the same three steps in the same order sidecar/battery.js's
+// truncateForReport takes.
+//
+// The trim rides with the cut because it is a property of the rendered channel
+// rather than of the producer, and this command and battery.js are two readers
+// of the SAME record: a gap note whose 2000-character cut lands between the
+// halves of a surrogate pair has to print identically here and there, or one
+// reader of a log line shows an orphan half the other does not.
+function renderText(text) {
+    return trimLoneSurrogate(neutralize(text).slice(0, TEXT_MAX_CHARS));
+}
 
 function parseArgs(argv) {
     const options = { stateDir: null, help: false };
@@ -352,8 +366,8 @@ function tallyVerdictFile(name, records, sessions, days, gapRanges, totals) {
             dayStats.gappedCalls += count;
             totals.gappedCalls += count;
             const noteSource = (typeof record.note === 'string' && record.note !== '') ? record.note : logs.gapNote(record);
-            const detail = (typeof record.detail === 'string' && record.detail !== '') ? neutralize(record.detail).slice(0, TEXT_MAX_CHARS) : '';
-            gapRanges.push({ slug, day, note: neutralize(noteSource).slice(0, TEXT_MAX_CHARS), detail });
+            const detail = (typeof record.detail === 'string' && record.detail !== '') ? renderText(record.detail) : '';
+            gapRanges.push({ slug, day, note: renderText(noteSource), detail });
         } else {
             totals.verdictTypeUnknown += 1;
         }
@@ -391,7 +405,7 @@ function tallyRecognitionFile(name, records, sessions, days, recognitionGapEntri
             const callId = typeof record.callId === 'string' ? record.callId : '';
             const reason = typeof record.reason === 'string' ? record.reason : 'unknown reason';
             const noteSource = (typeof record.note === 'string' && record.note !== '') ? record.note : `call ${callId} not recognized, ${reason}`;
-            recognitionGapEntries.push({ slug, day, note: neutralize(noteSource).slice(0, TEXT_MAX_CHARS) });
+            recognitionGapEntries.push({ slug, day, note: renderText(noteSource) });
         } else {
             totals.recognitionTypeUnknown += 1;
         }

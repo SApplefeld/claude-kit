@@ -61,7 +61,7 @@ const DELIVERED_MAX = 512;
 // tame.
 const SESSION_NAME_CAP = 80;
 
-// A directory the daemon will write into, created if absent.
+// One directory, checked and created if absent.
 //
 // lstatSync, never statSync: stat follows links, so a symlink or a Windows
 // directory junction planted at the logs path answers isDirectory() with the
@@ -69,7 +69,7 @@ const SESSION_NAME_CAP = 80;
 // whatever it points at. A junction needs no elevation to create. The refusal
 // is reported and the daemon stands down rather than writing through it, since
 // a log written somewhere nobody expects is worse than no log at all.
-function ensureDir(dir) {
+function ensureDirStep(dir, recursive) {
     let st = null;
     try {
         st = fs.lstatSync(dir);
@@ -83,7 +83,7 @@ function ensureDir(dir) {
             // POSIX the mode is honored; on Windows Node maps it to the
             // read-only attribute alone and the protection is the profile
             // directory's ACL, exactly as the spool's own 0600 behaves.
-            fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+            fs.mkdirSync(dir, { recursive: recursive === true, mode: 0o700 });
             return { ok: true, created: true };
         } catch (mkErr) {
             const mkCode = (mkErr && typeof mkErr.code === 'string') ? mkErr.code : 'mkdir failed';
@@ -94,6 +94,118 @@ function ensureDir(dir) {
         return { ok: false, reason: `${dir} is not a real directory, so nothing is written through it` };
     }
     return { ok: true, created: false };
+}
+
+// A directory the daemon or a fixture writer will write into, created if
+// absent, with every component BELOW `guardFrom` checked on its own.
+//
+// A containment screen answers about the path it was handed and says nothing
+// about anything created beneath it afterwards. `mkdir -p` follows a reparse
+// point on any intermediate component it does not have to create, so a junction
+// planted one level under a screened root routes the whole write wherever it
+// points while the run prints the sentence saying the root was screened and
+// found outside. Checking only the leaf cannot see that: the leaf is absent, so
+// its lstat is ENOENT and the recursive mkdir walks through the link.
+//
+// `guardFrom` is the path a caller has already established, which for
+// sidecar/battery.js is the screened --state-dir. It is checked by
+// ensureDirStep like every component below it, so a `guardFrom` that is itself
+// a symlink or a junction is REFUSED and nothing is written through it. That
+// costs a root reached through a link the containment screen resolved and found
+// outside the live tree: such a root passes the screen and is then refused
+// here, and the run stops with "cannot use the state root" after printing the
+// sentence saying the root was screened. Refusing is the direction this file
+// takes everywhere, since a write through a reparse point lands somewhere
+// nobody named, and an operator whose state root is reached through a link
+// spells the resolved path instead.
+//
+// WHAT THIS WALK IS AND IS NOT. Each component is checked with lstat, which
+// refuses a reparse point: a symlink or a Windows junction. That is strictly
+// weaker than sidecar/state-screen.js's identity containment, which decides on
+// (dev, ino) and so catches an alias carrying no reparse point at all, a Linux
+// bind mount being the case in reach. So this closes Standing Brief Amendment
+// 7's class for the link shapes an unprivileged user can plant, not for every
+// aliasing a privileged one can.
+//
+// Called without `guardFrom`, this is a single leaf check and a recursive
+// create, which is what the daemon's own state paths take.
+function ensureDir(dir, guardFrom) {
+    const target = path.resolve(dir);
+    if (typeof guardFrom !== 'string' || guardFrom === '') return ensureDirStep(target, true);
+    const base = path.resolve(guardFrom);
+    const rel = path.relative(base, target);
+    // A target that is not under the base is REFUSED, never quietly handed the
+    // permissive recursive create. A caller passing `guardFrom` is asking for
+    // the per-component walk, and answering a path the walk cannot cover with
+    // the unguarded `mkdir -p` is the shape where a guard becomes no guard
+    // without saying so.
+    //
+    // `path.relative` returns an absolute path when the two spellings have
+    // different root kinds, and a `..` SEGMENT is the only relative segment
+    // that escapes, so both are read here rather than by leading characters.
+    // An empty `rel` is the base itself, which is not an escape.
+    const segments = rel === '' ? [] : rel.split(/[\\/]/);
+    if (path.isAbsolute(rel) || segments.includes('..')) {
+        return { ok: false, reason: `${target} is not under ${base}, so the per-component guard cannot cover it` };
+    }
+    const first = ensureDirStep(base, true);
+    if (!first.ok) return first;
+    let created = first.created;
+    let cur = base;
+    for (const segment of segments) {
+        cur = path.join(cur, segment);
+        const step = ensureDirStep(cur, false);
+        if (!step.ok) return step;
+        created = created || step.created;
+    }
+    return { ok: true, created };
+}
+
+// A path a writer in this tree is about to write a file to, checked once for
+// every shape that would send those bytes somewhere other than a fresh or
+// ordinary file at that name.
+//
+// This lives here, at the boundary every writer in this tree shares, rather
+// than inside the command that needed it first: a guard held by one producer is
+// one the next author reimplements by not implementing it. Every file this
+// directory writes passes through it. sidecar/harvest.js's --out and
+// sidecar/battery.js's two files under --state-dir call it directly, and
+// appendJsonLine and saveState below call it on each write of their own, which
+// covers the daemon's verdict logs, its recognition logs, the shared findings
+// file, the offset state's temporary sibling, and every inbox item
+// (sidecar/inbox.js appends through appendJsonLine and holds no guard of its
+// own).
+//
+// The daemon's own files are the ones that most need it, because their names
+// are FIXED and derivable: sidecar/config.js spells findings.jsonl and
+// offsets.json under whatever --state-dir a caller supplied, so a link planted
+// at either name is waiting before the write rather than racing it, unlike the
+// per-run token-stamped session logs.
+//
+// The hard-link case is the one a containment screen cannot reach. A second
+// name for one inode, made from inside a store the write must not touch to a
+// name outside it, resolves to the outside name, screens clean, and then takes
+// the write: an append reaches every other name for that inode and a rewrite
+// replaces the bytes all of them read. `nlink` is a fact about a file that
+// already exists, so it belongs at the moment of the write rather than in a
+// predicate over a path that usually does not exist yet.
+//
+// lstat, never stat: stat follows the link the refusal exists for. `kind` is
+// returned rather than a finished sentence so each caller keeps its own voice.
+function guardWriteTarget(file) {
+    let st = null;
+    try {
+        st = fs.lstatSync(file);
+    } catch (err) {
+        const code = (err && typeof err.code === 'string') ? err.code : '';
+        // Absent is the ordinary case: the file is about to be created.
+        if (code === 'ENOENT') return { ok: true, kind: 'absent' };
+        return { ok: false, kind: 'unreadable', code: code || 'lstat failed' };
+    }
+    if (st.isSymbolicLink()) return { ok: false, kind: 'symlink', stat: st };
+    if (!st.isFile()) return { ok: false, kind: 'irregular', stat: st };
+    if (st.nlink > 1) return { ok: false, kind: 'hardlinked', nlink: st.nlink, stat: st };
+    return { ok: true, kind: 'file', stat: st };
 }
 
 // A session id as one path component. Every character outside a conservative
@@ -125,6 +237,16 @@ function recognitionLogFile(logsDir, sessionId) {
 
 // Append one JSON line. Returns whether it landed; a failure is the caller's to
 // report and count, never an exception to unwind a drain with.
+//
+// The write-target guard runs on every append, not once at startup. The names
+// here are fixed and predictable under a caller-supplied --state-dir, so a
+// symlink, a junction or a second hard link planted at one of them would
+// otherwise take every record appended through it: an append reaches every
+// name for an inode, and what these records carry is the working directory, the
+// stated intent, a command preview and the model's reason for each call. A
+// refusal is a failed write, counted and reported like any other rather than
+// thrown, because a daemon that stops judging because it could not write about
+// judging is the failure this file rules out.
 function appendJsonLine(file, record) {
     let line = '';
     try {
@@ -132,6 +254,7 @@ function appendJsonLine(file, record) {
     } catch {
         return false;
     }
+    if (!guardWriteTarget(file).ok) return false;
     try {
         fs.appendFileSync(file, line + '\n', { encoding: 'utf8', mode: 0o600 });
         return true;
@@ -249,8 +372,17 @@ function loadState(stateFile) {
 // daemon saves after every judged line, so a kill between two calls costs at
 // most a re-judged duplicate; a half-written map at that same moment would cost
 // a resume from the middle of a line, which is why the write is not in place.
+//
+// The temporary sibling takes the same write-target guard the appends take, and
+// for the sharper version of the same reason: `<state-dir>/logs/offsets.json`
+// is a fixed name, so `.tmp` beside it is a fixed name too, and it is the one
+// path here that is written with writeFileSync rather than appended to, so a
+// second hard link at it would have every other name for that inode REPLACED
+// rather than added to. The rename that follows is what makes the target file
+// itself fresh, so the guard belongs on the sibling.
 function saveState(stateFile, state) {
     const tmp = `${stateFile}.tmp`;
+    if (!guardWriteTarget(tmp).ok) return false;
     try {
         fs.writeFileSync(tmp, JSON.stringify(state), { encoding: 'utf8', mode: 0o600 });
         fs.renameSync(tmp, stateFile);
@@ -528,6 +660,7 @@ module.exports = {
     RECOGNITION_LOG_RE,
     sweepLogs,
     ensureDir,
+    guardWriteTarget,
     sessionSlug,
     sessionLogFile,
     recognitionLogFile,
