@@ -120,6 +120,26 @@ names the class rather than the instance that produced it.
    rebuilt to close five instances of the accept-a-path-inside-the-live-tree class, was found to
    have moved the sixth instance one layer down into the writer that trusts it.
 
+8. **A predicate's scope is stated in terms of the rule's reach, never the surface the finding
+   came from.** A check can be built correctly from a generating rule, carry a shape-matched
+   pattern, name its scope, and run a control that speaks, and still be blind, because scope and
+   reach are different questions: a rule about what a call does reaches every path that arrives at
+   such a call, including call sites in modules the scoped surface never spells. A predicate scoped
+   narrower than its rule reaches returns the same green whether the class is absent or merely
+   outside the scope, which from the report is indistinguishable. So a check whose subject is a
+   class states the reach the rule actually has (which call sites, in which modules, reachable by
+   which paths), and either covers that reach or names the uncovered part as unproven rather than
+   reporting the class clean. Where the consequence can be observed directly, observe it: a case
+   that instruments the effect (the syscall, the write, the emitted byte) and asserts its absence
+   covers every path into the effect at once, where a case that inspects call spellings covers only
+   the spellings it can see. Adopted 2026-08-31 after the live-store class reached its EIGHTH
+   instance. Round 10's closure was reported against the generating rule, with a shape-matched
+   predicate, a stated scope, an instrument control and a pre-fix control that spoke, and it was
+   blind anyway: its scope was one test file's occurrences of the screen's identifier, while the
+   rule's reach includes one-operand call sites inside `battery.js` and `harvest.js` that the test
+   file reaches in-process and never spells. This is entry 6's failure one level up, the list being
+   of surfaces rather than of spellings.
+
 No entry 4 exists in this plan. No rule numbered 4 appears in any surviving artifact of
 it, so the gap is a numbering gap rather than a lost rule, and entry 5 keeps the number
 it was cited under so both existing citations resolve.
@@ -1123,3 +1143,149 @@ the plan reaching its terminal state rather than a section being dropped. The pu
 possible non-fast-forward: a second worker commits to this repository from a worktree and touches
 the same shared documents, and a clean merge there is exactly the case that needs the whole gate
 re-run afterwards plus a read of the merged document.
+### Interim board 9 - 2026-08-31
+Round 10 was adjudicated at the code rather than from its report, and the adjudication found the
+live-store class at instance EIGHT. Round 11 closed it, round 12 is in flight over that fix, and
+Standing Brief Amendment 8 above is the rule this round produced.
+
+INSTANCE 8, found by the controller and confirmed by instrument rather than by argument.
+test/kit-sidecar-battery.test.js lines 2082 and 3164 called battery.main IN-PROCESS with deps of
+newRunToken, write and warn only, with no home operand and no process.env.USERPROFILE or HOME
+redirect around either call. sidecar/battery.js:1217, inside async function main at :1168, called
+screenStateDir(requestedStateDir) with ONE argument, and :1200 called screenStateDir(os.tmpdir())
+the same way. So both cases reached liveHomeTree(undefined), fell back to os.homedir(), and
+syscalled against the operator real ~/.claude. Proved with .kit/scratch/instance8-probe.js, which
+wraps fs.realpathSync, fs.realpathSync.native and fs.statSync and records every operand at or under
+the live tree. SUBJECT, the one-argument arity: 5 live-tree syscalls. CONTROL, the same call with a
+fixture home operand: 0. The control is what makes it evidence rather than an assertion, since an
+instrument that fired on everything would have spoken on both.
+
+THE GENERALIZATION, which is the part worth keeping and which indicts the closure report rather
+than the fix. Round 10 did exactly what its brief demanded: it refused a call-site list, reported
+against a generating rule, built a shape-matched predicate, stated its scope, ran a pre-fix control
+that spoke and an instrument control inside the case. All of that is sound, and it was blind
+anyway, because SCOPE and REACH are different questions. Its scope was one test file occurrences of
+the screen identifier; the rule reach is any code path arriving at a one-operand call site
+in-process, and that call site sits in production code the test file never spells. A predicate
+scoped narrower than its rule reaches returns the same green whether the class is absent or merely
+out of scope, and from the report the two are indistinguishable. That is Amendment 6 one level up a
+second time: the first list was of spellings, this one was of surfaces. Amendment 8 states it.
+
+NOT A PRODUCTION DEFECT, recorded so no later round changes shipped semantics to satisfy this.
+The four one-operand sites (battery.js:1200 and :1217, harvest.js:351 and :450 as they then stood)
+are CORRECT in the shipped daemon, which should screen against the operator real home, and
+state-screen.js:396 says so. The defect was that the suite drove those sites with no way to
+substitute a fixture home.
+
+ROUND 11 CLOSED IT, and the controller verified the closure with its own instrument rather than
+from the report. The fix threads a homeDir key through the existing deps seam on both main
+functions (battery.js:1191 to :1219 and :1236; harvest.js:330 to :363 and :462), defaulting to
+undefined so liveHomeTree falls through to os.homedir() exactly as before. Three verifications, all
+run by the controller:
+  Shipped behaviour unchanged: the implementer probe compared a one-argument call against an
+  explicit-undefined call and got identical answers over 6 comparisons each.
+  The widened predicate, re-run independently by the controller over the raw file text with string
+  literals deliberately included: 4 invocations at lines 2099, 3182, 3506 and 3826, NONE homeless.
+  Its control, built by the controller from the generating rule with two planted homeless calls one
+  of which sits inside a string literal, flagged exactly lines 1 and 4, so the instrument speaks.
+  Raw text matters rather than being a detail: one real invocation is written into a driver program
+  the file generates for a child, and a string-skipping scanner would miss it AND return the same
+  green, which is this section own failure shape one level down.
+  The consequence, measured rather than inspected, by .kit/scratch/r11-verify.js: a real in-process
+  battery.main run with a fixture homeDir, under wrapped fs, inspected 14 paths of which 0 were at
+  or under the operator live tree and 11 were at or under the fixture live tree. The control is a
+  sibling subject rather than the omitted-homeDir variant, so a deaf recorder cannot produce the
+  zero, and no case that ships reads the operator store.
+  The implementer found a THIRD homeless invocation the controller had not named, line 3483, the
+  generated driver, which is the evidence the predicate reaches past the instances that prompted it.
+  It also declined the controller own item 4 with a reason the controller accepts: an
+  omitted-homeDir control would be a shipped case whose purpose is to read the operator store, which
+  Amendment 5 bars, so it was run as a throwaway probe (red: 3 operator-tree hits, 0 fixture hits, a
+  clean inversion) and the sibling-subject form was shipped.
+
+LANE, run by the controller rather than accepted from the report:
+node --test test/kit-sidecar-battery.test.js gives 111 tests / 109 pass / 0 fail / 2 skipped, exit 0,
+read from the run own exit code. The two skips are the pre-existing Windows file-mode skips. Run
+beside a live foreign claim (KIT: Skills Worker, session 42054c5f, handoff whole gate re-run on the
+final tree, started 05:52:30Z), named rather than waited on, and no claim was written. Wall clock
+is not comparable across this section runs under differing contention and nothing is read into it.
+
+ROUND 10 OTHERWISE STANDS and is not reopened. Majors 2, 3 and 4 and all fourteen minors are
+accepted. Two pieces were better than the brief asked and are recorded so a later round does not
+undo them: on m3 the implementer declined the suggested fold restriction and showed by tracing
+sameSegment at state-screen.js:188 that it would remove no false refusal, correcting the enumeration
+instead; on m13 the new sweep row is a structural pattern whose control carries a spelling the
+directory does not hold, matched on shape, which is coverage evidence rather than a working
+instrument. Two of its concerns are for the finishing pass rather than this section: daemon and
+rollup cases living in the battery test file because that was the only file in scope, and
+truncateForReport shipping untested because it is unexported.
+
+A PROCESS FAILURE THE IMPLEMENTER DISCLOSED, recorded because the disclosure is the reason it is
+safe. It ran a red probe on battery.js without first taking a post-fix copy, so a byte-restore was
+impossible. It did not retype the file. It rebuilt it by re-running the same scripted transformation
+and verified the result against an independently derived reference, the same script applied to the
+pre-fix bytes in scratch, by diff, IDENTICAL. The rule broken is take the copy before the probe
+first mutation; the derived-reference diff is a repair rather than a substitute.
+
+ROUND 12 IS IN FLIGHT over the round-11 delta, three lenses at model opus and effort max through
+Workflow (run wf_7d9b5180-fc2). It is owed rather than optional: the delta modifies the containment
+screen call sites, which is a security-reviewer trigger surface, and round 9 earned that rule by
+returning three Majors on exactly such a delta. The tree was bracketed before dispatch to
+.kit/scratch/s7r12-tree-before.txt and the index was confirmed empty.
+
+A COORDINATION FAILURE ON THE SHARED CLAIM FILE, now CONFIRMED rather than inferred, recorded here
+because it cost a peer real time and because the mechanism defeats the protocol own guards. This
+session already-released claim reappeared at claims/heavy-process.md at 05:33:55Z carrying this
+session id and a stale composed Started, destroying the live claim of the session that was actually
+gating. Three sessions saw it from three sides: this one at 05:34:14Z; KIT: Skills Worker at
+05:36:26Z, which queued behind it and lost about eight minutes waiting on a session running nothing;
+and AI-OS: Worker, whose claim it destroyed and which saw the file swing back at 05:41:51Z. AI-OS:
+Worker closed the mechanism from the store repo own history: the path is tracked in the synced
+store, commit 2344233 lands at 05:33:42Z, and its predecessor ff1a4b9 holds this session stale
+claim, so the bytes that materialised are a version-control restore of an older revision rather than
+any seat write. Occupancy was read correctly from the process list instead, six live dotnet and
+testhost processes from the ai-os worktree, which was the only reading true throughout.
+  The generalization is KIT: Skills Worker and is sharper than this session own: a protocol writer
+  population is not the set of writers it names, it is the set of processes that can modify the
+  bytes, and replication is one of those. The consequence is that neither exclusive create nor
+  session-scoped delete reaches this failure, since the competing write is not a create and passes
+  through no seat code path, and the restored bytes carry a real session id that a correct reader
+  deletes. Every rule in the clause is a rule about seats and this writer is not one. AI-OS: Worker
+  owns the written-up note; nothing here duplicates it.
+  This session own contribution: the resurrected claim carried a composed Started with round
+  subsecond digits rather than one read from a clock, which is what made it read as expired
+  arithmetic. A second seat owned the same defect tonight, so it is a clause defect rather than
+  anyone carelessness. Write Started from date -u at write time.
+
+A HARNESS FINDING that invalidates a doctrine mechanic on this version. The growth reading
+finishing-work unavailability rule calls for cannot be taken against an in-flight local agent here.
+tasks/<agentId>.output is 0 bytes for this dispatch and for eight of the twenty agent outputs in
+that directory while three carry megabytes, so the harness populates it only sometimes. And a
+sidechain entry does not stream into the parent transcript: a scan at 05:33Z found zero sidechain
+lines, and entries stamped 05:38 to 05:40 appeared only after the agent completed. So sidechain
+lines flush at completion and a growth reading of an in-flight agent reads zero whether it is
+working or wedged. What discriminated instead was task status from TaskOutput plus the harness
+accepting a SendMessage to the agent. This session carried a 226-line growth figure from before a
+compaction that it could not re-establish, and has stopped restating it as evidence.
+
+GATE: still owed and unchanged from Interim board 8 2651 / 2644 / 1 / 6, exit 1. The box was yielded
+rather than taken: AI-OS: Worker released at 05:43:30Z and KIT: Skills Worker, which had queued
+behind this session resurrected claim and has a merge blocked on its handoff gate, was given the
+slot by this session offer and its acceptance. It reports a real regression found and fixed in its
+own tree and a re-run landing near 05:59Z. This session takes the box after it, and will write
+Started from date -u.
+
+A PEER-COORDINATION FACT for the close-out, reported by KIT: Expert and unverifiable from here:
+KIT: Skills Worker commits its own docs/architecture.md edits within the hour and then merges main
+into batch/skill-fixes, whose 9784239 also edited that file. This session docs/architecture.md edit
+is uncommitted and was gated behind the reopened Major, so it may not land inside that window. That
+was communicated rather than raced: a section close will not be rushed to beat a peer merge, and the
+merge carrying a conflict is the accepted cost.
+
+kaizen/notes-SCOTT-CLAUDE.md remains a peer uncommitted work and is excluded from every commit this
+session makes, as it has been since Interim board 7.
+
+Next action: adjudicate round 12 at the code rather than from its reports, take the box after KIT:
+Skills Worker releases, run the whole gate and report it against 2651 / 2644 / 1 / 6, then Chapter
+7, flip the plan to Complete, move section 8 substance to docs/backlog.md, archive via
+curating-docs, and commit and push.
