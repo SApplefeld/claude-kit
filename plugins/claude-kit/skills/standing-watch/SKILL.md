@@ -25,6 +25,8 @@ Two kinds of content, in separate sections, never interleaved:
 
 A line you cannot confidently place is situational, which settles the boundary for any content the two names do not obviously cover.
 
+Both kinds answer one admission test before they are placed at all: a line belongs on the ledger only if a successor with no context needs it to resume the watch. Not whether it is true, not whether it was hard-won, and not whether it can be dressed with an evidence time and a re-derive command, since a withdrawn reading, a correction, and the story of how an instrument was found broken can each carry both and serve no resumption. Two tells mark a line that fails the test: it argues rather than states, or its subject is the keeper's own reasoning rather than the watched system. What such a line carries, where durable, goes where the destination rule at the end of this file sends it; the ledger is not its second home.
+
 Every situational sentence carries two things: the time of the evidence behind it, and the command that re-derives it. A sentence with neither is a rumor with a good reputation.
 
 **Supersede in place.** When a fact changes, rewrite the line that held it. Never stack a new baseline under an old one and leave both readable, because the next pass reads whichever it reaches first and has no way to tell which was current.
@@ -71,3 +73,5 @@ Killing a dispatched agent is that same door. The doctrine carries the habit (pr
 ## What done looks like
 
 A watch ends when the quiet streak runs long enough that the operator retires the loop. What it hands over then is a distilled list of what the interventions taught, split two ways: what the watched system should do for itself, and what the kit should stop the agent doing. The ledger is the raw material for that list, so write every pass in a form that survives distillation: the condition, what was done about it, and what it turned out to mean.
+
+That hand-over serves a watch that ends; a lesson's home is reachable during the run either way. The destination rule: a decision about a plan goes to that plan's Chapters; a durable lesson about the watch's own instruments goes to the memory store in the pass that produced it, no plan owning it; the ledger keeps the pass record above and the current state, and nothing is written to the ledger twice. On a watch with no scheduled end, a standing seat, that write-time routing is the whole mechanism: distil-at-retirement never fires on a seat that does not retire, and what stands in its place without the routing is accumulation, a ledger whose bulk is its own journey and whose resume cost lands on every successor.
