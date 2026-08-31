@@ -53,11 +53,46 @@ Every dispatch from this point carries these, and the orchestrator holds them on
    any mechanism change, grep the file and the tree for the counts, the enumerations, and the header
    paragraphs that describe it, and restate each. Reviewers read whole files rather than diffs,
    because the defect lives in the seam between the amended sentence and its unchanged neighbour.
-2. **A reader that answers null for two different reasons is not a predicate.** Where a helper
-   returns null both for "absent" and for "could not be read", never branch on that null alone at a
-   site whose two directions differ in cost. Find the positive-absence discriminator (this tree
-   exports `goalStateAbsent` for exactly this) or add one, so the uncertain reading takes the silent
-   direction rather than the acting one.
+   ADDING A CALL FALSIFIES THE CALLEE'S HEADER, and this is the trigger the clause above does not
+   catch, named here because it has now recurred in three consecutive rounds of this section. A
+   header reading "the single caller" or describing what its one caller's subject is, is not a
+   carrier of a claim you CHANGED, so a sweep keyed on what you edited never reaches it; it is a
+   carrier falsified by a call you ADDED. So the trigger is the new call site rather than the
+   edit: for every function this changeset newly calls, open that function's own header and check
+   that it still describes its caller set and its subject truthfully. The instances are
+   `logEpisodeNudge`, whose header claimed a single caller running a screen the second caller does
+   not run; `intervalElapsed`, whose header says "this episode" where the second caller's subject
+   is a per-session hold stamp; and `namesNetworkShare`, whose stated fail-direction argument holds
+   only for its first call site. Two of the three sat within twenty lines of the call that
+   falsified them.
+2. **A reader that answers one in-band value for two different facts is not a predicate, and the
+   write side is where it costs most.** Where a helper returns the same value both for "absent or
+   empty" and for "could not be read", never branch on that value alone at a site whose two
+   directions differ in cost. The conflated value is whatever that reader's own empty answer
+   happens to be, `null` and the empty list and the empty string alike, so a list reader answering
+   `[]` for a file it could not read is this same defect wearing a different type, and it reads as
+   ordinary code at every review. Apply it at every site the mechanism has rather than only at the
+   site this amendment was learned from, which is a READ site branching on the value directly. The
+   WRITE site is the other one and it costs more: a read-modify-write that rebuilds a whole file
+   from that reading, where an uncertain read makes the write destroy exactly the state it set out
+   to preserve, while the function's own comment goes on claiming it preserved it. Find the
+   positive-absence discriminator (this tree exports `goalStateAbsent` for exactly this, and
+   `readGateStateResult` shows the result-object shape a reader can take instead) or add one, so
+   the uncertain reading takes the silent direction rather than the acting one. When you repair one
+   site of a mechanism under this amendment, enumerate that mechanism's other sites in your
+   report and say which direction each of them takes.
+3. **A guard you add at a channel is owed by every caller of that channel, including the ones this
+   changeset never touched.** The doctrine already states the principle, that a sanitizing or
+   clamping guard is a property of the output channel rather than of the producer that first needed
+   it. What defeats it in practice is scope: a guard gets added at the call site whose review found
+   it, the other callers are pre-existing code the round did not open, and nothing keys a sweep on
+   them. So when you establish a guard at a shared read or write, enumerate that channel's other
+   callers and either extend the guard to them or state per caller why it does not apply, and
+   prefer lifting the guard into the shared helper over repeating it, since a guard repeated four
+   times is one a fifth caller will be written without. The instance: `readFileBounded` follows a
+   symlink at the final component by design, three of its callers wrap it in an lstat refusal, and
+   `nudgeFloor` does not, so the one read this section added a knob for is the one read a planted
+   link can redirect or stall.
 
 ## Sections of Work
 
@@ -77,7 +112,7 @@ Acceptance: a held bystander session at consumed >= floor receives a nudge namin
 
 ### 3. The document sweep. Model: sonnet
 
-`docs/architecture.md`'s compaction-gate passage gains the widened boundary path, the `Banked:` stamp, and the nudge floor, in that passage's existing register (state, not journey). Its scope is widened here by section 2's second review round, which routed three further staleness items to this section rather than leaving them to be discovered: the gate state's sentence names only the open deferral episode and must also name the per-session hold list section 2 added, the journal's `event` field carries two values rather than one, and `.kit/compact-hold-nudge.json` is unnamed in a passage that enumerates the subsystem's project-local files. Section 2's second review round routes four more carriers here, each confirmed stale against the shipped code rather than reported: `docs/architecture.md`'s nudge sentence still counts eight guards and still says the hook serves a session holding an armed leash, where the guard set now forks and the hook also serves a session holding none; the root `README.md`'s hook inventory describes `compact-deferral-nudge.js` as speaking to a leashed run alone, naming neither the second directive nor its different release; `docs/plans/README.md` and `docs/README.md` both describe this plan as Ready with three sections, where it is In Progress with four; and `plugins/claude-kit/doctor/doctor.ps1` enumerates the `.kit/` files carrying session data without naming `compact-hold-nudge.json`. The root `README.md` and `doctor.ps1` are outside `docs/` and are named here because no other section sweeps them. `docs/security-model.md` is checked for whether the registry-entry writer amendment touches any stated claim about the coordinator directory's writer rules, and updated where it does, and its marker-session-id passage is verified as already updated by Section 1's changeset; the boundary verb writing a registry line is a new mechanical writer to a single-writer file and is stated as such. The plans index (`docs/plans/README.md`) already carries this plan from its authoring commit; verify rather than re-add. No Chapter or close-out work rides here; this section is the sweep only.
+`docs/architecture.md`'s compaction-gate passage gains the widened boundary path, the `Banked:` stamp, and the nudge floor, in that passage's existing register (state, not journey). Its scope is widened here by section 2's second review round, which routed three further staleness items to this section rather than leaving them to be discovered: the gate state's sentence names only the open deferral episode and must also name the per-session hold list section 2 added, the journal's `event` field carries two values rather than one, and `.kit/compact-hold-nudge.json` is unnamed in a passage that enumerates the subsystem's project-local files. Section 2's second review round routes four more carriers here, each confirmed stale against the shipped code rather than reported: `docs/architecture.md`'s nudge sentence still counts eight guards and still says the hook serves a session holding an armed leash, where the guard set now forks and the hook also serves a session holding none; the root `README.md`'s hook inventory describes `compact-deferral-nudge.js` as speaking to a leashed run alone, naming neither the second directive nor its different release; `docs/plans/README.md` and `docs/README.md` both describe this plan as Ready with three sections, where it is In Progress with four; and `plugins/claude-kit/doctor/doctor.ps1` enumerates the `.kit/` files carrying session data without naming `compact-hold-nudge.json`. The root `README.md` and `doctor.ps1` are outside `docs/` and are named here because no other section sweeps them. Section 2's third review round adds one more: `docs/fleet-integration.md` describes `compact-deferral-nudge.js` as the hook that speaks to a leashed session, the same stale single-directive descriptor already routed here for `README.md` and `docs/architecture.md`, and that file sits in no section's scope, so it is named here for the same reason the two above are. `docs/security-model.md` is checked for whether the registry-entry writer amendment touches any stated claim about the coordinator directory's writer rules, and updated where it does, and its marker-session-id passage is verified as already updated by Section 1's changeset; the boundary verb writing a registry line is a new mechanical writer to a single-writer file and is stated as such. The plans index (`docs/plans/README.md`) already carries this plan from its authoring commit; verify rather than re-add. No Chapter or close-out work rides here; this section is the sweep only.
 
 Acceptance: both documents read current against the shipped code (checked by reading the code fresh, not the spec); no stale writer-rule claim about registry entries survives a tree-wide grep for the old three-writer phrasing; suite green at the recorded baseline.
 
@@ -776,3 +811,138 @@ Commit model in effect: Commit-and-Push. This entry, the new section 5, the corr
 section 3's widened scope commit alone, on the precedent interim boards 1 to 4 set in this plan; section
 2's code and its `docs/security-model.md` prose stay unstaged until the whole gate has run, since under
 this model the section commit goes straight to main.
+### Interim board 6 - 2026-08-31
+
+IN-FLIGHT SECTION AND ITS STAGE. Section 2 is implemented and has had three implementer fix rounds; the
+third round's own review is now adjudicated. It CANNOT close: two confirmed Majors and a cluster of
+comment-and-prose defects go to a fourth round. Sections 3, 4 and 5 are not started. What changed about
+this boundary is the diagnosis rather than the finding count: the round named the GENERATOR behind a
+class that has now recurred three rounds running, and the amendments block gains a trigger and a whole
+new amendment as a result.
+
+WHAT FIX ROUND 3 DELIVERED, VERIFIED RATHER THAN ACCEPTED. All three Majors landed and the controller
+confirmed each at the lines rather than from the report. `readHoldNudges` split into
+`readHoldNudgesResult`, a result-object reader on `readGateStateResult`'s shape, and `recordHoldNudge`
+now returns false and writes nothing on an uncertain reading, so an unreadable stamp file no longer
+erases every peer session's stamp. The future-skew allowance is deleted outright and the reader drops
+any future-dated entry. `logEpisodeNudge`'s header names both callers and both screens. The controller
+re-ran the lane itself: 480 tests / 480 passing / 0 failing / 0 skipped, exit 0 read from the run's own
+marker, against the recorded 479/479/0/0, so plus 1 and plus 1 with failures and skips unchanged. The
+implementer's own byte-comparison claim was re-checked rather than accepted: `cmp` confirms exactly
+three of the six in-scope files changed this round and three are byte-identical to their pre-round
+copies.
+
+THE ROUND'S RED-FIRST EVIDENCE IS THE STRONGEST THIS PLAN HAS SEEN, and one leg of it is the reason to
+trust the rest. Asked to rebuild a guard-5H control that could not fail, the implementer ran the
+PRE-ROUND copy of that test against a deliberately broken guard, in the same process, and watched it
+PASS. That is a positive demonstration that the old instrument was blind, rather than an assertion
+that it was. Its own first rebuild also passed against the broken guard and was discarded for that
+reason before the third attempt spoke.
+
+THE GENERATOR, NAMED, which is this boundary's real output. Amendment 1 has been in effect for three
+rounds and its class recurred in all three. The reason is now precise: amendment 1 keys on the claim
+you CHANGED, and the recurring defect is a header falsified by a call you ADDED. A header reading "the
+single caller", or describing what its one caller's subject is, is not a carrier of anything the
+implementer edited, so no sweep keyed on the edit ever reaches it. Three instances, all confirmed at
+the lines: `logEpisodeNudge` (fixed this round), `intervalElapsed`, whose header still says "this
+episode" where its second caller's subject is a per-session hold stamp, and `namesNetworkShare`, whose
+fail-direction argument holds only at its first call site. Two of the three sit within twenty lines of
+the call that falsified them. Amendment 1 gains that trigger in this boundary, stated as the new call
+site rather than the edit.
+
+THE SECOND GENERATOR, AND A NEW STANDING AMENDMENT 3. The adversarial lens found that `nudgeFloor`
+reads the machine-local signpost through `readFileBounded` with no symlink refusal, where three
+sibling reads have one, including the one this very section added for exactly that reason. Confirmed
+at the line. The doctrine already owns the principle, that a guard is a property of the channel rather
+than of the producer that first needed it; what defeats it is scope, since the other callers are
+pre-existing code a round never opens. Amendment 3 keys on establishing a guard at a shared channel
+and puts that channel's other callers in scope, preferring the guard lifted into the shared helper
+over a fourth hand-written copy.
+
+MAJOR, THE ROUND'S OWN AMENDMENT-1 FIX INTRODUCED A FRESH AMENDMENT-1 DEFECT. The restated library
+section header now claims the gate state's per-session hold list is "read by the checkpoint CLI's
+status report and by the deferral nudge". Confirmed by count: the checkpoint CLI contains ZERO
+references to `interactiveHolds` or `holdNudgePath`. Raised by the blind lens, which had no access to
+the amendment that generated it.
+
+MAJOR, CONVERGED FROM THREE LENSES INDEPENDENTLY, on the residual of this round's own repair. Refusing
+the write on an uncertain reading is correct and stays, but it converts four previously self-healing
+readings into PERMANENT silence: an oversized, link-planted or unreadable `compact-hold-nudge.json`
+makes `recordHoldNudge` return false forever, with no surface reporting it and no self-heal, where the
+unparseable-JSON reading one line away deliberately repairs itself. The security lens adds the reach:
+the strict read-only agent class is permitted to write exactly `.kit/`, and unlike a planted marker
+this has no age-out. The reader already computes a `reason` at four legs that NO caller reads. The
+adjudicated repair takes both halves: self-heal the two legs that are provably not this writer's
+output (`bounded`, `kind`) by unlinking before the write, and keep the refusal for `unreadable` and
+`lstat`, which may be a transient lock over a real list; then surface the refusal in the status verb,
+on `reportGateState`'s existing reason-driven pattern.
+
+A REJECTED FINDING RE-CONFIRMED RATHER THAN RE-LITIGATED. The security lens re-raised the
+`gateText(sessionId)`-stored-versus-raw-`sessionId`-compared asymmetry that interim board 3 rejected as
+unreachable. The controller re-checked the guard rather than citing the old ruling: guard 5H at
+`compact-deferral-nudge.js:581` runs before guard 7H at `:600` and requires
+`sameSessionId(gateText(id), id)` to hold before any stamp is read, so the mismatch is still
+unreachable, and the lens itself rates it latent. It folds into round 4 as one-line hardening rather
+than as a defect, because it is trivial, in scope, and removes a trap a later caller would fall into.
+
+FINDINGS ROUTED TO SECTIONS THAT ALREADY OWN THEM, rather than fixed. The blind lens independently
+re-found the installer erasure of `compactNudgeFloor`, which became section 5 in the previous boundary,
+and the `cmdBoundary` collision note's silence on non-absent nulls, which section 4 retires by deleting
+that note. Both stand as already-routed. The lens also re-raised the no-goal bootstrap bound, adopted
+as a stated bound in interim board 3; its refinement is genuine and is carried to round 4, that the
+bound is stated in the SPEC and nowhere in the code's own header.
+
+MINOR ROUTED to section 3, whose scope is widened again in this boundary: `docs/fleet-integration.md`
+carries the same stale single-directive descriptor already routed here for the root `README.md` and
+`docs/architecture.md`, and sat in no section's sweep scope at all.
+
+DOCS CORRECTED IN THIS BOUNDARY BY THE CONTROLLER, since `docs/` is barred to subagents. Four
+`docs/security-model.md` items, two of them the controller's own prose from earlier boundaries: an
+ordinal calling the hold-stamp writer "the fourth path" while standing second in its own enumeration;
+a claim that the signpost is the only steering input outside the project, which the hook's own comment
+contradicts for a store-resident seat; an enumeration of the reads a symlinked `.kit` redirects that
+omitted the hold-stamp read this section added; and a bound stating that a forged hold "reaches no
+marker", which understated it, since the directive's whole purpose is to induce the reader to run the
+verb that writes one. That last is a security surface and the correction names the induced chain and
+what actually gates it.
+
+CURRENT GATE BASELINE. Targeted lane over the section's files plus the whole-tree pins whose subjects
+they are: 480 / 480 / 0 / 0, exit 0, run by the controller with the exit code read from the run's own
+marker file. The grep trap fired again and was caught again: node's summary lines carry a multi-byte
+prefix, so the anchored pattern returned nothing on a passing run and read exactly like no output. The
+whole gate is still OWED at the section close, twice over, for the push to main and for this session's
+earlier merge.
+
+BOX, NAMED RATHER THAN ASSUMED AWAY. The peer's long-held claim was released during this stretch, so
+the controller's own lane ran under a claim written with the clock read at the write rather than
+composed, and released scoped to this session's id at the run's end. Three foreign dotnet or testhost
+processes were running under no claim at all at the time of the write, the fourth such observation
+recorded on this box, so the claim was taken with that contention named rather than on a clean box.
+
+THE ROUND. Three reviewers via the Workflow route at model opus and effort max, which the Agent tool
+cannot set; all three resolved to claude-opus-5 read from the run record, so no substitution and no
+compensation notch is owed. The first-turn reading was taken on every dispatch. Workflow parallelism
+caps at two on this host, so the security reviewer started as the first finished, which is expected
+behaviour rather than a never-started dispatch. The tree-state bracket returned a delta and it was NOT
+a reviewer's: authorship was established by READING THE CONTENT rather than by recognizing the path,
+and the one-line change to `docs/architecture.md` is about the judgment sidecar's advisory batch
+budget, which is the peer session's effort.
+
+FOREIGN UNCOMMITTED WORK REMAINS IN THIS TREE AND IS NOT THIS SESSION'S TO COMMIT.
+`kaizen/notes-SCOTT-CLAUDE.md` carries the coordinator seat's notes, and the peer's sidecar effort now
+holds ten paths including `docs/architecture.md` and a plan doc of its own. Named and left; no commit
+of this session carries any of them.
+
+NEXT ACTION PER SECTION. Section 2: a fourth fix round, whose unit of work is deliberately different
+from the three before it. Those rounds repaired named sites and the next round found the same class at
+a new site each time, which is the definition of the workflow generating the bug, so round 4 sweeps
+each class to exhaustion rather than fixing a list: every function the changeset newly calls, checked
+against its own header; every caller of `readFileBounded`, checked for the link refusal; then the
+self-heal and the status surface. Then the whole gate under a fresh baseline, then Chapter 2 and the
+commit. Section 3: not started, scope widened a third time. Section 4: not started. Section 5: not
+started.
+
+Commit model in effect: Commit-and-Push. This entry, the widened Standing Amendment 1, the new Standing
+Amendment 3 and section 3's widened scope commit alone, on the precedent interim boards 1 to 5 set in
+this plan; section 2's code and its `docs/security-model.md` prose stay unstaged until the whole gate
+has run, since under this model the section commit goes straight to main.
