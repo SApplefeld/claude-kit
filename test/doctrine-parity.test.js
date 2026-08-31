@@ -178,6 +178,28 @@ test('the chapter-close bullet names the compaction checkpoint in each copy', ()
     }
 });
 
+// The gate bullet is the third surface stating the section-close lane duty,
+// and it was the one surface no pin read, which is how it kept the singular
+// while the chapter-close bullet and the Chapter template both moved to the
+// plural. A section close runs the targeted lane, with the contention lane
+// beside it where the delta touched machine-shared state, so a bullet
+// admitting one lane asks for less than the two surfaces that discharge it.
+test('the gate bullet admits every lane a section close runs, in each copy', () => {
+    const lead = '- **After each step, run the lane the moment calls for, and report the delta.**';
+    for (const [label, body] of [['skill body', skillBody()], ['doctrine mirror', mirrorBody()]]) {
+        const lines = body.split(/\r?\n/).filter((l) => l.startsWith(lead));
+        assert.strictEqual(lines.length, 1,
+            'expected exactly one gate bullet in the ' + label);
+        assert.ok(lines[0].includes('names ' + lanePluralDuty + ' that ran'),
+            'the gate bullet in the ' + label + ' no longer admits more than '
+            + 'one lane at a section close, while the chapter-close bullet and '
+            + 'the Chapter template both do, so the three surfaces state '
+            + 'different requirements and a Chapter naming both lanes '
+            + 'over-reports against this bullet while one naming a single lane '
+            + 'under-reports against the other two');
+    }
+});
+
 // The duty above is stated in the doctrine and discharged in the Chapter
 // template, which is the field list an executing session actually fills. A
 // template missing the field yields Chapters that satisfy the template and
