@@ -37,6 +37,28 @@ All measured 2026-08-30 on SCOTT-CLAUDE; the full graded thread is kaizen inbox 
 
 No new syntax anywhere, and one new state file, which section 2 turned out to need rather than choose: the gate rebuilds its state from exactly three keys on every decision, so a per-session throttle stamp parked there is erased by the next gate write, and section 2's own text requires that throttle either way. That file is `.kit/compact-hold-nudge.json`, one entry per held session, and amending this line rather than leaving it to contradict the tree is recorded as approval drift in section 2's Chapter. Section 1 widens who may run the existing boundary verb and makes it stamp the registry record itself. Section 2 gives the existing nudge a floor and a voice for held bystander sessions. Section 3 lands the prose and document sweep. The gate's verdict logic is untouched throughout.
 
+## Standing Brief Amendments
+
+Every dispatch from this point carries these, and the orchestrator holds them on an inline section too.
+
+1. **An amendment lands at every carrier of the claim it changes, not only at the site it edits.** A
+   change to a mechanism restates the authoritative header, enumeration, count, and prose paragraph
+   that describe that mechanism, wherever they sit in the file or the tree. This repo's own memory
+   records the class (skill amendments collide with unchanged neighbours), and section 2's second
+   review round found six instances in one changeset: a library section header still naming two
+   state files and two log writers where the code now has three of each, a security-model
+   enumeration still counting three screened write paths where there are four, a paragraph
+   justifying a design on "exactly three keys" that the same changeset made four, and a test comment
+   claiming real-world provenance for a value that had been replaced with a synthetic one. So after
+   any mechanism change, grep the file and the tree for the counts, the enumerations, and the header
+   paragraphs that describe it, and restate each. Reviewers read whole files rather than diffs,
+   because the defect lives in the seam between the amended sentence and its unchanged neighbour.
+2. **A reader that answers null for two different reasons is not a predicate.** Where a helper
+   returns null both for "absent" and for "could not be read", never branch on that null alone at a
+   site whose two directions differ in cost. Find the positive-absence discriminator (this tree
+   exports `goalStateAbsent` for exactly this) or add one, so the uncertain reading takes the silent
+   direction rather than the acting one.
+
 ## Sections of Work
 
 ### 1. The boundary verb serves a registered seat and stamps the record itself. Model: opus
@@ -55,7 +77,7 @@ Acceptance: a held bystander session at consumed >= floor receives a nudge namin
 
 ### 3. The document sweep. Model: sonnet
 
-`docs/architecture.md`'s compaction-gate passage gains the widened boundary path, the `Banked:` stamp, and the nudge floor, in that passage's existing register (state, not journey). `docs/security-model.md` is checked for whether the registry-entry writer amendment touches any stated claim about the coordinator directory's writer rules, and updated where it does, and its marker-session-id passage is verified as already updated by Section 1's changeset; the boundary verb writing a registry line is a new mechanical writer to a single-writer file and is stated as such. The plans index (`docs/plans/README.md`) already carries this plan from its authoring commit; verify rather than re-add. No Chapter or close-out work rides here; this section is the sweep only.
+`docs/architecture.md`'s compaction-gate passage gains the widened boundary path, the `Banked:` stamp, and the nudge floor, in that passage's existing register (state, not journey). Its scope is widened here by section 2's second review round, which routed three further staleness items to this section rather than leaving them to be discovered: the gate state's sentence names only the open deferral episode and must also name the per-session hold list section 2 added, the journal's `event` field carries two values rather than one, and `.kit/compact-hold-nudge.json` is unnamed in a passage that enumerates the subsystem's project-local files. `docs/security-model.md` is checked for whether the registry-entry writer amendment touches any stated claim about the coordinator directory's writer rules, and updated where it does, and its marker-session-id passage is verified as already updated by Section 1's changeset; the boundary verb writing a registry line is a new mechanical writer to a single-writer file and is stated as such. The plans index (`docs/plans/README.md`) already carries this plan from its authoring commit; verify rather than re-add. No Chapter or close-out work rides here; this section is the sweep only.
 
 Acceptance: both documents read current against the shipped code (checked by reading the code fresh, not the spec); no stale writer-rule claim about registry entries survives a tree-wide grep for the old three-writer phrasing; suite green at the recorded baseline.
 
@@ -469,3 +491,140 @@ under no claim at all, which is the second observation of something on this box 
 without reading the claim file. The reading survived it: the run completed whole in 19.9 minutes
 with no partial death, and the known memq-shim intermittent did not fire. This session did not
 write the claim file at any point.
+### Interim board 4 - 2026-08-31
+
+IN-FLIGHT SECTION AND ITS STAGE. Section 2 is implemented, has had one fix round over interim board
+3's adjudication, and that fix round's own review round is now adjudicated. It CANNOT close: the
+round returned one Major that is a genuine regression this section introduced, a second Major in the
+library's own section header, and a security finding, all going to a second fix round. Sections 3 and
+4 are not started.
+
+WHAT THE FIX ROUND DELIVERED, VERIFIED RATHER THAN ACCEPTED. Guard 5H no longer reads the shared
+`lastDecision` slot. The gate state gained a fourth key, `interactiveHolds`, a bounded newest-first
+list holding at most one deny-interactive record per session, upserted by `nextGateState` and rebuilt
+validatingly on read; a state file predating the key rebuilds empty and answers no hold, which is the
+fail-closed direction and is pinned. Seven tests were watched red first with their failure text
+reported. The hold-stamp read moved to `kit-read-lib`'s shared bounded reader, which this section
+already used one function away. The controller re-ran the lane itself rather than accepting the
+report: 471 tests / 471 passing / 0 failing / 0 skipped, exit 0 read from the run's own marker,
+against the recorded 463/463/0/0 on the same lane, so plus 8 and plus 8 with failures and skips
+unchanged.
+
+THE ONE DEVIATION FROM THE BRIEF, RATIFIED WITH ITS REASONING. The brief said every branch but the
+interactive deny carries the hold list through unchanged. The implementer made the allow branch drop
+the allower's own record and flagged it rather than absorbing it. That is correct and the literal
+brief was wrong: an allow lands this session's compaction, so its hold has ended by definition, and
+the shipped shared-slot design got that ceiling for free because the allow overwrote the slot. A
+naive per-session list silently removes it, leaving an allowed seat reading as held for the full
+four-hour idle bound and re-nudged every thirty minutes to declare a boundary it no longer needs,
+about eight false directives. The filter restores a documented property and mirrors the episode
+branch one line above it. The security lens checked the same branch independently and cleared it.
+
+THE ROUND. Three reviewers via the Workflow route at model opus and effort max, which the Agent tool
+cannot set; all three resolved to claude-opus-5 read from the run record, so no substitution and no
+compensation notch is owed. The first-turn reading was taken on all three, and the tree-state bracket
+compared byte-identical before dispatch and at return, so all three held read-only. Workflow
+parallelism caps at two on this host, so the security reviewer started as the first finished, which
+is expected behaviour rather than a never-started dispatch.
+
+MAJOR, THE SECTION INTRODUCED A REGRESSION, raised by the blind lens and confirmed by the controller
+against the code. `readGoal` answers null both for a goal state that is absent and for one it could
+not read, and the nudge's fork guards its armed-but-unbound stand-down on `goal &&`, so an unreadable
+goal state falls through to the hold path. A transient lock on `.kit/goal-state.json` therefore
+speaks the bystander directive AT THE LEASH HOLDER, telling it it holds no leash and pointing it at a
+marker the gate's boundary leg never reads, so the declaration is spent on nothing and the chapter
+checkpoint it should have opened is displaced. Before this section the same transient produced
+silence, which is what makes it a regression rather than a pre-existing gap, and the file's own
+comment states this path is allowed to fail only in the silent direction. `kit-goal-lib.js` already
+exports `goalStateAbsent` as the positive-absence discriminator, written for exactly this.
+
+MAJOR, the library's gate-record section header describes the pre-change contract, raised by the
+adversarial lens: two project-local files where there are three, two writers per file where the log
+has three, three screened paths where there are four. This is the repo's own named standing defect
+class and it recurred across six sites in one changeset, so the recurrence rule fires and it is
+written into a new `Standing Brief Amendments` block rather than only fixed. That block is approval
+drift by construction and is named as such here and in the Chapter.
+
+MAJOR, the agent_id substitution, RESOLVED IN THIS BOUNDARY rather than routed on again. Interim
+board 3 carried it for completion with its predicate and scope stated, or reversion, and the sweep
+settles it in a direction neither option anticipated. The value `ae3954fd9fc0deefa` is a real agent
+identifier, and `docs/security-model.md` does name a real agent identifier among the values redacted
+before commit, but that bar's scope is a HARVESTED FIXTURE screened at the freezing step, which the
+two test payloads are and an archived plan's Chapter is not. Archived Chapters record real agent ids
+as evidence anchors deliberately and at scale, thirteen across four archived plans, one of which uses
+agent transcript filenames as the lookup keys its findings are verified through. So the fixture
+substitution stands and the archive is not an incomplete sweep. The controller redacted the archived
+instance before finding this and reverted it in the same turn; that file is byte-identical to HEAD.
+Predicate: the literal, the structural pattern `agent_id: [0-9a-f]{16,}`, and a bare 17-hex-token
+shape. Scope: tracked files. Control: a synthetic 17-hex value withheld from the literal, matched on
+shape, which spoke. Result: no tracked hit outside the archived Chapters the bar does not reach. The
+gate's own procedure asks for the redaction to be stated in the case's own note, so the second fix
+round states it at the fixture.
+
+SECURITY, three findings, none a breach, and one a partial undo of a fix this round made. Routing the
+hold-stamp read through the shared bounded reader bought the descriptor-settled kind the
+lstat-then-open preamble could not give, and cost the symlink refusal that preamble did give, since
+that reader follows a link at the final component by design. The read now follows a link where its
+own writer refuses one, so a link planted at that path silences the directive, and a link pointing at
+a dead network mount stalls a hook that runs after every covered tool return, which is the hazard the
+payload-cwd network screen exists to prevent and cannot see from there. A security finding is never
+parked, so it goes to the second fix round with the repair the lens named. The other two are claims
+in `docs/security-model.md`, one of which the code fix restores rather than the prose.
+
+MINORS going to the second fix round: a deny-boundary carrying the deciding session's own hold record
+through, so the state asserts one session is both held and holding the leash; the hold-stamp reader
+bounding staleness in one direction only, so a future-dated entry occupies a capped slot nothing can
+age out, which falsifies the eviction bound this plan states in two places; `recordHoldNudge` gating
+on write access to a file it never writes; a class-sweep control that cannot fail, comparing two
+paths that differ by construction; a derived sweep whose predicate matches export NAMES rather than
+the class it guards; and two comments the same changeset falsified.
+
+MINOR REVIVED after the fix round refuted it, and the revival is the stronger argument. The fix round
+was asked to confirm or refute the 7H-before-6H ordering rationale, explicitly unrated in both
+directions, and refuted it on the case where a stamp exists. The blind lens found the case that
+dominates a hold's life: below the floor no stamp is ever written, so the interval check passes on
+every covered tool return and the home-directory read the ordering claims to save happens every time,
+throughout exactly the suppression window the floor exists to create. Sending an open question to a
+reviewer unrated in both directions is what surfaced it, the same instrument that found interim board
+2's Critical.
+
+MINOR ROUTED rather than fixed here: `docs/architecture.md`'s gate passage is stale in three further
+ways, and section 3's scope is widened in this boundary to name them.
+
+NOT ACTED ON, with the reason. The `cmdBoundary` stderr note's two Minors stay unfixed: section 4
+removes that note entirely and retires them, so fixing code one section before deleting it is
+throwaway work. The no-goal bootstrap bound stays a stated bound. One reviewer observation, that a
+hold ending without the gate recording anything newer draws the directive about eight times over four
+hours, is recorded as a bare observation rather than actioned.
+
+CURRENT GATE BASELINE. Targeted lane over the section's files plus the whole-tree pins whose subjects
+they are: 471 / 471 / 0 / 0, exit 0, run by the controller with the exit code read from the run's own
+marker rather than from a grep over its output. The grep trap fired once and was caught: node's
+summary lines carry a multi-byte prefix, so a byte-oriented `^.` pattern returns nothing on a passing
+run and reads exactly like no output. The whole gate is still OWED at the section close, twice over,
+for the push to main and for this session's merge of eighteen commits.
+
+BOX, NAMED RATHER THAN ASSUMED AWAY. The machine heavy-process claim is still held by AI-OS: Worker,
+started 14:40:00Z for 10800 seconds, so its declared bound expired at 17:40:00Z and the claim was
+still on disk hours past it. Release is the holder's act and not this session's, so every run this
+stretch was taken under NAMED CONTENTION with the claim file never written. A foreign `node --test`
+covering an overlapping file was observed running under no claim at all during one lane run, the
+third observation of something on this box spawning suites without reading the claim file.
+
+LOCAL STATE ALTERED, NAMED because it is not this session's to leave unreported. The build stamp
+`plugins/claude-kit/.claude-plugin/build-info.json` and `plugins/claude-kit.zip` were regenerated by
+the fix round, both gitignored build outputs, because editing the hooks made the stamp disagree with
+them and three hook-canary tests correctly reddened on it.
+
+A FOREIGN UNCOMMITTED FILE REMAINS IN THIS TREE AND IS NOT THIS SESSION'S TO COMMIT.
+`kaizen/notes-SCOTT-CLAUDE.md` carries the live coordinator seat's appended notes. Named and left; no
+commit of this session carries that path.
+
+NEXT ACTION PER SECTION. Section 2: a second implementer fix round over the findings above, then the
+whole gate under a fresh baseline, then Chapter 2 and the commit. Section 3: not started, scope
+widened in this boundary. Section 4: not started, the marker-collision repair.
+
+Commit model in effect: Commit-and-Push. This entry and the new Standing Brief Amendments block
+commit alone, on the precedent interim boards 1 to 3 set in this plan; section 2's code and its
+`docs/security-model.md` prose stay unstaged until the whole gate has run, since under this model the
+section commit goes straight to main.
