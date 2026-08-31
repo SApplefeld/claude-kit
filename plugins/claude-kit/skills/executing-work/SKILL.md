@@ -150,7 +150,7 @@ For each Section of Work, in order (sections run concurrently only where the dis
        checkout reaching beyond those files among them; and no
        `git checkout -- <file>` at all, its own files included, since that
        restores the file to HEAD rather than to the state before the
-       agent's own edits, which the commit-model rule leaves unstaged. Two
+       agent's own edits, which your own contract leaves unstaged. Two
        mechanisms cover what those reach for, and they are not
        interchangeable: a pristine baseline to compare against is
        `git show HEAD:<path>` written under the `.kit/` scratch path, and
