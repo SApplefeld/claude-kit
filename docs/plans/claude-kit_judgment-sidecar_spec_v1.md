@@ -908,3 +908,89 @@ the two workers write different sections, and a clean merge is exactly the case 
 whole gate re-run afterward plus a read of the merged document, because two additions to one
 inventory document can make incompatible claims about the same surface with no conflict marker to
 catch it.
+### Interim board 7 - 2026-08-31
+Section 7 is through its eighth fix round and has not closed. The closure-drought floor is met
+again and the compaction gate raised its own signal alongside, and this entry also lands during a
+forced wait for the machine rather than at a moment of this session's choosing.
+
+The round-8 delta is the first in this section that closes the class at the layer the class
+actually lives on. Amendment 7's instance is closed in the WRITER rather than in the screen:
+`sidecar/logs.js` gains `ensureDir(dir, guardFrom)`, which creates one component at a time below
+the screened root instead of handing the whole chain to a recursive mkdir, and all three of
+`sidecar/battery.js`'s fixture-tree creators pass the screened `--state-dir` into it. The
+hard-link refusal moved out of the producer that needed it second and into `guardWriteTarget` at
+the boundary both producers write through, which is the shape the doctrine already requires of a
+sanitizing guard once a channel gains a second producer. The invariance table's coverage floor is
+no longer a global count but a per-transform one derived from what the platform can actually
+build, so a transform that silently stops generating fails the case rather than being absorbed by
+a total, which was round 7's sharpest finding and the one two lenses reached independently. And
+the suite's last read of the operator's real store is gone: every child now inherits a fixture
+home, `os.homedir()` survives in exactly two places for the string it returns and never as a path
+to open, and the file header states that rather than claiming an exception.
+
+Everything above was verified here at the code rather than taken from the report. The production
+call shape was driven by a two-directional control this session wrote and ran: a junction on an
+intermediate component under a screened root is refused with nothing created inside the fixture
+live tree, and the identical shape with no junction is still created outside it. The per-transform
+floor, harvest's single resolved `--out`, `fieldCuts` reading the cap rather than the resulting
+length, and every `os.homedir()` and `.claude` site in the suite were each read at source. An em
+dash sweep over the five changed files returns zero against a control file carrying one, so the
+silence is the instrument working; the predicate is the literal character and the scope is those
+five files.
+
+The entry's most important content is a controller error, because it is the kind that produces no
+error message. A blocking `TaskOutput` call returned at its own timeout with a raw slice of the
+agent's transcript, and that slice ended in a `DONE_WITH_CONCERNS` report. It was read as the
+agent's final report; it was the PREVIOUS round's report, still sitting in the transcript while
+the agent worked the round after it. Two things followed. A file edit was made to
+`test/kit-sidecar-battery.test.js` while the agent was still writing that same file, so two
+writers raced on one header, and a whole-gate run was started against a tree the agent was still
+changing. Neither cost anything durable: the agent's fix superseded the edit with a stronger one
+and the surviving header is self-consistent and was re-verified true, and the gate was discarded
+unread rather than reported. The generalization is the one the completion contract already
+states and this session did not apply: a timed-out call's payload is a slice and never a result,
+and a terminal marker found inside a slice belongs to whatever round wrote it. Only a status of
+completed yields a final report, and here that status arrived thirty minutes later.
+
+One implementer disagreement was adopted against this session's own written instruction. The fix
+brief specified stripping trailing dots and spaces before the segment compare on win32; the
+implementer folded unconditionally and argued that the asymmetry justifying the strip, where
+over-refusal costs a rename and under-refusal costs the operator's store, is a property of the
+filesystem being addressed rather than of the platform the process runs on, since a Linux host can
+export a share a Win32 client canonicalizes on the far end. Adopted, because this module already
+folds case unconditionally on exactly that reasoning and this plan's own declared assumption
+records it, so gating one and not the other would be incoherent.
+
+One implementer concern is answered here rather than left open. `logs.ensureDir` called with no
+root is still the old permissive `mkdir -p`, and the daemon's own call sites use that form. It is
+safe there and the reason is structural rather than a judgement: `statePaths` returns the root
+plus three children one level below it, so there is no intermediate component for a reparse point
+to sit on, and each child is lstat-refused on its own before creation. Recorded as a bounded
+residual rather than a defect, bounded by the shape of the paths rather than by anybody's care.
+
+A second Amendment 5 hazard was found and closed by the implementer inside its own fix and is
+worth naming: an existing case built its control path inside the operator's real `~/.claude` and
+registered a recursive remove on it. It never created anything, but only because the guard the
+case exists to test was working, and the path it sat beside is the fleet-wide capture activation
+lever. It now runs against a fixture home.
+
+The gate is HELD rather than run, and this is a wait rather than a result. A live foreign claim
+stands on the machine's one heavy-process slot: session `af7f2d50-...`, repo `D:/ai-os`, a
+whole-solution verification gate started 03:36:00Z with a 1800-second estimate. Presence licenses
+waiting, so no gate figure is reported at this boundary and none is inferred from the
+implementer's own lane run, which reports 250 / 248 / 0 / 2 exit 0 on the two sidecar suites and
+is recorded as REPORTED. A process poll taken before the claim was read showed three foreign
+`dotnet` processes at about 150 MB each and no test runner; that poll is named as contention
+rather than read as a clearance.
+
+Live dispatches at this boundary: none. The round-8 implementer returned completed and its files
+are settled, confirmed by a process poll finding no surviving `node --test` child and by the tree
+not moving across two readings.
+
+Next action: wait out the peer's claim, take the slot by exclusive create, run the whole gate and
+report it against Interim board 5's 2643 / 2636 / 1 / 6, then the section 7 live acceptance (the
+frozen batteries against the live endpoint plus a fresh harvest end to end), Chapter 7, flip the
+plan to Complete, move section 8's substance to `docs/backlog.md`, archive via curating-docs,
+commit and push. The push expects a possible non-fast-forward: a second worker commits to this
+repository from a worktree and touches the same shared documents, and a clean merge there is
+exactly the case that needs the whole gate re-run afterwards plus a read of the merged document.
