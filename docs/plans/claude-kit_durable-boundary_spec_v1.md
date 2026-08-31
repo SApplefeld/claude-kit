@@ -8,7 +8,7 @@ Session model: any executor session in the kit repo; three sections, tiers per s
 
 ## Dispatch Authorization
 
-Authorized 2026-08-30 by the operator at the keyboard in the expert seat's design dialog: the durability-declaration model for compaction boundaries (the boundary CLI as the declaration act for registered seats on shared trees, the machine-stamped registry record, and the context-floored deferral nudge), queued for execution immediately after the judgment-sidecar plan by the operator's direct instruction, for any session holding this plan; re-ordered 2026-08-31 by the operator so the gate-cadence plan runs between the sidecar and this one, with a fleet update at that boundary. The queue insertion into the armed goal state was itself operator-instructed in the same dialog.
+Authorized 2026-08-30 by the operator at the keyboard in the expert seat's design dialog: the durability-declaration model for compaction boundaries (the boundary CLI as the declaration act for registered seats on shared trees, the machine-stamped registry record, and the context-floored deferral nudge), queued for execution immediately after the judgment-sidecar plan by the operator's direct instruction, for any session holding this plan; re-ordered 2026-08-31 by the operator, finally by splitting the six sidecar-disjoint plans to a parallel worktree queue, which leaves this plan directly after the sidecar again with the fleet update still at that boundary. The queue insertion into the armed goal state was itself operator-instructed in the same dialog.
 
 ## Goal
 
@@ -67,6 +67,6 @@ Acceptance: both documents read current against the shipped code (checked by rea
 
 - `docs/archive/claude-kit_seat-infrastructure_spec_v1.md`: the registry entry shape and directory contract this plan amends.
 - `kaizen/notes-SCOTT-CLAUDE.md` note 16 and its four continuations: the graded evidence and design thread this spec is distilled from.
-- `docs/plans/claude-kit_judgment-sidecar_spec_v1.md`: runs first in the armed queue; the gate-cadence plan sits between it and this one since the operator's 2026-08-31 re-order.
+- `docs/plans/claude-kit_judgment-sidecar_spec_v1.md`: runs first in the armed queue, immediately before this plan; the 2026-08-31 split moved the gate-cadence plan to a parallel worktree queue.
 
 ## Chapters
