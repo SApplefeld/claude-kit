@@ -1511,7 +1511,7 @@ test('a foreign repository with uncommitted changes is still refused, never comm
 // nothing to do. The naming half is a consent property rather than a wording
 // preference: the allowlist admits the memory tiers and the coordinator
 // directory, so a prompt naming only the tiers asks the operator to approve
-// less than -Fix commits and pushes.
+// less than -Fix commits, and less than the sync runner's later push publishes.
 test('the consent prompt names exactly the action -Fix is about to take, for every combination', { skip: !isWin }, () => {
     // Not a repo at all: init plus one commit.
     let g = doctorFixQuestion({ IsRepo: false, IsOwnRepo: false, IgnoreState: 'Missing', AttrState: 'Missing', Dirty: false, DirtyCount: 0 });
@@ -1651,6 +1651,106 @@ test('the doctor reports the sync section in both states against a redirected st
         assert.match(drifted.detail, /differs from the allowlist/);
     } finally {
         rmDir(fake.home);
+    }
+});
+
+// The -Fix report branches, reached by extracting the doctor's memory-sync
+// section and driving it directly. The whole doctor cannot serve here: under
+// -Fix its embedder section installs software, which a test must never do. The
+// extraction mirrors the goal-state section harness in doctor-goal-state.test.js,
+// and the installer is dot-sourced rather than stubbed, so the commit the
+// section reports on is a real one.
+function doctorSyncFixReports(store) {
+    const outFile = path.join(os.tmpdir(), 'memsync-fix-' + process.pid + '-' + Date.now()
+        + '-' + Math.random().toString(36).slice(2) + '.json');
+    const script = [
+        '$src = [System.IO.File]::ReadAllText(' + q(DOCTOR) + ')',
+        '$startMarker = "# --- Memory sync. The memory store is"',
+        '$endMarker = "# --- Embedder (semantic memory search)."',
+        '$start = $src.IndexOf($startMarker)',
+        'if ($start -lt 0) { throw "memory sync start marker not found in doctor.ps1" }',
+        '$end = $src.IndexOf($endMarker, $start)',
+        'if ($end -lt 0) { throw "memory sync end marker not found after the section" }',
+        '$section = $src.Substring($start, $end - $start)',
+        '. ' + q(INSTALLER),
+        '$script:Reports = @()',
+        'function Get-SanitizedLine { param($Value, $MaxLength = 120) return [string]$Value }',
+        'function Report { param([string]$Status, [string]$Name, [string[]]$Detail = @())',
+        '    $script:Reports += @{ Status = $Status; Name = $Name; Detail = ($Detail -join "`n") } }',
+        'function Get-Consent { param($Question) return $true }',
+        '$claudeDir = ' + q(store),
+        '$Fix = $true',
+        'Invoke-Expression $section',
+        '$__json = @{ Reports = @($script:Reports) } | ConvertTo-Json -Compress -Depth 6',
+        '[System.IO.File]::WriteAllText(' + q(outFile) + ', $__json, (New-Object System.Text.UTF8Encoding($false)))'
+    ].join('\n');
+    const res = pwsh(script);
+    assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+    const parsed = JSON.parse(fs.readFileSync(outFile, 'utf8'));
+    fs.rmSync(outFile, { force: true });
+    assert.ok(Array.isArray(parsed.Reports), 'Reports must be an array: ' + res.stdout);
+    return parsed.Reports.filter((r) => r.Name === 'Memory sync');
+}
+
+// A commit reported beside an "origin:" line and a "Destination:" line reads as
+// published, so the FIXED block names the push's own status and hands over the
+// command. That pairing is safe in exactly one report and nowhere else: every
+// other branch reachable here is a WARN or a FAIL, and the leak FAIL is one the
+// operator reaches while a non-memory blob sits in committed history, where a
+// ready-made push command is the precise act the leak probes exist to prevent.
+// The two halves are pinned together because the risk is that a later edit moves
+// the lines back up into the shared prefix, where they print on every branch.
+test('the manual-push recipe rides the FIXED report only, never a report that says stop', { skip: !isWin }, () => {
+    const ident = ['-c', 'user.email=probe@example.com', '-c', 'user.name=probe'];
+
+    const healthy = makeStore();
+    try {
+        assert.strictEqual(installRepo(healthy.store).status, 0);
+        const { branch } = attachRemote(healthy);
+        assert.strictEqual(git(healthy.store, ['push', '-q', '-u', 'origin', branch]).status, 0);
+        write(path.join(healthy.store, 'memory-types', 'new-note.md'), '# new\n');
+
+        const fixed = doctorSyncFixReports(healthy.store);
+        assert.strictEqual(fixed.length, 1, JSON.stringify(fixed));
+        assert.strictEqual(fixed[0].Status, 'FIXED', fixed[0].Detail);
+        assert.match(fixed[0].Detail, /Destination: /);
+        // This half is also the negative assertion's control: it proves both
+        // patterns below can match a report at all, so the absence they assert
+        // in the leak case is the fix working rather than a pattern that never
+        // matched anything.
+        assert.match(fixed[0].Detail, /Committed, not pushed/);
+        assert.match(fixed[0].Detail, /Manual push: git -C /);
+    } finally {
+        rmDir(healthy.home);
+    }
+
+    const leaking = makeStore();
+    try {
+        assert.strictEqual(installRepo(leaking.store).status, 0);
+        const { branch } = attachRemote(leaking);
+        assert.strictEqual(git(leaking.store, ['push', '-q', '-u', 'origin', branch]).status, 0);
+        // A non-memory blob in committed history with an index that reads
+        // clean. This state is reachable rather than contrived: the -Fix
+        // consent gate fires on Dirty and never consults the leak probes, so
+        // the commit succeeds, and the re-read the doctor performs after it
+        // lands in the leak branch.
+        assert.strictEqual(git(leaking.store, ['add', '-f', 'settings.json']).status, 0);
+        assert.strictEqual(git(leaking.store, ident.concat(['commit', '-q', '-m', 'leak'])).status, 0);
+        assert.strictEqual(git(leaking.store, ['rm', '--cached', '-q', 'settings.json']).status, 0);
+        assert.strictEqual(git(leaking.store, ident.concat(['commit', '-q', '-m', 'untrack'])).status, 0);
+        write(path.join(leaking.store, 'memory-types', 'new-note.md'), '# new\n');
+
+        const failed = doctorSyncFixReports(leaking.store);
+        assert.strictEqual(failed.length, 1, JSON.stringify(failed));
+        assert.strictEqual(failed[0].Status, 'FAIL', failed[0].Detail);
+        // Pin the branch before asserting what it lacks: without this the two
+        // absences below would pass just as well on some other FAIL, and the
+        // case would stop covering the report it was written for.
+        assert.match(failed[0].Detail, /puts non-memory paths in reach of a push/);
+        assert.doesNotMatch(failed[0].Detail, /Manual push: git -C /);
+        assert.doesNotMatch(failed[0].Detail, /Committed, not pushed/);
+    } finally {
+        rmDir(leaking.home);
     }
 });
 

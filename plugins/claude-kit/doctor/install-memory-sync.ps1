@@ -847,5 +847,13 @@ function Install-MemorySyncRepo {
         return @{ Ok = $false; Notes = ($notes + @("git commit failed: " + ($commit.Output -join " "))) }
     }
     $notes += ("Committed " + $stagedCount + " pending change(s) admitted by the allowlist.")
+    # The commit's other half is said rather than left to inference, but it is
+    # said by the doctor's healthy report branch and not here. Two reasons the
+    # note cannot live in this function. This function has a second caller, the
+    # sync runner (sync-store.ps1), whose own run does push, so a note asserting
+    # otherwise would be false in that context. And the doctor prepends these
+    # notes to every report branch it emits, including the one that FAILs
+    # because a non-memory blob is reachable in committed history, where a
+    # ready-made push recipe is precisely the act the report exists to stop.
     return @{ Ok = $true; Notes = $notes }
 }
