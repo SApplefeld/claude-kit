@@ -132,7 +132,7 @@ Acceptance: two sessions declaring on one checkout each retain a live marker and
 
 Appended 2026-08-31 during section 2's second review round, and recorded there and in section 2's Chapter as the approval drift it is. Section 2 put its context floor in `compactNudgeFloor` in `~/.claude/claude-kit.local.json`, which the approved Approach names. The blind lens found that the file has two writers and both rewrite it wholesale from a fixed two-key template rather than merging: `setup.sh` writes it with a single `printf ... > "$SIGNPOST"` redirect on every run, unconditionally, and `doctor.ps1` rewrites it whenever the signpost is absent or its `kitRepoPath` no longer resolves. So an operator who sets a floor and later runs setup, or moves the clone and runs the doctor's fix path, loses the setting silently: the hook reads the default and nothing on any surface says the value went. The floor is the one knob section 2 ships, so a knob that cannot survive an installer run is that section's defect reached from outside its own files.
 
-The change: both writers merge into the existing object rather than replacing it, preserving every key they do not own, and both keep their current behaviour for a signpost that is absent or that cannot be parsed, where a wholesale write is the only thing they can do. The two keys they own (`kitRepoPath`, `machine`) keep being overwritten, which is what those writers exist for. Nothing about the floor's location changes, so section 2's text stands as approved.
+The change: both writers merge into the existing object rather than replacing it, preserving every key they do not own, and both keep their current behaviour for a signpost that is absent or that cannot be parsed, where a wholesale write is the only thing they can do. The two keys they own (`kitRepoPath`, `machine`) keep being overwritten, which is what those writers exist for. Nothing about the floor's location changes, so section 2's text stands as approved. This section's scope is widened by section 2's fourth review round to cover a second property of the same two writes, found by the security lens and confirmed at both lines: neither writer replaces the file, `setup.sh` using a truncating shell redirect and the doctor an in-place `WriteAllText`, so both FOLLOW a symlink already standing at the signpost path. A link planted there therefore turns the next setup or doctor fix run into a write of installer-composed JSON through the link to wherever it points. Both writers refuse a signpost whose final component is a link, rather than following it, and say so on the surface each already reports through; the refusal is stated as a property of the write rather than of any one caller, since both writers own the same file. Tests red-first alongside the merge cases: a link at the signpost path is refused by each writer and the file it names is left untouched.
 
 Tests red-first: a signpost carrying `compactNudgeFloor` beside the two owned keys keeps the floor across a doctor fix-path rewrite, watched red against the current wholesale write; an absent signpost is still created with the two owned keys; a signpost whose JSON does not parse is still replaced wholesale rather than failing. The shell writer takes the same three cases if the suite can drive it, and where it cannot, the section says so rather than pinning nothing and reporting green.
 
@@ -946,3 +946,130 @@ Commit model in effect: Commit-and-Push. This entry, the widened Standing Amendm
 Amendment 3 and section 3's widened scope commit alone, on the precedent interim boards 1 to 5 set in
 this plan; section 2's code and its `docs/security-model.md` prose stay unstaged until the whole gate
 has run, since under this model the section commit goes straight to main.
+### Interim board 7 - 2026-08-31
+
+IN-FLIGHT SECTION AND ITS STAGE. Section 2 is implemented and has had four implementer fix rounds; the
+fourth round's own review is now adjudicated. It CANNOT close: one Major converged from all three lenses
+and is confirmed at the lines, two further Majors are confirmed, and a cluster of comment and test
+defects goes to a fifth round. Sections 3, 4 and 5 are not started. Round 4 was the round that swept by
+CLASS rather than by site, and the sweeps themselves came back sound; what defeated it is narrower and
+more interesting than a missed site, and is the entry below.
+
+WHAT FIX ROUND 4 DELIVERED, VERIFIED RATHER THAN ACCEPTED. Both class sweeps ran and both are reported
+as enumerations with a per-item verdict, which is what the round was for. The added-caller sweep checked
+20 kit-defined callees against their own headers, fixed 6, exempted 13 with the rule naming each, and
+reported 1 out of scope. The `readFileBounded` sweep enumerated all 9 call sites outside the library
+with a per-caller verdict, fixed the one defect, deliberately declined the guard at a second with a
+stated reason, and edited none of the 7 out of scope, which the controller confirmed by diffing all five
+out-of-scope files against HEAD: every one byte-identical. The guard was lifted into the shared helper as
+an OPT-IN (`refuseLink`) defaulting to today's behaviour, which the controller directed for a reason it
+records here: an unconditional refusal inside `readFileBounded` would have changed behaviour for seven
+callers nobody reviewed, `session-start.js` among them, on every session start. The controller re-ran the
+lane itself: 483 tests / 483 passing / 0 failing / 0 skipped, exit 0 read from the run's own marker,
+against the recorded 480/480/0/0, so plus 3 and plus 3 with failures and skips unchanged.
+
+THE ROUND'S OWN AMENDMENT RECURRED INSIDE THE ROUND THAT SWEPT FOR IT, and this is the boundary's real
+finding. All three lenses converged INDEPENDENTLY on it and the controller confirmed it at the line.
+Round 4's self-heal unlinks the hold-stamp file when the reader answers `bounded`, justified on the
+ground that this writer's own file "cannot approach the cap". But `readFileBounded` sets `bounded` for
+TWO different facts: the ceiling binding (`kit-read-lib.js:185`) and a fill loop ending short
+(`:192`), the second meaning the file was truncated under the read or a device stopped answering. The
+reader's own comment says so in terms: "It reads no differently to a caller than the ceiling binding, so
+it sets the same flag." So a file this writer DID produce reaches the destructive branch, and the unlink
+then erases every peer session's live stamp, which is exactly the defect fix round 3 closed. That is
+Standing Amendment 2's shape verbatim, one in-band value for two facts branched on at a write site whose
+two directions differ in cost, introduced by the round whose brief carried Amendment 2 and whose sweeps
+were aimed at Amendment 1 and Amendment 3. The lesson is not that the sweeps failed. They did not. It is
+that a round which ADDS a destructive branch owes that branch its own reading of every value it keys on,
+and no class sweep keyed on headers or on callers reaches a predicate that is simply wrong.
+
+MAJOR, THE NEW TEST FAILS ON POSIX RATHER THAN SKIPPING, raised by the adversarial and security lenses
+independently and confirmed by the controller against the repo's own idiom. The signpost-link pin plants
+its link by shimming `fs.lstatSync`, and `readFileBounded` consults lstat only on the branch guarded by
+`!fs.constants.O_NOFOLLOW`. That constant is undefined on win32 and defined on Linux and macOS, so off
+Windows the shim is never consulted, the real file opens, and the assertion fails rather than skipping.
+The repo carries the `{ skip: process.platform !== 'win32' }` idiom at four sites for exactly this shape.
+The consequence beyond portability is the one worth recording: the O_NOFOLLOW leg, which is the half that
+actually closes the window on every platform that has it, is exercised by nothing, and
+`test/kit-read-lib.test.js` gained no pin at all for an option added to the reader it owns.
+
+MAJOR, A FALSE SECURITY CLAIM WAS CAUGHT IN THE WORKING TREE, AND IT WAS THE CONTROLLER'S OWN. The
+implementer's code comment and the controller's `docs/security-model.md` prose both justified the new link
+refusal on the ground that "the two installers that own this file both rename a regular file into place".
+The security lens checked the installers rather than the claim: `setup.sh:34` is a truncating shell
+redirect and `doctor.ps1:390` is an in-place `WriteAllText`, so neither renames and BOTH FOLLOW a link
+already standing at the path. Confirmed by the controller at both lines. The claim was plausible,
+internally consistent between a code comment and a document, and accepted by two parties before anyone
+read `setup.sh`, which is the standing lesson that document agreement is not evidence. It never reached a
+commit: the prose is corrected in the working tree and the code comment goes to round 5, re-justified on
+what the refusal actually does rather than on a property of the file's writers.
+
+THE INSTALLERS' OWN FOLLOW-THROUGH IS A REAL EXPOSURE AND WIDENS SECTION 5 RATHER THAN ROUND 5. Since
+both writers follow a link at the signpost, a link planted there makes the next `setup.sh` or doctor fix
+run write attacker-influenced JSON through it to wherever it points. Section 5 already owns both writers
+and is already changing how they write, so the fold predicate fails for round 5 and the item lands where
+the work already is. Section 5's scope is widened in this boundary and named as the approval drift it is.
+
+MAJOR ROUTED TO SECTION 3 rather than fixed. Two `docs/security-model.md` claims about the shared reader
+were left byte-unchanged by a changeset that falsified them: "Nothing stats a path before the open", now
+false on win32 for an opt-in caller, and "The boundary follows a symlink rather than refusing one",
+missing the by-default qualifier. Both are corrected by the controller in this boundary rather than
+routed, since `docs/` is barred to subagents and a false security claim never outlives the commit that
+falsifies it.
+
+FINDINGS STANDING AS ALREADY-ROUTED, re-found independently and correctly. The blind lens re-found the
+marker-collision fan-out (section 4) and the installer erasure of `compactNudgeFloor` (section 5), and
+re-raised the replaced-marker note's assertion of harm to an already-lapsed peer, which section 4 retires
+by deleting that note outright. All three stand where they are. The up-to-eightfold repeat of the
+directive on a hold that has already ended stays a recorded observation rather than an action, on interim
+board 4's reasoning.
+
+A FINDING ROUTED OUT OF THIS PLAN. Two out-of-scope callers of the hardened channel,
+`memory-recognition-nudge.js:1295` and `session-start.js:708`, read files their own writers create with
+no link refusal, which the round enumerated and correctly declined to edit. They serve other hooks'
+hardening rather than this plan's goal, so they go to `docs/backlog.md` with the reason rather than into
+a section here.
+
+CURRENT GATE BASELINE. Targeted lane over the section's files plus the whole-tree pins whose subjects
+they are: 483 / 483 / 0 / 0, exit 0, run by the controller with the exit code read from the run's own
+marker file. The whole gate is still OWED at the section close, twice over, for the push to main and for
+this session's earlier merge.
+
+BOX, NAMED RATHER THAN ASSUMED AWAY. A peer seat wrote a 300-second claim mid-stretch and was still
+holding it 2.5 minutes past its own declared bound. Release is the holder's act, so the controller waited
+the full five minutes, then ran its lane under NAMED CONTENTION without writing the claim file, which is
+what the protocol permits. Four foreign dotnet processes were running beside it. The fix round's own two
+lane runs each found the claims directory empty, wrote a claim with the clock read at the moment of the
+write rather than composed, and deleted it scoped to this session's id.
+
+THE ROUND. Three reviewers via the Workflow route at model opus and effort max, which the Agent tool
+cannot set; all three resolved to claude-opus-5 read from the run record, so no substitution and no
+compensation notch is owed. The first-turn reading was taken on every dispatch that had one; Workflow
+parallelism caps at two on this host, so the security reviewer had no transcript at the first-turn window
+and started as the first finished, which is expected behaviour rather than a never-started dispatch. The
+tree-state bracket returned one delta and it was NOT a reviewer's: authorship was established by READING
+THE CONTENT rather than by recognizing the path, and the two added lines in `sidecar/install-daemon-task.ps1`
+report the sidecar daemon's own log paths, which is the peer session's effort.
+
+HEAD MOVED UNDER THIS SESSION MID-ROUND. A peer committed 530fcee while the review round was in flight.
+Its fourteen files are entirely that session's sidecar effort and none is a section 2 file, confirmed by
+diffing the commit's own file list against this section's; this session's uncommitted work is intact and
+the review round's base ref was taken as 530fcee rather than the stale one.
+
+FOREIGN UNCOMMITTED WORK REMAINS IN THIS TREE AND IS NOT THIS SESSION'S TO COMMIT.
+`kaizen/notes-SCOTT-CLAUDE.md` carries the coordinator seat's notes and the peer's sidecar effort holds
+several paths of its own. Named and left; no commit of this session carries any of them.
+
+NEXT ACTION PER SECTION. Section 2: a fifth fix round, narrower than the fourth by design, since the
+fourth's sweeps came back sound and what it owes is the destructive branch's own predicate rather than
+another sweep. Its items: split the reader's `bounded` into a ceiling leg and a short-fill leg and heal
+only the ceiling; give the new pin its platform guard and pin the O_NOFOLLOW leg in the reader's own
+suite; re-justify the link refusal's code comment on what the refusal does; and the comment and status
+minors. Then the whole gate under a fresh baseline, then Chapter 2 and the commit. Section 3: not
+started, and its `docs/security-model.md` items were corrected in this boundary rather than left to it.
+Section 4: not started. Section 5: not started, scope widened in this boundary.
+
+Commit model in effect: Commit-and-Push. This entry and section 5's widened scope commit alone, on the
+precedent interim boards 1 to 6 set in this plan; section 2's code and its `docs/security-model.md` prose
+stay unstaged until the whole gate has run, since under this model the section commit goes straight to
+main.
