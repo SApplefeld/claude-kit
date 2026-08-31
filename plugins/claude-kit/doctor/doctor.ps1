@@ -893,8 +893,8 @@ else {
         #
         # Every shape names both parts of the store the commit carries. The
         # allowlist admits the memory tiers and the coordinator directory, so
-        # a prompt naming only the tiers asks consent for less than the commit
-        # and the push that follows it actually publish.
+        # a prompt naming only the tiers asks consent for less than the commit,
+        # and the sync runner's later push that carries it, actually publish.
         $syncQuestion = if (-not $syncStatus.IsRepo) {
             "Initialize $claudeDir as the memory-sync git repository (allowlist plus one commit of the memory tiers and the coordinator directory)?"
         }
@@ -1075,7 +1075,35 @@ else {
             else {
                 $syncDetail += ("Destination: " + (Get-SanitizedLine $syncStatus.Branch 200) + " tracks " +
                     (Get-SanitizedLine $syncStatus.Upstream 200) + ", the only branch on origin.")
-                if ($syncFixLines.Count -gt 0) { Report "FIXED" "Memory sync" ($syncFixLines + $syncDetail) }
+                if ($syncFixLines.Count -gt 0) {
+                    # The commit's other half, stated rather than left to
+                    # inference: this block reports a commit directly beside an
+                    # "origin:" line and a "Destination:" line naming the branch
+                    # this store tracks, and a commit reported beside a
+                    # destination with nothing said about publication reads as
+                    # published. The push lives in the sync runner alone
+                    # (sync-store.ps1), so a -Fix run's outcome is local, and
+                    # both carriers of the commit are named.
+                    #
+                    # This is the only branch that may carry the recipe, and the
+                    # reason is the whole point of the report it sits in. Every
+                    # other branch reachable from here is a FAIL or a WARN,
+                    # including the FAIL raised because a non-memory blob is
+                    # reachable in committed history, where handing the operator
+                    # a push command would hand them the exact act the leak
+                    # probes exist to stop. Only here has the store proven both
+                    # that it publishes nothing it should not and that it has a
+                    # destination to publish to, so only here is a push the
+                    # right next step. $claudeDir is the doctor's own derived
+                    # path rather than a store-supplied string, so it embeds
+                    # raw like the other Fix lines in this section: sanitizing
+                    # it would silently strip a non-ASCII profile name out of a
+                    # command the operator is meant to copy.
+                    Report "FIXED" "Memory sync" ($syncFixLines + $syncDetail + @(
+                        "Committed, not pushed: the commit is local until something carries it, either the background sync runner at the next session start or the manual push below.",
+                        "Manual push: git -C `"$claudeDir`" pull --rebase, then git -C `"$claudeDir`" push."
+                    ))
+                }
                 else { Report "PASS" "Memory sync" $syncDetail }
             }
         }

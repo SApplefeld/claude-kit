@@ -29,6 +29,7 @@ claude-kit/                          (repo = the marketplace)
         coordinator/                 The machine-coordinator seat's runbook: operator interface, cross-repo sequencing, resource arbitration, kaizen capture and dispatch, a board in the memory store
         role/                        The /role <Seat> takeover ritual: the coordinator-directory contract, the session registry, the heavy-process claim, the operator's standing delegation
         standing-watch/              Repeating watch loop over a live system you do not own: runbook, ledger, wake and sleep
+        recap/                       /recap reports where one session stands without disturbing it: restate from memory, refresh, report, diff the drift
         kit-goal/                    /kit-goal <plan> arms a deterministic project-scoped completion leash
         kit-doctor/                  Validate and repair the machine's kit install (runs the payload doctor)
         branch-hygiene/              Clean up branches and worktrees after Branch-and-PR; reap merged, recover stranded
