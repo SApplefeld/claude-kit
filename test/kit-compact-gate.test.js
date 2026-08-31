@@ -32,7 +32,8 @@ const {
     commandArgsSpans, readTranscriptCapped, userCommandArgsClaimPlan,
     gateStatePath, gateLogPath, gateEpisodeOpen, pendingOfferCorroborated, checkpointOwner,
     recordEpisodeNudge, recordGateDecision, readCheckpoint, clearCheckpoint, adoptCheckpoint,
-    roleBoundaryPath, consentPath, writeRoleBoundary, writeConsent, markerMatches
+    roleBoundaryPath, consentPath, writeRoleBoundary, writeConsent, markerMatches,
+    markerMomentHolds, transcriptPosition
 } = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
 
 // The session id the fixtures bind the goal to; payloads default to it so the
@@ -46,6 +47,31 @@ const CEILING = 800000;
 
 function makeDir(prefix) {
     return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+}
+
+// Every child this suite spawns runs against a fixture home, never the
+// operator's own: the CLI's registry stamp writes under
+// <home>/.claude/coordinator, its status report derives a session transcript
+// under <home>/.claude/projects, and the goal library's event stream sits
+// beside them, so an unpinned spawn would read and write live machine state.
+// One directory, pinned inside the two spawn helpers below rather than at
+// their call sites, is what makes that structural; homePinnedSpawnSites below
+// is the pin that keeps it so.
+const FIXTURE_HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'kit-compact-gate-fixture-home-'));
+process.on('exit', () => {
+    try { fs.rmSync(FIXTURE_HOME, { recursive: true, force: true }); } catch { /* best effort */ }
+});
+
+function homeEnv() {
+    return { HOME: FIXTURE_HOME, USERPROFILE: FIXTURE_HOME };
+}
+
+// The registry entry path the CLI's stamp writes, under the fixture home. The
+// hostname is read at runtime rather than written into the fixture, so no
+// machine name ships in the suite.
+function registryEntryFile(sessionId) {
+    return path.join(FIXTURE_HOME, '.claude', 'coordinator', os.hostname(),
+        'registry', sessionId + '.md');
 }
 
 function rmDir(dir) {
@@ -71,7 +97,7 @@ function scrubEngineEnv(env) {
 // Run the gate with the given payload (an object, or a raw string for the
 // malformed-stdin case). Returns the spawnSync result (stdout, stderr, status).
 function runGate(payload, extraEnv) {
-    const env = { ...scrubEngineEnv({ ...process.env }), ...(extraEnv || {}) };
+    const env = { ...scrubEngineEnv({ ...process.env }), ...homeEnv(), ...(extraEnv || {}) };
     return spawnSync(process.execPath, [HOOK], {
         input: typeof payload === 'string' ? payload : JSON.stringify(payload),
         env,
@@ -227,7 +253,11 @@ function scrubSessionEnv(env) {
 function runCli(args, cwd, extraEnv) {
     return spawnSync(process.execPath, [CLI, ...args], {
         cwd,
-        env: { ...scrubSessionEnv(scrubEngineEnv({ ...process.env })), ...(extraEnv || {}) },
+        env: {
+            ...scrubSessionEnv(scrubEngineEnv({ ...process.env })),
+            ...homeEnv(),
+            ...(extraEnv || {})
+        },
         encoding: 'utf8'
     });
 }
@@ -237,9 +267,28 @@ function runCli(args, cwd, extraEnv) {
 // records (mirroring the live shape, where the newest usage row sits a few
 // lines from the end). Splitting the total across the three fields exercises
 // the real sum, not just input_tokens.
+// How far back a fixture transcript's inbound user lines are dated. The gate
+// honors a role-boundary marker only while nothing has arrived in the marked
+// session since the marker was written, so every fixture that stages a marker
+// needs its inbound lines explicitly on one side of that comparison or the
+// other. Five hours puts them before every marker this suite stages, the
+// oldest of which is a minute inside the four-hour age bound, so each marker
+// case tests the rule it means to (the age bound, the session scope, the
+// consumed flag) rather than failing on freshness. The cases that mean to test
+// freshness stage their own arrival times against the marker's.
+const FIXTURE_INBOUND_AGE_MS = 5 * 60 * 60 * 1000;
+
+function inboundStamp() {
+    return new Date(Date.now() - FIXTURE_INBOUND_AGE_MS).toISOString();
+}
+
 function writeUsageTranscript(full, consumed) {
     const lines = [
-        JSON.stringify({ type: 'user', message: { role: 'user', content: 'keep going' } }),
+        JSON.stringify({
+            type: 'user',
+            timestamp: inboundStamp(),
+            message: { role: 'user', content: 'keep going' }
+        }),
         JSON.stringify({
             type: 'assistant',
             message: {
@@ -253,7 +302,11 @@ function writeUsageTranscript(full, consumed) {
             }
         }),
         JSON.stringify({ type: 'system', subtype: 'turn-metadata' }),
-        JSON.stringify({ type: 'user', message: { role: 'user', content: 'tool result echo' } })
+        JSON.stringify({
+            type: 'user',
+            timestamp: inboundStamp(),
+            message: { role: 'user', content: 'tool result echo' }
+        })
     ];
     writeFile(full, lines.join('\n') + '\n');
 }
@@ -266,6 +319,7 @@ function writeClaimingTranscript(full, planRel, consumed) {
     writeUsageTranscript(full, consumed);
     const claim = JSON.stringify({
         type: 'user',
+        timestamp: inboundStamp(),
         message: {
             role: 'user',
             content: '<command-name>/kit-goal</command-name>\n<command-args>' + planRel + '</command-args>'
@@ -2859,7 +2913,11 @@ function interactiveRepo(evidence, consumed) {
     const transcript = path.join(repo, 'transcript.jsonl');
     const total = consumed === undefined ? 50000 : consumed;
     const lines = [
-        JSON.stringify({ type: 'user', message: { role: 'user', content: 'let us talk this design through' } }),
+        JSON.stringify({
+            type: 'user',
+            timestamp: inboundStamp(),
+            message: { role: 'user', content: 'let us talk this design through' }
+        }),
         ...evidence,
         JSON.stringify({
             type: 'assistant',
@@ -5152,13 +5210,39 @@ function consentFile(repo) {
 
 // Hand-write a marker with an arbitrary age and consumed flag, isolating the
 // freshness and consumption legs the way writeCheckpointAt does for the
-// checkpoint.
+// checkpoint. What this stages is the seat-stop hook's shape, carrying no
+// declaration field, which is the marker the moment rule does not govern.
 function writeMarkerAt(full, session, ageMs, consumed) {
     writeFile(full, JSON.stringify({
         session,
         writtenAt: new Date(Date.now() - ageMs).toISOString(),
         consumed: consumed === undefined ? false : consumed
     }) + '\n');
+}
+
+// The same, in the boundary verb's shape: a marker carrying the machine-written
+// declaration field, which is the only kind the moment rule reads a transcript
+// for. The two helpers are separate so a case's provenance is legible at its
+// call site rather than in a trailing boolean.
+//
+// `transcript` is the file the declaration is being made against, and its
+// position at this instant is recorded the way the verb's own writer records
+// it: the moment rule reads forward from that byte offset, so a declared marker
+// staged without one is a marker nothing can vouch for. A case that means to
+// stage the unvouchable kind omits the argument and says so at its call site.
+function writeDeclaredMarkerAt(full, session, ageMs, consumed, transcript) {
+    const position = transcript === undefined ? null : transcriptPosition(transcript);
+    const marker = {
+        session,
+        writtenAt: new Date(Date.now() - ageMs).toISOString(),
+        consumed: consumed === undefined ? false : consumed,
+        declared: true
+    };
+    if (position !== null) {
+        marker.transcriptBytes = position.bytes;
+        marker.transcriptAnchor = position.anchor;
+    }
+    writeFile(full, JSON.stringify(marker) + '\n');
 }
 
 test('gate: a live role-boundary marker releases the hands-on deferral: allow, journaled, consumed, single-shot', () => {
@@ -5438,7 +5522,9 @@ test('gate: a marker path reported as a symlink is refused, never followed or co
 });
 
 test('cli: boundary opens a session-scoped marker with no goal armed, and the gate honors it once', () => {
-    const { repo, transcript } = interactiveRepo([]);
+    // The transcript sits where the harness files one, which is what the
+    // declaration measures and what the gate's payload names.
+    const { repo, transcript } = declaringRepo([]);
     try {
         const res = runCli(['boundary'], repo, { CLAUDE_CODE_SESSION_ID: SESSION });
         assert.strictEqual(res.status, 0, 'boundary succeeds; stderr: ' + res.stderr);
@@ -5448,6 +5534,11 @@ test('cli: boundary opens a session-scoped marker with no goal armed, and the ga
         assert.strictEqual(marker.session, SESSION);
         assert.strictEqual(marker.consumed, false);
         assert.ok(Number.isFinite(Date.parse(marker.writtenAt)), 'writtenAt is a parseable ISO time');
+        // The declaration records where that transcript ended, which is the
+        // whole of what the moment rule later reads forward from.
+        assert.strictEqual(marker.transcriptBytes, fs.statSync(transcript).size,
+            'the position recorded is the transcript\'s own end');
+        assert.strictEqual(typeof marker.transcriptAnchor, 'string');
 
         assertAllow(runGate(gatePayload(repo, transcript)));
         assertInteractiveDeny(runGate(gatePayload(repo, transcript)));
@@ -5460,12 +5551,20 @@ test('cli: boundary refuses trailing arguments rather than silently ignoring the
     // `boundary --session <id>` is the natural misreading of the consent
     // form, and a parser that ignored the tail would do two wrong things at
     // once: the named session gets no release, and the ambient session
-    // silently gains one it never asked for.
+    // silently gains one it never asked for. --cancel is the one accepted
+    // argument and it takes no value, so every shape around it is refused
+    // exactly as it was before that form existed.
     const repo = makeDir('kit-compact-gate-repo-');
     try {
         for (const args of [
             ['boundary', '--session', OTHER_SESSION],
-            ['boundary', 'stray']
+            ['boundary', 'stray'],
+            ['boundary', '--cancel', 'stray'],
+            ['boundary', '--cancel', '--cancel'],
+            ['boundary', '--cancel', OTHER_SESSION],
+            ['boundary', '--cancel=1'],
+            ['boundary', 'cancel'],
+            ['boundary', '--Cancel']
         ]) {
             const res = runCli(args, repo, { CLAUDE_CODE_SESSION_ID: SESSION });
             assert.strictEqual(res.status, 1, 'refused: ' + JSON.stringify(args) + '; stdout: ' + res.stdout);
@@ -5486,6 +5585,779 @@ test('cli: boundary with no derivable session id refuses loudly and writes nothi
         assert.ok(res.stderr.includes('CLAUDE_CODE_SESSION_ID'), 'the refusal names the missing variable; stderr: ' + res.stderr);
         assert.ok(!fs.existsSync(roleBoundaryFile(repo)), 'nothing written');
     } finally {
+        rmDir(repo);
+    }
+});
+
+// ---------------------------------------------------------------------------
+// The registry record of a declared boundary. A registered seat's own entry
+// gains a `Banked:` line stamped by the boundary verb, beside the `Heartbeat:`
+// line the seat-stop hook stamps. It is a record and never a precondition, so
+// an unregistered caller declares exactly as well as a registered one.
+// ---------------------------------------------------------------------------
+
+// A registry entry in the shape the role skill's directory contract defines,
+// with fixture values throughout: nothing here names a real session, seat, or
+// machine.
+const FIXTURE_ENTRY_SESSION = 'ses-44445555-eeee-ffff-1111-666677778888';
+
+function entryText(sessionId) {
+    return [
+        'Name: KIT: Fixture',
+        'Role: Worker',
+        'Repo: claude-kit',
+        'Workdir: claude-kit',
+        'Session: ' + sessionId,
+        'Started: 2026-01-01T00:00:00Z',
+        'Status-updated: 2026-01-01T00:00:00Z',
+        'Remaining: none',
+        'Heartbeat: none',
+        '',
+        'Status: a fixture entry, in the contract\'s shape',
+        ''
+    ].join('\n');
+}
+
+// The entry with its `Banked:` lines lifted out, plus how many there were: the
+// byte-identical assertion is that what is left is exactly what was there
+// before, and the count is that the entry gained exactly one line.
+function withoutBanked(text) {
+    const lines = text.split('\n');
+    return {
+        rest: lines.filter((l) => !/^Banked:/.test(l)).join('\n'),
+        banked: lines.filter((l) => /^Banked:/.test(l)),
+        heartbeatAt: lines.findIndex((l) => /^Heartbeat:/.test(l)),
+        bankedAt: lines.findIndex((l) => /^Banked:/.test(l))
+    };
+}
+
+test('cli: boundary stamps the caller\'s registry entry and changes nothing else in it', () => {
+    const repo = makeDir('kit-compact-gate-repo-');
+    const entry = registryEntryFile(FIXTURE_ENTRY_SESSION);
+    const before = entryText(FIXTURE_ENTRY_SESSION);
+    writeFile(entry, before);
+    const startedAt = Date.now();
+    try {
+        const res = runCli(['boundary'], repo, { CLAUDE_CODE_SESSION_ID: FIXTURE_ENTRY_SESSION });
+        assert.strictEqual(res.status, 0, 'boundary succeeds; stderr: ' + res.stderr);
+        assert.ok(fs.existsSync(roleBoundaryFile(repo)), 'the marker opens');
+
+        const after = fs.readFileSync(entry, 'utf8');
+        const split = withoutBanked(after);
+        assert.strictEqual(split.banked.length, 1, 'exactly one Banked line; entry: ' + after);
+        assert.strictEqual(split.rest, before, 'the rest of the entry is byte-identical');
+        assert.strictEqual(split.bankedAt, split.heartbeatAt + 1,
+            'the stamp sits directly beside the Heartbeat line');
+
+        // The value is read from a clock at the write, never templated: a
+        // stamp carrying a caller-held time would read as authoritative while
+        // answering the elapsed-time question wrongly.
+        const at = Date.parse(split.banked[0].replace(/^Banked:\s*/, ''));
+        assert.ok(Number.isFinite(at), 'the stamp is a parseable ISO time: ' + split.banked[0]);
+        assert.ok(at >= startedAt - 1000 && at <= Date.now() + 1000,
+            'stamped from the clock at the write, got ' + split.banked[0]);
+    } finally {
+        try { fs.rmSync(entry, { force: true }); } catch { /* best effort */ }
+        rmDir(repo);
+    }
+});
+
+test('cli: boundary rewrites an existing Banked line rather than adding a second', () => {
+    const repo = makeDir('kit-compact-gate-repo-');
+    const entry = registryEntryFile(FIXTURE_ENTRY_SESSION);
+    const stale = 'Banked: 2026-01-01T00:00:00.000Z';
+    const before = entryText(FIXTURE_ENTRY_SESSION).replace(/^(Heartbeat:.*)$/m, '$1\n' + stale);
+    writeFile(entry, before);
+    try {
+        assert.strictEqual(runCli(['boundary'], repo,
+            { CLAUDE_CODE_SESSION_ID: FIXTURE_ENTRY_SESSION }).status, 0, 'boundary succeeds');
+        const after = fs.readFileSync(entry, 'utf8');
+        const split = withoutBanked(after);
+        assert.strictEqual(split.banked.length, 1, 'still exactly one Banked line; entry: ' + after);
+        assert.notStrictEqual(split.banked[0], stale, 'and it is the new stamp');
+        assert.strictEqual(split.rest, withoutBanked(before).rest, 'the rest is byte-identical');
+    } finally {
+        try { fs.rmSync(entry, { force: true }); } catch { /* best effort */ }
+        rmDir(repo);
+    }
+});
+
+test('cli: boundary refuses to stamp an entry that names another session', () => {
+    // The path to a registry entry is composed from a session id taken out of
+    // the environment, which nothing authenticates: any local process that sets
+    // that variable to a peer's id names the peer's entry, a single-writer file
+    // that replicates to every machine the store's remote reaches. So the entry
+    // has to vouch for itself before it is rewritten, and its own `Session:`
+    // line is what does it.
+    //
+    // Everything else about this fixture is the stamping case: the entry is at
+    // the caller's own path, is a regular readable file of the contract's
+    // shape, and carries the `Heartbeat:` line the stamp writes beside. Only
+    // the corroboration can refuse it.
+    const repo = makeDir('kit-compact-gate-repo-');
+    const entry = registryEntryFile(FIXTURE_ENTRY_SESSION);
+    const before = entryText(OTHER_SESSION);
+    writeFile(entry, before);
+    try {
+        const res = runCli(['boundary'], repo, { CLAUDE_CODE_SESSION_ID: FIXTURE_ENTRY_SESSION });
+        assert.strictEqual(res.status, 0, 'the declaration still lands; stderr: ' + res.stderr);
+        assert.ok(fs.existsSync(roleBoundaryFile(repo)),
+            'the marker opens: the stamp is a record, not a precondition');
+        assert.strictEqual(fs.readFileSync(entry, 'utf8'), before,
+            'and the entry is byte-identical: no Banked line, nothing else touched');
+        assert.ok(res.stderr.includes('names a different session'),
+            'the refusal is reported distinctly; stderr: ' + res.stderr);
+        assert.ok(!res.stderr.includes(OTHER_SESSION),
+            'without naming the session it would not stamp; stderr: ' + res.stderr);
+
+        // The control: the same run against an entry whose Session line names
+        // the caller stamps, so the refusal above is the corroboration and not
+        // a stamp that stopped working.
+        const own = entryText(FIXTURE_ENTRY_SESSION);
+        writeFile(entry, own);
+        assert.strictEqual(runCli(['boundary'], repo,
+            { CLAUDE_CODE_SESSION_ID: FIXTURE_ENTRY_SESSION }).status, 0, 'the control run succeeds');
+        assert.strictEqual(withoutBanked(fs.readFileSync(entry, 'utf8')).banked.length, 1,
+            'the caller\'s own entry is stamped');
+
+        // And an entry carrying no Session line at all vouches for nobody.
+        const anonymous = own.split('\n').filter((l) => !/^Session:/.test(l)).join('\n');
+        writeFile(entry, anonymous);
+        assert.strictEqual(runCli(['boundary'], repo,
+            { CLAUDE_CODE_SESSION_ID: FIXTURE_ENTRY_SESSION }).status, 0, 'the declaration still lands');
+        assert.strictEqual(fs.readFileSync(entry, 'utf8'), anonymous,
+            'an entry with nothing to vouch for it is left byte-identical');
+    } finally {
+        try { fs.rmSync(entry, { force: true }); } catch { /* best effort */ }
+        rmDir(repo);
+    }
+});
+
+test('cli: boundary opens the marker for a session the registry does not carry, and writes no entry', () => {
+    // The stamp is a record, not a precondition: an absent coordinator
+    // directory or entry is a silent no-op and the declaration still lands.
+    const repo = makeDir('kit-compact-gate-repo-');
+    const entry = registryEntryFile(OTHER_SESSION);
+    try {
+        assert.ok(!fs.existsSync(entry), 'test setup: no entry for this session');
+        // The transcript is staged so the declaration is positionable: what
+        // this case is about is the entry, and an unpositionable declaration
+        // has a note of its own that would otherwise answer the silence
+        // assertion below.
+        plantTranscript(FIXTURE_HOME, repo, OTHER_SESSION, userLine('earlier', Date.now() - 60 * 60 * 1000) + '\n');
+        const res = runCli(['boundary'], repo, { CLAUDE_CODE_SESSION_ID: OTHER_SESSION });
+        assert.strictEqual(res.status, 0, 'boundary succeeds; stderr: ' + res.stderr);
+        assert.strictEqual(res.stderr, '', 'silently: nothing is said about the missing entry');
+        assert.strictEqual(JSON.parse(fs.readFileSync(roleBoundaryFile(repo), 'utf8')).session,
+            OTHER_SESSION, 'the marker opens all the same');
+        // The absence this asserts, against its own predicate and scope: no
+        // file at the entry path this session's stamp would have written.
+        assert.ok(!fs.existsSync(entry), 'no registry entry is created for it');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+// ---------------------------------------------------------------------------
+// The declared moment. The boundary verb's marker describes the instant it was
+// written, so the gate honors one only while no new turn has begun in the
+// session it names. What "since it was written" means is a POSITION: the
+// declaration records where the transcript ended, and the rule reads forward
+// from there, because a transcript's lines are appended in order while their
+// timestamps are not. The straddle case below is the reason that distinction is
+// pinned rather than assumed. The inbound set is two line shapes rather than
+// one: a `user` line that is not a tool result, and a `queue-operation` line, which
+// is how a queued peer message arrives and is not a `user` line at all. A rule
+// reading the last `user` line alone would meet the boundary command's own
+// tool result and lapse every marker on arrival.
+//
+// Two controls sit beside those cases and are the reason the rule is safe to
+// ship. The provenance control: the seat-stop hook's marker carries no
+// declaration field, is outside this rule, and is honored over an intervening
+// inbound message, which is what an unscoped rule would refuse every time,
+// since an offer only ever arrives in a later turn than the turn end that
+// banked one. The arrival-class control: a declared marker followed only by
+// harness injections is still honored, so loading a skill cannot lapse a
+// seat's own declaration.
+// ---------------------------------------------------------------------------
+
+function userLine(text, atMs) {
+    return JSON.stringify({
+        type: 'user',
+        timestamp: new Date(atMs).toISOString(),
+        message: { role: 'user', content: text }
+    });
+}
+
+function toolResultLine(atMs) {
+    return JSON.stringify({
+        type: 'user',
+        timestamp: new Date(atMs).toISOString(),
+        message: {
+            role: 'user',
+            content: [{ type: 'tool_result', tool_use_id: 'toolu-fixture', content: 'ok' }]
+        }
+    });
+}
+
+// A queued peer message, in the shape a real transcript carries. The operation
+// is one of three values, `enqueue` when the message is queued, `remove` when
+// it leaves the queue, and `dequeue` when it is handed to the session, and all
+// three are staged: the rule reads the line type and not the operation, and a
+// fixture naming an operation no transcript produces would pin nothing.
+function queueOperationLine(atMs, operation) {
+    return JSON.stringify({
+        type: 'queue-operation',
+        operation: operation === undefined ? 'enqueue' : operation,
+        timestamp: new Date(atMs).toISOString(),
+        sessionId: SESSION,
+        content: 'a queued peer message'
+    });
+}
+
+// The three harness-injected shapes, each a `user` line the harness wrote to
+// the session rather than a person or a peer arriving: a meta record (a skill
+// body, a hook's own output replayed back), a compaction summary, and a
+// subagent's sidechain turn.
+function metaLine(atMs) {
+    return JSON.stringify({
+        type: 'user',
+        isMeta: true,
+        timestamp: new Date(atMs).toISOString(),
+        message: { role: 'user', content: 'a skill body the harness injected' }
+    });
+}
+
+function compactSummaryLine(atMs) {
+    return JSON.stringify({
+        type: 'user',
+        isCompactSummary: true,
+        timestamp: new Date(atMs).toISOString(),
+        message: { role: 'user', content: 'the summary a compaction left behind' }
+    });
+}
+
+function sidechainLine(atMs) {
+    return JSON.stringify({
+        type: 'user',
+        isSidechain: true,
+        timestamp: new Date(atMs).toISOString(),
+        message: { role: 'user', content: 'a subagent turn' }
+    });
+}
+
+function appendLine(transcript, line) {
+    fs.appendFileSync(transcript, line + '\n', 'utf8');
+}
+
+// The same fixture interactiveRepo builds, with its transcript filed where the
+// harness files one: under the fixture home, keyed by the project directory and
+// the session id. A case that runs the real boundary verb needs that, because
+// the verb measures the transcript it derives from the directory it is run in
+// while the gate reads the path its own payload carries, and in production
+// those are one file. Staging them as two would let a case pass off a position
+// recorded against a file nobody reads.
+function declaringRepo(evidence, consumed) {
+    const f = interactiveRepo(evidence, consumed);
+    const planted = plantTranscript(FIXTURE_HOME, f.repo, SESSION,
+        fs.readFileSync(f.transcript, 'utf8'));
+    fs.rmSync(f.transcript);
+    return { repo: f.repo, transcript: planted };
+}
+
+// A declared marker for `transcript` as it stands right now, dated `ageMs` ago.
+// The position is what the rule reads; the date is what the age bound reads,
+// and it is set apart from the position deliberately, so a case can hold the
+// transcript still and vary one without the other.
+function declaredFor(transcript, ageMs) {
+    const position = transcriptPosition(transcript);
+    assert.notStrictEqual(position, null, 'test setup: the transcript must be positionable');
+    return {
+        session: SESSION,
+        writtenAt: new Date(Date.now() - (ageMs === undefined ? 60 * 1000 : ageMs)).toISOString(),
+        consumed: false,
+        declared: true,
+        transcriptBytes: position.bytes,
+        transcriptAnchor: position.anchor
+    };
+}
+
+test('lib: markerMomentHolds names the clause that lapsed a marker (unit level)', () => {
+    const dir = makeDir('kit-compact-gate-moment-');
+    const transcript = path.join(dir, 'transcript.jsonl');
+    const written = Date.now() - 60 * 1000;
+    try {
+        // Holds: nothing at all has been appended since the declaration.
+        writeFile(transcript, userLine('earlier', written - 60 * 1000) + '\n');
+        const marker = declaredFor(transcript);
+        assert.deepStrictEqual(markerMomentHolds(marker, transcript), { ok: true, reason: null });
+
+        // Holds: the boundary command's own tool result, which is what nearly
+        // every user line in a working transcript is. This is the regression
+        // that would otherwise ship a rule honoring nothing.
+        appendLine(transcript, toolResultLine(written + 30 * 1000));
+        assert.deepStrictEqual(markerMomentHolds(marker, transcript), { ok: true, reason: null });
+
+        // Lapsed: a genuine inbound user message after the declaration.
+        appendLine(transcript, userLine('one more thing', written + 40 * 1000));
+        assert.deepStrictEqual(markerMomentHolds(marker, transcript), { ok: false, reason: 'inbound' });
+
+        // Lapsed: a queued peer message, which arrives under its own line type,
+        // in each of the three operations a real transcript carries.
+        for (const operation of ['enqueue', 'dequeue', 'remove']) {
+            writeFile(transcript, userLine('earlier', written - 60 * 1000) + '\n');
+            const fresh = declaredFor(transcript);
+            appendLine(transcript, queueOperationLine(written + 10 * 1000, operation));
+            assert.deepStrictEqual(markerMomentHolds(fresh, transcript), { ok: false, reason: 'inbound' },
+                'a ' + operation + ' lapses it');
+        }
+
+        // Lapsed: an inbound line carrying no timestamp at all. Position is
+        // what answers, so a line the old rule could not place in time is an
+        // arrival here like any other.
+        writeFile(transcript, userLine('earlier', written - 60 * 1000) + '\n');
+        const untimed = declaredFor(transcript);
+        appendLine(transcript, JSON.stringify({ type: 'user', message: { role: 'user', content: 'when?' } }));
+        assert.deepStrictEqual(markerMomentHolds(untimed, transcript), { ok: false, reason: 'inbound' });
+
+        // Lapsed: no transcript to read.
+        assert.deepStrictEqual(markerMomentHolds(marker, path.join(dir, 'absent.jsonl')),
+            { ok: false, reason: 'unreadable' });
+        assert.deepStrictEqual(markerMomentHolds(marker, dir), { ok: false, reason: 'unreadable' });
+
+        // Lapsed: a declaration that records no position at all, which is what
+        // a boundary run whose transcript could not be measured writes. There
+        // is nowhere to read from, so nothing can vouch for it.
+        writeFile(transcript, userLine('earlier', written - 60 * 1000) + '\n');
+        assert.deepStrictEqual(
+            markerMomentHolds({ session: SESSION, writtenAt: marker.writtenAt, declared: true }, transcript),
+            { ok: false, reason: 'no-position' });
+        for (const bad of [-1, 1.5, '12', null]) {
+            assert.deepStrictEqual(markerMomentHolds({ ...marker, transcriptBytes: bad }, transcript),
+                { ok: false, reason: 'no-position' }, 'refused a position of ' + JSON.stringify(bad));
+        }
+        assert.deepStrictEqual(markerMomentHolds({ ...marker, transcriptAnchor: '' }, transcript),
+            { ok: false, reason: 'no-position' });
+
+        // Lapsed: the transcript no longer matches what was measured. Shorter
+        // than the recorded position, and the same length with different bytes
+        // before it, are both a file truncated, rotated or replaced, whose
+        // arrivals since the declaration cannot be recovered.
+        const long = userLine('earlier', written - 60 * 1000) + '\n'
+            + userLine('and more', written - 50 * 1000) + '\n';
+        writeFile(transcript, long);
+        const atLong = declaredFor(transcript);
+        writeFile(transcript, userLine('earlier', written - 60 * 1000) + '\n');
+        assert.deepStrictEqual(markerMomentHolds(atLong, transcript), { ok: false, reason: 'replaced' });
+        writeFile(transcript, userLine('a different session entirely', written - 60 * 1000) + '\n'
+            + 'x'.repeat(long.length - userLine('a different session entirely', written - 60 * 1000).length - 2) + '\n');
+        assert.strictEqual(fs.statSync(transcript).size, Buffer.byteLength(long, 'utf8'),
+            'test setup: the same length, different bytes');
+        assert.deepStrictEqual(markerMomentHolds(atLong, transcript), { ok: false, reason: 'replaced' });
+
+        // Lapsed: a whole line of the appended stretch will not parse. Only a
+        // final fragment is a record caught mid-append; one with a whole line
+        // behind it is a question this rule cannot answer, and an arrival is
+        // exactly what it could have been.
+        writeFile(transcript, userLine('earlier', written - 60 * 1000) + '\n');
+        const beforeTorn = declaredFor(transcript);
+        appendLine(transcript, '{"type":"assistant"');
+        assert.deepStrictEqual(markerMomentHolds(beforeTorn, transcript), { ok: false, reason: 'torn' });
+
+        // Holds: the same fragment with no newline after it, which is the
+        // record the harness is in the middle of writing.
+        writeFile(transcript, userLine('earlier', written - 60 * 1000) + '\n');
+        const beforeFragment = declaredFor(transcript);
+        fs.appendFileSync(transcript, '{"type":"assistant"', 'utf8');
+        assert.deepStrictEqual(markerMomentHolds(beforeFragment, transcript), { ok: true, reason: null });
+
+        // Holds: harness injections are not arrivals. A meta record, a
+        // compaction summary and a sidechain turn all land as `user` lines
+        // after the declaration, and a seat that declares a boundary and then
+        // loads a skill must not lapse its own declaration.
+        writeFile(transcript, userLine('earlier', written - 60 * 1000) + '\n');
+        const beforeInjections = declaredFor(transcript);
+        for (const injected of [metaLine(written + 10 * 1000), compactSummaryLine(written + 20 * 1000),
+            sidechainLine(written + 30 * 1000)]) {
+            appendLine(transcript, injected);
+        }
+        assert.deepStrictEqual(markerMomentHolds(beforeInjections, transcript), { ok: true, reason: null });
+
+        // Holds, and reads nothing: a marker carrying no declaration field is
+        // the seat-stop hook's turn-end bank, which this rule does not govern.
+        // The transcript staged here is the one that lapses a declared marker,
+        // and the path handed to the undeclared case does not exist at all, so
+        // neither an arrival nor an unreadable transcript can be what answers.
+        writeFile(transcript, userLine('earlier', written - 60 * 1000) + '\n');
+        const beforeArrival = declaredFor(transcript);
+        appendLine(transcript, userLine('one more thing', written + 40 * 1000));
+        assert.deepStrictEqual(markerMomentHolds(beforeArrival, transcript), { ok: false, reason: 'inbound' });
+        const undeclared = { session: SESSION, writtenAt: marker.writtenAt, consumed: false };
+        assert.deepStrictEqual(markerMomentHolds(undeclared, transcript), { ok: true, reason: null });
+        assert.deepStrictEqual(markerMomentHolds(undeclared, path.join(dir, 'absent.jsonl')),
+            { ok: true, reason: null });
+
+        // Lapsed: more was appended than the read covers, with no arrival
+        // inside what was read, so the rest is unknown rather than quiet.
+        writeFile(transcript, userLine('earlier', written - 60 * 1000) + '\n');
+        const beforePadding = declaredFor(transcript);
+        const pad = JSON.stringify({
+            type: 'assistant',
+            timestamp: new Date(written + 10 * 1000).toISOString(),
+            message: { role: 'assistant', content: [{ type: 'text', text: 'x'.repeat(4000) }] }
+        });
+        for (let i = 0; i < 200; i += 1) appendLine(transcript, pad);
+        assert.ok(fs.statSync(transcript).size > 512 * 1024, 'test setup: past the read bound');
+        assert.deepStrictEqual(markerMomentHolds(beforePadding, transcript), { ok: false, reason: 'too-long' });
+
+        // Holds: the same 800 KB of work with the declaration made after it.
+        // A long working stretch before a boundary is the ordinary case, and
+        // only what follows the declaration is this rule's subject, so the
+        // file's own size never lapses anything.
+        const afterPadding = declaredFor(transcript);
+        assert.deepStrictEqual(markerMomentHolds(afterPadding, transcript), { ok: true, reason: null });
+    } finally {
+        rmDir(dir);
+    }
+});
+
+test('lib: an arrival before the read bound lapses a marker however much followed it', () => {
+    // The straddle the timestamp-ordered reading got wrong, and the reason
+    // position is what this rule reads. A message arrives after the
+    // declaration; hundreds of kilobytes of work follow it, pushing it out of
+    // any window measured back from the file's end; and one of those later
+    // lines carries a stamp OLDER than the declaration, which real transcripts
+    // hold in quantity, so a rule inferring its own coverage from timestamps
+    // reads that line as proof it looked far enough back and honors a marker
+    // whose moment is gone. Read forward from the declaration's own position,
+    // the arrival is the first thing there.
+    const dir = makeDir('kit-compact-gate-moment-');
+    const transcript = path.join(dir, 'transcript.jsonl');
+    const written = Date.now();
+    try {
+        writeFile(transcript, userLine('let us talk this design through', written - 60 * 60 * 1000) + '\n');
+        const marker = declaredFor(transcript, 0);
+        appendLine(transcript, userLine('actually, one more thing', written + 10 * 1000));
+        const backdated = JSON.stringify({
+            type: 'assistant',
+            timestamp: new Date(written - 600 * 1000).toISOString(),
+            message: { role: 'assistant', content: [{ type: 'text', text: 'x'.repeat(4000) }] }
+        });
+        for (let i = 0; i < 160; i += 1) appendLine(transcript, backdated);
+        assert.ok(fs.statSync(transcript).size - marker.transcriptBytes > 512 * 1024,
+            'test setup: the arrival sits further back than a tail read would reach');
+
+        // Every other clause passes, so the refusal is this one: the marker
+        // names this session, is unconsumed, and was written a moment ago.
+        assert.strictEqual(markerMatches(marker, SESSION, Date.now(), BOUNDARY_MARKER_MAX_AGE_MS).ok, true,
+            'test setup: the match rule is not what refuses this');
+        assert.deepStrictEqual(markerMomentHolds(marker, transcript), { ok: false, reason: 'inbound' },
+            'the inbound clause refuses it, from the position rather than from any timestamp');
+    } finally {
+        rmDir(dir);
+    }
+});
+
+test('gate: a marker declared before an inbound message is refused; one with nothing intervening is honored', () => {
+    // Both orders staged explicitly, against the same fixture, so the pair
+    // pins the comparison rather than one side of it.
+
+    // Both halves run the real verb rather than staging its output, so what is
+    // pinned is the whole path: the verb measures the transcript the harness
+    // files for this session, and the gate reads that same file forward from
+    // the recorded position.
+
+    // Marker first, message after: the declaration outlived its moment. The
+    // refusal is the freshness rule and no other leg: the marker names this
+    // session, is unconsumed, and was written a moment ago against a four-hour
+    // bound, so wrong-session, consumed and expired are all excluded by
+    // construction.
+    let f = declaringRepo([]);
+    try {
+        assert.strictEqual(runCli(['boundary'], f.repo, { CLAUDE_CODE_SESSION_ID: SESSION }).status, 0,
+            'test setup: the verb should declare');
+        const staged = JSON.parse(fs.readFileSync(roleBoundaryFile(f.repo), 'utf8'));
+        assert.strictEqual(markerMatches(staged, SESSION, Date.now(), BOUNDARY_MARKER_MAX_AGE_MS).ok, true,
+            'test setup: every other clause of the match rule passes');
+        appendLine(f.transcript, userLine('actually, one more thing', Date.now() - 10 * 1000));
+        assert.strictEqual(markerMomentHolds(staged, f.transcript).reason, 'inbound',
+            'the freshness rule is what refuses it, on the inbound clause');
+        assertInteractiveDeny(runGate(gatePayload(f.repo, f.transcript)));
+        assert.ok(fs.existsSync(roleBoundaryFile(f.repo)),
+            'a lapsed marker is left in place for the status verb and the age bound');
+    } finally { rmDir(f.repo); }
+
+    // Message first, marker after: the ordinary declaration at a turn end.
+    f = declaringRepo([]);
+    try {
+        assert.strictEqual(runCli(['boundary'], f.repo, { CLAUDE_CODE_SESSION_ID: SESSION }).status, 0,
+            'test setup: the verb should declare');
+        assertAllow(runGate(gatePayload(f.repo, f.transcript)));
+        assert.strictEqual(readState(f.repo).lastDecision.reason, 'role-boundary');
+        assert.ok(!fs.existsSync(roleBoundaryFile(f.repo)), 'the honored marker is consumed');
+    } finally { rmDir(f.repo); }
+});
+
+test('gate: a tool result after a marker does not lapse it; a queued peer message does', () => {
+    // The tool-result half is the load-bearing one: every tool call appends a
+    // `user` line, the boundary command's own among them, so a rule that read
+    // the last user line as an arrival would honor no marker ever written.
+    let f = declaringRepo([]);
+    try {
+        assert.strictEqual(runCli(['boundary'], f.repo, { CLAUDE_CODE_SESSION_ID: SESSION }).status, 0,
+            'test setup: the verb should declare');
+        appendLine(f.transcript, toolResultLine(Date.now()));
+        assertAllow(runGate(gatePayload(f.repo, f.transcript)));
+        assert.strictEqual(readState(f.repo).lastDecision.reason, 'role-boundary',
+            'the release still fires over a tool result');
+    } finally { rmDir(f.repo); }
+
+    // The queued peer message is the arrival this rule exists to catch, and it
+    // is not a `user` line at all.
+    f = interactiveRepo([]);
+    try {
+        // The marker records where the transcript stood when it was declared,
+        // and the message is appended after that, which is the order the rule
+        // reads rather than any interval between the two.
+        writeDeclaredMarkerAt(roleBoundaryFile(f.repo), SESSION, 60 * 1000, undefined, f.transcript);
+        appendLine(f.transcript, queueOperationLine(Date.now()));
+        const staged = JSON.parse(fs.readFileSync(roleBoundaryFile(f.repo), 'utf8'));
+        assert.strictEqual(markerMomentHolds(staged, f.transcript).reason, 'inbound',
+            'the freshness rule refuses it, on the inbound clause, not the scope or age legs');
+        assertInteractiveDeny(runGate(gatePayload(f.repo, f.transcript)));
+        assert.ok(fs.existsSync(roleBoundaryFile(f.repo)), 'and leaves it in place');
+    } finally { rmDir(f.repo); }
+});
+
+test('gate: an unreadable transcript lapses a marker rather than honoring it', () => {
+    // The read-failure direction, which is the whole reason this leg is safe
+    // to add: an answer that cannot be obtained defers, exactly as the gate's
+    // other legs do with an unreadable checkpoint or gate state.
+    const f = interactiveRepo([]);
+    try {
+        writeDeclaredMarkerAt(roleBoundaryFile(f.repo), SESSION, 60 * 1000, undefined, f.transcript);
+        const staged = JSON.parse(fs.readFileSync(roleBoundaryFile(f.repo), 'utf8'));
+        assert.strictEqual(markerMomentHolds(staged, f.transcript).ok, true,
+            'test setup: the same marker holds against the transcript it was declared on');
+        assert.strictEqual(markerMomentHolds(staged, path.join(f.repo, 'gone.jsonl')).reason, 'unreadable',
+            'the freshness rule refuses it on the unreadable clause');
+    } finally {
+        rmDir(f.repo);
+    }
+});
+
+test('gate: the hook\'s undeclared marker is honored over an intervening inbound message', () => {
+    // The provenance control, and the reason the moment rule is scoped rather
+    // than universal. The seat-stop hook writes its marker at a turn END, while
+    // a compaction offer only ever arrives inside a LATER turn, which by
+    // construction began with a newer inbound line. A rule reading every marker
+    // would therefore refuse every marker that hook has ever written, which is
+    // the live path this feature's own evidence rests on.
+    //
+    // Staged with an inbound message that DOES postdate the marker, so the
+    // honoring cannot come from an empty transcript: the same fixture with a
+    // declared marker is the refused case above.
+    const f = interactiveRepo([]);
+    try {
+        writeMarkerAt(roleBoundaryFile(f.repo), SESSION, 60 * 1000);
+        const staged = JSON.parse(fs.readFileSync(roleBoundaryFile(f.repo), 'utf8'));
+        assert.strictEqual(staged.declared, undefined, 'test setup: the hook writes no declaration field');
+        appendLine(f.transcript, userLine('actually, one more thing', Date.now() - 10 * 1000));
+        assert.deepStrictEqual(markerMomentHolds(staged, f.transcript), { ok: true, reason: null },
+            'the moment rule does not govern this marker at all');
+
+        assertAllow(runGate(gatePayload(f.repo, f.transcript)));
+        assert.strictEqual(readState(f.repo).lastDecision.reason, 'role-boundary');
+        assert.ok(!fs.existsSync(roleBoundaryFile(f.repo)), 'the honored marker is consumed');
+    } finally { rmDir(f.repo); }
+});
+
+test('gate: a declared marker followed only by harness injections is still honored', () => {
+    // The arrival-class control. Meta records, compaction summaries and
+    // sidechain turns all land as `user` lines, so a classifier that counted
+    // them would lapse a seat's declaration the moment it loaded a skill. The
+    // marker here IS declared, so the moment rule is in force and this is the
+    // rule's own reading rather than a scoping exemption.
+    const f = interactiveRepo([]);
+    try {
+        writeDeclaredMarkerAt(roleBoundaryFile(f.repo), SESSION, 60 * 1000, undefined, f.transcript);
+        const staged = JSON.parse(fs.readFileSync(roleBoundaryFile(f.repo), 'utf8'));
+        assert.strictEqual(staged.declared, true, 'test setup: this one declares a moment');
+        appendLine(f.transcript, metaLine(Date.now() - 30 * 1000));
+        appendLine(f.transcript, compactSummaryLine(Date.now() - 20 * 1000));
+        appendLine(f.transcript, sidechainLine(Date.now() - 10 * 1000));
+        assert.deepStrictEqual(markerMomentHolds(staged, f.transcript), { ok: true, reason: null },
+            'no harness injection is an arrival');
+
+        assertAllow(runGate(gatePayload(f.repo, f.transcript)));
+        assert.strictEqual(readState(f.repo).lastDecision.reason, 'role-boundary');
+    } finally { rmDir(f.repo); }
+});
+
+test('cli: boundary --cancel retracts this session\'s own marker and leaves another session\'s alone', () => {
+    // Nothing in the design depends on this verb: the moment rule retires a
+    // marker that outlived its lull with no act from anyone. This is the
+    // explicit retraction beside it.
+    let repo = makeDir('kit-compact-gate-repo-');
+    try {
+        assert.strictEqual(writeRoleBoundary(repo, SESSION).ok, true, 'test setup: marker should write');
+        const res = runCli(['boundary', '--cancel'], repo, { CLAUDE_CODE_SESSION_ID: SESSION });
+        assert.strictEqual(res.status, 0, 'cancel succeeds; stderr: ' + res.stderr);
+        assert.ok(res.stdout.includes('retracted'), 'it says one was there; stdout: ' + res.stdout);
+        assert.ok(!fs.existsSync(roleBoundaryFile(repo)), 'the marker is gone');
+
+        // And says so when there was nothing to retract.
+        const again = runCli(['boundary', '--cancel'], repo, { CLAUDE_CODE_SESSION_ID: SESSION });
+        assert.strictEqual(again.status, 0, 'a second cancel is not a failure');
+        assert.ok(again.stdout.includes('no role-boundary marker was open'),
+            'it says none was there; stdout: ' + again.stdout);
+    } finally { rmDir(repo); }
+
+    repo = makeDir('kit-compact-gate-repo-');
+    try {
+        assert.strictEqual(writeRoleBoundary(repo, OTHER_SESSION).ok, true, 'test setup: marker should write');
+        const res = runCli(['boundary', '--cancel'], repo, { CLAUDE_CODE_SESSION_ID: SESSION });
+        assert.strictEqual(res.status, 0, 'not a failure; stderr: ' + res.stderr);
+        assert.strictEqual(JSON.parse(fs.readFileSync(roleBoundaryFile(repo), 'utf8')).session, OTHER_SESSION,
+            'another session\'s declaration is not this one\'s to retract');
+    } finally { rmDir(repo); }
+
+    // A marker file whose owner cannot be read is not this session's to remove
+    // either. The scope guard above can only protect a scope it can see, and
+    // these three read as no marker at all, so a clear that ran on them would
+    // delete whatever a peer wrote and report it as this session's own
+    // retraction.
+    for (const [what, contents] of [
+        ['illegible', 'not json\n'],
+        ['oversized', '{"session":"' + OTHER_SESSION + '","padding":"' + 'x'.repeat(70 * 1024) + '"}\n'],
+        ['nameless', '{"consumed":false}\n']
+    ]) {
+        repo = makeDir('kit-compact-gate-repo-');
+        try {
+            writeFile(roleBoundaryFile(repo), contents);
+            const res = runCli(['boundary', '--cancel'], repo, { CLAUDE_CODE_SESSION_ID: SESSION });
+            assert.strictEqual(res.status, 1, 'the ' + what + ' file is not a retraction; stdout: ' + res.stdout);
+            assert.ok(res.stderr.includes('nothing was retracted'),
+                'and says nothing was retracted; stderr: ' + res.stderr);
+            assert.strictEqual(fs.readFileSync(roleBoundaryFile(repo), 'utf8'), contents,
+                'the ' + what + ' file is left exactly as it was');
+        } finally { rmDir(repo); }
+    }
+});
+
+test('cli: status reports a lapsed role-boundary marker as lapsed, never as live', () => {
+    const repo = makeDir('kit-compact-gate-repo-');
+    const transcript = plantTranscript(FIXTURE_HOME, repo, SESSION,
+        userLine('earlier', Date.now() - 60 * 60 * 1000) + '\n');
+    try {
+        // Declared by the verb itself, so the position the report reads against
+        // is the one the verb recorded.
+        assert.strictEqual(runCli(['boundary'], repo, { CLAUDE_CODE_SESSION_ID: SESSION }).status, 0,
+            'test setup: the verb should declare');
+        let res = runCli(['status'], repo, { CLAUDE_CODE_SESSION_ID: SESSION });
+        assert.strictEqual(res.status, 0, 'status succeeds; stderr: ' + res.stderr);
+        assert.ok(/role-boundary marker open .*the gate honors it/.test(res.stdout),
+            'live where nothing has arrived since; stdout: ' + res.stdout);
+
+        // An arrival after the declaration: lapsed, and the report says which
+        // clause.
+        appendLine(transcript, userLine('one more thing', Date.now()));
+        res = runCli(['status'], repo, { CLAUDE_CODE_SESSION_ID: SESSION });
+        assert.ok(res.stdout.includes('lapsed: a message arrived in that session after it was declared'),
+            'the report names the clause; stdout: ' + res.stdout);
+
+        // And it names the transcript it read, with the home prefix elided:
+        // this is the one place this CLI prints a path under the operator's
+        // home, and the OS account name is in it. This report derives the path
+        // from the directory it runs in, where the gate reads the path its own
+        // offer carries, so a reader can tell the two subjects apart rather than
+        // reading a disagreement as a contradiction.
+        assert.ok(res.stdout.includes('moment read against '
+            + path.join('~', '.claude', 'projects')),
+        'the report names the transcript it read; stdout: ' + res.stdout);
+        assert.ok(!res.stdout.includes(FIXTURE_HOME),
+            'and elides the home prefix rather than printing it; stdout: ' + res.stdout);
+        assert.ok(res.stdout.includes(SESSION + '.jsonl'),
+            'the whole file name survives the cap; stdout: ' + res.stdout);
+
+        // A marker the match rule has already refused reports no moment read,
+        // because none is taken: the line would otherwise assert a read that
+        // never happened. Staged expired, which markerMatches refuses before
+        // the moment rule is consulted, over the same transcript that would
+        // lapse a live marker.
+        writeDeclaredMarkerAt(roleBoundaryFile(repo), SESSION,
+            BOUNDARY_MARKER_MAX_AGE_MS + 60 * 1000, undefined, transcript);
+        res = runCli(['status'], repo, { CLAUDE_CODE_SESSION_ID: SESSION });
+        assert.ok(res.stdout.includes('expired'), 'the age bound is what refuses it; stdout: ' + res.stdout);
+        assert.ok(!res.stdout.includes('moment read against'),
+            'and no read is asserted for it; stdout: ' + res.stdout);
+
+        // The hook's own marker declares no moment, so no transcript is read
+        // for it at all and the report says only what the age bound says. The
+        // transcript still carries the arrival that lapsed the declared marker,
+        // so a report that read it would say lapsed here too.
+        assert.strictEqual(writeRoleBoundary(repo, SESSION).ok, true, 'test setup: marker should write');
+        res = runCli(['status'], repo, { CLAUDE_CODE_SESSION_ID: SESSION });
+        assert.ok(/role-boundary marker open .*the gate honors it/.test(res.stdout),
+            'an undeclared marker is live on its age bound; stdout: ' + res.stdout);
+        assert.ok(!res.stdout.includes('moment read against'),
+            'and no transcript is read for it; stdout: ' + res.stdout);
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('cli: a declaration the gate could not position says so, and reads as lapsed', () => {
+    // The direction the whole rule rests on: a declaration nothing can vouch
+    // for defers rather than releasing. A run from a directory this session
+    // has no transcript under is how that happens in practice, and it is the
+    // same working-directory mistake the marker's own path can make, so the
+    // verb says it rather than leaving a marker that looks open and never
+    // fires.
+    const repo = makeDir('kit-compact-gate-repo-');
+    try {
+        const res = runCli(['boundary'], repo, { CLAUDE_CODE_SESSION_ID: SESSION });
+        assert.strictEqual(res.status, 0, 'the declaration still lands; stderr: ' + res.stderr);
+        assert.ok(res.stderr.includes('no transcript for this session could be measured'),
+            'and says the gate will not honor it; stderr: ' + res.stderr);
+        const staged = JSON.parse(fs.readFileSync(roleBoundaryFile(repo), 'utf8'));
+        assert.strictEqual(staged.declared, true, 'the marker is written all the same');
+        assert.strictEqual(staged.transcriptBytes, undefined, 'carrying no position');
+        assert.strictEqual(markerMomentHolds(staged, path.join(repo, 'transcript.jsonl')).reason,
+            'no-position', 'which is the clause that lapses it');
+
+        const status = runCli(['status'], repo, { CLAUDE_CODE_SESSION_ID: SESSION });
+        assert.ok(status.stdout.includes('lapsed: the declaration records no place'),
+            'and status reports it as lapsed; stdout: ' + status.stdout);
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('cli: the registry stamp refuses an entry path that is not a regular file', () => {
+    // The stamp renames over the path it read, so it judges that path with
+    // lstat: a link there is a link rather than whatever it points at, which is
+    // the screen every marker read in the lib already takes. A file symlink
+    // cannot be staged on this platform without a privilege the suite must not
+    // require, so the preload reports one at the entry's own path, which is an
+    // ordinary readable file otherwise: only the guard can refuse it.
+    const repo = makeDir('kit-compact-gate-repo-');
+    const shimDir = makeDir('kit-compact-gate-shim-');
+    const entry = registryEntryFile(FIXTURE_ENTRY_SESSION);
+    const before = entryText(FIXTURE_ENTRY_SESSION);
+    writeFile(entry, before);
+    try {
+        const res = runCli(['boundary'], repo, {
+            CLAUDE_CODE_SESSION_ID: FIXTURE_ENTRY_SESSION,
+            NODE_OPTIONS: symlinkReportingPreload(shimDir, FIXTURE_ENTRY_SESSION + '.md')
+        });
+        assert.strictEqual(res.status, 0, 'the declaration still lands; stderr: ' + res.stderr);
+        assert.ok(fs.existsSync(roleBoundaryFile(repo)), 'the marker opens: the stamp is a record, not a precondition');
+        assert.strictEqual(fs.readFileSync(entry, 'utf8'), before,
+            'and nothing is written through the refused path');
+    } finally {
+        try { fs.rmSync(entry, { force: true }); } catch { /* best effort */ }
+        rmDir(shimDir);
         rmDir(repo);
     }
 });
@@ -5544,10 +6416,10 @@ test('cli: a consent --session value that reads as an option is refused, never c
 // replaced by a hyphen>. The flattening is spelled out here rather than
 // imported, as the pin on the derivation the CLI shares with memq: a change to
 // one of them must fail here rather than agree with itself.
-function plantTranscript(home, projectDir, sessionId) {
+function plantTranscript(home, projectDir, sessionId, contents) {
     const flat = String(path.resolve(projectDir)).replace(/[^A-Za-z0-9]/g, '-');
     const full = path.join(home, '.claude', 'projects', flat, sessionId + '.jsonl');
-    writeFile(full, '{}\n');
+    writeFile(full, contents === undefined ? '{}\n' : contents);
     return full;
 }
 
@@ -5636,7 +6508,10 @@ test('cli: status reports both marker kinds in every state the gate distinguishe
         assert.ok(res.stdout.includes('no operator-consent marker is present'), 'stdout: ' + res.stdout);
     } finally { rmDir(repo); }
 
-    // Both live.
+    // Both live. Neither marker here declares a moment (the hook's shape and
+    // an operator consent), so neither is the moment rule's subject and no
+    // transcript is consulted for either: what this case reads is the age
+    // bound and the consumed flag alone.
     repo = makeDir('kit-compact-gate-repo-');
     try {
         assert.strictEqual(writeRoleBoundary(repo, SESSION).ok, true, 'test setup: marker should write');
@@ -5684,6 +6559,37 @@ test('cli: status reports an illegible marker file instead of claiming absence',
     } finally {
         rmDir(repo);
     }
+});
+
+test('suite: every child this file spawns is pinned to the fixture home', () => {
+    // The CLI stamps a registry entry under <home>/.claude/coordinator and its
+    // status report derives a transcript under <home>/.claude/projects, so an
+    // unpinned spawn reads and writes the operator's own machine state. Two
+    // helpers own every spawn, and this counts them rather than trusting
+    // per-call-site discipline: a third site added later fails here.
+    // The predicate is the node binary itself rather than one call form: the
+    // class is every child this file spawns, and `spawnSync(` names one way of
+    // spawning one. execFileSync, execSync through a composed command line, and
+    // a local alias holding the binary all spawn the same unpinned child while
+    // reading nothing like the literal a form-shaped pattern was handed.
+    const source = fs.readFileSync(__filename, 'utf8');
+    const NODE_BINARY = /process\.execPath/g;
+    const sites = (source.match(NODE_BINARY) || []).length;
+    const pinned = [runGate, runCli].filter((fn) => /\.\.\.homeEnv\(\)/.test(fn.toString())).length;
+    assert.strictEqual(pinned, 2, 'both spawn helpers pin the home');
+    assert.strictEqual(sites, pinned, 'and they are the only spawn sites in this file');
+
+    // The control, and it is coverage evidence rather than only proof the
+    // instrument functions: neither added site is written in the form the
+    // helpers use, so neither is an instance the pattern's own literals name.
+    // Both are composed rather than written out, so neither is itself a hit in
+    // the source read above.
+    const control = source
+        + '\nfunction runSomethingElse() { return execFileSync(process.exec'
+        + 'Path, [HOOK]); }\n'
+        + '\nconst node = process.exec' + 'Path;\n';
+    assert.strictEqual((control.match(NODE_BINARY) || []).length, sites + 2,
+        'the counter speaks for a spawn form and an alias the pattern never names');
 });
 
 test('lib: the marker paths are the ones the gate consumes and the CLI writes', () => {

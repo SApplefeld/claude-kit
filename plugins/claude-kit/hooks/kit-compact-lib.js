@@ -1749,29 +1749,38 @@ function usableSessionId(value) {
         : null;
 }
 
+// Where the harness files a session's transcript for a project directory, or
+// null where nothing resolves. The shape is <session-id>.jsonl under
+// ~/.claude/projects/<flattened project path>, and the flattening is memq's
+// own sanitizeProjectPath, imported rather than restated so the two cannot
+// disagree about a directory name. memq is required lazily because this is
+// the only path here that needs it and the gate's own hot path must not pay
+// for loading it. One derivation serves the corroboration below and the status
+// report's reading of a declared moment.
+function sessionTranscriptPath(projectDir, sessionId) {
+    try {
+        if (usableSessionId(sessionId) === null) return null;
+        const { sanitizeProjectPath } = require(path.join(__dirname, '..', 'scripts', 'memq.js'));
+        return path.join(os.homedir(), '.claude', 'projects',
+            sanitizeProjectPath(path.resolve(projectDir)), sessionId + '.jsonl');
+    } catch {
+        return null;
+    }
+}
+
 // Whether the harness holds a transcript for this session under this project
 // directory, which is the corroboration a marker written at a directory the
 // caller named rather than stood in has to pass. A marker landing in a
 // project the named session never ran in is inert and silently so, and this
 // turns that miss into a refusal.
 //
-// The harness files a session's transcript as <session-id>.jsonl under
-// ~/.claude/projects/<flattened project path>, and the flattening is memq's
-// own sanitizeProjectPath, imported rather than restated so the two cannot
-// disagree about a directory name. memq is required lazily because this is
-// the only path here that needs it and the gate's own hot path must not pay
-// for loading it.
-//
 // Anything unresolvable reads as no transcript: the caller's refusal is the
 // conservative answer, and a marker not written costs one re-run at the right
 // directory while one written at the wrong one costs a release nothing reads.
 function projectHoldsSessionTranscript(projectDir, sessionId) {
     try {
-        if (usableSessionId(sessionId) === null) return false;
-        const { sanitizeProjectPath } = require(path.join(__dirname, '..', 'scripts', 'memq.js'));
-        const dir = path.join(os.homedir(), '.claude', 'projects',
-            sanitizeProjectPath(path.resolve(projectDir)));
-        return fs.statSync(path.join(dir, sessionId + '.jsonl')).isFile();
+        const full = sessionTranscriptPath(projectDir, sessionId);
+        return full !== null && fs.statSync(full).isFile();
     } catch {
         return false;
     }
@@ -1921,7 +1930,22 @@ function readConsent(cwd) {
 // CLI's marker modes are the .kit/ writers that must work with no goal ever
 // armed, boundary and consent alike, exactly as writeCheckpoint creates it
 // for the leashed mode.
-function writeMarkerFile(target, sessionId) {
+//
+// `declared` records provenance, and it is the field the moment rule below is
+// scoped by: true only for the boundary verb's deliberate declaration, absent
+// for every other writer, so a marker's own record says which rule governs it
+// rather than a call site restating the distinction. `position` rides with it,
+// where the transcript could be measured: the byte offset the declared moment
+// sits at and a fingerprint of what preceded it, which is what the moment rule
+// reads forward from. Both fields are machine written here and nowhere else;
+// no prose ever asks anyone to produce either.
+//
+// The pair is written together or not at all. A declaration whose transcript
+// could not be measured records no position and the moment rule lapses it,
+// which is the conservative end: a marker that cannot be vouched for buys a
+// deferral, where one honored on an unread transcript buys a compaction in the
+// middle of a turn.
+function writeMarkerFile(target, sessionId, declared, position) {
     if (typeof sessionId !== 'string' || sessionId === '' || sessionId.length > 128
         || /[\x00-\x1F]/.test(sessionId)) {
         return { ok: false, reason: 'session id is invalid' };
@@ -1931,17 +1955,36 @@ function writeMarkerFile(target, sessionId) {
         writtenAt: new Date().toISOString(),
         consumed: false
     };
+    // Written only on the declaring path, so the file the seat-stop hook
+    // produces is byte-identical to the one it produced before these fields
+    // existed and reads as the window-scoped marker it has always been.
+    if (declared === true) {
+        state.declared = true;
+        if (position !== null && position !== undefined) {
+            state.transcriptBytes = position.bytes;
+            state.transcriptAnchor = position.anchor;
+        }
+    }
     try {
         fs.mkdirSync(path.dirname(target), { recursive: true });
         writeJsonAtomic(target, state);
     } catch (err) {
         return { ok: false, reason: 'could not write marker: ' + (err && err.message ? err.message : String(err)) };
     }
-    return { ok: true, session: sessionId };
+    return { ok: true, session: sessionId, positioned: declared !== true || (position !== null && position !== undefined) };
 }
 
-function writeRoleBoundary(cwd, sessionId) {
-    return writeMarkerFile(roleBoundaryPath(cwd), sessionId);
+// The declaring path measures the marked session's own transcript as it writes,
+// which is the file the gate later reads forward from: the position is taken
+// here rather than by the caller so no call site can declare a moment without
+// recording where it fell. `positioned` in the result says whether one was
+// taken, for a caller that reports a declaration nothing will be able to vouch
+// for.
+function writeRoleBoundary(cwd, sessionId, declared) {
+    const position = declared === true
+        ? transcriptPosition(sessionTranscriptPath(cwd, sessionId))
+        : null;
+    return writeMarkerFile(roleBoundaryPath(cwd), sessionId, declared, position);
 }
 
 function writeConsent(cwd, sessionId) {
@@ -1997,6 +2040,422 @@ function clearRoleBoundary(cwd) {
 
 function clearConsent(cwd) {
     return clearMarkerFile(consentPath(cwd));
+}
+
+// ---------------------------------------------------------------------------
+// The declared moment. The boundary verb's marker says the seat's context held
+// nothing the disk did not at the instant it was written. That is a statement
+// about a moment rather than a window: the instant a new turn begins in the
+// marked session, the session is working again and the declaration no longer
+// describes it, so the gate honors such a marker only while nothing has
+// arrived in that session's transcript since the write.
+//
+// The rule is scoped by provenance, and the scoping is the whole of what keeps
+// it from refusing every marker in existence. Its subject is a declaration,
+// which is the marker the boundary verb writes and stamps `declared`. The
+// seat-stop hook's turn-end bank carries no such field and is outside this
+// rule entirely, on its age bound alone: that marker is written at a turn END,
+// while a compaction offer only ever arrives inside a LATER turn, which by
+// construction began with a newer inbound line, so a moment test over the hook
+// path would lapse every marker it ever wrote. An undeclared marker is
+// therefore answered here without the transcript being opened at all.
+//
+// The evidence is the transcript's inbound lines, which are two shapes rather
+// than one. A `user` line is a tool result whenever its message content is an
+// array carrying a tool_result block, and those are the overwhelming majority
+// of user lines in a working session, the boundary command's own result among
+// them: a rule reading the last user line alone would mark every marker stale
+// the moment it was written. A genuine inbound message is a `user` line that
+// is not a tool result, whose content is a string or an array of text blocks;
+// a queued peer message additionally arrives as a `queue-operation` line,
+// which is not a `user` line at all and is the exact arrival this rule exists
+// to catch.
+//
+// Harness-injected lines are not arrivals and are excluded on the same three
+// flags userCommandArgsClaimPlan excludes them on: a meta record (a skill body,
+// a hook's own output replayed back, the session-start surfacing), a
+// compaction summary, and a sidechain turn. Without that exclusion a seat that
+// declares a boundary and then loads a skill lapses its own declaration, which
+// is the harness talking to the model rather than anyone arriving.
+//
+// What settles "since the write" is POSITION rather than time. A transcript's
+// lines are appended in order, so everything past a byte offset was written
+// after everything before it; their timestamps are not in that order, and a
+// line later in a real transcript routinely carries a stamp minutes older than
+// the line before it. So the declaration records where the transcript ended at
+// the instant it was made, and this rule reads forward from there. A rule that
+// instead inferred the read's coverage from timestamps would honor a marker
+// whose arrival sat outside the window it inspected, which is a compaction
+// landing mid-turn: the one direction this rule exists to refuse.
+//
+// Every unanswerable question is stale rather than fresh, so this leg fails
+// toward deferral the way the gate's other legs do: a declared marker carrying
+// no recorded position, an absent or unreadable transcript, a transcript that
+// no longer matches the recorded position, an appended stretch past the read
+// bound, and a line in that stretch that will not parse.
+// ---------------------------------------------------------------------------
+
+// How much of the appended stretch the moment rule reads. What the cap has to
+// cover is not the transcript, which on a held seat runs to tens of megabytes,
+// but what was appended since the declaration, which is seconds to tens of
+// seconds of one session (an offer recurs every half minute or so while a
+// compaction is being held). An arrival inside the cap is answered from what
+// was read; a stretch running past it with no arrival inside is answered as
+// unknown and lapses, rather than being read as an absence of arrivals.
+const MOMENT_APPEND_MAX_BYTES = 512 * 1024;
+
+// How much of the transcript before the recorded position is fingerprinted, so
+// a file replaced or rotated under the same path is not read as the one the
+// declaration measured. A few kilobytes are several whole records of a shape
+// nothing else produces; the offset alone would be satisfied by any file that
+// happens to be long enough.
+const MOMENT_ANCHOR_MAX_BYTES = 4 * 1024;
+
+// A hex digest of `text`, short enough to sit in a marker file and long enough
+// that two different transcripts do not collide on it.
+function momentAnchorDigest(text) {
+    return crypto.createHash('sha256').update(text, 'utf8').digest('hex').slice(0, 32);
+}
+
+// Where a transcript ends right now, as the position a declaration records:
+// { bytes, anchor }, or null where nothing can be measured (no path, not a
+// readable regular file, or a file whose last line boundary cannot be found).
+//
+// The position is the end of the last COMPLETE line rather than the file's own
+// end, which is what makes reading forward from it parse whole records: a
+// record caught mid-append at the declaration is left on the far side of the
+// offset, so it is judged when it is whole rather than as a fragment. That is
+// also the conservative side, since a record being appended at the instant of
+// the declaration is judged as an arrival if it turns out to be one.
+function transcriptPosition(transcriptPath) {
+    try {
+        const st = fs.statSync(transcriptPath);
+        if (!st.isFile()) return null;
+        if (st.size === 0) return { bytes: 0, anchor: momentAnchorDigest('') };
+        const fd = fs.openSync(transcriptPath, 'r');
+        try {
+            const window = Math.min(st.size, MOMENT_ANCHOR_MAX_BYTES);
+            const tail = readFully(fd, st.size - window, window);
+            const lastBreak = tail.lastIndexOf('\n');
+            // No line boundary inside the window: where the window is the whole
+            // file the transcript holds no complete line yet, and where it is
+            // not, the last record is longer than the window and its start
+            // cannot be found from here. Neither can be positioned.
+            if (lastBreak === -1) return null;
+            // Measured back from the file's end rather than forward from the
+            // window's start: the window starts at an arbitrary byte, so its
+            // decoded head can open on a replacement character whose length is
+            // not the length of the bytes it stands for, while the fragment
+            // after the last newline runs to the end of the file.
+            const bytes = st.size - Buffer.byteLength(tail.slice(lastBreak + 1), 'utf8');
+            const anchorFrom = Math.max(0, bytes - MOMENT_ANCHOR_MAX_BYTES);
+            return {
+                bytes,
+                anchor: momentAnchorDigest(readFully(fd, anchorFrom, bytes - anchorFrom))
+            };
+        } finally {
+            try { fs.closeSync(fd); } catch { /* already closed */ }
+        }
+    } catch {
+        return null;
+    }
+}
+
+// What the transcript has gained since a recorded position, as
+// { text, bounded } for a readable stretch, or { reason } naming why it cannot
+// be read:
+//
+//   'unreadable'  the path is absent, is not a regular file, or the read failed
+//   'replaced'    the file is shorter than the recorded position, or the bytes
+//                 before that position no longer hash to the recorded anchor:
+//                 a truncated, rotated or different file, whose arrivals since
+//                 the declaration are unknowable
+//
+// `bounded` says the stretch runs past the read bound, so an absence of
+// arrivals inside the text is not an absence of arrivals: the caller answers a
+// found arrival from what it read and answers a bounded read with no arrival in
+// it as unknown. The read starts at the recorded position rather than at the
+// file's end, so an arrival that landed first is inside the bound however much
+// followed it.
+//
+// The isFile check is the same narrowing readTranscriptCapped applies and for
+// the same reason (a FIFO planted here would block inside the read, where no
+// try/catch can rescue it).
+function readMomentAppend(transcriptPath, from, anchor) {
+    try {
+        const st = fs.statSync(transcriptPath);
+        if (!st.isFile()) return { reason: 'unreadable' };
+        if (st.size < from) return { reason: 'replaced' };
+        const fd = fs.openSync(transcriptPath, 'r');
+        try {
+            const anchorFrom = Math.max(0, from - MOMENT_ANCHOR_MAX_BYTES);
+            if (momentAnchorDigest(readFully(fd, anchorFrom, from - anchorFrom)) !== anchor) {
+                return { reason: 'replaced' };
+            }
+            const grown = st.size - from;
+            const take = Math.min(grown, MOMENT_APPEND_MAX_BYTES);
+            return { text: readFully(fd, from, take), bounded: grown > take };
+        } finally {
+            try { fs.closeSync(fd); } catch { /* already closed */ }
+        }
+    } catch {
+        return { reason: 'unreadable' };
+    }
+}
+
+// Whether a parsed transcript entry is an inbound message, by the two shapes
+// the section header states. A `user` line whose content array carries a
+// tool_result block is the harness reporting a tool call back to the model,
+// which is not a new turn arriving; nor is anything the harness injects, which
+// is the isSidechain / isMeta / isCompactSummary triple userCommandArgsClaimPlan
+// screens on, read here on the same three flags and in the same order so the
+// two readers of this transcript cannot disagree about what the harness wrote
+// to itself.
+function entryIsInbound(entry) {
+    if (!entry || typeof entry !== 'object') return false;
+    if (entry.isSidechain || entry.isMeta === true || entry.isCompactSummary === true) return false;
+    if (entry.type === 'queue-operation') return true;
+    if (entry.type !== 'user') return false;
+    const content = entry.message && entry.message.content;
+    if (!Array.isArray(content)) return true;
+    return !content.some(block => block && typeof block === 'object' && block.type === 'tool_result');
+}
+
+// Whether a marker is the boundary verb's declaration, which is the only kind
+// the moment rule governs. The provenance decision lives here alone: a call
+// site asking whether the moment holds gets the scoping with it, so no reader
+// can apply the rule to the seat-stop hook's turn-end bank by forgetting a
+// condition.
+function markerDeclaresMoment(marker) {
+    return !!marker && typeof marker === 'object' && marker.declared === true;
+}
+
+// The transcript position a declaration recorded, or null where it carries
+// none that can be used. A declared marker without one cannot be positioned
+// and so cannot be vouched for, which its caller reads as lapsed: the writer
+// records the pair or records neither, so a marker missing it was written by
+// something other than this file's writer, or written where no transcript
+// could be measured.
+function markerMomentPosition(marker) {
+    if (!markerDeclaresMoment(marker)) return null;
+    const bytes = marker.transcriptBytes;
+    const anchor = marker.transcriptAnchor;
+    if (typeof bytes !== 'number' || !Number.isSafeInteger(bytes) || bytes < 0) return null;
+    if (typeof anchor !== 'string' || anchor === '') return null;
+    return { bytes, anchor };
+}
+
+// Whether the marker still describes the moment it was written in, given the
+// marked session's transcript. Returns { ok:true, reason:null } while it does,
+// which is also the answer for every marker that declares no moment, else
+// { ok:false, reason } naming the clause that refused it:
+//   'no-position'  the declaration records no usable transcript position, so
+//                  there is nowhere to read from and nothing can be vouched
+//   'unreadable'   the transcript is absent, not a regular file, or the read
+//                  failed
+//   'replaced'     the transcript is shorter than the recorded position, or
+//                  what sits before that position no longer matches what was
+//                  there: a truncated, rotated or different file
+//   'too-long'     nothing arrived inside the stretch the read covers, and
+//                  more was appended past it, so the rest is unknown
+//   'torn'         a whole line of the appended stretch will not parse, so
+//                  what it was cannot be answered
+//   'inbound'      a message arrived after the marker was written
+//
+// An arrival found inside the bounded read is an arrival whatever sits past
+// the bound, so 'inbound' is answered before 'too-long' rather than after it.
+//
+// Only the LAST line of the stretch may be a fragment and only it is passed
+// over: the gate runs while the session is live, so the record at the end of
+// the file is routinely one caught mid-append, and a bounded read ends on a
+// fragment by construction. That is also exactly where an arrival lands, so an
+// unparseable line anywhere before it is answered as unknown rather than
+// skipped.
+//
+// No timestamp is read here at all. Position is what orders a transcript's
+// lines; their stamps are not ordered, so a rule resting on them can be shown
+// an arrival it reads as predating the write.
+function markerMomentHolds(marker, transcriptPath) {
+    if (!markerDeclaresMoment(marker)) return { ok: true, reason: null };
+    const position = markerMomentPosition(marker);
+    if (position === null) return { ok: false, reason: 'no-position' };
+    const appended = readMomentAppend(transcriptPath, position.bytes, position.anchor);
+    if (appended.reason !== undefined) return { ok: false, reason: appended.reason };
+    const lines = appended.text.split('\n');
+    for (let i = 0; i < lines.length; i += 1) {
+        const line = lines[i];
+        if (line === '') continue;
+        let entry;
+        try {
+            entry = JSON.parse(line);
+        } catch {
+            if (i === lines.length - 1) continue;
+            return { ok: false, reason: 'torn' };
+        }
+        if (entryIsInbound(entry)) return { ok: false, reason: 'inbound' };
+    }
+    if (appended.bounded) return { ok: false, reason: 'too-long' };
+    return { ok: true, reason: null };
+}
+
+// ---------------------------------------------------------------------------
+// The registry record of a declared boundary.
+// ---------------------------------------------------------------------------
+
+// A registered session's entry under the machine's coordinator directory, or
+// null. The id is held to the shared marker-scope rule before it is joined to
+// anything, so a value carrying a separator or a parent segment never composes
+// a path here at all. One spelling of the location serves this stamp and the
+// seat-stop hook's heartbeat.
+function registryEntryPath(sessionId) {
+    if (usableSessionId(sessionId) === null) return null;
+    return path.join(os.homedir(), '.claude', 'coordinator', os.hostname(),
+        'registry', sessionId + '.md');
+}
+
+// A registry entry is a handful of short lines. Anything past this is not one,
+// and is left untouched rather than parsed.
+const REGISTRY_ENTRY_MAX_BYTES = 64 * 1024;
+
+// A registry entry's text, or null with the clause that refused it. Both
+// mechanical stampers of these entries read through this, the boundary verb's
+// `Banked:` stamp here and the seat-stop hook's `Heartbeat:` stamp, so the
+// screen is a property of the entry as a channel rather than of whichever
+// writer needed it first.
+//
+// lstat, not stat: a link planted at the entry path is judged as a link rather
+// than as whatever it points at, which is the screen every marker read in this
+// file already takes, and the reason is sharper here, since both callers rename
+// over the path they read and following a link would aim an atomic write at a
+// file of someone else's choosing. The size cap is the same conservatism: an
+// entry past it is not one of ours and is left untouched rather than parsed.
+// Never throws.
+function readRegistryEntryText(full) {
+    try {
+        const st = fs.lstatSync(full);
+        if (!st.isFile()) return { text: null, reason: 'not a registry entry' };
+        if (st.size > REGISTRY_ENTRY_MAX_BYTES) {
+            return { text: null, reason: 'entry too large to be one of ours' };
+        }
+        return { text: fs.readFileSync(full, 'utf8'), reason: null };
+    } catch {
+        return { text: null, reason: 'no registry entry at that path' };
+    }
+}
+
+// Replace a registry entry's whole text atomically, as { ok, reason }. The
+// other half of the shared channel: one atomic write serves both stamps, so
+// neither can drift from the discipline the other keeps.
+//
+// The three defences atomicTmpPath's own comment states, taken together because
+// each is worthless alone: an unguessable temporary name, an exclusive create
+// that refuses a path already occupied, and a cleanup gated on that create
+// having returned, so a failure path can only remove the file this writer made.
+// The temporary's name is transient-shaped, so the store's sync allowlist
+// refuses it and a crash between the write and the rename leaves nothing that
+// replicates. Never throws.
+function writeRegistryEntryAtomic(full, text) {
+    const tmp = atomicTmpPath(full);
+    let created = false;
+    try {
+        // Create and write are separate calls, and the close is split from the
+        // write, for writeJsonAtomic's own two reasons: `created` has to mean
+        // "the exclusive create returned" for the cleanup below to be safe, and
+        // a close error after a returned write is where a deferred write error
+        // surfaces, which must not be dropped behind a success.
+        const fd = fs.openSync(tmp, 'wx');
+        created = true;
+        let wrote = false;
+        try {
+            fs.writeFileSync(fd, text, 'utf8');
+            wrote = true;
+        } finally {
+            try {
+                fs.closeSync(fd);
+            } catch (closeErr) {
+                if (wrote) throw closeErr;
+            }
+        }
+        fs.renameSync(tmp, full);
+        return { ok: true, reason: null };
+    } catch (err) {
+        // Only what this writer created is this writer's to remove (see
+        // atomicTmpPath).
+        if (created) {
+            try { fs.unlinkSync(tmp); } catch { /* nothing left to clean up */ }
+        }
+        return {
+            ok: false,
+            reason: 'could not write the registry entry: ' + (err && err.message ? err.message : String(err))
+        };
+    }
+}
+
+// Stamp the entry's `Banked:` line with now, through the shared read screen
+// and atomic write above, which is the same channel the seat-stop hook's
+// `Heartbeat:` stamp writes through. The entry gains exactly one such line, an existing one being rewritten in place
+// and a missing one inserted directly after `Heartbeat:`, which is where the
+// contract's shape carries it; the rest of the file is byte-identical, because
+// the registering session is the entry's only other writer and restructuring a
+// peer's single-writer artifact is not this stamp's to do. An entry carrying
+// neither line is not the shape the contract defines and is left untouched for
+// the same reason.
+//
+// The time is read from the clock here at the write rather than passed in: a
+// stamp templated from a value a caller has been holding reads as authoritative
+// while answering the elapsed-time question wrongly.
+//
+// The entry has to vouch for itself before it is written. The path is composed
+// from a session id taken out of the environment, which nothing authenticates,
+// so the id alone establishes only which file would be written and never that
+// it is the caller's: any local process that sets that variable to a peer's id
+// names the peer's entry, a single-writer file that replicates to every machine
+// the store's remote reaches. What closes it is the entry's own `Session:`
+// line, the corroboration projectHoldsSessionTranscript is for the marker's
+// project: an entry naming a different session, or naming none, is refused and
+// left byte-identical.
+//
+// Every failure returns { stamped:false, reason }: the stamp is a record of the
+// declaration, never a precondition for it, so an absent coordinator directory,
+// an absent entry, a foreign entry and a refused write all leave the marker the
+// caller opened exactly as it was. Never throws.
+//
+// One residual, named rather than left for a reader to find, and it is
+// stampHeartbeat's own: the entry is read whole here and rewritten whole from
+// that snapshot, with no lock between the two, so a write by either of the
+// entry's other writers landing inside that window is discarded silently. The
+// cost is one lost line rewrite on a file whose fields are all restated at the
+// next push or the next stamp, and the atomic rename is what keeps the loser a
+// stale entry rather than a torn one.
+function stampRegistryBanked(sessionId) {
+    const full = registryEntryPath(sessionId);
+    if (full === null) return { stamped: false, reason: 'session id is invalid' };
+    const read = readRegistryEntryText(full);
+    if (read.text === null) return { stamped: false, reason: read.reason };
+    const text = read.text;
+    const named = /^Session:[ \t]*(\S+)[ \t]*\r?$/m.exec(text);
+    if (named === null) {
+        return { stamped: false, reason: 'the entry carries no Session line to vouch for it' };
+    }
+    if (!sameSessionId(named[1], sessionId)) {
+        return { stamped: false, reason: 'the entry at that path names a different session' };
+    }
+    // The entry's own line ending is preserved rather than assumed: the
+    // capture carries whatever carriage return the matched line ended on, so a
+    // stamp into a CRLF entry writes a CRLF line and leaves the file's endings
+    // uniform.
+    const line = 'Banked: ' + new Date().toISOString();
+    let stamped;
+    if (/^Banked:/m.test(text)) {
+        stamped = text.replace(/^Banked:.*?(\r?)$/m, line + '$1');
+    } else if (/^Heartbeat:/m.test(text)) {
+        stamped = text.replace(/^(Heartbeat:.*?)(\r?)$/m, '$1$2\n' + line + '$2');
+    } else {
+        return { stamped: false, reason: 'the entry carries neither line this stamp writes beside' };
+    }
+    const wrote = writeRegistryEntryAtomic(full, stamped);
+    if (!wrote.ok) return { stamped: false, reason: wrote.reason };
+    return { stamped: true, reason: null };
 }
 
 // ---------------------------------------------------------------------------
@@ -2520,7 +2979,10 @@ module.exports = {
     roleBoundaryPath, consentPath, ROLE_BOUNDARY_MAX_AGE_MS, CONSENT_MAX_AGE_MS,
     markerMatches, readRoleBoundary, readConsent, readRoleBoundaryResult, readConsentResult,
     writeRoleBoundary, writeConsent, clearRoleBoundary, clearConsent,
-    projectHoldsSessionTranscript, usableSessionId,
+    markerMomentHolds, markerDeclaresMoment, transcriptPosition,
+    stampRegistryBanked, registryEntryPath,
+    readRegistryEntryText, writeRegistryEntryAtomic,
+    projectHoldsSessionTranscript, sessionTranscriptPath, usableSessionId,
     gateStatePath, gateLogPath, readGateState, readGateStateResult, recordGateDecision,
     gateEpisodeOpen, pendingOfferCorroborated, checkpointOwner, recordEpisodeNudge,
     projectGateEpisode, episodePhrase, wholeMinutesSince, gateCount,

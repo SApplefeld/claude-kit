@@ -255,6 +255,85 @@ Per-plan history does not live here. A plan's Chapters are its own append-only r
   expectations (a temp-prefix path-length red, zip sizes differing by PowerShell host), so a
   runner-green suite definition has to exist before any of this becomes a required check. Signal:
   the branch-protections item is picked up, or any further work on filesystem-semantics code.
+- **The judgment sidecar's transcript distiller is parked by design, waiting on a field trial and an
+  operator call (parked 2026-08-31, from the judgment sidecar plan's section 8).** This is a designed
+  deferral rather than work left undone, and the distinction is load-bearing: the plan reached Complete
+  at section 7 deliberately, because section 8's own acceptance reads "deferred to the design pass", so
+  there is no buildable acceptance a run could have reached. What it would build: end-of-session
+  transcript extraction, chunked map-reduce distillation sized well inside the standing context,
+  candidate memory drafts and contradiction flags written to a pending file for session or operator
+  adjudication, with budget stated in the prompt plus validate-and-re-ask, since the model composes past
+  schema caps and constrained decoding then truncates mid-sentence. Two things get decided at the design
+  pass rather than now: how it interacts with the shipped memory-recognition hook, which did not exist
+  when section 8 was written, and whether a distiller earns its keep at all once recognition is running
+  in the field. The pass itself is specified as fable-tier. Signal: the field trial of sections 1 through
+  7 has elapsed and the operator calls for it.
+
+- **Two of the judgment sidecar's acceptance criteria are operator-only and remain unrun (parked
+  2026-08-31, from the judgment sidecar's finishing pass; recorded open in Chapters 1 and 3 rather than
+  discovered at the close).** Neither is a failure and neither held the plan open, because both need an
+  act no session in that effort was permitted to perform: every run of that plan was constrained to
+  fixture stores and fixture homes, and both criteria require the daemon running against the real store.
+  The first, from section 1: a manual session on this VM produces schema-valid spool lines for real tool
+  calls. The second, from section 3: a live session receives a diverged-verdict pointer at its next tool
+  call after a deliberately trapped command, which is the end-to-end proof that the valve delivers. Both
+  are the field trial the distiller item above is also waiting on, so one activation serves both. What
+  reopens the work: either criterion failing when run. Signal: the operator starts the daemon against the
+  real store.
+
+- **The invisible-character neutralizer is shared by four consumers that each compile it with their own
+  flags, and the fourth was found by breakage rather than by a check (2026-08-31, from the judgment
+  sidecar's finishing fix round).** `UNSAFE_PATTERN` in
+  `plugins/claude-kit/scripts/kit-endpoint-lib.js` is a joined list of escape strings rather than a
+  literal character class, deliberately, so the source file does not contain the bytes it screens for and
+  does not drop out of the repository's own hygiene sweeps. The cost of that shape is that each consumer
+  calls `new RegExp` itself and chooses its own flags. When the class gained a supplementary-plane range
+  and the `u` flag with it, `sidecar/harvest.js` was still compiling the shared pattern with `g` alone and
+  became a load-time `SyntaxError`, taking a whole suite down. That was caught because it was loud; a
+  future consumer whose flag mismatch is merely wrong rather than fatal would not be. There is also a
+  spelling pin asserting the hook's copy and the library's copy are byte-identical, and it is worth
+  knowing what that pin cannot do: it pins the two equal, so when the class was too narrow it propagated
+  the gap to both surfaces faithfully and reported green. Fix shape: export a compiled regular expression,
+  or a `neutralize` helper, from the library so no consumer chooses flags, and keep the byte-identity pin
+  for the hook copy that cannot require the library. Signal: a fifth consumer, or the next change to the
+  character class.
+
+- **Stripping the variation-selector range degrades emoji in the sidecar's advisory text (2026-08-31,
+  from the judgment sidecar's finishing fix round; accepted rather than fixed).** The neutralizer now
+  strips `U+FE00` through `U+FE0F`, which includes VS16, the selector that asks for the emoji rendering of
+  a dual-presentation character. So a heart or a warning sign in captured text can arrive at the session
+  as its monochrome text form rather than as the emoji. This is accepted because the exposure is narrow
+  and the alternative is worse: the consumers are sidecar-internal advisory text plus the capture hook,
+  `memq` does not consume the neutralizer, and carving VS16 out of the range would reopen a genuine
+  steering channel to close a cosmetic one. Recorded so that a later report of "the sidecar mangles my
+  emoji" is met with a decision rather than a bug hunt. Signal: a consumer of the neutralizer whose output
+  is user-facing prose rather than advisory pointers.
+
+- **`test/kit-sidecar-capture.test.js` closes the live-store class by per-call-site discipline where its
+  two sibling suites close it by structure (2026-08-31, from the judgment sidecar's finishing fix
+  round).** The live-store class reached ten instances in that effort, and the thing that finally held was
+  structural rather than behavioural: one spawn helper naming the interpreter at a single site, so a later
+  call site cannot be written without a fixture home. `test/kit-sidecar-battery.test.js`,
+  `test/kit-sidecar-daemon.test.js` and `test/kit-sidecar-rollup.test.js` all carry that shape and a pin
+  asserting the interpreter token appears exactly once. The capture suite does not: it has three separate
+  `process.execPath` sites, and all three pin `HOME` and `USERPROFILE` to a fixture home correctly today.
+  That is per-call-site discipline, which is precisely the discipline that failed eight consecutive times
+  in the battery file, once under a file header asserting the opposite. Nothing is wrong today and this is
+  a guard item, not a defect. Fix shape: give the capture suite the same single-site spawn helper and the
+  same structural pin. Signal: a fourth spawn site added to that file, which is the moment discipline has
+  to be remembered rather than enforced.
+
+- **The sidecar inbox lock's stale-reap has a race that duplicates advisory text (2026-08-31, from the
+  judgment sidecar's finishing adversarial review; real, inferred rather than reproduced, and
+  deliberately shipped).** `acquireInboxLock` reaps a lock it judges stale, and two writers can judge the
+  same lock stale in the same window and both proceed. The blast radius is bounded and was priced before
+  the call was made: the worst outcome is a delivery item written twice, so a session sees one advisory
+  pointer duplicated, and there is no corruption of the inbox file and no loss. It was not fixed in the
+  finishing round because the fix is a concurrency rewrite of the acquire path rather than a pin, and a
+  concurrency rewrite landing in a fix round whose other five items were all red-first pins is the shape
+  that ships a worse bug than it closes. Fix shape: an atomic create-exclusive acquire with the staleness
+  judgment made by the holder of the new lock rather than by each contender independently. Signal: the
+  first duplicated pointer observed in the field, or the daemon gaining a second writer.
 
 - **Three surfaces restate the coordinator board's commitment categories by hand, and nothing pins them to the ledger they summarize (2026-08-31, from the standing-lines Section 4 security and adversarial reviews; the three restatements themselves were brought current by that plan's finishing curation, which leaves the durable half open).** The categories are enumerated inside `plugins/claude-kit/skills/coordinator/SKILL.md`, and three summaries of them live outside that file: the board-holdings list and the board-carried-path classes in `docs/security-model.md`, and the count of branches read for defects and never performed in `docs/architecture.md`. All three were short before the standing-lines plan widened the set with the routed-finding category, and all three were repaired by hand during that plan's finishing pass, so none of them is wrong today. What is unresolved is that a hand-edit is the only thing keeping them right: the set has now grown once with three separate summaries needing three separate repairs, and nothing would catch the next growth. The cheap durable answer is a pin over the category set rather than a fourth round of hand-edits. Fix shape: a test that reads the category list out of the coordinator skill and asserts each restatement covers it, or a single-sourced list the three surfaces cite rather than restate. Signal: the next commitment category added to the ledger.
 - **A finding routed to a seat that never answers has no terminal path, and the spec deliberately did not invent one (2026-08-31, from the standing-lines finishing pass; routed to the operator as a design decision rather than filled).** The coordinator skill now carries routed findings as a board category: the line stays open until it carries a disposition pointer or an explicit open marker, and a successor does not sweep past an open one however stale it reads. That is exactly the rule the spec asked for, and it is silent on the one state it cannot resolve by itself, a finding sent to a seat that is retired, wedged, or simply never replies, whose line then rides every successor's board forever with nothing that can ever close it. Three fix rounds during Section 4 each spawned their own defect while building machinery to close that state (a re-ask cadence, an escalation threshold, an operator disposal), and round three reverted all of it to the spec's own scope, which is why the gap is recorded here rather than filled: picking a terminal path is a design call about what a seat owes a commitment it cannot discharge, and it is the operator's. Fix shape, if wanted: a bounded number of re-asks before the line converts to an operator escalation, or an explicit expiry that retires the line with a recorded reason. Signal: a board carrying a routed-finding line nobody can answer, or any further work on the coordinator's board categories.

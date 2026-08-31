@@ -331,7 +331,7 @@ function parseLogFile(file) {
             malformed += 1;
             continue;
         }
-        if (parsed.v !== 1) {
+        if (parsed.v !== logs.LOG_VERSION) {
             unknown += 1;
             continue;
         }

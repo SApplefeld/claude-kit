@@ -621,20 +621,23 @@ const RECORD_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,120}$/;
 // C1 controls (which carry ANSI escape runs that repaint a terminal or hide
 // text from a reader looking straight at it), the bidirectional overrides and
 // isolates (which reorder what a reader sees without changing what a program
-// compares), the zero-width and invisible formatting characters, and the byte
-// order mark. Tab, newline and carriage return are deliberately outside the
-// removed class: they separate words, so they are left for the whitespace
-// collapse that follows and become single spaces rather than running two words
-// together.
+// compares), the zero-width and invisible formatting characters (the soft
+// hyphen, the mongolian vowel separator, the hangul fillers, the variation
+// selectors and the interlinear annotation controls among them), the byte
+// order mark, and the tag block, which is the invisible channel an instruction
+// can be encoded into whole and recovered from intact. Tab, newline and
+// carriage return are deliberately outside the removed class: they separate
+// words, so they are left for the whitespace collapse that follows and become
+// single spaces rather than running two words together.
 //
 // The kit repo holds the other implementation of this same property, in
 // scripts/kit-endpoint-lib.js, which the daemon applies at the producing end.
 // Two exist by choice rather than by necessity: that module ships inside this
-// plugin and this file could import it, and the reason it does not is cost. A
-// PreToolUse hook runs on the way to every tool call a session makes, and
-// loading a module carrying a config reader, a transport and a locality screen
-// to answer one question about a string is a load the hot path pays on every
-// invocation for a few lines of predicate.
+// plugin and this file could import it, and the reason it does not is cost.
+// This hook runs at the close of every Bash call a session makes (PostToolUse),
+// and loading a module carrying a config reader, a transport and a locality
+// screen to answer one question about a string is a load that per-call path
+// pays on every invocation for a few lines of predicate.
 //
 // Both are needed rather than either being redundant, since the daemon guards
 // what the daemon wrote and the inbox is a file any process running as this
@@ -652,15 +655,27 @@ const UNSAFE_PATTERN = [
     '\\u000B-\\u000C',
     '\\u000E-\\u001F',
     '\\u007F-\\u009F',
+    '\\u00AD',
+    '\\u061C',
+    '\\u180E',
     '\\u200B-\\u200F',
     '\\u202A-\\u202E',
     '\\u2060-\\u2064',
     '\\u2066-\\u206F',
+    '\\u3164',
+    '\\uFE00-\\uFE0F',
     '\\uFEFF',
+    '\\uFFA0',
+    '\\uFFF9-\\uFFFB',
+    '\\u{E0000}-\\u{E007F}',
     ']'
 ].join('');
 
-const UNSAFE_RE = new RegExp(UNSAFE_PATTERN, 'g');
+// The `u` flag is load-bearing, not style: the tag block sits in a
+// supplementary plane, and a non-unicode character class cannot express a
+// code point past U+FFFF at all, so without the flag the `\u{...}` range
+// above would not mean what it says.
+const UNSAFE_RE = new RegExp(UNSAFE_PATTERN, 'gu');
 
 function neutralize(text) {
     if (typeof text !== 'string') return '';
