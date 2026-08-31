@@ -227,7 +227,8 @@ test('the style skills the outline bullet routes to still carry a recipe', () =>
 // skill it routed to becomes a file nothing points at.
 //
 // The gate bullet is the near end for the lane rule: the doctrine names the
-// moments (after a fix, at section close, at finishing, before a push) and
+// moments (the targeted lane after a fix and at section close, the whole gate
+// at finishing, before the plan's handoff, and at an install-surface push) and
 // carries none of the lane mechanics itself, so the pointer is the only path
 // from the always-loaded layer to them.
 test('the gate bullet routes its lanes to the testing-discipline skill in each copy', () => {
@@ -246,19 +247,53 @@ test('the gate bullet routes its lanes to the testing-discipline skill in each c
     // rewrite that keeps the pointer while dropping one of them leaves the
     // always-loaded layer silent on the moment it dropped: without the targeted
     // lane every fix round is priced at the whole gate again, and without one of
-    // the whole-gate moments a section closes, a push lands, or a finishing pass
-    // runs on a lane too narrow to support the claim it makes.
+    // the whole-gate moments a plan hands off, a push lands on the surface its
+    // consumers install from, or a finishing pass runs on a lane too narrow to
+    // support the claim it makes.
     for (const [phrase, why] of [
-        [/targeted lane/, 'name the targeted lane as what a fix takes'],
-        [/section close/, 'name section close as a whole-gate moment'],
+        [/targeted lane/, 'name the targeted lane, which a fix round and a '
+            + 'section close alike take'],
+        [/take the targeted lane, whatever the delta touched/,
+            'state the invariant that a section close and a fix round alike '
+            + 'take the targeted lane whatever their delta touched, which is '
+            + 'the whole of what keeps those two moments off the whole gate'],
+        [/at section close whenever the section's delta touched/,
+            'name section close as the contention lane\'s own moment, run '
+            + 'there whenever the section\'s delta touched machine-shared '
+            + 'state'],
         [/at finishing/, 'name finishing as a whole-gate moment'],
-        [/before a push/, 'name before a push as a whole-gate moment'],
-        [/shared module/, 'state the shared-module condition, which is the only '
-            + 'thing that pulls a fix round up to the whole gate'],
+        [/before the plan's handoff/,
+            'name the plan\'s handoff as a whole-gate moment, the one moment '
+            + 'that reads the whole tree on every plan whatever its trunk'],
+        [/before a push/, 'name a push as a whole-gate moment, bounded by the '
+            + 'install-surface condition'],
+        [/only where that push lands on a trunk consumers install from directly with no CI gating the merge/,
+            'state the install-surface condition that bounds the pre-push whole '
+            + 'gate, without which every push is priced at the whole gate again'],
     ]) {
         assert.match(inSkill[0], phrase, 'the gate bullet must ' + why
             + '; the pointer does not carry the moments, so a reader who never '
             + 'opens the skill has only this bullet to run a gate from');
+    }
+    // The pins above are presence-only, and a bullet that carries both cadences
+    // at once satisfies every one of them: re-adding a section-close whole gate
+    // or the shared-module condition beside the sentences that replaced them
+    // reads as green while the always-loaded layer names two lanes for one
+    // moment, and a reader takes the wider. The two moments therefore carry
+    // absence assertions as well, since their removal is the change itself.
+    for (const [phrase, why] of [
+        [/whole gate at section close/i,
+            'section close is a targeted-lane moment, so a bullet naming it as '
+            + 'a whole-gate moment prices every section close at a full suite '
+            + 'again'],
+        [/shared module/,
+            'a fix round takes the targeted lane whatever its delta touched, so '
+            + 'a shared-module condition on the bullet reinstates the clause '
+            + 'that fires on essentially every fix round in a repo with widely '
+            + 'imported modules'],
+    ]) {
+        assert.doesNotMatch(inSkill[0], phrase, 'the gate bullet states a lane '
+            + 'the cadence does not have: ' + why);
     }
     // The contention lane is named here rather than left to the skill because a
     // session reading only the always-loaded layer would otherwise run the whole
@@ -1507,10 +1542,12 @@ test('the lane text agrees between the doctrine gate bullet and the testing-disc
     for (const [phrase, what] of [
         ['the changed files\' tests plus any whole-tree pin whose subject those files are',
             'the targeted lane\'s definition'],
-        ['at finishing, before a push, and at section close whenever',
-            'the contention lane\'s schedule'],
+        ['beside the whole gate wherever the whole gate runs, and at section close whenever',
+            'the contention lane\'s schedule, both of its clauses'],
         ['section\'s delta touched',
             'the schedule\'s touched-delta condition'],
+        ['before a push only where that push lands on a trunk consumers install from directly with no CI gating the merge',
+            'the install-surface condition that bounds the pre-push whole gate'],
     ]) {
         for (const [label, body] of copies) {
             assert.ok(body.includes(phrase), label + ' no longer carries ' + what
@@ -1519,6 +1556,15 @@ test('the lane text agrees between the doctrine gate bullet and the testing-disc
                 + 'same thing');
         }
     }
+    // The handoff moment is the one whole-gate moment the two surfaces state in
+    // their own words rather than in shared text, so it takes a scoped pin
+    // instead of a place in the loop above. Without it the skill that owns lane
+    // mechanics can drop the moment the whole cadence rests on while every
+    // shared-phrase pin above stays green.
+    assert.ok(testingSkill.includes('before the plan hands off'),
+        'the testing-discipline skill no longer names the plan\'s handoff as a '
+        + 'whole-gate moment, leaving the owning contract for lane mechanics '
+        + 'silent on the one moment that reads the whole tree');
 });
 
 // Section 7's own Tests: line called for no new test, written before the
