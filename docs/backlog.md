@@ -233,6 +233,23 @@ Per-plan history does not live here. A plan's Chapters are its own append-only r
 
 - **Claude-kit gains branch protections and a release channel (queued 2026-08-30 by the operator's direction in the gate-cadence design dialog; wakes when the armed queue drains).** Direction: the repo follows the recognizable pattern rather than carrying a testing-rule exemption: PR-required protection on main, no direct pushes. Sequencing: land after the armed queue drains, because every queued plan's header reads Commit-and-Push and direct-pushes main per section, so flipping mid-queue invalidates the commit model every plan names. Phasing: protection first with self-merge allowed and no required checks; CI becomes a required check only once a runner-green suite definition exists, since the suite carries box-conditional expectations (the temp-prefix path-length test reds only under a default-length temp prefix, and zip sizes differ by PowerShell host), so a required-but-red check would freeze merges. PR-per-plan makes main the release channel, which subsumes explicit kit versioning for the update nudge unless sub-plan releases are wanted. The open cost to price at pickup: spec and index work currently direct-pushes main several times a session, so doc-only work needs either self-merge without review or batched doc PRs. The gate-cadence plan's pre-push clause is keyed on the surface, so it stops matching claude-kit the day protections land, with no rule edit.
 
+- **The suite has never run on a non-Windows platform, so every platform-conditional claim in it is
+  argued rather than measured (parked 2026-08-31, from the judgment sidecar's section 7; recorded as
+  a declared assumption of that section rather than a miss).** This repository has no CI
+  configuration and this machine has no WSL, so `node --test test/*.test.js` has only ever been run
+  on win32. Most of the suite is platform-neutral and this costs nothing; the exception is code whose
+  whole subject is filesystem semantics. The live-store screen in `sidecar/state-screen.js` is the
+  current instance: its Windows behaviour is measured against OS-derived spellings (UNC, extended
+  length, volume GUID, 8.3, junctions) and its POSIX behaviour is reasoning about `path.posix` and
+  `realpath(3)`. That module's own history is why the gap is worth a line rather than a shrug: it was
+  found accepting a path inside the live tree six times in one section, every time through a case
+  nobody had thought to write down, which is exactly the shape an unrun platform hides. What closes
+  it is a runner, container or CI, that executes the suite on Linux and macOS. Note the ordering
+  constraint the branch-protections item above already records: the suite carries box-conditional
+  expectations (a temp-prefix path-length red, zip sizes differing by PowerShell host), so a
+  runner-green suite definition has to exist before any of this becomes a required check. Signal:
+  the branch-protections item is picked up, or any further work on filesystem-semantics code.
+
 ## Snapshots
 
 Completed items are archived to `archive/backlog-YYYY-QN.md`. An item retired because an effort removed what it was about goes to a dated snapshot naming that effort.

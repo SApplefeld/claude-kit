@@ -109,6 +109,17 @@ names the class rather than the instance that produced it.
    time with a control drawn from an enumerated list of spellings and each time reported as
    closed by the round that added more spellings to the list.
 
+7. **A screen answers about the path it was handed, and every component created beneath that
+   path afterward is unscreened.** A caller-supplied root that passes a containment screen
+   licenses nothing about the directories a later step creates under it: a recursive mkdir
+   follows a reparse point on any intermediate component, so a link planted below the screened
+   root routes the write wherever it points while the run prints the sentence saying the root was
+   screened and found outside. A writer under a caller-supplied root therefore either creates each
+   component through the same guard that screened the root, or re-screens the deepest directory it
+   actually created immediately before the write. Adopted 2026-08-31 after the live-store screen,
+   rebuilt to close five instances of the accept-a-path-inside-the-live-tree class, was found to
+   have moved the sixth instance one layer down into the writer that trusts it.
+
 No entry 4 exists in this plan. No rule numbered 4 appears in any surviving artifact of
 it, so the gap is a numbering gap rather than a lost rule, and entry 5 keeps the number
 it was cited under so both existing citations resolve.
@@ -248,6 +259,40 @@ Acceptance: deferred to the design pass.
   the record) and the record's own declared triggers, which name the indexes and `git mv`, not a listing.
   The prompt is never tuned against case 11; future prompt iterations are scored on held-out cases. The
   rest of the section-4 acceptance (daemon-path end to end, dedup, no-index silence) is unchanged.
+- Decided 2026-08-31 (consult ruling, adopted): the live-store screen in `sidecar/state-screen.js`
+  compares FILESYSTEM IDENTITY rather than path strings. Path-string comparison is not salvageable
+  here and the ruling settles that by measurement rather than argument: no single canonicalizer
+  covers the class, since `fs.realpathSync.native` normalizes 8.3 names, case, `\\?\` and
+  volume-GUID roots but returns a UNC admin-share spelling unchanged, and closing UNC by string
+  would need a drive-mapping table Node does not expose. The shipped design is identity-anchored
+  containment: a `dev`/`ino` walk up the candidate's realpath ancestor chain, with a one-segment
+  case-folded name compare used only for components that do not yet exist on disk, since the leaf
+  is usually about to be created. Pure identity was ruled out in the same breath: it regresses the
+  one case the string screen gets right, an absent live tree, where every child of the home
+  directory shares the same existing anchor. The old string predicate is kept as a REFUSAL-ONLY
+  overlay whose `ok` is discarded, which is what makes its two known remaining defects harmless:
+  both produce a false `ok`, and an overlay that cannot grant `ok` cannot act on one. Measured on
+  22 generated cases: the ruled predicate wrong on 0, the shipped one wrong on 8, four of those
+  failing open.
+- Decided 2026-08-31: two further instances of the screen's defect class were confirmed at this
+  boundary, bringing the count to six found in one section. Instance 5 is an 8.3 short name, and it
+  is the one that matters most, because it needs no UNC, no admin share and no elevation and it
+  reproduces on the system volume the live home sits on: two spellings of one directory stat to an
+  identical `dev`/`ino` while the screen refuses one and accepts the other, with a genuine outsider
+  correctly accepted in both spellings as the control in the other direction. Instance 6 is the
+  `/[\\/]/` separator split in round 5's own fix, which on POSIX reads a genuine child directory
+  named with a leading backslash segment as an escape. Both were reproduced by this session against
+  the shipped module before being acted on.
+- Declared assumption 2026-08-31, section 7: the rebuilt screen ships with its Windows behaviour
+  MEASURED and its POSIX behaviour INFERRED, and this is a deliberate call rather than an oversight.
+  This repository has no CI configuration and this box has no WSL, so no POSIX run is available
+  here, and standing one up is a different goal than this plan's. What reduces the exposure is that
+  the ruled predicate contains no separator literal and no platform branch at all: its only string
+  literal is `.claude`, and the case fold is applied on both platforms deliberately, because folding
+  over-refuses a renamed directory on case-sensitive Linux while an exact compare ACCEPTS a write
+  into the live store on case-insensitive macOS. What would confirm the inference is a run of
+  `node --test test/kit-sidecar-battery.test.js` on Linux or macOS. Override freely; a CI surface
+  for this repository is recorded as its own backlog item rather than folded into this section.
 - Declared assumptions, override freely: machine-local state under `~/.claude/kit-sidecar/`; endpoint config at `~/.claude/kit-endpoint.json`, operator-authored; v1 daemon manually started, no service install; fleet-wide daemon distribution decided post-field-trial; the hook ships dormant-by-default via the spool-root check, needing no setting.
 
 ## Out of scope for this document
@@ -770,3 +815,96 @@ non-screen fixes (the unreported prompt-cap cut, the two sweep counts, harvest r
 the security-model host-name record), then a seventh review round, then the section 7 live
 acceptance, Chapter 7, flip the plan to Complete, move section 8's substance to
 `docs/backlog.md`, archive via curating-docs, commit and push.
+### Interim board 6 - 2026-08-31
+Section 7 is through its seventh review round and has not closed. That is the closure-drought
+floor again on its own, and the compaction gate raised its own signal alongside, holding four
+offers.
+
+What changed since Interim board 5 is the shape of the problem rather than another patch to it.
+A consult was convened before spending a fifth attempt at the screen, and it corrected the
+framing rather than answering the question as asked. The question offered two options, keep
+patching path strings or compare filesystem identity; the ruling took neither, because pure
+identity regresses the one case the string screen gets right, an absent live tree, where every
+child of the home directory shares the same existing anchor. What shipped is identity-anchored
+containment: a device-and-inode walk up the candidate's realpath ancestor chain, with a
+one-segment case-folded name compare used only for components that do not yet exist, and the old
+string predicate kept as a REFUSAL-ONLY overlay whose `ok` is discarded. That last move is what
+retires the string predicate's two known remaining defects without a further patch: both produce
+a false `ok`, and an overlay structurally unable to grant `ok` cannot act on one.
+
+The ruling rests on measurement rather than argument, and the measurements were re-run by this
+session against the shipped module before anything was built on them. Confirmed here: the drive
+letter, the `\\localhost\D$` admin share and its loopback-address form return an identical
+device-and-inode pair for one directory; `bigint: true` is mandatory, since the Number form of an
+inode on this machine reports 6917529027648879000 where the BigInt form reports
+6917529027648878213, a collision-sized difference; and `fs.realpathSync` leaves an 8.3 spelling
+untouched while `fs.realpathSync.native` expands it but leaves a UNC spelling untouched, so no
+single canonicalizer covers the class and string comparison is not salvageable.
+
+Two further instances of the class were confirmed at this boundary, taking the count to six.
+Instance 5 is an 8.3 short name and it is the most serious of the six, because it needs no UNC,
+no admin share and no elevation and it reproduces on the system volume the live home sits on:
+two spellings of one directory stat to an identical device-and-inode pair while the old screen
+refused one and accepted the other, with a genuine outsider correctly accepted in both spellings
+as the control in the other direction. Instance 6 is the one that matters for the future, and it
+is not in the screen at all. With the rebuilt screen answering correctly, the security lens found
+that an intermediate reparse point UNDER a screened `--state-dir` still routes a fixture write
+into the live tree, because the writer creates `memory-root`, `projects` and the segment
+directory with a recursive mkdir that lstats only the leaf it was handed. Reproduced here with a
+junction on an intermediate component: the screen answers `ok`, the directory chain is created,
+the index lands inside the fixture live tree, and the same shape with no junction correctly stays
+outside. The hole did not close, it moved one layer down into the code that trusts the screen.
+That is recorded as Standing Brief Amendment 7 and it is the durable lesson of this section.
+
+Round 7 verdicts: CHANGES_REQUIRED, CHANGES_REQUIRED, CONCERNS. All three lenses hunted a sixth
+instance INSIDE the screen and none found one, across UNC, extended-length, volume-GUID, 8.3,
+case-flipped, alternate-data-stream and both link directions, which is the first round in this
+section where the screen itself survived the hunt. The findings are therefore about the writer
+below it and the control beside it. The sharpest of them, found independently by two lenses: the
+invariance table's only coverage floor is a global count of checked pairs, and it fails in both
+directions. Downward, the entire Windows spelling class can drop out and the count still clears
+the floor, so the very transform that generated instance 5 could run zero times unnoticed.
+Upward, the floor cannot be met on POSIX at all, so the run this plan's own declared assumption
+names as the confirmation of its POSIX inference would go red on the instrument rather than on
+the screen. That is the section's own recurring failure shape, a check green or red for the
+wrong reason, arriving one level up in the thing built to detect it.
+
+The two security Majors beside it are being fixed rather than parked, per the rule that a
+security finding of Major weight never takes the out-of-scope route: the hard-link guard sits in
+the producer that needed it second rather than at the channel both producers write through, and
+the suite reads the live `~/.claude` through the screen's own realpath calls while the test
+file's header claims it does not, which is an Amendment 5 violation whatever its exposure.
+
+Gate: 2650 / 2643 / 1 / 6, exit 1, run by this session and read from the run's own marker,
+against Interim board 5's 2643 / 2636 / 1 / 6. Delta plus 7 tests and plus 7 passing, failures
+and skips unchanged. The one red is named rather than counted: `test/memory-session.test.js:854`,
+this box's known permanent path-length red, whose assertion is about a pinned memory-store
+directory name and which touches no sidecar module. The box was claimed by exclusive create for
+that run and released immediately after; three foreign `dotnet.exe` processes were on the box at
+the time with no claim standing, and that contention is named here rather than treated as a clean
+read, since a process poll is a sample and not a clearance.
+
+One reported figure is marked down rather than repeated. The implementer measured the replaced
+screen as wrong on 34 of 88 pairs, 10 failing open, but against a reconstruction it wrote after
+destroying the only copy of the original. That is weaker than it sounds and stronger than it
+reads: this session confirmed the reconstruction's three function bodies are code-identical to
+the predicate the new module still retains verbatim as its overlay, differing only by an elided
+comment, and the adversarial lens independently found a second corroborating copy on disk. The
+figures are a diagnostic that nothing green depends on, and they are recorded as measured against
+a corroborated reconstruction rather than against the shipped file.
+
+Live dispatches at this boundary: one, the round-7 fix implementer, resumed over SendMessage with
+its own context rather than dispatched fresh, carrying the thirteen-item fix list and Amendment 7.
+Round 7 itself was three read-only lenses through `Workflow` at model `opus` and effort `max`, the
+no-headroom row of the reviewer-effort table, since the writer tier for this delta is opus.
+
+Next action: adjudicate the fix round, re-run the whole gate, then the section 7 live acceptance
+(frozen batteries against the live endpoint plus a fresh harvest end to end), Chapter 7, flip the
+plan to Complete, move section 8's substance to `docs/backlog.md`, archive via curating-docs,
+commit and push. The push now has to expect a non-fast-forward: the operator has a second worker
+committing from a worktree of this repository, and it touches the same shared documents
+(`docs/architecture.md`, `docs/backlog.md`, the README). The merge is expected to be clean, since
+the two workers write different sections, and a clean merge is exactly the case that needs the
+whole gate re-run afterward plus a read of the merged document, because two additions to one
+inventory document can make incompatible claims about the same surface with no conflict marker to
+catch it.
