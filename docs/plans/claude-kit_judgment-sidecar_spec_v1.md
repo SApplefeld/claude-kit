@@ -568,3 +568,105 @@ take the operator fork the consult surfaced, which is whether a fourth review ro
 three reviewer dispatches against a residual now narrowed to one recorded Minor. Then the
 section 7 live acceptance, Chapter 7, flip the plan to Complete, move section 8's substance to
 `docs/backlog.md` as a parked item, archive via curating-docs, commit and push.
+
+### Interim board 4 - 2026-08-31
+Section 7 is in its fourth fix round and has not closed. Four review-round adjudications have
+now passed with no section closing, and the compaction gate raised its own signal at eighteen
+offers held over thirty minutes.
+
+The fourth round's Critical is the entry's most important content, and it is the one finding of
+this section that would have done real harm rather than producing a wrong number. Round 3 added
+a sweep record to `sidecar/batteries/README.md`, the table that proves no real identifier ships
+in the published fixtures, and its positive control for the identifier pattern was this
+session's own real session id. Two lenses found it independently and the security lens returned
+BLOCK. Confirmed here on three legs before acting: the value sat in the untracked README, it
+appeared in no tracked content so the section-close commit would have been the publication
+event, and it resolved to three live artifacts on this machine. Fixed in the main thread, since
+it is a Critical security finding and those are never parked: the control is now a
+repeating-digit synthetic, the account-path control lost its real-looking name, the long-hex
+control lost a real commit prefix, and the `Matches here` column now counts the table's own
+controls, which is what let the disclosure hide. All seven patterns were re-run here with each
+proved against its own control first, and every remaining match is synthetic or a
+documentation-range address.
+
+The generative lesson is recorded in the README rather than only here, because the trap is
+structural rather than careless: a control's job is to speak, the cheapest thing that speaks is
+real data, and a control string is itself published content. So the artifact whose purpose is
+proving nothing real ships is the likeliest place for something real to ship. The README now
+states that controls are synthetic on the same terms as the fixture they screen.
+
+This session's own earlier sweeps did not catch it, and the reason is worth keeping: they swept
+for the endpoint address, em dashes, raw control bytes and private addresses, and never for
+session identifiers. A predicate narrower than the class it guards returns the same clean
+verdict whether the state is absent or merely unnamed, which is the coverage rule landing on the
+session that had been applying it to everyone else.
+
+Both classes that drove rounds 1 through 3 are confirmed CLOSED by round 4's own reviewers
+rather than by this session's assertion. The adversarial lens probed the state-root screen with
+withheld instances (home root, trailing separator, mixed case, traversal, sibling directory, UNC
+and relative spellings) and it answered correctly throughout, and it read the reconciliation
+arithmetic as sound with `parsed` confirmed per-pass at source. The round-4 Critical is new
+ground, not a fourth repetition.
+
+Live dispatches: one, implementer-fable carrying the explicit fable model override, against
+`.kit/s7-fixes-4.md` with 4 Majors and 11 Minors and an explicit list of findings ruled not to
+be fixed. Its first-turn reading was taken because an override dispatch always earns one: 21
+non-synthetic assistant lines, zero synthetic, model resolved to `claude-fable-5`.
+
+The escalation to fable is recorded with its real reason, because a later reader would otherwise
+misattribute it. It is not earned by the repeating-class rule, which does not fire here since no
+class repeats. It is earned by the bar on a third dispatch at one tier: opus has had two fix
+dispatches on this section, so the choice was fable or the main thread, and the remaining set
+includes an honesty gate where being right matters more than being cheap.
+
+That honesty gate is Major 1: the per-case cut report and the fixture README both state that the
+judge sees the first 2,000 characters of case 9's 3,478-character command, while the judgment
+prompt caps that field at 1,500. A report understating a cut, in an instrument whose four
+corrected cases exist because a cut removed the evidence a verdict turned on, is the same defect
+one level up. The other three Majors: the provenance residual is narrower than the code's
+comment claims and is cheaply closable by comparing each scored record's prompt, model and
+endpoint against this run's; the plaintext-concentration disclosure and removal hint print only
+on the success path while the plaintext is written before the endpoint is contacted, so a run
+with no endpoint config creates a directory of real fleet command output and never says so; and
+an ungated recognition counter can turn a fully measured judgment-only run into a cannot-measure
+exit.
+
+Seven findings are ruled recorded rather than fixed, and the brief names them so the
+implementer does not widen the delta: the recognition ceiling measuring answer-extras rather
+than daemon-queued pointers and its absolute-versus-rate shape, the split case semantics in the
+path containment helper, the expected-skips count resting on the fixture cwd resolving to a
+segment with no index, three lstat-then-write windows, an unbounded transcript accumulation, and
+a truncation flag derived differently from the capture hook's. Each is real; changing the
+acceptance arithmetic at the close of the section it certifies is the worse trade. One reviewer
+finding was ruled against outright: the two screen assertions that pass real `~/.claude` paths
+in read-only earn their exception, because they write nothing and spawn nothing, and a control
+that never names the real default state root cannot prove the refusal reaches it.
+
+Round 3's fixes were verified here at the code rather than from the report. The screen now
+resolves both operands and cross-compares four ways, returning unscreened rather than accepted
+when either side fails, and the state-root sentence is rendered from the screen's own record of
+which comparisons ran, so an implementation that resolved one side prints a shorter list and
+cannot outrun its own check. The reconciliation is one integer equality between fixture lines
+written and daemon lines consumed, and its comment bounds what it does not close rather than
+claiming the class is shut.
+
+A declared fold: `sidecar/text.js` gained the shared surrogate trim under Amendment 1 and is now
+on this section's Files in scope, taken by the implementer outside the brief's listed scope and
+declared in its report.
+
+The box was contended for this whole stretch and the coordination is recorded because a protocol
+gap surfaced. A subagent's claim was overwritten mid-run; the peer seat confirmed from its own
+transcript that it wrote with a truncating shell redirect after releasing an earlier claim,
+never re-reading the file, so an exclusive create landing in that gap was replaced with no error
+on either side. The peer re-stamped a date-only `Started:` value with a real clock reading, the
+fourth malformed value from that seat recorded in this plan. The generalization is that a
+read-then-write carries no mutual exclusion whatever the reader does with what it read, so the
+exclusion has to be the write; the peer is capturing that as kaizen, and this entry cites it
+rather than filing a duplicate. The whole gate is being held rather than run beside a live
+foreign suite, on the reasoning that a contended run is contention rather than a result and
+would have to be discarded anyway.
+
+Next action: await fix round 4, verify the four Majors at the code, re-run the whole gate under
+a fresh claim once the peer's hold clears, then the section 7 live acceptance, Chapter 7, flip
+the plan to Complete, move section 8's substance to `docs/backlog.md`, archive via
+curating-docs, commit and push.
