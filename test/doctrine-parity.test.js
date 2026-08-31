@@ -1178,17 +1178,21 @@ test('the coordinator skill still keys its store-git carve-out on the named gran
     // The scoping sentences, pinned apart from the path's own words: these
     // are what make the carve-out an exception rather than a relaxation, and
     // what state the ungranted reading that the prohibition still has.
-    for (const [phrase, what] of [
-        ['an exception keyed on a named record rather than a relaxation',
+    // Each is read in the paragraph that owns it rather than in the file, on
+    // the same reasoning the paragraph slices above carry: a scoping sentence
+    // that drifted out of the prohibition it scopes satisfies a whole-file
+    // match while the seat reading the prohibition never reaches it.
+    for (const [paragraph, phrase, what] of [
+        [durability, 'an exception keyed on a named record rather than a relaxation',
             'the durability override\'s scoping sentence'],
-        ['where that record does not resolve the rule above holds whole',
+        [durability, 'where that record does not resolve the rule above holds whole',
             'the durability override\'s ungranted reading'],
-        ['That is an exception keyed on a record and never a relaxation of this rule',
+        [boardWrite, 'That is an exception keyed on a record and never a relaxation of this rule',
             'the board-write rule\'s scoping sentence'],
-        ['where the record does not resolve, a pass rewrites the board file and does nothing else with it',
+        [boardWrite, 'where the record does not resolve, a pass rewrites the board file and does nothing else with it',
             'the board-write rule\'s ungranted reading'],
     ]) {
-        assert.ok(body.includes(phrase), 'the coordinator skill no longer '
+        assert.ok(paragraph.includes(phrase), 'the coordinator skill no longer '
             + 'carries ' + what + ' ("' + phrase + '"), so a seat holding no '
             + 'grant reads the carve-out as licence rather than as an '
             + 'exception it does not have');
@@ -1198,36 +1202,275 @@ test('the coordinator skill still keys its store-git carve-out on the named gran
     // closed on any of the three, so a carve-out that lost one names a path
     // the seat may not run at all while reading as though it were granted.
     for (const [phrase, what] of [
-        ['`doctor.ps1 -Fix`', 'the fix pass that commits through the gated allowlist'],
-        ['`-Yes` flag', 'the consent flag a tool shell needs, where no prompt can be answered'],
+        ['doctor/sync-store.ps1 -StoreRoot <home>/.claude`',
+            'the sanctioned invocation spelled whole, the sync script with the '
+            + 'root it refuses to default and that the seat may not choose'],
+        ['one invocation and never a sequence of git the seat assembles',
+            'the path as a single run, which is what keeps the seat out of assembling git of its own'],
         ['no bare-git commit path is on offer', 'the bar on a bare `git add`, which bypasses the leak probes'],
-        ['The second leg publishes', 'the push leg the fix pass does not perform'],
-        ['The bounds are those two legs', 'the path\'s bounds'],
+        ['The bounds are that single run', 'the path\'s bounds'],
         ['The verification is two facts and never one', 'the two-fact verification'],
         ['Currency is the third read and it is a diff rather than a lookup',
             'the currency read, which a presence check cannot stand in for'],
     ]) {
-        assert.ok(body.includes(phrase), 'the coordinator skill\'s store-push '
-            + 'carve-out no longer states ' + what + ' ("' + phrase + '"), '
-            + 'which the role skill\'s rail fails closed without');
+        assert.ok(durability.includes(phrase), 'the coordinator skill\'s '
+            + 'store-push carve-out no longer states ' + what + ' ("' + phrase
+            + '"), which the role skill\'s rail fails closed without');
     }
 
-    // The ordering rule that substitutes for a lock the sanctioned path does
-    // not take: without it the carve-out reintroduces the race against the
-    // runner's fetch and rebase that the prohibition existed to prevent.
+    // The preconditions the invocation is bounded to, asserted as a set and
+    // not only as three items: the sentence scoping them to the unattended
+    // caller's own screens, each item, and the sentence closing the set and
+    // stating what a seat does where one fails. They are the hook's own
+    // screens restated as the carve-out's bounds, which is what a seat can
+    // check the invocation against; they are not an equivalence between the
+    // two runs, and the carve-out says so, since the hook spawns the script
+    // under an environment it strips and the script scrubs nothing itself.
+    // A dropped item still widens the grant past the bound this file states:
+    // a seat-chosen or environment-overridden root (KIT_MEMORY_ROOT is a
+    // supported configuration), a repository the kit does not own, or a
+    // platform the script's atomicity reasoning does not cover.
     for (const [phrase, what] of [
-        ['defers the whole path', 'the deferral a live `kit-sync.lock` earns'],
-        ['neither creates nor removes that lock', 'the bar on the seat writing the runner\'s lock'],
-        ['a sample and not a reservation', 'the residue the lock read leaves open'],
+        ['they are the hook\'s own rather than this file\'s invention',
+            'the sentence scoping the preconditions to the unattended caller\'s '
+            + 'own screens rather than to a set this file chose'],
+        ['the root is the store root the kit resolves, the default `<home>/.claude`, '
+            + 'never a seat-chosen one and never an environment-overridden one',
+            'the default-root bound, which is what keeps a seat from pointing the '
+            + 'run at a directory the operator merely steered a session to'],
+        ['the store carries the kit\'s own ownership marker, the `claudekit.memorysync` '
+            + 'local config key',
+            'the ownership precondition, the marker the hook reads before it spawns '
+            + 'this script at all'],
+        ['which is the hook\'s own gate and not one the hand run performs',
+            'that the ownership marker is the hook\'s gate rather than a screen the '
+            + 'hand run carries, without which a seat reads a guard into a path that '
+            + 'does not perform it'],
+        ['so this precondition is a bound the seat is held to rather than a screen '
+            + 'the hand run performs',
+            'that the ownership precondition binds the seat rather than naming a '
+            + 'screen the hand run carries, without which a seat reads a guard into '
+            + 'a path that does not perform it'],
+        ['and the platform is Windows, which is where the unattended runner exists '
+            + 'and, on its own account, the only platform the script\'s atomicity '
+            + 'reasoning covers',
+            'the platform bound and the reason that stands on its own, the script\'s '
+            + 'serializing property being argued on NTFS semantics'],
+        ['The set is closed at three, and where any of them does not hold the seat '
+            + 'runs nothing',
+            'the sentence closing the set and stating the refusal, without which a '
+            + 'later reader reads three examples rather than a boundary'],
+        ['a grant over a PowerShell interpreter authorizes whatever it is pointed at',
+            'the bar on asking for an interpreter rule, which no companion deny '
+            + 'could carve a single script back out of'],
+        ['the lock is taken before the ownership gate is ever reached',
+            'the wrong-root residue, a lock written into a directory the run has '
+            + 'not yet established is the store'],
     ]) {
-        assert.ok(body.includes(phrase), 'the coordinator skill\'s store-push '
-            + 'carve-out no longer states ' + what + ' ("' + phrase + '"), so '
-            + 'a granted seat races the store sync with nothing ordering them');
+        assert.ok(durability.includes(phrase), 'the coordinator skill\'s '
+            + 'store-push carve-out no longer states ' + what + ' ("' + phrase
+            + '"), so the grant loses a bound this file states and reaches a '
+            + 'root, a store, or a platform the carve-out does not cover');
+    }
+
+    // The neutrality claim and the residue that qualifies it, pinned together
+    // because they are one argument: the grant enlarges nothing measured
+    // against what the same seat can already do by hand, which is a documented
+    // bare-git pull and push into this same store, and not measured against
+    // the hook that spawns this script under a stripped environment. A later
+    // editor restoring the equivalence would be restoring a false claim, and
+    // one deleting the residue would leave a bound-sounding paragraph that
+    // hides what the hand path actually inherits. The scoping sentence of the
+    // residue is pinned beside its items, since a residue re-scoped to this
+    // grant alone reads as a defect the grant introduced rather than as a
+    // property of every hand path into the store, with every item in place.
+    for (const [phrase, what] of [
+        ['What makes the grant enlarge nothing is the comparison against what the '
+            + 'same seat can already do by hand',
+            'the baseline the neutrality claim is measured against, the seat\'s own '
+            + 'existing reach rather than the best-guarded caller of the script'],
+        ['`git -C ~/.claude pull --rebase` and then `git -C ~/.claude push` into '
+            + 'this very store, and both the memory-system skill and the '
+            + 'finishing-work skill document that pair as the store\'s manual push',
+            'the baseline path spelled with the two skills that document it, without '
+            + 'which the comparison names no surface a reader can check'],
+        ['stating them here holds the hand run to the same three rather than '
+            + 'asserting that the two runs are alike, which they are not',
+            'the refusal of the equivalence the preconditions would otherwise be '
+            + 'read as asserting'],
+        ['The residue is a property of every hand path into the store rather than '
+            + 'of this grant',
+            'the sentence scoping the residue to every hand path, which is what '
+            + 'keeps it a property of the store rather than a defect of the grant'],
+        ['a run started by hand inherits the invoking session\'s environment whole '
+            + 'and carries its `GIT_CONFIG_*`, `GIT_SSH_COMMAND` and '
+            + '`GIT_PROXY_COMMAND` into the fetch and the push',
+            'the environment residue itself, the half the documented bare-git push '
+            + 'shares, which no precondition above screens'],
+        ['its `GIT_DIR`, `GIT_COMMON_DIR` and `GIT_WORK_TREE` besides',
+            'the residue keys that re-aim the run at another repository, without '
+            + 'which the disclosure names only the keys that steer a run already '
+            + 'pointed at the store'],
+        ['The documented bare-git push shares that half exactly',
+            'that the residue is shared with the weaker documented path, without '
+            + 'which the disclosure reads as a cost the grant adds'],
+        ['`<plugin-root>` in the invocation spelled above resolves from the '
+            + 'harness\'s `CLAUDE_PLUGIN_ROOT`, an environment value, so the seat\'s '
+            + 'run is pointed by the environment and the hook\'s is not',
+            'the script-path residue, the half the documented path does not share, '
+            + 'where the hook resolves from its own directory precisely so that '
+            + 'nothing the environment carries can steer it'],
+        ['Nothing above screens either half, which is why both are stated as '
+            + 'residue and not as bounds',
+            'the sentence closing the residue against being read as a screen, '
+            + 'without which a seat counts it among the preconditions'],
+    ]) {
+        assert.ok(durability.includes(phrase), 'the coordinator skill\'s '
+            + 'store-push carve-out no longer states ' + what + ' ("' + phrase
+            + '"), so the grant\'s neutrality is claimed against a baseline the '
+            + 'seat\'s own path cannot deliver, or the environment a hand run '
+            + 'carries into the fetch and the push goes undisclosed');
+    }
+
+    // The one exclusion in the bounds below that a careful reader hits as a
+    // contradiction: the bounds bar a read the seat runs for its own purposes
+    // while the verification requires two reads only git can answer. The
+    // reconciliation is pinned rather than left to the reader, since a seat
+    // that resolved it the other way would skip the verification the grant's
+    // own terms require.
+    assert.ok(durability.includes('The two verification reads below are inside those '
+        + 'bounds and are not what that last exclusion bars'),
+        'the coordinator skill\'s store-push carve-out no longer reconciles its '
+        + 'two verification reads with the exclusion barring a read the seat '
+        + 'runs for its own purposes, so the paragraph reads as barring the '
+        + 'very reads the grant\'s two-fact verification is made of');
+
+    // The bounds are a closed set, so what is asserted is the set and not
+    // only its members: the quantifier that shuts the grant to one path, the
+    // sentence that closes the list, and the exclusion list whole. A screen
+    // over the items alone is defeated by editing the quantifier, and that
+    // edit leaves every item in place: dropping "and only it", or softening
+    // "and nothing further", widens a bounded exception into a general licence
+    // to run git in the store while every phrase above still reads as though
+    // it bounded something.
+    // Each literal below spans the junction past the phrase it is named for,
+    // because the quantifier is defeated by an insertion as readily as by a
+    // deletion: a screen ending exactly where the bounded phrase ends is
+    // cleared by a widening clause appended after it ("and no read the seat
+    // runs for its own purposes outside the store root"), with every asserted
+    // string still in place. So each literal runs to its sentence terminator,
+    // or into the literal that follows it, rather than stopping where the
+    // bounded phrase does: a pin ending mid-sentence leaves its own far edge
+    // as the insertion point, which is the one place a widening clause reads
+    // as though it belonged.
+    for (const [phrase, what] of [
+        ['the sanctioned store path this bullet defines and only it, and where '
+            + 'that record does not resolve the rule above holds whole, the seat '
+            + 'writing the file and running no git in the store at all.',
+            'the quantifier shutting the grant to that one path, joined through '
+            + 'its own sentence terminator to the ungranted reading it hands back'],
+        ['The bounds are that single run and the verification reads over the '
+            + 'change the seat itself made, and nothing further: the carve-out '
+            + 'opens no bare-git commit',
+            'the sentence closing the bounds against anything the run does not '
+            + 'name, joined to the exclusion list it opens'],
+        ['no bare-git commit, no history rewrite, no checkout '
+            + 'or restore of an earlier version of any file, and no read the seat '
+            + 'runs for its own purposes, the fetch inside the run being the '
+            + 'push\'s own precondition rather than a licensed look at the store.',
+            'the bounds\' exclusion list, asserted whole and through its closing '
+            + 'clause to the sentence terminator rather than at one member'],
+    ]) {
+        assert.ok(durability.includes(phrase), 'the coordinator skill\'s '
+            + 'store-push carve-out no longer closes its bounds at ' + what
+            + ' ("' + phrase + '"), so a seat reads the sanctioned path as one '
+            + 'instance of what the grant permits rather than as the whole of it');
+    }
+
+    // The concurrency answer, which is the script's own rather than a rule the
+    // seat keeps: the prohibition existed to stop a seat's git racing the
+    // sync's fetch and rebase, and what answers it is the lock the sanctioned
+    // path sits inside and the mid-operation deferral beside it. The refusal
+    // list is pinned at its scoping sentence as well as its members, since a
+    // list re-scoped to one operation leaves every member in place.
+    for (const [phrase, what] of [
+        ['takes `kit-sync.lock` in the store root by an atomic exclusive create '
+            + 'and holds it for its whole length',
+            'the single-flight lock the run itself takes, which is what serializes '
+            + 'a hand run against the background one'],
+        ['What a live lock refuses is the second run whole',
+            'what a live lock refuses, the whole of the losing run rather than part of it'],
+        ['A store mid-operation is refused on the same footing',
+            'the sentence scoping the mid-operation refusal to any paused operation '
+            + 'rather than to one of them'],
+        ['a paused merge, cherry-pick, revert, rebase or `git am`, and any unmerged '
+            + 'index entry no marker file names, defer the whole run before anything '
+            + 'is staged',
+            'the refusal list\'s own members, joined to the deferral they earn: the '
+            + 'scoping sentence above says a list exists and says nothing about which '
+            + 'operations are in it, so a member dropped from the prose leaves a seat '
+            + 'told the store is guarded against a case it is not'],
+        ['a live process that started after the lock was written holds a reused pid',
+            'the reused-pid staleness, which with the age horizon beside it is how '
+            + 'a hand run\'s own lock can be taken while it is still running'],
+    ]) {
+        assert.ok(durability.includes(phrase), 'the coordinator skill\'s '
+            + 'store-push carve-out no longer states ' + what + ' ("' + phrase
+            + '"), so a granted seat races the store sync with nothing ordering '
+            + 'them or commits over an operation it did not start');
+    }
+
+    // Every one of those refusals exits 0 with nothing printed, so the reading
+    // is the one failure mode the sanctioned path introduces: a seat that took
+    // the exit code for a verdict would report a publication that never
+    // happened. What the seat reads instead is pinned at the distinction the
+    // script's own code makes, because the two classes of refusal leave the
+    // state file differently: the lock refusals touch nothing, while the
+    // mid-operation and unproven deferrals write a transient result with a
+    // last attempt stamped at the moment they gave up. A pin over the last
+    // attempt alone would carry the reading that a fresh stamp means a run
+    // happened for this seat, which the shared stamp does not support, so the
+    // recorded result is pinned as part of the read and the attribution
+    // ceiling with it. The no-upstream case is the last of them, a store that
+    // cannot answer the second of the two facts at all and records `ok`
+    // anyway.
+    for (const [phrase, what] of [
+        ['A zero exit is therefore not a verdict',
+            'that the exit code is no verdict, which is what a seat would otherwise read as success'],
+        ['it reads the recorded result beside the last attempt rather than the attempt alone',
+            'the recorded result as part of the read, without which a fresh stamp '
+            + 'from a deferral reads as a publication'],
+        ['The lock refusals leave it exactly as they found it',
+            'the class of refusal that is silent, scoped to the lock refusals rather '
+            + 'than asserted of every refusal'],
+        ['The mid-operation and unproven deferrals write it, recording a `transient` '
+            + 'result with an `unproven` reason and stamping the last attempt at the '
+            + 'moment they gave up',
+            'the class of refusal that writes, which is the fact a seat reading the '
+            + 'attempt time alone would be misled by'],
+        ['The stamp attributes to no particular run besides',
+            'the attribution ceiling on the stamp, since one file carries one attempt '
+            + 'for the whole store and a concurrent run\'s stamp reads as this seat\'s'],
+        ['an absent upstream is not a branch level with a remote',
+            'the no-upstream case, where the second of the two facts is not there to be read'],
+        ['`ok` beside no upstream is a commit and not a publication',
+            'the one recorded result that overstates what happened, a commit-only run '
+            + 'recording success having pushed nothing'],
+    ]) {
+        assert.ok(durability.includes(phrase), 'the coordinator skill\'s '
+            + 'store-push carve-out no longer states ' + what + ' ("' + phrase
+            + '"), so a seat reads a silent run as a publication that landed');
     }
 
     // The contested-seat anchor reasons from what the seat cannot produce,
-    // and the carve-out is what would otherwise contradict it.
-    assert.ok(body.includes('and the store-push carve-out the durability override above states does not change that'),
+    // and the carve-out is what would otherwise contradict it. Read in the
+    // paragraph that holds the freeze rather than in the file, on the same
+    // reasoning the slices above carry: a reconciliation that drifted out of
+    // the freeze paragraph satisfies a whole-file match while the seat
+    // reading the freeze never reaches it.
+    const contested = paragraphHolding('A contested seat freezes the board',
+        'the contested-seat freeze');
+    assert.ok(contested.includes('and the store-push carve-out the durability override above states does not change that'),
         'the coordinator skill\'s contested-seat freeze no longer reconciles '
         + 'the store-push carve-out, so it reasons from a seat that runs no '
         + 'git six paragraphs after saying a granted seat may');
@@ -3440,6 +3683,26 @@ const INTEGRATION_EXEMPT = [
     ['skills/branch-hygiene/SKILL.md', 'Push the recovery branch',
         'same recovery path; the push lands on a recovery branch rather than on '
         + 'an install-surface trunk, so only the cherry-pick\'s own status is open'],
+    ['skills/coordinator/SKILL.md', 'never a seat-chosen one and never an environment-overridden one',
+        'the durability override defines the carve-out rather than performing an '
+        + 'integration: the words the predicate selects sit in the precondition '
+        + 'stating which root a background process was ever authorized to commit '
+        + 'and push, which is a bound on an act rather than a step that performs '
+        + 'one. The act itself is the store sync\'s, exempted with its gate at the '
+        + 'board-write entry below'],
+    ['skills/coordinator/SKILL.md', 'A seat that resolves the store-push grant can close the first of those two itself',
+        'the commit and push are the store-push carve-out\'s, and they land in '
+        + 'the kit memory store, a repository of its own that no suite reads '
+        + 'and that nobody installs from, so the pre-push condition cannot fire '
+        + 'on it. What gates that push is the store\'s own screen rather than a '
+        + 'lane: the durability override states the path as the sync script run '
+        + 'by hand, whose one run commits through the allowlist and its leak '
+        + 'probes, screens every inbound tree entry before the rebase, and, '
+        + 'where that fetch brought commits in, re-derives the whole bar before '
+        + 'it pushes; with nothing incoming the push rides the bar derived at '
+        + 'the top of the run, one fetch older and otherwise the same bar. That '
+        + 'is why the carve-out opens no bare-git commit that would route '
+        + 'around them'],
     ['skills/executing-work/SKILL.md', 'pushes the section to origin with no later human gate',
         'a subordinate clause about notifying the operator, referring to step '
         + '7\'s push; step 7 names that push\'s lane'],
