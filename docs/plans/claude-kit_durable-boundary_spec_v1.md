@@ -1,6 +1,6 @@
 # A seat that judges its context durable can say so with a command, and the gate hears it
 
-Status: Ready
+Status: In Progress
 Commit Model: Commit-and-Push
 Created: 2026-08-30
 
@@ -19,7 +19,7 @@ Three principles, settled in the design dialog and binding on every section:
 1. **The model decides; only the machine writes parsed syntax.** Model-authored sentinel lines fail chronically (the operator's measured observation of `BLOCKED:`/`WAITING:`, which land only because a stop hook bounces the turn until the syntax is right). A hand-written declaration line would fail silently. So the declaration act is a CLI verb with no parse step, and every record of it is stamped by the tool, on the `Heartbeat:` precedent.
 2. **The floor is on the nudge's voice, never the gate's verdict.** The gate keeps silently deferring any unmarked offer at any count; deferral is free. The nudge speaks only at or above the context floor, so below it there is no prompt and no checkpoint traffic.
 3. **The declaration is a judgment, not a reflex.** The seat answers, at a turn end: my own worktree edits are none or handed to a named owner; every decision this stretch is on disk; messages owed are sent. All yes is the only yes.
-4. **A declaration is about a moment, not a window.** A marker outlives its lull the instant new work arrives, so the gate honors one only while no new turn has begun in the marked session since it was written; a stale marker lapses silently and the nudge invites a fresh declaration at the next real boundary. Retraction never depends on the model remembering to retract, which is principle 1's logic applied to cancellation; the manual cancel verb exists for explicit retraction, and nothing depends on it being run.
+4. **A declaration is about a moment, not a window.** A marker outlives its lull the instant new work arrives, so the gate honors one only while no new turn has begun in the marked session since it was written; a stale marker lapses silently and the nudge invites a fresh declaration at the next real boundary. Retraction never depends on the model remembering to retract, which is principle 1's logic applied to cancellation; the manual cancel verb exists for explicit retraction, and nothing depends on it being run. The rule's subject is the declaration: a marker the seat-stop hook banks at a turn end is not one, is rewritten at every turn end anyway, and keeps its existing window semantics with the 4-hour age-out; the moment rule binds only a marker whose record carries the boundary verb's own machine-written declaration field.
 
 ## Evidence
 
@@ -40,7 +40,7 @@ No new state files and no new syntax. Section 1 widens who may run the existing 
 
 ### 1. The boundary verb serves a registered seat and stamps the record itself. Model: opus
 
-`hooks/kit-compact-checkpoint.js`'s `boundary` verb already writes the role-boundary marker for the invoking session with no parse step. Two changes. First, when the invoking session has a registry entry (`~/.claude/coordinator/<os.hostname()>/registry/<session-id>.md`), the verb stamps a `Banked: <ISO>` line into that entry, atomically (temp-and-rename, the `seat-stop.js` Heartbeat pattern), tolerant of an absent directory or entry (silent no-op: the marker still opens; the stamp is a record, not a precondition). The line is machine-written only; no prose ever instructs a model to format it. Second, the prose scope: the peer-sessions banking paragraph currently scopes the manual path to "a session the registry does not carry"; it widens to also name a registered seat whose project tree carries work it does not own, with the durability checklist (Goal principle 3) stated at the point of use. The role skill's registry-entry shape gains the `Banked:` line, documented as CLI-stamped beside the hook-stamped `Heartbeat:`, and the directory contract's writer rule for registry files is amended in the same edit (the registering session, the seat-stop `Heartbeat:` stamp, and the boundary verb's `Banked:` stamp). Reviewer brief carries the standing note: skill amendments collide with unchanged neighbours, so reviewers read the whole file, not the diff. Third change, the moment rule (Goal principle 4, decided 2026-08-30 by the operator): the gate's marker-honor leg gains a freshness check, honoring a role-boundary marker only when no new turn has begun in the marked session since the marker's write, read by comparing the marker's write time against the session transcript's last inbound-message time, user and peer messages alike, with any read failure treated as stale rather than fresh, so this leg fails toward deferral exactly as the gate's other legs do. This leg reddens existing tests by design, and the spec names it so the red is not repaired in the wrong direction: the suite's marker-release cases (`test/kit-compact-gate.test.js`, the role-boundary tests on `interactiveRepo` fixtures) were authored before any freshness comparison existed, their transcript lines carry no per-line timestamps and their markers are back-dated relative to the fixture's write, so several go red under this check whatever time source it reads; the fix is re-staging those fixtures with explicit times that put each test on the side of the freshness rule it means to assert, and never relaxing the read-failure-is-stale direction to keep them green. A stale marker is ignored and left in place for the status verb to report as lapsed; the 4-hour age-out is unchanged and now bounds cleanup rather than validity. Fourth change, the cancel verb: `boundary --cancel` removes the invoking session's own marker and reports whether one was there, serving the operator at a shell and a session retracting a declaration explicitly; per principle 4, nothing depends on it being run. Tests red-first: the verb stamps when an entry exists; leaves the entry byte-identical except the one line; no-ops silently without one; the marker opens in both cases; a marker staged before an inbound transcript message is refused by the honor leg and one with no intervening message is honored, both orders staged explicitly; `--cancel` removes only the invoking session's marker; existing parity and presence pins stay green (run the full suite, not a filename-derived lane, per testing-discipline).
+`hooks/kit-compact-checkpoint.js`'s `boundary` verb already writes the role-boundary marker for the invoking session with no parse step. Two changes. First, when the invoking session has a registry entry (`~/.claude/coordinator/<os.hostname()>/registry/<session-id>.md`), the verb stamps a `Banked: <ISO>` line into that entry, atomically (temp-and-rename, the `seat-stop.js` Heartbeat pattern), tolerant of an absent directory or entry (silent no-op: the marker still opens; the stamp is a record, not a precondition). The line is machine-written only; no prose ever instructs a model to format it. Second, the prose scope: the peer-sessions banking paragraph currently scopes the manual path to "a session the registry does not carry"; it widens to also name a registered seat whose project tree carries work it does not own, with the durability checklist (Goal principle 3) stated at the point of use. The role skill's registry-entry shape gains the `Banked:` line, documented as CLI-stamped beside the hook-stamped `Heartbeat:`, and the directory contract's writer rule for registry files is amended in the same edit (the registering session, the seat-stop `Heartbeat:` stamp, and the boundary verb's `Banked:` stamp). Reviewer brief carries the standing note: skill amendments collide with unchanged neighbours, so reviewers read the whole file, not the diff. Third change, the moment rule (Goal principle 4, decided 2026-08-30 by the operator): the gate's marker-honor leg gains a freshness check scoped by provenance: the boundary verb stamps its marker with a machine-written declaration field (principle 1: the tool writes it, no prose instructs a model to), and the leg honors a declared marker only when no new turn has begun in the marked session since the marker's write, read by comparing the marker's write time against the session transcript's last genuine inbound-message time, user and peer lines only, never harness-injected lines (meta and skill-body injections, compaction summaries, hook outputs), with any read failure on a declared marker treated as stale rather than fresh, so this leg fails toward deferral exactly as the gate's other legs do. A marker without the declaration field is the seat-stop hook's turn-end bank, rewritten at every turn end and outside the moment rule entirely, its semantics byte-unchanged; that is what keeps the Evidence's two live allow (role-boundary) banks green as the control they are, where an unscoped predicate would deny every hook-written marker by construction, a compaction offer only ever arriving inside a later turn than the turn end that banked it. The freshness read joins the marker's session id into a transcript path (charset-gated the way the gate's other transcript reads are), which falsifies docs/security-model.md's accepted-risk claim that the marker session id is never joined to a path; that passage is updated in this same section's changeset, a false security claim never outliving the commit that falsifies it, and Section 3 verifies rather than discovers the fix. Under this scoping the suite's existing marker-release cases (`test/kit-compact-gate.test.js`, the role-boundary tests on `interactiveRepo` fixtures) stay green by construction, their markers carrying no declaration field, and a red among them under this change is a scoping defect rather than a fixture to re-stage; the freshness pair is staged on declared markers with explicit transcript times putting each test on the side of the rule it means to assert, and the read-failure-is-stale direction on declared markers is never relaxed to keep a test green. A stale marker is ignored and left in place for the status verb to report as lapsed; the 4-hour age-out is unchanged and now bounds cleanup rather than validity. Fourth change, the cancel verb: `boundary --cancel` removes the invoking session's own marker and reports whether one was there, serving the operator at a shell and a session retracting a declaration explicitly; per principle 4, nothing depends on it being run. Tests red-first: the verb stamps when an entry exists; leaves the entry byte-identical except the one line; no-ops silently without one; the marker opens in both cases; a declared marker staged before an inbound transcript message is refused by the honor leg and one with no intervening message is honored, both orders staged explicitly; an undeclared marker with an intervening inbound message is still honored (the provenance control); a declared marker followed only by harness-injected lines is still honored (the arrival-class control); `--cancel` removes only the invoking session's marker; existing parity and presence pins stay green (run the full suite, not a filename-derived lane, per testing-discipline).
 
 Acceptance: with a registry entry present, `boundary` opens the marker and the entry gains exactly one machine-stamped `Banked:` line; without one, the marker still opens and nothing else changes; the freshness pair and the cancel test were watched red before the change and green after, beside the stamping tests; whole gate delta reported against a recorded baseline.
 
@@ -52,7 +52,7 @@ Acceptance: a held bystander session at consumed >= floor receives a nudge namin
 
 ### 3. The document sweep. Model: sonnet
 
-`docs/architecture.md`'s compaction-gate passage gains the widened boundary path, the `Banked:` stamp, and the nudge floor, in that passage's existing register (state, not journey). `docs/security-model.md` is checked for whether the registry-entry writer amendment touches any stated claim about the coordinator directory's writer rules, and updated where it does; the boundary verb writing a registry line is a new mechanical writer to a single-writer file and is stated as such. The plans index (`docs/plans/README.md`) already carries this plan from its authoring commit; verify rather than re-add. No Chapter or close-out work rides here; this section is the sweep only.
+`docs/architecture.md`'s compaction-gate passage gains the widened boundary path, the `Banked:` stamp, and the nudge floor, in that passage's existing register (state, not journey). `docs/security-model.md` is checked for whether the registry-entry writer amendment touches any stated claim about the coordinator directory's writer rules, and updated where it does, and its marker-session-id passage is verified as already updated by Section 1's changeset; the boundary verb writing a registry line is a new mechanical writer to a single-writer file and is stated as such. The plans index (`docs/plans/README.md`) already carries this plan from its authoring commit; verify rather than re-add. No Chapter or close-out work rides here; this section is the sweep only.
 
 Acceptance: both documents read current against the shipped code (checked by reading the code fresh, not the spec); no stale writer-rule claim about registry entries survives a tree-wide grep for the old three-writer phrasing; suite green at the recorded baseline.
 
@@ -70,3 +70,88 @@ Acceptance: both documents read current against the shipped code (checked by rea
 - `docs/plans/claude-kit_judgment-sidecar_spec_v1.md`: runs first in the armed queue, immediately before this plan; the 2026-08-31 split moved the gate-cadence plan to a parallel worktree queue.
 
 ## Chapters
+### Interim board 1 - 2026-08-31
+
+IN-FLIGHT SECTION AND ITS STAGE. Section 1 is implemented and its review round is adjudicated.
+It CANNOT close: the round returned a confirmed Critical that contradicts this plan's own Goal
+principle 4, so the section is held pending a ruling on the spec rather than on the code.
+Sections 2 and 3 are not started.
+
+LIVE DISPATCHES AND WHAT EACH WAS ASKED. None running. Closed this stretch: one
+implementer-opus on section 1 (returned DONE_WITH_CONCERNS, five concerns); one review round of
+three read-only reviewers dispatched via the Workflow route at model opus and effort max, which
+the Agent tool cannot set (adversarial, blind, security). All three resolved to claude-opus-5,
+read from the run record, so no substitution and no compensation notch is owed. Workflow
+parallelism caps at two on this host, so the security reviewer started only as the first
+finished; that is expected behaviour rather than a never-started dispatch.
+
+THE CRITICAL, CONFIRMED BY THE CONTROLLER RATHER THAN TAKEN FROM THE REPORTS. The moment rule
+refuses every marker seat-stop.js can produce, and seat-stop.js is the marker's ordinary writer.
+The mechanism: the hook writes the marker at a turn END, while a PreCompact offer only exists
+while the session is issuing a request, which is inside a LATER turn that by construction began
+with a NEWER inbound line. So an inbound always postdates the marker by the time any offer
+arrives. Two reviewers reached this independently from different artifacts, the adversarial from
+the coordinator seat's gate journal and the blind from this repo's. The controller then verified
+it directly: the coordinator journal holds exactly 13 allow role-boundary decisions, all session
+7c02285b, and on three sampled decisions the newest inbound preceding each sits 0.7s, 152.4s and
+296.5s before it, so a marker written at the prior turn's end is older than that inbound in
+every case and lapses.
+
+WHY IT IS A SPEC CONTRADICTION RATHER THAN AN IMPLEMENTATION DEFECT. The implementer built
+principle 4 faithfully. This plan's own Evidence section names those same coordinator banks as
+the live green control proving the defect is scoped to the clean-tree predicate. The plan's
+control and the plan's fix therefore refuse each other, which is a contradiction inside the spec
+and sits in the completion contract's blocker set.
+
+THE CONTROLLER'S OWN EARLIER READING WAS WRONG AND IS RECORDED AS SUCH. Before dispatching the
+round the controller traced the implementer's first concern and concluded the seat-stop path was
+unharmed, reasoning that the marker is written after its own turn's inbound so the moment holds.
+That is right about the write and wrong about the read: it assumed the offer arrives in that same
+gap. The measurement above is what corrected it.
+
+RULINGS ADOPTED SINCE THE LAST BOUNDARY. One, at intake, and it is load-bearing. The spec says
+the freshness check reads "the last inbound-message time, user and peer messages alike" and stops
+there. Measured against a real 47 MB transcript: 416 of 438 type:user lines in the last 4000 are
+TOOL RESULTS, so a check reading the last user line reads the boundary command's own tool result
+and marks every marker stale on arrival. And a peer message lands under two types, 14 as user and
+79 as queue-operation, the second being the shape of this plan's own founding incident. Ruled and
+declared: the inbound set is non-tool-result user lines PLUS queue-operation lines. Route (b),
+rulable from fact rather than from preference.
+
+OTHER FINDINGS STANDING, none of which depend on the Critical's repair. Security MAJOR: the new
+registry stamp writes through a predictable temp name with a non-exclusive write and an
+unconditional unlink, missing all three defences atomicTmpPath in the same file exists to provide
+and documents one function away. Security MAJOR: docs/security-model.md states the marker session
+id is "never joined to a path", which this change makes false; section 3's sweep is scoped to
+coordinator writer rules only, so that false claim would ship on a public surface unless section
+3 widens. Adversarial and security MAJOR, one defect: the inbound classifier counts harness
+injections as arrivals (310 isMeta and 153 isCompactSummary lines across 25 transcripts), so a
+seat that declares a boundary and then loads a skill lapses its own declaration. MAJOR: the 512
+KB tail cap converts a long working stretch into a silent lapse, and the failure correlates with
+exactly the sessions the feature serves. MAJOR: the status verb derives the transcript path from
+cwd while the gate uses the payload's path, and the two disagree for real seats. MAJOR: the
+re-staged seat-stop fixture certifies an ordering that cannot occur in production, which is why
+the suite went green over the Critical.
+
+CURRENT GATE BASELINE. 2687 tests / 2680 passing / 1 failing / 6 skipped, exit 1, reported by the
+implementer against the recorded 2677 / 2670 / 1 / 6 from commit 9d6a800; plus 10 and plus 10
+with failures and skips unchanged. The single red is this machine's permanent path-length failure
+at test/memory-session.test.js:854. That figure is the implementer's reading and the controller
+has not re-run the whole gate since, so it is reported rather than confirmed, and the section
+close owes its own whole-gate run.
+
+NEXT ACTION PER SECTION. Section 1: the expert ask is already out to the seat that authored this
+plan, asking whether the design dialog already settled that the moment rule governs the CLI
+declaration path only, leaving the hook path on window semantics, which is the repair both
+reviewers independently proposed. A consult follows on whatever survives, and only a genuine
+preference fork goes to the operator, with the ruling attached. The independent findings above
+are fixed in the same round once the repair is known, since they touch the same files. Sections 2
+and 3: not started, unblocked, but held behind section 1 because section 3's sweep must state
+whatever principle 4 finally says.
+
+BOX. The controller released the machine heavy-process claim at this boundary rather than at
+section 1's gate, because the section is blocked on a ruling rather than on the box, and a peer
+seat was blocked on one whole-gate run.
+
+Commit model in effect: Commit-and-Push. This entry is committed alone; the section's code stays
+unstaged and uncommitted while the Critical stands.
