@@ -1491,3 +1491,57 @@ Commit model in effect: Commit-and-Push.
 Next: the whole-effort finishing pass, then this plan flips to Complete. Section 8 is a designed
 deferral rather than work left undone: it is gated on the operator call after a field trial of
 sections 1 through 7, and its substance moves to docs/backlog.md at the close-out.
+### Interim board 11 - 2026-08-31
+
+WHERE THE RUN STANDS. Sections 1 through 7 are shipped and pushed; section 7 landed as bdebbd8
+carrying 15 files. The whole-effort finishing pass is under way, opened after Chapter 7 rather than
+as part of it. This board exists because the compaction gate held 33 offers over a deferral episode
+and a finishing pass produces no section close to land one at, which is the boundary rule finishing-work
+states for exactly this pass.
+
+BASE REF AND CHANGESET, established before step 1 as the pass requires. The base is
+6842f9ad8df44689a320aa6c1460383c8d789731, the parent of the first commit that appended a Chapter to
+this doc. The effort changeset is 45 files. A listing taken against that base today returns 61, and
+the 16 extra entries were attributed one at a time by git log per path rather than assumed: every one
+is a peer commit landed on main during this run, being nine other plan docs with their two indexes,
+home/claude-kit-doctrine.md and the operating-instructions skill from the commit-title convention
+change, and three kaizen note files. None is this effort work, and the reviewers were scoped to the 45
+explicitly rather than handed the raw listing.
+
+STEP 1, QA VERIFICATION: PASS, and adjudicated rather than accepted. The verifier reproduced the whole
+gate at 2671 tests, 2664 passing, 1 failing, 6 skipped, exit 1, matching the controller own reading
+exactly, with the single red named as test/memory-session.test.js:854, this machine known permanent
+path-length failure. It independently reproduced, rather than read from the record, the section 1 and 3
+dormancy cases, the section 2 resilience trio including a real SIGKILL and restart, the section 3 caps
+and neutralization, the section 4 dedup and no-index silence, a section 5 rollup against a fixture state
+it built itself, the section 6 three states plus a live config-absent run from a fixture home, and 22
+containment cases from section 7 reporting 0 operator-tree calls in process and 0 in a child. It
+declined to re-run the live-endpoint acceptances by instruction and marked those reported from the
+Chapters rather than confirmed, which is the correct marking. Tree bracket held: git status --porcelain
+on return was byte-identical to the pre-dispatch capture, the sole entry being the peer
+kaizen/notes-SCOTT-CLAUDE.md, and the index empty.
+
+TWO UNVERIFIABLE CRITERIA, and they are operator-only rather than environmental, which is the split that
+decides whether they hold the plan open. Section 1 asks for a manual session on this VM producing
+schema-valid spool lines for real calls, and section 3 asks for a live session receiving a
+diverged-verdict pointer after a deliberately trapped command. Both need the daemon run against the
+real store to perform the documented activation act, which every session in this effort is barred from
+by the fixture-only constraint, and both were already recorded open in Chapters 1 and 3 rather than
+surfacing now. They route to the close-out handoff and to docs/backlog.md per the finishing rule, and
+they do not keep this plan in docs/plans/.
+
+STEPS 2 AND 3 IN FLIGHT, dispatched in parallel with the explicit fable override the finishing gate
+requires of a session running below it. The security review carries the four threat surfaces in
+priority order, injection into a live session first, then the plaintext concentration and its egress,
+then public-repo disclosure in the committed fixtures, then path and spawn containment. The adversarial
+review carries cross-section seams, whole-spec compliance against code rather than against the
+Chapters, debris, and the live-store class with both of its routes named. Both briefs name the three
+accepted residues so a re-report of a known one is not mistaken for a new finding. First-turn readings
+taken at the window close read 99 and 110 non-synthetic assistant turns with zero synthetic lines, so
+neither is the never-started shape and no probe is owed; the resolved-model distribution is read at
+completion, since a tally taken mid-run is diagnostic rather than the figure.
+
+Commit model in effect: Commit-and-Push.
+Next: adjudicate the two reviews at the code rather than from the reports, with the tree bracket
+compared before any finding is acted on, then step 4 docs curation outside the bracket, then the
+close-out.
