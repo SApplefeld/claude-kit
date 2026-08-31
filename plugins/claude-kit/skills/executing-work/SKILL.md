@@ -119,14 +119,62 @@ For each Section of Work, in order (sections run concurrently only where the dis
      - Error and delete semantics to preserve (throw vs truncate, hard vs soft
        delete, explicit NULL vs column default); the happy path is not the
        contract
+     - The standing hostile-boundary reuse step: before writing a call at a
+       hostile boundary, grep the tree for that boundary's other callers,
+       and where a correct one exists, reuse its guard rather than matching
+       the guard's protections by hand. One grep, and no new capability.
+       Spawning a process, building a child environment, sanitizing text
+       bound for a trusted channel and clamping a bound are instances and
+       not the boundary: the class is any call whose safety rests on what
+       the far side is protected against, with SQL construction,
+       deserialization and path joining among the members this list does
+       not name, so a boundary missing from it is covered rather than
+       exempt. Reuse takes one of two forms, and which one is available is
+       a scope question rather than a judgment call: where the file owning
+       the guard sits in Files in scope, export the guard and call it;
+       where it does not, name that file, the guard, and the export it
+       needs in the report and leave it unedited, since an edit outside
+       that list is never staged and would leave the committed tree
+       calling a symbol that exists only in an unstaged worktree, and
+       step 4's out-of-scope route is what dispositions it. The guard at a
+       boundary is a property of the channel rather than of the caller
+       that first needed it, so a second caller written by hand reproduces
+       the protections it can see in the sibling and drops the ones it
+       cannot, which reads as working code at every review and fails only
+       on the input the guard was there for
      - Pin tests + new expected values, when the section changes a counted
        cross-cutting set
      - Standing Brief Amendments: every entry from the plan doc's block, when one exists
+     - The standing whole-worktree prohibition: no git operation reaching
+       past the agent's own files, a bare `git stash` and a reset or a
+       checkout reaching beyond those files among them; and no
+       `git checkout -- <file>` at all, its own files included, since that
+       restores the file to HEAD rather than to the state before the
+       agent's own edits, which the commit-model rule leaves unstaged. Two
+       mechanisms cover what those reach for, and they are not
+       interchangeable: a pristine baseline to compare against is
+       `git show HEAD:<path>` written under the `.kit/` scratch path, and
+       a restore point is a filesystem copy under that same path, taken
+       before the first mutation. The line rides in every brief rather
+       than only where a sibling is known to be live, because an
+       implementer can never see from the tree whether another session's
+       uncommitted work is sitting in it, which would leave the
+       dispatching session's judgment that none is as the only gate, a
+       judgment made from outside that other session with nothing to
+       check it against. What a wrong one costs is uncommitted work with
+       no commit to recover it from, on a file neither party can name
+       afterwards
      - Workspace constraints the agent cannot see from the tree, when any are
        in effect: state a sibling session, the leash, or the environment owns
        (a shared stash, another session's worktree files, a process holding
-       binaries) and the operations that state puts off-limits (a bare
-       `git stash`, a reset or checkout reaching beyond its own files)
+       binaries) and, for each state named, the operations it puts off-limits
+       (no build, no test run while a foreign process holds the binaries, and
+       the same naming for every other state listed). What this field names
+       is binding rather than advisory, and for those operations it removes
+       the discretion the box-budget clause below otherwise grants over the
+       same real state, where the agent may wait or name the contention and
+       proceed: the dispatching session has already spent that judgment, on
+       state the agent cannot see from the tree
      - Every load-bearing technical assertion you make marked confirmed,
        inferred, or reported: a confirmed one names its evidence (file:line, the
        command you ran), an inferred one says so and says to verify it before

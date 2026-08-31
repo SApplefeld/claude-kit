@@ -1225,6 +1225,91 @@ test('the box-budget brief clause agrees with the role skill\'s claim contract a
         + 'brief is a poll-as-clearance reading arriving by another name');
 });
 
+// The hostile-boundary reuse step in executing-work's Dispatch Brief template
+// is a deliberate copy of the guard-siting rule the operating instructions
+// state, copied for the reason the box-budget clause above is copied: it is
+// the only carrier a dispatched implementer receives, an agent inheriting no
+// skills and holding no pointer it could resolve. What a deliberate copy owes
+// is a pin, since a divergence survives a parity suite whose assertions never
+// touch the diverging text. The two surfaces are held at the proposition
+// rather than at a shared string, because they differ in spelling and in
+// reach on purpose: the doctrine addresses a session that owns the whole
+// tree, while the brief addresses an agent bound to a Files in scope list, so
+// the brief carries a scope fallback the doctrine has no reason to state.
+// Both halves are asserted, the shared proposition and the divergence,
+// because dropping either is how the copy stops being a rule an implementer
+// can act on. The clause region is sliced by its own landmarks rather than
+// matched against the whole file, so guard language elsewhere in
+// executing-work cannot satisfy a pin about what the brief actually says.
+test('the hostile-boundary brief clause agrees with the guard-siting rule and carries its scope fallback', () => {
+    const executingWork = fs.readFileSync(path.join(__dirname, '..', 'plugins',
+        'claude-kit', 'skills', 'executing-work', 'SKILL.md'), 'utf8');
+    const start = executingWork.indexOf('The standing hostile-boundary reuse step');
+    assert.ok(start !== -1, 'executing-work\'s Dispatch Brief template no '
+        + 'longer carries the hostile-boundary reuse step, so the guard-siting '
+        + 'rule reaches no dispatched implementer at the moment it is acted '
+        + 'on, which is the reach failure this clause exists to close');
+    const end = executingWork.indexOf('Pin tests + new expected values', start);
+    assert.ok(end !== -1 && end > start, 'executing-work\'s Dispatch Brief '
+        + 'template no longer carries the pin-tests bullet that bounds the '
+        + 'hostile-boundary clause, so the slice this pin reads has no far edge');
+    const clause = collapseWhitespace(executingWork.slice(start, end));
+    const doctrine = collapseWhitespace(fs.readFileSync(SKILL, 'utf8'));
+
+    // The source side, asserted rather than assumed, because this pin's whole
+    // purpose is to hold a copy to a rule: where the rule is retired, the copy
+    // is a standing instruction with nothing behind it, and that is a decision
+    // to take deliberately rather than to discover from a brief.
+    assert.ok(doctrine.includes('A sanitizing or clamping guard is a property '
+        + 'of the output channel, not of the producer that first needed it'),
+        'the operating instructions no longer state the guard-siting rule '
+        + 'while the Dispatch Brief still carries its implementer copy: either '
+        + 'the rule moved and this pin moves with it, or the copy is now the '
+        + 'only carrier and rests on no authority');
+    assert.ok(doctrine.includes('the guard moves to the shared boundary as an '
+        + 'exported helper'),
+        'the operating instructions no longer name the exported helper as the '
+        + 'remedy, which is the half the brief clause instructs an implementer '
+        + 'to carry out');
+
+    // The shared proposition, in the brief's own spelling: the guard belongs
+    // to the channel and not to the caller that first needed it. That is what
+    // makes reuse an instruction rather than a preference, so a clause keeping
+    // the grep and dropping this reads as a style note.
+    assert.ok(clause.includes('The guard at a boundary is a property of the '
+        + 'channel rather than of the caller that first needed it'),
+        'the hostile-boundary brief clause no longer states the guard as a '
+        + 'property of the channel, so an implementer reads a suggestion to '
+        + 'look around rather than the rule that makes hand-matching wrong');
+    assert.ok(clause.includes('export the guard and call it'),
+        'the hostile-boundary brief clause no longer names exporting the guard '
+        + 'as the in-scope form of reuse, so it states the rule and no act '
+        + 'that satisfies it');
+
+    // The divergence, which is why this ships as a copy rather than a pointer:
+    // the brief's reader is bound to a Files in scope list, so the clause
+    // routes an out-of-scope guard to the report instead of editing it.
+    // Dropping this leaves the clause directing an edit the scope check never
+    // stages, which is the failure the out-of-scope route exists to prevent.
+    assert.ok(clause.includes('leave it unedited'),
+        'the hostile-boundary brief clause no longer bars editing a guard '
+        + 'whose file sits outside Files in scope, so it directs an '
+        + 'implementer into an edit that is never staged and a committed tree '
+        + 'calling a symbol that exists only in an unstaged worktree');
+    assert.ok(clause.includes('out-of-scope route'),
+        'the hostile-boundary brief clause no longer routes the out-of-scope '
+        + 'guard to step 4\'s out-of-scope route, so the surface it has the '
+        + 'implementer name in the report reaches no disposition');
+
+    // The class framing this file carries wherever it enumerates: an
+    // implementer standing at a boundary the list omits has to read itself as
+    // covered rather than exempt, and a bare list of four says the opposite.
+    assert.ok(clause.includes('are instances and not the boundary'),
+        'the hostile-boundary brief clause states its boundary examples '
+        + 'without the class framing, so an implementer at a boundary the '
+        + 'list omits reads itself as outside the rule');
+});
+
 // The goal event is the BLOCKED funnel's machine-wide input: any session on
 // the box writes the stream, so a field the emitter ships that the funnel
 // never dispositions is an unscreened writer-controlled value, the defect
