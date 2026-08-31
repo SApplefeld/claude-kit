@@ -1122,6 +1122,116 @@ test('the role skill still carries the standing-grant rail\'s exclusions and the
         + 'single act is authorized by the existence of its own switch');
 });
 
+// The store-push grant's owning contract: the role skill's rail assigns the
+// coordinator skill the sanctioned path, its bounds and its verification, and
+// fails closed on any of the three going unstated, so the rail's own pins say
+// nothing about whether this side of the assignment still stands. What is
+// pinned is the exception's scoping sentence and not only the path's words: a
+// carve-out re-scoped from the named record to the seat's own judgment would
+// leave every phrase of the path, the bounds and the verification in place and
+// convert a bounded exception into a general licence to run git in the store.
+// The two prohibitions are read as paragraphs rather than as a whole-file
+// match, since each paragraph of that skill is one line: a carve-out that
+// drifted out of the paragraph holding its prohibition would still satisfy
+// every literal below while a seat reading the prohibition never reaches it.
+test('the coordinator skill still keys its store-git carve-out on the named grant record', () => {
+    const body = fs.readFileSync(path.join(__dirname, '..', 'plugins',
+        'claude-kit', 'skills', 'coordinator', 'SKILL.md'), 'utf8');
+    const paragraphs = body.split(/\r?\n/);
+    const paragraphHolding = (needle, what) => {
+        const hits = paragraphs.filter((line) => line.includes(needle));
+        assert.equal(hits.length, 1, 'the coordinator skill no longer carries '
+            + what + ' in exactly one paragraph ("' + needle + '" matched '
+            + hits.length + '), so the prohibition this pin reads has moved '
+            + 'or been reworded and the carve-out beside it is unscreened');
+        return hits[0];
+    };
+
+    // Both prohibitions still read as prohibitions: the carve-out is an
+    // exception keyed on a record, so the flat rule has to survive it whole
+    // for a seat holding no grant.
+    const durability = paragraphHolding(
+        'The seat writes the file and runs no git in the store',
+        'the durability override\'s no-git rule');
+    const boardWrite = paragraphHolding('no staging, no commit, no push',
+        'the board-write rule\'s staging, commit and push prohibition');
+
+    // Each prohibition carries the carve-out at its own point of use, keyed
+    // on the record the rail names and pointing at the rail for the grant's
+    // shape: a carve-out stated once in a distant paragraph is one the seat
+    // reading the prohibition never reaches.
+    for (const [paragraph, where] of [
+        [durability, 'the durability override'],
+        [boardWrite, 'the board-write rule'],
+    ]) {
+        assert.ok(paragraph.includes('memory-store-pushes-need-no-permission'),
+            where + ' in the coordinator skill no longer names the record its '
+            + 'store-git carve-out is keyed on, so the exception reads as a '
+            + 'standing relaxation any seat may take');
+        assert.ok(paragraph.includes('standing-grant rail'),
+            where + ' in the coordinator skill no longer points at the role '
+            + 'skill\'s standing-grant rail, so the grant\'s switch, scoping, '
+            + 'provenance and resolution moment are sourced nowhere');
+    }
+
+    // The scoping sentences, pinned apart from the path's own words: these
+    // are what make the carve-out an exception rather than a relaxation, and
+    // what state the ungranted reading that the prohibition still has.
+    for (const [phrase, what] of [
+        ['an exception keyed on a named record rather than a relaxation',
+            'the durability override\'s scoping sentence'],
+        ['where that record does not resolve the rule above holds whole',
+            'the durability override\'s ungranted reading'],
+        ['That is an exception keyed on a record and never a relaxation of this rule',
+            'the board-write rule\'s scoping sentence'],
+        ['where the record does not resolve, a pass rewrites the board file and does nothing else with it',
+            'the board-write rule\'s ungranted reading'],
+    ]) {
+        assert.ok(body.includes(phrase), 'the coordinator skill no longer '
+            + 'carries ' + what + ' ("' + phrase + '"), so a seat holding no '
+            + 'grant reads the carve-out as licence rather than as an '
+            + 'exception it does not have');
+    }
+
+    // The path, its bounds and its verification: the rail's assignment fails
+    // closed on any of the three, so a carve-out that lost one names a path
+    // the seat may not run at all while reading as though it were granted.
+    for (const [phrase, what] of [
+        ['`doctor.ps1 -Fix`', 'the fix pass that commits through the gated allowlist'],
+        ['`-Yes` flag', 'the consent flag a tool shell needs, where no prompt can be answered'],
+        ['no bare-git commit path is on offer', 'the bar on a bare `git add`, which bypasses the leak probes'],
+        ['The second leg publishes', 'the push leg the fix pass does not perform'],
+        ['The bounds are those two legs', 'the path\'s bounds'],
+        ['The verification is two facts and never one', 'the two-fact verification'],
+        ['Currency is the third read and it is a diff rather than a lookup',
+            'the currency read, which a presence check cannot stand in for'],
+    ]) {
+        assert.ok(body.includes(phrase), 'the coordinator skill\'s store-push '
+            + 'carve-out no longer states ' + what + ' ("' + phrase + '"), '
+            + 'which the role skill\'s rail fails closed without');
+    }
+
+    // The ordering rule that substitutes for a lock the sanctioned path does
+    // not take: without it the carve-out reintroduces the race against the
+    // runner's fetch and rebase that the prohibition existed to prevent.
+    for (const [phrase, what] of [
+        ['defers the whole path', 'the deferral a live `kit-sync.lock` earns'],
+        ['neither creates nor removes that lock', 'the bar on the seat writing the runner\'s lock'],
+        ['a sample and not a reservation', 'the residue the lock read leaves open'],
+    ]) {
+        assert.ok(body.includes(phrase), 'the coordinator skill\'s store-push '
+            + 'carve-out no longer states ' + what + ' ("' + phrase + '"), so '
+            + 'a granted seat races the store sync with nothing ordering them');
+    }
+
+    // The contested-seat anchor reasons from what the seat cannot produce,
+    // and the carve-out is what would otherwise contradict it.
+    assert.ok(body.includes('and the store-push carve-out the durability override above states does not change that'),
+        'the coordinator skill\'s contested-seat freeze no longer reconciles '
+        + 'the store-push carve-out, so it reasons from a seat that runs no '
+        + 'git six paragraphs after saying a granted seat may');
+});
+
 // The box-budget brief clause in executing-work's Dispatch Brief template is
 // a deliberate second copy of the role skill's claim contract: the clause is
 // the only copy a dispatched subagent receives, since an agent inherits no
