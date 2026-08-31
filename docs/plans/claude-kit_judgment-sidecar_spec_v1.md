@@ -1545,3 +1545,68 @@ Commit model in effect: Commit-and-Push.
 Next: adjudicate the two reviews at the code rather than from the reports, with the tree bracket
 compared before any finding is acted on, then step 4 docs curation outside the bracket, then the
 close-out.
+### Interim board 12 - 2026-08-31
+
+BOTH FINISHING REVIEWS ARE IN AND ADJUDICATED, and both ran at the tier they were assigned rather than
+at one the harness picked: the resolved-model tally over each transcript assistant line reads 115 of 115
+and 152 of 152 at claude-fable-5, with no synthetic lines and no substitution in either. The tree bracket
+was compared on each return and was byte-identical to the pre-dispatch capture both times, with the index
+empty, so neither reviewer wrote to the tree. Security returned CONCERNS with one Major and three Minor;
+adversarial returned APPROVED_WITH_CONCERNS with two Majors and two Minor, one of which is this pass own
+remaining close-out work rather than a defect.
+
+THE SECURITY MAJOR IS A LIVE DEFECT, and it is the only finding of the seven that is. The neutralization
+character class in kit-endpoint-lib.js and its byte-identical copy in the capture hook omits several
+invisible and steering ranges, and the regular expression is built with no unicode flag, which means the
+Unicode tag block cannot be expressed in the class at all. That block is the known channel for smuggling
+instructions past a human reader. This was measured at the shipped function rather than reasoned about:
+two controls the class does name are stripped, seven subjects survive, and a 25-character instruction
+encoded in tag characters round-trips through neutralize intact and fully recoverable. It matters beyond
+the code because docs/security-model.md states that this text is neutralized, so the document currently
+makes a claim on a public surface that the code does not honor, which is a defect under the honesty rule
+rather than a residue to record. The existing parity pin did not catch it and could not: it pins the two
+spellings equal, so it propagated the gap to both surfaces faithfully.
+
+THE LIVE-STORE CLASS REACHES INSTANCE 10, and the shape is the same one the last nine had. The daemon and
+rollup suites spawn their CLI with no environment operand, so every child inherits the operator real home,
+and the daemon resolves both its state root and its endpoint config from that home when the operand is
+absent. Measured before being believed: all three suites run under a decoy home with an fs recorder
+preloaded into every process read zero calls at the inherited tree, so there is no live instance today and
+every current call site passes its operands. What is open is the guard rather than the behaviour. The two
+sibling files are protected by per-call-site operand discipline, which is exactly the discipline that
+failed eight consecutive times in the battery file, once under a file header asserting the opposite; the
+battery file replaced it with structure, one spawn helper naming the interpreter at a single site so a
+later site cannot be written without a fixture home. That structure sits one file away from where it is
+needed, which is Amendment 8 scope-versus-reach failure landing one file over. A smaller instance of the
+same shape rides with it: the daemon suite withMemoryRoot helper carries a comment saying a case cannot
+reach the live store by forgetting it, while the helper injects only the memory root and neither the state
+directory nor the config.
+
+FIX ROUND DISPATCHED at the fable tier, five fixes, each required to be pinned red before it is fixed. The
+neutralizer class and its unicode flag with a behavioural pin rather than another spelling pin; the two
+sibling suites given the battery file spawn shape plus a structural pin asserting the interpreter appears
+once; the inbox seam cross-half pin, driving a real item from the daemon writer through the real spawned
+hook rather than a hand-built fixture, since a hand-built one cannot catch a contract gap; the rollup
+schema-version literal replaced by the shared constant; and a comment naming the wrong hook event.
+Deliberately NOT fixed and shipping as a named residue: the inbox lock stale-reap race, real but inferred,
+bounded to duplicated advisory text with no corruption, and a concurrency rewrite rather than a pin.
+
+A CONTENTION FACT THE COORDINATOR SEAT NAMED, recorded because it bears on every figure this pass takes
+from here. A foreign .NET workload from another repository is running on this box under this session claim,
+eight processes and a test host, and it is not this effort. Counts stay sound, since contention forges
+failures and cannot manufacture passes, so a green under load is a stronger green; durations taken this
+hour are not comparable to the earlier quiet-box baselines and are marked where recorded. The implementer
+was told, because a round built almost entirely of reds it must trust is the worst pairing with a box that
+can forge one, and was instructed to attribute every red to its own assertion rather than to a timeout.
+
+PEER COORDINATION. The skills-batch worker on the sibling worktree holds four unpushed commits including a
+merge of twenty commits and owes a whole gate before pushing; it asked whether to wait out this session
+claim or run contended. It was given the honest ceiling-not-estimate answer, a revised and worse estimate
+when the fix round appeared, and the gate baseline as a cross-check with the names-over-totals reading that
+makes it useful. It declined a between-suites window on its own reasoning and is waiting for a release
+message rather than polling. It confirmed by its own check with a control that its branch touches neither
+file this fix round edits, so the two do not meet at a merge.
+
+Commit model in effect: Commit-and-Push.
+Next: adjudicate the fix round at the code and re-gate, then step 4 docs curation outside the bracket, then
+the close-out.
