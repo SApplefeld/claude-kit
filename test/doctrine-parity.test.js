@@ -147,6 +147,12 @@ test('the standing-dispatch bullet is present once in each copy, identical, and 
 // asks the writer for the same thing in the same words.
 const exitCodeDuty = 'the exit code read from the run itself';
 
+// The plural is the second phrase both surfaces must word alike, for the same
+// reason the exit-code duty is: a section close can run the contention lane
+// beside the targeted one, so a surface admitting one lane and a surface
+// admitting several state different requirements while both read as coverage.
+const lanePluralDuty = 'the lane or lanes';
+
 test('the chapter-close bullet names the compaction checkpoint in each copy', () => {
     const lead = '- **Close each section with a Chapter.**';
     for (const [label, body] of [['skill body', skillBody()], ['doctrine mirror', mirrorBody()]]) {
@@ -160,13 +166,15 @@ test('the chapter-close bullet names the compaction checkpoint in each copy', ()
             'the chapter-close bullet in the ' + label + ' must name the command, '
             + 'because its audience is a session that never loaded executing-work '
             + 'and so cannot follow a pointer to it');
-        assert.ok(lines[0].includes('the lane that gated it with its counts and '
-            + exitCodeDuty),
+        assert.ok(lines[0].includes(lanePluralDuty + ' that gated it with their '
+            + 'counts and ' + exitCodeDuty),
             'the chapter-close bullet in the ' + label + ' must require the '
-            + 'Chapter to name the lane that gated the section. Section close '
-            + 'runs the targeted lane, so a Chapter that reports a bare green '
-            + 'says nothing about how much of the tree that green covered, '
-            + 'which is what a later collateral-red diagnosis reads');
+            + 'Chapter to name every lane that gated the section. Section close '
+            + 'runs the targeted lane, with the contention lane beside it where '
+            + 'the delta touched machine-shared state, so a Chapter that reports '
+            + 'a bare green, or one lane where two ran, says nothing about how '
+            + 'much of the tree that green covered, which is what a later '
+            + 'collateral-red diagnosis reads');
     }
 });
 
@@ -184,7 +192,7 @@ test('the Chapter template carries the gate field the doctrine requires', () => 
         + 'a Gate field, so a Chapter written from it records no lane and the '
         + 'chapter-close bullet\'s requirement has no carrier at the point of '
         + 'writing');
-    assert.ok(field.includes('the lane or lanes that ran'),
+    assert.ok(field.includes(lanePluralDuty + ' that ran'),
         'the Chapter template\'s Gate field no longer admits more than one '
         + 'lane, while the contention lane runs beside the targeted one at a '
         + 'section close whose delta touched machine-shared state, so a '
@@ -1618,6 +1626,37 @@ test('the adversarial reviewer judges test-worthiness by the testing-discipline 
 // is pinned here at the phrases that do the work: the targeted lane's
 // definition, the contention lane's schedule, the schedule's touched-delta
 // condition, and the whole-gate moments the three surfaces word alike.
+// The condition that bounds the pre-push whole gate is stated on more surfaces
+// than the three the loop below compares: the two skills that perform a push
+// state it at their own points of action. It is one condition on one property
+// of a trunk, and it dissolves the day that trunk gains branch protections, so
+// every surface asserting it has to move together or the ones left behind
+// assert a condition that no longer holds anywhere.
+const INSTALL_SURFACE_CONDITION = 'a trunk consumers install from directly with no CI gating the merge';
+
+function readRepoFile(relPath) {
+    return fs.readFileSync(path.join(__dirname, '..', ...relPath.split('/')), 'utf8');
+}
+
+test('every surface stating the install-surface condition words it alike', () => {
+    const carriers = [
+        ['the skill-body doctrine copy', skillBody()],
+        ['the doctrine mirror', mirrorBody()],
+        ['the testing-discipline skill', readRepoFile('plugins/claude-kit/skills/testing-discipline/SKILL.md')],
+        ['executing-work\'s Commit-and-Push bullet', readRepoFile('plugins/claude-kit/skills/executing-work/SKILL.md')],
+        ['finishing-work\'s Commit-and-Push bullet', readRepoFile('plugins/claude-kit/skills/finishing-work/SKILL.md')],
+        ['docs/architecture.md\'s cadence paragraph', readRepoFile('docs/architecture.md')],
+    ];
+    for (const [label, body] of carriers) {
+        assert.ok(body.includes(INSTALL_SURFACE_CONDITION), label + ' no longer '
+            + 'states the install-surface condition in the shared wording ("'
+            + INSTALL_SURFACE_CONDITION + '"). The condition keys on a property '
+            + 'of the trunk rather than on a repo name, so a reword that reaches '
+            + 'some surfaces and not others leaves the rest gating on a '
+            + 'condition the reworded ones no longer describe');
+    }
+});
+
 test('the lane text agrees between the doctrine gate bullet and the testing-discipline skill', () => {
     const testingSkill = fs.readFileSync(path.join(__dirname, '..', 'plugins',
         'claude-kit', 'skills', 'testing-discipline', 'SKILL.md'), 'utf8');
@@ -1633,7 +1672,7 @@ test('the lane text agrees between the doctrine gate bullet and the testing-disc
             'the contention lane\'s schedule, both of its clauses'],
         ['section\'s delta touched',
             'the schedule\'s touched-delta condition'],
-        ['before a push only where that push lands on a trunk consumers install from directly with no CI gating the merge',
+        ['before a push only where that push lands on ' + INSTALL_SURFACE_CONDITION,
             'the install-surface condition that bounds the pre-push whole gate'],
         ['before the plan\'s handoff',
             'the handoff moment, which is finishing\'s own gate rather than a '
@@ -2773,4 +2812,375 @@ test('session-start.js\'s block count is stated the same by the code, its header
     assert.ok(bullet.includes('(' + word + ' blocks:'),
         'docs/architecture.md\'s SessionStart bullet states a block count other than '
         + word + ', which is what session-start.js composes: ' + bullet.slice(0, 200));
+});
+
+// The gate cadence prices each moment at a lane, and the failure mode it
+// produces is a procedural step that performs a gate-earning action while
+// naming no lane at the point of action: the reader executes the step, the
+// closing default hands it the targeted lane by silence, and a moment that
+// earns the whole gate is skipped with nothing to redden. The pins below carry
+// that duty for the surfaces that perform those actions, rather than for the
+// surfaces that describe the cadence, which the doctrine pins above already
+// cover.
+//
+// The first is structural over a family rather than over a list of names: the
+// commit-model bullets under each skill's "Apply the commit model" step are
+// found by their shape, so a commit model added later is pinned the day it is
+// written, without anyone remembering this file exists. A bullet that pushes
+// is what the cadence prices, so that is the predicate; a bullet that stages
+// and stops (Review-Only) performs no push and is exempt by the same reading
+// rather than by an exception list.
+const COMMIT_MODEL_LEAD = /^\s*\d+\.\s+\*\*Apply the commit model/;
+// A push, not the commit model's own name: "Commit-and-Push" and "pre-push"
+// both carry the substring, and a bullet selected or cleared by its own label
+// is selected or cleared by nothing.
+const PUSH_ACTION = /(?<![-\w])push/i;
+const LANE_NAMED = /whole gate|targeted lane|contention lane|install surface/i;
+
+// The extractor reports nothing rather than reporting the wrong block, which
+// is the only failure mode a caller can act on: an empty array is truthy, so a
+// null guard over one never fires, and a scan that runs on past the step it
+// was anchored to asserts over prose that has nothing to do with commit
+// models. So it returns null both when the anchor is gone and when the scan
+// reaches the next numbered step without finding a bullet.
+//
+// It also joins a bullet's continuation lines before returning it. Markdown
+// wraps a long bullet across physical lines as an ordinary authoring shape, so
+// an extractor keeping only each bullet's first line drops any bullet whose
+// push sits on the continuation, and a dropped bullet is silently exempt from
+// every assertion below.
+function commitModelBullets(relPath) {
+    const lines = readRepoFile(relPath).split(/\r?\n/);
+    const lead = lines.findIndex((l) => COMMIT_MODEL_LEAD.test(l));
+    if (lead === -1) return null;
+    const bullets = [];
+    for (let i = lead + 1; i < lines.length; i++) {
+        const line = lines[i];
+        if (/^\s*- \*\*/.test(line)) { bullets.push(line.trim()); continue; }
+        if (!bullets.length) {
+            if (/^\s*\d+\.\s+\*\*/.test(line)) return null;
+            continue;
+        }
+        if (line.trim() === '') break;
+        bullets[bullets.length - 1] += ' ' + line.trim();
+    }
+    return bullets.length ? bullets : null;
+}
+
+test('every commit-model bullet that pushes names the lane that push takes', () => {
+    for (const relPath of [
+        'plugins/claude-kit/skills/executing-work/SKILL.md',
+        'plugins/claude-kit/skills/finishing-work/SKILL.md',
+    ]) {
+        const bullets = commitModelBullets(relPath);
+        assert.ok(bullets, relPath + ' yields no commit-model bullets: either the '
+            + 'step led "Apply the commit model" is gone, which is the anchor this '
+            + 'pin finds them by, or the step no longer carries bullets under it. '
+            + 'Move the pin with the step rather than dropping it');
+        // The instrument leg: three commit models ship, so an extractor that
+        // silently found none or one would otherwise pass by having nothing to
+        // assert over, which reads exactly like a clean sweep.
+        assert.ok(bullets.length >= 3, relPath + ' yields ' + bullets.length
+            + ' commit-model bullets rather than the three that ship, so this '
+            + 'pin is reading the wrong block and its silence means nothing');
+        const pushing = bullets.filter((b) => PUSH_ACTION.test(b));
+        assert.ok(pushing.length >= 2, relPath + ' yields ' + pushing.length
+            + ' commit-model bullets that push, where Branch-and-PR and '
+            + 'Commit-and-Push both do, so the predicate no longer selects the '
+            + 'bullets it exists to check');
+        for (const bullet of pushing) {
+            const name = (bullet.match(/- \*\*([^:*]+)/) || [, bullet.slice(0, 40)])[1];
+            // The lane has to sit in the same sentence as the push, not merely
+            // somewhere in the bullet. A bullet is several hundred words long,
+            // so a presence check over the whole of one passes on a lane named
+            // for an entirely different action: "the whole gate already ran
+            // earlier, so tag the release and push the tag to origin" carries
+            // both words and gates nothing. What this pairing still cannot
+            // decide is whether a lane named in the push's own sentence is the
+            // lane for that push, since prose can claim a gate ran elsewhere;
+            // what it catches is the lane word floating in another sentence.
+            const paired = sentencesOf(bullet).some((s) => PUSH_ACTION.test(s)
+                && LANE_NAMED.test(s));
+            assert.ok(paired, 'the ' + name.trim() + ' bullet in ' + relPath
+                + ' performs a push and no sentence of it names that push\'s '
+                + 'lane, so a session reading it takes the closing default and '
+                + 'pushes on the targeted lane. A push to a trunk consumers '
+                + 'install from earns the whole gate, and a push to a PR branch '
+                + 'does not: whichever it is, the bullet says so in the sentence '
+                + 'where the push happens');
+        }
+    }
+});
+
+// The contention lane sits apart from the main gate and runs serially, so a
+// full-suite run does not contain it. The finishing pass runs every whole gate
+// the cadence names and had no surface saying so, which is a green suite
+// handing off with the machine-shared tests unrun.
+test('the finishing pass names the contention lane at the gates it runs', () => {
+    const finishing = fs.readFileSync(path.join(__dirname, '..', 'plugins',
+        'claude-kit', 'skills', 'finishing-work', 'SKILL.md'), 'utf8');
+    assert.match(finishing, /contention lane runs beside each of them, and beside every other whole gate this pass runs/,
+        'finishing-work no longer states that the contention lane runs beside '
+        + 'the handoff gate and every other whole gate the pass runs, so the '
+        + 'pass reads a green full suite as covering tests it never ran');
+    // Per bullet rather than by a count over the file: a count is satisfied by
+    // the phrase appearing anywhere, so adding it in one paragraph while
+    // deleting it from a bullet holds the total and the guard goes quiet for
+    // the wrong reason. The subject is the bullets, so the assertion is over
+    // the bullets, the way the sibling pin above already reads them.
+    const bullets = commitModelBullets('plugins/claude-kit/skills/finishing-work/SKILL.md');
+    assert.ok(bullets, 'finishing-work yields no commit-model bullets, so this '
+        + 'pin is asserting over nothing rather than over the gates its commit '
+        + 'models run');
+    for (const bullet of bullets.filter((b) => /whole gate/i.test(b))) {
+        const name = (bullet.match(/- \*\*([^:*]+)/) || [, bullet.slice(0, 40)])[1];
+        assert.match(bullet, /contention lane beside it/, 'the ' + name.trim()
+            + ' bullet in finishing-work runs a whole gate and does not name the '
+            + 'contention lane beside it. That lane sits apart from the main gate '
+            + 'and runs serially, so a full-suite run does not contain it and the '
+            + 'bullet hands off with the machine-shared tests unrun');
+    }
+    const verifier = fs.readFileSync(path.join(__dirname, '..', 'plugins',
+        'claude-kit', 'agents', 'qa-verifier.md'), 'utf8');
+    assert.match(verifier, /^CONTENTION LANE:/m,
+        'the qa-verifier\'s report format no longer carries a contention-lane '
+        + 'line, so the agent that runs the handoff gate has nowhere to report '
+        + 'the lane it was asked to run and the omission reads as a clean pass');
+});
+
+// The handoff gate is the one run that reads the whole tree: every section
+// closed on a lane scoped to its own files. Its counts therefore have exactly
+// one carrier, and the final Chapter is it.
+test('the final Chapter records the handoff gate the way a section Chapter records its own', () => {
+    const finishing = readRepoFile('plugins/claude-kit/skills/finishing-work/SKILL.md');
+    const step = sliceBetween(finishing, '5. **Close and archive the plan doc.**',
+        '6. **Apply the commit model.**', 'finishing-work\'s step 5');
+    assert.match(step, /carries a `Gate:` line/,
+        'the step that writes the final Chapter no longer asks it for a Gate '
+        + 'line, so the one gate covering the whole tree leaves no counts behind '
+        + 'and a later collateral-red diagnosis has nothing to read');
+    // The shape is asked for by pointing at the section Chapter's template
+    // rather than by a copy here, because the copy this step shipped dropped
+    // three qualifiers the template carries, the no-baseline-exists escape
+    // among them, which is the one the handoff gate needs first.
+    assert.match(step, /same shape a section Chapter's does[^.]{0,200}Chapter template/,
+        'finishing-work\'s step 5 no longer routes the final Chapter\'s Gate '
+        + 'shape to executing-work\'s Chapter template. A restatement here is a '
+        + 'second authority that drifts, and the drift lands as a shorter list '
+        + 'than the template asks for');
+    // The ordering is the pin's real subject: this step rewrites the plan doc,
+    // archives it, prunes the backlog and refreshes the index, all of which a
+    // repo's suite may read, so a Chapter carrying counts written before those
+    // edits reports a gate that never saw the shipped tree, and amending it
+    // after the gate makes the tree one edit newer than its evidence.
+    assert.match(step, /`Gate:` line left open/,
+        'finishing-work\'s step 5 no longer says the final Chapter is written '
+        + 'with its Gate line left open. Without that order the Chapter carries '
+        + 'counts from a run that has not happened, since this step changes the '
+        + 'tree after the Chapter is appended');
+    assert.match(step, /one edit permitted after the gate/,
+        'finishing-work\'s step 5 no longer names filling the Gate line as the '
+        + 'one edit permitted after the gate, so any other post-gate edit reads '
+        + 'as equally allowed and the shipped tree ends up newer than the run '
+        + 'that cleared it');
+    assert.ok(step.includes('records a run that has already happened and changes nothing that run read'),
+        'finishing-work\'s step 5 no longer states why the Gate-line fill is '
+        + 'the safe exception. The reason is the rule: an edit that adds a '
+        + 'record of the run is safe where one that changes what the run read '
+        + 'is not, and without it the exception reads as an arbitrary carve-out');
+});
+
+// The section Chapter's template is where that shape lives, so the duty
+// phrases the two surfaces once shared are asserted there instead: this is the
+// same drift the exitCodeDuty constant exists to catch, moved to the surface
+// that still states the shape.
+test('the Chapter template still states the Gate shape both Chapters are written to', () => {
+    const template = executingWorkBody().split(/\r?\n/)
+        .find((l) => l.startsWith('Gate: <'));
+    assert.ok(template, 'executing-work\'s Chapter template no longer carries a '
+        + 'Gate line, which finishing-work\'s final Chapter now points at for '
+        + 'its own shape rather than restating it');
+    for (const [phrase, why] of [
+        [exitCodeDuty, 'the exit code read from the run itself, which is what '
+            + 'keeps the field a value rather than an attestation'],
+        [lanePluralDuty, 'more than one lane, while the contention lane runs '
+            + 'beside the targeted one and a whole gate can run beside both'],
+        ['no baseline exists on it', 'the escape hatch a writer hits first, '
+            + 'since the run covering the whole tree is the one least likely to '
+            + 'have a prior baseline on its lane'],
+    ]) {
+        assert.ok(template.includes(phrase), 'the Chapter template\'s Gate line '
+            + 'no longer asks for ' + why + ' ("' + phrase + '"). '
+            + 'finishing-work\'s step 5 points at this line for the final '
+            + 'Chapter\'s shape, so what drops here drops from both');
+    }
+});
+
+// The contention lane's counts have two ends and both are pinned, because
+// either one alone produces a report that reads clean: the agent that runs the
+// lane cannot discover it (the lane's commands are per-repo facts in a memory
+// tier no subagent is given), and the dispatch that knows it has to say so.
+test('the contention lane reaches the qa-verifier from the dispatch, and the charter says how to run it', () => {
+    const finishing = readRepoFile('plugins/claude-kit/skills/finishing-work/SKILL.md');
+    const step = sliceBetween(finishing, '1. **QA verification.**',
+        '2. **Security review.**', 'finishing-work\'s step 1');
+    assert.match(step, /brief carries the contention lane's own command, or states that this repo defines none/,
+        'finishing-work\'s step 1 no longer passes the contention lane\'s '
+        + 'command, or its absence, to the qa-verifier. The agent has no way to '
+        + 'discover the lane, so an omitted one comes back as NONE DEFINED and '
+        + 'reads exactly like a repo that defines no such lane');
+
+    const verifier = readRepoFile('plugins/claude-kit/agents/qa-verifier.md');
+    assert.match(verifier, /^CONTENTION LANE:/m,
+        'the qa-verifier\'s report format no longer carries a contention-lane '
+        + 'line, so the agent that runs the handoff gate has nowhere to report '
+        + 'the lane it was asked to run and the omission reads as a clean pass');
+    // The format alone is not the duty: a report line with no process behind
+    // it is filled from whatever the agent did, so deleting the instruction
+    // leaves the format green and the lane unrun.
+    assert.match(verifier, /after the suite has completed, never concurrently with it/,
+        'the qa-verifier\'s Tests step no longer tells the agent to run the '
+        + 'contention lane after the suite completes. Run concurrently, the two '
+        + 'reproduce the contention the lane exists to avoid, and the charter is '
+        + 'the only surface that says so');
+    assert.match(verifier, /`NONE DEFINED` carries its evidence/,
+        'the qa-verifier\'s Tests step no longer requires evidence behind a '
+        + 'NONE DEFINED, so the report\'s default answer is indistinguishable '
+        + 'from a genuine no-lane repo, which is the clean pass this line exists '
+        + 'to prevent');
+});
+
+// The pins above read the surfaces this plan already knew about. This one is
+// the generator fix: it derives the family from the tree rather than from a
+// list of names, so the next procedure that grows a gate-earning git
+// integration action reddens when it is written instead of waiting for a
+// reviewer to notice it.
+//
+// The unit is the physical line, which in these files is a paragraph or a
+// bullet. The predicate is a git integration action reaching a remote or a
+// trunk: the verb next to its object, or the plumbing spelled out, rather than
+// a list of the phrasings that happen to ship today, so a step written in
+// vocabulary this file never saw is still selected on its shape. What the
+// predicate cannot see is an action phrased without any of those objects
+// ("publish the branch upstream"), so the sweep covers the shape rather than
+// the class of every possible spelling, and it says so here rather than
+// reporting a clean sweep it has not earned.
+//
+// The duty is a lane named, or an exemption stated, in the same paragraph. The
+// exemptions below are paragraphs that describe an action rather than perform
+// one, or whose action is performed and gated elsewhere; each carries its rule
+// so a later reader can tell an exemption from an oversight, and a stale entry
+// reddens rather than going quiet, since an entry matching nothing is asserted
+// against.
+const INTEGRATION_ACTION = new RegExp([
+    '\\bgit (?:push|merge|pull|cherry-pick)\\b',
+    '(?<![-\\w])(?:push|pushes|pushing|merge|merges|merging|cherry-pick|cherry-picks|cherry-picking)'
+        + '\\b[^.`]{0,50}?\\b(?:to origin|to main|to master|to the trunk|the branch|the recovery branch|the tag|onto)\\b',
+    '(?<![-\\w])(?:committed and pushed|commit and push|push and open)\\b',
+    '\\b(?:is|runs|takes) Commit-and-Push\\b',
+].join('|'), 'i');
+const GATE_STATED = /whole gate|targeted lane|contention lane|install surface|takes no gate/i;
+
+const INTEGRATION_EXEMPT = [
+    ['skills/brainstorming/SKILL.md', 'land it on main and leave no mess',
+        'names the commit model for a plan header; the push it describes is '
+        + 'executing-work step 7\'s, which names that push\'s lane where it happens'],
+    ['skills/branch-hygiene/SKILL.md', 'Branch fresh from the current integration ref',
+        'the stranded-recovery path\'s gate is an open operator decision in '
+        + 'docs/backlog.md: a cherry-pick onto a fresh base produces a tree '
+        + 'neither parent had, and whether that is the cadence\'s merge moment '
+        + 'is a change to the cadence rather than a carrier repair'],
+    ['skills/branch-hygiene/SKILL.md', 'Bring the commits over',
+        'same recovery path, same open decision'],
+    ['skills/branch-hygiene/SKILL.md', 'Push the recovery branch',
+        'same recovery path; the push lands on a recovery branch rather than on '
+        + 'an install-surface trunk, so only the cherry-pick\'s own status is open'],
+    ['skills/executing-work/SKILL.md', 'pushes the section to origin with no later human gate',
+        'a subordinate clause about notifying the operator, referring to step '
+        + '7\'s push; step 7 names that push\'s lane'],
+    ['skills/finishing-work/SKILL.md', 'Then report the store\'s sync state',
+        'the push lands in the kit memory store, a repository of its own that '
+        + 'no suite reads and that nobody installs from, so the pre-push '
+        + 'condition cannot fire on it'],
+    ['skills/kaizen/SKILL.md', 'Per-machine files mean three workstations',
+        'describes the sync mechanism; the pull is performed at step 1 of the '
+        + 'pass, which names its lane'],
+    ['skills/operating-instructions/SKILL.md', 'the index is a window rather than a resting place',
+        'a doctrine bullet on staging and the commit window rather than a '
+        + 'procedure that pushes; the lane a push takes is the gate bullet\'s, '
+        + 'in this same document'],
+    ['skills/operating-instructions/SKILL.md', 'Name the rollback and stop for a yes',
+        'a doctrine bullet on authorization for outward actions, same document '
+        + 'and same gate bullet'],
+];
+
+function shippedKitMarkdown() {
+    const root = path.join(__dirname, '..', 'plugins', 'claude-kit');
+    const files = [];
+    const walk = (dir) => {
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            const full = path.join(dir, entry.name);
+            if (entry.isDirectory()) { walk(full); continue; }
+            // claude-kit-doctrine.md at the plugin root is gitignored build
+            // output regenerated by the doctrine-refresh hook, not a shipped
+            // surface anyone edits.
+            if (entry.name === 'claude-kit-doctrine.md' && dir === root) continue;
+            if (entry.name.endsWith('.md')) files.push(full);
+        }
+    };
+    walk(root);
+    return files;
+}
+
+test('every kit procedure performing a git integration names that action\'s lane or states its exemption', () => {
+    // The instrument's controls, run before its silence is read. Two positives
+    // built on the predicate's shape rather than on a phrasing the tree
+    // already carries, one of them in vocabulary these literals do not name;
+    // one negative, so a pin that simply matched any git prose would fail here
+    // rather than certifying itself.
+    for (const control of [
+        '4. **Ship the fleet manifest.** Once the manifest is written, commit and push to origin.',
+        'Then bring the fix across by cherry-picking it onto the release ref.',
+    ]) {
+        assert.ok(INTEGRATION_ACTION.test(control), 'the sweep\'s predicate no '
+            + 'longer selects a gate-earning integration step ("' + control
+            + '"), so its silence over the tree means nothing');
+        assert.ok(!GATE_STATED.test(control), 'the sweep\'s control paragraph '
+            + 'names a lane, so it cannot show that an unnamed one is caught');
+    }
+    assert.ok(INTEGRATION_ACTION.test('Ship it: run the whole gate with the '
+        + 'contention lane beside it, then push to origin.')
+        && GATE_STATED.test('run the whole gate with the contention lane beside it'),
+        'the sweep no longer passes a paragraph that performs an integration '
+        + 'and names its lane, so it cannot tell a named action from an unnamed one');
+    assert.ok(!INTEGRATION_ACTION.test('A local branch is auto-reaped only if '
+        + 'it is verified merged into the integration branch.'),
+        'the sweep\'s predicate now selects a paragraph that describes a merged '
+        + 'branch without performing an integration, so its hits are git prose '
+        + 'rather than gate-earning actions');
+
+    const exemptHits = new Map(INTEGRATION_EXEMPT.map(([f, anchor]) => [f + '|' + anchor, 0]));
+    const unnamed = [];
+    for (const file of shippedKitMarkdown()) {
+        const rel = path.relative(path.join(__dirname, '..', 'plugins', 'claude-kit'), file)
+            .replace(/\\/g, '/');
+        readRepoFile('plugins/claude-kit/' + rel).split(/\r?\n/).forEach((line, i) => {
+            if (!INTEGRATION_ACTION.test(line)) return;
+            const exempt = INTEGRATION_EXEMPT.find(([f, anchor]) => f === rel && line.includes(anchor));
+            if (exempt) { exemptHits.set(rel + '|' + exempt[1], exemptHits.get(rel + '|' + exempt[1]) + 1); return; }
+            if (GATE_STATED.test(line)) return;
+            unnamed.push(rel + ':' + (i + 1) + ' ' + line.trim().slice(0, 120));
+        });
+    }
+    assert.deepStrictEqual(unnamed, [], 'a kit procedure performs a git '
+        + 'integration and its paragraph names no lane and states no exemption, '
+        + 'so a session executing it takes the closing default and gates a merge '
+        + 'or an install-surface push at the targeted lane. Name the lane where '
+        + 'the action happens, or state the exemption with its rule and add it '
+        + 'to INTEGRATION_EXEMPT above:\n' + unnamed.join('\n'));
+    for (const [key, count] of exemptHits) {
+        assert.ok(count > 0, 'the exemption for ' + key + ' matches nothing in '
+            + 'the tree, so it is a stale entry silently widening what this '
+            + 'sweep skips. Remove it, or point it at the paragraph it means');
+    }
 });
