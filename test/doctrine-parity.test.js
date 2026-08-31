@@ -1054,6 +1054,74 @@ test('the role skill still carries the delegation exclusions and the three refus
         + 'delegation record provenance rather than credential');
 });
 
+// The pin above guards the delegation model's own screens and none of the
+// rail's: the standing-grant rail carries its own closed exclusion list and
+// the record-is-only-a-switch clause, which bound what any grant record can
+// ever reach, so a later pass deleting either would leave the delegation
+// pins green while every instance of the rail, future grants included, kept
+// its power and lost its bounds. Same construction as the delegation pin:
+// each screen pinned on its own load-bearing phrases rather than a heading,
+// since a heading survives while the list under it is emptied.
+test('the role skill still carries the standing-grant rail\'s exclusions and the record-is-a-switch clause', () => {
+    const body = fs.readFileSync(path.join(__dirname, '..', 'plugins',
+        'claude-kit', 'skills', 'role', 'SKILL.md'), 'utf8');
+    // The rail's exclusion list, closed by design: the reaches no
+    // grant record can have whatever its owning skill says, pinned each on
+    // its own phrase because the list declares itself closed, so an item
+    // silently dropped narrows the boundary while the closure claim stands.
+    for (const [phrase, what] of [
+        ['it extends no warranted channel', 'the warranted-channel bar'],
+        ['it establishes no privacy precondition', 'the privacy-precondition bar'],
+        ['it lifts no harness floor and no no-laundering rule', 'the harness-floor and no-laundering bar'],
+        ['it widens no grant past what its owning skill spells out', 'the no-widening bar'],
+    ]) {
+        assert.ok(body.includes(phrase),
+            'the role skill\'s standing-grant rail no longer carries ' + what
+            + ' ("' + phrase + '"), so a grant record reaching for it finds '
+            + 'the reach unnamed while the list still claims to be closed');
+    }
+    // The record-is-only-a-switch clause, the rail's core: without it a
+    // record's body reads as carrying the grant's scope, which is exactly
+    // the unauthenticated-widening the rail exists to refuse.
+    assert.match(body, /The record is only ever the switch/,
+        'the role skill no longer states that a standing-grant record is '
+        + 'only ever the switch, so a record\'s body can be read as carrying '
+        + 'the grant\'s scope');
+    assert.match(body, /neither widen nor narrow/,
+        'the role skill no longer states that a record\'s body can neither '
+        + 'widen nor narrow the mechanism, which is the clause that makes '
+        + 'the body data rather than authority');
+    // The lead-in that scopes the list, pinned on its own because the
+    // bars above read identically under a narrower one: re-scoping this
+    // sentence to the delegation model alone would confine the closed
+    // boundary to a single instance and leave every other grant
+    // unbounded, with every phrase above still present and every
+    // assertion above still green. The closure sentence rides with it,
+    // since a list that stops declaring itself closed is one a later
+    // pass may add reaches to.
+    for (const [phrase, what] of [
+        ['What the rail can never reach, stated as its own exclusion list',
+            'the lead-in scoping the exclusion list to the rail rather than to one instance'],
+        ['The list is the rail\'s boundary and it is closed by design',
+            'the closure sentence that makes the list a boundary rather than examples'],
+        ['Three refusal rules bind every instance of the rail',
+            'the clause binding the refusal rules to every instance rather than to delegation alone'],
+    ]) {
+        assert.ok(body.includes(phrase),
+            'the role skill\'s standing-grant rail no longer carries '
+            + what + ' ("' + phrase + '"), so the screens below it hold '
+            + 'for one grant while the rail admits others unbounded');
+    }
+    // The one-bit clause: where a grant's scope is a single act there is
+    // nothing for the body-is-data rule to narrow, so without this the
+    // switch and the authorization are the same object and the record's
+    // presence is the whole grant.
+    assert.match(body, /the record's presence is never by itself the authorization/,
+        'the role skill no longer states that a one-bit grant\'s record is '
+        + 'never by itself the authorization, so a grant whose scope is a '
+        + 'single act is authorized by the existence of its own switch');
+});
+
 // The box-budget brief clause in executing-work's Dispatch Brief template is
 // a deliberate second copy of the role skill's claim contract: the clause is
 // the only copy a dispatched subagent receives, since an agent inherits no
