@@ -485,11 +485,13 @@ function main(payload, nowMs) {
 // harness issues tool calls in parallel, main-thread calls included, so several
 // copies of this hook run against one session's inbox at once; a plain
 // read-select-advance there is last-writer-wins, and every copy emits the same
-// batch. The 3-item and 600-byte caps are the control on how much sidecar text
-// reaches a session, so N parallel copies defeat them N-fold, which is the
-// security half of that defect rather than a cosmetic repeat. The whole
-// read-select-advance therefore runs under one exclusive claim per session, and
-// a copy that cannot take it delivers nothing and leaves the items queued.
+// batch. The 3-item cap and the 600-byte per-item cap are the control on how
+// much sidecar text reaches a session (the batch budget is the ceiling those
+// two imply, not a third control of its own), so N parallel copies defeat
+// both N-fold, which is the security half of that defect rather than a
+// cosmetic repeat. The whole read-select-advance therefore runs under one
+// exclusive claim per session, and a copy that cannot take it delivers
+// nothing and leaves the items queued.
 //
 // POINTERS, NEVER BODIES. An item names what was judged and why in one clause,
 // or names a memory record and how to read it. It never carries a command, an
@@ -507,9 +509,12 @@ function main(payload, nowMs) {
 // item contributes goes into a quoted slot and loses the quote character on the
 // way in, so no field can close its own slot and continue as the hook's words.
 //
-// CAPS. At most three items per call and 600 bytes of item text, whatever
-// arrives; the rest stays queued for the next call and nothing is dropped for
-// being late. An item too large for the budget is shortened by cutting its
+// CAPS. At most three items per call, each cut to at most 600 bytes; the batch
+// budget itself is derived from those two numbers so a full batch of three
+// at-cap items always fits (INBOX_MAX_ITEMS * ITEM_MAX_BYTES bytes of item
+// text plus one separator per pair, currently 1,802). Whatever arrives past
+// the caps stays queued for the next call and nothing is dropped for being
+// late. An item too large for the per-item budget is shortened by cutting its
 // variable fields, never by cutting the composed line from its tail: the
 // trailing directive and the `memq get` spelling live at the end, so a tail cut
 // removes exactly what the pointer exists to carry.
@@ -537,12 +542,22 @@ try {
 // without an installed hook mis-reading the new one.
 const INBOX_VERSION = 1;
 
-// The batch caps. Three items is what a session can absorb between two tool
-// calls without the block becoming the turn; 600 bytes is the same bound stated
-// the other way, since a pointer that needs more than two hundred bytes is
-// carrying a body it should not be carrying.
+// One knob and one count are the real controls. ITEM_MAX_BYTES is what
+// fitComposed cuts a single formatted item down to: a pointer that needs more
+// than six hundred bytes is carrying a body it should not be carrying.
+// INBOX_MAX_ITEMS is how many items a session can absorb between two tool
+// calls without the block becoming the turn. INBOX_MAX_BYTES is not a third
+// control alongside them, it is the ceiling those two imply: the byte cost of
+// a full batch of INBOX_MAX_ITEMS items each at the per-item cap, so a batch
+// built from legal items can never exceed it. takeBatch still checks it, as a
+// structural backstop should the constants ever drift apart (a future edit
+// that hardcodes the derived value, or a formatting change that lets an item
+// past ITEM_MAX_BYTES), rather than as a bound this file expects a legal batch
+// to ever reach. The only way to change what a batch holds is to change one of
+// the two named constants above.
 const INBOX_MAX_ITEMS = 3;
-const INBOX_MAX_BYTES = 600;
+const ITEM_MAX_BYTES = 600;
+const INBOX_MAX_BYTES = INBOX_MAX_ITEMS * ITEM_MAX_BYTES + (INBOX_MAX_ITEMS - 1);
 
 // The per-field cap applied before an item is formatted. The writing side caps
 // too; this one exists because the inbox is an ordinary file, so what a field
@@ -577,10 +592,12 @@ const CALL_ID_RE = /^[0-9a-f]{16}$/;
 // This harness issues tool calls in parallel, so several copies of this hook
 // run against one session's inbox at once, and a plain read-select-advance
 // there is last-writer-wins: every copy reads the same offset, every copy takes
-// the same batch, and the block is emitted N times in one turn with the 3-item
-// and 600-byte caps defeated exactly N-fold. Those caps are the control on how
-// much sidecar text can reach a session, so losing them is the security half of
-// the defect and the duplicate block is only the visible half.
+// the same batch, and the block is emitted N times in one turn with the
+// 3-item cap and the 600-byte per-item cap (the batch budget is the ceiling
+// those two imply) both defeated exactly N-fold. Those caps are the control
+// on how much sidecar text can reach a session, so losing them is the
+// security half of the defect and the duplicate block is only the visible
+// half.
 //
 // The claim is taken once and never waited on. A hook that blocked on a lock
 // would put the observed session on a critical path, which is the one thing
@@ -894,7 +911,7 @@ function formatItem(item) {
             + '" diverged; sidecar reason "'
             + (f.reason === '' ? 'none recorded' : f.reason)
             + '". Verify before proceeding.',
-        fields, ITEM_CUT_ORDER.alert, INBOX_MAX_BYTES);
+        fields, ITEM_CUT_ORDER.alert, ITEM_MAX_BYTES);
     }
 
     if (item.kind === 'memory') {
@@ -905,7 +922,7 @@ function formatItem(item) {
             + '): may bear on this call; sidecar reason "'
             + (f.why === '' ? 'none recorded' : f.why)
             + '". Read it with: memq get ' + name,
-        fields, ITEM_CUT_ORDER.memory, INBOX_MAX_BYTES);
+        fields, ITEM_CUT_ORDER.memory, ITEM_MAX_BYTES);
     }
 
     return null;
@@ -995,7 +1012,19 @@ function takeBatch(buf, length) {
         const text = formatItem(parsed);
         if (text !== null && text !== '') {
             const cost = Buffer.byteLength(text, 'utf8') + (texts.length === 0 ? 0 : 1);
-            if (bytes + cost > INBOX_MAX_BYTES) { moreQueued = hasItemAt(buf, length, position); break; }
+            // An empty batch never breaks on the byte budget, whatever cost is
+            // computed against it: fitComposed cuts every item to ITEM_MAX_BYTES,
+            // which the derived INBOX_MAX_BYTES always admits alone, but the
+            // relation between the two constants is not load-bearing for that
+            // fact to hold here too. Breaking a lone over-budget item back to
+            // the queue would leave texts empty and consumed at 0, and the
+            // caller advances no offset on an empty result, so that session's
+            // queue would stall on that line forever. Taking it regardless is
+            // what keeps this loop from ever being the thing that stalls it.
+            if (texts.length > 0 && bytes + cost > INBOX_MAX_BYTES) {
+                moreQueued = hasItemAt(buf, length, position);
+                break;
+            }
             bytes += cost;
             texts.push(text);
         }
@@ -1178,6 +1207,7 @@ module.exports = {
     INBOX_VERSION,
     INBOX_MAX_ITEMS,
     INBOX_MAX_BYTES,
+    ITEM_MAX_BYTES,
     INBOX_READ_BYTES,
     ITEM_FIELD_CAP,
     UNSAFE_PATTERN

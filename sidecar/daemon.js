@@ -45,6 +45,26 @@
 // consulted about is recorded as NOT RECOGNIZED rather than passed over, for
 // the reason every gap in this daemon exists.
 //
+// FRESHNESS. An entry whose capture time is further back than the horizon when
+// the drain reaches it is skipped whole: no judgment call, no recognition call,
+// no verdict, no inbox item, and the offset moves past it as it does for a
+// judged one. A verdict is advice to the session that made the call, so one
+// arriving an hour late is spent model time and a pointer to a moment nobody is
+// in any more, while the fresh calls behind it in the queue wait for it. An
+// entry whose capture time cannot be read, or which carries no time zone to
+// read it in, is judged: absence of a timestamp must not discard work.
+//
+// The skip is never silent. Contiguous skips within one session coalesce into
+// ONE stale record per stretch, written to that session's verdict log and to
+// the findings file exactly as a gap record is, and the pass prints one line
+// naming the count and the window. A bare counter would have been silent where
+// it matters most: a rollup reads per session and per day, and a discarded
+// backlog carrying no dated, attributed record renders in both of those
+// sections identically to a fleet that made no calls at all. The record is a
+// separate type from a gap because the two call for opposite responses: a gap
+// is an instrument that could not measure, and a stale stretch is one that
+// declined to.
+//
 // WHERE THE DATA GOES. sidecar/endpoint.js is the module that puts spool
 // content on the wire, and its header states the posture in full: every
 // judgment POSTs the intent, the command and its output off this VM to the
@@ -97,7 +117,7 @@
 // Usage:
 //   node sidecar/daemon.js [--once] [--state-dir <path>] [--config <path>]
 //                          [--memory-root <path>] [--poll-ms <n>]
-//                          [--retention-days <n>]
+//                          [--retention-days <n>] [--stale-horizon-minutes <n>]
 //
 //   --once            drain the spool and exit; the default is a watch loop
 //   --state-dir       the sidecar state root, default ~/.claude/kit-sidecar
@@ -106,6 +126,9 @@
 //                     under, default the store memq itself resolves
 //   --poll-ms         idle poll interval in the watch loop, default 2000
 //   --retention-days  the spool retention window, default 14
+//   --stale-horizon-minutes
+//                     how old a captured call may be when the drain reaches it
+//                     and still be judged, default 15
 //
 // --state-dir, --config and --memory-root together are what let a replay run,
 // and every test in this repository, work against scratch directories rather
@@ -138,6 +161,27 @@ const recognitionPrompt = require('./prompts/recognition-v1.js');
 // daemon spends nearly all of its life here; two seconds is a latency nobody
 // notices and a wake-up cost of one directory read.
 const DEFAULT_POLL_MS = 2000;
+
+// How old a captured call may be when the drain reaches it and still be worth
+// judging. A verdict travels back to the session that made the call, so its
+// worth decays with that session's own attention: past this the call is history
+// the session has moved on from, and the model time spent on it is time the
+// fresher calls behind it in the queue are waiting for. After an outage the
+// backlog is mostly that history, which is what this horizon is for. An entry
+// past it is skipped whole, judgment and recognition under the one window,
+// because recognition costs the same call and delivers through the same inbox
+// to the same session that has moved on.
+//
+// TWO BOUNDS, DELIBERATELY DIFFERENT. `--stale-horizon-minutes` is checked into
+// 1 to 1440 minutes, which is a typo guard on a value typed at a terminal. The
+// programmatic seam through makeContext is unbounded on purpose: sidecar's own
+// battery hands it a hundred days, a frozen replay having no freshness to lose,
+// and a validator here would have to refuse that legitimate caller to catch a
+// mistake the command line already catches. A horizon that is not a finite
+// positive number switches staleness OFF rather than on, in isStale below,
+// because the failure direction of this feature is judging a call that could
+// have been skipped and never discarding one that should have been judged.
+const DEFAULT_STALE_HORIZON_MS = 15 * 60 * 1000;
 
 // How long to wait before the single retry a connection failure earns. The
 // runner reloads in about six and a half seconds, so seven is the far side of a
@@ -172,6 +216,7 @@ function parseArgs(argv) {
         memoryRoot: null,
         pollMs: DEFAULT_POLL_MS,
         retentionDays: spool.RETENTION_DAYS,
+        staleHorizonMs: DEFAULT_STALE_HORIZON_MS,
         help: false
     };
     for (let i = 0; i < argv.length; i += 1) {
@@ -201,6 +246,11 @@ function parseArgs(argv) {
             if (!Number.isInteger(n) || n < 1 || n > 3650) return { ok: false, error: '--retention-days needs a whole number of days between 1 and 3650' };
             options.retentionDays = n; i += 1; continue;
         }
+        if (arg === '--stale-horizon-minutes') {
+            const n = Number(value);
+            if (!Number.isInteger(n) || n < 1 || n > 1440) return { ok: false, error: '--stale-horizon-minutes needs a whole number of minutes between 1 and 1440' };
+            options.staleHorizonMs = n * 60 * 1000; i += 1; continue;
+        }
         return { ok: false, error: `unknown argument: ${arg}` };
     }
     return { ok: true, options };
@@ -211,14 +261,15 @@ const USAGE = [
     '',
     'usage: node sidecar/daemon.js [--once] [--state-dir <path>] [--config <path>]',
     '                             [--memory-root <path>] [--poll-ms <n>]',
-    '                             [--retention-days <n>]',
+    '                             [--retention-days <n>] [--stale-horizon-minutes <n>]',
     '',
-    '  --once            drain the spool and exit (default: watch)',
-    '  --state-dir       sidecar state root (default: ~/.claude/kit-sidecar)',
-    '  --config          endpoint config (default: ~/.claude/kit-endpoint.json)',
-    '  --memory-root     memory store root, read only (default: memq\'s own)',
-    '  --poll-ms         idle poll interval, milliseconds (default: 2000)',
-    '  --retention-days  spool retention window, days (default: 14)'
+    '  --once                    drain the spool and exit (default: watch)',
+    '  --state-dir               sidecar state root (default: ~/.claude/kit-sidecar)',
+    '  --config                  endpoint config (default: ~/.claude/kit-endpoint.json)',
+    '  --memory-root             memory store root, read only (default: memq\'s own)',
+    '  --poll-ms                 idle poll interval, milliseconds (default: 2000)',
+    '  --retention-days          spool retention window, days (default: 14)',
+    '  --stale-horizon-minutes   skip entries older than this at the drain (default: 15)'
 ].join('\n');
 
 // Everything the daemon holds for a run. `runtime` is the per-pass resilience
@@ -242,6 +293,7 @@ function makeContext(rawOptions, deps) {
         memoryRoot: raw.memoryRoot ?? null,
         pollMs: raw.pollMs ?? DEFAULT_POLL_MS,
         retentionDays: raw.retentionDays ?? spool.RETENTION_DAYS,
+        staleHorizonMs: raw.staleHorizonMs ?? DEFAULT_STALE_HORIZON_MS,
         maxReadBytes: raw.maxReadBytes ?? undefined
     };
     const stateDir = (typeof options.stateDir === 'string' && options.stateDir !== '')
@@ -816,9 +868,140 @@ async function recognizeEntry(ctx, pass, entry, judged) {
     pass.counters.invented += outcome.invented.length;
 }
 
+// A capture time this daemon may do arithmetic on: an ISO instant carrying an
+// explicit zone, `Z` or an offset.
+//
+// The zone is required rather than assumed. Date.parse reads a date-time with
+// no designator as LOCAL time, which succeeds and yields an instant that is
+// wrong by the machine's offset, and being wrong by hours in the direction of
+// "older" is how a zone-less line gets discarded for an age it does not have.
+// The contract has the hook writing toISOString(), which always carries `Z`, so
+// no honest line is touched by this; what it covers is a line written by hand
+// or by something other than the hook, which the same contract says is an
+// expected shape in this file.
+const ZONED_INSTANT_RE = /(?:Z|z|[+-]\d{2}:?\d{2})$/;
+
+// Whether a captured call is old enough that a verdict about it would reach a
+// session that has moved on. Measured against the clock at the moment the drain
+// reaches the entry rather than when the pass began, so a long backlog is tested
+// against the time it is actually being read at.
+//
+// EVERY WAY THIS ANSWERS NO IS ONE RULE: the horizon discards work, so anything
+// it cannot establish falls toward judging. A capture time that is missing, that
+// carries no zone, or that does not parse leaves the entry unplaceable in time,
+// and a line this daemon cannot date is not a line it may discard. An unusable
+// clock or horizon is this daemon's own fault and no reason to throw away
+// somebody else's call. Those three guards are the ones that answer before the
+// arithmetic; the arithmetic itself is a single comparison, so a capture time
+// ahead of this reader's clock produces a negative age and falls out of it as
+// not stale, which is the answer a clock disagreement should get.
+function isStale(entry, nowMs, horizonMs) {
+    if (!Number.isFinite(nowMs) || !Number.isFinite(horizonMs) || horizonMs <= 0) return false;
+    const text = typeof entry.ts === 'string' ? entry.ts.trim() : '';
+    if (!ZONED_INSTANT_RE.test(text)) return false;
+    const capturedMs = Date.parse(text);
+    if (!Number.isFinite(capturedMs)) return false;
+    return nowMs - capturedMs > horizonMs;
+}
+
+// Accrue one skipped call into the open stale stretch for its session, on
+// accrueGap's design and for its reason: an outage backlog is hundreds of
+// skips, and one record per call would be the per-entry spam the spec rules
+// out, while one record per contiguous stretch names the same drop in one line.
+//
+// A stretch belongs to one session, so a second session's skips open their own.
+// What closes every open stretch is the pass's next judgment call, or the end
+// of the pass: two skips with a judged call between them are two stretches,
+// because a record claiming a range that steps over a judged call would
+// describe a stretch that did not happen, and because the offsets a stretch
+// holds may not wait on a session that has stopped calling.
+function accrueStale(ctx, pass, entry) {
+    const open = pass.stale.get(entry.sessionId);
+    if (open === undefined) {
+        pass.stale.set(entry.sessionId, {
+            sessionId: entry.sessionId,
+            count: 1,
+            firstCallId: entry.callId,
+            lastCallId: entry.callId,
+            firstCapturedAt: entry.ts,
+            lastCapturedAt: entry.ts,
+            horizonMs: ctx.options.staleHorizonMs
+        });
+    } else {
+        open.count += 1;
+        open.lastCallId = entry.callId;
+        open.lastCapturedAt = entry.ts;
+    }
+    pass.counters.stale += 1;
+}
+
+// Write out EVERY pending stale stretch and commit the offsets they were
+// holding. Called before any judgment call the pass makes and again at the end
+// of the pass, and never for one session alone: the offsets these stretches
+// hold are the pass's, so the flush is the pass's too. See the call site in
+// processEntry for what a per-session flush cost.
+//
+// The two writes are INDEPENDENT for flushGaps's reason: a session log that
+// could not be written is no reason for the audit surface to lose the record as
+// well. Unlike a gap, nothing is reported on stderr per stretch: the pass
+// already prints one line naming the count and the horizon, and a backlog
+// spanning many sessions would otherwise print a line per session on top of it.
+function flushStale(ctx, pass) {
+    for (const [key, stretch] of Array.from(pass.stale.entries())) {
+        const record = logs.staleRecord(stretch, ctx.deps.now());
+        const inSessionLog = logs.appendJsonLine(logs.sessionLogFile(ctx.paths.logsDir, stretch.sessionId), record);
+        const inFindings = logs.appendJsonLine(ctx.paths.findingsFile, record);
+        if (!inSessionLog) {
+            ctx.state.counters.writeFailures += 1;
+            ctx.deps.report(`could not record ${stretch.count} skipped call(s) in the session log`);
+        }
+        if (!inFindings) {
+            ctx.state.counters.writeFailures += 1;
+            ctx.deps.report(`could not record ${stretch.count} skipped call(s) in the findings file`);
+        }
+        pass.stale.delete(key);
+    }
+    commitPending(ctx, pass);
+}
+
 // Judge one entry and write what came of it. Returns nothing the caller branches
 // on: a gap is as complete an outcome as a verdict.
 async function processEntry(ctx, pass, entry) {
+    // The freshness horizon, ahead of both calls and of every record either one
+    // would write. The skip is counted and accrued into this session's stale
+    // stretch, and it earns no GAP record: a gap says the instrument could not
+    // measure a call, and folding a call it declined to measure into that number
+    // would inflate the one count a reader treats as an outage. Its offset moves
+    // with the rest, which is what keeps a restart from meeting the same dead
+    // backlog again.
+    //
+    // The session's open gap run is closed first. A gap record states a range
+    // from its first call to its last, and a run left open across a skipped call
+    // would produce a range spanning a call the record's own count does not
+    // include, which no reader could reconcile against either number.
+    if (isStale(entry, ctx.deps.now(), ctx.options.staleHorizonMs)) {
+        flushGaps(ctx, pass, entry.sessionId);
+        accrueStale(ctx, pass, entry);
+        return;
+    }
+    // EVERY open stretch, not this session's, and before the judgment call
+    // rather than after it. The hold this releases is the pass's: while any
+    // stretch is open, commitPending advances no offset for any file, so a
+    // stretch flushed only when its OWN session next appears is one a session
+    // that never calls again keeps open for the rest of the pass. The offsets
+    // waiting behind it are then the whole fresh tail of every other session,
+    // and a kill there re-judges and re-POSTs every call this pass already
+    // judged, which is the exact cost recordRecGap refuses to pay for a
+    // coalescing window.
+    //
+    // The bound is what makes that impossible rather than unlikely: no stretch
+    // outlives a judgment call, so the offsets can never wait on more than the
+    // skips since the last one. It costs stretch fragmentation where skips
+    // interleave judged calls, which is a second record rather than a lost one,
+    // and a post-outage backlog is stale-then-fresh, so in practice this is one
+    // flush at the first fresh call.
+    flushStale(ctx, pass);
+
     const outcome = await judgeWithPolicy(ctx, entry);
     if (outcome.status !== 'ok') {
         accrueGap(ctx, pass, entry, outcome);
@@ -923,7 +1106,7 @@ function commitOffset(ctx, pass, fileName, offset) {
 // recognition outage from freezing an offset that judgment is still moving:
 // see recordRecGap.
 function commitPending(ctx, pass) {
-    if (pass.gaps.size > 0) return;
+    if (pass.gaps.size > 0 || pass.stale.size > 0) return;
     for (const [fileName, offset] of pass.pendingOffsets) {
         commitOffset(ctx, pass, fileName, offset);
     }
@@ -1004,13 +1187,17 @@ async function drainFile(ctx, pass, fileName) {
 // One pass over every day file in chronological order.
 function newPass() {
     const counters = {
-        parsed: 0, judged: 0, blank: 0, malformed: 0, unknownVersion: 0,
+        parsed: 0, judged: 0, stale: 0, blank: 0, malformed: 0, unknownVersion: 0,
         oversized: 0, offsetResets: 0, gapped: 0,
         recognized: 0, pointed: 0, invented: 0, recognitionGapped: 0,
         recognitionSkipped: 0, recognitionUnavailable: 0
     };
     return {
         gaps: new Map(),
+        // The open stale stretch per session, on the same terms as `gaps`: a
+        // stretch that is still in memory is an outcome that is not on disk, so
+        // the offsets behind it wait in pendingOffsets until it is written.
+        stale: new Map(),
         // The reason each session's last recognition gap carried. Nothing is
         // held here: the records are already on disk, and this is only what
         // keeps one stderr line per run of like gaps instead of one per call.
@@ -1056,6 +1243,20 @@ async function drainOnce(ctx) {
         if (pass.laneHeld) break;
     }
     flushGaps(ctx, pass);
+    flushStale(ctx, pass);
+
+    // One line for the pass, never one per entry: an outage backlog is hundreds
+    // of skips and a per-entry line would bury every other diagnostic in the
+    // log. The count and the window are what a reader acts on, and no part of a
+    // skipped line is named here, on the rule this daemon holds everywhere about
+    // what may reach stderr. The window is spelled from the milliseconds the
+    // comparison itself used, so this line cannot name a horizon nothing was
+    // measured against.
+    if (pass.counters.stale > 0) {
+        ctx.deps.report(`skipped ${pass.counters.stale} spool entr${pass.counters.stale === 1 ? 'y' : 'ies'}`
+            + ` captured further back than the ${logs.horizonText(ctx.options.staleHorizonMs)} freshness horizon;`
+            + ' a verdict that late no longer bears on what the session is doing');
+    }
 
     mergePassCounters(ctx, pass);
     logs.saveState(ctx.paths.stateFile, ctx.state);
@@ -1072,6 +1273,12 @@ function passSummary(pass) {
     const parts = [`judged ${c.judged}`];
     if (verdicts !== '') parts.push(`(${verdicts})`);
     if (c.gapped > 0) parts.push(`not judged ${c.gapped}`);
+    // In the summary as well as on its own report line, because this is the
+    // sentence a `--once` run prints to stdout and the one the watch loop logs
+    // per pass: a pass that skipped a whole backlog would otherwise say
+    // "judged 0" and nothing else, which is the reading the count exists to
+    // prevent.
+    if (c.stale > 0) parts.push(`stale ${c.stale}`);
     if (c.recognized > 0) parts.push(`recognized ${c.recognized}`);
     if (c.pointed > 0) parts.push(`pointers ${c.pointed}`);
     if (c.invented > 0) parts.push(`invented names ${c.invented}`);
@@ -1184,6 +1391,7 @@ if (require.main === module) {
 
 module.exports = {
     DEFAULT_POLL_MS,
+    DEFAULT_STALE_HORIZON_MS,
     RELOAD_WINDOW_MS,
     MAX_CONSECUTIVE_FAILURES,
     MAX_CHUNKS_PER_FILE,

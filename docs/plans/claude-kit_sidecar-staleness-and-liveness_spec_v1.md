@@ -89,6 +89,37 @@ oldest-first by design (`sidecar/daemon.js`, the pass loop and `drainFile`).
 - Decided 2026-08-31 (operator): implementation runs in the Expert session
   rather than being appended to the armed worker queue, which is five plans
   deep while the daemon is mis-serving live sessions today.
+- Decided 2026-08-31 (expert, at section 3 review): the batch budget is
+  derived, not chosen: `INBOX_MAX_BYTES = INBOX_MAX_ITEMS * ITEM_MAX_BYTES +
+  (INBOX_MAX_ITEMS - 1)` (1,802). The reviewed 1,200 failed the section's own
+  goal: two at-cap items cost 1,201 and still broke the batch at one, and a
+  fully populated real alert composes to ~510 bytes so three real items
+  (1,532) capped at two. The derivation makes the three-item promise
+  structural and leaves one knob (the per-item cap) plus one count. A
+  structural guard in `takeBatch` takes a lone over-budget item regardless,
+  so no relation between the constants can ever stall a session's queue with
+  an undeliverable head item.
+- Decided 2026-08-31 (expert, at section 1 review): contiguous stale skips
+  are coalesced into dated, session-attributed gap-style records (reason
+  `stale`) in the session log and findings file. The bare counter alone
+  rendered a discarded backlog identically to a quiet fleet in the rollup's
+  per-session and per-day sections, which is the reading the daemon's gap
+  machinery exists to prevent. The spec's no-per-entry-record ruling stands;
+  a coalesced per-stretch record is not per-entry spam.
+- Decided 2026-08-31 (expert, at section 1 review): backlog held over by the
+  busy-lane policy is NOT exempted from the horizon. An entry held past 15
+  minutes is stale by the operator's ruling at the moment it can finally be
+  judged; the gap-shaped stale record makes the drop visible, which is the
+  legitimate half of the objection.
+
+## Standing Brief Amendments
+
+- When a change alters a stated numeric bound, cap, or counter set, grep the
+  repo for that value's other carriers (file header comments, CONTRACT.md,
+  docs/, sibling modules whose comments justify their own constants by it)
+  and disposition every hit: update it, or name it and the reason it is held.
+  Both sections' reviews surfaced carriers left stating the old number; the
+  class repeats, so the sweep rides in every brief.
 
 ## Sections of work
 
@@ -100,7 +131,9 @@ After an outage the sidecar must not work through hours of old data to catch
 up. An entry whose `capturedAt` is older than the freshness horizon at the
 moment the drain reaches it is skipped rather than judged: no judgment call, no
 recognition call, no verdict record, no inbox item. The offset advances past it
-as it does for any processed entry, and the skip is counted.
+once the stretch's stale record is on disk (the same offset-behind-the-record
+hold gap records take, bounded so it never spans a judgment call), and the
+skip is counted.
 
 - The horizon is a named constant in `sidecar/daemon.js` beside
   `DEFAULT_POLL_MS`, default 15 minutes, overridable with a
@@ -116,8 +149,13 @@ as it does for any processed entry, and the skip is counted.
 - `sidecar/CONTRACT.md` is updated where it describes the drain and the
   counters.
 
-Files in scope: `sidecar/daemon.js`, `sidecar/CONTRACT.md`,
-`test/kit-sidecar-daemon.test.js`.
+Files in scope: `sidecar/daemon.js`, `sidecar/logs.js` (the persisted counter
+set is declared in its `emptyState()`), `sidecar/rollup.js` and
+`test/kit-sidecar-rollup.test.js` (the rollup enumerates counters by name, so
+the skip count must reach the reader's surface too), `sidecar/battery.js` and
+`test/kit-sidecar-battery.test.js` (a frozen replay has no freshness, so the
+battery pins the horizon open and names the stale drop path in its findings),
+`sidecar/CONTRACT.md`, `test/kit-sidecar-daemon.test.js`.
 
 Tests: both directions in one run: a spooled entry older than the horizon is
 skipped and counted with its offset advanced, and one inside the horizon in the
@@ -172,8 +210,9 @@ one.
 
 - A new `ITEM_MAX_BYTES = 600` takes over the per-item role: the `fitComposed`
   calls in the alert and memory formatters cut against it.
-- `INBOX_MAX_BYTES` rises to 1,200 and keeps only the batch-budget role in
-  `takeBatch`.
+- `INBOX_MAX_BYTES` keeps only the batch-budget role in `takeBatch`, as the
+  derived invariant the Decisions entry states: item count times per-item cap
+  plus separators (1,802), never an independently chosen number.
 - Both constants stay exported; the comment above them states the two roles
   plainly so the next reader cannot re-merge them.
 
@@ -183,6 +222,19 @@ Files in scope: `plugins/claude-kit/hooks/kit-sidecar-capture.js`,
 Tests: both directions: three ~358-byte items now deliver as one batch of
 three, and a single oversized item is still cut at 600 bytes. Existing cap
 pins updated to the new expected values, not deleted.
+
+## Open defect, parked with its reason
+
+`docs/security-model.md:267` still states the superseded delivered-volume
+bound ("at most three items and 600 bytes of item text"); the shipped hook
+delivers up to 1,802 bytes per call under the derived budget. The security
+reviewer rates the stale statement Major, and it is parked rather than fixed
+because the file carries another session's uncommitted compaction-gate edits
+and git cannot split a mixed file: an edit now would ride into that session's
+commit or strand. The fix, ready to apply the moment the file clears, is to
+restate the line as "at most three items, each cut to 600 bytes, in a derived
+batch budget of 1,802 bytes". The same file's line ~660 carries a separate
+held one-liner from the memory-sync effort; both land together.
 
 ## Out of scope
 
@@ -231,3 +283,27 @@ live where:
   delivered over the allowlisted relay channel, 2026-08-31.
 
 ## Chapters
+
+### Chapter 1 - 2026-08-31
+Completed: Section 1: skip stale entries at the drain
+Implemented By: implementer-opus (three rounds: build, review fixes, review fixes; no escalation)
+Metrics: review rounds 2; NEEDS_CONTEXT 0; escalations 0; consults 0
+Decisions / Surprises: the spool field is `ts`, not the spec's `capturedAt` (the latter is the verdict record's copy; code reads `ts`). Stale stretches are a distinct record type rather than gap-typed, an implementer deviation confirmed at adjudication: gap-typed records would make the rollup's gap headline contradict the `gapped` counter on every skip. Round 2's Major inverted the crash-safety story (one quiet session's open stretch held every offset for the rest of the pass), fixed by flushing all open stretches before any judgment call; the implementer then disproved the suggested test observation point by probe and pinned the hold at the all-stale window instead. Busy-lane held backlog is deliberately NOT exempt from the horizon (an entry held past 15 minutes is stale by the operator's ruling when it can finally be judged; the stale record makes the drop visible). Folds: sidecar/logs.js (the persisted counter set lives in its emptyState), sidecar/rollup.js + its test (the reader's surface, folded inline by the orchestrator), sidecar/battery.js + its test (a frozen replay pins the horizon open at 100 days and names the stale drop path). Zone-less timestamps are judged, not aged (Date.parse would read them as local time). The two sibling implementers collided on the machine claim file in round 1 (both carry this session's id; the delete rule could not distinguish them); patched in later briefs by scoping deletion to the Started value the agent itself wrote, and captured to kaizen.
+Assumptions: stale counts inside `parsed`; the identity parsed = judged + stale + gapped is stated in CONTRACT.md (decided 2026-08-31, section 1, resolved from the code and its tests; no prior invariant pinned parsed === judged).
+Review Findings: round 1 pair (adversarial + blind, opus/max): 1 Critical (skips left no dated, attributed trace; fixed with per-stretch stale records) and 2 Majors (battery silently drops its own tail past the horizon; the recognition-skip decision had no pin) fixed; 1 blind Major (busy-lane exemption) rejected with justification above; 8 minors fixed, 1 noted. Round 2 (adversarial, opus/max, fix delta): 2 Majors (unbounded offset hold; the hold's pin could not fail) fixed with red/green probes both directions; minors fixed; the battery-test regex wiring pin noted, not actioned.
+Stamps: adjudicated 5, stamped 2 at the boundary sweep (suite-baseline-is-not-zero-fail; claude-kit-hook-edits-need-a-build-stamp-refresh), plus a-routing-claim-is-an-intention-until-the-target-holds-it stamped on a recognition nudge at close. The span is accounted for; no hand walk owed.
+Gate: targeted lane (daemon + rollup + battery tests) 361/359/0 fail/2 skipped, exit 0 read from the run, delta vs the round-2 baseline on the same lane +2 tests, 0 new failures. Whole gate (this close pushes to main, the install-surface trunk) 2773 tests/2765 pass/2 fail/6 skipped, exit 1: both fails are the box's standing baseline (the path-length permanent fail; the memq-shim fail, which this gate hardened from documented-intermittent to consistent, reproduced at HEAD bc57e15 in a clean worktree with no in-flight diff, memory corrected and the diagnostic now in docs/backlog.md). No contention lane: this repo defines none (docs/architecture.md). Gate ran on the main checkout carrying the durable-boundary session's uncommitted compact-gate edits and one untracked duplicate test file of theirs; both fails sit outside every sidecar family.
+Next: Section 2: make a dead daemon visible
+Commit Model: Commit-and-Push
+
+### Chapter 2 - 2026-08-31
+Completed: Section 3: split the inbox delivery caps
+Implemented By: implementer-sonnet (three rounds; no escalation)
+Metrics: review rounds 2; NEEDS_CONTEXT 0; escalations 0; consults 0
+Decisions / Surprises: the reviewed 1,200 batch budget failed the section's own goal by arithmetic (two at-cap items cost 1,201 and still broke the batch at one; fully populated real items compose to ~510 bytes so three capped at two), so the budget became the derived invariant INBOX_MAX_ITEMS * ITEM_MAX_BYTES + (INBOX_MAX_ITEMS - 1) = 1,802: a deviation from the approved "~1,200", named in the close-out. The blind lens found the split had created an unstated no-stall invariant across two constants; takeBatch now always takes a lone over-budget item so no constant drift can wedge a session's queue. The security round confirmed neutralization, framing, and the guard bounded at the new volume, and rated the byte-budget branch structurally unreachable (a backstop, not a third control; comments reworded to say so). Carriers of the old 600-byte figure swept per the Standing Brief Amendment: hook header (three sites), CONTRACT.md (two sites), sidecar/inbox.js, docs/architecture.md placed by the main thread; docs/security-model.md:267 rated a security Major and PARKED as the written-up open defect in this spec's own section, the file being another session's dirty worktree file git cannot split.
+Assumptions: none.
+Review Findings: round 1 pair (adversarial + blind, opus/xhigh): 3 adversarial Majors (comment capacity claim false; file header contract stale; out-of-scope carriers) and 2 blind Majors (budget arithmetic; permanent-stall path) fixed via the derivation, the guard, and the carrier sweep; minors fixed. Round 2 (security-reviewer, opus/xhigh): 1 Major (security-model.md carrier) parked with its reason; 2 minors (backstop comments; ceiling test measures the true maximum shape with a fourth item queued) fixed. Verdict on the code itself: clean at the new volume.
+Stamps: covered by Chapter 1's sweep (one boundary, two sections closing together).
+Gate: targeted lane (capture test) 75/73/0 fail/2 skipped, exit 0 read from the run. Whole gate shared with Chapter 1 above. Hook build stamp refreshed via build.ps1 (exit 0) before the gate, per the operator-tier memory.
+Next: Section 2: make a dead daemon visible
+Commit Model: Commit-and-Push

@@ -229,6 +229,14 @@ function fixtureDay() {
 const FIELD_CAP = 2000;
 const LINE_CAP_BYTES = 8192;
 
+// The freshness horizon this command hands the daemon for a replay: a hundred
+// days, which is far past the fourteen-day retention window that deletes a
+// spool file anyway, so no fixture line this command writes can ever fall
+// outside it. Spelled as a wide window rather than as a switch because the
+// daemon takes a window and a magic "off" value would be a second meaning for
+// one number. See the call site for why a replay has no freshness to lose.
+const REPLAY_STALE_HORIZON_MS = 100 * 24 * 60 * 60 * 1000;
+
 function parseArgs(argv) {
     const options = { target: 'all', configPath: null, stateDir: null, help: false };
     const rest = [];
@@ -1109,6 +1117,10 @@ function scoreRecognition(situations, records, run) {
 //     is a situation that lost its record.
 //   - laneHeld is not a counter but the same fact: the pass stopped where it
 //     stood and left the rest of the spool unread, with no record and no gap.
+//   - the stale count gets its own paragraph, because a stale skip leaves a
+//     record (so the shared sentence is false about it) while still leaving the
+//     case unscoreable, and because reaching it at all means the wide replay
+//     horizon this command passes did not take effect.
 //   - offsetResets gets its OWN paragraph, because a reset re-reads a file from
 //     the start and so produces DUPLICATE records rather than missing ones. The
 //     shared sentence would state a false reason for it.
@@ -1151,6 +1163,21 @@ function passFindings(input) {
     if (dropped.length > 0) {
         out.push(`the daemon reports ${dropped.map(([label, n]) => `${n} ${label}`).join(', ')}: `
             + 'every one of those is a call with neither a record nor a gap record, so this run is a cannot-measure');
+    }
+    // The stale count gets its own paragraph, for the reason offsetResets and
+    // writeFailures get theirs: the shared sentence above would state a false
+    // reason. A stale skip DOES leave a record, the coalesced stale record in
+    // the session log and the findings file, so "neither a record nor a gap
+    // record" is wrong about it. What it costs this run is the same, though:
+    // the case has no verdict and cannot be scored. Reaching this at all means
+    // the horizon this command passes did not take effect, since a hundred-day
+    // window cannot expire a fixture built minutes ago, so the sentence names
+    // that rather than the age.
+    if (c.stale > 0) {
+        out.push(`the daemon skipped ${c.stale} spool line(s) as stale despite the ${REPLAY_STALE_HORIZON_MS} ms `
+            + 'horizon this replay passes it: those calls have a stale record and no verdict, so the cases they '
+            + 'carry cannot be scored, and a frozen fixture crossing any freshness window means the horizon this '
+            + 'command set did not reach the pass');
     }
     if (input.writeFailures > 0) {
         out.push(`the daemon reports ${input.writeFailures} failed log or inbox write(s): depending on the site, what was `
@@ -1411,8 +1438,23 @@ async function main(argv, deps) {
     // returns prints it after every fixture command, its output and the whole
     // frozen memory index have already been POSTed off this machine, which is
     // the disclosure arriving too late to be one.
+    // THE FRESHNESS HORIZON IS SWITCHED OFF FOR A REPLAY, by naming a window
+    // nothing can fall outside of rather than by trusting the default. A frozen
+    // fixture has no freshness to lose: its lines are stamped when this command
+    // builds them and every one of them is a case this run must score. The
+    // daemon drains serially against a live endpoint at about a second a call,
+    // so a battery of any size eventually crosses a fifteen-minute window while
+    // it runs, and the cases at the tail would be dropped for an age that is an
+    // artifact of this command's own pace. That would print CANNOT-MEASURE
+    // lines pointing at gap ranges no pass ever wrote.
     const out = await daemon.runOnce(
-        { once: true, stateDir, configPath, memoryRoot: fixture.memoryRoot },
+        {
+            once: true,
+            stateDir,
+            configPath,
+            memoryRoot: fixture.memoryRoot,
+            staleHorizonMs: REPLAY_STALE_HORIZON_MS
+        },
         { report: (t) => warn(`kit-sidecar-battery: ${t}\n`) }
     );
 
@@ -1501,6 +1543,21 @@ async function main(argv, deps) {
             // cap cut can land between the halves of a surrogate pair.
             for (const g of gaps) write(`  ${trimLoneSurrogate(neutralize(g.note).slice(0, TEXT_MAX_CHARS))}\n`);
         }
+        // Stale records print beside the gaps, on the same bounded claim. They
+        // are the other way a call in this log ends with no verdict, and a
+        // report that printed one kind and dropped the other would leave a
+        // reader of a re-used log to read a dropped stretch as a log that
+        // simply had nothing in it. A stale record appears in a judgment log
+        // only, so this stays quiet in the recognition report by having nothing
+        // to match rather than by a second gate.
+        const staleStretches = read.records.filter((r) => r.type === 'stale');
+        if (staleStretches.length > 0) {
+            write(`(${staleStretches.length} stale record(s) in this log: each names calls the daemon declined to `
+                + 'judge for age, which is the freshness horizon working rather than an instrument that failed; a '
+                + 'replay passes a horizon no fixture can cross, so a record here belongs to an earlier pass over '
+                + 'this log unless the findings above say otherwise)\n');
+            for (const s of staleStretches) write(`  ${trimLoneSurrogate(neutralize(s.note).slice(0, TEXT_MAX_CHARS))}\n`);
+        }
     };
 
     // This run's own provenance, which every scored record must carry: a
@@ -1560,6 +1617,7 @@ module.exports = {
     MAX_ITEM_N,
     FIELD_CAP,
     LINE_CAP_BYTES,
+    REPLAY_STALE_HORIZON_MS,
     USAGE,
     parseArgs,
     judgmentFloor,

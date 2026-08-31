@@ -3317,6 +3317,420 @@ test('a pointer is keyed on its record and an alert on its call', () => {
     assert.strictEqual(state.delivered.length, 1, 'one slot per item, so the window is DELIVERED_MAX items');
 });
 
+// ------------------------------------------------- the freshness horizon --
+
+test('an entry past the horizon is skipped whole while a fresh one beside it is judged', async (t) => {
+    // Both directions in one drain, over one file, because the horizon is a
+    // per-entry test and a case that only ever saw the old entry could not tell
+    // a horizon from a daemon that judged nothing.
+    //
+    // The endpoint answers diverged for whatever it is asked about, so a stale
+    // entry that slipped through would leave three marks a healthy skip leaves
+    // none of: a verdict record, a finding, and an inbox item.
+    const server = await startServer(t, () => answer('diverged', 'it did something else'));
+    const fixture = makeFixture(t, { url: server.url });
+    const now = Date.now();
+    const old = makeLine({
+        sessionId: 'ses-old',
+        intent: 'the hour-old call',
+        ts: new Date(now - (60 * 60 * 1000)).toISOString()
+    });
+    const fresh = makeLine({
+        sessionId: 'ses-fresh',
+        intent: 'the minute-old call',
+        ts: new Date(now - (60 * 1000)).toISOString()
+    });
+    const file = seedSpool(fixture, [old, fresh]);
+
+    const run = await drain(fixture, { deps: { now: () => now } });
+
+    assert.strictEqual(server.requests.length, 1,
+        'the stale entry cost no model call, judgment or recognition');
+    assert.strictEqual(inboxItems(fixture, 'ses-old').length, 0, 'and no inbox item');
+
+    // What it DOES leave is one stale record, which is the whole difference
+    // between a dropped backlog and a quiet fleet.
+    const oldRecords = sessionRecords(fixture, 'ses-old');
+    assert.strictEqual(oldRecords.length, 1);
+    assert.strictEqual(oldRecords[0].type, 'stale', 'a stale record, never a verdict');
+    assert.strictEqual(oldRecords[0].count, 1);
+    assert.strictEqual(oldRecords[0].firstCallId, old.callId);
+    assert.strictEqual(oldRecords[0].lastCallId, old.callId);
+    assert.strictEqual(oldRecords[0].firstCapturedAt, old.ts, 'the record says how old the dropped call was');
+    assert.strictEqual(oldRecords[0].horizonMs, daemon.DEFAULT_STALE_HORIZON_MS);
+    assert.ok(/skipped/.test(oldRecords[0].note) && !/not judged/.test(oldRecords[0].note),
+        `a stale note must not read as a gap: ${oldRecords[0].note}`);
+
+    const found = findings(fixture);
+    assert.deepStrictEqual(found.map((f) => f.type).sort(), ['diverged', 'stale'],
+        'the audit surface carries the drop beside the divergence');
+    assert.strictEqual(found.filter((f) => f.type === 'diverged')[0].callId, fresh.callId);
+
+    const freshRecords = sessionRecords(fixture, 'ses-fresh');
+    assert.strictEqual(freshRecords.length, 1, 'the fresh call was judged');
+    assert.strictEqual(freshRecords[0].type, 'verdict');
+
+    assert.strictEqual(run.pass.counters.stale, 1);
+    assert.strictEqual(run.pass.counters.judged, 1);
+    assert.strictEqual(run.pass.counters.parsed, 2,
+        'a skipped entry was still parsed, so parsed is judged plus stale here');
+
+    const persisted = readOffsets(fixture);
+    assert.strictEqual(persisted.counters.stale, 1, 'the count is on disk, not only in the pass');
+    assert.strictEqual(persisted.offsets[path.basename(file)], fs.statSync(file).size,
+        'and the offset advanced past BOTH entries, so neither is read again');
+
+    const said = run.reports.filter((r) => /freshness horizon/.test(r));
+    assert.strictEqual(said.length, 1, 'one line per pass, never one per entry');
+    assert.ok(/\b1\b/.test(said[0]) && /15-minute/.test(said[0]),
+        `the line names the count and the horizon: ${said[0]}`);
+    assert.ok(/stale 1/.test(daemon.passSummary(run.pass) || ''),
+        'and the pass summary says it too, so a discarding pass does not print "judged 0" alone');
+});
+
+test('contiguous skips coalesce into one record per stretch, and a judged call ends the stretch', async (t) => {
+    // The no-per-entry ruling and the range invariant in one case. An outage
+    // backlog is hundreds of skips, so the record is per stretch; but a stretch
+    // that stepped over a judged call would state a range covering a call its
+    // own count does not include.
+    const server = await startServer(t, () => answer('achieved', 'ok'));
+    const fixture = makeFixture(t, { url: server.url });
+    const now = Date.now();
+    const old = (intent) => makeLine({ intent, ts: new Date(now - (60 * 60 * 1000)).toISOString() });
+    const fresh = (intent) => makeLine({ intent, ts: new Date(now - 1000).toISOString() });
+    const first = old('first of the run');
+    const second = old('second of the run');
+    const middle = fresh('the judged call between them');
+    const third = old('after the judged one');
+    seedSpool(fixture, [first, second, middle, third]);
+
+    const run = await drain(fixture, { deps: { now: () => now } });
+
+    const written = sessionRecords(fixture);
+    const stale = written.filter((r) => r.type === 'stale');
+    assert.strictEqual(run.pass.counters.stale, 3, 'three calls were skipped');
+    assert.strictEqual(stale.length, 2, 'in two stretches, not three records and not one');
+    assert.strictEqual(stale[0].count, 2);
+    assert.strictEqual(stale[0].firstCallId, first.callId);
+    assert.strictEqual(stale[0].lastCallId, second.callId);
+    assert.strictEqual(stale[0].firstCapturedAt, first.ts);
+    assert.strictEqual(stale[0].lastCapturedAt, second.ts);
+    assert.ok(/calls .* to /.test(stale[0].note), stale[0].note);
+    assert.strictEqual(stale[1].count, 1, 'the call after the judged one opens a new stretch');
+    assert.strictEqual(stale[1].firstCallId, third.callId);
+    assert.strictEqual(written.filter((r) => r.type === 'verdict').length, 1);
+    assert.strictEqual(findings(fixture).filter((f) => f.type === 'stale').length, 2,
+        'both stretches reach the audit surface');
+});
+
+test('no stale stretch outlives a judgment call, whatever session it belongs to', async (t) => {
+    // TWO SESSIONS, and that is the whole case. A stretch flushed only when its
+    // OWN session's next call arrives is a stretch a quiet session keeps open
+    // for the rest of the pass, and every offset behind it, including the fresh
+    // tail of a different session, waits with it: a crash there re-judges and
+    // re-POSTs every call the pass already judged. So the flush is the pass's
+    // rather than the session's, and it happens before any judgment call is
+    // spent.
+    //
+    // The observation is taken from inside the first judgment, which is the
+    // only moment that separates the two orderings. Both assertions are needed
+    // and neither is redundant: with no hold at all the offset would be past
+    // the stale line here with nothing written, and with a per-session flush
+    // neither the record nor the offset would have moved.
+    const fixture = makeFixture(t);
+    const now = Date.now();
+    const old = (intent) => makeLine({
+        sessionId: 'ses-quiet', intent, ts: new Date(now - (60 * 60 * 1000)).toISOString()
+    });
+    const first = old('the quiet session, before the judged call');
+    const fresh = makeLine({ sessionId: 'ses-busy', ts: new Date(now - 1000).toISOString() });
+    const second = old('the quiet session, after it');
+    const file = seedSpool(fixture, [first, fresh, second]);
+    const name = path.basename(file);
+    const throughFirstLine = Buffer.byteLength(JSON.stringify(first), 'utf8') + 1;
+
+    let seen = null;
+    const fetchImpl = async () => {
+        if (seen === null) {
+            seen = {
+                offset: readOffsets(fixture).offsets[name],
+                quiet: sessionRecords(fixture, 'ses-quiet')
+            };
+        }
+        return { status: 200, json: async () => ({ response: '{"verdict":"achieved","reason":"ok"}' }) };
+    };
+
+    await drain(fixture, { deps: { now: () => now, fetchImpl } });
+
+    assert.strictEqual(seen.quiet.length, 1,
+        'the other session\'s stretch was written before this pass spent a judgment call');
+    assert.strictEqual(seen.quiet[0].type, 'stale');
+    assert.strictEqual(seen.offset, throughFirstLine,
+        'and the offset it was holding advanced with it, rather than waiting for a session that may never call again');
+
+    // The accepted cost of that bound, stated rather than left to be found: a
+    // skip after a judged call opens a NEW stretch instead of extending one
+    // that spans it.
+    const quiet = sessionRecords(fixture, 'ses-quiet');
+    assert.strictEqual(quiet.length, 2, 'the judgment call fragmented the stretch, as designed');
+    assert.deepStrictEqual(quiet.map((r) => r.count), [1, 1]);
+    assert.strictEqual(quiet[1].firstCallId, second.callId);
+    assert.strictEqual(readOffsets(fixture).offsets[name], fs.statSync(file).size,
+        'and the pass ends with every line accounted for');
+});
+
+test('an all-stale pass never advances an offset past a line whose record is not yet written', async (t) => {
+    // The hold itself, which the case above cannot see: with a judgment call in
+    // the pass the stretch is flushed before it, so the record is on disk by
+    // then either way. The window the hold exists for is a pass with no
+    // judgment in it at all, which is exactly what an outage backlog is, and a
+    // kill inside that window with the offsets already advanced leaves those
+    // calls consumed with no record anywhere.
+    //
+    // Sampled at every clock read, which the daemon takes per entry, so the
+    // invariant is checked repeatedly through the pass rather than at one
+    // moment chosen to suit it.
+    const fixture = makeFixture(t);
+    const now = Date.now();
+    const lines = [1, 2, 3].map((n) => makeLine({
+        intent: `stale ${n}`, ts: new Date(now - (60 * 60 * 1000)).toISOString()
+    }));
+    const file = seedSpool(fixture, lines);
+    const name = path.basename(file);
+
+    const samples = [];
+    const clock = () => {
+        let offset = 0;
+        try { offset = readOffsets(fixture).offsets[name] || 0; } catch { offset = 0; }
+        samples.push({ offset, records: sessionRecords(fixture).length });
+        return now;
+    };
+
+    const run = await drain(fixture, { deps: { now: clock } });
+
+    assert.strictEqual(run.pass.counters.stale, 3);
+    assert.ok(samples.length > 3, `the clock is read per entry, so there are samples to check: ${samples.length}`);
+    const violations = samples.filter((s) => s.offset > 0 && s.records === 0);
+    assert.deepStrictEqual(violations, [],
+        'an offset passed a skipped line while its record was still only in memory');
+
+    // The control, so the assertion above cannot pass by there being no window
+    // at all: the pass really did sit with consumed lines and nothing written.
+    assert.ok(samples.some((s) => s.offset === 0 && s.records === 0),
+        'this case needs a moment where lines were consumed and no record was on disk yet');
+    assert.strictEqual(sessionRecords(fixture).length, 1, 'and the pass ends with the stretch written');
+    assert.strictEqual(readOffsets(fixture).offsets[name], fs.statSync(file).size,
+        'and the offsets released behind it');
+});
+
+test('an open gap run is closed before a skip, so no gap range spans a call it does not count', async (t) => {
+    // With the endpoint down every fresh call gaps and every old one is
+    // skipped. A gap run left open across the skip would report "calls A to D"
+    // over a count of 3, which no reader could reconcile against either number.
+    const server = await startServer(t, () => answer('achieved', 'ok'));
+    await server.close();
+    const fixture = makeFixture(t, { url: server.url });
+    const now = Date.now();
+    const fresh = (n) => makeLine({ intent: `fresh ${n}`, ts: new Date(now - 1000).toISOString() });
+    const old = makeLine({ intent: 'the skipped one', ts: new Date(now - (60 * 60 * 1000)).toISOString() });
+    const a = fresh(1);
+    const b = fresh(2);
+    const c = fresh(3);
+    seedSpool(fixture, [a, b, old, c]);
+
+    const run = await drain(fixture, { deps: { now: () => now } });
+
+    const written = sessionRecords(fixture);
+    const gaps = written.filter((r) => r.type === 'gap');
+    assert.strictEqual(run.pass.counters.gapped, 3, 'three calls could not be judged');
+    assert.strictEqual(run.pass.counters.stale, 1, 'and one was not tried at all');
+    assert.strictEqual(gaps.length, 2, 'the skip split the run rather than being swallowed by it');
+    assert.strictEqual(gaps[0].count, 2);
+    assert.strictEqual(gaps[0].firstCallId, a.callId);
+    assert.strictEqual(gaps[0].lastCallId, b.callId, 'the first range stops before the skipped call');
+    assert.strictEqual(gaps[1].count, 1);
+    assert.strictEqual(gaps[1].firstCallId, c.callId);
+    assert.strictEqual(written.filter((r) => r.type === 'stale').length, 1);
+});
+
+test('a skipped call is checked against no memory index either', async (t) => {
+    // The recognition half of the skip, which the judgment assertions cannot
+    // reach: makeFixture's store is empty, so a case that seeds no index proves
+    // only that no JUDGMENT call was made. This one seeds a real index for the
+    // fixture's own project, so a call that was not skipped genuinely does
+    // reach the recognition duty.
+    const server = await startServer(t, bothDuties());
+    const fixture = makeFixture(t, { url: server.url });
+    seedIndex(fixture, fixture.dir, [indexLine('a-record-that-bears-on-the-work')]);
+    const now = Date.now();
+    const old = makeLine({ cwd: fixture.dir, sessionId: 'ses-old', ts: new Date(now - (60 * 60 * 1000)).toISOString() });
+    const fresh = makeLine({ cwd: fixture.dir, sessionId: 'ses-fresh', ts: new Date(now - 1000).toISOString() });
+    seedSpool(fixture, [old, fresh]);
+
+    const run = await drain(fixture, { deps: { now: () => now } });
+
+    assert.strictEqual(recognitionRequests(server).length, 1,
+        'the fresh call was recognized, so the index really was reachable');
+    assert.strictEqual(run.pass.counters.recognized, 1);
+    const recognitionRecords = recognitionRecordsOf(fixture, 'ses-fresh');
+    assert.strictEqual(recognitionRecords.length, 1);
+    assert.strictEqual(recognitionRecords[0].callId, fresh.callId);
+    assert.deepStrictEqual(recognitionRecordsOf(fixture, 'ses-old'), [],
+        'while the skipped call has no recognition record of any kind, not even a gap');
+    assert.strictEqual(run.pass.counters.recognitionGapped, 0,
+        'a skip is not a recognition that could not be measured');
+});
+
+test('a pass that skipped nothing says nothing about the horizon', async (t) => {
+    // The control for the line above: it is a report of something that
+    // happened, so a healthy pass must not carry it.
+    const server = await startServer(t, () => answer('achieved', 'ok'));
+    const fixture = makeFixture(t, { url: server.url });
+    seedSpool(fixture, [makeLine()]);
+
+    const run = await drain(fixture);
+
+    assert.strictEqual(run.pass.counters.stale, 0);
+    assert.strictEqual(run.reports.filter((r) => /freshness horizon/.test(r)).length, 0);
+});
+
+test('an entry with no readable capture time is judged rather than discarded', async (t) => {
+    // Absence of a timestamp is a line this daemon cannot place in time, and
+    // skipping it would discard work on a field that was never there. The clock
+    // is set an hour ahead of the fixtures, so the horizon is armed in this very
+    // run: the control line, which carries a real timestamp, is skipped by it.
+    const server = await startServer(t, () => answer('achieved', 'ok'));
+    const fixture = makeFixture(t, { url: server.url });
+    const now = Date.now();
+    const missing = makeLine({ intent: 'no timestamp at all', ts: undefined });
+    const unparseable = makeLine({ intent: 'a timestamp nothing can read', ts: 'the other day' });
+    // Date.parse reads a date-time with no zone designator as LOCAL time, which
+    // succeeds and lands on an instant wrong by this machine's offset. Wrong in
+    // the "older" direction is a call discarded for an age it does not have, so
+    // a zone-less stamp is unplaceable rather than trusted. Spelled a full day
+    // back, so that under EVERY zone this could be read in (UTC-12 through
+    // UTC+14) the local reading still lands well past the horizon: the case
+    // would fail without the guard on any machine, rather than passing on the
+    // ones whose own offset happens to push the instant into the future.
+    const zoneless = makeLine({
+        intent: 'a timestamp with no zone',
+        ts: new Date(now - (24 * 60 * 60 * 1000)).toISOString().replace('Z', '')
+    });
+    // A capture time ahead of this reader's clock is a clock disagreement, not
+    // age: the subtraction goes negative and never exceeds the horizon.
+    const future = makeLine({
+        intent: 'stamped after the reader\'s clock',
+        ts: new Date(now + (10 * 60 * 60 * 1000)).toISOString()
+    });
+    const control = makeLine({ intent: 'an hour behind the clock', ts: new Date(now).toISOString() });
+    seedSpool(fixture, [missing, unparseable, zoneless, future, control]);
+
+    const run = await drain(fixture, { deps: { now: () => now + (60 * 60 * 1000) } });
+
+    assert.strictEqual(run.pass.counters.judged, 4, 'every unplaceable or future stamp was judged');
+    assert.strictEqual(run.pass.counters.stale, 1, 'while the readable one past the horizon was skipped');
+    const judged = sessionRecords(fixture).filter((r) => r.type === 'verdict').map((r) => r.intent);
+    assert.deepStrictEqual(judged, [
+        'no timestamp at all',
+        'a timestamp nothing can read',
+        'a timestamp with no zone',
+        'stamped after the reader\'s clock'
+    ]);
+    assert.strictEqual(sessionRecords(fixture).filter((r) => r.type === 'stale').length, 1,
+        'and the control is what proves the horizon was armed in this very run');
+});
+
+test('the horizon is named from the milliseconds the comparison used, never rounded', async (t) => {
+    // A window that is not a whole number of minutes must not print as one: a
+    // report line naming "2 minutes" for a 90-second horizon states a number
+    // nothing in the daemon compared anything against.
+    const server = await startServer(t, () => answer('achieved', 'ok'));
+    const fixture = makeFixture(t, { url: server.url });
+    const now = Date.now();
+    seedSpool(fixture, [makeLine({ ts: new Date(now - (5 * 60 * 1000)).toISOString() })]);
+
+    const run = await drain(fixture, {
+        options: { staleHorizonMs: 90000 },
+        deps: { now: () => now }
+    });
+
+    const said = run.reports.filter((r) => /freshness horizon/.test(r));
+    assert.strictEqual(said.length, 1);
+    assert.ok(/90000 ms freshness horizon/.test(said[0]), said[0]);
+    assert.ok(!/minute/.test(said[0]), `a 90-second window is not a whole number of minutes: ${said[0]}`);
+    assert.ok(/90000 ms/.test(sessionRecords(fixture)[0].note), 'and the record says the same window');
+    assert.strictEqual(sessionRecords(fixture)[0].horizonMs, 90000);
+
+    // The control: a window that IS whole minutes still reads in minutes.
+    assert.strictEqual(logs.horizonText(15 * 60 * 1000), '15-minute');
+    assert.strictEqual(logs.horizonText(90000), '90000 ms');
+});
+
+test('the freshness horizon is a named default that --stale-horizon-minutes overrides', () => {
+    assert.strictEqual(daemon.DEFAULT_STALE_HORIZON_MS, 15 * 60 * 1000);
+    assert.strictEqual(daemon.parseArgs([]).options.staleHorizonMs, daemon.DEFAULT_STALE_HORIZON_MS);
+
+    const set = daemon.parseArgs(['--stale-horizon-minutes', '45']);
+    assert.strictEqual(set.ok, true);
+    assert.strictEqual(set.options.staleHorizonMs, 45 * 60 * 1000);
+
+    // A window is a whole number of minutes inside sane bounds, on the
+    // retention window's own terms: everything else is refused with the flag
+    // named, never rounded into a horizon nobody asked for.
+    for (const bad of ['2.5', 'soon', '0', '1441', '-5', '']) {
+        const refused = daemon.parseArgs(['--stale-horizon-minutes', bad]);
+        assert.strictEqual(refused.ok, false, `${JSON.stringify(bad)} is not a horizon`);
+        assert.ok(/--stale-horizon-minutes/.test(refused.error), refused.error);
+    }
+    assert.strictEqual(daemon.parseArgs(['--stale-horizon-minutes']).ok, false, 'and the flag needs a value');
+    assert.ok(daemon.USAGE.includes('--stale-horizon-minutes'), 'the usage text names it');
+
+    // An explicitly undefined option falls back to the default rather than
+    // overwriting it, as every other option here does.
+    assert.strictEqual(daemon.makeContext({ staleHorizonMs: undefined }, null).options.staleHorizonMs,
+        daemon.DEFAULT_STALE_HORIZON_MS);
+    assert.strictEqual(daemon.makeContext({ staleHorizonMs: 60000 }, null).options.staleHorizonMs, 60000);
+});
+
+test('an overridden horizon is the one the drain applies', async (t) => {
+    // The option reaching the per-entry test, rather than only reaching the
+    // options object: a five-minute-old entry is judged under the default and
+    // skipped under a one-minute horizon, and the same fixture drives both.
+    const server = await startServer(t, () => answer('achieved', 'ok'));
+    const now = Date.now();
+    const fiveMinutesOld = () => makeLine({ ts: new Date(now - (5 * 60 * 1000)).toISOString() });
+
+    const wide = makeFixture(t, { url: server.url });
+    seedSpool(wide, [fiveMinutesOld()]);
+    const under = await drain(wide, { deps: { now: () => now } });
+    assert.strictEqual(under.pass.counters.judged, 1, 'inside the default horizon it is judged');
+    assert.strictEqual(under.pass.counters.stale, 0);
+
+    const narrow = makeFixture(t, { url: server.url });
+    seedSpool(narrow, [fiveMinutesOld()]);
+    const over = await drain(narrow, {
+        options: { staleHorizonMs: 60 * 1000 },
+        deps: { now: () => now }
+    });
+    assert.strictEqual(over.pass.counters.stale, 1, 'and past the overridden one it is skipped');
+    assert.strictEqual(over.pass.counters.judged, 0);
+});
+
+test('a state file written before the horizon existed loads with the count at zero', (t) => {
+    const fixture = makeFixture(t);
+    fs.mkdirSync(fixture.logsDir, { recursive: true });
+    const older = logs.emptyState();
+    delete older.counters.stale;
+    older.counters.judged = 7;
+    fs.writeFileSync(fixture.paths.stateFile, JSON.stringify(older), 'utf8');
+
+    const loaded = logs.loadState(fixture.paths.stateFile);
+
+    assert.strictEqual(loaded.reset, false, 'a missing counter is not a corrupt state file');
+    assert.strictEqual(loaded.state.counters.stale, 0);
+    assert.strictEqual(loaded.state.counters.judged, 7, 'and the counts it does carry survive');
+});
+
 test('the recognition prompt ships as a versioned file carrying the measured wording', () => {
     assert.strictEqual(recognitionPrompt.PROMPT_ID, 'recognition-v1');
     assert.ok(recognitionPrompt.SYSTEM.includes('do not invent relevance'),

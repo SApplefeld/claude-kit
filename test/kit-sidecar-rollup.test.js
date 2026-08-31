@@ -530,12 +530,20 @@ test('a recognition record buckets by capturedAt too, the same as a verdict', (t
     assert.strictEqual(result.days.has('2026-08-30'), false);
 });
 
-test('a gap has no capturedAt and buckets by ts of necessity, and the per-day header says so', (t) => {
+test('a record covering a stretch has no capturedAt to bucket on and says so in the per-day header', (t) => {
+    // Both stretch-shaped records take the write day, and the header names each
+    // kind that does: a header listing only some of them would leave a reader
+    // to assume the rest bucket by the call's own clock.
     const state = makeState(t);
-    writeLines(verdictFile(state, 'ses-a'), [gapLine({ ts: '2026-08-30T09:00:00.000Z' })]);
+    writeLines(verdictFile(state, 'ses-a'), [
+        gapLine({ ts: '2026-08-30T09:00:00.000Z' }),
+        staleLine({ ts: '2026-08-30T09:30:00.000Z' })
+    ]);
     const result = rollup.computeRollup(state.stateDir);
     assert.strictEqual(result.days.get('2026-08-30').gaps, 1);
-    assert.match(rollup.render(result), /gaps and recognition-gaps bucket by when the daemon wrote the record/);
+    assert.strictEqual(result.days.get('2026-08-30').staleStretches, 1);
+    assert.match(rollup.render(result),
+        /gaps, stale records and recognition-gaps bucket by when the daemon wrote the record/);
 });
 
 // ---------------------------------------------------------- dayOf validation (M2) --
@@ -801,6 +809,99 @@ test('a junction wearing an inbox offset file\'s name is refused and counted, an
     assert.strictEqual(result.totals.unreadableFiles, 1, 'but the link itself is refused and counted, unlike a plain absence');
 });
 
+// --------------------------------------------------------- stale skips --
+
+// A stale record in the daemon's own shape, built through logs.staleRecord for
+// gapLine's reason: the wording and the field set live in sidecar/logs.js, so a
+// change there shows up here rather than needing a second hand-copy to stay in
+// step.
+// `ts` names the moment the daemon WROTE the record, which is the field the
+// record carries and the day it buckets on; every other key overrides the
+// stretch the record describes.
+function staleLine(overrides) {
+    const o = overrides || {};
+    const stretch = {
+        sessionId: 'ses-a',
+        count: 4,
+        firstCallId: 'call0000000010',
+        lastCallId: 'call0000000013',
+        firstCapturedAt: '2026-08-29T08:00:00.000Z',
+        lastCapturedAt: '2026-08-29T08:04:00.000Z',
+        horizonMs: 15 * 60 * 1000,
+        ...o
+    };
+    return logs.staleRecord(stretch, Date.parse(o.ts || '2026-08-29T11:30:00.000Z'));
+}
+
+test('a dropped backlog is attributed per session and per day, not only to a machine-wide count', (t) => {
+    // The reading this record exists to prevent: with the counter alone, a
+    // session whose whole backlog was discarded rendered in these two sections
+    // exactly as a session that made no calls at all.
+    const state = makeState(t);
+    writeLines(verdictFile(state, 'ses-a'), [staleLine({})]);
+    writeLines(state.findingsFile, [staleLine({})]);
+
+    const result = rollup.computeRollup(state.stateDir);
+    const stats = result.sessions.get('ses-a');
+    assert.strictEqual(stats.staleStretches, 1);
+    assert.strictEqual(stats.staleCalls, 4, 'the record covers four calls, and the count says so');
+    assert.strictEqual(result.totals.staleStretches, 1);
+    assert.strictEqual(result.totals.staleCalls, 4);
+    assert.strictEqual(result.totals.findingsStaleEchoes, 1);
+    // Bucketed by the day the daemon wrote the record, like a gap, because the
+    // stretch covers a range rather than one moment.
+    assert.strictEqual(result.days.get('2026-08-29').staleCalls, 4);
+
+    const text = rollup.render(result);
+    assert.match(text, /stale skips: 1 stale record\(s\) covering 4 call\(s\)/);
+    assert.match(text, /ses-a: verdicts .*stale 1 \(4 call\(s\)\)/);
+    assert.match(text, /== stale skips \(calls dropped past the freshness horizon, never judged\) ==/);
+    assert.match(text, /\[2026-08-29\] ses-a: calls call0000000010 to call0000000013 skipped, captured further back than the 15-minute freshness horizon \(captured 2026-08-29T08:00:00.000Z to 2026-08-29T08:04:00.000Z\)/);
+    assert.match(text, /1 stale echo\(es\) vs 1 verdict-log stale record\(s\)/);
+});
+
+test('a stale stretch and an endpoint gap are told apart, in the counts and in the words', (t) => {
+    // One is an instrument that could not measure and the other is one that
+    // declined to, and a reader repairs only the first. Both in one fixture,
+    // because a case carrying only the stale record could not show that the two
+    // stay in separate columns.
+    const state = makeState(t);
+    writeLines(verdictFile(state, 'ses-a'), [
+        gapLine({ reason: 'the endpoint could not be reached', count: 2, firstCallId: 'call0000000002', lastCallId: 'call0000000003' }),
+        staleLine({})
+    ]);
+
+    const result = rollup.computeRollup(state.stateDir);
+    assert.strictEqual(result.totals.gaps, 1, 'the gap is a gap');
+    assert.strictEqual(result.totals.gappedCalls, 2);
+    assert.strictEqual(result.totals.staleStretches, 1, 'and the stale record is not counted as one');
+    assert.strictEqual(result.totals.staleCalls, 4);
+    assert.strictEqual(result.totals.verdictTypeUnknown, 0, 'a stale record is a type this rollup knows');
+
+    const text = rollup.render(result);
+    assert.match(text, /judgment gaps: 1 gap record\(s\) covering 2 call\(s\)/);
+    assert.match(text, /stale skips: 1 stale record\(s\) covering 4 call\(s\) dropped past the freshness horizon \(declined, not unmeasurable\)/);
+    const gapSection = text.slice(text.indexOf('== judgment gap ranges =='), text.indexOf('== stale skips'));
+    assert.ok(/not judged, the endpoint could not be reached/.test(gapSection), gapSection);
+    assert.ok(!/freshness horizon/.test(gapSection),
+        'the stale stretch must not be filed among the ranges a reader treats as an outage');
+});
+
+test('a stale record carrying no note is rendered from its fields, and its captured range is neutralized', (t) => {
+    const state = makeState(t);
+    const stripped = staleLine({});
+    delete stripped.note;
+    // Spool content reaches these two fields, and CONTRACT.md's tamper limits
+    // say any process running as this user can write a log line, so what is
+    // printed is neutralized exactly as a gap's detail is.
+    stripped.firstCapturedAt = `2026-08-29T08:00:00.000Z${String.fromCharCode(27)}[31m`;
+    writeLines(verdictFile(state, 'ses-a'), [stripped]);
+
+    const text = rollup.render(rollup.computeRollup(state.stateDir));
+    assert.match(text, /calls call0000000010 to call0000000013 skipped, captured further back than the 15-minute freshness horizon/);
+    assert.ok(!text.includes(String.fromCharCode(27)), 'no escape run reaches the rendered line');
+});
+
 // ------------------------------------------------- daemon's own counters (M4) --
 
 test('a state file that has not been written yet is reported as absent, not as zero activity', (t) => {
@@ -814,18 +915,30 @@ test('the daemon\'s own persisted counters are rendered apart from this rollup\'
     const state = makeState(t);
     const stateFile = path.join(state.logsDir, 'offsets.json');
     const seeded = logs.emptyState();
-    seeded.counters.parsed = 40;
+    // A state a pass could actually have produced: every parsed line is
+    // accounted for by CONTRACT.md's identity, parsed = judged + stale +
+    // gapped. Seeding a set that violates it would put a state on the render
+    // path that the daemon cannot reach, and a reader checking the printed
+    // numbers against the contract would find the fixture, not a defect.
+    seeded.counters.parsed = 43;
     seeded.counters.judged = 38;
+    seeded.counters.stale = 5;
+    seeded.counters.gapped = 0;
     seeded.counters.writeFailures = 3;
     seeded.counters.recognitionUnavailable = 2;
     fs.writeFileSync(stateFile, JSON.stringify(seeded), 'utf8');
 
     const result = rollup.computeRollup(state.stateDir);
     assert.strictEqual(result.daemonState.present, true);
-    assert.strictEqual(result.daemonState.counters.parsed, 40);
+    assert.strictEqual(result.daemonState.counters.parsed, 43);
+    assert.strictEqual(result.daemonState.counters.stale, 5);
     assert.strictEqual(result.daemonState.counters.writeFailures, 3);
+    assert.strictEqual(
+        result.daemonState.counters.judged + result.daemonState.counters.stale + result.daemonState.counters.gapped,
+        result.daemonState.counters.parsed,
+        'the seeded state must satisfy the contract identity it is read against');
     const text = rollup.render(result);
-    assert.match(text, /parsed 40/);
+    assert.match(text, /parsed 43, judged 38, stale 5/);
     assert.match(text, /write failures: 3/);
     assert.match(text, /rollup's own totals above are incomplete/);
 });
@@ -873,6 +986,7 @@ test('sections are printed in order: totals, daemon counters, per session, per d
     const sessionAt = at(/== per session ==/);
     const dayAt = at(/== per day/);
     const gapAt = at(/== judgment gap ranges ==/);
+    const staleAt = at(/== stale skips/);
     const recognitionGapAt = at(/== recognition gaps/);
     const inboxAt = at(/== delivered \/ queued pointers/);
     const tamperAt = at(/evidence, not a guarantee/);
@@ -882,13 +996,14 @@ test('sections are printed in order: totals, daemon counters, per session, per d
     // silently stopped printing could still pass this test (m7-minor).
     for (const [name, idx] of [
         ['totals', totalsAt], ['daemon counters', daemonAt], ['per session', sessionAt],
-        ['per day', dayAt], ['gap ranges', gapAt], ['recognition gaps', recognitionGapAt],
+        ['per day', dayAt], ['gap ranges', gapAt], ['stale skips', staleAt],
+        ['recognition gaps', recognitionGapAt],
         ['inbox', inboxAt], ['tamper caveat', tamperAt]
     ]) {
         assert.ok(idx >= 0, `section "${name}" must be present in the render`);
     }
     assert.ok(totalsAt < daemonAt && daemonAt < sessionAt && sessionAt < dayAt && dayAt < gapAt
-        && gapAt < recognitionGapAt && recognitionGapAt < inboxAt && inboxAt < tamperAt);
+        && gapAt < staleAt && staleAt < recognitionGapAt && recognitionGapAt < inboxAt && inboxAt < tamperAt);
 });
 
 // ------------------------------------------------------------ neutralize --

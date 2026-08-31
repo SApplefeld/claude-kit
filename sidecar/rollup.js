@@ -106,8 +106,11 @@
 // recognition records carry `capturedAt` for exactly that distinction, and a
 // daemon that is manually started (v1's posture) ordinarily judges a backlog,
 // so bucketing on write time would file a whole morning's backlog under the
-// day the daemon happened to run. Gap and recognition-gap records carry only
-// `ts`, so they bucket by write time of necessity; the per-day header says so.
+// day the daemon happened to run. Gap, stale and recognition-gap records
+// describe a stretch rather than one call, so they bucket by write time of
+// necessity; the per-day header says so. A stale record does carry the captured
+// range of its ends, which the stale-skip list prints, so how old the dropped
+// calls were is readable even though the day bucket cannot use it.
 //
 // DELIVERED/QUEUED PARSED BY THE HOOK'S OWN RULES, MIRRORED. The inbox
 // `.offset` file names how far one session's valve has read; this command
@@ -213,6 +216,16 @@ function emptySessionStats() {
         verdict: { achieved: 0, failed: 0, diverged: 0, other: 0 },
         gaps: 0,
         gappedCalls: 0,
+        // Stale stretches and the calls they cover, counted apart from the gap
+        // numbers above rather than summed into them. A gap is a call the
+        // instrument COULD NOT judge and a stale stretch is one it DECLINED to
+        // judge for age, so a reader acts on the first and reads the second as
+        // the horizon working; one number for both would put an outage and a
+        // policy in the same column. Kept per session and per day because a
+        // machine-wide count alone cannot say whose backlog was dropped or on
+        // which day, which is exactly what those two sections are read for.
+        staleStretches: 0,
+        staleCalls: 0,
         recognition: { calls: 0, pointed: 0, invented: 0 },
         recognitionGaps: 0
     };
@@ -223,10 +236,17 @@ function emptyTotals() {
         verdict: { achieved: 0, failed: 0, diverged: 0, other: 0 },
         gaps: 0,
         gappedCalls: 0,
+        staleStretches: 0,
+        staleCalls: 0,
         recognition: { calls: 0, pointed: 0, invented: 0 },
         recognitionGaps: 0,
         findingsDiverged: 0,
         findingsGapEchoes: 0,
+        // The findings file's copy of a stale record, tracked apart from the
+        // gap echoes for the reason the header gives about those: the two
+        // writes can fail independently, so the echo count is a cross-check
+        // against the verdict-log count rather than something to add to it.
+        findingsStaleEchoes: 0,
         malformed: 0,
         // Unrecognized schema version (a record whose `v` this command does
         // not know) and unrecognized record `type` (a v1 record this file's
@@ -340,7 +360,7 @@ function parseLogFile(file) {
     return { records, malformed, unknown, readFailed: false };
 }
 
-function tallyVerdictFile(name, records, sessions, days, gapRanges, totals) {
+function tallyVerdictFile(name, records, sessions, days, gapRanges, staleRanges, totals) {
     const slug = slugFromLogName(name, 'verdicts-');
     if (!sessions.has(slug)) sessions.set(slug, emptySessionStats());
     const sessionStats = sessions.get(slug);
@@ -368,6 +388,28 @@ function tallyVerdictFile(name, records, sessions, days, gapRanges, totals) {
             const noteSource = (typeof record.note === 'string' && record.note !== '') ? record.note : logs.gapNote(record);
             const detail = (typeof record.detail === 'string' && record.detail !== '') ? renderText(record.detail) : '';
             gapRanges.push({ slug, day, note: renderText(noteSource), detail });
+        } else if (record.type === 'stale') {
+            // Bucketed by the day the record was WRITTEN, like a gap, since the
+            // day it covers is a range rather than a point. The captured range
+            // rides in the rendered row instead, where it says how old the
+            // dropped calls actually were.
+            const day = writeDay(record);
+            if (!days.has(day)) days.set(day, emptySessionStats());
+            const dayStats = days.get(day);
+            sessionStats.staleStretches += 1;
+            dayStats.staleStretches += 1;
+            totals.staleStretches += 1;
+            const count = gapCount(record);
+            sessionStats.staleCalls += count;
+            dayStats.staleCalls += count;
+            totals.staleCalls += count;
+            const noteSource = (typeof record.note === 'string' && record.note !== '') ? record.note : logs.staleNote(record);
+            // Both ends of the captured range are spool content, so they are
+            // neutralized on the way out exactly as a gap's detail is.
+            const first = typeof record.firstCapturedAt === 'string' ? renderText(record.firstCapturedAt) : '';
+            const last = typeof record.lastCapturedAt === 'string' ? renderText(record.lastCapturedAt) : '';
+            const captured = (first === '' && last === '') ? '' : (first === last ? first : `${first} to ${last}`);
+            staleRanges.push({ slug, day, note: renderText(noteSource), captured });
         } else {
             totals.verdictTypeUnknown += 1;
         }
@@ -420,6 +462,8 @@ function tallyFindings(records, totals) {
             // Already counted from the session verdict log above; see the
             // header comment on why this is tracked apart rather than summed.
             totals.findingsGapEchoes += 1;
+        } else if (record.type === 'stale') {
+            totals.findingsStaleEchoes += 1;
         } else {
             totals.findingsTypeUnknown += 1;
         }
@@ -649,6 +693,7 @@ function computeRollup(stateDir) {
     const sessions = new Map();
     const days = new Map();
     const gapRanges = [];
+    const staleRanges = [];
     const recognitionGapEntries = [];
     const totals = emptyTotals();
 
@@ -673,7 +718,7 @@ function computeRollup(stateDir) {
         }
         totals.malformed += parsed.malformed;
         totals.verdictSchemaUnknown += parsed.unknown;
-        tallyVerdictFile(name, parsed.records, sessions, days, gapRanges, totals);
+        tallyVerdictFile(name, parsed.records, sessions, days, gapRanges, staleRanges, totals);
     }
 
     const recognitionFiles = names.filter((n) => logs.RECOGNITION_LOG_RE.test(n)).sort();
@@ -721,6 +766,7 @@ function computeRollup(stateDir) {
         sessions,
         days,
         gapRanges,
+        staleRanges,
         recognitionGapEntries,
         totals,
         daemonState,
@@ -732,6 +778,7 @@ function formatSessionLine(label, s) {
     const otherPart = s.verdict.other > 0 ? ` other ${s.verdict.other}` : '';
     return `${label}: verdicts achieved ${s.verdict.achieved} failed ${s.verdict.failed} `
         + `diverged ${s.verdict.diverged}${otherPart}; gaps ${s.gaps} (${s.gappedCalls} call(s)); `
+        + `stale ${s.staleStretches} (${s.staleCalls} call(s)); `
         + `recognition ${s.recognition.calls} call(s), pointed ${s.recognition.pointed}, `
         + `invented ${s.recognition.invented}; recognition gaps ${s.recognitionGaps}`;
 }
@@ -762,6 +809,11 @@ function render(result) {
     const otherPart = t.verdict.other > 0 ? `, other ${t.verdict.other}` : '';
     lines.push(`verdicts: achieved ${t.verdict.achieved}, failed ${t.verdict.failed}, diverged ${t.verdict.diverged}${otherPart}`);
     lines.push(`judgment gaps: ${t.gaps} gap record(s) covering ${t.gappedCalls} call(s)`);
+    // On its own line and never added to the gaps above: these calls have no
+    // verdict because the daemon declined to judge them for age, which is the
+    // horizon working rather than an instrument that failed.
+    lines.push(`stale skips: ${t.staleStretches} stale record(s) covering ${t.staleCalls} call(s) `
+        + 'dropped past the freshness horizon (declined, not unmeasurable)');
     lines.push(`recognition calls: ${t.recognition.calls}, pointed ${t.recognition.pointed}, invented ${t.recognition.invented}`);
     lines.push(`recognition gaps: ${t.recognitionGaps}`);
 
@@ -775,7 +827,8 @@ function render(result) {
             : '';
         lines.push(`findings file: ${t.findingsDiverged} diverged entr${t.findingsDiverged === 1 ? 'y' : 'ies'} `
             + `(cross-check against the verdict tally above)${rotatedNote}, ${t.findingsGapEchoes} gap echo(es) `
-            + `vs ${t.gaps} verdict-log gap(s)${surplusNote}`);
+            + `vs ${t.gaps} verdict-log gap(s)${surplusNote}, ${t.findingsStaleEchoes} stale echo(es) `
+            + `vs ${t.staleStretches} verdict-log stale record(s)`);
         if (result.findingsRefused) {
             lines.push('some findings data could not be read (see "file(s) refused or unreadable" below)');
         }
@@ -797,7 +850,7 @@ function render(result) {
             lines.push(`note: this state file was reset on its last load (${result.daemonState.detail}); the counters below started over from zero at that point`);
         }
         const c = result.daemonState.counters;
-        lines.push(`spool lines: parsed ${c.parsed}, judged ${c.judged}, blank ${c.blank}, malformed ${c.malformed}, `
+        lines.push(`spool lines: parsed ${c.parsed}, judged ${c.judged}, stale ${c.stale}, blank ${c.blank}, malformed ${c.malformed}, `
             + `unknown version ${c.unknownVersion}, oversized ${c.oversized}, gapped ${c.gapped}`);
         lines.push(`recognition: recognized ${c.recognized}, pointed ${c.pointed}, invented ${c.invented}, `
             + `gapped ${c.recognitionGapped}, skipped (no index) ${c.recognitionSkipped}, unavailable ${c.recognitionUnavailable}`);
@@ -816,7 +869,7 @@ function render(result) {
     lines.push('');
 
     lines.push('== per day (UTC; verdicts and recognition bucket by the call\'s own capturedAt, '
-        + 'gaps and recognition-gaps bucket by when the daemon wrote the record, of necessity) ==');
+        + 'gaps, stale records and recognition-gaps bucket by when the daemon wrote the record, of necessity) ==');
     const dayKeys = Array.from(result.days.keys()).sort();
     renderCappedList(lines, dayKeys, '(no dated records)', (day) => formatSessionLine(day, result.days.get(day)));
     lines.push('');
@@ -824,6 +877,11 @@ function render(result) {
     lines.push('== judgment gap ranges ==');
     renderCappedList(lines, result.gapRanges, '(none)',
         (g) => `[${g.day}] ${g.slug}: ${g.note}${g.detail ? ` (${g.detail})` : ''}`);
+    lines.push('');
+
+    lines.push('== stale skips (calls dropped past the freshness horizon, never judged) ==');
+    renderCappedList(lines, result.staleRanges, '(none)',
+        (s) => `[${s.day}] ${s.slug}: ${s.note}${s.captured ? ` (captured ${s.captured})` : ''}`);
     lines.push('');
 
     lines.push('== recognition gaps (per call, no range) ==');

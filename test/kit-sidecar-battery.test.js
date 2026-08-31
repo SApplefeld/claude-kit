@@ -2628,7 +2628,7 @@ test('the judgment floor is the audition rate carried to the fixture size, not a
 test('the pass report names the recognition counters, the held lane and the offset resets, each for its own reason', () => {
     const healthy = {
         parsed: 28, malformed: 0, unknownVersion: 0, oversized: 0, offsetResets: 0,
-        recognitionSkipped: 13, recognitionUnavailable: 0
+        stale: 0, recognitionSkipped: 13, recognitionUnavailable: 0
     };
     const base = {
         counters: healthy, laneHeld: false, writeFailures: 0,
@@ -2712,11 +2712,127 @@ test('the pass report names the recognition counters, the held lane and the offs
     assert.ok(!/neither a record nor a gap record/.test(wf[0]),
         'a failed write is not always a missing record, so it must not ride the missing-record sentence');
 
+    // A stale skip gets its own sentence for the reset's reason: it DOES leave
+    // a record, so filing it under the missing-record sentence states a false
+    // reason, while the case it carries is still unscoreable. It is a drop
+    // path, so a run that hits it is never a silent pass.
+    const stale = battery.passFindings({ ...base, counters: { ...healthy, stale: 3 } });
+    assert.strictEqual(stale.length, 1);
+    assert.ok(/skipped 3 spool line\(s\) as stale/.test(stale[0]), stale[0]);
+    assert.ok(!/neither a record nor a gap record/.test(stale[0]),
+        'a stale skip writes a stale record, so it must not ride the missing-record sentence');
+
     // And the reconciliation of what was written against what was consumed,
     // printing both numbers.
     const short = battery.passFindings({ ...base, counters: { ...healthy, parsed: 0 } });
     assert.strictEqual(short.length, 1);
     assert.ok(/wrote 28 fixture spool line\(s\) and its own daemon pass consumed 0/.test(short[0]), short[0]);
+});
+
+// ---------------------------------------------- the horizon a replay switches off --
+
+test('a stale record in the log this run reads is printed, exactly as a gap record is', async (t) => {
+    // A verdict log is re-used across runs and CONTRACT.md admits a
+    // hand-written record, so a stretch an earlier pass dropped sits in the
+    // file this run reads. Printing gaps and dropping stale records would leave
+    // that reader with a log that looks like it simply held nothing, which is
+    // the reading the record exists to prevent.
+    const cases = battery.loadJudgmentCases();
+    const server = await startServer(t, (body) => {
+        const c = cases.find((cc) => body.prompt.includes(cc.intent.slice(0, 40)));
+        return JSON.stringify({ verdict: c ? c.acceptableVerdicts[0] : 'achieved', reason: 'matches the fixture' });
+    });
+    const configPath = writeConfig(t, server.url);
+    const token = 'c0ffee01';
+    const sessions = battery.runSessions(token);
+    const { home, stateDir } = inProcessRoots(t);
+
+    // The earlier pass's record, under the log name this run will read, built
+    // through the daemon's own builder rather than hand-spelled.
+    const logsDir = path.join(stateDir, 'logs');
+    fs.mkdirSync(logsDir, { recursive: true });
+    const record = logs.staleRecord({
+        sessionId: sessions.judgment,
+        count: 3,
+        firstCallId: 'aaaaaaaaaaaaaaa1',
+        lastCallId: 'aaaaaaaaaaaaaaa3',
+        firstCapturedAt: '2026-08-30T01:00:00.000Z',
+        lastCapturedAt: '2026-08-30T01:02:00.000Z',
+        horizonMs: 15 * 60 * 1000
+    }, Date.parse('2026-08-30T02:00:00.000Z'));
+    fs.appendFileSync(logs.sessionLogFile(logsDir, sessions.judgment), `${JSON.stringify(record)}\n`, 'utf8');
+
+    const printed = [];
+    const code = await battery.main(['judgment', '--config', configPath, '--state-dir', stateDir], {
+        newRunToken: () => token,
+        write: (text) => printed.push(text),
+        warn: () => {},
+        homeDir: home
+    });
+    const out = printed.join('');
+
+    assert.ok(/1 stale record\(s\) in this log/.test(out), out);
+    assert.ok(/calls aaaaaaaaaaaaaaa1 to aaaaaaaaaaaaaaa3 skipped/.test(out),
+        `the record's own note is printed, as a gap's is:\n${out}`);
+    // The control on the claim this case makes about the run itself: this
+    // run's own pass skipped nothing, so the record is reported without the
+    // findings paragraph that a live stale skip would add, and the run is still
+    // scored rather than turned into a cannot-measure by an older pass's
+    // record.
+    assert.ok(!/skipped 3 spool line\(s\) as stale/.test(out), out);
+    assert.strictEqual(code, 0, `an earlier pass's record must not fail this run:\n${out}`);
+});
+
+test('a replay hands the daemon a horizon no fixture line of its own can cross', async (t) => {
+    const daemon = require('../sidecar/daemon.js');
+    const spool = require('../sidecar/spool.js');
+
+    // The window is wider than the retention that deletes a spool file, so no
+    // line this command writes can reach it by any route: the file is gone
+    // before the age is.
+    assert.ok(battery.REPLAY_STALE_HORIZON_MS > spool.RETENTION_DAYS * 24 * 60 * 60 * 1000,
+        'a replay horizon inside the retention window could still expire a fixture');
+
+    // The wiring, at the one call site: this command builds its fixture at
+    // build time and then drains serially against a live endpoint, so a run of
+    // any length crosses the daemon's default fifteen minutes while it works
+    // and would drop its own tail. Read from the source because the run itself
+    // cannot cross the window inside a test without waiting out a real quarter
+    // of an hour.
+    const src = fs.readFileSync(path.join(__dirname, '..', 'sidecar', 'battery.js'), 'utf8');
+    assert.ok(/staleHorizonMs: REPLAY_STALE_HORIZON_MS/.test(src),
+        'the replay still passes its own horizon into the daemon pass');
+
+    // And the mechanism the wiring depends on, driven for real: the daemon
+    // given that window judges a line far older than its own default horizon
+    // would ever allow.
+    const server = await startServer(t, () => JSON.stringify({ verdict: 'achieved', reason: 'r' }));
+    const configPath = writeConfig(t, server.url);
+    const { stateDir } = inProcessRoots(t);
+    const spoolDir = path.join(stateDir, 'spool');
+    fs.mkdirSync(spoolDir, { recursive: true });
+    const day = new Date().toISOString().slice(0, 10);
+    const line = {
+        v: 1,
+        callId: 'abcdef0123456789',
+        ts: new Date(Date.now() - (6 * 60 * 60 * 1000)).toISOString(),
+        sessionId: 'battery-horizon',
+        cwd: 'D:/nowhere',
+        tool: 'Bash',
+        intent: 'a fixture line six hours old',
+        command: 'ls',
+        result: 'ok',
+        truncated: false,
+        isError: false
+    };
+    fs.appendFileSync(path.join(spoolDir, `${day}.jsonl`), `${JSON.stringify(line)}\n`, 'utf8');
+
+    const wide = await daemon.runOnce(
+        { once: true, stateDir, configPath, staleHorizonMs: battery.REPLAY_STALE_HORIZON_MS, memoryRoot: path.join(stateDir, 'empty-store') },
+        { report: () => {} }
+    );
+    assert.strictEqual(wide.pass.counters.judged, 1, 'the replay horizon judges a line the default would drop');
+    assert.strictEqual(wide.pass.counters.stale, 0);
 });
 
 // ------------------------------------------------- a frozen field cut at replay --

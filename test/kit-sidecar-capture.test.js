@@ -861,7 +861,7 @@ function delivered(res, label) {
 }
 
 // The item lines of a delivered block: everything but the framing line, the
-// queued note and the closing fence. This is what the 600-byte cap governs.
+// queued note and the closing fence. This is what the batch budget governs.
 // The fence is asserted present here rather than in each case, since a block
 // that lost it would otherwise pass every content assertion in the file.
 function itemLines(block) {
@@ -986,33 +986,119 @@ test('the item cap binds at three and the remainder stays queued', () => {
     }
 });
 
-test('the byte cap binds below three items when the items are large', () => {
-    // The branch the case above cannot reach: two items, so the item cap is
-    // never in play, and one of them alone spends most of the budget. A cap
-    // test whose items are small enough for the item cap to bind first proves
-    // nothing about the byte cap.
+test('the batch budget is the derived no-stall invariant, not a chosen number', () => {
+    // A hand-picked batch budget can drift out of step with the per-item cap
+    // and break a legal batch below the item count it claims to allow, which
+    // is the defect this derivation exists to close. Pinning the relation
+    // itself, rather than only its current value, is what catches a future
+    // edit that changes one constant without carrying the other along.
+    assert.strictEqual(hook.INBOX_MAX_BYTES,
+        hook.INBOX_MAX_ITEMS * hook.ITEM_MAX_BYTES + (hook.INBOX_MAX_ITEMS - 1),
+        'the batch budget is exactly what a full batch of at-cap items costs');
+    assert.ok(hook.ITEM_MAX_BYTES <= hook.INBOX_MAX_BYTES,
+        'a single at-cap item never exceeds the batch budget on its own, '
+            + 'which is what keeps takeBatch from ever stalling on a lone item');
+});
+
+test('three at-cap items deliver as one batch of three and a fourth stays queued', () => {
+    // Three items each cut to the per-item cap by non-ASCII fields cost
+    // exactly INBOX_MAX_ITEMS * ITEM_MAX_BYTES + (INBOX_MAX_ITEMS - 1) bytes
+    // composed: the derived budget's own worst case, and proof that the
+    // three-item promise holds even there, which a hand-picked byte budget
+    // cannot generally guarantee at the same time as a hand-picked item count.
     const home = makeHome({ inbox: true });
     try {
         seedInbox(home, [
-            alert({ intent: 'A'.repeat(200), reason: 'a'.repeat(200) }),
-            alert({ intent: 'B'.repeat(200), reason: 'b'.repeat(200) })
+            alert({ intent: 'é'.repeat(300), reason: 'è'.repeat(300) }),
+            alert({ intent: 'ç'.repeat(300), reason: 'ê'.repeat(300) }),
+            alert({ intent: 'ü'.repeat(300), reason: 'ö'.repeat(300) }),
+            alert({ intent: 'the fourth item', reason: 'still queued' })
         ]);
 
         const first = delivered(runHook(home, bashPayload()), 'first call');
         const firstItems = itemLines(first);
-        assert.strictEqual(firstItems.length, 1,
-            'the byte cap held the second item back while the item cap had room for two more');
+        assert.strictEqual(firstItems.length, 3, 'all three at-cap items deliver in one batch');
+        for (const line of firstItems) {
+            assert.ok(Buffer.byteLength(line, 'utf8') <= hook.ITEM_MAX_BYTES,
+                'each item is cut to the per-item budget, was ' + Buffer.byteLength(line, 'utf8'));
+        }
         assert.ok(itemBytes(first) <= hook.INBOX_MAX_BYTES,
-            'the batch is inside the byte cap, was ' + itemBytes(first));
-        assert.ok(itemBytes(first) > hook.INBOX_MAX_BYTES / 2,
-            'and the one item genuinely spends most of the budget, was ' + itemBytes(first));
-        assert.ok(firstItems[0].endsWith('Verify before proceeding.'),
-            'an item inside the budget is delivered whole rather than cut');
-        assert.ok(firstItems[0].includes('A'.repeat(200)), 'the first item is the first line');
+            'the whole batch is inside the derived batch budget, was ' + itemBytes(first));
+        assert.ok(first.includes('further sidecar content stays queued'),
+            'the fourth item leaves moreQueued true');
 
         const second = delivered(runHook(home, bashPayload()), 'second call');
-        assert.strictEqual(itemLines(second).length, 1, 'the held item arrives next call');
-        assert.ok(second.includes('B'.repeat(200)), 'and it is the one that was held');
+        assert.strictEqual(itemLines(second).length, 1, 'the fourth item arrives next call');
+        assert.ok(second.includes('the fourth item'), 'and it is the one that was held');
+    } finally {
+        rmDir(home);
+    }
+});
+
+test('three realistic-sized items deliver as one batch and a fourth stays queued', () => {
+    // Observed captures compose to roughly 358 bytes; these compose to 366,
+    // both comfortably below the per-item cap and far inside the derived
+    // batch budget, so nothing here needs the item cap and the byte cap to
+    // race each other the way the at-cap case above does. Three of them prove
+    // the item cap is reachable at realistic sizes, and a fourth left in the
+    // inbox proves moreQueued still fires once the item cap is hit.
+    const home = makeHome({ inbox: true });
+    try {
+        const items = [];
+        for (let i = 0; i < 4; i += 1) {
+            items.push(alert({
+                intent: 'this call edits the staging configuration file for the deploy '
+                    + 'pipeline and updates the connection string used by the service ' + i,
+                reason: 'the diff only changed a comment and never touched the setting '
+                    + 'itself, so the stated intent was not actually achieved by the edit ' + i
+            }));
+        }
+        seedInbox(home, items);
+
+        const first = delivered(runHook(home, bashPayload()), 'first call');
+        const firstItems = itemLines(first);
+        assert.strictEqual(firstItems.length, 3, 'the item cap is reached, not the byte cap');
+        for (const line of firstItems) {
+            assert.ok(Buffer.byteLength(line, 'utf8') > 300 && Buffer.byteLength(line, 'utf8') < 400,
+                'each item composes near the observed realistic size, was '
+                    + Buffer.byteLength(line, 'utf8'));
+        }
+        assert.ok(first.includes('further sidecar content stays queued'),
+            'the fourth item leaves moreQueued true');
+
+        const second = delivered(runHook(home, bashPayload()), 'second call');
+        assert.strictEqual(itemLines(second).length, 1, 'the fourth item arrives next call');
+    } finally {
+        rmDir(home);
+    }
+});
+
+test('a maximum batch through the real delivery path stays under a stated ceiling', () => {
+    // The guard belongs where the text actually reaches the model: the whole
+    // delivered block, framing and closing fence included, both of which sit
+    // outside the byte cap by design. A batch of three at-cap items, with a
+    // fourth left behind to carry the queued note, is the largest shape this
+    // hook ever emits, so its total size is the number a later cap change
+    // should be checked against. A fourth item is seeded so the note actually
+    // rides in the measured block: three items alone drain the inbox and
+    // moreQueued reads false, which would measure a smaller shape than the
+    // true maximum.
+    const home = makeHome({ inbox: true });
+    try {
+        seedInbox(home, [
+            alert({ intent: 'é'.repeat(300), reason: 'è'.repeat(300) }),
+            alert({ intent: 'ç'.repeat(300), reason: 'ê'.repeat(300) }),
+            alert({ intent: 'ü'.repeat(300), reason: 'ö'.repeat(300) }),
+            alert({ intent: 'a fourth item left queued', reason: 'so the note rides too' })
+        ]);
+
+        const first = delivered(runHook(home, bashPayload()), 'a full at-cap batch');
+        assert.strictEqual(itemLines(first).length, 3, 'the maximum batch delivers whole');
+        assert.ok(first.includes('further sidecar content stays queued'),
+            'the queued note rides in the measured block, since a fourth item is still held');
+        assert.ok(Buffer.byteLength(first, 'utf8') <= 3000,
+            'the whole delivered block, framing and fence included, stays under the stated '
+                + 'ceiling, was ' + Buffer.byteLength(first, 'utf8') + ' bytes');
     } finally {
         rmDir(home);
     }
@@ -1020,9 +1106,12 @@ test('the byte cap binds below three items when the items are large', () => {
 
 test('an item too large on its own is cut to the budget rather than stalling the queue', () => {
     // Two hundred characters is the field cap, and a two-byte character makes
-    // two full fields cost more than the whole batch budget. Without the cut,
+    // two full fields cost more than the per-item cut cap. Without the cut,
     // the first item would never fit, so nothing behind it would ever be
-    // delivered either: the queue would stall on one line forever.
+    // delivered either: the queue would stall on one line forever. The batch
+    // budget is wide enough now that the small item behind it rides in the
+    // same call rather than waiting for the next one; what this proves is the
+    // cut itself, not which call the second item arrives on.
     const home = makeHome({ inbox: true });
     try {
         seedInbox(home, [
@@ -1030,19 +1119,20 @@ test('an item too large on its own is cut to the budget rather than stalling the
             alert({ intent: 'the one behind it', reason: 'still delivered' })
         ]);
 
-        const first = delivered(runHook(home, bashPayload()), 'oversized item');
-        assert.strictEqual(itemLines(first).length, 1, 'the oversized item is delivered alone');
-        assert.ok(itemBytes(first) <= hook.INBOX_MAX_BYTES,
-            'and it is cut to the budget, was ' + itemBytes(first) + ' bytes');
+        const first = delivered(runHook(home, bashPayload()), 'oversized item and the one behind it');
+        const firstItems = itemLines(first);
+        const oversized = Buffer.byteLength(firstItems[0], 'utf8');
+        assert.ok(oversized <= hook.ITEM_MAX_BYTES,
+            'the oversized item is cut to the per-item budget, was ' + oversized + ' bytes');
         // The cut is scaled by what the text's own characters cost on average,
         // so it lands a few characters short of the budget rather than exactly
         // on it. What matters is that it keeps most of the item: a cut that
         // emptied the field would deliver a pointer naming nothing.
-        assert.ok(itemBytes(first) > hook.INBOX_MAX_BYTES - 120,
-            'the cut takes roughly what it needs, was ' + itemBytes(first));
-
-        const second = delivered(runHook(home, bashPayload()), 'the item behind it');
-        assert.ok(second.includes('the one behind it'), 'the queue is not stalled');
+        assert.ok(oversized > hook.ITEM_MAX_BYTES - 120,
+            'the cut takes roughly what it needs, was ' + oversized);
+        assert.ok(firstItems[0].endsWith('Verify before proceeding.'),
+            'the trailing directive survives the cut');
+        assert.ok(first.includes('the one behind it'), 'the queue is not stalled');
     } finally {
         rmDir(home);
     }
@@ -1551,7 +1641,7 @@ test('an oversized non-ASCII item keeps the trailing directive and the source it
         v: 1, kind: 'alert', callId: 'abcdef0123456789', sessionId: SESSION,
         intent: '中'.repeat(300), reason: '文'.repeat(300)
     });
-    assert.ok(Buffer.byteLength(cjk, 'utf8') <= hook.INBOX_MAX_BYTES,
+    assert.ok(Buffer.byteLength(cjk, 'utf8') <= hook.ITEM_MAX_BYTES,
         'the item fits the budget, was ' + Buffer.byteLength(cjk, 'utf8'));
     assert.ok(cjk.endsWith('Verify before proceeding.'),
         'the trailing directive survives a cut that a tail cut would have taken: ' + cjk.slice(-40));
@@ -1563,7 +1653,7 @@ test('an oversized non-ASCII item keeps the trailing directive and the source it
         v: 1, kind: 'memory', callId: 'abcdef0123456789', sessionId: SESSION,
         record: name, why: 'é'.repeat(300)
     });
-    assert.ok(Buffer.byteLength(pointer, 'utf8') <= hook.INBOX_MAX_BYTES,
+    assert.ok(Buffer.byteLength(pointer, 'utf8') <= hook.ITEM_MAX_BYTES,
         'the pointer fits the budget, was ' + Buffer.byteLength(pointer, 'utf8'));
     assert.ok(pointer.endsWith('memq get ' + name),
         'the spelling that reads the record survives: ' + pointer.slice(-40));
@@ -1580,13 +1670,13 @@ test('the fixed parts of both kinds fit the budget with every field empty', () =
     const alert = hook.formatItem({
         v: 1, kind: 'alert', callId: 'abcdef0123456789', intent: 'x', reason: 'y'
     });
-    assert.ok(Buffer.byteLength(alert, 'utf8') < hook.INBOX_MAX_BYTES / 2,
+    assert.ok(Buffer.byteLength(alert, 'utf8') < hook.ITEM_MAX_BYTES / 2,
         'an alert skeleton leaves most of the budget for its fields, was '
             + Buffer.byteLength(alert, 'utf8'));
     const pointer = hook.formatItem({
         v: 1, kind: 'memory', record: 'a'.repeat(121), why: ''
     });
-    assert.ok(Buffer.byteLength(pointer, 'utf8') < hook.INBOX_MAX_BYTES,
+    assert.ok(Buffer.byteLength(pointer, 'utf8') < hook.ITEM_MAX_BYTES,
         'and so does a pointer carrying the longest record name the guard admits, was '
             + Buffer.byteLength(pointer, 'utf8'));
 });

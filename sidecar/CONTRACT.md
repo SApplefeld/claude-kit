@@ -149,6 +149,59 @@ Rules the daemon follows:
 - Drop a map entry only when the file it names is confirmed absent, so retention
   deletes do not grow the offset map without bound and an unreadable directory
   listing is never read as an empty spool.
+- Skip an entry whose `ts` is further back than the **freshness horizon**, 15
+  minutes by default and set by `--stale-horizon-minutes`, measured at the
+  moment the drain reaches that entry. A skipped entry earns no judgment call,
+  no recognition call, no verdict and no delivery item, and its offset advances
+  once the stale record covering it is on disk, which is the same
+  record-before-the-offset rule a gapped call takes. A verdict is advice to the session that made
+  the call, so one arriving past the horizon reaches a session that has moved on
+  while the fresh calls behind it in a backlog wait for the model time it would
+  spend; after an outage the backlog is mostly such history. Age is a single
+  comparison of the reader's clock against `ts`, so a `ts` ahead of that clock
+  is not old and is judged. A `ts` that is missing, that carries no zone
+  designator (`Z` or an offset), or that does not parse is judged too: those are
+  the entries the daemon cannot place in time at all, and absence of a
+  timestamp must not discard work.
+
+### Stale records
+
+A stale skip is written down, not only counted. Contiguous skips within one
+session coalesce into **one `stale` record per stretch**, written to that
+session's verdict log and to `findings.jsonl` on the same terms as a gap record.
+It carries `count`, `firstCallId` and `lastCallId`, `firstCapturedAt` and
+`lastCapturedAt` (the spool `ts` of the calls at each end of the stretch), and
+`horizonMs`, the window in force when they were dropped. Its own `ts`, like
+every record the daemon writes, is the moment the daemon wrote it.
+
+The offsets behind an unwritten stretch wait, exactly as they wait behind an
+open gap, and **the wait is bounded: no stretch outlives a judgment call.**
+Every open stretch, in every session, is written before the pass spends its next
+judgment. Without that bound a session that stops calling after an outage holds
+its stretch open for the rest of the pass, and since one open stretch holds the
+offsets of every file, a crash there re-judges and re-posts every call the pass
+had already judged. The cost of the bound is fragmentation: skips interleaved
+with judged calls produce a record per stretch rather than one covering them
+all, which is a second record rather than a lost one, and a post-outage backlog
+is stale-then-fresh, so in practice one flush happens at the first fresh call.
+A record therefore never spans a call it does not count.
+
+The record is a **separate type from a gap** and its counts are kept apart from
+the gap counts. A gap says the instrument could not measure a call; a stale
+record says it declined to. A reader repairs the first and reads the second as
+the horizon working, so one number covering both would put an outage and a
+policy in the same column.
+
+The skip is also counted as `stale` among the cumulative counters in
+`logs/offsets.json`, beside `parsed` and `judged`. That counter alone is not
+sufficient and is not what makes the drop visible: a rollup reads per session
+and per day, and a machine-wide count with no dated, attributed record renders a
+discarded backlog in both of those sections exactly as a fleet that made no
+calls at all. A stale entry counts as `parsed` and never as `judged`, so every
+parsed call is accounted for by `parsed` = `judged` + `stale` + `gapped`. One
+line per pass names how many were skipped and the horizon in force; no line and
+no record names an individual entry, since an outage backlog is hundreds of
+them.
 
 ## The delivery inbox
 
@@ -254,9 +307,9 @@ The harness issues tool calls in parallel, main-thread calls included, so
 several copies of the hook can run against one session's inbox at once. A plain
 read-select-advance there is last-writer-wins: every copy reads the same offset,
 every copy takes the same batch, and the block is delivered N times with the
-3-item and 600-byte caps defeated N-fold. Those caps are the control on how much
-sidecar text can reach a session, so that is a control failure and not a
-cosmetic repeat.
+3-item cap, the 600-byte per-item cap, and the derived batch budget all
+defeated N-fold. Those caps are the control on how much sidecar text can reach
+a session, so that is a control failure and not a cosmetic repeat.
 
 The whole read-select-advance therefore runs under an exclusive claim at
 `inbox/<name>.lock`. The claim is taken once and **never waited on**: a hook that
@@ -270,9 +323,12 @@ for its own reasons.
 
 ### Delivery caps and framing
 
-- At most 3 items per tool call, and at most 600 bytes of item text (UTF-8
-  bytes, not characters). Whatever the caps hold back stays queued for the next
-  call; nothing is dropped for being late.
+- At most 3 items per tool call, each cut to at most 600 bytes of item text
+  (UTF-8 bytes, not characters). The batch budget is derived from those two
+  numbers (item count times per-item cap, plus one separator per adjacent
+  pair, currently 1,802 bytes) so a full batch of three at-cap items always
+  fits. Whatever the caps hold back stays queued for the next call; nothing is
+  dropped for being late.
 - An item too large for the budget is shortened by cutting its VARIABLE fields,
   in the kind's own order, and never by cutting the composed line from its tail.
   The trailing directive on an alert and the `memq get` spelling on a memory

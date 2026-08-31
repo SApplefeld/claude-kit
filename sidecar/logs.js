@@ -8,8 +8,8 @@
 //   logs/verdicts-<sid>.jsonl    one file per observed session
 //   logs/recognition-<sid>.jsonl what the memory index said about that session's
 //                                calls, one file per observed session
-//   logs/findings.jsonl          diverged verdicts and every judgment gap, the
-//                                audit surface
+//   logs/findings.jsonl          diverged verdicts, every judgment gap and
+//                                every stale record, the audit surface
 //
 // These files are a second plaintext concentration beside the spool itself: a
 // verdict record carries the intent the session wrote and a bounded preview of
@@ -31,6 +31,12 @@
 // whose silence reads as a clean bill of health, and it is why the gap is
 // written to the session log as well: a reader of one session's verdicts must
 // see the hole without being asked to cross-reference a second file.
+//
+// The stale record is the same load-bearing shape for the other way a call ends
+// with no verdict: the drain reached it past the freshness horizon and declined
+// to judge it. It is a separate record type from a gap, and deliberately, since
+// a stretch nobody could measure and a stretch nobody chose to measure call for
+// opposite responses from the reader who finds them.
 
 'use strict';
 
@@ -274,11 +280,25 @@ function emptyState() {
         // Call ids whose delivery item is already in an inbox, oldest first.
         delivered: [],
         counters: {
-            // Lines that parsed into a call to judge. The skip categories below
-            // are counted apart from it, so `parsed` plus the skips is what the
-            // daemon actually read.
+            // Lines that parsed into a call to judge. The PARSE skip categories
+            // (`blank`, `malformed`, `unknownVersion`, `oversized`) are counted
+            // apart from it, so `parsed` plus those is what the daemon actually
+            // read off the spool.
+            //
+            // `stale` is the exception and sits INSIDE `parsed` rather than
+            // beside it: a stale entry parsed fine and was then dropped on its
+            // age, which is a decision about a good line rather than a line that
+            // could not be read. What every parsed call is accounted for by is
+            // `parsed` = `judged` + `stale` + `gapped`.
             parsed: 0,
             judged: 0,
+            // Calls the drain reached past the freshness horizon and skipped
+            // whole: no judgment call, no recognition call, no verdict. Counted
+            // apart from `judged` because nothing was measured, and apart from
+            // `gapped` because nothing failed. Folding it into either would
+            // report a discarded backlog as a quiet fleet, which is the one
+            // reading this daemon exists to make impossible.
+            stale: 0,
             blank: 0,
             malformed: 0,
             unknownVersion: 0,
@@ -629,6 +649,70 @@ function gapNote(fields) {
     return `${range} not judged, ${reason}`;
 }
 
+// The freshness horizon as a sentence fragment, from the same milliseconds the
+// comparison uses. Exact minutes when the window divides into them and raw
+// milliseconds when it does not, because a horizon set programmatically to 90
+// seconds rounded to "2 minutes" would put a number in the record and on stderr
+// that no code in this daemon ever compared anything against.
+//
+// Exported so this is the only place that spells it: the daemon's per-pass
+// report line and the stale record's note both call it, and a second spelling
+// is how two surfaces come to describe the same window differently.
+function horizonText(horizonMs) {
+    if (!Number.isFinite(horizonMs) || horizonMs <= 0) return 'unset';
+    if (horizonMs % 60000 === 0) return `${horizonMs / 60000}-minute`;
+    return `${horizonMs} ms`;
+}
+
+// The sentence a stale record's `note` states, built from its structured
+// fields, on gapNote's terms and for gapNote's reason: rollup.js reconstructs
+// it for a record that carries the fields and no note, so the wording lives
+// here once.
+//
+// It says SKIPPED and names the horizon, never "not judged". A stale stretch
+// and an endpoint gap are both stretches of calls with no verdict, and a reader
+// who cannot tell them apart cannot tell an instrument that failed from one
+// that declined: the first is somebody's to repair and the second is the design
+// working.
+function staleNote(fields) {
+    const count = (Number.isInteger(fields.count) && fields.count > 0) ? fields.count : 1;
+    const first = (typeof fields.firstCallId === 'string' && fields.firstCallId !== '') ? fields.firstCallId : '?';
+    const last = (typeof fields.lastCallId === 'string' && fields.lastCallId !== '') ? fields.lastCallId : '?';
+    const range = count === 1 ? `call ${first}` : `calls ${first} to ${last}`;
+    return `${range} skipped, captured further back than the ${horizonText(fields.horizonMs)} freshness horizon`;
+}
+
+// A contiguous stretch of one session's calls that were skipped for age, in the
+// gap record's shape and written to the same two files.
+//
+// It exists because the counter alone cannot be attributed. A rollup reads per
+// session and per day, and a discarded backlog that appears only as a machine-
+// wide count renders in both of those sections exactly as a fleet that made no
+// calls at all. That is the reading the gap machinery exists to prevent, and an
+// entry dropped by policy needs it as much as one dropped by an outage.
+//
+// `firstCapturedAt` and `lastCapturedAt` are the spool's own timestamps for the
+// ends of the stretch, which is what makes the record answer HOW old rather
+// than only how many; they are structured fields rather than words in the note
+// because they are spool content, and a reader that prints them neutralizes
+// them as it does every other field that came off a captured line.
+function staleRecord(stretch, nowMs) {
+    return {
+        v: LOG_VERSION,
+        type: 'stale',
+        ts: new Date(nowMs).toISOString(),
+        sessionId: stretch.sessionId,
+        reason: 'stale',
+        count: stretch.count,
+        firstCallId: stretch.firstCallId,
+        lastCallId: stretch.lastCallId,
+        firstCapturedAt: typeof stretch.firstCapturedAt === 'string' ? stretch.firstCapturedAt : '',
+        lastCapturedAt: typeof stretch.lastCapturedAt === 'string' ? stretch.lastCapturedAt : '',
+        horizonMs: Number.isFinite(stretch.horizonMs) ? stretch.horizonMs : 0,
+        note: staleNote(stretch)
+    };
+}
+
 // A stretch of calls that were not judged, with the reason. The note is the
 // sentence a person reads in a rollup; the structured fields are what a rollup
 // counts. Both say NOT JUDGED rather than anything a reader could mistake for a
@@ -674,5 +758,8 @@ module.exports = {
     recognitionGapRecord,
     findingRecord,
     gapNote,
-    gapRecord
+    gapRecord,
+    horizonText,
+    staleNote,
+    staleRecord
 };

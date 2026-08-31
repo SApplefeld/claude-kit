@@ -44,12 +44,12 @@ const { isRecordName } = require('./record-name.js');
 // recognize it skips the line.
 const INBOX_VERSION = 1;
 
-// The cap on each text field an item carries. The hook delivers at most 600
-// bytes per tool call across every item in a batch, so a field long enough to
-// spend that budget by itself would starve the items behind it; 200 characters
-// holds a stated intent and a one-clause reason whole in every realistic case.
-// The judge already caps a reason at 300 characters, so this is the second and
-// tighter of two bounds rather than the only one.
+// The cap on each text field an item carries. The hook cuts each formatted
+// item to at most 600 bytes, so a field long enough to spend that budget by
+// itself would starve the item's other field; 200 characters holds a stated
+// intent and a one-clause reason whole in every realistic case. The judge
+// already caps a reason at 300 characters, so this is the second and tighter
+// of two bounds rather than the only one.
 const ITEM_TEXT_CAP = 200;
 
 // A session's inbox file. The slug is logs.sessionSlug, the same sanitizer the
