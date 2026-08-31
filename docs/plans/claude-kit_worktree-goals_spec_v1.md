@@ -8,7 +8,7 @@ Session model: any executor session in the kit repo; three sections, tiers per s
 
 ## Dispatch Authorization
 
-Authorized 2026-08-31 by the operator at the keyboard in the expert seat's session ("Shouldn't it reflect the worktree you're currently working in?", ruled yes in the same dialog), for any session holding this plan. Queued the same day by the operator's instruction ("append it to whatever is the best fit", the expert seat's fit ruling being the worktree batch): seventh and last in the worktree batch, after the instruments-not-prose plan, run by the KIT: Skills Worker seat under the same unleashed arrangement as the rest of that batch. Per the trace rule, this section is a warrant only for a citing session that did not author it.
+Authorized 2026-08-31 by the operator at the keyboard in the expert seat's session ("Shouldn't it reflect the worktree you're currently working in?", ruled yes in the same dialog), for any session holding this plan. Queued the same day by the operator's instruction ("append it to whatever is the best fit", the expert seat's fit ruling being the worktree batch): seventh and last in the worktree batch, after the instruments-not-prose plan, run by the KIT: Skills Worker seat under the same unleashed arrangement as the rest of that batch. The operator confirmed the ruling a second time 2026-08-31 at the expert seat's keyboard, directing that seat to relay the confirmation to the KIT: Skills Worker so this plan joins that seat's batch. Per the trace rule, this section is a warrant only for a citing session that did not author it; where the receiving seat's trace still cannot establish the grant, the settling act is the operator's own word in that seat's session.
 
 ## Goal
 
