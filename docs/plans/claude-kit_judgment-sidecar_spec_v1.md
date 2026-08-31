@@ -143,6 +143,27 @@ names the class rather than the instance that produced it.
 No entry 4 exists in this plan. No rule numbered 4 appears in any surviving artifact of
 it, so the gap is a numbering gap rather than a lost rule, and entry 5 keeps the number
 it was cited under so both existing citations resolve.
+9. **A rule you are calling generating is a mechanism until you have named the condition it is
+   one route to, and an instrument that observes a consequence reaches only as far as the process
+   it runs in.** Two clauses, because the ninth instance needed both to stay hidden. The first: a
+   class stated as "a call carrying fewer than two arguments" names a mechanism, and the condition
+   under it is that the screen resolves its live tree from ambient state, an absent operand falling
+   back to `os.homedir()` and `os.homedir()` itself resolving from `HOME` and `USERPROFILE`. Two
+   routes reach that condition, an unpinned argument in process and an unpinned environment out of
+   it, and a check built from either route is silent about the other while reporting on the class.
+   So before a predicate is written, state the condition the wrong behaviour needs rather than the
+   spelling the last instance wore, and enumerate the routes into it. The second: a case that
+   instruments an effect, which entry 8 asks for wherever the consequence can be observed, is
+   bounded by its own process, so a subject that can cross a process boundary is measured across
+   that boundary or the uncrossed part is named unproven. And a predicate over source text answers
+   about spelling whatever it is built from, so where its property is a value rather than a token,
+   presence of the token is not the property: assert the value, or measure the effect instead.
+   Adopted 2026-08-31 after the live-store class reached its NINTH instance. Round 11 built its
+   checks correctly under entries 6 and 8, including the effect-observing case entry 8 asks for,
+   and all of them were in process, while `runBinWatched` and one harvest case spawned child
+   processes with no `env` operand, so the children inherited the operator real `HOME` and the
+   shipped screen read the operator real store. Confirmed by instrument: the accused spawn shape
+   made 6 syscalls at or under the operator live tree and the fixture-home spawn shape made none.
 
 ## Sections of Work
 
@@ -1289,3 +1310,102 @@ Next action: adjudicate round 12 at the code rather than from its reports, take 
 Skills Worker releases, run the whole gate and report it against 2651 / 2644 / 1 / 6, then Chapter
 7, flip the plan to Complete, move section 8 substance to docs/backlog.md, archive via
 curating-docs, and commit and push.
+### Interim board 10 - 2026-08-31
+Round 12 was adjudicated at the code rather than from its reports, and the adjudication found the
+live-store class at instance NINE. Round 13 is the fix. Standing Brief Amendment 9 above is the rule
+this round produced, and it is the first one to say that the class was misstated rather than merely
+under-checked.
+
+INSTANCE 9, reported by the adversarial lens and confirmed by instrument rather than by argument.
+test/kit-sidecar-battery.test.js:2166 (runBinWatched) spawns with no env operand at all, and :2972
+spawns with cwd only. Node spawn defaults options.env to process.env, so both children inherit the
+operator real HOME and USERPROFILE, and the shipped screen inside the child resolves its live tree
+from them. runBin at :100 is the function that exists to prevent exactly this, supplying HOME and
+USERPROFILE from a fixture, and neither site goes through it. The file own header at :13 to :21
+asserts the opposite in so many words: "NO CASE HERE READS IT EITHER ... runBin gives every child a
+fixture HOME whether its case asks for one or not". That sentence is false for these two sites.
+Proved with .kit/scratch/i9-probe.js, which preloads a recorder into the child and fixes the watched
+tree from the PARENT so the control redirected HOME cannot move the target. SUBJECT, the accused
+spawn shape: 6 syscalls at or under the operator live tree. CONTROL, the runBin shape: 0.
+
+THE GENERALIZATION, which is the part worth keeping and which is sharper than any of the eight
+before it, because it says the class was stated wrong rather than merely checked too narrowly. For
+twelve rounds the class was "a screen call carrying fewer than two arguments". That is a mechanism.
+The condition under it is that the screen resolves its live tree from ambient state: an absent
+operand falls back to os.homedir(), and os.homedir() itself resolves from HOME and USERPROFILE. Two
+routes reach the condition, an unpinned argument in process and an unpinned environment out of it,
+and every check built in twelve rounds addressed route one, because route one is where instance 1
+happened to be found. Round 11 obeyed entries 6 and 8 exactly, generating rule, shape-matched
+control, and the effect-observing case entry 8 asks for, and was blind anyway, because an in-process
+recorder cannot see a child process syscall. Amendment 9 states both halves.
+
+FOUR HOLES IN ROUND 11 OWN CHECKS, each confirmed by running the SHIPPED predicate rather than by
+reading its report, via .kit/scratch/r12-adjudicate.js. Part 0 of that script pins its copy of the
+predicate against the file own bytes first, so the answers are about the shipped check.
+  The deps region is found with source.indexOf("});"), which for a call written with no deps object
+  at all, the exact defect shape, runs past the call end and swallows the NEXT call deps object. A
+  deps-less invocation followed by a compliant neighbour reports hasHomeDir true. False pass.
+  The key test is /\bhomeDir\s*:/, a presence check, while the seam at battery.js:1191 and
+  harvest.js:330 requires a non-empty string and coerces anything else back to undefined, which
+  liveHomeTree resolves with os.homedir(). So homeDir: undefined passes the check. Measured rather
+  than argued: such a call inspected 14 paths of which 3 were at or under the operator live tree.
+  The recorder speaks by that non-zero count itself, so no separate control was needed there.
+  MAIN_CALL_RE is built from two spellings, battery.main( and harvest.main(, so an aliased
+  destructured binding and a call through a bound reference are not matched at all, and the control
+  at :3738 is assembled entirely from those same two spellings, which proves the instrument
+  functions and says nothing about the rule reach. Entry 6 one more time.
+  The fs recorder wraps three entry points, realpathSync, realpathSync.native and statSync, which is
+  complete for state-screen.js and not for the case own title, which claims the run makes no syscall
+  against the operator live tree. readFileSync, mkdirSync, readdirSync, unlinkSync and the rest are
+  unwrapped, so a regression pointing the run at the real state root could DELETE under the operator
+  live logs directory and the case would still report clean. No live instance of that in tree today,
+  since every in-process call passes --config, so it is a reach claim rather than a second defect.
+
+A REPORT SENTENCE THAT CAN ASSERT A CHECK THAT DID NOT RUN, from the security lens, accepted.
+battery.js:1266 prints "screened against the live ~/.claude tree" as a fixed literal while the tree
+actually compared is now whatever homeDir named, and harvest.js:365, :370 and :464 say "the live
+store" the same way. That is precisely what the file own composed-not-asserted discipline at
+battery.js:61 to :64 exists to refuse, turned on the file by its own new seam. Not reachable from a
+shipped caller, since neither CLI entry point constructs a deps object, so it is a Major.
+
+THE SECURITY LENS ANSWERED ITS THREE QUESTIONS AND TWO ANSWERS ARE WORTH KEEPING. The shipped path
+is byte-identical in behaviour: both entry points call main(process.argv.slice(2)) with no deps, so
+homeDir is undefined and liveHomeTree falls back exactly as before. And no argv route reaches the
+new key: both parseArgs reject unrecognised dash tokens and neither entry point builds a deps
+object, so homeDir is reachable only by an in-process caller, of which the tree has exactly one.
+
+THE BLIND LENS returned APPROVED_WITH_CONCERNS and no reachable wrong-behaviour path, having read
+the three files plus nine neighbours in full. Its seven minors are carried into round 13: a
+module-load-time TODAY constant that disagrees with write-time timestamps across UTC midnight and
+would redden three cases for the clock rather than the code; a report sentence that pairs a gap
+count with exit 0; a temp state root minted before the screen that answers about it, orphaned on a
+refusal that never names it; a cut sentence claiming a field is held whole at exactly FIELD_CAP with
+a trimmed lone surrogate; an undestroyed readline input stream on the repeatedly-driven seam; an
+expectedSkips subtraction that absorbs a shortfall silently; and the comment-blind argument scanner
+the security lens also found.
+
+ROUND 13 IS THE FIX, dispatched to an opus implementer rather than the section sonnet tier, because
+the delta is on the containment screen own checks at the ninth instance of a class that has defeated
+eight closures. Pre-fix byte copies of all four files are at .kit/scratch/round12-pre/, taken before
+any mutation, so a red probe can be restored by diff rather than by retyping.
+
+GATE: still owed and unchanged from Interim board 8 2651 / 2644 / 1 / 6, exit 1. The box did not
+reach this session: KIT: Skills Worker released at 06:00:41Z and AI-OS: Worker claimed it seven
+seconds later, re-claiming at 06:10:04Z for 600 seconds, with nine live engine processes on the
+process list corroborating. Occupancy was read from the process list rather than the claim file.
+
+A PEER FACT for the close-out, reported by KIT: Skills Worker and unverified from here: its
+docs/architecture.md edits are now committed and pushed to batch/skill-fixes at 3380bf2, touching
+the contention-lane schedule and a seat-duty paragraph, so this session uncommitted edit to that
+file will meet it at a merge rather than at a commit. That was communicated rather than raced.
+Its gate came back 2563 / 2558 / 1 / 4, exit 1, whose single red is the same box-permanent
+memory-session path-length failure this project baseline carries. The counts are not comparable
+across the two trees; the identity of the one permanent red is what transfers.
+
+kaizen/notes-SCOTT-CLAUDE.md remains a peer uncommitted work and is excluded from every commit this
+session makes, as it has been since Interim board 7.
+
+Next action: round 13 fixes instance 9 and the four check holes, adds an out-of-process instrument
+and a spawn-site predicate, then the whole gate against 2651 / 2644 / 1 / 6, then Chapter 7, flip the
+plan to Complete, move section 8 substance to docs/backlog.md, archive via curating-docs, commit and
+push.
