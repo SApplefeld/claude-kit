@@ -97,6 +97,18 @@ names the class rather than the instance that produced it.
    adoption inherited it through brief text rather than from the block that is supposed
    to deliver it.
 
+6. **A control for a predicate over a class is built from the class's generating rule, never
+   from a list of spellings.** A name list samples a class and cannot cover it: the member
+   that breaks the predicate is by definition the one no name in the list suggested, so a
+   list-built control returns the same green whether the predicate is sound or blind to the
+   member nobody thought to write down. Where the class has a generating rule, the control
+   enumerates that rule's boundary cases, chooses each instance for its shape rather than its
+   spelling, and states the rule in the case's own text, so a later reader can tell coverage
+   from sampling. Adopted 2026-08-31 after the live-store screen was found accepting a path
+   inside the live tree for the third time in one section, on three different defects, each
+   time with a control drawn from an enumerated list of spellings and each time reported as
+   closed by the round that added more spellings to the list.
+
 No entry 4 exists in this plan. No rule numbered 4 appears in any surviving artifact of
 it, so the gap is a numbering gap rather than a lost rule, and entry 5 keeps the number
 it was cited under so both existing citations resolve.
@@ -670,3 +682,91 @@ Next action: await fix round 4, verify the four Majors at the code, re-run the w
 a fresh claim once the peer's hold clears, then the section 7 live acceptance, Chapter 7, flip
 the plan to Complete, move section 8's substance to `docs/backlog.md`, archive via
 curating-docs, commit and push.
+
+### Interim board 5 - 2026-08-31
+Section 7 is in its sixth review round and has not closed. Two further round adjudications
+have passed since Interim board 4 with no section closing, which is the closure-drought floor
+on its own, and the compaction gate raised its own signal alongside.
+
+The entry's real content is that one defect class has now been found open four times on one
+module, and that this session is the party that kept failing to close it rather than any
+implementer. The class: the live-store screen accepts a path that is INSIDE the live
+`~/.claude` tree while printing the sentence saying it screened the path and found it outside.
+Instance 1 was the screen's scope, narrowed to `~/.claude/kit-sidecar`. Instance 2 was the
+one-sided realpath, resolving the candidate and comparing it against the live tree's
+unresolved spelling. Instance 3, found in round 5, was `startsWith('..')` reading a genuine
+child named `..data` as an escape, since `path.relative` returns `..data` for it. Instance 4,
+found in round 6 and reproduced here, is a UNC spelling: `\localhost\D$\...\.claude\x` and
+`D:\...\.claude\x` are the same directory on disk, and the screen refuses the second and
+accepts the first, because `path.relative` returns an absolute path when the two roots differ
+in kind and `isAbsolute(rel)` then short-circuits every one of the four comparisons.
+
+The generator is now named, and it is not the implementer tier. Instance 3's defective
+predicate predates the fable dispatch, which moved it verbatim during an extraction, so a tier
+bump could not have reached it. What generates the class is that every control this screen has
+ever been given was a list of path SPELLINGS: round 2's, round 3's, and round 4's seven-name
+probe list. A name list samples a class and cannot cover it, because the member that breaks the
+predicate is by definition the one no name in the list suggested. That is recorded as Standing
+Brief Amendment 6, adopted at this boundary and binding on every section opened after it.
+
+Round 5's fix, written in the main thread rather than dispatched, closed instance 3 and was
+itself another sample: it fixed the containment test to read the relative path's first segment
+and built its control from three spellings of instance 3's own shape. All three of round 6's
+lenses answered the round's stated question the same way without prompting, that the new
+control is a sample rather than coverage evidence, and the adversarial lens then produced
+instance 4 from outside the sample. Recording that plainly is the point: this session applied
+Amendment 6 to everyone else's controls for three rounds and not to its own.
+
+A second defect of the same shape rides with it, from the blind lens and confirmed here in
+principle: `sidecar/harvest.js` screens `path.resolve(outPath)` and then lstats, writes,
+chmods and reports against the raw `outPath`, so the spelling that is judged is not the
+spelling that is written. And round 4's Major 1 is half-closed: `fieldCuts` records a cut only
+when a field exceeds the 2000-character field cap, so case 5's 1,555-character command, cut to
+1,500 by the judgment prompt, is cut with nothing in the run report saying so, while the
+fixture README asserts that every such cut is named per case. Case 5 is one of the four
+corrected cases whose corrections exist because a cut removed the evidence a verdict turned on,
+which is the same defect one level up for the second time in this section.
+
+Two sweep-table counts are wrong and were confirmed wrong by re-running the table's own
+pattern: the new eighth row records `PRE-FIX` three times in `cases.json` where the recorded
+regex matches it twice (five occurrences exist, three of them lowercase and correctly
+unmatched), and the account-path row undercounts its own file. No real identifier ships on
+either, but this is the column whose miscount hid a real session id in round 4, so a count a
+re-run contradicts is treated as a defect rather than a nit.
+
+The host name `SCOTT-CLAUDE` in cases 1 and 10 was adjudicated rather than reflexively
+replaced. It appears three times, always inside the path `kaizen/notes-SCOTT-CLAUDE.md`, where
+it names a file rather than a network destination, and that path is already tracked, published
+content of this repository, confirmed here by `git ls-files`, with the token appearing in about
+twenty tracked documents. The exposure delta is zero and the rule-compliance delta is not,
+which is why the security lens is right that the decision belongs in `docs/security-model.md`
+rather than only in the fixture README. Recorded as a finding to close at the section's
+freezing step rather than as a disclosure.
+
+Gate: 2643 / 2636 / 1 / 6, exit 1, read from the run's own marker, against this session's
+earlier whole-gate run of 2642 / 2635 / 1 / 6 on the same tree without round 5's fixes: plus 1
+test, plus 1 passing, failures and skips unchanged. The one red is this box's known permanent
+one, confirmed by name in the log rather than by count. Both runs are this session's own, so
+the delta is a real diff rather than a comparison across baselines.
+
+Live dispatches at this boundary: none. Round 6 was three read-only lenses through `Workflow`,
+adversarial, blind and security, all at model `opus` and effort `max`, the no-headroom row of
+the reviewer-effort table, since round 5's delta was written in the main thread and this
+session's model is the writer tier. All three returned; verdicts CHANGES_REQUIRED,
+CHANGES_REQUIRED and BLOCK.
+
+The box was released to the peer seat mid-adjudication. My own claim overran its
+`Expected-seconds` by eleven minutes, because the figure was set to the suite's runtime rather
+than to the whole hold, and the peer asked rather than deleting a claim it did not hold. The
+generalization sent back: `Expected-seconds` bounds the hold, not the process inside it, and a
+holder who overruns rewrites the field rather than leaving a reader to compute a lapsed expiry.
+
+Next action: convene a consult on the screen's design before spending a fifth attempt at it,
+since this is the second failed attempt at one problem by this session and a patch to a string
+comparison is what has failed four times; the framing to test is whether path-string comparison
+is salvageable here at all or whether the screen should compare filesystem identity over the
+candidate's existing ancestor chain, which is spelling-independent by construction. Then the
+non-screen fixes (the unreported prompt-cap cut, the two sweep counts, harvest resolving once,
+the security-model host-name record), then a seventh review round, then the section 7 live
+acceptance, Chapter 7, flip the plan to Complete, move section 8's substance to
+`docs/backlog.md`, archive via curating-docs, commit and push.
