@@ -994,3 +994,132 @@ plan to Complete, move section 8's substance to `docs/backlog.md`, archive via c
 commit and push. The push expects a possible non-fast-forward: a second worker commits to this
 repository from a worktree and touches the same shared documents, and a clean merge there is
 exactly the case that needs the whole gate re-run afterwards plus a read of the merged document.
+### Interim board 8 - 2026-08-31
+Section 7 is through its ninth review round and its tenth fix round is in flight. Two
+corrections to this document lead the entry, because both are this session's own false claims
+and one of them is already pushed to a public remote.
+
+THE FIRST CORRECTION. Interim board 7 states that "the suite's last read of the operator's real
+store is gone". That is FALSE. `test/kit-sidecar-battery.test.js:1801` and `:2742` call
+`battery.screenStateDir(x)` with no home operand, so `sidecar/state-screen.js:63`
+`liveHomeTree(undefined)` falls back to `os.homedir()` and the screen makes three real syscalls
+against the operator's actual `~/.claude`: `fs.realpathSync` at state-screen.js:285 through
+`stringOverlay`, `fs.realpathSync.native` at :118 through `liveViews`, and
+`fs.statSync(..., {bigint:true})` at :92 through `idOf`. The test file's own header asserts the
+same false property in stronger words, "NO CASE HERE READS IT EITHER". Two of round 9's three
+lenses found it independently. It is an Amendment 5 violation and it is in the fix brief.
+
+The generalization is the part worth keeping, and it indicts the controller rather than any
+implementer. The claim was verified by reading the two literal `os.homedir()` call sites and
+finding them harmless. That is a LIST OF CALL SITES, which is Standing Brief Amendment 6's
+exact failure shape one level up from the code it was adopted for: the generating rule is that
+ANY call into the screen without a home operand reads the live tree, and a list of the sites
+that spell `os.homedir()` cannot cover a rule about the sites that do not. The amendment was
+adopted at Interim board 5, by this session, about this module, and then not applied to this
+session's own verification of this module. The fix brief therefore refuses a call-site list as
+the closure report and requires a predicate over the rule, with its scope and its matches.
+
+THE SECOND CORRECTION. Interim board 7's next-action line names the wrong gate baseline. It says
+to report against Interim board 5's 2643 / 2636 / 1 / 6. Interim board 6 records a newer
+whole-gate run by this same session, 2650 / 2643 / 1 / 6, so board 5 was two boards stale at the
+moment board 7 cited it. The gate below is reported against board 6.
+
+GATE: 2651 tests / 2644 pass / 1 fail / 6 skipped, suites 0, exit 1, duration 331.7 s, run by
+this session and read from the run's own exit marker rather than from the wrapper's. Baseline
+Interim board 6's 2650 / 2643 / 1 / 6, exit 1. Delta plus 1 test and plus 1 passing, failures
+and skips unchanged. The one red is named rather than counted: `test/memory-session.test.js:854`,
+this box's known permanent path-length red, whose assertion is about a pinned memory-store
+directory name and which touches no sidecar module. The box was claimed by exclusive create at
+03:56Z and released by a session-scoped delete after the run. The build stamp was checked before
+the gate rather than after it: `plugins/claude-kit/.claude-plugin/build-info.json` at 16:16
+postdates the newest file under `plugins/claude-kit/hooks/` at 15:31, so no rebuild was owed and
+the hook canary compares against a current stamp.
+
+THE PEER'S CLAIM, since board 7 recorded the wait. The foreign hold on the machine's one heavy
+slot released at 03:56Z, ten minutes inside its own 1800-second estimate. It was polled to
+release rather than computed from the estimate, which is the correct reading given that this
+plan has already recorded four malformed `Started:` values from that seat.
+
+SECTION 7 ACCEPTANCE IS MET, on both halves, against the live endpoint rather than a mock, and
+run from fixture state throughout per Standing Brief Amendment 5: the endpoint config was copied
+to a fixture path and `--config` pointed at the copy, the transcript was copied to a fixture path
+and harvested from the copy, and every state root was a temp directory removed afterward.
+  Frozen batteries: judgment 13 of 13 correct on substance against a floor of 12 of 13, which is
+  the audition's own rate carried to this fixture's size, so the battery beats what it was frozen
+  at rather than merely reproducing it. Recognition: 0 recall misses of the measured situations
+  against a floor of 0, 0 extras against a ceiling of 2, and 3 of 3 clean negatives. OVERALL PASS,
+  read from the run's own exit marker of 0. The endpoint is identified in the run's output by an
+  eight-hex fingerprint and its address is never printed.
+  Fresh harvest end to end: a recent session transcript of 4163 lines yielded 328 Bash pairs, of
+  which the command chose 20 (10 of 94 failure-shaped, 10 of 234 clean). Those 20 triples were
+  written as v1 spool lines per `sidecar/CONTRACT.md` into a fixture state root and drained by the
+  REAL daemon with `--once`, against an empty fixture memory root. Result: 20 of 20 judged, 0 gap
+  records, in 24.8 s, which is 1.24 s per call and sits inside the 0.7 to 1.5 s band this plan's
+  Evidence section records for a schema-constrained verdict. Verdicts 13 achieved, 4 failed, 3
+  diverged. The run also re-exercised section 4's acceptance clause that a project with no memory
+  index produces no recognition calls: the daemon reported "no memory index 20".
+
+WHY ROUND 9 RAN AT ALL, since round 8 reported itself done. The round-8 delta moved a hard-link
+refusal out of one producer and into a shared write-target guard, which reaches the surfaces the
+security-reviewer trigger names, and the fix-delta rule makes a round owed rather than optional
+there. It found three Majors, so the rule earned itself: a section that had closed on round 8's
+own report would have shipped all three.
+
+ROUND 9 FINDINGS, three lenses at model opus and effort max through `Workflow`, the no-headroom
+row of the reviewer-effort table since this delta's writer tier is opus. Verdicts
+CHANGES_REQUIRED, Majors without an overall verdict, and CONCERNS. The tree was captured before
+dispatch and again at return and was byte-identical, and the index was empty at both readings, so
+the read-only contract held. Three Majors and one near-Major, all four of one class, a shipped
+artifact asserting a property its own code does not have:
+  1. The live-store read above.
+  2. `sidecar/text.js`'s comment claims five producers cut text at a cap and that four share one
+     spelling. False, and it carries a real divergence rather than only a wrong count:
+     `battery.js:1356` renders a gap note through `trimLoneSurrogate` while `rollup.js:356`
+     renders THE SAME record without it, so a cut landing between surrogate halves prints clean
+     from one surface and prints an orphan half from the other.
+  3. Security Major. `guardWriteTarget`'s own comment says it "lives here, at the boundary both
+     writers share", and three producers on that boundary do not reach it: `appendJsonLine`,
+     `saveState`'s temp path, and `inbox.writeItem`, which carries a private weaker variant that
+     treats a failed lstat as absent rather than refused, the opposite of the shared guard's
+     posture. The predictable fixed names under a caller-supplied state root are the plantable
+     part. Its ceiling is stated rather than inflated: the security model declares a
+     single-principal machine, so this is the accident class the tree's other link gates exist
+     for and not a containment boundary against a deliberate same-user actor.
+  4. `sidecar/logs.js`'s `ensureDir` header says the guarded root "is deliberately NOT
+     lstat-refused itself"; line 129 lstat-refuses it. Fail-closed, so the cost is a reader
+     trusting a guarantee the code does not give.
+Fourteen Minors ride with them, all in scope and all in the fix brief. Two are worth naming here
+because they are public-surface rather than correctness: literal bidirectional-override code
+points typed into the test file, which forges flag as a trojan-source hazard and which the same
+case can prove with inert escapes; and a bare operator account name in a frozen fixture, which is
+a missing record rather than a disclosure since the name is already in many tracked files.
+
+TWO RULINGS ADOPTED AT THIS BOUNDARY, both recorded because a later round would otherwise
+re-litigate them. The frozen fixtures carry the operator's absolute checkout path in captured
+command text, and the ruling is NOT to rewrite it: these fixtures' whole value is that their
+expected verdicts were hand-adjudicated against text nobody edited, so laundering a path out of
+captured text falsifies the provenance claim the file makes about itself. The class goes into the
+battery README's sweep table with a structural pattern and an inspected-and-kept reason, in the
+shape the hostname row already uses. And on the `ensureDir` contradiction, the fail-closed
+refusal is kept and the comment corrected, rather than loosening a guard to serve a redirected
+profile nobody on this fleet has, in a section that has spent nine rounds on that class.
+
+Live dispatches at this boundary: one, the round-10 fix implementer at tier opus, carrying all
+four Majors, the fourteen Minors, both rulings above, the seven Standing Brief Amendments, the
+claim protocol with this session's id substituted, and a report contract that refuses a call-site
+list as the closure evidence for the first Major. The two `docs/` edits are the main thread's and
+are already made, since the docs-write-guard denies a subagent that write: the retention sentence
+in `docs/security-model.md`, which claimed the daemon's fourteen-day sweep never reaches a
+battery state root when `runOnce` calls `runRetention` on startup over exactly that root, and two
+sentences in `docs/architecture.md`, one stating a default as unconditional and one naming the
+endpoint with a role word that reads as either side of the machine boundary, which is Standing
+Brief Amendment 3's own failure shape.
+
+Next action: adjudicate the round-10 report at the code rather than from the report, re-run the
+whole gate under a fresh claim and report it against the 2651 / 2644 / 1 / 6 above, then Chapter
+7, flip the plan to Complete, move section 8's substance to `docs/backlog.md`, archive via
+curating-docs, and commit and push. Section 8 is a designed deferral, so Complete at section 7 is
+the plan reaching its terminal state rather than a section being dropped. The push expects a
+possible non-fast-forward: a second worker commits to this repository from a worktree and touches
+the same shared documents, and a clean merge there is exactly the case that needs the whole gate
+re-run afterwards plus a read of the merged document.
