@@ -8,7 +8,7 @@ Session model: any executor session in the kit repo; two sections, tiers per sec
 
 ## Dispatch Authorization
 
-Authorized 2026-08-31 by the operator, first-hand on the allowlisted relay thread: review and refine the coordinator-relayed material on gating definitions and the blind-reader litmus, and build out this plan to be given to a worker to implement. Queue position and the executing seat are not yet ruled; the operator assigns both. Per the trace rule, this section is a warrant only for a citing session that did not author it.
+Authorized 2026-08-31 by the operator, first-hand on the allowlisted relay thread: review and refine the coordinator-relayed material on gating definitions and the blind-reader litmus, and build out this plan to be given to a worker to implement. Ruled the same day on the same thread, approving this seat's recommendation: sixth and last in the main armed queue, behind capacity-gate, run by the queue's bound worker; the goal state carries the arming. Per the trace rule, this section is a warrant only for a citing session that did not author it.
 
 ## Goal
 
