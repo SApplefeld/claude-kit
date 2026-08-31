@@ -138,6 +138,15 @@ test('the standing-dispatch bullet is present once in each copy, identical, and 
 // always-loaded layer would no longer state. A symmetric deletion would
 // leave those three pointing at nothing while the suite stayed green, so the
 // sentence's presence inside the chapter-close bullet is pinned here.
+// The Gate duty is stated in the doctrine and discharged in the Chapter
+// template, two surfaces that were pinned by two independently hand-copied
+// literals linked by no shared phrase, so a reword of either left them stating
+// different requirements with both assertions green. This is the one phrase
+// both surfaces must word alike, and both pins below read it from here: the
+// doctrine's requirement is this string in its own sentence, and the template
+// asks the writer for the same thing in the same words.
+const exitCodeDuty = 'the exit code read from the run itself';
+
 test('the chapter-close bullet names the compaction checkpoint in each copy', () => {
     const lead = '- **Close each section with a Chapter.**';
     for (const [label, body] of [['skill body', skillBody()], ['doctrine mirror', mirrorBody()]]) {
@@ -151,7 +160,70 @@ test('the chapter-close bullet names the compaction checkpoint in each copy', ()
             'the chapter-close bullet in the ' + label + ' must name the command, '
             + 'because its audience is a session that never loaded executing-work '
             + 'and so cannot follow a pointer to it');
+        assert.ok(lines[0].includes('the lane that gated it with its counts and '
+            + exitCodeDuty),
+            'the chapter-close bullet in the ' + label + ' must require the '
+            + 'Chapter to name the lane that gated the section. Section close '
+            + 'runs the targeted lane, so a Chapter that reports a bare green '
+            + 'says nothing about how much of the tree that green covered, '
+            + 'which is what a later collateral-red diagnosis reads');
     }
+});
+
+// The duty above is stated in the doctrine and discharged in the Chapter
+// template, which is the field list an executing session actually fills. A
+// template missing the field yields Chapters that satisfy the template and
+// violate the doctrine, and nothing else in this file reads the template. The
+// match is anchored to a line-leading field name so a passing mention of the
+// word gate elsewhere in the skill cannot stand in for the template slot.
+test('the Chapter template carries the gate field the doctrine requires', () => {
+    const executingWork = fs.readFileSync(path.join(__dirname, '..', 'plugins',
+        'claude-kit', 'skills', 'executing-work', 'SKILL.md'), 'utf8');
+    const field = executingWork.split(/\r?\n/).find((l) => l.startsWith('Gate: <'));
+    assert.ok(field, 'the Chapter template in executing-work no longer carries '
+        + 'a Gate field, so a Chapter written from it records no lane and the '
+        + 'chapter-close bullet\'s requirement has no carrier at the point of '
+        + 'writing');
+    assert.ok(field.includes('the lane or lanes that ran'),
+        'the Chapter template\'s Gate field no longer admits more than one '
+        + 'lane, while the contention lane runs beside the targeted one at a '
+        + 'section close whose delta touched machine-shared state, so a '
+        + 'Chapter filled from it reports one of the two runs and reads as '
+        + 'though the other never happened');
+    assert.ok(field.includes(exitCodeDuty),
+        'the Chapter template\'s Gate field no longer asks for ' + exitCodeDuty
+        + ', the phrase the doctrine\'s chapter-close bullet states the duty '
+        + 'in. The two surfaces are pinned on this one shared string so a '
+        + 'reword of either reddens rather than leaving them asking for '
+        + 'different things');
+    assert.ok(field.includes('the code itself rather than a statement that it '
+        + 'was read'),
+        'the Chapter template\'s Gate field asks for an attestation rather '
+        + 'than a value, so a Chapter filled from it records no exit code and '
+        + 'the doctrine\'s requirement goes undischarged by its only carrier');
+});
+
+// The close gate's place in the section loop is a cross-step invariant inside
+// one file, and nothing else pins it. Step 3 dispatches the reviewers to
+// overlap step 2's own run, step 4 lands their fixes and runs the close gate,
+// and step 4's fold predicate spends that gate ("the gate you are about to run
+// covers it"). A rewrite that moves the gate back beside the review round
+// reads fine in isolation while leaving every review fix and every folded
+// surface outside the only gate the section runs, and the fold predicate with
+// no gate left that could satisfy it.
+test('executing-work runs the section close gate after the review fixes', () => {
+    const executingWork = fs.readFileSync(path.join(__dirname, '..', 'plugins',
+        'claude-kit', 'skills', 'executing-work', 'SKILL.md'), 'utf8');
+    assert.ok(executingWork.includes('**This step runs the section\'s close '
+        + 'gate, once the fixes and the folds are in.**'),
+        'executing-work step 4 no longer names itself as the step that runs '
+        + 'the section\'s close gate, so the loop schedules that gate nowhere '
+        + 'and the section closes on step 2\'s pre-review run');
+    assert.ok(executingWork.includes('That run is what the fold predicate '
+        + 'below means by the gate you are about to run'),
+        'step 4 no longer ties its close gate to the fold predicate that '
+        + 'spends it, so "the gate you are about to run" has no antecedent in '
+        + 'the step that states it');
 });
 
 // The two liveness bullets defer their whole operative content to
@@ -228,9 +300,9 @@ test('the style skills the outline bullet routes to still carry a recipe', () =>
 //
 // The gate bullet is the near end for the lane rule: the doctrine names the
 // moments (the targeted lane after a fix and at section close, the whole gate
-// at finishing, before the plan's handoff, and at an install-surface push) and
-// carries none of the lane mechanics itself, so the pointer is the only path
-// from the always-loaded layer to them.
+// at finishing before the plan's handoff, at an install-surface push, and
+// after a merge) and carries none of the lane mechanics itself, so the pointer
+// is the only path from the always-loaded layer to them.
 test('the gate bullet routes its lanes to the testing-discipline skill in each copy', () => {
     const lead = '- **After each step, run the lane the moment calls for';
     const inSkill = skillBody().split('\n').filter((l) => l.startsWith(lead));
@@ -261,15 +333,24 @@ test('the gate bullet routes its lanes to the testing-discipline skill in each c
             'name section close as the contention lane\'s own moment, run '
             + 'there whenever the section\'s delta touched machine-shared '
             + 'state'],
-        [/at finishing/, 'name finishing as a whole-gate moment'],
+        [/at finishing/, 'name finishing, which is one half of the whole-gate '
+            + 'moment the handoff phrase below names: this half says where '
+            + 'that gate runs'],
         [/before the plan's handoff/,
-            'name the plan\'s handoff as a whole-gate moment, the one moment '
-            + 'that reads the whole tree on every plan whatever its trunk'],
+            'name the plan\'s handoff, the other half of that same moment, '
+            + 'which says what the gate is for. Finishing and the handoff are '
+            + 'one moment rather than two, and it is the one that reads the '
+            + 'whole tree on every plan whatever its trunk'],
         [/before a push/, 'name a push as a whole-gate moment, bounded by the '
             + 'install-surface condition'],
         [/only where that push lands on a trunk consumers install from directly with no CI gating the merge/,
             'state the install-surface condition that bounds the pre-push whole '
             + 'gate, without which every push is priced at the whole gate again'],
+        [/merge takes the whole gate/,
+            'name a merge as a whole-gate moment, since the redness a clean '
+            + 'merge produces sits in files neither parent changed and the '
+            + 'bullet\'s closing default would otherwise price a merge at a '
+            + 'lane derived from its own diff, which cannot read that redness'],
     ]) {
         assert.match(inSkill[0], phrase, 'the gate bullet must ' + why
             + '; the pointer does not carry the moments, so a reader who never '
@@ -1479,11 +1560,17 @@ test('the five Section 3 pointers to testing-discipline are still present', () =
         + 'dropped the resolved-path qualifier a dispatched agent needs since '
         + 'it inherits no skills and cannot follow a bare relative path');
 
-    assert.ok(executingWork.includes('ahead of the slow suites the close gate '
-        + 'runs (timing owned by the operating doctrine\'s gate bullet)'),
+    assert.ok(executingWork.includes('which runs the section\'s close gate '
+        + 'after them, so the gate that closes the section covers what the '
+        + 'round changed (the lanes and their moments are owned by the '
+        + 'operating doctrine\'s gate bullet)'),
         'step 3\'s review dispatch no longer points at the operating '
-        + 'doctrine\'s gate bullet for when the close gate runs, which is the '
-        + 'single owner of that moment since Section 2 amended it');
+        + 'doctrine\'s gate bullet for the lanes, or no longer places the '
+        + 'close gate after the review fixes. Both halves are load-bearing: '
+        + 'the doctrine is the single owner of the moment, and a close gate '
+        + 'running beside the round instead of after it leaves every review '
+        + 'fix and every folded surface outside the only gate the section '
+        + 'runs, which also makes step 4\'s fold predicate unsatisfiable');
 
     assert.ok(brainstormingBody.includes('the behaviors that earn one per the '
         + 'testing-discipline skill\'s litmus '
@@ -1529,8 +1616,8 @@ test('the adversarial reviewer judges test-worthiness by the testing-discipline 
 // visibility. What duplication costs is drift (the box-check pair had exactly
 // that, the skill's copy dropping the running-engine case), so the shared text
 // is pinned here at the phrases that do the work: the targeted lane's
-// definition, the contention lane's schedule, and the schedule's
-// touched-delta condition.
+// definition, the contention lane's schedule, the schedule's touched-delta
+// condition, and the whole-gate moments the three surfaces word alike.
 test('the lane text agrees between the doctrine gate bullet and the testing-discipline skill', () => {
     const testingSkill = fs.readFileSync(path.join(__dirname, '..', 'plugins',
         'claude-kit', 'skills', 'testing-discipline', 'SKILL.md'), 'utf8');
@@ -1548,6 +1635,12 @@ test('the lane text agrees between the doctrine gate bullet and the testing-disc
             'the schedule\'s touched-delta condition'],
         ['before a push only where that push lands on a trunk consumers install from directly with no CI gating the merge',
             'the install-surface condition that bounds the pre-push whole gate'],
+        ['before the plan\'s handoff',
+            'the handoff moment, which is finishing\'s own gate rather than a '
+            + 'second one after it'],
+        ['merge takes the whole gate',
+            'the post-merge moment, the one whole-gate moment no lane derived '
+            + 'from a diff can stand in for'],
     ]) {
         for (const [label, body] of copies) {
             assert.ok(body.includes(phrase), label + ' no longer carries ' + what
@@ -1556,15 +1649,15 @@ test('the lane text agrees between the doctrine gate bullet and the testing-disc
                 + 'same thing');
         }
     }
-    // The handoff moment is the one whole-gate moment the two surfaces state in
-    // their own words rather than in shared text, so it takes a scoped pin
-    // instead of a place in the loop above. Without it the skill that owns lane
-    // mechanics can drop the moment the whole cadence rests on while every
-    // shared-phrase pin above stays green.
-    assert.ok(testingSkill.includes('before the plan hands off'),
-        'the testing-discipline skill no longer names the plan\'s handoff as a '
-        + 'whole-gate moment, leaving the owning contract for lane mechanics '
-        + 'silent on the one moment that reads the whole tree');
+    // Finishing and the handoff are one moment, not two, and the skill that
+    // owns lane mechanics is where that reading is stated rather than left to a
+    // reader. Without the sentence a reader takes "at finishing, before the
+    // plan's handoff" as two moments and looks for a second gate that no
+    // procedure runs.
+    assert.match(testingSkill, /Finishing and the handoff are one moment/,
+        'the testing-discipline skill no longer states that finishing and the '
+        + 'handoff are one moment, so the moments list reads as naming a gate '
+        + 'between finishing and the handoff that nothing implements');
 });
 
 // Section 7's own Tests: line called for no new test, written before the
