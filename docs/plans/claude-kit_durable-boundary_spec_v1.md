@@ -35,7 +35,7 @@ All measured 2026-08-30 on SCOTT-CLAUDE; the full graded thread is kaizen inbox 
 
 ## Approach
 
-No new state files and no new syntax. Section 1 widens who may run the existing boundary verb and makes it stamp the registry record itself. Section 2 gives the existing nudge a floor and a voice for held bystander sessions. Section 3 lands the prose and document sweep. The gate's verdict logic is untouched throughout.
+No new syntax anywhere, and one new state file, which section 2 turned out to need rather than choose: the gate rebuilds its state from exactly three keys on every decision, so a per-session throttle stamp parked there is erased by the next gate write, and section 2's own text requires that throttle either way. That file is `.kit/compact-hold-nudge.json`, one entry per held session, and amending this line rather than leaving it to contradict the tree is recorded as approval drift in section 2's Chapter. Section 1 widens who may run the existing boundary verb and makes it stamp the registry record itself. Section 2 gives the existing nudge a floor and a voice for held bystander sessions. Section 3 lands the prose and document sweep. The gate's verdict logic is untouched throughout.
 
 ## Sections of Work
 
@@ -47,7 +47,9 @@ Acceptance: with a registry entry present, `boundary` opens the marker and the e
 
 ### 2. The deferral nudge gains a context floor and a bystander voice. Model: opus
 
-`hooks/compact-deferral-nudge.js`: when the gate is holding offers for a session whose denial reason is the hands-on leg (`deny-interactive`, both `bystander` and `no-goal` shapes), and the episode's journaled consumed figure is at or above the floor, the nudge names the exact command (`node <plugin-root>/hooks/kit-compact-checkpoint.js boundary`, plugin root resolved the way the kit's other nudges resolve it) and the durability question it answers, in one or two lines. Below the floor, the nudge stays silent for those holds. Leashed-run nudging (chapter checkpoints) is unchanged. The floor is `compactNudgeFloor` in `~/.claude/claude-kit.local.json`, read tolerantly; absent or unparseable means the default, 285000. One implementation surprise is named rather than discovered: the gate state holds a single `episode` object, and today's journal shows a second session's denials riding while another session's episode is open, so the implementer resolves from the code whether a bystander hold always owns an episode, and if not, keys the nudge on the hold itself rather than the episode, keeping the interval throttle either way. Tests red-first: above-floor bystander hold nudges with the command text; below-floor hold is silent; leashed behavior unchanged; floor read from the signpost with the default on absence.
+`hooks/compact-deferral-nudge.js`: when the gate is holding offers for a session whose denial reason is the hands-on leg (`deny-interactive`, both `bystander` and `no-goal` shapes), and the episode's journaled consumed figure is at or above the floor, the nudge names the exact command (`node <plugin-root>/hooks/kit-compact-checkpoint.js boundary`, plugin root resolved the way the kit's other nudges resolve it) and the durability question it answers, in one or two lines. Below the floor, the nudge stays silent for those holds. Leashed-run nudging (chapter checkpoints) is unchanged. The floor is `compactNudgeFloor` in `~/.claude/claude-kit.local.json`, read tolerantly; absent or unparseable means the default, 285000. One implementation surprise is named rather than discovered: the gate state holds a single `episode` object, and today's journal shows a second session's denials riding while another session's episode is open, so the implementer resolves from the code whether a bystander hold always owns an episode, and if not, keys the nudge on the hold itself rather than the episode, keeping the interval throttle either way. One bound on the `no-goal` shape is stated here rather than fixed, adopted 2026-08-31 at section 2's review adjudication and recorded as approval drift in that section's Chapter. `gateStateTarget` refuses to create an absent `.kit/` unless a goal is armed, so in a project that has never carried a `.kit/` the gate records no decision, the interactive hold never opens, and the directive never fires for the `no-goal` shape. The repair that would remove that refusal is declined deliberately: it would have the kit create `.kit/` in every unarmed project a held session happens to stand in, which is what the refusal exists to prevent. So the nudge serves the `no-goal` shape only in a project that already carries a `.kit/`, which is every project that has ever armed a goal or run the boundary verb. The bound is invisible to the tests by construction, the fixture creating `.kit/` directly, and that is why it is stated rather than pinned.
+
+Tests red-first: above-floor bystander hold nudges with the command text; below-floor hold is silent; leashed behavior unchanged; floor read from the signpost with the default on absence.
 
 Acceptance: a held bystander session at consumed >= floor receives a nudge naming the boundary command; the same hold below the floor receives none; the leashed chapter-checkpoint nudge is byte-unchanged in its own tests; new tests watched red first; whole gate delta against a recorded baseline.
 
@@ -56,6 +58,18 @@ Acceptance: a held bystander session at consumed >= floor receives a nudge namin
 `docs/architecture.md`'s compaction-gate passage gains the widened boundary path, the `Banked:` stamp, and the nudge floor, in that passage's existing register (state, not journey). `docs/security-model.md` is checked for whether the registry-entry writer amendment touches any stated claim about the coordinator directory's writer rules, and updated where it does, and its marker-session-id passage is verified as already updated by Section 1's changeset; the boundary verb writing a registry line is a new mechanical writer to a single-writer file and is stated as such. The plans index (`docs/plans/README.md`) already carries this plan from its authoring commit; verify rather than re-add. No Chapter or close-out work rides here; this section is the sweep only.
 
 Acceptance: both documents read current against the shipped code (checked by reading the code fresh, not the spec); no stale writer-rule claim about registry entries survives a tree-wide grep for the old three-writer phrasing; suite green at the recorded baseline.
+
+### 4. The role-boundary marker is scoped per session, so two seats cannot spend each other's declarations. Model: opus
+
+Appended 2026-08-31 during section 2's review adjudication, and recorded there and in section 2's Chapter as the approval drift it is. Section 2's review raised this independently from two lenses: the role-boundary marker is one file per project directory (`roleBoundaryPath(cwd)`, `kit-compact-lib.js`), scoped only by an inner `session` field and written by an unconditional rename, so a second seat's declaration silently unmakes the first's. The first seat is then denied at its next offer, its own hold stamp keeps its nudge quiet for the throttle interval, and it rides to the safety valve believing it declared. The security lens checked the same code and correctly found no breach, `markerMatches` refusing a foreign session so no seat can spend another's compaction; the defect is the destruction of a declaration rather than a cross-session release, and both readings stand.
+
+The collision predates section 2 and is not that section's to fix: `seat-stop.js` renames the same file at every turn end for every registered seat with a fresh status and a clean tree, which is a far higher overwrite rate than the declaration path adds. Section 2 is what makes it reachable by prompting every held seat to declare, which is why the repair is appended here rather than left as a found surface.
+
+The change: the marker becomes one file per session (`compact-role-boundary.<session>.json`, the session component composed through the same charset gate the other session-id path joins take), so a declaration cannot be overwritten by a peer at all. Every reader and writer moves together, `kit-compact-lib.js`'s path resolver and marker read/write pair, the gate's honor leg, `kit-compact-checkpoint.js`'s `boundary`, `--cancel` and `status` verbs, and `seat-stop.js`'s turn-end write. Markers already on disk under the old single name are read once and then ignored rather than migrated, since a marker's own life is bounded by the 4-hour age-out and by the moment rule, so the transition costs at most one lapsed declaration per seat. The scratch-path class sweep in `test/kit-compact-gate.test.js` gains the new resolver so the derived control keeps covering it. With the collision gone, the stderr note section 2 added to `cmdBoundary` has nothing left to report and is removed rather than corrected, which also retires the two review Minors against it (its firing for an already-dead incumbent, and its silence for an unreadable one).
+
+Tests red-first: two seats declaring in sequence both keep their own markers, watched red against the current single-file shape; the gate honors each seat's own marker and refuses the other's; `--cancel` removes only the invoking session's file; a marker at the legacy single name is ignored rather than honored for a session whose own file is absent; the scratch-path class sweep and its control both name the new resolver.
+
+Acceptance: two sessions declaring on one checkout each retain a live marker and each lands its own next offer at its own boundary; no reader or writer of the marker resolves the legacy single path except the ignore leg; the stderr note is gone from `cmdBoundary`; the class sweep's control is derived rather than hand-kept; new tests watched red first; whole gate delta reported against a recorded baseline.
 
 ## Out of Scope
 
@@ -277,6 +291,124 @@ coordinator writer-class enumeration, and it should also add Banked: to the regi
 Commit model in effect: Commit-and-Push. This entry and the privacy redactions commit alone.
 Section 1's code stays unstaged until its whole gate has run: under this model the section commit
 goes straight to main, and that gate is the last piece of the section's acceptance outstanding.
+### Interim board 3 - 2026-08-31
+
+IN-FLIGHT SECTION AND ITS STAGE. Section 2 is implemented (by a session that has since died), green
+on the targeted lane, and its review round is adjudicated. It CANNOT close yet: the round returned
+four Majors, of which two are fixed in this section, one is stated as a known bound, and one becomes
+a new section. Section 3 is not started. This session (KIT: Worker f9ce7952) took the seat at 17:27Z
+and the operator re-armed the queue onto it at 17:31Z; the predecessor left section 2 in the
+worktree with no record of it anywhere, so this entry is the first record that section 2 was begun.
+
+RECOVERY THIS SESSION PERFORMED BEFORE ANY REVIEW, because the tree was not where the plan said.
+The checkout sat at 384298f, ahead 1 and behind 18 of origin/main, with the two histories reading as
+parted at session start. The ahead-1 was a DUPLICATE of origin's own SIDECAR commit, verified
+byte-identical on both of its files, so the parting was a double-commit rather than divergent work.
+The operator directed a pull. Section 2's uncommitted work was preserved across it by byte copies
+plus a captured patch under the gitignored scratch path, the three colliding files restored to HEAD
+before the merge, and the two section-2 prose lines transplanted back afterwards, each onto a line
+first confirmed untouched by origin. Merge 4a6ab09, clean, no conflicts.
+
+RED-FIRST WAS PROVEN RETROACTIVELY RATHER THAN ASSUMED. No record said section 2's tests were
+watched red, and a green written by a dead session proves nothing on its own. With the three hook
+files reverted to HEAD and the new tests left in place, 18 of 66 failed; implementation restored
+from pre-probe byte copies, restore verified by cmp on all three files and by a porcelain diff
+against the pre-probe capture. Both were identical.
+
+LIVE DISPATCHES AND WHAT EACH WAS ASKED. None running. Closed this stretch: one review round of
+three read-only reviewers via the Workflow route at model opus and effort max, which the Agent tool
+cannot set (adversarial, blind, security). All three resolved to claude-opus-5 read from the run
+record, so no substitution and no compensation notch is owed. Workflow parallelism caps at two on
+this host, so the security reviewer started only as the first finished; expected behaviour rather
+than a never-started dispatch, and the first-turn reading was taken on all three (assistant lines
+53/52/50, synthetic 0).
+
+THE ROUND'S FINDINGS AND THEIR ADJUDICATION.
+
+Major, marker collision, raised INDEPENDENTLY by adversarial and blind from different angles and
+cleared by security on a different question. The role-boundary marker is one file per project,
+scoped by an inner session field and renamed unconditionally, while this section broadcasts the
+declaration directive to every held seat: seat B's declaration silently unmakes seat A's, and the
+new stderr note reaches only the overwriter. Security checked the same code and correctly found no
+breach, because markerMatches refuses a foreign session, so B cannot spend A's compaction; the
+defect is destruction of A's declaration, not cross-session release. Both readings stand. NOT
+section 2's to fix: seat-stop.js already renames that same file at every turn end for every
+registered seat, so the collision predates this section and runs at a far higher rate than anything
+the section adds. The fold predicate fails, the fix being a file-naming contract across five files
+plus the migration of markers already on disk, so it becomes section 4, appended this boundary.
+
+Major, the no-goal half is bootstrap-unreachable, ADOPTED AS A STATED BOUND rather than fixed.
+gateStateTarget refuses an absent .kit/ unless a goal is armed, so in a project that has never had a
+.kit/ the gate writes no decision, the hold never opens, and the directive never fires for the
+no-goal shape the section names. The reviewer offered two repairs and the cheaper-looking one is
+refused deliberately: letting the interactive leg create .kit/ would have the kit litter that
+directory into every unarmed project a held session happens to stand in, which is precisely what
+that refusal exists to prevent. The bound is stated in the section text instead. The test fixture
+masked it by creating .kit/ directly, which is recorded here as the reason no test caught it.
+
+Major, guard 5H keys on a single shared slot, FIXED IN THIS SECTION. state.lastDecision is one slot
+per project that every gate process overwrites for every verdict, so on the shared checkout this
+plan exists for, a leashed peer's decisions displace the bystander's own and the directive is
+refused for a reason unrelated to its hold. The spec's own words ask for the nudge to be keyed on
+the hold itself, so this is a miss against the section's own text rather than a reviewer preference.
+
+Major, the spec was self-amended mid-run with its approval record missing, RAISED TO THE OPERATOR.
+The predecessor rewrote the approved Approach line to license .kit/compact-hold-nudge.json, with the
+justification forward-referencing a section 2 Chapter that did not exist. The engineering case
+checks out and both the adversarial and security reviewers independently confirmed it: nextGateState
+rebuilds from exactly three keys, so a throttle stamp parked in the gate state is erased by the next
+gate write. The drift is real regardless and is named here, in the Chapter, and in the close-out.
+
+Minors fixed in this section: the replaced note firing against an already-dead incumbent marker and
+going silent for an unreadable one; the inverted rationale for the floor-read ordering; the
+NUDGE_EVENTS comment claiming a journal reader that does not exist; the security-model sentence
+stating an eviction bound the code does not hold unconditionally; the fixture leak on the
+storeHomeFixture created outside its try; the class-sweep control still a hand-kept list missing
+holdNudgePath; and the new hold-stamp read taking lstat-then-open where the shared bounded reader
+settles the kind on the descriptor, which is the standing hostile-boundary reuse rule.
+
+Minors considered and REJECTED, with the reason. The gateText asymmetric-sanitize lead (blind, low
+confidence) is unreachable: guard 5H establishes sameSessionId(gateText(id), id) before the stamp is
+ever read and gateText is idempotent, so an id that would break the match never reaches that path.
+That is security's own reasoning, checked here against the guard rather than taken from the report.
+
+Minors ROUTED rather than fixed here: the stale doctor.ps1 enumeration of .kit/ files carrying
+session ids goes to section 3's sweep, which is where that file already belongs; and the unexplained
+agent_id fixture substitution, whose sweep is incomplete against an archived plan, is carried to the
+section 2 fix round for either completion with its predicate and scope stated or reversion.
+
+CURRENT GATE BASELINE. Targeted lane over the section's files plus the whole-tree pins whose
+subjects they are (compact-deferral-nudge, kit-compact-gate, chapter-boundary-nudge, seat-stop,
+hook-canary, doctrine-parity): 463 tests / 463 passing / 0 failing / 0 skipped, exit 0, read from
+the run's own exit marker rather than from the completion notification, which reports the wrapper.
+The whole gate is OWED at the section close and has not run in this session; Chapter 1 recorded
+2695 / 2688 / 1 / 6 against the 2677 / 2670 / 1 / 6 baseline from commit 9d6a800, and this session
+has added a merge of 18 commits since, so that figure is stale by a merge and is carried as
+superseded rather than as a baseline. A merge takes the whole gate on its own account, which is a
+second reason the close owes one.
+
+BOX, NAMED RATHER THAN ASSUMED AWAY. The machine heavy-process claim is held by AI-OS: Worker,
+started 14:40:00Z for 10800 seconds, so its declared bound expired at 17:40:00Z and the claim was
+still on disk at 17:47Z, past its own declaration. The release is the coordinator's act and not this
+session's, so this session waited ten minutes on it, then proceeded under NAMED CONTENTION without
+writing the claim file, which is what the protocol permits. A process poll at that point showed no
+dotnet, testhost, vstest or MSBuild at all and 14 node processes, so the slot was held by a
+declaration rather than by live work.
+
+A FOREIGN UNCOMMITTED FILE IS IN THIS TREE AND IS NOT THIS SESSION'S TO COMMIT.
+kaizen/notes-SCOTT-CLAUDE.md carries six appended notes written by the live coordinator seat, on the
+registry prune name-collision it adjudicated this afternoon. It is named and left; no commit of this
+session carries that path.
+
+NEXT ACTION PER SECTION. Section 2: one implementer fix round over the adjudicated fixes above, then
+the whole gate under a fresh baseline, then Chapter 2 and the commit. Section 3: not started, and it
+now inherits the doctor.ps1 enumeration item above on top of its existing carry-forwards. Section 4
+(appended this boundary): not started, and it is the marker-collision repair.
+
+Commit model in effect: Commit-and-Push. This entry commits alone, on the precedent Interim boards 1
+and 2 set in this plan for a doc-only boundary entry; the section 2 code stays unstaged and
+uncommitted until its whole gate has run, since under this model the section commit goes straight to
+main.
 ### Chapter 1 - 2026-08-31
 Completed: 1. The boundary verb serves a registered seat and stamps the record itself
 Implemented By: implementer-opus (initial build), the same agent continued for one fold, then
