@@ -1166,14 +1166,54 @@ test('the daemon deletes expired spool day files on startup and forgets their of
 // never created, so nothing here has anything to clean up.
 const NO_STORE_ROOT = path.join(os.tmpdir(), 'kit-sidecar-absent-store');
 
-// The memory root is injected unless the case named one itself, so a case
-// cannot reach the live store by forgetting it.
+// The memory root is injected unless the case named one itself. This guards
+// exactly one default of the three the daemon resolves: what a case cannot do
+// by forgetting it is reach the live memory store through --memory-root. The
+// state root and the endpoint config defaults are the fixture home's to pin:
+// both fall back to os.homedir(), so they are covered by every CLI child below
+// running with HOME and USERPROFILE aimed at cliHome() rather than by this
+// helper.
 function withMemoryRoot(args) {
     return args.includes('--memory-root') ? args : [...args, '--memory-root', NO_STORE_ROOT];
 }
 
+// A home directory every CLI child of this suite gets, whether or not its case
+// names one. HOME and USERPROFILE are what os.homedir() reads, and the daemon
+// resolves its default state root and its default endpoint config path from
+// os.homedir() whenever the operand is absent, so a child that inherited this
+// process's environment would resolve the operator's live ~/.claude. Created
+// once and shared, since no case here cares which home its child has, only
+// that it is not the operator's.
+let cliHomePath = null;
+function cliHome() {
+    if (cliHomePath === null) {
+        cliHomePath = makeDir('kit-sidecar-daemon-clihome-');
+        fs.mkdirSync(path.join(cliHomePath, '.claude'), { recursive: true });
+        process.on('exit', () => rmDir(cliHomePath));
+    }
+    return cliHomePath;
+}
+
+// THE ONE PLACE THIS FILE NAMES THE INTERPRETER, and that is the function's
+// purpose rather than a convenience. A child inherits this process's
+// environment unless it is given one, and this process's environment is the
+// operator's, so both spawn shapes below route through this one argument
+// builder, which composes the fixture home unconditionally. The env overrides
+// a caller passes are applied after the fixture home, so a caller cannot drop
+// it; `options` is spread first for the same reason. What makes the guard
+// structural rather than a list of blessed sites is the pin over this file's
+// own source: a spawn site added later without the fixture home cannot be
+// written without naming the interpreter a second time.
+function cliSpawnArgs(args, env, options) {
+    return [process.execPath, [DAEMON_CLI, ...withMemoryRoot(args)], {
+        ...(options !== undefined && options !== null ? options : {}),
+        encoding: 'utf8',
+        env: { ...process.env, HOME: cliHome(), USERPROFILE: cliHome(), ...env }
+    }];
+}
+
 function runCli(args) {
-    return spawnSync(process.execPath, [DAEMON_CLI, ...withMemoryRoot(args)], { encoding: 'utf8' });
+    return spawnSync(...cliSpawnArgs(args));
 }
 
 // The same spawn without blocking this process. A case whose mock endpoint
@@ -1182,7 +1222,7 @@ function runCli(args) {
 // out against a server that is running and cannot answer.
 function runCliAsync(args) {
     return new Promise((resolve) => {
-        const child = spawn(process.execPath, [DAEMON_CLI, ...withMemoryRoot(args)], { encoding: 'utf8' });
+        const child = spawn(...cliSpawnArgs(args));
         let stdout = '';
         let stderr = '';
         child.stdout.on('data', (chunk) => { stdout += chunk; });
@@ -1190,6 +1230,19 @@ function runCliAsync(args) {
         child.on('close', (status) => { resolve({ status, stdout, stderr }); });
     });
 }
+
+test('every child this suite spawns carries the fixture home, by the shape of the file', () => {
+    // The interpreter token is assembled from halves so this test's own source
+    // does not hold a second spelling of what it counts.
+    const token = 'process.' + 'execPath';
+    const source = fs.readFileSync(__filename, 'utf8');
+    assert.strictEqual(source.split(token).length - 1, 1,
+        'the interpreter is named at exactly one site in this file, so a spawn '
+            + 'site added without the fixture home cannot be written without moving it');
+    const helper = source.slice(source.indexOf(token), source.indexOf(token) + 400);
+    assert.match(helper, /HOME: cliHome\(\)/, 'the one spawn site pins HOME to the fixture home');
+    assert.match(helper, /USERPROFILE: cliHome\(\)/, 'and USERPROFILE beside it');
+});
 
 test('with no endpoint config the daemon stands down and creates nothing', (t) => {
     const dir = makeDir('kit-sidecar-cli-');
@@ -3154,6 +3207,46 @@ test('the record name pattern is the one the delivery half applies', () => {
     assert.strictEqual(recordName.isRecordName('-leading-dash'), false);
     assert.strictEqual(new RegExp(found[1].slice(1, -1)).test('-leading-dash'), false);
     assert.strictEqual(recordName.isRecordName('a-good-record'), true);
+});
+
+test('the session slug reduction is the one the delivery half applies', () => {
+    // CONTRACT.md rests delivery on both halves reducing a session id to the
+    // same file name, and each half spells the sanitizer and the cap
+    // independently across the process boundary. The hook's spelling is
+    // extracted from its source (it exports neither) and applied beside the
+    // daemon's own exported reduction, over ids drawn from the rule's
+    // boundaries: the cap edge, each class the sanitizer replaces, and the
+    // punctuation it keeps. The two halves diverge deliberately only on the
+    // degenerate ids that reduce to the shared no-session bucket, where the
+    // daemon files and the hook refuses to deliver; those stay out of the
+    // parity set.
+    const src = fs.readFileSync(CAPTURE_HOOK, 'utf8');
+    const cap = /const SESSION_NAME_CAP = (\d+);/.exec(src);
+    assert.ok(cap !== null, 'the hook still states a session name cap');
+    assert.strictEqual(Number(cap[1]), logs.SESSION_NAME_CAP,
+        'the two halves cut a session id at the same length');
+
+    const sanitizer = /sessionId\.replace\(\/(\[[^/]+\])\/g, '_'\)\.slice\(0, SESSION_NAME_CAP\)/.exec(src);
+    assert.ok(sanitizer !== null, 'the hook still reduces a session id by replace-and-cap');
+    const hookReduce = (id) => id.replace(new RegExp(sanitizer[1], 'g'), '_').slice(0, Number(cap[1]));
+
+    const boundaryIds = [
+        'ses-simple',
+        'a.b_c-d',
+        'ses one:two/three\\four',
+        'e🚀f',
+        'x'.repeat(logs.SESSION_NAME_CAP),
+        'x'.repeat(logs.SESSION_NAME_CAP + 1),
+        'y'.repeat(logs.SESSION_NAME_CAP - 1) + '//'
+    ];
+    for (const id of boundaryIds) {
+        assert.strictEqual(hookReduce(id), logs.sessionSlug(id),
+            `both halves reach the same name from ${JSON.stringify(id)}`);
+    }
+
+    // The control: the extracted reduction really reduces, so this pin cannot
+    // go quiet by matching nothing.
+    assert.strictEqual(hookReduce('a b'), 'a_b');
 });
 
 test('a recognition answer is parsed as names, and anything else is unusable', () => {

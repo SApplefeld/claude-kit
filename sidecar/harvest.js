@@ -154,7 +154,10 @@ const USAGE = [
 // the same UNSAFE_PATTERN, so the two can never screen for different things,
 // but the line structure of what a command printed survives into the stored
 // field. See the header for why a replayable record cannot take the collapse.
-const UNSAFE_RE = new RegExp(UNSAFE_PATTERN, 'g');
+// The `u` flag is load-bearing wherever this pattern is compiled: the class
+// names the tag block with `\u{...}`, which a non-unicode regular expression
+// cannot express and refuses to compile.
+const UNSAFE_RE = new RegExp(UNSAFE_PATTERN, 'gu');
 
 // Stripped, capped and surrogate-safe: the three duties every field crossing
 // out of this transcript reader carries, in that order, matching judge.js's and

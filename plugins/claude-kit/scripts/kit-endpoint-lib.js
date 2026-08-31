@@ -54,9 +54,13 @@ const path = require('path');
 // ------------------------------------------------------------------- text --
 
 // Control characters (C0 and C1, DEL among them), the bidi controls, overrides
-// and isolates, the zero-width set, the invisible operators, and the byte-order
-// mark. Everything else is left exactly as it came, because this is a guard on
-// the channel and not a transliteration of the content.
+// and isolates (the arabic letter mark among them), the zero-width set, the
+// invisible operators, the soft hyphen, the mongolian vowel separator, the
+// hangul fillers, the variation selectors, the interlinear annotation
+// controls, the byte-order mark, and the tag block, which is the invisible
+// channel an instruction can be encoded into whole and recovered from intact.
+// Everything else is left exactly as it came, because this is a guard on the
+// channel and not a transliteration of the content.
 //
 // The class is built from a string of escapes rather than written as a literal
 // character class, so this file stays plain text a line-printing sweep can
@@ -68,15 +72,27 @@ const UNSAFE_PATTERN = [
     '\\u000B-\\u000C',
     '\\u000E-\\u001F',
     '\\u007F-\\u009F',
+    '\\u00AD',
+    '\\u061C',
+    '\\u180E',
     '\\u200B-\\u200F',
     '\\u202A-\\u202E',
     '\\u2060-\\u2064',
     '\\u2066-\\u206F',
+    '\\u3164',
+    '\\uFE00-\\uFE0F',
     '\\uFEFF',
+    '\\uFFA0',
+    '\\uFFF9-\\uFFFB',
+    '\\u{E0000}-\\u{E007F}',
     ']'
 ].join('');
 
-const UNSAFE_RE = new RegExp(UNSAFE_PATTERN, 'g');
+// The `u` flag is load-bearing, not style: the tag block sits in a
+// supplementary plane, and a non-unicode character class cannot express a
+// code point past U+FFFF at all, so without the flag the `\u{...}` range
+// above would not mean what it says.
+const UNSAFE_RE = new RegExp(UNSAFE_PATTERN, 'gu');
 
 // Text safe to print or to record: whitespace collapsed, invisible and
 // terminal-controlling characters removed, ends trimmed. A non-string is an

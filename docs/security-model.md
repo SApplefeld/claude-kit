@@ -174,9 +174,14 @@ same material rather than a summary of it. `~/.claude/kit-sidecar/logs/` holds o
 `verdicts-<sessionId>.jsonl` per observed session and a shared `findings.jsonl`, and each
 record carries the call's stated intent in full, a bounded preview of its command, and the
 model's one-clause reason. The reason is model output derived from whatever a command
-printed, so it is neutralized at the daemon where it is parsed: control characters,
-bidirectional overrides and zero-width characters are stripped before the reason reaches a
-log line or a findings file. The delivery hook applies the same guard again on the way out.
+printed, so it is neutralized at the daemon where it is parsed: control characters, the
+bidirectional controls and overrides, the zero-width and invisible formatting characters
+(the soft hyphen, the variation selectors and the byte-order mark among them), and the
+Unicode tag block, the invisible channel an instruction can be encoded into whole and
+recovered from intact, are all stripped before the reason reaches a log line or a findings
+file. The class lives in a Unicode-flagged pattern, because the tag block sits in a
+supplementary plane a non-Unicode character class cannot express at all. The delivery hook
+applies the same guard again on the way out.
 Three surfaces name that screen and two implementations carry it. The shared endpoint client
 owns the implementation, and the daemon's text module re-exports it rather than keeping a
 second copy. The delivery hook keeps its own, pinned equal to the daemon's by a test rather

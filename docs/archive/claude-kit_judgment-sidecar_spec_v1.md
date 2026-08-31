@@ -1,6 +1,6 @@
 # The judgment sidecar: a local-model second reader over fleet tool calls
 
-Status: In Progress
+Status: Complete
 Commit Model: Commit-and-Push
 Session model: opus or above; section 8 requires a fable design pass before implementation
 
@@ -164,6 +164,13 @@ it was cited under so both existing citations resolve.
    processes with no `env` operand, so the children inherited the operator real `HOME` and the
    shipped screen read the operator real store. Confirmed by instrument: the accused spawn shape
    made 6 syscalls at or under the operator live tree and the fixture-home spawn shape made none.
+
+## Related
+
+- `claude-kit_gate-cadence_spec_v1.md` links this plan from its own `## Related`, and the pointer
+  had no return leg until this close-out added one.
+- `claude-kit_durable-boundary_spec_v1.md` is queued directly behind this plan in the armed goal
+  state, so a reader arriving at either wants the other.
 
 ## Sections of Work
 
@@ -1610,3 +1617,126 @@ file this fix round edits, so the two do not meet at a merge.
 Commit model in effect: Commit-and-Push.
 Next: adjudicate the fix round at the code and re-gate, then step 4 docs curation outside the bracket, then
 the close-out.
+### Chapter 8 - 2026-08-31
+Completed: the whole-effort finishing pass. This plan is Complete at section 7 by design.
+
+WHAT THE EFFORT SHIPPED. A local-model second reader over the fleet own tool calls, in seven
+sections: the spool contract and PostToolUse capture hook, the judge daemon, the delivery valve as
+that same hook second duty, memory recognition inside the daemon, the findings surface and rollup,
+the memq semantic channel with an honest degrade, and the frozen regression batteries with a
+transcript harvest command. Section 8, the transcript distiller, is a DESIGNED DEFERRAL rather than
+work left undone: it is gated on the operator call after a field trial and its own acceptance reads
+"deferred to the design pass", so no run could have reached a buildable acceptance. Its substance is
+now a parked item in docs/backlog.md naming its driving signal.
+
+THE FINISHING PASS, base ref 6842f9ad8df44689a320aa6c1460383c8d789731, the parent of the first
+commit that appended a Chapter here. QA verification PASS, adjudicated rather than accepted: the
+verifier independently reproduced the dormancy, resilience, cap, dedup and containment cases rather
+than reading them from the Chapters, and correctly marked the live-endpoint acceptances as reported
+rather than confirmed, having been barred from re-running them. Security review returned CONCERNS
+with one Major and three Minor; the adversarial review returned APPROVED_WITH_CONCERNS with two
+Majors and two Minor. Both ran at the tier they were assigned rather than one the harness picked:
+the resolved-model tally over each transcript assistant line read 115 of 115 and 152 of 152 at
+claude-fable-5, no synthetic lines and no substitution. The tree bracket was captured before each of
+the three bracketed rounds and compared on each return, byte-identical every time with the index
+empty, so no reviewer wrote to the tree.
+
+ONE OF THE SEVEN FINDINGS WAS A LIVE DEFECT, and it was measured rather than argued. The
+neutralization character class omitted several invisible and steering ranges and carried no unicode
+flag, so the Unicode tag block could not be expressed in it at all. An instrument run against the
+shipped function before the fix stripped the two controls the class did name, let seven subjects
+through, and round-tripped a 25-character instruction encoded in tag characters back out intact and
+fully recoverable. The same unchanged instrument after the fix strips all of them and recovers an
+empty string. It mattered past the code because docs/security-model.md asserted that this text was
+neutralized, which made it a false claim on a public surface and so a defect under the honesty rule
+rather than a residue. The existing parity pin could not have caught it and did not: it pins the two
+spellings equal, so it propagated the gap to both surfaces faithfully and reported green.
+
+THE FIX ROUND, five fixes each required to be pinned red before being fixed, plus one the round
+forced and disclosed. sidecar/harvest.js compiles the shared pattern itself with its own flags, so
+adding a supplementary-plane range turned it into a load-time SyntaxError that took a whole suite
+down; the implementer extended the behavioural pin to that consumer first, watched that exact error
+as its red, then fixed. That shape is now a backlog item, because the fourth consumer was found by
+breakage rather than by a check.
+
+THE LIVE-STORE CLASS REACHED INSTANCE 10 and this close-out reports a coverage answer rather than a
+tenth closure, since nine of the previous ten reports were wrong. The measured position first: all
+three suites run under a decoy home with an fs recorder preloaded into every process read ZERO calls
+at the inherited tree, so there was no live instance at any point in the finishing pass. What was
+open was the guard. The controller then swept the class by its reach rather than by a list of files,
+which is what the previous nine rounds could not do: no file under sidecar/ and neither hook spawns a
+child process at all, so the only route across a process boundary into the screen is one of four test
+files. All four pin a fixture HOME and USERPROFILE at every spawn site today. Three do it
+STRUCTURALLY, one spawn helper naming the interpreter at a single site with a pin counting that site,
+so a later site cannot be written without the fixture home. test/kit-sidecar-capture.test.js does it
+by per-call-site DISCIPLINE across three sites, which is the discipline that failed eight consecutive
+times in the battery file, once under a header asserting the opposite. Nothing is wrong there today
+and it is recorded as a guard item rather than a defect.
+
+GATE, run by the controller on a box polled clear of foreign test hosts and read from the run own
+exit marker: 2677 tests, 2670 passing, 1 failing, 6 skipped, exit 1, 324 s. Against the Interim board
+11 baseline of 2671 / 2664 / 1 / 6 that is plus 6 tests and plus 6 passing with failures and skips
+unchanged, the plus 6 being exactly the fix round own red-first pins. The single red is
+test/memory-session.test.js:854, this machine known permanent path-length failure, identified at its
+own assertion text rather than assumed: this box TEMP is D:\Temp, seven characters, which leaves the
+fixture path under the 260-character guard the case exists to trip.
+
+DOCS CURATION AND ITS DRIFT ADJUDICATION. Four drift items, every one a deviation and NONE a mistake,
+so the run did not stop. Three carried the charter own marker saying the pre-change state could not
+be read, the curator holding no Bash. The controller holds Bash and read all four rather than
+shipping them tagged unverified, and ALL FOUR CONFIRMED. The paths were never spent as report text: a
+listing was built at the repository root, each token passed a character gate and was matched
+whole-token against a whole listing entry, and what reached each command was the listing entry, with
+all eleven tokens selecting cleanly and no anomaly route taken. Two claims were read at the base ref
+and two at HEAD, deliberately: the neutralization sentence and the architecture catalog describe text
+this effort itself wrote, so the base ref predates their existence and HEAD is the genuine
+pre-curation state, the curator edits being uncommitted. The neutralization read carries a live
+control, the pattern reading 0 at HEAD and 2 in the curated file, so its silence at HEAD is a real
+absence rather than a pattern that never spoke.
+
+RESIDUES ACCEPTED RATHER THAN FIXED, each now a backlog item with its reversal cost. The inbox lock
+stale-reap race, real but inferred rather than reproduced, bounded to a duplicated advisory pointer
+with no corruption and no loss, not fixed because it is a concurrency rewrite rather than a pin and a
+rewrite landing in a round of five red-first pins is how a worse bug ships. Stripping the
+variation-selector range degrades a dual-presentation emoji in sidecar advisory text, accepted
+because carving VS16 out would reopen a genuine steering channel to close a cosmetic one, and memq
+does not consume the neutralizer. The capture suite discipline-not-structure guard above. And the
+shared pattern four consumers each compiling their own flags.
+
+TWO ACCEPTANCE CRITERIA ARE OPERATOR-ONLY AND REMAIN UNRUN, and they do not hold this plan open. A
+manual session producing schema-valid spool lines for real calls, from section 1, and a live session
+receiving a diverged-verdict pointer after a deliberately trapped command, from section 3. Both need
+the daemon running against the real store, which the fixture-only constraint barred every session in
+this effort from doing, and both were recorded open in Chapters 1 and 3 rather than surfacing at the
+close. They are in docs/backlog.md as active handoff items and in the close-out status as steps that
+are the operator to run. Either failing when run reopens the work as a new round.
+
+ONE MORE THING A LATER READER WOULD OTHERWISE REDISCOVER: the rebuilt plugin payload
+(plugins/claude-kit.zip and the build stamp) is gitignored and untracked, confirmed at git rather
+than assumed, so no commit of this effort carries it and another checkout needs its own rebuild.
+
+Assumptions made during execution, carried verbatim from the Chapters:
+- (2026-08-30, section 4) The heavy-process claim protocol was omitted from the fix-round dispatch
+  brief and sent separately once noticed; the box carried nine foreign dotnet processes during the
+  acceptance run, so the first gate ran unclaimed and every run after it claimed and released.
+- (2026-08-30, section 4) memq worktreeMainRoots unbounded memoization is left unfixed and routed to
+  section 6, which owns that file.
+- (2026-08-30, section 4) --memory-root deliberately bypasses memq own KIT_MEMORY_ROOT_ALLOW_DATA
+  gate, argued in place: that gate stops an inherited environment variable from moving where
+  memories are written, where this is a read-only path typed on a command line and printed at
+  startup.
+- (2026-08-30, section 4) A recognition timeout discards its backlog where the judgment path
+  preserves one, argued in place: recognition runs second, so a genuinely queued lane has already
+  stopped the pass as a judgment timeout.
+- (2026-08-31, section 7) The rebuilt live-store screen ships with its Windows behaviour MEASURED and
+  its POSIX behaviour INFERRED. This repository has no CI and this box has no WSL, so no POSIX run is
+  available here. Confirmed by a run of the battery suite on Linux or macOS; recorded as its own
+  backlog item rather than folded into the section.
+
+A `## Related` section was added to this document at close-out, above `## Sections of Work` so it
+bounds neither the sections block nor the Chapters block. It is an edit above the approval-scoped
+fingerprint line and is named here for that reason.
+
+Commit model in effect: Commit-and-Push.
+Next: nothing. The plan is Complete and archived. The armed queue advances to
+claude-kit_durable-boundary_spec_v1.md.

@@ -178,9 +178,50 @@ function findingLine(overrides) {
     };
 }
 
-function runCli(args) {
-    return spawnSync(process.execPath, [ROLLUP_CLI, ...args], { encoding: 'utf8' });
+// A home directory every CLI child of this suite gets. HOME and USERPROFILE
+// are what os.homedir() reads, and rollup.js resolves its default state root
+// from os.homedir() whenever --state-dir is absent, so a child that inherited
+// this process's environment would resolve the operator's live ~/.claude.
+// Created once and shared, since no case here cares which home its child has,
+// only that it is not the operator's.
+let cliHomePath = null;
+function cliHome() {
+    if (cliHomePath === null) {
+        cliHomePath = makeDir('kit-sidecar-rollup-clihome-');
+        fs.mkdirSync(path.join(cliHomePath, '.claude'), { recursive: true });
+        process.on('exit', () => rmDir(cliHomePath));
+    }
+    return cliHomePath;
 }
+
+// THE ONE PLACE THIS FILE NAMES THE INTERPRETER, and that is the function's
+// purpose rather than a convenience: it composes the fixture home over the
+// inherited environment unconditionally, with a caller's env overrides applied
+// after the fixture home so a caller cannot drop it, and `options` spread
+// first for the same reason. What makes the guard structural rather than a
+// list of blessed sites is the pin over this file's own source below: a spawn
+// site added later without the fixture home cannot be written without naming
+// the interpreter a second time.
+function runCli(args, env, options) {
+    return spawnSync(process.execPath, [ROLLUP_CLI, ...args], {
+        ...(options !== undefined && options !== null ? options : {}),
+        encoding: 'utf8',
+        env: { ...process.env, HOME: cliHome(), USERPROFILE: cliHome(), ...env }
+    });
+}
+
+test('every child this suite spawns carries the fixture home, by the shape of the file', () => {
+    // The interpreter token is assembled from halves so this test's own source
+    // does not hold a second spelling of what it counts.
+    const token = 'process.' + 'execPath';
+    const source = fs.readFileSync(__filename, 'utf8');
+    assert.strictEqual(source.split(token).length - 1, 1,
+        'the interpreter is named at exactly one site in this file, so a spawn '
+            + 'site added without the fixture home cannot be written without moving it');
+    const helper = source.slice(source.indexOf(token), source.indexOf(token) + 400);
+    assert.match(helper, /HOME: cliHome\(\)/, 'the one spawn site pins HOME to the fixture home');
+    assert.match(helper, /USERPROFILE: cliHome\(\)/, 'and USERPROFILE beside it');
+});
 
 // -------------------------------------------------------------- CLI shape --
 
@@ -268,6 +309,24 @@ test('totals and per-session counts over a multi-session fixture', (t) => {
     assert.deepStrictEqual(a.verdict, { achieved: 2, failed: 1, diverged: 0, other: 0 });
     const b = result.sessions.get('ses-b');
     assert.deepStrictEqual(b.verdict, { achieved: 0, failed: 0, diverged: 1, other: 0 });
+});
+
+test('the schema version the rollup accepts is the one the writers stamp', (t) => {
+    // parseLogFile splits record from unknown on the schema version, and every
+    // writer stamps logs.LOG_VERSION. This pin writes one line at that
+    // constant and one past it, so a rollup that compared a literal instead
+    // reds here the day the constant moves, rather than reading every record
+    // as unknown and rendering a column of zeros dressed as a clean report.
+    const state = makeState(t);
+    writeLines(verdictFile(state, 'ses-a'), [
+        verdictLine({ callId: 'c1', v: logs.LOG_VERSION }),
+        verdictLine({ callId: 'c2', v: logs.LOG_VERSION + 1 })
+    ]);
+    const result = rollup.computeRollup(state.stateDir);
+    assert.strictEqual(result.totals.verdict.achieved, 1,
+        'a line at the writers\' own version is counted as a record');
+    assert.strictEqual(result.totals.verdictSchemaUnknown, 1,
+        'a line past it is counted unknown, never silently dropped');
 });
 
 test('a verdict enum the rollup does not recognize is bucketed as "other", never dropped', (t) => {
