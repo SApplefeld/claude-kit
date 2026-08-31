@@ -193,6 +193,14 @@ function Get-MemorySyncIgnoreText {
         '# stays home too.') +
         (& $tierRules '/coordinator') + @(
         '',
+        '# But never the claims directory: the heavy-process claim is machine-local',
+        '# mutual-exclusion state, and a rebase checks out its base tree before',
+        '# replaying, so a synced claim resurrects a lock its holder already',
+        '# released. The directory is excluded after the re-includes above because',
+        '# the last matching pattern decides, and git cannot re-include a file',
+        '# beneath an excluded directory, so the *.md re-include cannot reach it.',
+        '/coordinator/**/claims/',
+        '',
         '# Never, even inside an allowed directory: lock files, the single-generation',
         '# backup memq writes before each rewrite, and its rename temporaries.') +
         (Get-MemorySyncTransientPatterns | ForEach-Object { "**/$_" }) + @(
@@ -220,6 +228,24 @@ function Get-MemorySyncAttributesText {
     $rules = @(foreach ($prefix in (Get-MemorySyncAdmittedRootPrefixes)) {
         foreach ($leaf in (Get-MemorySyncAllowedLeafPatterns -RootPrefix $prefix)) {
             if ($leaf -like '*.jsonl') { "$($prefix.TrimStart('/'))/**/$leaf merge=union" }
+        }
+    })
+    # The tier indexes are the same append-only shape as the journals: one
+    # "- [record](file.md) - description" line per record, appended at the
+    # tail, so two machines that both added records hold disjoint new lines
+    # and no conflicting edit. The rule names MEMORY.md alone rather than the
+    # tier's *.md form, because a record body is prose, where a union merge
+    # would interleave two rewrites into nonsense. The tiers that carry an
+    # index are exactly the ones whose leaf set admits usage.jsonl, the
+    # sidecar memq maintains beside every index, so the derivation keys on
+    # that form rather than on a second root list that could drift. The
+    # accepted cost is the one every union rule above already accepts: a line
+    # edited on both sides survives as adjacent duplicates instead of a
+    # conflict, visible and trivially repaired in an index of unique record
+    # names, where a wedged sync is neither.
+    $rules += @(foreach ($prefix in (Get-MemorySyncAdmittedRootPrefixes)) {
+        if ((Get-MemorySyncAllowedLeafPatterns -RootPrefix $prefix) -contains 'usage.jsonl') {
+            "$($prefix.TrimStart('/'))/**/MEMORY.md merge=union"
         }
     })
     return ((@(
@@ -306,7 +332,16 @@ function Test-MemorySyncPathAllowed {
     if ($p -match '^projects/[^/]+/memory/.+') { $rootPrefix = '/projects/*/memory' }
     elseif ($p -match '^memory-types/.+') { $rootPrefix = '/memory-types' }
     elseif ($p -match '^memory-operator/.+') { $rootPrefix = '/memory-operator' }
-    elseif ($p -match '^coordinator/.+') { $rootPrefix = '/coordinator' }
+    elseif ($p -match '^coordinator/.+') {
+        # The claims directory is machine-local mutual-exclusion state, never a
+        # record: a rebase checks out its base tree before replaying, so a
+        # synced claim resurrects a lock its holder already released, and a
+        # lock whose deletion a replay can revert is not a lock. Refused here,
+        # where the outgoing add and the inbound screen share one answer, with
+        # the derived ignore text carrying the matching directory exclusion.
+        if ($p -match '/claims/') { return $false }
+        $rootPrefix = '/coordinator'
+    }
     if ($null -eq $rootPrefix) { return $false }
     $leaf = $p.Substring($p.LastIndexOf('/') + 1)
     $leafAllowed = $false

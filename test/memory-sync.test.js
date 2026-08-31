@@ -197,7 +197,11 @@ function makeStore(options) {
         write(path.join(dir, 'notes.txt'), 'coordinator notes\n');
         write(path.join(dir, 'decay-stamp'), 'a stamp no writer of this root produces\n');
         const p = 'coordinator/' + MACHINE + '/';
-        allowed.push(p + 'board.md', p + 'admin-requests.md', p + 'claims/heavy-process.md',
+        // The claim file the fixture wrote above is deliberately absent here:
+        // the claims directory is machine-local mutual-exclusion state the
+        // allowlist refuses, so the on-disk file is the carve-out's negative
+        // control rather than an expected tracked path.
+        allowed.push(p + 'board.md', p + 'admin-requests.md',
             p + 'registry/session-a.md', p + 'registry/session-b.md');
     }
     return { home, store, allowed: allowed.sort() };
@@ -587,7 +591,12 @@ test('the ignore file and the path predicate answer alike on coordinator paths',
             [p + 'board.md', true],
             [p + 'admin-requests.md', true],
             [p + 'registry/session-a.md', true],
-            [p + 'claims/heavy-process.md', true],
+            // The claim file is machine-local mutual-exclusion state: a
+            // synced claim resurrects a lock its holder released, so the
+            // claims directory is refused despite carrying the tier's one
+            // admitted form. The dedicated carve-out test below owns the
+            // depth cases and the rule attribution.
+            [p + 'claims/heavy-process.md', false],
             ['coordinator/board.md', true],
             [p + 'board.lock', false],
             [p + 'board.md.bak', false],
@@ -667,10 +676,12 @@ test('the coordinator tier admits the .md forms its directory contract defines a
     try {
         assert.strictEqual(installRepo(fake.store).status, 0);
         const p = 'coordinator/' + MACHINE + '/';
-        // The four file forms the directory contract names, each of them a
-        // .md, at the depths the contract puts them.
+        // Three of the four file forms the directory contract names, each a
+        // .md, at the depths the contract puts them. The fourth, the claim
+        // file, is contract-defined and deliberately not synced: the claims
+        // carve-out test below owns it.
         const contractForms = [p + 'board.md', p + 'admin-requests.md',
-            p + 'registry/session-a.md', p + 'claims/heavy-process.md'];
+            p + 'registry/session-a.md'];
         assert.deepStrictEqual(predicateAnswers(contractForms), contractForms.map(() => true));
         for (const rel of contractForms) {
             assert.strictEqual(isIgnored(fake.store, rel), false, rel + ' must be admitted');
@@ -944,6 +955,108 @@ test('the journals merge as line unions in every tier, live and archived', { ski
         // A memory body is prose, where a union merge would interleave two
         // rewrites into nonsense, so it takes git's default.
         assert.notStrictEqual(mergeAttr(fake.store, 'projects/' + PROJECT_A + '/memory/a-fact.md'), 'union');
+        // The tier index is the exception among the .md forms: append-only by
+        // shape, one line per record at the tail, so it unions exactly as the
+        // journals do, live and archived, in every tier that carries one.
+        for (const rel of ['projects/' + PROJECT_A + '/memory/MEMORY.md',
+            'memory-types/MEMORY.md',
+            'memory-types/archive/MEMORY.md',
+            'memory-operator/MEMORY.md']) {
+            assert.strictEqual(mergeAttr(fake.store, rel), 'union', rel + ' must merge as a union');
+        }
+        // And the index rule is derived from the tiers that carry a memq
+        // index (the ones admitting usage.jsonl), so the coordinator tier,
+        // which has no index, gains no rule from it.
+        assert.notStrictEqual(mergeAttr(fake.store, 'coordinator/' + MACHINE + '/MEMORY.md'), 'union');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+test('the tier index survives a two-sided append as a union, and conflicts without the rule', { skip: !isWin }, () => {
+    const fake = makeStore({ operatorTier: true });
+    try {
+        assert.strictEqual(installRepo(fake.store).status, 0);
+        const rel = 'memory-operator/MEMORY.md';
+        const abs = path.join(fake.store, 'memory-operator', 'MEMORY.md');
+        write(abs, '# Operator memory\n- [base](base.md) - the shared tail both sides append after\n');
+        assert.strictEqual(git(fake.store, ['add', '--', rel]).status, 0);
+        assert.strictEqual(git(fake.store, ['commit', '-q', '-m', 'base']).status, 0);
+        const base = git(fake.store, ['rev-parse', 'HEAD']).stdout.trim();
+
+        // Machine A adds two records; machine B, from the same base, adds
+        // three different ones. Both append to the same tail, which is the
+        // exact shape that wedged a real store: disjoint added lines that
+        // git's default merge reads as a content conflict.
+        fs.appendFileSync(abs, '- [alpha](alpha.md) - side A, first\n- [beta](beta.md) - side A, second\n');
+        assert.strictEqual(git(fake.store, ['commit', '-q', '-a', '-m', 'side A']).status, 0);
+        const sideA = git(fake.store, ['rev-parse', 'HEAD']).stdout.trim();
+        assert.strictEqual(git(fake.store, ['checkout', '-q', '-b', 'side-b', base]).status, 0);
+        fs.appendFileSync(abs, '- [gamma](gamma.md) - side B, first\n- [delta](delta.md) - side B, second\n- [epsilon](epsilon.md) - side B, third\n');
+        assert.strictEqual(git(fake.store, ['commit', '-q', '-a', '-m', 'side B']).status, 0);
+
+        // Red first: with the index rules stripped from the attributes file
+        // (committed, so the merge reads the tampered version and the tree
+        // stays clean), the same merge must conflict, or the rule is not
+        // what the green direction proves.
+        const attrPath = path.join(fake.store, '.gitattributes');
+        const canonical = fs.readFileSync(attrPath, 'utf8');
+        fs.writeFileSync(attrPath,
+            canonical.split('\n').filter((l) => !l.includes('MEMORY.md')).join('\n'), 'utf8');
+        assert.strictEqual(git(fake.store, ['commit', '-q', '-a', '-m', 'strip index rules']).status, 0);
+        const red = git(fake.store, ['merge', '--no-edit', sideA]);
+        assert.notStrictEqual(red.status, 0,
+            'a two-sided append must conflict without the union rule, or this test proves nothing:\n'
+            + red.stdout + red.stderr);
+        assert.strictEqual(git(fake.store, ['merge', '--abort']).status, 0);
+
+        // Green: canonical attributes restored, the identical merge is clean
+        // and every added line survives exactly once.
+        fs.writeFileSync(attrPath, canonical, 'utf8');
+        assert.strictEqual(git(fake.store, ['commit', '-q', '-a', '-m', 'restore attributes']).status, 0);
+        const green = git(fake.store, ['merge', '--no-edit', sideA]);
+        assert.strictEqual(green.status, 0, green.stdout + green.stderr);
+        const merged = fs.readFileSync(abs, 'utf8');
+        for (const name of ['base', 'alpha', 'beta', 'gamma', 'delta', 'epsilon']) {
+            const count = (merged.match(new RegExp('\\[' + name + '\\]', 'g')) || []).length;
+            assert.strictEqual(count, 1, name + ' must survive exactly once:\n' + merged);
+        }
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+test('the claims directory is machine-local: refused by the predicate, excluded by the allowlist, at any depth', { skip: !isWin }, () => {
+    const fake = makeStore({ coordinator: true });
+    try {
+        assert.strictEqual(installRepo(fake.store).status, 0);
+        const p = 'coordinator/' + MACHINE + '/';
+        // The control differs from the refused path in one directory segment
+        // alone: same root, same depth, same .md leaf. Its admission proves
+        // the root re-include, the leaf form, and the transient axis all
+        // pass, which leaves the claims exclusion as the only rule that can
+        // produce the refusal; without it the silence would have two causes.
+        const cases = [
+            [p + 'claims/heavy-process.md', false],
+            [p + 'registry/heavy-process.md', true],
+            // Depth is the pattern's own claim (** in the exclusion), so a
+            // claims directory anywhere under the tier stays home.
+            [p + 'claims/archive/old-claim.md', false],
+            ['coordinator/claims/heavy-process.md', false]
+        ];
+        assert.deepStrictEqual(predicateAnswers(cases.map(([rel]) => rel)),
+            cases.map(([, allowed]) => allowed));
+        for (const [rel, allowed] of cases) {
+            assert.strictEqual(isIgnored(fake.store, rel), !allowed, rel + ' must agree with the predicate');
+        }
+        // The refusing rule is the claims exclusion itself, named, so this
+        // does not read as covered while an earlier axis does the refusing.
+        assert.strictEqual(ignoreRule(fake.store, p + 'claims/heavy-process.md'),
+            '/coordinator/**/claims/');
+        // And the fixture's live claim file, present on disk through the
+        // install's own commit, stayed home.
+        assert.ok(!trackedPaths(fake.store).includes(p + 'claims/heavy-process.md'),
+            'the install swept the claim file into the commit');
     } finally {
         rmDir(fake.home);
     }
