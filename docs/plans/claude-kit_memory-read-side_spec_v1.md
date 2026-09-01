@@ -629,3 +629,133 @@ third review round over the fix delta, which is owed rather than optional becaus
 resolution rule, adds a module the section did not have, and touches a daemon's fault path. Then the two
 documentation corrections that are the orchestrator's own, the whole gate with the contention lane beside
 it because the push lands on an install-surface trunk, then Chapter 2, the commit and the push.
+
+### Interim board 5 - 2026-09-01
+
+Section 2 is still the only section open. A third review round has been adjudicated and a fourth fix round
+is in flight, which is what earns this entry rather than a Chapter.
+
+Stage. Section 2's implementation is complete and has been through three review rounds, three fix rounds
+and the orchestrator's own verification twice. The third review round is the first that returned no
+blocking finding. Nothing is staged and nothing is committed beyond the interim board entries.
+
+Round 3's verdicts, and the direction of travel is the point. Adversarial APPROVED_WITH_CONCERNS, security
+CONCERNS where round 2 was BLOCK, blind CHANGES_REQUIRED on three Majors. No Critical survived
+adjudication anywhere in the round, so this was not a failed round under the tier ladder and no further
+escalation arose. The code pair ran at fable, which is the escalated writer tier and so the tier the
+reviewers take one step from under the cap; the security lens never runs at fable per-section, so it ran at
+opus and effort max through the Workflow route. All three resolved fully at their assigned models, 45, 43
+and 35 assistant turns at `claude-fable-5`, `claude-fable-5` and `claude-opus-5` respectively, with zero
+synthetic placeholders.
+
+All four of round 2's blocking findings were independently confirmed closed, each with a discriminating
+pin: the repository-root ceiling with the match test correctly ahead of the ceiling test so a filed project
+that is itself a repository root still matches at zero steps, the worktree fold that makes the tier and the
+tree root come out of one derivation, `anchorRoot` delegating to `projectTreeRoot`, and the sidecar's
+faultless-by-contract call path with no unwrapped memq call left reachable from a spool line. The security
+lens walked that call graph in full rather than sampling it.
+
+The finding worth the round, and it belongs to the blind lens alone. `sidecar/memory-index.js` carries a
+header asserting that the derivation lives in memq and is reached through its exports, and that a second
+spelling in that file would send the daemon looking in a directory the store is not using, silently. That
+is now the shipped state, because memq's resolution gained the session leg and the sidecar's did not. The
+recorded disposition permitting that divergence stands and the resolution is not being changed; what is
+being corrected is the header, which forbids the very divergence the disposition permits. The sighted lens
+did not find it, and the reason is instructive rather than incidental: the brief disclosed the recorded
+disposition, so the sighted reviewer read that file as settled, while the blind lens read its header cold.
+That is the blind pair earning its cost on a section where the sighted brief was accurate and complete.
+
+The general lesson is recorded because it outlives this section: a decision to accept a divergence still
+owes a sweep of every carrier claiming the divergence cannot happen. That is Standing Brief Amendment 1
+firing on the section that generated it, one round after it was written.
+
+Two further carriers were caught in the same class. `harnessProjectsRoot`'s header claims to be the kit's
+one spelling of the harness projects root, and `kit-compact-lib.js` independently spells it; the previous
+round corrected that same comment for a different consumer by making `kit-goal.js` delegate, and a third
+consumer existed. And two skill bodies claim unconditionally that a worktree resolves the main checkout's
+store from its subdirectories too, which holds only where the transcript is filed under the worktree's own
+segment. That last one is explicitly not a regression, since the pre-session-leg code answered the same
+way, so the claims are being conditioned rather than the code changed; the alternative the reviewer floated,
+folding at the ceiling, is a behavior change beyond this section and was declined.
+
+Deliberate acceptances, recorded so they read as decisions rather than omissions. The `kit-goal.js`
+narrowing, where a session id filed in two project directories now arms unbound instead of binding on the
+first directory listing hit, is accepted with its trade. Two lenses flagged it and the security lens
+affirmatively cleared it, finding that the arming session is still recorded, the claim points still bind,
+every failure degrades to the unbound arm rather than to a wrong bind, and the goal state file now holds one
+fewer home-prefixed absolute path. What it costs is that a session resumed from a different directory arms
+unbound where it previously armed bound. And `sessionTranscriptDir` memoizing a null for an unbounded
+zero-match listing for the life of the process is pinned as intended and harmless for the per-invocation
+processes that exist today, named here as a latent trap for the first resident consumer that carries a
+session id.
+
+The orchestrator's own verification, taken rather than accepted from the report. The cross-repository
+crossing was reproduced before the fix and re-probed after it: a scratch directory holding its own `.git`
+resolved the enclosing project's 52-record store before and resolves its own segment now, while
+`D:\claude-kit\test` still resolves the enclosing project's store, which is the behavior the section exists
+to add and the control that would have caught a fix that closed the hole by disabling the feature. One
+implementer claim did not survive checking and is recorded because it bears on how much a report is worth: a
+changed assertion in `test/memq.test.js` was described as a stale control predating the round, and the
+string it names appears nowhere in the base ref's copy of that file, so the assertion was authored by this
+section's own earlier round. The change is right on its merits and the description was wrong.
+
+Gate. The orchestrator ran the targeted lane itself over ten files: 1168 tests, 1165 pass, 1 fail, 2
+skipped, exit 1 read from the run's own marker, the single failure being this box's documented permanent
+red. That matches the implementer's reported figures exactly, so its gate claim holds. Build exit 0 at 93
+files and 1216.9 KB, taken on the same PowerShell host as the implementer's so the figure is comparable,
+which the project memory `build-size-differs-by-powershell-host` is what prompted and which was stamped
+applied for it. One lane before that was lost to a self-inflicted red worth recording: a one-word comment
+fix to a hook landed after the build, and because the build stamp hashes hook bytes the canary's integrity
+check correctly reported the installed file was not the one the build packaged. The rule that a hook edit
+owes a rebuild before the gate is the same rule the doctrine states for a merge, arriving by a different
+route.
+
+An earlier lane in the same stretch was read wrongly and is recorded as a process defect rather than a
+result: it was launched with the harness backgrounding a shell that itself backgrounded the run, so the
+child died with its parent, the completion notification reported exit 0, and the log was empty with no
+marker written. The notification reports the launcher's exit and not the command's, which is exactly why
+the marker is the reading, and here the marker's absence is what caught it.
+
+Live dispatches. One implementer at fable, resumed with its own context rather than re-briefed, carrying
+ten items: the one real bypass, six carrier corrections, and three guards. The bypass is the repository-root
+ceiling being evaluated per spelling with the lexical spelling walked first, so a symlink or junction inside
+the filed project pointing at a subdirectory of another repository crosses the ceiling and reproduces round
+2's harm class through a spelling rather than a path. It was filed as a Minor and is being worked at the
+weight of the Major whose harm it reproduces.
+
+The security-model.md edits are now specified rather than sketched, which matters because that file carries
+this section's one security-weight correction and is committed under the peer agreement recorded in
+Interim board 4. Six edits are owed: the line-21 derivation sentence restated as four legs plus the refusal
+that retired the stranded tier; the reader enumeration moved from two to three with what the third steers,
+which is which project's memory tier reaches the model at SessionStart; the harm sentence pricing the weak
+gate on a compaction's timing, which that third reader falsifies; the honest bound on the new leg's
+corroboration now that the climb is ceilinged, which is that a wrong or hostile session id cannot name a
+store and can only select, among directories that already exist, one satisfying all four of a single
+transcript of that id under the harness projects root, the working directory being this process's own, an
+ancestor of it deriving that same name, and no repository boundary in between, with the two honest limits
+that the corroboration is a filename's existence rather than its content and that the variable is settable
+by any process running as the operator; a narrowing rather than a deletion of the goal-state residual
+sentence, since the first-of-several case is closed while a single match lying in another project's
+directory still stores that path; and the sanitized-name equivalence class stated as a widening rather than
+as blindness, because an ancestor's projection can now collide where only the cwd's could before. Two
+residuals are named alongside them: a stray `.git` written between the working directory and the filed
+project root silently disables the session leg, fail-safe but third-party-triggerable, and the link-spelling
+bypass if the in-flight fix does not fully close it.
+
+Shared tree and the peer agreement, unchanged from Interim board 4 and restated because this is the entry a
+resuming session reads first. The other session's uncommitted work stays unstaged, with the single
+exception of `docs/security-model.md` under its explicit recorded agreement that whichever session commits
+first carries both contributions named. It has since reported its paragraph shrank from fifteen lines to
+six, so whatever the file holds at close is what lands and no snapshot of the older text is held here.
+
+Box. The claim was written under this session's own id for the build and the two lanes and released after
+them, its `Session:` line read before the delete. A claim the previous fix round wrote under this session's
+substituted identity was found already absent at that round's completion, removed by something else on the
+machine, which is the delegated-claim-identity gap already captured to the kaizen inbox. Two scratch git
+repositories sit under `.kit/scratch/`, one pre-existing and one this session created to reproduce the
+crossing; both are gitignored.
+
+Next action. Await the fourth fix round, verify its delta and its rebuild, then judge whether the delta owes
+a fourth review round under the owed-round triggers. Then the `docs/security-model.md` and
+`docs/architecture.md` corrections that are the orchestrator's own, the whole gate with the contention lane
+beside it because the push lands on an install-surface trunk, then Chapter 2, the commit and the push.
