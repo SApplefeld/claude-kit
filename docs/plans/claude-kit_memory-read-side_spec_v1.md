@@ -1126,3 +1126,124 @@ seventh review round; its one behavior change is a predicate correction with a r
 withheld control, so the presumption is weaker than last round's but not zero. Then the eight
 `docs/security-model.md` corrections, then the whole gate with the contention lane beside it, then
 Chapter 2, the commit and the push.
+
+### Chapter 2 - One resolution contract, and the stranded tier dispositioned - 2026-09-01
+
+Completed: section 2.
+
+What shipped. Every resolver in the kit that decides which project's memory tier a session reads now
+reaches one derivation instead of keeping its own. The store's segment is derived by an ordered contract
+with four legs and two refusals, and the refusals sit at different positions rather than together: the
+working directory's spelling is validated ahead of every leg, so a pinned session can be refused on
+working-directory grounds, and the network-share stand-down sits behind the pin and ahead of the rest.
+The legs are the honored pin, the worktree's main checkout, the session-transcript filing, and the plain
+working directory. `session-start.js`, `kit-goal.js`, `kit-compact-lib.js`, `memory-recognition-nudge.js`,
+`memory-frontmatter-guard.js` and the sidecar's memory index now delegate to memq's own
+`harnessProjectsRoot`, `sanitizeProjectPath`, `sessionTranscriptDir` and `projectTreeRoot` rather than
+restating any of them, which is what makes the contract one contract rather than six agreeing copies.
+The sidecar index is the one deliberate partial adopter and says so in its own header: it takes the
+worktree and flattening rules and refuses the session-transcript leg, because a session id in the
+daemon's environment never names the session whose captured call it is resolving.
+
+The three symptoms the section was opened on are all root-caused rather than patched. The tier split is
+the missing spelling refusal: a working directory the harness reports and a cwd a shell has drifted to
+derive different segments, and nothing refused the second. The stranded `~/.claude/projects/undefined/`
+tier is `sanitizeProjectPath(undefined)` returning the literal string "undefined", which survives the
+flattener untouched because it is all letters; it is dispositioned, its one record `drive-probe.md` named
+and backed up to `.kit/scratch/stranded-undefined-backup/`, and the directory removed. The backup-shadow
+symptom is closed at the reader: no transient-shaped name resolves through any reading verb, pinned
+against a fixture that holds a `.bak` beside a live `.md` with differing content, which is the case
+nobody had run before this section.
+
+Rounds, and what the count is worth reading for. Seven review rounds and eight fix rounds, every round
+verified by the orchestrator at the runs' own markers rather than accepted from a report. The writer tier
+escalated once, at round 4, and held at fable through every round after. The escalation earned itself
+under the ladder's own test: the finding classes repeated across two rounds, which is the signal that the
+implementer rather than the spec is the generator. No round after that failed, no Critical survived
+adjudication in any round, and rounds 6 and 7 both returned three verdicts with no blocking finding
+anywhere.
+
+The seventh review round is the one worth recording in detail, because it justified being run. The fix
+round before it corrected a predicate, which is a security-reviewer trigger surface, so the round was owed
+rather than optional, and the presumption looked weak going in. Three lenses converged on one Major the
+round-7 fix had introduced by omission: a guard placed on one `os.homedir` reach while the identical reach
+one call downstream stayed open, with a comment claiming the closure was end to end. The security lens
+alone found two more, an unguarded `process.cwd()` one line below the call that had just been guarded, and
+a false sentence in the security model's own prose that the orchestrator had written an hour earlier,
+describing a network-share root as refused where the code admits it. The adversarial lens alone found that
+the corrected predicate re-derived the share class as a second literal in a file that already imports the
+single-sourced predicate, against a rule `kit-network-lib.js` states in terms.
+
+That last one produced the round's best instrument. The fix is behaviorally identical, so a plain red-first
+reading could not exist: a change that alters no behavior cannot make its own pin fail. The implementer
+planted the exact drift two separate literals permit, watched the new cross-predicate pin go red, reverted,
+and verified the restore byte-identical against a pre-probe copy. That is the withheld control done
+properly, and it is the shape any behavior-preserving refactor's pin should take here.
+
+Deliberate non-fixes, recorded as decisions rather than left as findings. Four test shims carry no fired
+marker, which the second standing amendment mandates; their cases assert broken-state-only outcomes that
+cannot pass with the shim unengaged, which is the amendment's own stated alternative, so they are an
+accepted residual rather than an omission. The posix-rooted `/foo` admission on win32 stays admitted at the
+code, because a committed test pins the cross-platform property the dual-flavor absoluteness rule exists to
+hold; it is recorded in the security model as a named collision class instead. A remedy sentence's rationale
+is narrower than the branch it serves, which is over-specificity rather than falsehood.
+
+Routed out of the plan. memq's `memoryRoot` reaches `os.homedir()` unguarded, so an unresolvable home
+directory still silences the whole SessionStart hook one call past the guard this section added. It routes
+rather than folding because the fix reaches every verb's contract, and it carries the more useful half of
+its own finding: the suite cannot see it by construction, since every test child pins the store override
+that short-circuits the call. The entry is written and verified at `docs/backlog.md:375` against a control
+that speaks. It is not in this commit, for the reason the shared-files paragraph below gives.
+
+Assumptions: none. The section's gaps were answered from the code rather than defaulted.
+
+Review Findings: across seven rounds, no Critical survived adjudication in any round. Round 7's surviving
+set was three Majors and eight Minors: all three Majors fixed in round 8 and verified at the code by the
+orchestrator, the Minors either fixed as trivial in-scope corrections or recorded above as decisions. One
+finding was adjudicated upward from a lens's Minor to Major in round 6 and one downward in round 7's
+adjudication, both named in the boards with their reasons.
+
+Metrics: 7 review rounds; 8 fix rounds; 0 NEEDS_CONTEXT; 1 tier escalation (round 4, opus to fable, held
+thereafter); 0 consults.
+
+Stamps: adjudicated 7, stamped 3. `backlog-items-are-read-one-line-at-a-time` steered the routed entry's
+shape, `chapter-completed-line-is-machine-read` steered this Chapter's own `Completed:` line, and the
+operator record on commit approval including push steered this close. Four were read in the window and did
+not steer anything here: the doctor-committer record (no doctor was run), the two memory-store sync records,
+and the local endpoint record. Separately and outside the sweep,
+`a-control-is-blind-to-its-shared-derivation-path` was surfaced by the recognition nudge mid-round and
+stamped: its named remedy, an instrument you did not build, is exactly what the three review lenses were,
+and the security lens finding a carrier the implementer's own sweep had reported clean is that record's
+claim reproduced live.
+
+Gate. The whole gate ran here rather than only at finishing, because this plan is Commit-and-Push and its
+push lands on a trunk consumers install from with no CI gating the merge, which makes the push itself the
+install surface. Whole gate: 2932 tests, 2922 passing, 1 failing, 9 skipped, exit 1, every figure read from
+the run's own log and its own exit marker. Against Chapter 1's recorded whole-gate baseline of 2858 / 2848 /
+1 / 9 at exit 1 that is +74 tests, all passing, with the failure set unchanged and the single failure the
+same named permanent red this box produces, memory-session.test.js's pinned-directory path-length case. The
++74 is not all this section's: a peer session has been adding tests to this same checkout throughout, so the
+honest reading of the delta is no regressions rather than a count of what section 2 added. The targeted lane
+at section close read 1481 / 1478 / 1 / 2 at exit 1 against its own 1479 / 1476 / 1 / 2 baseline, +2, both
+the round's own. The contention lane did not run, and the reason is worth stating rather than leaving as a
+silence: this repository defines no such lane. The predicate run was the self-declaring text the testing
+skill says such tests carry, over `test/`, and its one hit is `doctrine-parity.test.js` quoting the doctrine
+verbatim rather than declaring membership; the control spoke against the skill body. That is a swept list of
+phrasings and not a swept class, since prose-declared membership has no structural shape, and no lane command
+is recorded in this project's memory tier where the skill says a repo records one. The box was claimed under
+this session's own id before the gate and released after its Session line was read; the process poll before
+claiming found no foreign test runner, which licenses nothing on its own.
+
+The shared checkout, and what this commit deliberately does not carry. Two documents this section owes
+corrections to are co-held with the peer session running the judge-partial-input plan, and by a recorded
+bilateral agreement that session carries both. `docs/security-model.md` holds three regions of this
+section's: the line-21 derivation restated as the ordered contract with both refusals at their own
+positions, a new subsection stating the resolver as a cross-project data-separation boundary with its four
+residuals, and the session-id paragraph's third reader with an honest harm bound and one residual narrowed.
+`docs/backlog.md` holds the routed entry above. Both are written, verified in place, and left uncommitted in
+the peer's care with this section's contributions named in that session's commit body. `docs/architecture.md`
+was held back through every earlier round because it described behavior that lived only in the working tree;
+that behavior lands with this commit, so it rides here.
+
+Next: section 3, recognition meets the moment, the prompt and the dispatch. Commit model in effect:
+Commit-and-Push.

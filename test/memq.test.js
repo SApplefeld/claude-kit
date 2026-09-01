@@ -121,7 +121,14 @@ function childEnv(store, extra) {
     const env = scrubRunEnv({ ...process.env });
     for (const k of Object.keys(env)) {
         const lower = k.toLowerCase();
-        if (lower === 'userprofile' || lower === 'home') delete env[k];
+        // The suite runs inside real sessions whose own id would otherwise
+        // ride into every child and put the session leg in play there; the
+        // redirected home would leave its transcript unfindable anyway, but
+        // that is a coupling between two unrelated fixture decisions, and
+        // scrubbing is what makes the no-session state explicit. sessionEnv
+        // re-adds the id for the cases that are about one.
+        if (lower === 'userprofile' || lower === 'home'
+            || lower === 'claude_code_session_id') delete env[k];
     }
     return {
         ...env,
@@ -344,6 +351,11 @@ test('sanitizeProjectPath reproduces the harness real project directory names', 
     assert.strictEqual(memq.sanitizeProjectPath('d:\\sgate-repo'), 'd--sgate-repo');
     // Any character outside [A-Za-z0-9] becomes '-', a dot included.
     assert.strictEqual(memq.sanitizeProjectPath('D:\\repo\\my.app_v2'), 'D--repo-my-app-v2');
+    // The absolute-path refusal accepts either platform's spelling, because
+    // the store's segments derive from either: the win32 literals above must
+    // keep sanitizing on a POSIX host exactly as this POSIX spelling does on
+    // win32, or this very test throws off-platform.
+    assert.strictEqual(memq.sanitizeProjectPath('/srv/repo'), '-srv-repo');
 });
 
 test('KIT_MEMORY_ROOT is honored only alongside KIT_MEMORY_ROOT_ALLOW_DATA=1', () => {
@@ -16084,6 +16096,1622 @@ test('a store left behind under the worktree\'s own path is named once', () => {
     }
 });
 
+// --- the session's own project directory ------------------------------------
+//
+// The harness files a session's transcript as <session-id>.jsonl inside the
+// project directory it filed that session under, so that directory is the
+// harness's own answer to which project a session belongs to. The resolver
+// consults it after the pin and the worktree link and before the plain cwd,
+// which is what keeps a shell that wandered into a subdirectory reading and
+// writing the store the session was told to use.
+//
+// Transcripts are planted under a redirected HOME rather than under the
+// fixture store root, because that is where the resolver looks and where the
+// harness writes: the harness knows nothing of KIT_MEMORY_ROOT, so a
+// redirected store's own projects directory holds no transcript of any real
+// session. Every fixture here therefore carries two roots, a store root and a
+// home, and neither is the operator's own.
+const SESSION_ID = 'a1b2c3d4-5566-7788-99aa-bbccddeeff00';
+
+function segmentOf(dir) {
+    return dir.replace(/[^A-Za-z0-9]/g, '-');
+}
+
+// A store fixture with a home of its own, so the transcripts a case plants sit
+// where os.homedir() answers for the children it spawns and not in the live
+// ~/.claude, whose transcripts are the suite's own session's.
+function makeSessionStore() {
+    const store = makeStore();
+    store.home = fs.mkdtempSync(path.join(os.tmpdir(), 'memq-shome-'));
+    return store;
+}
+
+function rmSessionStore(store) {
+    rmStore(store);
+    try {
+        fs.rmSync(store.home, { recursive: true, force: true });
+    } catch {
+        // Best-effort cleanup; leaving a temp dir behind never fails the test.
+    }
+}
+
+// Plant a transcript for one session under one project directory segment of
+// the fixture's home, the shape and the place the harness writes. The file's
+// contents are never read by anything here: the resolver's whole question is
+// which directory holds it.
+function plantTranscript(store, segment, sessionId) {
+    const dir = path.join(store.home, '.claude', 'projects', segment);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, (sessionId || SESSION_ID) + '.jsonl'), '{}\n', 'utf8');
+}
+
+// The child environment for a session case: the fixture's store, the fixture's
+// home under both spellings os.homedir() reads, and one session id. The id
+// variable is deleted under every spelling first, because this suite runs
+// inside real sessions whose own id would otherwise ride into the child and
+// answer for it, and because a Windows environment block's key casing is not
+// the spelling a JS object copy is indexed by.
+function sessionEnv(store, sessionId, extra) {
+    const env = childEnv(store, { HOME: store.home, USERPROFILE: store.home, ...(extra || {}) });
+    for (const k of Object.keys(env)) {
+        if (/^CLAUDE_CODE_SESSION_ID$/i.test(k)) delete env[k];
+    }
+    if (sessionId !== null && sessionId !== undefined) env.CLAUDE_CODE_SESSION_ID = sessionId;
+    return env;
+}
+
+// A child at `cwd` carrying an explicit session id, or carrying none at all
+// when `sessionId` is null.
+function runSession(store, cwd, args, sessionId) {
+    return spawnSync(process.execPath, [MEMQ].concat(args),
+        { cwd, encoding: 'utf8', env: sessionEnv(store, sessionId) });
+}
+
+// The memory directory one child resolves, printed by the resolver itself.
+function probeSession(store, cwd, sessionId, extra) {
+    return spawnSync(process.execPath,
+        ['-e', 'const memq = require(process.argv[1]);'
+            + 'console.log(memq.projectMemoryDir(process.cwd()));', MEMQ],
+        { cwd, encoding: 'utf8', env: sessionEnv(store, sessionId, extra) });
+}
+
+// The memory directory one child resolves for an explicitly named path. The
+// explicit argument matters where the spelling carries a link: POSIX getcwd
+// answers a canonical link-free path, so a child that resolves its own
+// process.cwd() can never hand the resolver the link spelling a harness
+// payload carries, and a case about that spelling has to pass it as data.
+function probeSessionAt(store, cwd, target, sessionId, extra) {
+    return spawnSync(process.execPath,
+        ['-e', 'const memq = require(process.argv[1]);'
+            + 'console.log(memq.projectMemoryDir(process.argv[2]));', MEMQ, target],
+        { cwd, encoding: 'utf8', env: sessionEnv(store, sessionId, extra) });
+}
+
+// Two resolutions in one child, so a once-per-process note can be counted and
+// the second answer compared against the first, the shape probeTwice takes for
+// the worktree leg's own note.
+function probeSessionTwice(store, cwd, sessionId) {
+    return spawnSync(process.execPath,
+        ['-e', 'const memq = require(process.argv[1]);'
+            + 'console.log("A " + memq.projectMemoryDir(process.cwd()));'
+            + 'console.log("B " + memq.projectMemoryDir(process.cwd()));', MEMQ],
+        { cwd, encoding: 'utf8', env: sessionEnv(store, sessionId) });
+}
+
+test('a subdirectory of the session\'s own project resolves the project\'s store', () => {
+    const store = makeSessionStore();
+    try {
+        const sub = path.join(store.proj, 'nested', 'deeper');
+        fs.mkdirSync(sub, { recursive: true });
+        plantTranscript(store, segmentOf(store.proj), SESSION_ID);
+
+        // The resolver's own answer first: the project the harness filed this
+        // session under, not the subdirectory the shell is standing in.
+        const probe = probeSession(store, sub, SESSION_ID);
+        assert.strictEqual(probe.status, 0, probe.stderr);
+        assert.strictEqual(probe.stdout.trim(), store.memDir,
+            'the subdirectory resolves the project\'s own store');
+
+        // And the end-to-end half, which is the invariant the split broke: a
+        // record written from the subdirectory is read from the project root.
+        const logged = runSession(store, sub, ['log', 'k.sub', 'pass', 'written from a subdirectory'],
+            SESSION_ID);
+        assert.strictEqual(logged.status, 0, logged.stderr);
+        assert.deepStrictEqual(projectDirNames(store), [segmentOf(store.proj)],
+            'the subdirectory files nothing under a directory of its own');
+        const digest = runSession(store, store.proj, ['recent'], SESSION_ID);
+        assert.strictEqual(digest.status, 0, digest.stderr);
+        assert.ok(digest.stdout.includes('written from a subdirectory'),
+            'the project root reads what the subdirectory wrote: ' + digest.stdout);
+    } finally {
+        rmSessionStore(store);
+    }
+});
+
+test('a worktree resolves the main checkout even when its own directory holds the transcript', () => {
+    const store = makeSessionStore();
+    const w = makeWorktree();
+    try {
+        // The state that makes the ordering load-bearing: the harness files a
+        // worktree session's transcript under the WORKTREE's own project
+        // directory, while this store maps a worktree's memories to the main
+        // checkout. The worktree leg is ahead of the session leg for exactly
+        // this fixture; reversing them reopens the per-worktree store split.
+        plantTranscript(store, segmentOf(w.tree), SESSION_ID);
+
+        const probe = probeSession(store, w.tree, SESSION_ID);
+        assert.strictEqual(probe.status, 0, probe.stderr);
+        assert.strictEqual(probe.stdout.trim(), cwdMemDir(store, w.main),
+            'the main checkout\'s store wins over the session\'s own directory');
+
+        const logged = runSession(store, w.tree, ['log', 'k.wt2', 'pass', 'written from the worktree'],
+            SESSION_ID);
+        assert.strictEqual(logged.status, 0, logged.stderr);
+        assert.deepStrictEqual(projectDirNames(store), [segmentOf(w.main)],
+            'the only directory the store holds is the main checkout\'s; the worktree\'s own'
+            + ' segment names the transcript in the harness\'s projects directory and nothing'
+            + ' in the store');
+        assert.ok(fs.existsSync(homeProjectDir(store, segmentOf(w.tree))),
+            'the transcript this case turns on is planted under the worktree\'s own segment');
+        assert.ok(!fs.existsSync(cwdMemDir(store, w.tree)),
+            'nothing was filed under the worktree\'s own path');
+    } finally {
+        rmSessionStore(store);
+        rmWorktree(w);
+    }
+});
+
+test('an honored pin beats the session\'s own project directory', () => {
+    const store = makeSessionStore();
+    try {
+        plantTranscript(store, segmentOf(store.proj), SESSION_ID);
+        const probe = probeSession(store, store.proj, SESSION_ID, { KIT_MEMORY_PROJECT: PIN });
+        assert.strictEqual(probe.status, 0, probe.stderr);
+        assert.strictEqual(probe.stdout.trim(),
+            path.join(store.root, 'projects', PIN, 'memory'),
+            'the pin names the tier outright; no transcript is consulted');
+    } finally {
+        rmSessionStore(store);
+    }
+});
+
+test('with no session id in the environment, resolution is the cwd derivation', () => {
+    const store = makeSessionStore();
+    try {
+        const sub = path.join(store.proj, 'nested');
+        fs.mkdirSync(sub, { recursive: true });
+        // The transcript is planted and would answer for a session that named
+        // itself, so what this pins is the fall-through rather than an absence
+        // of anything to fall through from.
+        plantTranscript(store, segmentOf(store.proj), SESSION_ID);
+
+        const probe = probeSession(store, sub, null);
+        assert.strictEqual(probe.status, 0, probe.stderr);
+        assert.strictEqual(probe.stdout.trim(), cwdMemDir(store, sub),
+            'no session id leaves the cwd derivation exactly as it was');
+    } finally {
+        rmSessionStore(store);
+    }
+});
+
+test('a session id no transcript answers for falls through to the cwd', () => {
+    const store = makeSessionStore();
+    try {
+        const sub = path.join(store.proj, 'nested');
+        fs.mkdirSync(sub, { recursive: true });
+        plantTranscript(store, segmentOf(store.proj), SESSION_ID);
+
+        // A well-shaped id naming no transcript in this store, and a value
+        // that is not id-shaped at all: both fall through, and the unshaped
+        // one does so before any directory is listed.
+        const stranger = probeSession(store, sub, '00000000-0000-4000-8000-000000000000');
+        assert.strictEqual(stranger.status, 0, stranger.stderr);
+        assert.strictEqual(stranger.stdout.trim(), cwdMemDir(store, sub));
+
+        const unshaped = probeSession(store, sub, '../../elsewhere');
+        assert.strictEqual(unshaped.status, 0, unshaped.stderr);
+        assert.strictEqual(unshaped.stdout.trim(), cwdMemDir(store, sub));
+    } finally {
+        rmSessionStore(store);
+    }
+});
+
+// The environment an in-process case resolves under: the fixture's store, the
+// fixture's home under both spellings os.homedir() reads, and one session id.
+// Every key is restored by the returned function, because these cases run
+// inside the suite's own process and a leaked home would send a later case's
+// resolution into the operator's real store.
+const SESSION_ENV_KEYS = ['KIT_MEMORY_ROOT', 'KIT_MEMORY_ROOT_ALLOW_DATA',
+    'HOME', 'USERPROFILE', 'CLAUDE_CODE_SESSION_ID'];
+
+function enterSessionEnv(store, sessionId) {
+    const saved = SESSION_ENV_KEYS.map((k) => [k, process.env[k]]);
+    process.env.KIT_MEMORY_ROOT = store.root;
+    process.env.KIT_MEMORY_ROOT_ALLOW_DATA = '1';
+    process.env.HOME = store.home;
+    process.env.USERPROFILE = store.home;
+    if (sessionId === null) delete process.env.CLAUDE_CODE_SESSION_ID;
+    else process.env.CLAUDE_CODE_SESSION_ID = sessionId;
+    return () => {
+        for (const [k, v] of saved) {
+            if (v === undefined) delete process.env[k];
+            else process.env[k] = v;
+        }
+    };
+}
+
+// Where the fixture's home files a project's transcripts, which is where the
+// resolver looks: the harness's own projects directory, never the store's.
+function homeProjectDir(store, segment) {
+    return path.join(store.home, '.claude', 'projects', segment);
+}
+
+test('sessionTranscriptDir answers the harness directory and refuses everything unshaped', () => {
+    const store = makeSessionStore();
+    const leave = enterSessionEnv(store, null);
+    try {
+        plantTranscript(store, segmentOf(store.proj), SESSION_ID);
+        assert.strictEqual(memq.sessionTranscriptDir(SESSION_ID),
+            homeProjectDir(store, segmentOf(store.proj)));
+        // Nothing unshaped reaches a directory listing, and nothing throws.
+        for (const bad of [undefined, null, '', 42, {}, '../../elsewhere',
+            'a1b2c3d4-5566-7788-99aa-bbccddeeff00/x', 'not-a-session-id']) {
+            assert.strictEqual(memq.sessionTranscriptDir(bad), null,
+                'refused: ' + String(bad));
+        }
+    } finally {
+        leave();
+        rmSessionStore(store);
+    }
+});
+
+test('the transcript scan reads the harness\'s own projects directory, not the store root', () => {
+    // The harness writes transcripts and knows nothing of KIT_MEMORY_ROOT, so
+    // a redirected store's own projects directory is one it never writes to.
+    // A scan of the store root therefore answers "no transcript" for a session
+    // that has one, which silently disables every surface built on this
+    // lookup. Both roots exist here and only the home holds the transcript.
+    const store = makeSessionStore();
+    const leave = enterSessionEnv(store, SESSION_ID);
+    try {
+        plantTranscript(store, segmentOf(store.proj), SESSION_ID);
+        // The store root is a real directory with a project of its own in it,
+        // so the answer below is a scan that looked in the right place rather
+        // than one that found nothing anywhere.
+        fs.mkdirSync(path.join(store.root, 'projects', 'D--decoy'), { recursive: true });
+
+        assert.strictEqual(memq.sessionTranscriptDir(SESSION_ID),
+            homeProjectDir(store, segmentOf(store.proj)),
+            'the harness\'s projects directory is what answers');
+        assert.strictEqual(memq.harnessProjectsRoot(),
+            path.join(store.home, '.claude', 'projects'),
+            'and it hangs off the home directory rather than off the store root');
+        assert.notStrictEqual(memq.harnessProjectsRoot(), memq.projectsRootPath(),
+            'the two roots are different questions under a redirected store');
+
+        // The withheld control, matched on shape: the same id planted in the
+        // store's own projects root instead answers nothing, which is what the
+        // pre-fix scan was reading.
+        const other = makeSessionStore();
+        const leaveOther = enterSessionEnv(other, SESSION_ID);
+        try {
+            const inStore = path.join(other.root, 'projects', segmentOf(other.proj));
+            fs.mkdirSync(inStore, { recursive: true });
+            fs.writeFileSync(path.join(inStore, SESSION_ID + '.jsonl'), '{}\n', 'utf8');
+            assert.strictEqual(memq.sessionTranscriptDir(SESSION_ID), null,
+                'a transcript sitting only in the store root is not the harness\'s filing');
+        } finally {
+            leaveOther();
+            rmSessionStore(other);
+        }
+    } finally {
+        leave();
+        rmSessionStore(store);
+    }
+});
+
+test('a session id two project directories both hold is an ambiguity, not an answer', () => {
+    // A session resumed from a different directory is filed twice, and the
+    // tiebreak would otherwise be directory order deciding which tier this
+    // process reads and writes.
+    const store = makeSessionStore();
+    const leave = enterSessionEnv(store, SESSION_ID);
+    try {
+        plantTranscript(store, segmentOf(store.proj), SESSION_ID);
+        // The control first: one match answers, so the null below is the
+        // second match refusing rather than a fixture nothing could find.
+        assert.strictEqual(memq.sessionTranscriptDir(SESSION_ID),
+            homeProjectDir(store, segmentOf(store.proj)),
+            'one transcript of an id answers with its directory');
+
+        plantTranscript(store, 'D--somewhere-else', SESSION_ID);
+        const second = makeSessionStore();
+        const leaveSecond = enterSessionEnv(second, SESSION_ID);
+        try {
+            // Resolved through a second fixture rather than the first, since
+            // the answer above is memoized for the home it was asked of.
+            fs.cpSync(path.join(store.home, '.claude'), path.join(second.home, '.claude'),
+                { recursive: true });
+            assert.strictEqual(memq.sessionTranscriptDir(SESSION_ID), null,
+                'two directories holding one id resolve nothing');
+            assert.strictEqual(memq.projectMemoryDir(second.proj),
+                path.join(second.root, 'projects', segmentOf(second.proj), 'memory'),
+                'and the cwd derivation stands');
+        } finally {
+            leaveSecond();
+            rmSessionStore(second);
+        }
+    } finally {
+        leave();
+        rmSessionStore(store);
+    }
+});
+
+test('a listing that was cut short is not remembered as an absence', () => {
+    // A truncated or unreadable listing holds directories the scan never
+    // looked in, so its null is an unknown rather than an answer. Memoizing it
+    // pins that unknown for the life of the process, which is a resident
+    // consumer resolving the wrong tier from then on. The projects root is a
+    // FILE here, which is the cheap shape of a listing that answers nothing
+    // and is bounded rather than empty.
+    const store = makeSessionStore();
+    const leave = enterSessionEnv(store, SESSION_ID);
+    try {
+        const root = path.join(store.home, '.claude', 'projects');
+        fs.mkdirSync(path.dirname(root), { recursive: true });
+        fs.writeFileSync(root, 'not a directory\n', 'utf8');
+        assert.strictEqual(memq.sessionTranscriptDir(SESSION_ID), null,
+            'a root that will not list answers nothing');
+
+        fs.rmSync(root);
+        plantTranscript(store, segmentOf(store.proj), SESSION_ID);
+        assert.strictEqual(memq.sessionTranscriptDir(SESSION_ID),
+            homeProjectDir(store, segmentOf(store.proj)),
+            'and the next call asks again rather than repeating the unknown');
+
+        // The withheld control, matched on shape: an ordinary empty projects
+        // root is an absence rather than an unknown, and that answer IS
+        // remembered, so the re-ask above is the bounded case and not a memo
+        // that stopped working.
+        const other = makeSessionStore();
+        const leaveOther = enterSessionEnv(other, SESSION_ID);
+        try {
+            fs.mkdirSync(path.join(other.home, '.claude', 'projects'), { recursive: true });
+            assert.strictEqual(memq.sessionTranscriptDir(SESSION_ID), null,
+                'an empty projects root holds no transcript');
+            plantTranscript(other, segmentOf(other.proj), SESSION_ID);
+            assert.strictEqual(memq.sessionTranscriptDir(SESSION_ID), null,
+                'and that absence is remembered for the process\'s lifetime');
+        } finally {
+            leaveOther();
+            rmSessionStore(other);
+        }
+    } finally {
+        leave();
+        rmSessionStore(store);
+    }
+});
+
+test('a single match off a bounded listing is unresolved, not an answer', () => {
+    // The entries the cap hid are exactly where a second transcript of this
+    // id could sit, and a second match is what the ambiguity refusal exists
+    // to detect, so one match off a bounded listing is an unknown wearing the
+    // shape of an answer: answered null now, unmemoized, and asked again next
+    // time, like the zero-match bounded case beside it. The fixture is one
+    // real project directory holding the transcript plus enough filler
+    // entries to overflow the scan's cap, with the match named to sort first
+    // so a collation-ordered listing is sure to include it; a filesystem that
+    // lists in some other order can degrade this case to the zero-match
+    // bounded shape, whose behavior is identical and is pinned above.
+    const { DIR_SCAN_MAX_ENTRIES } = require('../plugins/claude-kit/hooks/kit-read-lib.js');
+    const store = makeSessionStore();
+    const leave = enterSessionEnv(store, SESSION_ID);
+    try {
+        plantTranscript(store, '0-match', SESSION_ID);
+        const root = path.join(store.home, '.claude', 'projects');
+        const filler = (i) => path.join(root, 'zz-filler-' + String(i).padStart(4, '0'));
+        for (let i = 0; i < DIR_SCAN_MAX_ENTRIES; i++) fs.writeFileSync(filler(i), '', 'utf8');
+
+        assert.strictEqual(memq.sessionTranscriptDir(SESSION_ID), null,
+            'one match off a listing the cap cut short is not an answer');
+
+        // And not remembered either: with the filler gone the same process
+        // asks again, the listing is unbounded, and the transcript answers.
+        for (let i = 0; i < DIR_SCAN_MAX_ENTRIES; i++) fs.rmSync(filler(i));
+        assert.strictEqual(memq.sessionTranscriptDir(SESSION_ID),
+            path.join(root, '0-match'),
+            'the unknown was not memoized and the unbounded listing answers');
+    } finally {
+        leave();
+        rmSessionStore(store);
+    }
+});
+
+test('a cwd naming somewhere other than this process is resolved from that path', () => {
+    // The session leg answers where THIS process is running. A caller handing
+    // in another project's path is asking about that path, and every
+    // cross-project surface depends on getting an answer about what it named:
+    // a leg that overrode them would answer every question about every project
+    // with this session's own directory.
+    const store = makeSessionStore();
+    const sid = 'c0ffee00-1111-4222-8333-444455556666';
+    const leave = enterSessionEnv(store, sid);
+    try {
+        plantTranscript(store, segmentOf(store.proj), sid);
+
+        // The control that proves the transcript is findable from here, so the
+        // answer below is the argument being honored rather than a lookup that
+        // silently found nothing.
+        assert.strictEqual(memq.sessionTranscriptDir(sid),
+            homeProjectDir(store, segmentOf(store.proj)));
+        assert.strictEqual(memq.projectMemoryDir('D:\\x y'),
+            path.join(store.root, 'projects', 'D--x-y', 'memory'),
+            'a named project resolves from its own path');
+    } finally {
+        leave();
+        rmSessionStore(store);
+    }
+});
+
+test('a cwd outside the project the transcript names resolves that cwd\'s own store', () => {
+    // The ancestor gate. The transcript says which project the harness filed
+    // this session under, and that is evidence about this session's project
+    // only where the working directory is inside it. A session that steps into
+    // an unrelated checkout is asking about that checkout.
+    const store = makeSessionStore();
+    const elsewhere = fs.mkdtempSync(path.join(os.tmpdir(), 'memq-other-'));
+    try {
+        plantTranscript(store, segmentOf(store.proj), SESSION_ID);
+
+        // The control first, matched on shape rather than named: from inside
+        // the filed project the same fixture DOES honor the transcript, so the
+        // answer below is the gate refusing and not a transcript nobody found.
+        const inside = probeSession(store, store.proj, SESSION_ID);
+        assert.strictEqual(inside.status, 0, inside.stderr);
+        assert.strictEqual(inside.stdout.trim(), store.memDir,
+            'the filed project is honored from inside it');
+
+        const outside = probeSession(store, elsewhere, SESSION_ID);
+        assert.strictEqual(outside.status, 0, outside.stderr);
+        assert.strictEqual(outside.stdout.trim(), cwdMemDir(store, elsewhere),
+            'an unrelated checkout resolves its own derivation, not the session\'s');
+
+        // And the end-to-end half: a record written from the unrelated
+        // checkout lands under that checkout's own segment.
+        const logged = runSession(store, elsewhere,
+            ['log', 'k.else', 'pass', 'written from elsewhere'], SESSION_ID);
+        assert.strictEqual(logged.status, 0, logged.stderr);
+        assert.deepStrictEqual(projectDirNames(store), [segmentOf(elsewhere)],
+            'the only store directory written is the unrelated checkout\'s own');
+    } finally {
+        rmSessionStore(store);
+        try {
+            fs.rmSync(elsewhere, { recursive: true, force: true });
+        } catch { /* best-effort cleanup */ }
+    }
+});
+
+test('a worktree session whose cwd left the worktree resolves the cwd\'s own store', () => {
+    // The worktree leg maps a worktree's memories to the main checkout, and
+    // the harness files that session's transcript under the WORKTREE. Without
+    // the ancestor gate, a cwd that is no worktree at all still carried the
+    // worktree's segment out of the session leg, which is the per-worktree
+    // split the worktree leg exists to close, reopened from the other side.
+    const store = makeSessionStore();
+    const w = makeWorktree();
+    const elsewhere = fs.mkdtempSync(path.join(os.tmpdir(), 'memq-other-'));
+    try {
+        plantTranscript(store, segmentOf(w.tree), SESSION_ID);
+
+        // The control, matched on shape: from inside the worktree this same
+        // fixture resolves the main checkout, so the transcript is findable
+        // and the leg is live.
+        const inTree = probeSession(store, w.tree, SESSION_ID);
+        assert.strictEqual(inTree.status, 0, inTree.stderr);
+        assert.strictEqual(inTree.stdout.trim(), cwdMemDir(store, w.main),
+            'inside the worktree, the main checkout answers');
+
+        const outside = probeSession(store, elsewhere, SESSION_ID);
+        assert.strictEqual(outside.status, 0, outside.stderr);
+        assert.strictEqual(outside.stdout.trim(), cwdMemDir(store, elsewhere),
+            'outside it, the cwd\'s own derivation stands');
+        assert.ok(!outside.stdout.includes(segmentOf(w.tree)),
+            'the worktree\'s own segment never rides out to a cwd that is not in it');
+    } finally {
+        rmSessionStore(store);
+        rmWorktree(w);
+        try {
+            fs.rmSync(elsewhere, { recursive: true, force: true });
+        } catch { /* best-effort cleanup */ }
+    }
+});
+
+test('a nested independent checkout resolves its own store, not the enclosing project\'s', () => {
+    // The ancestor climb stops at the nearest enclosing repository root,
+    // counting the working directory itself. A directory holding its own .git
+    // is an independent repository even where it sits inside the project the
+    // harness filed this session under, and a climb that crossed its root
+    // would work the split both harmful directions at once: the enclosing
+    // project's records entering context while the session works in a
+    // different repository, and records written to a tier that repository's
+    // own sessions will never read.
+    const store = makeSessionStore();
+    try {
+        plantTranscript(store, segmentOf(store.proj), SESSION_ID);
+        const nested = path.join(store.proj, 'vendor', 'inner');
+        fs.mkdirSync(path.join(nested, '.git'), { recursive: true });
+
+        // The control first, matched on shape: a plain subdirectory beside it
+        // still resolves the enclosing project, so the answer below is the
+        // ceiling refusing and not a session leg that stopped answering.
+        const plain = path.join(store.proj, 'vendor', 'plain');
+        fs.mkdirSync(plain, { recursive: true });
+        const control = probeSession(store, plain, SESSION_ID);
+        assert.strictEqual(control.status, 0, control.stderr);
+        assert.strictEqual(control.stdout.trim(), store.memDir,
+            'a plain subdirectory resolves the enclosing project');
+
+        const inner = probeSession(store, nested, SESSION_ID);
+        assert.strictEqual(inner.status, 0, inner.stderr);
+        assert.strictEqual(inner.stdout.trim(), cwdMemDir(store, nested),
+            'the nested repository resolves its own segment');
+
+        // The end-to-end half in the write direction: a record logged from
+        // the nested repository lands under its own segment, never the
+        // enclosing project's.
+        const logged = runSession(store, nested,
+            ['log', 'k.inner', 'pass', 'written from a nested checkout'], SESSION_ID);
+        assert.strictEqual(logged.status, 0, logged.stderr);
+        assert.deepStrictEqual(projectDirNames(store), [segmentOf(nested)],
+            'nothing was filed under the enclosing project');
+    } finally {
+        rmSessionStore(store);
+    }
+});
+
+// The case rule every path-matching preload shim below splices into its
+// source: fold on win32 alone, byte-exact everywhere else. What the rule
+// tests is the platform, not the filesystem (darwin's default filesystem
+// also folds case), and off win32 a byte-exact compare can only
+// under-match, which leaves a shim unengaged rather than engaged against
+// the wrong path, the direction a fixture can afford. The rule also aims
+// the shims that mutate: plantAtLstatPreload writes and
+// vanishAtLstatPreload removes the norm's product, so an unconditional
+// fold would target the lowercased spelling, which on a case-sensitive
+// filesystem is a different and typically nonexistent file whenever the
+// temp root carries an uppercase character. One spelling, single-sourced,
+// so no shim can disagree with its siblings about where the fold applies.
+const SHIM_NORM_LINE = "const norm = (p) => process.platform === 'win32' ? p.toLowerCase() : p;";
+
+// Refuse link resolution inside a spawned child, so a realpath failure is a
+// state a case can hold deterministically rather than one only a dying
+// filesystem produces. Any path at or under `prefix` is refused; `spare`,
+// when given, is one exact path allowed to resolve once before the refusal
+// reaches it too, which is the mid-climb shape: a spelling that resolved
+// when a walk started and cannot be resolved again a step later. The prefix
+// match stops at a path-separator boundary and folds case under the shared
+// shim rule above (win32 alone), so a sibling whose spelling merely extends
+// the prefix string is not refused with it, and two case-differing
+// directories are conflated only where the rule folds. Both API
+// forms are shimmed because the resolver reaches .native on Windows and the
+// plain form elsewhere. The fired marker is the withheld-control
+// discipline: a case asserts it, so a shim that never engaged cannot pass
+// as a clean run. The preload path is forward-slashed because Node parses
+// NODE_OPTIONS with backslash as an escape character.
+function refuseRealpathFiredMarker(dir) {
+    return path.join(dir, 'refuse-realpath.fired');
+}
+
+function refuseRealpathPreload(dir, prefix, spare) {
+    const shim = path.join(dir, 'refuse-realpath.js');
+    fs.writeFileSync(shim, [
+        "'use strict';",
+        "const fs = require('fs');",
+        "const path = require('path');",
+        SHIM_NORM_LINE,
+        'const prefix = norm(' + JSON.stringify(path.resolve(prefix)) + ');',
+        'const spare = ' + (spare === undefined || spare === null
+            ? 'null' : 'norm(' + JSON.stringify(path.resolve(spare)) + ')') + ';',
+        'const marker = ' + JSON.stringify(refuseRealpathFiredMarker(dir)) + ';',
+        'let spared = false;',
+        'const realPlain = fs.realpathSync;',
+        'const realNative = fs.realpathSync.native;',
+        'const refused = (p) => {',
+        "    if (typeof p !== 'string') return false;",
+        '    const low = norm(path.resolve(p));',
+        '    if (low !== prefix && !low.startsWith(prefix + path.sep)) return false;',
+        '    if (spare !== null && low === spare && !spared) {',
+        '        spared = true;',
+        '        return false;',
+        '    }',
+        '    return true;',
+        '};',
+        'const refuse = () => {',
+        "    fs.writeFileSync(marker, 'fired\\n', 'utf8');",
+        "    const err = new Error('EACCES: the fixture refuses this realpath');",
+        "    err.code = 'EACCES';",
+        '    throw err;',
+        '};',
+        'const wrap = (real) => function (p) {',
+        '    if (refused(p)) refuse();',
+        '    return real.apply(fs, arguments);',
+        '};',
+        'const wrapped = wrap(realPlain);',
+        'wrapped.native = wrap(realNative);',
+        'fs.realpathSync = wrapped;'
+    ].join('\n') + '\n', 'utf8');
+    return '--require "' + shim.replace(/\\/g, '/') + '"';
+}
+
+test('a junction into another repository\'s subdirectory does not cross the ceiling', (t) => {
+    // A link inside the filed project pointing at a subdirectory of another
+    // repository gives the lexical ancestors no .git to stop on (the join
+    // resolves into the target, which is not a root), so a climb trusting
+    // the spelling would walk out of the target repository and match the
+    // filed project: the nested-checkout split reproduced through a
+    // spelling. The climb therefore stops where the lexical parent is not
+    // the link-resolved parent, which is where the spelling's ancestors
+    // part ways with the subtree the work sits in.
+    //
+    // The link spelling is passed as an explicit argument rather than
+    // resolved from the child's own cwd: POSIX getcwd answers a canonical
+    // link-free path, so a child resolving process.cwd() would hand the
+    // resolver the target spelling and never reach the screen at all. The
+    // hook path is what carries the link spelling for real, since a harness
+    // payload's cwd is whatever spelling the session was started with.
+    const store = makeSessionStore();
+    let other = null;
+    try {
+        plantTranscript(store, segmentOf(store.proj), SESSION_ID);
+        other = fs.mkdtempSync(path.join(os.tmpdir(), 'memq-other-'));
+        const inner = path.join(other, 'inner');
+        fs.mkdirSync(path.join(other, '.git'), { recursive: true });
+        fs.mkdirSync(inner, { recursive: true });
+        const link = path.join(store.proj, 'link');
+        try {
+            fs.symlinkSync(inner, link, 'junction');
+        } catch (err) {
+            return t.skip('this box refuses a junction: ' + err.code);
+        }
+
+        // The control first: a junction to a directory inside the project
+        // still resolves the filed project, so the refusal below is the
+        // boundary firing on a crossed repository and not a walk that stopped
+        // honoring links altogether.
+        const realsub = path.join(store.proj, 'realsub');
+        fs.mkdirSync(realsub, { recursive: true });
+        const link2 = path.join(store.proj, 'link2');
+        fs.symlinkSync(realsub, link2, 'junction');
+        const control = probeSessionAt(store, link2, link2, SESSION_ID);
+        assert.strictEqual(control.status, 0, control.stderr);
+        assert.strictEqual(control.stdout.trim(), store.memDir,
+            'a junction within the project resolves the filed project');
+
+        const probe = probeSessionAt(store, link, link, SESSION_ID);
+        assert.strictEqual(probe.status, 0, probe.stderr);
+        const got = probe.stdout.trim();
+        assert.notStrictEqual(got, store.memDir,
+            'a working directory inside another repository never resolves the filed project\'s tier');
+        assert.strictEqual(got, cwdMemDir(store, link),
+            'the refusal falls to the plain derivation of the link spelling: ' + got);
+    } finally {
+        rmSessionStore(store);
+        if (other !== null) {
+            try { fs.rmSync(other, { recursive: true, force: true }); } catch { /* best effort */ }
+        }
+    }
+});
+
+test('a working directory whose link resolution fails does not climb to the filed project', () => {
+    // A resolution that fails proves nothing about the spelling: nothing
+    // shows it link-free, so the climb runs with the boundary screen armed,
+    // and a screen that cannot resolve either side of a step refuses the
+    // step. The failure mode this pins: a resolver that treats a failed
+    // resolution as "resolves to itself" reads exactly like a proven
+    // link-free path, disarms the screen, and climbs on the spelling alone,
+    // which is the unscreened walk the screen exists to close.
+    const store = makeSessionStore();
+    try {
+        plantTranscript(store, segmentOf(store.proj), SESSION_ID);
+        const sub = path.join(store.proj, 'nested');
+        fs.mkdirSync(sub, { recursive: true });
+
+        // Control: with resolution working, the subdirectory climbs to the
+        // filed project, so the refusal below is the screen failing closed
+        // rather than the session leg failing for some other reason.
+        const control = probeSession(store, sub, SESSION_ID);
+        assert.strictEqual(control.status, 0, control.stderr);
+        assert.strictEqual(control.stdout.trim(), store.memDir,
+            'with resolution working, the subdirectory resolves the filed project');
+
+        const probe = probeSession(store, sub, SESSION_ID,
+            { NODE_OPTIONS: refuseRealpathPreload(store.root, store.proj) });
+        assert.strictEqual(probe.status, 0, probe.stderr);
+        assert.ok(fs.existsSync(refuseRealpathFiredMarker(store.root)),
+            'the shim engaged: link resolution was actually refused');
+        assert.strictEqual(probe.stdout.trim(), cwdMemDir(store, sub),
+            'an unresolvable spelling falls to the plain cwd derivation rather than climbing');
+    } finally {
+        rmSessionStore(store);
+    }
+});
+
+test('a climb step that cannot be link-resolved on either side breaks the climb, never passes it', (t) => {
+    // The mid-climb failure shape: a spelling that resolved when the walk
+    // started and cannot be resolved a step later. Both sides of the
+    // parenthood check are then unanswerable, and the unanswerable step must
+    // be refused: a fallback that compares the spellings themselves compares
+    // a lexical parent with its own child, equal by construction, and that
+    // vacuous pass walks the climb across the very boundary the screen
+    // exists to hold. Which point of the walk spends the one spared
+    // resolution differs by platform (a Windows child's cwd keeps the link
+    // spelling, so namesOwnCwd answers lexically and the spare survives to
+    // the walk's start; a POSIX child's canonical cwd makes namesOwnCwd
+    // spend it, failing the walk's own resolution instead), and both
+    // failure points land in the screen's refusal.
+    const store = makeSessionStore();
+    let other = null;
+    try {
+        plantTranscript(store, segmentOf(store.proj), SESSION_ID);
+        other = fs.mkdtempSync(path.join(os.tmpdir(), 'memq-other-'));
+        const inner = path.join(other, 'inner');
+        fs.mkdirSync(path.join(other, '.git'), { recursive: true });
+        fs.mkdirSync(inner, { recursive: true });
+        const link = path.join(store.proj, 'link');
+        try {
+            fs.symlinkSync(inner, link, 'junction');
+        } catch (err) {
+            return t.skip('this box refuses a junction: ' + err.code);
+        }
+
+        const probe = probeSessionAt(store, link, link, SESSION_ID,
+            { NODE_OPTIONS: refuseRealpathPreload(store.root, store.proj, link) });
+        assert.strictEqual(probe.status, 0, probe.stderr);
+        assert.ok(fs.existsSync(refuseRealpathFiredMarker(store.root)),
+            'the shim engaged: link resolution was actually refused');
+        const got = probe.stdout.trim();
+        assert.notStrictEqual(got, store.memDir,
+            'an unanswerable step never crosses into the filed project');
+        assert.strictEqual(got, cwdMemDir(store, link),
+            'the refusal falls to the plain derivation of the named spelling: ' + got);
+    } finally {
+        rmSessionStore(store);
+        if (other !== null) {
+            try { fs.rmSync(other, { recursive: true, force: true }); } catch { /* best effort */ }
+        }
+    }
+});
+
+test('a nested checkout whose .git is a dangling link is still a boundary', (t) => {
+    // The ceiling's own detector must not fail open. A .git that is present
+    // but leads nowhere (a link to a shared gitdir that has moved) marks a
+    // repository root exactly as a readable one does: read as no boundary,
+    // the climb continues past that checkout's root with only the
+    // parenthood screen, which passes freely on a genuine subdirectory
+    // chain, and matches the enclosing filed project, the nested-checkout
+    // misdirection reached with no link in the working directory's own path
+    // at all. The detector therefore examines the entry itself rather than
+    // what it leads to, so a dangling link still reads as a boundary.
+    const store = makeSessionStore();
+    try {
+        plantTranscript(store, segmentOf(store.proj), SESSION_ID);
+        const nested = path.join(store.proj, 'vendor', 'inner');
+        fs.mkdirSync(nested, { recursive: true });
+        const gitdir = fs.mkdtempSync(path.join(os.tmpdir(), 'memq-gitdir-'));
+        try {
+            fs.symlinkSync(gitdir, path.join(nested, '.git'), 'junction');
+        } catch (err) {
+            try { fs.rmSync(gitdir, { recursive: true, force: true }); } catch { /* best effort */ }
+            return t.skip('this box refuses a junction: ' + err.code);
+        }
+        fs.rmSync(gitdir, { recursive: true, force: true });
+
+        // The control first, matched on shape: a plain subdirectory beside
+        // the nested checkout still climbs to the filed project, so the
+        // refusal below is the boundary reading closed rather than a session
+        // leg that stopped answering.
+        const plain = path.join(store.proj, 'vendor', 'plain');
+        fs.mkdirSync(plain, { recursive: true });
+        const control = probeSession(store, plain, SESSION_ID);
+        assert.strictEqual(control.status, 0, control.stderr);
+        assert.strictEqual(control.stdout.trim(), store.memDir,
+            'a plain subdirectory still resolves the enclosing filed project');
+
+        const probe = probeSession(store, nested, SESSION_ID);
+        assert.strictEqual(probe.status, 0, probe.stderr);
+        assert.strictEqual(probe.stdout.trim(), cwdMemDir(store, nested),
+            'a dangling .git stops the climb at its own root: ' + probe.stdout.trim());
+    } finally {
+        rmSessionStore(store);
+    }
+});
+
+test('a .git that cannot be examined reads as a boundary, never as open ground', () => {
+    // The permission shape of the same fail-open, held through the
+    // refuseStatPreload shim the decay cases below share: a permission
+    // refusal on the .git entry proves nothing about whether a repository
+    // root is there, and treating it as absence is the unscreened climb the
+    // dangling-link case above pins, reached through an error code instead
+    // of a reparse point. Genuine absence (ENOENT, ENOTDIR) still reads as
+    // no boundary, which the control here and every plain-subdirectory case
+    // in this section exercise.
+    const store = makeSessionStore();
+    try {
+        plantTranscript(store, segmentOf(store.proj), SESSION_ID);
+        const nested = path.join(store.proj, 'vendor', 'inner');
+        fs.mkdirSync(nested, { recursive: true });
+
+        // The control first: with the entry examinable (here, absent), the
+        // nested directory climbs to the filed project, so the refusal below
+        // is the unreadable entry reading closed and not a leg that stopped
+        // answering under the preload.
+        const control = probeSession(store, nested, SESSION_ID);
+        assert.strictEqual(control.status, 0, control.stderr);
+        assert.strictEqual(control.stdout.trim(), store.memDir,
+            'an absent .git is genuine absence: the climb still reaches the filed project');
+
+        const probe = probeSession(store, nested, SESSION_ID,
+            { NODE_OPTIONS: refuseStatPreload(store.root, path.join(nested, '.git')) });
+        assert.strictEqual(probe.status, 0, probe.stderr);
+        assert.ok(fs.existsSync(refuseStatFiredMarker(store.root, path.join(nested, '.git'))),
+            'the shim engaged: the .git examination was actually refused');
+        assert.strictEqual(probe.stdout.trim(), cwdMemDir(store, nested),
+            'an unexaminable .git stops the climb at its own root: ' + probe.stdout.trim());
+    } finally {
+        rmSessionStore(store);
+    }
+});
+
+// Answer one exact path's link resolution with a fixed spelling, so a
+// resolver that reports a form outside both path grammars is a state a case
+// can hold without the volume configuration that produces it for real. The
+// fired marker is the same withheld-control discipline as the two shims
+// above.
+function lieRealpathFiredMarker(dir) {
+    return path.join(dir, 'lie-realpath.fired');
+}
+
+function lieRealpathPreload(dir, target, answer) {
+    const shim = path.join(dir, 'lie-realpath.js');
+    fs.writeFileSync(shim, [
+        "'use strict';",
+        "const fs = require('fs');",
+        "const path = require('path');",
+        SHIM_NORM_LINE,
+        'const target = norm(' + JSON.stringify(path.resolve(target)) + ');',
+        'const answer = ' + JSON.stringify(answer) + ';',
+        'const marker = ' + JSON.stringify(lieRealpathFiredMarker(dir)) + ';',
+        'const wrap = (real) => function (p) {',
+        "    if (typeof p === 'string' && norm(path.resolve(p)) === target) {",
+        "        fs.writeFileSync(marker, 'fired\\n', 'utf8');",
+        '        return answer;',
+        '    }',
+        '    return real.apply(fs, arguments);',
+        '};',
+        'const wrapped = wrap(fs.realpathSync);',
+        'wrapped.native = wrap(fs.realpathSync.native);',
+        'fs.realpathSync = wrapped;'
+    ].join('\n') + '\n', 'utf8');
+    return '--require "' + shim.replace(/\\/g, '/') + '"';
+}
+
+test('a link resolution answering a spelling absolute under neither grammar is skipped, not climbed', () => {
+    // On win32, fs.realpathSync.native answers a \\?\ form for a directory
+    // on a volume mounted with no drive letter, and stripping that prefix
+    // leaves a Volume{GUID}-led spelling absolute under neither path
+    // grammar. Such an answer only ever arrives as the climb's second
+    // spelling, and the segment derivation inside the loop refuses a
+    // non-absolute value by throwing, so an unguarded loop would let the
+    // throw escape the resolver to every caller. The shape is substituted
+    // by fixture rather than reproduced, since producing it for real takes
+    // a volume no stock box carries; the resolver's duty is the same either
+    // way: skip the unclimbable spelling, and let the lexical climb run
+    // with its screen armed, falling to the plain derivation where the
+    // screen cannot answer.
+    const store = makeSessionStore();
+    try {
+        plantTranscript(store, segmentOf(store.proj), SESSION_ID);
+        const sub = path.join(store.proj, 'nested');
+        fs.mkdirSync(sub, { recursive: true });
+
+        // The control first: with resolution answering absolutely, the
+        // subdirectory climbs to the filed project.
+        const control = probeSession(store, sub, SESSION_ID);
+        assert.strictEqual(control.status, 0, control.stderr);
+        assert.strictEqual(control.stdout.trim(), store.memDir,
+            'with an absolute resolution, the subdirectory resolves the filed project');
+
+        const probe = probeSession(store, sub, SESSION_ID, {
+            NODE_OPTIONS: lieRealpathPreload(store.root, sub,
+                'Volume{e50f0000-0000-0000-0000-501f00000000}' + path.sep + 'nested')
+        });
+        assert.strictEqual(probe.status, 0,
+            'the unclimbable spelling never escapes the resolver as a throw: ' + probe.stderr);
+        assert.ok(fs.existsSync(lieRealpathFiredMarker(store.root)),
+            'the shim engaged: the resolution was actually answered with the driveless form');
+        assert.strictEqual(probe.stdout.trim(), cwdMemDir(store, sub),
+            'the armed climb falls to the plain derivation: ' + probe.stdout.trim());
+    } finally {
+        rmSessionStore(store);
+    }
+});
+
+test('a cleared transcript memo does not leave a stale session filing behind', () => {
+    // sessionFilings entries are authorized at insert by a settled transcript
+    // scan. That scan's own memo clears whole at its cap, and past that clear
+    // the authorization is gone: a re-scan may answer differently, and a
+    // filing kept from before the clear would serve exactly the transient the
+    // scan refuses to memoize, one level up. So the two clear together.
+    const store = makeSessionStore();
+    const leave = enterSessionEnv(store, SESSION_ID);
+    const savedCwd = process.cwd();
+    try {
+        plantTranscript(store, segmentOf(store.proj), SESSION_ID);
+        const sub = path.join(store.proj, 'nested');
+        fs.mkdirSync(sub, { recursive: true });
+        process.chdir(sub);
+        assert.strictEqual(memq.projectMemoryDir(process.cwd()), store.memDir,
+            'the filing resolves the filed project from its subdirectory');
+
+        // Flood the transcript memo past its cap so it clears whole, then
+        // remove the transcript: the settled answer that authorized the
+        // filing memo no longer stands anywhere. The flood overshoots the cap
+        // rather than importing it, so entries other in-process cases left
+        // behind cannot leave the clear unreached.
+        for (let i = 0; i < 40; i++) {
+            memq.sessionTranscriptDir('11111111-2222-3333-4444-5555555555' + String(10 + i));
+        }
+        fs.rmSync(path.join(homeProjectDir(store, segmentOf(store.proj)), SESSION_ID + '.jsonl'));
+        assert.strictEqual(memq.projectMemoryDir(process.cwd()), cwdMemDir(store, sub),
+            'a filing whose authorizing scan was cleared is re-resolved, not served stale');
+    } finally {
+        try { process.chdir(savedCwd); } catch { /* the suite's own cwd still exists */ }
+        leave();
+        rmSessionStore(store);
+    }
+});
+
+// Make the home directory unresolvable inside a spawned child, standing in
+// for the POSIX process os.homedir throws for: HOME unset and no passwd
+// entry for the effective uid. The fired marker is the withheld-control
+// discipline the realpath and stat shims take, written from inside the
+// substituting branch, so a run in which nothing ever asked for the home
+// cannot pass as one that survived the throw.
+function noHomedirFiredMarker(dir) {
+    return path.join(dir, 'no-homedir.fired');
+}
+
+function noHomedirPreload(dir) {
+    const shim = path.join(dir, 'no-homedir.js');
+    fs.writeFileSync(shim, [
+        "'use strict';",
+        "const fs = require('fs');",
+        "const os = require('os');",
+        'const marker = ' + JSON.stringify(noHomedirFiredMarker(dir)) + ';',
+        'os.homedir = function () {',
+        "    fs.writeFileSync(marker, 'fired\\n', 'utf8');",
+        "    const err = new Error('ENOENT: the fixture has no home directory for this uid');",
+        "    err.code = 'ENOENT';",
+        '    throw err;',
+        '};'
+    ].join('\n') + '\n', 'utf8');
+    return '--require "' + shim.replace(/\\/g, '/') + '"';
+}
+
+test('a home directory that cannot be resolved declines the session leg, never throws out of the resolver', () => {
+    // os.homedir throws on a POSIX process whose HOME is unset with no
+    // passwd entry for the effective uid. The session leg reads the
+    // harness's projects root, which hangs off the home directory, in its
+    // memo key and its settled check as well as inside the transcript scan,
+    // so a throw there must decline the leg the way the scan's own failure
+    // envelope does rather than escape projectSegment from this leg. That
+    // is the whole closure this case proves, and the widest it can reach:
+    // this child runs under an honored store override, which makes the leg
+    // the one homedir toucher on its resolve path, while in the default
+    // configuration memoryRoot reaches os.homedir unguarded on every verb,
+    // so the guard under test does not by itself let an ordinary session's
+    // SessionStart hook survive an unresolvable home directory.
+    const store = makeSessionStore();
+    try {
+        plantTranscript(store, segmentOf(store.proj), SESSION_ID);
+        const sub = path.join(store.proj, 'nested');
+        fs.mkdirSync(sub, { recursive: true });
+
+        // The control: with the home resolvable, the subdirectory climbs to
+        // the filed project, so the substituted run below asserts a
+        // different outcome from the ordinary one, not the same.
+        const control = probeSession(store, sub, SESSION_ID);
+        assert.strictEqual(control.status, 0, control.stderr);
+        assert.strictEqual(control.stdout.trim(), store.memDir,
+            'with a resolvable home, the subdirectory resolves the filed project');
+
+        const probe = probeSession(store, sub, SESSION_ID,
+            { NODE_OPTIONS: noHomedirPreload(store.root) });
+        assert.strictEqual(probe.status, 0,
+            'an unresolvable home never escapes the resolver as a throw: ' + probe.stderr);
+        assert.ok(fs.existsSync(noHomedirFiredMarker(store.root)),
+            'the shim engaged: the home directory was actually asked for and refused');
+        assert.strictEqual(probe.stdout.trim(), cwdMemDir(store, sub),
+            'the session leg declines and the plain derivation stands: ' + probe.stdout.trim());
+    } finally {
+        rmSessionStore(store);
+    }
+});
+
+// Make the process's own working directory unreadable inside a spawned
+// child, standing in for the POSIX process process.cwd throws for: a
+// working directory removed from under a live process, which uv_cwd
+// answers with ENOENT rather than a path. The fired marker is the same
+// withheld-control discipline the homedir shim above takes, written from
+// inside the substituting function, so a run in which nothing ever asked
+// for the cwd cannot pass as one that survived the throw.
+function noCwdFiredMarker(dir) {
+    return path.join(dir, 'no-cwd.fired');
+}
+
+function noCwdPreload(dir) {
+    const shim = path.join(dir, 'no-cwd.js');
+    fs.writeFileSync(shim, [
+        "'use strict';",
+        "const fs = require('fs');",
+        'const marker = ' + JSON.stringify(noCwdFiredMarker(dir)) + ';',
+        'process.cwd = function () {',
+        "    fs.writeFileSync(marker, 'fired\\n', 'utf8');",
+        "    const err = new Error('ENOENT: the fixture has no working directory for this process');",
+        "    err.code = 'ENOENT';",
+        '    throw err;',
+        '};'
+    ].join('\n') + '\n', 'utf8');
+    return '--require "' + shim.replace(/\\/g, '/') + '"';
+}
+
+test('a working directory that cannot be read declines the session leg, never throws out of the resolver', () => {
+    // process.cwd throws ENOENT on a POSIX process whose working directory
+    // has been removed from under it. The session leg reads it as a memo
+    // key input, one line below the projects root it reads under a
+    // declining envelope, so the two throws take that one envelope: the
+    // leg declines with nothing memoized and the derivation from the path
+    // the caller handed in stands, rather than the throw escaping
+    // projectSegment. The probe hands the resolver its target as data,
+    // since resolving the child's own process.cwd() is exactly the call
+    // the fixture takes away.
+    const store = makeSessionStore();
+    try {
+        plantTranscript(store, segmentOf(store.proj), SESSION_ID);
+        const sub = path.join(store.proj, 'nested');
+        fs.mkdirSync(sub, { recursive: true });
+
+        // The control: with the cwd readable, the subdirectory climbs to
+        // the filed project, so the substituted run below asserts a
+        // different outcome from the ordinary one, not the same.
+        const control = probeSessionAt(store, sub, sub, SESSION_ID);
+        assert.strictEqual(control.status, 0, control.stderr);
+        assert.strictEqual(control.stdout.trim(), store.memDir,
+            'with a readable cwd, the subdirectory resolves the filed project');
+
+        const probe = probeSessionAt(store, sub, sub, SESSION_ID,
+            { NODE_OPTIONS: noCwdPreload(store.root) });
+        assert.strictEqual(probe.status, 0,
+            'an unreadable working directory never escapes the resolver as a throw: ' + probe.stderr);
+        assert.ok(fs.existsSync(noCwdFiredMarker(store.root)),
+            'the shim engaged: the working directory was actually asked for and refused');
+        assert.strictEqual(probe.stdout.trim(), cwdMemDir(store, sub),
+            'the session leg declines and the plain derivation stands: ' + probe.stdout.trim());
+    } finally {
+        rmSessionStore(store);
+    }
+});
+
+test('a subdirectory of a linked worktree resolves the main checkout\'s store, as the worktree root does', () => {
+    // worktreeMainRoot consults only <cwd>/.git and never walks up, so from a
+    // subdirectory the worktree leg answers nothing and the session leg is
+    // what fires: the harness files a worktree session's transcript under the
+    // worktree's own project directory and the ancestor walk matches at the
+    // worktree root. Unfolded, that answer gives the subdirectory the
+    // worktree's own segment while the worktree root resolves the main
+    // checkout's, the per-worktree store split reopened one directory down,
+    // so the filed root is folded back through the worktree handshake. The
+    // repository-root ceiling composes with the fold rather than subsuming
+    // it: a linked worktree's root holds a .git file, so the climb stops
+    // exactly there, and the fold is what turns that stop into the main
+    // checkout's answer.
+    const store = makeSessionStore();
+    const w = makeWorktree();
+    try {
+        plantTranscript(store, segmentOf(w.tree), SESSION_ID);
+        const sub = path.join(w.tree, 'nested');
+        fs.mkdirSync(sub, { recursive: true });
+
+        // The control, matched on shape: the worktree root itself resolves
+        // the main checkout, so the agreement below is the fold at work
+        // rather than two derivations that happen to coincide.
+        const atRoot = probeSession(store, w.tree, SESSION_ID);
+        assert.strictEqual(atRoot.status, 0, atRoot.stderr);
+        assert.strictEqual(atRoot.stdout.trim(), cwdMemDir(store, w.main));
+
+        const inSub = probeSession(store, sub, SESSION_ID);
+        assert.strictEqual(inSub.status, 0, inSub.stderr);
+        assert.strictEqual(inSub.stdout.trim(), cwdMemDir(store, w.main),
+            'the subdirectory and the worktree root resolve one store');
+
+        // Both halves from one child, because the path side splits with the
+        // tier if it takes a rule of its own: the tree root is the main
+        // checkout, and sanitizing it names the tier's own segment.
+        const paired = spawnSync(process.execPath,
+            ['-e', 'const memq = require(process.argv[1]);'
+                + 'console.log(memq.projectTreeRoot(process.cwd()));'
+                + 'console.log(memq.projectMemoryDir(process.cwd()));', MEMQ],
+            { cwd: sub, encoding: 'utf8', env: sessionEnv(store, SESSION_ID) });
+        assert.strictEqual(paired.status, 0, paired.stderr);
+        const [treeRoot, memDir] = paired.stdout.split('\n').filter((l) => l !== '');
+        assert.strictEqual(treeRoot, w.main, 'the tree root is the main checkout');
+        assert.strictEqual(memDir, cwdMemDir(store, w.main),
+            'and the tier keys on that same root');
+    } finally {
+        rmSessionStore(store);
+        rmWorktree(w);
+    }
+});
+
+test('anchors resolve against the root the tier resolves, so a subdirectory reports no false drift', () => {
+    // From a subdirectory the tier comes from the session's filed project, so
+    // an anchor root derived from the working directory itself would join the
+    // filed project's records onto paths that do not exist there: every
+    // anchored file reports missing, which surfaces as [drift] marks in
+    // recall, a drift block in decay-scan, and the same block at
+    // SessionStart, on a store whose anchors are in fact fresh. anchorRoot
+    // therefore derives through projectTreeRoot, the same legs the tier
+    // resolves through, keeping its own pin-answers-null rule.
+    const store = makeSessionStore();
+    try {
+        plantTranscript(store, segmentOf(store.proj), SESSION_ID);
+        const sub = path.join(store.proj, 'nested');
+        fs.mkdirSync(sub, { recursive: true });
+        fs.writeFileSync(path.join(store.proj, 'a.js'), Buffer.from('hello\n', 'latin1'));
+        writeMemoryFile(store, 'anchored.md',
+            '---\nname: ""\nanchors: a.js@' + HELLO_SHA + '\n---\n\nbody\n');
+
+        const probe = spawnSync(process.execPath, ['-e',
+            'const m = require(process.argv[1]);'
+            + 'const root = m.anchorRoot(process.cwd());'
+            + 'console.log(JSON.stringify({ root, states: m.anchorStates(process.argv[2], root) }));',
+            MEMQ, path.join(store.memDir, 'anchored.md')],
+            { cwd: sub, encoding: 'utf8', env: sessionEnv(store, SESSION_ID) });
+        assert.strictEqual(probe.status, 0, probe.stderr);
+        const got = JSON.parse(probe.stdout);
+        assert.strictEqual(got.root, store.proj,
+            'the anchor root is the filed project, not the subdirectory');
+        assert.deepStrictEqual(got.states, [{
+            path: 'a.js', entry: 'a.js@' + HELLO_SHA,
+            recorded: HELLO_SHA, current: HELLO_SHA, state: 'fresh'
+        }], 'the anchored file checks fresh rather than missing');
+    } finally {
+        rmSessionStore(store);
+    }
+});
+
+// A directory link at `link` pointing at `target`, or null with the reason
+// where the platform refuses to make one. A junction on win32 rather than a
+// symlink, since that is the shape a box without developer mode can create.
+function makeDirLink(link, target) {
+    try {
+        if (process.platform === 'win32') {
+            const made = spawnSync('cmd', ['/c', 'mklink', '/J', link, target],
+                { encoding: 'utf8' });
+            if (made.status !== 0) return String(made.stderr || made.stdout || 'mklink failed');
+        } else {
+            fs.symlinkSync(target, link, 'dir');
+        }
+    } catch (err) {
+        return err.message;
+    }
+    return null;
+}
+
+// Remove a directory link without following it. rmSync on the parent would
+// walk into the target on a platform that treats a junction as an ordinary
+// directory, which is a fixture cleanup deleting the thing it points at.
+function rmDirLink(link) {
+    try {
+        fs.rmdirSync(link);
+    } catch {
+        try {
+            fs.unlinkSync(link);
+        } catch { /* nothing was created, or it is already gone */ }
+    }
+}
+
+test('a linked spelling of a process\'s own directory is still its own', (t) => {
+    // path.resolve is lexical while process.cwd() hands back a real path, so
+    // on a junction, a subst drive or a macOS /tmp path, a caller naming its
+    // own directory by the spelling it was handed compares unequal to the
+    // spelling the filesystem holds, and the session leg then answers about
+    // nobody. Both the identity test and the ancestor walk resolve links.
+    const store = makeSessionStore();
+    const linkDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memq-link-'));
+    const link = path.join(linkDir, 'link');
+    try {
+        const failed = makeDirLink(link, store.proj);
+        if (failed !== null) {
+            t.skip('this box does not allow a directory link: ' + failed);
+            return;
+        }
+        // The transcript is filed under the real spelling, which is what the
+        // harness would see, and the link is the spelling a caller holds.
+        const real = fs.realpathSync(store.proj);
+        plantTranscript(store, segmentOf(real), SESSION_ID);
+        const expected = path.join(store.root, 'projects', segmentOf(real), 'memory');
+
+        const probe = (named) => spawnSync(process.execPath,
+            ['-e', 'const memq = require(process.argv[1]);'
+                + 'console.log(memq.projectMemoryDir(process.argv[2]));', MEMQ, named],
+            { cwd: store.proj, encoding: 'utf8', env: sessionEnv(store, SESSION_ID) });
+
+        // The control, matched on shape: the plain spelling resolves the filed
+        // project, so the link's answer below is the link being followed and
+        // not a leg that answers for every argument it is given.
+        const plain = probe(store.proj);
+        assert.strictEqual(plain.status, 0, plain.stderr);
+        assert.strictEqual(plain.stdout.trim(), expected,
+            'the plain spelling resolves the filed project');
+
+        const linked = probe(link);
+        assert.strictEqual(linked.status, 0, linked.stderr);
+        assert.strictEqual(linked.stdout.trim(), expected,
+            'and so does a linked spelling of that same directory');
+    } finally {
+        rmDirLink(link);
+        try {
+            fs.rmSync(linkDir, { recursive: true, force: true });
+        } catch { /* best-effort cleanup */ }
+        rmSessionStore(store);
+    }
+});
+
+test('the tree root and the tier resolve to one project, from a subdirectory and a worktree', () => {
+    // The path-side half of the resolution, which the recognition nudge keys
+    // its per-project log on while keying the records it scores on the tier
+    // projectMemoryDir resolves. Two rules would let those halves name
+    // different projects, and the reading is then one project's records
+    // against another project's log, scoring every record unnudged. So the
+    // invariant is that sanitizing the tree root gives the tier's own segment.
+    const store = makeSessionStore();
+    const w = makeWorktree();
+    try {
+        const sub = path.join(store.proj, 'nested', 'deeper');
+        fs.mkdirSync(sub, { recursive: true });
+        plantTranscript(store, segmentOf(store.proj), SESSION_ID);
+
+        const probe = (cwd) => spawnSync(process.execPath,
+            ['-e', 'const memq = require(process.argv[1]);'
+                + 'console.log(memq.projectTreeRoot(process.cwd()));'
+                + 'console.log(memq.projectMemoryDir(process.cwd()));', MEMQ],
+            { cwd, encoding: 'utf8', env: sessionEnv(store, SESSION_ID) });
+
+        for (const [cwd, where] of [[store.proj, 'the project root'],
+            [sub, 'a subdirectory the session\'s transcript places inside it'],
+            [w.tree, 'a linked worktree']]) {
+            const res = probe(cwd);
+            assert.strictEqual(res.status, 0, where + ': ' + res.stderr);
+            const [root, memDir] = res.stdout.split('\n').filter((l) => l !== '');
+            assert.strictEqual(path.join(store.root, 'projects', segmentOf(root), 'memory'),
+                memDir, where + ' pairs its tree root with its own tier: ' + res.stdout);
+        }
+
+        // The withheld control, matched on shape: the two halves are pinned
+        // together, so a fixture where they were free to differ has to show
+        // one. The subdirectory is that fixture, and its tree root is the
+        // project rather than the subdirectory itself.
+        const fromSub = probe(sub);
+        assert.strictEqual(fromSub.stdout.split('\n')[0], store.proj,
+            'the subdirectory\'s tree root is the project the session was filed under');
+    } finally {
+        rmSessionStore(store);
+        rmWorktree(w);
+    }
+});
+
+test('a project directory left behind by the split is named once on stderr', () => {
+    // The session leg redirects reads and writes off the directory the cwd
+    // derivation names, exactly as the worktree leg does, and a store already
+    // standing there is now unread. Nothing here moves it, so the one thing
+    // owed is the sentence saying it is no longer read. This is the common
+    // case rather than the exotic one: a store split by running from
+    // subdirectories is what the leg exists to close, so those directories
+    // exist on every box that had the split.
+    const store = makeSessionStore();
+    try {
+        const sub = path.join(store.proj, 'nested');
+        fs.mkdirSync(sub, { recursive: true });
+        plantTranscript(store, segmentOf(store.proj), SESSION_ID);
+        fs.mkdirSync(cwdMemDir(store, sub), { recursive: true });
+
+        const probe = probeSessionTwice(store, sub, SESSION_ID);
+        assert.strictEqual(probe.status, 0, probe.stderr);
+        assert.deepStrictEqual(probe.stdout.split('\n').filter((l) => l !== ''),
+            ['A ' + store.memDir, 'B ' + store.memDir],
+            'the filed project\'s store is the one in use');
+        assert.match(probe.stderr, /no longer read/);
+        assert.strictEqual(probe.stderr.split('memq: ').length - 1, 1,
+            'once per process: ' + probe.stderr);
+
+        // Without the orphan, the same resolution says nothing at all.
+        const quiet = path.join(store.proj, 'quiet');
+        fs.mkdirSync(quiet, { recursive: true });
+        const silent = probeSessionTwice(store, quiet, SESSION_ID);
+        assert.strictEqual(silent.status, 0, silent.stderr);
+        assert.strictEqual(silent.stderr, '');
+    } finally {
+        rmSessionStore(store);
+    }
+});
+
+test('an empty or absent cwd is refused whether or not a session transcript answers', () => {
+    // The refusal has to be unbypassable whatever the environment says.
+    // path.resolve('') is this process's own directory, so an empty string
+    // reached the session leg as a question about this directory and resolved
+    // a real tier for a value the store refuses to name a project by. Both
+    // states are asked of the same values, and the answers must agree.
+    //
+    // The control is withheld from the leg's own fall-through: the transcript
+    // is planted under the PROJECT's segment and the probe runs from a
+    // subdirectory, so the leg's answer and the plain cwd derivation differ
+    // and the control can fail. A transcript planted at the probe's own
+    // segment would pass whether the leg fired or not, a control unable to
+    // speak. Spawned, because the leg answers only for a process's own
+    // working directory and this suite's cannot move.
+    const store = makeSessionStore();
+    try {
+        const withSession = enterSessionEnv(store, SESSION_ID);
+        let refused;
+        try {
+            plantTranscript(store, segmentOf(store.proj), SESSION_ID);
+            const sub = path.join(store.proj, 'nested');
+            fs.mkdirSync(sub, { recursive: true });
+            const honored = probeSession(store, sub, SESSION_ID);
+            assert.strictEqual(honored.status, 0, honored.stderr);
+            assert.strictEqual(honored.stdout.trim(), store.memDir,
+                'the session leg is live for this fixture, answering the filed '
+                + 'project rather than the subdirectory\'s own derivation');
+            refused = [null, undefined, '', 42, {}].map((bad) => {
+                try {
+                    return 'resolved ' + memq.projectMemoryDir(bad);
+                } catch (err) {
+                    return err.message;
+                }
+            });
+            for (const message of refused) {
+                assert.match(message, /must be a non-empty string/,
+                    'refused with a session answering: ' + message);
+            }
+        } finally {
+            withSession();
+        }
+
+        const noSession = enterSessionEnv(store, null);
+        try {
+            const alone = [null, undefined, '', 42, {}].map((bad) => {
+                try {
+                    return 'resolved ' + memq.projectMemoryDir(bad);
+                } catch (err) {
+                    return err.message;
+                }
+            });
+            assert.deepStrictEqual(alone, refused,
+                'the refusal reads identically with and without a resolving transcript');
+        } finally {
+            noSession();
+        }
+    } finally {
+        rmSessionStore(store);
+    }
+});
+
+test('sanitizeProjectPath refuses a value that is not a non-empty string', () => {
+    // The coercion this replaces turned a missing path into the segment
+    // "undefined", which is all letters and so survived the character rule
+    // intact: a real directory named for a value nobody ever held. Every
+    // refused input is checked to yield no segment at all rather than a
+    // plausible one.
+    for (const bad of [undefined, null, '', 0, 42, {}, [], true, Symbol('x')]) {
+        assert.throws(() => memq.sanitizeProjectPath(bad), /must be a non-empty string/,
+            'refused: ' + String(bad));
+    }
+    // The withheld control: real paths still sanitize, so the throw above is
+    // the refusal and not a function that refuses everything.
+    assert.strictEqual(memq.sanitizeProjectPath('D:\\claude-kit'), 'D--claude-kit');
+    // The bare literal is refused too, but as a relative spelling rather than
+    // by its letters: a directory really named "undefined" is reached through
+    // an absolute path, which still sanitizes.
+    assert.throws(() => memq.sanitizeProjectPath('undefined'), /must be an absolute path/,
+        'the bare literal is a relative spelling and is refused as one');
+    assert.strictEqual(memq.sanitizeProjectPath('D:\\undefined'), 'D--undefined',
+        'the name itself is not what is refused');
+});
+
+test('a relative cwd is refused rather than flattened into a segment', () => {
+    // The same defect as the empty string, one spelling further out. A
+    // relative path is a caller that has lost track of what it holds, and
+    // flattening one mints exactly the plausible-but-meaningless directory
+    // the refusal exists to prevent: 'test' becomes the segment "test", '..'
+    // becomes "--", and each names a real, writable store that nothing else
+    // will ever read. The session leg hides this intermittently, since a
+    // relative spelling whose resolved ancestry happens to derive the filed
+    // segment answers correctly, so the refusal is what makes the behavior
+    // the same wherever it is called from. Every caller in the repository
+    // holds an absolute directory already: process.cwd(), a hook payload's
+    // cwd, or a worktree main root.
+    for (const bad of ['test', '..', '.', './', 'a/b', 'plugins/claude-kit']) {
+        assert.throws(() => memq.sanitizeProjectPath(bad), /must be an absolute path/,
+            'refused: ' + bad);
+        assert.throws(() => memq.projectMemoryDir(bad), /must be an absolute path/,
+            'refused through the resolver: ' + bad);
+    }
+    // The withheld control, matched on shape rather than on a string the
+    // refusal was handed: an absolute path of the same character content
+    // still sanitizes, so the throws above are the relative rule firing and
+    // not a function that refuses every path with a separator in it.
+    assert.strictEqual(memq.sanitizeProjectPath('D:/a/b'), 'D--a-b');
+});
+
+test('a rooted-but-driveless win32 spelling is refused, not flattened into a segment', () => {
+    // path.win32.isAbsolute calls '\foo' absolute, yet it names a different
+    // directory per process drive, so its flattened segment matches no fully
+    // qualified derivation of the same directory: the plausible-but-wrong
+    // store the relative refusal exists to stop, admitted through a spelling
+    // that refusal does not test. 'C:foo', the drive-relative complement, is
+    // already refused by the absolute test itself.
+    for (const bad of ['\\', '\\foo', '\\foo\\bar']) {
+        assert.throws(() => memq.sanitizeProjectPath(bad), /fully qualified/,
+            'refused: ' + bad);
+        assert.throws(() => memq.projectMemoryDir(bad), /fully qualified/,
+            'refused through the resolver: ' + bad);
+    }
+    // The withheld controls, matched on shape: the fully qualified forms of
+    // the same name still sanitize under all three grammars the store
+    // accepts, drive-lettered, UNC, and posix-rooted, so the throws above
+    // are the driveless rule firing and not a refusal of every
+    // separator-led spelling.
+    assert.strictEqual(memq.sanitizeProjectPath('C:\\foo'), 'C--foo');
+    assert.strictEqual(memq.sanitizeProjectPath('\\\\host\\share\\foo'), '--host-share-foo');
+    assert.strictEqual(memq.sanitizeProjectPath('/foo'), '-foo');
+});
+
+test('a mixed-separator UNC root is admitted as a share spelling, not refused as driveless', () => {
+    // The driveless refusal exempts the share class by asking
+    // namesNetworkShare itself: a spelling like '\/host/share/p' opens
+    // with two separators, which that single-sourced predicate classifies
+    // as a network share, and path.win32.isAbsolute calls it absolute, so
+    // the store admits every spelling of the share class rather than only
+    // the all-backslash one. A refusal that read only the second backslash
+    // would leave a pinned session's SessionStart hook standing down every
+    // cwd-derived block over a spelling the store itself resolves.
+    assert.strictEqual(memq.sanitizeProjectPath('\\/host/share/p'), '--host-share-p');
+    // The withheld control: the single-separator rooted spelling stays
+    // refused, so the admission above is the two-separator exemption
+    // speaking and not the driveless refusal gone quiet.
+    assert.throws(() => memq.sanitizeProjectPath('\\foo'), /fully qualified/);
+});
+
+test('every spelling namesNetworkShare calls a share is admitted by the driveless refusal', () => {
+    // The driveless refusal's share exemption is namesNetworkShare's own
+    // answer, and this case is what holds the two rules to one grammar:
+    // both predicates are driven over one generated space of separator
+    // spellings, so a drift that gives the refusal a literal of its own
+    // and narrows it (exempting only the all-backslash share, say) fails
+    // here, where a pair of tests each pinning its own rule's literals
+    // would stay green while the rules disagreed. Every generated spelling
+    // opens with a separator, so the win32 grammar calls each one absolute
+    // and the driveless rule is the only refusal in play.
+    const seps = ['\\', '/'];
+    const bodies = ['', 'host', 'host\\share\\p', 'host/share/p', 'host\\share/p'];
+    const spellings = new Set();
+    for (const a of seps) {
+        for (const b of ['', ...seps]) {
+            for (const c of b === '' ? [''] : ['', ...seps]) {
+                for (const body of bodies) spellings.add(a + b + c + body);
+            }
+        }
+    }
+    let shares = 0;
+    let driveless = 0;
+    for (const s of spellings) {
+        if (memq.namesNetworkShare(s)) {
+            shares += 1;
+            assert.strictEqual(typeof memq.sanitizeProjectPath(s), 'string',
+                'a share spelling is admitted: ' + JSON.stringify(s));
+        } else if (s.startsWith('\\')) {
+            driveless += 1;
+            assert.throws(() => memq.sanitizeProjectPath(s), /fully qualified/,
+                'a driveless non-share spelling stays refused: ' + JSON.stringify(s));
+        }
+        // A forward-slash-rooted non-share spelling is the posix admission
+        // pinned by the withheld controls above, not this case's subject.
+    }
+    // Both classes spoke, so the admissions are the exemption at work
+    // rather than a space that generated no shares, and the refusals are
+    // the rule firing rather than a space with nothing left to refuse.
+    assert.ok(shares >= 20, 'share spellings exercised: ' + shares);
+    assert.ok(driveless >= 5, 'driveless spellings exercised: ' + driveless);
+});
+
+// A transient-shaped name is a backup or a mid-rewrite temp, never a record.
+// The store's sync already refuses `*.bak` and `*.tmp.*`, and the readers
+// refuse them by the same standard: `get` builds the file name as
+// `<name> + '.md'` so no argument can ever name one, and every rung that
+// enumerates a directory filters through isMemoryFilename, whose closing test
+// is that the last three characters are `.md`. This fixture holds one of each
+// shape and a live record beside them, so a matcher that never ran cannot pass
+// for a reader that refused.
+test('no reading verb resolves a transient-shaped name, with a live record proving it can speak', () => {
+    const store = makeStore();
+    try {
+        // The orphan: an indexed name whose only file on disk is a backup.
+        writeMemoryFile(store, 'orphan.md.bak', '# orphan\n\nORPHANBAKBODY\n');
+        // The shadow case: a live record with a differing backup beside it,
+        // and a stranded mid-rewrite temp of the same record.
+        writeMemoryFile(store, 'shadowed.md', '# shadowed\n\nSHADOWLIVEBODY\n');
+        writeMemoryFile(store, 'shadowed.md.bak', '# shadowed\n\nSHADOWBAKBODY\n');
+        writeMemoryFile(store, 'shadowed.md.tmp.4242', '# shadowed\n\nSHADOWTMPBODY\n');
+        writeMemoryFile(store, 'MEMORY.md', '# Memory Index\n\n'
+            + '- [orphan](orphan.md) - an indexed name with only a backup on disk\n'
+            + '- [shadowed](shadowed.md) - a live record with a backup beside it\n');
+
+        const absent = run(store, ['get', 'orphan']);
+        assert.match(absent.stderr, /nothing named 'orphan'/,
+            'the indexed name with only a backup behind it answers as absent');
+        assert.doesNotMatch(absent.stdout, /ORPHANBAKBODY/);
+
+        // The withheld control, matched on shape rather than named by the
+        // patterns above: the same fixture's live record IS returned, so the
+        // silences below are refusals rather than a reader that answered
+        // nothing at all.
+        const live = run(store, ['get', 'shadowed']);
+        assert.strictEqual(live.status, 0, live.stderr);
+        assert.match(live.stdout, /SHADOWLIVEBODY/, 'the live record answers by name');
+        assert.doesNotMatch(live.stdout, /SHADOWBAKBODY|SHADOWTMPBODY/,
+            'and the backup beside it neither shadows it nor rides along');
+
+        // Every reading verb that enumerates the directory, plus the stamp
+        // verb that resolves a name to a file. Each verb has to be shown to
+        // speak before its silence about the backups is read as a refusal: a
+        // verb that printed nothing at all would satisfy the two absence
+        // assertions below while proving nothing, so every entry but one
+        // carries the live record's own name as the thing it must say. The
+        // exception is `find orphan`, whose correct answer IS nothing at all;
+        // the instrument behind it is the same `find` binary the entry above
+        // it drives, and that entry speaks.
+        for (const { args, speaks } of [{ args: ['recall'], speaks: true },
+            { args: ['recent'], speaks: true }, { args: ['find', 'shadow'], speaks: true },
+            { args: ['find', 'orphan'], speaks: false },
+            { args: ['unstamped'], speaks: true }]) {
+            const res = run(store, args);
+            assert.strictEqual(res.status, 0, args.join(' ') + ': ' + res.stderr);
+            if (speaks) {
+                assert.match(res.stdout, /shadowed/,
+                    args.join(' ') + ' printed nothing about the live record, so its silence '
+                        + 'about the backups says nothing either: ' + JSON.stringify(res.stdout));
+            }
+            assert.doesNotMatch(res.stdout + res.stderr, /ORPHANBAKBODY|SHADOWBAKBODY|SHADOWTMPBODY/,
+                args.join(' ') + ' resolved a transient-shaped name: ' + res.stdout);
+            assert.doesNotMatch(res.stdout + res.stderr, /orphan\.md\.bak|shadowed\.md\.(bak|tmp)/,
+                args.join(' ') + ' named a transient-shaped file: ' + res.stdout);
+        }
+
+        const stamped = run(store, ['touch', 'orphan', '--applied']);
+        assert.notStrictEqual(stamped.status, 0, 'a stamp on a backup-only name is refused');
+        const stampedLive = run(store, ['touch', 'shadowed', '--applied']);
+        assert.strictEqual(stampedLive.status, 0, stampedLive.stderr);
+        // Every stamp the fixture collected, the read `get` left behind
+        // included, names the live record: no transient-shaped name ever
+        // reached the usage sidecar.
+        assert.deepStrictEqual([...new Set(readUsageEntries(store).map((e) => e.file))],
+            ['shadowed.md'], 'only the live record was ever stamped');
+    } finally {
+        rmStore(store);
+    }
+});
+
 // A store file replaced whole while a rewrite of it is in flight. This is what
 // a sync pull looks like from inside the process: the file is longer than the
 // bytes the pass read and shares none of them.
@@ -16286,12 +17914,13 @@ function refuseStatPreload(dir, target) {
         "'use strict';",
         "const fs = require('fs');",
         "const path = require('path');",
-        'const guarded = ' + JSON.stringify(path.resolve(target).toLowerCase()) + ';',
+        SHIM_NORM_LINE,
+        'const guarded = norm(' + JSON.stringify(path.resolve(target)) + ');',
         'const marker = ' + JSON.stringify(refuseStatFiredMarker(dir, target)) + ';',
         'const realStatSync = fs.statSync;',
         'const realLstatSync = fs.lstatSync;',
         "const refused = (p) => typeof p === 'string'",
-        '    && path.resolve(p).toLowerCase() === guarded;',
+        '    && norm(path.resolve(p)) === guarded;',
         'const refuse = () => {',
         "    fs.writeFileSync(marker, 'fired\\n', 'utf8');",
         "    const err = new Error('EACCES: the fixture refuses this stat');",
@@ -16927,10 +18556,11 @@ function readAbsentPreload(dir, target) {
         "'use strict';",
         "const fs = require('fs');",
         "const path = require('path');",
-        'const guarded = ' + JSON.stringify(path.resolve(target).toLowerCase()) + ';',
+        SHIM_NORM_LINE,
+        'const guarded = norm(' + JSON.stringify(path.resolve(target)) + ');',
         'const realReadFileSync = fs.readFileSync;',
         'fs.readFileSync = function (p) {',
-        "    if (typeof p === 'string' && path.resolve(p).toLowerCase() === guarded) {",
+        "    if (typeof p === 'string' && norm(path.resolve(p)) === guarded) {",
         "        const err = new Error('ENOENT: the fixture reads this path as absent');",
         "        err.code = 'ENOENT';",
         '        throw err;',
@@ -16954,10 +18584,11 @@ function fakeReparsePreload(dir, target) {
         "'use strict';",
         "const fs = require('fs');",
         "const path = require('path');",
-        'const guarded = ' + JSON.stringify(path.resolve(target).toLowerCase()) + ';',
+        SHIM_NORM_LINE,
+        'const guarded = norm(' + JSON.stringify(path.resolve(target)) + ');',
         'const realLstatSync = fs.lstatSync;',
         'fs.lstatSync = function (p) {',
-        "    if (typeof p === 'string' && path.resolve(p).toLowerCase() === guarded) {",
+        "    if (typeof p === 'string' && norm(path.resolve(p)) === guarded) {",
         '        return {',
         '            isFile: () => false,',
         '            isDirectory: () => false,',
@@ -16981,14 +18612,15 @@ function plantAtLstatPreload(dir, target, body, nth) {
         "'use strict';",
         "const fs = require('fs');",
         "const path = require('path');",
-        'const guarded = ' + JSON.stringify(path.resolve(target).toLowerCase()) + ';',
+        SHIM_NORM_LINE,
+        'const guarded = norm(' + JSON.stringify(path.resolve(target)) + ');',
         'const body = ' + JSON.stringify(body) + ';',
         'const nth = ' + JSON.stringify(nth) + ';',
         'const realLstatSync = fs.lstatSync;',
         'const realWriteFileSync = fs.writeFileSync;',
         'let seen = 0;',
         'fs.lstatSync = function (p) {',
-        "    if (typeof p === 'string' && path.resolve(p).toLowerCase() === guarded) {",
+        "    if (typeof p === 'string' && norm(path.resolve(p)) === guarded) {",
         '        seen += 1;',
         '        if (seen === nth) realWriteFileSync(guarded, body, \'utf8\');',
         "        const err = new Error('ENOENT: the fixture answers this lstat as absent');",
@@ -17250,12 +18882,13 @@ function vanishAtLstatPreload(dir, target, nth) {
         "'use strict';",
         "const fs = require('fs');",
         "const path = require('path');",
-        'const guarded = ' + JSON.stringify(path.resolve(target).toLowerCase()) + ';',
+        SHIM_NORM_LINE,
+        'const guarded = norm(' + JSON.stringify(path.resolve(target)) + ');',
         'const nth = ' + JSON.stringify(nth) + ';',
         'const realLstatSync = fs.lstatSync;',
         'let seen = 0;',
         'fs.lstatSync = function (p) {',
-        "    if (typeof p === 'string' && path.resolve(p).toLowerCase() === guarded) {",
+        "    if (typeof p === 'string' && norm(path.resolve(p)) === guarded) {",
         '        seen += 1;',
         '        if (seen < nth) return realLstatSync.apply(fs, arguments);',
         '        try { fs.rmSync(guarded, { recursive: true, force: true }); } catch { /* gone */ }',

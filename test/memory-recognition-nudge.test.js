@@ -1536,6 +1536,42 @@ test('nudgeStampRate refuses rather than silently succeeds against a memq missin
     }
 });
 
+test('nudgeStampRate answers an error object for a working directory the resolver refuses', () => {
+    // The report's contract is a result-or-error object, never a throw, and
+    // memq's resolver refuses a relative working directory by throwing. The
+    // root lookup is wrapped exactly as the memDir lookup beside it is, so
+    // the refusal reads as this report's own error shape.
+    const store = makeStore();
+    try {
+        const report = withStoreEnv(store, () => hook.nudgeStampRate('relative-not-a-root', Date.now() - 60000));
+        // The exact message, not any error: an earlier failure wearing the
+        // error shape would keep this green without the root wrap ever being
+        // exercised.
+        assert.strictEqual(report.error, 'the project root could not be resolved from the working directory',
+            'a refused working directory is the root wrap\'s own error, not a throw: ' + JSON.stringify(report));
+    } finally { rmStore(store); }
+});
+
+test('a working directory the resolver refuses costs the project tier and no other', () => {
+    // recognitionTiers' header promises each tier its own try, so one tier's
+    // failure is never the other's. The project resolver is the one that can
+    // throw on a refused cwd, and an unwrapped throw there would cross the
+    // entry-point catch and silence every tier at once.
+    const store = makeStore();
+    try {
+        // The operator tier resolves only where its directory exists, and it
+        // is the control here: a surviving tier proves the refusal cost one
+        // tier rather than the list.
+        fs.mkdirSync(path.join(store.root, 'memory-operator'), { recursive: true });
+        const tiers = withStoreEnv(store, () => hook.recognitionTiers(memq, 'relative-not-a-root'));
+        assert.ok(Array.isArray(tiers), 'a refused cwd still answers a list');
+        assert.ok(!tiers.some((t) => t.tier === hook.PROJECT_TIER),
+            'the refused project tier is simply not in the list');
+        assert.ok(tiers.some((t) => t.tier === hook.OPERATOR_TIER),
+            'the operator tier still answers when the project resolver refuses');
+    } finally { rmStore(store); }
+});
+
 test('an unreadable usage sidecar refuses the report rather than reading as zero stamps, and a '
     + 'malformed line among valid ones is skipped rather than trusted or thrown on', () => {
     const store = makeStore();

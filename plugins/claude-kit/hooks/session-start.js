@@ -33,7 +33,7 @@ const os = require('os');
 const path = require('path');
 const { gitRun, gitOutput } = require('./kit-git-lib.js');
 const {
-    readFileBounded, containedRealPath, listBoundedNames, DIR_SCAN_MAX_ENTRIES
+    readFileBounded, containedRealPath, listBoundedNames
 } = require('./kit-read-lib.js');
 const {
     readGoal, goalStateAbsent, lastActivePhrase, isSessionIdShaped, queuePosition, planHeadText,
@@ -532,10 +532,10 @@ function composeGoalBlock(cwd, goal, sessionId) {
 // file identifies no directory of ours). Where the payload carries no path,
 // the fallback locates <sessionId>.jsonl under the harness's transcript store,
 // as the /kit-goal CLI's own lookup does. That fallback is a scan across
-// project directories, and a scan can land in another project's: here the
-// probe is this session's own id, so a wrong landing needs a second local
-// project holding a transcript file of that exact id, and the cost of one is a
-// hint line about the wrong checkout rather than any action.
+// project directories, and it answers only where exactly one of them holds a
+// transcript of this session's id: two matches are an ambiguity rather than a
+// hint about either, so the scan says nothing and this function answers null,
+// which is the same absence a session with no transcript at all produces.
 //
 // Any failure returns null (never throws).
 function ownTranscriptDir(sessionId, transcriptPath) {
@@ -545,20 +545,20 @@ function ownTranscriptDir(sessionId, transcriptPath) {
             const stem = name.toLowerCase().endsWith('.jsonl') ? name.slice(0, -6) : null;
             return stem && sameSessionId(stem, sessionId) ? path.dirname(transcriptPath) : null;
         }
-        const root = path.join(os.homedir(), '.claude', 'projects');
-        // The listing goes through the shared bounded reader, so a store filled
-        // with entries cannot turn this fallback into an unbounded walk. A
-        // listing cut short by the cap, or one the store would not give up,
-        // simply ends with no match, which is the same null an absent
-        // transcript answers with: this function's whole contract is a
-        // directory or nothing.
-        for (const entry of listBoundedNames(root, DIR_SCAN_MAX_ENTRIES, () => true).names) {
-            const candidate = path.join(root, entry, sessionId + '.jsonl');
-            try {
-                if (fs.statSync(candidate).isFile()) return path.join(root, entry);
-            } catch { /* no transcript of this session in that project directory */ }
-        }
-        return null;
+        // The fallback scan is memq's own sessionTranscriptDir, imported
+        // rather than restated so the two cannot drift: memq's store
+        // resolution asks this same question of the same store, and a scan
+        // spelled twice is a rule that gets corrected in one carrier. It
+        // applies the shape test before any filesystem work, refuses a value
+        // carrying a path separator, lists through the same bounded reader
+        // this hook uses, and never throws, so a listing cut short by the cap
+        // or one the store would not give up simply ends with no match, which
+        // is the same null an absent transcript answers with: this function's
+        // whole contract is a directory or nothing. memq is required lazily
+        // because only this branch needs it, and a session start that was
+        // handed its transcript path never pays for the load.
+        const { sessionTranscriptDir } = require(path.join(__dirname, '..', 'scripts', 'memq.js'));
+        return sessionTranscriptDir(sessionId);
     } catch {
         return null;
     }

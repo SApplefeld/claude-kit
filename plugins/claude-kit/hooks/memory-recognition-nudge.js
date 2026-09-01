@@ -246,7 +246,7 @@ const MEMQ_SYMBOLS = [
     ['foreignMachine', 'function'],
     ['acquireLock', 'function'],
     ['sanitize', 'function'],
-    ['worktreeMainRoot', 'function'],
+    ['projectTreeRoot', 'function'],
     ['appliedTally', 'function'],
     ['memoryFileKey', 'function'],
     ['TRIGGER_TYPES', 'object'],
@@ -952,7 +952,14 @@ function loadIndex(memq, lib, memDir, cache) {
 // of every tool call: a throw out of either one would cost the session the
 // project tier's nudges as well, and one tier's failure is never the other's.
 function recognitionTiers(memq, cwd) {
-    const tiers = [{ tier: PROJECT_TIER, dir: memq.projectMemoryDir(cwd) }];
+    const tiers = [];
+    // The project resolver can throw on a working directory the store
+    // refuses, and an unwrapped throw here would cross the entry-point catch
+    // and cost every tier at once, the exact outcome the paragraph above
+    // rules out.
+    try {
+        tiers.push({ tier: PROJECT_TIER, dir: memq.projectMemoryDir(cwd) });
+    } catch { /* the refused tier is simply not in the list */ }
     let typed = null;
     try { typed = memq.typedTierOrNull(cwd); } catch { typed = null; }
     if (typed !== null && typed.dir) tiers.push({ tier: TYPE_TIER, dir: typed.dir });
@@ -1358,16 +1365,18 @@ const NUDGE_LOG_READ_CAP = NUDGE_LOG_MAX_BYTES * 2;
 
 // The root this box resolves one project's nudge log and stamp-rate report
 // against, or null when cwd is network-shaped. Resolved through memq's own
-// worktreeMainRoot rather than through cwd directly, so every worktree
-// checked out from one repository shares a single log, matching the single
-// memory tier projectMemoryDir resolves to for all of them: memq's own
-// projectSegment falls back to this exact function once a pin is absent, and
-// the log is joined against that tier's applied stamps, so a log keyed on raw
-// cwd would silently split one tier's evidence across as many logs as it has
-// worktrees. A pin is not consulted here: a pin renames where the memory
-// tier's store segment lives, not where this box's own working tree sits, and
-// the log is real filesystem state anchored to the tree rather than to the
-// store's naming.
+// projectTreeRoot, which is the path-side half of the same resolution
+// projectMemoryDir keys the memory tier on: a worktree folds to its main
+// checkout, and a cwd inside the project the harness filed this session under
+// folds to that project's own directory. Taking either half from a rule of its
+// own is what the pairing prevents. The report below joins this log against
+// that tier's applied stamps, so a log root resolved differently would read one
+// project's tier against another project's log and score every record
+// unnudged, which is exactly the flattering-or-damning number this reading
+// refuses to produce. A pin is not consulted, by projectTreeRoot's own
+// contract: a pin renames where the memory tier's store segment lives, not
+// where this box's working tree sits, and the log is real filesystem state
+// anchored to the tree rather than to the store's naming.
 //
 // The network screen here is unconditional, run before any resolution and
 // before any .kit/ filesystem operation. main()'s own screen at its memDir
@@ -1377,8 +1386,7 @@ const NUDGE_LOG_READ_CAP = NUDGE_LOG_MAX_BYTES * 2;
 // unconditional stand-down rather than inheriting that conditional one.
 function nudgeProjectRoot(memq, cwd) {
     if (memq.namesNetworkShare(cwd)) return null;
-    const root = memq.worktreeMainRoot(cwd);
-    return root === null ? cwd : root;
+    return memq.projectTreeRoot(cwd);
 }
 
 // The nudge log for one project: one JSON line per nudge actually shown to a
@@ -1669,7 +1677,11 @@ function nudgeStampRate(cwd, sinceMs) {
     if (MEMQ_SYMBOLS.some(([name, kind]) => typeof memq[name] !== kind)) {
         return { error: 'the installed memq is missing a symbol this report needs' };
     }
-    const root = nudgeProjectRoot(memq, resolvedCwd);
+    let root;
+    // Wrapped for the reason the memDir lookup below is: the resolver refuses
+    // a working directory that cannot name a project, and this report's own
+    // contract is a result-or-error object, never a throw.
+    try { root = nudgeProjectRoot(memq, resolvedCwd); } catch { return { error: 'the project root could not be resolved from the working directory' }; }
     if (root === null) {
         return { error: 'a network-shaped working directory stands this report down' };
     }

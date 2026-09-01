@@ -2548,17 +2548,18 @@ function usableSessionId(value) {
 
 // Where the harness files a session's transcript for a project directory, or
 // null where nothing resolves. The shape is <session-id>.jsonl under
-// ~/.claude/projects/<flattened project path>, and the flattening is memq's
-// own sanitizeProjectPath, imported rather than restated so the two cannot
-// disagree about a directory name. memq is required lazily because this is
-// the only path here that needs it and the gate's own hot path must not pay
-// for loading it. One derivation serves the corroboration below and the status
-// report's reading of a declared moment.
+// <projects root>/<flattened project path>, and both halves are memq's own,
+// harnessProjectsRoot for the root and sanitizeProjectPath for the
+// flattening, imported rather than restated so no spelling here can disagree
+// with the store's. memq is required lazily because this is the only path
+// here that needs it and the gate's own hot path must not pay for loading it.
+// One derivation serves the corroboration below and the status report's
+// reading of a declared moment.
 function sessionTranscriptPath(projectDir, sessionId) {
     try {
         if (usableSessionId(sessionId) === null) return null;
-        const { sanitizeProjectPath } = require(path.join(__dirname, '..', 'scripts', 'memq.js'));
-        return path.join(os.homedir(), '.claude', 'projects',
+        const { sanitizeProjectPath, harnessProjectsRoot } = require(path.join(__dirname, '..', 'scripts', 'memq.js'));
+        return path.join(harnessProjectsRoot(),
             sanitizeProjectPath(path.resolve(projectDir)), sessionId + '.jsonl');
     } catch {
         return null;

@@ -102,6 +102,16 @@ process.on('exit', () => {
 // loses the Windows `Path` key), and extra is where a case adds NODE_OPTIONS
 // or a run id.
 //
+// The suite's own session id and home are scrubbed and the home redirected,
+// the shape memq.test.js's childEnv takes and for the same reason: inherited,
+// they would run every hook child's session-filing leg against the operator's
+// live projects directory, and the assertions would stay deterministic only
+// because a temp fixture path can never climb to a real filed segment, which
+// is geometry rather than an explicit no-session state. Every casing is
+// deleted first, because a Windows environment block's key casing is not the
+// spelling a JS object copy is indexed by, and a case that is about a home or
+// a session overrides through `extra`.
+//
 // The engine's spawn variables are dropped from every child: this suite runs
 // inside fleet workers too, where the engine sets them, and an inherited
 // KIT_RUN_ID would put the run-scoped block into the output of every case
@@ -119,14 +129,24 @@ function scrubRunEnv(env) {
     return env;
 }
 
+const NO_SESSION_HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'memsession-home-'));
+process.on('exit', () => {
+    try { fs.rmSync(NO_SESSION_HOME, { recursive: true, force: true }); } catch { /* best effort */ }
+});
+
 function runHook(store, payload, extra) {
     const env = scrubRunEnv({ ...process.env });
+    for (const k of Object.keys(env)) {
+        if (/^(USERPROFILE|HOME|CLAUDE_CODE_SESSION_ID)$/i.test(k)) delete env[k];
+    }
     return spawnSync(process.execPath, [HOOK], {
         input: typeof payload === 'string' ? payload : JSON.stringify(payload),
         cwd: store.proj,
         encoding: 'utf8',
         env: {
             ...env,
+            HOME: NO_SESSION_HOME,
+            USERPROFILE: NO_SESSION_HOME,
             KIT_MEMORY_ROOT: store.root,
             KIT_MEMORY_ROOT_ALLOW_DATA: '1',
             KIT_EMBEDDER_ROOT: READY_EMBEDDER_ROOT,
@@ -296,6 +316,57 @@ test('a malformed or cwd-less payload falls back to the process cwd', () => {
     }
 });
 
+test('a relative payload cwd degrades to a visible line, not to silence', () => {
+    // The store's resolver refuses a relative working directory by throwing,
+    // and every cwd-derived block hangs off that resolution. Unhandled, the
+    // throw reaches the hook's outer catch and the session hears nothing,
+    // which is the failure this file calls the one that matters: a session
+    // told nothing writes its memory files the ordinary way, into a store
+    // nothing reads.
+    const store = makeStore();
+    try {
+        const context = assertBlock(runHook(store, { cwd: 'relative-not-a-root', source: 'startup' }));
+        assert.match(context, /does not resolve to a project store/,
+            'the refused working directory is named to the session');
+        assert.ok(!context.includes(store.memDir),
+            'no destination is derived from a working directory the store refused');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a pinned session with a refused cwd is not told its tier is unreadable', () => {
+    // Under an honored pin the tier resolves from the environment while
+    // deriving nothing from the working directory, so the unpinned branch's
+    // message would be untrue: the tier holds nothing this session cannot
+    // reach. The spelling refusal itself still runs first, memq validating
+    // the cwd before the pin answers, which is what routes a pinned session
+    // onto this branch at all; the pin decides which tier resolves, never
+    // whether a spelling is accepted. The cwd-derived blocks still cannot
+    // be shown, and the block says that much and no more.
+    const store = makeStore();
+    try {
+        const context = assertBlock(runHook(store, { cwd: 'relative-not-a-root', source: 'startup' },
+            { KIT_MEMORY_PROJECT: 'pinned-refused-cwd' }));
+        assert.match(context, /KIT_MEMORY_PROJECT/,
+            'the pin is named as what still resolves the tier');
+        assert.doesNotMatch(context, /may hold records this block cannot see/,
+            'an honored pin is not told its tier is unreadable');
+        assert.doesNotMatch(context, /fully qualified working directory/,
+            'a pinned session is not sent to fix a working directory the pin makes moot');
+
+        // The withheld control: the same refused cwd without the pin takes
+        // the full unreadability message, so the two doesNotMatch above are
+        // the pin branch speaking and not a message that lost those lines
+        // for every session.
+        const unpinned = assertBlock(runHook(store, { cwd: 'relative-not-a-root', source: 'startup' }));
+        assert.match(unpinned, /may hold records this block cannot see/);
+        assert.match(unpinned, /fully qualified working directory/);
+    } finally {
+        rmStore(store);
+    }
+});
+
 // Make the memq require fail inside the spawned hook: a preload module refuses
 // to load that one module, standing in for the damaged or incomplete plugin
 // cache the hook's guarded require exists for. Node parses NODE_OPTIONS with
@@ -331,6 +402,74 @@ test('a memq that will not load leaves the hook silent rather than throwing', ()
         // The control: without the preload the same store nudges, so the
         // silence above proves the injection rather than an ineligible store.
         assertNudge(runHook(store, startupPayload(store)));
+    } finally {
+        rmStore(store);
+    }
+});
+
+// Strip one export off memq inside the spawned hook, leaving the module itself
+// loadable, so a memq missing the symbol its caller expects is a state a case
+// can hold, which the refusing preload above cannot stand in for: there the
+// require fails and the hook's guarded require answers, while here the require
+// succeeds and the missing symbol surfaces only at the call. The fired marker
+// is written from inside the branch that deletes the key, and a case asserts
+// it: a stripped run in which the shim never engaged is byte-identical to an
+// unstripped one, so without the marker the pin would pass vacuously.
+function stripExportFiredMarker(dir) {
+    return path.join(dir, 'strip-export.fired');
+}
+
+function exportStrippingPreload(dir, name) {
+    const shim = path.join(dir, 'strip-export.js');
+    fs.writeFileSync(shim, [
+        "'use strict';",
+        "const fs = require('fs');",
+        "const Module = require('module');",
+        'const realLoad = Module._load;',
+        'const marker = ' + JSON.stringify(stripExportFiredMarker(dir)) + ';',
+        'Module._load = function (request) {',
+        '    const loaded = realLoad.apply(Module, arguments);',
+        "    if (String(request).endsWith('memq.js') && loaded && " + JSON.stringify(name) + ' in loaded) {',
+        '        delete loaded[' + JSON.stringify(name) + '];',
+        "        fs.writeFileSync(marker, 'fired\\n', 'utf8');",
+        '    }',
+        '    return loaded;',
+        '};'
+    ].join('\n') + '\n', 'utf8');
+    return '--require "' + shim.replace(/\\/g, '/') + '"';
+}
+
+test('a memq lacking the resolution export leaves an absolute cwd on the ordinary branch', () => {
+    const store = makeStore();
+    try {
+        // The hook asks memq whether a working directory resolves before it
+        // derives anything from one. Made without the presence check, that
+        // call would throw on a memq missing the export, the refusal catch
+        // would read the throw as a refused cwd, and every session, absolute
+        // working directory and all, would be told its directory does not
+        // resolve. The presence check routes a missing export to the ordinary
+        // branch instead. (An installed cache is not how the export goes
+        // missing on its own: a cache old enough to lack it also lacks the
+        // exports main() calls unguarded first, which silences the whole hook
+        // before this branch, so the stripped module here is the state's one
+        // deterministic producer.)
+        const context = assertBlock(runHook(store, startupPayload(store),
+            { NODE_OPTIONS: exportStrippingPreload(store.root, 'sanitizeProjectPath') }));
+        assert.ok(fs.existsSync(stripExportFiredMarker(store.root)),
+            'the shim engaged: the export was actually stripped off the loaded memq');
+        assert.doesNotMatch(context, /does not resolve to a project store/,
+            'a missing export is not a refused working directory');
+        assert.ok(context.includes(store.memDir),
+            'the ordinary branch still derives the destination from the resolved cwd');
+
+        // The withheld control: the same unstripped memq handed a cwd it
+        // refuses DOES produce the refusal text, so the doesNotMatch above is
+        // a detector that can speak rather than a pattern nothing in this
+        // harness ever prints. It withholds what the stripped run must not
+        // show, instead of restating the ordinary run's outcome.
+        assert.match(assertBlock(runHook(store, { cwd: 'relative-not-a-root', source: 'startup' })),
+            /does not resolve to a project store/,
+            'the refusal text is producible here, so its absence above is evidence');
     } finally {
         rmStore(store);
     }
@@ -2608,6 +2747,44 @@ test('a pinned session\'s drift pass answers the pin the same way whether or not
         // drift pass's own silence never touches.
         assert.match(network, /Kit pinned memory store:/,
             'the pinned destination block still rides beside the drift pass\'s silence:\n' + network);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a pinned session whose cwd spells a share with mixed separators keeps its ordinary blocks', () => {
+    // The store's driveless refusal exempts any spelling opening with two
+    // separators, the same [\\/] class namesNetworkShare reads shares by,
+    // so '\/host/share' passes the spelling validation exactly as
+    // '\\host\share' and '//host/share' do, and under a pin the ordinary
+    // branch then resolves every block from the pin without touching the
+    // share. A refusal reading only the second backslash would route this
+    // spelling to the refused-cwd branch instead, costing a pinned session
+    // every cwd-derived block over a working directory the store itself
+    // resolves. The timeout is the safety net the sibling network test
+    // carries, for the same reason: a stray real walk against the
+    // unreachable address fails loudly rather than hanging the suite.
+    const store = makeStore();
+    try {
+        const pinnedMemDir = path.join(store.root, 'projects', UNC_FIXTURE_SEGMENT, 'memory');
+        fs.mkdirSync(pinnedMemDir, { recursive: true });
+        const mixed = assertBlock(runHookTimed(store,
+            { cwd: '\\/10.255.255.1/share', source: 'startup' }, null, 8000));
+        assert.match(mixed, /Kit pinned memory store:/,
+            'the pinned destination block fires for the mixed-separator share cwd:\n' + mixed);
+        assert.doesNotMatch(mixed, /does not resolve as a project path/,
+            'the mixed-separator share spelling is not treated as a refused cwd:\n' + mixed);
+
+        // The withheld control: the single-separator rooted spelling is the
+        // one the refusal exists for, so the same pinned session takes the
+        // refused-cwd branch there, proving the admission above is the
+        // share exemption and not a refusal that never fires under a pin.
+        const rooted = assertBlock(runHookTimed(store,
+            { cwd: '\\foo', source: 'startup' }, null, 8000));
+        assert.match(rooted, /does not resolve as a project path/,
+            'the rooted driveless spelling still lands on the refused-cwd branch:\n' + rooted);
+        assert.doesNotMatch(rooted, /Kit pinned memory store:/,
+            'no destination block is derived on the refused-cwd branch:\n' + rooted);
     } finally {
         rmStore(store);
     }

@@ -977,7 +977,7 @@ function anchorsFault(memq, text, cwd) {
         // pays none of it.
         //
         // A working directory naming a network share is refused before that
-        // walk (memq.anchorRoot's own worktreeMainRoot) ever runs: this guard
+        // walk (memq.anchorRoot's own projectTreeRoot) ever runs: this guard
         // stalls the operator's own tool call rather than losing a hook's
         // stdout, which is the costliest of the four callers that
         // single-source memq.namesNetworkShare (Standing Amendment 2).

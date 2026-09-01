@@ -704,10 +704,36 @@ test('a memq-grant stuck at always-allow fails the silent probe (the other direc
     }
 });
 
-test('a hook module its require() depends on, deleted, fails both goal probes (a load check cannot see this)', () => {
+test('a hook module its require() depends on, deleted, fails every behavior-probed hook that loads it (a load check cannot see this)', () => {
     // kit-goal-lib.js is not wired in hooks.json, so no load check covers it and
     // `node --check` on kit-goal-stop.js still passes: only running the hook
     // catches the broken module graph.
+    //
+    // The blast radius is wider than the two goal probes, and deliberately so.
+    // memq requires kit-goal-lib.js from its top-of-file block, for the session
+    // id predicate its store resolution needs, so deleting that module also
+    // makes memq itself unloadable and every hook that loads memq fails with
+    // it. The two extra lines below are that reach: the frontmatter guard and
+    // the memq grant both load memq. The guard's failure is the fail-open
+    // direction, which is a pre-existing property of an unloadable memq rather
+    // than anything this dependency introduced; what the dependency changed is
+    // the number of files whose absence can produce it, and this canary is the
+    // detector that says so. The require is static rather than lazy because
+    // the grant pin in test/memq-grant.test.js requires memq's loads to sit in
+    // one contiguous literal block, a lazy one being exactly the dynamic load
+    // that pin exists to forbid.
+    //
+    // The claim stops at the behavior-probed set, because the canary probes
+    // only the hooks its EXIT_PROBES and goal probes name, and this fixture
+    // breaks hooks it never runs. session-start.js destructures
+    // kit-goal-lib.js at module scope, so in this very cache it is genuinely
+    // unloadable, and the assertion below records its absence from the output
+    // as health only because no probe exists that could have named it.
+    // memory-session.js and memory-recognition-nudge.js load memq lazily
+    // behind their own fail-open catches, so the same deletion leaves them
+    // silently inert, equally unobserved. A probe per unprobed hook is the
+    // canary-side fix; until one exists, this test's claim is scoped to what
+    // the instrument can see.
     const cache = makeCache();
     try {
         fs.rmSync(hookFile(cache, 'kit-goal-lib.js'));
@@ -717,7 +743,9 @@ test('a hook module its require() depends on, deleted, fails both goal probes (a
         assert.ok(text, 'a hook whose dependency is gone must not be silent');
         assertOnlyFlagged(text, [
             { hook: 'kit-goal-stop.js', probe: 'leash probe' },
-            { hook: 'kit-goal-stop.js', probe: 'release probe' }
+            { hook: 'kit-goal-stop.js', probe: 'release probe' },
+            { hook: 'memory-frontmatter-guard.js', probe: 'deny probe' },
+            { hook: 'memq-grant.js', probe: 'grant probe' }
         ]);
     } finally {
         rmDir(cache);

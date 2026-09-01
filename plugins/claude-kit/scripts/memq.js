@@ -243,24 +243,28 @@
 // carries the reasoning and the trust boundary); every other shape, including
 // a submodule's, keeps the working directory's own derivation.
 //
-// Node core modules only, CommonJS, UTF-8 throughout, with one named
-// exception: hooks/kit-network-lib.js, a module of a few lines holding
-// namesNetworkShare and nothing else, required below alongside the built-ins
-// and re-exported under this file's own name. Every consumer inside this
-// file already holds this module at no extra cost once required here, and
-// requiring it here rather than duplicating its one expression is what keeps
-// the leading-separator test single-sourced (Standing Amendment 2) between
-// this file and the hooks that ask the same question without needing memq
-// for anything else. test/memq-grant.test.js pins this file to exactly this
-// one contiguous top-of-file requires block plus the one dynamic code load
-// inside semanticChannel; this line is the former, not the latter, because
-// its target is a fixed, kit-shipped sibling rather than a directory the
-// command line names. This is a load-time coupling: a require failure for
-// hooks/kit-network-lib.js (an install missing that file, a hand-edited
-// plugin cache) throws before any of this file's own code runs, refusing
-// every verb rather than only the ones that call namesNetworkShare. It is
-// the one sibling whose absence can take this whole file down; everything
-// else loaded at the top of it is a Node built-in.
+// Node core modules only, CommonJS, UTF-8 throughout, with three named
+// exceptions, all fixed kit-shipped siblings under hooks/ and all required
+// below alongside the built-ins: kit-network-lib.js for namesNetworkShare,
+// re-exported under this file's own name; kit-goal-lib.js for
+// isSessionIdShaped, the one definition of what a harness session id looks
+// like; and kit-read-lib.js for the bounded directory listing every kit walk
+// over a directory nobody here controls goes through. Every consumer inside
+// this file already holds them at no extra cost once required here, and
+// requiring them rather than restating what they hold is what keeps the
+// separator test (Standing Amendment 2), the session-id grammar and the
+// listing bound single-sourced between this file and the hooks that ask the
+// same questions without needing memq for anything else.
+// test/memq-grant.test.js pins this file to exactly this one contiguous
+// top-of-file requires block plus the dynamic code loads inside find's
+// channels; these three lines are the former, not the latter, because their
+// targets are fixed kit-shipped siblings rather than a directory the command
+// line names. This is a load-time coupling: a require failure for any of the
+// three (an install missing the file, a hand-edited plugin cache) throws
+// before any of this file's own code runs, refusing every verb rather than
+// only the ones that call into it. Those three are the siblings whose absence
+// can take this whole file down; everything else loaded at the top of it is a
+// Node built-in.
 
 'use strict';
 
@@ -269,6 +273,8 @@ const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
 const { namesNetworkShare } = require('../hooks/kit-network-lib.js');
+const { isSessionIdShaped } = require('../hooks/kit-goal-lib.js');
+const { listBoundedNames, DIR_SCAN_MAX_ENTRIES } = require('../hooks/kit-read-lib.js');
 
 const JOURNAL_FILE = 'outcomes.jsonl';
 const USAGE_FILE = 'usage.jsonl';
@@ -515,8 +521,82 @@ function memoryRoot() {
 // harness keeps writing that session's transcript under the worktree's own:
 // the memories are the repository's, and a store split per worktree is the
 // defect that resolution exists to close.
+//
+// A value that is not a non-empty string is refused rather than coerced. The
+// coercion this replaces was silent and its product was plausible: a missing
+// path became the segment "undefined", which is all letters and so survives
+// the character rule unchanged, and the store then reads and writes a real
+// directory named for a value nobody ever held. An empty string is refused on
+// the same ground, since it names the projects root's own memory directory
+// rather than any project's. Every caller either holds a string by
+// construction or already answers a throw with its own null, so the failure
+// lands at the call that had no path rather than in a directory listing weeks
+// later.
 function sanitizeProjectPath(cwd) {
-    return String(cwd).replace(/[^A-Za-z0-9]/g, '-');
+    assertProjectCwd(cwd);
+    return cwd.replace(/[^A-Za-z0-9]/g, '-');
+}
+
+// The refusal itself, separated from the character rule so projectSegment can
+// apply it before any of its legs run. The refusal has to be unbypassable
+// whatever the environment says, and it is bypassable while it lives only in
+// the last leg: path.resolve('') is process.cwd(), so '' and '.' both name
+// this process's own directory, the session leg answers for them, and a value
+// the store refuses to name a project by resolves a real tier anyway.
+function assertProjectCwd(cwd) {
+    if (typeof cwd !== 'string' || cwd === '') {
+        throw new TypeError('memq: a project directory must be a non-empty string, not '
+            + (typeof cwd === 'string' ? 'an empty string' : typeof cwd));
+    }
+    // A relative spelling is the same defect as the empty string one step
+    // further out, and it is refused for the same reason rather than resolved
+    // as a convenience. Flattened, 'test' becomes the segment "test" and '..'
+    // becomes "--": real, writable directories named for a value nobody held,
+    // which is exactly the shape the refusal above exists to stop. Resolving
+    // it instead would answer a different question than the caller asked,
+    // since a relative path means "here" only for whichever process happens
+    // to read it, and every caller in this repository already holds an
+    // absolute directory: the CLI passes process.cwd(), a hook passes the cwd
+    // the harness reported, and the worktree leg passes a main checkout root.
+    // So a relative value reaching here means the caller lost track of what it
+    // was holding, and the failure belongs at that call rather than in a
+    // directory listing weeks later. The session leg is what makes this
+    // load-bearing rather than tidy: a relative spelling whose resolved
+    // ancestry happens to derive the filed segment resolves correctly while
+    // one that does not mints the junk directory, so without this the same
+    // input behaves two ways depending on where it was called from.
+    //
+    // Absolute is judged under both path flavors rather than the platform's
+    // own, because the store's segments derive from either spelling: a
+    // win32-spelled directory handled off win32 (a store synced across
+    // machines, a suite exercising the other platform's literals) is an
+    // absolute path by its own grammar, and the platform-flavored test would
+    // report the caller's sound input as the lost-track defect this refusal
+    // names.
+    if (!path.win32.isAbsolute(cwd) && !path.posix.isAbsolute(cwd)) {
+        throw new TypeError('memq: a project directory must be an absolute path, not ' + cwd);
+    }
+    // Rooted but driveless is refused although the win32 grammar calls it
+    // absolute: a spelling like '\foo' names a different directory per
+    // process drive, so its flattened segment matches no fully qualified
+    // derivation of the same directory, which is exactly the
+    // plausible-but-wrong-store shape the refusals above exist to stop,
+    // admitted through a spelling they do not test. Refused is a leading
+    // backslash on a spelling namesNetworkShare does not call a share: the
+    // share exemption is that single-sourced predicate's own answer, so
+    // every spelling it classifies as a network share passes here
+    // whichever mix of separators spells it, and no second grammar exists
+    // for the two rules to disagree over. A forward-slash-rooted spelling
+    // passes too, the posix grammar's own absolute form admitted by the
+    // dual-flavor rule above; on a win32 process that spelling carries the
+    // same per-drive ambiguity, and that residual is the dual-flavor
+    // trade's cost rather than this refusal's gap. 'C:foo', the
+    // drive-relative complement, never reaches here, since neither grammar
+    // calls it absolute.
+    if (cwd[0] === '\\' && !namesNetworkShare(cwd)) {
+        throw new TypeError('memq: a project directory must be fully qualified; a rooted win32 '
+            + 'path with no drive names a different directory per process drive: ' + cwd);
+    }
 }
 
 // A .git pointer file's first bytes, or '' when the path does not answer as a
@@ -613,11 +693,17 @@ function readHead(file, cap) {
 // path whose components include .git, so the far half has to be planted by
 // something with write access there, not by content that merely arrived.
 //
-// Only <cwd>/.git is consulted, never an upward walk, which keeps parity with
-// the cwd derivation: a subdirectory of a checkout is its own project tier
-// today and stays one. Submodules are excluded by construction rather than by
-// a test of their own, since their gitdir names .git/modules/<name> and only
-// the worktrees form is accepted.
+// Only <cwd>/.git is consulted, never an upward walk: this function answers
+// for the directory it was handed, and the upward reach lives in the session
+// leg (sessionProjectFiling), whose ancestor climb stops at the nearest
+// enclosing repository root and folds a filed worktree root back through this
+// handshake. So a subdirectory resolves upward only where the harness's own
+// filing of this session says it should, and a worktree's subdirectory lands
+// on the main checkout in a session filed under the worktree; filed under
+// anything else, the climb stops at the worktree's own boundary and the plain
+// derivation stands. Submodules are excluded by construction rather
+// than by a test of their own, since their gitdir names .git/modules/<name>
+// and only the worktrees form is accepted.
 //
 // Every failure answers null and the working directory stands, because a
 // worktree pointer is ambient filesystem state rather than the explicit
@@ -878,21 +964,544 @@ function pinnedProjectSegment() {
     return pin;
 }
 
+// The harness's own projects directory, the parent of the per-project
+// directories it files session transcripts under. It hangs off the home
+// directory rather than off memoryRoot because the harness writes these files
+// and knows nothing of the store signals: KIT_MEMORY_ROOT moves where the
+// store's records live and moves no transcript, so the two roots are different
+// questions and only one of them has an answer about a session. This is the
+// kit's one spelling of that root: hooks/kit-goal.js's transcript lookup and
+// the SessionStart hook's fallback both delegate to sessionTranscriptDir
+// below, and hooks/kit-compact-lib.js's per-project transcript path takes the
+// root from this export, so a session's transcript is looked for under one
+// root across the kit.
+function harnessProjectsRoot() {
+    return path.join(os.homedir(), '.claude', 'projects');
+}
+
+// How many store-and-session pairs the transcript lookup below keeps answers
+// for. A process asks about one pair, its own store and its own id, so the map
+// holds one entry in every real shape; the cap is what keeps a caller that
+// loops over ids from growing it without bound, and it clears whole rather
+// than evicting one entry, because at this size the two cost the same and
+// clearing has no ordering to get wrong.
+const TRANSCRIPT_DIR_MEMO_CAP = 16;
+const transcriptDirs = new Map();
+
+// The projects/ directory holding one session's transcript, or null when
+// nothing answers. This is the harness's own record of which project a session
+// belongs to rather than an inference from a path: the harness writes
+// <session-id>.jsonl into the project directory it filed the session under, so
+// the directory holding that file IS the answer, whatever working directory a
+// shell has since wandered to.
+//
+// The scan is the kit's one copy of this lookup: the SessionStart hook's
+// ownTranscriptDir delegates its own fallback here, and hooks/kit-goal.js's
+// findTranscript delegates too, so no two surfaces can come to disagree about
+// which directory a session sits in.
+//
+// The listing hangs off harnessProjectsRoot rather than the store root,
+// because the harness writes these files and an honored KIT_MEMORY_ROOT moves
+// the store without moving them: under a redirected store the store's own
+// projects root is a directory the harness never writes, so scanning it
+// answers "no transcript" for every session that has one. Two live surfaces
+// depend on the answer being the harness's: the SessionStart hook's sibling
+// advisory, which is silent for a redirected store where this reads the store
+// root, and hooks/kit-goal.js's own transcript lookup, whose delegation here
+// is what keeps its corroboration reading the directory the harness writes.
+//
+// A session id matched in more than one project directory is an ambiguity
+// rather than an answer, and the scan returns null so the cwd derivation
+// stands. A session resumed from a different directory is a real producer of
+// two matches; taking the first would make readdir order decide which tier
+// this process reads and writes.
+//
+// Safety is the shape test first, before any filesystem work, so arbitrary
+// environment content never drives a directory scan; then the refusal of a
+// value carrying a path separator, kept even though a shape-passed id cannot
+// carry one, so the function is safe on its own terms whatever calls it; then
+// the shared bounded listing, so a projects root somebody has filled cannot
+// turn store resolution into an unbounded walk. Both rules come from the
+// sibling libraries required at the top of this file rather than being
+// restated here, which is what keeps this scan and the hooks' answering to one
+// definition of each.
+// Never throws: anything unresolvable is null, which is the same answer an
+// absent transcript gives.
+//
+// A bounded listing's nulls are deliberately not remembered, because each is
+// an unknown wearing the shape of an absence: a listing the cap cut short
+// holds directories this scan never looked in, and a failure partway through
+// read nothing it can stand behind. Memoizing either pins a transient state
+// for the life of the process, so both are answered now and asked again next
+// time. A single match off a bounded listing is the same unknown wearing the
+// shape of an ANSWER: the hidden entries are exactly where a second match
+// could sit, and a second match is what the ambiguity refusal above exists to
+// detect, so the match is answered null, unmemoized, and asked again. Only
+// two or more matches survive a bounded listing as a settled null, since
+// entries the cap hid cannot make an ambiguity unambiguous.
+function sessionTranscriptDir(sessionId) {
+    let answer = null;
+    let key = null;
+    let memoize = true;
+    try {
+        if (!isSessionIdShaped(sessionId) || path.basename(sessionId) !== sessionId) return null;
+        const root = harnessProjectsRoot();
+        // The scanned root joins the id in the memo key. The answer is a fact
+        // about one transcript store, and a process whose home moves under it
+        // is asking a new question rather than repeating the old one.
+        key = root + '\u0000' + sessionId;
+        if (transcriptDirs.has(key)) return transcriptDirs.get(key);
+        const listing = listBoundedNames(root, DIR_SCAN_MAX_ENTRIES, () => true);
+        const matches = [];
+        for (const entry of listing.names) {
+            const candidate = path.join(root, entry, sessionId + '.jsonl');
+            try {
+                if (fs.statSync(candidate).isFile()) matches.push(path.join(root, entry));
+            } catch { /* no transcript of this session in that project directory */ }
+        }
+        answer = matches.length === 1 && !listing.bounded ? matches[0] : null;
+        if (listing.bounded && matches.length < 2) memoize = false;
+    } catch {
+        answer = null;
+        memoize = false;
+    }
+    if (key !== null && memoize) {
+        if (transcriptDirs.size >= TRANSCRIPT_DIR_MEMO_CAP) {
+            transcriptDirs.clear();
+            // Each session-filing memo entry was authorized by a settled
+            // answer in this map, and the clear takes that authorization
+            // with it: a re-scan may settle differently, and a filing kept
+            // past the clear would serve exactly the transient this scan
+            // refuses to memoize, one level up.
+            sessionFilings.clear();
+        }
+        transcriptDirs.set(key, answer);
+    }
+    return answer;
+}
+
+// Whether the working directory being resolved is this process's own. The
+// session leg answers where THIS process is running, so a caller naming some
+// other project's path is asking about that path and gets the derivation from
+// it: decayStampPath and the cross-project surfaces resolve directories they
+// are handed rather than the one they stand in, and a leg that overrode those
+// would answer every question about every project with this session's own.
+// Nothing is lost at the surfaces the split runs through, since the CLI
+// resolves process.cwd() itself and a hook resolves the cwd the harness
+// reported for the session it is firing for, which is that hook's own.
+//
+// Spelling is compared the way the platform compares paths: path.resolve
+// normalizes a relative spelling and a trailing separator, and the store's own
+// fsEq folds case where the filesystem does, so a cwd differing from
+// process.cwd() only in those is still this process's directory. A value that
+// cannot be resolved at all is not it.
+//
+// The link-resolved spelling is compared as well, because path.resolve is
+// lexical while process.cwd() hands back a real path: on a junction, a subst
+// drive, or a macOS /tmp, a caller naming its own directory the way it was
+// handed it compares unequal to the same directory spelled the way the
+// filesystem holds it. The two comparisons are a union rather than a
+// replacement, so a path that cannot be link-resolved at all (it is gone, or
+// unreadable) still answers on the lexical spelling it always did. Only
+// identity is decided here; no segment is ever derived from a link-resolved
+// spelling, which is what keeps a deliberately linked checkout on the store
+// its own path names.
+//
+// The link comparison is skipped where either directory names a network
+// share. The kit's stand-down screens the argument cwd at each verb door, but
+// not every caller sits behind a door, and the process's own cwd arrives here
+// unscreened either way; a realpath against an unreachable share blocks for
+// the SMB timeout, which is the exact hazard the stand-down exists to buy
+// out, whichever side carries the share. The lexical comparison still answers
+// there, through the shared namesNetworkShare predicate every other screen
+// uses.
+function namesOwnCwd(cwd) {
+    try {
+        const named = path.resolve(cwd);
+        const here = path.resolve(process.cwd());
+        if (fsEq(named, here)) return true;
+        if (namesNetworkShare(named) || namesNetworkShare(here)) return false;
+        return fsEq(realPathOrSelf(named), realPathOrSelf(here));
+    } catch {
+        return false;
+    }
+}
+
+// A path with its links resolved, or null where it cannot be (gone,
+// unreadable, or on a filesystem that refuses the walk). Failure stays
+// distinct from an answer because the two callers need opposite failures:
+// the identity comparison below falls back to the spelling it already had,
+// while the session leg's boundary screen must treat an unanswerable path
+// as unscreenable rather than as proven link-free.
+function realPathOrNull(p) {
+    try {
+        return process.platform === 'win32' ? fs.realpathSync.native(p) : fs.realpathSync(p);
+    } catch {
+        return null;
+    }
+}
+
+// A path with its links resolved, or the path itself where it cannot be: the
+// caller is comparing two spellings for identity, and an unresolvable side
+// falls back to what it already had rather than failing the comparison.
+function realPathOrSelf(p) {
+    const real = realPathOrNull(p);
+    return real === null ? p : real;
+}
+
+// The project directory segment the harness filed THIS session under, or null
+// where the environment names no session, names one no transcript answers for,
+// or names something that is not id-shaped at all.
+function ownProjectSegment() {
+    const dir = sessionTranscriptDir(process.env.CLAUDE_CODE_SESSION_ID);
+    return dir === null ? null : path.basename(dir);
+}
+
+// Whether a directory is a repository root: it holds a .git entry of any
+// kind, a directory for an ordinary checkout, a file for a linked worktree,
+// or a link whatever it leads to. The ancestor walk below uses this as its
+// ceiling, so the answer decides where a climb stops rather than what
+// anything resolves to, and that is why it fails closed: only genuine
+// absence (ENOENT, ENOTDIR) reads as no boundary, while an entry that is
+// there but cannot be examined (EPERM, a sharing violation) marks one, since
+// reading it as absence would let the climb continue past a checkout's root
+// on nothing but the parenthood screen, which a genuine subdirectory chain
+// passes freely: the nested-checkout misdirection reached with no link in
+// the path at all. The entry is examined with lstat rather than stat for the
+// same reason: a dangling .git link (a shared gitdir that has moved) is an
+// entry that exists, and following it to a target that does not would read
+// that checkout's root as open ground.
+function isRepositoryRoot(dir) {
+    try {
+        fs.lstatSync(path.join(dir, '.git'));
+        return true;
+    } catch (err) {
+        return err.code !== 'ENOENT' && err.code !== 'ENOTDIR';
+    }
+}
+
+// How many resolved answers the session leg keeps. Resolution happens dozens
+// of times in a single command, and every unmemoized call re-walks the
+// ancestor chain, stats a .git per step, and pays namesOwnCwd's realpath pair
+// for any spelling not lexically equal to the process's own; the worktree
+// memo exists for the same reason. Cleared whole at the cap rather than
+// evicted, transcriptDirs' shape: a process resolves a handful of distinct
+// working directories, so the cap binds a caller that loops over paths, not
+// any real run.
+const SESSION_FILING_MEMO_CAP = 64;
+const sessionFilings = new Map();
+
+// What the session leg resolves for a working directory, as the pair the two
+// halves of the resolution need: { segment, root }, the project directory name
+// this session's filing resolves to and the directory that name belongs to.
+// Null where the leg does not apply at all.
+//
+// Two gates stand in front of the answer. The cwd must be this process's own
+// (namesOwnCwd), since a caller naming another project's path is asking about
+// that path. And some ancestor of that cwd, counting the cwd itself, must
+// derive the very segment the transcript scan returned: the transcript names
+// which project the harness filed this session under, and that is evidence
+// about this session's project only where the working directory is actually
+// inside that project. A cwd somewhere else is a question about somewhere
+// else. The gate is what keeps a session that steps into another checkout from
+// capturing that checkout's store, and what keeps a worktree session whose cwd
+// has left the worktree from reopening the per-worktree split the worktree leg
+// exists to close. Where no ancestor matches, the leg does not answer and the
+// plain cwd derivation stands exactly as it did before the leg existed.
+//
+// The climb is ceilinged at the nearest enclosing repository root of the
+// starting directory, counting that directory itself. A repository boundary
+// is a project boundary: a session standing inside a nested independent
+// checkout is working in THAT repository, and a climb that crossed its root
+// would read and write the enclosing project's tier from inside a different
+// one, entering the enclosing project's records into this session's context
+// in one direction and stranding this repository's writes where its own
+// sessions never look in the other, which is the split this leg exists to
+// close reproduced one level down. The ceiling is a bound on the climb, not
+// where the segment resolves from: a directory that is itself the filed
+// project matches in zero steps and the ceiling never moves it, so a seat
+// filed under its own segment beneath some enclosing repository stays on its
+// own tier. Where no ancestor holds a .git at all, no ceiling applies.
+//
+// A matched root is folded back through the worktree handshake before it
+// answers. The harness files a worktree session's transcript under the
+// worktree's own project directory, while this store deliberately maps a
+// worktree's memories to the main checkout's; an unfolded answer would give a
+// worktree's subdirectory the worktree's own segment while the worktree root
+// resolves the main checkout's, which is the per-worktree split reopened one
+// directory down. The ceiling and the fold compose: a linked worktree's root
+// holds a .git file, so the climb stops exactly there, and the fold is what
+// turns that stop into the main checkout's answer.
+//
+// The comparison is fsEq rather than string equality because a project
+// directory name preserves the case of the path it was derived from, and on a
+// platform that folds case the harness's spelling and this process's need not
+// agree letter for letter about a directory they both mean.
+// The walk runs over the link-resolved spelling as well where that differs,
+// for the reason namesOwnCwd compares one: the name the harness derived comes
+// from whichever spelling the session was started with, and a caller standing
+// in the other one is inside the same project by every measure but the string.
+// Both spellings are tried rather than one chosen, since either can be the one
+// the harness saw. The lexical spelling's climb is additionally held to
+// link-resolved parenthood, one step at a time: a link inside the filed
+// project pointing at a subdirectory of another repository gives the lexical
+// ancestors no .git to stop on, so a climb trusting the spelling would cross
+// that repository's boundary and match the filed project, the
+// nested-checkout split reproduced through a spelling. The screen measures
+// exactly what realpath reports, symlinks and junctions; a boundary realpath
+// spells through unchanged (a bind mount, a volume mount point) is beyond
+// its sight, and a clone can carry a link where it cannot carry a mount,
+// which is why the link is the screened case. The link-resolved spelling
+// needs no screen, since a successful realpath leaves no link in it and each
+// ancestor is the resolved parent of the one below; a spelling realpath
+// cannot answer for at all is screened, never passed, because a failed
+// resolution proves nothing.
+//
+// Memoized per resolved spelling, keyed on every non-filesystem input the
+// answer depends on: the resolved cwd, the process's own cwd, the session id,
+// and the harness root the transcript scan reads under, so a test or a
+// resident consumer whose home or id moves under it asks a new question
+// rather than repeating the old one. Filesystem state (a .git created later,
+// a link re-pointed) is accepted as stable for the process's life, exactly as
+// the worktree memo accepts it. An answer is remembered only where the
+// transcript scan's own answer was: that scan declines to memoize an unknown
+// (a bounded or failed listing), and a memo here that outlived that refusal
+// would pin the very transient the scan refused to. The authorization is also
+// only as durable as the scan's own memo: when that map clears whole at its
+// cap, the entries it authorized here clear with it, since a re-scan may
+// settle differently.
+function sessionProjectFiling(cwd) {
+    let named;
+    try {
+        named = path.resolve(cwd);
+    } catch {
+        return null;
+    }
+    // The projects root hangs off the home directory, and os.homedir throws
+    // on a POSIX process whose HOME is unset with no passwd entry for the
+    // effective uid; process.cwd throws ENOENT on a POSIX process whose
+    // working directory has been removed from under it. Both are read on
+    // this leg, the root for the memo key and the settled check, the
+    // process's own cwd as a memo-key input, so both run under the failure
+    // envelope the transcript scan gives its own homedir call: the leg
+    // declines (null, nothing memoized) rather than letting a throw escape
+    // projectSegment from here. What that closes is this leg's throw and
+    // no more: under an honored store override this leg is the homedir
+    // toucher on the resolve path, but in the default configuration
+    // memoryRoot ends in an unguarded os.homedir join every verb crosses,
+    // so this guard does not by itself let an ordinary session's
+    // SessionStart hook survive an unresolvable home directory.
+    const sid = process.env.CLAUDE_CODE_SESSION_ID;
+    let root;
+    let key;
+    try {
+        root = harnessProjectsRoot();
+        key = fsKey(named) + '\u0000' + fsKey(process.cwd()) + '\u0000'
+            + String(sid) + '\u0000' + root;
+    } catch {
+        return null;
+    }
+    if (sessionFilings.has(key)) return sessionFilings.get(key);
+    const answer = resolveSessionProjectFiling(cwd, named);
+    const transcriptSettled = transcriptDirs.has(root + '\u0000' + String(sid));
+    if (transcriptSettled) {
+        if (sessionFilings.size >= SESSION_FILING_MEMO_CAP) sessionFilings.clear();
+        sessionFilings.set(key, answer);
+    }
+    return answer;
+}
+
+function resolveSessionProjectFiling(cwd, named) {
+    if (!namesOwnCwd(cwd)) return null;
+    const segment = ownProjectSegment();
+    if (segment === null) return null;
+    // A share-shaped spelling skips link resolution the same way namesOwnCwd
+    // skips its comparison: a realpath against an unreachable host blocks for
+    // the SMB timeout, and the lexical walk still answers. The trade leaves
+    // a residual, and naming it is the point: skipping resolution reads
+    // below as a spelling that resolved to itself, so the climb runs with
+    // the screen down, and a link on the share into another repository would
+    // cross the ceiling unseen. Every kit caller stands a share-shaped cwd
+    // down at its own verb door before resolution is reached, which is what
+    // keeps the residual latent rather than live; it belongs to the trade,
+    // not to any caller.
+    const real = namesNetworkShare(named) ? named : realPathOrNull(named);
+    // A start is climbable only where the segment derivation inside the loop
+    // would accept it, so the test is that derivation's own refusal rather
+    // than a restated grammar: any spelling assertProjectCwd refuses would
+    // otherwise throw mid-loop and escape to every caller. Only the resolved
+    // spelling can fail this, since the named one was validated before the
+    // legs ran: on win32, fs.realpathSync.native answers a \\?\ form for a
+    // directory on a volume mounted with no drive letter, and stripping that
+    // prefix leaves a Volume{GUID}-led spelling absolute under neither path
+    // grammar. Such an answer still arms the lexical climb's screen exactly
+    // as any diverging resolution does; it just cannot be walked itself.
+    const climbable = (s) => {
+        try {
+            assertProjectCwd(s);
+            return true;
+        } catch {
+            return false;
+        }
+    };
+    for (const start of (real === null || fsEq(named, real) ? [named] : [named, real])
+        .filter(climbable)) {
+        // Only the lexical spelling can cross a link mid-climb. The screen
+        // stays down only where a resolution SUCCEEDED and proved the
+        // spelling link-free: a start that link-resolves to itself has no
+        // link in any ancestor (each is a prefix of a link-free path), and
+        // the link-resolved start is link-free by construction. A start
+        // that could not be resolved at all is proven nothing, so its climb
+        // runs with the screen armed, and the screen below refuses every
+        // step it cannot answer, leaving such a start the zero-step match.
+        const lexical = start === named && (real === null || !fsEq(named, real));
+        let dir = start;
+        // The link-resolved self of `dir`, carried one step down the climb:
+        // the screen's parent-side resolution at each level is its dir-side
+        // answer at the next, so a level pays one resolution rather than
+        // two. The saving is latency as much as cost, since the armed climb
+        // is exactly the one whose spelling diverges from its resolved self,
+        // a mapped network drive being the standing case, and each
+        // resolution there is a network round trip that can block.
+        let realDir = lexical ? real : null;
+        for (;;) {
+            if (fsEq(sanitizeProjectPath(dir), segment)) {
+                const main = worktreeMainRoot(dir);
+                return main === null
+                    ? { segment, root: dir }
+                    : { segment: sanitizeProjectPath(main), root: main };
+            }
+            if (isRepositoryRoot(dir)) break;
+            const parent = path.dirname(dir);
+            if (parent === dir) break;
+            if (lexical) {
+                // The lexical climb holds to link-resolved parenthood: a
+                // step is taken only where the lexical parent resolves to
+                // the parent of this directory's resolved self. Past a link
+                // the lexical ancestors are a different subtree from the one
+                // the work sits in, and a link into a subdirectory of
+                // another repository would otherwise carry the climb out of
+                // that repository without ever meeting its .git, since the
+                // target's non-root ancestors have none to stop on: the
+                // ceiling crossed through a spelling. A step either side of
+                // which cannot be resolved is refused rather than presumed
+                // clean, because an unanswerable resolution proves nothing
+                // about where the parent sits, and a comparison falling back
+                // to the spellings themselves would compare a lexical parent
+                // with its own child, equal by construction.
+                const realParent = realPathOrNull(parent);
+                if (realDir === null || realParent === null
+                    || !fsEq(realParent, path.dirname(realDir))) break;
+                realDir = realParent;
+            }
+            dir = parent;
+        }
+    }
+    return null;
+}
+
+// The one line an honored session leg can owe the operator, printed once per
+// process. It mirrors acceptedWorktreeMain's note and for the same reason: the
+// leg redirects reads and writes off the directory the cwd derivation names,
+// and where records were already written there, that directory is now unread.
+// Nothing here moves or merges them. This is the common case rather than the
+// exotic one, since a store split by running from subdirectories is exactly
+// what the session leg exists to close, so those directories exist on every
+// box that had the split.
+let sessionOrphanNoted = false;
+function noteSessionOrphan(cwd, segment) {
+    if (sessionOrphanNoted) return;
+    let own;
+    try {
+        own = sanitizeProjectPath(cwd);
+    } catch {
+        return;
+    }
+    if (fsEq(own, segment)) return;
+    try {
+        if (!fs.statSync(projectMemoryDirFor(own)).isDirectory()) return;
+    } catch {
+        // No such directory is the ordinary case and the quiet one.
+        return;
+    }
+    sessionOrphanNoted = true;
+    process.stderr.write('memq: this session reads and writes the project store resolved from '
+        + 'the directory the harness filed it under, and a memory directory left under this '
+        + 'working directory\'s own path-derived store is no longer read; records written there '
+        + 'stay until they are moved by hand\n');
+}
+
 // The projects/ directory name this process reads and writes under: the pin
-// when one is honored, otherwise the derivation from the working directory, or
-// from the main checkout when that working directory is a worktree of one.
-// Every caller that needs the segment rather than the path takes it from here,
-// so no surface can name a directory the store is not using.
+// when one is honored, otherwise the main checkout's derivation when the
+// working directory is a worktree of one, otherwise the directory the harness
+// filed this session's transcript under, otherwise the derivation from the
+// working directory itself. Every caller that needs the segment rather than
+// the path takes it from here, so no surface can name a directory the store is
+// not using.
 //
 // The pin wins outright and the worktree link is not even consulted under one:
 // a pin names the tier an external engine's spawn shapes share, which is an
 // answer about the instance rather than about the filesystem, so a repository
 // checkout underneath it must not move it.
+//
+// The worktree leg stays AHEAD of the session leg, and moving it would undo
+// the worktree fix silently. The harness files a worktree session's transcript
+// under the WORKTREE's own project directory, while this store deliberately
+// maps a worktree's memories to the main checkout's directory (the divergence
+// sanitizeProjectPath's comment names): a per-worktree store split is the
+// defect resolution exists to close, so a session leg consulted first would
+// answer with exactly the directory the worktree leg exists to move off.
+//
+// The session leg sits ahead of the plain cwd because the cwd is the weakest
+// of the two claims about which project this is. A shell wanders into a
+// subdirectory and the cwd follows it, while the transcript's location is the
+// harness's own filing of the session; the split this closes is a seat writing
+// where SessionStart named and reading somewhere else. The two gates it
+// answers to, this process's own cwd and an ancestor that derives the filed
+// segment, are sessionProjectFiling's, and both matter: the leg is evidence
+// about this project rather than about wherever a shell has since gone. Where
+// the environment names no session, no transcript answers for it, the question
+// is about somewhere else, or the cwd sits outside the filed project entirely,
+// the cwd derivation stands exactly as it always has.
+//
+// The argument is validated before any leg runs, so the refusal of a value that
+// is not a project directory cannot be routed around by an environment that
+// happens to answer. Deferring it to the last leg made it bypassable:
+// path.resolve('') is this process's cwd, so an empty string reached the
+// session leg as a question about this directory and resolved a real tier for
+// a value the store refuses to name a project by.
 function projectSegment(cwd) {
+    assertProjectCwd(cwd);
     const pinned = pinnedProjectSegment();
     if (pinned !== null) return pinned;
     const main = worktreeMainRoot(cwd);
-    return sanitizeProjectPath(main === null ? cwd : main);
+    if (main !== null) return sanitizeProjectPath(main);
+    const filed = sessionProjectFiling(cwd);
+    if (filed === null) return sanitizeProjectPath(cwd);
+    noteSessionOrphan(cwd, filed.segment);
+    return filed.segment;
+}
+
+// The working directory this resolution treats as the project's own root: the
+// main checkout for a worktree, the filed project's directory for a session
+// resolved by its transcript, and the cwd itself otherwise. This is the
+// path-side half of projectSegment above, for the surfaces that key real
+// filesystem state on a project rather than a store segment, and having the
+// two derive from one set of legs is what keeps them from disagreeing about
+// which project a directory belongs to. The recognition nudge's log is the
+// caller: it joins its own lines against the tier projectSegment resolves, so
+// a log root taken from a different rule scores one project's records against
+// another project's log.
+//
+// A pin is deliberately not consulted, exactly as it is not by the nudge log's
+// own resolution: a pin renames the store segment a tier lives in and says
+// nothing about where this box's working tree sits.
+function projectTreeRoot(cwd) {
+    assertProjectCwd(cwd);
+    const main = worktreeMainRoot(cwd);
+    if (main !== null) return main;
+    const filed = sessionProjectFiling(cwd);
+    return filed === null ? cwd : filed.root;
 }
 
 // The parent of every project's state directory under the current store root.
@@ -3164,11 +3773,18 @@ function readFrontmatterTriggers(file) {
 // The directory an anchor's path resolves against, or null when there is
 // none to resolve against.
 //
-// It is derived from the working directory exactly as the project tier's own
-// directory is: the main checkout when cwd is a linked worktree, and cwd
-// itself otherwise. Reaching for `worktreeMainRoot` directly is the mistake
-// this exists to prevent, since that function answers null for an ordinary
-// checkout, which is most of them, and null is not a root.
+// It is derived from the working directory through projectTreeRoot, the
+// path-side half of the same legs the project tier's own directory resolves
+// through: the main checkout when cwd is a linked worktree, the filed
+// project's directory when this session's transcript resolves one, and cwd
+// itself otherwise. Sharing the legs is what keeps this root and the tier
+// from disagreeing about which project a directory belongs to: a root taken
+// from a rule of its own would join the filed project's records onto a
+// subdirectory's paths, where an anchored file that is in fact fresh reports
+// missing, and a whole tier reads as drifted over nothing but where a shell
+// was standing. Reaching for `worktreeMainRoot` directly is the same mistake
+// one leg earlier, since that function answers null for an ordinary checkout,
+// which is most of them, and null is not a root.
 //
 // Deriving it the store's way has a consequence worth stating: inside a
 // linked worktree the records come from the main checkout's store, and their
@@ -3184,7 +3800,9 @@ function readFrontmatterTriggers(file) {
 // no relationship to this working directory; resolving their anchors against
 // cwd would hash whatever sits there and report every anchored file in that
 // store as deleted. An unusable pin is the same answer, since the throw it
-// raises is about a store that cannot be resolved either.
+// raises is about a store that cannot be resolved either. And a value the
+// resolver refuses (a relative spelling among them) is null here rather than
+// a throw, because this function's own contract is a root or nothing.
 function anchorRoot(cwd) {
     if (typeof cwd !== 'string' || cwd === '') return null;
     let pinned;
@@ -3194,8 +3812,11 @@ function anchorRoot(cwd) {
         return null;
     }
     if (pinned !== null) return null;
-    const main = worktreeMainRoot(cwd);
-    return main === null ? String(cwd) : main;
+    try {
+        return projectTreeRoot(cwd);
+    } catch {
+        return null;
+    }
 }
 
 // A read meter bounds a pass along two dimensions, because one of them does
@@ -14328,6 +14949,9 @@ module.exports = {
     worktreeMemoSize,
     worktreeMemoHolds,
     WORKTREE_ROOT_MEMO_CAP,
+    sessionTranscriptDir,
+    harnessProjectsRoot,
+    projectTreeRoot,
     projectsRootPath,
     projectMemoryDirFor,
     projectMemoryDir,

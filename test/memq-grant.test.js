@@ -756,15 +756,17 @@ test('memq loads code out of a directory in one place, and that place is find', 
     // under another verb, reds here rather than silently widening what a
     // prompt-free allow can load.
     //
-    // One named exception rides in the same contiguous top-of-file block as
-    // the node built-ins: the require of hooks/kit-network-lib.js, a
-    // fixed, kit-shipped sibling of a few lines holding nothing but the
-    // network-share predicate (Standing Amendment 2), re-exported under
-    // memq's own name below. It is not a load from a directory the command
-    // line names, the property this test polices, so it is pinned by its
-    // exact spelling rather than by the generic built-in pattern: a
-    // relative require of anything else at this position, or this one
-    // moving, reds here exactly as a second dynamic load would.
+    // Three named exceptions ride in the same contiguous top-of-file block as
+    // the node built-ins, each a fixed, kit-shipped sibling under hooks/:
+    // kit-network-lib.js for the network-share predicate (Standing Amendment
+    // 2), re-exported under memq's own name below; kit-goal-lib.js for the
+    // session-id grammar the store's transcript lookup tests a value against;
+    // and kit-read-lib.js for the bounded directory listing that lookup walks
+    // the projects root with. None is a load from a directory the command line
+    // names, the property this test polices, so each is pinned by its exact
+    // spelling rather than by the generic built-in pattern: a relative require
+    // of anything else at this position, or one of these moving, reds here
+    // exactly as a second dynamic load would.
     const src = fs.readFileSync(MEMQ, 'utf8').split(/\r?\n/);
     const isCode = (line) => !/^\s*(\/\/|\*)/.test(line);
     const enclosing = (lineNo) => {
@@ -778,16 +780,20 @@ test('memq loads code out of a directory in one place, and that place is find', 
     // scanned: taking the first function declaration instead would leave the
     // constants and the top-level statements between the two unread, and a
     // load placed there runs on every invocation of every verb.
-    const NETWORK_LIB_LINE = 'const { namesNetworkShare } = require(\'../hooks/kit-network-lib.js\');';
+    const SIBLING_LIB_LINES = [
+        'const { namesNetworkShare } = require(\'../hooks/kit-network-lib.js\');',
+        'const { isSessionIdShaped } = require(\'../hooks/kit-goal-lib.js\');',
+        'const { listBoundedNames, DIR_SCAN_MAX_ENTRIES } = require(\'../hooks/kit-read-lib.js\');'
+    ];
     const builtin = /^const \w+ = require\('[a-z_]+'\);$/;
     const builtins = [];
     src.forEach((line, i) => {
         const trimmed = line.trim();
-        if (builtin.test(trimmed) || trimmed === NETWORK_LIB_LINE) builtins.push(i + 1);
+        if (builtin.test(trimmed) || SIBLING_LIB_LINES.includes(trimmed)) builtins.push(i + 1);
     });
     assert.ok(builtins.length > 0, 'memq.js requires node built-ins at the top of the file');
     assert.deepStrictEqual(builtins, builtins.map((_, k) => builtins[0] + k),
-        'the built-in requires plus the one named kit-network-lib.js exception are one '
+        'the built-in requires plus the three named hooks/ sibling exceptions are one '
             + 'contiguous block: ' + JSON.stringify(builtins));
     const lastBuiltin = builtins[builtins.length - 1];
     // Every way a line of source can bring in code the command line does not
@@ -868,6 +874,149 @@ test('memq loads code out of a directory in one place, and that place is find', 
         'semanticChannel'
     ], 'every function that can reach a code load is one of find\'s own, and find is '
         + 'the only dispatch root among them: ' + JSON.stringify([...closure]));
+});
+
+// Every load site in a module, as { line, text, module, in }, with `module`
+// null where the specifier does not pin its target in the source. Two shapes
+// pin it: a single-quoted literal, and a path.join anchored on __dirname
+// whose remaining arguments are all single-quoted literals, which names a
+// fixed kit-shipped path exactly as a relative literal does and is rendered
+// here with a `__dirname/` prefix so the two shapes stay distinguishable. A
+// computed specifier of any other shape is the one that could name a
+// directory a command line gave it, so it is reported as null rather than
+// skipped: a scan that only recognized pinned shapes would go quiet on
+// exactly the case it exists to catch.
+function loadSites(source) {
+    const src = source.split(/\r?\n/);
+    const isCode = (line) => !/^\s*(\/\/|\*)/.test(line);
+    const enclosing = (lineNo) => {
+        for (let i = lineNo - 1; i >= 0; i--) {
+            const m = src[i].match(/^(?:async )?function (\w+)/);
+            if (m) return m[1];
+        }
+        return null;
+    };
+    const loads = new RegExp([
+        '\\brequire\\s*\\(', '\\bimport\\s*\\(', '\\beval\\s*\\(',
+        'new\\s+Function\\b', '\\bcreateRequire\\b'
+    ].join('|'));
+    const sites = [];
+    src.forEach((line, i) => {
+        if (!loads.test(line) || !isCode(line)) return;
+        const literal = line.match(/require\('([^']+)'\)/);
+        const joined = line.match(/require\(path\.join\(__dirname((?:,\s*'[^']*')+)\)\)/);
+        let module = null;
+        if (literal) {
+            module = literal[1];
+        } else if (joined) {
+            module = '__dirname/' + [...joined[1].matchAll(/'([^']*)'/g)].map((m) => m[1]).join('/');
+        }
+        sites.push({
+            line: i + 1,
+            text: line.trim(),
+            module,
+            in: enclosing(i + 1)
+        });
+    });
+    return sites;
+}
+
+test('the sibling libraries memq loads, walked to closure, bring in nothing a command line could name', () => {
+    // The property this file polices is that no code memq runs loads a module
+    // out of a directory the command line names. The test above reads memq's
+    // own source, and memq's allowlisted top-of-file requires put more
+    // modules inside that property: whatever they load, memq loads, and that
+    // reach is transitive, so the scanned set is the closure of those loads
+    // rather than memq's direct siblings alone. kit-goal-lib.js loads
+    // kit-compact-lib.js, which is why it is scanned here too; the closure
+    // assertion below is what keeps a future relative load from quietly
+    // sitting outside the scanned set.
+    //
+    // Each load is pinned by the module it names and the function it sits in,
+    // and a specifier of neither pinned shape is reported with a null module,
+    // which is the shape that could ever carry a command line's directory. A
+    // new entry in any of these files, or one of these moving, reds here.
+    const siblings = {
+        'kit-network-lib.js': [],
+        'kit-goal-lib.js': [
+            { module: 'fs', in: null },
+            { module: 'path', in: null },
+            { module: 'os', in: null },
+            { module: 'crypto', in: null },
+            { module: './kit-compact-lib.js', in: 'armingSessionClaims' },
+            { module: './kit-compact-lib.js', in: 'sessionHoldsLeash' },
+            { module: '../scripts/memq.js', in: 'runIdField' }
+        ],
+        'kit-read-lib.js': [
+            { module: 'fs', in: null },
+            { module: './kit-goal-lib.js', in: null }
+        ],
+        'kit-compact-lib.js': [
+            { module: 'fs', in: null },
+            { module: 'os', in: null },
+            { module: 'path', in: null },
+            { module: 'crypto', in: null },
+            { module: './kit-goal-lib.js', in: null },
+            { module: './kit-read-lib.js', in: null },
+            { module: '__dirname/../scripts/memq.js', in: 'sessionTranscriptPath' }
+        ]
+    };
+    const allSites = [];
+    for (const [name, expected] of Object.entries(siblings)) {
+        const file = path.join(PLUGIN_ROOT, 'hooks', name);
+        const sites = loadSites(fs.readFileSync(file, 'utf8'));
+        assert.deepStrictEqual(sites.map((s) => ({ module: s.module, in: s.in })), expected,
+            name + ' loads: ' + JSON.stringify(sites));
+        for (const site of sites) {
+            assert.notStrictEqual(site.module, null,
+                name + ':' + site.line + ' names its module with something other than a '
+                    + 'pinned shape, which is how a command line\'s directory gets loaded: '
+                    + site.text);
+            allSites.push({ file: name, ...site });
+        }
+    }
+
+    // The closure is closed: every non-builtin module any scanned file loads
+    // is itself a scanned file or memq, whose own loads the test above reads.
+    // Without this, a scanned sibling gaining a require of a new module would
+    // leave that module's loads outside the property while every pin above
+    // stays green.
+    const scanned = new Set(Object.keys(siblings));
+    for (const site of allSites) {
+        if (!/[\\/]/.test(site.module)) continue;   // a node builtin
+        const target = site.module.replace(/^__dirname\//, '').split('/').pop();
+        assert.ok(scanned.has(target) || target === 'memq.js',
+            site.file + ':' + site.line + ' loads ' + site.module
+                + ', which is neither a scanned sibling nor memq itself, so its own '
+                + 'loads sit outside this closure');
+    }
+
+    // The withheld controls, matched on shape rather than named by any
+    // literal above. A module that builds its specifier from its own
+    // arguments is reported as the null-module shape the loop refuses, and a
+    // path.join that is not anchored on __dirname alone is that same shape,
+    // while the __dirname-and-literals form resolves. Run against source
+    // rather than a file so the instrument is exercised on loads none of the
+    // scanned files contains.
+    const planted = loadSites([
+        "'use strict';",
+        "const fs = require('fs');",
+        'function loadWhateverYouWereGiven(dir) {',
+        '    return require(dir + \'/index.js\');',
+        '}',
+        'function loadBesideYourself() {',
+        "    return require(path.join(__dirname, 'lib', 'thing.js'));",
+        '}',
+        'function loadWhereverYouStand(dir) {',
+        "    return require(path.join(dir, 'thing.js'));",
+        '}'
+    ].join('\n'));
+    assert.deepStrictEqual(planted.map((s) => ({ module: s.module, in: s.in })), [
+        { module: 'fs', in: null },
+        { module: null, in: 'loadWhateverYouWereGiven' },
+        { module: '__dirname/lib/thing.js', in: 'loadBesideYourself' },
+        { module: null, in: 'loadWhereverYouStand' }
+    ], 'the scan pins the fixed shapes and reports the computed ones: ' + JSON.stringify(planted));
 });
 
 test('the granted verbs are memq\'s own dispatch minus the five withheld', () => {

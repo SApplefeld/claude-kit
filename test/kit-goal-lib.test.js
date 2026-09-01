@@ -3136,21 +3136,32 @@ test('CLI arm reports an unbound arm and names the fallback claim points', () =>
     }
 });
 
-// A preload that records any fs.readdirSync whose target names the needle, by
-// creating a marker file. The counterpart of openSpyPreload above: it proves a
-// directory was never LISTED, where asserting on stdout alone would only prove
-// the result was not used.
+// A preload that records any directory listing whose target names the needle,
+// by creating a marker file. The counterpart of openSpyPreload above: it
+// proves a directory was never LISTED, where asserting on stdout alone would
+// only prove the result was not used. Both listing doors are patched, because
+// the transcript lookup delegates to memq's bounded scan, which lists through
+// fs.opendirSync, while other surfaces list through fs.readdirSync; a spy on
+// one door reads a walk through the other as silence.
 function readdirSpyPreload(dir, needle, marker) {
     const shim = path.join(dir, 'readdir-spy.js');
     fs.writeFileSync(shim, [
         "'use strict';",
         "const fs = require('fs');",
-        'const real = fs.readdirSync;',
-        'fs.readdirSync = function (target) {',
+        'const mark = (target) => {',
         '    if (String(target).includes(' + JSON.stringify(needle) + ')) {',
         '        fs.writeFileSync(' + JSON.stringify(marker) + ", 'x');",
         '    }',
-        '    return real.apply(fs, arguments);',
+        '};',
+        'const realReaddir = fs.readdirSync;',
+        'fs.readdirSync = function (target) {',
+        '    mark(target);',
+        '    return realReaddir.apply(fs, arguments);',
+        '};',
+        'const realOpendir = fs.opendirSync;',
+        'fs.opendirSync = function (target) {',
+        '    mark(target);',
+        '    return realOpendir.apply(fs, arguments);',
         '};'
     ].join('\n') + '\n', 'utf8');
     return '--require "' + shim.replace(/\\/g, '/') + '"';
@@ -3200,7 +3211,7 @@ test('CLI arm records the arming session\'s transcript when one exists under the
     try {
         writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
         // The harness names each project directory by munging the project
-        // path, so the CLI lists the directories and takes the first existing
+        // path, so the CLI scans the directories for the one holding
         // <sessionId>.jsonl rather than reproducing the munging. A decoy
         // directory sitting ahead of the real one proves the scan, not a
         // guessed path, is what finds it.
@@ -3260,6 +3271,51 @@ test('CLI arm records the arming session\'s transcript when one exists under the
         } finally {
             rmRepo(brokenHome);
         }
+    } finally {
+        rmRepo(repo);
+        rmRepo(fakeHome);
+    }
+});
+
+test('CLI arm treats a session id two project directories hold as uncorroborated', () => {
+    // The lookup delegates to memq's shared transcript scan, whose ambiguity
+    // rule is that two matches are not an answer: a session resumed from a
+    // different directory is filed twice, and taking the first would let
+    // readdir order decide which transcript corroborates the binding. So the
+    // arm lands unbound, with the shaped id recorded for the claim points,
+    // exactly as an id with no transcript at all does.
+    const repo = makeRepo();
+    const fakeHome = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
+        const projects = path.join(fakeHome, '.claude', 'projects');
+        for (const seg of ['D--one', 'D--two']) {
+            fs.mkdirSync(path.join(projects, seg), { recursive: true });
+            fs.writeFileSync(path.join(projects, seg, SID + '.jsonl'), '{}\n', 'utf8');
+        }
+        const res = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md'], {
+            cwd: repo, encoding: 'utf8',
+            env: armEnv({ CLAUDE_CODE_SESSION_ID: SID, USERPROFILE: fakeHome, HOME: fakeHome })
+        });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /\(unbound/, 'two filings arm unbound');
+        assert.strictEqual(readGoal(repo).boundSession, null);
+        assert.strictEqual(readGoal(repo).boundTranscript, null);
+        assert.strictEqual(readGoal(repo).armingSession, SID,
+            'the shaped id is still recorded for the claim points');
+
+        // The withheld control, matched on shape: removing one filing makes
+        // the same id corroborate, so the unbound arm above is the ambiguity
+        // refusing rather than a scan that never found either.
+        fs.rmSync(path.join(projects, 'D--two', SID + '.jsonl'));
+        const single = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md'], {
+            cwd: repo, encoding: 'utf8',
+            env: armEnv({ CLAUDE_CODE_SESSION_ID: SID, USERPROFILE: fakeHome, HOME: fakeHome })
+        });
+        assert.strictEqual(single.status, 0, single.stderr);
+        assert.match(single.stdout, /\(bound to this session\)/);
+        assert.strictEqual(readGoal(repo).boundTranscript,
+            path.join(projects, 'D--one', SID + '.jsonl'));
     } finally {
         rmRepo(repo);
         rmRepo(fakeHome);

@@ -45,7 +45,6 @@
 
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 const {
     armGoal, appendGoal, clearGoal, readGoal, planStatusReadings, lastActivePhrase, isSessionIdShaped,
     goalRoot, goalPathKind, planPathState, safeForAuthorization, planArmedBy, queuePosition,
@@ -110,17 +109,22 @@ function usageBadArmFlag(token) {
 
 // The transcript file of a session id, or null when it cannot be located. The
 // harness stores each session's transcript as <sessionId>.jsonl inside a
-// per-project directory under ~/.claude/projects, and that directory's name is
-// a munged form of the project path, so the directories are listed and the
-// first existing candidate wins rather than reproducing the munging here. The
-// whole body is wrapped, and an absent or unreadable projects directory yields
-// null.
-//
-// The shape test runs before any filesystem work, so arbitrary environment
-// content never drives a directory scan. The id is then used as a bare file
-// name, and a value carrying a path separator is refused rather than joined
-// into a path it could steer: a shape-passed id cannot carry one, and the
-// check is kept so this function is safe on its own terms whatever calls it.
+// per-project directory under ~/.claude/projects, and the scan of those
+// directories is memq's own sessionTranscriptDir, delegated to rather than
+// restated, the same way the SessionStart hook's fallback delegates: one copy
+// of the lookup is what keeps every surface answering the same question the
+// same way. The shared scan applies the shape test before any filesystem
+// work, refuses a value carrying a path separator, lists through a bounded
+// reader so a filled projects root cannot become an unbounded walk, and
+// answers null for an id more than one project directory holds, since two
+// matches are an ambiguity and taking the first would let readdir order
+// decide which transcript corroborates a binding. The directory it answers
+// with holds this id's transcript as a verified regular file, which is the
+// corroboration the security model states, so the join below names that file.
+// The whole body is wrapped, and an absent or unreadable projects directory
+// yields null. The shape test is kept ahead of the delegation as a cheap
+// short-circuit, so a junk id never pays for loading memq; the require is
+// lazy for the same reason.
 //
 // A null result is what makes the arm unbound: a session id naming no local
 // transcript is not corroborated as a real session on this machine, and
@@ -130,18 +134,9 @@ function findTranscript(sessionId) {
         if (!isSessionIdShaped(sessionId) || path.basename(sessionId) !== sessionId) {
             return null;
         }
-        const root = path.join(os.homedir(), '.claude', 'projects');
-        for (const entry of fs.readdirSync(root)) {
-            const candidate = path.join(root, entry, sessionId + '.jsonl');
-            // A regular file, not mere existence: the stored path's one use is
-            // an fs.stat liveness hint, and the corroboration this scan
-            // provides is that a session's transcript FILE exists, which is
-            // what the security model states.
-            try {
-                if (fs.statSync(candidate).isFile()) return candidate;
-            } catch { /* no candidate in this project directory */ }
-        }
-        return null;
+        const { sessionTranscriptDir } = require(path.join(__dirname, '..', 'scripts', 'memq.js'));
+        const dir = sessionTranscriptDir(sessionId);
+        return dir === null ? null : path.join(dir, sessionId + '.jsonl');
     } catch {
         return null;
     }

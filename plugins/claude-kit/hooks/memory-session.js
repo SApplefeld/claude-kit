@@ -1263,6 +1263,35 @@ function projectMemoryBlock(cwd, memq, pinned) {
         + recorded + '\n' + destination;
 }
 
+// Whether the store can resolve a project directory from this working
+// directory at all. The resolver refuses some spellings by throwing, a
+// relative path being the one a harness payload could carry, and every
+// cwd-derived block hangs off that resolution; the refusal is decided up
+// front as its own state, the same shape as the unusable-pin and
+// network-share states, which is what keeps the outer catch from turning it
+// into silence. A memq old enough to lack the refusal resolves instead, and
+// the ordinary branch answers as it always did.
+function resolvableProjectCwd(cwd, memq) {
+    // Presence-checked as defense against the export going missing on its
+    // own rather than against any installed cache: every cache old enough to
+    // lack this export also lacks storePinUnusable, which main() calls
+    // unguarded before this branch is reached, so a skew that old silences
+    // the whole hook at that earlier call and never arrives here. What this
+    // guard covers is a memq missing this one symbol with the rest intact (a
+    // future removal, a damaged cache): the call would throw, the catch
+    // below would read the throw as a refused cwd, and every session,
+    // absolute working directory included, would be told its directory does
+    // not resolve. Missing the export routes to the ordinary branch instead,
+    // which a memq without the refusal answers as it always did.
+    if (typeof memq.sanitizeProjectPath !== 'function') return true;
+    try {
+        memq.sanitizeProjectPath(cwd);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
 function main() {
     let payload = {};
     try { payload = JSON.parse(readStdin() || '{}'); } catch { /* malformed: defaults */ }
@@ -1293,9 +1322,16 @@ function main() {
     } else if (memq.pinnedProjectSegment() === null && typeof memq.namesNetworkShare === 'function'
             && memq.namesNetworkShare(cwd)) {
         // No pin is active, so every block below would walk cwd itself (see
-        // NETWORK_CWD_STAND_DOWN); under an active pin none of them touches
-        // cwd at all (projectSegment resolves the pin before ever reaching
-        // worktreeMainRoot), so that case takes the ordinary path below.
+        // NETWORK_CWD_STAND_DOWN). Under an active pin the ordinary path is
+        // safe for a share-shaped cwd rather than untouched by it:
+        // projectSegment validates the cwd's spelling before consulting the
+        // pin, and that validation's driveless refusal reads the separators
+        // alone, exempting any spelling that opens with two, the same [\\/]
+        // class namesNetworkShare reads shares by, so every share spelling
+        // passes it whichever mix of separators spells the lead, and the
+        // pin then answers before any leg walks the filesystem, so no block
+        // below opens the share. A pinned cwd that fails the validation
+        // lands on the refused-cwd branch below instead.
         //
         // namesNetworkShare is checked for presence here the same way
         // DRIFT_MEMQ_SYMBOLS checks its own three symbols before driftNudge
@@ -1322,6 +1358,37 @@ function main() {
         // fire even when nothing is pending), which would otherwise go
         // quiet for every unpinned network session. So they run here too,
         // same as the ordinary branch below.
+        const sync = syncNudge(source, memq);
+        if (sync !== null) blocks.push(sync);
+        const embedder = embedderNudge();
+        if (embedder !== null) blocks.push(embedder);
+    } else if (!resolvableProjectCwd(cwd, memq)) {
+        // A working directory the store refuses to resolve, decided here for
+        // the reason the two states above are: every block on the ordinary
+        // branch would throw on it, and the outer catch would turn that into
+        // the silence this hook treats as the failure that matters. Under an
+        // honored pin the unreadability half of that message would be
+        // untrue: the pin fixes the tier while deriving nothing from the
+        // working directory. The spelling refusal still runs first, exactly
+        // as the network branch's comment states, memq validating the cwd
+        // before the pin answers, which is why a pinned session can land
+        // here at all; what the pin changes is what remains true behind the
+        // refusal, so such a session hears only that the cwd-derived blocks
+        // are withheld, never that its tier is out of reach.
+        blocks.push(memq.pinnedProjectSegment() !== null
+            ? 'Kit memory: the working directory this session reported does not resolve as a '
+                + 'project path (it is not a fully qualified absolute path), so the memory blocks '
+                + 'derived from it are not shown. The store pin (KIT_MEMORY_PROJECT) still names '
+                + 'this session\'s tier without consulting the working directory, so reach the '
+                + 'store through memq, whose own resolution honors the pin.'
+            : 'Kit memory: the working directory this session reported does not resolve to a '
+                + 'project store (it is not a fully qualified absolute path), so the memory blocks '
+                + 'derived from it are not shown and the project tier may hold records this block '
+                + 'cannot see. Reach the store through memq from a fully qualified working '
+                + 'directory, one naming its drive or UNC host, since a rooted path without a '
+                + 'drive names a different directory per process drive.');
+        // syncNudge and embedderNudge touch nothing cwd-derived, exactly as
+        // on the network branch above, so they still run.
         const sync = syncNudge(source, memq);
         if (sync !== null) blocks.push(sync);
         const embedder = embedderNudge();

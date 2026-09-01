@@ -13,9 +13,26 @@
 // plugins/claude-kit/scripts/memq.js and is reached through its exports, the
 // same way plugins/claude-kit/hooks/memory-recognition-nudge.js and
 // kit-compact-lib.js reach it for the same question. A second spelling of the
-// derivation here would send this daemon looking in a directory the store is
-// not using, silently, on exactly the machines where a worktree makes the two
-// answers differ.
+// worktree or flattening rules here would send this daemon looking in a
+// directory the store is not using, silently, on exactly the machines where a
+// worktree makes the two answers differ.
+//
+// One leg of memq's own resolution is deliberately not taken. memq also
+// consults the transcript filing of the session in ITS environment (the
+// session leg), so a session working from a subdirectory of its filed project
+// resolves the filed project's tier. This daemon resolves the project of
+// another session's captured call, and a session id in the daemon's own
+// environment, if one is set at all, never names that session, so the leg
+// would answer the wrong session's question. The accepted cost: for a call
+// captured in a subdirectory of the caller's project, the caller reads the
+// filed tier in-session while this resolution derives the subdirectory's
+// segment. Where no orphaned per-subdirectory store directory remains, that
+// derivation finds no index and undercounts recognition rather than
+// misdirecting it. Where one does remain, the derivation lands on the
+// orphan and recognizes against records the store no longer serves, which
+// is misdirection, and the store's own resolver calls those directories the
+// common case on a box that had the split, since nothing moves their
+// records. The quiet direction is this module's own contract either way.
 //
 // One part is composed rather than called: the tier path under a store root,
 // `projects/<segment>/memory/MEMORY.md`. memq resolves that against its own
@@ -166,8 +183,17 @@ function projectSegment(cwd) {
         // as far as this is concerned; the cwd derivation stands.
         main = null;
     }
-    const segment = memq.sanitizeProjectPath(main === null ? cwd : main);
-    return segment === '' ? null : segment;
+    // The sanitizer refuses a value the store will not name a project by (a
+    // relative spelling among them) by throwing, and the spool validates cwd
+    // only as a capped string, so a line any local process wrote can carry
+    // one. This module's own contract is that nothing here throws at its
+    // caller: the refusal reads as no project, the same answer an empty cwd
+    // gives, and the daemon counts it rather than dying on it.
+    try {
+        return memq.sanitizeProjectPath(main === null ? cwd : main);
+    } catch {
+        return null;
+    }
 }
 
 // The memory index file for one project segment under one store root.
