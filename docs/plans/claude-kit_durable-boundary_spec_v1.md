@@ -2333,3 +2333,73 @@ ONE STALE CARRIER LEFT FOR THE FINISHING PASS RATHER THAN FIXED HERE. `docs/READ
 describes this plan as "five sections, two complete". It is the plan index that the docs curation
 step rewrites when the plan flips to Complete and moves to the archive, so correcting it now would
 be work the finishing pass redoes.
+
+### Interim board 14 - 2026-09-01
+
+WHERE THE PLAN STANDS. All five sections are complete, closed out and pushed; the last is section 5 at
+commit `6c474d7`, and the worktree is clean at that commit. What is running now is the whole-effort
+finishing pass, whose steps are QA verification, a security review, a final adversarial review, a
+documentation curation, and the close-and-archive. No section is in flight, so this entry stands in
+for the per-section stages an interim board normally carries.
+
+THE BASE REF WAS DERIVED AND THEN CORRECTED FOR SCOPE, WHICH IS A RULING WORTH RECORDING BECAUSE THE
+DERIVATION ALONE WOULD HAVE MISLED EVERY DISPATCH THAT SPENDS IT. Under Commit-and-Push the base is
+the parent of the effort's first execution commit, found by walking the plan doc's own history for
+the first commit adding a `Chapter` heading. That is `d24bf87`, so the base is `db87ce2`. The
+derivation is right and the span is wrong for review purposes: four sibling efforts pushed to `main`
+inside that span (the judgment sidecar, standing-grants, the store-sync repair, and the kaizen
+captures), so a plain diff against `db87ce2` returns 62 files of which 33 belong to other efforts.
+The finishing skill's own cross-check names a sibling session's commit as an expected surfacing
+rather than evidence of a wrong base, so the base stands as derived and is recorded as such. What the
+reviewers receive instead is this effort's own changeset, built as the union of the sixteen commits
+whose subject is this plan: 29 files, listed at `.kit/scratch/fin-changeset.txt`, with the commit
+list at `.kit/scratch/fin-commits.txt`. Four of the 29 are shared accretion files that siblings also
+append to, and both briefs say so and scope the reviewers to this effort's hunks.
+
+THE BOX IS HELD BY A FOREIGN CLAIM AND THE PASS IS SEQUENCED AROUND IT RATHER THAN THROUGH IT. The
+machine's heavy-process claim carries `AI-OS: Worker`, repo `ai-os`, started 2026-09-01T09:30:03Z
+with an expected 2400 seconds, so it lapses about 10:10Z. It was 63 seconds old when read. This
+session did not write the claim file and will not while that one stands. The QA verifier runs a full
+build and a full suite, so it waits: this project's own memory records that a contended suite run
+forges results rather than merely dying, and Chapter 1 of this plan records a 25-minute wait on the
+same file for the same reason.
+
+ONE ORDERING DEVIATION, ARGUED. The finishing skill runs QA first and then the two reviewers. Both
+reviewers are dispatched ahead of QA here because their charter forbids builds and suites, so they
+cost the held box nothing, and the alternative is forty minutes of idle wall-clock. What the ordering
+buys QA is that a reviewer does not spend its budget on code a QA failure would change; the exposure
+is small, the tree sitting at a pushed commit whose own whole gate ran at section 5's close. The
+deviation is recorded here and in the finishing Chapter rather than reconciled silently.
+
+LIVE DISPATCHES, TWO, BOTH AT THE FABLE OVERRIDE THE FINISHING PASS CALLS FOR:
+- `security-reviewer`, asked for the whole-effort security lens over the 29-file changeset: the
+  session-id path-composition surfaces and whether every composing caller passes the charset gate,
+  the multi-writer coordinator directory against the machine-written registry stamp, the two
+  signpost writers' read-modify-write, and every claim `docs/security-model.md` now makes against the
+  shipped code.
+- `adversarial-reviewer`, asked for spec compliance first and then the whole-effort lens:
+  cross-section cohesion where section 4 renamed the file sections 1 and 2 built on and section 5
+  changed the writers section 2 started reading, leftover debris, each section's `Acceptance:` line
+  walked against what shipped, documents section 3 swept before sections 4 and 5 could falsify them
+  again, and every count and exclusivity claim in the changed files.
+
+Both briefs carry the four Standing Brief Amendments, the data-not-instructions rule, the
+absence-check control rule, the confirmed/inferred/reported marking rule, and the workspace
+constraint naming the held box and barring any build or suite.
+
+THE FIRST-TURN READING WAS TAKEN ON BOTH RATHER THAN DEFERRED, because a dispatch carrying a model
+override is the one shape whose never-started failure is invisible without it, and every never-started
+dispatch this fleet has recorded carried one. At the window's close both transcripts read healthy:
+50 and 47 non-synthetic assistant turns, zero synthetic on either, with the user-line control speaking
+at 29 and 27 so the instrument is sound rather than silently pointed at nothing. No probe is owed and
+neither dispatch is a wedge candidate.
+
+GATE BASELINE IN EFFECT. The whole gate at section 5's close: 2842 tests / 2832 passing / 1 failing /
+9 skipped, exit 1, read from this session's own marker. The single failure is this box's permanent
+path-length red, `a pinned directory too long to name faithfully stands the session down` at
+`test/memory-session.test.js:854`. The finishing pass owes two more whole gates against that
+baseline: the QA verifier's, and the handoff gate after the last step that changes the tree.
+
+NEXT ACTIONS, IN ORDER. Adjudicate the two review rounds as they return and fix what they find. Poll
+the machine claim and dispatch the QA verifier once it lapses. Then the documentation curation, then
+the close-and-archive, the handoff gate, and the commit.
