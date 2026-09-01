@@ -1,0 +1,131 @@
+# Checkpoint session validation
+
+Status: Ready
+Author: SCOTT-CLAUDE Expert seat, from the operator's ruling over the relay, 2026-09-01
+Commit Model: Commit-and-Push
+
+## Related
+
+Extends the chapter-checkpoint machinery shipped by
+`../archive/claude-kit_compaction-deferral-signal_spec_v1.md` and follows the
+precedent set by `../archive/claude-kit_durable-boundary_spec_v1.md`, which
+moved the role-seat boundary markers to one file per session so two seats on
+one checkout cannot unmake each other's declarations. This plan brings the
+chapter checkpoint under the same discipline.
+
+## What this is about
+
+The chapter checkpoint (`.kit/compact-checkpoint.json`, the `open`/`clear`
+verb pair of `kit-compact-checkpoint.js`) is leash-scoped rather than
+caller-scoped: where a goal is armed with a bound session, `open` adopts that
+bound session as the checkpoint's owner whatever session invoked it
+(`plugins/claude-kit/hooks/kit-compact-checkpoint.js:156-157`, the
+`owner = bound !== null ? bound : ...` resolution). On a checkout shared by
+multiple sessions, which is this fleet's normal state, that means:
+
+- A bystander session's `open` declares a chapter boundary on the
+  leash-holder's behalf. The compaction gate then admits an auto-compaction
+  the leash-holder never blessed, which can land mid-chapter, at exactly the
+  point the gate exists to protect.
+- A bystander session's `clear` unmakes a boundary the leash-holder
+  legitimately declared, deferring its compaction until the safety valve
+  fires near the context limit, the worst landing point.
+
+This happened live on 2026-09-01: the expert seat ran `open` intending to
+bank its own unleashed session's state and instead wrote a checkpoint bound
+to the sibling worker's leash; the mis-open was caught by reading the written
+record and cleared within a minute, with no deferral episode in flight, so
+nothing was harmed. The hazard is accident, not adversary: a session
+following its own skill's instructions writes into another session's
+compaction timing with no refusal anywhere in the path.
+
+The operator ruled (relay, 2026-09-01): the checkpoint carries a session id
+that is validated at the acting moment, so a checkpoint affects only the
+session it belongs to.
+
+## Decisions
+
+- Decided 2026-09-01 (operator, relay): checkpoints validate a session id, so
+  a session that is not the one a checkpoint blesses can neither open nor
+  spend it.
+- Decided 2026-09-01 (expert, at spec): validation lands at the write door
+  (`open` and `clear` refuse a caller that is not the session the checkpoint
+  blesses) with a belt-and-braces read-side check at the gate (the record
+  gains the opener's id and the gate honors it only where that id matches the
+  session being compacted). The write-door check is what prevents the
+  accident; the read-side check is what catches a record an older CLI or a
+  hand edit produced.
+- Decided 2026-09-01 (expert, at spec): no override flag on `open`. The
+  operator path for releasing a held session already exists (`consent`, which
+  takes `--session <id>`), so an override on `open` would duplicate it with a
+  second spelling.
+- Decided 2026-09-01 (expert, at spec): caller identity comes from the same
+  channel the CLI's other session-scoped verbs already use
+  (`callerSessionId()` / `usableSessionId`), and the check is
+  mistake-prevention, not a security boundary: the id is self-reported
+  environment, and the threat model is a session following instructions in
+  the wrong seat, not a forger.
+
+## Sections of Work
+
+### 1. Open and clear validate the caller; the gate validates the record
+
+Model: opus
+
+`plugins/claude-kit/hooks/kit-compact-checkpoint.js`:
+
+- `open` refuses, with nothing written, when the calling session is not the
+  session the checkpoint would bless (the goal's bound session where a
+  binding exists; the current owner-resolution logic otherwise stands, and
+  what changes is that a caller who is neither is refused with words naming
+  why rather than granted the bound session's slot). The refusal names the
+  situation in plain words: this checkpoint belongs to the leashed session,
+  and a bystander's boundary is declared with the `boundary` verb, which is
+  already per-session.
+- `clear` takes the same rule: a caller that is not the blessed session is
+  refused and the existing checkpoint stands.
+- A caller whose session id cannot be resolved at all (an operator's bare
+  shell) is refused with a message naming `consent` as the operator's
+  release path. This is a declared default, not a settled fork: if
+  implementation surfaces a real operator need for an unattended open, that
+  is a NEEDS_CONTEXT, not a silent widening.
+- The checkpoint record gains an `openedBy` field carrying the opener's
+  session id.
+
+The gate side (wherever the chapter checkpoint is read at PreCompact,
+`kit-compact-lib.js` or the gate hook): a chapter checkpoint is honored only
+where its `openedBy` matches the session being compacted; a mismatched or
+absent `openedBy` is journaled under its own reason value and the checkpoint
+is otherwise ignored. The role-boundary markers and the consent marker are
+untouched: they are already session-scoped by their own machinery.
+
+Files in scope: `plugins/claude-kit/hooks/kit-compact-checkpoint.js`,
+`plugins/claude-kit/hooks/kit-compact-lib.js` (only if the gate-side read
+lives there; the implementer confirms the reading site before editing),
+`test/kit-compact-gate.test.js`, and whichever existing test file pins the
+checkpoint CLI's verbs.
+
+Tests, both directions: the bound session's own `open` succeeds and the gate
+honors the checkpoint; a bystander `open` is refused with nothing written; a
+bystander `clear` is refused with the existing checkpoint intact and
+byte-unchanged; the gate ignores a fixture checkpoint whose `openedBy`
+mismatches the compacting session, journaled under the new reason value; an
+`open` with no resolvable caller id is refused naming `consent`. Existing
+leashed-path tests stay green with the caller id supplied.
+
+Build: touches `plugins/claude-kit/hooks/`, so the build stamp refresh runs
+before the section's gate (operator-tier memory).
+
+## Out of scope
+
+- The role-boundary markers and the `consent` verb: already session-scoped.
+- The gate's safety valve and its context ceiling: unchanged.
+- Any change to when the leashed session opens a checkpoint (the section
+  loop's step 8 and the interim ritual): this plan changes who may, not when.
+
+## Rollout
+
+Ships with the plugin: `claude plugin update` plus session restarts, the
+standing fleet-update act.
+
+## Chapters
