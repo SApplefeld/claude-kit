@@ -26,7 +26,7 @@ The `curating-docs` skill owns the mechanics: it archives a plan when it complet
 
 ## Active plans
 
-Thirteen plan documents sit in `plans/`. `plans/README.md` carries each one's full description and the go state of its header; the running order of the armed plans rides in their own entries.
+Fourteen plan documents sit in `plans/`. `plans/README.md` carries each one's full description and the go state of its header; the running order of the armed plans rides in their own entries.
 
 - **`plans/claude-kit_corpus-audit_spec_v1.md`** (Ready, seven sections) has the kit's behavior-shaping prose swept by cold readers who never loaded it, because a session that has loaded the corpus grades with the judgment that corpus shaped. Four defect classes are in scope: cross-document conflicts, incident-born density later machinery superseded, operator-approval gates installed before the loop could maintain itself, and assumptions about the harness that upstream releases have falsified.
 - **`plans/claude-kit_output-channel-eliding_spec_v1.md`** (Ready, two sections; not armed, no dispatch authorization recorded) gives the kit one way to render a filesystem path for a channel a model reads, since a path under the home directory carries the operating-system account name and one hook emits an installed plugin root into session context on its failure branch. The single renderer decides containment on path components rather than a text prefix, elides the flattened spelling as well as the literal one, and marks a value it altered; section 2 sweeps the model-read channels onto it and enumerates every site it deliberately leaves.
