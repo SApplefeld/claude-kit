@@ -49,6 +49,14 @@ head-and-tail improvement rides along.
   raise remains parked with its throughput math (a 32KB-field judge call costs
   ~4-5s of prompt eval at the measured speed, and burst backlogs would cross
   the 15-minute staleness horizon and drop entries).
+- Decided 2026-09-01 (operator, relay, later the same day, superseding the
+  entry above): the moderate raise ships in this plan as section 3 (6,000
+  chars per field, 16KB per entry, judge command cap to match), chosen over
+  straight-32KB for the burst-staleness math and over no-raise because 2,000
+  characters is low against the 32K-token window now live. The operator also
+  values that the moderate shape keeps recognition inside a 16K window,
+  preserving the option to lower the endpoint context again under memory
+  pressure.
 - Decided 2026-09-01 (expert, at spec): the truncation marker keys on the
   spool entry's existing entry-level `truncated` flag plus the judge's own
   prompt-time cuts, with no per-field capture flags added. The spool schema
@@ -64,6 +72,19 @@ head-and-tail improvement rides along.
 - Decided 2026-09-01 (expert, at spec): the always-on "may be truncated" hedge
   is removed in v3. A complete input should read as complete; the hedge's
   blanket presence is half of why the flag carries no information today.
+- Decided 2026-09-01 (expert, at section 1 build, on the implementer's
+  escalation, citations verified): the prompt module is required in three
+  places, not one, so section 1's scope widens to the other two requires. The
+  daemon stamps `promptId` into every verdict record from its own require
+  (`sidecar/daemon.js:174`, `:1183`), and the battery's provenance screen
+  (`sidecar/battery.js:186`, `:937`) voids every scored case whose record id
+  differs from its own prompt's, so judge.js alone at v3 would write false
+  records and daemon-without-battery would leave the gate unable to measure
+  anything. The spec's "battery runner needs no change" sentence was wrong,
+  an unverified inference now corrected by this entry. Widened files:
+  `sidecar/daemon.js` and `sidecar/battery.js` (one require line each),
+  `test/kit-sidecar-battery.test.js` (the provenance stdout pin and two
+  module requires), `sidecar/batteries/README.md` (names the live prompt).
 
 ## Sections of Work
 
@@ -131,11 +152,33 @@ both take the discipline; surrogate boundaries hold at both cuts.
 Build: touches `plugins/claude-kit/hooks/`, so the build stamp refresh runs
 before the section's gate (operator-tier memory).
 
+### 3. The moderate cap raise
+
+Model: opus (rides section 2's dispatch: same file, same lanes, one pass)
+
+Per the operator's "moderate" ruling (relay, 2026-09-01, superseding the
+earlier no-raise ruling): `FIELD_CAP` 2,000 -> 6,000 characters and
+`LINE_CAP_BYTES` 8,192 -> 16,384 in the capture hook (`PART_CAP` derives), and
+`COMMAND_PROMPT_CAP` 6,000 in judgment-v3 so the prompt no longer re-cuts what
+capture already bounded (it remains the defense-in-depth bound and still fires
+in tests that feed it oversized text directly). The head-and-tail split of
+section 2 applies at the new caps. Worst-case judge call at these numbers is
+roughly 5-7K tokens (~2-2.5s at the measured eval speed), which keeps a
+200-call burst inside the 15-minute staleness horizon; recognition's own
+prompt caps are deliberately unchanged, so its worst case still fits a 16K
+window and the operator keeps the option of lowering the endpoint context
+back to 16K under memory pressure.
+
+Files in scope: within sections 2 and 3's combined set (the capture hook, its
+test, judgment-v3, the daemon test).
+
+Tests: cap pins updated to the new constants, not deleted; a both-directions
+pin that a field between the old and new caps now spools whole.
+
 ## Out of scope
 
-- The truncation-cap raise (2,000/8KB stand), parked by the operator's ruling
-  with the throughput math in Decisions; reopened by an operator word plus a
-  duty-cycle reading if the stepped raise is wanted later.
+- Any further cap raise (the straight-32KB shape), reopened by an operator
+  word plus a duty-cycle reading from the rollup after this raise has run.
 - Per-field truncation flags in the spool schema, declined per Decisions.
 - Recognition-prompt changes: recognition already receives its index-cut flag
   (`indexCut`) and has its own prompt lineage; its field markers can follow
@@ -154,3 +197,16 @@ before the section's gate (operator-tier memory).
   rate (36.6% -> ~10% is the direction; exact convergence is not promised).
 
 ## Chapters
+
+### Interim board 1 - 2026-09-01
+Section 1 is mid-build on its widened scope (see the Decisions entry on the
+three prompt-module requires): the implementer escalated the coupling
+(NEEDS_CONTEXT), was granted option (a), and is implementing judgment-v3 plus
+the require repoints with both lanes baselined and the three-run battery gate
+ahead of it. Sections 2 and 3 are not started and ship together in one
+dispatch after section 1 closes (same file, same lanes); their brief must also
+update section 1's ACTION-cut pin when COMMAND_PROMPT_CAP moves to 6,000.
+Operator rulings all recorded in Decisions; the moderate raise superseded the
+no-raise ruling later the same day. Review rounds for section 1 (adversarial +
+blind pair) have not yet run; they follow the implementer's DONE. Next: await
+section 1 DONE, verify, dispatch the reviewer pair, then sections 2+3.
