@@ -35,6 +35,38 @@ Section 1 is store-and-hook code extending an existing proven mechanism to more 
 - Decided 2026-08-30 (expert seat, within the delegated design): anchors stay project-only. An anchor is a file hash, repo-scoped by construction; portability belongs to triggers, whose patterns (commands, error shapes, skill names) are machine-portable. A reviewer proposing shared-tier anchors argues against this entry.
 - Context: this plan instantiates the operator's product direction in the project memory `memory-evolution-is-the-kits-cornerstone`; a proposal that narrows the store's reach argues against that record.
 
+## Standing Brief Amendments
+
+These bind every section of this plan opened or re-dispatched after the date on each entry, dispatched
+or inline. They exist because the finding class each one names surfaced twice, which means the workflow
+is generating the defect rather than one implementer having missed it.
+
+- 2026-09-01, from section 2's second review round. **When a change falsifies a claim, sweep every
+  carrier of that claim before the section closes, and report the sweep by predicate and scope rather
+  than as a clean grep.** A claim lives in more places than the one the change touched: source comments
+  in the file itself and in its siblings, skill bodies under `plugins/claude-kit/skills/`, `docs/`
+  prose, test names and test comments. Two of them are the ones actually read at the moment the claim
+  matters, so missing them is not cosmetic: a skill body is what an executing session reads at recall
+  time, and a function header asserting parity with a rule is a load-bearing invariant that goes silent
+  when the rule moves. Sweep on the claim's shape rather than on a list of file names, since a sweep by
+  named list reports the same clean result whether the unnamed carrier is absent or merely unnamed, and
+  name in the report the predicate you swept with, the scope you swept over, and every site the sweep
+  reached and deliberately left unchanged with the rule that exempts it. A carrier sitting outside the
+  section's `Files in scope:` is an out-of-scope surface and takes the executing-work skill's route for
+  one rather than an in-place edit the scope check never sees.
+
+- 2026-09-01, from section 2's second review round. **When a change alters a shared contract, audit
+  every committed caller of it, including callers outside the section's file list, and pin the ones the
+  change reaches.** The two shapes this plan has produced are a function gaining a refusal where it
+  previously always answered, and a resolution rule moving in one resolver while its siblings keep the
+  old derivation. Both read as correct hardening at the site and both fail at a distance: a new throw
+  escapes into a caller whose own header documents it as faultless, and a moved rule leaves two
+  resolvers answering different questions about the same directory, which is precisely the divergence
+  such a change is usually made to close. Enumerate the callers with a tree-wide grep on the symbol
+  before the fix is written rather than after, treat a caller's own documented contract (its header, its
+  status enumeration) as the standard the change must not break, and where a reached caller lies outside
+  the section's scope, route it rather than leaving it named only in a report.
+
 ## Sections of Work
 
 ### 1. Triggers author on shared tiers and recognition reads them. Model: opus
@@ -478,3 +510,122 @@ waiter addresses a session that cannot release it. Captured to the kaizen inbox.
 Next action. Await the second review round, adjudicate it, run the whole gate with the contention lane
 beside it because the push lands on an install-surface trunk, take the security-model.md handoff from
 the peer, then Chapter 2, the commit and the push.
+
+### Interim board 4 - 2026-09-01
+
+Section 2 is still the only section open. A third review round has been adjudicated and did not close it,
+which is what earns this entry rather than a Chapter.
+
+Stage. Section 2's implementation is complete and has been through two review rounds, two fix rounds and
+the orchestrator's own verification. The second review round returned worse verdicts than the first, and a
+third fix round is dispatched and in flight at an escalated tier. Nothing is staged and nothing is
+committed beyond the interim board entries themselves.
+
+Round 2's verdicts. Three reviewers over the eight changed files, all at opus and effort max through the
+Workflow route: adversarial CHANGES_REQUIRED with two Criticals, blind CHANGES_REQUIRED, security BLOCK
+with two Majors. All three resolved at `claude-opus-5` across every assistant turn, 548,280 subagent tokens
+and 170 tool calls over 29 minutes, with no substitution and no synthetic placeholder.
+
+The finding that matters most, and it is the security lens's alone: the ancestor walk the first round's fix
+introduced crosses repository boundaries, so a session standing inside a nested independent checkout reads
+and writes the enclosing project's memory tier. The orchestrator reproduced it independently rather than
+taking the report: a directory created under `.kit/scratch/` holding its own `.git`, and therefore an
+independent repository, resolved `C:\Users\LocalAdmin\.claude\projects\D--claude-kit\memory`, which holds
+52 records belonging to the enclosing repository, with `projectTreeRoot` answering `D:\claude-kit`. Both
+directions are live harm: the enclosing project's records enter session context while the session works in
+a different repository, and a memory written there lands where that repository's own sessions will never
+read it, which is the split this section exists to close, reproduced one level down. It is security weight
+and heading onto a trunk consumers install from directly, so it is fixed before the section closes rather
+than parked.
+
+The second Critical is the same class one site over. A subdirectory of a linked worktree reopens the
+per-worktree store split the session leg was deliberately ordered behind, because `worktreeMainRoot`
+consults only `<cwd>/.git` and never walks up, so a directory one level inside a worktree falls through to
+the session leg and lands on the worktree's own segment while the worktree root folds to the main
+checkout's. The remaining blocking findings are that `anchorRoot` was never brought onto the new contract,
+so a real record's anchors resolve against the wrong tree and every anchored file reports drift, and that
+the section's new refusal escapes into `sidecar/memory-index.js`, whose own header states that nothing
+there throws at its caller, along a path reachable from a spool line any local process can append, which
+stops a daemon a scheduled task runs perpetually per VM.
+
+The escalation, and the comparison that earned it. The section is opus tier and its two prior rounds both
+failed with Criticals, so the ladder required a comparison of the two rounds' surviving Criticals before
+any tier bump. Round 1's root cause was that the session leg answered where it must not, capturing an
+unrelated checkout and reopening the per-worktree split for a cwd outside the worktree. Two of round 2's
+four blocking findings are that same class at new sites: the leg crosses a repository boundary, and it
+reopens the per-worktree split for a cwd inside the worktree. A finding class therefore repeats, which
+means the implementer is missing something and the tier is the lever rather than the spec's premise being
+the generator, so the bump is spent rather than a consult convened. The session runs below fable and the
+section is tiered opus, so the ladder's answer is one re-dispatch to `implementer-fable` carrying the
+explicit fable model override. Its first-turn reading was taken at the window's close and read 45 assistant
+lines all resolving `claude-fable-5` with zero synthetic placeholders, so the override took and the round is
+genuinely running at the escalated tier.
+
+Standing Brief Amendments written, which is the section's real structural output. Two finding classes have
+now surfaced twice each, and two instances means the workflow is generating the defect rather than one
+implementer having missed it, so the generator is fixed rather than the output. The block sits above
+`## Sections of Work` and binds every section opened or re-dispatched after today. The first entry requires
+that a change falsifying a claim sweeps every carrier of it, on the claim's shape rather than on a list of
+file names, and reports the sweep by predicate and scope including the sites it deliberately left
+unchanged. The second requires that a change altering a shared contract enumerates every committed caller
+with a tree-wide grep before the fix is written, treats each caller's own documented contract as the
+standard the change must not break, and routes any reached caller outside scope rather than leaving it
+named only in a report. Writing the block is approval drift by construction, since it sits inside the
+approval-scoped region, and it is recorded here as deliberate.
+
+Files in scope widened again, to `plugins/claude-kit/hooks/kit-goal.js`,
+`plugins/claude-kit/skills/executing-work/SKILL.md` and `sidecar/memory-index.js`. The first is the third
+copy of the transcript scan this section's own ruling said should be single-sourced, and it gained neither
+guard the shared scan acquired. The second carries the falsified resolution claim in the copy an executing
+session actually reads at recall time, which is the amendment's own first instance. The third is where the
+new refusal escapes into a faultless-by-contract caller, and it is a security Major this section caused,
+which is never parked whatever its scope. The recorded sidecar disposition is unchanged and explicitly
+covers the divergence rather than the throw.
+
+Gate baseline. Unchanged from Interim board 3 and not re-measured this round, since no code moved between
+the round 2 dispatch and now: the fix round's targeted lane read 1600 tests, 1596 pass, 2 fail, 2 skipped,
+exit 1 from the run's own marker, the two failures being this box's documented permanent red and the
+inherited hook-canary red the canary fix has since returned to 1. The whole gate has not run for section 2
+and runs before the push, because this plan is Commit-and-Push straight to a trunk consumers install from.
+
+The security-model.md handoff is resolved, and the resolution is recorded here because nothing agreed over
+messaging is real until it lands in the plan doc. The KIT: Expert session holds that file uncommitted and
+reports its own commit is hours out behind a model endpoint whose generation lane is saturated. It gave
+explicit recorded agreement on the peer channel for the fallback: whichever session commits the file first
+wins, and if that is this one, this session commits both contributions in one commit naming the expert
+session's paragraph as its work landed by agreement. Two conditions were set and accepted: commit the file
+at the natural section close rather than earlier, so this section's corrections land in the same changeset
+as the code that falsified them, and touch no other file of theirs. That session subsequently reported its
+paragraph shrank from fifteen lines to six as its own review round moved work to a later section, so
+whatever the file holds at close is what lands, and no snapshot of the older text is held anywhere here.
+The security lens raised the bar on what those edits owe: beyond the reader enumeration and the line-21
+derivation sentence, the harm sentence at line 453 is falsified too, since it prices a weak gate on the
+worst case being a compaction's timing, and a third reader now steers which project's memory tier reaches
+the model; the honest replacement states the new leg's own corroboration as the bound. The collision
+blindness of the sanitized-name comparison also wants naming beside the existing residual, and the tier
+boundary wants fixing rather than documenting, which is what the escalated round is doing.
+
+One review-process defect of the orchestrator's own, recorded because it bears on how much the round's
+independence is worth. The blind reviewer reported that its brief was mildly contaminated: two phrases in
+it, naming a new refusal and naming delete semantics, do not read identically for every diff in this
+repository, which is the property test a blind brief must pass. It states that it disregarded the framing,
+opened no spec, plan or docs path, and reviewed the diff and the touched files alone, and its findings
+converge independently with the adversarial lens's on the two shared Criticals, so the round's value stands.
+The defect is the orchestrator's brief-writing rather than the reviewer's reading.
+
+Shared tree. This checkout still carries the other session's uncommitted work: the sidecar sources and
+their two test files, `docs/security-model.md`, `docs/plans/claude-kit_judge-partial-input_spec_v1.md` and
+an untracked `sidecar/prompts/judgment-v3.js`. None of it is this section's and none will be staged here,
+with the single exception of `docs/security-model.md` under the recorded agreement above.
+
+Box. No claim was held by this session during round 2, which ran three read-only reviewers that build and
+run nothing. The escalated fix round carries the claim protocol in its brief under this session's
+substituted identity. Two scratch git repositories exist under `.kit/scratch/`, one pre-existing from
+2026-08-29 and one this session created to reproduce the crossing; both are gitignored and neither is
+tracked.
+
+Next action. Await the escalated fix round, verify its delta and re-read its red-first evidence, then a
+third review round over the fix delta, which is owed rather than optional because the delta reaches a
+resolution rule, adds a module the section did not have, and touches a daemon's fault path. Then the two
+documentation corrections that are the orchestrator's own, the whole gate with the contention lane beside
+it because the push lands on an install-surface trunk, then Chapter 2, the commit and the push.
