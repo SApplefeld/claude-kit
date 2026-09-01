@@ -227,3 +227,120 @@ were told when it freed.
 
 Next: section 2, one resolution contract and the stranded tier dispositioned. Commit model in effect:
 Commit-and-Push.
+
+### Interim board 2 - 2026-09-01
+
+Section 2 is the only section open. Its root-cause investigation is complete and its implementation is
+dispatched and in flight, so no section has closed since Chapter 1 and this entry is the boundary
+rather than a Chapter.
+
+Stage. Section 2 ("One resolution contract, and the stranded tier dispositioned", Model: opus) had its
+root cause established inline by the orchestrator, because the section's own text makes the finding the
+thing that decides the fix's shape. The finding is below. Implementation is dispatched to an
+implementer-opus at the section's tier. Nothing has been reviewed or gated yet.
+
+The root cause, and it is one defect wearing three faces rather than three symptoms. The store's
+project tier is named by `sanitizeProjectPath` at `plugins/claude-kit/scripts/memq.js:519`, which is
+`String(cwd).replace(/[^A-Za-z0-9]/g, '-')`. That function is total: it accepts any input whatsoever
+and always returns a plausible directory name, and it never refuses. `sanitizeProjectPath(undefined)`
+returns the literal string "undefined", which then survives the sanitizer untouched because it is all
+letters, and that is the whole provenance of the stranded `~/.claude/projects/undefined/` tier the
+Evidence section names. The same missing refusal produces the tier split: `projectSegment(cwd)` at
+`:891` resolves pin, then `worktreeMainRoot(cwd)`, then the sanitized cwd, so a shell that has drifted
+into a subdirectory silently resolves a different, real, writable, empty store rather than failing.
+Measured live on this box: `D:\claude-kit` resolves the store holding 52 records and
+`D:\claude-kit\test` resolves a separate `D--claude-kit-test` store. The two surfaces then feed that
+one resolver from two different inputs and nothing reconciles them, which is the split the coordinator
+reported: the SessionStart hook uses the harness-reported session cwd
+(`hooks/memory-session.js:1270`, `payload.cwd` with a `process.cwd()` fallback) while the memq CLI
+always uses `process.cwd()`.
+
+The defect has a measured footprint rather than a theoretical one, which is what decided fixing it over
+documenting it. The store on this box holds 8 records in directories nothing reads, and a family of
+empty splinter tiers beside them. The splinters that correspond to subdirectories of a live repository
+are all empty; the worktree-shaped ones are all empty too, which is independent evidence that the
+worktree handshake is working correctly and must not be disturbed.
+
+The third symptom is not a defect, and the plan's own instruction not to record an unexplained clean is
+honored here. No transient-shaped name is resolvable by any reading verb at HEAD. `isMemoryFilename` at
+`:965` requires a name whose last three characters are `.md`, and both reading rungs pass through it:
+the name-constructing rung builds `target + '.md'` at `:6303`, and every directory-enumerating rung
+filters by it (`:4043`, `:7228`, `:3711`, `:11051`). A home-redirected fixture holding an indexed orphan
+`orphan.md.bak` beside a live `shadowed.md` with a differing `shadowed.md.bak` was probed across get,
+recall, recent, find, unstamped and touch: no verb returned a backup's body, `memq get orphan` answered
+that nothing was named orphan, and `memq get shadowed` returned the live body, which is the withheld
+control proving the instrument could speak. The attribution the section demands is that this green is
+caused by nothing recent: the name-to-file construction has been memq's only one since commit
+`f270e9c` on 2026-07-31 and is present in all four of the 2026-08-30 commits, so `get` could never have
+answered from a backup. The reader and the sync allowlist already agree about what a record is, where
+the section's text expected them to disagree. The regression pin is kept regardless, per the section's
+instruction.
+
+The correction to the plan's own evidence base is worth stating plainly, since a later reader will
+otherwise trust the Evidence section over this one. The Evidence entry describes the serious case, a
+backup beside a live record, as the case nobody has run. It is in fact the only case present on this
+box: all 30 record backups here have a live sibling and every one of them differs from it in content,
+and there are no orphans at all. The serious case is green.
+
+Live dispatches. One implementer-opus, asked for three deliverables over
+`plugins/claude-kit/scripts/memq.js`, `plugins/claude-kit/hooks/session-start.js`,
+`plugins/claude-kit/skills/memory-system/SKILL.md` and `test/memq.test.js`: one new leg in
+`projectSegment`, a refusing `sanitizeProjectPath`, and the skill's resolution paragraph amended. Its
+first-turn reading was taken after the window closed and read 45 assistant lines all resolving
+`claude-opus-5`, with no synthetic placeholder, so it is neither the never-started shape nor a
+substitution.
+
+Gate baseline. None recorded for section 2 yet. The section's targeted lane has not run, because the
+box has been under a foreign heavy-process claim for the whole of this section's implementation so far.
+
+Rulings adopted since the last boundary.
+
+The resolution contract is the harness's own answer rather than an inference. The new leg asks which
+project directory the harness filed this session's transcript in, and a correct implementation of that
+lookup already exists in the tree at `ownTranscriptDir` in `hooks/session-start.js`, with a simpler
+second one at `findTranscript` in `hooks/kit-goal.js`. The instruction is to single-source it into memq
+and have session-start delegate to it, rather than write a third copy, because a claim corrected in one
+carrier and left standing in another is this repository's recurring defect and three copies of one scan
+is that defect authored in advance.
+
+The worktree leg stays ahead of the new leg, and this ordering is load-bearing rather than incidental.
+The harness files a worktree session's transcript under the worktree's own project directory, while
+memq deliberately maps a worktree's memories to the main checkout's directory; the doc block at
+`memq.js:507` calls a per-worktree store split the defect that resolution exists to close. Putting the
+session leg first would silently undo the worktree fix, so the brief requires a comment saying so at
+the site, and a regression pin proving the ordering both directions.
+
+The repo-root walk was considered and rejected on measurement rather than on taste. Resolving the
+segment from the enclosing git repository root would have been the smaller change, and it fails on a
+real case: `~/.claude` is itself a git repository, so a coordinator seat running under
+`~/.claude/coordinator/SCOTT-CLAUDE` would have been redirected into `~/.claude` and every session
+anywhere beneath it would have collapsed into one tier. It also assumes a session's working directory
+is its repository root, which nothing guarantees. The chosen design has zero measured casualties, which
+was checked against every record-holding store on this box rather than against a sample.
+
+Leaving the code alone and fixing the instruction was also rejected. The memory-system skill already
+documents the subdirectory behavior, and documentation has not prevented the 8 stranded records, so the
+section's prescribed invariant needs a mechanism rather than a warning.
+
+The stranded tier is dispositioned. `~/.claude/projects/undefined/` held one record, `drive-probe.md`,
+whose body is fixture prose, with no index beside it and no committed code anywhere in the repository
+naming it. It was backed up to `.kit/scratch/stranded-undefined-backup/` and the directory removed. The
+plan's Evidence entry describing it is deliberately left as authored, because Evidence is the journal
+layer recording what was found rather than a statement of current state. One further splinter was
+created and removed during the investigation: running memq from inside that directory minted
+`projects/C--Users-LocalAdmin--claude-projects-undefined`, which is the defect reproducing on contact,
+and it was removed too.
+
+Shared tree. This checkout carries another session's uncommitted work: `sidecar/CONTRACT.md`,
+`sidecar/batteries/README.md`, `sidecar/battery.js`, `sidecar/daemon.js`, `sidecar/judge.js`,
+`test/kit-sidecar-battery.test.js`, `test/kit-sidecar-daemon.test.js` and an untracked
+`sidecar/prompts/judgment-v3.js`. None of it is this section's and none of it will be staged here.
+
+Box contention. The heavy-process claim has been held by a foreign session for this whole stretch and
+was re-taken at 15:13Z on a 1800-second window after a brief release. This session yielded its place in
+the queue to a third session holding a one-minute lane. No claim was written by this session while a
+foreign one stood, and none was deleted that this session did not own.
+
+Next action. Await the implementer, verify its delta, recover the red-first evidence by probe where the
+box contention prevented the implementer from watching a test fail, then the review round, the section
+close gate, Chapter 2 and the commit.
