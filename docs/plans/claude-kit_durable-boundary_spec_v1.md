@@ -1959,3 +1959,97 @@ under `plugins/claude-kit/` is, and it is what would catch a build stamp left st
 section 2's Chapter records from its own first gate. The whole gate is not re-run for this section:
 its changes are prose plus one PowerShell comment, and the whole gate ran at section 2's close on
 the commit this section builds on.
+
+### Interim board 13 - 2026-09-01
+
+SECTION 4 IS IN ITS FIX ROUND; sections 1, 2 and 3 are closed and pushed, section 5 is unstarted.
+The build landed from implementer-opus and returned DONE_WITH_CONCERNS, the controller verified it
+rather than accepting it, a three-lens review round ran and was adjudicated, and a second
+implementer-opus is executing the fixes now. Nothing is staged; the section's six code files sit
+unstaged in the worktree with the fix round writing into them.
+
+WHAT THE BUILD SHIPPED, VERIFIED AT THE LINES RATHER THAN READ FROM THE REPORT. The role-boundary
+marker is now one file per session, `compact-role-boundary.<session>.json`, composed at a single
+choke point (`roleBoundaryPath`, `kit-compact-lib.js:2514-2518`) behind the charset gate the tree
+already uses for its other session-id path joins (`usableSessionId`, `:2538-2542`, regex
+`/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/`), which was reused rather than rewritten, confirmed as its
+fourth path-composing caller beside the transcript and registry-entry paths. Every reader, writer
+and clearer moved with it, a refused id composes no path at all, and a marker at the legacy single
+name is honored by nothing, by absence rather than by an ignore branch. The stderr note section 2
+added to `cmdBoundary` is gone, retiring the two review Minors that stood against it.
+
+THE CONTROLLER RE-RAN THE LANE RATHER THAN TAKING THE AGENT'S NUMBER. `node --test` over
+`kit-compact-gate`, `seat-stop`, `hook-canary`, `doctrine-parity` and `compact-deferral-nudge`,
+after `./build.ps1`: 483 tests / 483 passing / 0 failing / 0 skipped, exit 0 read from this
+session's own marker at `.kit/scratch/s4v-lane.exit`, reproducing the agent's reported figures
+exactly. Against the baseline it recorded before its first edit, 480 / 480 / 0 / 0 exit 0: plus 3
+tests, failing unchanged at 0. The box was polled and claimed for that run and the claim released
+after it.
+
+THE REVIEW ROUND: three lenses at opus, effort `max`, dispatched through the Workflow route because
+the Agent tool on this version takes a model override and no effort parameter, and an opus-tier
+section's reviewers have no tier headroom over their writer. Adversarial CHANGES_REQUIRED, blind
+CHANGES_REQUIRED, security CONCERNS. The tree-state bracket around the round came back with no
+delta. The security lens judged the path-composition boundary itself sound: one choke point, a
+strict single-component allowlist, uniform fail-closed refusals, and no reachable path outside the
+project's own scratch directory, which it confirmed by probe.
+
+THE ROUND'S REAL FIND, AND ALL THREE LENSES REACHED IT SEPARATELY: the per-session split removed the
+only collector the design had. Under one file per project, any seat's turn-end write or boundary run
+renamed over a dead peer's marker, so the set was self-limiting at one. Per session, a marker
+written by a session that then ends is never removed by anything: the controller confirmed at the
+call sites that `clearRoleBoundary` has exactly three, all scoped to a single session, and that
+`ROLE_BOUNDARY_MAX_AGE_MS` is used only in `markerMatches` comparisons and the status report and
+never for a deletion, with no glob over the marker family anywhere in the tree. The age bound makes
+a marker unhonorable, never absent. That is a regression this changeset introduced rather than a
+pre-existing gap, and it is what earns the fix round.
+
+TWO FALSE CLAIMS RODE WITH IT, ONE OF WHICH IS DELETED RATHER THAN CORRECTED. The build's own new
+header asserts "This is the single place a session id becomes a file name", falsified twice in the
+same file, at the transcript path forty lines below and the registry-entry path six hundred lines
+on, and enumerated correctly by the changeset's own edit to the charset gate's header twenty lines
+away. Standing Brief Amendment 4's stopping rule governs that remedy and it is deletion, not a
+narrower true rewording. Separately two headers assert that an age bound removes a marker file,
+which nothing does.
+
+RULINGS ADOPTED AT THIS ADJUDICATION. Four Minors folded into the fix round: the writer's
+"nothing was written" assertion checks a name only a passing id could compose while its loop's
+subject is the class of ids that must be refused, so it cannot catch what it exists for and is
+widened to the whole marker family, which is the doctrine's own silent-check rule at a site the
+same diff already fixed correctly in the sibling suite; the status report judges a marker on its
+contents alone where the gate now requires the file name and the recorded field to agree, so a
+mismatch is reported as honorable when the gate can never reach it; the new `no-session` read
+outcome is mapped in opposite directions by its two consumers, which is Amendment 2's shape at a
+site this section created; and `doctor.ps1`'s `.kit/` exposure comment is a stale carrier, since
+session ids now appear in file NAMES rather than only in file contents, a new disclosure surface
+for a consuming project that does not ignore `.kit/`. That last one is step 5's standing carve-out
+rather than a routed surface: it is a document inside a completed section's scope whose describing
+passage this section's own change falsified, so it is corrected here.
+
+FOUR FINDINGS ADJUDICATED AS NOT TO FIX, NAMED SO THEY ARE NOT RE-LITIGATED: the consent marker
+keeping the one-file-per-project shape, which is outside this section's scope; a two-seat regression
+case in the seat-stop suite, near-duplicate cover given the shared write path; the marker name's
+contribution to Windows path length, low confidence with a loud failure mode; and the case-folding
+seam between `sameSessionId` and the verbatim file name, whose documented reasoning stands and whose
+failure direction is a deferral.
+
+ONE ASSUMPTION DECLARED, ROUTE (b). The plan says the `status` verb moves without saying to what.
+The build made it enumerate the marker files present and report one line each rather than scoping it
+to the caller, and the controller confirmed the reasoning at the code: the verb reads its id from
+`CLAUDE_CODE_SESSION_ID` (`kit-compact-checkpoint.js:456`) and states its own refusal when that is
+unset (`:571`), while the shipped prose tells an operator to run `status` from a shell, which carries
+no such variable, so a caller-scoped `status` would show an operator nothing. Recorded here and
+carried to the Chapter's `Assumptions:` line.
+
+LIVE DISPATCH: one `implementer-opus`, given the fix brief at `.kit/scratch/s4-fix-brief.md`, which
+carries the four Standing Brief Amendments spliced verbatim from this doc rather than retyped, the
+seven fix items, the four not-to-fix findings, the red-first tests owed for the sweep, the box claim
+protocol, and the lane with its rebuild-first requirement. It is barred from `docs/` by the repo's
+own write guard, so the security-model paragraphs are the main thread's in this same changeset.
+
+NEXT ACTION PER SECTION. Section 4: await the fix round, verify at the lines, rewrite
+`docs/security-model.md` paragraphs 618 and 622 (the sentences are pinned: the marker's fixed single
+name, the "one reader composes a path" count, and the claim that `--project` is the one place a
+caller's value reaches a marker's path), correct the section's acceptance wording where it names an
+"ignore leg" the implementation satisfies by absence, then the close gate, the Chapter, the commit
+and the push. Section 5 follows at sonnet, unstarted. Then the whole-effort finishing pass.
