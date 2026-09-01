@@ -1073,3 +1073,130 @@ Commit model in effect: Commit-and-Push. This entry and section 5's widened scop
 precedent interim boards 1 to 6 set in this plan; section 2's code and its `docs/security-model.md` prose
 stay unstaged until the whole gate has run, since under this model the section commit goes straight to
 main.
+### Interim board 8 - 2026-09-01
+
+IN-FLIGHT SECTION AND ITS STAGE. Section 2 is implemented and has had five implementer fix rounds; the
+fifth round's own review is now adjudicated. It CANNOT close: one Major is confirmed at the lines and one
+Minor is a real ordering defect, both going to a sixth round alongside a cluster of comment and
+enumeration seams. Sections 3, 4 and 5 are not started. Round 5 was deliberately the narrowest round of
+the five, aimed at a predicate rather than a class, and on its own terms it succeeded: every one of its
+named items landed and the adversarial lens confirmed each independently.
+
+WHAT FIX ROUND 5 DELIVERED, VERIFIED RATHER THAN ACCEPTED. The converged Major from interim board 7 is
+repaired at its root. `readFileBounded` now answers `boundedBy`, naming WHICH bound stopped a partial
+read (`'ceiling'`, `'short-fill'`, or `null`), with `bounded` left byte-unchanged in meaning for every
+caller (`bounded === (boundedBy !== null)`). `readHoldNudgesResult` splits the one `bounded` reason into
+`'oversized'` and `'short-fill'`, and `HOLD_NUDGE_HEALABLE` is now `['oversized', 'kind']`, so the
+destructive unlink is reachable only by a reading positively named as the ceiling and a short fill takes
+the refusing direction with `unreadable` and `lstat`. The controller confirmed the split at the lines and
+confirmed its fail direction is safe BY CONSTRUCTION: the reader asks `boundedBy === 'ceiling' ? … : 'short-fill'`,
+so any bound it does not positively name as the ceiling refuses, which also means a stale installed copy
+of the reader answering `undefined` falls to the refusing side rather than the healing one. The security
+lens reached the same conclusion independently and added the arithmetic: this writer's own file, at most
+eight entries of two capped fields, cannot reach a 64 KB ceiling at all.
+
+THE CONTROLLER RE-RAN THE LANE ITSELF rather than accepting the report: 502 tests / 501 passing / 0
+failing / 1 skipped, exit 0 read from the run's own marker file. The one skip is the POSIX-only
+`O_NOFOLLOW` pin, which cannot run on this box. The lane's composition changed this round, since
+`test/kit-read-lib.test.js` joined it, so the reading is reported both ways: the six files already in the
+recorded 483 baseline stand at 484 / 484 / 0 / 0, and the newly joined file contributes 18 / 17 / 0 / 1.
+The multi-byte-prefix grep trap fired a THIRD time on this plan and was caught again by reading the exit
+code from the marker rather than from a pattern over the output.
+
+A FINDING RETIRED WITH RECEIPTS RATHER THAN ROUTED. The adversarial lens rated the checkpoint CLI's
+LF-only line endings a Minor, correctly observing that every sibling file in the changeset is CRLF and
+that this breaks byte-comparison symmetry. The controller checked the base ref rather than the claim:
+`git show 64f711f:` of that file reads CR=0 / LF=882, so the file was already LF-only before this round
+touched it. Pre-existing, not this changeset's, and recorded here so a later round does not rediscover
+and "fix" it into a whole-file diff.
+
+MAJOR, CONFIRMED AT THE LINES, AND IT IS THIS ROUND'S OWN. The status verb hard-codes the two reasons
+that self-heal, promising "the next hold directive replaces it" for `'oversized'` and `'kind'` literally,
+while the authority on which reasons heal is `HOLD_NUDGE_HEALABLE` in the library. The controller
+confirmed the gap by count: that constant is unexported and the checkpoint CLI contains ZERO references
+to it. So the writer and the reader filter on the same value with each side tested only against its own
+literal, which is the doctrine's named cross-component-pin class, and the CLI's own test stays green
+through any divergence because it asserts the message per reason rather than per heal. The finding is
+sharpened by where it sits: the SAME changeset built exactly this pin for the sibling case, so the
+instrument the round needed was already in its hands.
+
+MINOR RATED, DEFECT CONFIRMED: THE HEAL IS GATED BY A CHECK THAT CANNOT SEE IT. The blind lens found that
+`recordHoldNudge` runs `writableOrAbsent(target)` BEFORE the read and before the heal, so a stamp file
+that is both oversized and unwritable refuses permanently, where the heal is an unlink that needs
+permission on the containing directory rather than on the file and would have succeeded. Confirmed at the
+lines. It falsifies the library's own header, which states that neither a link nor an oversized file ever
+resolves on its own so a writer that only refused would disable that interval permanently, and it
+falsifies the status verb's replacement promise for that same file. Round 5 closed the permanent-silence
+class at one leg and left this ordering holding it open at another.
+
+A CONVERGENCE ACROSS TWO LENSES ON THE OUTPUT CHANNEL. The adversarial and security lenses independently
+found that the new hold-stamp status report interpolates a home-anchored path into stdout raw, bypassing
+both guards the same file defines one hundred and thirty lines above, one of which exists precisely
+because the OS account name is in that path and the output is read by a model. The security lens supplied
+the honest scoping the fix turns on: the pre-existing gate-state report does the same, so the class
+predates this round and the repair belongs at the channel rather than at the new site, which is Standing
+Amendment 3's shape exactly. It also named the cost the fix carries, that the CLI's own tests pin the raw
+path and must move in the same edit.
+
+FINDINGS STANDING AS ALREADY-ROUTED, re-found independently and correctly. The blind lens rated the
+marker collision a Major for the THIRD time across this plan's rounds, reaching it from the directive's
+own broadcast rather than from the file naming, and it is section 4's, appended for exactly this. Its
+companion Minor, that the collision note cannot tell an absent marker from an unreadable one, is retired
+by the same section deleting that note outright. Both stand where they are. Fixing code one section
+before deleting it remains throwaway work.
+
+THE ROUND. Three reviewers via the Workflow route at model opus and effort max, which the Agent tool
+cannot set; all three resolved to claude-opus-5 read from the run record, so no substitution and no
+compensation notch is owed. The first-turn reading was taken on every dispatch. Workflow parallelism caps
+at two on this host, so the security reviewer started as the first finished, which is expected behaviour
+rather than a never-started dispatch. The tree-state bracket returned NO DELTA at all this round, the
+first round of this section where it did, so all three lenses held read-only and no concurrent write
+landed inside the window.
+
+A DISPATCH TRAP THE CONTROLLER FELL INTO AND A MEMORY RECORD CAUGHT. The first-turn reading was first
+taken at the path the Agent tool's own result returns, which on this install is zero bytes for every
+dispatch including completed ones, so it reported zero assistant lines and zero synthetic for a healthy
+agent: the never-started shape exactly, which licenses killing a working agent. The real transcript sits
+one directory deeper, under the session's own `subagents/`. The project memory record naming this trap
+was surfaced and is stamped applied; its standing instruction, that the reading always carries a positive
+control against a dispatch known to have completed, was then honoured and the control spoke at 219, 163
+and 198 assistant lines.
+
+CURRENT GATE BASELINE. Targeted lane over the section's files plus the whole-tree pins whose subjects
+they are, now including `test/kit-read-lib.test.js`: 502 / 501 / 0 / 1, exit 0, run by the controller with
+the exit code read from the run's own marker file. The whole gate is still OWED at the section close,
+twice over, for the push to main and for this session's earlier merge.
+
+BOX, NAMED RATHER THAN ASSUMED AWAY. A peer seat's claim was live and already past its own declared bound
+when the fix round was dispatched, so the claim read was left to the implementer's own spawn moment,
+which is where the protocol puts it. By the controller's lane the claims directory was empty and no
+dotnet, testhost or vstest process was running; the controller wrote its claim with the clock read at the
+moment of the write rather than composed, and deleted it scoped to this session's id. The implementer
+reports running its own red probes under named contention beside a foreign live claim and eight dotnet
+processes, which is the fifth such observation on this box of suites spawning without reading the claim
+file.
+
+DOCS CORRECTED IN THIS BOUNDARY BY THE CONTROLLER, since `docs/` is barred to subagents. One
+`docs/security-model.md` paragraph was falsified by this round's own split and is repaired: it enumerated
+four readings where there are now five, described the short-fill leg as healing where it now refuses, and
+missed that the hold-stamp read takes the same opt-in link refusal the signpost read does. The correction
+states why the split exists rather than only its result, since the reason is the transferable part.
+
+FOREIGN UNCOMMITTED WORK REMAINS IN THIS TREE AND IS NOT THIS SESSION'S TO COMMIT.
+`kaizen/notes-SCOTT-CLAUDE.md` carries the coordinator seat's notes, and the peer's sidecar effort has
+grown again during this stretch, now holding a plan doc, a contract, five sources and three test files.
+Named and left; no commit of this session carries any of them.
+
+NEXT ACTION PER SECTION. Section 2: a sixth fix round, narrower again. Its items: export the healable-reason
+set and drive the status verb off it with a cross-component pin; move the writability check below the
+heal; route the status verb's paths through the eliding display guard at the channel rather than at the
+new site, moving the pins that hold the raw form; and the enumeration seams, which are the reader's null
+list, the remedy count, the hardlink paragraph the round widened into falsehood, and the residual argument
+that describes one of its two callers. Then the whole gate under a fresh baseline, then Chapter 2 and the
+commit. Section 3: not started, scope widened three times. Section 4: not started, the marker-collision
+repair, now re-found by an independent lens in three separate rounds. Section 5: not started, scope
+widened once.
+
+Commit model in effect: Commit-and-Push. This entry commits alone, on the precedent interim boards 1 to 7
+set in this plan; section 2's code and its `docs/security-model.md` prose stay unstaged until the whole
+gate has run, since under this model the section commit goes straight to main.
