@@ -1867,3 +1867,95 @@ record is corrected to one standing fail and the memq-shim entry now says the me
 been established and that a red there reads as unexplained rather than as a regression. The
 enumerated-count bullet takes this run's 2,815 / 2,807 / 1 / 7 over 47 files in 403 s as its last
 measurement, demoting the previously reported 2,681 and 2,671 figures to history.
+
+### Chapter 3 - 2026-09-01
+Completed: 3. The document sweep
+Implemented By: implementer-sonnet for the two carriers outside `docs/`; the main thread for the
+five inside it, `docs/` being barred to subagents by the repo's own write guard.
+Metrics: review rounds 0; NEEDS_CONTEXT 0; escalations 0; consults 0.
+Next: 4. The role-boundary marker is scoped per session, so two seats cannot spend each other's declarations
+Commit Model: Commit-and-Push
+
+THE SECTION'S SHAPE WAS SET BY A CONSTRAINT RATHER THAN BY ITS CONTENT. `docs-write-guard.js` bars
+a subagent from writing anything under `docs/`, and five of this sweep's seven carriers live there.
+So the section forked rather than dispatching whole: an implementer-sonnet took the root `README.md`
+hook-inventory entry and `doctor.ps1`'s `.kit/` exposure comment, with the brief stating the bar
+explicitly and telling it to report rather than attempt any `docs/` change, while the main thread
+took `docs/architecture.md`, `docs/fleet-integration.md`, `docs/README.md`, `docs/plans/README.md`
+and the `docs/security-model.md` verification. Both halves ran at once. The agent's report was
+verified at the lines rather than accepted: both its edits are correct, and it kept the README's
+fixed-column layout and `doctor.ps1`'s comment prefix and wrapping intact.
+
+WHAT CHANGED. `docs/architecture.md` took six corrections. Its enumeration of the subsystem's
+project-local files was short by one and now names `compact-hold-nudge.json` and says why that stamp
+cannot live in the gate's own state. Its journal sentence said a nudge record carries an `event`
+field without saying that the field now takes two values, `nudge` and `nudge-hold`. Its gate-state
+sentence named only the open deferral episode and now names the per-session interactive-hold list
+beside it, with the reason the two are stored differently: the episode belongs to the leash so one
+slot suffices, while a hands-on hold belongs to the session so it needs a record per session. Its
+deferral-nudge passage described one directive, one audience and a flat set of eight guards, where
+the shipped hook has two directives and a forking guard set, four common, a fifth that forks, three
+on the episode path and three on the hold path. Its seat-declaration passage scoped the manual
+boundary path to "a session no registry entry covers" and now names both cases, adding the clean-tree
+conjunct that is why the automatic path cannot serve the second. And its registry writer rule is
+corrected below. `docs/fleet-integration.md` carried the same stale single-directive descriptor for
+the hook. The two plan indexes described this plan as Ready with three sections and second in the
+armed queue; it is In Progress with five, two complete, and first.
+
+THREE STALENESS HITS IN ONE PASSAGE WERE NOT ON THE SECTION'S LIST AND ARE THE KIND A SWEEP EXISTS TO
+CATCH. The "Operating the gate" paragraph opened "one CLI and one setting", which section 2's floor
+made two. It said the `boundary` verb "takes no arguments at all", which section 1's `--cancel`
+made false, and the phrasing mattered because the sentence's whole point was that the verb refuses
+a `--session` tail. And it described the verb without its registry `Banked:` stamp or its widened
+audience, both section 1's. All three were confirmed against the shipped source before being
+rewritten, at `kit-compact-checkpoint.js:10`, `:44` and `:556` and at the nudge's floor reader.
+
+THE ACCEPTANCE SWEEP FOUND THE ONE CARRIER THAT SURVIVED SECTION 1. `docs/architecture.md:283` still
+stated the registry entry's writer rule with two writers, the registering session plus the
+`Heartbeat:` stamp, where section 1 made it three by adding the machine-written `Banked:` line. The
+role skill's own contract and `peer-sessions/SKILL.md` had both been updated in that changeset and
+this one had not, which is precisely the seam Standing Brief Amendment 1 names: a carrier of the
+claim sitting in a file the change never opened. It now states both stamps and why a machine-written
+line does not break the file's single-writer property.
+
+THE FIRST CONTROL I RAN FOR THAT SWEEP DID NOT SPEAK, AND THAT IS RECORDED RATHER THAN QUIETLY
+REPLACED. I checked the sweep's silence against the pre-section-1 role skill and the pattern returned
+zero, which proves nothing about the pattern and only that I had pointed it at the wrong artifact.
+Re-run against the pre-section-1 `docs/architecture.md`, the same pattern returned the two-writer
+sentence verbatim, so the instrument is sound and the sweep's remaining silence is earned. The four
+other files the sweep surfaced were read individually rather than dismissed on the pattern: two
+carry the corrected three-writer form already, one is about heartbeat staleness rather than the
+writer count, and one is a parked plan's still-true observation.
+
+`docs/security-model.md` NEEDED NO EDIT, AND THAT IS A VERIFIED RESULT RATHER THAN AN ASSUMPTION. The
+registry-entry writer amendment touches no writer-rule claim stated in that document, which states
+the coordinator directory's rules by reference rather than by enumeration. Its marker passage was
+checked for the false path-join claim section 1 was to remove, and a control settles it: the
+pre-section-1 file carries that claim at line 618 and the current file does not, while line 616's
+neighbouring claim about the checkpoint file, which is true and about a different subject, survives
+in both. Sections 1 and 2 had already landed everything this section was to verify there.
+
+A CARRY-FORWARD FOR SECTION 4, NAMED HERE BECAUSE IT WILL BE INVISIBLE FROM INSIDE THAT SECTION'S OWN
+DIFF. `docs/security-model.md` currently states that the gate's files are never joined to a
+caller-chosen path, and its marker paragraphs describe the role-boundary marker at a fixed single
+name. Section 4 changes that name to `compact-role-boundary.<session>.json`, joining a session id
+into a filename. That falsifies a stated security claim, so section 4's own changeset updates those
+paragraphs rather than leaving them to a later sweep, on the same rule section 1 followed: a false
+security claim never outlives the commit that falsifies it.
+
+ONE MECHANICAL SIDE EFFECT IS NAMED RATHER THAN HIDDEN. `docs/plans/README.md` is stored in git with
+CRLF line endings while this repo runs `core.autocrlf=true` with no `.gitattributes`, so git
+normalizes the whole file on staging. My one-line edit therefore lands as a 30-line diff. The content
+change is the single line; the rest is git's own normalization of a file that was committed against
+the configured convention, and fighting it by hand would mean writing the endings back in.
+
+GATE. Targeted lane, `node --test` over the eight files whose subject this section's changes are
+(`doctor-encoding`, `doctor-goal-state`, `docs-write-guard`, `doctrine-parity`,
+`output-style-parity`, `pr-docs-guard`, `stop-docs-hygiene`, `hook-canary`): 205 tests / 205 passing
+/ 0 failing / 0 skipped, exit 0 read from the run's own marker. `hook-canary` is in the lane
+deliberately rather than by filename derivation: it is the whole-tree pin whose subject a change
+under `plugins/claude-kit/` is, and it is what would catch a build stamp left stale by the
+`doctor.ps1` edit. The plugin was rebuilt before the lane for that reason, which is the same lesson
+section 2's Chapter records from its own first gate. The whole gate is not re-run for this section:
+its changes are prose plus one PowerShell comment, and the whole gate ran at section 2's close on
+the commit this section builds on.

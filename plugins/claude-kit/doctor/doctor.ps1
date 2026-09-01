@@ -1428,18 +1428,19 @@ else {
 # --- .kit/ exposure. The kit's project-local state lives in .kit/, and every
 # --- file it holds is machine-local by intent: goal-state.json carries plan
 # --- paths that every armed session's SessionStart notice reads back into its
-# --- context, compact-gate.json carries the gate's newest verdict, and
+# --- context, compact-gate.json carries the gate's newest verdict,
 # --- compact-gate.jsonl carries a session id and a timeline of the run's work,
-# --- one line per decision. The posture that keeps all of it safe is the
-# --- directory staying out of git, which is a property of the consuming
-# --- repository rather than one the kit can impose, so this checks the whole
-# --- directory instead of assuming it or naming one file. It sits deliberately
-# --- outside the $isClone gate above: $repoRoot is derived from where this
-# --- script lives, so it only ever names the kit's own checkout, whose
-# --- .gitignore already covers .kit/, while the exposure exists in whatever
-# --- project a goal was armed in. The inspected project is the directory the
-# --- doctor was launched from: this state is project-local, so the operator
-# --- runs the doctor from the project.
+# --- one line per decision, and compact-hold-nudge.json carries a session id
+# --- per held session with its own throttle stamp. The posture that keeps all
+# --- of it safe is the directory staying out of git, which is a property of
+# --- the consuming repository rather than one the kit can impose, so this
+# --- checks the whole directory instead of assuming it or naming one file. It
+# --- sits deliberately outside the $isClone gate above: $repoRoot is derived
+# --- from where this script lives, so it only ever names the kit's own
+# --- checkout, whose .gitignore already covers .kit/, while the exposure
+# --- exists in whatever project a goal was armed in. The inspected project is
+# --- the directory the doctor was launched from: this state is project-local,
+# --- so the operator runs the doctor from the project.
 $kitStateDir = (Get-Location).Path
 $kitStatePath = Join-Path $kitStateDir ".kit"
 if (-not (Test-Path -LiteralPath $kitStatePath)) {

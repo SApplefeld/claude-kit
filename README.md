@@ -71,9 +71,10 @@ claude-kit/                          (repo = the marketplace)
         chapter-boundary-nudge.js    PostToolUse nudge that puts the boundary steps in front of a leashed
                                      run when it appends a Chapter to a plan doc, so the checkpoint the
                                      compaction gate waits on gets opened
-        compact-deferral-nudge.js    PostToolUse nudge that tells a leashed run the compaction gate is
-                                     holding auto-compaction offers, and names the boundary steps that
-                                     let one land, at most once per 30-minute interval per tool batch
+        compact-deferral-nudge.js    PostToolUse nudge, two directives: tells a leashed run the gate
+                                     holds auto-compaction offers and names the boundary steps that
+                                     land one; and above a context floor, tells a session holding no leash
+                                     to judge its own state durable and declare it, each once per 30 minutes
         memory-recognition-nudge.js  PreToolUse and PostToolUse nudge that names a stored memory when the
                                      tool stream touches what it is about, deduplicated per session and
                                      capped per rolling window, pointing at memq get and never carrying
