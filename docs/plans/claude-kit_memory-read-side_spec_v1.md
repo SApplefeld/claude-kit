@@ -1,6 +1,6 @@
 # The store learns to speak up: triggers reach the shared tiers, resolution obeys one contract, and recognition meets the moment
 
-Status: Ready
+Status: In Progress
 Commit Model: Commit-and-Push
 Created: 2026-08-30
 
@@ -73,3 +73,80 @@ Acceptance: both probes watched firing before implementation and recorded; a liv
 - Project memories `memory-evolution-is-the-kits-cornerstone` and `an-unchallenged-claim-drifts-because-nothing-exercises-it`: the direction and the mechanism.
 
 ## Chapters
+
+### Interim board 1 - 2026-09-01
+
+Section 1 is the only section open. It is past implementation and past its review round, with a fix
+round dispatched and in flight; no section has closed yet, so this entry is the boundary rather than
+a Chapter.
+
+Stage. Section 1 ("Triggers author on shared tiers and recognition reads them", Model: opus) was
+implemented by a dispatched implementer-opus, verified by the orchestrator's own build and lane, and
+reviewed by three fresh-context lenses. All three returned changes-required. Their findings are
+adjudicated and a fix round is dispatched at the same tier.
+
+Live dispatches. One implementer-opus fix round, asked for eight fixes over `plugins/claude-kit/scripts/memq.js`,
+`plugins/claude-kit/hooks/memory-recognition-nudge.js`, `plugins/claude-kit/hooks/memq-grant.js`,
+`plugins/claude-kit/skills/memory-system/SKILL.md` and the two test files. The review round itself is
+complete: adversarial, blind and security, each dispatched at opus and effort max through the Workflow
+route, since an opus-tier section gives its reviewers no tier headroom and effort is the only strength
+left to add. Each resolved at `claude-opus-5` across every assistant turn, with no substitution and no
+synthetic placeholder.
+
+Files in scope widened. `plugins/claude-kit/hooks/memq-grant.js` joins section 1's file set for a
+comment-only correction: it carries the same stale sentence about the trigger verb rewriting a
+project-tier record, and a claim corrected in one carrier and left standing in another is the defect
+this repository keeps producing. The widening is approval drift and is recorded here as deliberate.
+Two further carriers, `docs/security-model.md` and `docs/architecture.md`, are the orchestrator's own
+writes and are not in any dispatched brief, since a dispatched implementer is denied writes under
+`docs/`.
+
+Gate baseline. The orchestrator's own targeted lane over the section's files plus the whole-tree pins
+whose subject they are (`memq`, `memory-recognition-nudge`, `hook-canary`, `memq-shim`, `memq-grant`,
+`memory-frontmatter-guard`, `memory-usage-stamp`) read 891 tests, 889 passing, 0 failing, 2 skipped,
+exit 0 taken from the run's own marker, after a build that exited 0 at 93 files and 1205.3 KB. That is
+the baseline the fix round reports its delta against. The box was polled before the run: three `dotnet`
+processes carrying `/nodemode:1 /nodeReuse:true` burned 0.000 seconds of CPU over a six-second sample,
+which makes them parked MSBuild worker nodes rather than a live build. The claim was written for the
+run and released after it, its `Session:` line read before the delete.
+
+Rulings adopted since the last boundary.
+
+The nudge's own pointer is fixed by giving `memq get` the two tier flags rather than by suppressing the
+hit or emitting a path. `cmdGet` refuses any argument starting with a double dash and stops at the first
+tier holding a name, so on exactly the cross-tier name collision this section was built to support, the
+nudge named one record and pointed at another, and the read stamp landed on the wrong tier's decay clock.
+Suppression would silence a real fact precisely when it matters, and a full path would put a
+home-prefixed absolute path into model context, which is the surface a parked plan exists to eliminate.
+The flags fix the stamp defect independently and mirror `touch`'s shape, so the store gains no new idiom.
+
+Shared-tier `glob:` triggers are gated to the project tier at both doors, the reading one and the
+authoring one. The plan's own Decisions entry justifies trigger portability by naming commands, error
+shapes and skill names, and excludes anchors as repo-scoped by construction; a path glob is repo-scoped
+by that same construction, so the plan's stated reasoning decides this rather than the executing
+session's preference. Gating only the reader would mint authorable triggers nothing ever reads.
+
+The sidecar finding is a record rather than a code change. Section 1's text asks that the sidecar
+daemon's recognition be checked and widened where its index loader is tier-scoped. The check was made
+and the answer is that `sidecar/memory-index.js` composes a project index path and reads that file's
+roster lines; no module under `sidecar/` reads the `triggers:` field at all. It is a different feature,
+model-judged recognition over an index roster, that is project-scoped for its own stated reason, so
+there is nothing here to widen the same way. The security lens independently agreed that leaving it
+project-scoped is the safe direction, since widening it would need its own re-pricing of a cleartext
+egress paragraph. What the section owed was the disposition, and this is it.
+
+Two further findings are records rather than fixes. The dedup key gained the tier, so a session live
+across the plugin update re-nudges each already-fired project-tier trigger once; the old keys are dead
+and each trigger mints a fresh one. It self-clears at session end and the markers age out, so it is
+named here rather than worked around. And `memq triggers` on a shared tier takes no `--confirm-shared`
+token where the shared-tier body rewrites do. The exemption is deliberate: the token guards replacing a
+shared fact, and this verb splices one frontmatter line while leaving the body promise intact, so the
+fact another project relies on is exactly what does not change.
+
+Next action. Await the fix round, verify its delta against the baseline above, then make the two
+documentation corrections that are the orchestrator's own: `docs/security-model.md`, whose statement
+that the operator tier "enters context only through a command a session chose to run" and whose two
+enumerations of the recognition nudge's reach as the project tier alone are all falsified by this
+section, and `docs/architecture.md`, which states the same reach and an outdated nudge-log line shape.
+Those are a security-weight correction and are fixed in this changeset rather than parked. Then the
+section's close gate, Chapter 1, and the commit.
