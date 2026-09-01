@@ -3815,3 +3815,132 @@ test('every kit procedure performing a git integration names that action\'s lane
             + 'sweep skips. Remove it, or point it at the paragraph it means');
     }
 });
+
+// The moment-pin convention has one owning site, the moment-pin bullet of the
+// testing-discipline skill, and every other surface points at it. This pin is
+// what makes that stick, because a restatement drifts silently: two copies of
+// one convention are never read together, so each is internally coherent while
+// the pair disagrees, and the disagreement surfaces only when a reader happens
+// to hold both.
+//
+// Two halves, covering different failures. The restatement half is a structural
+// sweep for the pin form's own tail phrase, so a new surface that copies the
+// convention reddens here without anyone adding it to a list. Two limits on its
+// reach. It sweeps the shipped markdown under plugins/claude-kit and nothing
+// else, so a copy in a memory record, under docs/, or anywhere outside that
+// root is unswept and this check is silent about it. And its reach is the copy
+// class rather than the paraphrase class: a surface restating the convention in
+// words of its own carries no phrase this predicate can see. The pointer half
+// is an enumeration of the surfaces that carry the duty at their own point of
+// action, counted per duty site, so a pointer rewritten back into a restatement
+// fails the first half and a pointer deleted fails the second.
+const MOMENT_PIN_PHRASE = 'under what contention';
+const MOMENT_PIN_OWNER = 'skills/testing-discipline/SKILL.md';
+const MOMENT_PIN_EXPIRY_OWNER = 'skills/memory-system/SKILL.md';
+const MOMENT_PIN_POINTER = 'moment-pin bullet';
+
+function momentPinPhraseHits(body) {
+    return body.split(MOMENT_PIN_PHRASE).length - 1;
+}
+
+test('the moment-pin convention has one owning site and its other surfaces point at it', () => {
+    // The instrument speaks before its silence is read. The control is a body
+    // holding a restatement in the shape one takes here, the convention's own
+    // prose lifted into another surface's sentence. It is a function control
+    // rather than a coverage one, since it carries the phrase the predicate was
+    // handed, so it proves the sweep counts and says nothing about a paraphrase,
+    // which is the reach named above.
+    assert.strictEqual(momentPinPhraseHits('A measured figure carries what '
+        + 'produced it, when, on which machine, and under what contention, so a '
+        + 'later reader can place it.'), 1,
+        'the moment-pin sweep does not see a restatement it is pointed straight '
+        + 'at, so its silence over the tree would mean nothing');
+
+    // The pointers name a moment-pin bullet, so the owner has to carry that
+    // term or every pointer aims at a name its target does not answer to.
+    assert.match(fs.readFileSync(path.join(__dirname, '..', 'plugins',
+        'claude-kit', ...MOMENT_PIN_OWNER.split('/')), 'utf8'), /moment-pin/,
+        MOMENT_PIN_OWNER + ' does not use the term its pointers name it by, so '
+        + 'a reader following one arrives at a file that answers to no such '
+        + 'bullet');
+
+    // The same far-end reach for the expiry rule, which the owning bullet and
+    // both reviewer charters defer their machine comparison to: the epoch
+    // record and the rule that reads a figure against it both have to still be
+    // there, or three pointers aim at nothing and stay green doing it.
+    const expiryOwner = fs.readFileSync(path.join(__dirname, '..', 'plugins',
+        'claude-kit', ...MOMENT_PIN_EXPIRY_OWNER.split('/')), 'utf8');
+    for (const [pattern, what] of [
+        [/machine configuration epoch/i, 'the machine configuration epoch record'],
+        [/read against that date before it is leaned on/i, 'the rule that reads a '
+            + 'recorded measurement against that epoch'],
+    ]) {
+        assert.match(expiryOwner, pattern, MOMENT_PIN_EXPIRY_OWNER + ' no longer '
+            + 'states ' + what + ', which the moment-pin bullet and both reviewer '
+            + 'charters send their readers to, so the expiry comparison is '
+            + 'delegated to a rule that is not there');
+    }
+
+    const carriers = [];
+    for (const full of shippedKitMarkdown()) {
+        const rel = path.relative(path.join(__dirname, '..', 'plugins', 'claude-kit'),
+            full).split(path.sep).join('/');
+        const hits = momentPinPhraseHits(fs.readFileSync(full, 'utf8'));
+        if (hits > 0) carriers.push(rel + ' (' + hits + ')');
+    }
+    assert.deepStrictEqual(carriers, [MOMENT_PIN_OWNER + ' (1)'],
+        'the moment-pin convention is stated in full at a surface other than its '
+        + 'owner, or at the owner more than once. Every mention outside the '
+        + 'moment-pin bullet of the testing-discipline skill is a pointer at it '
+        + 'and never a restatement, because two copies of one convention are '
+        + 'never read together and so drift without anyone seeing it. This sweep '
+        + 'reads the shipped markdown under plugins/claude-kit only, so its '
+        + 'silence means no restatement under that root rather than none '
+        + 'anywhere. Carriers found: ' + carriers.join(', '));
+
+    // One hit per duty site, not one per file: a file-wide includes() lets two
+    // of executing-work's three sites be deleted with the check still green.
+    for (const [parts, sites, why] of [
+        [['skills', 'executing-work', 'SKILL.md'], 3, 'its gate-reporting step, '
+            + 'its interim board entry and its Chapter format each record '
+            + 'measured figures, so each of the three names the owner rather '
+            + 'than stating the form'],
+        [['agents', 'adversarial-reviewer.md'], 1, 'the code reviewer checks this '
+            + 'convention and reads its form from the owner'],
+        [['agents', 'prose-reviewer.md'], 1, 'the document reviewer checks this '
+            + 'convention and reads its form from the owner'],
+    ]) {
+        const rel = ['plugins', 'claude-kit', ...parts].join('/');
+        const body = collapseWhitespace(fs.readFileSync(path.join(__dirname, '..',
+            'plugins', 'claude-kit', ...parts), 'utf8'));
+        const pointers = body.split(MOMENT_PIN_POINTER).length - 1;
+        assert.strictEqual(pointers, sites, rel + ' names the moment-pin bullet '
+            + 'of the testing-discipline skill ' + pointers + ' times where '
+            + sites + ' duty sites carry it. Fewer means a site has lost the duty '
+            + 'or taken the convention back onto its own authority; more means a '
+            + 'new site legitimately carries it and this expected count is what '
+            + 'to raise: ' + why);
+    }
+
+    // The charters' two directions are one clause on purpose, so neither reads
+    // as the whole, and the journey-ban direction has to carry the doctrine's
+    // own exemption or it convicts every append-only Chapter and archive in the
+    // tree. The epoch leg is pinned beside them because the convention delegates
+    // that comparison to these charters and to nothing else, so a charter that
+    // drops it leaves the duty stated in one skill and enforced nowhere.
+    for (const parts of [['agents', 'adversarial-reviewer.md'],
+        ['agents', 'prose-reviewer.md']]) {
+        const rel = ['plugins', 'claude-kit', ...parts].join('/');
+        const body = collapseWhitespace(fs.readFileSync(path.join(__dirname, '..',
+            'plugins', 'claude-kit', ...parts), 'utf8'));
+        assert.match(body, /append-only history is exempt/i, rel + ' states the '
+            + 'journey-ban direction without the exemption the doctrine states, so a '
+            + 'Chapter, an archive and a changelog, which are the journey by '
+            + 'design, are findings under it');
+        assert.match(body, /configuration epoch of the machine it was measured on/i,
+            rel + ' does not check a figure against the configuration epoch of the '
+            + 'machine it was measured on, so the expiry comparison the '
+            + 'memory-system skill states is delegated to a review that never '
+            + 'performs it');
+    }
+});
