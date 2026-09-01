@@ -344,3 +344,137 @@ foreign one stood, and none was deleted that this session did not own.
 Next action. Await the implementer, verify its delta, recover the red-first evidence by probe where the
 box contention prevented the implementer from watching a test fail, then the review round, the section
 close gate, Chapter 2 and the commit.
+
+### Interim board 3 - 2026-09-01
+
+Section 2 is still the only section open. Two review rounds have been adjudicated since the last
+boundary and neither closed it, which is what earns this entry rather than a Chapter.
+
+Stage. Section 2's implementation is complete and has been through one review round, one fix round and
+the orchestrator's own verification; a second review round is dispatched and in flight. Nothing is
+staged and nothing is committed.
+
+Round 1's verdicts and what they found. Three reviewers at opus, effort max, over the changeset:
+adversarial CHANGES_REQUIRED with one Critical, blind CHANGES_REQUIRED, security CONCERNS. All three
+converged independently on one root cause rather than on separate defects: the session-transcript leg
+was unscoped. It fired whenever the working directory was this process's own, which captured an
+unrelated checkout the session stepped into, reopened the per-worktree split for a worktree session
+whose working directory sat outside the worktree, and routed around the empty-string refusal the
+section had just added, since `path.resolve('')` is `process.cwd()`. The orchestrator confirmed that
+last one live before acting on it: `sanitizeProjectPath('')` threw while `projectMemoryDir('')` returned
+a real store.
+
+The ruling that shaped the fix, and it is one predicate rather than seven patches. The leg is honored
+only where the working directory is this process's own AND some ancestor of it, counting itself,
+derives the segment the transcript names. That single gate closes the cross-checkout capture, since an
+unrelated checkout's ancestry never derives this session's segment, and closes the worktree-outside case
+for the same reason, while leaving the subdirectory fix working. A second ruling settled where the scan
+reads: the harness's own `~/.claude/projects` rather than memq's store root, because transcripts are
+written by the harness and a store redirect does not move them. That one retired a finding rather than
+fixing it twice, since `hooks/kit-goal.js` composes the harness root too and the two spellings now agree
+again.
+
+What the fix round delivered, all of it pinned red-first against isolated copies under `.kit/scratch/`
+rather than against the tree: the ancestor gate, the harness root, validation moved ahead of every leg,
+an ambiguous transcript match answering null instead of taking the first readdir hit, a once-per-process
+stderr note when the session leg redirects away from a store that exists, no memoization of a truncated
+or thrown listing, link-resolved spelling comparison, one exported resolver so the recognition nudge's
+log root and memory tier cannot be derived by two rules, the grant pin's source scan extended over all
+three allowlisted siblings with a planted-source control, and per-verb positive assertions so the
+transient-name loop cannot pass vacuously.
+
+Two defects the orchestrator found after that round, both fixed inline and both watched red first. A
+relative working directory was still flattened into a junk segment: `memq.projectMemoryDir('test')`
+resolved a store literally named `test` and `'..'` resolved one named `--`, which is the section's
+founding defect wearing another spelling, so an absolute path is now required and the refusal reads the
+same wherever it is called from. And `test/hook-canary.test.js` was failing, inherited from this
+section's own first round rather than caused by the fixes: memq's new static require of
+`kit-goal-lib.js` means deleting that module now breaks every hook that loads memq, four flagged probes
+where the test expected two. The canary was correct and the expectation was wrong, so the expectation
+was widened with the reason recorded at the test.
+
+The accepted trade behind that canary change, recorded because it is a deliberate deviation rather than
+a fix. memq now loads `kit-goal-lib.js` on every invocation, for one session-id predicate, and two more
+files can now render memq unloadable. The require is static rather than lazy because the grant pin
+requires memq's loads to sit in one contiguous literal block, a lazy one being exactly the dynamic load
+that pin exists to forbid. The fail-open direction the canary prints is a pre-existing property of an
+unloadable memq rather than anything this dependency introduced; what grew is the number of files whose
+absence produces it. Reversal is cheap if the startup cost ever bites: move the one predicate into a
+smaller shared module.
+
+Gate baseline, and a correction to the one this plan has been carrying. The fix round's targeted lane
+over the section's files plus the whole-tree pins whose subject they are ran 1600 tests, 1596 pass, 2
+fail, 2 skipped, exit 1 read from the run's own marker file. The two failures were the documented
+permanent red on this box (`a pinned directory too long to name faithfully stands the session down`,
+`test/memory-session.test.js:854`, a 254-character fixture path against a 260 cap because TEMP is
+`D:\Temp`) and the inherited hook-canary red described above. So the honest baseline for this section is
+that its post-round-1 state carried 2 failing, not the 1 the plan's earlier entry implied, and the
+canary fix returns it to 1. The whole gate has not run yet; it runs before the push, because this plan
+is Commit-and-Push straight to a trunk consumers install from.
+
+Live dispatches. One Workflow round of three read-only reviewers, all `claude-kit`-scoped agent types at
+model opus and effort max, over the eight changed files: adversarial and security sighted with the
+first round's findings and their dispositions, blind with the changed-file list and nothing describing
+the change. The reviewer tier is opus with no headroom over an opus-tier section, which is what puts the
+effort at max and the dispatch on the Workflow route rather than the Agent tool.
+
+Rulings adopted since the last boundary, beyond the two above.
+
+The relative-path refusal is a refusal rather than a resolution. Resolving a relative spelling would
+answer a different question than the caller asked, since a relative path means "here" only for whichever
+process reads it, and every caller in the repository already holds an absolute directory. So a relative
+value reaching the resolver means the caller lost track of what it was holding, and the failure belongs
+at that call.
+
+The sidecar keeps the cwd derivation, and this is the recorded disposition the section's text requires
+rather than an omission. `sidecar/memory-index.js` composes its own segment and never reaches the
+session leg, so a session working from a subdirectory writes records the daemon's recognition pass will
+not find. The spec places that file out of scope, the divergence is fail-quiet rather than fail-wrong,
+and closing it means giving a long-lived daemon process a resolver whose answer depends on a session
+environment variable it does not carry. It is named here so a later reader finds a decision rather than
+an oversight.
+
+Docs carriers corrected, since a claim fixed in one carrier and left standing in another is this
+repository's recurring defect and it recurred inside this very section. `docs/architecture.md` carried
+the old resolution claim in three places; the orchestrator corrected one, the review round caught the
+other two, and all three now state the four legs, the two-part gate, the harness root and the ambiguity
+refusal. The memory-system skill's resolution paragraph and its stamp-rate paragraph were corrected in
+the same round.
+
+One correction is agreed and deliberately not yet made. `docs/security-model.md` carries a Critical: it
+enumerates the readers of `CLAUDE_CODE_SESSION_ID` as two and this section adds a third, and what that
+third one steers is which project's memory tier reaches the model at SessionStart; its line 21 also
+still gives the project tier's name as the sanitized working directory with the worktree link as the
+one deliberate divergence. That file is held uncommitted by another session mid-effort, and git cannot
+split a mixed file, so committing it would publish their unrelated paragraph under this section's
+message. The agreed sequence, reached on the peer channel and recorded here because nothing agreed over
+messaging is real until it lands in the plan doc: that session commits its paragraph and sends the hash,
+this session then makes both edits on top and commits only its own. The fallback, if this section is
+ready first, is that whichever session commits names both contributions with the other's explicit
+recorded agreement. The Critical is fixed before the section closes either way; what is waiting is the
+commit of one file, not the fix.
+
+Shared tree. This checkout carries another session's uncommitted work: `sidecar/CONTRACT.md`,
+`sidecar/batteries/README.md`, `sidecar/battery.js`, `sidecar/daemon.js`, `sidecar/judge.js`,
+`test/kit-sidecar-battery.test.js`, `test/kit-sidecar-daemon.test.js`, `docs/security-model.md`,
+`docs/plans/claude-kit_judge-partial-input_spec_v1.md` and an untracked `sidecar/prompts/judgment-v3.js`.
+None of it is this section's and none of it will be staged here. A peer commit advanced this checkout's
+HEAD from `5a13a3e` to `3f93518` mid-round; it carried only that session's own plan doc and doc indexes,
+and no file of this section was swept into it.
+
+Files in scope, widened twice during execution and named here because the section's staging and its
+close both read that list: `plugins/claude-kit/hooks/memory-recognition-nudge.js` was folded in when the
+review found its log root and its memory tier resolving by two different rules, and
+`test/hook-canary.test.js` was folded in for the inherited red this section caused.
+`docs/architecture.md` and `docs/security-model.md` are carriers this section's changes falsified.
+
+Box. The fix-round implementer held the heavy-process claim under this session's substituted id and
+released it. The orchestrator wrote and released its own claim around the two red-green probes, scoped
+the delete by the `Session:` line, and left a foreign claim untouched when one stood. A peer session
+negotiating for the slot read this session's agent-written claim as hand-written, which is a real gap:
+the claim file's identifying fields cannot distinguish a dispatching session from its delegate, so a
+waiter addresses a session that cannot release it. Captured to the kaizen inbox.
+
+Next action. Await the second review round, adjudicate it, run the whole gate with the contention lane
+beside it because the push lands on an install-surface trunk, take the security-model.md handoff from
+the peer, then Chapter 2, the commit and the push.
