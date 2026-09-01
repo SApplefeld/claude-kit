@@ -90,6 +90,6 @@ Acceptance: architecture current against the shipped reader (checked by reading 
 - `kaizen/notes-NEO-CLAUDE.md`, the 2026-08-31 tier-exhaustion note (committed at 6aab3dd): the finding and candidate design this plan executes; its three design catches are principles 1 and 3 and the worst-of-windows decision.
 - `plugins/claude-kit/skills/finishing-work/SKILL.md`: the never-started ladder this plan leaves as the backstop.
 - `docs/plans/claude-kit_standing-lines-and-honest-reports_spec_v1.md`: edits `executing-work/SKILL.md` in the worktree batch and runs long before this plan; re-anchor section 2's edit sites by content.
-- `docs/plans/claude-kit_durable-boundary_spec_v1.md`: the signpost-config pattern (`compactNudgeFloor`) the floor here mirrors.
+- `docs/archive/claude-kit_durable-boundary_spec_v1.md`: the signpost-config pattern (`compactNudgeFloor`) the floor here mirrors.
 
 ## Chapters

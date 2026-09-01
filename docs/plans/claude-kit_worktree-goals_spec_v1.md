@@ -63,6 +63,6 @@ Acceptance: sweep clean on live documents with controls spoken; skill text state
 
 - `kaizen/notes-SCOTT-CLAUDE.md`, the 2026-08-31 per-repository-leash note by the KIT: Skills Worker seat: the finding this plan dispositions.
 - `plugins/claude-kit/hooks/kit-goal-lib.js`: the resolver and cross-checks this plan changes.
-- `docs/plans/claude-kit_durable-boundary_spec_v1.md`: edits `kit-compact-gate.js`'s marker leg in the main queue; this plan touches the gate only through the resolution it inherits, and whichever lands second re-anchors by content.
+- `docs/archive/claude-kit_durable-boundary_spec_v1.md`: edits `kit-compact-gate.js`'s marker leg in the main queue; this plan touches the gate only through the resolution it inherits, and whichever lands second re-anchors by content.
 
 ## Chapters

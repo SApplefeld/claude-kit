@@ -1,10 +1,10 @@
 # A seat that judges its context durable can say so with a command, and the gate hears it
 
-Status: In Progress
+Status: Complete
 Commit Model: Commit-and-Push
 Created: 2026-08-30
 
-Session model: any executor session in the kit repo; three sections, tiers per section. Authored by the KIT: Expert seat from a design dialog with the operator, 2026-08-30. Anchors are authoring-time; re-locate every hit by content, since the judgment-sidecar plan runs first and may move lines.
+Session model: any executor session in the kit repo; five sections, tiers per section. Authored by the KIT: Expert seat from a design dialog with the operator, 2026-08-30. Anchors are authoring-time; re-locate every hit by content, since the judgment-sidecar plan runs first and may move lines.
 
 ## Dispatch Authorization
 
@@ -2403,3 +2403,119 @@ baseline: the QA verifier's, and the handoff gate after the last step that chang
 NEXT ACTIONS, IN ORDER. Adjudicate the two review rounds as they return and fix what they find. Poll
 the machine claim and dispatch the QA verifier once it lapses. Then the documentation curation, then
 the close-and-archive, the handoff gate, and the commit.
+
+### Chapter 6 - 2026-09-01 - whole-effort finishing pass, and the plan closes
+
+Completed: the whole-effort finishing pass. All five sections were already closed; this chapter
+closes the effort.
+Implemented By: the main thread for every `docs/` write, that tree being barred to subagents by the
+repo's own write guard; dispatched fresh-context agents for the four lenses, `security-reviewer` and
+`adversarial-reviewer` at the `fable` override, `qa-verifier` and `docs-curator` inheriting the
+session model.
+Metrics: review rounds 1 (a single whole-effort pass per lens, per the finishing skill's
+no-duplicate-coverage rule, the per-section rounds having already cleared their own scope); findings
+adjudicated 13; findings fixed 11; findings declined with reasons 2; escalations 0; consults 0.
+Lane: whole gate. See `Gate:` below.
+Gate: whole gate, `node --test test/*.test.js` after `./build.ps1`, 2842 tests / 2832 passing / 1 failing / 9 skipped, exit 1 read from this run own marker at `.kit/scratch/handoff-gate.exit`. Against the section 5 close baseline on the same lane, 2842 / 2832 / 1 / 9 exit 1: identical on every axis, and the one failure is the same named test, `a pinned directory too long to name faithfully stands the session down` (`test/memory-session.test.js:854`), this box permanent path-length red. The box was polled and claimed for the build and the run, and the claim released after them.
+Next: none. The plan is Complete and archived; the leash advances to
+`docs/plans/claude-kit_memory-read-side_spec_v1.md`, plan 2 of the armed queue of five.
+Commit Model: Commit-and-Push
+
+WHAT THE EFFORT DELIVERED. A Claude Code session that shares a checkout with another session's
+uncommitted work had no way to land its next automatic compaction where it chose. The gate's
+existing structural path reads the tree, and a seat cannot satisfy a clean-tree test over dirt that
+is not its to clear, so that whole class of seat rode every compaction to the safety ceiling. This
+plan gives such a seat a declaration act instead of a tree reading: it runs the checkpoint CLI's
+`boundary` verb, which is the seat's own judgment that everything it holds is on disk, and the gate
+honors that declaration at the next offer. Around that act the effort added a machine-written
+`Banked:` line stamped into the declaring session's own coordinator registry entry, made a
+declaration a moment rather than a window by recording where the transcript ended and honoring the
+marker only while nothing has arrived past that position, split the marker to one file per session
+so two seats on one checkout can no longer unmake each other's declarations, gave the deferral nudge
+a second directive and a context floor so a held session with no leash is told what to do rather
+than only that it is held, and made the two installers that own the floor's settings file merge into
+it and refuse a link standing at its path rather than following one.
+
+WHAT THE FINISHING PASS FOUND, AND THE ONE ORDERING DEVIATION THAT LET IT RUN AT ALL. The pass ran
+its four lenses over this effort's own 29-file changeset rather than over a diff from the derived
+base ref, because four sibling efforts pushed to `main` inside that span and a plain diff returns 62
+files of which 33 belong to other work. The derivation itself stands as the rule produces it; the
+scope correction is recorded in interim board 14 with the file and commit lists it was built from.
+
+The pass deviated from the finishing skill's stated order, running both reviewers ahead of QA. The
+machine's heavy-process claim was held by another repository's session for a forty-minute window,
+and the QA verifier runs a full build and a full suite, so running it under that claim would have
+produced a contended reading rather than a result. The two reviewers read code and run neither, so
+they cost the held box nothing. The exposure the ordering accepts is that a reviewer could spend its
+budget on code a QA failure would have changed; that exposure was small here because the tree sat at
+a pushed commit whose own whole gate had already run at section 5's close. The claim was released by
+its holder twenty-nine minutes early, and QA ran immediately after, on a box confirmed idle: three
+`dotnet` processes surviving from that claim's start time were `/nodemode:1 /nodeReuse:true` MSBuild
+worker nodes parked for reuse, at zero CPU across a six-second sample.
+
+THE SECURITY LENS RETURNED CLEAR, with no Critical and no Major. It confirmed with a withheld
+control that every session-id path composition is gated by `usableSessionId` before the join, that
+the per-session marker split did not weaken the moment rule, and that every claim
+`docs/security-model.md` makes about the gate, the marker, the registry stamp and the two installer
+writers reads true against the shipped code. Its one informational item, that the two installers'
+temp files are not exclusive-create where the library's own `atomicTmpPath` is, was declined for
+this effort and routed to the backlog: the threat it describes needs an actor who can already write
+inside `~/.claude`, and such an actor writes the signpost directly rather than planting a link at
+its temp name, so the exclusivity buys nothing against it, and no document claims otherwise.
+
+THE ADVERSARIAL LENS RETURNED APPROVED_WITH_CONCERNS ON ONE MAJOR, and the Major is this effort's
+own recurrence landing one more time. `docs/security-model.md` stated that two callers take
+`readFileBounded`'s opt-in link refusal and enumerated two, while three callers take it, the third
+added by the same section-2 commit that wrote the paragraph. The callee's own header enumerates all
+three correctly. That is Standing Brief Amendment 1 exactly: adding a call falsifies the callee's
+header, so the trigger is the new call site rather than the edit, and here the falsified carrier was
+a document rather than a header. The remedy taken is Amendment 4's rather than a reword: the
+hand-maintained per-caller roster is deleted and the paragraph now points at the callee header that
+single-sources the caller set, keeping in the document only the bound, which is the part a security
+reader needs and which does not turn on how many callers there are.
+
+THE DOCUMENTATION CURATION FOUND THE SAME CLASS FOUR MORE TIMES, which is the finding of this pass
+worth carrying forward. `docs/architecture.md` hand-copied the registry entry's field roster from
+the role skill that owns it, and the copy was short by the `Banked:` line this effort added; it
+counted the bounds on the boundary routine at two where the moment rule makes three, and the missing
+one is the shortest and the one a woken seat actually meets; its account of the gate's honor leg
+omitted the moment rule entirely, leaving the two about-documents disagreeing about what the gate
+reads; and its statement of the manual path's scope still named one case where section 1 widened it
+to two, in one of the three places that sentence appears, the other two having been swept. That last
+one is a miss rather than a decision: the spec names the edit, two carriers received it, one did
+not, and the surviving sentence denied the verb to the exact population the plan was built for. Each
+was fixed toward the structural remedy where one existed, so the field roster now points at the
+skill that owns it and the honor leg's refusal set is named at `markerMomentHolds` rather than
+counted in prose. `docs/security-model.md` also carried an absolute the code does not support, that
+nothing is written through a link at the signpost path and no window stands between the verdict and
+the write; one `setup.sh` branch, reached only where no node interpreter exists and nothing at all
+sits at the path, creates the file with a truncating redirect after an emptiness test. The code is
+what the spec licensed, so the document's absolute is what over-reached, and it now states the
+branch and what bounds it.
+
+TWO CORRECTIONS WENT TO A PARKED PLAN BELONGING TO ANOTHER EFFORT.
+`docs/plans/claude-kit_output-channel-eliding_spec_v1.md` drew three bullets of its fact base from
+this effort's own file and this effort falsified them. It asserted that none of three sanitizers
+elides a home prefix, naming a line anchor stale by 47 lines, where one of them now does; and it
+recorded as a residual to avoid reproducing an ordering defect that is already fixed, instructing
+whatever the plan lifts to put the cap on the channel's side of the elision, which is the opposite
+of what the code now does and would have had an implementer rebuild the defect from the document
+alone. Both are corrected minimally, in place, rather than by rewriting another effort's plan.
+
+WHAT THE PASS DID NOT VERIFY, stated because a green suite says nothing about a path it does not
+exercise. QA exercised the CLI's `boundary`, `status` and `--cancel` verbs and the registry stamp
+against a sandboxed home and project, which is the cross-process surface the suite cannot reach on
+its own, and confirmed the per-session marker naming, the declaration field, the lapsed-on-no-
+position fail direction and the byte-level single-line stamp. Two behaviors remain unverified and
+are environment-bound rather than untested by choice: a real harness-issued compaction offer landing
+at a declared boundary, which needs a live session near its context ceiling, and a genuine two-seat
+race on one shared checkout through the actual Stop-hook wiring, which needs two coordinated live
+sessions. The sandboxed probes confirm the file naming and the stamping mechanics under those
+conditions but not the concurrent race itself.
+
+DRIFT AND STANDING OWED TO THE OPERATOR, recorded here because it rides in the close-out rather than
+being reconciled silently. The plan was authorized and armed at three sections and executed at five,
+sections 4 and 5 having been appended during the run; the header's own "three sections" note is
+corrected to five in this changeset, and the growth is surfaced rather than absorbed. The effort
+also introduced a state file the original authorization did not name, `.kit/compact-hold-nudge.json`,
+which carries the deferral nudge's per-session throttle stamp.

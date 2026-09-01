@@ -38,10 +38,11 @@ Confirmed 2026-09-01 by reading the lines in this checkout.
   resolves under `~/.claude/plugins/`. So the account name reaches that channel whenever the canary
   reports this failure. The leak is on the failure branch rather than on every run, which bounds how
   often it fires and not what it carries.
-- Three incompatible spellings of "sanitize" exist and none of the three elides a home prefix:
-  `hook-canary.js:77` (replaces non-printable with a space, caps at 200),
-  `kit-compact-checkpoint.js:156` (DELETES non-printable, caps at 120), and
-  `scripts/memq.js:1755`. A fourth function, `memq.js:510` `sanitizeProjectPath`, is a different
+- Three incompatible spellings of "sanitize" exist and two of them elide no home prefix:
+  `hook-canary.js:77` (replaces non-printable with a space, caps at 200) and
+  `scripts/memq.js:1755`. The third, `kit-compact-checkpoint.js:203`, DELETES non-printable
+  characters and caps at 120 like the others, and routes the stripped value through that file's
+  own channel elision before the cap. A fourth function, `memq.js:510` `sanitizeProjectPath`, is a different
   thing again: it flattens a whole absolute path to alphanumerics and dashes, which PRESERVES the
   account name in a new spelling rather than removing it.
 - `kit-goal.js:163`, `:296` and `:338` print `sanitize(result.reason)` from the same shared library
@@ -51,13 +52,15 @@ Confirmed 2026-09-01 by reading the lines in this checkout.
   two have in common.
 - `kit-compact-checkpoint.js` routes every one of its own writes through two emitters that elide the
   home directory in both its literal and its flattened spelling, and a source-side pin holds them
-  there. That is the shape this plan generalizes, and it carries one residual worth reproducing
-  rather than repeating: its sanitizer caps a value before the composed line reaches the elision, so
-  a home path long enough to span that cut leaves a fragment behind. Whatever this plan lifts should
-  put the cap on the channel's side of the elision.
-- `kit-compact-checkpoint.js`'s `displayPath` is the tree's only home-eliding renderer for a value
-  known to be a path. It decides containment with `path.relative`, which is boundary-aware and
-  case-insensitive on win32.
+  there. That is the shape this plan generalizes, and it carries one ordering worth reproducing:
+  its sanitizer runs the strip first, the elision second and the cap last, so a value carried past
+  the cap only by a home prefix the channel removes is never cut at all, and no cut can take a home
+  spelling in half and leave a fragment no whole-spelling pattern matches. Whatever this plan lifts
+  keeps that order.
+- `kit-compact-checkpoint.js`'s `displayPath` is the tree's only home-eliding renderer taking a value
+  already known to be a path; the channel elision named in the bullet above is the file's other
+  home-eliding surface and takes whole composed lines instead. `displayPath` decides containment with
+  `path.relative`, which is boundary-aware and case-insensitive on win32.
 - The deleting-versus-replacing split matters beyond tidiness: a renderer that DELETES non-ASCII
   characters can hand an operator an actionable path that does not exist on disk, which the
   durable-boundary plan's section 2 had to fix separately in its own tool.
@@ -126,6 +129,6 @@ recorded baseline.
 
 ## Related
 
-- `docs/plans/claude-kit_durable-boundary_spec_v1.md`: section 2 and its Standing Brief Amendment 4,
+- `docs/archive/claude-kit_durable-boundary_spec_v1.md`: section 2 and its Standing Brief Amendment 4,
   which is where the channel-versus-caller lesson behind this plan was ruled and recorded.
 - `docs/security-model.md`: the accepted-risk paragraph stating the property and its residuals.
