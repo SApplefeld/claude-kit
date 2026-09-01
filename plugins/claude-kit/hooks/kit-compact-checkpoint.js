@@ -5,7 +5,8 @@
 //   kit-compact-checkpoint.js open      open a checkpoint for the armed plan
 //   kit-compact-checkpoint.js clear     remove any open checkpoint
 //   kit-compact-checkpoint.js status    report the checkpoint, the release
-//                                       markers, and the gate state
+//                                       markers, the gate state, and any
+//                                       hold stamps refusing the deferral nudge
 //   kit-compact-checkpoint.js boundary [--cancel]
 //                                       open the role-boundary marker for the
 //                                       calling session (no goal required), or
@@ -60,36 +61,62 @@
 'use strict';
 
 const os = require('os');
-const { readGoal, recordExecutionTree, sessionHoldsLeash } = require('./kit-goal-lib.js');
-const {
-    readCheckpointResult, writeCheckpoint, clearCheckpoint, checkpointMatches,
+const path = require('path');
+// The kit libraries this CLI is written against, bound here and LOADED inside
+// the guarded region at the foot of this file rather than required at module
+// scope. A require that throws (a damaged or partially written plugin cache)
+// throws before any guard this file installs, and what Node prints for it is its
+// own trace, whose `Require stack:` lines carry the absolute module path of
+// every file on that stack, home-anchored on an installed plugin. Loading them
+// inside the try is what puts that failure back on this file's own channel. The
+// sibling hook compact-deferral-nudge.js defers its kit requires into the guards
+// that use them for the same failure mode.
+let readGoal, recordExecutionTree, sessionHoldsLeash;
+let readCheckpointResult, writeCheckpoint, clearCheckpoint, checkpointMatches,
     checkpointAdoptable, storableCheckpointOwner,
     readGateStateResult, gateStatePath, gateEpisodeOpen, pendingOfferCorroborated, checkpointOwner,
+    readHoldNudgesResult, holdNudgePath, HOLD_NUDGE_HEALABLE,
     episodePhrase, wholeMinutesSince, gateCount,
     CHECKPOINT_MAX_AGE_MS, CHECKPOINT_PENDING_MAX_AGE_MS,
     readRoleBoundaryResult, readConsentResult, writeRoleBoundary, writeConsent,
     clearRoleBoundary, sameSessionId,
     markerMatches, markerMomentHolds, markerDeclaresMoment, stampRegistryBanked,
     projectHoldsSessionTranscript, sessionTranscriptPath, usableSessionId,
-    ROLE_BOUNDARY_MAX_AGE_MS, CONSENT_MAX_AGE_MS
-} = require('./kit-compact-lib.js');
+    ROLE_BOUNDARY_MAX_AGE_MS, CONSENT_MAX_AGE_MS;
 
-// The two age bounds as an operator reads them, derived from the constants
-// rather than written out so a sentence here cannot drift from the rule it
-// describes. The rounding is exact only while the constants stay whole minutes
-// and whole hours respectively: a 90-minute pending bound would print as "2
-// hours" against a rule enforcing one and a half, so a change to either
-// constant that leaves whole units is what keeps these honest.
-const ORDINARY_MINUTES = Math.round(CHECKPOINT_MAX_AGE_MS / (60 * 1000));
-const PENDING_HOURS = Math.round(CHECKPOINT_PENDING_MAX_AGE_MS / (60 * 60 * 1000));
+// The age bounds as an operator reads them, derived from the constants rather
+// than written out so a sentence here cannot drift from the rule it describes.
+// The rounding is exact only while the constants stay whole minutes and whole
+// hours respectively: a 90-minute pending bound would print as "2 hours" against
+// a rule enforcing one and a half, so a change to either constant that leaves
+// whole units is what keeps these honest. The two marker bounds both render in
+// hours because both are the same quantity: rendering one of them in minutes
+// would print two different-looking figures for one window in a single `status`
+// report, which reads as two rules rather than one. They are derived with the
+// libraries loaded rather than at module scope, the constants arriving with
+// them.
+let ORDINARY_MINUTES, PENDING_HOURS, BOUNDARY_HOURS, CONSENT_HOURS;
 
-// The marker age bounds as an operator reads them, on the same derive-or-drift
-// rule as the two above, with the same whole-unit caveat. Both render in hours
-// because both bounds are the same quantity: rendering one of them in minutes
-// would print two different-looking figures for one window in a single
-// `status` report, which reads as two rules rather than one.
-const BOUNDARY_HOURS = Math.round(ROLE_BOUNDARY_MAX_AGE_MS / (60 * 60 * 1000));
-const CONSENT_HOURS = Math.round(CONSENT_MAX_AGE_MS / (60 * 60 * 1000));
+function loadKitLibraries() {
+    ({ readGoal, recordExecutionTree, sessionHoldsLeash } = require('./kit-goal-lib.js'));
+    ({
+        readCheckpointResult, writeCheckpoint, clearCheckpoint, checkpointMatches,
+        checkpointAdoptable, storableCheckpointOwner,
+        readGateStateResult, gateStatePath, gateEpisodeOpen, pendingOfferCorroborated, checkpointOwner,
+        readHoldNudgesResult, holdNudgePath, HOLD_NUDGE_HEALABLE,
+        episodePhrase, wholeMinutesSince, gateCount,
+        CHECKPOINT_MAX_AGE_MS, CHECKPOINT_PENDING_MAX_AGE_MS,
+        readRoleBoundaryResult, readConsentResult, writeRoleBoundary, writeConsent,
+        clearRoleBoundary, sameSessionId,
+        markerMatches, markerMomentHolds, markerDeclaresMoment, stampRegistryBanked,
+        projectHoldsSessionTranscript, sessionTranscriptPath, usableSessionId,
+        ROLE_BOUNDARY_MAX_AGE_MS, CONSENT_MAX_AGE_MS
+    } = require('./kit-compact-lib.js'));
+    ORDINARY_MINUTES = Math.round(CHECKPOINT_MAX_AGE_MS / (60 * 1000));
+    PENDING_HOURS = Math.round(CHECKPOINT_PENDING_MAX_AGE_MS / (60 * 60 * 1000));
+    BOUNDARY_HOURS = Math.round(ROLE_BOUNDARY_MAX_AGE_MS / (60 * 60 * 1000));
+    CONSENT_HOURS = Math.round(CONSENT_MAX_AGE_MS / (60 * 60 * 1000));
+}
 
 // What the gate's state says about this goal's binding, as the three facts the
 // report and the open need. Read once per call, so a single call cannot
@@ -137,30 +164,281 @@ function pendingHold(cwd, goal) {
     };
 }
 
-// Repo-controlled strings (a plan path, a timestamp read back from disk) are
-// sanitized to printable ASCII and length-capped before they reach
-// stdout/stderr, matching the sibling hooks' convention for any repo data
-// entering a trusted output channel.
-function sanitize(s) {
-    return String(s).replace(/[^\x20-\x7E]/g, '').slice(0, 120);
+// The length a repo-controlled string is printed within. One number, so the
+// value and the mark that says it was shortened cannot be decided against two.
+const PRINT_CAP = 120;
+
+// Repo-controlled strings (a timestamp read back from disk, a session id, a
+// verdict word) are sanitized to printable ASCII and length-capped before they
+// reach stdout/stderr, matching the sibling hooks' convention for any repo data
+// entering a trusted output channel. A value that is a PATH takes displayPath
+// below instead.
+//
+// Both ways of DISCARDING text are marked, because both leave the reader
+// looking at something that is not the value. The cap takes the tail off. The
+// strip deletes characters from the middle of an accented or CJK name and
+// leaves a plausible-looking shorter one, which is the worse of the two on the
+// legs that hand the operator a path and tell them to remove that file: a name
+// altered without a mark sends them after something that is not on disk. A
+// value can take both marks, so the two are decided separately and read
+// together. The third alteration, the channel's home elision, shortens a value
+// too and carries no mark of its own; scrub below states why it needs none.
+//
+// Three steps in one order, and the order is what both marks rest on. The strip
+// runs first, so the cut is decided on what is actually
+// EMITTED rather than on the string before sanitizing: a value carried past the
+// cap only by characters the strip removes is not cut at all, and marking it as
+// cut would name a truncation that did not happen. The channel's home elision
+// runs next, for that same reason and for a second one that is not cosmetic. A
+// value carried past the cap only by a home prefix the channel takes out is not
+// cut either; and eliding after the cap is eliding a home spelling the cut may
+// have taken in half, which no pattern built from the whole spelling can match,
+// so the account name reaches the channel in a fragment on exactly the machines
+// whose home directory is long. The cap runs last, over the text the reader
+// will see.
+function printableAscii(s) {
+    return String(s).replace(/[^\x20-\x7E]/g, '');
 }
 
-// A filesystem path for the operator's eye. Two things a bare sanitize does
-// wrong to one. The home prefix is elided to `~`, because the OS account name
-// is in it and this output is read by a model; and a path the cap would cut is
-// marked as cut, because a silently shortened path reads as the whole name of
-// the file that answered. Eliding is what keeps a realistic path inside the
-// cap, so the mark is the rare case rather than the ordinary one.
+function sanitize(s) {
+    const raw = String(s);
+    const stripped = printableAscii(raw);
+    const elided = scrub(stripped);
+    const shown = elided.slice(0, PRINT_CAP);
+    const marks = [];
+    if (stripped.length !== raw.length) marks.push('characters removed');
+    if (shown.length < elided.length) marks.push('cut to fit');
+    return shown + (marks.length === 0 ? '' : ' [' + marks.join('; ') + ']');
+}
+
+// A filesystem path for the operator's eye. The home prefix is elided to `~`,
+// because the OS account name is in it and this output is read by a model.
+// Eliding is what keeps a realistic path inside the cap, so the cut mark
+// sanitize appends is the rare case rather than the ordinary one.
+//
+// This is the renderer for a value KNOWN to be a path, and it runs beside the
+// channel's own floor rather than instead of it: sanitize elides every value it
+// is handed and emitOut and emitErr elide whatever text a caller composed, path
+// or sentence, and a value elided here passes through both unchanged. The two
+// are aimed at different problems. The containment test here is boundary-aware
+// and answers on components, so it reaches a spelling the text of the home
+// directory does not appear in at all (a path routed through `..`, or one
+// differing only in letter case on win32); the elision the channel applies is
+// textual, which is what a path embedded in the middle of an error sentence
+// allows.
+//
+// Containment is decided by path.relative rather than by a prefix test on the
+// text, because a prefix test is wrong in both directions once the input is not
+// home-composed. It over-elides a sibling whose name merely starts with the home
+// directory's (home /home/ad, project /home/admin/repo prints as ~min/repo), and
+// on win32 it under-elides a path differing from the home directory only in
+// letter case, printing the OS account name raw into a channel a model reads.
+// path.relative answers on components rather than characters and is
+// case-insensitive on win32, which is both directions at once; kitScratchDir in
+// the library decides the same question the same way. A relative result that is
+// absolute, or that escapes upward, means the path is somewhere else; the empty
+// result means the path IS the home directory and elides to `~` alone, which is
+// the one reading where the account name would otherwise be the whole output.
+//
+// A RELATIVE input is never elided, which is what keeps a repo-relative plan
+// path printing as itself. path.relative would otherwise resolve it against the
+// process's own cwd first, so `docs/plans/x.md` in a checkout under the home
+// directory would come back rewritten as an absolute ~-anchored path: a longer,
+// stranger rendering of a value that carried no home prefix to elide.
 function displayPath(full) {
     const text = String(full);
     let home = '';
     try { home = os.homedir(); } catch { home = ''; }
-    const shown = (home !== '' && text.startsWith(home)) ? '~' + text.slice(home.length) : text;
-    return sanitize(shown) + (shown.length > 120 ? ' [path cut to fit]' : '');
+    let shown = text;
+    if (home !== '' && path.isAbsolute(text)) {
+        const rel = path.relative(home, text);
+        if (!path.isAbsolute(rel) && !/^\.\.(?:[\\/]|$)/.test(rel)) {
+            shown = rel === '' ? '~' : '~' + path.sep + rel;
+        }
+    }
+    // The marks the sanitize appends are what say the name on the line is not
+    // the name on disk, in both directions: a cut tail and a stripped middle.
+    return sanitize(shown);
+}
+
+// The home directory in the spellings this CLI's output can carry it in, as the
+// patterns the channel elides it by, beside an explicit reading of whether a
+// home directory is knowable at all.
+//
+// The two are separated because one empty list would otherwise answer both, and
+// they are opposite news for a channel whose floor is this elision. Nothing to
+// elide is the floor standing. No knowable home directory is the floor OFF, and
+// os.homedir() can throw and follows USERPROFILE and HOME, so a stripped
+// environment turns the whole guard off silently: the emitters state that case
+// out loud rather than passing values through unmarked.
+//
+// The flattened spelling is what a transcript path carries: a session's
+// transcript is filed under a directory named by the whole project path with
+// each non-alphanumeric character turned to a dash (sanitizeProjectPath in
+// scripts/memq.js), so for a checkout under the home directory the account name
+// sits in the MIDDLE of that path, inside one component, where eliding a
+// leading prefix cannot reach it.
+//
+// A match has to end at a boundary rather than mid-name, which is the bug a raw
+// substring replace reproduces: home C:\Users\a against C:\Users\admin\repo
+// renders as ~dmin\repo, a path that is nowhere on disk, on legs whose purpose
+// is naming a file to act on. Both edges of the literal are therefore DENY-lists
+// of the characters that would make the text a different name, never allow-lists
+// of the characters that may stand beside it. That direction is what the two
+// failure costs decide: over-elision prints a path nowhere on disk, while
+// under-elision prints the OS account name into a channel a model reads, and an
+// allow-list leaks on every neighbour nobody thought to name, an equals sign, a
+// comma, a colon, an angle bracket, a parenthesis. So the trailing edge refuses
+// an alphanumeric, a dot, an underscore and a dash, which are the characters
+// that would make this another name (<home>-sib and <home>X keep their own
+// names), and admits everything else, a separator and a quote and a bracket and
+// a comma alike; sanitize's own marks ride on that, since it appends them as
+// ` [cut to fit]` and a home directory at the end of a marked value is followed
+// by a space and then a bracket.
+//
+// The leading edge refuses the same characters and a separator besides. Without
+// a leading edge at all the match floats: POSIX home /home/admin turns
+// /mnt/backup/home/admin/repo/.kit/x.json into /mnt/backup~/repo/.kit/x.json,
+// and win32 is not immune by design, only by its home spelling starting with a
+// drive letter. Refusing an alphanumeric in front is what kills that case, the
+// candidate /home/admin there being preceded by the p of backup; refusing a
+// separator additionally refuses a doubled-separator spelling of some other
+// path.
+//
+// In the flattened spelling the separator is a dash and so is the character a
+// dash was made from, so a child and a sibling are indistinguishable there and
+// any non-alphanumeric character ends the match: where the flattened form cannot
+// tell the two apart, eliding is the direction that keeps the account name off
+// the channel. It takes no leading boundary at all, deliberately: it rides
+// inside one component by construction, which is the whole reason it is elided
+// separately from the leading prefix.
+//
+// Each spelling is built TWICE, from the raw home directory and from its
+// printable-ASCII form, because the text this elides has already been stripped:
+// sanitize strips before it elides, so on a home directory carrying an accented
+// or CJK character the raw spelling is one no emitted line can ever contain, and
+// C:\Users\Jose with an accent on the e reaches the channel as C:\Users\Jos.
+// Building the same patterns from printableAscii(home) covers the text as it
+// will actually be emitted. On an all-ASCII home the two are identical and the
+// duplicates are dropped. What that costs is a real sibling directory spelled
+// like the stripped home being elided too, which is the flattened spelling's own
+// trade taken for the same reason: where the strip has made two names
+// indistinguishable, eliding keeps the account name off the channel.
+//
+// A home directory AT A FILESYSTEM ROOT yields no patterns at all. C:\ reduces
+// to C:, which carries an alphanumeric and would otherwise elide the drive
+// prefix of every path on this channel, printing `removing ~\proj\.kit\x.json`
+// for a file at C:\proj. A root holds no account name, so there is nothing here
+// to take out of it. The same refusal covers a spelling the strip SHORTENED by a
+// whole component, which the root test alone does not reach: a home whose final
+// component is wholly non-ASCII strips to C:\Users\, and a pattern for C:\Users
+// elides every account's paths on this channel, other accounts' included, into
+// paths that are nowhere on disk. A spelling that names fewer path components
+// than the home directory itself is a different directory, so it is skipped.
+//
+// The literal's separators match either slash, since a path can arrive in
+// either spelling, and win32 matches without regard to letter case, as its
+// filesystem does.
+function homeElisions() {
+    let home = '';
+    try { home = os.homedir(); } catch { home = ''; }
+    home = String(home);
+    if (home === '') return { known: false, elisions: [] };
+    const root = String(path.parse(home).root).replace(/[\\/]+$/, '');
+    const escape = (s) => s.replace(/[^A-Za-z0-9]/g, (ch) => '\\' + ch);
+    const flags = process.platform === 'win32' ? 'gi' : 'g';
+    const lead = '(?<![A-Za-z0-9\\\\/._-])';
+    const trail = '(?![A-Za-z0-9._-])';
+    // How many path components a spelling names, which is the measure the guard
+    // below compares the stripped spelling against.
+    const depth = (s) => s.split(/[\\/]+/).filter((part) => part !== '').length;
+    const homeDepth = depth(home.replace(/[\\/]+$/, ''));
+    const elisions = [];
+    const seen = new Set();
+    for (const spelling of [home, printableAscii(home)]) {
+        const named = spelling.replace(/[\\/]+$/, '');
+        if (!/[A-Za-z0-9]/.test(named) || named === root) continue;
+        // A spelling naming fewer components than the home directory is some
+        // ancestor of it rather than it, and eliding an ancestor takes every
+        // account's paths off the channel rather than this account's name.
+        if (depth(named) < homeDepth) continue;
+        const literal = Array.from(named)
+            .map((ch) => (ch === '\\' || ch === '/' ? '[\\\\/]' : escape(ch)))
+            .join('');
+        const flattened = escape(named.replace(/[^A-Za-z0-9]/g, '-'));
+        for (const [source, shown] of [
+            [lead + literal + trail, '~'],
+            [flattened + '(?![A-Za-z0-9])', 'flattened-home']
+        ]) {
+            if (seen.has(source)) continue;
+            seen.add(source);
+            elisions.push({ pattern: new RegExp(source, flags), shown });
+        }
+    }
+    return { known: true, elisions };
+}
+
+// Read once: this is a CLI process whose home directory does not move under it,
+// and the patterns are compiled rather than rebuilt per line.
+const HOME_ELISIONS = homeElisions();
+
+// A text as the channel prints it, with the home directory's name taken out of
+// it in every spelling wherever in the text it sits. Two callers: sanitize,
+// which hands it one repo-controlled value before the cap is applied, and the
+// two emitters below, which hand it a whole composed line. The value the second
+// catches that displayPath cannot is a path the library embedded in an error
+// reason: fs errors name the file the syscall was refused on, and a caller
+// printing that reason is printing a sentence rather than a path.
+//
+// The substitution is not marked the way sanitize marks its cut and its strip,
+// and it needs no mark: both replacements say for themselves that the text was
+// altered and what was taken out. `~` is the operator's own shorthand for the
+// home directory, and `flattened-home` is not a spelling any component on disk
+// carries, so a reader who needs the real path can put their home directory back
+// where the mark is. A cut tail and a stripped middle have no such self-evident
+// spelling, which is why those two are marked and this is not.
+function scrub(text) {
+    let shown = String(text);
+    for (const elision of HOME_ELISIONS.elisions) shown = shown.replace(elision.pattern, elision.shown);
+    return shown;
+}
+
+// Whether this run has already said that its floor is not standing, so the
+// sentence is spent once rather than on every line.
+let floorStated = false;
+
+// The one-time note that no home directory is knowable here, or the empty string
+// where one is. An empty elision list on its own answers two facts, and only one
+// of them is news: nothing to elide is ordinary, while no knowable home
+// directory means every path on the lines that follow carries whatever the OS
+// account name is, with nothing else on this channel saying so. So the uncertain
+// reading speaks rather than passing values through unmarked, which is the
+// direction a floor has to fail in. It rides whichever descriptor is written to
+// first, since both are read by the same reader and the fact is about neither
+// one in particular.
+function floorNote() {
+    if (floorStated || HOME_ELISIONS.known) return '';
+    floorStated = true;
+    return 'kit-compact-checkpoint: no home directory is knowable in this shell, so nothing'
+        + ' below is elided and any path on these lines carries the OS account name as it stands\n';
+}
+
+// The two writes this CLI makes to its output descriptors. Each routes its
+// argument through the scrub above, so a line composed anywhere in this file
+// carries the guard by reaching the channel here rather than by its author
+// having remembered it. What keeps a print site from reaching a descriptor
+// directly is the source-side pin in test/kit-compact-gate.test.js, which reads
+// this file's own text; a sentence here could not.
+function emitOut(text) {
+    process.stdout.write(floorNote() + scrub(text));
+}
+
+function emitErr(text) {
+    process.stderr.write(floorNote() + scrub(text));
 }
 
 function usage() {
-    process.stderr.write('usage: kit-compact-checkpoint.js open | clear | status'
+    emitErr('usage: kit-compact-checkpoint.js open | clear | status'
         + ' | boundary [--cancel]'
         + ' | consent [--session <id>] [--project <path>]\n');
     process.exitCode = 1;
@@ -181,7 +459,7 @@ function callerSessionId() {
 function cmdOpen() {
     const goal = readGoal(process.cwd());
     if (!goal || typeof goal.plan !== 'string' || goal.plan === '') {
-        process.stderr.write('kit-compact-checkpoint: no kit goal is armed, so a checkpoint would never match; nothing written\n');
+        emitErr('kit-compact-checkpoint: no kit goal is armed, so a checkpoint would never match; nothing written\n');
         // The goal family resolves its state from the current directory, with
         // a linked worktree resolving to its main checkout, so a goal armed in
         // a checkout this directory does not resolve to (a separate clone, a
@@ -190,7 +468,7 @@ function cmdOpen() {
         // invisible here however live it is. Naming that makes the refusal
         // self-explaining, since from such a tree the goal looks armed and
         // this looks like a defect.
-        process.stderr.write('kit-compact-checkpoint: the goal may be armed in another checkout: this CLI reads'
+        emitErr('kit-compact-checkpoint: the goal may be armed in another checkout: this CLI reads'
             + ' the goal state from the current directory (a linked worktree resolves to its main'
             + ' checkout), so arm where you run\n');
         process.exitCode = 1;
@@ -223,7 +501,13 @@ function cmdOpen() {
         // offer that is already pending, the other ages out in minutes. Both
         // durations come from the constants, so neither sentence can promise
         // what the rule does not do.
-        process.stdout.write('  compact checkpoint open for ' + sanitize(result.plan)
+        // The plan is a path, so it takes the path renderer rather than the
+        // plain sanitize: this one is repo-relative by construction (the goal
+        // library's normalizer refuses anything else), so nothing is elided here
+        // and the value prints as itself, but reportCheckpoint prints the same
+        // field back out of a user-writable file, where it is whatever a hand
+        // edit made it.
+        emitOut('  compact checkpoint open for ' + displayPath(result.plan)
             + (hold.held
                 ? ' (the compaction gate is holding offers, so this waits for the next one rather than'
                     + ' aging out in ' + ORDINARY_MINUTES + ' minutes: for as long as the gate keeps'
@@ -236,7 +520,7 @@ function cmdOpen() {
         // an operator who expected a held offer learns the question went
         // unanswered rather than being told there was no hold.
         if (!hold.readable) {
-            process.stdout.write('the compaction gate state could not be read, so this checkpoint records no'
+            emitOut('the compaction gate state could not be read, so this checkpoint records no'
                 + ' pending offer and keeps the ' + ORDINARY_MINUTES + '-minute bound\n');
         }
         // A boundary opened from a linked worktree records that tree in the
@@ -250,7 +534,7 @@ function cmdOpen() {
         recordExecutionTree(process.cwd());
         process.exitCode = 0;
     } else {
-        process.stderr.write('kit-compact-checkpoint: ' + sanitize(result.reason) + '\n');
+        emitErr('kit-compact-checkpoint: ' + sanitize(result.reason) + '\n');
         process.exitCode = 1;
     }
 }
@@ -271,7 +555,7 @@ function cmdBoundary(rest) {
     // declaration, whether it is being made or retracted.
     const cancel = rest.length === 1 && rest[0] === '--cancel';
     if (rest.length !== 0 && !cancel) {
-        process.stderr.write('usage: kit-compact-checkpoint.js boundary [--cancel] (no other arguments:'
+        emitErr('usage: kit-compact-checkpoint.js boundary [--cancel] (no other arguments:'
             + ' the marker is scoped to the calling session; consent is the mode that takes'
             + ' --session)\n');
         process.exitCode = 1;
@@ -279,7 +563,7 @@ function cmdBoundary(rest) {
     }
     const session = callerSessionId();
     if (session === null) {
-        process.stderr.write('kit-compact-checkpoint: no usable session id in this shell'
+        emitErr('kit-compact-checkpoint: no usable session id in this shell'
             + ' (CLAUDE_CODE_SESSION_ID is unset or not id-shaped), so a session-scoped'
             + ' marker cannot be ' + (cancel ? 'retracted' : 'written') + '; nothing written\n');
         process.exitCode = 1;
@@ -289,12 +573,41 @@ function cmdBoundary(rest) {
         cancelBoundary(session);
         return;
     }
+    // Whose LIVE declaration this write is about to replace, read here because
+    // the write is the moment the incumbent stops existing. The marker file is
+    // one per project directory and the write renames over it, so where several
+    // seats are held in one checkout and act on the same directive, the second
+    // declaration silently unmakes the first: that seat is deferred again at its
+    // next offer and told to declare a boundary it already declared, with
+    // nothing anywhere saying why. The write stays unconditional, since refusing
+    // would strand a seat that legitimately needs to declare and would change
+    // what this verb means for the single-seat case it was built for; what this
+    // buys is that the collision is said out loud. Like the registry note below,
+    // it names neither the other session nor the path, the point being that
+    // neither is this caller's.
+    //
+    // The incumbent is judged by the same markerMatches rule the gate's honor
+    // leg and the status verb decide by, against its own session, since by
+    // construction it names another one. A marker the rule has already retired
+    // was gating nothing before this run touched it, so a note about it would
+    // tell the operator that a seat is deferred again over a declaration that
+    // had already lapsed.
+    const incumbent = readRoleBoundaryResult(process.cwd()).marker;
+    const replaced = !!incumbent && typeof incumbent.session === 'string'
+        && !sameSessionId(incumbent.session, session)
+        && markerMatches(incumbent, incumbent.session, Date.now(), ROLE_BOUNDARY_MAX_AGE_MS).ok;
     // Written as a declaration, which is the field the gate's moment rule is
     // scoped by: this verb is a seat's deliberate word about one instant, where
     // the seat-stop hook's turn-end marker is a standing window it rewrites
     // every turn. The tool writes the field; nothing asks a model to.
     const result = writeRoleBoundary(process.cwd(), session, true);
     if (result.ok) {
+        if (replaced) {
+            emitErr('kit-compact-checkpoint: a role-boundary marker here named a different'
+                + ' session and this declaration has replaced it, so that session\'s declaration no'
+                + ' longer stands and its next offer is deferred again; this session\'s boundary is'
+                + ' declared\n');
+        }
         // The registry record of the declaration, best-effort and after the
         // marker: a seat the registry does not carry declares exactly as well
         // as one it does, so an absent directory or entry is a silent no-op
@@ -309,7 +622,7 @@ function cmdBoundary(rest) {
         // its path, since the point is that neither is this caller's.
         const stamp = stampRegistryBanked(session);
         if (!stamp.stamped && stamp.reason === 'the entry at that path names a different session') {
-            process.stderr.write('kit-compact-checkpoint: the registry entry for this session id names a'
+            emitErr('kit-compact-checkpoint: the registry entry for this session id names a'
                 + ' different session, so it is not this session\'s to stamp and was left untouched;'
                 + ' the boundary itself is declared\n');
         }
@@ -320,7 +633,7 @@ function cmdBoundary(rest) {
         // bound the marker together, and the shorter one is the one a seat
         // will meet: the gate stops honoring this marker the moment a new turn
         // begins in this session.
-        process.stdout.write('  role-boundary marker open for session ' + sanitize(session)
+        emitOut('  role-boundary marker open for session ' + sanitize(session)
             + ' (that session\'s next deferred auto-compaction lands at this boundary,'
             + ' until a new turn begins there; it ages out in ' + BOUNDARY_HOURS + ' hours)\n');
         // A declaration the gate cannot position is one it will never honor, so
@@ -329,13 +642,13 @@ function cmdBoundary(rest) {
         // transcript is not filed under, which is the same working-directory
         // mistake the marker's own path can make.
         if (result.positioned === false) {
-            process.stderr.write('kit-compact-checkpoint: no transcript for this session could be measured'
+            emitErr('kit-compact-checkpoint: no transcript for this session could be measured'
                 + ' from this directory, so the gate has nothing to read the moment against and will'
                 + ' treat this marker as lapsed; run the verb from the session\'s own project directory\n');
         }
         process.exitCode = 0;
     } else {
-        process.stderr.write('kit-compact-checkpoint: ' + sanitize(result.reason) + '\n');
+        emitErr('kit-compact-checkpoint: ' + sanitize(result.reason) + '\n');
         process.exitCode = 1;
     }
 }
@@ -359,21 +672,21 @@ function cancelBoundary(session) {
     const read = readRoleBoundaryResult(process.cwd());
     const marker = read.marker;
     if (marker === null && read.reason !== 'absent') {
-        process.stderr.write('kit-compact-checkpoint: a role-boundary marker file is present here that'
+        emitErr('kit-compact-checkpoint: a role-boundary marker file is present here that'
             + ' cannot be read (' + sanitize(read.reason) + '), so whose declaration it is cannot be'
             + ' established and it is left in place; move it aside by hand (nothing was retracted)\n');
         process.exitCode = 1;
         return;
     }
     if (marker !== null && typeof marker.session !== 'string') {
-        process.stderr.write('kit-compact-checkpoint: the role-boundary marker file here names no session,'
+        emitErr('kit-compact-checkpoint: the role-boundary marker file here names no session,'
             + ' so whose declaration it is cannot be established and it is left in place; the next'
             + ' boundary write replaces it (nothing was retracted)\n');
         process.exitCode = 1;
         return;
     }
     if (marker && typeof marker.session === 'string' && !sameSessionId(marker.session, session)) {
-        process.stdout.write('  a role-boundary marker for session ' + sanitize(marker.session)
+        emitOut('  a role-boundary marker for session ' + sanitize(marker.session)
             + ' is open here and is left in place: this session declared no boundary to retract\n');
         process.exitCode = 0;
         return;
@@ -383,12 +696,12 @@ function cancelBoundary(session) {
         // Nothing was removed, so this must not read as a successful retraction,
         // and what is left behind is not asserted: cmdClear's own wording at the
         // same leg of the same question.
-        process.stderr.write('kit-compact-checkpoint: ' + sanitize(result.reason)
+        emitErr('kit-compact-checkpoint: ' + sanitize(result.reason)
             + ' (nothing was retracted)\n');
         process.exitCode = 1;
         return;
     }
-    process.stdout.write((result.cleared
+    emitOut((result.cleared
         ? 'role-boundary marker retracted'
         : 'no role-boundary marker was open') + '\n');
     process.exitCode = 0;
@@ -406,7 +719,7 @@ function cmdConsent(rest) {
     for (let i = 0; i < rest.length; i += 2) {
         if (!Object.prototype.hasOwnProperty.call(flags, rest[i])
             || flags[rest[i]] !== null || i + 1 >= rest.length) {
-            process.stderr.write('usage: kit-compact-checkpoint.js consent'
+            emitErr('usage: kit-compact-checkpoint.js consent'
                 + ' [--session <id>] [--project <path>]'
                 + ' (each flag at most once, each with one value)\n');
             process.exitCode = 1;
@@ -419,7 +732,7 @@ function cmdConsent(rest) {
     if (flags['--session'] === null) {
         session = callerSessionId();
         if (session === null) {
-            process.stderr.write('kit-compact-checkpoint: no usable session id in this shell'
+            emitErr('kit-compact-checkpoint: no usable session id in this shell'
                 + ' (CLAUDE_CODE_SESSION_ID is unset or not id-shaped); name one with'
                 + ' --session <id>; nothing written\n');
             process.exitCode = 1;
@@ -428,7 +741,7 @@ function cmdConsent(rest) {
     } else {
         session = usableSessionId(flags['--session']);
         if (session === null) {
-            process.stderr.write('kit-compact-checkpoint: --session needs one value that starts'
+            emitErr('kit-compact-checkpoint: --session needs one value that starts'
                 + ' with a letter or digit and uses only letters, digits, dot, underscore or'
                 + ' hyphen; nothing written\n');
             process.exitCode = 1;
@@ -445,8 +758,8 @@ function cmdConsent(rest) {
     // the miss is an error here rather than a successful-looking write.
     const target = flags['--project'] === null ? process.cwd() : flags['--project'];
     if (flags['--project'] !== null && !projectHoldsSessionTranscript(target, session)) {
-        process.stderr.write('kit-compact-checkpoint: no transcript for session '
-            + sanitize(session) + ' under the project at ' + sanitize(target)
+        emitErr('kit-compact-checkpoint: no transcript for session '
+            + sanitize(session) + ' under the project at ' + displayPath(target)
             + ', so a marker written there would never be read; check the path and the'
             + ' session id; nothing written\n');
         process.exitCode = 1;
@@ -454,12 +767,12 @@ function cmdConsent(rest) {
     }
     const result = writeConsent(target, session);
     if (result.ok) {
-        process.stdout.write('  operator-consent marker recorded for session ' + sanitize(session)
+        emitOut('  operator-consent marker recorded for session ' + sanitize(session)
             + ' (releases that session\'s next deferred auto-compaction once, within '
             + CONSENT_HOURS + ' hours)\n');
         process.exitCode = 0;
     } else {
-        process.stderr.write('kit-compact-checkpoint: ' + sanitize(result.reason) + '\n');
+        emitErr('kit-compact-checkpoint: ' + sanitize(result.reason) + '\n');
         process.exitCode = 1;
     }
 }
@@ -472,11 +785,11 @@ function cmdClear() {
         // unproven, and while a lock stands every reader treats the path as
         // absent, so the checkpoint is not necessarily open either. This is the
         // goal CLI's own wording at the same leg of the same question.
-        process.stderr.write('kit-compact-checkpoint: ' + sanitize(result.reason) + ' (nothing was cleared)\n');
+        emitErr('kit-compact-checkpoint: ' + sanitize(result.reason) + ' (nothing was cleared)\n');
         process.exitCode = 1;
         return;
     }
-    process.stdout.write((result.cleared ? 'compact checkpoint cleared' : 'no compact checkpoint was open') + '\n');
+    emitOut((result.cleared ? 'compact checkpoint cleared' : 'no compact checkpoint was open') + '\n');
     process.exitCode = 0;
 }
 
@@ -579,14 +892,14 @@ function reportCheckpoint(cwd) {
         // failing for the same reason the read did.
         const reason = cp === null ? read.reason : 'illegible';
         if (reason === 'illegible') {
-            process.stdout.write('an illegible checkpoint file is present (the gate treats it as absent); clear removes it\n');
+            emitOut('an illegible checkpoint file is present (the gate treats it as absent); clear removes it\n');
         } else if (reason === 'oversized') {
             // A regular file, so clear unlinks it, and past the read cap, so it
             // never becomes legible on its own.
-            process.stdout.write('a checkpoint file past the size the reader accepts is present '
+            emitOut('a checkpoint file past the size the reader accepts is present '
                 + '(the gate treats it as absent); clear removes it\n');
         } else if (reason === 'kind') {
-            process.stdout.write('something that is not a checkpoint file is sitting at the checkpoint path '
+            emitOut('something that is not a checkpoint file is sitting at the checkpoint path '
                 + '(the gate treats it as absent); clear cannot remove it, so move it aside by hand\n');
         } else if (reason === 'unreadable' || reason === 'lstat') {
             // Scoped to now: a lock lifts, and a checkpoint the gate ignores this
@@ -594,17 +907,23 @@ function reportCheckpoint(cwd) {
             // either way would be the same false absence this report exists to
             // stop printing, and naming a remedy over it would name one that
             // fails for the reason the read already failed.
-            process.stdout.write('the checkpoint path cannot be read right now, so the gate treats '
+            emitOut('the checkpoint path cannot be read right now, so the gate treats '
                 + 'it as absent while that lasts\n');
         } else {
-            process.stdout.write('no compact checkpoint is open\n');
+            emitOut('no compact checkpoint is open\n');
         }
         return;
     }
     // File-derived values print indented, never at column zero (see cmdOpen).
     // A missing openedAt is stated as missing rather than stringified (the
     // literal "undefined" would read as a value the file carries).
-    let line = '  compact checkpoint open for ' + sanitize(cp.plan);
+    // The plan takes the path renderer rather than the plain sanitize. It is
+    // read back out of the checkpoint file with no per-field validation of its
+    // own, and that file is user-writable like everything under .kit/, so an
+    // absolute value planted there is a home prefix on this line and a long one
+    // is a truncation that would read as the whole name of the plan were it not
+    // marked. The ordinary value is repo-relative and prints unchanged.
+    let line = '  compact checkpoint open for ' + displayPath(cp.plan);
     line += (typeof cp.openedAt === 'string')
         ? ' (opened ' + sanitize(cp.openedAt) + ')'
         : ' (no opened timestamp recorded)';
@@ -641,7 +960,7 @@ function reportCheckpoint(cwd) {
                 + (why === null ? '' : '; ' + why);
         }
     }
-    process.stdout.write(line + '\n');
+    emitOut(line + '\n');
 }
 
 // Why a marker on disk gates nothing, per markerMatches reason code, worded
@@ -707,21 +1026,21 @@ function reportMarker(read, label, verb, maxAgeMs, boundPhrase, momentCwd) {
         || typeof marker.session !== 'string') {
         const reason = marker === null ? read.reason : 'illegible';
         if (reason === 'illegible') {
-            process.stdout.write('an illegible ' + label + ' marker file is present '
+            emitOut('an illegible ' + label + ' marker file is present '
                 + '(the gate treats it as absent); the next ' + label + ' write replaces it\n');
         } else if (reason === 'oversized') {
-            process.stdout.write('a ' + label + ' marker file past the size the reader accepts '
+            emitOut('a ' + label + ' marker file past the size the reader accepts '
                 + 'is present (the gate treats it as absent); the next ' + label + ' write replaces it\n');
         } else if (reason === 'kind') {
-            process.stdout.write('something that is not a ' + label + ' marker file is sitting '
+            emitOut('something that is not a ' + label + ' marker file is sitting '
                 + 'at its path (the gate treats it as absent); move it aside by hand\n');
         } else if (reason === 'unreadable' || reason === 'lstat') {
             // Scoped to now, exactly as reportCheckpoint scopes its own lock
             // leg: a lock lifts, and absence must not be asserted over it.
-            process.stdout.write('the ' + label + ' marker path cannot be read right now, '
+            emitOut('the ' + label + ' marker path cannot be read right now, '
                 + 'so the gate treats it as absent while that lasts\n');
         } else {
-            process.stdout.write('no ' + label + ' marker is ' + verb + '\n');
+            emitOut('no ' + label + ' marker is ' + verb + '\n');
         }
         return;
     }
@@ -755,7 +1074,7 @@ function reportMarker(read, label, verb, maxAgeMs, boundPhrase, momentCwd) {
         line += ' - the gate honors it once for that session\'s next deferred auto-compaction, '
             + 'within the ' + boundPhrase + ' bound';
     }
-    process.stdout.write(line + '\n');
+    emitOut(line + '\n');
     // Which transcript answered the moment question, named rather than left to
     // be assumed. This report derives the path from the directory it is run in;
     // the gate reads the path its own PreCompact payload carries. The two are
@@ -764,7 +1083,7 @@ function reportMarker(read, label, verb, maxAgeMs, boundPhrase, momentCwd) {
     // disagrees with the gate's is readable as the different subject it is
     // rather than as a contradiction.
     if (reads) {
-        process.stdout.write('    moment read against ' + (transcript === null
+        emitOut('    moment read against ' + (transcript === null
             ? '(no transcript path derives from this directory and that session id)'
             : displayPath(transcript))
             + ', this directory\'s transcript for that session\n');
@@ -816,22 +1135,24 @@ function reportGateState(cwd) {
         // resolved (kitScratchDir in kit-compact-lib.js), and a project
         // directory inside the memory store keeps its gate state outside the
         // project, so a hard-coded `.kit/` remedy would send an operator to
-        // inspect a file that is not there.
-        const statePath = gateStatePath(cwd);
+        // inspect a file that is not there. It is a value known to be a path, so
+        // it takes displayPath, since a project under the operator's home carries
+        // the OS account name into a channel a model reads.
+        const statePath = displayPath(gateStatePath(cwd));
         if (result.reason === 'oversized') {
             // Worded as reportCheckpoint words its own oversized leg: the file
             // is legible and was refused on size, which is not the same fact as
             // a read that failed, and one refusal answered two ways is what the
             // shared-spelling rule exists to stop.
-            process.stdout.write('a compaction gate state file past the size the reader accepts is present, '
+            emitOut('a compaction gate state file past the size the reader accepts is present, '
                 + 'so the gate is recording nothing; removing ' + statePath + ' lets the next '
                 + 'decision rebuild it\n');
         } else if (result.reason === 'kind') {
-            process.stdout.write('something that is not the gate state file is sitting at '
+            emitOut('something that is not the gate state file is sitting at '
                 + statePath + ', so the gate is recording nothing; move it aside by hand '
                 + '(a delete cannot remove it)\n');
         } else {
-            process.stdout.write('the compaction gate state file cannot be read right now, so the gate '
+            emitOut('the compaction gate state file cannot be read right now, so the gate '
                 + 'is recording nothing while that lasts; try again once whatever holds it lets go\n');
         }
         return;
@@ -839,7 +1160,7 @@ function reportGateState(cwd) {
     const state = result.state;
     const last = state && state.lastDecision;
     if (!last) {
-        process.stdout.write('the compaction gate has recorded no decisions in this project\n');
+        emitOut('the compaction gate has recorded no decisions in this project\n');
     } else {
         // File-derived values print indented, never at column zero (see cmdOpen).
         let line = '  last compaction gate decision: ' + sanitize(last.verdict);
@@ -849,13 +1170,128 @@ function reportGateState(cwd) {
         // twelve-digit minute count on a surface a model reads.
         const age = gateCount(wholeMinutesSince(last.at));
         if (age !== null) line += ', ' + age + (age === 1 ? ' minute ago' : ' minutes ago');
-        process.stdout.write(line + '\n');
+        emitOut(line + '\n');
     }
 
     const phrase = episodePhrase(gateEpisodeOpen(state));
-    process.stdout.write(phrase === null
+    emitOut(phrase === null
         ? 'no deferral episode is open\n'
         : '  the compaction gate has ' + phrase + ' since this deferral episode opened\n');
+}
+
+// The deferral nudge's hold stamps, reported only when the file is refusing the
+// writer, which is the one thing about it an operator can neither see nor infer
+// from anywhere else.
+//
+// The stamp file is that nudge's clock for a held session that owns no episode,
+// and the directive is emitted only when the stamp lands, so a file the writer
+// refuses is a session being held and never spoken to. Two of the five refusals
+// end by themselves, since the next directive removes a file this writer cannot
+// have produced (an oversized one, or a link at the path) and rebuilds it. The
+// other three do not: a refused open, an lstat that could not answer, and a read
+// that ended short of the file all leave the path exactly as it was, over
+// contents that may be a real list of live stamps. They are worded apart on
+// reportCheckpoint's
+// rule, that a leg drawing destructive advice or promising self-repair must be
+// one where that is true, and the promise of a replacement therefore rides
+// membership in the library's own healable set rather than a reading's name.
+//
+// Two of those three are stated as of now rather than as a standing shape, and
+// deliberately without a claim either way: a lock or a scanner lifts on its own,
+// while something that is not a regular file at the path never does, and this
+// report cannot tell them apart, since the reader answers both with the same
+// refused open. So the line names the path to look at rather than promising the
+// wait ends, which is what keeps it from telling an operator to wait out a
+// directory.
+//
+// A reading that stands prints nothing, which is where this parts from the two
+// reports above. What they answer is whether a checkpoint or an episode is in
+// effect, which is a state an operator asks about; the stamps answer only when
+// each held session was last spoken to, which is the nudge's own bookkeeping and
+// carries session ids this report has no reason to put on a terminal.
+//
+// The reason comes from the reader's own refusal rather than from a second
+// syscall here, for the reason reportGateState states: an lstat asked afterwards
+// cannot see the leg where the READ was refused, so the two would be reported as
+// one. The path is composed rather than written out, since a project inside the
+// memory store keeps these files outside the project (kitScratchDir), and it
+// rides this file's display guard on the way out; it is the only value
+// interpolated, the five reasons being this library's own fixed words with
+// nothing file-derived reaching the line.
+//
+// WHICH readings promise a replacement is not decided here. That authority is
+// the library's HOLD_NUDGE_HEALABLE, the same list the writer heals by, so the
+// two sides cannot come to disagree about one file: a reason added there gains
+// the promise on this surface in the same edit, and one removed loses it.
+// Spelling the reason names again here is what would let the writer start
+// healing a file this verb still describes as standing.
+function reportHoldStamps(cwd) {
+    const result = readHoldNudgesResult(cwd, Date.now());
+    if (result.ok) return;
+    const stampPath = displayPath(holdNudgePath(cwd));
+
+    // What was read, worded per reading, since the legs name different things
+    // about the same path. The per-reason wordings below are genuinely
+    // per-reason and are spelled by name for that reason. What is NOT decided by
+    // name is the healable-versus-refusing split: the fallback that catches a
+    // reading with no wording of its own forks on the same HOLD_NUDGE_HEALABLE
+    // membership the remedy below rides, so a sixth healable reason added to the
+    // library's set cannot land on the refusing wording and print "cannot be
+    // read" beside a promise that the next directive replaces it. That
+    // self-contradicting pair is exactly what spelling the set's members again
+    // on this side would produce.
+    let lead;
+    if (result.reason === 'oversized') {
+        lead = 'the deferral nudge\'s hold stamps at ' + stampPath
+            + ' are past the size the reader accepts';
+    } else if (result.reason === 'kind') {
+        lead = 'something that is not the deferral nudge\'s hold stamp file is sitting at ' + stampPath;
+    } else if (result.reason === 'short-fill') {
+        // The reading that ended short of the file. Nothing here identifies the
+        // file as one the nudge did not write, so nothing removes it.
+        lead = 'the read of the deferral nudge\'s hold stamps at ' + stampPath + ' ended short of the file';
+    } else if (HOLD_NUDGE_HEALABLE.includes(result.reason)) {
+        // A healable reading with no wording of its own: the set says the writer
+        // identified this file as one it could not have produced and removes it,
+        // so the line says that much and leaves the shape unnamed rather than
+        // borrowing the refusing leg's claim that nothing can be told about the
+        // path. Nothing reaches this branch today, the set's two members both
+        // having their own wording above; it is what a sixth member lands on.
+        lead = 'the deferral nudge\'s hold stamp file at ' + stampPath
+            + ' is not one that writer produced';
+    } else {
+        // 'unreadable' and 'lstat' together: both may be a lock over a file
+        // holding live stamps, and both may equally be a directory or another
+        // shape at the path that never lifts, so this leg claims nothing about
+        // what is there. What the operator can act on is the path, which is
+        // named.
+        //
+        // One shape lands here that the writer does in fact remove: a FIFO or a
+        // socket, which the reader refuses on the descriptor and cannot tell
+        // from a lock, while the writer's own lstat calls it a kind it unlinks.
+        // readHoldNudgesResult states why the two sides are asked differently.
+        // What that costs is bounded to this line being weaker than the truth
+        // for those kinds rather than wrong about them, since it promises
+        // neither a repair nor an end to the wait.
+        lead = 'the deferral nudge\'s hold stamp file at ' + stampPath + ' cannot be read';
+    }
+
+    // What happens next, decided by membership in the healable set rather than
+    // by the reason's name. The promise is CONDITIONAL because the repair it
+    // names is: the heal is an unlink, which takes permission on the scratch
+    // directory itself, so under a read-only .kit/ the next directive refuses
+    // and the file stands. An unconditional promise there tells an operator to
+    // wait out a replacement that never comes, which is the same failure the
+    // refusing legs are worded to avoid.
+    const remedy = HOLD_NUDGE_HEALABLE.includes(result.reason)
+        ? 'the next hold directive replaces it, so long as the directory holding it is writable'
+        : (result.reason === 'short-fill'
+            ? 'the stamps are left as they are and a read that completes takes them again'
+            : 'a lock or a scanner over it clears on its own, while anything else standing at '
+                + 'that path does not');
+
+    emitOut(lead + ', so a held session cannot be stamped and its directive stays '
+        + 'silent; ' + remedy + '\n');
 }
 
 function cmdStatus() {
@@ -866,6 +1302,7 @@ function cmdStatus() {
     reportMarker(readConsentResult(cwd), 'operator-consent', 'present',
         CONSENT_MAX_AGE_MS, CONSENT_HOURS + '-hour', null);
     reportGateState(cwd);
+    reportHoldStamps(cwd);
     process.exitCode = 0;
 }
 
@@ -879,4 +1316,24 @@ function main() {
     else usage();
 }
 
-main();
+// Wrapped so an unexpected defect prints one elided line and a nonzero exit
+// instead of a stack trace, the guard kit-goal.js carries at the same place and
+// for a reason that is stronger here: this CLI's output is echoed into a
+// session's context, and an uncaught throw writes Node's own trace to stderr
+// carrying the full module path of every file on the require stack, which is
+// home-anchored on an installed plugin. That write is the runtime's rather than
+// this file's, so it is a leg both the emitters' floor and the source-side pin
+// are blind to; catching here is what puts it back on the channel.
+//
+// The kit-library loading is INSIDE the region for that reason: a require is the
+// throw most likely to produce that trace, a damaged plugin cache being its
+// ordinary cause. What remains outside is this file's own module-scope
+// evaluation and the two Node built-in requires above it, neither of which
+// carries a plugin path or reads anything off disk.
+try {
+    loadKitLibraries();
+    main();
+} catch (err) {
+    emitErr('kit-compact-checkpoint: ' + sanitize(err && err.message ? err.message : String(err)) + '\n');
+    process.exitCode = 1;
+}

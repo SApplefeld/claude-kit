@@ -13,11 +13,14 @@
 // (checkpointMatches, with its age constants) here is what keeps the writer,
 // the gate, and the status report from drifting apart.
 //
-// The gate's decision record (compact-gate.json and its .jsonl log, in that
-// same resolved scratch directory) is
-// here for the same single-sourcing reason: the gate writes it and the
-// checkpoint CLI's status report reads it, so its paths and its shape belong in
-// one place.
+// The gate's decision record is three project-local files in that same
+// resolved scratch directory (the state compact-gate.json, its append-only
+// compact-gate.jsonl log, and the deferral nudge's per-session hold stamps in
+// compact-hold-nudge.json), and they are here for the same single-sourcing
+// reason: the gate writes, the two deferral nudges write and read, and the
+// checkpoint CLI's status report reads, so the paths and the shapes belong in
+// one place. The section header over that record below carries the file-by-file
+// account of which writer touches which.
 //
 // The transcript helpers (readTranscriptCapped, stripLocalCommandOutput, and
 // the automation detection) live here for the same reason: the goal-leash Stop
@@ -37,10 +40,15 @@ const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 const { normalizePlanArg, pathErrnoClass, readGoal } = require('./kit-goal-lib.js');
-// The gate-log tail read below goes through the shared bounded reader: a
-// single readSync may legally return fewer bytes than asked for, and the fill
-// loop that closes it belongs to every hook read rather than to this one.
-const { readFully } = require('./kit-read-lib.js');
+// Two shared reads from kit-read-lib. The gate-log tail read below takes
+// readFully because a single readSync may legally return fewer bytes than asked
+// for, and the fill loop that closes it belongs to every hook read rather than
+// to this one. The hold-stamp read takes readFileBounded, which settles a
+// file's kind and size on the OPEN DESCRIPTOR: judging a name and then opening
+// it leaves a window a local process can swap the path inside, and off win32
+// the open is non-blocking, so a FIFO planted there is refused rather than
+// waiting for a writer that never comes.
+const { readFully, readFileBounded } = require('./kit-read-lib.js');
 
 // The directory every file in this library lives in, for a given project
 // directory. Two branches, and the second exists because one project
@@ -155,11 +163,18 @@ const CHECKPOINT_PENDING_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const CHECKPOINT_FUTURE_SKEW_MS = 2 * 60 * 1000;
 
 // Compare two session ids as opaque, case-insensitive strings (session UUIDs
-// are surfaced in mixed case across the harness). Shared by the checkpoint
-// match rule, the PreCompact gate, and the goal-leash Stop hook, which must
-// all agree on session identity. False when either side is missing, which is
-// exactly the treat-as-absent handling an unbound goal or an old-format
-// checkpoint needs.
+// are surfaced in mixed case across the harness). One rule for every surface
+// that has to agree on session identity, rather than a list of them: the
+// checkpoint match rule, the PreCompact gate, the goal-leash Stop hook, the
+// checkpoint CLI's marker verbs, and the per-session lookups behind the deferral
+// nudge's hold path (interactiveHoldOpen and the hold stamps). False when either
+// side is missing, which is exactly the treat-as-absent handling an unbound goal
+// or an old-format checkpoint needs.
+//
+// Every one of those compares a value a WRITER here stored, and each of those
+// writers stores it through gateText, so a caller looking a session up in one of
+// these files passes the id through gateText first: this rule decides case and
+// whitespace, and that one decides the spelling.
 function sameSessionId(a, b) {
     if (!a || !b) return false;
     return String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
@@ -615,34 +630,47 @@ function adoptCheckpoint(cwd, goal, sessionId) {
 // The PreCompact gate takes a verdict on every auto-compaction offer and, until
 // it writes one down, leaves no trace: a run held for a whole section, a
 // checkpoint that expired seconds before the agent returned, and a safety-valve
-// fire are indistinguishable afterwards. Two project-local files under .kit/
-// carry that record. The STATE (compact-gate.json) is the newest decision plus
-// the deferral episode currently standing, read by the checkpoint CLI's status
-// report; it is rewritten in place, so it stays one small file. The LOG
-// (compact-gate.jsonl) is append-only and is what an operator reads to answer
-// "how often, and why" across a whole run.
+// fire are indistinguishable afterwards. Three project-local files under .kit/
+// carry that record. The STATE (compact-gate.json) is the newest decision, the
+// deferral episode currently standing, and the per-session list of interactive
+// holds; it is rewritten in place, so it stays one small file. Its readers are
+// not one set: the checkpoint CLI's status report reads the decision and the
+// episode, while the per-session hold list is the deferral nudge's alone, since
+// the question it answers is whether ONE session is being held and status asks
+// about the project. The LOG (compact-gate.jsonl) is append-only and is what an
+// operator reads to answer "how often, and why" across a whole run. The HOLD
+// STAMPS (compact-hold-nudge.json) are the deferral nudge's own per-session clock
+// for a hold that owns no episode, which cannot live in the state because every
+// gate write rebuilds that file from a fixed key set (see
+// HOLD_NUDGE_MAX_ENTRIES); the status report reads that file too, but only to
+// say when it is refusing the nudge's writer, which is a state nothing else
+// surfaces.
 //
-// Each file has TWO writers and the log carries TWO record classes. The gate
-// records a decision (recordGateDecision, from the PreCompact hook); the
-// deferral nudge stamps the episode and journals that it spoke
-// (recordEpisodeNudge, from the tool loop). A decision line carries `verdict`
-// and a nudge line carries `event`, which is how a reader partitions the log
-// without guessing. A consumer folding every line through gateRecord() sees
-// only decisions, since that rebuilder returns null for a record with no
-// recognized verdict: that is a correct decision-only reading, not a whole-log
-// one.
+// The writers are not evenly spread across the three, and the log carries TWO
+// record classes. The state has two writers: the gate records a decision
+// (recordGateDecision, from the PreCompact hook) and the deferral nudge stamps
+// the open episode (recordEpisodeNudge, from the tool loop). The stamp file has
+// one, recordHoldNudge, from the same tool loop. The log has three, since both
+// nudges journal that they spoke through logEpisodeNudge beside the decision
+// recorder's own append. A decision line carries `verdict` and a nudge line
+// carries `event`, which is how a reader partitions the log without guessing;
+// the nudge class carries two event values, `nudge` for an episode and
+// `nudge-hold` for a hold, so a reader can tell which directive spoke. A
+// consumer folding every line through gateRecord() sees only decisions, since
+// that rebuilder returns null for a record with no recognized verdict: that is a
+// correct decision-only reading, not a whole-log one.
 //
-// Both files are written after the verdict, or after the emission decision, is
-// already made, and a failure to write cannot change it. recordGateDecision
+// All three files are written after the verdict, or after the emission decision,
+// is already made, and a failure to write cannot change it. recordGateDecision
 // swallows every failure and returns nothing a caller branches on, so a full
 // disk or a read-only .kit degrades to a gate that decides exactly as it did
-// before, silently. The nudge is the one exception and it is deliberate: its
-// `nudgedAt` is not diagnostic, it IS the interval, and its stamp is the only
-// cross-process carrier that interval has, so recordEpisodeNudge returns a
-// boolean its caller gates the emission on, and a failed stamp yields silence.
-// The journal line stays diagnostic on both writers. The ordering matters as
-// much as the swallowing: a path that could block (a FIFO planted at either
-// file) cannot delay a verdict that has already been emitted.
+// before, silently. The two nudge stamps are the exception and it is deliberate:
+// a stamp is not diagnostic, it IS the interval, and it is the only cross-process
+// carrier that interval has, so recordEpisodeNudge and recordHoldNudge each
+// return a boolean their caller gates the emission on, and a failed stamp yields
+// silence. The journal line stays diagnostic on every writer. The ordering
+// matters as much as the swallowing: a path that could block (a FIFO planted at
+// any of them) cannot delay a verdict that has already been emitted.
 //
 // The record is written only in a project that is ALREADY kit-governed. An
 // existing .kit/ directory is the ordinary evidence: the gate runs on every
@@ -658,19 +686,52 @@ function adoptCheckpoint(cwd, goal, sessionId) {
 // an existing .kit/ is, so a stranger's checkout still gets nothing. Only
 // .kit itself is ever created, never its parents.
 //
-// Both files must be regular files, and .kit/ itself must be a real directory
-// rather than a link to one. A symlink, junction, or FIFO planted at any of the
-// three is refused rather than followed: appending through a link writes into
-// its target on every assistant turn, trimming through one lands a megabyte of
-// an arbitrary readable file inside .kit/, and a FIFO blocks a read or a write
-// forever where no try/catch can rescue it. Each check is an lstat, so a link
-// is judged as a link rather than as whatever it points at.
+// All three files must be regular files, and .kit/ itself must be a real
+// directory rather than a link to one. A symlink, junction, or FIFO planted at
+// any of those four paths is never followed: appending through a link writes
+// into its target on every assistant turn, trimming through one lands a
+// megabyte of an arbitrary readable file inside .kit/, and a FIFO blocks a read
+// or a write forever where no try/catch can rescue it. Each check is an lstat,
+// so a link is judged as a link rather than as whatever it points at.
+//
+// Three of the four paths REFUSE on that verdict and the hold stamps REMOVE the
+// path instead, which is a difference in what a refusal costs rather than in
+// what is judged. The gate state, the log and .kit/ itself are written by the
+// decision recorder, whose refusal is a diagnostic line not written, and they
+// are read by surfaces that report absence honestly. The stamp file IS an
+// interval: refusing it silences a held session's directive, and neither a link
+// nor an oversized file ever resolves on its own, so a writer that only refused
+// would disable that interval permanently. Since neither shape is one that
+// writer can produce, neither holds a stamp to preserve, and the path is
+// unlinked before the write (recordHoldNudge). The readings that MIGHT sit over
+// a real list all refuse there exactly as they do here: a refused read, an lstat
+// that could not answer, and a read that ended short of what the descriptor
+// promised, which is a fault under the read rather than a shape, and so says
+// nothing about whose file it is. The hold stamps are read through the shared
+// bounded reader, which settles kind and size on the descriptor and follows a
+// link only when a caller does not ask otherwise, and that reader's caller here
+// asks BOTH ways: an lstat first, which is what makes a link a distinguishable
+// answer rather than one more unreadable file, and the reader's own opt-in
+// refusal, which closes the window between that lstat and the open
+// (readHoldNudgesResult).
 //
 // A HARDLINK is the member of that class these checks admit: it is a regular
-// file and passes, so a hardlink planted at either path receives the record's
-// writes. That is left open on purpose, matching the posture the kit already
-// takes for its goal-event sink, and the exposure is bounded by what lands
-// there: this file's own JSON, in a project the actor can already write to.
+// file and passes every lstat above. What a planted one then RECEIVES is a
+// question about the WRITER rather than about the check, and the four paths do
+// not answer it alike. .kit/ itself is not of the class at all, since no
+// hardlink to a directory can be created. The state and the hold stamps are
+// published by writeJsonAtomic, which writes a temp file and renames it over
+// the name: a rename replaces the directory entry, so a hardlink planted at
+// either path is orphaned by the first write and goes on holding whatever it
+// was linked to. The LOG is the one path a write reaches through an existing
+// inode, since the decision recorder and logEpisodeNudge both append to the
+// name in place, so a hardlink there receives every record appended until the
+// log next crosses GATE_LOG_MAX_BYTES and trimGateLog renames a rebuilt file
+// over it, which orphans the link exactly as the other two writers do. That one
+// path is left open on purpose, matching the posture the kit already takes for
+// its goal-event sink, and the exposure is bounded by what lands there: this
+// library's own JSONL decision and nudge lines, in a project the actor can
+// already write to.
 //
 // Those checks NARROW the window rather than closing it, the same honest
 // account readTranscriptCapped gives of its own isFile() check: the path is
@@ -678,12 +739,21 @@ function adoptCheckpoint(cwd, goal, sessionId) {
 // still possible. Closing it needs a single open plus an fstat on the
 // descriptor, a restructure this diagnostic does not earn, and what rides
 // through the residual window is well-formed JSON appended to a path the actor
-// already controls. The temporary files both writers rename through are created
-// exclusively (O_EXCL) under an unpredictable name, so the one path an attacker
-// could otherwise pre-plant is not guessable and would fail the open anyway.
+// already controls. The writers that publish through a temporary file, which is
+// writeJsonAtomic for the state, the checkpoint, the hold stamps and the markers
+// and trimGateLog for the rebuilt log, create that temporary exclusively
+// (O_EXCL) under an unpredictable name, so the one path an attacker could
+// otherwise pre-plant is not guessable and would fail the open anyway. The two
+// log APPENDERS go through no temporary file at all, the decision recorder and
+// logEpisodeNudge both reaching the log's name in place: what an attacker can
+// pre-plant there is the log path itself, which is the hardlink exposure the
+// paragraph above states and accepts rather than one this defence covers. The hold stamps' own read closes the kind half of that window rather
+// than narrowing it, since the shared reader it goes through settles kind and
+// size on the descriptor it consumes; what its lstat leg answers for is the link
+// question alone.
 //
-// That acceptance now has to cover a caller in the TOOL LOOP as well as the
-// PreCompact one, since the nudge journals from there and a stalled tool loop
+// That acceptance now has to cover callers in the TOOL LOOP as well as the
+// PreCompact one, since both nudges journal from there and a stalled tool loop
 // is the one failure that hook must never cause. It still holds, on a narrower
 // argument. Reaching the window needs a hostile writer already inside .kit/ in
 // this project, racing a path that opens for a few microseconds per fire; the
@@ -922,6 +992,121 @@ function gateEpisodeOpen(state, nowMs, sessionId) {
     return episode;
 }
 
+// The two reasons an interactive deny carries, which are the two ways a session
+// reaches the hands-on leg: nothing is armed in the project, or what is armed
+// belongs to another session. Both are held to the same ceiling and neither
+// touches an episode, so both read the same way here.
+const INTERACTIVE_HOLD_REASONS = ['bystander', 'no-goal'];
+
+// The gate state's fourth key, beside the newest decision, the episode and the
+// newest allow: one record per session, newest first, of the interactive denies
+// this project's gate has taken.
+//
+// It is a per-session list rather than a reading of the single decision slot,
+// and that is forced by the slot's writers. Every gate process in a project
+// writes lastDecision for every verdict it takes, so on a checkout carrying
+// several sessions the leash holder's boundary denies and a bystander's
+// interactive denies alternate in it, and a hold read from there is refused for
+// a reason belonging to another seat. A hold is one session's own fact and is
+// stored as one.
+//
+// The cap is a backstop against an unbounded file, and it is also the only
+// bound on what the list HOLDS. The idle ceiling interactiveHoldOpen applies
+// bounds the ANSWER instead: it refuses a record it has aged out and leaves
+// that record in the list, and nothing rebuilds the list by age, gateHolds
+// keeping whatever it reads. That is where this parts from the hold-stamp list,
+// whose own reader drops a spent entry outright and whose eviction can
+// therefore only ever discard one. So an eviction here can drop a record that
+// is still live, wherever more sessions than the cap have taken an interactive
+// deny in one project since the oldest kept one; the evicted session is then
+// unheld until its own next deny, which past the compaction trigger is its next
+// assistant turn: one silence rather than a false hold, which is the direction
+// every failure here takes.
+const INTERACTIVE_HOLD_MAX_ENTRIES = 8;
+
+// The hold records a state carries, rebuilt: an array, newest first, holding at
+// most one record per session, and empty for every unusable shape (an absent
+// key, a value that is not an array, entries that are not records, and a record
+// with no session to own it).
+//
+// The walk is bounded BY INDEX at the cap, on readHoldNudgesResult's reasoning: a
+// planted array of ten thousand entries is not walked, while a bound on how
+// many VALID entries are kept would let every invalid one be examined first. A
+// second record for a session already kept is dropped rather than kept behind
+// the first, so newest-first order is what decides which record answers for a
+// session.
+function gateHolds(value) {
+    if (!Array.isArray(value)) return [];
+    const holds = [];
+    const scanned = Math.min(value.length, INTERACTIVE_HOLD_MAX_ENTRIES);
+    for (let i = 0; i < scanned; i += 1) {
+        const record = gateRecord(value[i]);
+        if (!record || !record.session) continue;
+        if (holds.some((kept) => sameSessionId(kept.session, record.session))) continue;
+        holds.push(record);
+    }
+    return holds;
+}
+
+// The interactive hold this state shows for one session RIGHT NOW, as that
+// session's own newest interactive deny, or null. This is gateEpisodeOpen's
+// question for the OTHER deny class, and it is a separate predicate because the
+// two are stored in different places for a reason stated at nextGateState: a
+// deny-interactive records the decision and leaves the episode slot untouched,
+// so a bystander or a session in an unarmed project never owns an episode at
+// all. A reader asking "is this session being held?" therefore asks the hold
+// list above, and asking it here rather than at the reader keeps the deny
+// vocabulary and the two bounds in the file that writes them.
+//
+// Four things must hold. The record must be a deny-interactive carrying one of
+// the two hands-on reasons, so a boundary deny (the leash holder's own class)
+// and every allow read as no hold; the list carries only what this file wrote,
+// and those two checks are what a hand-edited state file meets. It must name
+// THIS session, which the lookup itself is, since a hold is only ever one
+// session's to act on. And its timestamp is held to the same two bounds
+// gateEpisodeOpen applies to an episode's newest denial, the four-hour idle
+// ceiling and the future-skew allowance, for the same reasons: past the trigger
+// the harness re-offers every assistant turn, so a decision no newer than that
+// is a finished hold rather than a standing one, and a record dated into the
+// future has an age no ceiling can exceed.
+//
+// A state file carrying no hold list rebuilds to an empty one and answers null
+// here, so the session is unheld until its own next deny records it, which past
+// the trigger is its next assistant turn. Falling back to the decision slot is
+// what this predicate exists not to do: that slot's newest record can belong to
+// any session that took an offer in the project.
+//
+// Unlike an episode this carries no count and no start, because a
+// deny-interactive aggregates nothing: what it does carry is `consumed`, the
+// token reading behind the decision, which is the figure the deferral nudge's
+// floor is read against.
+//
+// The session id is required rather than optional. gateEpisodeOpen reads an
+// omitted one as "any open episode counts", which serves a human running status;
+// there is no such reader here, and every caller of this one is deciding whether
+// to act, so an unusable id answers null rather than matching whatever the list
+// happens to hold.
+function interactiveHoldOpen(state, nowMs, sessionId) {
+    if (typeof sessionId !== 'string' || sessionId === '') return null;
+    // Compared as the record stores it: every session field in this file goes in
+    // through gateText, so the lookup applies the same rule to the id it is
+    // handed rather than comparing a stored spelling against a raw one
+    // (holdNudgedAt states the same reasoning for the stamp file).
+    const session = gateText(sessionId);
+    if (!session) return null;
+    const holds = state ? gateHolds(state.interactiveHolds) : [];
+    const record = holds.find((entry) => sameSessionId(entry.session, session)) || null;
+    if (!record) return null;
+    if (record.verdict !== 'deny-interactive') return null;
+    if (!INTERACTIVE_HOLD_REASONS.includes(record.reason)) return null;
+    const now = (typeof nowMs === 'number' && Number.isFinite(nowMs)) ? nowMs : Date.now();
+    const at = Date.parse(record.at);
+    if (!Number.isFinite(at)) return null;
+    if (now - at > GATE_EPISODE_MAX_IDLE_MS) return null;
+    if (at - now > CHECKPOINT_FUTURE_SKEW_MS) return null;
+    return record;
+}
+
 // The session a checkpoint question is scoped to, from an armed goal: its bound
 // session, or an explicit null when it has none.
 //
@@ -1032,8 +1217,9 @@ function episodePhrase(episode, nowMs) {
 }
 
 // The state file's read cap. The writer produces a few hundred bytes and never
-// grows: it holds two records and one episode, each rebuilt field by field with
-// capped strings. Anything past a quarter megabyte is not something this wrote,
+// grows: it holds two records, one episode, and a list of hold records bounded
+// at INTERACTIVE_HOLD_MAX_ENTRIES, each rebuilt field by field with capped
+// strings. Anything past a quarter megabyte is not something this wrote,
 // and reading it whole on a per-offer hook path is cost with nothing to gain.
 const GATE_STATE_MAX_BYTES = 256 * 1024;
 
@@ -1093,7 +1279,8 @@ function readGateStateResult(cwd) {
         state: {
             lastDecision: gateRecord(parsed.lastDecision),
             episode: gateEpisode(parsed.episode),
-            lastAllow: gateRecord(parsed.lastAllow)
+            lastAllow: gateRecord(parsed.lastAllow),
+            interactiveHolds: gateHolds(parsed.interactiveHolds)
         }
     };
 }
@@ -1101,8 +1288,9 @@ function readGateStateResult(cwd) {
 // The gate state, or null when it is absent, refused, unreadable, or not JSON.
 // The reading surfaces take this shape because they act the same way on all
 // four: a null state and a state whose fields are null both mean no decision
-// recorded and no episode open. A caller that must not confuse "not there" with
-// "cannot tell" takes readGateStateResult instead.
+// recorded, no episode open and no hold standing, and each of those is a
+// silence at the caller that asks it. A caller that must not confuse "not
+// there" with "cannot tell" takes readGateStateResult instead.
 function readGateState(cwd) {
     return readGateStateResult(cwd).state;
 }
@@ -1117,20 +1305,31 @@ function readGateState(cwd) {
 // armed-and-bound test (or the bind-claim that immediately follows it), so only
 // the bound session can produce one and it always carries a session id, while
 // an interactive deny is the only deny on the bystander and nothing-armed
-// fall-through. So:
+// fall-through. An interactive hold runs the other way and is stored the other
+// way: it belongs to the session rather than to the leash, so it lives in a
+// list holding one record per session (INTERACTIVE_HOLD_MAX_ENTRIES). So:
 //
 //   deny-boundary     extends the standing episode when it owns it, and
 //                     otherwise opens a fresh one at one. Replacing a foreign
 //                     incumbent is right on this path rather than harmful: the
 //                     binding is exclusive, so a foreign owner here can only be
 //                     a dead binding (a crash, then a re-arm), never a rival.
+//                     It also drops the denied session's own hold record: this
+//                     verdict is the leash holder's class, so a hold on the
+//                     hands-on leg has ended for that session by the time it
+//                     reaches here. Another session's hold is untouched.
 //   deny-interactive  records the decision and carries the standing episode
 //                     through untouched. A bystander, or a project with nothing
 //                     armed, never opens, extends, inflates, or destroys one.
-//   allow             clears the episode only when the allower owns it. An
-//                     allow lands a compaction in the allower's own context;
-//                     a bystander's compaction says nothing about the offers
-//                     the bound session is still being denied.
+//                     The hold it IS goes to the head of the per-session hold
+//                     list, which is where a reader asks whether one session is
+//                     being held.
+//   allow             clears the episode only when the allower owns it, and
+//                     drops the allower's own hold record. An allow lands a
+//                     compaction in the allower's own context; a bystander's
+//                     compaction says nothing about the offers the bound
+//                     session is still being denied, and neither one ends
+//                     another session's hold.
 //
 // A decision carrying no session id never opens or extends an episode. The
 // partition above makes that unreachable on the boundary path, and the rule
@@ -1159,7 +1358,13 @@ function readGateState(cwd) {
 // same project inside the same few milliseconds, and its cost is bounded by the
 // same one-mistimed-compaction ceiling as everything else here, so it is carried
 // as a residual rather than closed; the fix, if it is ever worth its complexity,
-// is the gateOwnedFingerprint verify the nudge stamp already uses.
+// is the gateOwnedFingerprint verify the EPISODE stamp already uses, which
+// catches this shape because every gate write moves the decision fields that
+// tuple carries. The hold stamp writes a file of its own and takes no such
+// verify (recordHoldNudge states why). The hold list
+// rides the same window on the same terms, and costs less when it loses: a
+// record written inside that gap by another session is dropped, and that session
+// is unheld until its own next deny, one assistant turn later.
 //
 // So an open episode means "this session has been denied, with no allow since,
 // recently", which is the pending-offer signal the checkpoint rule and the
@@ -1169,14 +1374,34 @@ function nextGateState(prior, record) {
     const lastAllow = prior ? gateRecord(prior.lastAllow) : null;
     const standing = gateEpisodeOpen(prior, Date.parse(record.at));
     const mine = !!standing && sameSessionId(standing.session, record.session);
+    // The whole state is rebuilt from a fixed key set on every write, so a key
+    // this does not carry through is erased by the next decision.
+    const holds = gateHolds(prior ? prior.interactiveHolds : null);
     if (record.verdict === 'allow') {
         return {
             lastDecision: record,
             episode: mine ? null : standing,
-            lastAllow: record
+            lastAllow: record,
+            // An allow lands this session's own compaction, which ends whatever
+            // hold it was under, so its record leaves the list. Another
+            // session's hold is untouched, on the same reasoning the episode
+            // takes: an allow says nothing about the offers a different seat is
+            // still being denied.
+            interactiveHolds: holds.filter((h) => !sameSessionId(h.session, record.session))
         };
     }
     if (record.verdict === 'deny-boundary' && record.session) {
+        // A boundary deny is the leash holder's own class, reachable only behind
+        // the armed-and-bound test, so the session it names is not a session
+        // held on the hands-on leg: whatever interactive hold it was under has
+        // ended, and its release is a chapter boundary rather than the
+        // role-boundary marker the hold directive names. Carried through, the
+        // record would have the state asserting one session is both held as a
+        // bystander and holding the leash, and the directive would be spoken at
+        // a seat whose next offer is decided on the boundary leg. Another
+        // session's hold is untouched, on the reasoning the episode and the
+        // allow branch both take.
+        const held = holds.filter((h) => !sameSessionId(h.session, record.session));
         if (mine) {
             return {
                 lastDecision: record,
@@ -1187,7 +1412,8 @@ function nextGateState(prior, record) {
                     lastDeniedAt: record.at,
                     nudgedAt: standing.nudgedAt
                 },
-                lastAllow
+                lastAllow,
+                interactiveHolds: held
             };
         }
         return {
@@ -1199,12 +1425,20 @@ function nextGateState(prior, record) {
                 lastDeniedAt: record.at,
                 nudgedAt: null
             },
-            lastAllow
+            lastAllow,
+            interactiveHolds: held
         };
     }
     // An interactive deny, or the session-less boundary deny the partition
-    // makes unreachable: the decision is recorded and the slot is left alone.
-    return { lastDecision: record, episode: standing, lastAllow };
+    // makes unreachable: the decision is recorded and the episode slot is left
+    // alone. An interactive deny naming a session also takes the head of the
+    // hold list, replacing that session's own prior record, which is what makes
+    // the hold readable per session on a checkout several sessions share.
+    const held = (record.verdict === 'deny-interactive' && record.session)
+        ? [record, ...holds.filter((h) => !sameSessionId(h.session, record.session))]
+            .slice(0, INTERACTIVE_HOLD_MAX_ENTRIES)
+        : holds;
+    return { lastDecision: record, episode: standing, lastAllow, interactiveHolds: held };
 }
 
 // The episode this decision's OWN session will stand under once the decision is
@@ -1288,11 +1522,14 @@ function writeJsonAtomic(target, value, verifyBeforeRename) {
 }
 
 // The gate-owned part of a state, as one comparable string: the newest
-// decision's timestamp and the episode identity the gate maintains. nudgedAt is
-// deliberately absent, since that field is the nudge's own and a concurrent
-// nudge overwriting it costs nothing.
+// decision's identity and timestamp, and the episode identity the gate
+// maintains. Two fields the gate also owns are outside the tuple for their own
+// reasons. nudgedAt is the nudge's own and a concurrent nudge overwriting it
+// costs nothing. The interactive hold list moves only inside a gate write, which
+// always moves the decision fields with it, so a change there is already caught
+// by what is here; adding it would cost a comparison and catch nothing further.
 //
-// This exists for the stamp's compare-and-set. Every gate write goes through
+// This exists for the episode stamp's compare-and-set. Every gate write goes through
 // nextGateState, which rebuilds lastDecision from a record whose `at` this
 // writer stamps at write time, and an episode is only ever opened, extended or
 // replaced with a new lastDeniedAt or denials, so a gate write between two reads
@@ -1395,22 +1632,21 @@ function writableOrAbsent(target) {
     }
 }
 
-// Everything that must hold before the gate STATE can be rewritten: the directory
-// exists and is writable (an absent one is created only under the armed-goal
-// condition the section header states), the state path is a regular file this
-// process may write, and the state as it stands right now is legible.
+// The directory leg on its own: the scratch directory this project's files live
+// in exists, is a real directory rather than a link to one, and is writable.
+// Returns { ok:true, kit } or { ok:false }, and never throws.
 //
-// Returns { ok:true, statePath, prior } or { ok:false }.
+// Split out because it is the whole precondition for a writer whose file is its
+// own, while gateStateTarget below is the precondition for writing the gate
+// STATE. A writer that takes more than it needs refuses for a condition on
+// another file: the hold stamp gated on the state's writability is silenced by a
+// read-only compact-gate.json, which disables the interval for a session whose
+// own hold was perfectly legible.
 //
-// It is its own function because two writers need different amounts of it and
-// neither may spell it by hand. The decision recorder also appends to the log, so
-// it takes this plus the log legs (gateRecordTargets below). The deferral nudge
-// stamps the state and then appends one journal line best-effort, after the fact
-// and answering for its own path, so the log legs are not its preconditions at
-// all: gating the stamp on the log would make a locked or read-only .jsonl
-// silently disable the nudge's interval, and the nudge would then repeat after
-// every covered tool return for the life of the episode.
-function gateStateTarget(cwd) {
+// What every caller does inherit is that the record is written only in a project
+// that is ALREADY kit-governed, the section header's rule: an existing .kit/, or
+// an armed goal resolving for this directory, and nothing else creates one.
+function gateScratchTarget(cwd) {
     try {
         const kit = kitScratchDir(cwd);
         let dir;
@@ -1436,6 +1672,31 @@ function gateStateTarget(cwd) {
             dir = fs.lstatSync(kit);
         }
         if (!dir.isDirectory() || !writableOrAbsent(kit)) return { ok: false };
+        return { ok: true, kit };
+    } catch {
+        return { ok: false };
+    }
+}
+
+// Everything that must hold before the gate STATE can be rewritten: the
+// directory leg above, plus a state path that is a regular file this process may
+// write and a state that is legible as it stands right now.
+//
+// Returns { ok:true, statePath, prior } or { ok:false }.
+//
+// It is its own function because the state's two writers need different amounts
+// of it and neither may spell it by hand. The decision recorder also appends to
+// the log, so it takes this plus the log legs (gateRecordTargets below). The
+// episode nudge stamps the state and then appends one journal line best-effort,
+// after the fact and answering for its own path, so the log legs are not its
+// preconditions at all: gating the stamp on the log would make a locked or
+// read-only .jsonl silently disable the nudge's interval, and the nudge would
+// then repeat after every covered tool return for the life of the episode. The
+// hold stamp writes neither this file nor the log and takes the directory leg
+// alone.
+function gateStateTarget(cwd) {
+    try {
+        if (!gateScratchTarget(cwd).ok) return { ok: false };
         const statePath = gateStatePath(cwd);
         if (regularFileSize(statePath) === null || !writableOrAbsent(statePath)) return { ok: false };
         const prior = readGateStateResult(cwd);
@@ -1502,8 +1763,9 @@ function gateRecordTargets(cwd) {
 // the log. There is no lock. The failure is an undercount, and a diagnostic does
 // not earn a lock file. The log has the matching residual: a trim keeps the tail
 // ending at a size read moments earlier and renames the result over the file, so
-// a line appended in between is dropped. The nudge is now a second trimmer, so
-// two writers can reach that path rather than one. Same conclusion, same reason.
+// a line appended in between is dropped. Both nudges journal through
+// logEpisodeNudge, which trims on the same rule, so three callers can reach that
+// path rather than one. Same conclusion, same reason.
 //
 // The state has a second writer, recordEpisodeNudge, and it can fire more often
 // than this one, though not on every tool return: it is behind an open episode
@@ -1651,9 +1913,10 @@ function recordEpisodeNudge(cwd, sessionId, nowMs, toolName) {
 // can write, and applies the same trim bound and line-boundary discipline the
 // decision recorder uses, so a reader still meets whole lines only. What it
 // does not re-check is the .kit directory leg (a real directory rather than a
-// link to one): that is established by gateStateTarget, which the single caller
-// runs first on the same repo, and this function is written for that caller
-// rather than as a standalone entry point.
+// link to one): both of its callers establish it on the same repo before they
+// call, the episode stamp through gateStateTarget and the hold stamp through
+// gateScratchTarget, which is the directory leg gateStateTarget itself opens
+// with. This is written for those two rather than as a standalone entry point.
 //
 // The record is distinguishable from a decision by shape rather than by absence:
 // it carries `event` where a decision carries `verdict`, so a reader folding the
@@ -1661,7 +1924,28 @@ function recordEpisodeNudge(cwd, sessionId, nowMs, toolName) {
 // else: the time, the session the hold belongs to, and the tool whose return
 // triggered it. Each is rebuilt through gateText, so a forged or odd value
 // cannot push control characters into an operator's terminal or grow the line.
-function logEpisodeNudge(cwd, sessionId, atIso, toolName) {
+//
+// The event value names WHICH nudge spoke, because two of them share this
+// journal and an operator reading it is asking different questions of each: a
+// leashed run's chapter-boundary directive against an open episode ('nudge'),
+// and a held hands-on session's durability directive against its own interactive
+// deny ('nudge-hold'). One value for both would fold the two counts together,
+// and the second is the one whose whole point is that it reaches a session the
+// first can never speak to. An absent or illegible value reads as the episode
+// nudge, which is the older caller and the one whose record shape the suite
+// pins.
+//
+// The vocabulary is closed, exactly as GATE_REASONS closes a decision's reason
+// and for the same reason: the journal is read by an operator at a terminal,
+// and gateText's charset and length caps alone would let arbitrary prose
+// through. Nothing in the kit parses this file, so the field's audience is that
+// operator and whatever a later consumer folds the lines through. Both callers
+// pass a literal today, so what the check buys is that a third caller cannot
+// widen the field by passing a value through; an unrecognized one reads as the
+// episode nudge rather than being written.
+const NUDGE_EVENTS = ['nudge', 'nudge-hold'];
+
+function logEpisodeNudge(cwd, sessionId, atIso, toolName, event) {
     try {
         const logPath = gateLogPath(cwd);
         const logSize = regularFileSize(logPath);
@@ -1669,13 +1953,494 @@ function logEpisodeNudge(cwd, sessionId, atIso, toolName) {
         if (logSize > GATE_LOG_MAX_BYTES) trimGateLog(logPath, logSize);
         const record = {
             at: atIso,
-            event: 'nudge',
+            event: NUDGE_EVENTS.includes(event) ? event : 'nudge',
             session: gateText(sessionId),
             tool: gateText(toolName)
         };
         const prefix = endsOnLineBoundary(logPath) ? '' : '\n';
         fs.appendFileSync(logPath, prefix + JSON.stringify(record) + '\n', 'utf8');
     } catch { /* the journal is diagnostic: a line that cannot be written is dropped */ }
+}
+
+// The deferral nudge's clock for a hold that owns no episode, kept in its own
+// small file beside the gate state.
+//
+// It cannot live in the state file, and that is a property of the state's
+// writers rather than a preference. nextGateState rebuilds the whole state from
+// a fixed key set on every write, its four keys and nothing else, so any field
+// added beside them is dropped by the next gate write, and during a
+// hold the gate writes on every offer, which past the trigger is every assistant
+// turn. A stamp there would be erased minutes after it landed and the interval
+// it exists to enforce would never engage. The episode slot is not available
+// either: an interactive deny deliberately opens no episode (nextGateState), and
+// minting one from a nudge would hand a bystander's hold to
+// pendingOfferCorroborated as a vouching episode for someone else's checkpoint.
+//
+// The file holds a LIST of one entry per session rather than a single stamp,
+// because a project can hold several bystander sessions at once, which is the
+// ordinary state of a shared checkout. With one slot they would clobber each
+// other's stamps and each read would find another session's, which reads as
+// never-nudged: the interval would collapse and every one of them would be
+// nudged after every covered tool return, the unbounded repeat the nudge's own
+// header calls worse than silence.
+//
+// What keeps the list short is AGE rather than the count cap, and the split
+// matters because the two bound different failures. A stamp older than the
+// nudge's interval throttles nothing: the next call fires whether it is there or
+// not, so dropping it on read costs nothing and is what keeps a project that has
+// seen dozens of sessions over a day from carrying a cap's worth of dead
+// entries. The count cap is a backstop against an unbounded file and nothing
+// more, and it has to be, because eviction by count alone is not a bounded
+// degradation: each evicted session is a LIVE one whose next covered tool return
+// fires and evicts a third, so past the cap the whole list becomes a round robin
+// re-nudging every seat every few fires instead of every interval. With the age
+// rule in force an eviction can only ever drop a stamp that was already spent,
+// unless more sessions than the cap are held in one project inside a single
+// interval, which is the residue this leaves and the only shape the collapse
+// still has.
+const HOLD_NUDGE_MAX_ENTRIES = 8;
+
+// How long a stamp throttles anything, which is the nudge's own interval
+// (NUDGE_INTERVAL_MS in compact-deferral-nudge.js). It is spelled here rather
+// than imported because the hook requires this library and the reverse require
+// would be a cycle, so the two are held together by a cross-surface pin in
+// test/compact-deferral-nudge.test.js instead. The direction that matters is
+// one-sided: a value here SHORTER than the nudge's interval would drop stamps
+// that are still throttling and hand back the collapse above, while a longer one
+// only keeps spent entries around.
+const HOLD_NUDGE_TTL_MS = 30 * 60 * 1000;
+
+// The read cap, on readCheckpoint's reasoning: the writer produces a few short
+// entries and never grows past the cap above, so anything larger is not
+// something this wrote.
+const HOLD_NUDGE_MAX_BYTES = 64 * 1024;
+
+// Path to the hold-nudge stamps for a given repo root.
+function holdNudgePath(cwd) {
+    return path.join(kitScratchDir(cwd), 'compact-hold-nudge.json');
+}
+
+// The stamps still throttling something in this project, newest first,
+// distinguishing a file that carries nothing to preserve from one that is there
+// and could not be read. Returns { ok, holds, reason }, on readGateStateResult's
+// shape and for its reason:
+//
+//   { ok: true,  holds }      the reading stands: holds is what is still
+//                             throttling, and an empty one means there is
+//                             genuinely nothing here to keep (an absent file, an
+//                             empty one, JSON that does not parse or does not
+//                             carry a holds array, and entries this reader
+//                             dropped)
+//   { ok: false, holds: [] }  the file is there and its contents are unknown, so
+//                             no caller may act as though it were empty
+//
+// reason names which refusal produced an { ok: false }: 'lstat' (the path's own
+// kind could not be read), 'kind' (a link at the final component), 'unreadable'
+// (the open or the read itself was refused), 'oversized' (the file is larger than
+// HOLD_NUDGE_MAX_BYTES, so what is past the cut is unknown) or 'short-fill' (the
+// read ended short of what the descriptor promised, which is a file truncated
+// under the read or a device that stopped answering).
+//
+// The last two are one flag and two facts at the reader below, which is why they
+// are two reasons here. readFileBounded answers `bounded` for both and names the
+// bound beside it, and the difference is the whole basis of the write side's
+// heal: only 'oversized' says something about the FILE, that it is larger than
+// anything this writer produces, while 'short-fill' says only that this READ did
+// not finish, which can happen to a file full of live peer stamps.
+//
+// The distinction is load-bearing at two of this reader's three callers, and it
+// is the WRITE side that pays most for it. recordHoldNudge rebuilds this whole
+// file from what this returns and renames it into place, so an unknown reading
+// taken as an empty one erases every other held session's stamp and collapses
+// their intervals, which is the opposite of the preservation that
+// read-modify-write exists for; it also reads WHICH refusal, healing the two
+// shapes it could not have written and refusing the three that may be a lock or
+// a fault over a real list. The checkpoint CLI's status verb takes the reason as
+// well, and for the same distinction turned outward: a refusal here is a held
+// session that is never spoken to. Its line has two halves and they are two
+// different counts, so neither number stands for both. WHAT WAS READ: the five
+// reasons reach FOUR leads, 'unreadable' and 'lstat' sharing one deliberately,
+// since nothing there can tell a lock over a real list from a shape that never
+// lifts. WHAT HAPPENS NEXT: the same five draw THREE remedies, because that half
+// is composed off membership in HOLD_NUDGE_HEALABLE rather than off a reason
+// name, so 'oversized' and 'kind' take one remedy between them (the next
+// directive replaces the file), 'short-fill' takes its own (the stamps stand and
+// a read that completes takes them again), and the shared 'unreadable'/'lstat'
+// leg takes the third, which promises neither a removal nor an end to the wait.
+// The plain read-only caller (holdNudgedAt, through readHoldNudges) keeps the
+// empty answer for all of them, because there the two directions cost the same
+// one extra nudge.
+//
+// THE READER AND THE WRITER DISAGREE ABOUT ONE KIND, deliberately and per kind.
+// A link is named here because an open follows one and the lstat below is the
+// only place that question can be asked. Every OTHER non-regular kind is not:
+// a FIFO, a socket or a device node reaches readFileBounded, which refuses it on
+// the descriptor and answers the same null as a lock, so this reports it as
+// 'unreadable'. holdStampKind, which the WRITER asks, calls all of them 'other'
+// and recordHoldNudge removes the path. The asymmetry follows from what each
+// side does next. The writer's next act is an unlink of that NAME, which is safe
+// whatever kind stands there and opens nothing, so a name-settled verdict costs
+// it nothing. This reader's next act is an OPEN of that name, and a kind verdict
+// taken off a name it then opens is exactly the swap window the shared reader
+// exists to close, so the kind stays the descriptor's here. The cost is
+// diagnostic and one-directional: the status verb tells an operator that such a
+// path cannot be read and that anything standing there may not clear on its own,
+// which is weaker than the truth for a FIFO the next directive does remove, and
+// never stronger. It promises no repair that fails to come, and no wait that
+// does not end, which are the two ways that surface could mislead.
+//
+// The file is user-writable, so both fields are rebuilt through gateText exactly
+// as the journal's are, and a second entry for a session already kept is dropped
+// rather than kept behind the first, on gateHolds' reasoning: newest-first order
+// is what decides which stamp answers for a session, and a duplicate left in
+// would hold a capped slot against a live one.
+//
+// The bytes come through kit-read-lib's shared bounded reader rather than
+// through a kind check on the name followed by an open of that same name, which
+// is the guard the nudge's own signpost read takes and is a property of the
+// channel rather than of whichever caller first needed it: the kind and the
+// size are settled on the descriptor the read is about to consume, and off
+// win32 a planted FIFO is refused instead of blocking a hook that runs after
+// every covered tool return. A result the reader had to cut short is refused
+// outright rather than parsed, on the same reasoning: a truncated object is not
+// the file this reads. One property that reader deliberately does not give is
+// taken here instead, in the one line above the open: it follows a link at the
+// final component by design, so this refuses a link by name before opening,
+// which is the refusal this file's own writer applies to the same path and
+// which also keeps a link into a dead network mount from stalling the open.
+// That reader offers the same refusal as an opt-in of its own
+// (readFileBounded's refuseLink, which the deferral nudge's signpost read takes),
+// and BOTH are taken here, each for what the other cannot do. The lstat is what
+// makes a link a distinguishable answer: the option refuses with the null it
+// answers for every other refusal, and this reader's reasons must stay apart,
+// since 'kind' is a shape its writer heals by removing the path while
+// 'unreadable' is a lock it must leave alone, and the status verb words the two
+// differently. The option is what closes the window between that lstat and the
+// open, which the lstat alone only narrows: where the platform has O_NOFOLLOW
+// the refusal rides the open itself, so a link swapped in after the lstat is
+// refused rather than followed, and where it does not the reader's own lstat is
+// a second look at the name, taken later than this one. A swap landing inside
+// that window now answers 'unreadable', which is the reading it is: what is at
+// the path stopped being what the kind check saw.
+//
+// Three bounds, and none is another's. The walk is bounded BY INDEX at the
+// cap, so a planted array of ten thousand invalid entries is not walked: a
+// bound on how many valid entries are kept would let every invalid one be
+// examined first, and the byte cap above would then be the only real limit. An
+// entry older than HOLD_NUDGE_TTL_MS is dropped rather than returned, which
+// is what makes an eviction at the cap safe: a reader of this list either finds
+// a stamp that is genuinely holding a session quiet or finds nothing. And an
+// entry dated further ahead of the reader's clock than CHECKPOINT_FUTURE_SKEW_MS
+// is dropped on the other side of the same rule, the allowance being the one this
+// file's other timestamp rules take.
+//
+// THE ALLOWANCE IS THE WRITER'S DOING rather than the reader's, since for a
+// reader alone keeping a future stamp buys nothing: an age is a subtraction, so a
+// future stamp's age is negative, and the nudge's own interval rule reads a
+// negative elapsed as elapsed (intervalElapsed in compact-deferral-nudge.js) and
+// fires anyway. recordHoldNudge rebuilds this whole file from what this returns
+// and renames it into place, so an entry this reader drops is not passed over on
+// the next write, it is ERASED, and every entry in this file belongs to another
+// session, stamped by another process against its own clock. A step backwards on
+// this box, an NTP correction or a resumed VM, therefore turns every peer's stamp
+// future-dated at once, and the next write takes all of them out: each of those
+// seats loses its throttle and is nudged again, over a skew of seconds. The
+// allowance is what holds that ordinary case, and a stamp genuinely far ahead is
+// still dropped, so a fabricated date cannot sit in one of the capped slots. An
+// entry whose time cannot be parsed at all is dropped too, since a caller reads it
+// as never-nudged anyway and a slot it occupies would push a live stamp out.
+//
+// Empty reads as "this session has not been spoken to", which fires. That is the
+// same fail-open direction guard 8 of the nudge takes on an illegible nudgedAt,
+// and it is self-healing for the same reason: the fire's own stamp is written
+// through an atomic rename, so it replaces the illegible file wholesale and the
+// interval takes hold from the next tool return onward. That direction belongs
+// to the reading callers; the writer takes { ok: false } as a silence instead.
+function readHoldNudgesResult(cwd, nowMs) {
+    try {
+        const target = holdNudgePath(cwd);
+        // The one question the descriptor cannot answer, asked of the name and
+        // of nothing else: is the final component a link? An open follows one,
+        // so without this the read takes whatever the link names, where this
+        // file's own writer refuses a link at that path outright, and a link
+        // into a dead network mount would stall a hook that runs after every
+        // covered tool return. The lstat does not traverse the final component,
+        // so asking costs nothing on that path. The KIND and the SIZE stay the
+        // descriptor's below: this narrows the name check to the one property an
+        // open cannot reject, rather than handing the kind verdict back to the
+        // name. An absent file is the one failure here that is an answer: it
+        // carries nothing to preserve. Any other lstat failure, and a link, leave
+        // the contents unknown.
+        let st;
+        try {
+            st = fs.lstatSync(target);
+        } catch (err) {
+            if (err && err.code === 'ENOENT') return { ok: true, holds: [] };
+            return { ok: false, holds: [], reason: 'lstat' };
+        }
+        if (st.isSymbolicLink()) return { ok: false, holds: [], reason: 'kind' };
+        const read = readFileBounded(target, HOLD_NUDGE_MAX_BYTES, { refuseLink: true });
+        // A refused open or read, and either kind of partial read, all leave what
+        // the file holds unknown. The two partial readings are told apart because
+        // the writer's two directions differ in cost: a file past the ceiling is
+        // not this writer's output and is healed, while a read that ended short
+        // may be its own file with every peer's stamp in it. Only the bound the
+        // reader names as the ceiling takes the healing leg, so a bound it names
+        // some other way, or does not name at all, is refused. An empty file is a
+        // reading: there is nothing in it to keep.
+        if (read === null) return { ok: false, holds: [], reason: 'unreadable' };
+        if (read.bounded) {
+            return { ok: false, holds: [],
+                reason: read.boundedBy === 'ceiling' ? 'oversized' : 'short-fill' };
+        }
+        if (read.text === '') return { ok: true, holds: [] };
+        let parsed;
+        // JSON this cannot parse, and JSON carrying no holds array, are read
+        // rather than unknown: neither is something this writer produced, so
+        // neither holds a stamp to preserve, and the fire's own atomic rename
+        // replaces the file wholesale.
+        try { parsed = JSON.parse(read.text); } catch { return { ok: true, holds: [] }; }
+        if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.holds)) {
+            return { ok: true, holds: [] };
+        }
+        const now = (typeof nowMs === 'number' && Number.isFinite(nowMs)) ? nowMs : Date.now();
+        const holds = [];
+        const scanned = Math.min(parsed.holds.length, HOLD_NUDGE_MAX_ENTRIES);
+        for (let i = 0; i < scanned; i += 1) {
+            const entry = parsed.holds[i];
+            if (!entry || typeof entry !== 'object' || Array.isArray(entry)) continue;
+            const session = gateText(entry.session);
+            const nudgedAt = gateText(entry.nudgedAt);
+            if (!session || !nudgedAt) continue;
+            const at = Date.parse(nudgedAt);
+            if (!Number.isFinite(at) || now - at >= HOLD_NUDGE_TTL_MS
+                || at - now > CHECKPOINT_FUTURE_SKEW_MS) continue;
+            if (holds.some((kept) => sameSessionId(kept.session, session))) continue;
+            holds.push({ session, nudgedAt });
+        }
+        return { ok: true, holds };
+    } catch { return { ok: false, holds: [], reason: 'unreadable' }; }
+}
+
+// The stamps alone, for a caller whose two directions cost the same: an unknown
+// reading answers the empty list here, exactly as an absent file does. Both fire,
+// which is the fail-open direction the reader's header states and the one every
+// read-only caller of this list takes.
+function readHoldNudges(cwd, nowMs) {
+    return readHoldNudgesResult(cwd, nowMs).holds;
+}
+
+// When the hold nudge last spoke to this session in this project, as the stored
+// ISO string, or null when it has not, which is also the answer for a stamp the
+// reader above has already aged out or found illegible. The caller still applies
+// its own interval to the value it gets: this reader's own bound is what keeps
+// the list short, and the nudge's is what decides whether it speaks, and the two
+// agreeing is a pin rather than an assumption (HOLD_NUDGE_TTL_MS).
+//
+// nowMs is the caller's clock where it has one, so a hook that answers several
+// questions of one moment does not age this list against a different one.
+// The id is canonicalized through gateText before it is compared, which is what
+// the WRITERS store: every session field in these files goes in through gateText,
+// so an id carrying anything that rule strips is stored in one spelling and would
+// be looked up in another, and the lookup would answer never-nudged for a session
+// that has a live stamp. No id the harness issues today is changed by that pass,
+// so this decides nothing at present; it is the same rule on both sides of the
+// comparison rather than a rule on one side and a raw value on the other.
+function holdNudgedAt(cwd, sessionId, nowMs) {
+    const session = gateText(sessionId);
+    if (typeof sessionId !== 'string' || sessionId === '' || !session) return null;
+    for (const entry of readHoldNudges(cwd, nowMs)) {
+        if (sameSessionId(entry.session, session)) return entry.nudgedAt;
+    }
+    return null;
+}
+
+// What is at the hold stamp path, told apart the way goalPathKind tells the goal
+// state's apart and for the same reason: 'file', 'absent', 'other' (something
+// that is not a regular file, a link at the final component included, since an
+// lstat judges a link as a link) and 'unknown' (a kind that could not be read at
+// all, or a path that can never resolve).
+//
+// regularFileSize answers null for the last two together, and here they are
+// opposite answers. 'other' is a shape this file's writer cannot have produced,
+// so removing it costs nothing and is the only thing that ever ends it, while
+// 'unknown' is a permission, a lock or an indexer over what may be a real list
+// of live stamps, which lifts on its own and must not be removed. The errno
+// split is pathErrnoClass's, the rule every caller of this question in the kit
+// answers to; only its 'absent' leg is an absence, and a 'determinate' one
+// (a file standing where .kit/ belongs, a link cycle above the final component)
+// is unknown here rather than removable, since no unlink of this path repairs
+// any of them. Never throws.
+function holdStampKind(target) {
+    try {
+        return fs.lstatSync(target).isFile() ? 'file' : 'other';
+    } catch (err) {
+        return pathErrnoClass(err && err.code) === 'absent' ? 'absent' : 'unknown';
+    }
+}
+
+// Remove the hold stamp file, and say whether the path is clear afterwards.
+//
+// The one destructive act on this path, and it is scoped by construction: the
+// argument is always holdNudgePath's answer for the project in hand, a single
+// file this nudge alone writes, never a directory and never a walk. Every
+// failure is silent and answers false, which the caller reads as a refusal to
+// write: an unlink that cannot remove what is sitting there (a directory, a
+// permission, a lock) leaves the path exactly as it found it, and the stamp is
+// then skipped, which is the silence every failure on this path takes.
+function unlinkHoldStamp(target) {
+    try {
+        fs.unlinkSync(target);
+        return true;
+    } catch (err) {
+        return !!(err && err.code === 'ENOENT');
+    }
+}
+
+// The two refusal reasons readHoldNudgesResult can give that this writer's own
+// file cannot be behind: a file past the read ceiling (its own holds at most
+// HOLD_NUDGE_MAX_ENTRIES short entries and cannot approach the cap) and a link
+// at the final component (it writes a regular file through a temp-and-rename,
+// which replaces the name rather than following what stands at it). Both are
+// healed by removing the path.
+//
+// The other three keep refusing, and the third is the one worth naming, since it
+// arrives through the same `bounded` flag as the first: 'unreadable' and 'lstat'
+// may be a transient lock over a real list, and 'short-fill' is a read that ended
+// short, which is a file truncated under the read or a device that stopped
+// answering, and says nothing about whose file it is. Healing on that reading
+// would unlink a file this writer may well have written, with every other held
+// session's live stamp in it.
+//
+// Exported because it is read on BOTH sides of the same question. This file's
+// writer heals the reasons in it, and the checkpoint CLI's status verb promises
+// an operator that a refusing file is replaced by the next directive, which is
+// true for exactly these reasons and false for the rest. Each side filtering on
+// its own copy of the literals is how a reason added here would leave that
+// promise withheld from a file the writer now heals, with both suites green;
+// test/kit-compact-gate.test.js pins the correspondence.
+const HOLD_NUDGE_HEALABLE = ['oversized', 'kind'];
+
+// Stamp the hold nudge's clock for one session, and return whether the stamp is
+// on disk. This is recordEpisodeNudge's counterpart for the hold that owns no
+// episode, and the boolean carries the same contract for the same reason: the
+// stamp is not diagnostic, it IS the rate limit and the only cross-process
+// carrier the interval has, so the hook emits only when this returns true and
+// every failure here is a silence.
+//
+// The .kit/ precondition is gateScratchTarget's rather than a second copy: the
+// directory must already be there (or be one an armed goal licenses creating,
+// per the section header) and be a real writable directory, so a held session
+// standing in a stranger's checkout writes nothing into it. The gate STATE's own
+// legs are deliberately not among the preconditions, even though the hold this
+// stamp throttles was read out of that file: this writer never touches it, and
+// taking its legs would let a read-only or locked compact-gate.json disable the
+// interval for a session whose hold record read back perfectly, which is a
+// refusal about a different file. The stamp's own path is then held to the same
+// kind-and-writable test every other writer here applies to its target, with two
+// differences this file alone takes, both following from the same heal: a kind
+// that is not a regular file is removed rather than refused, and the writable
+// test is asked AFTER the heal rather than before it, since an unlink needs
+// permission on the directory and none on the file, so a path judged unwritable
+// before the heal is one the heal makes writable.
+//
+// The write carries no compare-and-set, unlike the episode stamp, because there
+// is nothing here for a concurrent writer to lose: the file is this nudge's
+// alone, no gate path reads or writes it, and the whole cost of a lost entry is
+// one extra nudge on the next tool return. What the read-modify-write does do is
+// preserve the other sessions' stamps, which is why the entries kept are
+// everything except this session's own. They are read as of this write's own
+// clock, so the spent ones are already gone by the time the cap is applied and
+// the truncation can only drop a stamp that was still throttling where more
+// sessions than the cap are held inside one interval.
+//
+// That preservation is why the read is taken through readHoldNudgesResult rather
+// than through the plain list. A rename rebuilt from an empty list is a rename
+// that erases the file, so a reading that is empty because the file could not be
+// read makes this write destroy exactly the stamps it exists to keep, collapsing
+// every other held session's interval at once and re-nudging all of them. Such a
+// reading refuses the write here instead: the hold goes unstamped, which is a
+// silence, which is the direction every failure on this path takes.
+//
+// The refusal is split by whether the reading can END, because a refusal that
+// cannot is not a silence but a disabled interval. Two of the five readings this
+// file can give are ones this writer could not have produced, a file past the
+// read ceiling and a link at the path, and nothing about either resolves with
+// time: refusing them alone would silence this session's directive for the life
+// of the file, with no age-out and no surface saying why. Those two are healed by
+// removing the path before the write (HOLD_NUDGE_HEALABLE), which costs nothing,
+// since a file this writer did not write holds no peer's stamp to preserve.
+//
+// The split is on WHOSE FILE IT IS rather than on how partial the reading was,
+// which is what keeps the heal off the third permanent-looking leg. A read that
+// ended short arrives through the same partial-read flag as the oversized one and
+// means something else entirely: the file was truncated under the read or a
+// device stopped answering, either of which can happen to this writer's own file
+// on the tool return after it wrote it. Unlinking on that reading destroys
+// exactly the peer stamps the read-modify-write exists to preserve, which is why
+// it refuses with the other two, a read that was refused and an lstat that could
+// not answer, the transient lock over a REAL list. The checkpoint CLI's status
+// verb is what reports the file that is refusing, and it words the healing legs
+// and the refusing ones apart because only the healing ones end by themselves.
+//
+// What the rebuild preserves is every entry the READER returned, which is not
+// every entry the file held: the reader drops what it will not act on, and this
+// write then erases it rather than passing over it. Two classes are dropped that
+// way, an entry past HOLD_NUDGE_TTL_MS and one dated further ahead of the clock
+// than CHECKPOINT_FUTURE_SKEW_MS, and it is that erasure rather than any property
+// of the read that the forward allowance exists for: without it a clock stepping
+// back by seconds would erase every peer's stamp in one write.
+// readHoldNudgesResult's drop rule states the whole trade.
+//
+// The journal line follows the stamp, best-effort and outside its preconditions,
+// on logEpisodeNudge's own terms: a locked or read-only .jsonl must never be
+// able to disable an interval.
+function recordHoldNudge(cwd, sessionId, nowMs, toolName) {
+    let stampedAt = null;
+    try {
+        const session = gateText(sessionId);
+        if (typeof sessionId !== 'string' || sessionId === '' || !session) return false;
+        const at = (typeof nowMs === 'number' && Number.isFinite(nowMs)) ? nowMs : Date.now();
+        if (!gateScratchTarget(cwd).ok) return false;
+        const target = holdNudgePath(cwd);
+        // The kind leg, asked so the two halves of regularFileSize's null are
+        // told apart: a shape this writer cannot have produced is removed, while
+        // a kind that could not be read at all refuses.
+        const kind = holdStampKind(target);
+        if (kind === 'unknown') return false;
+        if (kind === 'other' && !unlinkHoldStamp(target)) return false;
+        const iso = new Date(at).toISOString();
+        const prior = readHoldNudgesResult(cwd, at);
+        // A reading that identifies the file as one this writer cannot have
+        // produced is healed by removing the path; every other reading that left
+        // the contents unknown refuses, since the rebuild below would erase peer
+        // stamps that may really be there. A read that ended short is on the
+        // refusing side for exactly that reason: it names no shape at all, only
+        // an unfinished read. The 'kind' leg is still reachable here despite the
+        // check above, through a swap landing between the two, and takes the
+        // same heal.
+        if (!prior.ok
+            && !(HOLD_NUDGE_HEALABLE.includes(prior.reason) && unlinkHoldStamp(target))) return false;
+        // The writability of the TARGET is judged here rather than above the
+        // read, because the heal changes the answer. An unlink takes permission
+        // on the containing directory (gateScratchTarget's leg above, which has
+        // already passed) and none at all on the file, so a stamp file that is
+        // both oversized and unwritable is one the heal removes and the write
+        // then creates: asked before the heal, this leg would refuse it forever,
+        // which is the permanent silence the healable set exists to prevent and
+        // the replacement the status verb promises for that same file. Asked
+        // here, it answers for the path the write is actually about to meet, and
+        // its original subject is untouched: a legible, unwritable stamp file
+        // reads back fine, takes no heal, and refuses exactly as before.
+        if (!writableOrAbsent(target)) return false;
+        const kept = prior.holds.filter((entry) => !sameSessionId(entry.session, session));
+        const holds = [{ session, nudgedAt: iso }, ...kept].slice(0, HOLD_NUDGE_MAX_ENTRIES);
+        if (!writeJsonAtomic(target, { holds })) return false;
+        stampedAt = iso;
+    } catch { /* an unstamped hold is a silent one: the caller emits nothing */ }
+    if (stampedAt === null) return false;
+    logEpisodeNudge(cwd, sessionId, stampedAt, toolName, 'nudge-hold');
+    return true;
 }
 
 // Does this file end on a line boundary? True for an empty or absent file,
@@ -2985,6 +3750,9 @@ module.exports = {
     projectHoldsSessionTranscript, sessionTranscriptPath, usableSessionId,
     gateStatePath, gateLogPath, readGateState, readGateStateResult, recordGateDecision,
     gateEpisodeOpen, pendingOfferCorroborated, checkpointOwner, recordEpisodeNudge,
+    interactiveHoldOpen, INTERACTIVE_HOLD_REASONS, INTERACTIVE_HOLD_MAX_ENTRIES,
+    holdNudgePath, holdNudgedAt, recordHoldNudge, readHoldNudgesResult, HOLD_NUDGE_TTL_MS,
+    HOLD_NUDGE_HEALABLE,
     projectGateEpisode, episodePhrase, wholeMinutesSince, gateCount,
     readTranscriptCapped, stripLocalCommandOutput, commandArgsSpans,
     userCommandArgsClaimPlan,

@@ -1291,8 +1291,15 @@ function appendNudgeLog(memq, cwd, claimed) {
 // asked about. Every caller refuses on it rather than reads the surviving
 // head as the whole log, because a dropped nudge scores its record into the
 // control arm and moves a success out of the treatment arm.
+//
+// The read refuses a link at the final component, which is the property the
+// WRITER above already composes O_NOFOLLOW for: this file is one this hook
+// creates and appends to itself, so a link standing at the path was planted, and
+// a reader that followed one would take its window from whatever the link names
+// while the writer refused to append through it. A refusal reads as a file that
+// could not be opened, which is the empty list above.
 function readNudgeLog(lib, file, sinceMs) {
-    const read = lib.readFileBounded(file, NUDGE_LOG_READ_CAP);
+    const read = lib.readFileBounded(file, NUDGE_LOG_READ_CAP, { refuseLink: true });
     if (read === null) return { entries: [], bounded: false };
     if (read.bounded) return { entries: [], bounded: true };
     const out = [];

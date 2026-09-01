@@ -32,8 +32,11 @@ const {
     commandArgsSpans, readTranscriptCapped, userCommandArgsClaimPlan,
     gateStatePath, gateLogPath, gateEpisodeOpen, pendingOfferCorroborated, checkpointOwner,
     recordEpisodeNudge, recordGateDecision, readCheckpoint, clearCheckpoint, adoptCheckpoint,
+    readGateState, interactiveHoldOpen, INTERACTIVE_HOLD_MAX_ENTRIES,
+    holdNudgePath, holdNudgedAt, recordHoldNudge,
     roleBoundaryPath, consentPath, writeRoleBoundary, writeConsent, markerMatches,
-    markerMomentHolds, transcriptPosition
+    ROLE_BOUNDARY_MAX_AGE_MS,
+    markerMomentHolds, transcriptPosition, sessionTranscriptPath
 } = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
 
 // The session id the fixtures bind the goal to; payloads default to it so the
@@ -54,9 +57,11 @@ function makeDir(prefix) {
 // <home>/.claude/coordinator, its status report derives a session transcript
 // under <home>/.claude/projects, and the goal library's event stream sits
 // beside them, so an unpinned spawn would read and write live machine state.
-// One directory, pinned inside the two spawn helpers below rather than at
-// their call sites, is what makes that structural; homePinnedSpawnSites below
-// is the pin that keeps it so.
+// One directory, defaulted inside the two spawn helpers below rather than at
+// their call sites, is what keeps a case from spawning against the real one by
+// omission. A case whose subject IS the home directory overrides it through
+// extraEnv, which merges after the default, and says at its own call site what
+// about that home it is staging.
 const FIXTURE_HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'kit-compact-gate-fixture-home-'));
 process.on('exit', () => {
     try { fs.rmSync(FIXTURE_HOME, { recursive: true, force: true }); } catch { /* best effort */ }
@@ -188,6 +193,33 @@ function symlinkReportingPreload(dir, basename) {
     return '--require "' + shim.replace(/\\/g, '/') + '"';
 }
 
+// Make a .kit file's read end SHORT of what its descriptor promised, which is
+// what a file truncated under the reader or a device that stopped answering
+// looks like from the caller's side. It is a different fact from a file past the
+// read ceiling, and the writer treats the two oppositely, so the status report
+// words them apart. The shim is scoped to descriptors opened on that basename,
+// so every other read in the process answers for its real file.
+function shortReadPreload(dir, basename) {
+    const shim = path.join(dir, 'short-read-' + basename + '.js');
+    writeFile(shim, [
+        "'use strict';",
+        "const fs = require('fs');",
+        'const realOpenSync = fs.openSync;',
+        'const realReadSync = fs.readSync;',
+        'const watched = new Set();',
+        'fs.openSync = function (target) {',
+        '    const fd = realOpenSync.apply(fs, arguments);',
+        '    if (String(target).endsWith(' + JSON.stringify(basename) + ')) watched.add(fd);',
+        '    return fd;',
+        '};',
+        'fs.readSync = function (fd) {',
+        '    if (watched.has(fd)) { watched.delete(fd); return 0; }',
+        '    return realReadSync.apply(fs, arguments);',
+        '};'
+    ].join('\n') + '\n');
+    return '--require "' + shim.replace(/\\/g, '/') + '"';
+}
+
 // Make a .kit file's read fail with a lock-shaped error (EPERM), the shape an
 // antivirus scanner or a search indexer produces on a file that is very much
 // present. Absent and locked must not read alike. basename picks the file, so
@@ -231,6 +263,72 @@ function lstatRefusingPreload(dir, basename) {
         '};'
     ].join('\n') + '\n');
     return '--require "' + shim.replace(/\\/g, '/') + '"';
+}
+
+// Make a .kit file's open fail with the same lock-shaped error. The bounded
+// reader kit-read-lib supplies opens its subject rather than reading it by name,
+// so this is the refusal leg that reaches a read taken through it, where
+// readRefusingPreload above reaches the readFileSync callers.
+function openRefusingPreload(dir, basename) {
+    const shim = path.join(dir, 'refuse-open-' + basename + '.js');
+    writeFile(shim, [
+        "'use strict';",
+        "const fs = require('fs');",
+        'const realOpenSync = fs.openSync;',
+        'fs.openSync = function (target) {',
+        '    if (String(target).endsWith(' + JSON.stringify(basename) + ')) {',
+        "        const err = new Error('EPERM: the fixture refuses this open');",
+        "        err.code = 'EPERM';",
+        '        throw err;',
+        '    }',
+        '    return realOpenSync.apply(fs, arguments);',
+        '};'
+    ].join('\n') + '\n');
+    return '--require "' + shim.replace(/\\/g, '/') + '"';
+}
+
+// Report a .kit file as a link at its final component, for a child process. A
+// file symlink cannot be created on this platform without a privilege the suite
+// must not require, and a junction can only point at a directory, which is
+// refused by kind whatever the link guard does; the shim leaves an ordinary
+// legible file at the path and makes only fs.lstatSync say otherwise.
+function linkReportingPreload(dir, basename) {
+    const shim = path.join(dir, 'report-link-' + basename + '.js');
+    writeFile(shim, [
+        "'use strict';",
+        "const fs = require('fs');",
+        'const realLstatSync = fs.lstatSync;',
+        'fs.lstatSync = function (target) {',
+        '    const st = realLstatSync.apply(fs, arguments);',
+        '    if (String(target).endsWith(' + JSON.stringify(basename) + ')) {',
+        '        return {',
+        '            size: st.size,',
+        '            isFile: () => false,',
+        '            isDirectory: () => false,',
+        '            isSymbolicLink: () => true',
+        '        };',
+        '    }',
+        '    return st;',
+        '};'
+    ].join('\n') + '\n');
+    return '--require "' + shim.replace(/\\/g, '/') + '"';
+}
+
+// A path as the CLI's display guard renders it for a child spawned against the
+// fixture home: the home prefix elided to `~`. Every path assertion against
+// this CLI's output goes through here rather than against the raw path, since
+// the raw form is exactly what the guard exists to keep off the channel. A
+// fixture outside the fixture home renders unchanged, which is why the elision
+// itself is pinned by a case whose repo sits INSIDE that home rather than by
+// this helper.
+// Containment is asked the way the guard asks it, on path components rather than
+// on characters, so this helper cannot expect an elision the CLI does not
+// perform (or miss one it does) for a fixture whose name merely starts with the
+// fixture home's.
+function shownPath(full) {
+    const rel = path.relative(FIXTURE_HOME, full);
+    if (path.isAbsolute(rel) || /^\.\.(?:[\\/]|$)/.test(rel)) return full;
+    return rel === '' ? '~' : '~' + path.sep + rel;
 }
 
 // Drop the caller-session variable from a child CLI's environment, matched
@@ -4103,7 +4201,7 @@ test('gate: an oversized state file is refused rather than read whole', () => {
         // The advice names the resolved state path, the one the reader itself
         // used, rather than a `.kit/` spelling that holds only for a project
         // directory outside the memory store.
-        assert.ok(status.stdout.includes('removing ' + gateStateFile(repo) + ' lets'),
+        assert.ok(status.stdout.includes('removing ' + shownPath(gateStateFile(repo)) + ' lets'),
             'and gives the removal advice, which is right for the one permanent leg: ' + status.stdout);
         assert.ok(!status.stdout.includes('recorded no decisions'),
             'never reported as an absent record: ' + status.stdout);
@@ -4127,7 +4225,7 @@ test('cli: status does not tell an operator to delete a gate state file a lock i
         const out = runCli(['status'], repo,
             { NODE_OPTIONS: readRefusingPreload(shimDir, 'compact-gate.json') }).stdout;
         assert.ok(out.includes('cannot be read right now'), 'the refusal is stated as transient: ' + out);
-        assert.ok(!out.includes('removing ' + gateStateFile(repo) + ' lets'),
+        assert.ok(!out.includes('removing ' + shownPath(gateStateFile(repo)) + ' lets'),
             'and nothing invites the operator to delete the live episode: ' + out);
         assert.ok(!out.includes('recorded no decisions'), 'nor reads as an empty record: ' + out);
         assert.ok(fs.existsSync(gateStateFile(repo)), 'the state file is untouched');
@@ -4148,10 +4246,1117 @@ test('cli: status reports a gate state file whose own kind cannot be read as unr
         const out = runCli(['status'], repo,
             { NODE_OPTIONS: lstatRefusingPreload(shimDir, 'compact-gate.json') }).stdout;
         assert.ok(out.includes('cannot be read right now'), 'the refusal is stated as transient: ' + out);
-        assert.ok(!out.includes('removing ' + gateStateFile(repo) + ' lets'), 'with no removal advice: ' + out);
+        assert.ok(!out.includes('removing ' + shownPath(gateStateFile(repo)) + ' lets'),
+            'with no removal advice: ' + out);
         assert.ok(!out.includes('is sitting at'), 'and no claim about what is there: ' + out);
     } finally {
         rmDir(shimDir);
+        rmDir(repo);
+    }
+});
+
+test('cli: status reports a hold-stamp file that is refusing the deferral nudge\'s clock', () => {
+    // The hold stamp IS the interval: the deferral nudge emits only when the
+    // stamp lands, so a file the writer refuses is a held session that is never
+    // spoken to. Two of the five refusals are healed by the next fire and three
+    // are not, and none of them is visible anywhere else, which is what makes
+    // this the surface that reports them. The legs are worded apart for the
+    // reason reportCheckpoint words its own apart: they name different remedies,
+    // and a leg that promises a replacement must be one where a replacement
+    // really comes.
+    const { repo } = armedRepo();
+    const shimDir = makeDir('kit-compact-gate-shim-');
+    const stampPath = holdNudgePath(repo);
+    // Asserted in the form the channel's display guard renders it, never the raw
+    // one: the raw home-anchored path is exactly what that guard exists to keep
+    // off a channel a model reads.
+    const shownStampPath = shownPath(stampPath);
+    try {
+        // The control first: a legible stamp file says nothing at all here, so
+        // every line below is about the refusal rather than about a reporter
+        // that always speaks.
+        writeFile(stampPath, JSON.stringify({
+            holds: [{ session: HELD_A, nudgedAt: new Date(Date.now() - 60 * 1000).toISOString() }]
+        }));
+        const clean = runCli(['status'], repo).stdout;
+        assert.ok(!/hold[- ]stamp/i.test(clean),
+            'the control: a legible stamp file draws no line: ' + clean);
+
+        // Oversized: a regular file past the read cap, which the next hold
+        // directive replaces, so the remedy is that rather than a delete.
+        writeFile(stampPath, '{"holds":[]}\n' + 'x'.repeat(80 * 1024) + '\n');
+        const oversized = runCli(['status'], repo).stdout;
+        assert.ok(oversized.includes('past the size the reader accepts'),
+            'an oversized stamp file is named as oversized: ' + oversized);
+        assert.ok(oversized.includes(shownStampPath), 'and the path is named: ' + oversized);
+        assert.ok(oversized.includes('the next hold directive replaces it'),
+            'with the remedy that actually applies: ' + oversized);
+
+        // Cut short under the read: a file this writer may well have produced,
+        // truncated under the reader or sitting on a device that stopped
+        // answering. Nothing removes it, so the oversized leg's promise that the
+        // next directive replaces it would be false here.
+        writeFile(stampPath, '{"holds":[]}');
+        const shortRead = runCli(['status'], repo,
+            { NODE_OPTIONS: shortReadPreload(shimDir, 'compact-hold-nudge.json') }).stdout;
+        assert.ok(shortRead.includes('ended short'),
+            'a read that ended short is named as that: ' + shortRead);
+        assert.ok(shortRead.includes(shownStampPath), 'and the path is named: ' + shortRead);
+        assert.ok(!shortRead.includes('the next hold directive replaces it'),
+            'with no promise of a replacement that never comes: ' + shortRead);
+        assert.ok(!shortRead.includes('past the size the reader accepts'),
+            'and never reported as the oversized leg, which is the one that heals: ' + shortRead);
+
+        // The open refused: the leg that may be a lock over a file holding real
+        // stamps, so it is scoped to now and draws no advice.
+        writeFile(stampPath, '{"holds":[]}');
+        const locked = runCli(['status'], repo,
+            { NODE_OPTIONS: openRefusingPreload(shimDir, 'compact-hold-nudge.json') }).stdout;
+        assert.ok(locked.includes('cannot be read'), 'a refused open is stated as a refusal: ' + locked);
+        assert.ok(!locked.includes('replaces it'), 'and promises no self-repair: ' + locked);
+        // Nor promises that waiting is enough. The same leg carries a lock,
+        // which lifts, and a directory at the path, which never does, so a line
+        // scoped to "right now" tells the operator to wait out a shape that
+        // will still be there tomorrow. The directory case below is that shape.
+        assert.ok(!/right now|while that lasts/.test(locked),
+            'and does not promise that the wait ends: ' + locked);
+
+        // A link at the final component: a shape this writer never produces, so
+        // it is named as something else sitting at the path and the next
+        // directive is what removes it.
+        const linked = runCli(['status'], repo,
+            { NODE_OPTIONS: linkReportingPreload(shimDir, 'compact-hold-nudge.json') }).stdout;
+        assert.ok(linked.includes('is sitting at'), 'a link is named as a foreign path: ' + linked);
+        assert.ok(linked.includes(shownStampPath), 'and the path is named: ' + linked);
+        assert.ok(linked.includes('the next hold directive replaces it'),
+            'with the remedy the heal actually performs: ' + linked);
+
+        // The lstat refused: nothing at all is known about the path, so nothing
+        // is claimed about what is sitting there.
+        const unknown = runCli(['status'], repo,
+            { NODE_OPTIONS: lstatRefusingPreload(shimDir, 'compact-hold-nudge.json') }).stdout;
+        assert.ok(unknown.includes('cannot be read'), 'a refused lstat is a refusal too: ' + unknown);
+        assert.ok(!unknown.includes('is sitting at'), 'with no claim about what is there: ' + unknown);
+
+        // A directory at the stamp path: the permanent member of that same leg.
+        // The lstat succeeds and reports no link, and the read is then refused
+        // on the descriptor, so the reader answers exactly as it does for a
+        // lock. Nothing here may tell the operator to wait it out.
+        fs.rmSync(stampPath, { force: true });
+        fs.mkdirSync(stampPath);
+        const directory = runCli(['status'], repo).stdout;
+        assert.ok(directory.includes('cannot be read'), 'a directory at the path is a refusal: ' + directory);
+        assert.ok(directory.includes(shownStampPath), 'and the path to look at is named: ' + directory);
+        assert.ok(!/right now|while that lasts/.test(directory),
+            'and a shape that never lifts is not reported as a wait: ' + directory);
+        assert.ok(!directory.includes('replaces it'),
+            'nor as something the next directive removes, since the unlink cannot remove one: ' + directory);
+        fs.rmdirSync(stampPath);
+
+        // And an absent file is an absence: a project whose nudge has never
+        // spoken has no stamps and nothing to report.
+        fs.rmSync(stampPath, { force: true });
+        const absent = runCli(['status'], repo).stdout;
+        assert.ok(!/hold[- ]stamp/i.test(absent),
+            'an absent stamp file draws no line either: ' + absent);
+    } finally {
+        rmDir(shimDir);
+        rmDir(repo);
+    }
+});
+
+// Every place the checkpoint CLI composes its promise that a refusing hold-stamp
+// file is replaced by the next directive, read out of the CLI's own source. The
+// sentence is the subject here, so this counts compositions of it wherever they
+// sit rather than trusting the one branch a staged reading happens to reach: a
+// second, hand-written copy under a reason name is exactly the drift the
+// membership test below exists to end, and it would leave every staged reading
+// green.
+// The hinge between the hold-stamp line's two halves: everything before it is
+// the lead (what was read) and everything after it is the remedy (what happens
+// next). Split here rather than by matching either half, so a case can assert
+// about one half without the other's wording deciding what it sees.
+const SO_A_HELD_SESSION = ', so a held session cannot be stamped';
+
+function healPromiseCompositions(source) {
+    return (source.match(/the next hold directive replaces it/g) || []).length;
+}
+
+test('cli: the readings the status verb promises a replacement for are the library\'s healable set', () => {
+    // A writer and a reader filtering on the same set, spelled in two files: the
+    // library heals exactly the readings in HOLD_NUDGE_HEALABLE by removing the
+    // path before it writes, and this CLI tells an operator that a refusing file
+    // is replaced by the next directive. Each side tested against its own literal
+    // is how a sixth reason added to the healable set leaves the promise withheld
+    // from a file the writer now replaces, with both suites green.
+    const { HOLD_NUDGE_HEALABLE } = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
+    const { repo } = armedRepo();
+    const shimDir = makeDir('kit-compact-gate-shim-');
+    const stampPath = holdNudgePath(repo);
+    try {
+        // One fixture per reading the reader can refuse with. Keyed by reason so
+        // the coverage assertion below can ask the set rather than a count.
+        const stage = {
+            oversized: () => {
+                writeFile(stampPath, '{"holds":[]}\n' + 'x'.repeat(80 * 1024) + '\n');
+                return {};
+            },
+            'short-fill': () => {
+                writeFile(stampPath, '{"holds":[]}');
+                return { NODE_OPTIONS: shortReadPreload(shimDir, 'compact-hold-nudge.json') };
+            },
+            unreadable: () => {
+                writeFile(stampPath, '{"holds":[]}');
+                return { NODE_OPTIONS: openRefusingPreload(shimDir, 'compact-hold-nudge.json') };
+            },
+            kind: () => {
+                writeFile(stampPath, '{"holds":[]}');
+                return { NODE_OPTIONS: linkReportingPreload(shimDir, 'compact-hold-nudge.json') };
+            },
+            lstat: () => {
+                writeFile(stampPath, '{"holds":[]}');
+                return { NODE_OPTIONS: lstatRefusingPreload(shimDir, 'compact-hold-nudge.json') };
+            }
+        };
+
+        // Coverage first, asked of the constant rather than of the table: a reason
+        // added to the healable set with no fixture here would otherwise leave the
+        // comparison below reading clean over a reading nobody exercised.
+        for (const reason of HOLD_NUDGE_HEALABLE) {
+            assert.ok(Object.prototype.hasOwnProperty.call(stage, reason),
+                reason + ' is in the library\'s healable set and no fixture here stages it, so the '
+                + 'comparison below cannot speak about it');
+        }
+
+        const promised = [];
+        const leads = {};
+        for (const reason of Object.keys(stage)) {
+            const out = runCli(['status'], repo, stage[reason]()).stdout;
+            assert.ok(/hold[- ]stamp/i.test(out),
+                'the ' + reason + ' fixture must reach the hold-stamp report at all: ' + out);
+            if (out.includes('the next hold directive replaces it')) promised.push(reason);
+            // The line's OTHER half, captured per reason: the lead says what was
+            // read and the remedy says what happens next, and the two are
+            // asserted apart because they are what can come to contradict each
+            // other. A reason with no lead at all is a fixture that reached the
+            // reporter through some other line.
+            const line = out.split('\n').find((l) => l.includes(SO_A_HELD_SESSION));
+            assert.ok(line, reason + ' must draw the hold-stamp line itself: ' + out);
+            leads[reason] = line.slice(0, line.indexOf(SO_A_HELD_SESSION));
+            assert.notStrictEqual(leads[reason], '', reason + ' must be led by a reading: ' + out);
+        }
+        assert.deepStrictEqual(promised.sort(), [...HOLD_NUDGE_HEALABLE].sort(),
+            'the readings this verb promises a replacement for must be exactly the ones the '
+            + 'library heals: ' + JSON.stringify(promised));
+
+        // The lead a healable reading draws is never the lead of a reading
+        // nothing repairs. That pair is the self-contradiction the two halves can
+        // produce between them: a line that says the file cannot be read and then
+        // promises that the next directive replaces it, which is what a lead
+        // filtering on reason names prints the moment a sixth reason joins the
+        // healable set.
+        for (const reason of HOLD_NUDGE_HEALABLE) {
+            assert.notStrictEqual(leads[reason], leads.unreadable,
+                reason + ' is healed, so its lead may not be the one written for a reading nothing '
+                + 'repairs: ' + leads[reason]);
+        }
+
+        // And the promise must be composed once, off membership in that set
+        // rather than off a reason name, since a second hand-written copy under a
+        // literal reason would pass every staged reading above and then diverge
+        // the moment the set changed.
+        const cliSrc = fs.readFileSync(CLI, 'utf8');
+        assert.strictEqual(healPromiseCompositions(cliSrc), 1,
+            'the replacement promise is composed in exactly one place, so there is one thing to '
+            + 'keep in step with the healable set');
+        assert.match(cliSrc, /HOLD_NUDGE_HEALABLE\.includes\(result\.reason\)/,
+            'and that one place is guarded by membership in the library\'s set rather than by a '
+            + 'reason name spelled again here');
+        // BOTH halves ride that one test, which is what the assertions above
+        // cannot reach: a lead is only ever staged for a reason some fixture
+        // here produces, so a lead chain that decides healable-versus-refusing by
+        // spelling the set's members again passes every staged reading and
+        // diverges only for the sixth reason nobody can stage yet.
+        assert.strictEqual((cliSrc.match(/HOLD_NUDGE_HEALABLE\.includes\(result\.reason\)/g) || []).length, 2,
+            'the lead and the remedy each decide healable-versus-refusing by that same membership '
+            + 'test, so a reason added to the set cannot reach one half and not the other');
+
+        // The control for the source-side net, on a synthetic carrying two
+        // compositions under a reason name withheld from every literal in this
+        // file: it counts them wherever they sit, so a copy added to a branch
+        // nothing here stages is caught too. Its own limit is stated rather than
+        // implied, since the sentence is what it keys on: a promise reworded into
+        // a different sentence escapes it, and the staged readings above are what
+        // then answer, because they read the output rather than the source.
+        assert.strictEqual(healPromiseCompositions(
+            "    if (result.reason === 'quarantined') {\n"
+            + "        out('the next hold directive replaces it');\n"
+            + "    } else if (result.reason === 'oversized') {\n"
+            + "        out('the next hold directive replaces it');\n    }\n"), 2,
+        'the net counts every composition of the promise rather than the first');
+    } finally {
+        rmDir(shimDir);
+        rmDir(repo);
+    }
+});
+
+test('cli: the two paths the status report names outright are elided at the home prefix', () => {
+    // The paths this report names are project-anchored, so they carry the OS
+    // account name whenever the project sits under the operator's home, which is
+    // where checkouts ordinarily live; the output is read by a model. The guard
+    // is the channel's rather than any one reporter's, so this asks the report
+    // rather than one reporter: neither path it names may carry the home prefix.
+    // The repo is staged INSIDE the fixture home for exactly that reason, where
+    // every other case in this file stands in a temp directory beside it and
+    // would leave the elision unexercised.
+    //
+    // What that staging cannot exercise is the guard's own containment test:
+    // building the repo inside the fixture home makes every path here
+    // home-prefixed BY CONSTRUCTION, so neither way of getting containment wrong
+    // can be reached from this fixture. The case below is where those two
+    // directions are pinned, on paths this staging cannot produce.
+    const repo = fs.mkdtempSync(path.join(FIXTURE_HOME, 'kit-compact-gate-homed-repo-'));
+    try {
+        assert.notStrictEqual(shownPath(gateStateFile(repo)), gateStateFile(repo),
+            'test setup: the fixture must stand under the fixture home, or nothing here elides');
+
+        // Both reporters staged on the one leg that names its path outright.
+        writeFile(gateStateFile(repo), JSON.stringify({ pad: 'x'.repeat(300 * 1024) }));
+        writeFile(holdNudgePath(repo), '{"holds":[]}\n' + 'x'.repeat(80 * 1024) + '\n');
+        const out = runCli(['status'], repo).stdout;
+
+        assert.ok(out.includes(shownPath(gateStateFile(repo))),
+            'the gate state path is named in its elided form: ' + out);
+        assert.ok(out.includes(shownPath(holdNudgePath(repo))),
+            'and so is the hold stamp path: ' + out);
+        assert.ok(!out.includes(FIXTURE_HOME),
+            'and no line carries the raw home prefix, which is the account name this guard '
+            + 'exists to keep off the channel: ' + out);
+    } finally {
+        rmDir(repo);
+    }
+});
+
+// The path the two cases below drive the guard with: the consent verb's
+// corroboration refusal names the project directory it was handed, through the
+// display guard and before it touches the filesystem, so an arbitrary path can
+// be put in front of the guard without staging a repo at it. That is what lets
+// these ask about containment itself rather than about a fixture.
+function shownProjectArg(projectArg) {
+    return runCli(['consent', '--session', SESSION, '--project', projectArg], FIXTURE_HOME).stderr;
+}
+
+test('cli: the display guard elides on a path boundary rather than on a character prefix', () => {
+    // The over-elision direction, which a prefix test on the text gets wrong and
+    // which no fixture staged inside the fixture home can produce: a SIBLING
+    // directory whose name starts with the home directory's name and which is
+    // not under it. A prefix test elides the shared characters and prints the
+    // remainder as though it were a home-relative path, so the operator is told
+    // to look at a path that does not exist, on the very leg whose whole purpose
+    // is naming a file to act on.
+    const sibling = FIXTURE_HOME + '-sib';
+    const project = path.join(sibling, 'r');
+    const out = shownProjectArg(project);
+    assert.ok(out.includes(project),
+        'a directory beside the home directory is named in full, since none of it is under the '
+        + 'home directory: ' + out);
+    assert.ok(!out.includes('~'),
+        'and no part of it is elided as though it were: ' + out);
+});
+
+test('cli: the display guard elides a home prefix that differs only in letter case', {
+    skip: process.platform !== 'win32'
+        ? 'case-insensitive path containment is a win32 property; off it the two spellings are '
+            + 'two different directories and the raw print is correct'
+        : false
+}, () => {
+    // The under-elision direction, and the one that costs something the guard
+    // exists to prevent: on win32 a path differing from the home directory only
+    // in case IS under it, so a prefix test on the text fails to recognize it and
+    // prints the OS account name raw into a channel a model reads.
+    const cased = FIXTURE_HOME.toUpperCase();
+    assert.notStrictEqual(cased, FIXTURE_HOME,
+        'test setup: the case-flipped home must actually differ from the home directory');
+    const out = shownProjectArg(path.join(cased, 'r'));
+    assert.ok(out.includes('~' + path.sep + 'r'),
+        'the path is recognized as home-anchored and elided: ' + out);
+    assert.ok(!out.includes(cased),
+        'so no spelling of the home directory reaches the channel: ' + out);
+});
+
+test('cli: the display guard marks a path as cut only when the emitted path is cut', () => {
+    // The mark is a claim about what the reader is looking at: it says the name
+    // on the line is shorter than the file's. Deciding it before the sanitize
+    // makes it a claim about the string that never reached the channel, so a path
+    // carried past the cap only by characters the sanitize strips comes back
+    // whole and marked as cut. Both directions here, against the one cap.
+    //
+    // Both paths stand well away from the fixture home, so no elision shortens
+    // either one on its way to the cap and the length rule is the only thing
+    // deciding the mark.
+    // The root keeps the printable half short whatever this box's temp directory
+    // is named, so the two lengths below are the fixture's own rather than the
+    // machine's. Nothing is created at either path: the corroboration refuses
+    // before anything is written.
+    const outside = path.join(path.parse(os.tmpdir()).root, 'kit-cut-mark-probe');
+    const mixed = path.join(outside, 'a'.repeat(30) + 'é'.repeat(80));
+    assert.ok(mixed.length > 120 && mixed.replace(/[^\x20-\x7E]/g, '').length <= 120,
+        'test setup: the path must be past the cap before the strip and inside it after, or '
+        + 'neither direction of the rule is exercised');
+    const stripped = shownProjectArg(mixed);
+    assert.ok(!stripped.includes('[cut to fit]'),
+        'a path that is only long before the sanitize strips it is not marked as cut: ' + stripped);
+    // The other half of the same claim, and the one an operator acts on: the
+    // strip deleted characters, so the name on the line is not the name on disk.
+    // Two legs of this report hand the operator a path and tell them to remove
+    // that file, so an unmarked altered name sends them after something that is
+    // not there.
+    assert.ok(stripped.includes('[characters removed]'),
+        'a path the strip altered says so: ' + stripped);
+    const long = shownProjectArg(path.join(outside, 'r'.repeat(200)));
+    assert.ok(long.includes('[cut to fit]'),
+        'and one the cap really shortens is: ' + long);
+    assert.ok(!long.includes('[characters removed]'),
+        'while one nothing was stripped from claims no alteration: ' + long);
+});
+
+// A repo staged INSIDE the fixture home, so the absolute paths this CLI's own
+// filesystem failures name are home-anchored the way a real checkout's are.
+function homedRepo(prefix) {
+    return fs.mkdtempSync(path.join(FIXTURE_HOME, prefix));
+}
+
+// Refuse a .kit file's unlink with an error carrying the absolute path of the
+// file the syscall was refused on, which is the shape Node's own errno errors
+// take. The refusals staged elsewhere in this file throw a bare sentence; the
+// reasons a failed clear prints are composed from err.message, so a message
+// with no path in it cannot exercise what the channel does with one, and a
+// genuine unlink refusal cannot be staged here (a directory at the path is
+// answered by kind before the unlink, and this platform deletes a read-only
+// file without complaint).
+function unlinkRefusingPreload(dir, basename) {
+    const shim = path.join(dir, 'refuse-unlink-' + basename + '.js');
+    writeFile(shim, [
+        "'use strict';",
+        "const fs = require('fs');",
+        'const realUnlinkSync = fs.unlinkSync;',
+        'fs.unlinkSync = function (target) {',
+        '    if (String(target).endsWith(' + JSON.stringify(basename) + ')) {',
+        "        const err = new Error('EPERM: operation not permitted, unlink \\'' + target + '\\'');",
+        "        err.code = 'EPERM';",
+        '        throw err;',
+        '    }',
+        '    return realUnlinkSync.apply(fs, arguments);',
+        '};'
+    ].join('\n') + '\n');
+    return '--require "' + shim.replace(/\\/g, '/') + '"';
+}
+
+test('cli: no verb\'s failure leg carries the home directory\'s name into the channel', () => {
+    // The error legs, which are where a path reaches this channel WITHOUT being
+    // recognized as one: the library composes its refusal reasons by appending
+    // an fs error's own message, and that message embeds the absolute path the
+    // syscall was refused on. The path guard is not reached for these, the value
+    // being an error sentence rather than a path, so the account name in the
+    // middle of that sentence is what a model reads unless the channel itself
+    // has a floor under it.
+    //
+    // The account name's stand-in here is the fixture home's own last component:
+    // it is the component the elision has to remove, it is unique to this run,
+    // and asserting on it rather than on the absence of a '~' keeps the case off
+    // whatever this box's temp directory happens to be spelled like.
+    const leak = path.basename(FIXTURE_HOME);
+    const shimDir = makeDir('kit-compact-gate-shim-');
+    const planRel = 'docs/plans/example.md';
+
+    // Each leg: what to stage, what to run, and the fragment that proves the leg
+    // really fired. `elides` says the leg's reason carries a home-anchored path,
+    // which is asserted through the elided form the channel is supposed to
+    // produce, so a leg cannot pass by printing nothing path-shaped at all. The
+    // file name at the end of such a path does not survive the reason's own
+    // 120-character cap, which is why the fragment is the elision rather than
+    // the file. The one leg whose reason is a fixed word of the library's own
+    // carries no path and says so.
+    const legs = [
+        {
+            what: 'an open whose checkpoint write is refused',
+            args: ['open'],
+            fired: 'could not write checkpoint',
+            elides: true,
+            stage: (repo) => {
+                writeFile(path.join(repo, planRel), 'Status: In Progress\n\nbody\n');
+                assert.strictEqual(armGoal(repo, planRel).ok, true, 'test setup: goal should arm');
+                // A directory at the target: the atomic write's rename onto it
+                // is refused by the OS, which is a real fs error naming both
+                // paths.
+                fs.mkdirSync(checkpointPath(repo), { recursive: true });
+            }
+        },
+        {
+            what: 'a boundary whose marker write is refused',
+            args: ['boundary'],
+            env: { CLAUDE_CODE_SESSION_ID: SESSION },
+            fired: 'could not write marker',
+            elides: true,
+            stage: (repo) => { fs.mkdirSync(roleBoundaryPath(repo), { recursive: true }); }
+        },
+        {
+            what: 'a cancel over a marker whose owner cannot be read',
+            args: ['boundary', '--cancel'],
+            env: { CLAUDE_CODE_SESSION_ID: SESSION },
+            fired: 'nothing was retracted',
+            elides: false,
+            stage: (repo) => { writeFile(roleBoundaryFile(repo), 'not json\n'); }
+        },
+        {
+            what: 'a cancel whose marker delete is refused',
+            args: ['boundary', '--cancel'],
+            env: {
+                CLAUDE_CODE_SESSION_ID: SESSION,
+                NODE_OPTIONS: unlinkRefusingPreload(shimDir, 'compact-role-boundary.json')
+            },
+            fired: 'could not clear marker',
+            elides: true,
+            stage: (repo) => {
+                assert.strictEqual(writeRoleBoundary(repo, SESSION).ok, true,
+                    'test setup: marker should write');
+            }
+        },
+        {
+            what: 'a consent whose marker write is refused',
+            args: ['consent'],
+            env: { CLAUDE_CODE_SESSION_ID: SESSION },
+            fired: 'could not write marker',
+            elides: true,
+            stage: (repo) => { fs.mkdirSync(consentPath(repo), { recursive: true }); }
+        },
+        {
+            what: 'a clear whose checkpoint delete is refused',
+            args: ['clear'],
+            env: { NODE_OPTIONS: unlinkRefusingPreload(shimDir, 'compact-checkpoint.json') },
+            fired: 'could not clear checkpoint',
+            elides: true,
+            stage: (repo) => {
+                writeFile(path.join(repo, planRel), 'Status: In Progress\n\nbody\n');
+                assert.strictEqual(armGoal(repo, planRel).ok, true, 'test setup: goal should arm');
+                assert.strictEqual(writeCheckpoint(repo, planRel, null).ok, true,
+                    'test setup: checkpoint should write');
+            }
+        }
+    ];
+
+    try {
+        for (const leg of legs) {
+            const repo = homedRepo('r8-leg-');
+            try {
+                leg.stage(repo);
+                const res = runCli(leg.args, repo, leg.env);
+                const emitted = res.stdout + res.stderr;
+                assert.ok(emitted.includes(leg.fired),
+                    leg.what + ' must actually reach its refusal leg, or nothing is under test: '
+                    + emitted);
+                if (leg.elides) {
+                    assert.ok(emitted.includes('~' + path.sep),
+                        leg.what + ' must carry the refused path to the channel in its elided '
+                        + 'form, or the guard had nothing to elide: ' + emitted);
+                }
+                assert.ok(!emitted.includes(leak),
+                    leg.what + ' must not name the home directory\'s own component: ' + emitted);
+                assert.ok(!emitted.includes(FIXTURE_HOME),
+                    leg.what + ' must not carry the home prefix whole either: ' + emitted);
+            } finally {
+                rmDir(repo);
+            }
+        }
+
+        // And the flattened spelling, which the leading-prefix elision cannot
+        // reach: a session's transcript is filed under a directory named by the
+        // whole project path with its non-alphanumeric characters turned to
+        // dashes, so for a checkout under the home directory the account name
+        // sits in the MIDDLE of the path, inside that one component, with the
+        // leading prefix elided around it.
+        const repo = homedRepo('r8-tr-');
+        try {
+            const transcript = withHome(FIXTURE_HOME, () => sessionTranscriptPath(repo, SESSION));
+            assert.ok(transcript !== null, 'test setup: a transcript path must derive');
+            assert.ok(path.basename(path.dirname(transcript)).includes(leak),
+                'test setup: the flattened home must ride the middle component, or the case '
+                + 'is the leading-prefix one again: ' + transcript);
+            fs.mkdirSync(path.dirname(transcript), { recursive: true });
+            writeFile(transcript, userLine('hello', Date.now() - FIXTURE_INBOUND_AGE_MS) + '\n');
+
+            const declared = runCli(['boundary'], repo, { CLAUDE_CODE_SESSION_ID: SESSION });
+            assert.strictEqual(declared.status, 0,
+                'test setup: the boundary should declare; stderr: ' + declared.stderr);
+            const out = runCli(['status'], repo).stdout;
+            assert.ok(out.includes('moment read against'),
+                'the report must name the transcript it read, or the path is not on the channel: '
+                + out);
+            assert.ok(!out.includes(leak),
+                'and the flattened home inside that path is elided too: ' + out);
+        } finally {
+            rmDir(repo);
+        }
+    } finally {
+        rmDir(shimDir);
+    }
+});
+
+// A home directory this case is staging rather than the suite's default one.
+// Every case below overrides it because the home directory IS its subject: a
+// spelling the printable-ASCII strip alters, one longer than the print cap, a
+// POSIX spelling, a filesystem root. The override merges after the spawn
+// helper's default, so nothing else about the child changes.
+function homeAt(dir) {
+    return { HOME: dir, USERPROFILE: dir };
+}
+
+// Stage a repo under the given home whose checkpoint write is refused, and
+// return everything the run emitted. The refusal is a directory at the target,
+// which the atomic write's rename meets as a real OS error naming the absolute
+// path the syscall was refused on: the shape that carries a path onto this
+// channel inside an error sentence rather than as a value known to be a path.
+function refusedOpenUnderHome(home) {
+    const repo = fs.mkdtempSync(path.join(home, 'leg-'));
+    const planRel = 'docs/plans/example.md';
+    writeFile(path.join(repo, planRel), 'Status: In Progress\n\nbody\n');
+    assert.strictEqual(armGoal(repo, planRel).ok, true, 'test setup: goal should arm');
+    fs.mkdirSync(checkpointPath(repo), { recursive: true });
+    const res = runCli(['open'], repo, homeAt(home));
+    return res.stdout + res.stderr;
+}
+
+test('cli: an account name the printable-ASCII strip alters is still elided', () => {
+    // The strip runs before the elision, so a home directory carrying an
+    // accented or CJK character reaches this channel in a spelling the home
+    // directory's own text never contains: C:\Users\Jose with an accent on the e
+    // is emitted as C:\Users\Jos, which a pattern built from the raw spelling can
+    // never match. On such a machine the whole guard is inert rather than
+    // imprecise.
+    //
+    // What must be ABSENT is therefore the ASCII-surviving remainder of the
+    // account name rather than the name as spelled on disk: the strip had
+    // already altered it before the elision was asked anything, so asserting the
+    // absence of the on-disk spelling would pass over exactly the leak.
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'kit-r9-h\u00e9\u00fc-'));
+    try {
+        const account = path.basename(home);
+        const remainder = account.replace(/[^\x20-\x7E]/g, '');
+        assert.notStrictEqual(remainder, account,
+            'test setup: the strip must actually alter the account name, or this is the ASCII case');
+        const emitted = refusedOpenUnderHome(home);
+        assert.ok(emitted.includes('could not write checkpoint'),
+            'the refusal leg must fire, or nothing is under test: ' + emitted);
+        assert.ok(emitted.includes('~' + path.sep),
+            'the refused path reaches the channel in its elided form: ' + emitted);
+        assert.ok(!emitted.includes(remainder),
+            'and what survived the strip of the account name is not on the channel: ' + emitted);
+    } finally {
+        rmDir(home);
+    }
+});
+
+test('cli: a home directory longer than the print cap is elided rather than cut in half', () => {
+    // The cap and the elision are decided over the same value, and the order
+    // between them is what makes the guard hold or not: an elision asked after
+    // the cut has a FRAGMENT of the home directory to match rather than the home
+    // directory, so nothing matches and the surviving fragment, account name
+    // included, prints.
+    //
+    // The long segment is added by this fixture rather than measured off the
+    // box, so the case holds whatever this machine's temp directory is spelled
+    // like: the refusal reason puts the path 68 characters in, and a home
+    // directory this long ends past the 120-character cap on any box. Deriving
+    // the length from os.tmpdir() instead is the machine-dependent fixture the
+    // repo already carries one of (test/memory-session.test.js, the pinned
+    // directory too long to name), where the property holds on a short temp
+    // directory and silently stops holding on a long one.
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'kit-r9-long-'));
+    try {
+        const account = 'd'.repeat(60);
+        const home = path.join(base, account);
+        fs.mkdirSync(home);
+        assert.ok(68 + home.length > 120,
+            'test setup: the home directory must end past the cap in the composed reason');
+        const emitted = refusedOpenUnderHome(home);
+        assert.ok(emitted.includes('could not write checkpoint'),
+            'the refusal leg must fire, or nothing is under test: ' + emitted);
+        assert.ok(emitted.includes('~' + path.sep),
+            'the refused path reaches the channel in its elided form: ' + emitted);
+        assert.ok(!emitted.includes(account),
+            'and no fragment of the account name survives the cut: ' + emitted);
+    } finally {
+        rmDir(base);
+    }
+});
+
+// The consent verb's corroboration refusal, run against a home directory this
+// case is staging: the refusal names the project directory it was handed, before
+// it touches the filesystem, so an arbitrary path can be put in front of the
+// guard under an arbitrary home without either one existing.
+function shownProjectArgUnderHome(projectArg, home) {
+    return runCli(['consent', '--session', SESSION, '--project', projectArg],
+        FIXTURE_HOME, homeAt(home)).stderr;
+}
+
+test('cli: a home spelling sitting mid-path is not elided out of the middle of a path', () => {
+    // The elision is textual wherever a path arrives inside an error sentence,
+    // and a pattern anchored at its trailing edge alone floats: a POSIX home
+    // directory /home/<account> matches inside /mnt/backup/home/<account>/repo
+    // and renders it as /mnt/backup~/repo, a path nowhere on disk, on a leg whose
+    // purpose is naming a file the operator must act on. win32 is not immune by
+    // design, only by its home spelling starting with a drive letter, so the home
+    // here is POSIX-spelled on either platform: os.homedir() answers out of
+    // USERPROFILE and HOME, and neither has to name a directory that exists for
+    // the patterns to be built from it.
+    const home = '/home/kit-r9-account';
+    const mid = shownProjectArgUnderHome('/mnt/backup/home/kit-r9-account/repo', home);
+    assert.ok(mid.includes('/mnt/backup/home/kit-r9-account/repo'),
+        'a path that merely contains the home spelling is named in full: ' + mid);
+    assert.ok(!mid.includes('~'),
+        'and no part of it is elided as though it were home-anchored: ' + mid);
+    // The other direction, in the same fixture: the guard is bounded rather than
+    // switched off, so a genuinely home-anchored path still elides.
+    const lead = shownProjectArgUnderHome('/home/kit-r9-account/repo', home);
+    assert.ok(!lead.includes('kit-r9-account'),
+        'a home-anchored path still has the account name taken out of it: ' + lead);
+    assert.ok(lead.includes('~'),
+        'and is named in its elided form: ' + lead);
+});
+
+test('cli: the home elision is bounded by what would make it another token, not by a list of neighbours', () => {
+    // The two boundaries are DENY-lists: a match is refused when the character
+    // beside it would make the text a different name, and admitted otherwise.
+    // Written as allow-lists instead, they name the neighbours someone thought
+    // of, and a home directory sitting beside any other character reaches the
+    // channel whole, account name and all. The two failure directions are not
+    // equally costly, which is what settles the shape: over-elision prints a
+    // path that is nowhere on disk, under-elision prints the OS account name
+    // into a channel a model reads.
+    //
+    // Every leg here puts punctuation against the home directory, which is what
+    // keeps the display guard out of the case: path.relative answers "not under
+    // the home directory" for each of these, so the elision under test is the
+    // textual one the channel's own floor applies to the composed sentence.
+    const home = '/home/kit-r10-account';
+    const account = 'kit-r10-account';
+    for (const [what, project] of [
+        ['an opening parenthesis in front', '(/home/kit-r10-account/x'],
+        ['a key and an equals sign in front', 'root=/home/kit-r10-account/x'],
+        ['a colon in front', 'root:/home/kit-r10-account/x'],
+        ['an angle bracket in front', '</home/kit-r10-account/x'],
+        ['a comma in front', ',/home/kit-r10-account/x'],
+        ['a closing parenthesis behind', '(/home/kit-r10-account)'],
+        ['a comma behind', '/home/kit-r10-account,'],
+        ['a colon behind', '/home/kit-r10-account:']
+    ]) {
+        const out = shownProjectArgUnderHome(project, home);
+        assert.ok(out.includes('nothing written'),
+            what + ': the refusal leg must fire, or nothing is under test: ' + out);
+        assert.ok(!out.includes(account),
+            what + ': the account name must not reach the channel: ' + out);
+        assert.ok(out.includes('~'),
+            what + ': and the home directory is named in its elided form: ' + out);
+    }
+    // The other direction in the same fixture, which is what the deny-list is
+    // for: a name the elision would turn into a path nowhere on disk is left
+    // alone. Mid-path, where the character in front is alphanumeric, and a
+    // sibling whose name merely begins with the home directory's, where the
+    // character behind is a dash.
+    for (const [what, project, expected] of [
+        ['a home spelling sitting mid-path', '/mnt/backup/home/kit-r10-account/repo',
+            '/mnt/backup/home/kit-r10-account/repo'],
+        ['a sibling directory whose name starts with the home directory\'s',
+            '/home/kit-r10-account-sib/r', '/home/kit-r10-account-sib/r']
+    ]) {
+        const out = shownProjectArgUnderHome(project, home);
+        assert.ok(out.includes(expected),
+            what + ' is named in full: ' + out);
+        assert.ok(!out.includes('~'),
+            what + ' has no part of it elided as though it were home-anchored: ' + out);
+    }
+});
+
+test('cli: a home directory whose final component is wholly non-ASCII elides no other account', () => {
+    // The patterns are built twice, from the raw home directory and from its
+    // printable-ASCII form, because the text this elides has already been
+    // stripped. On a home whose final component is wholly non-ASCII the second
+    // spelling loses that component entirely: C:\Users\<CJK> strips to
+    // C:\Users\, and a pattern built from C:\Users elides EVERY account's paths
+    // on this channel, including the legs that name a file the operator must go
+    // and delete, into paths that are nowhere on disk.
+    //
+    // The guard against that already exists and its predicate is what is too
+    // weak: a stripped spelling equal to the filesystem root is skipped, and one
+    // that merely lost a whole component is not. The rule is the component
+    // count rather than the root.
+    //
+    // The control for the other direction is the accented-home case above: there
+    // the strip alters the final component without removing it, the counts
+    // match, and the elision still runs.
+    const home = '/Users/\u4e2d\u6587\u540d';
+    const other = '/Users/kit-r10-other/repo';
+    const out = shownProjectArgUnderHome(other, home);
+    assert.ok(out.includes('nothing written'),
+        'the refusal leg must fire, or nothing is under test: ' + out);
+    assert.ok(out.includes(other),
+        'another account\'s path is named in full under such a home: ' + out);
+    assert.ok(!out.includes('~'),
+        'and no part of it is elided as though it were this account\'s: ' + out);
+});
+
+test('cli: a home directory at a filesystem root elides nothing', {
+    skip: process.platform !== 'win32'
+        ? 'a POSIX root carries no alphanumeric character, so the guard already builds no pattern '
+            + 'from it and this case would pass without exercising the rule'
+        : false
+}, () => {
+    // A win32 home at a drive root reduces to a drive letter and a colon, which
+    // carries an alphanumeric and would otherwise elide the drive prefix of every
+    // path on this channel: `removing D:\proj\.kit\x.json` printed as
+    // `removing ~\proj\.kit\x.json`, which names no file and hides nothing, a
+    // root holding no account name to hide.
+    //
+    // The value is staged through the checkpoint's own openedAt field, which is
+    // read back out of a user-writable file and printed through the plain
+    // sanitize: that is the path this channel carries inside a value rather than
+    // as one it recognizes as a path, which is where the drive prefix would go.
+    const root = path.parse(os.tmpdir()).root;
+    const repo = makeDir('kit-r9-root-home-');
+    try {
+        const planRel = 'docs/plans/example.md';
+        writeFile(path.join(repo, planRel), 'Status: In Progress\n\nbody\n');
+        assert.strictEqual(armGoal(repo, planRel).ok, true, 'test setup: goal should arm');
+        const planted = path.join(root, 'proj', '.kit', 'x.json');
+        writeFile(checkpointPath(repo), JSON.stringify({ plan: planRel, openedAt: planted }));
+        const out = runCli(['status'], repo, homeAt(root)).stdout;
+        assert.ok(out.includes(planted),
+            'the value prints as itself under a root home: ' + out);
+        assert.ok(!out.includes('~' + path.sep + 'proj'),
+            'and no drive prefix is elided off it: ' + out);
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('cli: a value whose home prefix is followed by a mark still has it elided', () => {
+    // sanitize appends its marks as ` [cut to fit]`, so a home directory sitting
+    // at the end of a value is followed by a space and then a bracket. A trailing
+    // boundary class admitting neither leaves the whole account path printed on
+    // exactly the values the marks are for, which is the leak at its widest: not
+    // a component of the home directory but all of it.
+    //
+    // Both boundary characters, against the one value that reaches the plain
+    // sanitize out of a user-writable file. The padding is long enough that the
+    // first leg is genuinely cut, so the space under test is the one the mark
+    // puts there.
+    const leak = path.basename(FIXTURE_HOME);
+    const repo = makeDir('kit-r9-mark-boundary-');
+    try {
+        const planRel = 'docs/plans/example.md';
+        writeFile(path.join(repo, planRel), 'Status: In Progress\n\nbody\n');
+        assert.strictEqual(armGoal(repo, planRel).ok, true, 'test setup: goal should arm');
+        for (const [what, openedAt] of [
+            ['a value the cap cuts, so the mark follows the home after a space',
+                FIXTURE_HOME + ' ' + 'x'.repeat(200)],
+            ['a value carrying a bracket of its own right after the home',
+                FIXTURE_HOME + '[note]']
+        ]) {
+            writeFile(checkpointPath(repo), JSON.stringify({ plan: planRel, openedAt }));
+            const out = runCli(['status'], repo).stdout;
+            assert.ok(out.includes('(opened '),
+                what + ': the value must reach the report, or nothing is under test: ' + out);
+            assert.ok(!out.includes(leak),
+                what + ': the account name must not print: ' + out);
+            assert.ok(out.includes('~'),
+                what + ': and the home directory is named in its elided form: ' + out);
+        }
+    } finally {
+        rmDir(repo);
+    }
+});
+
+// Make a library read the CLI's status verb depends on throw, standing in for an
+// unexpected defect anywhere under main(). The shim patches the module object
+// the CLI destructures, and it runs before the CLI is loaded, so the CLI's own
+// binding is the throwing one.
+function throwingStatusReadPreload(dir) {
+    const lib = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-compact-lib.js');
+    const shim = path.join(dir, 'throw-in-status.js');
+    writeFile(shim, [
+        "'use strict';",
+        'const lib = require(' + JSON.stringify(lib.replace(/\\/g, '/')) + ');',
+        'lib.readCheckpointResult = function () {',
+        "    throw new Error('the fixture throws from the checkpoint read');",
+        '};'
+    ].join('\n') + '\n');
+    return '--require "' + shim.replace(/\\/g, '/') + '"';
+}
+
+test('cli: an unexpected throw prints one line rather than a stack carrying module paths', () => {
+    // An uncaught throw is written by the runtime rather than by this CLI, so it
+    // reaches the descriptor without passing the emitters and without being a
+    // print site the source-side pin can see. What it writes is a stack trace and
+    // a Require stack list, every entry of them an absolute module path, which on
+    // an installed plugin is home-anchored: the account name on the channel by
+    // the one route both other guards are blind to. The sibling CLI carries the
+    // same wrapper for the same reason.
+    const shimDir = makeDir('kit-r9-throw-shim-');
+    const repo = makeDir('kit-r9-throw-repo-');
+    try {
+        const res = runCli(['status'], repo, { NODE_OPTIONS: throwingStatusReadPreload(shimDir) });
+        assert.strictEqual(res.status, 1, 'the run fails: ' + res.stderr);
+        assert.ok(res.stderr.includes('kit-compact-checkpoint: the fixture throws from the checkpoint read'),
+            'the defect is reported as one sentence this CLI composed: ' + res.stderr);
+        assert.ok(!res.stderr.includes('.js'),
+            'no module path reaches the channel: ' + res.stderr);
+        assert.ok(!res.stderr.includes('Require stack'),
+            'nor the require stack the runtime prints beside it: ' + res.stderr);
+        assert.ok(!/\n\s+at /.test(res.stderr),
+            'nor a stack frame: ' + res.stderr);
+    } finally {
+        rmDir(shimDir);
+        rmDir(repo);
+    }
+});
+
+// Refuse the require of a kit library outright, which is what a damaged or
+// partially written plugin cache does to this CLI. The shim runs before the CLI
+// is loaded, so the refusal meets the CLI's own require rather than a later
+// call. Forward-slashed for NODE_OPTIONS, like the preloads above.
+function libraryRefusingPreload(dir, moduleFile) {
+    const shim = path.join(dir, 'refuse-require-' + moduleFile);
+    writeFile(shim, [
+        "'use strict';",
+        "const Module = require('module');",
+        'const realLoad = Module._load;',
+        'Module._load = function (request) {',
+        "    if (String(request).endsWith(" + JSON.stringify(moduleFile) + ')) {',
+        "        throw new Error('the fixture refuses this require');",
+        '    }',
+        '    return realLoad.apply(Module, arguments);',
+        '};'
+    ].join('\n') + '\n');
+    return '--require "' + shim.replace(/\\/g, '/') + '"';
+}
+
+test('cli: a kit library that will not load is reported as one line, not as a require stack', () => {
+    // A require-time throw is the same leak as the one above and it arrives
+    // EARLIER: Node prints its own trace, whose `Require stack:` lines carry the
+    // absolute module path of every file on that stack, home-anchored on an
+    // installed plugin. A require sitting at module scope throws before any
+    // guard this file installs, so the requires run inside the guarded region
+    // instead, which is the shape the sibling hook already takes.
+    const shimDir = makeDir('kit-r10-require-shim-');
+    const repo = makeDir('kit-r10-require-repo-');
+    try {
+        for (const lib of ['kit-compact-lib.js', 'kit-goal-lib.js']) {
+            const res = runCli(['status'], repo, { NODE_OPTIONS: libraryRefusingPreload(shimDir, lib) });
+            assert.notStrictEqual(res.status, 0, lib + ': the run fails: ' + res.stderr);
+            assert.ok(res.stderr.includes('kit-compact-checkpoint: the fixture refuses this require'),
+                lib + ': the failure is one sentence this CLI composed: ' + res.stderr);
+            assert.ok(!res.stderr.includes('Require stack'),
+                lib + ': the require stack the runtime prints must not reach the channel: ' + res.stderr);
+            assert.ok(!res.stderr.includes('.js'),
+                lib + ': nor any module path: ' + res.stderr);
+            assert.ok(!/\n\s+at /.test(res.stderr),
+                lib + ': nor a stack frame: ' + res.stderr);
+        }
+    } finally {
+        rmDir(shimDir);
+        rmDir(repo);
+    }
+});
+
+// Make os.homedir() answer with nothing, which is what a shell stripped of
+// USERPROFILE and HOME leaves on a platform whose fallback also fails. No
+// fixture can stage that state by environment alone on win32, where the runtime
+// asks the OS once the variables are gone.
+function homelessPreload(dir) {
+    const shim = path.join(dir, 'no-home.js');
+    writeFile(shim, [
+        "'use strict';",
+        "const os = require('os');",
+        "os.homedir = function () { return ''; };"
+    ].join('\n') + '\n');
+    return '--require "' + shim.replace(/\\/g, '/') + '"';
+}
+
+test('cli: a shell with no knowable home directory is told the elision is not standing', () => {
+    // An empty elision list answers two facts and they are opposite news: nothing
+    // to elide is ordinary, and no home directory to elide is the channel's floor
+    // switched off. Branching on the list alone takes the acting direction for
+    // both, so every path below prints with whatever the account name is and
+    // nothing anywhere says so. The note is the channel's own, said once, on
+    // whichever descriptor is written to first.
+    const shimDir = makeDir('kit-r9-homeless-shim-');
+    const repo = makeDir('kit-r9-homeless-repo-');
+    try {
+        const res = runCli(['status'], repo, { NODE_OPTIONS: homelessPreload(shimDir) });
+        const emitted = res.stdout + res.stderr;
+        assert.strictEqual(res.status, 0, 'the report still runs: ' + emitted);
+        assert.strictEqual(
+            (emitted.match(/no home directory is knowable in this shell/g) || []).length, 1,
+            'the floor is reported as not standing, once for the run: ' + emitted);
+        // The control, and it is the whole reason the note is worth anything: an
+        // ordinary run must not carry it, or the sentence says nothing about
+        // which of the two facts held.
+        const ordinary = runCli(['status'], repo).stdout + runCli(['status'], repo).stderr;
+        assert.ok(!ordinary.includes('no home directory is knowable'),
+            'and a run with a knowable home says nothing about it: ' + ordinary);
+    } finally {
+        rmDir(shimDir);
+        rmDir(repo);
+    }
+});
+
+// Where a named function's body sits in a source text, as [start, end) over the
+// braces, or null when no such declaration is there. Brace-counted, so it reads
+// a nested block correctly; a brace inside a string or a comment in the body
+// would fool it, which is why the caller bounds the span's length rather than
+// trusting it.
+function functionSpan(source, name) {
+    const decl = source.indexOf('function ' + name + '(');
+    if (decl === -1) return null;
+    const open = source.indexOf('{', decl);
+    if (open === -1) return null;
+    let depth = 0;
+    for (let i = open; i < source.length; i += 1) {
+        if (source[i] === '{') depth += 1;
+        else if (source[i] === '}') {
+            depth -= 1;
+            if (depth === 0) return [open, i + 1];
+        }
+    }
+    return null;
+}
+
+// The routes to a standard-stream descriptor in a source text that sit outside
+// the two emitters' own bodies, as the line numbers they sit on. The predicate
+// is over IDENTIFIER NAMES, which is what a source pattern can actually read.
+// It asks nothing about what is being written, deliberately, since a pattern
+// deciding whether an expression is path-valued goes green on the sites that
+// bypass the guard while printing an error sentence, which is the shape this
+// whole guard exists for.
+//
+// The class rather than the two spellings one round happened to write. A pattern
+// reading `process.stdout.write` alone leaves console.log, console.error,
+// fs.writeSync onto descriptor 1, process.stdout.end and every aliased or
+// destructured writer reaching the descriptor with the pin returning nothing,
+// and a pin whose silence has that many causes is not a reading. So each
+// alternative is anchored on the OWNER rather than on the member: `console.`
+// with any member after it, `process.stdout` or `process.stderr` however they
+// are then used, and a writeSync call however it is qualified. Two of the three
+// are structural over their family, which is what lets the control below be
+// drawn from a member the pattern was never handed.
+function descriptorWriteRe() {
+    return /console\.[A-Za-z]\w*|process\.(?:stdout|stderr)|\bwriteSync\s*\(/g;
+}
+
+function writesOutsideEmitters(source) {
+    const spans = [functionSpan(source, 'emitOut'), functionSpan(source, 'emitErr')]
+        .filter((span) => span !== null);
+    const found = [];
+    const re = descriptorWriteRe();
+    let m;
+    while ((m = re.exec(source)) !== null) {
+        const at = m.index;
+        if (spans.some((span) => at >= span[0] && at < span[1])) continue;
+        found.push(source.slice(0, at).split('\n').length);
+    }
+    return found;
+}
+
+test('cli: the descriptor writes are spelled inside the two emitters and nowhere else', () => {
+    const cliSrc = fs.readFileSync(CLI, 'utf8');
+    const spans = [functionSpan(cliSrc, 'emitOut'), functionSpan(cliSrc, 'emitErr')];
+    for (const [i, span] of spans.entries()) {
+        assert.ok(span !== null,
+            'the ' + (i === 0 ? 'stdout' : 'stderr') + ' emitter must be declared, since the '
+            + 'whole pin is that the writes live in it');
+        // A span is trusted only while it is small. Brace counting over a body
+        // holding a brace in a string would run long and quietly cover writes
+        // sitting anywhere after it, which reads exactly like a clean result.
+        assert.ok(span[1] - span[0] < 400,
+            'and its body must stay small enough that the span cannot swallow a distant write: '
+            + (span[1] - span[0]) + ' characters');
+    }
+    assert.strictEqual((cliSrc.match(descriptorWriteRe()) || []).length, 2,
+        'the routes to a descriptor number two, one per emitter, so the pin below is not passing '
+        + 'over a file that writes to neither');
+    assert.deepStrictEqual(writesOutsideEmitters(cliSrc), [],
+        'no line outside the two emitters reaches a descriptor, which is what makes the scrub '
+        + 'a property of the channel rather than of whichever caller remembered it');
+
+    // The controls, and each is drawn from an identifier WITHHELD from the
+    // pattern's own literals: `console.dirxml`, a console member no source in
+    // this repo spells and the pattern never names, and `process.stdout.end`,
+    // a stream member the pattern never names either. Both are caught on the
+    // OWNER, which is the structural half, so what they establish is what the
+    // pattern reaches beyond the members it was handed. A control the literals
+    // already spell, or one that varies only where a known spelling SITS, proves
+    // the instrument runs and nothing about its coverage; the round this pin was
+    // built in ran exactly that control and read it as a coverage answer.
+    const scratch = makeDir('kit-compact-gate-pin-control-');
+    try {
+        for (const [what, injected] of [
+            ['a console member the pattern was not handed',
+                '    const shout = (t) => { console.dirxml(t); };\n    shout(\'\');'],
+            ['a stream member the pattern was not handed',
+                '    process.stdout.end(\'\');']
+        ]) {
+            const variant = cliSrc.replace('function usage() {', 'function usage() {\n' + injected);
+            assert.notStrictEqual(variant, cliSrc,
+                what + ': the control must differ from the source');
+            const controlFile = path.join(scratch, 'bypassing-variant.js');
+            writeFile(controlFile, variant);
+            const spoke = writesOutsideEmitters(fs.readFileSync(controlFile, 'utf8'));
+            assert.strictEqual(spoke.length, 1,
+                what + ': the pin must name it, so its silence over the shipped source is a '
+                + 'reading rather than a blind spot: ' + JSON.stringify(spoke));
+        }
+    } finally {
+        rmDir(scratch);
+    }
+});
+
+test('lib: an oversized hold stamp that is also unwritable is healed rather than refused forever', () => {
+    // The heal is an unlink, which takes permission on the containing directory
+    // and none on the file, so a writability test asked before it refuses a file
+    // the heal would have removed. That refusal never ends: nothing about an
+    // oversized file resolves on its own, so the held session's directive would
+    // be silenced for the life of the file, which is the permanent silence the
+    // healable set exists to prevent and the replacement the status verb promises
+    // for that same file.
+    const { repo } = armedRepo();
+    const target = holdNudgePath(repo);
+    try {
+        writeFile(target, '{"holds":[]}\n' + 'x'.repeat(80 * 1024) + '\n');
+        fs.chmodSync(target, 0o444);
+        // The fixture's own control: a chmod that did not take would leave this
+        // case passing for the wrong reason, over a file that was writable all
+        // along.
+        assert.throws(() => fs.accessSync(target, fs.constants.W_OK),
+            'test setup: the stamp file must really be unwritable');
+
+        const now = Date.now();
+        assert.strictEqual(recordHoldNudge(repo, HELD_A, now), true,
+            'the oversized file is removed and the stamp is written in its place');
+        assert.strictEqual(holdNudgedAt(repo, HELD_A, now), new Date(now).toISOString(),
+            'and the interval this session was being denied now has its stamp');
+
+        // The check's original subject is untouched: a stamp file that reads back
+        // perfectly and cannot be written is still a refusal, since no heal fires
+        // for it and the write would fail.
+        const legible = JSON.stringify({ holds: [] });
+        fs.writeFileSync(target, legible, 'utf8');
+        fs.chmodSync(target, 0o444);
+        assert.strictEqual(recordHoldNudge(repo, HELD_A, now + 1000), false,
+            'a legible but unwritable stamp file refuses exactly as it did before');
+        assert.strictEqual(fs.readFileSync(target, 'utf8'), legible,
+            'and is left exactly as it was');
+    } finally {
+        try { fs.chmodSync(target, 0o666); } catch { /* already gone */ }
         rmDir(repo);
     }
 });
@@ -4484,6 +5689,656 @@ test('gate: a bystander holding the project cannot starve the leashed run of its
         }
         const episode = readState(repo).episode;
         assert.strictEqual(episode.session, SESSION, 'and the owner never changed');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+// Two more sessions for the hold-list cases, so a project can hold several
+// seats at once the way a shared checkout does.
+const HELD_A = 'ses-99998888-dddd-eeee-ffff-777766665555';
+const HELD_B = 'ses-77776666-cccc-bbbb-aaaa-555544443333';
+
+test('gate: each held session keeps its own hold record while other sessions decide', () => {
+    // The hold is one session's own fact. The newest-decision slot is shared by
+    // every session that takes an offer in the project, so a hold read from
+    // there answers for whichever seat decided last: on this fixture both
+    // bystanders are genuinely held and the leash holder's boundary deny is the
+    // newest decision.
+    const { repo, transcript } = armedRepo();
+    const now = Date.now();
+    try {
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript, { session_id: HELD_A })));
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript, { session_id: HELD_B })));
+        assertDeny(runGate(gatePayload(repo, transcript)));
+
+        const state = readState(repo);
+        assert.strictEqual(state.lastDecision.session, SESSION,
+            'test setup: the leash holder took the newest decision');
+        for (const held of [HELD_A, HELD_B]) {
+            const hold = interactiveHoldOpen(state, now, held);
+            assert.ok(hold, 'the hold stands for ' + held + ': '
+                + JSON.stringify(state.interactiveHolds));
+            assert.strictEqual(hold.session, held, 'and it is that session\'s own record');
+            assert.strictEqual(hold.reason, 'bystander', 'carrying the reason it was denied for');
+            assert.strictEqual(hold.consumed, 50000, 'and the token reading the floor is read against');
+        }
+        assert.strictEqual(interactiveHoldOpen(state, now, SESSION), null,
+            'the leash holder is held on the boundary leg and owns no interactive hold');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: an allow ends the allower\'s own hold and leaves every other session\'s', () => {
+    // An allow lands a compaction in the allower's own context, which is the end
+    // of whatever hold it was under, and says nothing about the offers another
+    // seat is still being denied.
+    const { repo, transcript } = armedRepo();
+    const now = Date.now();
+    try {
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript, { session_id: HELD_A })));
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript, { session_id: HELD_B })));
+        assert.ok(interactiveHoldOpen(readState(repo), now, HELD_A), 'test setup: A is held');
+
+        assertAllow(runGate(gatePayload(repo, transcript,
+            { session_id: HELD_A, trigger: 'manual' })));
+        const state = readState(repo);
+        assert.strictEqual(state.lastDecision.verdict, 'allow', 'test setup: A was allowed');
+        assert.strictEqual(interactiveHoldOpen(state, now, HELD_A), null,
+            'the allower is no longer held');
+        assert.ok(interactiveHoldOpen(state, now, HELD_B),
+            'while the other seat still is: ' + JSON.stringify(state.interactiveHolds));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+// A gate state holding one interactive deny for HELD_A, dated seconds ago and
+// carrying a token reading: the full hold shape, which each case below negates
+// by exactly one field. The newest decision is another session's, which is what
+// the project's shared slot ordinarily carries.
+function heldState(overrides) {
+    return {
+        lastDecision: {
+            at: new Date(Date.now() - 5 * 1000).toISOString(),
+            verdict: 'deny-boundary',
+            reason: 'no-checkpoint',
+            consumed: 300000,
+            checkpoint: null,
+            session: SESSION
+        },
+        episode: null,
+        lastAllow: null,
+        interactiveHolds: [{
+            at: new Date(Date.now() - 20 * 1000).toISOString(),
+            verdict: 'deny-interactive',
+            reason: 'bystander',
+            consumed: 292000,
+            checkpoint: null,
+            session: HELD_A,
+            ...overrides
+        }]
+    };
+}
+
+test('lib: interactiveHoldOpen answers from the asking session\'s own record', () => {
+    const now = Date.now();
+    const control = interactiveHoldOpen(heldState(), now, HELD_A);
+    assert.ok(control, 'the control: a standing hold answers with its record');
+    assert.strictEqual(control.consumed, 292000, 'which carries the reading the nudge floors on');
+
+    // The verdict test: only an interactive deny is a hold on this leg. A
+    // boundary deny is the leash holder's own class and an allow is no hold.
+    for (const verdict of ['deny-boundary', 'allow']) {
+        assert.strictEqual(interactiveHoldOpen(heldState({ verdict }), now, HELD_A), null,
+            'refused by verdict: ' + verdict);
+    }
+    // The reason test: the two hands-on shapes and nothing else.
+    for (const reason of ['no-goal', 'bystander']) {
+        assert.ok(interactiveHoldOpen(heldState({ reason }), now, HELD_A),
+            'both hands-on reasons are holds: ' + reason);
+    }
+    for (const reason of ['automation', 'valve', null, 'anything-else']) {
+        assert.strictEqual(interactiveHoldOpen(heldState({ reason }), now, HELD_A), null,
+            'refused by reason: ' + String(reason));
+    }
+    // The session test, which is the lookup itself: a seat reads its own record
+    // or none, whoever else is held here.
+    assert.strictEqual(interactiveHoldOpen(heldState(), now, HELD_B), null,
+        'refused by session: another seat\'s hold is not this one\'s');
+    assert.strictEqual(interactiveHoldOpen(heldState({ session: null }), now, HELD_A), null,
+        'a record naming nobody owns no hold');
+    // The two timestamp bounds, the same pair an episode's newest denial takes.
+    for (const at of [
+        new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+        new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+        'not a date',
+        null
+    ]) {
+        assert.strictEqual(interactiveHoldOpen(heldState({ at }), now, HELD_A), null,
+            'refused by timestamp: ' + String(at));
+    }
+    // The required session id: every caller here is deciding whether to act, so
+    // an unusable id matches nothing rather than whatever the list holds.
+    for (const asking of [undefined, null, '', 42]) {
+        assert.strictEqual(interactiveHoldOpen(heldState(), now, asking), null,
+            'refused by an unusable asking id: ' + String(asking));
+    }
+    assert.strictEqual(interactiveHoldOpen(null, now, HELD_A), null, 'no state, no hold');
+});
+
+test('lib: a state carrying no hold list answers no hold rather than reading the decision slot', () => {
+    // A state file written before the list existed rebuilds to an empty one, so
+    // the session is unheld until its own next deny records it. The control
+    // below is the same interactive deny sitting in the shared decision slot,
+    // which must not answer for it: that slot's record can belong to any session
+    // that took an offer in the project.
+    const now = Date.now();
+    const held = heldState();
+    const legacy = {
+        lastDecision: held.interactiveHolds[0],
+        episode: null,
+        lastAllow: null
+    };
+    assert.strictEqual(interactiveHoldOpen(legacy, now, HELD_A), null,
+        'the decision slot is not a hold');
+    assert.strictEqual(interactiveHoldOpen({ ...legacy, interactiveHolds: 'holds' }, now, HELD_A), null,
+        'and neither is a value that is not a list');
+    assert.ok(interactiveHoldOpen({ ...legacy, interactiveHolds: [legacy.lastDecision] }, now, HELD_A),
+        'the control: the same record in the list is the hold');
+});
+
+test('lib: the hold list is rebuilt, de-duplicated and capped on read', () => {
+    const repo = makeDir('kit-compact-gate-repo-');
+    const now = Date.now();
+    try {
+        const record = (session, at) => ({
+            at: new Date(at).toISOString(),
+            verdict: 'deny-interactive',
+            reason: 'no-goal',
+            consumed: 292000,
+            checkpoint: null,
+            session
+        });
+        // One record over the cap, each for its own session, newest first, with
+        // junk entries riding among them.
+        const planted = [];
+        for (let i = 0; i < INTERACTIVE_HOLD_MAX_ENTRIES + 1; i += 1) {
+            planted.push(record('ses-held-' + i, now - 10 * 1000 - i));
+        }
+        writeFile(gateStateFile(repo), JSON.stringify({
+            lastDecision: null,
+            episode: null,
+            lastAllow: null,
+            interactiveHolds: planted
+        }, null, 2) + '\n');
+        let state = readGateState(repo);
+        assert.strictEqual(state.interactiveHolds.length, INTERACTIVE_HOLD_MAX_ENTRIES,
+            'the list is capped');
+        assert.ok(interactiveHoldOpen(state, now, 'ses-held-0'), 'the newest entries survive');
+        assert.strictEqual(interactiveHoldOpen(state, now, 'ses-held-' + INTERACTIVE_HOLD_MAX_ENTRIES),
+            null, 'and the one past the cap is evicted');
+
+        // Two records for one session: the newer one, which the writer puts
+        // first, is the one that answers.
+        writeFile(gateStateFile(repo), JSON.stringify({
+            lastDecision: null,
+            episode: null,
+            lastAllow: null,
+            interactiveHolds: [
+                { ...record(HELD_A, now - 10 * 1000), consumed: 1 },
+                { ...record(HELD_A, now - 90 * 1000), consumed: 2 }
+            ]
+        }, null, 2) + '\n');
+        state = readGateState(repo);
+        assert.strictEqual(state.interactiveHolds.length, 1, 'one record per session');
+        assert.strictEqual(interactiveHoldOpen(state, now, HELD_A).consumed, 1,
+            'and it is the newest of the two');
+
+        // Every unusable shape rebuilds to an empty list rather than throwing.
+        for (const holds of [undefined, null, 'holds', 42, { 0: record(HELD_A, now) },
+            [null, 'x', {}, { verdict: 'deny-interactive' }, record(null, now)]]) {
+            writeFile(gateStateFile(repo), JSON.stringify({
+                lastDecision: null, episode: null, lastAllow: null, interactiveHolds: holds
+            }, null, 2) + '\n');
+            assert.deepStrictEqual(readGateState(repo).interactiveHolds, [],
+                'an unusable list rebuilds empty: ' + JSON.stringify(holds));
+        }
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('lib: the hold-stamp read settles the file on the descriptor it consumes', () => {
+    // The stamp file is read after every covered tool return by a hook that must
+    // never block, so the kind and the size are settled on the open descriptor
+    // rather than on the name, and a read the ceiling cut short is refused
+    // rather than parsed: a truncated object is not this file.
+    const repo = makeDir('kit-compact-gate-repo-');
+    try {
+        const target = holdNudgePath(repo);
+        const stamp = new Date(Date.now() - 60 * 1000).toISOString();
+        writeFile(target, JSON.stringify({ holds: [{ session: SESSION, nudgedAt: stamp }] }));
+        assert.strictEqual(holdNudgedAt(repo, SESSION, Date.now()), stamp,
+            'the control: a legible stamp is read back');
+
+        fs.rmSync(target);
+        fs.mkdirSync(target);
+        assert.strictEqual(holdNudgedAt(repo, SESSION, Date.now()), null,
+            'a directory at the stamp path is refused by kind');
+        fs.rmdirSync(target);
+
+        // Valid JSON whose holds are intact and whose bytes are past the ceiling:
+        // only the size can refuse this one.
+        writeFile(target, JSON.stringify({
+            holds: [{ session: SESSION, nudgedAt: stamp }],
+            pad: 'x'.repeat(80 * 1024)
+        }));
+        assert.strictEqual(holdNudgedAt(repo, SESSION, Date.now()), null,
+            'an oversized stamp file is refused by size');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('lib: the hold-stamp read refuses a link at the final component', () => {
+    // The descriptor settles the KIND, and a link is not a kind: an open follows
+    // one, so the reader would read whatever the link names and a link into a
+    // dead network mount would stall a hook that runs after every covered tool
+    // return. The stamp's own writer refuses a link at that path, so a reader
+    // that followed one would read a file the writer never wrote.
+    //
+    // A file symlink cannot be created on this platform without a privilege the
+    // suite must not require, and a junction can only point at a directory,
+    // where the read fails whatever the guard does (so it is not a control). The
+    // shim discriminates: the file at the path is an ordinary, legible, matching
+    // stamp that the control below reads back, and only fs.lstatSync says
+    // otherwise.
+    const repo = makeDir('kit-compact-gate-repo-');
+    const realLstatSync = fs.lstatSync;
+    try {
+        const target = holdNudgePath(repo);
+        const stamp = new Date(Date.now() - 60 * 1000).toISOString();
+        writeFile(target, JSON.stringify({ holds: [{ session: SESSION, nudgedAt: stamp }] }));
+        assert.strictEqual(holdNudgedAt(repo, SESSION, Date.now()), stamp,
+            'the control: the same file is read back when nothing reports a link');
+
+        fs.lstatSync = function (p) {
+            const st = realLstatSync.apply(fs, arguments);
+            if (String(p) === target) {
+                return {
+                    size: st.size,
+                    isFile: () => false,
+                    isDirectory: () => false,
+                    isSymbolicLink: () => true
+                };
+            }
+            return st;
+        };
+        assert.strictEqual(holdNudgedAt(repo, SESSION, Date.now()), null,
+            'a stamp path reported as a link is refused rather than followed');
+    } finally {
+        fs.lstatSync = realLstatSync;
+        rmDir(repo);
+    }
+});
+
+test('lib: a hold stamp dated ahead of the clock is kept inside the skew allowance and dropped past it', () => {
+    // The staleness bound is two-sided and the forward side carries the same
+    // allowance every other timestamp rule here takes (CHECKPOINT_FUTURE_SKEW_MS).
+    // What settles it is the WRITE side rather than the read: recordHoldNudge
+    // rebuilds this whole file from what the reader returns, so an entry the
+    // reader drops is not passed over on the next write, it is erased. Every
+    // stamp in the file is another session's, written by a process with its own
+    // clock, so a small step backwards on THIS box turns every peer's stamp
+    // future-dated at once and the next write takes them all out: each of those
+    // seats then has no throttle at all and is nudged again, over a skew of
+    // seconds. The allowance is what holds the ordinary case, and a stamp
+    // genuinely hours ahead is still dropped.
+    const repo = makeDir('kit-compact-gate-repo-');
+    try {
+        const now = Date.now();
+        const ahead = new Date(now + 6 * 60 * 60 * 1000).toISOString();
+        const barely = new Date(now + 60 * 1000).toISOString();
+        const live = new Date(now - 60 * 1000).toISOString();
+        writeFile(holdNudgePath(repo), JSON.stringify({
+            holds: [{ session: HELD_A, nudgedAt: ahead }, { session: HELD_B, nudgedAt: live },
+                { session: OTHER_SESSION, nudgedAt: barely }]
+        }));
+        assert.strictEqual(holdNudgedAt(repo, HELD_A, now), null,
+            'a stamp dated hours ahead throttles nothing');
+        assert.strictEqual(holdNudgedAt(repo, OTHER_SESSION, now), barely,
+            'one a minute ahead is inside the skew and still throttles its own session');
+        assert.strictEqual(holdNudgedAt(repo, HELD_B, now), live,
+            'the control: the live stamp beside them is still read back');
+
+        // And the write keeps exactly what the reader returned: the one dated
+        // hours ahead cannot hold a slot against a live session, and the one
+        // inside the skew survives a peer's write.
+        assert.strictEqual(recordHoldNudge(repo, SESSION, now, 'Bash'), true,
+            'the stamp lands');
+        const kept = JSON.parse(fs.readFileSync(holdNudgePath(repo), 'utf8')).holds;
+        assert.deepStrictEqual(kept.map((h) => h.session).sort(),
+            [HELD_B, OTHER_SESSION, SESSION].sort(),
+            'the hours-ahead entry is gone and the rest are kept: ' + JSON.stringify(kept));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('lib: a small backwards clock step does not erase every peer\'s hold stamp', () => {
+    // The defect the allowance above exists for, end to end on the write side.
+    // Three peers stamped at this instant, then one write from a process whose
+    // clock has stepped back half a minute (an NTP correction, a VM resume):
+    // without an allowance every one of those stamps reads as future-dated, the
+    // rebuild drops all three, and all three seats are nudged again on their
+    // next tool return.
+    const repo = makeDir('kit-compact-gate-repo-');
+    try {
+        const now = Date.now();
+        const stamped = new Date(now).toISOString();
+        writeFile(holdNudgePath(repo), JSON.stringify({
+            holds: [{ session: HELD_A, nudgedAt: stamped }, { session: HELD_B, nudgedAt: stamped },
+                { session: OTHER_SESSION, nudgedAt: stamped }]
+        }));
+        assert.strictEqual(recordHoldNudge(repo, SESSION, now - 30 * 1000, 'Bash'), true,
+            'the stepped-back write lands');
+        const kept = JSON.parse(fs.readFileSync(holdNudgePath(repo), 'utf8')).holds;
+        assert.deepStrictEqual(kept.map((h) => h.session).sort(),
+            [HELD_A, HELD_B, OTHER_SESSION, SESSION].sort(),
+            'every peer\'s stamp survives the step: ' + JSON.stringify(kept));
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('lib: an unreadable stamp file refuses the write rather than erasing every peer\'s stamp', () => {
+    // The write side of the same defect the read side carries. recordHoldNudge
+    // rebuilds this whole file from what the reader returns and renames it into
+    // place, so a reading that is empty because the file could NOT be read makes
+    // the write destroy exactly the other sessions' stamps it exists to preserve,
+    // collapsing every held seat's interval at once. The reader answers whether
+    // its reading is a reading, and the writer refuses an unknown one: an
+    // unstamped hold is a silent one, which is this path's own fail direction.
+    //
+    // The two readings that keep refusing are the two that may lift on their
+    // own: an open the platform refused, and an lstat that could not answer at
+    // all. Both may be a lock or a scanner over a file holding real stamps, so
+    // neither is healed. The two that cannot lift, an oversized file and a link,
+    // are shapes this writer could not have produced and are healed instead,
+    // which the test below pins.
+    //
+    // Neither can be built out of real bytes on this platform, so each is staged
+    // by shimming the one syscall that decides it, leaving every other check
+    // answering for the real file.
+    const repo = makeDir('kit-compact-gate-repo-');
+    const realOpenSync = fs.openSync;
+    const realLstatSync = fs.lstatSync;
+    try {
+        const now = Date.now();
+        fs.mkdirSync(path.join(repo, '.kit'));
+        const target = holdNudgePath(repo);
+        const peer = new Date(now - 60 * 1000).toISOString();
+        const peers = { holds: [{ session: HELD_A, nudgedAt: peer }] };
+
+        // The control first: a legible file IS rebuilt, and the peer's stamp
+        // survives the rebuild. Without it every refusal below could be a writer
+        // that never writes at all.
+        writeFile(target, JSON.stringify(peers));
+        assert.strictEqual(recordHoldNudge(repo, SESSION, now, 'Bash'), true,
+            'the control: a legible file takes the stamp');
+        assert.strictEqual(holdNudgedAt(repo, HELD_A, now), peer,
+            'and the peer\'s stamp is preserved through the rebuild');
+
+        // Leg one: the path's own kind cannot be read. A lock or a permission
+        // over a file that really does hold a peer's stamp answers this way, and
+        // an unknown kind is not a shape to remove, so the write refuses and the
+        // bytes are left exactly as they were.
+        writeFile(target, JSON.stringify(peers));
+        const before = fs.readFileSync(target, 'utf8');
+        fs.lstatSync = function (p) {
+            if (String(p) === target) {
+                const err = new Error('EBUSY: resource busy or locked');
+                err.code = 'EBUSY';
+                throw err;
+            }
+            return realLstatSync.apply(fs, arguments);
+        };
+        const refusedOnLstat = recordHoldNudge(repo, SESSION, now, 'Bash');
+        fs.lstatSync = realLstatSync;
+        assert.strictEqual(refusedOnLstat, false,
+            'a path whose kind cannot be read is not an empty file: the stamp is refused');
+        assert.strictEqual(fs.readFileSync(target, 'utf8'), before,
+            'and the file is left byte-identical rather than rebuilt or removed');
+
+        // Leg two, the reachability the review named: the read is refused while
+        // every other check passes. A lock cannot be taken portably here, so the
+        // open is shimmed for this one path, which is the same instrument leg
+        // one uses on lstat. The writer's kind check goes through lstatSync and
+        // its writability check through accessSync, so both still answer for the
+        // real file, and the atomic write's own open is on the temp name.
+        writeFile(target, JSON.stringify(peers));
+        fs.openSync = function (p) {
+            if (String(p) === target) {
+                const err = new Error('EBUSY: resource busy or locked');
+                err.code = 'EBUSY';
+                throw err;
+            }
+            return realOpenSync.apply(fs, arguments);
+        };
+        assert.strictEqual(recordHoldNudge(repo, SESSION, now, 'Bash'), false,
+            'a file that is there and cannot be opened refuses the stamp');
+        fs.openSync = realOpenSync;
+        assert.strictEqual(holdNudgedAt(repo, HELD_A, now), peer,
+            'and the peer\'s stamp is still there once the file can be read again');
+        assert.strictEqual(holdNudgedAt(repo, SESSION, now), null,
+            'while the refused session was never stamped');
+    } finally {
+        fs.openSync = realOpenSync;
+        fs.lstatSync = realLstatSync;
+        rmDir(repo);
+    }
+});
+
+test('lib: a stamp file this writer cannot have produced is healed rather than refused forever', () => {
+    // Refusing the write on an uncertain reading is what keeps a peer's stamp
+    // from being erased, and two of the four refusals would otherwise be
+    // PERMANENT. An oversized file and a link at the final component never
+    // resolve on their own: the writer refuses, refuses again on the next tool
+    // return, and the interval it exists to keep is disabled for as long as the
+    // file sits there, with no age-out. Neither shape is one this writer can
+    // produce, its own file holding at most eight short entries and being
+    // renamed into place as a regular file, so neither carries a stamp to
+    // preserve; the path is removed and the write rebuilds it. The other two
+    // legs, a lock over the open and an lstat that could not answer, may be
+    // transient over a real list and keep refusing (the test above).
+    const repo = makeDir('kit-compact-gate-repo-');
+    const realLstatSync = fs.lstatSync;
+    try {
+        const now = Date.now();
+        fs.mkdirSync(path.join(repo, '.kit'));
+        const target = holdNudgePath(repo);
+        const iso = new Date(now).toISOString();
+        const peer = new Date(now - 60 * 1000).toISOString();
+        const peers = { holds: [{ session: HELD_A, nudgedAt: peer }] };
+        // A file beside the stamp, so the unlink can be shown to be scoped to
+        // the one path rather than to the directory.
+        const neighbour = gateStatePath(repo);
+        writeFile(neighbour, JSON.stringify({ lastDecision: null }));
+
+        // Leg one, out of real bytes: a file past the read cap. The reader
+        // refuses it because what is past the cut is unknown, and this writer
+        // knows the file is not its own, so the refusal is spent healing.
+        writeFile(target, JSON.stringify(peers) + '\n' + 'x'.repeat(80 * 1024) + '\n');
+        assert.strictEqual(recordHoldNudge(repo, SESSION, now, 'Bash'), true,
+            'an oversized stamp file is replaced rather than refused forever');
+        assert.deepStrictEqual(JSON.parse(fs.readFileSync(target, 'utf8')).holds,
+            [{ session: SESSION, nudgedAt: iso }],
+            'and what lands is this session\'s stamp alone: the file held no stamp to keep');
+        assert.ok(fs.existsSync(neighbour), 'the heal removes the stamp path and nothing beside it');
+
+        // Leg two: a link at the final component, staged the only way this
+        // platform allows (a file symlink needs a privilege the suite must not
+        // require), so the file underneath is an ordinary regular one and only
+        // fs.lstatSync says otherwise. The heal's unlink therefore removes a
+        // real file, which is what a real link's removal would do to the link.
+        writeFile(target, JSON.stringify(peers));
+        fs.lstatSync = function (p) {
+            const st = realLstatSync.apply(fs, arguments);
+            if (String(p) === target) {
+                return {
+                    size: st.size,
+                    isFile: () => false,
+                    isDirectory: () => false,
+                    isSymbolicLink: () => true
+                };
+            }
+            return st;
+        };
+        const healed = recordHoldNudge(repo, SESSION, now, 'Bash');
+        fs.lstatSync = realLstatSync;
+        assert.strictEqual(healed, true, 'a link at the stamp path is removed rather than refused forever');
+        assert.deepStrictEqual(JSON.parse(fs.readFileSync(target, 'utf8')).holds,
+            [{ session: SESSION, nudgedAt: iso }],
+            'and the rebuilt file carries this session\'s stamp alone');
+        assert.ok(fs.existsSync(neighbour), 'again scoped to the one path');
+
+        // The control on the heal itself: a legible file is NOT unlinked and
+        // rebuilt from nothing, so the two cases above are about the shape of
+        // the file rather than a writer that clears the path every time.
+        writeFile(target, JSON.stringify(peers));
+        assert.strictEqual(recordHoldNudge(repo, SESSION, now, 'Bash'), true,
+            'the control: a legible file takes the stamp');
+        assert.strictEqual(holdNudgedAt(repo, HELD_A, now), peer,
+            'and the peer\'s stamp survives it, which is what the heal must never do');
+
+        // The other direction, stated here as well as at the refusal test
+        // beside this, because the two are one decision: a directory at the
+        // path is not this writer's output either, and the unlink cannot remove
+        // one, so the write refuses rather than pretending to heal.
+        fs.rmSync(target, { force: true });
+        fs.mkdirSync(target);
+        assert.strictEqual(recordHoldNudge(repo, SESSION, now, 'Bash'), false,
+            'a directory at the stamp path refuses: the heal is an unlink, and an unlink cannot remove one');
+    } finally {
+        fs.lstatSync = realLstatSync;
+        rmDir(repo);
+    }
+});
+
+test('lib: a stamp read that ended short refuses the write rather than healing it', () => {
+    // The heal above rests on one fact: a file past the READ CEILING is not
+    // this writer's output, its own file holding at most eight short entries.
+    // A read can end short for a second reason that says nothing of the kind,
+    // a file truncated under the read or a device that stopped answering, and
+    // that one can happen to this writer's own file with every peer's live
+    // stamp in it. So the two are separate readings and only the ceiling one is
+    // healed: healing this one would unlink a real list of stamps and collapse
+    // every held seat's interval, which is the defect the refusal exists to
+    // stop.
+    //
+    // A short read cannot be produced from real bytes on demand, so fs.readSync
+    // is shimmed to fill part of the buffer and then return nothing, which is
+    // what the syscall shows for both of those causes. Every other check in the
+    // writer answers for the real file.
+    const repo = makeDir('kit-compact-gate-repo-');
+    const realReadSync = fs.readSync;
+    try {
+        const now = Date.now();
+        fs.mkdirSync(path.join(repo, '.kit'));
+        const target = holdNudgePath(repo);
+        const peer = new Date(now - 60 * 1000).toISOString();
+        const peers = { holds: [{ session: HELD_A, nudgedAt: peer }] };
+        const neighbour = gateStatePath(repo);
+        writeFile(neighbour, JSON.stringify({ lastDecision: null }));
+
+        writeFile(target, JSON.stringify(peers));
+        const before = fs.readFileSync(target, 'utf8');
+        let calls = 0;
+        fs.readSync = function shortReadSync(fd, buffer, offset, length, position) {
+            calls += 1;
+            if (calls > 1) return 0;
+            return realReadSync.call(fs, fd, buffer, offset, Math.min(length, 8), position);
+        };
+        const refused = recordHoldNudge(repo, SESSION, now, 'Bash');
+        fs.readSync = realReadSync;
+        assert.strictEqual(refused, false,
+            'a reading cut short leaves the contents unknown: the stamp is refused');
+        assert.ok(fs.existsSync(target), 'and the path is not unlinked as though it were oversized');
+        assert.strictEqual(fs.readFileSync(target, 'utf8'), before,
+            'the file is left byte-identical, peers and all');
+        assert.strictEqual(holdNudgedAt(repo, HELD_A, now), peer,
+            'so the peer\'s live stamp is still there once the read completes');
+        assert.strictEqual(holdNudgedAt(repo, SESSION, now), null,
+            'while the refused session was never stamped');
+        assert.ok(fs.existsSync(neighbour), 'and nothing beside the path was touched');
+
+        // The control: the same file, the same writer, nothing shimmed. Without
+        // it a writer that never writes at all would pass the case above.
+        assert.strictEqual(recordHoldNudge(repo, SESSION, now, 'Bash'), true,
+            'the control: the same file takes the stamp when the read completes');
+        assert.strictEqual(holdNudgedAt(repo, HELD_A, now), peer,
+            'and the peer\'s stamp survives that rebuild');
+    } finally {
+        fs.readSync = realReadSync;
+        rmDir(repo);
+    }
+});
+
+test('lib: the hold stamp is gated on what it writes rather than on the gate state', () => {
+    // The stamp writer never touches the gate state file, so a state file this
+    // process cannot write is not its refusal to take: refusing there silences
+    // the directive for a session whose own hold was perfectly readable. What
+    // stays load-bearing is the directory: .kit/ must already be there (or be
+    // one an armed goal licenses creating), so a held session standing in a
+    // stranger's checkout still writes nothing into it.
+    const repo = makeDir('kit-compact-gate-repo-');
+    try {
+        const now = Date.now();
+        assert.strictEqual(recordHoldNudge(repo, SESSION, now, 'Bash'), false,
+            'no .kit/ and nothing armed: the stamp is refused');
+        assert.ok(!fs.existsSync(path.join(repo, '.kit')),
+            'and the directory is not created for it');
+
+        fs.mkdirSync(path.join(repo, '.kit'));
+        // A gate state path this process cannot write to or read as a file: the
+        // one condition the old gate refused on and this writer does not need.
+        fs.mkdirSync(gateStatePath(repo));
+        assert.strictEqual(recordHoldNudge(repo, SESSION, now, 'Bash'), true,
+            'an unwritable gate state does not disable the interval');
+        assert.strictEqual(holdNudgedAt(repo, SESSION, now), new Date(now).toISOString(),
+            'and the stamp is on disk where the reader finds it');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('gate: a boundary deny ends the deciding session\'s own interactive hold', () => {
+    // A deny-boundary is the leash holder's own class: the session it names has
+    // a chapter to close and a checkpoint to open, and its release is not the
+    // role-boundary marker the hold directive points at. Carrying its hold
+    // record through would leave the state asserting one session is both held as
+    // a bystander and holding the leash, and the directive would be spoken at a
+    // session whose own next offer is decided on the boundary leg.
+    const { repo, transcript } = armedRepo();
+    const now = Date.now();
+    try {
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript, { session_id: HELD_A })));
+        assertInteractiveDeny(runGate(gatePayload(repo, transcript, { session_id: HELD_B })));
+        assert.ok(interactiveHoldOpen(readState(repo), now, HELD_A), 'test setup: A is held');
+
+        // A takes the leash, which is the ordinary route out of a bystander
+        // hold, and its next offer is denied on the boundary leg.
+        bindSession(repo, HELD_A);
+        assertDeny(runGate(gatePayload(repo, transcript, { session_id: HELD_A })));
+        const state = readState(repo);
+        assert.strictEqual(state.lastDecision.verdict, 'deny-boundary',
+            'test setup: A was denied on the boundary leg');
+        assert.strictEqual(interactiveHoldOpen(state, now, HELD_A), null,
+            'the boundary deny ended its own interactive hold');
+        assert.ok(interactiveHoldOpen(state, now, HELD_B),
+            'while the other seat still is: ' + JSON.stringify(state.interactiveHolds));
     } finally {
         rmDir(repo);
     }
@@ -5758,6 +7613,93 @@ test('cli: boundary opens the marker for a session the registry does not carry, 
     }
 });
 
+test('cli: boundary replacing another session\'s marker says so instead of unmaking it silently', () => {
+    // The marker is ONE file per project directory and the write renames over
+    // it, while the directive that produces these writes now reaches every held
+    // seat on a shared checkout. So two seats declaring in the same stretch
+    // leave one declaration standing and the other seat deferred again at its
+    // next offer, told to declare a boundary it already declared. The
+    // declaration still lands, since refusing would strand a seat that
+    // legitimately needs to declare; what this pins is that the collision is
+    // said out loud, in the discipline the registry note beside it keeps:
+    // naming neither the other session nor the path, since the point is that
+    // neither is this caller's.
+    const repo = makeDir('kit-compact-gate-repo-');
+    try {
+        plantTranscript(FIXTURE_HOME, repo, SESSION, userLine('earlier', Date.now() - 60 * 60 * 1000) + '\n');
+        assert.strictEqual(writeRoleBoundary(repo, OTHER_SESSION).ok, true,
+            'test setup: another session\'s marker is open here');
+
+        const res = runCli(['boundary'], repo, { CLAUDE_CODE_SESSION_ID: SESSION });
+        assert.strictEqual(res.status, 0, 'the declaration still lands; stderr: ' + res.stderr);
+        assert.strictEqual(JSON.parse(fs.readFileSync(roleBoundaryFile(repo), 'utf8')).session,
+            SESSION, 'and the marker is now this session\'s');
+        assert.ok(res.stderr.includes('named a different session'),
+            'the replacement is reported; stderr: ' + res.stderr);
+        assert.ok(!res.stderr.includes(OTHER_SESSION),
+            'without naming the session whose declaration it was; stderr: ' + res.stderr);
+        assert.ok(!res.stderr.includes(repo) && !res.stderr.includes('compact-role-boundary'),
+            'and without naming the path; stderr: ' + res.stderr);
+
+        // The control, both ways. Replacing this session's OWN marker is the
+        // ordinary re-declaration and says nothing, and so does a first
+        // declaration with nothing there at all: without these the assertion
+        // above would pass for a note printed on every boundary run.
+        const again = runCli(['boundary'], repo, { CLAUDE_CODE_SESSION_ID: SESSION });
+        assert.strictEqual(again.status, 0, 'a re-declaration succeeds; stderr: ' + again.stderr);
+        assert.strictEqual(again.stderr, '', 'and says nothing about a collision');
+
+        fs.rmSync(roleBoundaryFile(repo), { force: true });
+        const fresh = runCli(['boundary'], repo, { CLAUDE_CODE_SESSION_ID: SESSION });
+        assert.strictEqual(fresh.status, 0, 'a first declaration succeeds; stderr: ' + fresh.stderr);
+        assert.strictEqual(fresh.stderr, '', 'and says nothing either');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('cli: boundary says nothing about an incumbent declaration that had already lapsed', () => {
+    // The note tells the operator that another seat's declaration no longer
+    // stands and its next offer is deferred again. That is only true of a
+    // declaration the gate was still honoring: a marker past the age bound was
+    // already being ignored by every other consumer of this file, so a note
+    // about it reports a loss that had already happened and names a seat that
+    // is not being deferred by anything this run did. The incumbent is judged
+    // by the same markerMatches rule the gate's honor leg and the status verb
+    // decide by, against its own session, since by construction it names
+    // another one.
+    const repo = makeDir('kit-compact-gate-repo-');
+    try {
+        plantTranscript(FIXTURE_HOME, repo, SESSION, userLine('earlier', Date.now() - 60 * 60 * 1000) + '\n');
+        writeFile(roleBoundaryFile(repo), JSON.stringify({
+            session: OTHER_SESSION,
+            writtenAt: new Date(Date.now() - ROLE_BOUNDARY_MAX_AGE_MS - 60 * 1000).toISOString(),
+            consumed: false
+        }) + '\n');
+        const res = runCli(['boundary'], repo, { CLAUDE_CODE_SESSION_ID: SESSION });
+        assert.strictEqual(res.status, 0, 'the declaration lands; stderr: ' + res.stderr);
+        assert.strictEqual(res.stderr, '',
+            'a marker the gate had already stopped honoring is not reported as a live '
+            + 'declaration replaced');
+
+        // The control, on the same fixture and the same file: the identical
+        // marker one minute INSIDE the bound is a live declaration and the note
+        // still fires for it, so the silence above is the age test rather than a
+        // note that stopped working.
+        writeFile(roleBoundaryFile(repo), JSON.stringify({
+            session: OTHER_SESSION,
+            writtenAt: new Date(Date.now() - ROLE_BOUNDARY_MAX_AGE_MS + 60 * 1000).toISOString(),
+            consumed: false
+        }) + '\n');
+        const live = runCli(['boundary'], repo, { CLAUDE_CODE_SESSION_ID: SESSION });
+        assert.strictEqual(live.status, 0, 'that declaration lands too; stderr: ' + live.stderr);
+        assert.ok(live.stderr.includes('named a different session'),
+            'a live incumbent is still reported; stderr: ' + live.stderr);
+    } finally {
+        rmDir(repo);
+    }
+});
+
 // ---------------------------------------------------------------------------
 // The declared moment. The boundary verb's marker describes the instant it was
 // written, so the gate honors one only while no new turn has begun in the
@@ -6652,17 +8594,171 @@ function walkPaths(root, prefix, out) {
     return acc;
 }
 
+// Every scratch resolver this library holds, derived from the CLASS's own shape
+// rather than from a pattern over export names: the class is a function that
+// composes a path under kitScratchDir for a project directory, and a member
+// given a name no pattern here anticipated is as much a member as the six that
+// end in Path. A name-shaped predicate would sweep the names someone remembered
+// to spell that way and go silent for the rest, which reads exactly like a clean
+// class sweep. The exposure this covers is a session-id-bearing file landing in
+// the replicated store for a store-resident seat.
+//
+// Two exported *Path functions are not of that class and are named with their
+// reasons rather than filtered by a pattern: both compose a home-anchored path
+// from an id rather than a project directory, so the store question does not
+// arise for either. The names are asserted present, so a rename surfaces here
+// instead of quietly excluding nothing.
+const NON_SCRATCH_PATH_EXPORTS = {
+    // The coordinator registry entry for a session, under ~/.claude/coordinator
+    // by contract: it is a machine-level record rather than a project's.
+    registryEntryPath: 'the coordinator registry entry, home-anchored by contract',
+    // The harness's own transcript store, under ~/.claude/projects, whose layout
+    // the harness owns and this library only reads.
+    sessionTranscriptPath: 'the harness transcript store, whose layout is not this library\'s'
+};
+
+// The class read out of the library's own source: every function of a project
+// directory that resolves the scratch directory for that directory. Matching the
+// statement shape rather than a list of names is what lets this speak about a
+// resolver nobody here named.
+//
+// What it matches is the CALL rather than the composition around it, so a
+// resolver that binds kitScratchDir(cwd) to a local and joins that local one
+// line later is of the class and is read as one; keying on path.join(
+// kitScratchDir(cwd) directly would leave that spelling outside both the sweep
+// and its control, which is a resolver escaping unswept for a difference of
+// style. The parameter is BOUND rather than spelled: the shape captures
+// whatever the one parameter is called and requires the same identifier at the
+// kitScratchDir call, so a resolver written `function f(dir) { ...
+// kitScratchDir(dir) }` is of the class and is read as one, where a literal
+// `cwd` on both sides would let a rename out of the sweep for nothing but a
+// difference in naming. Binding it is also what keeps the match honest in the
+// other direction: a function that resolves the scratch of some identifier
+// other than its own parameter is not a resolver of the project it was handed.
+//
+// What it still cannot see is stated rather than implied. The body is scanned
+// only up to its first brace, so a resolver that reaches kitScratchDir inside a
+// branch or a try is not of this shape, and the sweep's own floor assertion
+// below is what makes that visible instead of silent. The two library functions
+// that do reach it that way (gateScratchTarget and gateStateTarget) are
+// preconditions returning a result object rather than path resolvers, so their
+// absence here is the class holding rather than a gap in it. And the shape reads
+// a declaration of exactly one parameter, so a resolver taking a second
+// argument is outside it too. The third limit is the other face of binding the
+// parameter: the backreference requires the SAME identifier at the kitScratchDir
+// call, so a resolver that rebinds its parameter to a local first and calls
+// kitScratchDir(that local) is outside the shape and escapes with no signal,
+// where the identical resolver written without the rebind is caught. The
+// backreference is kept anyway, because dropping it is what admits a function
+// resolving the scratch of some identifier that is not the project it was
+// handed, and a shape that starts matching non-resolvers is worse than a stated
+// limit. What still answers for a resolver written that way is the name-shaped
+// net in scratchPathResolvers below rather than anything here: exported as
+// something Path, it is neither of the derived class nor named as a non-scratch
+// resolver, and that loop fails. Exported under any other name it is unswept,
+// and this limit is the whole of the warning.
+function scratchResolverNamesFromSource(source) {
+    const names = [];
+    const shape =
+        /\nfunction\s+([A-Za-z0-9_$]+)\s*\(\s*([A-Za-z0-9_$]+)\s*\)\s*\{[^{}]*?kitScratchDir\(\s*\2\s*\)/g;
+    for (const m of source.matchAll(shape)) names.push(m[1]);
+    return names.sort();
+}
+
+function scratchPathResolvers() {
+    const lib = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
+    const src = fs.readFileSync(
+        path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-compact-lib.js'), 'utf8');
+    const names = scratchResolverNamesFromSource(src);
+    assert.ok(names.length >= 6,
+        'the resolvers must still be composed in the shape this reads them by; a resolver built '
+        + 'another way needs this derivation re-pointed rather than left to sweep nothing, got '
+        + JSON.stringify(names));
+    for (const name of names) {
+        assert.strictEqual(typeof lib[name], 'function',
+            name + ' composes a path under the scratch directory but is not exported under that '
+            + 'name, so nothing here can sweep it');
+    }
+    // The name-shaped second net, which is what keeps the two exclusions honest:
+    // an exported *Path function outside the derived class is either one of the
+    // two named non-scratch resolvers or an unaccounted member.
+    const exported = Object.keys(lib).filter((k) => /Path$/.test(k) && typeof lib[k] === 'function');
+    for (const name of Object.keys(NON_SCRATCH_PATH_EXPORTS)) {
+        assert.ok(exported.includes(name),
+            name + ' is named as a non-scratch resolver but is no longer exported under that name; '
+            + 'the exclusion has to be re-pointed rather than left standing');
+    }
+    for (const name of exported) {
+        assert.ok(names.includes(name)
+            || Object.prototype.hasOwnProperty.call(NON_SCRATCH_PATH_EXPORTS, name),
+            name + ' is exported as a path resolver, is not of the swept class, and is not named '
+            + 'as a non-scratch one: it needs one or the other rather than neither');
+    }
+    return names.map((k) => [k, lib[k]]);
+}
+
+// The sweep's own question, in one place so a control runs the predicate the
+// loops run rather than a restatement of it: does this resolver put a project's
+// file inside that project's own .kit?
+function resolvesInsideProjectKit(resolve, projectDir) {
+    return path.dirname(resolve(projectDir)) === path.join(projectDir, '.kit');
+}
+
+test('lib: the scratch-resolver sweep is derived from the class rather than from export names', () => {
+    // The control for the derivation, on a synthetic source carrying three
+    // resolvers whose names are withheld from every literal in this file and
+    // which end in nothing the name predicate would catch. They are found by the
+    // shape of the declaration, so a resolver added to the library under any name
+    // is too. The second is the spelling a shape keyed on the join itself would
+    // miss: the same resolver written with the scratch directory bound to a local
+    // first. The third is the one a shape spelling the parameter `cwd` literally
+    // would miss, and its parameter name is withheld from every literal here as
+    // well, so the sweep is shown to bind the name rather than to have been
+    // handed it. Two non-members sit beside them: a resolver of another directory
+    // entirely, so the match is about kitScratchDir rather than about being a
+    // path at all, and one that resolves the scratch of an identifier that is not
+    // its own parameter, which is not a resolver of the project it was handed.
+    const found = scratchResolverNamesFromSource(
+        '\nfunction ledgerSink(cwd) {\n'
+        + "    return path.join(kitScratchDir(cwd), 'compact-ledger.json');\n}\n"
+        + '\nfunction tallySink(cwd) {\n'
+        + '    const dir = kitScratchDir(cwd);\n'
+        + "    return path.join(dir, 'compact-tally.json');\n}\n"
+        + '\nfunction briefSink(projectRoot) {\n'
+        + "    return path.join(kitScratchDir(projectRoot), 'compact-brief.json');\n}\n"
+        + '\nfunction registryEntryPath(sessionId) {\n'
+        + "    return path.join(os.homedir(), '.claude', sessionId);\n}\n"
+        + '\nfunction strandedSink(someArg) {\n'
+        + "    return path.join(kitScratchDir(elsewhere), 'compact-stranded.json');\n}\n"
+        + '\nfunction homeSink(cwd) {\n'
+        + "    return path.join(os.homedir(), '.claude', path.basename(cwd));\n}\n");
+    assert.deepStrictEqual(found, ['briefSink', 'ledgerSink', 'tallySink'],
+        'the extractor reads the declaration shape rather than a list of known names, binds the '
+        + 'parameter rather than spelling it, and reads the call rather than the composition '
+        + 'around it: ' + JSON.stringify(found));
+});
+
 test('lib: a project directory inside the memory store resolves its scratch outside the store', () => {
-    const f = storeHomeFixture();
+    const resolvers = scratchPathResolvers();
+    let f;
     try {
+        f = storeHomeFixture();
+        // The sweep is only worth its silence if it covers the resolvers this
+        // section's own files added, so the two the section is about are named
+        // as a floor under the derived list.
+        for (const name of ['gateStatePath', 'gateLogPath', 'roleBoundaryPath', 'consentPath',
+            'checkpointPath', 'holdNudgePath']) {
+            assert.ok(resolvers.some(([n]) => n === name), name + ' must be among the swept resolvers');
+        }
         withHome(f.home, () => {
-            for (const resolve of [gateStatePath, gateLogPath, roleBoundaryPath, consentPath, checkpointPath]) {
+            for (const [name, resolve] of resolvers) {
                 const target = resolve(f.project);
+                assert.strictEqual(typeof target, 'string', name + ' must resolve to a path');
                 const escaped = path.relative(f.storeRoot, target);
                 assert.ok(escaped.startsWith('..'),
-                    'resolves outside the store root, got ' + target);
+                    name + ' resolves outside the store root, got ' + target);
                 assert.ok(!path.relative(f.home, target).startsWith('..'),
-                    'and stays under the home directory, got ' + target);
+                    name + ' stays under the home directory, got ' + target);
             }
             // The store-relative shape is preserved under the home-anchored
             // root, so two store-backed project directories cannot collide.
@@ -6670,7 +8766,7 @@ test('lib: a project directory inside the memory store resolves its scratch outs
                 gateStatePath(path.join(f.storeRoot, 'coordinator', os.hostname(), 'other')));
         });
     } finally {
-        rmDir(f.home);
+        if (f) rmDir(f.home);
     }
 });
 
@@ -6678,24 +8774,50 @@ test('lib: a project directory outside the store keeps its own .kit (the control
     // Without this the case above passes for a resolver that sends every cwd
     // to the home-anchored root, which would move every ordinary repo's gate
     // state off the repo it belongs to.
-    const f = storeHomeFixture();
-    const repo = makeDir('kit-compact-gate-repo-');
+    // The sweep is derived from the class's own shape rather than from a list
+    // of names: a resolver added to the library is covered here without an
+    // edit, and a resolver sending an ordinary repo's file to the home-anchored
+    // root fails this whichever name it was given.
+    const resolvers = scratchPathResolvers();
+    let f;
+    let repo;
     try {
+        f = storeHomeFixture();
+        repo = makeDir('kit-compact-gate-repo-');
         withHome(f.home, () => {
-            assert.strictEqual(gateStatePath(repo), gateStateFile(repo));
-            assert.strictEqual(roleBoundaryPath(repo), roleBoundaryFile(repo));
-            assert.strictEqual(consentPath(repo), consentFile(repo));
-            assert.strictEqual(checkpointPath(repo), path.join(repo, '.kit', 'compact-checkpoint.json'));
+            for (const [name, resolve] of resolvers) {
+                assert.ok(resolvesInsideProjectKit(resolve, repo),
+                    name + ' must resolve inside the project\'s own .kit, got ' + resolve(repo));
+            }
+            // The control: the loop's own predicate, run against an instance
+            // withheld from the derived list and built to the shape the sweep
+            // exists to catch, a resolver sending an ordinary repo's file to
+            // the home-anchored root. Without it the loop's silence would be a
+            // predicate that passes whatever it is handed rather than a
+            // refusal, and comparing two paths that differ by construction
+            // proves only that they differ.
+            const storeResidentResolver = (cwd) =>
+                path.join(f.home, '.kit', 'store', path.basename(cwd), 'compact-gate.json');
+            assert.strictEqual(resolvesInsideProjectKit(storeResidentResolver, repo), false,
+                'the predicate must refuse a resolver that sends this repo\'s file out of its own '
+                + '.kit, got ' + storeResidentResolver(repo));
+            assert.strictEqual(resolvesInsideProjectKit(gateStatePath, repo), true,
+                'and admit one that does not, so the refusal above is about the path rather than '
+                + 'about the predicate');
         });
     } finally {
-        rmDir(repo);
-        rmDir(f.home);
+        if (repo) rmDir(repo);
+        if (f) rmDir(f.home);
     }
 });
 
 test('gate: a marker written from a store-backed project directory is read there, and the store stays clean', () => {
-    const f = storeHomeFixture();
+    // The fixture is created INSIDE the try, as the two cases above create
+    // theirs: a throw between a temp directory's creation and the try that owns
+    // its removal leaks the directory for the life of the machine.
+    let f;
     try {
+        f = storeHomeFixture();
         const transcript = path.join(f.project, 'transcript.jsonl');
         writeUsageTranscript(transcript, 50000);
         const wrote = withHome(f.home, () => writeRoleBoundary(f.project, SESSION));
@@ -6712,7 +8834,7 @@ test('gate: a marker written from a store-backed project directory is read there
         const left = walkPaths(f.storeRoot, '').filter((p) => /(^|\/)\.kit(\/|$)/.test(p));
         assert.deepStrictEqual(left, [], 'no .kit path under the store root');
     } finally {
-        rmDir(f.home);
+        if (f) rmDir(f.home);
     }
 });
 

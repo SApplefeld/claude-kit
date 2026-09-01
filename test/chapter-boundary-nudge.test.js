@@ -200,9 +200,18 @@ test('silent when the payload carries agent_id, even with the correct bound sess
     // own session_id, so the bound-session guard passes and only the agent
     // keys stand it down. A mismatched session id here would pass for the
     // wrong reason and leave guard 3 unproven.
+    //
+    // The agent_id here is SYNTHETIC, standing in for the real identifier a
+    // harvested payload of this shape carries: the privacy gate redacts a real
+    // agent id from a fixture at the freezing step, and asks for the
+    // substitution to be stated in the case's own note. The sweep behind that
+    // statement ran on three predicates, the literal value, the structural
+    // pattern `agent_id: [0-9a-f]{16,}`, and a bare 17-hex-token shape, over
+    // tracked files, with a positive control on a synthetic 17-hex value
+    // withheld from the literal list and matched on shape, which spoke.
     const repo = makeRepo();
     try {
-        const res = runHook(firePayload(repo, { agent_id: 'ae3954fd9fc0deefa' }));
+        const res = runHook(firePayload(repo, { agent_id: 'agent-11112222aaaabbbb' }));
         assertSilent(res, 'subagent payload (agent_id, parent session id)');
     } finally {
         rmDir(repo);

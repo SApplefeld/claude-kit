@@ -28,16 +28,44 @@
 // parses the payload and discards that field), so this hook never emits one:
 // an inert "compatibility" copy would read as working while reaching nothing.
 //
-// The reminder carries exactly two values out of state, the count of offers
-// held and the whole minutes since the episode opened, both integers rendered
-// by the library's own clamped phrase. No path, no session id, nothing else read
+// Two sessions are held by this gate and neither can see it, so there are two
+// directives here rather than one. The LEASHED run is held on a boundary deny,
+// under an open deferral episode, and is told to close its chapter and open a
+// checkpoint. The HANDS-ON session is held on an interactive deny, because the
+// project's goal belongs to another session or nothing is armed here at all; it
+// has no chapter to close and no checkpoint to open, and its only release is the
+// role-boundary marker the checkpoint CLI's boundary verb writes, so it is told
+// to judge whether everything it holds is durable and to declare it if so. The
+// two are mutually exclusive by construction, since the gate reaches the
+// interactive leg only for a session that does not hold the leash, and the
+// second directive is the only one that ever reaches a bystander seat.
+//
+// The episode reminder carries exactly two values out of state, the count of
+// offers held and the whole minutes since the episode opened, both integers
+// rendered by the library's own clamped phrase. The hold reminder carries none
+// at all: its prose is fixed, and the one figure that decides whether it speaks,
+// the denied decision's consumed token reading, is compared against the floor
+// and never rendered. No session id, no project path, nothing else read
 // from disk: the state file is user-writable, and this text lands in the model's
 // context, so it holds the same provenance bound the gate's stderr notes hold.
 // The one other composed value is this hook's own installed directory, module
-// state rather than input, and it is gated by a path grammar before it is
-// rendered as a runnable command (see CHECKPOINT_CLI).
+// state rather than input. It is rendered as a runnable command through two
+// guards, a path grammar and a home elision (see CHECKPOINT_CLI and
+// commandClausePath); an installed kit sits under the home directory, so the
+// elision is what keeps the OS account name out of a text the model reads, on
+// the floor the checkpoint CLI holds its own output to. The grammar is why the
+// installed directory is read from __dirname here rather than from
+// CLAUDE_PLUGIN_ROOT the way the version nudge and the doctrine refresh read
+// theirs: both texts name a command the reader is meant to run, but those two
+// print a diagnostic about the plugin the harness says is loaded, while this one
+// hands over a line to execute, and an environment value can name a directory
+// this hook was never installed in. The grammar refuses metacharacters, not a
+// wrong directory.
 //
-// Eight guards, in order, every one failing toward a silent exit 0:
+// Guards 1 to 4 decide whether anything is said at all, guard 5 forks to one of
+// two paths, and guards 6 to 8 belong to the episode path alone; the hold path
+// has its own three, numbered 5H to 7H in the section after this list. Every
+// guard fails toward a silent exit 0:
 //   1. The payload parses and tool_name is exactly Agent, TaskOutput, Bash, or
 //      PowerShell. The hooks.json matcher already scopes this; the in-code
 //      check makes a later matcher edit unable to silently widen the hook.
@@ -79,7 +107,11 @@
 //      the one failure this hook must never cause. What this check buys is that
 //      one case, for every read that follows; each reader still answers for the
 //      path it opens, and kit-goal-lib.js applies the same rejection to its own
-//      stat paths.
+//      stat paths. The same screen runs a second time over the directory
+//      kit-compact-lib's scratch resolver answers for that project, which for a
+//      project directory under ~/.claude is home-anchored rather than a child of
+//      cwd, so the state and stamp reads on both paths below inherit the guard
+//      rather than the cwd screen alone standing for them.
 //   5. A kit goal is armed (readGoal from kit-goal-lib.js, the same read the
 //      gate uses) and this session holds its leash (sessionHoldsLeash, over
 //      session_id or sessionId, the pair the gate and the Stop hook both
@@ -105,6 +137,28 @@
 //      symlinked home) would be a permanent total stand-down with no log line
 //      and nothing in any status surface. Its only failure direction is
 //      silence. Guard 3 is the subagent stand-down.
+//      This guard is the fork rather than a stand-down: a session holding no
+//      leash in this project takes the hold path below, whose guards are
+//      numbered 5H to 7H, and reaches no part of guards 6, 7 or 8. Those three
+//      therefore decide exactly what they always decided, for exactly the
+//      sessions they always decided it for. The fork carries one stand-down of
+//      its own, and it is here rather than at 5H because it is a fact about the
+//      goal: an ARMED goal with no binding, met by a session this guard has
+//      just found does not hold its leash, takes neither path. Such a goal is
+//      claimable by whichever session's arming text names it, out of a
+//      transcript this hook never opens, so the session in front of it may be
+//      the leash holder unrecognizably, and the hold directive would tell a
+//      leash holder it holds no leash and point it at a marker the gate's
+//      boundary leg never reads.
+//      The fork carries a second stand-down on the same reasoning, and it is
+//      about the READ rather than about the goal: readGoal answers null both
+//      for a state no surface in the kit can act on and for one that is there
+//      and could not be read, and those are opposite answers here, a project
+//      with no reachable goal against a project whose leash holder cannot be
+//      identified right now. So the null is discriminated by the KIND at the
+//      path (goalPathKind, against SETTLED_GOAL_STATE_KINDS below), which
+//      recognizes the three settled readings rather than absence alone, and
+//      every other kind takes the silence rather than the directive.
 //   6. The gate state shows a deferral episode open FOR THIS RUN'S LEASH
 //      (gateEpisodeOpen scoped to the holder guard 5 identified: the goal's
 //      binding where it has one, and otherwise this session's own id, which is
@@ -132,8 +186,101 @@
 //      written on this fire replaces the illegible value, so the interval takes
 //      hold from the next tool return onward.
 //
-// On all eight the episode is stamped through recordEpisodeNudge FIRST, and the
-// reminder is emitted only when that stamp landed. The ordering is the rate
+// The hold path, taken when guard 5 finds no leash for this session here. Three
+// guards, each the same question asked of a different record:
+//   5H. This session's own newest interactive deny is a hold that still stands:
+//      it carries one of the two hands-on reasons (bystander, or nothing armed)
+//      and is dated inside the same four-hour idle bound and future-skew
+//      allowance an episode's newest denial is held to (interactiveHoldOpen).
+//      A record rather than an episode is what is read, and that is forced by
+//      the gate rather than chosen here: an interactive deny records its
+//      decision and leaves the episode slot untouched (nextGateState), so a
+//      bystander and a session in an unarmed project never own an episode at
+//      all, and a nudge keyed on one could never speak to either. The record is
+//      read from the gate state's per-session hold list, so the directive is
+//      keyed on this session's own hold: on the shared checkout this whole path
+//      exists for, several seats are held at once and every gate process
+//      overwrites the single newest-decision slot, so a hold read from there
+//      would be refused whenever another seat decided last.
+//   6H. The decision's consumed token reading is at or above the floor
+//      (compactNudgeFloor in the machine-local signpost, default
+//      NUDGE_FLOOR_DEFAULT). Deferral itself is free and the gate keeps doing it
+//      at any count; what the floor buys is that the directive arrives only when
+//      a compaction is close enough that declaring a boundary is worth a turn's
+//      attention. A record whose consumed reading is absent or illegible is
+//      below every floor, which is the right direction: the figure is the only
+//      evidence this hook has that the hold is near the ceiling, and speaking
+//      without it would be guessing.
+//   7H. The interval since this session was last spoken to about a hold, read
+//      from the stamps beside the gate state (holdNudgedAt) and applied by the
+//      same intervalElapsed rule guard 8 uses, illegible-fires included. It is a
+//      separate file for a reason stated at recordHoldNudge: the state file's
+//      writers would erase a stamp kept there within minutes, and this hold owns
+//      no episode to carry one. The two intervals are independent by
+//      construction, one per episode and one per session, and neither can
+//      silence the other.
+// They are evaluated 5H, 7H, 6H, which is an evaluation order rather than a
+// renumbering: 6H reads the machine-local signpost in the home directory while
+// 7H reads a small file in the project this payload already named. What the
+// order buys is bounded to one regime and worth stating exactly, because the
+// dominant regime is the other one. Above the floor a fired directive leaves a
+// stamp, so 7H answers no for the throttle interval and the home read is
+// skipped for that half hour. Below the floor no stamp is ever written, so 7H
+// answers yes on every covered tool return and both reads happen every time,
+// throughout exactly the suppression window the floor exists to create. No
+// ordering can change that half: 6H IS the home read, so establishing that a
+// hold is below the floor requires it. No guard's answer depends on another's,
+// so the order changes what is read and never what is decided.
+// On all three the stamp lands first and the directive is emitted only when it
+// landed, which is guard 8's ordering and it is the rate limit for the same
+// reason.
+//
+// One bound on the no-goal shape, stated rather than fixed. The whole hold path
+// starts at a decision the gate recorded, and the gate records nothing in a
+// project that carries no .kit/ directory unless a goal is armed there
+// (gateScratchTarget in kit-compact-lib.js refuses to create one otherwise). So
+// in a project that has never carried a .kit/, no interactive deny is written
+// down, 5H finds no hold, and this directive never fires for the no-goal shape
+// at all. The refusal is deliberate and is not removed for this: lifting it
+// would have the kit create a .kit/ in every unarmed project a held session
+// happens to stand in, which is the exact cost that refusal exists to prevent.
+// What it leaves is that the no-goal directive serves a project that already
+// carries a .kit/, which is every project that has ever armed a goal or run the
+// boundary verb, and the bystander shape is unaffected, since an armed goal is
+// what makes a session a bystander in the first place.
+//
+// There is deliberately no stand-down on the seat's own release marker, which is
+// a decision rather than an omission. The record read at 5H IS the gate's answer
+// to whether a release was honored, since the marker legs run before the deny,
+// so a deny means no honorable marker stood at that decision. Reading the marker
+// file here would add a failure mode rather than remove one: markerMatches
+// answers on age and session alone, so a declaration whose moment has lapsed
+// still matches for four hours, and a check on it would silence the directive
+// for that whole window in exactly the case the seat needs to declare again.
+// What that leaves is a repeat whose real ceiling is worth stating plainly,
+// because it is wider than one sentence. 5H honors an interactive deny for the
+// gate's four-hour idle bound and 7H spaces the directive by 30 minutes, so a
+// hold that ENDS without the gate recording anything newer can draw the
+// directive about eight times on a premise that is no longer true. Two things
+// end a hold that way: a manual /compact, which the auto-only PreCompact
+// matcher never sees, and a session that simply stops taking offers. In the
+// live case the repeat is far tighter, since during a hold the harness re-offers
+// every few tens of seconds, so a declaration is consumed almost immediately
+// and the allow that consumes it drops this session's own hold record
+// (nextGateState), which 5H then reads as no hold at all.
+// There is no guard on the state's own lastAllow to shorten that, and its
+// absence is a fact about the state rather than a gap: an allow already ends
+// the allower's hold in the list 5H reads, and another session's allow says
+// nothing about this session's hold, so a test on that field would decide
+// nothing.
+//
+// On the EPISODE path, and there alone, the episode is stamped through
+// recordEpisodeNudge FIRST, and the reminder is emitted only when that stamp
+// landed. The hold path never touches that function and stamps through
+// recordHoldNudge instead, which is a correctness bound rather than a tidiness
+// one: an interactive deny opens no episode, so minting one from a hold nudge
+// would hand a bystander's hold to pendingOfferCorroborated as a vouching
+// episode for someone else's checkpoint. The ordering is the rate
 // limit: nudgedAt is not diagnostic, it is the only cross-process carrier guard
 // 8 has, so emitting without it would mean emitting with no rate limit at all,
 // after every covered tool return for the life of the episode, into a context
@@ -187,6 +334,8 @@
 'use strict';
 
 const fs = require('fs');
+const os = require('os');
+const path = require('path');
 
 // The tools whose results follow a wait, which is where a model first reads
 // anything after a deferral it never saw.
@@ -217,6 +366,11 @@ const NUDGE_INTERVAL_MS = 30 * 60 * 1000;
 // So the path is held to a conservative grammar, and where it fails, the
 // command clause is dropped and the rest of the reminder still ships: the
 // session is told what to do in prose and can find the CLI itself.
+//
+// The grammar is not the whole of what this value takes on its way out.
+// __dirname on an installed kit is home-anchored, so the account name in it is
+// elided before the path is rendered, at commandClausePath below, which also
+// owns the second reading that drops the clause.
 const CHECKPOINT_CLI = __dirname.split('\\').join('/') + '/kit-compact-checkpoint.js';
 
 // The grammar: letters, digits, space, and the punctuation a real install path
@@ -226,10 +380,69 @@ const CHECKPOINT_CLI = __dirname.split('\\').join('/') + '/kit-compact-checkpoin
 // the backtick above all, and so is every non-ASCII byte; the path renders
 // inside double quotes, where the parentheses, tilde and space this admits are
 // inert. The length is bounded so no pathological path reaches the context.
+//
+// Its subject is the part of the rendered command composed out of a VALUE. The
+// `$HOME` reference commandClausePath puts in front of a home-anchored install
+// path is this file's own fixed text rather than anything read from anywhere, so
+// holding it to a grammar that refuses a dollar sign would be refusing the
+// guard's own output.
 const SAFE_CLI_PATH = /^[A-Za-z0-9 _.:/~()+-]{1,256}$/;
 
 function safeCommandPath(cliPath) {
     return typeof cliPath === 'string' && SAFE_CLI_PATH.test(cliPath);
+}
+
+// The installed CLI as the text of a runnable command, or null where no such
+// text can be composed and the directive falls back to naming the tool in prose.
+//
+// The home prefix is elided because an installed kit lives under
+// ~/.claude/plugins/cache/, so the composed command carries the OS account name
+// into the model's context on every fire otherwise. That is the floor the
+// checkpoint CLI this command names holds its own output to, and this is a
+// second producer on the same channel: the grammar above is a metacharacter
+// screen rather than an elision and admits an account name in full.
+//
+// The elision is `$HOME` rather than `~` because this clause promises a line to
+// RUN. The composed line, run in either the POSIX shell or PowerShell a seat has
+// in front of it, reaches the directory os.homedir() names, while a tilde inside
+// double quotes is expanded by neither shell and would hand over a command that
+// cannot work.
+// Containment is decided by path.relative, on components rather than characters
+// and case-insensitively on win32, which is how the checkpoint CLI's own display
+// guard decides the same question.
+//
+// The grammar then runs over the TAIL alone, which is the whole of what is
+// composed here out of a value. A home directory carrying a metacharacter
+// therefore renders a safe command rather than dropping the clause, the elision
+// having already taken that text out of the line.
+//
+// A home directory that cannot be read at all answers null and drops the clause.
+// "This path is not under the home directory" and "no home directory is
+// knowable" are different facts, and only the first licenses printing an
+// absolute path into this channel; the prose fallback costs the reader a lookup
+// and costs nobody an account name.
+function commandClausePath(cliPath) {
+    if (typeof cliPath !== 'string' || cliPath === '') return null;
+    let home = '';
+    try { home = os.homedir(); } catch { home = ''; }
+    if (typeof home !== 'string' || home === '') return null;
+    let tail = cliPath;
+    let prefix = '';
+    if (path.isAbsolute(cliPath)) {
+        const rel = path.relative(home, cliPath);
+        if (path.isAbsolute(rel) || /^\.\.(?:[\\/]|$)/.test(rel)) {
+            // Somewhere else on disk, so the path carries no home prefix and is
+            // rendered as itself.
+        } else if (rel === '') {
+            // The CLI path IS the home directory, which no install produces;
+            // there is no tail to render and nothing worth guessing at.
+            return null;
+        } else {
+            prefix = '$HOME/';
+            tail = rel.split('\\').join('/');
+        }
+    }
+    return safeCommandPath(tail) ? prefix + tail : null;
 }
 
 // The reminder, fixed prose around one library-rendered phrase carrying the two
@@ -239,11 +452,11 @@ function safeCommandPath(cliPath) {
 // and routes a session whose skill body an earlier compaction dropped back to
 // executing-work. The test suite pins fragments of it, so a reword is a
 // deliberate double-edit. cliPath is a parameter so both directions of the
-// grammar gate are testable as a unit.
+// command clause are testable as a unit.
 function buildReminder(phrase, cliPath) {
-    const cli = (cliPath === undefined) ? CHECKPOINT_CLI : cliPath;
-    const open = safeCommandPath(cli)
-        ? 'then run node "' + cli + '" open from the project directory'
+    const shown = commandClausePath((cliPath === undefined) ? CHECKPOINT_CLI : cliPath);
+    const open = shown !== null
+        ? 'then run node "' + shown + '" open from the project directory'
         : 'then open a boundary checkpoint by running the kit\'s kit-compact-checkpoint.js '
             + 'with the open argument, from the project directory';
     return 'compact-deferral-nudge: the compaction gate has ' + phrase + ' in this deferral episode, '
@@ -254,6 +467,138 @@ function buildReminder(phrase, cliPath) {
         + 'are mid-step, finish the step and act at its end. Never clear the goal or the checkpoint to '
         + 'get past a deferral. If the boundary ritual is not in context, an earlier compaction may have '
         + 'dropped the executing-work body: load that skill again before acting.';
+}
+
+// The context reading at or above which the hold directive speaks, in tokens,
+// when the machine-local signpost names none. The floor is on the VOICE and
+// never on the gate's verdict: the gate keeps silently deferring an unmarked
+// offer at any count, because deferral is free, so below this figure there is no
+// prompt, no declaration and no marker traffic at all. The default is the
+// recommended context WINDOW rather than a consumed reading, and it sits about
+// one auto-compact reserve above the reading at which offers begin: the doctor
+// recommends a 285000 window with a 35000 reserve, which puts the first held
+// offer near 250000 consumed (doctor.ps1, $recommendedWindow and
+// $autoCompactReserve). So a held seat hears the directive after roughly that
+// much holding rather than at its first offer, which is the deliberate
+// suppression the design asks for.
+//
+// The bound this figure has to be read against is the SEAT'S OWN CONTEXT WINDOW
+// rather than the gate's safety ceiling. The reading compared against it is a
+// hold's `consumed`, which traces to sumUsageFields over one assistant request's
+// input, cache-creation and cache-read token counts, so it cannot exceed the
+// window that request was made in. On a seat whose window is below this figure
+// the directive therefore never fires at all, and the floor is reachable only on
+// a seat whose window exceeds it. The default is the recommended window for that
+// reason and not by coincidence.
+const NUDGE_FLOOR_DEFAULT = 285000;
+
+// The signpost's read cap. It holds a handful of short settings, so anything
+// past 64 KB is not the file this reads, on readCheckpoint's own reasoning.
+const SIGNPOST_MAX_BYTES = 64 * 1024;
+
+// The hold directive's floor, from the signpost, with the default for every
+// reading that is not a usable number. It is the read this hook COMPOSES a path
+// for out of the home directory rather than out of the payload, which is what
+// makes the home-directory screen below its own: every other read here is
+// resolved from the project the payload names, and lands outside it only where
+// kitScratchDir sends it there, under ~/.kit/store/ for a project directory
+// lying inside the memory store, so a store-backed seat's hold is read from the
+// home directory too without any path being built here. The reader is
+// deliberately total: an absent HOME, an
+// absent or unreadable file, a path that is not a regular file, an oversized
+// one, unparseable JSON, JSON that is not an object, a missing key, and a key
+// whose value is a string, a null, a NaN or a negative all mean the default.
+// This hook runs after every covered tool return, so a reader that could throw
+// here is a hook that dies constantly; the value is a threshold, so guessing the
+// default is a defensible answer for every one of those readings and there is
+// nothing a failure could usefully report to.
+//
+// Three hostile-boundary guards ride the read rather than being matched by hand.
+// The home directory is refused when it names a network share, through the same
+// predicate guard 4 applies to the payload's cwd: a roaming profile really can
+// put HOME on a UNC path, and an open on an unreachable share blocks for the SMB
+// timeout, which is the one failure this hook must never cause. And the bytes
+// come through kit-read-lib's shared bounded reader, which settles the kind on
+// the OPEN DESCRIPTOR rather than on the name: judging a name with lstat and
+// then opening that same name leaves a window a local process can swap the file
+// inside, and a swap to a FIFO in that window blocks the open forever, which is
+// the same stalled tool loop the share check exists to prevent. That reader
+// also bounds the read to the ceiling and reports a result it had to cut short,
+// which is refused here rather than parsed: a truncated settings file is not
+// the file this reads.
+//
+// The third is that reader's opt-in link refusal, and what it rests on is what
+// the refusal DOES rather than any property of the file's writers. This read is
+// scoped to one path under the home directory, and refusing a link at that final
+// component is what holds it there: a link planted at the path cannot aim this
+// read at a file elsewhere on disk, so the floor is read from ~/.claude/ or not
+// at all, and the open cannot be handed a target on a dead network mount, which
+// would stall a hook that runs after every covered tool return exactly as the
+// share check above exists to prevent. Refusing means the default floor, which
+// is this reader's answer for every other unusable reading.
+//
+// A leading BOM is stripped as defensive cover rather than for a writer that
+// emits one: neither installer of this file does (setup.sh writes plain bytes
+// and doctor.ps1 writes through a UTF8Encoding constructed with no byte-order
+// mark), but the file is hand-editable on a platform whose editors add one, and
+// a BOM left in front of the JSON makes the parse throw and silently costs an
+// operator the floor they set.
+//
+// The require is deferred like every other kit library require in this file, so
+// a damaged installed cache degrades to the default rather than to a throw on
+// every covered tool return.
+function nudgeFloor() {
+    try {
+        const home = os.homedir();
+        if (typeof home !== 'string' || home === '') return NUDGE_FLOOR_DEFAULT;
+        if (namesNetworkShare(home)) return NUDGE_FLOOR_DEFAULT;
+        const signpost = path.join(home, '.claude', 'claude-kit.local.json');
+        const read = require('./kit-read-lib.js')
+            .readFileBounded(signpost, SIGNPOST_MAX_BYTES, { refuseLink: true });
+        if (read === null || read.bounded) return NUDGE_FLOOR_DEFAULT;
+        const raw = read.text;
+        const parsed = JSON.parse(raw.charCodeAt(0) === 0xFEFF ? raw.slice(1) : raw);
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return NUDGE_FLOOR_DEFAULT;
+        const floor = parsed.compactNudgeFloor;
+        if (typeof floor !== 'number' || !Number.isFinite(floor) || floor < 0) return NUDGE_FLOOR_DEFAULT;
+        return floor;
+    } catch {
+        return NUDGE_FLOOR_DEFAULT;
+    }
+}
+
+// The hold directive: fixed prose interpolating nothing but the command, which
+// is the same __dirname value the episode reminder renders and takes the same
+// two guards, so a path the grammar refuses and a shell with no knowable home
+// each cost the runnable clause and nothing else.
+//
+// It states the hold, names the one release a session with no leash has, puts
+// the durability judgment in front of the model as a question it answers rather
+// than a step it performs, and says what a no answer means. The judgment is the
+// mechanism here: nothing can detect on the seat's behalf whether the worktree
+// dirt around it is durable, so the directive asks for the three facts that
+// settle it and leaves the call where it belongs. The moment sentence is not
+// decoration either, because a declaration is honored only while no new turn has
+// begun in the declaring session since it was written, so declaring mid-step
+// spends the declaration on whatever the session does next.
+//
+// cliPath is a parameter so both directions of the command clause are testable
+// as a unit, exactly as they are for the episode reminder.
+function buildHoldReminder(cliPath) {
+    const shown = commandClausePath((cliPath === undefined) ? CHECKPOINT_CLI : cliPath);
+    const declare = shown !== null
+        ? 'run node "' + shown + '" boundary from the project directory'
+        : 'declare it by running the kit\'s kit-compact-checkpoint.js with the boundary argument, '
+            + 'from the project directory';
+    return 'compact-deferral-nudge: the compaction gate is holding this session\'s auto-compaction '
+        + 'offers, and this session holds no kit goal leash in this project, so it has no chapter '
+        + 'boundary for the gate to land them at. Unheld, they ride to the safety valve near the '
+        + 'context limit, which lands the compaction at whatever this session happens to be doing '
+        + 'then. At the end of this turn, answer the durability question: are your own worktree '
+        + 'edits none or handed to a named owner, is every decision from this stretch on disk, and '
+        + 'are the messages you owe sent? If all three are yes, ' + declare + ', and the next offer '
+        + 'lands there. If any is no, finish it first and declare at that point: the declaration '
+        + 'covers this moment only and lapses the moment new work arrives.';
 }
 
 // The payload is read and parsed whole, with no size cap, which is the house
@@ -288,8 +633,9 @@ function agentIdentity(payload) {
     }
 }
 
-// Guard 4: the UNC and //server forms, which are what a synchronous open can
-// hang on for the SMB timeout. Exported so the suite can pin the predicate
+// Guard 4, the scratch-path screen beside it, and guard 6H: the UNC and
+// //server forms, which are what a synchronous open can hang on for the SMB
+// timeout. Exported so the suite can pin the predicate
 // directly: the spawned end-to-end case can only prove the refusal where an
 // SMB stack exists, and on a POSIX runner a doubled-slash path is an ordinary
 // missing file that produces the same silence for another reason.
@@ -307,12 +653,26 @@ function agentIdentity(payload) {
 // return.
 //
 // A require failure answers true, refusing the call, not false: false is the
-// checked-and-clean value this predicate exists to gate the goal read (guard
-// 5's readGoal) behind, and a damaged cache that cannot even supply this
-// small module is a state this predicate cannot make sense of, not evidence
-// the working directory is safe to open. Standing down here costs one
-// best-effort nudge; falling through to readGoal on a network share can cost
-// the tool call itself.
+// checked-and-clean value this predicate exists to gate a synchronous open
+// behind, and a damaged cache that cannot even supply this small module is a
+// state this predicate cannot make sense of, not evidence the path is safe to
+// open. Falling through on a network share can cost the tool call itself, and
+// that is the same at both call sites.
+//
+// What the refusal COSTS differs between the call sites, and it is worth stating
+// because only some of those costs are a silence. At guard 4 the subject is the
+// payload's cwd and the gated read is guard 5's readGoal, so refusing stands the
+// hook down for this tool return: one best-effort nudge. At the scratch-path
+// screen the subject is the directory kit-compact-lib's resolver answers for
+// this project, which is where the gate state and the hold stamps sit, and the
+// cost is the same one nudge. At guard 6H the subject is the HOME directory and
+// the gated read is the machine-local signpost, so refusing means the floor
+// falls back to NUDGE_FLOOR_DEFAULT rather than to silence, and an operator who
+// set a floor LOWER than the default gets a quieter hook while one who set a
+// higher floor gets a louder one. That is the same answer this reader gives for
+// every other unusable signpost reading, and a threshold is a figure the default
+// is a defensible guess at, which is why the fail direction stays refusal at all
+// three.
 function namesNetworkShare(cwd) {
     try {
         return require('./kit-network-lib.js').namesNetworkShare(cwd);
@@ -321,9 +681,19 @@ function namesNetworkShare(cwd) {
     }
 }
 
-// Guard 8: has the interval elapsed since this episode was last spoken to? An
+// Guards 8 and 7H: has the interval elapsed since this stamp was written? An
 // absent, unparseable or future-dated stamp reads as not-yet-nudged, per the
 // header.
+//
+// One rule, two subjects, which is why the parameter is a stamp rather than a
+// record. Guard 8 passes the open EPISODE's own nudgedAt out of the gate state,
+// so its subject is the episode and every session under that episode shares the
+// one interval. Guard 7H passes this SESSION's hold stamp out of the separate
+// per-session file (holdNudgedAt), so its subject is the session and a hold owns
+// no episode to carry a stamp for it. The two intervals are independent by
+// construction and neither can silence the other; what they share is the length
+// and this fail-open direction, which is self-healing at both because the fire's
+// own stamp replaces the illegible value.
 function intervalElapsed(nudgedAt, nowMs) {
     if (typeof nudgedAt !== 'string') return true;
     const at = Date.parse(nudgedAt);
@@ -332,9 +702,106 @@ function intervalElapsed(nudgedAt, nowMs) {
     return elapsed < 0 || elapsed >= NUDGE_INTERVAL_MS;
 }
 
-// Evaluate the eight guards in order, stamp the episode, and return the
-// reminder when the stamp landed; null on every other path. Never throws on its
-// own account; the entry-point wrapper turns any escape into a silent exit 0.
+// The hold path's three guards (5H to 7H in the header), for a session that
+// holds no leash in this project. Stamps the hold's clock and returns the
+// directive when the stamp landed; null on every other path, and never throws on
+// its own account.
+//
+// It takes the library rather than requiring one of its own, so the deferred
+// require in main() stays the single point where a damaged installed cache
+// degrades this hook to silence.
+function holdDirective(lib, cwd, sessionId, toolName, nowMs) {
+    // Guard 5H: this session's own newest interactive deny, from the gate
+    // state's per-session hold list, still inside the idle bound. A bystander
+    // and a session in an unarmed project own no episode at all, so that record
+    // IS the hold.
+    const hold = lib.interactiveHoldOpen(lib.readGateState(cwd), nowMs, sessionId);
+    if (!hold) return null;
+    // The stamp guards below key on the spelling the records STORE rather than
+    // on the raw payload id: every session field in these files goes in through
+    // gateText, so a stored spelling and a raw one are what the two sides of a
+    // lookup would otherwise be. This is a trap removed rather than a bug fixed,
+    // and it is unreachable today from either end, since the guard above matches
+    // the two before anything here reads a stamp and the library's own readers
+    // apply the same rule to whatever they are handed. What it removes is the
+    // asymmetry a later caller could inherit, by making the id this path carries
+    // the canonical one from the record itself.
+    const held = hold.session;
+
+    // Guard 7H before 6H, which is an ordering rather than a renumbering: 7H
+    // reads a small file inside the project this payload already named, while
+    // 6H reads the machine-local signpost in the home directory. The saving is
+    // real in one regime only. A hold at or above the floor is stamped when the
+    // directive fires, so 7H answers no for the throttle interval and the home
+    // read is skipped there. Below the floor nothing is ever stamped, so 7H
+    // answers yes on every covered tool return and both reads happen, for the
+    // whole stretch the floor is keeping this hook quiet; that is inherent
+    // rather than an artefact of the order, since 6H is the home read and
+    // nothing else can establish that the hold is below the floor. Neither
+    // guard's answer depends on the other, so the order changes what is read and
+    // never what is decided.
+    //
+    // Guard 7H: the interval since this session was last spoken to about a hold,
+    // by the same rule and the same illegible-fires direction guard 8 applies to
+    // an episode's own stamp.
+    if (!intervalElapsed(lib.holdNudgedAt(cwd, held, nowMs), nowMs)) return null;
+
+    // Guard 6H: the floor is on the voice, not on the verdict. An absent or
+    // illegible consumed reading (null, which is what the library's own rebuild
+    // leaves for every unusable value) is below every floor.
+    if (typeof hold.consumed !== 'number' || hold.consumed < nudgeFloor()) return null;
+
+    // The rate limit before the emission, never after it, for the reason the
+    // header gives for guard 8: this stamp is the only cross-process carrier the
+    // hold interval has, so a directive emitted without it is one with no rate
+    // limit at all, repeating after every covered tool return into a context
+    // already near the ceiling.
+    if (!lib.recordHoldNudge(cwd, held, nowMs, toolName)) return null;
+
+    return buildHoldReminder();
+}
+
+// The readings of the goal-state path that SETTLE the fork's question when
+// readGoal has answered null, which are the only ones the hold path speaks over.
+// goalPathKind's own words, and the three of its six that mean the same thing
+// here: no goal any surface in this kit can act on is at that path, and nothing
+// about the reading resolves on its own.
+//
+//   absent        nothing is at the path, which is the unarmed project the
+//                 no-goal shape exists to serve.
+//   unresolvable  the path can never resolve to a file (a regular file where a
+//                 parent directory belongs, a link cycle above the final
+//                 component, a name past the length limit), so there is no state
+//                 to read and no arm can write one until it is cleared.
+//   oversized     a regular file past the cap every reader of that file
+//                 enforces, so no surface in the kit reads it: not this hook,
+//                 not the gate deciding the deny in front of the session, and
+//                 not the checkpoint CLI that would open a chapter boundary
+//                 instead. What the file says about a leash is unreachable
+//                 everywhere at once rather than here alone.
+//
+// The other three are stand-downs and each has its own reason. 'unreadable' is
+// the uncertain reading proper: the kind could not be established at all, which
+// a lock or a scanner produces and which lifts on its own. 'file' is a regular
+// file within the cap that readGoal still answered null for, and that is two
+// facts this hook cannot tell apart, a read that was refused (uncertain, and it
+// lifts) and content that is not an armed goal (settled); telling them apart
+// needs a discriminator on the READ, which the goal library does not export, so
+// the pair takes the silent direction together. 'other' is a kind that is not a
+// regular file, held here by the suite's own pin as an uncertain reading.
+//
+// Speaking over a reading that has NOT settled is what this list exists to
+// prevent: the directive tells the session it holds no leash and points it at
+// the role-boundary marker, so said to a session whose leash is merely
+// unreadable this second it spends a declaration on a marker the gate's boundary
+// leg never reads, and displaces the chapter checkpoint that session should have
+// opened instead.
+const SETTLED_GOAL_STATE_KINDS = ['absent', 'unresolvable', 'oversized'];
+
+// Evaluate the four common guards, then the path guard 5 forks to, and return
+// the reminder when that path's stamp landed; null on every other path. Never
+// throws on its own account; the entry-point wrapper turns any escape into a
+// silent exit 0.
 function main() {
     // Guard 1: the payload parses and the tool is one this hook covers.
     let payload;
@@ -355,25 +822,86 @@ function main() {
     if (namesNetworkShare(cwd)) return null;
 
     // Guard 5: a kit goal is armed for that project and this session holds its
-    // leash, by either route a claim point acts on.
+    // leash, by either route a claim point acts on. This is the fork: a session
+    // that holds no leash here takes the hold path instead of falling silent,
+    // and reaches none of guards 6, 7 or 8.
     // The lib requires are deferred to here so a damaged installed cache
     // degrades to silence rather than a crash (see the header).
-    let readGoal, sessionHoldsLeash, lib;
+    let readGoal, sessionHoldsLeash, goalPathKind, lib;
     try {
-        ({ readGoal, sessionHoldsLeash } = require('./kit-goal-lib.js'));
+        ({ readGoal, sessionHoldsLeash, goalPathKind } = require('./kit-goal-lib.js'));
         lib = require('./kit-compact-lib.js');
     } catch { return null; }
     const goal = readGoal(cwd);
-    if (!goal || typeof goal.plan !== 'string' || goal.plan === '') return null;
     // Both spellings, because the gate and the Stop hook both accept both: a
     // harness emitting camelCase would otherwise keep opening episodes this
     // hook could never speak about.
     const sessionId = payload.session_id || payload.sessionId;
-    if (!sessionHoldsLeash(goal, sessionId)) return null;
+    const leashed = !!goal && typeof goal.plan === 'string' && goal.plan !== ''
+        && sessionHoldsLeash(goal, sessionId);
 
-    // One clock and one state read for guards 6, 7 and 8, so the three cannot
-    // answer as of different moments or different files.
+    // Guard 4 again, over the answer the shared scratch-path resolver gives for
+    // this project rather than over the payload's cwd. The two are ordinarily
+    // the same directory, and for one project they are not: kit-compact-lib's
+    // resolver sends a project directory lying under ~/.claude to a home-
+    // anchored path outside the store, which is where a coordinator seat's gate
+    // state and hold stamps live. A roaming profile really can put HOME on a UNC
+    // path, and every read below opens one of those files synchronously after a
+    // covered tool return, which is the stall the cwd screen exists to prevent.
+    // Screening the resolver's own answer is what gives that guard to every
+    // reader here, the episode path's state read and the hold path's stamp read
+    // alike, rather than to the one caller a review happened to open;
+    // nudgeFloor's home screen is the same guard on the third of these reads.
+    // The directory is the subject rather than any one file, since every file
+    // this hook reads through that library sits in it.
+    if (namesNetworkShare(path.dirname(lib.gateStatePath(cwd)))) return null;
+
+    // One clock for whichever path runs, so no path's guards can answer as of
+    // different moments.
     const now = Date.now();
+    if (!leashed) {
+        // readGoal answers null for two different facts: no goal state at the
+        // path, and a goal state that is there and could not be read (a lock, a
+        // permission, a torn write, a kind that is not a regular file). The two
+        // are opposite answers to the question this fork asks, so the null alone
+        // decides nothing here. Only the first is an unarmed project, where the
+        // hold directive is exactly right; on the second the session in front of
+        // this may be the leash holder, and telling it that it holds no leash
+        // points it at a marker the gate's boundary leg never reads, spending
+        // the declaration on nothing and displacing the chapter checkpoint it
+        // should have opened.
+        //
+        // What discriminates them is the KIND at that path, asked of the goal
+        // library's own goalPathKind and answered against the settled list
+        // above. A boolean absence test is not the discriminator this fork
+        // wants: absence is one settled reading among three, and the other two
+        // (a path that can never resolve, and a file past the cap every reader
+        // of it enforces) are equally determinate and equally permanent, so a
+        // test that only recognizes absence leaves this hook permanently silent
+        // on a session the gate is actively holding. Every kind outside the list
+        // is either uncertain or undiscriminated here, and takes the silence
+        // this path is allowed to fail in.
+        if (!goal && !SETTLED_GOAL_STATE_KINDS.includes(goalPathKind(cwd))) return null;
+        // An ARMED goal with no binding is the one shape the hold directive
+        // must not be spoken over, and the reason is the directive's own first
+        // sentence: it tells the session it holds no leash in this project and
+        // points it at the boundary marker. An unbound goal is claimable by
+        // whichever session's arming text names it, read from a transcript this
+        // hook deliberately never opens, so the session in front of it may be
+        // the one that holds the leash and simply cannot be recognized from
+        // here. That session's release is the checkpoint rather than the
+        // marker, since the claim it is about to make routes it to the gate's
+        // boundary leg, which never reads the role-boundary marker at all, so
+        // the declaration would be spent on nothing. Standing down costs a
+        // genuine bystander its directive for as long as the goal stays
+        // unbound, which is the silent direction and the one this path is
+        // allowed to fail in.
+        if (goal && typeof goal.plan === 'string' && goal.plan !== '' && !goal.boundSession) return null;
+        return holdDirective(lib, cwd, sessionId, payload.tool_name, now);
+    }
+
+    // One state read for guards 6, 7 and 8, so the three cannot answer as of
+    // different files.
     // The session the three checkpoint questions below are scoped to: the
     // goal's binding where it has one, and otherwise this session, which the
     // guard above has just established holds a leash no claim point has written
@@ -451,4 +979,7 @@ if (require.main === module) {
     process.exitCode = 0;
 }
 
-module.exports = { buildReminder, NUDGE_INTERVAL_MS, namesNetworkShare };
+module.exports = {
+    buildReminder, buildHoldReminder, nudgeFloor,
+    NUDGE_INTERVAL_MS, NUDGE_FLOOR_DEFAULT, namesNetworkShare
+};

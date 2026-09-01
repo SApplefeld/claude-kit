@@ -716,8 +716,8 @@ function regularFileSize(target) {
     return st.isFile() ? st.size : null;
 }
 
-// What an errno from a stat of a path settles, for every caller here and in
-// kit-goal-stop.js that has to tell an operator what to do about it:
+// What an errno from a stat of a path settles, for every caller that has to turn
+// a failed stat into a verdict or a wording:
 //
 //   'absent'       ENOENT: nothing is at the path
 //   'determinate'  ENOTDIR (a regular file standing where a parent directory
@@ -730,10 +730,13 @@ function regularFileSize(target) {
 //                  The answer is unknown rather than settled, and it may lift on
 //                  its own
 //
-// One classification, four callers, and each turns it into its own wording:
-// armGoal's three refusals, clearGoal's release-or-not, planPathState's three
-// states, and the CLI's goal-state note. Spelled per site instead, two callers
-// of one rule routed ENOTDIR to opposite answers.
+// One classification, and the callers are wherever that question is asked: in
+// this library and in kit-compact-lib.js, a path's state is reported to an
+// operator (planPathState, goalPathKind), a link is resolved or refused
+// (resolvePlanLink), a file is removed or left alone (clearGoal,
+// clearCheckpoint, clearMarkerFile, holdStampKind). The rule is what is shared
+// rather than the list: spelled per site instead, two callers of one rule routed
+// ENOTDIR to opposite answers.
 function pathErrnoClass(code) {
     if (code === 'ENOENT') return 'absent';
     if (code === 'ENOTDIR' || code === 'ELOOP' || code === 'ENAMETOOLONG') return 'determinate';
@@ -982,8 +985,16 @@ function readGoal(cwd) {
 // each non-file kind into its own sentence, so the two places it would otherwise
 // print plain absence do not say "nothing armed" about a path with something
 // sitting at it that a later arm will fail on with a raw errno; goalStateAbsent
-// below is the boolean face, for the surfaces that only choose between speaking
-// and staying silent.
+// below is the boolean face, for the surfaces that choose between speaking and
+// staying silent on absence alone.
+//
+// A speak-or-stay-silent surface is not automatically one of those, and the
+// deferral nudge is the one that is not: it stands down only where the reading
+// is UNCERTAIN, so it needs the kinds that are settled-but-not-absent
+// ('unresolvable', 'oversized') on the speaking side and takes this question
+// directly rather than through the boolean. So the boolean's caller set is the
+// surfaces whose silence is owed to absence, not every surface with two
+// directions.
 //
 // The errno split is pathErrnoClass's, the rule every caller of this question in
 // the kit answers to. 'unresolvable' is what its 'determinate' leg produces, and

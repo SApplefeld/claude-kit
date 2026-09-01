@@ -5,9 +5,11 @@
 // caller summarizing what it read depends on: the kind and the size both come
 // off the open descriptor rather than off the name, the read fills its buffer
 // however many calls that takes, a result that is not the whole file says so
-// whichever bound stopped it, a bounded result carries whole lines only, and a
-// listing says the same of a directory. containedRealPath, the containment
-// judgment the reader leaves to its callers, is here too.
+// whichever bound stopped it and names which one did, an opt-in caller's link
+// refusal holds on both the platforms it is spelled for, a bounded result
+// carries whole lines only, and a listing says the same of a directory.
+// containedRealPath, the containment judgment the reader leaves to its callers,
+// is here too.
 //
 // The short-read cases drive fs.readSync through a wrapper that hands back
 // fewer bytes than asked for, which is behavior the syscall is allowed to show
@@ -61,7 +63,7 @@ test('a file inside the ceiling comes back whole, and says it is whole', () => {
         const content = 'alpha\nbeta\ngamma\n';
         const file = writeFile(dir, 'plain.txt', content);
         const res = readFileBounded(file, 64 * 1024);
-        assert.deepStrictEqual(res, { text: content, bounded: false, bytesRead: content.length });
+        assert.deepStrictEqual(res, { text: content, bounded: false, bytesRead: content.length, boundedBy: null });
     } finally { rmDir(dir); }
 });
 
@@ -111,7 +113,7 @@ test('a read that comes back a few bytes at a time still returns the whole file'
         const content = 'one\ntwo\nthree\nfour\nfive\n';
         const file = writeFile(dir, 'short-reads.txt', content);
         const capped = withCappedReads(3, () => readFileBounded(file, 64 * 1024));
-        assert.deepStrictEqual(capped, { text: content, bounded: false, bytesRead: content.length });
+        assert.deepStrictEqual(capped, { text: content, bounded: false, bytesRead: content.length, boundedBy: null });
         // The control: the same fixture read normally. Without it a fill loop
         // that never ran would be indistinguishable from one that worked.
         const plain = readFileBounded(file, 64 * 1024);
@@ -164,6 +166,132 @@ test('a read that ends short of the file size is bounded', () => {
         assert.deepStrictEqual(readFileBounded(file, 64 * 1024).bounded, false);
     } finally { rmDir(dir); }
 });
+
+test('a bounded result says WHICH bound stopped it', () => {
+    const dir = makeDir();
+    try {
+        // The two facts behind the flag are one answer to "was this partial"
+        // and two different answers to "could this file be mine": a ceiling that
+        // bound says the file is larger than the caller's cap, while a fill loop
+        // that ended short says the file was truncated under the read or a
+        // device stopped answering, which any file at all can do. A caller whose
+        // two directions differ in cost (the deferral nudge's stamp writer heals
+        // one and refuses the other) needs them apart, so the result names the
+        // bound rather than only reporting that there was one.
+        const file = writeFile(dir, 'lines.txt', 'aaaa\nbbbb\ncccc\ndddd\n');
+        assert.strictEqual(readFileBounded(file, 64 * 1024).boundedBy, null,
+            'a whole file is bounded by nothing');
+        assert.strictEqual(readFileBounded(file, 12).boundedBy, 'ceiling',
+            'a file past the ceiling names the ceiling');
+
+        const real = fs.readSync;
+        function stoppingAfter(bytes, ceiling) {
+            let calls = 0;
+            fs.readSync = function stoppingReadSync(fd, buffer, offset, length, position) {
+                calls += 1;
+                if (calls > 1) return 0;
+                return real.call(fs, fd, buffer, offset, Math.min(length, bytes), position);
+            };
+            try { return readFileBounded(file, ceiling === undefined ? 64 * 1024 : ceiling); }
+            finally { fs.readSync = real; }
+        }
+        assert.strictEqual(stoppingAfter(10).boundedBy, 'short-fill',
+            'a fill loop that ended short names the fill');
+        // Both at once: the ceiling binds AND the fill ends short of it. The
+        // fill is what the result names, because it is the reading a caller
+        // must not treat as a file too large to be its own.
+        assert.strictEqual(stoppingAfter(5, 15).boundedBy, 'short-fill',
+            'a short fill under a binding ceiling still names the fill');
+    } finally { rmDir(dir); }
+});
+
+test('the link refusal rides the open where the platform has O_NOFOLLOW',
+    { skip: process.platform === 'win32' }, () => {
+        const dir = makeDir();
+        try {
+            // Off win32 the refusal is a flag on the OPEN, so there is no window
+            // between a verdict about a name and an open of that name. The
+            // observation is both halves: a real link at the final component is
+            // refused, and the flag the open carries says why.
+            const target = writeFile(dir, 'target.txt', 'floor\n');
+            const link = path.join(dir, 'link.txt');
+            fs.symlinkSync(target, link);
+            assert.strictEqual(readFileBounded(link, 64 * 1024).text, 'floor\n',
+                'the control: the same link is followed when nothing asks for the refusal');
+            assert.strictEqual(readFileBounded(link, 64 * 1024, { refuseLink: true }), null,
+                'and refused when a caller asks');
+            // The control on the option itself: a regular file is not refused by
+            // it, so the case above is about the link and not about an option
+            // that refuses everything.
+            assert.strictEqual(readFileBounded(target, 64 * 1024, { refuseLink: true }).text, 'floor\n',
+                'a regular file reads exactly as it did');
+
+            const realOpen = fs.openSync;
+            const flags = [];
+            fs.openSync = function recordingOpenSync(p, flag, ...rest) {
+                flags.push(flag);
+                return realOpen.call(fs, p, flag, ...rest);
+            };
+            try {
+                readFileBounded(target, 64 * 1024, { refuseLink: true });
+            } finally {
+                fs.openSync = realOpen;
+            }
+            assert.strictEqual(flags.length, 1);
+            assert.ok((flags[0] & fs.constants.O_NOFOLLOW) === fs.constants.O_NOFOLLOW,
+                'the refusal rides the open rather than a stat on the name');
+            // And nothing stats the name here: the lstat leg is the win32
+            // fallback alone.
+            const realLstat = fs.lstatSync;
+            let lstats = 0;
+            fs.lstatSync = function countingLstatSync() {
+                lstats += 1;
+                return realLstat.apply(fs, arguments);
+            };
+            try {
+                readFileBounded(target, 64 * 1024, { refuseLink: true });
+            } finally {
+                fs.lstatSync = realLstat;
+            }
+            assert.strictEqual(lstats, 0, 'no name is judged ahead of the open on this platform');
+        } finally { rmDir(dir); }
+    });
+
+test('the link refusal is an lstat ahead of the open where the platform has no O_NOFOLLOW',
+    { skip: process.platform !== 'win32' }, () => {
+        const dir = makeDir();
+        try {
+            // win32 has no O_NOFOLLOW and no way to reach
+            // FILE_FLAG_OPEN_REPARSE_POINT through fs, so the refusal is an
+            // lstat before the open, which narrows the window rather than
+            // closing it. A file symlink needs a privilege this suite must not
+            // require, so the link kind is put in front of the reader by
+            // shimming the one syscall that decides it; the file underneath is
+            // an ordinary regular one, which is what the control reads back.
+            const file = writeFile(dir, 'signpost.json', '{"floor":1}\n');
+            assert.strictEqual(readFileBounded(file, 64 * 1024, { refuseLink: true }).text, '{"floor":1}\n',
+                'the control: a regular file is read with the option on');
+            const realLstat = fs.lstatSync;
+            fs.lstatSync = function reportingLstatSync(p) {
+                const st = realLstat.apply(fs, arguments);
+                if (String(p) === file) {
+                    return { size: st.size, isFile: () => false, isDirectory: () => false, isSymbolicLink: () => true };
+                }
+                return st;
+            };
+            try {
+                assert.strictEqual(readFileBounded(file, 64 * 1024, { refuseLink: true }), null,
+                    'a path reported as a link is refused rather than opened');
+                // The option is opt-in: the same reading without it follows the
+                // link exactly as it always did, which is what keeps the callers
+                // that never asked for this unchanged.
+                assert.strictEqual(readFileBounded(file, 64 * 1024).text, '{"floor":1}\n',
+                    'and a caller that did not ask is not made to pay for it');
+            } finally {
+                fs.lstatSync = realLstat;
+            }
+        } finally { rmDir(dir); }
+    });
 
 test('a path that is not a regular file is refused before it is opened', () => {
     const dir = makeDir();
@@ -248,7 +376,7 @@ test('the size that bounds the read is the descriptor\'s own', () => {
         } finally {
             fs.statSync = realStat;
         }
-        assert.deepStrictEqual(stale, { text: content, bounded: false, bytesRead: content.length });
+        assert.deepStrictEqual(stale, { text: content, bounded: false, bytesRead: content.length, boundedBy: null });
         fs.statSync = function refusingStatSync() {
             const err = new Error('ENOENT: the fixture refuses this stat');
             err.code = 'ENOENT';
@@ -282,7 +410,7 @@ test('an empty file reads as empty and whole', () => {
     const dir = makeDir();
     try {
         const file = writeFile(dir, 'empty.txt', '');
-        assert.deepStrictEqual(readFileBounded(file, 64 * 1024), { text: '', bounded: false, bytesRead: 0 });
+        assert.deepStrictEqual(readFileBounded(file, 64 * 1024), { text: '', bounded: false, bytesRead: 0, boundedBy: null });
     } finally { rmDir(dir); }
 });
 

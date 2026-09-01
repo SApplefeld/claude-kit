@@ -1718,3 +1718,152 @@ carrying two independently confirmed instances.
 Commit model in effect: Commit-and-Push. This entry commits alone; section 2's code stays
 unstaged until round 10 is adjudicated and its whole gate has run, since under this model the
 section commit goes straight to main.
+
+### Chapter 2 - 2026-09-01
+Completed: 2. The deferral nudge gains a context floor and a bystander voice
+Implemented By: implementer-opus, ten fix rounds, each dispatched with the explicit opus model
+override; no tier escalation. The security document, the plan doc and every adjudication are the
+main thread's, `docs/` being barred to subagents.
+Metrics: review rounds 4; NEEDS_CONTEXT 0; escalations 0; consults 1 (the ruling that became
+Standing Brief Amendment 4).
+Next: 3. The document sweep
+Commit Model: Commit-and-Push
+
+WHAT THE SECTION SHIPS. `compact-deferral-nudge.js` now speaks to a session the gate is holding on
+the hands-on leg, in both of that leg's shapes (`bystander` and `no-goal`), naming the exact
+boundary command an operator or a seat can run and the durability question that command answers.
+The voice has a context floor: below `compactNudgeFloor` (default 285000, read tolerantly from
+`~/.claude/claude-kit.local.json`) a held session is not nudged at all, so a low-context hold costs
+no prompt and no checkpoint traffic. A per-session hold stamp in `.kit/compact-hold-nudge.json`
+carries the throttle, which the gate's own state file cannot do: the gate rebuilds its state from a
+fixed key set on every decision, so a stamp parked beside those keys is erased by the next write.
+
+DECISIONS / SURPRISES. The section took ten implementer rounds and the count is itself the finding.
+Rounds 1 through 8 are recorded in interim boards 1 through 11. What made it long was not the
+nudge, which is small, but a class of defect this plan then wrote a standing amendment about: a
+claim whose truth-maker is a set of sites the comment cannot see, hand-maintained across a tree four
+agents were editing at once. Three consecutive rounds each produced a fresh false cross-file claim,
+and the controller produced a fourth in a document. Amendment 4 is the consult ruling that came out
+of it, and its stopping rule is what ended the sequence: a round is justified only by removing a
+hand-maintained cross-file claim or a behavioural defect, never by correcting such a claim's text,
+which is deleted instead.
+
+ROUND 9 BUILT THE OUTPUT-CHANNEL GUARD AND THE GUARD LEAKED ON BOTH ITS OWN EDGES. The round fixed
+what it was dispatched for: the tool's sanitizer had been capping a value before the composed line
+reached the elision, and it now strips, elides, then caps, so the elision sees the text the channel
+actually carries. But the pattern it built bounded itself with ALLOW-LISTS of the surrounding
+character on both sides, so a home path beside any character those lists did not name was not
+elided at all. Eight leaking contexts, confirmed by the controller extracting the shipped
+pattern-builder's own source text and executing it against this box's real home: a path in
+parentheses, after an equals sign, after a colon, before a comma. An independent review lens reached
+the same finding by the same route. THE LESSON, AND IT IS THE SECTION'S MOST TRANSFERABLE: for a
+privacy guard the two failure directions are not equally costly, since over-elision prints a wrong
+path while under-elision prints the operating-system account name, so the boundary must be a
+DENY-LIST of what would make the match a different token, never an allow-list of what may surround
+it. Round 10's boundaries are that deny-list, and all eight contexts now elide, re-verified by
+re-running the controller's own probe against the shipped file.
+
+ROUND 9 REFUSED TWO INSTRUCTIONS IN ITS BRIEF AND WAS RIGHT BOTH TIMES, recorded because a refusing
+implementer is the behaviour this plan wants. It refused to shorten a test fixture to fit under a
+print cap, on the ground that the machine's temporary directory is unbounded so no fixture makes the
+arithmetic hold on an arbitrary box, and fixed the sanitizer's ordering instead. And it refused both
+spellings the brief offered for the printed command, using a third, on the ground that the clause
+promises a line an operator can actually run.
+
+A REVIEW MAJOR WAS REFUTED BY RUNNING THE COMMAND IT WAS ABOUT. A lens rated as Major that the
+command this nudge composes cannot run under this platform's Bash tool, with precise evidence about
+how the shell's home variable spells its path. Run for real in both shells, the command succeeds in
+both and reaches the right directory, because the shell layer converts the argument before the child
+process sees it; the lens had tested the resolution one layer inside the runtime, which bypasses
+that conversion. Only the comment's stated MECHANISM was wrong, and round 10 corrected that without
+touching the working code. The refutation rode in round 10's brief explicitly, because a fix round
+handed an unmarked false finding repairs code that works.
+
+ROUND 10 DELIVERED ELEVEN ITEMS. Behavioural: the two boundary directions above; a component-count
+skip, so a home spelling that strips to an ANCESTOR of the home is refused rather than compiled
+(without it a wholly non-ASCII account name would take every account's paths off the channel rather
+than this account's name); and the catch-all's requires deferred inside the guarded region, so the
+one failure it was written for no longer leaks a home-anchored `Require stack`. The rest were claim
+corrections riding along rather than earning rounds of their own. The round returned four concerns;
+one was adjudicated and accepted and is the Minor recorded below, and the other three are the bounds
+recorded next.
+
+FOUR BOUNDS ARE STATED RATHER THAN FIXED, AND EACH IS A DELIBERATE CALL. First, the `no-goal` shape
+is served only in a project that already carries a `.kit/`, because `gateStateTarget` refuses to
+create one without an armed goal and removing that refusal would have the kit create `.kit/` in
+every unarmed project a held session stands in. Second, the context floor is compared against a
+figure bounded above by the seat's own context window, so on a seat whose window is smaller than the
+floor the directive can never fire; confirmed by reading `sumUsageFields`. The value is not changed,
+because it is what the approved Approach names and making it window-relative is a design change to
+an approved knob; what round 10 changed is the justification comment, which had argued the value
+against the wrong ceiling. If that call is wrong it is reversible in one line. Third, the elision is
+bounded by what makes a match a different token, so a home spelling appearing MID-path is
+deliberately left alone: eliding it would print a path that is nowhere on disk, and two of these
+legs hand an operator a file to go and delete. Fourth, the guard is this tool's output channel and
+not the tree's; `kit-goal.js` and `hook-canary.js` compose paths into their own channels through
+sanitizers that elide nothing, and lifting one renderer to serve all of them is a plan of its own.
+
+APPROVAL DRIFT, ALL OF IT RECORDED AT THE TIME AND RESTATED HERE. Section 4 (per-session marker
+scoping) and section 5 (the floor surviving the installers) were both APPENDED to this plan during
+this section's review rounds, so the plan is five sections where the operator approved three. The
+Approach gained a new state file, `.kit/compact-hold-nudge.json`, which section 2 needed rather than
+chose. The `no-goal` bound and the floor-versus-window bound above were both adopted at review
+adjudications rather than in the approved text. And Amendment 4 was added to the Standing Brief
+Amendments mid-section, from a consult ruling.
+
+WHAT AMENDMENT 4 COST THIS SECTION, RECORDED AS THE TENSION IT IS. A review Minor stands unfixed
+against the per-caller residue notes in `kit-read-lib.js`: they are exactly the hand-maintained
+cross-file claim the amendment names, and correcting their text is exactly what its stopping rule
+forbids. Deleting them is the amendment's own remedy and is not this section's to do, the file being
+outside its scope. So the Minor is recorded rather than fixed, and the deletion is a candidate for
+the corpus-audit plan, which already owns claims of this shape.
+
+MINORS THAT SURVIVE THE SECTION UNFIXED, each below the amendment's bar or outside this section's
+files: the `O_EXCL` enumeration omits `writeRegistryEntryAtomic`; the future-skew case across two
+clocks; the `'unresolvable'` vocabulary member unpinned in `test/compact-deferral-nudge.test.js`;
+`reportHoldStamps` blind to two writer-refusal classes; the `NUDGE_EVENTS` and `sameSessionId`
+headers; `printableAscii` as a one-caller extraction; and reporting a refused signpost through the
+status verb.
+
+A STALE CARRIER IS ROUTED RATHER THAN FIXED HERE.
+`docs/plans/claude-kit_output-channel-eliding_spec_v1.md` still calls this tool's `displayPath` the
+tree's only home-eliding renderer, which the emitter-level scrub has made false. That is a parked
+plan's own text, so it is named for its own run rather than edited from this one.
+
+THE SECURITY DOCUMENT WAS WRITTEN ONCE, AGAINST THE SETTLED CODE. `docs/security-model.md` had
+carried a passage saying two residuals stood open and neither was closed. That is no longer true,
+and the replacement states the channel-level property as it now is plus the four surviving residuals
+above. Written after round 10 settled rather than during the rounds, so the document never trailed
+the code onto the trunk. The old phrasing was swept tree-wide and returns nothing, and the sweep's
+silence is proven by a control: the same grep against the pre-edit file returns 1.
+
+GATE. Whole suite, `node --test test/*.test.js`: 2815 tests / 2807 passing / 1 failing / 7 skipped,
+exit 1, read from the run's own exit marker rather than from the completion notification, which
+reports the wrapper. Against Chapter 1's recorded baseline of 2695 / 2688 / 1 / 6: plus 120 tests,
+plus 119 passing, failing UNCHANGED at 1 and skipped plus 1. No regressions. The growth is not this
+section's alone, the trunk having taken eighteen merged commits from origin between the two
+measurements, so the load-bearing reading is the failing count rather than the growth. The one
+failure is the box's known permanent red, `test/memory-session.test.js:854`, whose fixture relies on
+the host temp prefix to carry a padded path past a 260-character guard and which this machine's
+seven-character `D:\Temp` never reaches; the defect is in the test, not the code, and it is
+independent of every file this section touched. The targeted lane ran 694 / 691 / 0 / 3 across the
+eight files this section touches, exit 0 from each file's own marker, against a 688 / 685 / 0 / 3
+lane baseline: six new tests, six new passes, no new failures.
+
+THE GATE HAD TO RUN TWICE, AND THE FIRST RUN'S RED IS WORTH RECORDING BECAUSE IT LOOKED LIKE A
+REGRESSION AND WAS NOT. The first whole gate returned 2815 / 2804 / 4 / 7. Three of the four
+failures were `hook-canary.test.js` cases asserting the installed hooks are healthy, and every one
+of them named the same cause in its own message: the build stamp under
+`plugins/claude-kit/.claude-plugin/` hashes bytes and is untracked, so the six hook files this
+section edited no longer matched it. Rebuilding for this host and re-running returned the single
+known failure above. The doctrine already carries this trigger for a merge whose diff touches
+`plugins/claude-kit/hooks/`; an ordinary edit under that directory has exactly the same effect, and
+that is the general form worth carrying forward.
+
+MEMORY CORRECTED IN THIS SECTION'S CLOSE. The project memory `suite-baseline-is-not-zero-fail`
+asserted a SECOND standing fail on this box, `test/memq-shim.test.js:475`, red on three consecutive
+runs on 2026-08-31. It passed on both whole gates run here, before and after the rebuild, so the
+record is corrected to one standing fail and the memq-shim entry now says the mechanism has never
+been established and that a red there reads as unexplained rather than as a regression. The
+enumerated-count bullet takes this run's 2,815 / 2,807 / 1 / 7 over 47 files in 403 s as its last
+measurement, demoting the previously reported 2,681 and 2,671 figures to history.
