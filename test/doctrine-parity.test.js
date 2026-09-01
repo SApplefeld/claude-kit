@@ -4230,3 +4230,217 @@ test('the moment-pin convention has one owning site and its other surfaces point
             + 'performs it');
     }
 });
+
+// The recap skill's leash reading is a cross-surface claim in two directions.
+// The bullet states how many binding forms `kit-goal.js` composes, and it
+// ships a runnable invocation naming four exports of `kit-goal-lib.js`. Each
+// side is otherwise tested only against its own literal, which is the shape
+// the testing discipline names as earning a cross-component pin.
+//
+// The count leg is keyed on the binding ternary's own outcome literals rather
+// than on their full wording, because the testing-discipline skill's "What
+// never earns one" clause puts an exact-wording assert on stdout text out of
+// scope: the sentence is free to improve, so such an assert would redden on an
+// improvement and teach nobody anything. Its reach is therefore bounded and
+// worth stating: it counts the outcome literals that open with "bound to
+// session" or "unbound", so a fourth form spelled either way reddens it, and a
+// fourth form worded outside both stems does not.
+//
+// The export leg carries the rest of the weight. A skill telling a session to
+// call a function is asserting a mechanism, so the names are checked against
+// the module's live export table rather than against a substring of its
+// source, and a rename leaves a red here instead of a shipped instruction that
+// throws for whoever runs it.
+test('the recap skill\'s leash reading still matches the goal CLI it counts and the exports it calls', () => {
+    const recap = readRepoFile('plugins/claude-kit/skills/recap/SKILL.md');
+    // Bounded on the next bullet's lead rather than on the newline, so the
+    // absence assertion below cannot be defeated by rewrapping the bullet.
+    const bullet = sliceBetween(recap, '- **The leash**, read with',
+        '- **Any background run', 'the recap skill\'s leash-reading bullet');
+
+    // The writer side, counted at the CLI's own ternary.
+    const goalCli = readRepoFile('plugins/claude-kit/hooks/kit-goal.js');
+    const at = goalCli.indexOf('const binding = state.boundSession');
+    assert.ok(at !== -1, 'hooks/kit-goal.js no longer composes its status '
+        + 'binding in a `const binding = state.boundSession` ternary, so this '
+        + 'pin has nothing to count the recap skill\'s figure against');
+    const ternary = goalCli.slice(at,
+        at + goalCli.slice(at).search(/;\r?\n/) + 1);
+    const forms = ternary.match(/'(?:bound to session|unbound)[^']*'/g) || [];
+    assert.equal(forms.length, 3, 'hooks/kit-goal.js now composes '
+        + forms.length + ' binding forms, not three, while the recap skill '
+        + 'still tells a session the status prints one of three; the skill\'s '
+        + 'figure and the enumeration it feeds both move with this count');
+    assert.match(bullet, /one of three forms/,
+        'the recap skill no longer states the goal CLI\'s binding forms at '
+        + 'three, while hooks/kit-goal.js still composes exactly that many');
+
+    // The reader side. The bullet ships an invocation a session is told to
+    // run, so every name in it is checked against the live export table.
+    const lib = require(path.join(__dirname, '..', 'plugins', 'claude-kit',
+        'hooks', 'kit-goal-lib.js'));
+    for (const name of ['sessionHoldsLeash', 'isSessionIdShaped', 'readGoal',
+        'goalStateAbsent']) {
+        assert.ok(bullet.includes(name), 'the recap skill\'s leash bullet no '
+            + 'longer names ' + name + ', which its shipped invocation calls');
+        assert.equal(typeof lib[name], 'function', 'hooks/kit-goal-lib.js no '
+            + 'longer exports ' + name + ' as a function, so the invocation the '
+            + 'recap skill ships would throw for the session that ran it');
+    }
+
+    // The legs above read the invocation as text, and a text leg ships green
+    // on a command that throws: an unbalanced paren, a swapped argument order
+    // and a mis-spelled branch word are each invisible to a match and each
+    // fatal to the session told to run it. So this leg runs the shipped
+    // payload, lifted from the bullet's own backticks.
+    //
+    // What is stubbed is stated exactly, because a leg that overstates its own
+    // reach is worse than one that admits a gap: `readGoal` and
+    // `goalStateAbsent` are both replaced, so the branch ORDER is what these
+    // rows prove and not either predicate's own reading of the disk. The two
+    // filesystem-backed rows further down are what exercise the predicates,
+    // and between them they cover the one distinction the delivery rule binds
+    // on. Real here are the branch structure, `isSessionIdShaped` and
+    // `sessionHoldsLeash`.
+    const payload = (bullet.match(/node -e "(.*?)"`/) || [])[1];
+    assert.ok(payload, 'the recap skill\'s leash bullet no longer ships a '
+        + 'node -e invocation this pin can run');
+
+    // The module path is checked rather than assumed. A stub that ignores its
+    // argument would let a renamed or mistyped path ship green while every
+    // session running the command falls into the catch and reads `unknown`,
+    // which is the damaged-state reading and forces the leashed delivery in
+    // every project. So the specifier is captured, matched, and resolved
+    // against the real tree with the placeholder substituted.
+    const required = [];
+    const placement = (state, sessionId, absent = false) => {
+        let printed = null;
+        new Function('require', 'process', 'console', payload)(
+            (spec) => {
+                required.push(spec);
+                return Object.assign({}, lib, {
+                    readGoal: () => state,
+                    goalStateAbsent: () => absent,
+                });
+            },
+            { env: { CLAUDE_CODE_SESSION_ID: sessionId }, cwd: () => '.' },
+            { log: (v) => { printed = v; } });
+        return printed;
+    };
+    // Fabricated rather than live: a session id is a disclosure the recap
+    // bullet itself bars from a report, so the fixture does not carry a real
+    // one from whatever machine authored this.
+    const ME = '5f3a91c2-7d4e-4b18-9a06-2c8e5d1f0b73';
+    const OTHER = '11111111-2222-3333-4444-555555555555';
+    const PLAN = 'docs/plans/a_spec_v1.md';
+
+    // Absence first, because it is the reading the delivery paragraph exempts
+    // and the ordinary state of most projects. Folding it into unknown would
+    // put every unleashed project under the never-end-the-turn rule, so this
+    // leg is the one holding the two apart.
+    assert.equal(placement(null, ME, true), 'none armed', 'the recap skill\'s '
+        + 'shipped invocation no longer reports none armed for a project with '
+        + 'no goal state at all, so an unleashed project reads as a damaged '
+        + 'one and takes the delivery rule written for an armed leash');
+
+    // The specifier the invocation actually requires, checked now that a call
+    // has been made through the stub.
+    assert.match(required[0], /\/hooks\/kit-goal-lib\.js$/, 'the recap skill\'s '
+        + 'shipped invocation requires ' + required[0] + ', not the '
+        + 'hooks/kit-goal-lib.js it names its exports from; the command would '
+        + 'throw into its own catch and every project would read unknown');
+    const rootedSpec = required[0].replace('<plugin-root>',
+        path.join(__dirname, '..', 'plugins', 'claude-kit').split(path.sep)
+            .join('/'));
+    assert.doesNotThrow(() => require.resolve(rootedSpec), 'the module path in '
+        + 'the recap skill\'s shipped invocation does not resolve against this '
+        + 'tree once <plugin-root> is substituted, so the command throws for '
+        + 'whoever runs it and the catch reports unknown');
+
+    // Then the damaged states, which are not absence: a goal file that exists
+    // and cannot be read is unknown, and readGoal alone cannot tell the two
+    // apart because it returns null for both. The list shape is
+    // the plausible hand edit, `queue` beside it being a list, and it is what
+    // the goal CLI itself reads as unarmed at its own `typeof plan` guard.
+    for (const damaged of [null, {}, { plan: '' }, { plan: 5 },
+        { plan: [PLAN] }]) {
+        assert.equal(placement(damaged, ME), 'unknown', 'the recap skill\'s '
+            + 'shipped invocation reports a definite placement for a goal '
+            + 'state of ' + JSON.stringify(damaged) + ', which hooks/kit-goal.js '
+            + 'reads as unarmed; the two instruments the same bullet tells a '
+            + 'session to run would disagree, and the reader would act on the '
+            + 'placement');
+    }
+
+    // Then the id axis and the two placements, over both routes the predicate
+    // composes. The arming-route rows are why the bullet defers to
+    // sessionHoldsLeash rather than naming a bare id comparison.
+    for (const [state, sessionId, want, why] of [
+        [{ plan: PLAN, boundSession: ME }, '', 'unplaceable',
+            'this session\'s own id is absent'],
+        [{ plan: PLAN, boundSession: ME }, 'not-a-uuid', 'unplaceable',
+            'this session\'s own id is not session-shaped'],
+        [{ plan: PLAN, boundSession: ME }, ME, 'this session',
+            'the goal is bound to this session'],
+        [{ plan: PLAN, boundSession: OTHER }, ME, 'not this session',
+            'the goal is bound to another session'],
+        [{ plan: PLAN, armingSession: ME }, ME, 'this session',
+            'this session armed the goal and holds it by that route'],
+        [{ plan: PLAN, armingSession: OTHER }, ME, 'not this session',
+            'another session armed the goal'],
+    ]) {
+        assert.equal(placement(state, sessionId), want, 'the recap skill\'s '
+            + 'shipped invocation no longer reports ' + want + ' where ' + why
+            + ', so the recap delivers the wrong placement');
+    }
+
+    // Every row above stubs both state predicates, so it proves the branch
+    // ORDER and nothing about either predicate's own reading. These two rows
+    // run the real ones against a temporary tree, and they are what earns the
+    // absent-versus-damaged split: `readGoal` returns null for both states, so
+    // the distinction the delivery paragraph binds on rests entirely on
+    // `goalStateAbsent` telling them apart on disk.
+    const probeRoot = fs.mkdtempSync(path.join(require('os').tmpdir(),
+        'recap-leash-'));
+    try {
+        const unarmed = path.join(probeRoot, 'unarmed');
+        fs.mkdirSync(unarmed, { recursive: true });
+        const damagedDir = path.join(probeRoot, 'damaged');
+        fs.mkdirSync(path.join(damagedDir, '.kit'), { recursive: true });
+        fs.writeFileSync(path.join(damagedDir, '.kit', 'goal-state.json'),
+            '{ not json at all');
+
+        assert.equal(lib.readGoal(unarmed), null, 'hooks/kit-goal-lib.js '
+            + 'readGoal no longer returns null for a project with no goal '
+            + 'state, so the premise these two rows rest on has moved');
+        assert.equal(lib.readGoal(damagedDir), null, 'hooks/kit-goal-lib.js '
+            + 'readGoal no longer returns null for an unparseable goal state, '
+            + 'so it now separates absence from damage on its own and the '
+            + 'invocation\'s second predicate may be redundant');
+        assert.equal(lib.goalStateAbsent(unarmed), true, 'hooks/kit-goal-lib.js '
+            + 'goalStateAbsent no longer reports a project with no goal state '
+            + 'as absent, so the recap\'s none-armed reading collapses into '
+            + 'unknown and every unleashed project takes the leashed delivery');
+        assert.equal(lib.goalStateAbsent(damagedDir), false,
+            'hooks/kit-goal-lib.js goalStateAbsent reports an unparseable goal '
+            + 'state as absent, so a damaged leash reads as none armed and the '
+            + 'recap drops the delivery rule for a project that has one');
+    } finally {
+        fs.rmSync(probeRoot, { recursive: true, force: true });
+    }
+
+    // The placement defers rather than restating: sessionHoldsLeash composes
+    // the comparison, and the kit-goal skill owns what claims an unbound leash.
+    assert.match(bullet, /kit-goal skill's claim signals/,
+        'the recap skill\'s leash bullet no longer points at the kit-goal skill '
+        + 'for the claim signals, so a session holding the leash by the arming '
+        + 'route is reported unbound and freely claimable');
+    assert.ok(!/sameSessionId/.test(bullet),
+        'the recap skill\'s leash bullet names the id comparison helper '
+        + 'directly; sessionHoldsLeash is the composed answer over both the '
+        + 'bound-id and the recorded-arming-id routes, so an invocation built '
+        + 'on the bare comparison reports a session that holds the leash by '
+        + 'the arming route as not holding it');
+
+    assertTrackedInIndex('plugins/claude-kit/skills/recap/SKILL.md');
+});
