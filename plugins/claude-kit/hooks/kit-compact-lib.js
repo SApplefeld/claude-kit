@@ -40,15 +40,18 @@ const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 const { normalizePlanArg, pathErrnoClass, readGoal } = require('./kit-goal-lib.js');
-// Two shared reads from kit-read-lib. The gate-log tail read below takes
+// Three shared reads from kit-read-lib. The gate-log tail read below takes
 // readFully because a single readSync may legally return fewer bytes than asked
 // for, and the fill loop that closes it belongs to every hook read rather than
 // to this one. The hold-stamp read takes readFileBounded, which settles a
 // file's kind and size on the OPEN DESCRIPTOR: judging a name and then opening
 // it leaves a window a local process can swap the path inside, and off win32
 // the open is non-blocking, so a FIFO planted there is refused rather than
-// waiting for a writer that never comes.
-const { readFully, readFileBounded } = require('./kit-read-lib.js');
+// waiting for a writer that never comes. The marker directory's listing and
+// sweep take listBoundedNames, which reads a directory incrementally: readdirSync
+// materializes the whole of it before the first entry can be judged, so a cap on
+// the loop alone bounds what is kept and nothing about what was read.
+const { readFully, readFileBounded, listBoundedNames } = require('./kit-read-lib.js');
 
 // The directory every file in this library lives in, for a given project
 // directory. Two branches, and the second exists because one project
@@ -2465,14 +2468,20 @@ function endsOnLineBoundary(target) {
 }
 
 // ---------------------------------------------------------------------------
-// Release markers. Two session-scoped files beside the checkpoint give the
-// gate its release paths for sessions the checkpoint cannot serve: the
+// Release markers. Two session-scoped marker kinds beside the checkpoint give
+// the gate its release paths for sessions the checkpoint cannot serve: the
 // role-boundary marker, which a goalless session (a coordinator, expert or
 // admin seat) opens at a banked-and-empty moment so the hands-on deferral can
 // land the next offer there instead of riding to the safety ceiling; and the
 // operator-consent marker, written only on the operator's explicit word,
 // which releases one deferred compaction for the session it names on either
-// deny leg. Both release SCHEDULING denials only, the verdicts that mean
+// deny leg. The boundary marker is one FILE per session, its session id a
+// component of the file's own name, because a shared checkout carries several
+// seats at once and each declaration is one seat's own word about one moment:
+// two seats scoped only by a field inside a single file left the second
+// declaration renaming over the first, and the unmade seat deferred at its next
+// offer believing it had declared. The consent marker is one file per project,
+// the operator writing one at a time. Both release SCHEDULING denials only, the verdicts that mean
 // "not at this moment": no marker touches an allow clause, an integrity
 // refusal, or the leashed checkpoint rule, and the no-marker case leaves
 // every leg exactly as it was.
@@ -2486,9 +2495,31 @@ function endsOnLineBoundary(target) {
 // bounds its effect is here: one session, one release, one age window.
 // ---------------------------------------------------------------------------
 
-// Path to the role-boundary marker for a given repo root.
-function roleBoundaryPath(cwd) {
-    return path.join(kitScratchDir(cwd), 'compact-role-boundary.json');
+// Path to one session's role-boundary marker under a given repo root, or null
+// where the session id is not one this file will compose a name from. The
+// charset rule usableSessionId carries is the whole of what stands between an id
+// and the scratch directory: a value carrying a separator, a parent segment or a
+// leading dash resolves to nothing rather than to a path somewhere else, and
+// every reader and writer here treats that null as "no marker" rather than
+// falling back to an unscoped name.
+//
+// The id composes the name as it is given, where the match rule below compares
+// ids case-insensitively, so on a case-sensitive filesystem two spellings of one
+// id resolve two files while the rule reads them as one session. The cost of
+// that seam is a marker the offer does not find, which is a deferral, the
+// direction every leg of this gate fails in.
+//
+// A marker left at the name this file used while it was one file per project
+// (compact-role-boundary.json) is resolved by nothing and read by nothing: it
+// is inert. It is not migrated, a declaration's own life being bounded by the
+// age bound and by the moment rule either way, and it needs no hand: the name
+// carries the sweep's prefix and its .json tail, so sweepRoleBoundaryMarkers
+// removes it once it passes the same age bound, exactly as it removes a session
+// file nobody will read again.
+function roleBoundaryPath(cwd, sessionId) {
+    const id = usableSessionId(sessionId);
+    if (id === null) return null;
+    return path.join(kitScratchDir(cwd), 'compact-role-boundary.' + id + '.json');
 }
 
 // Path to the operator-consent marker for a given repo root.
@@ -2502,12 +2533,13 @@ function consentPath(cwd) {
 // character must be alphanumeric however clean the rest is. Session ids as
 // the harness mints them are UUID-shaped and pass untouched; anything else
 // degrades to the refusal at the call sites, never to an unscoped write. The
-// rule also carries a path-safety property two callers depend on, since a
-// passing value is a single path component: it holds no separator, is not a
-// dots-only name, and is inside the storage cap the marker writer enforces.
-// One definition serves the checkpoint CLI's marker verbs and the seat Stop
-// hook's registry lookup, so the value one of them refuses is not a value the
-// other joins onto a path.
+// rule also carries the path-safety property every caller that composes a name
+// from an id depends on, since a passing value is a single path component: it
+// holds no separator, is not a dots-only name, and is inside the storage cap
+// the marker writer enforces. One definition serves the checkpoint CLI's marker
+// verbs, the seat Stop hook's registry lookup, the transcript and registry
+// entry paths below, and the role-boundary marker's own file name, so the value
+// one of them refuses is not a value another joins onto a path.
 function usableSessionId(value) {
     return (typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value))
         ? value
@@ -2651,8 +2683,133 @@ function readMarkerResult(target) {
     }
 }
 
-function readRoleBoundaryResult(cwd) {
-    return readMarkerResult(roleBoundaryPath(cwd));
+// One session's marker, read at its own file. A session id the resolver
+// refuses gets its own outcome rather than the absent one: the two facts are
+// different, an id nothing can compose a path from being a caller's problem
+// where an absent file is an ordinary state, and a reader that answered
+// 'absent' for both would hand every caller one value for two questions.
+function readRoleBoundaryResult(cwd, sessionId) {
+    const target = roleBoundaryPath(cwd, sessionId);
+    if (target === null) return { ok: false, marker: null, reason: 'no-session' };
+    return readMarkerResult(target);
+}
+
+// The name shape both the listing and the sweep below judge an entry by, spelled
+// once: the prefix the writer composes and the .json tail, on a regular file. The
+// legacy single name (compact-role-boundary.json) carries both, deliberately, so
+// the sweep collects one; the listing narrows further, below, to the names a
+// session id actually composes.
+const ROLE_BOUNDARY_PREFIX = 'compact-role-boundary.';
+
+function isRoleBoundaryEntry(entry) {
+    return entry.isFile() && entry.name.startsWith(ROLE_BOUNDARY_PREFIX)
+        && entry.name.endsWith('.json');
+}
+
+// How many marker names one listing or one sweep will consider. A shared
+// checkout carries seats in the low tens and each holds one file, so this is far
+// above the population and exists to bound the cost of a directory somebody has
+// filled rather than to describe it. The listing says so with its `bounded` flag
+// rather than reporting a truncated set as the whole picture.
+const ROLE_BOUNDARY_MAX_NAMES = 512;
+
+// Which sessions hold a marker file in this project, for the status report,
+// which answers "what is open here" rather than "what is open for me" and so
+// has no one session to ask about. Returns { ok:true, sessions, bounded } with
+// the ids in the order the directory listed them and `bounded` true where the
+// listing was cut short, or { ok:false, sessions:[], bounded:true, reason } where
+// the directory could not be listed, since an empty list and an unread directory
+// are different facts and the caller says different things about them. An absent
+// scratch directory is the empty list: nothing has ever been written there, which
+// is a genuine none-open.
+//
+// Every id comes back through the same resolver the writers compose with, so a
+// file name that is not one this library could have produced is not reported as
+// a session. This and the sweep below answer about the DIRECTORY rather than
+// composing a path in it, so neither is of the scratch-resolver class the suite
+// sweeps and the suite names both as consumers of it; the directory they read is
+// kitScratchDir's own answer, which is where that sweep's property comes from.
+//
+// The failure is classified by pathErrnoClass rather than reported as one
+// condition, the split clearMarkerFile takes: something that is not a directory
+// parked at the scratch path is a state that will never resolve on its own, and
+// a caller told to wait it out would wait forever.
+function roleBoundarySessionsResult(cwd) {
+    const dir = kitScratchDir(cwd);
+    const listing = listBoundedNames(dir, ROLE_BOUNDARY_MAX_NAMES, isRoleBoundaryEntry);
+    if (listing.bounded && listing.names.length === 0) {
+        const refusal = roleBoundaryListFailure(dir);
+        if (refusal !== null) return { ok: false, sessions: [], bounded: true, reason: refusal };
+    }
+    const sessions = [];
+    for (const name of listing.names) {
+        const id = name.slice(ROLE_BOUNDARY_PREFIX.length, name.length - '.json'.length);
+        const resolved = roleBoundaryPath(cwd, id);
+        if (resolved === null || path.basename(resolved) !== name) continue;
+        sessions.push(id);
+    }
+    return { ok: true, sessions, bounded: listing.bounded };
+}
+
+// Why the listing above came back with no names and the shared lister's bounded
+// flag set, which is two different facts: the directory refused to be listed at
+// all, or it answered and the read was cut short before a marker was reached.
+// The shared lister reports what it read rather than why it stopped, so the
+// question is asked again here, on the failing path only, by opening the
+// directory: 'determinate' where the path can never be listed as it stands
+// (something that is not a directory, or a link chain that will not resolve),
+// 'transient' where the condition is one that can lift, and null where the
+// directory itself answers, leaving a cut listing rather than a refused one.
+//
+// The classes are pathErrnoClass's, the same split clearMarkerFile takes, so an
+// operator is never told to wait out a state that will never resolve. A
+// directory that has gone away since the listing reads as null: nothing is there
+// to be open.
+function roleBoundaryListFailure(dir) {
+    let handle = null;
+    try {
+        handle = fs.opendirSync(dir);
+    } catch (err) {
+        const cls = pathErrnoClass(err && err.code);
+        if (cls === 'absent') return null;
+        return cls === 'determinate' ? 'determinate' : 'transient';
+    } finally {
+        if (handle !== null) {
+            try { handle.closeSync(); } catch { /* already closed */ }
+        }
+    }
+    return null;
+}
+
+// Remove every marker file in this project older than the age bound, which is
+// the age past which markerMatches refuses one anyway: what the sweep collects
+// is a file no reader will ever honor again. One file per session and no writer
+// that renames over a peer's is what makes this necessary, since a session that
+// declares and then ends leaves a file nothing else will ever replace, and the
+// directory would otherwise grow by one file per session forever.
+//
+// Age is the file's own mtime rather than its recorded writtenAt: the writer
+// creates the file at the instant it records, an unparseable or hand-edited
+// record still ages out, and no file has to be opened to judge one. The listing
+// is bounded and the cap named, so a directory somebody has filled cannot turn a
+// turn end into a walk of it. Best-effort throughout: a file that raced away or
+// is not ours to remove is left, since nothing here is a precondition for the
+// write that drives it.
+function sweepRoleBoundaryMarkers(cwd) {
+    const dir = kitScratchDir(cwd);
+    const cutoff = Date.now() - ROLE_BOUNDARY_MAX_AGE_MS;
+    const listing = listBoundedNames(dir, ROLE_BOUNDARY_MAX_NAMES, isRoleBoundaryEntry);
+    let removed = 0;
+    for (const name of listing.names) {
+        const full = path.join(dir, name);
+        try {
+            const st = fs.lstatSync(full);
+            if (!st.isFile() || st.mtimeMs > cutoff) continue;
+            fs.unlinkSync(full);
+            removed += 1;
+        } catch { /* raced away, or not ours to remove */ }
+    }
+    return { removed, bounded: listing.bounded };
 }
 
 function readConsentResult(cwd) {
@@ -2662,9 +2819,9 @@ function readConsentResult(cwd) {
 // The swallowing forms the gate takes, because every refusal leg means the
 // same thing to it: no marker releases anything. Same split as readCheckpoint
 // over readCheckpointResult.
-function readRoleBoundary(cwd) {
+function readRoleBoundary(cwd, sessionId) {
     try {
-        return readRoleBoundaryResult(cwd).marker;
+        return readRoleBoundaryResult(cwd, sessionId).marker;
     } catch {
         return null;
     }
@@ -2745,11 +2902,28 @@ function writeMarkerFile(target, sessionId, declared, position) {
 // recording where it fell. `positioned` in the result says whether one was
 // taken, for a caller that reports a declaration nothing will be able to vouch
 // for.
+//
+// The file is this session's own, so an id the resolver will not compose a name
+// from is refused here in the writer's own vocabulary: there is no unscoped
+// name left to fall back to, which is the property the per-session file buys.
+//
+// This is also where the marker directory is collected. Every write here is one
+// seat saying something about its own file and none replaces a peer's, so the
+// aged-out files a set of seats leaves behind have no other writer to retire
+// them; the sweep runs after the write, on the two events that reach this
+// function (a seat's turn end and a boundary declaration), which is the same
+// cadence the single shared file was replaced at. It runs after rather than
+// before so a failed sweep cannot cost the declaration, and its result is not
+// read: nothing about this write turns on what was collected.
 function writeRoleBoundary(cwd, sessionId, declared) {
+    const target = roleBoundaryPath(cwd, sessionId);
+    if (target === null) return { ok: false, reason: 'session id is invalid' };
     const position = declared === true
         ? transcriptPosition(sessionTranscriptPath(cwd, sessionId))
         : null;
-    return writeMarkerFile(roleBoundaryPath(cwd), sessionId, declared, position);
+    const result = writeMarkerFile(target, sessionId, declared, position);
+    if (result.ok) sweepRoleBoundaryMarkers(cwd);
+    return result;
 }
 
 function writeConsent(cwd, sessionId) {
@@ -2799,8 +2973,16 @@ function clearMarkerFile(target) {
     }
 }
 
-function clearRoleBoundary(cwd) {
-    return clearMarkerFile(roleBoundaryPath(cwd));
+// A session's own marker, removed at its own file. An id the resolver refuses
+// names no file to remove, and that is a refusal rather than a clear that found
+// nothing: the caller reports the second as a successful retraction, which is
+// not what happened.
+function clearRoleBoundary(cwd, sessionId) {
+    const target = roleBoundaryPath(cwd, sessionId);
+    if (target === null) {
+        return { ok: false, cleared: false, reason: 'could not clear marker: no usable session id to scope it by' };
+    }
+    return clearMarkerFile(target);
 }
 
 function clearConsent(cwd) {
@@ -3743,6 +3925,7 @@ module.exports = {
     CHECKPOINT_MAX_AGE_MS, CHECKPOINT_PENDING_MAX_AGE_MS, CHECKPOINT_FUTURE_SKEW_MS,
     roleBoundaryPath, consentPath, ROLE_BOUNDARY_MAX_AGE_MS, CONSENT_MAX_AGE_MS,
     markerMatches, readRoleBoundary, readConsent, readRoleBoundaryResult, readConsentResult,
+    roleBoundarySessionsResult, sweepRoleBoundaryMarkers, ROLE_BOUNDARY_MAX_NAMES,
     writeRoleBoundary, writeConsent, clearRoleBoundary, clearConsent,
     markerMomentHolds, markerDeclaresMoment, transcriptPosition,
     stampRegistryBanked, registryEntryPath,

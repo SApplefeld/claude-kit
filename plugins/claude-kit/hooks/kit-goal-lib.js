@@ -732,10 +732,10 @@ function regularFileSize(target) {
 //
 // One classification, and the callers are wherever that question is asked: in
 // this library and in kit-compact-lib.js, a path's state is reported to an
-// operator (planPathState, goalPathKind), a link is resolved or refused
-// (resolvePlanLink), a file is removed or left alone (clearGoal,
-// clearCheckpoint, clearMarkerFile, holdStampKind). The rule is what is shared
-// rather than the list: spelled per site instead, two callers of one rule routed
+// operator (planPathState, goalPathKind, roleBoundaryListFailure), a link is
+// resolved or refused (resolvePlanLink), a file is removed or left alone
+// (clearGoal, clearCheckpoint, clearMarkerFile, holdStampKind). The rule is what
+// is shared rather than the list: spelled per site instead, two callers of one rule routed
 // ENOTDIR to opposite answers.
 function pathErrnoClass(code) {
     if (code === 'ENOENT') return 'absent';

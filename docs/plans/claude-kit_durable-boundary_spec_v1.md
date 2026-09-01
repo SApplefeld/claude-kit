@@ -146,11 +146,11 @@ Appended 2026-08-31 during section 2's review adjudication, and recorded there a
 
 The collision predates section 2 and is not that section's to fix: `seat-stop.js` renames the same file at every turn end for every registered seat with a fresh status and a clean tree, which is a far higher overwrite rate than the declaration path adds. Section 2 is what makes it reachable by prompting every held seat to declare, which is why the repair is appended here rather than left as a found surface.
 
-The change: the marker becomes one file per session (`compact-role-boundary.<session>.json`, the session component composed through the same charset gate the other session-id path joins take), so a declaration cannot be overwritten by a peer at all. Every reader and writer moves together, `kit-compact-lib.js`'s path resolver and marker read/write pair, the gate's honor leg, `kit-compact-checkpoint.js`'s `boundary`, `--cancel` and `status` verbs, and `seat-stop.js`'s turn-end write. Markers already on disk under the old single name are read once and then ignored rather than migrated, since a marker's own life is bounded by the 4-hour age-out and by the moment rule, so the transition costs at most one lapsed declaration per seat. The scratch-path class sweep in `test/kit-compact-gate.test.js` gains the new resolver so the derived control keeps covering it. With the collision gone, the stderr note section 2 added to `cmdBoundary` has nothing left to report and is removed rather than corrected, which also retires the two review Minors against it (its firing for an already-dead incumbent, and its silence for an unreadable one).
+The change: the marker becomes one file per session (`compact-role-boundary.<session>.json`, the session component composed through the same charset gate the other session-id path joins take), so a declaration cannot be overwritten by a peer at all. Every reader and writer moves together, `kit-compact-lib.js`'s path resolver and marker read/write pair, the gate's honor leg, `kit-compact-checkpoint.js`'s `boundary`, `--cancel` and `status` verbs, and `seat-stop.js`'s turn-end write. Markers already on disk under the old single name are never resolved at all rather than migrated, no leg composing that name once the resolver takes a session id, since a marker's own life is bounded by the 4-hour age-out and by the moment rule, so the transition costs at most one lapsed declaration per seat. The scratch-path class sweep in `test/kit-compact-gate.test.js` gains the new resolver so the derived control keeps covering it. With the collision gone, the stderr note section 2 added to `cmdBoundary` has nothing left to report and is removed rather than corrected, which also retires the two review Minors against it (its firing for an already-dead incumbent, and its silence for an unreadable one).
 
 Tests red-first: two seats declaring in sequence both keep their own markers, watched red against the current single-file shape; the gate honors each seat's own marker and refuses the other's; `--cancel` removes only the invoking session's file; a marker at the legacy single name is ignored rather than honored for a session whose own file is absent; the scratch-path class sweep and its control both name the new resolver.
 
-Acceptance: two sessions declaring on one checkout each retain a live marker and each lands its own next offer at its own boundary; no reader or writer of the marker resolves the legacy single path except the ignore leg; the stderr note is gone from `cmdBoundary`; the class sweep's control is derived rather than hand-kept; new tests watched red first; whole gate delta reported against a recorded baseline.
+Acceptance: two sessions declaring on one checkout each retain a live marker and each lands its own next offer at its own boundary; no reader or writer of the marker resolves the legacy single path at all, the legacy name being unreachable by absence rather than skipped by an ignore branch; the stderr note is gone from `cmdBoundary`; the class sweep's control is derived rather than hand-kept; new tests watched red first; whole gate delta reported against a recorded baseline.
 
 ### 5. The nudge floor survives the installers that own its file. Model: sonnet
 
@@ -2053,3 +2053,140 @@ name, the "one reader composes a path" count, and the claim that `--project` is 
 caller's value reaches a marker's path), correct the section's acceptance wording where it names an
 "ignore leg" the implementation satisfies by absence, then the close gate, the Chapter, the commit
 and the push. Section 5 follows at sonnet, unstarted. Then the whole-effort finishing pass.
+
+### Chapter 4 - 2026-09-01
+Completed: 4. The role-boundary marker is scoped per session, so two seats cannot spend each other's declarations
+Implemented By: implementer-opus for the build, a second implementer-opus for the fix round; the
+main thread for `docs/security-model.md` and for this doc, `docs/` being barred to subagents by the
+repo's own write guard.
+Metrics: review rounds 1; NEEDS_CONTEXT 0; escalations 0; consults 0; DONE_WITH_CONCERNS 1
+(both concerns adjudicated and accepted, below).
+Lane: whole gate, `node --test test/*.test.js` after `./build.ps1`, 2823 tests / 2815 passing /
+1 failing / 7 skipped, exit 1 read from this session's own marker at `.kit/scratch/s4close-gate.exit`.
+Against Chapter 1's recorded whole-gate baseline of 2695 / 2688 / 1 / 6 exit 1: plus 128 tests,
+failing unchanged at 1 and it is the same named test, `a pinned directory too long to name
+faithfully stands the session down`, this box's permanent path-length red. The whole gate ran
+because this section's push lands on `main`, a trunk consumers install from directly. No separate
+contention lane exists in this repo (47 test files, no subdirectories, every one inside the
+whole-gate glob, and none recorded in the project's memory tier), so the whole gate is the lane;
+the section's delta touched no machine-shared state in any case, the marker being project-scoped.
+The box was polled and claimed for the run and the claim released after it.
+Next: 5. The nudge floor survives the installers that own its file
+Commit Model: Commit-and-Push
+Assumptions: The `status` verb enumerates the marker files present and reports one line each,
+rather than scoping itself to the calling session. Route (b), declared below.
+
+WHAT THE DEFECT ACTUALLY WAS, WHICH IS NARROWER THAN IT LOOKS AND IS WHAT SET THE FIX'S SHAPE. The
+gate's role-boundary marker was one file per project directory, `.kit/compact-role-boundary.json`,
+scoped only by a `session` field recorded inside it and written by an unconditional rename. Two
+seats sharing a checkout could each declare a durable boundary and each silently unmake the
+other's, the second writer's rename landing over the first's file. Nothing was ever released across
+sessions: `markerMatches` already refused a marker whose recorded session was not the reading
+session's, so a seat never honored a peer's declaration. What was lost was the declaration itself,
+which is why the remedy is the file's name rather than a stronger check on the read side.
+
+WHAT SHIPPED, VERIFIED AT THE LINES RATHER THAN READ FROM THE REPORT. The marker is now
+`.kit/compact-role-boundary.<session-id>.json`, composed at one choke point (`roleBoundaryPath` in
+`plugins/claude-kit/hooks/kit-compact-lib.js`) behind the charset gate the tree already applies to
+its other session-id path joins (`usableSessionId`, regex `/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/`),
+which was reused rather than rewritten and is now its fourth path-composing caller beside the
+transcript path and the registry-entry path. Every reader, writer and clearer moved with it: the
+gate's honor leg and its landing sweep, the checkpoint CLI's `boundary`, `--cancel` and `status`
+verbs, and the seat-stop hook's turn-end bank. A session id that fails the gate composes no path at
+all, so no read, no write and no clear happens and the moment reads as unvouched, which is the
+direction every leg here already failed in. A marker at the legacy single name is honored by
+nothing, by absence rather than by an ignore branch. The stderr note section 2 added to
+`cmdBoundary` had nothing left to report once the collision was gone and was removed, retiring the
+two review Minors that stood against it.
+
+THE REVIEW ROUND: three lenses at opus, effort `max`, dispatched through the Workflow route because
+the Agent tool on this version takes a model override and no effort parameter, and an opus-tier
+section's reviewers have no tier headroom over their writer. Adversarial CHANGES_REQUIRED, blind
+CHANGES_REQUIRED, security CONCERNS. The tree-state bracket around the round came back with no
+delta. The security lens judged the path-composition boundary itself sound: one choke point, a
+strict single-component allowlist, uniform fail-closed refusals, and no reachable path outside the
+project's own scratch directory, which it confirmed by probe.
+
+THE ROUND'S REAL FIND, REACHED SEPARATELY BY ALL THREE LENSES, AND A REGRESSION THIS CHANGESET
+ITSELF INTRODUCED. Making the marker per-session removed the only collector the design had. Under
+one file per project, any seat's turn-end write renamed over a dead peer's file, so the set was
+self-limiting at one; per session, a marker written by a session that then ends is removed by
+nothing, and the four-hour age bound makes a marker unhonorable rather than absent. The controller
+confirmed this at the call sites rather than from the reports: `clearRoleBoundary` has exactly
+three callers, all session-scoped; `ROLE_BOUNDARY_MAX_AGE_MS` is read only by comparisons and the
+status report, never by a deletion; and no glob over the marker family existed anywhere in the
+tree.
+
+THE FIX RESTORES THE COLLECTOR RATHER THAN ADDING A NEW MECHANISM. `sweepRoleBoundaryMarkers` lists
+the marker family in the scratch directory under a name cap and unlinks entries past the age bound,
+using `lstat` rather than `stat` so a symlink is skipped rather than followed, with a per-entry
+try/catch so a raced-away or foreign-owned file costs nothing. Because it matches on the
+`compact-role-boundary.` prefix it collects a legacy single-name file by age as well, which answers
+from the code the question the fix brief had left open.
+
+TWO IMPLEMENTER CONCERNS ADJUDICATED AND ACCEPTED, BOTH IMPROVING ON THE BRIEF. First, the sweep is
+driven from `writeRoleBoundary` and the gate's landing sweep rather than from the `status` listing,
+where the brief had said "wherever the directory is already being listed". The implementer's
+reasoning is better: hanging a delete off a read verb makes `status` destructive, and it would
+collect nothing at all in a project where nobody runs `status`, while driving it from the write
+restores exactly the collector the one-file-per-project shape had. Second, the derived scratch-path
+class sweep in `test/kit-compact-gate.test.js` needed to be told about two new functions that match
+its shape while answering about the directory rather than composing a path in it. The
+`SCRATCH_DIR_CONSUMERS` exclusion is itself policed: each excluded name must still match the
+derived shape, be exported, and answer with a non-string, and a floor assertion pins the swept set
+at six or more names, so the exclusion cannot quietly hold a real resolver out of the sweep.
+
+TWO FALSE CLAIMS RODE WITH THE BUILD, AND ONE WAS DELETED RATHER THAN REWORDED. The build's own new
+header asserted that its resolver "is the single place a session id becomes a file name", which two
+functions in the same file falsify and which the same changeset's neighbouring edit enumerates
+correctly twenty lines away. Standing Brief Amendment 4's stopping rule governs that remedy and it
+is deletion: a hand-maintained cross-file count is removed, never restated more carefully. The
+replacement header attributes the property to the `usableSessionId` call rather than asserting a
+count. Its absence was confirmed with a control that speaks, the grep returning one hit against a
+state known to hold the sentence and zero against the shipped file. Separately, two headers
+asserted that the age bound removes a marker file, which nothing did until the fix round made it
+true.
+
+THE SECURITY MODEL WAS CORRECTED IN THIS CHANGESET RATHER THAN LEFT TO A LATER SWEEP.
+`docs/security-model.md` stated that the boundary marker sits at a fixed single name, that exactly
+one reader composes a path from a marker's recorded session id, and that the `--project` flag is
+the one place a caller's value reaches a marker's path. Joining a session id into the marker's own
+file name falsifies all three, so those paragraphs were rewritten in the same commit that falsified
+them, on the rule section 1 followed: a false security claim never outlives the commit that
+falsifies it. All three absences were confirmed with controls that speak against the pre-edit
+content. The neighbouring accepted-risk paragraph about `.kit/compact-gate.json` and
+`.kit/compact-gate.jsonl` needed no edit, its "never joined to a caller-chosen path" claim being
+scoped to those two files and still true; the security lens had noted that this doc's own Chapter 3
+carry-forward paraphrased the wrong paragraph, and that is corrected by this Chapter naming the
+right one.
+
+A DELIBERATE DEVIATION FROM THE SPEC, RECORDED RATHER THAN SILENTLY RECONCILED. This section's
+acceptance line required that "no reader or writer of the marker resolves the legacy single path
+except the ignore leg". The implementation has no ignore leg: once the resolver takes a session id
+the legacy name is never composed at all, so the criterion is satisfied by absence rather than by a
+branch. That is the stronger form of the same property, and a branch existing only to skip a name
+nothing composes would be dead code. The section's change note and acceptance line in this doc were
+corrected to describe what shipped. Reversal cost is nil, the deviation being in the spec's wording
+rather than in behaviour.
+
+FOUR FINDINGS ADJUDICATED AS NOT TO FIX, NAMED SO THEY ARE NOT RE-LITIGATED: the consent marker
+keeping the one-file-per-project shape, which is outside this section's scope; a two-seat
+regression case in the seat-stop suite, near-duplicate cover given the shared write path; the
+marker name's contribution to Windows path length, low confidence with a loud failure mode; and the
+case-folding seam between `sameSessionId` and the verbatim file name, whose documented reasoning
+stands and whose failure direction is a deferral.
+
+ONE ASSUMPTION DECLARED, ROUTE (b). The plan says the `status` verb moves without saying to what.
+The build made it enumerate the marker files present and report one line each rather than scoping
+it to the caller, and the controller confirmed the reasoning at the code rather than accepting it
+from the report: the verb reads its id from `CLAUDE_CODE_SESSION_ID`
+(`kit-compact-checkpoint.js:456`) and states its own refusal when that is unset (`:571`), while the
+shipped prose tells an operator to run `status` from a shell, which carries no such variable, so a
+caller-scoped `status` would show an operator nothing.
+
+THE FILE SET WIDENED BEYOND THE SPEC'S NAMED FILES BY TWO, both comment-only:
+`plugins/claude-kit/hooks/kit-goal-lib.js` and `plugins/claude-kit/doctor/doctor.ps1`. The doctor's
+`.kit/` exposure comment was a stale carrier once session ids began appearing in file NAMES rather
+than only in file contents, which is a new disclosure surface for a consuming project that does not
+ignore `.kit/`. That is step 5's standing carve-out rather than a routed surface: a document inside
+a completed section's scope whose describing passage this section's own change falsified.

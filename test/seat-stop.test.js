@@ -61,8 +61,22 @@ function registryFile(f, sessionId) {
     return path.join(f.registryDir, (sessionId || SESSION) + '.md');
 }
 
-function markerFile(project) {
-    return path.join(project, '.kit', 'compact-role-boundary.json');
+// The marker the hook opens for one session: one file per session, its id a
+// component of the name, so two seats stopping in the same project directory
+// open two files rather than renaming over each other.
+function markerFile(project, session) {
+    return path.join(project, '.kit', 'compact-role-boundary.' + session + '.json');
+}
+
+// Every marker file in a project, for a case whose claim is that none was
+// written at all rather than that one session's was not.
+function markerFiles(project) {
+    try {
+        return fs.readdirSync(path.join(project, '.kit'))
+            .filter((name) => name.startsWith('compact-role-boundary.'));
+    } catch {
+        return [];
+    }
 }
 
 // A registry entry in the shape the role skill's directory contract states.
@@ -167,7 +181,7 @@ test('seat-stop: an unregistered session is silent, and the silence is the regis
         // the registry-file stat: every later leg reads that file's contents.
         fs.mkdirSync(f.registryDir, { recursive: true });
         assertAllowsStop(runHook(f));
-        assert.ok(!fs.existsSync(markerFile(f.project)), 'no marker for a session the registry does not carry');
+        assert.ok(!fs.existsSync(markerFile(f.project, SESSION)), 'no marker for a session the registry does not carry');
         assert.deepStrictEqual(fs.readdirSync(f.registryDir), [], 'and nothing is created under registry/');
     } finally {
         cleanup(f);
@@ -195,7 +209,9 @@ test('seat-stop: a session id that is not id-shaped is silent before any path is
         ].join('\n'));
         assertAllowsStop(runHook(f, { session_id: escape }));
         assert.strictEqual(fieldOf(planted, 'Heartbeat'), 'none', 'the planted entry is not stamped');
-        assert.ok(!fs.existsSync(markerFile(f.project)), 'and no marker is opened for it');
+        assert.deepStrictEqual(markerFiles(f.project), [],
+            'and no marker is opened for it, under any name: the claim is that the id never '
+            + 'became a path, not that one session\'s file is absent');
     } finally {
         cleanup(f);
     }
@@ -252,7 +268,7 @@ test('seat-stop: an entry carrying no Heartbeat line is not restructured, and th
         assertAllowsStop(runHook(f, { cwd: repo }));
         assert.strictEqual(fs.readFileSync(entry, 'utf8'), before,
             'the hook stamps a line the contract puts there and adds none');
-        assert.ok(fs.existsSync(markerFile(repo)), 'the marker leg reads the status stamp, not the heartbeat');
+        assert.ok(fs.existsSync(markerFile(repo, SESSION)), 'the marker leg reads the status stamp, not the heartbeat');
     } finally {
         rmDir(repo);
         cleanup(f);
@@ -281,7 +297,7 @@ test('seat-stop: an entry path reported as a link is refused rather than followe
 
         assert.strictEqual(fs.readFileSync(entry, 'utf8'), before,
             'nothing is written through the refused path');
-        assert.ok(!fs.existsSync(markerFile(repo)),
+        assert.ok(!fs.existsSync(markerFile(repo, SESSION)),
             'and the marker leg, which rests on that same unread entry, opens nothing');
     } finally {
         rmDir(shimDir);
@@ -341,7 +357,7 @@ test('seat-stop: a fresh status push over a clean tree opens the boundary marker
     try {
         writeEntry(f, { statusUpdated: iso(60 * 1000) });
         assertAllowsStop(runHook(f, { cwd: repo }));
-        const marker = JSON.parse(fs.readFileSync(markerFile(repo), 'utf8'));
+        const marker = JSON.parse(fs.readFileSync(markerFile(repo, SESSION), 'utf8'));
         assert.strictEqual(marker.session, SESSION, 'the marker is scoped to the stopping session');
         assert.strictEqual(marker.consumed, false, 'and is written live');
     } finally {
@@ -358,7 +374,7 @@ test('seat-stop: a stale status push opens no marker, and the heartbeat is still
         // clean and the entry is present, so nothing else here can refuse.
         const entry = writeEntry(f, { statusUpdated: iso(TEN_MINUTES + 60 * 1000) });
         assertAllowsStop(runHook(f, { cwd: repo }));
-        assert.ok(!fs.existsSync(markerFile(repo)), 'no declaration this turn, so no boundary');
+        assert.ok(!fs.existsSync(markerFile(repo, SESSION)), 'no declaration this turn, so no boundary');
         assert.notStrictEqual(fieldOf(entry, 'Heartbeat'), 'none', 'the heartbeat leg is independent');
     } finally {
         rmDir(repo);
@@ -379,7 +395,7 @@ test('seat-stop: a status stamp in the future opens no marker', () => {
         // entry would otherwise bank.
         const entry = writeEntry(f, { statusUpdated: iso(-60 * 60 * 1000) });
         assertAllowsStop(runHook(f, { cwd: repo }));
-        assert.ok(!fs.existsSync(markerFile(repo)),
+        assert.ok(!fs.existsSync(markerFile(repo, SESSION)),
             'a declaration timestamped in the future declares nothing');
         assert.notStrictEqual(fieldOf(entry, 'Heartbeat'), 'none',
             'and the heartbeat leg is independent of it');
@@ -399,7 +415,7 @@ test('seat-stop: a dirty tree opens no marker even on a fresh status push', () =
         assert.notStrictEqual(git(['status', '--porcelain'], repo).stdout, '', 'test setup: the tree reads dirty');
         writeEntry(f, { statusUpdated: iso(60 * 1000) });
         assertAllowsStop(runHook(f, { cwd: repo }));
-        assert.ok(!fs.existsSync(markerFile(repo)), 'work on the tree is not a banked moment');
+        assert.ok(!fs.existsSync(markerFile(repo, SESSION)), 'work on the tree is not a banked moment');
     } finally {
         rmDir(repo);
         cleanup(f);
@@ -416,7 +432,7 @@ test('seat-stop: a project directory that is not a git checkout reads as clean a
             'test setup: the project directory is not inside a git repository');
         writeEntry(f, { statusUpdated: iso(60 * 1000) });
         assertAllowsStop(runHook(f));
-        assert.ok(fs.existsSync(markerFile(f.project)), 'a non-git project directory still banks');
+        assert.ok(fs.existsSync(markerFile(f.project, SESSION)), 'a non-git project directory still banks');
     } finally {
         cleanup(f);
     }
@@ -431,7 +447,7 @@ test('seat-stop: the marker it opens is the one the compaction gate honors, jour
     try {
         writeEntry(f, { statusUpdated: iso(60 * 1000) });
         assertAllowsStop(runHook(f, { cwd: repo }));
-        assert.ok(fs.existsSync(markerFile(repo)), 'setup: the hook opened the marker');
+        assert.ok(fs.existsSync(markerFile(repo, SESSION)), 'setup: the hook opened the marker');
 
         const transcript = path.join(repo, 'transcript.jsonl');
         writeFile(transcript, [
@@ -467,7 +483,7 @@ test('seat-stop: the marker it opens is the one the compaction gate honors, jour
         assert.strictEqual(state.lastDecision.verdict, 'allow');
         assert.strictEqual(state.lastDecision.reason, 'role-boundary',
             'the release the hook earned is the one journaled');
-        assert.ok(!fs.existsSync(markerFile(repo)), 'and the allow consumed it');
+        assert.ok(!fs.existsSync(markerFile(repo, SESSION)), 'and the allow consumed it');
     } finally {
         rmDir(repo);
         cleanup(f);

@@ -31,14 +31,9 @@
 // The whole cost for a session the registry does not carry is one stat, which
 // is what makes it affordable on every Stop of every session on the machine.
 //
-// One residual is left standing and is named so it is not rediscovered as a
-// bug: the marker file is per project directory, so two registered seats
-// working the same project directory flap the one file, each Stop overwriting
-// the other's session id. The gate releases a compaction only for the session
-// a live marker names, so the flap costs the seat that stopped first its
-// release, degrading it to the pre-marker behaviour where its compaction rides
-// to the safety ceiling, and never produces a release for a session that
-// declared nothing.
+// The marker file is per session as well as per project directory, so two
+// registered seats working the same project directory open two files and
+// neither Stop can overwrite the other's.
 //
 // It never blocks: nothing is written to stdout on any path, so the stop is
 // always allowed and no stop_hook_active guard is needed. Any failure exits 0,
