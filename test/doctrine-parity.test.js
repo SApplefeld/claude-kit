@@ -80,6 +80,16 @@ function assertTrackedInIndex(relPath) {
         { cwd: path.join(__dirname, '..'), stdio: 'pipe' });
 }
 
+// One field-set derivation, shared by the claim-file pin and the
+// registry-entry pin over docs/architecture.md. The token class admits a
+// digit and a lowercase tail after the leading letter, wider than today's
+// field names on purpose: a derivation narrower than the tokens it must
+// see is how a future field such as `Retry2:` goes invisible to BOTH
+// sides at once, a one-sided addition of it then passing green, which is
+// the class both comparisons exist to catch.
+const backtickedFieldSet = (text) => [...new Set(
+    text.match(/`[A-Za-z][A-Za-z0-9-]*:`/g) || [])].sort();
+
 test('the two doctrine copies are byte-identical (skill body vs mirror)', () => {
     assert.strictEqual(mirrorBody(), skillBody(),
         'home/claude-kit-doctrine.md has drifted from the operating-instructions '
@@ -1082,8 +1092,14 @@ const HAND_WRITTEN_STAMP = new RegExp([
 // paragraph, which is the one dependent that writes the field rather than
 // reading it. Six is this pin's reach and not the class's size: the shipped
 // tree names `Status-updated:` in more files than these, so a green here is
-// evidence about the surfaces named and never a swept class. Every slice
-// below runs through
+// evidence about the surfaces named and never a swept class. docs/architecture.md's
+// registry-entry paragraph is a further dependent, pointing at this
+// paragraph rather than restating it, and held by its own pin over that
+// document rather than by this one. That pin carries the entry's field
+// set, the writer-axis count and the pointer; it deliberately does not
+// apply the shape below, which matches that document's repaired text as
+// readily as its retired text, the subject there being writers rather
+// than a declaration of who stamps. Every slice below runs through
 // sliceBetween, whose near-edge assertion is what carries the scope here:
 // these skill files carry one paragraph per line, so a lead plus a newline
 // is the paragraph, and a lead that no longer opens the paragraph fails
@@ -1788,14 +1804,11 @@ test('the box-budget brief clause agrees with the role skill\'s claim contract a
         + 'sentence ("write the claim with its ... fields" through the '
         + 'completion delete), so the clause side of the field-set '
         + 'comparison has no sentence to derive from');
-    // The token class admits a digit and a lowercase tail after the leading
-    // letter, wider than today's field names on purpose: a derivation
-    // narrower than the tokens it must see is how a future field such as
-    // `Retry2:` goes invisible to BOTH sides at once, a one-sided addition
-    // of it then passing green, which is the class this comparison exists
-    // to catch.
-    const claimFieldSet = (text) => [...new Set(
-        text.match(/`[A-Za-z][A-Za-z0-9-]*:`/g) || [])].sort();
+    // The shared derivation, hoisted to module scope so this pin and the
+    // registry-entry pin over docs/architecture.md read a field name the
+    // same way; the token class and the reason for its width are stated
+    // there.
+    const claimFieldSet = backtickedFieldSet;
     const roleFields = claimFieldSet(
         roleSection.slice(roleShapeStart, roleShapeEnd));
     const clauseFields = claimFieldSet(
@@ -4443,4 +4456,209 @@ test('the recap skill\'s leash reading still matches the goal CLI it counts and 
         + 'the arming route as not holding it');
 
     assertTrackedInIndex('plugins/claude-kit/skills/recap/SKILL.md');
+});
+
+// The registry entry's shape is stated twice: the role skill's directory
+// contract owns it, and docs/architecture.md describes it for a reader who
+// never opens the skill. A shape restated on a sibling surface is an
+// invariant nothing checks, which a clean merge preserves and no
+// diff-reading review catches. This pin holds the document to the contract
+// on four axes: the set of lines a writer other than the session stamps,
+// the two the stamping CLI writes without adding a writer, the entry's
+// field set, and the one-owner rule over the push moments.
+//
+// The document's paragraphs are sliced rather than matched whole. A count
+// can sit in one paragraph while the field enumeration in the next omits the
+// very field that count left out, and a whole-file match is satisfied by
+// either paragraph naming the field, so it cannot see the two disagreeing.
+// What slicing buys in precision it gives up in reach: a stale count or a
+// push-moments restatement written into some other section of the document
+// is invisible here.
+//
+// Every field set on both sides is extracted from the role skill at run time
+// rather than transcribed, so they move when the contract moves, and each is
+// compared as a set rather than by containment, so a field either surface
+// adds, renames, or retires while the other keeps it reddens. The one count
+// this pin reads off a sentence is the writer-axis one, which has no
+// machine-readable form on the document's side; it is keyed on the shape of
+// the clause rather than on the clause verbatim, so an honest rewording
+// stays green while a reversion to the machine-stamped axis does not.
+//
+// The push-moments leg is deliberately not a restatement detector, two
+// rounds of review having established that no pattern over prose separates a
+// paraphrase of a rule from ordinary writing about the same subject without
+// either overclaiming or being satisfied by construction. Its reach is two
+// named things and nothing wider: the document must point at the paragraph
+// that owns the rule, and neither the five push moments the role skill
+// enumerates nor the retired stamped-set count may appear verbatim in
+// either slice. The HAND_WRITTEN_STAMP shape the six-surface pin above
+// applies to its own dependents is deliberately not applied here. Run
+// against these two paragraphs it matches the repaired text ("session
+// writing" in one, "session's own push rewrites" in the other) exactly as
+// it matches the text this section replaced, because that shape is tempered
+// for the role skill's own declaration windows while this document's
+// subject is writers, so it would redden on correct prose. A restatement
+// that paraphrases every one of the five moments is not caught, and
+// nothing here claims otherwise.
+test("docs/architecture.md's registry-entry description holds to the role skill's contract", () => {
+    assertTrackedInIndex('docs/architecture.md');
+    assertTrackedInIndex('plugins/claude-kit/skills/role/SKILL.md');
+    const role = fs.readFileSync(path.join(__dirname, '..', 'plugins',
+        'claude-kit', 'skills', 'role', 'SKILL.md'), 'utf8');
+    const architecture = fs.readFileSync(path.join(__dirname, '..', 'docs',
+        'architecture.md'), 'utf8');
+    const namesOf = (body) => backtickedFieldSet(body)
+        .map((token) => token.slice(1, -2)).sort();
+
+    // The writer count lives in the directory contract, which is a different
+    // section from the entry's own shape.
+    const contract = sliceBetween(role,
+        'The writer rule is per file rather than one rule over the four',
+        '## The registry entry',
+        "the role skill's directory-contract writer rule");
+    assert.ok(contract.includes('three writers and no more'),
+        "the role skill's directory contract no longer closes the registry"
+        + " entry's writer set at three, so the composition"
+        + ' docs/architecture.md states has no owner left to agree with');
+    assert.ok(sliceBetween(role, 'The push moments, closed with their class',
+        'The rule is on where the value comes from',
+        "the role skill's push-moments paragraph").includes('and no third'),
+        "the role skill's push-moments paragraph no longer closes the"
+        + ' registry entry\'s stamped set, so the count'
+        + ' docs/architecture.md states is unbounded at its owner');
+
+    const writerRule = sliceBetween(architecture,
+        'The writer rule is stated per file',
+        "A registry entry is a session's own account of itself",
+        "docs/architecture.md's writer-rule paragraph");
+    const entryShape = sliceBetween(architecture,
+        "A registry entry is a session's own account of itself",
+        '`claims/heavy-process.md` models the one-heavy-process-per-machine',
+        "docs/architecture.md's registry-entry paragraph");
+    const slices = [['writer-rule', writerRule],
+        ['registry-entry', entryShape]];
+
+    // The document spells the contract's three writers as one plus two: a
+    // single-writer registry entry, and the two lines another writer stamps.
+    // The single-writer leg names the entry rather than matching the word
+    // alone, which the paragraph's board half satisfies on its own.
+    assert.match(writerRule, /registry entr(?:y|ies)[^.]{0,40}single-writer/,
+        "docs/architecture.md's writer-rule paragraph no longer states the"
+        + ' registry entry itself as single-writer, so the session half of'
+        + " the role skill's three-writer composition is gone from the"
+        + ' document while the board half may still read as covering it');
+
+    // The count is asserted on its own text rather than on the slice anchor
+    // below, which would make it true by construction: that anchor opens
+    // after the count, so this match can fail while the slice still resolves.
+    // It is keyed on the writer axis deliberately. Four of the entry's lines
+    // are machine-stamped and only two are stamped by a writer other than
+    // the session, so a paragraph that counts two on the machine-stamped
+    // axis is stating a falsehood that reads exactly like the truth.
+    assert.match(writerRule, /two lines[^.]{0,60}other than the session/,
+        "docs/architecture.md's writer-rule paragraph no longer states the"
+        + ' stamped set as two lines written by someone other than the'
+        + " session, so a reader is given either a count the role skill's"
+        + ' contract does not hold or one stated on the machine-stamped axis'
+        + ' rather than on the writer axis the contract closes');
+
+    // The stamped set, as a set on both sides.
+    const contractStamped = namesOf(sliceBetween(contract,
+        'three writers and no more',
+        "so another session's registry file is never yours to write",
+        "the role skill's stamped-line enumeration"));
+    assert.strictEqual(contractStamped.length, 2, "the role skill's"
+        + ' stamped-line enumeration parsed to ' + contractStamped.length
+        + ' field names rather than two, which is a parse failure rather'
+        + " than a contract this shape; the comparison below would report"
+        + " it as the document's drift");
+    const stampedClause = sliceBetween(writerRule,
+        'which is where the role skill', 'Two more lines are machine-stamped',
+        "docs/architecture.md's stamped-line clause");
+    assert.deepStrictEqual(namesOf(stampedClause), contractStamped,
+        "docs/architecture.md's writer-rule paragraph and the role skill's"
+        + ' contract no longer name the same set of lines stamped by a writer'
+        + ' other than the session, so one surface counts a stamped set the'
+        + ' other does not hold');
+
+    // The other two machine-stamped lines, which add no writer. The expected
+    // set is lifted from the role skill's own sentence about them rather
+    // than transcribed here, so the document is held to the owner and not to
+    // this file's memory of it.
+    const timeFields = namesOf(sliceBetween(role,
+        'Both time fields the session', 'are read from the clock',
+        "the role skill's stamped-time-field sentence"));
+    assert.strictEqual(timeFields.length, 2, "the role skill's sentence"
+        + ' naming the two time fields the stamping CLI writes parsed to '
+        + timeFields.length + ' field names rather than two, which is a'
+        + ' parse failure rather than a contract this shape');
+    const machineClause = sliceBetween(writerRule,
+        'Two more lines are machine-stamped', 'The claim file and the inbox',
+        "docs/architecture.md's machine-stamped clause");
+    assert.deepStrictEqual(namesOf(machineClause), timeFields,
+        "docs/architecture.md's writer-rule paragraph names a different pair"
+        + ' of machine-stamped lines than the role skill does, so the'
+        + ' sentence that keeps the writer axis honest is itself wrong about'
+        + ' which lines it is excusing from that axis');
+
+    // The entry's field set, lifted from the contract's own fenced block.
+    // The heading index is checked before the fence is sought, because
+    // indexOf returning -1 is clamped to zero and would silently parse the
+    // first fenced block anywhere in the file. The section bound excludes a
+    // fence added after this section; a fence added between the heading and
+    // the entry block would be parsed instead, and what catches that is the
+    // line-count check below rather than the bound.
+    const headingAt = role.indexOf('## The registry entry');
+    assert.notStrictEqual(headingAt, -1, 'the role skill no longer carries a'
+        + ' `## The registry entry` heading, so the fenced block this pin'
+        + ' reads the field set from cannot be located');
+    const sectionEnd = role.indexOf('\n## ', headingAt + 1);
+    const section = role.slice(headingAt,
+        sectionEnd === -1 ? role.length : sectionEnd);
+    const fenceOpen = section.indexOf('```');
+    const fenceClose = section.indexOf('```', fenceOpen + 3);
+    assert.ok(fenceOpen !== -1 && fenceClose > fenceOpen,
+        "the role skill's registry-entry section no longer carries a fenced"
+        + ' entry block, so the field set this pin holds the document to'
+        + ' cannot be read from its owner');
+    // A field line carries a name, a colon, a space, and a value, so a
+    // wrapped continuation line is not promoted to a field the document
+    // would then be blamed for not carrying. Every non-blank line in the
+    // block has to parse: a floor would let a one-field parse loss through
+    // and the comparison below would then report it as the document's drift.
+    const fenceLines = section.slice(fenceOpen + 3, fenceClose)
+        .split('\n').map((line) => line.trim()).filter(Boolean);
+    const contractFields = [...new Set(fenceLines
+        .map((line) => (/^([A-Za-z][A-Za-z0-9-]*): \S/.exec(line) || [])[1])
+        .filter(Boolean))].sort();
+    assert.strictEqual(contractFields.length, fenceLines.length,
+        'the fenced entry block in the role skill\'s contract holds '
+        + fenceLines.length + ' non-blank lines but parsed to '
+        + contractFields.length + ' field names, so either a line is not a'
+        + ' field line or two fields share a name; the comparison below'
+        + " would otherwise report the shortfall as the document's drift");
+    assert.deepStrictEqual(namesOf(entryShape), contractFields,
+        "docs/architecture.md's registry-entry paragraph and the role skill's"
+        + ' fenced entry block no longer name the same field set, so one'
+        + ' surface describes an entry the other does not write');
+
+    // The push-moments rule is the role skill's to state; this surface
+    // points at it. The bans below are the retired stamped-set count and the
+    // rule's own five moments, all held verbatim.
+    assert.match(entryShape, /role skill's push-moments paragraph/,
+        "docs/architecture.md's registry-entry paragraph no longer points at"
+        + " the role skill's push-moments paragraph, so the rule's owner is"
+        + ' sourced nowhere and a reader takes this surface for it');
+    const RETIRED = ['the one `Heartbeat:` line', 'a Chapter close',
+        'a BLOCKED declaration', 'a suite or gate baseline change',
+        'a claim write or release', 'a seat takeover or handoff'];
+    for (const [label, body] of slices) {
+        for (const retired of RETIRED) {
+            assert.ok(!body.includes(retired), "docs/architecture.md's "
+                + label + ' paragraph carries "' + retired + '", which is the'
+                + ' retired wording: either a stamped set stated at one, or'
+                + " the push-moments enumeration restated here rather than"
+                + ' sourced to the role skill that owns it');
+        }
+    }
 });
