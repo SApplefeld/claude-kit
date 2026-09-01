@@ -55,6 +55,21 @@ is generating the defect rather than one implementer having missed it.
   section's `Files in scope:` is an out-of-scope surface and takes the executing-work skill's route for
   one rather than an in-place edit the scope check never sees.
 
+- 2026-09-01, from section 2's fifth review round. **A fixture that stands in for a broken state proves
+  nothing unless it reports that it engaged, so give every shim a fired marker and assert it.** The two
+  instances are a regression test that could not fail off Windows, because the probe resolved its
+  working directory through a call that canonicalizes the link the test depended on, and a preload shim
+  that strips a module export only when the require string matches, with nothing asserting the match
+  occurred. Both produce output byte-identical to an ordinary passing run, so the case reads green
+  whether the condition under test was created or silently skipped, and the guard the test protects can
+  be deleted without the suite noticing. The shape generalizes past preloads: any fixture whose job is
+  to put the system into a state the code must handle owes evidence that the state was actually
+  reached, because the failure is indistinguishable from success at the assertion. Write the marker from
+  inside the branch that performs the substitution, assert its existence in the case, and where the
+  fixture cannot report from inside, assert instead on something only the substituted state can produce.
+  A control that asserts the same outcome as the ordinary run is not a control, since it withholds
+  nothing and would pass with the fixture removed entirely.
+
 - 2026-09-01, from section 2's second review round. **When a change alters a shared contract, audit
   every committed caller of it, including callers outside the section's file list, and pin the ones the
   change reaches.** The two shapes this plan has produced are a function gaining a refusal where it
@@ -859,3 +874,125 @@ fifth review round under the owed-round triggers. The Major it closes is a secur
 the presumption is that it does. Then the `docs/security-model.md` corrections per the re-grounded
 specification and under the peer agreement, the whole gate with the contention lane beside it, then Chapter
 2, the commit and the push.
+
+### Interim board 7 - 2026-09-01
+
+Section 2 is still the only section open. A fifth review round has been adjudicated and a sixth fix round
+is in flight, which is what earns this entry rather than a Chapter.
+
+Stage. Section 2's implementation has now been through five review rounds and five fix rounds, with the
+orchestrator's own verification at each. Nothing is staged. What is committed beyond the interim board
+entries is nothing of this section's code; two documentation corrections sit uncommitted in the worktree
+and are described below.
+
+Round 5's fix, verified rather than accepted. The implementer reported DONE_WITH_CONCERNS on seven items.
+The orchestrator read the gate from the runs' own markers rather than from the report: build exit 0, and a
+targeted lane at 1470 tests, 1467 pass, 1 fail, 2 skipped, exit 1 from `.kit/scratch/r5-lane.exit`. Against
+the recorded baseline of 1468/1465/1/2 the delta is exactly the round's two new tests, both passing, with
+the failure set unchanged and the single failure this box's documented permanent red. The red-first
+evidence was read at the logs rather than taken on report, and it is genuinely discriminating: the
+pre-fix run shows the junction control passing while both new pins fail, and the disarm run, with the
+screen forced off, shows all three red. A test that can fail in both directions is what the round owed.
+
+The Major closed, confirmed by reading the code rather than the account of it. The previous round's
+boundary screen failed open on its own error path because the path-resolution helper swallowed failures
+and returned its input. The fix splits the helper: the failing form now answers null, so an unresolvable
+start arms the screen instead of disarming it and the climb refuses its first step, leaving only the
+zero-step match, while a mid-climb step whose either side cannot be resolved breaks rather than comparing
+two values equal by construction. The orchestrator traced all three failure sites in the source. The one
+caller of the unchanged forgiving form is `namesOwnCwd`, whose comparison is undisturbed because that form
+still returns its input on failure.
+
+Round 5's verdicts. Adversarial APPROVED_WITH_CONCERNS with one Major and three Minors, blind
+APPROVED_WITH_CONCERNS with five Minors, security CONCERNS with one Major and six Minors. No Critical
+anywhere, so the round did not fail under the tier ladder and the fix round stays at the escalated writer
+tier rather than climbing again. All three overrides took, read from each dispatch's own transcript turns:
+45 assistant lines at `claude-fable-5`, 42 at `claude-fable-5`, 41 at `claude-opus-5`, no substitution and
+no synthetic placeholder. The reviewers were given a 481-line diff of this round's work alone; the blind
+lens was given the changed-file list and the base ref instead, per its own input contract, and reported its
+brief carried no contamination.
+
+The convergent Major, and it lands on the orchestrator's own work. Two lenses independently found that the
+preload fixture written in this round has no engagement marker: it strips a module export only when the
+require string matches, nothing asserts the match occurred, and a run in which the shim never engages
+produces output byte-identical to an ordinary run. So both assertions pass while pinning nothing, and the
+guard they protect could be deleted with the suite still green. The case's stated control made it worse by
+asserting the same outcome as the ordinary run, which withholds nothing and would pass with the fixture
+removed entirely. The sibling fixture in the very same delta gets this right and says so in its own comment.
+The orchestrator wrote the defective one, which is worth recording plainly: the fold that introduced it was
+written to close a different lens's concern about a guard with no durable test.
+
+Security's own Major, and it is the house defect again, again in the round applying the rule against it.
+`docs/architecture.md` still carried the claim that a mapped drive rides the resolution walk at the same
+cost, which this round's own skill-body edit declared false and rewrote. The orchestrator confirmed the
+finding by reading the file and confirmed the aggravating fact too: this section's diff edits that very
+paragraph, changing "A fourth answer" to "A fifth answer", so the falsified clause was read past rather
+than unreached. That is Standing Brief Amendment 1 failing at the hand of the session that wrote it. The
+correction is made, and deliberately does not copy the skill body's wording, because two lenses flagged an
+unverifiable absolute inside it; the architecture sentence states the cost conditionally instead.
+
+Standing Brief Amendment 3 written, which is this round's structural output. A finding class has now
+surfaced twice: round 4's regression test that could not fail off Windows, and round 5's shim with no
+engagement marker. Both produce output identical to an ordinary passing run, so the case reads green
+whether the condition under test was created or silently skipped. Two instances means the workflow
+generates the defect, so the amendment requires that any fixture standing in for a broken state report
+that it engaged, with the marker written from inside the branch performing the substitution, and states
+that a control asserting the same outcome as the ordinary run is not a control. Writing the block is
+approval drift by construction and is recorded here as deliberate.
+
+Deliberate non-fixes this round, recorded so they read as decisions. Two unmemoized hot paths in the new
+leg are accepted: neither changes an answer, per-invocation processes bound the cost, and the shape is
+already recorded as a latent trap for the first resident consumer. The absence of a stderr note when the
+leg declines after a resolution failure is accepted because the reporting lens explicitly demanded no code
+change and the fail-closed direction is the right one; it is named here so a later reader finds a weighed
+trade rather than an unseen path.
+
+Live dispatch. One implementer at the escalated fable tier carrying nine items: the convergent Major, two
+comment-accuracy defects on claims this section falsified, two skill-body corrections including softening
+an absolute nobody here can verify, a fail-open in the ceiling's own repository detector that reproduces
+round 2's harm class with no link involved, a defensive guard on a spelling that could throw out of the
+resolver, a test-fixture prefix boundary, and test hermeticity where a hook harness still inherits the real
+session id and home directory.
+
+Documentation the orchestrator owns. `docs/architecture.md` now carries four corrected sentences, three
+from earlier rounds conditioning an unconditional worktree claim and one from this round on the mapped-drive
+cost. It stays deliberately uncommitted, because it describes resolver behavior that lives only in the
+working tree and committing the prose ahead of the code would put a claim in the trunk the trunk's own code
+does not honor. The `docs/security-model.md` corrections are now seven rather than six: the security lens
+found the file carries no coverage at all of the store resolver as a cross-project data-separation boundary,
+with its three residuals living only in a code comment and a skill body.
+
+The shared checkout, and the co-held file is resolved. The peer session committed and pushed while this
+round ran, moving this checkout's HEAD to `b66584e`. It committed `docs/security-model.md` with its own
+content alone, at this session's suggestion, which dissolves the co-held-file arrangement rather than
+managing it: the corrections owed here now land as this session's own delta on top of a committed file,
+with no attribution to negotiate and no snapshot to hold. The orchestrator verified by name that the peer's
+two commits swept none of this section's files, that nothing of this session's is staged, and that the
+checkout is level with origin. The peer's next implementer was checked against this section's file set
+before it dispatched and is disjoint.
+
+Gate. Unchanged from the round-5 figures above and not re-measured since, because the sixth fix round's
+delta has not landed. The whole gate has still not run for section 2 and runs before the push, with the
+contention lane beside it, because this plan is Commit-and-Push straight to a trunk consumers install from.
+
+Box. No claim was held during the review round, which ran three read-only lenses that build and run nothing.
+The orchestrator held no claim for its own red-green probe either, which was three tests of a few seconds;
+that is the same judgment the previous round's implementer flagged as its one procedural liberty, and it is
+named here rather than left implicit. The sixth fix round carries the claim protocol in its brief under this
+session's substituted identity, and its brief names the peer's concurrent gate as workspace contention it
+cannot see from the tree.
+
+One cross-session false-red is named in advance, because this section has already lost a lane to the same
+mechanism from its own hand. The peer's implementer edits a hook and runs the build to refresh the machine
+-local stamp before its own gates. The stamp hashes hook bytes, so a `test/hook-canary.test.js` run landing
+between that hook edit and that rebuild reports an integrity failure on files nobody broke. That file is in
+this section's lane, so a canary red arriving in this stretch is checked against the peer implementer's
+activity timestamps before it is read as a regression of this section's own. This is reported from the peer
+and unverifiable from here beyond the mechanism, which this section confirmed independently when it cost a
+lane earlier.
+
+Next action. Await the sixth fix round, verify its delta and its rebuild, then judge whether that delta owes
+a sixth review round. Two of its items change failure behavior at the boundary this section exists to
+protect, so the presumption is that it does. Then the `docs/security-model.md` corrections, now seven,
+re-grounded against the committed copy before any edit since the file moved twice while this round ran,
+then the whole gate with the contention lane beside it, then Chapter 2, the commit and the push.
