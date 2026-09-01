@@ -171,7 +171,7 @@ const inbox = require('./inbox.js');
 const judge = require('./judge.js');
 const recognize = require('./recognize.js');
 const memoryIndex = require('./memory-index.js');
-const prompt = require('./prompts/judgment-v2.js');
+const prompt = require('./prompts/judgment-v3.js');
 const recognitionPrompt = require('./prompts/recognition-v1.js');
 
 // The idle poll interval in the watch loop. The fleet produces a few thousand

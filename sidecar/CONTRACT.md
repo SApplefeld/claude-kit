@@ -82,7 +82,7 @@ depend on it.
 | `intent` | string | The call's stated intent, the Bash tool's `description` field. `''` when absent. This is the INTENT side of the judgment triple. |
 | `command` | string | The command text, the Bash tool's `command` field. The ACTION side. |
 | `result` | string | The call's output. The RESULT side. See below. |
-| `truncated` | boolean | `true` when any of `intent`, `command`, or `result` was cut, by either cap. |
+| `truncated` | boolean | `true` when any of `intent`, `command`, `result`, `sessionId`, `cwd` or `tool` was cut, by either cap. |
 | `isError` | boolean | The harness error flag, normalized across response shapes. |
 
 `result` is the response's text channels joined with newlines, in the order
@@ -116,6 +116,20 @@ wrong thing.
   about.
 - Any cut sets `truncated`. The flag says something was lost; it does not say
   which field or how much.
+- The judge is told. A line whose `truncated` is true is judged under a prompt
+  whose triple opens with a capture-cut notice saying the call's text was cut at
+  capture; a line whose flag is false gets no such notice. The judge is
+  instructed to treat cut text as unknown rather than as known-absent, so a
+  confirmation it cannot find in a cut input is not by itself grounds for a
+  diverged verdict, while a contradiction it can see still is. The absence of
+  any marking, the notice and the fence labels alike, says this pipeline cut
+  nothing, never that the text is whole: a tool that shortened its own output
+  before capture saw it leaves no flag, and the judge weighs any such statement
+  in the text as ordinary data rather than as one of the prompt's markings.
+- The prompt is identified by its own `PROMPT_ID`, stamped into every verdict
+  record's `promptId`; it reads `judgment-v3` today. Verdicts are comparable
+  only across records sharing that id, which is why a wording change ships as a
+  new prompt file with a new id rather than as an edit to the one in use.
 - A day file past 64 MiB stops taking appends. Nothing in the hook can tell a
   running daemon from a stopped or uninstalled one, so the bound is what keeps
   an unconsumed spool from growing without limit. At the fleet's volume, a few

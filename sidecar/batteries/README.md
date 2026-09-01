@@ -29,12 +29,12 @@ regenerating one from a run would be.
 
 The `v1` in this directory name is the battery's own version, not a prompt
 version. It does not track `sidecar/prompts/`: these thirteen cases are scored
-against `judgment-v2.js` today and were scored against `judgment-v1.js` before
-that, and the fixture did not change when the prompt did. `recognition-v1/`
-happens to share a number with `recognition-v1.js` and that coincidence means
-nothing either. A battery directory is renumbered when its CASES change; the
-run report names the prompt id it actually used, which is the value to compare
-two runs on.
+against `judgment-v3.js` today and were scored against `judgment-v2.js` and
+`judgment-v1.js` before that, and the fixture did not change when the prompt
+did. `recognition-v1/` happens to share a number with `recognition-v1.js` and
+that coincidence means nothing either. A battery directory is renumbered when
+its CASES change; the run report names the prompt id it actually used, which is
+the value to compare two runs on.
 
 Thirteen real production tool calls, harvested from fleet transcripts during
 the local-model audition (`local-model-audition`, the journal key the plan's
@@ -65,7 +65,7 @@ writes the replay spool, which is exactly the cut the capture hook itself makes,
 so a longer frozen field is replayed as a real capture of that call would have
 been written rather than refused. What the judge then sees of a cut field is
 the tighter of that field cap and the judgment prompt's own per-field cap:
-`sidecar/prompts/judgment-v2.js` cuts ACTION at its 1,500-character
+`sidecar/prompts/judgment-v3.js` cuts ACTION at its 1,500-character
 `COMMAND_PROMPT_CAP`, so case 9's 3,478-character `command` reaches the judge
 as its first 1,500 characters. Every such cut is named per case in the run
 report, with the length before and after. What IS refused is a case that would

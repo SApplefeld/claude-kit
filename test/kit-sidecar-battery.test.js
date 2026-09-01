@@ -2561,7 +2561,7 @@ test('the default target runs both batteries and the report names both prompt ve
     assert.ok(result.stdout.includes('== judgment battery =='), result.stdout);
     assert.ok(result.stdout.includes('== recognition battery =='), result.stdout);
     assert.ok(result.stdout.includes('OVERALL: PASS'), result.stdout);
-    assert.ok(result.stdout.includes('judgment-v2'), `the judgment prompt id is missing:\n${result.stdout}`);
+    assert.ok(result.stdout.includes('judgment-v3'), `the judgment prompt id is missing:\n${result.stdout}`);
     assert.ok(result.stdout.includes('recognition-v1'), `the recognition prompt id is missing:\n${result.stdout}`);
 });
 
@@ -2928,7 +2928,7 @@ test('the run names every frozen field it cut at replay, and a within-cap batter
     // cap, so for a command field the line must state the number of characters
     // the judge actually saw, derived here from the prompt module exactly as
     // the report must derive it rather than duplicated as a literal.
-    const judgePrompt = require('../sidecar/prompts/judgment-v2.js');
+    const judgePrompt = require('../sidecar/prompts/judgment-v3.js');
     const commandCuts = overCap.flatMap((c) => battery.fieldCuts('judgment', c)
         .filter((f) => f.field === 'command').map((f) => ({ n: c.n, ...f })));
     assert.ok(commandCuts.length > 0, 'this control needs a frozen command past the field cap, or it proves nothing');
@@ -3427,7 +3427,7 @@ test('a recognition record carrying another run provenance is a cannot-measure, 
 // This is red if the prompt's own slice ever drifts from the constant the
 // report reads.
 test('the judgment prompt embeds exactly COMMAND_PROMPT_CAP characters of an over-cap command', () => {
-    const judgePrompt = require('../sidecar/prompts/judgment-v2.js');
+    const judgePrompt = require('../sidecar/prompts/judgment-v3.js');
     const long = 'c'.repeat(battery.FIELD_CAP + 100);
     const triple = judgePrompt.formatTriple({ intent: 'i', command: long, result: 'r', isError: false });
     const fenced = /<<<ACTION ([0-9a-f]+)>>>\n([\s\S]*?)\n<<<END ACTION \1>>>/.exec(triple);

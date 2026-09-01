@@ -36,7 +36,7 @@
 
 'use strict';
 
-const prompt = require('./prompts/judgment-v2.js');
+const prompt = require('./prompts/judgment-v3.js');
 const endpoint = require('./endpoint.js');
 const { neutralize } = require('./text.js');
 

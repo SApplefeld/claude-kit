@@ -208,6 +208,30 @@ anything running as this user can rewrite the config, which is the same single p
 rest of this document assumes, so what the warning buys is that a redirected endpoint is
 visible on a surface someone reads rather than invisible on every surface at once.
 
+The judgment prompt (`sidecar/prompts/`, the judgment line) fences the judged call's
+three sides with a per-call nonce drawn from a cryptographic source after the content it
+fences already exists, so fenced content cannot pose as instruction: a forged fence
+marker can only match by guessing the draw, and one whose tag differs is data by the
+prompt's own rule. The party being judged writes all three fenced sides, which is the
+whole reason the fence exists, and the sidecar holds no authority either way.
+
+The prompt also marks partial input, and the marking is condition-bounded rather than
+authenticated, which is a deliberate posture with a named residual. A triple built from
+an entry whose capture-time `truncated` flag is set opens with a capture-cut notice
+above the fences, and a command cut at prompt-build time carries the cut in its ACTION
+label; the prompt pairs each marking with the reading it licenses, that absent text is
+unknown rather than evidence, scoped to the marking's own field where it names one. The
+flag is written by the capture hook running inside the judged session, so the judged
+party controls whether the notice appears. What that control buys is bounded by the
+grant: the leniency is absence-leniency only, a visible contradiction still convicts in
+a cut input exactly as in a whole one, so a false flag cannot launder evidence that is
+present, and a suppressed flag buys only the unmarked reading, under which the prompt
+promises nothing about completeness (its claim is pipeline-scoped: this pipeline cut
+nothing, never that the text is whole). SYSTEM names its own markings, the notice and
+the fence labels, in the fenced-data shape list, so a judged party printing either
+shape inside its output has produced data by the prompt's own rule rather than a
+marking.
+
 ### What recognition adds to the egress
 
 Judgment sends one call at a time: its stated intent, a bounded preview of its command,
