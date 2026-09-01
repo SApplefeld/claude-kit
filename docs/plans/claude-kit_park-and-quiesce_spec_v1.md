@@ -1,6 +1,6 @@
 # A session parks at a safe point on request, and the fleet quiesces on the operator's word
 
-Status: Ready
+Status: In Progress
 Commit Model: Commit-and-Push
 Created: 2026-08-29
 
@@ -37,6 +37,7 @@ One bootstrap property is stated here because the first use is where it would ot
 
 1. Re-read every anchor at implementation. The plan-lifecycle plan's Section 5 edits `session-start.js` and the standing-lines plan's Section 4 edits `coordinator/SKILL.md`; both run earlier in the queue, so authoring-time line references here will have moved.
 2. A skill or contract amendment is reviewed whole-file, not diff-only.
+3. The `WAITING:` stop shape is widened to cover a park, in the executing-work skill, as part of Section 3. Section 1 found the collision and could not fix it in its own scope: the kit Stop hook bounces an ordinary turn end while a leash is armed, so a leashed worker cannot park at all without a release lead, and the hook allows any `WAITING:` lead that does not give capacity as its reason, which is what makes a park work today. The shape's owning contract states a narrower occasion, a turn whose only remaining work is dispatched background subagents, and the hook's own capacity-refusal text says the same. So three shipped surfaces disagree about one mechanism, which is the recorded amendments-collide-with-neighbours defect class rather than a wording preference. Section 3 is where it lands because that section already owns making these contracts agree, and its acceptance already reads them against `/park`'s bounds. The widening is one clause naming the park as a second occasion; it changes no mechanism, since the hook already behaves this way, and it must not touch the capacity refusal, which is load-bearing on both leads.
 
 ## Sections of Work
 
@@ -76,7 +77,7 @@ Two amendments that land together because they are one pattern recorded in two h
 
 Tests: none mechanical (both surfaces are prose contracts); acceptance is the two amendments agreeing with each other and with /park's own bounds, checked by the adversarial round reading all three, plus whole-file review per Standing Amendment 2.
 
-Files in scope: `plugins/claude-kit/skills/coordinator/SKILL.md`, `plugins/claude-kit/skills/peer-sessions/SKILL.md`.
+Files in scope: `plugins/claude-kit/skills/coordinator/SKILL.md`, `plugins/claude-kit/skills/peer-sessions/SKILL.md`, `plugins/claude-kit/skills/executing-work/SKILL.md` (added by Standing Amendment 3 below).
 
 ## Out of Scope
 
@@ -91,3 +92,23 @@ Files in scope: `plugins/claude-kit/skills/coordinator/SKILL.md`, `plugins/claud
 - `docs/plans/claude-kit_plan-lifecycle-and-diagnostics_spec_v1.md` Section 5 and `docs/plans/claude-kit_standing-lines-and-honest-reports_spec_v1.md` Section 4 edit this plan's Section 2 and Section 3 surfaces first; Standing Amendment 1 binds.
 
 ## Chapters
+
+### Chapter 1 - 2026-08-31
+
+Completed: 1, 2
+
+Section 1 ships `plugins/claude-kit/skills/park/SKILL.md`: the four-row routing table, the drain steps, the ad-hoc handoff format, and the bounds. Section 2 ships the session-start inventory line over `.kit/parked/`, red first, with its controls named. Both are in this changeset.
+
+Section 1 took a fix round and earned it. Two fresh-context reviewers were dispatched, an adversarial one holding the spec and a blind reader holding only the document and a persona, and they converged from opposite ends on a skill that did not work. The blind reader, walking the steps as an ad-hoc session, found that no numbered step ever tells that session to write the handoff file whose path step 6 tells it to emit, and that the routing table names four classes without giving any test for which one a session is, on rows that are not disjoint. The adversarial round found eight more in the seams. Fourteen findings went back in one brief and all fourteen reproduced at their cites.
+
+The finding worth recording past this plan is the one that would have shipped a skill whose central mechanism silently fails. A leashed worker cannot end its turn at all while the leash is armed, so the skill leads its parking message with `WAITING:`, which the Stop hook allows. It allows it unless `capacityShapedBlockReason` reads the first line as a capacity excuse, and that screen fires on `fresh`, `new` or `another` beside `session`, and on `handoff` or `compaction` paired with `context`, `conversation`, `session` or `window`. A park's natural first line names the declared update window and the handoff and the fresh session, so it trips the screen twice and the hook answers `Capacity is never a blocker, continue the remaining sections`, pushing the parking session straight back into the work it was told to stop. The guard built to refuse capacity excuses false-positives on the exact vocabulary parking is made of. The skill now constrains the first line and ships a compliant example, and the example is verified by evaluating the shipped function itself against it rather than by reading the regexes: the example returns false and the natural line returns true, the control that proves the check can speak.
+
+Three rulings adopted in the round. The `WAITING:` shape is used knowing its owning contract states a narrower occasion, which is Standing Amendment 3 above and lands in Section 3 rather than here. The fix round's own deviation is accepted: it declined to cite this plan doc inside the shipped skill, because a pointer into `docs/plans/` is change-narrative that rots when the plan archives, and that is the house rule rather than a liberty. And the coordinator row states that a parked seat woken by its own four-hour timer takes no new work, rather than disarming the wake, since the chassis mandates arming on every pass and disarming it is a coordinator-skill change; Section 3 owns that call and should confirm or reverse it.
+
+Section 2 landed cleanly and reported one thing it could not close, which was correct rather than a shortfall: adding a block to the hook trips a cross-file count pin that requires `docs/architecture.md` to move with it, and a mechanical guard refuses a subagent any write under `docs/`. That one-line edit was applied here, and the bullet now reads twelve blocks and names the parked-handoff inventory.
+
+Gate: the targeted lane over the delta, `node --test test/doctrine-parity.test.js test/session-start-parked.test.js`, 58 of 58 passing at exit 0 read from the run's own exit code. Baseline on that same lane, recorded by the section 2 implementer before the docs edit, was 1 failing, the architecture count pin; the delta is that one closed and nothing else moved. The whole gate is not owed here and is not claimed: the section 2 implementer's whole-suite run recorded 1 pre-existing failure, `test/memory-session.test.js:854`, which is the known permanent red this box carries. That figure is reported rather than confirmed by me, since it is that run's reading and not one I took. Machine contention is named rather than assumed away: another repository's worker held this machine's heavy-process slot throughout, past its own stated expectation, so the lane ran unclaimed by the protocol's own name-the-contention route, and no foreign claim was touched.
+
+Next: Section 3, the coordinator update window and the peer-sessions pattern, opus tier, whose scope now also carries the executing-work widening per Standing Amendment 3.
+
+Commit Model: Commit-and-Push
