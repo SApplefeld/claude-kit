@@ -1008,8 +1008,251 @@ test('the role skill is pointed at by README and peer-sessions and carries what 
     assertTrackedInIndex('plugins/claude-kit/skills/role/SKILL.md');
 });
 
-// The pin above covers the delegation model's spine (the chain, the
-// model-versus-grant line) and none of its security screens: the exclusions
+// A site's first mention of `Status-updated:` is where that site declares
+// who the field belongs to, and the two windows around it are what this pin
+// reads. The near half of the declaration is the relative clause that
+// follows the field list, so the deferral is asserted over the after-window
+// alone: all three coordinator paragraphs say elsewhere in their own
+// sentences that the role skill owns something else, the coordinator
+// directory's contract at one and the claim protocol at another, so a
+// deferral asserted over a whole paragraph is satisfied at two of the three
+// with no deferral to this field's owner present at all. The windows are
+// character counts around the field rather than a quoted field list,
+// because the list's wording is free to change and a pin that quotes its
+// far end fails on every honest rewording.
+const STAMP_BEFORE = 80;
+const STAMP_AFTER = 120;
+function stampWindows(text, where) {
+    const at = text.indexOf('`Status-updated:`');
+    assert.ok(at !== -1, where + ' no longer names `Status-updated:`, so the '
+        + 'field this pin follows has left the sentence and there is no '
+        + 'declaration left to read');
+    return {
+        before: text.slice(Math.max(0, at - STAMP_BEFORE), at),
+        after: text.slice(at, at + STAMP_AFTER),
+    };
+}
+
+// A session or a seat named as what acts on the field. The stems span the
+// verb's inflections and carry the `hand-` and `re-` compounds, because the
+// class is "this site says a session writes this field" and a pattern
+// spelling one member of that class goes quiet on every other while reading
+// exactly like a clean result: `hand-write` is this plan's own word for the
+// defect, so a pattern that cannot match it is not reading its own subject.
+// The one compound excluded is `registry-stamp`, which names the instrument
+// the rule requires rather than an act a session performs.
+const STAMP_STEM = [
+    'rewrit(?:e|es|ing|ten)', 'rewrote',
+    'writ(?:e|es|ing|ten)', 'wrote',
+    'stamp(?:s|ing|ed)?',
+    'updat(?:e|es|ing|ed)',
+    'set(?:s|ting)?',
+    'fill(?:s|ing|ed)?',
+    'refresh(?:es|ing|ed)?',
+    'advanc(?:e|es|ing|ed)',
+    'compos(?:e|es|ing|ed)',
+    'record(?:s|ing|ed)?',
+].join('|');
+const STAMP_ACT = '\\b(?<!registry-)(?:hand-|re-)?(?:' + STAMP_STEM + ')\\b';
+const STAMP_PASSIVE = '\\b(?:rewritten|written|stamped|updated|set|filled'
+    + '|refreshed|advanced|composed|recorded)\\b';
+
+// Both directions, because a reinstatement arrives in either voice. The gap
+// between subject and verb is tempered to exclude `CLI`: the role skill's
+// own declaration reads "a seat takeover or handoff, with the registry-stamp
+// CLI stamping", where the seat is a noun of the push-moment list and the
+// CLI is what stamps, so an untempered window between the two reads that
+// legitimate sentence as a hand-write. Tempering rather than a shorter
+// window, because a window short enough to miss it is also short enough to
+// miss a real reinstatement one clause longer than the ones seen so far.
+// It is applied to the declaration windows rather than to a paragraph: the
+// role skill's own paragraph legitimately says later that a session's push
+// writes both time fields while the stamping CLI reads the clock.
+const HAND_WRITTEN_STAMP = new RegExp([
+    '(session|seat)s?\\b(?:(?!CLI)[^.]){0,60}' + STAMP_ACT,
+    STAMP_PASSIVE + '(?:(?!CLI)[^.]){0,40}\\bby\\b[^.]{0,30}(session|seat)s?\\b',
+].join('|'));
+
+// The role skill's push-moments paragraph (opening "The push moments, closed
+// with their class") is the sole owner of which registry-entry lines a
+// session hand-writes and which the registry-stamp CLI stamps instead. Six
+// surfaces depend on that ownership without restating it: the park ritual's
+// push step, the peer-sessions banking paragraph, the coordinator skill's
+// three registry-reading sites, and the coordinator skill's own banked-pass
+// paragraph, which is the one dependent that writes the field rather than
+// reading it. Six is this pin's reach and not the class's size: the shipped
+// tree names `Status-updated:` in more files than these, so a green here is
+// evidence about the surfaces named and never a swept class. Every slice
+// below runs through
+// sliceBetween, whose near-edge assertion is what carries the scope here:
+// these skill files carry one paragraph per line, so a lead plus a newline
+// is the paragraph, and a lead that no longer opens the paragraph fails
+// loudly rather than sliding the slice onto whichever paragraph happens to
+// carry the lead next. Each assertion keys on a shape over the rule's
+// substance rather than on a quoted clause, so an honest rewording of
+// either end stays green while a reinstated hand-write does not, whatever
+// words it is reinstated in.
+test('the push-moments paragraph still owns the stamp and its six dependents still point at it', () => {
+    const role = readRepoFile('plugins/claude-kit/skills/role/SKILL.md');
+    const paragraph = sliceBetween(role,
+        'The push moments, closed with their class', '\n',
+        'the role skill\'s push-moments paragraph');
+
+    const roleStamp = stampWindows(paragraph,
+        'the role skill\'s push-moments paragraph');
+    for (const [half, window] of Object.entries(roleStamp)) {
+        assert.ok(!HAND_WRITTEN_STAMP.test(window),
+            'the push-moments paragraph once again puts `Status-updated:` in '
+            + 'a session\'s own hands, ' + half + ' its first mention of the '
+            + 'field, which contradicts the registry entry\'s own shape a few '
+            + 'lines above it, where the field reads "never written by hand"');
+    }
+    assert.match(paragraph, /(session|seat)[^.]{0,40}(rewrites?|writes?)[^.]{0,60}`Remaining:`/,
+        'the push-moments paragraph no longer states that a session hand-'
+        + 'writes `Remaining:` at a push moment, so the lines a session does '
+        + 'still write by hand have lost their owner');
+    assert.match(paragraph, /CLI[^.]{0,40}stamp(s|ing)[^.]{0,40}`Status-updated:`/,
+        'the push-moments paragraph no longer states that the registry-'
+        + 'stamp CLI, rather than the session, stamps `Status-updated:` at '
+        + 'a push moment');
+    assert.match(paragraph, /read from the clock at the (moment|time) of the write/,
+        'the push-moments paragraph no longer states that the moment is read '
+        + 'from the clock at the write, so the value it describes may be '
+        + 'composed beforehand and carried in, which is the defect the field '
+        + 'was taken out of a writer\'s hands to remove');
+    assert.match(paragraph, /read from the clock[^.]{0,80}(stamping|registry-stamp) CLI/,
+        'the push-moments paragraph no longer attributes the clock read to '
+        + 'the stamping CLI, so the sentence reads again as though the '
+        + 'session itself measures the moment it writes');
+    // The clock-read rule covers exactly the two fields a session's own push
+    // writes. Stated over every field the entry carries it is false, because
+    // `Heartbeat:` comes from the seat-stop hook and `Banked:` from the
+    // compaction checkpoint CLI, and a universal here also strands the audit
+    // paragraph's session-written category with no members. Both halves are
+    // asserted: which fields the sentence names, and that it does not reach
+    // for a quantifier over the entry's fields as a class.
+    const clockAt = paragraph.indexOf('read from the clock at the');
+    const clockSentence = paragraph.slice(Math.max(0, clockAt - 220), clockAt + 120);
+    for (const field of ['`Started:`', '`Status-updated:`']) {
+        assert.ok(clockSentence.includes(field),
+            'the push-moments paragraph\'s clock-read rule no longer names '
+            + field + ', so one of the two fields a session\'s own push '
+            + 'writes has fallen out of the rule that governs where its '
+            + 'value comes from');
+    }
+    for (const field of ['`Heartbeat:`', '`Banked:`']) {
+        assert.ok(!clockSentence.includes(field),
+            'the push-moments paragraph\'s clock-read rule now reaches '
+            + field + ', which no session\'s push writes: it is stamped by '
+            + 'the seat-stop hook or the compaction checkpoint CLI, and the '
+            + 'directory contract above names it as such');
+    }
+    assert.ok(!/\b(every|each|all)\b[^.]{0,40}\btime fields?\b/i.test(clockSentence),
+        'the push-moments paragraph states the clock-read rule over the '
+        + 'entry\'s time fields as a class, which is false for `Heartbeat:` '
+        + 'and `Banked:` and strands the audit paragraph\'s session-written '
+        + 'category with no members');
+
+    // The far end of the same contradiction. The entry shape a few lines
+    // above is where the field is declared machine-stamped, so a pin holding
+    // only the push-moments paragraph would go green on a drift that moved
+    // the hand-write invitation back up into the shape itself.
+    const entryShape = sliceBetween(role,
+        'Status-updated: <', '\n', 'the registry entry shape\'s '
+        + '`Status-updated:` line');
+    assert.match(entryShape, /(stamp|CLI)/,
+        'the registry entry shape no longer names a stamp or the CLI as '
+        + 'where `Status-updated:` comes from, so the push-moments '
+        + 'paragraph\'s owner has lost the declaration it is read against');
+    assert.ok(!HAND_WRITTEN_STAMP.test(entryShape),
+        'the registry entry shape once again describes a session as writing '
+        + '`Status-updated:` itself, which reinstates at the declaration the '
+        + 'invitation every prose site has had removed');
+
+    const park = readRepoFile('plugins/claude-kit/skills/park/SKILL.md');
+    const parkStep = sliceBetween(park,
+        '5. **Rewrite the registry entry\'s `Status:` line to parked', '\n',
+        'the park ritual\'s drain step 5');
+    assert.match(parkStep, /push moment/,
+        'the park ritual\'s push step no longer names the push moment, so '
+        + 'its dependence on the role skill\'s push-moments paragraph has '
+        + 'no anchor left to point from');
+    assert.match(parkStep, /role skill[^.]{0,80}writer rule/,
+        'the park ritual\'s push step no longer points at the role skill for '
+        + 'the entry\'s writer rule, so it either restates the rule it defers '
+        + 'or defers to nothing');
+
+    const peerSessions = readRepoFile('plugins/claude-kit/skills/peer-sessions/SKILL.md');
+    const banking = sliceBetween(peerSessions,
+        '**Each seat banks at its own moments', '\n',
+        'the peer-sessions banking paragraph');
+    assert.match(banking, /(writer|writes|written)[^.]{0,60}role skill|role skill[^.]{0,60}(writer|writes|written)/,
+        'the peer-sessions banking paragraph no longer points at the role '
+        + 'skill for the registry entry\'s writer rule and stamped fields');
+    assert.match(banking, /stamp[^.]{0,60}(advanc|writ|stamp)[a-z]*[^.]{0,40}`Status-updated:`/,
+        'the peer-sessions banking paragraph no longer names the stamp run, '
+        + 'rather than a session\'s own prose edit, as what advances '
+        + '`Status-updated:`');
+
+    // All three coordinator sites read a registry entry's state, and all
+    // three were repaired together: a pin covering one of them leaves a
+    // regression at either of the others green, which is the miss this
+    // plan has already recorded twice.
+    const coordinator = readRepoFile('plugins/claude-kit/skills/coordinator/SKILL.md');
+    const coordinatorSites = [
+        ['- **Operator interface.** One voice toward the operator',
+            'the coordinator skill\'s operator-interface bullet'],
+        ['Each pass re-derives the board from durable state',
+            'the coordinator skill\'s board-derivation sources'],
+        ['Each of the three outcomes has its own disposition.',
+            'the coordinator skill\'s live-session disposition'],
+    ];
+    for (const [lead, where] of coordinatorSites) {
+        const site = sliceBetween(coordinator, lead, '\n', where);
+        const stamp = stampWindows(site, where);
+        assert.match(stamp.after, /role skill[^.]{0,60}(governs|owns)/,
+            where + ' no longer defers to the role skill in the clause that '
+            + 'follows the field, so it either restates the writer rule it '
+            + 'defers or defers to nothing. A deferral elsewhere in the '
+            + 'paragraph does not answer this: two of these paragraphs name '
+            + 'the role skill as owning something else entirely');
+        for (const [half, window] of Object.entries(stamp)) {
+            assert.ok(!HAND_WRITTEN_STAMP.test(window),
+                where + ' once again describes a session as writing '
+                + '`Status-updated:` itself, ' + half + ' the field, which '
+                + 're-issues from the read side the invitation every write '
+                + 'site has had removed');
+        }
+    }
+
+    // The sixth dependent is the one that writes the field rather than
+    // reading it, and its failure is silent: `seat-stop.js` opens the
+    // boundary marker only where `Status-updated:` is fresh, and only the
+    // registry-stamp CLI advances that field, so a runbook naming a prose
+    // push as the declaration sends a seat through a boundary that never
+    // opens with nothing to say so.
+    const bankedPass = sliceBetween(coordinator,
+        'The last act of a pass', '\n',
+        'the coordinator skill\'s banked-pass paragraph');
+    assert.match(bankedPass, /stamp run/,
+        'the coordinator skill\'s banked-pass paragraph no longer names the '
+        + 'stamp run as part of its status push, so a coordinator seat is '
+        + 'told to declare a boundary by an act that advances nothing the '
+        + '`seat-stop.js` hook reads');
+    assert.match(bankedPass, /`Status-updated:`/,
+        'the coordinator skill\'s banked-pass paragraph no longer names the '
+        + 'field the boundary marker is gated on, so the reason its prose '
+        + 'lines are not the declaration has left the sentence');
+
+    for (const skill of ['coordinator', 'park', 'peer-sessions', 'role']) {
+        assertTrackedInIndex('plugins/claude-kit/skills/' + skill + '/SKILL.md');
+    }
+});
+
+// The pointers pin ("the role skill is pointed at by README and
+// peer-sessions and carries what the pointers promise") covers the
+// delegation model's spine (the chain, the model-versus-grant line) and none
+// of its security screens: the exclusions
 // list and the three refusal rules bound what the model can be read to
 // license, so a later pass deleting either paragraph would leave the spine
 // pinned and the suite green while the model kept its power and lost its
@@ -1665,11 +1908,20 @@ test('the write-time resolution of a claim\'s Started and the read side\'s aging
     assert.ok(start !== -1 && end > start, 'the box-budget clause slice has no '
         + 'edges, so this pin would read a region that is not the brief clause');
     const clause = collapseWhitespace(executingWork.slice(start, end));
-    const roleBody = collapseWhitespace(fs.readFileSync(path.join(__dirname,
-        '..', 'plugins', 'claude-kit', 'skills', 'role', 'SKILL.md'), 'utf8'));
+    // The role side is the claim-file section, not the whole file. The
+    // registry entry's own paragraphs state a clock-at-the-write rule for a
+    // different field on a different artifact, so a pin reading the whole
+    // body is satisfied by a sentence that has nothing to do with the claim
+    // and stays green through the claim rule's removal.
+    const roleBody = sliceBetween(
+        fs.readFileSync(path.join(__dirname, '..', 'plugins', 'claude-kit',
+            'skills', 'role', 'SKILL.md'), 'utf8'),
+        '## The claim file', '\n## The takeover ritual',
+        'the role skill\'s claim-file section');
 
     for (const [name, text] of [['the brief clause', clause], ['the role contract', roleBody]]) {
-        assert.ok(/clock at the (moment|time) of the write|read from the clock at the moment/.test(text),
+        assert.ok(/`Started:`[^.]{0,140}\bclock\b[^.]{0,80}\bat the moment\b[^.]{0,30}\bwrit/.test(text)
+            || /`Started:`[^.]{0,140}\bat the moment\b[^.]{0,80}\bclock\b/.test(text),
             name + ' no longer states that a claim\'s Started is read from the '
             + 'clock at the write, so the value it describes may be composed '
             + 'before the write and carried in, which is the defect the field '
