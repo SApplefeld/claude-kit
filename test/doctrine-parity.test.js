@@ -3442,3 +3442,70 @@ test('every kit procedure performing a git integration names that action\'s lane
             + 'sweep skips. Remove it, or point it at the paragraph it means');
     }
 });
+
+// The doctrine's "Which text governs" section is the ranking every other
+// pin in this file presumes: which surface wins when two disagree. Whole-body
+// identity would pass with the section deleted from both copies, and the
+// section is also a pointer whose far end is the ownership map, so both ends
+// are pinned: the section present once per copy, identical, carrying its four
+// leads and the map path; and the map tracked, on disk, and naming every
+// shipped skill as an owner at least once, so a skill added without a row
+// reddens here rather than shipping as a moment nobody owns.
+function governsSection(body) {
+    const lines = body.split('\n');
+    const start = lines.findIndex((l) => l === '## Which text governs');
+    if (start < 0) return null;
+    let end = lines.findIndex((l, i) => i > start && /^## /.test(l));
+    if (end < 0) end = lines.length;
+    return lines.slice(start, end).join('\n');
+}
+
+test('the which-text-governs section is present once in each copy, identical, and points at the ownership map', () => {
+    const inSkill = governsSection(skillBody());
+    const inMirror = governsSection(mirrorBody());
+    assert.ok(inSkill, 'the operating-instructions skill body carries no "## Which text governs" section');
+    assert.ok(inMirror, 'the doctrine mirror carries no "## Which text governs" section');
+    assert.strictEqual(skillBody().split('\n## Which text governs\n').length, 2,
+        'expected exactly one which-text-governs heading in the skill body');
+    assert.strictEqual(mirrorBody().split('\n## Which text governs\n').length, 2,
+        'expected exactly one which-text-governs heading in the doctrine mirror');
+    assert.strictEqual(inMirror, inSkill,
+        'the which-text-governs section has drifted between the two doctrine copies');
+    for (const lead of [
+        '- **When two surfaces disagree at a moment, rank them before you act.**',
+        '- **A stop read without its exceptions beside it is a pointer, not a bar.**',
+        '- **Authorization for an outward act is positional, never loose prose.**',
+        '- **One owner per moment, and the map names it.**',
+    ]) {
+        assert.strictEqual(inSkill.split('\n').filter((l) => l.startsWith(lead)).length, 1,
+            'the which-text-governs section no longer carries exactly one bullet led "' + lead + '"');
+    }
+    assert.ok(inSkill.includes('`skills/operating-instructions/references/ownership-map.md` under the kit plugin root'),
+        'the one-owner bullet no longer names the ownership map by its plugin-root path; '
+        + 'the map pin below reads that path as its near end');
+});
+
+test('the ownership map is tracked and names every shipped skill as an owner', () => {
+    const parts = ['plugins', 'claude-kit', 'skills', 'operating-instructions',
+        'references', 'ownership-map.md'];
+    const target = path.join(__dirname, '..', ...parts);
+    assert.ok(fs.existsSync(target),
+        'the doctrine points at an ownership map that is not on disk: ' + parts.join('/'));
+    assertTrackedInIndex(parts.join('/'));
+    const map = fs.readFileSync(target, 'utf8');
+    assert.ok(map.includes('\n## Unowned or contested\n'),
+        'the ownership map has lost its "Unowned or contested" section, which is '
+        + 'where the doctrine sends a session that meets a moment with no owner');
+    const skillsDir = path.join(__dirname, '..', 'plugins', 'claude-kit', 'skills');
+    const skills = fs.readdirSync(skillsDir, { withFileTypes: true })
+        .filter((d) => d.isDirectory()).map((d) => d.name);
+    const ownerColumn = map.split('\n')
+        .filter((l) => /^\|/.test(l))
+        .map((l) => l.split('|')[2] || '')
+        .join('\n');
+    const unowned = skills.filter((s) => s !== 'operating-instructions'
+        && !new RegExp('`' + s + '`').test(ownerColumn));
+    assert.deepStrictEqual(unowned, [], 'a shipped skill owns no moment in the '
+        + 'ownership map, so a session that reaches its moment finds no owner to '
+        + 'read: add a row naming it in the owner column, or retire the skill');
+});
