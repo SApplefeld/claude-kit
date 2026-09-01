@@ -893,9 +893,9 @@ test('the granted verbs are memq\'s own dispatch minus the five withheld', () =>
 
     // The five the grant withholds, each for a reason stated in the hook: the
     // deletes remove a shared-tier record outright, find loads an embedder
-    // out of a directory the command line does not name, and anchor and
-    // triggers each rewrite a project-tier record in place, at a name the
-    // command line gives them.
+    // out of a directory the command line does not name, anchor rewrites a
+    // project-tier record in place, and triggers rewrites a record of any
+    // tier that same way, at a name the command line gives them.
     const withheld = ['delete-type', 'delete-operator', 'find', 'anchor', 'triggers'];
     assert.deepStrictEqual([...granted].sort(),
         [...dispatched].filter((v) => !withheld.includes(v)).sort(),

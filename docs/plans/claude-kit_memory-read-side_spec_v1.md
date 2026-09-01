@@ -150,3 +150,80 @@ enumerations of the recognition nudge's reach as the project tier alone are all 
 section, and `docs/architecture.md`, which states the same reach and an outdated nudge-log line shape.
 Those are a security-weight correction and are fixed in this changeset rather than parked. Then the
 section's close gate, Chapter 1, and the commit.
+
+### Chapter 1 - Triggers author on shared tiers and recognition reads them - 2026-09-01
+
+Completed: section 1.
+
+What shipped. `memq triggers` now authors on the type and operator tiers on `touch`'s flag shape, with the
+project tier's grammar, merge behavior, refusals and 32-entry cap unchanged, and the recognition nudge reads
+all three tiers rather than the project tier alone. Two fields deliberately do not travel: file anchors stay
+project-scoped because an anchor is a file hash and repo-scoped by construction, and `glob:` triggers are
+gated to the project tier at both the reading and the authoring door, on the plan's own Decisions reasoning
+that trigger portability is justified by commands, error shapes and skill names rather than by paths. Gating
+only the reader would have minted authorable triggers nothing ever reads. `memq get` gained the same two tier
+flags, because without them the nudge's own pointer resolved to the wrong record on exactly the cross-tier
+name collision this section exists to support, and stamped the read on the wrong tier's decay clock.
+Shared-tier trigger lines now print indented under the provenance fence, and the nudge line carries the tier
+and, where a record scopes itself to one box, that machine label.
+
+Decisions and surprises. Three times a dispatched agent disagreed with my brief on evidence and was right,
+which is the record worth keeping from this section. The trigger-listing indent is keyed on the fence rather
+than on the tier: memq's own design keys trust framing on the fence value, so a pinned project tier is written
+by another of this instance's workers, its body is fenced, and its trigger lines must indent too. My brief
+said to key on the tier, which would have reintroduced the defect for pinned project tiers. Second, the
+shared-tier repair route for a bad or over-cap triggers line is delete-and-replace rather than the update
+route I briefed, because recordFrontmatter returns a closed frontmatter block verbatim, so a body repair
+copies the bad line across and fixes nothing; only the unclosed case drops and replaces the block, which is
+why the original route is right there and wrong for its two siblings. Third, one briefed comment correction in
+memq-grant.js would have made a true statement false, that paragraph being about `anchor`, which is genuinely
+project-only; what was actually stale there was an enumeration predating the trigger verb, and correcting that
+is what brought the file's two accounts into agreement.
+
+The sidecar disposition is a record rather than a code change. Section 1 asks that the sidecar daemon's
+recognition be checked and widened where its index loader is tier-scoped. It was checked: sidecar/memory-index.js
+composes a project index path and reads that file's roster lines, and no module under sidecar/ reads the
+triggers field at all. It is a different feature, model-judged recognition over an index roster, project-scoped
+for its own stated reason, so there is nothing to widen the same way. The security lens agreed independently
+that widening it would need its own re-pricing of a cleartext egress paragraph.
+
+Two behaviors are named rather than worked around. The dedup key gained the tier, so a session live across the
+plugin update re-nudges each already-fired project-tier trigger once; the old keys are dead and each trigger
+mints a fresh one, and it self-clears at session end. And `memq triggers` on a shared tier takes no
+--confirm-shared token where the shared-tier body rewrites do: the token guards replacing a shared fact, and
+this verb splices one frontmatter line while leaving the body promise intact.
+
+Review findings addressed. A three-lens round at opus and effort max returned changes-required on all three
+lenses, and a fresh-context verification pass over the first fix round returned changes-required again. Two
+findings from that pass were worth the whole round. Two new shared-tier err tests would have failed outright,
+because callFailed treats a bare stderr as a non-failure so the pattern would never have been reached; worse,
+the withheld control beside them passed while being unable to speak, since the matcher never ran at all. Both
+were given real failure shapes and the control was then proven in both directions. The pass also caught that
+the adopted fence keying shipped with no test able to tell it from the keying it replaced, both existing
+assertions being on shared tiers where the two agree; the discriminating case, a pinned project tier, is now
+pinned and was probed red against the rejected keying. The second fix round additionally found and fixed a red
+the first round had introduced in a source-inspection pin over the network-share stand-down.
+
+Files in scope widened, all recorded as deliberate approval drift. plugins/claude-kit/hooks/memq-grant.js and
+test/memq-grant.test.js for comment-only corrections, both carrying the same stale claim about the trigger
+verb rewriting a project-tier record; a claim corrected in one carrier and left standing in another is this
+repository's recurring defect. docs/security-model.md and docs/architecture.md are the orchestrator's own
+writes, a dispatched implementer being denied writes under docs/. Nine prose carriers were corrected across
+those two documents, five found by a structural sweep and four by the verification pass; a sweep by the named
+list alone would have missed four and would have wrongly rewritten two true statements, one about the decay
+pass and one about the project-scoped stamp-rate reading.
+
+The gate. Build exit 0, 93 files, 1208.4 KB. Whole gate 2858 tests, 2848 passing, 1 failing, 9 skipped, exit 1,
+read from the run's own marker rather than from the harness's completion notification, which reported exit 0
+for the same run because it reports the launcher's exit and not the command's. Against the recorded whole-gate
+baseline of 2842 / 2832 / 1 / 9 at exit 1, the failing count is unchanged and the one failure is the same named
+permanent red this box produces, memory-session.test.js's pinned-directory path-length case, which the project
+memory suite-baseline-is-not-zero-fail documents as failing here on every run because this machine's
+seven-character TEMP lands the fixture under the guard the test means to exercise. So the red means the guard
+was not exercised rather than that it broke, and there are no regressions. The box was claimed for the build
+and the gate under this session's own id and released immediately after, its Session line read before the
+delete; the run overran its declared Expected-seconds and two peer sessions waited behind it, both of which
+were told when it freed.
+
+Next: section 2, one resolution contract and the stranded tier dispositioned. Commit model in effect:
+Commit-and-Push.

@@ -5,13 +5,13 @@
 // Subcommands:
 //   memq log <key> pass|fail "<summary>" [--tag t]... [--detail "..."]
 //   memq find <term> [--tag t] [--outcomes|--memories|--all] [--archived]
-//   memq get <key|name>
+//   memq get <key|name> [--type|--operator]
 //   memq recall
 //   memq recent [--since <n>d|<n>h]
 //   memq unstamped [--since <n>d|<n>h]
 //   memq touch <name> --applied [--type|--operator]
 //   memq anchor <name> <path>...
-//   memq triggers <name> <type>:<pattern>...
+//   memq triggers <name> <type>:<pattern>... [--type|--operator]
 //   memq add-type <type> <name> "<description>" [--tag t]...
 //                 [--supersedes <name>] [--body "..."|--body-file "<path>"]
 //   memq add-type <type> <name> "<description>" --update
@@ -344,6 +344,14 @@ const RECALL_MAX_LINES = 200;           // total lines `recall` emits before tie
 const RECENT_MAX_LINES = 200;           // total lines `recent` emits before surface-ordered truncation
 const ARCHIVE_INDEX_READ_CAP = 65536;   // bytes of the archive index `recall` reads, a fixed-size prefix
 const GIT_POINTER_READ_CAP = 4096;      // bytes read from a .git pointer file, which git writes as one line
+// Bytes of a memory index read to answer the Project-Type declaration. The
+// declaration sits inside the first ten lines by its own grammar, so a head is
+// the whole of what the question needs, and this bound is what keeps an index
+// of any size off a path a hook crosses on every tool call. A declaration past
+// this prefix reads as no declaration at all, which is the ruling a mangled
+// value already gets, and 64 KB is far past ten index lines of a store that
+// caps a description at 120 characters.
+const PROJECT_TYPE_READ_CAP = 65536;
 const GIT_POINTER_PATH_CAP = 2048;      // characters of a path a .git pointer file may name
 const ANCHOR_PATH_CAP = 256;            // characters of the path an anchors: entry names
 const ANCHOR_ENTRIES_MAX = 32;          // anchors read from one record's line
@@ -1258,13 +1266,22 @@ function projectType(cwd) {
     // swallowing that refusal here would answer from a store the caller was
     // never pointed at.
     const indexPath = path.join(projectMemoryDir(cwd), INDEX_FILE);
+    // A bounded, kind-checked head rather than a whole-file read, because this
+    // answer sits on paths that run per tool call: the recognition nudge asks
+    // it through typedTierOrNull on every PreToolUse and PostToolUse, and the
+    // session hook asks it too. readHead settles the kind on the open
+    // descriptor and opens non-blocking off win32, so a FIFO planted at the
+    // index's path answers instead of parking the caller for as long as the
+    // process lives, and an index of any size costs this prefix rather than
+    // its own length. It is the same reader every other head-shaped store read
+    // takes, reused rather than matched by hand.
     let raw;
     try {
-        raw = fs.readFileSync(indexPath, 'utf8');
+        raw = readHead(indexPath, PROJECT_TYPE_READ_CAP);
     } catch {
         return null;
     }
-    return declaredType(raw);
+    return raw === null ? null : declaredType(raw);
 }
 
 // The type tier this project has opted into, as {type, dir}, or null when the
@@ -2262,7 +2279,10 @@ function frontmatterUnclosedShape(block) {
 // record around the new body and the frontmatter it could read, and an
 // unread block is not frontmatter it could read, so the block and every
 // field in it go, with the record's previous text left in the .bak the
-// rewrite drops beside it.
+// rewrite drops beside it. Under the engine store signals that route is
+// refused (a repair's .bak does not sync off a fleet worker), so there the
+// line names the state rather than a command, the frontmatter guard's own
+// fork for the identical advice.
 function frontmatterUnclosedRepair(block, sharedTier) {
     const shape = block === null ? null : frontmatterUnclosedShape(block);
     const fix = shape === 'past-bound'
@@ -2280,11 +2300,21 @@ function frontmatterUnclosedRepair(block, sharedTier) {
                 + ' lines';
     return fix + ', keeping every field the record is to carry above that line' + (sharedTier
         ? '. A record on a shared tier is not writable through the Write, Edit or MultiEdit'
-            + ' tools and has no hand-edit path, so the repair route is memq add-type <type>'
-            + ' <name> "<description>" --update --body "<text>" --confirm-shared, or'
-            + ' add-operator without the type: that rewrites the record around the new body'
-            + ' and drops the unread block with every field in it, leaving the record\'s'
-            + ' previous text in a .bak beside it'
+            + ' tools and has no hand-edit path, so ' + (storeSignalsPresent()
+            // The body route is refused outright under the engine store
+            // signals, so naming it there sends a fleet worker to a command
+            // whose whole answer is a refusal. What is named instead is the
+            // state, which is a thing to act on: the block stays unread until
+            // a session without those signals repairs the record.
+            ? 'there is no repair route from this process: it carries the engine store signals,'
+                + ' and memq refuses a shared-tier body repair under them, because the .bak such'
+                + ' a repair leaves behind does not sync. The block goes unread until a session'
+                + ' without those signals rewrites the record'
+            : 'the repair route is memq add-type <type>'
+                + ' <name> "<description>" --update --body "<text>" --confirm-shared, or'
+                + ' add-operator without the type: that rewrites the record around the new body'
+                + ' and drops the unread block with every field in it, leaving the record\'s'
+                + ' previous text in a .bak beside it')
         : '');
 }
 
@@ -2521,6 +2551,33 @@ function frontmatterField(file, name) {
         return FRONTMATTER_UNREADABLE;
     }
     return frontmatterValue(raw, name);
+}
+
+// A `machine:` field's value as the identifier its writer's own gate admits,
+// or null for every other answer, the sentinels a field reader gives among
+// them. `add-operator --machine` is the writer, and this is the shape it
+// accepted, asked again here because frontmatter is hand-editable and the
+// store syncs: a value that writer would have refused reaches a reader only by
+// a hand edit or another machine's file, and what such a value could carry is
+// text on a line a session reads. Every reader that puts this field in front
+// of a session goes through this gate rather than through a sanitize of its
+// own, so the CLI's label and the hook's cannot come to disagree about what
+// counts as a machine name. The writer is not one of them and states the shape
+// itself: it refuses a value outright where this normalizes one, so a name
+// arriving with whitespace around it is a usage error there and a readable
+// identifier here, which is the asymmetry between a door and a reading.
+function machineIdentityOrNull(value) {
+    const name = typeof value === 'string' ? value.trim() : '';
+    return name !== '' && name.length <= MACHINE_CAP && /^[\w.-]+$/.test(name) ? name : null;
+}
+
+// Whether an admitted identity names a box other than this one. Machine names
+// compare case-insensitively, the NetBIOS and DNS rule, on every platform, and
+// the local name is resolved at runtime so no machine's build hard-codes
+// another's answer. A null identity is never foreign: nothing was read that
+// could support the assertion.
+function foreignMachine(name, localName) {
+    return name !== null && name.toLowerCase() !== String(localName).toLowerCase();
 }
 
 // Tags from the frontmatter, comma/space separated. Anything short of a value
@@ -4088,13 +4145,13 @@ function usage(problem) {
     process.stderr.write(
         'usage: memq log <key> pass|fail "<summary>" [--tag t]... [--detail "..."]\n'
         + '       memq find <term> [--tag t] [--outcomes|--memories|--all] [--archived]\n'
-        + '       memq get <key|name>\n'
+        + '       memq get <key|name> [--type|--operator]\n'
         + '       memq recall\n'
         + '       memq recent [--since <n>d|<n>h]\n'
         + '       memq unstamped [--since <n>d|<n>h]\n'
         + '       memq touch <name> --applied [--type|--operator]\n'
         + '       memq anchor <name> <path>...\n'
-        + '       memq triggers <name> <type>:<pattern>...\n'
+        + '       memq triggers <name> <type>:<pattern>... [--type|--operator]\n'
         + '       memq add-type <type> <name> "<description>" [--tag t]...\n'
         + '                     [--supersedes <name>] [--body "..."|--body-file "<path>"]\n'
         + '       memq add-type <type> <name> "<description>" --update\n'
@@ -4877,12 +4934,8 @@ async function semanticChannel(term, tag, alreadyShown, showArchived) {
         // on every platform, the NetBIOS and DNS rule, and the local name is
         // resolved at runtime so no machine's build hard-codes another's
         // answer.
-        const machineValue = frontmatterField(file, 'machine');
-        const machineName = typeof machineValue === 'string' ? machineValue.trim() : '';
-        const machineValid = machineName !== '' && machineName.length <= MACHINE_CAP
-            && /^[\w.-]+$/.test(machineName);
-        const foreign = machineValid
-            && machineName.toLowerCase() !== localMachine.toLowerCase();
+        const machineName = machineIdentityOrNull(frontmatterField(file, 'machine'));
+        const foreign = foreignMachine(machineName, localMachine);
         const applied = tallyForTier(tallies, liveTierOf(h.tier), h.store)
             .get(memoryFileKey(h.name + '.md'));
         // Whether a live record of this hit's own tier replaces it. The line
@@ -6052,37 +6105,47 @@ function anchorReport(file, raw, sharedTier) {
 // the record's frontmatter could not be read and that the line was cut before
 // its end.
 //
-// A shared tier's record is listed no more than its anchors are checked, and
-// for a reason of the same shape rather than the same reason: these lines sit
-// at column zero on stdout, outside the provenance fence the body printed
-// under, which is memq's own voice, and a pattern from a tier any project on
-// the machine can write is not that. The sentence such a record gets says
-// what is true of the store rather than of the record, since recognition
-// reads the project tier alone.
+// Every tier's record is listed, which is the second difference from
+// `anchorReport`: an anchor names a path under a project root the shared tiers
+// have none of, so a shared-tier record's anchors cannot be checked at all,
+// while a trigger is a pattern that resolves against nothing and that
+// recognition reads on every tier it can reach.
+//
+// WHERE THE LINES SIT, which is what the listing costs and why `indented` is
+// an argument. These are the record's own text rather than memq's, up to 32
+// entries of up to 256 characters each, and on a shared tier that text was
+// written by another project on the machine or arrived through a sync. The
+// structural rule the whole store holds is that only memq writes at column
+// zero and an indented line is store data, so these lines ride wherever the
+// body did: at column zero for a body the reading session owns, and indented
+// two spaces under the provenance fence for a body that printed under one, so
+// the fence frames the record's patterns exactly as it frames its prose. What
+// the grammar contributes on top of the placement is that no entry can leave
+// the line it is on or hide a character on it: every type bars the invisible
+// class and every whitespace but the plain space, and every type bars the
+// single quote, so an admitted entry is one visible line of text. A refused
+// entry prints the text `parseTriggers` already reduced and annotated instead.
 //
 // `raw` is the record's text where the caller already read it, which spares
 // this a second read of a file just printed; without it the record is read
 // here.
-function triggerReport(file, raw, sharedTier) {
+function triggerReport(file, raw, indented) {
+    const lead = indented ? '  triggers: ' : 'triggers: ';
     const parsed = typeof raw === 'string' ? frontmatterTriggers(raw) : readFrontmatterTriggers(file);
-    if (sharedTier) {
-        // A record whose frontmatter could not be read takes this branch too:
-        // what it declares is unknown, and the tier is reason enough on its
-        // own for the same sentence either way.
-        return parsed === null || parsed.items.length > 0 || parsed.truncated
-            ? 'triggers: not listed (this record is on a shared tier, and recognition reads the'
-                + ' project tier only)\n'
-            : '';
-    }
+    // A cause memq states about a record it could not read is memq's own
+    // sentence, so it stays at column zero whatever the tier: nothing of the
+    // record is in it, and the fence exists to frame the record's text.
     if (parsed === null) return 'triggers: not listed (' + ANCHOR_CAUSE.frontmatter + ')\n';
     if (parsed.items.length === 0 && !parsed.truncated) return '';
     // A parsed entry prints as the record wrote it, never through `sanitize`:
     // the grammar admits visible non-ASCII, and the reduction that strips it
-    // would print a pattern the record does not carry. A refused entry prints
-    // the text `parseTriggers` already reduced and annotated, which is what
-    // keeps a record's own text from forging one of these column-zero lines.
-    const lines = parsed.items.map((it) => 'triggers: ' + it.text + '\n');
-    if (parsed.truncated) lines.push('triggers: ' + TRIGGER_TRUNCATED_TEXT + '\n');
+    // would print a pattern the record does not carry.
+    const lines = parsed.items.map((it) => lead + it.text + '\n');
+    // The cut row is memq's own words about the line rather than an entry off
+    // it, but it rides with the rows it terminates: split across two columns
+    // the reader would have to decide which block it belongs to, which is the
+    // one thing the row exists to say plainly.
+    if (parsed.truncated) lines.push(lead + TRIGGER_TRUNCATED_TEXT + '\n');
     return lines.join('');
 }
 
@@ -6095,6 +6158,19 @@ function triggerReport(file, raw, sharedTier) {
 // memory the decay pass retired is still reachable by name while a live
 // record of that name always wins. A pending body prints raw, the project
 // tier's posture: it is this run's own writing, not another project's.
+//
+// `--type` and `--operator` pin the rung instead, on `touch`'s flag shape and
+// for a reason precedence itself creates: a nearer tier shadows a shared one,
+// so a caller who has been told which tier a record is in (the recognition
+// nudge names it, `find` labels it) has no spelling short of a flag that
+// reaches the shadowed record, and the bare name answers with the wrong one
+// while stamping the wrong tier's read. A flag names its tier outright, walks
+// no precedence, and skips the journal with it: a key is the namespace the
+// bare form serves, and a caller who spelled a tier named a memory file. Both
+// flags together is refused for `touch`'s reason in this verb's own terms, one
+// fetch answering from one record. The stamp follows the pinned tier, which is
+// the whole of what makes the flag worth having: a read credited to the tier
+// that was actually served is what advances that record's decay clock.
 //
 // A record's own `anchors:` states follow its body on stdout, one line per
 // anchor, or one line naming why they could not be checked (anchorReport
@@ -6120,8 +6196,38 @@ function triggerReport(file, raw, sharedTier) {
 // records memories, not keys. Nothing missing is an error: only
 // argument/usage errors exit nonzero.
 function cmdGet(argv) {
-    if (argv.length !== 1 || argv[0].startsWith('--')) return usage('get needs one <key|name>');
-    const target = argv[0];
+    let target = null;
+    let fromType = false;
+    let fromOperator = false;
+    for (const a of argv) {
+        if (a === '--type') fromType = true;
+        else if (a === '--operator') fromOperator = true;
+        else if (a.startsWith('--')) return usage('unknown option ' + sanitize(a, 40));
+        else if (target !== null) return usage('get needs one <key|name>');
+        else target = a;
+    }
+    if (target === null) return usage('get needs one <key|name>');
+    // One fetch answers from one record, so two tier flags name two records
+    // for it and the command refuses rather than picking one: the same name
+    // holds a different fact in each tier, and a silently preferred tier would
+    // serve one record's body and stamp the read on it while the caller
+    // believes they read the other.
+    if (fromType && fromOperator) {
+        return usage('get reads one tier: give --type or --operator, not both');
+    }
+    // Under a flag the argument is a record name and nothing else, the journal
+    // being the bare form's own namespace, so a name the store will not answer
+    // for is a refusal here rather than the bare form's 'nothing named' note.
+    // That note is the right answer for a bare argument, which may be a key
+    // this store simply does not hold; under a flag it would swallow the
+    // named tier's own answer, since a name the memory-file predicate refuses
+    // never reaches the rungs where an absent tier is refused by name, and the
+    // caller would read exit 0 for a tier that is not there. It is `touch`'s
+    // own gate on `touch`'s own wording, that verb taking a name and no key.
+    if ((fromType || fromOperator) && !isMemoryFilename(target + '.md')) {
+        return usage('name must be characters from [A-Za-z0-9_.-], at most '
+            + (MEMORY_FILE_CAP - 3) + ', and not the memory index');
+    }
     // This hoist sits ahead of readMemDirOrNote(): that call's own first
     // statement, projectMemoryDir(process.cwd()), reaches
     // worktreeMainRoot's fs.statSync(cwd/.git) whenever no pin is set, the
@@ -6131,16 +6237,27 @@ function cmdGet(argv) {
     // readMemDirOrNote safely and lands on anchorReport's own
     // anchorRoot(cwd) call further below, which the pin cause covers
     // directly for a pinned session whose cwd also names a share.
-    if (pinnedProjectSegment() === null && namesNetworkShare(process.cwd())) {
+    //
+    // `--operator` is excluded from it for `touch`'s reason: that form
+    // resolves through operatorTierOrNull(), which takes no cwd argument at
+    // all, and it reads no journal, no pending tier and no project rung, so
+    // nothing on its path reaches the walk. Gating it would refuse a read for
+    // a hazard that is not on its path. `--type` rides the gate with the plain
+    // form, reaching the same walk through typedTierOrNull(cwd).
+    if (!fromOperator && pinnedProjectSegment() === null && namesNetworkShare(process.cwd())) {
         process.stderr.write('memq: this call\'s working directory names a network share, so its '
             + 'project memory directory was not resolved (a synchronous walk under it risks '
             + 'hanging for the SMB timeout on an unreachable host); nothing to report\n');
         return;
     }
-    const memDir = readMemDirOrNote();
-    if (memDir === null) return;
+    // A pinned rung is a memory file by construction, so the journal is not
+    // consulted and no project memory directory is resolved for it: the
+    // journal is the bare form's own namespace, and a caller who spelled a
+    // tier named a record in it.
+    const memDir = fromType || fromOperator ? null : readMemDirOrNote();
+    if (memDir === null && !fromType && !fromOperator) return;
 
-    const entries = readJournal(memDir).filter((e) => e.key === target);
+    const entries = memDir === null ? [] : readJournal(memDir).filter((e) => e.key === target);
     if (entries.length > 0) {
         // Newest first: reverse to later-lines-first, then a stable sort by
         // ts descending, so a timestamp tie keeps the later-appended entry
@@ -6177,8 +6294,58 @@ function cmdGet(argv) {
     // the adjudicating engine's). One walk over one table, so no rung
     // can drift from its siblings in how it labels, stamps, or stops. Only
     // true absence falls through, never a read failure.
-    if (isMemoryFilename(target + '.md')) {
-        const file = target + '.md';
+    //
+    // A tier flag replaces the table with that tier's own two rungs rather
+    // than filtering it: the walked table is a precedence, and a flag is the
+    // caller saying which record they mean, so what a flag builds is the same
+    // rungs that tier contributes above, without the ones it shadows or is
+    // shadowed by.
+    const file = target + '.md';
+    let rungs = null;
+    if (isMemoryFilename(file) && (fromType || fromOperator)) {
+        // The named tier's live records and then its archive, carrying exactly
+        // the framing, stamp directory and supersession tier the same tier's
+        // rungs carry in the walked table below. A tier with nothing behind it
+        // is a refusal by name rather than a fall-through, in `touch`'s own
+        // words for the same two causes: falling through would answer from a
+        // tier the caller did not name.
+        let dir = null;
+        let fence = null;
+        let retired = null;
+        if (fromType) {
+            const typed = typedTierOrNull(process.cwd());
+            if (typed === null) {
+                process.stderr.write('memq: this project declares no Project-Type'
+                    + ' (or its type directory does not exist), so --type has no target\n');
+                process.exitCode = 1;
+                return;
+            }
+            dir = typed.dir;
+            fence = typeFenceLine(typed.type);
+            retired = 'the type tier';
+        } else {
+            const operator = operatorTierOrNull();
+            if (operator === null) {
+                process.stderr.write('memq: this store has no operator tier'
+                    + ' (no ' + OPERATOR_DIR + '/ directory), so --operator has no target\n');
+                process.exitCode = 1;
+                return;
+            }
+            dir = operator;
+            fence = operatorFenceLine();
+            retired = 'the operator tier';
+        }
+        rungs = [
+            {
+                dir, fence, stampDir: dir, retiredIn: null,
+                supersedesIn: dir, sharedTier: true
+            },
+            {
+                dir: path.join(dir, ARCHIVE_DIR), fence, stampDir: dir,
+                retiredIn: retired, supersedesIn: dir, sharedTier: true
+            }
+        ];
+    } else if (isMemoryFilename(file)) {
         const typed = typedTierOrNull(process.cwd());
         const operator = operatorTierOrNull();
         const pendingDir = pendingDirFor(process.cwd());
@@ -6188,7 +6355,7 @@ function cmdGet(argv) {
         // workers rather than this session.
         const pinned = pinnedProjectSegment();
         const projectFence = digestFenceLine(pinned, null, false);
-        const rungs = [];
+        rungs = [];
         // The pending rung carries its own stamp directory like every other,
         // so a hit there records its read in the run's own sidecar rather
         // than in a tier the record does not belong to. The tier has no
@@ -6240,6 +6407,10 @@ function cmdGet(argv) {
                 sharedTier: true
             });
         }
+    }
+    // One walk, whichever table built it, so the flagged form cannot drift
+    // from the walked one in how it labels, stamps, or stops.
+    if (rungs !== null) {
         for (const rung of rungs) {
             const read = {};
             const shown = printMemoryBody(path.join(rung.dir, file), rung.fence, read);
@@ -6253,13 +6424,18 @@ function cmdGet(argv) {
                 // text the body was printed from, so the record is read once.
                 process.stdout.write(anchorReport(path.join(rung.dir, file), read.raw,
                     rung.sharedTier));
-                // The triggers listing follows the anchors report, on the
-                // same stream and at the same column, because the two fields
-                // are read together: what a record is about is its files and
-                // its patterns, and a reader deciding whether this memory
-                // covers the work in front of them wants both under one body.
+                // The triggers listing follows the anchors report on the same
+                // stream, because the two fields are read together: what a
+                // record is about is its files and its patterns, and a reader
+                // deciding whether this memory covers the work in front of
+                // them wants both under one body. It does not follow it into
+                // the same column. An anchors line is memq's own verdict about
+                // a path, while a triggers line is the record's own text
+                // reprinted, so it rides where the body rode: indented under
+                // the provenance fence wherever the body was fenced, and at
+                // column zero for a body the reading session owns.
                 process.stdout.write(triggerReport(path.join(rung.dir, file), read.raw,
-                    rung.sharedTier));
+                    rung.fence !== null));
                 // The retirement note follows the body rather than leading it,
                 // because until printMemoryBody returns there is no knowing
                 // whether there is a body to describe. It rides stderr because
@@ -8575,6 +8751,23 @@ function cmdAnchor(argv) {
         + (inPending ? ' (pending tier)' : '') + '\n');
 }
 
+// What a shared-tier caller is told about a triggers: line this verb refuses
+// to merge into, in place of the project tier's instruction to correct the
+// line by hand. The tools that would make that edit are denied on the type
+// and operator tiers for every writer, and no verb here rewrites a line a
+// record already carries: this one merges into it, and a body repair carries
+// a closed frontmatter block across verbatim, so the line a repair would fix
+// is the line it copies. What is left is replacing the record whole, which
+// costs the record its applied history, and under the engine store signals
+// not even that, which is the fork sharedDeleteRemedy makes.
+function sharedTriggerLineRepair(deleteCommand) {
+    return 'a shared tier has no hand-edit path and no verb here rewrites a line a record'
+        + ' already carries, so what changes the line is replacing the record whole, at the cost'
+        + ' of the applied history the name held: '
+        + sharedDeleteRemedy(deleteCommand, 'removes the record, and adding it again writes the'
+            + ' line the record is to carry');
+}
+
 // The record's own half of `triggers`, run with the tier lock held: read the
 // record, merge the given entries into whatever it already said, and rewrite
 // the one line. It answers with the line it wrote, or null having written a
@@ -8586,7 +8779,17 @@ function cmdAnchor(argv) {
 // what is on disk at the moment of the write, and the rewrite refuses any
 // length change (`refuseGrowth`), because the splice is stale the moment the
 // file moves and a stop is the only answer that keeps the body promise.
-function triggerRecord(memPath, name, where, wanted) {
+//
+// `deleteCommand` is the shared-tier delete verb for the record, or null when
+// the write lands in a project tier, and its whole job is the repair advice:
+// a frontmatter block or a triggers: line this cannot read is repaired by hand
+// on the project tier and cannot be on a shared one, where the frontmatter
+// guard refuses Write, Edit and MultiEdit outright, so the two tiers name
+// different routes. A caller that got it wrong would send an operator to a
+// tool that denies them and leave the record unrepairable through the advice
+// it was given.
+function triggerRecord(memPath, name, where, wanted, deleteCommand) {
+    const sharedTier = deleteCommand !== null;
     const shown = '\'' + sanitize(name, NAME_CAP) + '\'' + where;
     let original;
     let text;
@@ -8615,11 +8818,9 @@ function triggerRecord(memPath, name, where, wanted) {
     // reads, with nothing anywhere saying why.
     const site = frontmatterSite(text, 'triggers');
     if (frontmatterUnclosed(site.block)) {
-        // The verb writes to the project tier only, so the repair is one the
-        // session's own write tools can make.
         process.stderr.write('memq: ' + shown + ' opens a frontmatter block that does not close'
             + ' inside the first ' + FRONTMATTER_MAX_LINES + ' lines, so no reader can read its'
-            + ' fields; ' + frontmatterUnclosedRepair(site.block, false)
+            + ' fields; ' + frontmatterUnclosedRepair(site.block, sharedTier)
             + ', then rerun (nothing written)\n');
         process.exitCode = 1;
         return null;
@@ -8641,8 +8842,11 @@ function triggerRecord(memPath, name, where, wanted) {
     const parsed = parseTriggers(typeof site.value === 'string' ? site.value : null);
     if (parsed.bad.length > 0) {
         process.stderr.write('memq: ' + shown + ' already carries a triggers: entry this cannot'
-            + ' read, and a rewrite would drop it: ' + parsed.bad.join('; ')
-            + '. Correct the line by hand and rerun (nothing written)\n');
+            + ' read, and a rewrite would drop it: ' + parsed.bad.join('; ') + '. '
+            + (sharedTier
+                ? 'The line stays as it is: ' + sharedTriggerLineRepair(deleteCommand)
+                : 'Correct the line by hand and rerun')
+            + ' (nothing written)\n');
         process.exitCode = 1;
         return null;
     }
@@ -8653,7 +8857,10 @@ function triggerRecord(memPath, name, where, wanted) {
         process.stderr.write('memq: ' + shown + ' carries a triggers: line past what a reader'
             + ' reads (' + TRIGGER_ENTRIES_MAX + ' entries, or ' + TRIGGER_VALUE_CAP
             + ' characters of value, whichever it met first), and a rewrite would drop the'
-            + ' rest; shorten the line by hand and rerun (nothing written)\n');
+            + ' rest; ' + (sharedTier
+                ? sharedTriggerLineRepair(deleteCommand)
+                : 'shorten the line by hand and rerun')
+            + ' (nothing written)\n');
         process.exitCode = 1;
         return null;
     }
@@ -8760,7 +8967,7 @@ function triggerRecord(memPath, name, where, wanted) {
                     + FRONTMATTER_MAX_LINES + '), so one more line in it closes nothing and'
                     + ' every field of the record goes unread, a pinned: field included. To'
                     + ' make room, ' + frontmatterUnclosedRepair(frontmatterBlock(rewritten),
-                        false) + ', then rerun'
+                        sharedTier) + ', then rerun'
                 : 'the triggers: line reads back as something else')
             + ' (nothing written)\n');
         process.exitCode = 1;
@@ -8788,8 +8995,8 @@ function triggerRecord(memPath, name, where, wanted) {
 }
 
 // memq triggers <name> <entry>...: record the deterministic recognition
-// triggers a project memory is about, so a later pass can nudge when the
-// session's own work touches one.
+// triggers a memory is about, so a later pass can nudge when the session's own
+// work touches one.
 //
 // The verb writes one frontmatter line and nothing else. Everything else
 // about the record, its body most of all, is left where it was, which is why
@@ -8801,35 +9008,52 @@ function triggerRecord(memPath, name, where, wanted) {
 // running session's tool stream belongs to the surface that does the
 // matching.
 //
-// The project's own tiers only, the run-scoped pending tier first and then
-// the project tier, which is `get`'s and `touch`'s precedence. `--type` and
-// `--operator` are refused, and not for `anchor`'s reason: a trigger needs no
-// project root and no tree, so the shared tiers could hold one. What refuses
-// them is that recognition reads the project tier alone, and widening it to
-// tiers that sync across machines and across every project on one is a
-// question about the reading surface rather than about this field's grammar.
+// Any tier the caller can name, on `touch`'s flag shape. With neither flag it
+// writes the project's own tiers, the run-scoped pending tier first and then
+// the project tier, which is `get`'s and `touch`'s precedence; `--type` and
+// `--operator` name the shared tiers instead, and a flag names its tier
+// outright rather than taking that precedence, since a tier the caller spelled
+// is not a name to resolve. Both flags together is a refusal for `touch`'s
+// reason in this verb's own terms: one `triggers:` line is spliced into one
+// record, so two tier flags name two records for it and the same name can hold
+// a different fact in each.
 //
 // Two of `anchor`'s gates are deliberately absent, because both are about
 // resolving a path against a project root and this verb resolves none. A
 // store pin is not a refusal here: a pin says the records were chosen by the
 // environment rather than by this working directory, which leaves an anchor
 // with nothing to be relative to and leaves a pattern entirely unaffected.
-// And no root is derived at all, so nothing here walks a tree.
+// And no root is derived at all, so nothing here walks a tree. That is also
+// what admits the shared tiers where `anchor` refuses them: a trigger is a
+// pattern, portable across every machine and project that reads the tier,
+// where an anchor names a path under a project root those tiers have none of.
+// One type is the exception, and it is refused on a shared tier for `anchor`'s
+// own reason: a `glob:` pattern is a path, matched relative to whatever
+// project a call is in, so a shared-tier one fires one project's record on
+// another project's files. The reading surface skips it there, so what the
+// refusal prevents is a declaration nothing would ever act on.
 function cmdTriggers(argv) {
     let name = null;
+    let toType = false;
+    let toOperator = false;
     const given = [];
     for (const a of argv) {
-        if (a === '--type' || a === '--operator') {
-            return usage('triggers writes the project tier only: recognition reads the project'
-                + ' tier alone, and widening it to the tiers that sync across machines and'
-                + ' across every project on one is not this verb\'s to decide');
-        }
+        if (a === '--type') toType = true;
+        else if (a === '--operator') toOperator = true;
         else if (a.startsWith('--')) return usage('unknown option ' + sanitize(a, 40));
         else if (name === null) name = a;
         else given.push(a);
     }
     if (name === null) return usage('triggers needs a <name>');
     if (given.length === 0) return usage('triggers needs at least one <type>:<pattern> entry');
+    // One line is spliced into one record, so two tier flags name two records
+    // for it and the command refuses rather than picking one. Silently
+    // preferring a tier would declare the recognition triggers on a record the
+    // caller did not name, and the record they meant would go on matching
+    // nothing with nothing anywhere saying so.
+    if (toType && toOperator) {
+        return usage('triggers writes one tier: give --type or --operator, not both');
+    }
     // The store's own definition of a memory file decides what may declare a
     // trigger, so the index and any name that could leave the memory
     // directory are refused here exactly as they are everywhere else.
@@ -8850,8 +9074,16 @@ function cmdTriggers(argv) {
     // projectSegment before worktreeMainRoot is ever reached, so it is
     // specifically an unpinned network cwd that rides the walk, and under a
     // pin this verb runs through to the end, having no root to want.
+    //
+    // `--type` rides the gate with the plain form, reaching that same walk
+    // through typedTierOrNull(cwd) -> projectType(cwd) -> projectMemoryDir(cwd);
+    // `--operator` is excluded from it, resolving through operatorTierOrNull(),
+    // which takes no cwd argument at all and so never reaches the walk. Gating
+    // the operator tier here would refuse a write for a hazard that is not on
+    // its path, which is `touch`'s own asymmetry and the reason add-operator
+    // and delete-operator carry no such gate either.
     const cwd = process.cwd();
-    if (pinnedProjectSegment() === null && namesNetworkShare(cwd)) {
+    if (!toOperator && pinnedProjectSegment() === null && namesNetworkShare(cwd)) {
         process.stderr.write('memq: this call\'s working directory names a network share, so the '
             + 'project memory directory this would write into was not resolved from it (a '
             + 'synchronous walk under it risks hanging for the SMB timeout on an unreachable '
@@ -8861,47 +9093,78 @@ function cmdTriggers(argv) {
         return;
     }
 
-    const memDir = memDirOrNote();
-    if (memDir === null) {
-        process.exitCode = 1;
-        return;
-    }
-
-    // Which record the name means, on `get`'s and `touch`'s precedence: the
-    // run's own pending tier first, then the project tier. A memory a run
-    // wrote lives in its pending tier and nowhere else, so resolving the
-    // project tier alone would answer for a different record of the same
-    // name, and a session declaring triggers on the memory it just wrote
-    // would rewrite the shared project-tier record instead.
-    let recordDir = memDir;
+    // Where the line is going. A tier flag names its destination outright, so
+    // the pending-tier precedence below is the plain form's alone: a caller who
+    // spelled `--operator` named the operator tier's record, and consulting a
+    // run's pending tier for that name would send the write somewhere the flag
+    // did not name.
+    let memDir = null;
+    let recordDir;
     let inPending = false;
-    const pendingDir = pendingDirFor(cwd);
-    if (pendingDir !== null) {
-        // Only absence means the project tier. A stat that failed for any
-        // other reason says nothing about which tier holds the record, and
-        // reading one as absence sends the write to the shared project-tier
-        // record of the same name, reported as a success with nothing on
-        // either channel saying which record was rewritten.
-        let pendingSt = null;
-        let pendingCode = null;
-        try {
-            pendingSt = fs.statSync(path.join(pendingDir, file));
-        } catch (err) {
-            pendingCode = err && err.code ? err.code : String(err);
-        }
-        if (pendingCode !== null && pendingCode !== 'ENOENT') {
-            process.stderr.write('memq: this run\'s pending tier could not be examined ('
-                + sanitize(pendingCode, 40) + '), so which tier holds \''
-                + sanitize(name, NAME_CAP) + '\' is unknown and nothing was written\n');
+    let declaredType = null;
+    if (toType) {
+        const typed = typedTierOrNull(cwd);
+        if (typed === null) {
+            process.stderr.write('memq: this project declares no Project-Type'
+                + ' (or its type directory does not exist), so --type has no target\n');
             process.exitCode = 1;
             return;
         }
-        if (pendingSt && pendingSt.isFile()) {
-            recordDir = pendingDir;
-            inPending = true;
+        recordDir = typed.dir;
+        declaredType = typed.type;
+    } else if (toOperator) {
+        const operator = operatorTierOrNull();
+        if (operator === null) {
+            process.stderr.write('memq: this store has no operator tier'
+                + ' (no ' + OPERATOR_DIR + '/ directory), so --operator has no target\n');
+            process.exitCode = 1;
+            return;
+        }
+        recordDir = operator;
+    } else {
+        memDir = memDirOrNote();
+        if (memDir === null) {
+            process.exitCode = 1;
+            return;
+        }
+
+        // Which record the name means, on `get`'s and `touch`'s precedence: the
+        // run's own pending tier first, then the project tier. A memory a run
+        // wrote lives in its pending tier and nowhere else, so resolving the
+        // project tier alone would answer for a different record of the same
+        // name, and a session declaring triggers on the memory it just wrote
+        // would rewrite the shared project-tier record instead.
+        recordDir = memDir;
+        const pendingDir = pendingDirFor(cwd);
+        if (pendingDir !== null) {
+            // Only absence means the project tier. A stat that failed for any
+            // other reason says nothing about which tier holds the record, and
+            // reading one as absence sends the write to the shared project-tier
+            // record of the same name, reported as a success with nothing on
+            // either channel saying which record was rewritten.
+            let pendingSt = null;
+            let pendingCode = null;
+            try {
+                pendingSt = fs.statSync(path.join(pendingDir, file));
+            } catch (err) {
+                pendingCode = err && err.code ? err.code : String(err);
+            }
+            if (pendingCode !== null && pendingCode !== 'ENOENT') {
+                process.stderr.write('memq: this run\'s pending tier could not be examined ('
+                    + sanitize(pendingCode, 40) + '), so which tier holds \''
+                    + sanitize(name, NAME_CAP) + '\' is unknown and nothing was written\n');
+                process.exitCode = 1;
+                return;
+            }
+            if (pendingSt && pendingSt.isFile()) {
+                recordDir = pendingDir;
+                inPending = true;
+            }
         }
     }
-    const where = inPending ? ' in the pending tier' : ' in the project tier';
+    const where = toType ? ' in the type tier'
+        : toOperator ? ' in the operator tier'
+            : inPending ? ' in the pending tier' : ' in the project tier';
     const memPath = path.join(recordDir, file);
     // Answered before the entries are judged, so a mistyped name costs no
     // reading. It is answered again under the lock by the read itself, which
@@ -8922,7 +9185,7 @@ function cmdTriggers(argv) {
     }
     if (!st || !st.isFile()) {
         process.stderr.write('memq: no memory file named \'' + sanitize(name, NAME_CAP)
-            + '\' in the project tier\n');
+            + '\'' + where + '\n');
         process.exitCode = 1;
         return;
     }
@@ -8937,6 +9200,26 @@ function cmdTriggers(argv) {
         const fault = triggerEntryFault(one);
         if (fault !== null) {
             refusals.push(triggerRefusalText(one, triggerFaultWords(fault, one)));
+            continue;
+        }
+        // A glob is the one type a shared tier cannot carry, and it is refused
+        // here so that no dead trigger can be minted: the pattern is matched
+        // against the paths a call touched, relative to the project root the
+        // call is in, so the same pattern under a tier every project on the
+        // machine reads names a different file in each of them and fires one
+        // project's record on another project's work. That is the reason
+        // `anchor` refuses these tiers outright, arriving at the one trigger
+        // type that is a path. The reading side excludes a shared-tier glob
+        // from matching for the same reason, so an entry admitted here would
+        // be a declaration nothing ever acts on. It is asked after the grammar
+        // and collected with the other refusals rather than returned first, so
+        // a caller who named four entries and got two wrong fixes both on one
+        // re-run.
+        if ((toType || toOperator) && one.startsWith('glob:')) {
+            refusals.push(triggerRefusalText(one, 'a glob names a path under a project root and'
+                + ' the shared tiers have none, so it would fire one project\'s record on'
+                + ' another project\'s files; the recognition surface skips it for that reason,'
+                + ' which is what makes it a trigger nothing would act on'));
             continue;
         }
         // The same entry named twice is one mention at its first position,
@@ -8954,19 +9237,30 @@ function cmdTriggers(argv) {
         return;
     }
 
-    // Both of the project tier's locks, in the order the decay pass takes
-    // them, decay.lock first. Neither one alone excludes the other's holder:
-    // a decay pass rewrites this tier under decay.lock and takes no store.lock
-    // here, so a rewrite holding only store.lock can rename a record back over
-    // a name a pass has just archived, leaving a live file no index lists.
-    // Taking both in the pass's own order is what keeps the two from
-    // inverting into a deadlock.
+    // The lock, and which one it is depends on the tier the write lands in,
+    // because the two tiers are protected by different files.
     //
-    // They are the project memory directory's locks whichever tier the record
-    // is in, because the pending tier is a directory under it and its records
-    // are written by these same commands.
-    const decayLock = acquireLock(path.join(memDir, DECAY_LOCK_FILE));
-    if (!decayLock.ok) {
+    // The project tier takes both of its locks, in the order the decay pass
+    // takes them, decay.lock first. Neither one alone excludes the other's
+    // holder: a decay pass rewrites this tier under decay.lock and takes no
+    // store.lock here, so a rewrite holding only store.lock can rename a record
+    // back over a name a pass has just archived, leaving a live file no index
+    // lists. Taking both in the pass's own order is what keeps the two from
+    // inverting into a deadlock. They are the project memory directory's locks
+    // whichever of that tier's two directories the record is in, because the
+    // pending tier is a directory under it and its records are written by these
+    // same commands.
+    //
+    // A shared tier takes its own store.lock and nothing else, which is what
+    // its own writers take (add-type, add-operator and the shared deletes) and
+    // what excludes the one pass that rewrites it: decay.lock is the project
+    // tier's file, and a decay pass reaching a shared tier takes that tier's
+    // store.lock on top of it. So this lock is the one the pass would have to
+    // wait on, and taking the project tier's decay.lock here would exclude
+    // passes over a tier this write is not touching.
+    const lockDir = memDir === null ? recordDir : memDir;
+    const decayLock = memDir === null ? null : acquireLock(path.join(memDir, DECAY_LOCK_FILE));
+    if (decayLock !== null && !decayLock.ok) {
         process.stderr.write('memq: project store locked by a decay pass, nothing written: '
             + sanitize(decayLock.reason, 260) + '\n');
         process.exitCode = 1;
@@ -8974,20 +9268,29 @@ function cmdTriggers(argv) {
     }
     let written;
     try {
-        const lock = acquireLock(path.join(memDir, STORE_LOCK_FILE));
+        const lock = acquireLock(path.join(lockDir, STORE_LOCK_FILE));
         if (!lock.ok) {
-            process.stderr.write('memq: project store locked, nothing written: '
-                + sanitize(lock.reason, 260) + '\n');
+            process.stderr.write('memq: ' + (toType ? 'type' : toOperator ? 'operator' : 'project')
+                + ' store locked, nothing written: ' + sanitize(lock.reason, 260) + '\n');
             process.exitCode = 1;
             return;
         }
         try {
-            written = triggerRecord(memPath, name, where, wanted);
+            // The delete verb for the tier the write lands in, which is what a
+            // shared-tier refusal names in place of a hand edit, and null on
+            // the project tier, where a hand edit is the route.
+            const deleteCommand = toType
+                ? 'delete-type ' + sanitize(declaredType, TYPE_CAP) + ' '
+                    + sanitize(name, NAME_CAP) + ' --confirm-shared'
+                : toOperator
+                    ? 'delete-operator ' + sanitize(name, NAME_CAP) + ' --confirm-shared'
+                    : null;
+            written = triggerRecord(memPath, name, where, wanted, deleteCommand);
         } finally {
             lock.release();
         }
     } finally {
-        decayLock.release();
+        if (decayLock !== null) decayLock.release();
     }
     // Null is a refusal that has already said what it was, in its own line.
     if (!written) return;
@@ -9006,7 +9309,8 @@ function cmdTriggers(argv) {
         + (written.carried.length > 0
             ? '; already on the record: ' + written.carried.join(', ')
             : '')
-        + (inPending ? ' (pending tier)' : '') + '\n');
+        + (toType ? ' (type tier)' : toOperator ? ' (operator tier)'
+            : inPending ? ' (pending tier)' : '') + '\n');
 }
 
 // A refused entry's fault in the words a caller can act on, built from the
@@ -10898,7 +11202,15 @@ function projectsDeclaringType(type) {
     for (const name of entries) {
         let raw;
         try {
-            raw = fs.readFileSync(path.join(projectMemoryDirFor(name), INDEX_FILE), 'utf8');
+            // The same bounded, kind-checked head `projectType` takes of the
+            // same declaration, for its reasons: the declaring line sits at
+            // the index's head, so an index of any size costs this prefix,
+            // and the kind is settled on the open descriptor with a
+            // non-blocking open off win32, so a FIFO planted at one project's
+            // index path cannot park a pass that walks every project in the
+            // store.
+            raw = readHead(path.join(projectMemoryDirFor(name), INDEX_FILE),
+                PROJECT_TYPE_READ_CAP);
         } catch (err) {
             // No index there (or a stray file under projects/) is simply not
             // a declarer; any other failure is a project this scan cannot
@@ -10908,6 +11220,15 @@ function projectsDeclaringType(type) {
                 process.stderr.write('memq: skipping unreadable project \''
                     + projectLabel(name) + '\' in the declaring-projects scan\n');
             }
+            continue;
+        }
+        // Null is "something other than a regular file answers at that path,
+        // or it was rewritten under the read", which is a project this scan
+        // cannot vouch for either way rather than a project that declares
+        // nothing, so it is named on the same channel as an unreadable one.
+        if (raw === null) {
+            process.stderr.write('memq: skipping unreadable project \''
+                + projectLabel(name) + '\' in the declaring-projects scan\n');
             continue;
         }
         const declared = declaredType(raw);
@@ -13947,6 +14268,8 @@ module.exports = {
     frontmatterField,
     readFrontmatterTags,
     frontmatterTags,
+    machineIdentityOrNull,
+    foreignMachine,
     supersedesName,
     readFrontmatterCreated,
     frontmatterAnchors,
@@ -14031,5 +14354,7 @@ module.exports = {
     typeIndexPath,
     operatorDirPath,
     operatorIndexPath,
+    typedTierOrNull,
+    operatorTierOrNull,
     projectType
 };

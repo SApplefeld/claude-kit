@@ -237,14 +237,17 @@ const PRELOAD_ENV = ['NODE_OPTIONS', 'NODE_PATH', 'NODE_REPL_EXTERNAL_MODULE'];
 // no second refusal for the verb, since it is the operator's own, so this
 // screen is the only one.
 //
-// triggers is the fifth and is withheld on the same account, at the record's
-// other half: it rewrites a project-tier record in place too, and the line it
-// writes is what decides when that memory is put in front of a session. A
-// worker could aim a record's recognition at whatever it liked, or crowd the
-// line to the entry cap so the triggers the operator wrote go unread, with
-// nothing on any surface saying the declaration changed. It has no second
-// refusal in the CLI either, for anchor's reason, so this screen is again the
-// only one.
+// triggers is the fifth and is withheld on a wider account, at the record's
+// other half: it rewrites a record of any tier in place, the type and operator
+// tiers included, and the line it writes is what decides when that memory is
+// put in front of a session. A worker could aim a record's recognition at
+// whatever it liked, or crowd the line to the entry cap so the triggers the
+// operator wrote go unread, with nothing on any surface saying the declaration
+// changed. The tier flags are what make the blast radius wider than anchor's:
+// the same rewrite on a machine-wide tier aims recognition for every project
+// on the box and every machine the store syncs to, rather than for the one
+// project a worker was pointed at. It has no second refusal in the CLI either,
+// for anchor's reason, so this screen is again the only one.
 //
 // An allowlist rather than a denylist, because the two fail in opposite
 // directions: a verb added to the CLI later is not covered until this list
@@ -445,17 +448,20 @@ function grantable(p) {
     // it replaces only in a local .bak the sync never carries; --body-file
     // anywhere, which reads a caller-named path into the store; and
     // --supersedes, which demotes and labels a record no pin protects from it.
-    // Three more are withheld here alone, with no second layer behind them:
+    // Four more are withheld here alone, with no second layer behind them:
     // find, which loads an embedder out of a directory the command line does
-    // not name; --rollup, which discards prose no copy survives; and anchor,
+    // not name; --rollup, which discards prose no copy survives; anchor,
     // which rewrites a project-tier record in place and with it the claim
     // every drift surface reads about which files that memory is still true
-    // of. The ninth, --drop-malformed, deletes sidecar lines behind one .bak
-    // generation; what stands behind its screen is the CLI's requirement
+    // of; and triggers, which rewrites a record of any tier in place at the
+    // half that decides when the memory is put in front of a session, so a
+    // worker could aim recognition on a tier every project on the machine
+    // reads. The tenth, --drop-malformed, deletes sidecar lines behind one
+    // .bak generation; what stands behind its screen is the CLI's requirement
     // that the flag ride --rollup, a coupling rather than a store-signal
     // refusal, so this screen is what keeps the delete withheld if that
-    // coupling is ever loosened for ergonomics. None of the nine belongs in a
-    // prompt-free allow with no operator in the loop, and the three with no
+    // coupling is ever loosened for ergonomics. None of the ten belongs in a
+    // prompt-free allow with no operator in the loop, and the four with no
     // second lock are the ones a later edit here would silently free.
     //
     // This screen is the second lock rather than a move of the first: the CLI
