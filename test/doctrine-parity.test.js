@@ -1647,6 +1647,40 @@ test('the box-budget brief clause agrees with the role skill\'s claim contract a
         + 'brief is a poll-as-clearance reading arriving by another name');
 });
 
+// The pin above derives the claim's field set and so stays green whatever
+// either surface says about where a field's value comes from, which is the
+// half this one covers: a writer and a reader sharing one value, held to
+// each other rather than each to its own literal. The write side is that
+// `Started:` is resolved from the clock at the moment of the write, and the
+// read side is that a live claim is aged by the file rather than by that
+// line, and the two are one rule, since aging by the line is what makes a
+// composed value worth composing. Each side is asserted on both surfaces,
+// because a rule stated in the contract and dropped from the brief clause
+// is a rule no dispatched subagent ever receives.
+test('the write-time resolution of a claim\'s Started and the read side\'s aging by the file are on both surfaces', () => {
+    const executingWork = fs.readFileSync(path.join(__dirname, '..', 'plugins',
+        'claude-kit', 'skills', 'executing-work', 'SKILL.md'), 'utf8');
+    const start = executingWork.indexOf('The standing box-budget clause');
+    const end = executingWork.indexOf('The two-question grant audit');
+    assert.ok(start !== -1 && end > start, 'the box-budget clause slice has no '
+        + 'edges, so this pin would read a region that is not the brief clause');
+    const clause = collapseWhitespace(executingWork.slice(start, end));
+    const roleBody = collapseWhitespace(fs.readFileSync(path.join(__dirname,
+        '..', 'plugins', 'claude-kit', 'skills', 'role', 'SKILL.md'), 'utf8'));
+
+    for (const [name, text] of [['the brief clause', clause], ['the role contract', roleBody]]) {
+        assert.ok(/clock at the (moment|time) of the write|read from the clock at the moment/.test(text),
+            name + ' no longer states that a claim\'s Started is read from the '
+            + 'clock at the write, so the value it describes may be composed '
+            + 'before the write and carried in, which is the defect the field '
+            + 'was taken out of a writer\'s hands to remove');
+        assert.ok(/modification time/.test(text),
+            name + ' no longer names the file\'s modification time, so the read '
+            + 'side has no machine-written comparator and ages a live claim by '
+            + 'a line the claim\'s own writer chose');
+    }
+});
+
 // The hostile-boundary reuse step in executing-work's Dispatch Brief template
 // is a deliberate copy of the guard-siting rule the operating instructions
 // state, copied for the reason the box-budget clause above is copied: it is

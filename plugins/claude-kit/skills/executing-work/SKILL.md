@@ -271,7 +271,10 @@ For each Section of Work, in order (sections run concurrently only where the dis
        the dispatched agent holds none of them: this
        session's own session id and its session name as the roster prints
        it, both written as the literals the agent will copy into the
-       claim, and the role skill's absolute path,
+       claim and both resolved as this brief is written rather than
+       copied out of an earlier one, since a name that named this seat
+       when some previous brief was composed can name another repo's seat
+       by the time this agent's claim carries it, and the role skill's absolute path,
        `<root>/skills/role/SKILL.md`, resolved by the same ladder as the
        Style-skill file paths bullet above, since that skill owns the
        directory contract and an agent inherits no skills to resolve a bare
@@ -289,23 +292,33 @@ For each Section of Work, in order (sections run concurrently only where the dis
        a proceeding session that also wrote would replace a live holder's
        claim with its own and leave the box holding two heavy processes
        under one claim naming only the second; where no live claim stands,
-       write the claim with its full field set,
-       `Name:` (the substituted dispatching session's roster name, which
-       is the address the coordinator's probe uses, an unregistered
-       writer having no registry entry of its own through which an id
-       could be resolved to one), `Repo:` (the repo under test),
-       `Session:` (the substituted dispatching session's id), `Started:`
-       (ISO now), and `Expected-seconds:` (the estimate); and at
-       completion delete only a claim whose `Session:` line carries that
-       same substituted id,
-       leaving any other claim in place and naming the collision, because
-       an unscoped delete erases a live foreign claim and leaves the file
-       reading unclaimed exactly while the box is most contended. The
-       claim buys legibility, never a guarantee: an empty claims directory
-       means nobody has claimed the box rather than that the box is free,
-       and a clean process poll is a sample rather than a clearance, so
-       presence is grounds for waiting while absence never licenses
-       starting or releasing. What backstops a claim is its holder, per
+       write the claim with its full field set, `Name:` (the substituted
+       dispatching session's roster name, which is the address the
+       coordinator's probe uses, an unregistered writer having no
+       registry entry of its own through which an id could be resolved to
+       one), `Repo:` (the repo under test), `Session:` (the substituted
+       dispatching session's id), `Started:` (read from the clock at the
+       moment you write the claim, never a value carried in from this
+       brief, which was composed before your run began: a claim's fields
+       are read by other sessions as facts about the run holding the box
+       now, and `node <root>/hooks/kit-registry-stamp.js now` prints that
+       value, `<root>` resolved and substituted at brief-writing time by
+       the same ladder as the role skill's path above, so the clock read
+       is one command an agent already holding Bash runs rather than a
+       habit it has to remember), and `Expected-seconds:` (the estimate);
+       and at completion delete only a claim whose `Session:` line
+       carries that same substituted id, leaving any other claim in place
+       and naming the collision, because an unscoped delete erases a live
+       foreign claim and leaves the file reading unclaimed exactly while
+       the box is most contended. The claim buys legibility, never a
+       guarantee: an empty claims directory means nobody has claimed the
+       box rather than that the box is free, and a clean process poll is a
+       sample rather than a clearance, so presence is grounds for waiting
+       while absence never licenses starting or releasing. A live claim's
+       age is the age of the file: read it from the file's own
+       modification time and never from the `Started:` line it carries,
+       since that line is its writer's composition while the modification
+       time is the machine's. What backstops a claim is its holder, per
        the role skill's contract, never a poll. The clause splits at the
        read-only dispatch on accountability rather than on mechanism, and
        the distinction is stated because the mechanical reading is the

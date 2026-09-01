@@ -2302,44 +2302,88 @@ function markerMomentHolds(marker, transcriptPath) {
 // The registry record of a declared boundary.
 // ---------------------------------------------------------------------------
 
+// The store's coordinator directory, holding one directory per machine. Every
+// path into that directory is composed from this, so the location has one
+// spelling however many callers reach for it: the stamps here, the seat-stop
+// hook's heartbeat, and the stamp audit's default scope and containment screen.
+function coordinatorRoot() {
+    return path.join(os.homedir(), '.claude', 'coordinator');
+}
+
+// This machine's own directory under that root.
+function coordinatorDir() {
+    return path.join(coordinatorRoot(), os.hostname());
+}
+
 // A registered session's entry under the machine's coordinator directory, or
 // null. The id is held to the shared marker-scope rule before it is joined to
 // anything, so a value carrying a separator or a parent segment never composes
-// a path here at all. One spelling of the location serves this stamp and the
-// seat-stop hook's heartbeat.
+// a path here at all.
 function registryEntryPath(sessionId) {
     if (usableSessionId(sessionId) === null) return null;
-    return path.join(os.homedir(), '.claude', 'coordinator', os.hostname(),
-        'registry', sessionId + '.md');
+    return path.join(coordinatorDir(), 'registry', sessionId + '.md');
+}
+
+// The value of a `<Field>: <value>` line, or null where the text carries no
+// such line. The shape is the role skill's directory contract's, and one
+// spelling serves every reader of these files: the seat-stop hook's freshness
+// reads and the stamp audit's, which would otherwise be two copies of one
+// grammar pinned only by their own tests.
+function registryField(text, name) {
+    const match = new RegExp('^' + name + ':[^\\S\\r\\n]*(.*)$', 'm').exec(text);
+    return match === null ? null : match[1].trim();
+}
+
+// A value bound for a channel a model reads: the home directory elided to `~`,
+// then printable ASCII, then capped. The elision is why this is more than a
+// character filter. The OS account name sits in the home prefix on the default
+// layout, and a filesystem error's own message carries an absolute path inside
+// its prose, so a cap sized for a short field cuts the tail and leaves the
+// account name at the head. The guard belongs to the channel rather than to
+// whichever caller first needed it, which is why it lives here rather than in
+// that caller: a writer into these channels calls it rather than spelling the
+// elision again. `kit-compact-checkpoint.js` carries its own older spelling,
+// which elides a leading prefix alone and keeps a cut marker this one drops, so
+// the two are not interchangeable at a call site until that one is retired.
+function sanitizeForOutput(s, max) {
+    let home = '';
+    try { home = os.homedir(); } catch { home = ''; }
+    const text = home === '' ? String(s) : String(s).split(home).join('~');
+    return text.replace(/[^\x20-\x7E]/g, '').slice(0, max === undefined ? 120 : max);
 }
 
 // A registry entry is a handful of short lines. Anything past this is not one,
 // and is left untouched rather than parsed.
 const REGISTRY_ENTRY_MAX_BYTES = 64 * 1024;
 
-// A registry entry's text, or null with the clause that refused it. Both
-// mechanical stampers of these entries read through this, the boundary verb's
-// `Banked:` stamp here and the seat-stop hook's `Heartbeat:` stamp, so the
-// screen is a property of the entry as a channel rather than of whichever
+// A coordinator file's text, or null with the clause that refused it. Both
+// mechanical stampers of registry entries read through this, the boundary
+// verb's `Banked:` stamp here and the seat-stop hook's `Heartbeat:` stamp, and
+// so does the stamp audit's read of every coordinator file it scans, so the
+// screen is a property of these files as a channel rather than of whichever
 // writer needed it first.
 //
 // lstat, not stat: a link planted at the entry path is judged as a link rather
 // than as whatever it points at, which is the screen every marker read in this
-// file already takes, and the reason is sharper here, since both callers rename
-// over the path they read and following a link would aim an atomic write at a
-// file of someone else's choosing. The size cap is the same conservatism: an
-// entry past it is not one of ours and is left untouched rather than parsed.
-// Never throws.
-function readRegistryEntryText(full) {
+// file already takes, and the reason is sharper here, since both stampers
+// rename over the path they read and following a link would aim an atomic write
+// at a file of someone else's choosing. The size cap is the same conservatism:
+// a file past it is not the shape the reader expects and is left untouched
+// rather than parsed. It defaults to the registry entry's own bound, and a
+// caller reading a coordinator file of another shape passes that file's, the
+// board running to tens of thousands of bytes where an entry is a handful of
+// short lines. Never throws.
+function readRegistryEntryText(full, maxBytes) {
+    const cap = typeof maxBytes === 'number' && maxBytes > 0 ? maxBytes : REGISTRY_ENTRY_MAX_BYTES;
     try {
         const st = fs.lstatSync(full);
-        if (!st.isFile()) return { text: null, reason: 'not a registry entry' };
-        if (st.size > REGISTRY_ENTRY_MAX_BYTES) {
-            return { text: null, reason: 'entry too large to be one of ours' };
+        if (!st.isFile()) return { text: null, reason: 'not a regular file' };
+        if (st.size > cap) {
+            return { text: null, reason: 'the file is too large to be the shape this reads' };
         }
         return { text: fs.readFileSync(full, 'utf8'), reason: null };
     } catch {
-        return { text: null, reason: 'no registry entry at that path' };
+        return { text: null, reason: 'no readable file at that path' };
     }
 }
 
@@ -2391,34 +2435,37 @@ function writeRegistryEntryAtomic(full, text) {
     }
 }
 
-// Stamp the entry's `Banked:` line with now, through the shared read screen
-// and atomic write above, which is the same channel the seat-stop hook's
-// `Heartbeat:` stamp writes through. The entry gains exactly one such line, an existing one being rewritten in place
-// and a missing one inserted directly after `Heartbeat:`, which is where the
-// contract's shape carries it; the rest of the file is byte-identical, because
-// the registering session is the entry's only other writer and restructuring a
-// peer's single-writer artifact is not this stamp's to do. An entry carrying
-// neither line is not the shape the contract defines and is left untouched for
-// the same reason.
+// The shared middle of every mechanical stamp of a registry entry: the path,
+// the read screen, the entry's own corroboration, the clock read and the atomic
+// write, with the caller supplying only the rewrite. The boundary verb's
+// `Banked:` stamp and the seat's own `Status-updated:` stamp both go out
+// through it, so no screen and no refusal reason exists here in two copies.
 //
 // The time is read from the clock here at the write rather than passed in: a
 // stamp templated from a value a caller has been holding reads as authoritative
-// while answering the elapsed-time question wrongly.
+// while naming a moment nobody measured.
 //
-// The entry has to vouch for itself before it is written. The path is composed
-// from a session id taken out of the environment, which nothing authenticates,
-// so the id alone establishes only which file would be written and never that
-// it is the caller's: any local process that sets that variable to a peer's id
-// names the peer's entry, a single-writer file that replicates to every machine
-// the store's remote reaches. What closes it is the entry's own `Session:`
-// line, the corroboration projectHoldsSessionTranscript is for the marker's
-// project: an entry naming a different session, or naming none, is refused and
-// left byte-identical.
+// What the `Session:` comparison is, stated at its real strength rather than
+// rounded up, because one of the fields written through here is the one the
+// seat-stop hook gates its boundary marker on. The path is composed from a
+// session id taken out of the environment, and the entry's own line is then
+// compared against that same caller-supplied value, so what the comparison
+// establishes is that the file at that path agrees with the id that named it,
+// and never that the caller is the session either of them names: it is an
+// internal-consistency screen on the file rather than authentication of the
+// writer, and a process holding a peer's id passes it exactly as the peer
+// would. What it does catch is the ordinary accident, a stale or foreign entry
+// sitting at the path this id composes, which would otherwise be rewritten
+// under a peer's name; an entry naming a different session, or naming none, is
+// refused and left byte-identical.
 //
-// Every failure returns { stamped:false, reason }: the stamp is a record of the
+// `rewrite(text, atIso)` answers { text, reason }, a null text refusing the
+// stamp with that reason and leaving the entry untouched.
+//
+// Every failure returns { stamped:false, reason }: a stamp is a record of a
 // declaration, never a precondition for it, so an absent coordinator directory,
-// an absent entry, a foreign entry and a refused write all leave the marker the
-// caller opened exactly as it was. Never throws.
+// an absent entry, a foreign entry and a refused write all leave the caller's
+// own work exactly as it was. Never throws.
 //
 // One residual, named rather than left for a reader to find, and it is
 // stampHeartbeat's own: the entry is read whole here and rewritten whole from
@@ -2427,7 +2474,7 @@ function writeRegistryEntryAtomic(full, text) {
 // cost is one lost line rewrite on a file whose fields are all restated at the
 // next push or the next stamp, and the atomic rename is what keeps the loser a
 // stale entry rather than a torn one.
-function stampRegistryBanked(sessionId) {
+function stampRegistryEntry(sessionId, rewrite) {
     const full = registryEntryPath(sessionId);
     if (full === null) return { stamped: false, reason: 'session id is invalid' };
     const read = readRegistryEntryText(full);
@@ -2440,22 +2487,76 @@ function stampRegistryBanked(sessionId) {
     if (!sameSessionId(named[1], sessionId)) {
         return { stamped: false, reason: 'the entry at that path names a different session' };
     }
-    // The entry's own line ending is preserved rather than assumed: the
-    // capture carries whatever carriage return the matched line ended on, so a
-    // stamp into a CRLF entry writes a CRLF line and leaves the file's endings
-    // uniform.
-    const line = 'Banked: ' + new Date().toISOString();
-    let stamped;
-    if (/^Banked:/m.test(text)) {
-        stamped = text.replace(/^Banked:.*?(\r?)$/m, line + '$1');
-    } else if (/^Heartbeat:/m.test(text)) {
-        stamped = text.replace(/^(Heartbeat:.*?)(\r?)$/m, '$1$2\n' + line + '$2');
-    } else {
-        return { stamped: false, reason: 'the entry carries neither line this stamp writes beside' };
+    const at = new Date().toISOString();
+    // The rewrite is the caller's own function and composes a pattern from a
+    // caller-supplied field name, so the never-throws contract above is kept
+    // here rather than assumed of every caller: a throw becomes an ordinary
+    // refusal and the entry is left byte-identical, which is what every other
+    // failure on this path already does.
+    let rewritten;
+    try {
+        rewritten = rewrite(text, at);
+    } catch {
+        return { stamped: false, reason: 'the stamp for that entry could not be composed' };
     }
-    const wrote = writeRegistryEntryAtomic(full, stamped);
+    // The shape check sits beside the catch rather than inside the deref for
+    // the same reason the catch exists: a rewrite returning nothing at all
+    // would otherwise throw a TypeError out of a function this path documents
+    // as never throwing, which is the one failure the caller has no refusal to
+    // read.
+    if (rewritten === null || typeof rewritten !== 'object') {
+        return { stamped: false, reason: 'the stamp for that entry could not be composed' };
+    }
+    if (rewritten.text === null) return { stamped: false, reason: rewritten.reason };
+    const wrote = writeRegistryEntryAtomic(full, rewritten.text);
     if (!wrote.ok) return { stamped: false, reason: wrote.reason };
-    return { stamped: true, reason: null };
+    return { stamped: true, reason: null, at };
+}
+
+// One field's line rewritten with the stamp. The entry's own line ending is
+// preserved rather than assumed: the capture carries whatever carriage return
+// the matched line ended on, so a stamp into a CRLF entry writes a CRLF line
+// and leaves the file's endings uniform.
+function rewriteFieldLine(text, name, at) {
+    return text.replace(new RegExp('^' + name + ':.*?(\\r?)$', 'm'), name + ': ' + at + '$1');
+}
+
+// Stamp each named field's existing line with now. A name the entry does not
+// carry refuses the whole stamp and leaves the file byte-identical: an entry
+// missing a line the contract defines is not the shape this writes into, and
+// restructuring an entry is not a stamp's to do. The refusal is over the whole
+// set rather than per field, so no caller has to reason about a partial write.
+function stampRegistryFields(sessionId, names) {
+    return stampRegistryEntry(sessionId, (text, at) => {
+        let out = text;
+        for (const name of names) {
+            if (!new RegExp('^' + name + ':', 'm').test(out)) {
+                return { text: null, reason: 'the entry carries no ' + name + ' line this stamp rewrites' };
+            }
+            out = rewriteFieldLine(out, name, at);
+        }
+        return { text: out, reason: null };
+    });
+}
+
+// Stamp the entry's `Banked:` line with now. The entry gains exactly one such
+// line, an existing one being rewritten in place and a missing one inserted
+// directly after `Heartbeat:`, which is where the contract's shape carries it;
+// the rest of the file is byte-identical. An entry carrying neither line is not
+// the shape the contract defines and is left untouched.
+function stampRegistryBanked(sessionId) {
+    return stampRegistryEntry(sessionId, (text, at) => {
+        if (/^Banked:/m.test(text)) {
+            return { text: rewriteFieldLine(text, 'Banked', at), reason: null };
+        }
+        if (/^Heartbeat:/m.test(text)) {
+            return {
+                text: text.replace(/^(Heartbeat:.*?)(\r?)$/m, '$1$2\n' + 'Banked: ' + at + '$2'),
+                reason: null
+            };
+        }
+        return { text: null, reason: 'the entry carries neither line this stamp writes beside' };
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -2980,7 +3081,8 @@ module.exports = {
     markerMatches, readRoleBoundary, readConsent, readRoleBoundaryResult, readConsentResult,
     writeRoleBoundary, writeConsent, clearRoleBoundary, clearConsent,
     markerMomentHolds, markerDeclaresMoment, transcriptPosition,
-    stampRegistryBanked, registryEntryPath,
+    stampRegistryBanked, stampRegistryEntry, stampRegistryFields, registryEntryPath,
+    coordinatorRoot, coordinatorDir, registryField, sanitizeForOutput,
     readRegistryEntryText, writeRegistryEntryAtomic,
     projectHoldsSessionTranscript, sessionTranscriptPath, usableSessionId,
     gateStatePath, gateLogPath, readGateState, readGateStateResult, recordGateDecision,

@@ -50,7 +50,8 @@ const fs = require('fs');
 const { gitOutput } = require('./kit-git-lib.js');
 const {
     writeRoleBoundary, registryEntryPath,
-    readRegistryEntryText, writeRegistryEntryAtomic
+    readRegistryEntryText, writeRegistryEntryAtomic,
+    registryField
 } = require('./kit-compact-lib.js');
 
 // How often the heartbeat is rewritten. The stamp's only reader asks whether
@@ -72,13 +73,6 @@ function readStdin() {
     try { return fs.readFileSync(0, 'utf8'); } catch { return ''; }
 }
 
-// The value of a `<Field>: <value>` line, or null where the entry carries no
-// such line. The entry's shape is the role skill's directory contract.
-function field(text, name) {
-    const match = new RegExp('^' + name + ':[^\\S\\r\\n]*(.*)$', 'm').exec(text);
-    return match === null ? null : match[1].trim();
-}
-
 // Whether a recorded ISO stamp is within maxAgeMs of now. An absent,
 // unparseable, or future stamp is not fresh: a future one would otherwise open
 // a window that never closes, which is the reading the registry's own
@@ -91,7 +85,16 @@ function stampIsFresh(value, maxAgeMs) {
     return age >= 0 && age <= maxAgeMs;
 }
 
-// Rewrite the entry's existing `Heartbeat:` line in place, through the shared
+// Rewrite the entry's existing `Heartbeat:` line in place. `Heartbeat:` is the
+// only field this hook stamps, and the bound is the contract's rather than a
+// convenience: the entry's other time fields are the seat's own declaration,
+// and the marker leg below rests on `Status-updated:` being one, so a hook that
+// stamped it at every turn end would be reading its own writing and every stop
+// would bank a boundary the seat never declared. A seat reads the clock for
+// that field through the stamping helper its push step runs, so the value is an
+// instrument's either way and the write stays the session's.
+//
+// The rewrite goes out through the shared
 // atomic write every mechanical stamp of a registry entry goes out by, which
 // owns the unguessable temporary, the exclusive create and the cleanup that
 // removes only what this writer made. The session that registered is the
@@ -109,7 +112,11 @@ function stampIsFresh(value, maxAgeMs) {
 // session and repaired by its next one.
 function stampHeartbeat(full, text) {
     if (!/^Heartbeat:/m.test(text)) return;
-    const stamped = text.replace(/^Heartbeat:.*$/m, 'Heartbeat: ' + new Date().toISOString());
+    // The entry's own line ending survives the rewrite: a carriage return is a
+    // line terminator, which `.` never matches, so the match ends before it and
+    // the rewrite replaces the line's text without reaching its ending.
+    const stamped = text.replace(/^Heartbeat:.*$/m,
+        'Heartbeat: ' + new Date().toISOString());
     writeRegistryEntryAtomic(full, stamped);
 }
 
@@ -143,20 +150,26 @@ function main() {
     const text = readRegistryEntryText(full).text;
     if (text === null) return;
 
-    if (!stampIsFresh(field(text, 'Heartbeat'), HEARTBEAT_THROTTLE_MS)) {
+    if (!stampIsFresh(registryField(text, 'Heartbeat'), HEARTBEAT_THROTTLE_MS)) {
         stampHeartbeat(full, text);
     }
 
     const cwd = payload.cwd || process.cwd();
-    if (stampIsFresh(field(text, 'Status-updated'), STATUS_FRESH_MS) && treeIsClean(cwd)) {
+    if (stampIsFresh(registryField(text, 'Status-updated'), STATUS_FRESH_MS) && treeIsClean(cwd)) {
         writeRoleBoundary(cwd, sessionId);
     }
 }
 
-// Run as the Stop hook only when invoked directly. A require() of this file
-// (the kit-doctor load check) then verifies it parses and its
-// kit-compact-lib.js dependency resolves, without executing the hook.
+// Run as the Stop hook only when invoked directly, so a require() of this file
+// loads its module without stopping anything: the throttle below is read that
+// way by the stamp audit.
 if (require.main === module) {
     try { main(); } catch { /* never trap the session */ }
     process.exitCode = 0;
 }
+
+// The throttle is exported because the stamp audit reads a session-written
+// stamp against this heartbeat and needs the window in which the hook declines
+// to restamp. One spelling of the figure serves both, so the bound and the
+// behaviour it describes cannot drift apart.
+module.exports = { HEARTBEAT_THROTTLE_MS };

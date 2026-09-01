@@ -219,6 +219,28 @@ test('seat-stop: a registered session gets its heartbeat stamped', () => {
     }
 });
 
+test('seat-stop: the stamp reaches the heartbeat and no declaration field', () => {
+    const f = fixture();
+    try {
+        // `Status-updated:` is the seat's own declaration and the marker leg
+        // below reads it as one, so a hook that stamped it would be reading its
+        // own writing and every turn end would bank a boundary nobody declared.
+        // The heartbeat assertion is the control: the hook did run and did
+        // write, so the untouched declaration is a bound rather than a no-op.
+        const declared = iso(30 * 60 * 1000);
+        const entry = writeEntry(f, { heartbeat: 'none', statusUpdated: declared });
+        const started = fieldOf(entry, 'Started');
+        assertAllowsStop(runHook(f));
+        assert.notStrictEqual(fieldOf(entry, 'Heartbeat'), 'none', 'the hook wrote the entry');
+        assert.strictEqual(fieldOf(entry, 'Status-updated'), declared,
+            'and left the declaration exactly as the seat wrote it');
+        assert.strictEqual(fieldOf(entry, 'Started'), started,
+            'and the takeover stamp with it');
+    } finally {
+        cleanup(f);
+    }
+});
+
 test('seat-stop: a heartbeat fresher than the throttle window is left alone', () => {
     const f = fixture();
     try {
