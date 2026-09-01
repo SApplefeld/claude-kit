@@ -1200,3 +1200,199 @@ widened once.
 Commit model in effect: Commit-and-Push. This entry commits alone, on the precedent interim boards 1 to 7
 set in this plan; section 2's code and its `docs/security-model.md` prose stay unstaged until the whole
 gate has run, since under this model the section commit goes straight to main.
+### Interim board 9 - 2026-09-01
+
+IN-FLIGHT SECTION AND ITS STAGE. Section 2 is implemented and has had six implementer fix rounds; the
+sixth round's own review is now adjudicated. It CANNOT close: three Majors are confirmed at the lines,
+one of them a fresh false claim written BY the fix that was dispatched to correct the previous false
+claim, and a cluster of comment, test-scope and reader-discrimination Minors goes to a seventh round.
+Sections 3, 4 and 5 are not started.
+
+WHAT FIX ROUND 6 DELIVERED, VERIFIED RATHER THAN ACCEPTED. All ten items landed and the controller
+confirmed each at the lines rather than from the report. `HOLD_NUDGE_HEALABLE` is exported and the
+checkpoint CLI's replacement promise is driven off membership in it, with a cross-component pin built
+in three layers (a behavioural table over all five readings, a coverage assertion driven off the
+constant so a reason added with no fixture fails loudly, and a source-side net with a control on a
+withheld synthetic reason name). `writableOrAbsent` moved below the heal, so an oversized and
+unwritable stamp in a writable directory is now healed rather than refused forever. The status verb's
+paths route through `displayPath` at the channel. The controller re-ran the lane itself: 505 tests /
+504 passing / 0 failing / 1 skipped, exit 0 read from the run's own marker file, against the recorded
+502 / 501 / 0 / 1, so plus 3 and plus 3 with failures and skips unchanged. The one skip is still the
+POSIX-only `O_NOFOLLOW` pin, confirmed skipped in the log by name rather than made to pass.
+
+TWO ITEMS CAME BACK BETTER THAN THE BRIEF ASKED FOR, and both are worth the record. The hardlink
+paragraph's repair enumerated a FIFTH mechanism the controller's own brief had not named, `trimGateLog`
+renaming a rebuilt file over the log once it crosses its cap, which orphans a planted link exactly as
+the other writers do; so the one path the brief called "writes through" is now correctly stated as
+writing through until the next trim. And the item-9 wording fix was reached the long way: the
+implementer first built the repair the brief named, watched the lane redden at a pin in a file outside
+its own scope, read that pin, and took the brief's second option instead. The controller confirmed the
+pin at `test/compact-deferral-nudge.test.js:1880`, which forbids `isFile()` in that reader because its
+next act is an OPEN of the same name, and a kind settled on a name it then opens is the swap window the
+shared bounded reader exists to close. The brief's first option would have reintroduced it. The
+implementer was right and the brief was wrong.
+
+MAJOR, CONFIRMED, AND IT IS THE FIX ITSELF THAT IS FALSE. Round 6 was dispatched to correct a count
+saying "the five legs name different remedies". It wrote "the five reasons draw FOUR remedies between
+them", explaining one sharing (`unreadable` and `lstat`) and reaching four by five-minus-one. The
+controller counted the code the same round wrote: `reportHoldStamps` composes exactly THREE distinct
+`remedy` values and FOUR distinct `lead` shapes, because round 6's own item-1 change made `oversized`
+and `kind` share a remedy by driving both off `HOLD_NUDGE_HEALABLE`. So the sentence misses the sharing
+the round itself created, and the count is wrong for a reason that did not exist before the round
+started. This is the sharpest instance this plan has produced of the class it keeps meeting: a
+restated count is a claim about code that is moving underneath it, and the round that moves the code is
+the round least able to see it.
+
+MAJOR, CONFIRMED, THE GUARD LIFTED TO THE CHANNEL IS UNSOUND FOR THE PATH CLASS IT NEWLY COVERS.
+`displayPath` decides the home prefix with a bare `text.startsWith(home)`, no separator boundary and no
+case fold. That was sound while its only caller was the transcript path, which is composed FROM
+`os.homedir()` and so matches byte-for-byte by construction. Round 6 newly routed cwd-derived paths
+(`gateStatePath`, `holdNudgePath`, both resolving through `path.join(cwd, '.kit')`) and the operator's
+own `--project` value through it, and both failure directions become reachable. Over-elision: a home of
+`C:\Users\Admin` against a project at `C:\Users\Administrator\repo` prints `~istrator\repo\...`, on the
+very leg whose remedy tells the operator to remove that file. Under-elision: a cwd differing only in
+case fails the test and prints the OS account name raw into a channel a model reads, which is the exact
+property `docs/security-model.md` asserts this report has. The library one file away already does it
+correctly with `path.relative`, which is boundary-aware and case-insensitive on win32. Amendment 3 got
+the guard to the channel and did not get it right at the channel, which is a distinction worth keeping.
+
+MAJOR, CONVERGED FROM THE ADVERSARIAL AND SECURITY LENSES INDEPENDENTLY. The new `displayPath` header
+claims "Every path this CLI prints goes through here" and two prints in the same file do not:
+`cmdOpen` and `reportCheckpoint` both print a plan path through `sanitize` alone. So Amendment 3's
+sweep over the channel's other callers was incomplete and unstated per caller, which is the amendment's
+own failure mode rather than a new one. The security lens added the reach the adversarial lens did not:
+`cp.plan` is read unvalidated from a user-writable checkpoint file with no per-field cap, so a planted
+absolute plan value prints the home prefix into that same model-read channel, and a value past the cap
+is shortened with none of the "[path cut to fit]" mark `displayPath`'s own header says it exists to
+provide. The leak is pre-existing; what the round introduced is the universal claim that would keep the
+next author from adding the guard.
+
+MINORS GOING TO ROUND 7. The `lead` half of the status line still filters on literal reason names while
+the `remedy` half rides the exported constant, so a sixth healable reason would print "cannot be read"
+beside "the next hold directive replaces it" in one self-contradicting line, and the new pin cannot
+catch it because it asserts a fixture per reason rather than a lead per reason. The elision test's name
+claims the whole report where its staging reaches two legs, and its fixture creates the repo INSIDE the
+fixture home, so every asserted path is home-prefixed by construction and neither failure direction
+above can be exercised by it. A neighbouring sentence claiming every writer renames through an O_EXCL
+temp is falsified eight lines later by the round's own hardlink paragraph. The generalized resolver
+sweep gained a backreference and with it an unstated limit, a resolver rebinding its parameter to a
+local escaping the class silently. Two reader-discrimination Minors from the blind lens: the
+`goalStateAbsent` stand-down is wider than the uncertain reading it was written for, so a goal state the
+gate treats as determinate-unusable leaves the nudge permanently silent on a session the gate is
+actively holding; and a future-dated PEER stamp is not merely skipped but DELETED, since the writer
+rebuilds the file from the reading, which the header's justification covers only for the reader's own
+stamp. And `displayPath`'s cut marker is computed on the pre-sanitize length.
+
+DOCS CORRECTED IN THIS BOUNDARY BY THE CONTROLLER, since `docs/` is barred to subagents. Two
+`docs/security-model.md` items, both raised by the security lens and both confirmed at the lines. The
+document still said the opt-in link refusal's win32 residue is carried by "that one caller ... because
+the read it guards is one whose target is not repository-supplied"; there are two callers now, and the
+justification is false for the more hostile of them, since the hold-stamp read's target sits in a
+project's own `.kit/` which this same document elsewhere treats as repository-carriable. Restated for
+both callers with each one's residue bounded on its own terms. And the residual paragraph enumerated
+four redirect targets as READS when the hold-stamp path gained an unlink in round 5, so a redirect
+landing at the far end of a symlinked ancestor lands a delete there; the enumeration now says so, scoped
+to the ancestor case since `.kit` itself is screened, and bounded to the one fixed filename.
+
+A CONTAMINATION CHANNEL IN THIS PLAN'S OWN REVIEW INSTRUMENT, FOUND BY THE INSTRUMENT AND CONFIRMED
+WIDER THAN REPORTED. The blind lens disclosed that a content grep of its own, run for an unrelated
+symbol, surfaced this plan's intent narrative out of `.kit/scratch/`, which holds the plan doc, the
+dispatch briefs and prior reviewers' reports. The controller checked the reach rather than the anecdote:
+227 files under that path carry the plan name, the amendments block or the board entries. The blind
+dispatch withholds the spec path, the plan, the section name and the docs hunks, and every one of those
+is reachable by grep from inside the tree the reviewer is asked to read. So the blindness on this plan
+has been requested rather than enforced, at every round. It does not invalidate this round's blind
+findings, which are correctness findings standing on their own lines and which the lens disclosed
+honestly, and the plan's other rounds are not re-opened on it. It is a defect in the kit's own dispatch
+discipline: the scratch path exists so bulky artifacts stay OUT of the diff, and it puts them INSIDE
+the grep. Captured to the kaizen inbox as kit friction rather than repaired here, since the repair is
+the kit's dispatch rule and not this plan's code.
+
+FINDINGS STANDING AS ALREADY-ROUTED, re-found independently and correctly. The blind lens rated the
+marker collision a Major for the FOURTH time across this plan's rounds, this time reaching it from
+`seat-stop.js`'s own turn-end write rather than from the CLI, which is the higher-rate writer and
+strengthens section 4's case rather than changing it. It re-found the installer erasure of
+`compactNudgeFloor`, which is section 5's. And it rated the `replaced` note's inability to tell a
+lapsed marker from a live one a Minor, which section 4 retires by deleting that note outright. All
+three stand where they are.
+
+THE ROUND. Three reviewers via the Workflow route at model opus and effort max, which the Agent tool
+cannot set; all three resolved to claude-opus-5 read from the run record, so no substitution and no
+compensation notch is owed. The first-turn reading was taken, with a positive control that spoke at 198
+assistant lines. Workflow parallelism caps at two on this host, so the security reviewer had no
+transcript at the first-turn window and started as the first finished, which is expected behaviour
+rather than a never-started dispatch. The tree-state bracket returned a delta and it was NOT a
+reviewer's: three `sidecar/` files went from modified to clean, which is a peer's commit landing, and
+authorship was established by reading the commit's own file list rather than by recognizing the paths.
+
+HEAD MOVED UNDER THIS SESSION TWICE MID-ROUND, and neither commit touched a section 2 file, confirmed
+by diffing each commit's own file list against this section's. `9ca7471` and `c67ddd7` landed before the
+round was dispatched and `b3dd8d0` during it; all three are the peer's sidecar effort plus the kaizen
+inbox. The review round's base ref was taken as `9ca7471` rather than a stale one.
+
+A PEER-ROUTED GATE READING, AND WHAT THIS SESSION OWES IT. The machine coordinator routed a reading it
+marked reported rather than confirmed: a peer seat's whole gate at commit `c67ddd7` read 2794 / 2779 / 8
+/ 7, exit 1, with six of the failures in exactly three families that are this section's own
+(kit-compact-gate 3, hook-canary 3, compact-deferral-nudge 1) and none in the sidecar families its own
+diff touched. The coordinator then confirmed first-hand, against the worktree list, that the run was
+taken in THIS shared checkout rather than a separate one. That makes the collateral reading the live
+hypothesis: three hook-canary reds is the exact signature of a stale build stamp against uncommitted
+hook edits, a recorded property of this repo, and the other four sit in the two suites an implementer
+was actively rewriting at the time. Neither half is confirmed and this session has not reproduced any
+of it. The section's owed whole gate is what answers it, on a comparable whole-gate basis, and
+`c67ddd7` is now in this checkout's own history so that run covers it. If those six survive a
+stamp-refreshed whole gate they are this section's to own before it closes.
+
+A PEER'S STAGED WINDOW OPENED AND CLOSED ACROSS THIS ROUND. The coordinator warned that a single staged
+rename sat in this shared index, so a pathspec-less commit from this session would have carried another
+seat's archival under a durable-boundary message. It then verified the window closed at `b3dd8d0` with
+the index empty, running its silent check against a control so the empty reading meant something. This
+session read `git diff --cached --name-only` itself at the bracket and again before this entry's commit
+rather than trusting either message, and will read it again before every later commit, which is the
+standing rule rather than this window's remedy.
+
+CURRENT GATE BASELINE. Targeted lane over the section's files plus the whole-tree pins whose subjects
+they are: 505 / 504 / 0 / 1, exit 0, run by the controller with the exit code read from the run's own
+marker file and the counts read unanchored, since node's summary lines carry a multi-byte prefix that
+makes an anchored pattern return nothing on a PASSING run. The whole gate is still OWED at the section
+close, now three times over: for the push to main, for this session's earlier merge of eighteen commits,
+and now to answer the peer-routed collateral reading above.
+
+BOX, NAMED RATHER THAN ASSUMED AWAY. A live foreign claim from another repo (`AI-OS: Worker`, 600
+seconds from 01:21:52Z) stood when the lane was due, with ten heavy foreign processes beside it. This
+session waited out its full declared bound on a readiness poll rather than a fixed sleep, then found the
+claim still on disk past that bound; release is the holder's act, so the lane ran under NAMED CONTENTION
+with the claim file deliberately NOT written, which is what the protocol permits and what keeps a
+proceeding session from replacing a live holder's claim with its own. Heavy processes had fallen from
+ten to four by the spawn. The fix round's own runs waited out two further foreign claims rather than
+contending, and wrote and deleted their own claim scoped to this session's id with the clock read at the
+write.
+
+LOCAL STATE ALTERED, NAMED because it is not this session's to leave unreported. The build stamp
+`plugins/claude-kit/.claude-plugin/build-info.json` and `plugins/claude-kit.zip` were regenerated again,
+by the fix round and once more by the controller before its own lane, both gitignored build outputs.
+
+FOREIGN UNCOMMITTED WORK IN THIS TREE IS NOW LARGELY COMMITTED BY ITS OWNER. The peer's sidecar effort
+landed across `c67ddd7`, `9ca7471` and `b3dd8d0` including its own plan's archival, and
+`kaizen/notes-SCOTT-CLAUDE.md` was banked by its owner in `9ca7471`. No commit of this session carries
+any of those paths, and this session's own kaizen note for the contamination channel above is therefore
+appendable at the next pass rather than blocked behind a peer's dirty file.
+
+NEXT ACTION PER SECTION. Section 2: a seventh fix round, narrower again, over items that are all
+carriers or instruments rather than mechanism. Its items: make `displayPath` decide containment by
+`path.relative` rather than `startsWith` so neither the boundary nor the case direction can fire, and
+give the elision pin a fixture that can actually exercise both; drive the status line's lead off the
+same membership test its remedy already rides, and extend the cross-component pin to assert a lead per
+reason; correct the remedy count to three against the code the last round wrote; either route the two
+plan-path prints through the channel guard or bound the header's claim and say per caller why a plan
+path is out of scope; the O_EXCL neighbour sentence; the sweep's unstated rebinding limit; the two
+reader-discrimination Minors; and the pre-sanitize cut marker. Then the whole gate under a fresh
+baseline, then Chapter 2 and the commit. Section 3: not started, scope widened three times. Section 4:
+not started, the marker-collision repair, now re-found by an independent lens in FOUR separate rounds.
+Section 5: not started, scope widened once.
+
+Commit model in effect: Commit-and-Push. This entry and its two `docs/security-model.md` corrections
+commit together, departing from interim boards 1 to 8's doc-only precedent for one stated reason: those
+corrections are a false security claim this round's own review confirmed, and a false security claim
+does not outlive the commit that falsifies it. Section 2's code stays unstaged until its whole gate has
+run, since under this model the section commit goes straight to main.
