@@ -44,8 +44,20 @@ Confirmed 2026-09-01 by reading the lines in this checkout.
   `scripts/memq.js:1755`. A fourth function, `memq.js:510` `sanitizeProjectPath`, is a different
   thing again: it flattens a whole absolute path to alphanumerics and dashes, which PRESERVES the
   account name in a new spelling rather than removing it.
-- `kit-compact-checkpoint.js`'s `displayPath` is the tree's only home-eliding renderer. It decides
-  containment with `path.relative`, which is boundary-aware and case-insensitive on win32.
+- `kit-goal.js:163`, `:296` and `:338` print `sanitize(result.reason)` from the same shared library
+  whose refusal reasons embed an absolute path, so that CLI's channel carries the account name on
+  its failure legs. It is a second channel of the same shape rather than a second caller of one
+  channel, which is why its guard belongs at its own emitters rather than in the shared library the
+  two have in common.
+- `kit-compact-checkpoint.js` routes every one of its own writes through two emitters that elide the
+  home directory in both its literal and its flattened spelling, and a source-side pin holds them
+  there. That is the shape this plan generalizes, and it carries one residual worth reproducing
+  rather than repeating: its sanitizer caps a value before the composed line reaches the elision, so
+  a home path long enough to span that cut leaves a fragment behind. Whatever this plan lifts should
+  put the cap on the channel's side of the elision.
+- `kit-compact-checkpoint.js`'s `displayPath` is the tree's only home-eliding renderer for a value
+  known to be a path. It decides containment with `path.relative`, which is boundary-aware and
+  case-insensitive on win32.
 - The deleting-versus-replacing split matters beyond tidiness: a renderer that DELETES non-ASCII
   characters can hand an operator an actionable path that does not exist on disk, which the
   durable-boundary plan's section 2 had to fix separately in its own tool.

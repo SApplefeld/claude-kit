@@ -1512,3 +1512,109 @@ round. Section 5: not started, scope widened once.
 Commit model in effect: Commit-and-Push. This entry, the amendment above and the retraction in
 `docs/security-model.md` commit together; section 2's code stays unstaged until its whole gate has
 run, since under this model the section commit goes straight to main.
+
+### Interim board 11 - 2026-09-01
+
+IN-FLIGHT SECTION AND ITS STAGE. Section 2 is implemented and has had EIGHT implementer fix rounds.
+Round 8's three-lens review is adjudicated and round 9 is dispatched and in flight. Sections 3, 4
+and 5 are not started.
+
+THE STOPPING RULE WAS OVER-READ IN BOARD 10, AND THIS ENTRY CORRECTS IT. That entry recorded "by the
+adopted stopping rule there is no round 9". The rule as adopted reads that a fix round is justified
+only when it removes a hand-maintained cross-file claim or a behavioural defect, and that a round
+whose whole content is correcting the TEXT of such a claim is not run. Round 8's review found
+behavioural defects, so the rule licenses this round rather than barring it; what the rule bars is a
+text-only round, which is why nine of the review's findings are excluded from round 9's brief.
+Doctrine settles the same question independently from the other side: a security finding of Major
+weight is fixed before the section closes or raised to the operator, never parked.
+
+WHAT ROUND 8 DELIVERED, CONFIRMED BY THE CONTROLLER AT THE LINES. All 46 of the checkpoint CLI's
+writes now route through two emitters, and exactly two descriptor writes remain in the file, both
+inside them. The false universal "Every path this CLI prints goes through here" is gone from
+`plugins/` and `test/`, along with its second carrier, and neither was restated. The sanitizer marks
+alteration as well as truncation. The lane ran 396 / 395 / 0 / 1, exit 0 read from its own marker
+file, against a 394 / 393 / 0 / 1 baseline: two tests added, none failing.
+
+A COUNT DISPUTE THAT DISSOLVED ON RE-MEASUREMENT. The implementer reported that the brief's recorded
+comment-count baseline of 23 did not reproduce, measuring 25. The controller re-ran its own
+predicate against the implementer's saved pre-round copy and got exactly 23, so the disagreement was
+two different predicates rather than a wrong number, and the count fell under both readings. Recorded
+because the last two rounds each turned on a brief figure that was genuinely wrong, and this one was
+not.
+
+THE CHOKE POINT DOES NOT HOLD ITS PROPERTY, ON FOUR LIVE ROUTES. Two lenses executed the shipped
+code rather than reasoning about it, and the controller confirmed the decisive one by reading.
+The sanitizer strips non-ASCII characters and caps the value AT THE COMPOSITION SITE while the
+elision patterns are compiled from the RAW home directory, so on any machine whose account name
+carries an accent or a CJK character the pattern can never match the text that is actually emitted
+and the guard is inert. The literal pattern anchors only its trailing edge, so on POSIX a home
+spelling embedded mid-path over-elides into a path that is nowhere on disk. A cut landing exactly at
+the home's last character prints the account name WHOLE rather than as a fragment, the appended mark
+starting with a space that the trailing boundary class does not admit. And an uncaught throw in
+`main` bypasses the emitters entirely, printing Node's own stack trace with the full plugin-cache
+module path, which the source-side pin cannot see either; the sibling CLI already carries that guard
+and documents why.
+
+THE SECTION ADDED A SECOND UNELIDED PRODUCER IN THE SAME ROUND THAT BUILT THE GUARD. The deferral
+nudge emits a home-anchored plugin path into the model's context, its own path grammar admitting the
+account name because that grammar screens metacharacters rather than eliding a prefix. It is
+Standing Brief Amendment 3's exact shape, a producer one file from the guard reproducing the
+protections it could see and dropping the one it could not, and the hook's own header claiming it
+reads no path is a carrier under Amendment 1.
+
+AMENDMENT 4'S WORKED COUNTER-EXAMPLE WAS REPRODUCED BY THE ROUND THAT QUOTED IT. Round 8's
+source-side pin was required to draw its control from outside the pattern's own literals. The control
+it built varied the bypassing write's POSITION, nesting it in an arrow function, while keeping the
+identifier the pattern was handed, so it proved the instrument runs and proved nothing about the
+identifiers the pattern cannot reach. The predicate is also short of its own channel, admitting the
+console family and the descriptor-numbered writes. Both lenses found it independently, and the
+controller had accepted the implementer's report of it, which is the adjudication error worth
+recording: the report said the control was withheld and the check was whether it actually was.
+
+A TEST WHOSE GREEN IS A PROPERTY OF THIS BOX. Round 8's behavioural case stages its home fixture
+under the machine's temp directory, which is seven characters here and leaves about eight characters
+of margin under the print cap; on a default Windows temp path the elision assertion goes red. The
+trap is that the obvious repair, dropping that assertion, leaves the absence assertion passing
+because the cap REMOVED the account name rather than because any guard fired. Round 9 is told to
+shorten the fixture and to relax neither assertion.
+
+TWO FINDINGS ROUTED TO SECTIONS RATHER THAN TO A ROUND. The blind lens found that the only operator
+knob this section ships is rewritten wholesale by both writers of the file it lives in, which is
+section 5's entire subject; and that the role-boundary marker is project-scoped while the directive
+that names it is per-session, so two held seats in one checkout unmake each other's declarations,
+which is section 4's. The second has now been re-found by an independent lens in a SIXTH round,
+which is the strongest evidence yet that section 4 is real work rather than a tidy-up.
+
+ONE FINDING ROUTED OUT OF THIS PLAN. A second command-line tool prints the same library's refusal
+reasons through a plain sanitizer, so its channel carries the account name on its failure legs. It is
+a second channel of the same shape rather than a second caller of one channel, so its guard belongs
+at its own emitters; it is recorded in the output-channel-eliding spec's evidence, together with the
+cap-before-elision residual that plan should lift in the corrected order.
+
+THE SECURITY DOCUMENT IS DELIBERATELY NOT TOUCHED THIS BOUNDARY. Its paragraph states both output
+residuals as open. Round 8 closed them only partly, and the review shows the property still fails on
+the routes above, so the honest text is not yet writable and the current text under-claims rather
+than over-claims. It is written once, after round 9 settles the code. The controller widened this
+same paragraph falsely one boundary ago, so waiting is the correction rather than an omission.
+
+THE ROUND. Three reviewers via the Workflow route at model opus and effort max, which the Agent tool
+cannot set; all three resolved to claude-opus-5 read from the run record, so no substitution and no
+compensation notch is owed. First-turn readings were taken on every dispatch with controls that
+spoke. Workflow parallelism caps at two on this host, so the security lens started as the first
+finished, which is expected rather than a never-started dispatch. The tree-state bracket around the
+round returned NO delta, so all three lenses held read-only.
+
+CURRENT GATE BASELINE. 396 / 395 / 0 / 1, exit 0, over the four test files the round's lane names,
+read from the run's own marker file. The whole gate is still OWED at the section close, three times
+over, and it is what settles the section.
+
+NEXT ACTION PER SECTION. Section 2: adjudicate round 9, whose eleven items are the behavioural
+defects above plus the deletion of two headers round 8's own change falsified. Then the whole gate
+under a fresh baseline, the security document written once against the settled code, then Chapter 2
+and the commit. Section 3: not started, scope widened three times. Section 4: not started, the
+marker-collision repair, re-found by an independent lens in a sixth round. Section 5: not started,
+and round 8's review supplied it with a confirmed second instance.
+
+Commit model in effect: Commit-and-Push. This entry and the evidence added to the output-channel
+spec commit together; section 2's code stays unstaged until its whole gate has run, since under this
+model the section commit goes straight to main.
