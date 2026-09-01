@@ -65,6 +65,23 @@
 // is an instrument that could not measure, and a stale stretch is one that
 // declined to.
 //
+// LIVENESS. A stopped daemon and an idle fleet produce the same nothing: the
+// verdict stream simply stops, and no reader of the logs, the spool or the
+// findings can tell which happened. So the daemon stamps a heartbeat file,
+// `logs/heartbeat.json` under the state root, at startup and then at most once
+// a minute from the drain, carrying the version, the moment and this process's
+// pid. It is written whatever the pass found, because an idle daemon is exactly
+// the case a reader cannot otherwise place, and it is a small file rewritten by
+// rename rather than a line in a log, so a minute's worth of liveness costs no
+// growth. A stamp older than a couple of minutes says this daemon is not
+// running, whoever is reading: the scheduled-task wrapper prints its age when
+// it stands down, and any session can read the file directly.
+//
+// Every line this daemon reports carries the moment it was written, ahead of
+// the name. The daemon log is append-only across restarts and its readers reach
+// for it after the fact, so a banner or a diagnostic with no time on it cannot
+// be placed against the outage it belongs to.
+//
 // WHERE THE DATA GOES. sidecar/endpoint.js is the module that puts spool
 // content on the wire, and its header states the posture in full: every
 // judgment POSTs the intent, the command and its output off this VM to the
@@ -144,6 +161,7 @@
 
 'use strict';
 
+const fs = require('fs');
 const path = require('path');
 
 const { loadEndpointConfig, remoteEndpointWarning, defaultStateDir, statePaths } = require('./config.js');
@@ -203,6 +221,36 @@ const REPORTED_INDEX_MAX = 64;
 // A bound on chunks read from one file in one pass, so a pass over a huge
 // backlog still ends and the watch loop still gets its turn.
 const MAX_CHUNKS_PER_FILE = 512;
+
+// The liveness stamp: its name under the logs directory, the schema version it
+// carries, and the floor between two writes of it.
+//
+// A minute is the resolution the readers need and the churn they do not. The
+// question the file answers is "is this daemon running", asked by a wrapper
+// deciding whether to start one and by a person reading a log after a stretch
+// of silence, and neither of them acts on a finer answer than that: the readers
+// call a stamp stale in minutes, so a finer stamp would be spent resolution.
+// What the floor buys is that the cost of asking is one clock comparison per
+// entry rather than a rename per entry, on a daemon whose poll is two seconds
+// and whose backlog passes are thousands of entries long.
+const HEARTBEAT_NAME = 'heartbeat.json';
+const HEARTBEAT_VERSION = 1;
+const HEARTBEAT_MIN_INTERVAL_MS = 60 * 1000;
+
+// One line as it reaches stderr: the moment it was written, this daemon's name,
+// then the text.
+//
+// The timestamp is UTC and ISO 8601, the same spelling every record this daemon
+// writes carries, so a log line and a verdict describe one instant in one
+// vocabulary. It is spelled here alone, and the two writes that happen outside
+// a context (an unusable command line, an unhandled error) call it as the
+// reporter does: a diagnostic printed without a time on it cannot be placed
+// against the outage it belongs to, and those two are the lines a reader most
+// needs to place.
+function reportLine(text, nowMs) {
+    const ms = Number.isFinite(nowMs) ? nowMs : Date.now();
+    return `${new Date(ms).toISOString()} kit-sidecar: ${text}\n`;
+}
 
 function sleepMs(ms) {
     return new Promise((resolve) => { setTimeout(resolve, ms); });
@@ -303,6 +351,11 @@ function makeContext(rawOptions, deps) {
     // gets the store's own answer rather than a path this daemon decided on.
     const memoryRoot = (typeof options.memoryRoot === 'string' && options.memoryRoot !== '')
         ? path.resolve(options.memoryRoot) : null;
+    // The clock is read once here so the default reporter stamps its lines from
+    // the same clock the records carry: a replay driving a fixed clock through
+    // `now` would otherwise date its records in the replayed time and its log
+    // lines in this afternoon's.
+    const now = (deps && typeof deps.now === 'function') ? deps.now : Date.now;
     return {
         options,
         paths: statePaths(stateDir),
@@ -310,9 +363,14 @@ function makeContext(rawOptions, deps) {
         deps: {
             fetchImpl: (deps && deps.fetchImpl) || null,
             sleep: (deps && typeof deps.sleep === 'function') ? deps.sleep : sleepMs,
-            now: (deps && typeof deps.now === 'function') ? deps.now : Date.now,
+            now,
+            // The timestamp rides on the DEFAULT reporter and nowhere deeper. A
+            // caller that brought its own reporter is collecting the lines
+            // rather than reading them off a terminal, and stamping text it is
+            // about to match on would make this daemon's own diagnostics a
+            // moving target for every consumer of them.
             report: (deps && typeof deps.report === 'function') ? deps.report
-                : (text) => { process.stderr.write(`kit-sidecar: ${text}\n`); }
+                : (text) => { process.stderr.write(reportLine(text, now())); }
         },
         config: null,
         state: logs.emptyState(),
@@ -348,8 +406,100 @@ function makeContext(rawOptions, deps) {
         // The UTC day the last retention pass ran for. The watch loop runs
         // retention again when this stops being today.
         retentionDay: null,
+        // When the heartbeat was last attempted, and whether that attempt
+        // failed. The moment is stamped on a failed attempt as well as a
+        // successful one, so a state root that cannot take the file is retried
+        // once a minute rather than on every two-second poll; the flag is what
+        // rations the report line to one per run of failures, on the rule
+        // `reportedUnreadable` above follows.
+        heartbeatAt: null,
+        heartbeatFailed: false,
         stopping: false
     };
+}
+
+// Stamp the liveness file, unless the floor since the last attempt has not
+// passed and the caller did not force it. Forced at startup, because a process
+// that has just come up is the news a reader most wants, and forced at a
+// `--once` pass, which is the only pass that run will make.
+//
+// WHY THE WRITE IS A RENAME, AND WHAT THAT DOES AND DOES NOT GUARD. The file is
+// rewritten rather than appended to, and its readers are other processes opening
+// it at a moment of their choosing: the scheduled-task wrapper reads it before
+// deciding what to say about a daemon it found running. Half a JSON object is a
+// heartbeat that reads as unreadable, which is the reading reserved for a daemon
+// in trouble, so the bytes land in a sibling and the rename is what publishes
+// them.
+//
+// The two names are exposed differently and are covered differently. The
+// published name needs no refusal: a rename REPLACES whatever sits at it, link
+// or file, without following it, so a link planted there is unlinked rather than
+// written through. The sibling is the name the bytes actually go to, so it is
+// the one that is guarded, and it is created exclusively: an exclusive create
+// fails outright where anything already exists at that name, which closes the
+// window between a check and a write that a stat-then-write leaves open. A
+// leftover sibling from a killed run is removed first, so the exclusivity is a
+// guard against a planted name rather than a self-inflicted deadlock.
+//
+// Nothing here throws, and nothing here stops a drain. A heartbeat that could
+// not be written costs a reader the ability to tell this daemon from a stopped
+// one, which is worth a counted, reported failure and nothing more. It costs no
+// record, which is why the count it rises is not the one every other failed
+// write in this daemon rises: see logs.js on `heartbeatFailures`.
+function writeHeartbeat(ctx, force) {
+    const nowMs = ctx.deps.now();
+    // The gap is measured in absolute terms. A clock that steps BACKWARD, which
+    // an NTP correction does, would otherwise leave a negative gap that never
+    // reaches the floor, and the stamp would go quiet for as long as the step
+    // was large: a daemon silenced by the correction of the very clock its
+    // readers date it by.
+    if (force !== true && Number.isFinite(ctx.heartbeatAt) && Number.isFinite(nowMs)
+        && Math.abs(nowMs - ctx.heartbeatAt) < HEARTBEAT_MIN_INTERVAL_MS) return;
+
+    const file = path.join(ctx.paths.logsDir, HEARTBEAT_NAME);
+    const tmp = `${file}.tmp`;
+    let wrote = false;
+    // The guard runs before anything touches the path, and the clearing of a
+    // stale sibling runs after it. Reversed, the unlink would delete a planted
+    // link before the guard could see it, and a name the guard exists to refuse
+    // would be quietly replaced by a fresh file and written: safe in its bytes,
+    // since unlink removes a link rather than following it, but silent about a
+    // planted name a reader of this counter is meant to hear about.
+    if (logs.guardWriteTarget(tmp).ok) {
+        let handle = null;
+        try {
+            // A leftover from a run that died between the create and the
+            // rename would otherwise fail the exclusive create below forever.
+            try { fs.unlinkSync(tmp); } catch { /* absent is the ordinary case */ }
+            handle = fs.openSync(tmp, 'wx', 0o600);
+            fs.writeFileSync(handle, JSON.stringify({
+                v: HEARTBEAT_VERSION,
+                ts: new Date(Number.isFinite(nowMs) ? nowMs : Date.now()).toISOString(),
+                pid: process.pid
+            }), { encoding: 'utf8' });
+            fs.closeSync(handle);
+            handle = null;
+            fs.renameSync(tmp, file);
+            wrote = true;
+        } catch {
+            if (handle !== null) { try { fs.closeSync(handle); } catch { /* closing a failed write */ } }
+            try { fs.unlinkSync(tmp); } catch { /* the rename is what mattered */ }
+        }
+    }
+
+    ctx.heartbeatAt = nowMs;
+    if (wrote) {
+        ctx.heartbeatFailed = false;
+        return;
+    }
+    ctx.state.counters.heartbeatFailures += 1;
+    // Once per run of failures rather than once a minute for as long as the
+    // daemon lives: the condition is a path that cannot be written, which does
+    // not clear on its own, and a line a minute would bury the diagnostics this
+    // log exists to carry. The count keeps rising either way.
+    if (ctx.heartbeatFailed) return;
+    ctx.heartbeatFailed = true;
+    ctx.deps.report(`could not write the ${HEARTBEAT_NAME} liveness stamp under the logs directory; until it writes again a reader cannot tell this daemon from a stopped one`);
 }
 
 // Read the config, create the state root and the spool root, run retention, and
@@ -404,6 +554,11 @@ function startup(ctx) {
         ctx.state.counters.stateResets += 1;
         ctx.deps.report(`offset state reset (${loaded.detail}); calls already judged may be judged again`);
     }
+
+    // The first stamp, after the directories are known good and unforced by any
+    // floor: a daemon that has just come up is precisely what a reader holding
+    // a stale stamp is waiting to see.
+    writeHeartbeat(ctx, true);
 
     const retention = runRetention(ctx);
 
@@ -967,6 +1122,19 @@ function flushStale(ctx, pass) {
 // Judge one entry and write what came of it. Returns nothing the caller branches
 // on: a gap is as complete an outcome as a verdict.
 async function processEntry(ctx, pass, entry) {
+    // The stamp, per entry rather than per pass, because a pass has no upper
+    // bound on how long it takes. A post-outage backlog is thousands of entries
+    // at a second or so each, and three consecutive timeouts against the
+    // default ninety-second budget plus the reload window spend four and a half
+    // minutes on three of them; a daemon stamping only at the top of the pass
+    // would read as dead through exactly the stretch it was working hardest.
+    // The floor makes this one clock comparison per entry and at most one write
+    // a minute, and what it cannot bound is the gap inside a single entry: one
+    // judgment call plus its one retry is the longest this stamp can stand
+    // still while the daemon is healthy, which is what the contract's reading
+    // rule is set against.
+    writeHeartbeat(ctx, false);
+
     // The freshness horizon, ahead of both calls and of every record either one
     // would write. The skip is counted and accrued into this session's stale
     // stretch, and it earns no GAP record: a gap says the instrument could not
@@ -1214,6 +1382,15 @@ function newPass() {
 }
 
 async function drainOnce(ctx) {
+    // Ahead of the pass and whatever the pass finds. Liveness is the loop
+    // turning, not work arriving: an idle daemon is the exact case a reader
+    // cannot place from any other surface, and a stamp written only after a
+    // judged call would go quiet on a quiet fleet. The floor is what holds the
+    // per-entry cost to one clock comparison across a long backlog rather than a
+    // file write per entry; a `--once` run passes it, since its one pass is the
+    // only chance that run has to say it ran.
+    writeHeartbeat(ctx, ctx.options.once === true);
+
     const pass = newPass();
     ctx.runtime.endpointDown = false;
     ctx.runtime.laneBusy = false;
@@ -1330,7 +1507,7 @@ async function watch(ctx) {
 async function main(argv) {
     const parsed = parseArgs(argv);
     if (!parsed.ok) {
-        process.stderr.write(`kit-sidecar: ${parsed.error}\n\n${USAGE}\n`);
+        process.stderr.write(`${reportLine(parsed.error)}\n${USAGE}\n`);
         return 2;
     }
     if (parsed.options.help) {
@@ -1384,7 +1561,7 @@ if (require.main === module) {
         // the daemon rather than a fault of the spool or the endpoint. It is
         // still reported as one line rather than a stack, and the exit code is
         // what a supervisor reads.
-        process.stderr.write(`kit-sidecar: stopped on an unhandled error: ${(err && err.message) ? err.message : String(err)}\n`);
+        process.stderr.write(reportLine(`stopped on an unhandled error: ${(err && err.message) ? err.message : String(err)}`));
         process.exitCode = 1;
     });
 }
@@ -1392,6 +1569,9 @@ if (require.main === module) {
 module.exports = {
     DEFAULT_POLL_MS,
     DEFAULT_STALE_HORIZON_MS,
+    HEARTBEAT_NAME,
+    HEARTBEAT_VERSION,
+    HEARTBEAT_MIN_INTERVAL_MS,
     RELOAD_WINDOW_MS,
     MAX_CONSECUTIVE_FAILURES,
     MAX_CHUNKS_PER_FILE,

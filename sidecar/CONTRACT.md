@@ -16,6 +16,21 @@ under `~/.claude/kit-sidecar/`:
 - `inbox/<sessionId>.offset` - how far that session's valve has delivered,
   written by the hook and read by nothing else.
 - `logs/` - verdict logs, recognition logs, findings, and persisted offsets.
+- `logs/heartbeat.json` - the daemon's liveness stamp, written by the daemon and
+  readable by anything that needs to know whether it is running.
+
+Two more files sit under that root, placed there by the scheduled-task wrapper
+that starts the daemon (`sidecar/daemon-task.ps1`) rather than by either party
+to this contract, and named here because a reader of this directory meets them:
+
+- `daemon.log` - the daemon's own diagnostic stream. The bytes are the daemon's,
+  written to its stderr; the wrapper supplies the redirection that lands them
+  here, holds the file open for the daemon's life, and rotates it to
+  `daemon.log.old` on the start path alone.
+- `daemon-task.log` - the wrapper's own lines about its own decisions, normally
+  the stand-down ticks, plus the rare complaint from a tick that started a
+  daemon and could not rotate `daemon.log` first. Rotated to
+  `daemon-task.log.old` past 5 MB on every tick that writes to it.
 
 One path the daemon READS sits outside that root. The recognition duty opens
 each observed project's memory index, `<memory root>/projects/<segment>/memory/`
@@ -202,6 +217,95 @@ parsed call is accounted for by `parsed` = `judged` + `stale` + `gapped`. One
 line per pass names how many were skipped and the horizon in force; no line and
 no record names an individual entry, since an outage backlog is hundreds of
 them.
+
+## The daemon's liveness
+
+A stopped daemon and an idle fleet look identical on every surface described so
+far: the spool stops being consumed, the verdict logs stop growing, and the
+findings file says nothing either way. `logs/heartbeat.json` is the surface that
+separates them. One JSON object, replaced whole on every write by the sibling
+and rename described below:
+
+```json
+{ "v": 1, "ts": "2026-08-31T20:14:02.318Z", "pid": 4812 }
+```
+
+`v` is the schema version of this file alone, `ts` is the UTC instant of the
+write, and `pid` is the process that wrote it. A consumer reads the age of `ts`
+against its own clock: a stamp inside a few minutes is a daemon that is running,
+and an older one is a daemon that is not, whatever a process list says. **The
+`pid` is part of the reading, not a footnote to it.** A stamp is evidence about
+the process it names and about no other, so a consumer that found a daemon
+running compares that daemon's pid against this one before calling the stamp its
+liveness: a daemon pointed at another state root writes no stamp here, and
+yesterday's daemon leaves one that outlives it. The two disagreeing is the
+present-but-wedged case only when the pids match.
+
+A negative age is clock skew between the writer and the reader, not a defect and
+not a daemon reporting the future: the stamp carries the daemon's clock and the
+age is computed against the reader's.
+
+Cadence: **written at startup, then at most once a minute, checked once per
+spool entry the drain reaches** and once per pass besides, whatever that pass
+found. A pass that judged nothing still stamps it, because an idle daemon is
+precisely the state no other surface can distinguish from a dead one; a `--once`
+run stamps it at its pass, that pass being the only chance that run has to say
+it ran. Per entry rather than per pass because a pass has no upper bound: a
+post-outage backlog runs for minutes and a stretch of endpoint timeouts longer
+still, and a stamp taken only at the top of a pass would go stale through
+exactly the stretch the daemon was working hardest. What the cadence cannot
+bound is one entry: a single judgment call plus its one retry can hold the stamp
+still for the endpoint timeout plus the reload window, about three minutes at
+the shipped defaults, which is what the reading rule above is set against. The
+once-a-minute floor keeps the cost at one clock comparison per entry rather than
+a file write per entry, and a minute is finer than any decision made on it.
+
+The write is a sibling plus a rename, so a reader never sees half an object. The
+two names are exposed differently: the sibling is where the bytes go, so it is
+created exclusively and an existing name there fails the write outright, while
+the published name needs no refusal because a rename REPLACES what sits at it
+without following it, so a link planted there is unlinked rather than written
+through. **A failed write is counted in `heartbeatFailures` and reported, never
+thrown.** That counter is deliberately not `writeFailures`: every other write
+this daemon makes carries a record, so a failure there means a record is gone
+and consumers say so, while a failed stamp costs a reader the ability to tell
+this daemon from a stopped one and nothing else. The drain carries on judging.
+
+The stamp says nothing about capture. It is written by the daemon about the
+daemon, so a fresh heartbeat beside an empty spool means the consumer is alive
+and the fleet was quiet or the hook is not capturing, which are still two states
+this file cannot separate.
+
+The daemon's own diagnostics carry the same discipline. **Every line the daemon
+writes to stderr opens with the UTC ISO 8601 instant it was written**, then
+`kit-sidecar:`, then the text. Those lines are read after the fact, out of an
+append-only log that outlives many restarts, so a start banner with no time on
+it cannot be placed against the outage it belongs to. Nothing else about the
+lines changes, and the rule on what they may carry is unchanged: counts, call
+ids, file names, a pid, an instant and an age, never spool content.
+
+**Two log files carry those lines, and they are two because of a lock.** The
+daemon's stream lands in `daemon.log`, which the scheduled-task wrapper opens by
+redirection and holds open for the whole life of the daemon it started; Windows
+admits no second writer to a file held that way, so no later tick of that task
+can append to it while a daemon runs, which is exactly when a later tick has
+something to say. The wrapper's own lines therefore go to `daemon-task.log`
+beside it, spelled `kit-sidecar task:` behind the same timestamp and bound by the
+same rule on what a line may carry. Its stand-down line names the pids it found
+running and then the heartbeat's instant and age, or the pid the stamp belongs to
+where that is not one of them, or a named reason the stamp could not be read at
+all. Nearly every line in that file is a stand-down, since a tick that starts a
+daemon has nothing to report; the one exception is the complaint a starting tick
+writes when it could not rotate `daemon.log` past its cap and is appending to it
+as it stands.
+
+**Only one of the two logs is bounded.** `daemon-task.log` is checked against its
+5 MB cap on every tick that writes to it and rotates to `daemon-task.log.old`
+within a line of it. `daemon.log` is checked once, on the start path, by the tick
+that is about to open it: a tick that stands down never reaches that check, and
+renaming a file another wrapper holds open would fail in any case. So the daemon
+log grows unbounded for as long as one daemon lives and is rotated by the tick
+that starts the next one.
 
 ## The delivery inbox
 
@@ -517,8 +621,10 @@ structural:
 
 - **Capture can be switched off silently.** Removing the spool root stops
   capture at the next tool call, and the call that removes it is itself not
-  captured. There is no heartbeat and no sequence number, so a stretch with no
-  lines is indistinguishable from an idle fleet.
+  captured. The spool carries no heartbeat and no sequence number of its own, so
+  a stretch with no lines is indistinguishable from an idle fleet. The daemon's
+  `logs/heartbeat.json` does not close this: it is written by the consumer about
+  the consumer, and says nothing about whether the hook was capturing.
 - **Lines can be written by hand.** The spool is an ordinary file under the
   user's own home directory, and any process running as that user can append a
   well-formed line to it.

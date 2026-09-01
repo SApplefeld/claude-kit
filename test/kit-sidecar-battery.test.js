@@ -2701,11 +2701,11 @@ test('the pass report names the recognition counters, the held lane and the offs
     assert.ok(!/neither a record nor a gap record/.test(reset[0]),
         'an offset reset produces duplicate records, so it must not be filed under the missing-record sentence');
 
-    // MINOR 2 (round 4): a failed write gets its own sentence for the same
-    // reason the reset does. Four of the daemon's eight writeFailures sites
-    // lose no record at all (an inbox alert item, an inbox memory pointer, a
-    // findings line beside a verdict that did land, the persisted offset), so
-    // filing the count under the missing-record sentence states a false reason.
+    // A failed write gets its own sentence for the same reason the reset does.
+    // Four of the sites that raise writeFailures lose no record at all (an inbox
+    // alert item, an inbox memory pointer, a findings line beside a verdict that
+    // did land, the persisted offset), so filing the count under the
+    // missing-record sentence states a false reason for those.
     const wf = battery.passFindings({ ...base, writeFailures: 2 });
     assert.strictEqual(wf.length, 1);
     assert.ok(/2 failed log or inbox write\(s\)/.test(wf[0]), wf[0]);
@@ -2727,6 +2727,62 @@ test('the pass report names the recognition counters, the held lane and the offs
     const short = battery.passFindings({ ...base, counters: { ...healthy, parsed: 0 } });
     assert.strictEqual(short.length, 1);
     assert.ok(/wrote 28 fixture spool line\(s\) and its own daemon pass consumed 0/.test(short[0]), short[0]);
+});
+
+test('a run whose liveness stamp failed is still a measurement, and says so in a note rather than a finding', async (t) => {
+    // The counter split, driven rather than asserted about. Every other failable
+    // write this daemon makes can cost a record, so its counter voids the run;
+    // the liveness stamp carries no part of any call, so a run that could not
+    // write it still read every line and scored every case. The stamp failure
+    // has to reach the report as a note for that to be legible, and it has to
+    // stay out of the findings for the run to score at all.
+    const cases = battery.loadJudgmentCases();
+    const server = await startServer(t, (body) => {
+        const c = cases.find((cc) => body.prompt.includes(cc.intent.slice(0, 40)));
+        return JSON.stringify({ verdict: c ? c.acceptableVerdicts[0] : 'achieved', reason: 'matches the fixture' });
+    });
+    const configPath = writeConfig(t, server.url);
+    const { home, stateDir } = inProcessRoots(t);
+
+    // A directory wearing the stamp's name, which the daemon's write refuses on
+    // every pass. It is the same shape the daemon's own suite uses, and it
+    // touches nothing else under the state root.
+    const logsDir = path.join(stateDir, 'logs');
+    fs.mkdirSync(path.join(logsDir, 'heartbeat.json'), { recursive: true });
+
+    const printed = [];
+    const code = await battery.main(['judgment', '--config', configPath, '--state-dir', stateDir], {
+        newRunToken: () => 'c0ffee02',
+        write: (text) => printed.push(text),
+        warn: () => {},
+        homeDir: home
+    });
+    const out = printed.join('');
+
+    assert.ok(/could not write its liveness stamp \d+ time\(s\)/.test(out),
+        `the stamp failure must reach the report:\n${out}`);
+    assert.ok(/No record is lost by that and this run is still a measurement/.test(out), out);
+    assert.ok(!/failed log or inbox write\(s\)/.test(out),
+        'a stamp failure must never be reported as the counter that means a record is gone');
+    assert.strictEqual(code, 0, `a stamp failure alone must not void the run:\n${out}`);
+
+    // The control, on the same fixture with nothing planted: the note is absent,
+    // so the case above is about the failed stamp rather than about a line this
+    // report prints on every run.
+    const cleanRoots = inProcessRoots(t);
+    const cleanPrinted = [];
+    const cleanCode = await battery.main(
+        ['judgment', '--config', configPath, '--state-dir', cleanRoots.stateDir],
+        {
+            newRunToken: () => 'c0ffee03',
+            write: (text) => cleanPrinted.push(text),
+            warn: () => {},
+            homeDir: cleanRoots.home
+        }
+    );
+    const cleanOut = cleanPrinted.join('');
+    assert.ok(!/could not write its liveness stamp/.test(cleanOut), cleanOut);
+    assert.strictEqual(cleanCode, 0, cleanOut);
 });
 
 // ---------------------------------------------- the horizon a replay switches off --

@@ -1125,12 +1125,20 @@ function scoreRecognition(situations, records, run) {
 //     the start and so produces DUPLICATE records rather than missing ones. The
 //     shared sentence would state a false reason for it.
 //   - writeFailures gets its own paragraph for the offsetResets reason: four of
-//     the daemon's eight sites lose no record at all (an inbox alert item, an
+//     the sites that raise it lose no record at all (an inbox alert item, an
 //     inbox memory pointer, a findings line beside a verdict line that did
 //     land, the offset persist), so the shared sentence's "neither a record nor
 //     a gap record" would state a false reason for those. The count still fails
-//     the run, since the other four sites do lose a record and the counter does
-//     not say which fired.
+//     the run, since every other site that raises it does lose a record and the
+//     counter does not say which fired.
+//   - the daemon's liveness stamp is NOT among those sites and is not in that
+//     counter: it rises `heartbeatFailures` instead
+//     (sidecar/logs.js). It is the one write here that can never cost a record,
+//     since nothing about a call passes through it, so a run whose only write
+//     failure was the stamp is a complete measurement of a complete set of
+//     logs. It is reported below as a note rather than a finding, because a
+//     reader of a replay should still know the daemon could not stamp itself
+//     while it ran.
 function passFindings(input) {
     const c = input.counters;
     const out = [];
@@ -1411,6 +1419,12 @@ async function main(argv, deps) {
     // run's failures as its own, which is the same class of misattribution as
     // scoring an earlier run's verdicts.
     const writeFailuresBefore = logs.loadState(config.statePaths(stateDir).stateFile).state.counters.writeFailures;
+    // The liveness stamp's own count, on the same terms and read at the same
+    // moment, so a re-used state root's earlier failures are not reported as
+    // this run's. It is kept apart from the number above rather than added to
+    // it: this one costs no record and so decides nothing about whether this
+    // run measured what it set out to.
+    const heartbeatFailuresBefore = logs.loadState(config.statePaths(stateDir).stateFile).state.counters.heartbeatFailures;
 
     // Where this run's data is going, printed BEFORE the first call and
     // unconditionally.
@@ -1507,6 +1521,19 @@ async function main(argv, deps) {
     });
     let cannotMeasure = findings.length > 0;
     for (const finding of findings) write(`${finding}\n\n`);
+
+    // Said out loud and deliberately not a finding. The stamp carries no part
+    // of any call, so a run that could not write it still read every line,
+    // judged every case and wrote every record: the scores below are a
+    // measurement. What the reader loses is the daemon's own liveness trace
+    // over the replay, which is worth a line and is not worth voiding a run.
+    const heartbeatFailureDelta = Math.max(0,
+        out.ctx.state.counters.heartbeatFailures - heartbeatFailuresBefore);
+    if (heartbeatFailureDelta > 0) {
+        write(`note: the daemon could not write its liveness stamp ${heartbeatFailureDelta} time(s) during this run. `
+            + 'No record is lost by that and this run is still a measurement; what is missing is the stamp a reader '
+            + 'dates the daemon by.\n\n');
+    }
 
     const logsDir = out.ctx.paths.logsDir;
 

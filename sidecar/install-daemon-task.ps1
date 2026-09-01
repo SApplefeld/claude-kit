@@ -63,4 +63,5 @@ Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger `
 
 Start-ScheduledTask -TaskName $taskName
 Write-Host "Task '$taskName' registered (clone: $repoRoot) and started."
-Write-Host "Log: $(Join-Path $env:USERPROFILE '.claude\kit-sidecar\daemon.log')"
+Write-Host "Daemon log: $(Join-Path $env:USERPROFILE '.claude\kit-sidecar\daemon.log')"
+Write-Host "Task log:   $(Join-Path $env:USERPROFILE '.claude\kit-sidecar\daemon-task.log')"

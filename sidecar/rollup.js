@@ -86,7 +86,9 @@
 // spool lines this command never sees because they never became a log line at
 // all. A nonzero `writeFailures` there means this rollup's own totals are
 // incomplete for a reason no amount of re-reading the logs directory can
-// recover.
+// recover. `heartbeatFailures` is rendered beside it and says the opposite:
+// those writes carried no record, so the totals are whole and what was lost is
+// the daemon's own liveness stamp.
 //
 // EVERY RENDERED FREE-TEXT FIELD IS NEUTRALIZED AND CAPPED (sidecar/text.js). A
 // gap's reason and detail, and a recognition-gap's note, all ride in records
@@ -856,6 +858,13 @@ function render(result) {
             + `gapped ${c.recognitionGapped}, skipped (no index) ${c.recognitionSkipped}, unavailable ${c.recognitionUnavailable}`);
         lines.push(`resets: offset resets ${c.offsetResets}, state resets ${c.stateResets}`);
         lines.push(`write failures: ${c.writeFailures}${c.writeFailures > 0 ? ' (this rollup\'s own totals above are incomplete by that many records)' : ''}`);
+        // On its own line and in its own words, never folded into the count
+        // above. A failed heartbeat write loses no record: the daemon judged,
+        // recorded and delivered exactly as it would have, and what went
+        // missing is the liveness stamp a reader dates it by. Counting it with
+        // the write failures would tell this rollup's reader that these totals
+        // are short by records that are in fact all present.
+        lines.push(`heartbeat write failures: ${c.heartbeatFailures}${c.heartbeatFailures > 0 ? ' (no record is missing from the totals above; what was lost is the daemon\'s own liveness stamp, so a reader could not tell it from a stopped daemon over that stretch)' : ''}`);
     }
     lines.push('');
 

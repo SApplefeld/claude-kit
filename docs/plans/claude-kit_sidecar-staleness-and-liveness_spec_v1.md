@@ -111,6 +111,24 @@ oldest-first by design (`sidecar/daemon.js`, the pass loop and `drainFile`).
   minutes is stale by the operator's ruling at the moment it can finally be
   judged; the gap-shaped stale record makes the drop visible, which is the
   legitimate half of the objection.
+- Decided 2026-08-31 (expert, at section 2 build): the wrapper's stand-down
+  line lands in the wrapper's own sibling log, `daemon-task.log`, under the
+  same 5 MB rotation rule, because the wrapper's own output redirection holds
+  `daemon.log` locked for the daemon's whole life; three append methods were
+  proven to fail there with a sharing violation while a control write to a
+  fresh sibling succeeded. Option B (re-plumbing the daemon's own output
+  through a per-line pipeline) was rejected as risking the instrument's live
+  logging path for a few lines an hour.
+- Decided 2026-08-31 (expert, at section 2 review): heartbeat write failures
+  are counted in their own persisted counter (`heartbeatFailures`), never in
+  `writeFailures`. Two shipped consumers define every unit of `writeFailures`
+  as a lost record (`rollup.js` renders "totals above are incomplete by that
+  many records"; `battery.js` turns any delta into a cannot-measure), and a
+  failed heartbeat loses no record. The rollup renders the new counter as its
+  own clause and the battery excludes it from the lost-records reading, so
+  the section's file scope widens to `sidecar/rollup.js`, `sidecar/battery.js`
+  and their tests, mirroring section 1's fold. Per the Standing Brief
+  Amendment, the counter-set carriers were swept as part of the same round.
 
 ## Standing Brief Amendments
 
@@ -180,16 +198,26 @@ has, and the daemon log's start banners carry no timestamps at all.
   the pass. Machine-readable so any session or wrapper can check it.
 - The scheduled-task wrapper's stand-down stops being silent: when
   `daemon-task.ps1` finds a running daemon and exits, it first appends one line
-  to the daemon log naming the running pid and the heartbeat's timestamp and
-  age when the file is readable ("stood down: daemon pid N running, last
-  heartbeat T, age Xs"). A present-but-wedged daemon then reads as exactly
+  to the wrapper's own sibling log, `daemon-task.log` beside `daemon.log`
+  under the same 5 MB rotation rule, naming the running pid and the
+  heartbeat's timestamp and age when the file is readable ("stood down:
+  daemon pid N running, last heartbeat T, age Xs"). The line cannot go to
+  `daemon.log` itself: the wrapper's own output redirection holds that file
+  locked for the daemon's whole life, so a later task tick meets a sharing
+  violation there by construction, which is exactly the task-started case
+  the signal exists for. A present-but-wedged daemon then reads as exactly
   that, instead of as a task that "starts and immediately stops" with nothing
   to say why. The wrapper does not kill a non-progressing daemon; whether it
   ever should is the operator's later call, made possible by this signal.
 - `sidecar/CONTRACT.md` documents the heartbeat file and its cadence.
 
 Files in scope: `sidecar/daemon.js`, `sidecar/daemon-task.ps1`,
-`sidecar/CONTRACT.md`, `test/kit-sidecar-daemon.test.js`.
+`sidecar/CONTRACT.md`, `test/kit-sidecar-daemon.test.js`; widened at review
+per the Decisions entry on `heartbeatFailures` to `sidecar/logs.js` (the
+persisted counter set lives in its `emptyState()`), `sidecar/rollup.js`,
+`sidecar/battery.js`, `test/kit-sidecar-rollup.test.js`,
+`test/kit-sidecar-battery.test.js`; plus `sidecar/install-daemon-task.ps1`
+(one-line carrier fold: the installer's closing echo names both logs).
 
 Tests: both directions: the heartbeat is observed advancing across passes while
 the daemon runs, and observed stale (unchanged) once it stops, since a signal
@@ -306,4 +334,16 @@ Review Findings: round 1 pair (adversarial + blind, opus/xhigh): 3 adversarial M
 Stamps: covered by Chapter 1's sweep (one boundary, two sections closing together).
 Gate: targeted lane (capture test) 75/73/0 fail/2 skipped, exit 0 read from the run. Whole gate shared with Chapter 1 above. Hook build stamp refreshed via build.ps1 (exit 0) before the gate, per the operator-tier memory.
 Next: Section 2: make a dead daemon visible
+Commit Model: Commit-and-Push
+
+### Chapter 3 - 2026-09-01
+Completed: Section 2: make a dead daemon visible
+Implemented By: implementer-opus (four rounds: build, fix, fix, fix; no escalation)
+Metrics: review rounds 2 (round 1: adversarial + blind + security, opus/max via Workflow; round 2: verification, opus/max via Workflow); NEEDS_CONTEXT 0; escalations 0; consults 0
+Decisions / Surprises: two Decisions entries recorded above at build/review time: the stand-down line lands in the wrapper's own sibling `daemon-task.log` (option A; the wrapper's `*>>` redirection holds `daemon.log` locked for the daemon's life, so option B was physically unavailable), and heartbeat write failures count in their own persisted counter `heartbeatFailures`, never `writeFailures`, which widened the section's file scope to logs.js/rollup.js/battery.js and their tests. The installer's completion message was folded inline by the orchestrator (two log lines instead of one). The implementer's own m11 fix introduced an unlink-before-guard defect (a planted link deleted before the guard saw it) that the pinned test caught on the first lane run: the fix-round's one red, root-caused and fixed to guard-then-unlink with a new leftover-sibling pin. Round 2 found one new Major the fix round had introduced: the `[long]` pid cast, whose type test admits a JSON double that overflows Int64, throwing past every fixed reason and silencing the stand-down line entirely; round 3 wrapped the cast (red reproduced first: `{"pid":1e300}` landed no line while the same run's control did). The m5 timing steps were derived from the exported floor at an eighth rather than the suggested quarter, because a quarter lands the fourth entry exactly on a `<` boundary. Known limit, held: the wrapper's `heartbeat unreadable (link)` reason string is real-run-unproven on this box (file symlinks need elevation; a junction is refused earlier as `not a file`, which was real-run proven); the refusal is proven, the wording is not.
+Assumptions: none beyond the Decisions entries.
+Review Findings: round 1 (adversarial + blind + security, opus/max): 6 Majors fixed (pass-length wedge window; writeFailures contamination; Int32 age overflow; pwsh ConvertFrom-Json DateTime coercion, a real four-hour signature on this Eastern box; unbounded pid attribution; unbounded read), 2 findings rejected with reasons (same-user trust is stated design; per-process state-dir resolution over-engineered vs the pid-mismatch clause), minors fixed. All fixes proven red/green both directions with dual-host real runs (Windows PowerShell 5.1 + pwsh 7.6.5), all 13 wrapper branches exercised by real run except the link reason above. Round 2 (verification, opus/max): all six round-1 fixes verified clean; 1 new Major (the pid cast) + 6 minors, all fixed in round 3, including replacing a vacuous battery pin with an end-to-end note pin whose red direction was established against HEAD.
+Stamps: covered by Chapter 1's boundary sweep; no new adjudications this section.
+Gate: targeted lane (daemon + rollup + battery tests) 371/369/0 fail/2 skipped, exit 0 read from the run, delta chain across rounds 361 -> 366 -> 370 -> 371, 0 new failures at every step. Whole gate (this close pushes to main, the install-surface trunk) 2794 tests/2779 pass/8 fail/7 skipped, exit 1 read from the run, vs the recorded baseline 2773/2765/2 fail/6 skipped: 1 of the 8 is the standing path-length fail (memory-session.test.js); the memq-shim standing fail did not fire (skipped rose 6 -> 7); the 6 new fails all sit in the durable-boundary session's in-flight families (compact-deferral-nudge.test.js 1, kit-compact-gate.test.js 3, hook-canary.test.js 3, the latter probing installed hooks against that session's uncommitted hook edits and a trailing machine install), none in any sidecar family, and the sidecar families import nothing this section touched. No contention lane: this repo defines none. No build stamp owed: this section touched no plugins/claude-kit/hooks/ file.
+Next: whole-effort finishing pass (QA verifier, finishing reviews, docs curation, backlog entries, plan to Complete and archive)
 Commit Model: Commit-and-Push

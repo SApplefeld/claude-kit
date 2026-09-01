@@ -325,7 +325,18 @@ function emptyState() {
             recognitionGapped: 0,
             recognitionSkipped: 0,
             recognitionUnavailable: 0,
-            writeFailures: 0
+            writeFailures: 0,
+            // Failed writes of the daemon's liveness stamp, counted apart from
+            // `writeFailures` because they cost a different thing. Every other
+            // write this daemon makes carries a record, so a failure there is a
+            // record that is gone and both shipped consumers say so: the rollup
+            // renders `writeFailures` as "these totals are incomplete by that
+            // many records" and the battery reads any rise in it as a
+            // cannot-measure. A heartbeat that could not be written loses no
+            // record at all. What it costs is a reader's ability to tell this
+            // daemon from a stopped one, which is worth counting and is not
+            // worth telling a rollup its verdict counts are short.
+            heartbeatFailures: 0
         }
     };
 }

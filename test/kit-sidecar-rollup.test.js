@@ -943,6 +943,34 @@ test('the daemon\'s own persisted counters are rendered apart from this rollup\'
     assert.match(text, /rollup's own totals above are incomplete/);
 });
 
+test('a failed heartbeat write is rendered apart from the write failures, and claims no missing record', (t) => {
+    // The two counters answer opposite questions and a reader acts on them
+    // differently. Every unit of writeFailures may be a record this rollup will
+    // never see; every unit of heartbeatFailures is a liveness stamp the daemon
+    // could not write while losing nothing at all. One number for both would
+    // tell a reader their verdict totals are short by a quantity of stamps.
+    const state = makeState(t);
+    const stateFile = path.join(state.logsDir, 'offsets.json');
+    const seeded = logs.emptyState();
+    seeded.counters.parsed = 10;
+    seeded.counters.judged = 10;
+    seeded.counters.heartbeatFailures = 4;
+    fs.writeFileSync(stateFile, JSON.stringify(seeded), 'utf8');
+
+    const result = rollup.computeRollup(state.stateDir);
+    assert.strictEqual(result.daemonState.counters.heartbeatFailures, 4);
+    assert.strictEqual(result.daemonState.counters.writeFailures, 0);
+
+    const text = rollup.render(result);
+    assert.match(text, /heartbeat write failures: 4/, 'the count reaches the reader');
+    assert.match(text, /no record is missing from the totals above/,
+        'in words that say what it did not cost');
+    assert.ok(!/rollup's own totals above are incomplete/.test(text),
+        'and the incomplete-totals claim belongs to writeFailures alone, which is zero here');
+    assert.match(text, /^write failures: 0$/m,
+        'the write-failure line still reports its own count rather than absorbing this one');
+});
+
 test('a junction wearing offsets.json\'s name is refused and counted, never read through (M7/M4)', (t) => {
     const state = makeState(t);
     plantJunction(t, path.join(state.logsDir, 'offsets.json'));

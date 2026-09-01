@@ -3753,3 +3753,320 @@ test('the recognition prompt ships as a versioned file carrying the measured wor
     assert.ok(recognitionPrompt.formatSituation(entry, 'short', true).includes('was cut'),
         'and an index the reader cut says so too');
 });
+
+// -------------------------------------------------- the daemon's liveness --
+
+// The stamp under a fixture's logs directory, or null when it is not there. The
+// name comes from the module rather than from a literal here, so a rename that
+// left every reader spelling the old name would fail these cases rather than
+// pass them; the values themselves are pinned once, below.
+function heartbeat(fixture) {
+    try { return JSON.parse(fs.readFileSync(path.join(fixture.logsDir, daemon.HEARTBEAT_NAME), 'utf8')); } catch { return null; }
+}
+
+test('the liveness stamp ships under the name, version and floor its readers are written against', () => {
+    // The one place these are literals. Every other case here reads them off
+    // the module, so this is what stops a silent change to any of the three
+    // from passing a suite that moved with it: the wrapper spells the file name
+    // and the contract states the minute.
+    assert.strictEqual(daemon.HEARTBEAT_NAME, 'heartbeat.json');
+    assert.strictEqual(daemon.HEARTBEAT_VERSION, 1);
+    assert.strictEqual(daemon.HEARTBEAT_MIN_INTERVAL_MS, 60 * 1000);
+
+    const wrapper = fs.readFileSync(path.join(SIDECAR, 'daemon-task.ps1'), 'utf8');
+    assert.ok(wrapper.includes(`logs\\${daemon.HEARTBEAT_NAME}`),
+        'the scheduled-task wrapper reads the file this daemon writes');
+});
+
+test('the heartbeat advances while the daemon runs and stands still once it stops', async (t) => {
+    // BOTH DIRECTIONS IN ONE ARRANGEMENT, which is what makes the signal worth
+    // anything: a stamp only ever observed on a running daemon proves nothing
+    // about the state it exists to detect. The clock is injected, so the second
+    // half can age the stamp by ten minutes without waiting ten minutes, and
+    // the spool is empty on purpose: an idle daemon is exactly the case no
+    // other surface can tell from a stopped one.
+    const fixture = makeFixture(t);
+    let clock = Date.parse('2026-08-31T12:00:00.000Z');
+    const ctx = daemon.makeContext(
+        { stateDir: fixture.stateDir, configPath: fixture.configPath, memoryRoot: fixture.memoryRoot, pollMs: 1 },
+        { now: () => clock, report: () => {}, sleep: async () => {} }
+    );
+    assert.strictEqual(daemon.startup(ctx).ok, true);
+
+    const first = heartbeat(fixture);
+    assert.notStrictEqual(first, null, 'startup stamps it, which is the news a reader holding a stale one wants');
+    assert.strictEqual(first.v, daemon.HEARTBEAT_VERSION);
+    assert.strictEqual(first.pid, process.pid, 'and names the process to look at');
+    assert.strictEqual(first.ts, new Date(clock).toISOString());
+
+    // Read before the clock moves, so each reading belongs to the pass that
+    // just ended rather than to the one about to run.
+    const start = Date.parse('2026-08-31T12:00:00.000Z');
+    const step = daemon.HEARTBEAT_MIN_INTERVAL_MS + 1000;
+    const seen = [];
+    let passes = 0;
+    ctx.deps.sleep = async () => {
+        passes += 1;
+        seen.push(heartbeat(fixture).ts);
+        clock += step;
+        if (passes >= 3) ctx.stopping = true;
+    };
+    await daemon.watch(ctx);
+
+    assert.deepStrictEqual(seen, [
+        new Date(start).toISOString(),
+        new Date(start + step).toISOString(),
+        new Date(start + (2 * step)).toISOString()
+    ], 'a running daemon moves the stamp forward with the clock');
+
+    // THE OTHER DIRECTION, AGAINST A LIVE CONTROL RATHER THAN AGAINST
+    // ARITHMETIC. Ten minutes of the same injected clock now pass. A second
+    // daemon, alive over its own state root and reading the same clock, stamps
+    // that time; the stopped one does not move. Without the control this half
+    // would only pin that a file nobody wrote to did not change, which is true
+    // of any file and says nothing about the stamp.
+    const last = heartbeat(fixture).ts;
+    clock += 10 * 60 * 1000;
+
+    const live = makeFixture(t);
+    const liveCtx = daemon.makeContext(
+        { stateDir: live.stateDir, configPath: live.configPath, memoryRoot: live.memoryRoot },
+        { now: () => clock, report: () => {}, sleep: async () => {} }
+    );
+    assert.strictEqual(daemon.startup(liveCtx).ok, true);
+    await daemon.drainOnce(liveCtx);
+
+    assert.strictEqual(heartbeat(live).ts, new Date(clock).toISOString(),
+        'the control proves the clock and the writer both work at this instant');
+    assert.strictEqual(heartbeat(fixture).ts, last,
+        'while the stopped daemon leaves its stamp where it was, which is what makes it read as stale');
+    assert.ok((clock - Date.parse(heartbeat(fixture).ts)) > 10 * 60 * 1000,
+        'ten minutes of silence, and a reader computing that age sees a dead daemon rather than a quiet fleet');
+});
+
+test('the stamp advances during one long pass, and entries inside the floor add no write', async (t) => {
+    // A pass has no upper bound. A post-outage backlog runs for minutes and a
+    // stretch of endpoint timeouts longer still, so a stamp taken only at the
+    // top of a pass would read as dead through exactly the stretch the daemon
+    // was working hardest. The clock steps inside the endpoint handler, which
+    // is what makes this a measurement taken WHILE the pass is running rather
+    // than after it.
+    const start = Date.parse('2026-08-31T12:00:00.000Z');
+    const step = daemon.HEARTBEAT_MIN_INTERVAL_MS + 30000;
+
+    const slow = makeFixture(t);
+    let slowClock = start;
+    const duringSlow = [];
+    const slowServer = await startServer(t, () => {
+        duringSlow.push(heartbeat(slow).ts);
+        slowClock += step;
+        return answer('achieved', 'ok');
+    });
+    fs.writeFileSync(slow.configPath, JSON.stringify({ url: slowServer.url, model: 'test-model' }), 'utf8');
+    seedSpool(slow, [makeLine({ ts: new Date(start).toISOString() }), makeLine({ ts: new Date(start).toISOString() }),
+        makeLine({ ts: new Date(start).toISOString() }), makeLine({ ts: new Date(start).toISOString() })]);
+
+    const slowRun = await drain(slow, { deps: { now: () => slowClock } });
+    assert.strictEqual(slowRun.pass.counters.judged, 4, 'the fixture judged what it seeded');
+
+    // Each reading is the stamp as the pass stood at that request, so a rising
+    // sequence is the stamp moving mid-pass and not at its end.
+    assert.deepStrictEqual(duringSlow, [
+        new Date(start).toISOString(),
+        new Date(start + step).toISOString(),
+        new Date(start + (2 * step)).toISOString(),
+        new Date(start + (3 * step)).toISOString()
+    ], 'the stamp moved with each entry the pass spent past the floor, while the pass was still running');
+
+    // The other direction, same shape: four entries whose whole pass fits
+    // inside the floor leave the startup stamp alone.
+    const quick = makeFixture(t);
+    let quickClock = start;
+    const duringQuick = [];
+    const quickServer = await startServer(t, () => {
+        duringQuick.push(heartbeat(quick).ts);
+        // An eighth of the floor per entry, so the whole four-entry pass stays
+        // inside one floor with margin, whatever the floor is set to.
+        quickClock += daemon.HEARTBEAT_MIN_INTERVAL_MS / 8;
+        return answer('achieved', 'ok');
+    });
+    fs.writeFileSync(quick.configPath, JSON.stringify({ url: quickServer.url, model: 'test-model' }), 'utf8');
+    seedSpool(quick, [makeLine({ ts: new Date(start).toISOString() }), makeLine({ ts: new Date(start).toISOString() }),
+        makeLine({ ts: new Date(start).toISOString() }), makeLine({ ts: new Date(start).toISOString() })]);
+
+    const quickRun = await drain(quick, { deps: { now: () => quickClock } });
+    assert.strictEqual(quickRun.pass.counters.judged, 4);
+    assert.deepStrictEqual(Array.from(new Set(duringQuick)), [new Date(start).toISOString()],
+        'a whole pass inside the minute writes the stamp once, not once per entry');
+});
+
+test('two passes inside one minute stamp the heartbeat once, and a --once pass stamps regardless', async (t) => {
+    // The floor, both directions. What it buys is a per-entry cost of one clock
+    // comparison rather than a file write, over a backlog that can run to
+    // hundreds of entries, at a resolution finer than any decision made on it.
+    const fixture = makeFixture(t);
+    let clock = Date.parse('2026-08-31T12:00:00.000Z');
+    const ctx = daemon.makeContext(
+        { stateDir: fixture.stateDir, configPath: fixture.configPath, memoryRoot: fixture.memoryRoot },
+        { now: () => clock, report: () => {}, sleep: async () => {} }
+    );
+    assert.strictEqual(daemon.startup(ctx).ok, true);
+    const atStartup = heartbeat(fixture).ts;
+
+    // Both steps are halves of the exported floor rather than retyped seconds,
+    // so a change to the floor moves the case with it instead of quietly
+    // landing both passes on the same side of it.
+    clock += daemon.HEARTBEAT_MIN_INTERVAL_MS / 2;
+    await daemon.drainOnce(ctx);
+    assert.strictEqual(heartbeat(fixture).ts, atStartup, 'a second pass inside the same minute writes nothing');
+
+    clock += (daemon.HEARTBEAT_MIN_INTERVAL_MS / 2) + 1000;
+    await daemon.drainOnce(ctx);
+    assert.strictEqual(heartbeat(fixture).ts, new Date(clock).toISOString(),
+        'and the pass past the floor stamps it, so the floor is a floor and not a mute');
+
+    // A --once run makes one pass and exits, so that pass is the only chance it
+    // has to say it ran: it stamps inside the floor the watch loop honors.
+    const onceFixture = makeFixture(t);
+    let onceClock = Date.parse('2026-08-31T12:00:00.000Z');
+    const onceCtx = daemon.makeContext(
+        { once: true, stateDir: onceFixture.stateDir, configPath: onceFixture.configPath, memoryRoot: onceFixture.memoryRoot },
+        { now: () => onceClock, report: () => {}, sleep: async () => {} }
+    );
+    assert.strictEqual(daemon.startup(onceCtx).ok, true);
+    onceClock += 2 * 1000;
+    await daemon.drainOnce(onceCtx);
+    assert.strictEqual(heartbeat(onceFixture).ts, new Date(onceClock).toISOString(),
+        'the one pass a --once run makes stamps the moment it made it');
+});
+
+test('the default report stamps every line with the instant it was written, and an injected one is untouched', (t) => {
+    // The prefix rides on the DEFAULT reporter alone. Every case in this file
+    // injects its own and matches on the bare text, so a prefix applied deeper
+    // would make this daemon's diagnostics a moving target for every consumer
+    // of them.
+    const fixture = makeFixture(t);
+    const stamped = daemon.makeContext({ stateDir: fixture.stateDir, configPath: fixture.configPath }, null);
+    const written = [];
+    const realWrite = process.stderr.write;
+    process.stderr.write = (chunk) => { written.push(String(chunk)); return true; };
+    try {
+        stamped.deps.report('the spool listing is incomplete');
+    } finally {
+        process.stderr.write = realWrite;
+    }
+    assert.strictEqual(written.length, 1);
+    assert.match(written[0], /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z kit-sidecar: the spool listing is incomplete\n$/,
+        'an ISO 8601 UTC instant, then the name, then the line');
+
+    const collected = [];
+    const injected = daemon.makeContext(
+        { stateDir: fixture.stateDir, configPath: fixture.configPath },
+        { report: (text) => { collected.push(text); } }
+    );
+    injected.deps.report('the spool listing is incomplete');
+    assert.deepStrictEqual(collected, ['the spool listing is incomplete'],
+        'while an injected reporter still sees the bare line');
+
+    // The startup banner takes the same path, proven on a real process rather
+    // than on the context: the stand-down line is the one line a daemon with no
+    // endpoint config prints, and it goes through the default reporter.
+    const dir = makeDir('kit-sidecar-stamp-');
+    t.after(() => rmDir(dir));
+    const stateDir = path.join(dir, 'state');
+    fs.mkdirSync(stateDir);
+    const run = runCli(['--once', '--state-dir', stateDir, '--config', path.join(dir, 'absent.json')]);
+    assert.strictEqual(run.status, 0);
+    assert.match(run.stderr, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z kit-sidecar: no endpoint config/,
+        'a banner line off a real run carries the stamp too');
+});
+
+test('a heartbeat the daemon cannot write is counted, said once, and stops nothing', async (t) => {
+    // A directory wearing the stamp's name: the sibling is written and the
+    // rename onto it fails, which is the shape a hostile or a merely broken
+    // state root takes. The drain must not care.
+    const server = await startServer(t, () => answer('achieved', 'ok'));
+    const fixture = makeFixture(t, { url: server.url });
+    seedSpool(fixture, [makeLine()]);
+    fs.mkdirSync(path.join(fixture.logsDir, daemon.HEARTBEAT_NAME), { recursive: true });
+
+    const run = await drain(fixture);
+
+    assert.strictEqual(run.ok, true, 'the run completes');
+    assert.strictEqual(run.pass.counters.judged, 1, 'and the call is still judged');
+    const said = run.reports.filter((r) => r.includes(`could not write the ${daemon.HEARTBEAT_NAME}`));
+    assert.strictEqual(said.length, 1,
+        'the failure is named once per run of them, not once a minute for the life of the daemon');
+
+    // THE COUNT IT RISES IS ITS OWN. Both shipped consumers read every unit of
+    // writeFailures as a record this daemon lost: the rollup prints "totals
+    // above are incomplete by that many records" and the battery turns any
+    // delta into a cannot-measure. This failure lost no record, and the verdict
+    // written below is the proof of it.
+    const counters = readOffsets(fixture).counters;
+    assert.ok(counters.heartbeatFailures >= 1, 'the stamp failure is counted');
+    assert.strictEqual(counters.writeFailures, 0,
+        'and never as a lost record, which is what the record-counting consumers read that counter as');
+    assert.strictEqual(sessionRecords(fixture).filter((r) => r.type === 'verdict').length, 1,
+        'the verdict the pass produced is on disk, so the run did lose no record');
+
+    assert.deepStrictEqual(fs.readdirSync(path.join(fixture.logsDir, daemon.HEARTBEAT_NAME)), [],
+        'nothing was written into the directory that took the name');
+    assert.ok(!fs.existsSync(path.join(fixture.logsDir, `${daemon.HEARTBEAT_NAME}.tmp`)),
+        'and the sibling the write attempted is cleaned up rather than left behind');
+});
+
+test('a link wearing the heartbeat sibling is refused rather than written through', (t) => {
+    // The sibling is where the bytes go, so it is the name a link would carry
+    // them through, and it is the name that is guarded: the published name needs
+    // no guard, since a rename replaces whatever sits at it without following
+    // it. The name is fixed under a caller-supplied state root, so a link
+    // planted at it is waiting rather than racing, and the create is exclusive
+    // so a link that arrived between the check and the write fails it too.
+    const fixture = makeFixture(t);
+    fs.mkdirSync(fixture.logsDir, { recursive: true });
+    const { dir } = plantLink(t, 'unused');
+    fs.symlinkSync(path.join(dir, 'elsewhere'), path.join(fixture.logsDir, `${daemon.HEARTBEAT_NAME}.tmp`), 'junction');
+
+    const ctx = daemon.makeContext(
+        { stateDir: fixture.stateDir, configPath: fixture.configPath, memoryRoot: fixture.memoryRoot },
+        { report: () => {}, sleep: async () => {} }
+    );
+    const started = daemon.startup(ctx);
+
+    assert.strictEqual(started.ok, true, 'a refused stamp is not a refused startup');
+    assert.strictEqual(heartbeat(fixture), null, 'and nothing is written through the link');
+    assert.deepStrictEqual(fs.readdirSync(path.join(dir, 'elsewhere')), ['planted.jsonl'],
+        'the directory the link points at is untouched');
+
+    // The control, on a fixture with no link at that name: the same startup
+    // stamps the file, so the case is about the link and not about a startup
+    // that never writes one.
+    const clean = makeFixture(t);
+    assert.strictEqual(daemon.startup(daemon.makeContext(
+        { stateDir: clean.stateDir, configPath: clean.configPath, memoryRoot: clean.memoryRoot },
+        { report: () => {}, sleep: async () => {} }
+    )).ok, true);
+    assert.strictEqual(heartbeat(clean).pid, process.pid);
+});
+
+test('an ordinary leftover at the heartbeat sibling is cleared rather than left to block every later stamp', (t) => {
+    // The create is exclusive, so a sibling left behind by a run that died
+    // between the create and the rename would fail every stamp this daemon ever
+    // attempts. The clearing runs after the guard above and not before it, so it
+    // reaches an ordinary file and never a planted link.
+    const fixture = makeFixture(t);
+    fs.mkdirSync(fixture.logsDir, { recursive: true });
+    const tmp = path.join(fixture.logsDir, `${daemon.HEARTBEAT_NAME}.tmp`);
+    fs.writeFileSync(tmp, 'left behind by a run that died mid-write', 'utf8');
+
+    const ctx = daemon.makeContext(
+        { stateDir: fixture.stateDir, configPath: fixture.configPath, memoryRoot: fixture.memoryRoot },
+        { report: () => {}, sleep: async () => {} }
+    );
+
+    assert.strictEqual(daemon.startup(ctx).ok, true, 'the startup completes');
+    assert.strictEqual(heartbeat(fixture).pid, process.pid, 'and the stamp lands over the leftover');
+    assert.ok(!fs.existsSync(tmp), 'leaving no sibling behind');
+    assert.strictEqual(ctx.state.counters.heartbeatFailures, 0, 'and counting no failure');
+});
