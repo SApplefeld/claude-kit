@@ -759,3 +759,103 @@ Next action. Await the fourth fix round, verify its delta and its rebuild, then 
 a fourth review round under the owed-round triggers. Then the `docs/security-model.md` and
 `docs/architecture.md` corrections that are the orchestrator's own, the whole gate with the contention lane
 beside it because the push lands on an install-surface trunk, then Chapter 2, the commit and the push.
+
+### Interim board 6 - 2026-09-01
+
+Section 2 is still the only section open. A fourth review round has been adjudicated and a fifth fix round
+is in flight, which is what earns this entry rather than a Chapter.
+
+Stage. Section 2's implementation has now been through four review rounds and four fix rounds, with the
+orchestrator's own verification at each. Nothing is staged and nothing is committed beyond the interim
+board entries and one documentation correction described below, which is deliberately held uncommitted.
+
+Round 4's fix, verified rather than accepted. The implementer reported DONE on ten items. The orchestrator
+read the gate from the runs' own marker files rather than from the report: build exit 0, and a targeted lane
+over eleven files at 1468 tests, 1465 pass, 1 fail, 2 skipped, exit 1. The failing test's identity was pulled
+from the log rather than taken from the summary, and it is this box's documented permanent red at
+`test/memory-session.test.js:873`. The lane grew by 300 tests because a twelfth file joined it when
+`kit-compact-lib.js` came into scope, and all 300 pass, so the failure set is unchanged against the recorded
+baseline. The stale-stamp trap that cost a lane earlier in this section was checked directly rather than
+assumed: the packaged archive is stamped later than the newest shipped source, so the lane ran against the
+bytes the build packaged.
+
+Round 4's verdicts, and the convergence is the point. Adversarial APPROVED_WITH_CONCERNS with one Major and
+four Minors, blind APPROVED_WITH_CONCERNS with two Minors, security CONCERNS with one Major and five Minors.
+No Critical anywhere, so the round did not fail under the tier ladder and the fix round stays at the writer
+tier rather than escalating. All three model overrides took, read from each dispatch's own transcript turns:
+11 turns at `claude-fable-5`, 9 at `claude-fable-5`, 12 at `claude-opus-5`, no substitution and no synthetic
+placeholder. The reviewers were given a 459-line diff of round 4's work alone, generated against the round's
+own pre-state snapshot, rather than the accumulated changeset, so their budget went on the new logic.
+
+The finding all three lenses found independently, which is what settles it. The ceiling screen that round 4
+added to close the symlink bypass fails open on its own error path. The helper it leans on swallows a failed
+path resolution and returns its input, so a resolution that failed is indistinguishable from a path that
+holds no link, and the screen disarms itself in both directions: an unresolvable starting path collapses the
+two spellings to one and skips the check entirely, and a mid-climb step where both sides fail to resolve
+compares two values that are equal by construction and passes vacuously. The guard is therefore silently
+inert exactly on the error paths, which is the pre-fix state the round existed to leave. The orchestrator
+reproduced the mechanism by reading the helper rather than accepting any lens's account. Filed Minor by one
+lens and Major by two; it is being fixed at the weight of the hole it reopens.
+
+A withheld-control failure in round 4's own regression test, worth recording because the section keeps
+generating this class. The test that pins the symlink fix cannot fail off Windows: the probe resolves the
+working directory through a call that POSIX canonicalizes, so on macOS and Linux the child never sees the
+link spelling, the screen is never exercised, and the case passes with the guard deleted. The hook path on
+those platforms is genuinely exposed, because hooks pass the harness's payload directory rather than the
+process's own. A second defect sits beside it: the fixture swallows a refusal to create the link, so a
+filesystem that cannot make one produces a pass indistinguishable from a real run. Both are in the fix batch.
+
+Standing Brief Amendment 1 firing on the round that was applying it. Round 4 corrected several carriers of
+claims its own code had falsified. It also wrote a new one that a comment in the same changeset contradicts:
+the sidecar component's header says the omitted resolution leg costs an undercount rather than a
+misdirection, because the daemon finds no index for a subdirectory, while the resolver's own comment states
+that stranded per-subdirectory store directories exist on every box that had the split, the common case
+rather than the exotic one. Where one exists the daemon lands on the orphan and recognizes against records
+the store no longer serves, which is misdirection. The orchestrator confirmed both texts by reading them. The
+general lesson stands as the amendment already states it, and this instance is evidence the defect is
+generated by the work's shape rather than by any one implementer.
+
+Deliberate non-changes this round, recorded so they read as decisions. The timing window between the
+repository-root check and the path resolutions is accepted: it needs local write access inside the tree plus
+a race against a short-lived process, and the security model already states the store is not a boundary
+between projects. The bind-mount and volume-mount-point case is accepted as a scope statement rather than a
+vector, since a cloned repository can carry a symlink but cannot carry a mount; only the comment claiming
+more than the code checks is being narrowed. And one lens asked for a symbol-presence guard on the new
+cross-module call that the security lens affirmatively cleared after analysis, finding it already fail-closed
+because the missing export throws inside an existing guard and yields a value the caller treats as a refusal;
+the guard is declined there and taken at a sibling site where its absence would tell every session something
+false about its own working directory.
+
+Documentation the orchestrator owns. Three sentences in `docs/architecture.md` claimed unconditionally that a
+worktree's subdirectories resolve the main checkout's store; that holds only where the harness filed the
+session under that worktree, and a session filed under the main checkout standing inside a nested linked
+worktree stops at that worktree's boundary and takes the plain derivation. All three anchors were confirmed
+unique before replacement and a pre-edit copy is in scratch. The file is deliberately left uncommitted: it
+describes resolver behavior that lives only in the working tree, so committing the prose ahead of the code
+would put a claim in the trunk that the trunk's own code does not honor.
+
+The `docs/security-model.md` corrections were re-grounded and the earlier specification is superseded. The
+six edits sketched in Interim board 5 were written against an older state of that file and two of them were
+wrong: the reader enumeration they proposed to correct is already correct in the committed file, and three
+corrections placed at separate anchors in fact all live inside one paragraph. The re-derived specification is
+at `.kit/scratch/secmodel-edits-v2.md` and is what a later session applies. The lesson is the standing one
+about re-grounding a source at the moment of use rather than at the moment of planning, and it was caught
+cheaply, by grepping the committed file for the exact claim the edit intended to fix and finding it already
+true.
+
+Gate. Unchanged from the round-4 figures above and not re-measured since, because no code moved between that
+lane and the fifth fix round's dispatch. The whole gate has still not run for section 2 and runs before the
+push, with the contention lane beside it, because this plan is Commit-and-Push straight to a trunk consumers
+install from.
+
+Box. No claim was held during the review round, which ran three read-only lenses that build and run nothing.
+The fifth fix round carries the claim protocol in its brief under this session's substituted identity. A
+sidecar advisory this turn reported that a read of three documentation anchors had returned only one; the
+orchestrator checked its own tool output, found all three present and all three edited, and recorded the
+advisory as incorrect rather than acting on it.
+
+Next action. Await the fifth fix round, verify its delta and its rebuild, then judge whether the delta owes a
+fifth review round under the owed-round triggers. The Major it closes is a security-weight boundary check, so
+the presumption is that it does. Then the `docs/security-model.md` corrections per the re-grounded
+specification and under the peer agreement, the whole gate with the contention lane beside it, then Chapter
+2, the commit and the push.
