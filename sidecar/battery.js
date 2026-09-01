@@ -1418,13 +1418,13 @@ async function main(argv, deps) {
     // so a run against a re-used state root would otherwise report an earlier
     // run's failures as its own, which is the same class of misattribution as
     // scoring an earlier run's verdicts.
-    const writeFailuresBefore = logs.loadState(config.statePaths(stateDir).stateFile).state.counters.writeFailures;
-    // The liveness stamp's own count, on the same terms and read at the same
-    // moment, so a re-used state root's earlier failures are not reported as
-    // this run's. It is kept apart from the number above rather than added to
-    // it: this one costs no record and so decides nothing about whether this
-    // run measured what it set out to.
-    const heartbeatFailuresBefore = logs.loadState(config.statePaths(stateDir).stateFile).state.counters.heartbeatFailures;
+    // The liveness stamp's count rides in the same read, kept apart from
+    // writeFailures rather than added to it: a failed stamp costs no record
+    // and so decides nothing about whether this run measured what it set out
+    // to.
+    const countersBefore = logs.loadState(config.statePaths(stateDir).stateFile).state.counters;
+    const writeFailuresBefore = countersBefore.writeFailures;
+    const heartbeatFailuresBefore = countersBefore.heartbeatFailures;
 
     // Where this run's data is going, printed BEFORE the first call and
     // unconditionally.

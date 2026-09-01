@@ -1,6 +1,6 @@
 # Sidecar staleness and liveness
 
-Status: In Progress
+Status: Complete
 Author: SCOTT-CLAUDE Coordinator seat (draft, 2026-08-31); finalized by the Expert seat under operator rulings, 2026-08-31
 Commit Model: Commit-and-Push
 
@@ -15,6 +15,11 @@ what it said.
 The judging works. The delivery does not arrive in time to be useful, and on
 2026-08-31 most of it did not arrive at all. This spec is about the pipe, not
 the judge.
+
+## Related
+
+Extends the shipped instrument built by `claude-kit_judgment-sidecar_spec_v1.md`
+(archived): same spool, same daemon, and the delivery caps this plan revises.
 
 ## The measurement
 
@@ -346,4 +351,18 @@ Review Findings: round 1 (adversarial + blind + security, opus/max): 6 Majors fi
 Stamps: covered by Chapter 1's boundary sweep; no new adjudications this section.
 Gate: targeted lane (daemon + rollup + battery tests) 371/369/0 fail/2 skipped, exit 0 read from the run, delta chain across rounds 361 -> 366 -> 370 -> 371, 0 new failures at every step. Whole gate (this close pushes to main, the install-surface trunk) 2794 tests/2779 pass/8 fail/7 skipped, exit 1 read from the run, vs the recorded baseline 2773/2765/2 fail/6 skipped: 1 of the 8 is the standing path-length fail (memory-session.test.js); the memq-shim standing fail did not fire (skipped rose 6 -> 7); the 6 new fails all sit in the durable-boundary session's in-flight families (compact-deferral-nudge.test.js 1, kit-compact-gate.test.js 3, hook-canary.test.js 3, the latter probing installed hooks against that session's uncommitted hook edits and a trailing machine install), none in any sidecar family, and the sidecar families import nothing this section touched. No contention lane: this repo defines none. No build stamp owed: this section touched no plugins/claude-kit/hooks/ file.
 Next: whole-effort finishing pass (QA verifier, finishing reviews, docs curation, backlog entries, plan to Complete and archive)
+Commit Model: Commit-and-Push
+
+### Chapter 4 (final) - 2026-09-01
+Completed: whole-effort finishing pass; plan Complete and archived
+Base ref: bc57e15cb9bc14bd3f495e873a10dc5f6d4ec48e (parent of 530fcee, the first Chapter-appending commit; cross-checked against the scope union, every extra listing entry attributed to the sibling durable-boundary session's commits or bookkeeping)
+QA (qa-verifier, inherited fable): PASS on every acceptance criterion in all three sections, with evidence per criterion; full suite `node --test test/*.test.js` 2793 tests/2785 pass/1 fail/7 skipped exit 1, the one fail the box's standing memory-session path-length baseline, no sidecar family red; contention lane NONE DEFINED (docs/architecture.md); one UNVERIFIABLE, operator/environment-class: the live scheduled-task stand-down interaction (the implementer's real wrapper runs in Chapter 3 cover the behavior; the verifier could not repeat them without touching the real state root).
+Security review (security-reviewer, inherited fable/high): CLEAR, no Critical or Major. Two Minors: the CONTRACT.md exclusive-create sentence overstated the refusal (fixed this pass: the guard-then-clear order is now stated); the wrapper's three wildcard-interpreting path sinks (New-Item positional -Path, Move-Item -Destination) DECLINED with reason: low confidence, $env:USERPROFILE is not attacker-controllable for a scheduled task, and churning the wrapper after its dual-host real-run proof costs more than the nit.
+Final adversarial review (adversarial-reviewer, inherited fable/high): APPROVED. Cross-section composition verified (the parsed = judged + stale + gapped identity holds as built; heartbeatFailures sits outside the identity everywhere it renders; old offsets.json upgrades to zeroed new counters). Three Minors, all fixed this pass: battery.js double loadState collapsed to one read; the "unforced by any floor" comment inverted to "forced past the floor" (it sat beside force=true); CONTRACT.md "the budget" disambiguated to "the per-item cap". Targeted lane after the fixes: 371/369/0 fail/2 skipped exit 0, read from the run, unchanged vs the Chapter 3 baseline.
+Tree-state brackets: captured before QA and before the review round, compared after each; identical both times (porcelain hash b172fcc5c625e0714767b7f9bdd7b52d499ca494).
+Drift adjudications (docs-curator report): D1 the security-model.md:267 delivered-volume bound, deviation, stays PARKED per this spec's Open defect section, fix text ready. D2 the docs index plan count, deviation, self-corrects at this archive move, no edit. D3 the fourteen-day-window over-claim in architecture.md, deviation, curator documented as-built (heartbeat.json, daemon.log, daemon-task.log named as outside the window). D4 heartbeat cadence, deviation: as built the stamp is also attempted per drained entry behind the same floor, a superset of the spec's cadence, documented as-built. D5, mistake class: both docs/README.md (:47-48) and docs/plans/README.md (:29-30) carry two consecutive "Completed plans are in archive/" paragraphs that disagree; pre-change read constructed by the orchestrator (curator holds no Bash): the duplication exists at the base ref in both files (count 2 at bc57e15 and on disk), so it predates this effort, a merge artifact where the standing-lines close-out (archived 08:55) appended a copy descending from a base that predated the judgment-sidecar archival (07:49): the older copy holds exactly one plan the newer lacks (judgment-sidecar), the newer holds three the older lacks. Resolved in this pass's index refresh: newer copy kept, judgment-sidecar entry restored, older copy removed, in both files.
+Library hygiene: H2 cross-reference added one-way per curating-docs (this plan gains a Related section naming its predecessor; the archived judgment-sidecar plan is append-only history and is left alone). H3 index gaps resolve with this archive move.
+Assumptions made during execution: the identity parsed = judged + stale + gapped is stated in CONTRACT.md, resolved from the code and its tests, no prior invariant pinned parsed === judged (Chapter 1).
+Operator-pending verifications (what reopens work): (1) restart the live daemon, pid 25828, so the scheduled task's next tick relaunches it from this source: the real heartbeat.json appears only after that restart, and the real daemon-task.log stand-down lines flip from "heartbeat unreadable (no file)" to a live stamp reading; if after the restart no heartbeat.json appears within a minute of the daemon starting, that reopens section 2. (2) `claude plugin update` plus session restarts, so the capture-hook cap split (section 3) reaches sessions; if delivered blocks still break at one item after that, section 3 reopens. Both carried to docs/backlog.md as handoff items.
+Gate:
 Commit Model: Commit-and-Push

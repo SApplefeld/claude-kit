@@ -262,7 +262,10 @@ a file write per entry, and a minute is finer than any decision made on it.
 
 The write is a sibling plus a rename, so a reader never sees half an object. The
 two names are exposed differently: the sibling is where the bytes go, so it is
-created exclusively and an existing name there fails the write outright, while
+guarded first and then created exclusively: a link, directory, or hard-linked
+name there is refused and counted, a plain leftover file from a crashed write is
+cleared before the create, and a name racing in after the clear fails the
+exclusive create, while
 the published name needs no refusal because a rename REPLACES what sits at it
 without following it, so a link planted there is unlinked rather than written
 through. **A failed write is counted in `heartbeatFailures` and reported, never
@@ -433,7 +436,7 @@ for its own reasons.
   pair, currently 1,802 bytes) so a full batch of three at-cap items always
   fits. Whatever the caps hold back stays queued for the next call; nothing is
   dropped for being late.
-- An item too large for the budget is shortened by cutting its VARIABLE fields,
+- An item too large for the per-item cap is shortened by cutting its VARIABLE fields,
   in the kind's own order, and never by cutting the composed line from its tail.
   The trailing directive on an alert and the `memq get` spelling on a memory
   pointer both live at the end of the line, so a tail cut removes exactly what

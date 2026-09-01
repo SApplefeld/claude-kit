@@ -555,7 +555,7 @@ function startup(ctx) {
         ctx.deps.report(`offset state reset (${loaded.detail}); calls already judged may be judged again`);
     }
 
-    // The first stamp, after the directories are known good and unforced by any
+    // The first stamp, after the directories are known good, forced past the
     // floor: a daemon that has just come up is precisely what a reader holding
     // a stale stamp is waiting to see.
     writeHeartbeat(ctx, true);
