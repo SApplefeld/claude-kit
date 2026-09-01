@@ -996,3 +996,133 @@ a sixth review round. Two of its items change failure behavior at the boundary t
 protect, so the presumption is that it does. Then the `docs/security-model.md` corrections, now seven,
 re-grounded against the committed copy before any edit since the file moved twice while this round ran,
 then the whole gate with the contention lane beside it, then Chapter 2, the commit and the push.
+
+### Interim board 8 - 2026-09-01
+
+Section 2 is still the only section open. A sixth review round has been adjudicated and a seventh fix
+round is in flight, which is what earns this entry rather than a Chapter. The compaction gate began
+holding offers during the adjudication, so this boundary is taken at the gate's own signal as well as
+at the drought count.
+
+Stage. Section 2 has now been through six review rounds and six fix rounds, with the orchestrator's own
+verification at each. Nothing of this section's code is staged. Two documentation writes of the
+orchestrator's own sit uncommitted and are described below.
+
+Round 6's fix, verified rather than accepted. The implementer reported DONE on nine items. The
+orchestrator read the gate from the runs' own markers rather than from the report: build exit 0, and a
+targeted lane at 1476 tests, 1473 pass, 1 fail, 2 skipped, exit 1 from `.kit/scratch/r6-lane2.exit`.
+Against the recorded baseline of 1470/1467/1/2 the delta is +6 tests, all passing, with the failure set
+unchanged and the single failure this box's documented permanent red, confirmed by name from the log.
+The round added five tests, so the sixth was reconciled rather than assumed: a name-level diff of the
+two lane logs, run only after a control proved the extraction pattern speaks, showed the six extra names
+are the round's own five plus round 5's export-stripping test, which the baseline capture predated. The
+reverse diff is empty, so nothing was removed. The first extraction pattern this check used returned
+zero names on both sides, which would have read as two identical sets; the control is what caught it.
+
+The caller audit, run independently rather than read. The round added a refusal to a path validator
+reachable from the exported sanitizer, which is the shared-contract shape the third standing amendment
+names. A tree-wide grep over every tracked file type found three real callers outside memq itself, and
+each was confirmed at its own source rather than from the report: the compaction library both wraps the
+call and feeds it resolved output the refusal cannot match, the sidecar index wraps it under a header
+stating that nothing there throws at its caller, and the hook pre-decides through its own guard. The
+security lens then ran the same audit with a wider predicate and reached two callers the brief never
+named, which is the withheld instance that makes its sweep coverage evidence rather than an instrument
+check.
+
+Round 6's verdicts, and the first round of this section with no blocking finding anywhere. Adversarial
+APPROVED_WITH_CONCERNS with four Minors, blind APPROVED_WITH_CONCERNS with three Minors, security
+CONCERNS with five Minors. No Critical and no Major from any lens, so the round did not fail under the
+tier ladder and the writer tier stays where the fourth round escalated it. All three overrides took,
+read from each dispatch's own transcript turns: 57 assistant lines at `claude-fable-5`, 40 at
+`claude-fable-5`, 52 at `claude-opus-5`, no substitution and no synthetic placeholder anywhere. The
+blind lens was given the changed-file list and the base ref per its own input contract and reported its
+brief carried no contamination.
+
+The one real defect the round introduced, confirmed by the orchestrator's own measurement. The new
+refusal for a rooted-but-driveless working directory is spelled as a negative lookahead on a single
+backslash, and it also refuses a mixed-separator network-share root, a spelling the platform calls
+absolute and the kit's own single-sourced share predicate classifies as a share. The consequence is
+narrow and real: a pinned session on that spelling skips the network branch, fails the hook's
+resolvability guard, and loses every working-directory-derived block it had before this section. Two
+comments shipped in the same round assert the opposite. The security lens found it; the orchestrator
+confirmed it by running the three predicates side by side, and the first attempt at that probe proved
+nothing because the shell ate its own backslashes, which the probe's control caught by reporting a
+platform-absolute spelling as not absolute. Re-run from a file, the table is unambiguous. The reviewer
+rated it Minor and the orchestrator raised it to Major on adjudication, because it breaks a legitimate
+spelling rather than merely reading oddly.
+
+The recurring class again, and again found by two independent lenses. A claim that the store pin is
+honored before the working directory is consulted is false, and it is false in three carriers at once:
+a hook comment, a test comment, and the memory-system skill body, whose resolver paragraph also claims
+completeness while omitting the refusal entirely. The code validates the working directory's spelling
+before it consults the pin, which is exactly why the hook grew a pinned refused-cwd branch in the
+previous round. A sibling comment written in that same round states the order correctly, so the fix is
+to make the others agree with it rather than to invent new wording. This is the first standing
+amendment's own class, holding as a detector while the workflow keeps producing instances.
+
+Deliberate non-fixes this round, recorded so they read as decisions. The security lens proposed
+refusing a posix-rooted spelling on Windows, which carries a real segment-collision class where two
+projects on different drives entered by the same slash-spelled path collapse into one store segment.
+The orchestrator declined the code change and took the documentation route instead, because a committed
+test pins that spelling with a comment stating the cross-platform contract the rule exists to hold, and
+refusing it would break the property that lets a Windows literal sanitize identically on a POSIX host.
+The collision class is now an owed entry in the security model rather than an unrecorded residual. An
+unverifiable illustrative example in a code comment is also left as written, on the reporting lens's own
+judgment that the guard depends on the class rather than on the example.
+
+Routed out of the plan, and the routing is stated in the tense that is true. The security lens found
+that the kit's two other ancestor-climbing repository detectors keep the fail-open test that this
+section just closed in the store resolver, which is the third amendment's named class arriving in
+siblings the section's file list never reached. It is not reachable today, because both guards derive
+their root from a working directory that already holds the repository marker, so the climb ends at its
+first step. It is in `docs/backlog.md` at line 371, verified at that file with a control grep proving
+the instrument speaks, on the memory record that says a routing claim is an intention until the target
+holds it. That record was read at the moment of the write and is stamped applied.
+
+Live dispatch. One implementer at the escalated tier carrying six items: the mixed-separator refusal
+with its two false comments and a red-first pin, the pin-order claim across its three carriers plus the
+skill body's completeness and own-cwd omissions, a remedy sentence that tells an operator to do what
+they already did, an unguarded home-directory call whose throw would defeat the very guard the previous
+round added, a case-folding rule to single-source across six test fixtures, and one comment that
+over-claims what its code checks.
+
+Documentation the orchestrator owns. `docs/architecture.md` carries four corrected sentences and stays
+deliberately uncommitted, because it describes resolver behavior that lives only in the working tree.
+The `docs/security-model.md` corrections are now eight rather than seven, and this round changed one of
+them materially: the ordered-contract sentence must name two refusals at two different positions rather
+than one, since the working-directory spelling refusal fires in front of the pin while the network-share
+refusal sits behind it. The eighth is the collision class named above. The re-grounded anchors and this
+round's amendments are recorded at `.kit/scratch/secmodel-edits-v2.md` so a fresh session can write them
+without re-deriving the round.
+
+Gate. The figures above are round 6's and have not been re-measured since, because round 7's delta has
+not landed. The whole gate has still not run for section 2 and runs before the push, with the contention
+lane beside it, because this plan is Commit-and-Push straight to a trunk consumers install from. The
+whole-gate baseline to diff against is Chapter 1's own recorded run, 2858 tests, 2848 passing, 1 failing,
+9 skipped, exit 1.
+
+Box. The review round held no claim, running three read-only lenses that build and run nothing, and the
+machine's claim file was read and found empty before they went out. The seventh fix round carries the
+claim protocol in its brief under this session's substituted identity. A peer session sharing this
+checkout reported a stale claim of its own standing from about 21:25Z to 21:36Z after a tool timeout
+killed its gate script before the release step; that window is reported rather than confirmed from here,
+and it plausibly explains part of the sixth round's wall clock.
+
+The shared checkout. The review round's tree-state bracket showed exactly one delta, a one-line change
+to the sidecar daemon's spool-cap message. The orchestrator adjudicated it by reading its content rather
+than its path: it is the peer session's own judge-partial-input work, a subject none of the three
+read-only lenses was pointed at and none could write to under the read-only guard. Not an incident. The
+peer also reported its implementer's scope widening to three further sidecar files, still disjoint from
+everything this section holds.
+
+One methodological note worth keeping. The bracket script printed an exit code that was meaningless,
+having captured the exit of the echo inside its own else branch rather than the comparison's. The
+verdict came from the branch taken and from reading the delta, so nothing rests on that number, but it
+is the exact trap the doctrine names about reading a status after a pipeline, produced here by a
+session that had just quoted the rule.
+
+Next action. Verify the seventh fix round's delta and its rebuild, then judge whether that delta owes a
+seventh review round; its one behavior change is a predicate correction with a red-first pin and a
+withheld control, so the presumption is weaker than last round's but not zero. Then the eight
+`docs/security-model.md` corrections, then the whole gate with the contention lane beside it, then
+Chapter 2, the commit and the push.
