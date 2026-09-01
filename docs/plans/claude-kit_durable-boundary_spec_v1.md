@@ -94,6 +94,30 @@ Every dispatch from this point carries these, and the orchestrator holds them on
    `nudgeFloor` does not, so the one read this section added a knob for is the one read a planted
    link can redirect or stall.
 
+4. **A property you are tempted to assert about a channel is made STRUCTURAL at that channel, and
+   pinned on names rather than on shapes.** Adopted 2026-09-01 from a consult ruling, after this
+   section produced a new false cross-file claim in each of three consecutive rounds and the
+   controller produced a fourth in a document. The generator is not that the claims are careless
+   and not that they live in prose: it is that a claim whose truth-maker is a set of sites the
+   comment cannot see was being hand-maintained, at a density this tree measures in the hundreds of
+   lines per file, by four agents editing concurrently. At that density the per-round probability of
+   falsifying at least one is near certain, so the defect is the expected output of the process
+   rather than any round's failure.
+   THE REMEDY IS A CHOKE POINT, NOT A SWEEP. Route the channel through one function so a single
+   claim replaces twenty, and pin that one claim on IDENTIFIER NAMES, which a source pattern can
+   actually read, never on a semantic property like "this expression is a path", which it cannot.
+   The controller's own rejected proposal is the worked counter-example and is recorded because it
+   looked correct: a source-side sweep asserting every path-valued print goes through the guard
+   would have gone GREEN on the very defect it was written to prevent, because the bypassing sites
+   emit an error reason rather than anything path-shaped, and its control, drawn from the pattern's
+   own literals, would have spoken and proved nothing.
+   THE GUARD GOES ON THE CHANNEL, NEVER ON THE PRODUCER, which the doctrine already says and which
+   the controller's proposal also got wrong: scrubbing inside the shared library's reason builders
+   would have put a channel's guard on producers that feed other channels.
+   AND THE STOPPING RULE THAT COMES WITH IT: a fix round is justified only when it removes a
+   hand-maintained cross-file claim or a behavioural defect. A round whose whole content is
+   correcting the TEXT of such a claim is not run; the claim is deleted instead.
+
 ## Sections of Work
 
 ### 1. The boundary verb serves a registered seat and stamps the record itself. Model: opus
@@ -1395,4 +1419,96 @@ Commit model in effect: Commit-and-Push. This entry and its two `docs/security-m
 commit together, departing from interim boards 1 to 8's doc-only precedent for one stated reason: those
 corrections are a false security claim this round's own review confirmed, and a false security claim
 does not outlive the commit that falsifies it. Section 2's code stays unstaged until its whole gate has
+run, since under this model the section commit goes straight to main.
+
+### Interim board 10 - 2026-09-01
+
+IN-FLIGHT SECTION AND ITS STAGE. Section 2 is implemented and has had SEVEN implementer fix rounds;
+the seventh round's review is adjudicated and a consult on it is ruled and adopted. It CANNOT close:
+the round shipped a new false universal in the exact header it was dispatched to bound, and the
+review found three behavioural defects beneath it in the guard that header describes. Round 8 is
+specified by the adopted ruling and is the last round this section gets, by that ruling's own
+stopping rule. Sections 3, 4 and 5 are not started.
+
+WHAT ROUND 7 DELIVERED. All ten items landed and the controller confirmed each at the lines. The
+remedy count is finally right (five reasons, four leads, three remedies, each with its members
+named). `displayPath` decides containment by `path.relative` rather than a text prefix, with both
+failure directions watched red first against the old implementation and green after. All seven of
+the CLI's path-valued prints route through it. The status line's healable split rides one membership
+test on both halves, pinned at exactly two occurrences. The lane ran 394 / 393 / 0 / 1, exit 0 from
+its own marker file.
+
+THE ROUND'S IMPLEMENTER REFUSED A LINE OF THE BRIEF AND WAS RIGHT TO. The brief said an empty
+relative result means NOT contained; the implementer made it render `~`, on the ground that printing
+the home directory itself raw is the exact leak the item exists to stop. That is the second
+consecutive round in which the brief was wrong and the implementer caught it, and both refusals were
+reported rather than taken silently.
+
+THE CONTROLLER FALSIFIED A SECURITY CLAIM IN THE SAME TURN IT WARNED AGAINST DOING SO. Adjudicating
+round 6, the controller widened a `docs/security-model.md` sentence from a true narrow claim to a
+universal, roughly an hour after writing a dispatch brief warning the implementer in capitals about
+restated claims. Round 7's review confirmed the widening false, and confirmed that the narrow claim
+it replaced was false too in its purpose clause. Both are retracted in this boundary: the document
+now states the narrow property that is true today and names the two open residuals by name. Nothing
+false is committed and nothing false stands in the tree.
+
+THREE BEHAVIOURAL DEFECTS UNDER THE FALSE HEADER, all confirmed at the lines by the controller.
+Five error legs print an error reason through the plain sanitizer, and four of the functions that
+BUILD those reasons compose them from a Node `fs` error message, which embeds the absolute path, so
+the account name reaches a model-read channel on exactly the failure paths a model meets. The guard
+does not achieve its stated purpose on its own motivating case either: a transcript path carries a
+component that is the whole absolute project path flattened to alphanumerics and dashes, so eliding
+the leading prefix leaves the account name in the middle. And the sanitizer silently DELETES
+non-ASCII characters while the cut marker compares post-strip lengths, so the two legs that hand an
+operator a file to delete can name a path that is not on disk, unmarked.
+
+THE CONSULT RULED AGAINST THE CONTROLLER'S FRAMING AND THE REFUTATION IS CHECKABLE. Recorded as
+Standing Brief Amendment 4 above, with the rejected proposal kept as the worked counter-example
+because it looked correct. The ruling also resolved one fork the consultant referred upward: it
+judged a wide substitution risky on a contended file, not knowing that the peer seat's work had all
+landed, so the tree now carries only this section's own dirt and the coordination cost it priced is
+not there. Resolved on evidence rather than escalated.
+
+A TREE HAZARD NO BRACKET OF THIS PLAN COULD SEE. The security lens found two stray directories at
+the repository root left by an earlier review round's probe scripts, one of them a DIRECTORY named
+`package.json` at the root of a project that has no `package.json` file. Both held no files, which is
+exactly why every tree-state bracket this plan has run reported no delta: `git status --porcelain`
+does not report empty directories. Removed, with the emptiness proved under a control that spoke at
+1,275 files. The instrument gap is captured to the kaizen inbox rather than repaired here.
+
+A FINDING ROUTED OUT OF THIS PLAN ENTIRELY. The consultant found that `hook-canary.js` emits the
+resolved plugin root into the SessionStart context with no elision, so on an installed kit the
+account name reaches a model-read channel today, and that the tree carries three incompatible
+spellings of its sanitizer. That serves a different goal from this plan's, so it leaves as its own
+spec rather than folding here.
+
+THE ROUND. Three reviewers via the Workflow route at model opus and effort max, which the Agent tool
+cannot set; all three resolved to claude-opus-5 read from the run record, so no substitution and no
+compensation notch is owed. The consultant was dispatched the same way. First-turn readings were
+taken on every dispatch with controls that spoke (29, 34, 35 and 30 user lines). Workflow parallelism
+caps at two on this host, so the security lens started as the first finished, which is expected
+rather than a never-started dispatch. The tree-state bracket around the round returned NO delta, so
+all three lenses held read-only.
+
+CURRENT GATE BASELINE, AND A BASELINE THIS SESSION GOT WRONG. The round's lane is 394 / 393 / 0 / 1,
+exit 0, over the four test files the brief named. The controller's brief quoted 505 / 504 / 0 / 1 as
+that lane's baseline and the implementer correctly refused it: the 505 figure was measured over a
+WIDER file set, which the old log's own `seat-stop` cases prove and whose full membership cannot be
+reconstructed from that log. So no delta is claimed across the two, and the honest reading is a fresh
+baseline on a named file set. The whole gate is still OWED at the section close, three times over,
+and it is what settles this.
+
+NEXT ACTION PER SECTION. Section 2: round 8, specified by the adopted ruling. One emit choke point in
+the checkpoint CLI so the home directory and its flattened spelling are elided on the way out of the
+channel rather than at each caller, with the component-aware boundary the same trap already caught
+once; the cut marker to mark alteration as well as truncation; the false header deleted rather than
+restated; the security document widened back only once the code makes it true; and two tests, a
+behavioural one driving all five error legs under a home fixture and a source-side pin on the
+identifier names. Then the whole gate under a fresh baseline, then Chapter 2 and the commit. By the
+adopted stopping rule there is no round 9. Section 3: not started, scope widened three times.
+Section 4: not started, the marker-collision repair, re-found by an independent lens in a FIFTH
+round. Section 5: not started, scope widened once.
+
+Commit model in effect: Commit-and-Push. This entry, the amendment above and the retraction in
+`docs/security-model.md` commit together; section 2's code stays unstaged until its whole gate has
 run, since under this model the section commit goes straight to main.
