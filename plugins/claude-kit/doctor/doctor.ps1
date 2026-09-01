@@ -366,8 +366,22 @@ else {
 # --- capture where this machine's kit clone lives, and hooksPath activates the
 # --- pre-commit zip rebuild. From an installed plugin cache, nothing is written
 # --- (a cache must never become the kaizen target); an existing signpost is
-# --- validated, an absent one is fine for install-only machines.
+# --- validated, an absent one is fine for install-only machines. The signpost
+# --- may already carry operator-set keys this fix path does not own
+# --- (compactNudgeFloor among them), so a rewrite merges into the parsed
+# --- object rather than replacing it wholesale; only a signpost that is
+# --- absent, or whose contents do not parse as a JSON object, falls back to
+# --- the plain two-key template, since a merge has nothing to merge into
+# --- either way. The rewrite goes to a sibling temp file that is renamed into
+# --- place: a rename replaces the directory entry, so no link of any kind
+# --- standing at the signpost path is ever written through, and an
+# --- interrupted run cannot leave a truncated signpost. A link found there is
+# --- reported and the write skipped, so an operator who pointed this path at
+# --- a dotfiles repo hears about it rather than finding a real file where
+# --- their link was.
 $signpost = Join-Path $claudeDir "claude-kit.local.json"
+$signpostItem = Get-Item -LiteralPath $signpost -Force -ErrorAction SilentlyContinue
+$signpostIsSymlink = ($null -ne $signpostItem) -and (($signpostItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0)
 if ($isClone) {
     $hooksPath = $null
     if (Get-Command git -ErrorAction SilentlyContinue) {
@@ -382,13 +396,54 @@ if ($isClone) {
     $needHooks = ($hooksPath -ne ".githooks")
     if ($Fix -and ($needSignpost -or $needHooks)) {
         $fixedNotes = @()
+        $refusedNotes = @()
         if ($needSignpost) {
-            if (-not (Test-Path $claudeDir)) {
-                New-Item -ItemType Directory -Path $claudeDir | Out-Null
+            if ($signpostIsSymlink) {
+                # A link at the signpost path is reported and left alone
+                # rather than replaced. The rename below would replace it
+                # safely, which is the point: an operator who deliberately
+                # linked this path out of a dotfiles repo would lose the link
+                # silently, so the write is skipped and named instead. The
+                # note rides its own WARN rather than the FIXED list, since
+                # nothing was written and a planted link is worth a colour.
+                $refusedNotes += "Refused to write ${signpost}: it is a link. Remove it and re-run doctor -Fix so the signpost is written as a real file."
             }
-            $newSignpost = [ordered]@{ kitRepoPath = $repoRoot; machine = $env:COMPUTERNAME }
-            [System.IO.File]::WriteAllText($signpost, ($newSignpost | ConvertTo-Json), (New-Object System.Text.UTF8Encoding($false)))
-            $fixedNotes += "Wrote $signpost (kitRepoPath -> $repoRoot)."
+            else {
+                if (-not (Test-Path $claudeDir)) {
+                    New-Item -ItemType Directory -Path $claudeDir | Out-Null
+                }
+                # $signpostData already holds the parsed object whenever the
+                # signpost parsed to one (including the case reached here: it
+                # parses fine but its kitRepoPath no longer resolves), so
+                # merging is just overwriting the two owned keys on that same
+                # object. JSON that parses to an array or a scalar is not a
+                # thing to merge into - its PSObject.Properties are .NET
+                # adapter members such as Count and SyncRoot, which would land
+                # in the operator's config as keys - so it takes the same
+                # two-key template as an absent or unparseable signpost.
+                if ($signpostData -is [System.Management.Automation.PSCustomObject]) {
+                    $newSignpost = [ordered]@{}
+                    foreach ($prop in $signpostData.PSObject.Properties) { $newSignpost[$prop.Name] = $prop.Value }
+                    $newSignpost['kitRepoPath'] = $repoRoot
+                    $newSignpost['machine'] = $env:COMPUTERNAME
+                }
+                else {
+                    $newSignpost = [ordered]@{ kitRepoPath = $repoRoot; machine = $env:COMPUTERNAME }
+                }
+                # -Depth 100 because the default of 2 renders anything deeper
+                # as a PowerShell ToString() of the object, unrecoverably, and
+                # the operator keys being preserved here are exactly what that
+                # would corrupt. The write lands on a sibling temp file and is
+                # renamed over the signpost: Move-Item -Force replaces the
+                # directory entry, so a hard link at the signpost path keeps
+                # its other name intact. (The .NET Core three-argument
+                # File::Move overload with overwrite does not exist in the
+                # Windows PowerShell 5.1 that doctor.cmd launches.)
+                $signpostTmp = "$signpost.tmp"
+                [System.IO.File]::WriteAllText($signpostTmp, ($newSignpost | ConvertTo-Json -Depth 100), (New-Object System.Text.UTF8Encoding($false)))
+                Move-Item -LiteralPath $signpostTmp -Destination $signpost -Force
+                $fixedNotes += "Wrote $signpost (kitRepoPath -> $repoRoot)."
+            }
         }
         elseif ($signpostData.kitRepoPath -ne $repoRoot) {
             # A valid signpost aimed at another clone is a deliberate choice;
@@ -404,13 +459,19 @@ if ($isClone) {
                 $fixedNotes += "git unavailable; core.hooksPath not set."
             }
         }
-        Report "FIXED" "Setup (signpost + git hooks)" $fixedNotes
+        if ($refusedNotes.Count -gt 0) { Report "WARN" "Setup (signpost)" $refusedNotes }
+        if ($fixedNotes.Count -gt 0) { Report "FIXED" "Setup (signpost + git hooks)" $fixedNotes }
     }
     elseif ($needSignpost -or $needHooks) {
         $setupGaps = @()
-        if ($needSignpost) { $setupGaps += "kaizen signpost missing or invalid ($signpost)" }
+        # Naming the link as the blocker is what keeps this branch from
+        # sending the operator round a loop it cannot leave: -Fix refuses the
+        # link too, so "re-run with -Fix" alone is advice that cannot work.
+        if ($needSignpost -and $signpostIsSymlink) { $setupGaps += "kaizen signpost path is a link ($signpost); the fix path refuses to write through it" }
+        elseif ($needSignpost) { $setupGaps += "kaizen signpost missing or invalid ($signpost)" }
         if ($needHooks) { $setupGaps += "core.hooksPath is '$hooksPath', not '.githooks' (pre-commit zip rebuild inactive)" }
-        Report "WARN" "Setup (signpost + git hooks)" ($setupGaps + @("Fix: re-run doctor with -Fix."))
+        $fixAdvice = if ($needSignpost -and $signpostIsSymlink) { "Fix: remove the link at $signpost, then re-run doctor with -Fix." } else { "Fix: re-run doctor with -Fix." }
+        Report "WARN" "Setup (signpost + git hooks)" ($setupGaps + @($fixAdvice))
     }
     else {
         $note = "kitRepoPath: $($signpostData.kitRepoPath)"

@@ -2190,3 +2190,146 @@ THE FILE SET WIDENED BEYOND THE SPEC'S NAMED FILES BY TWO, both comment-only:
 than only in file contents, which is a new disclosure surface for a consuming project that does not
 ignore `.kit/`. That is step 5's standing carve-out rather than a routed surface: a document inside
 a completed section's scope whose describing passage this section's own change falsified.
+
+### Chapter 5 - 2026-09-01
+Completed: 5. The nudge floor survives the installers that own its file
+Implemented By: implementer-sonnet for the build, implementer-opus for the fix round (the round
+turned on Windows PowerShell 5.1 platform semantics and a security bypass, which earns the tier
+above the section's own); the main thread for `docs/security-model.md` and for this doc, `docs/`
+being barred to subagents by the repo's own write guard.
+Metrics: review rounds 1; NEEDS_CONTEXT 0; escalations 0; consults 0; DONE_WITH_CONCERNS 2.
+Lane: whole gate, `node --test test/*.test.js` after `./build.ps1`, 2842 tests / 2832 passing / 1
+failing / 9 skipped, exit 1 read from this session's own marker at `.kit/scratch/s5close-gate.exit`.
+Against section 4's close-gate baseline on the same lane, 2823 / 2815 / 1 / 7 exit 1: plus 19 tests,
+plus 17 passing, failing unchanged at 1 and it is the same named test, `a pinned directory too long
+to name faithfully stands the session down` (`test/memory-session.test.js:854`), this box's
+permanent path-length red. Skipped rises by 2, the two file-symlink cases that need an elevation
+this box does not grant, named in the run output. The whole gate ran because this section's push
+lands on `main`, a trunk consumers install from directly; no separate contention lane exists in this
+repo and the section's delta touches no machine-shared state. Before the gate the controller re-ran
+the new test file alone rather than taking the agent's figures: 19 / 17 / 0 / 2, exit 0. The box was
+polled and claimed for these runs and the claim released after them.
+Next: whole-effort finishing pass
+Commit Model: Commit-and-Push
+
+WHAT THE SECTION WAS FOR. The kit keeps a machine-local settings file at
+`~/.claude/claude-kit.local.json`, the kaizen signpost. Two installers own it, the POSIX
+`setup.sh` and the Windows `doctor.ps1 -Fix`, and both rewrote it wholesale from a fixed two-key
+template rather than merging. Section 2 put its context floor, `compactNudgeFloor`, in that file,
+so an operator who set a floor and later ran either installer lost it silently: the hook read the
+default and no surface said the value had gone. A knob that cannot survive an installer run is a
+defect in the section that shipped the knob, reached from outside its own files. The section's
+scope was widened at section 2's fourth review round to cover a second property of the same two
+writes: neither writer replaced the file, so both followed a link already standing at the path.
+
+WHAT THE BUILD SHIPPED, AND WHAT THE REVIEW ROUND FOUND IT HAD NOT CLOSED. The build made both
+writers merge into a parsed object, keeping their wholesale behaviour for a signpost that is
+absent or unparseable, and added a link check to each. Three lenses at opus (adversarial, blind,
+security) returned CHANGES_REQUIRED, CHANGES_REQUIRED and CONCERNS. The tree bracket around the
+round came back with no delta.
+
+THE HEADLINE FIND WAS THE SECURITY LENS'S, AND THE CONTROLLER REPRODUCED IT RATHER THAN TAKING IT
+FROM THE REPORT. Both writers still wrote IN PLACE, `fs.writeFileSync` and
+`[System.IO.File]::WriteAllText` each opening and truncating whatever the name resolved to rather
+than replacing the directory entry. So a HARD LINK at the signpost path was followed exactly as
+the symlink had been, and neither `[ -L ]` nor the `ReparsePoint` attribute test sees a hard link.
+On Windows that inverts the difficulty in the worst direction: a file symlink needs elevation or
+Developer Mode, which is precisely why the build's two symlink tests skipped on this box, while
+`mklink /H` needs neither. The shipped guard blocked the attack that requires privilege and left
+the one that does not. Measured here: `mklink /H` returned exit 0 unelevated, `[ -L ]` and the
+`ReparsePoint` bit both read false, and an in-place write through the link left the decoy file
+holding `{"clobbered":true}`.
+
+THE REMEDY WAS THE WRITE'S SHAPE RATHER THAN A BETTER CHECK, AND IT CLOSES FOUR FINDINGS AT ONCE.
+Both writers now compose the new contents into a sibling temp file and rename it into place, which
+is this plan's own established pattern from section 1's `atomicTmpPath` adjudication. A rename
+replaces the directory entry, so nothing is written through a link of any kind, the check-to-write
+window has nothing to act on, and the write is atomic, which retires the finding that an
+interrupted write destroys exactly the operator keys the section exists to preserve. Measured
+here: after the rename the decoy is byte-identical, the signpost path holds the new content, and
+the link count falls from 2 to 1. The link check stays in front of that write, demoted to what it
+now is: detection rather than defence, so an operator who has deliberately linked the signpost is
+told rather than having the arrangement silently replaced. A hard link is invisible to that check
+and needs no visibility, the rename leaving the other name holding its own content. A Windows
+PowerShell 5.1 trap sits in the remedy and the implementer confirmed it at the shell rather than
+reasoning past it: the three-argument `[System.IO.File]::Move` overload with overwrite is .NET
+Core only and 5.1 rejects it, so the doctor uses `Move-Item -LiteralPath ... -Force`, proven by
+the hard-link test rather than by argument.
+
+FIVE FURTHER FIXES, ALL BEHAVIOURAL. The doctor's `ConvertTo-Json` carried no `-Depth`, so at the
+default of 2 it rendered any nested operator value as a PowerShell `ToString()` string,
+unrecoverably, which is the merge destroying exactly what it exists to preserve; reproduced by the
+controller and by two lenses independently, and introduced by this change, since the pre-change
+writer only ever emitted two flat strings. The doctor lacked the non-object guard its sibling
+already had, so a signpost parsing to an array or scalar had .NET adapter members (`Count`,
+`SyncRoot`, `IsFixedSize`) written into the operator's config as keys. A refused write reported as
+a successful run on both writers, the doctor folding the refusal into a `FIXED` note that
+increments no counter so the summary printed `All checks passed.` and exited 0, and `setup.sh`
+falling through to its success banner and exit 0; a planted link is an indicator of compromise and
+both writers answered it with a green light. The doctor's non-`-Fix` path advised re-running with
+`-Fix`, advice the new refusal guarantees cannot work, so it now names the link as the blocker.
+And `setup.sh` gained a hard `node` dependency under `set -e`, so a machine without node aborted
+before the git-hooks wiring where it previously completed; it now guards on `command -v node` in
+the script's own existing idiom, writing the two-key template when the signpost is absent and
+leaving an existing one untouched with a warning, since the wholesale fallback would reintroduce
+the very data loss the section removes.
+
+THE COVERAGE GAP THE ROUND COMPLAINED ABOUT IS CLOSED, AND A HARD LINK IS WHAT CLOSED IT. The
+build's symlink cases skipped on EPERM, so the entire second half of the change shipped with no
+executed coverage on the machine that gated it. A hard link needs no elevation here and neither
+does a junction, so the fix round added hard-link cases and reparse-point refusal cases for both
+writers. The controller re-ran the file rather than taking the agent's numbers: 19 tests, 17
+passing, 0 failing, 2 skipped, exit 0 read from its own marker. Both hard-link cases pass, both
+reparse-point refusal cases pass, the doctor's refusal is asserted to be a `WARN` and not a
+`FIXED`, and the only two cases that skip are the file-symlink pair, by name, for the EPERM reason
+they carry. The refusal path and the write path are both genuinely exercised on this box.
+
+THE RED-FIRST CONTROLS WERE MADE TO SPEAK WHEN THEY DO NOT RUN. Every red assertion hangs off a
+pre-fix copy under the gitignored scratch path, so on any other checkout those assertions silently
+no-op while the test still reports green under a title claiming "red against the pre-fix writer",
+which is the shape this project's own silent-check rule bans. Each such case now emits a
+diagnostic naming the absent copy, and the implementer ran the withheld control: with both copies
+renamed away the run printed the diagnostic for both halves, so that silence is proven to speak.
+
+ONE DEVIATION FROM THE FIX BRIEF, ARGUED AND ACCEPTED. The brief said `setup.sh` should exit
+non-zero after the refusal; the implementer exits 1 at the end of the script instead. Its
+reasoning is better than the brief's: exiting on the spot would skip the git-hooks wiring and the
+closing hints on every run for an operator who has deliberately linked their signpost, which this
+round's own not-to-fix list accepts as a legitimate recurring state rather than a one-off. Both
+halves of the defect are closed either way, no green light and no clean exit, and the test asserts
+the non-zero status and that the hooks wiring still ran.
+
+`docs/security-model.md` WAS CORRECTED IN THIS CHANGESET. Its signpost paragraph stated that
+`setup.sh` writes with a truncating redirect and the doctor with an in-place write, so both follow
+a link standing at the path, and that closing this was a separate exposure left to a later
+section. This section closes it, so the sentence now states the property the writers carry: the
+write replaces the name's directory entry rather than truncating what the name resolves to,
+nothing is written through a link of any kind, and the link check in front of it is a report
+rather than the defence. Same rule sections 1 and 4 followed, a false security claim never
+outliving the commit that falsifies it. Its absence was confirmed with a control that speaks.
+
+SIX FINDINGS ADJUDICATED AS NOT TO FIX, NAMED SO THEY ARE NOT RE-LITIGATED: the dangling-symlink
+hole in `Get-Item`, moot once the write is a rename since nothing is written through any link;
+`setup.sh` refusing on every run where the doctor refuses only under `$needSignpost`, an accepted
+asymmetry stated in the comment; `__proto__` re-emission through the merge, with no live sink, the
+only reader pulling one property behind a `Number.isFinite` check; the case-insensitive key
+collision between the two writers, harmless to every current reader; a FIFO at the signpost path
+and the unbounded read size, availability only and behind a same-user precondition; and routing
+the signpost read through `kit-read-lib.js`'s bounded reader, a cross-boundary refactor outside
+this section.
+
+TWO IMPLEMENTER CONCERNS CARRIED FORWARD RATHER THAN FIXED. A pre-existing branch reports `FIXED`
+with no write when the signpost is valid and `git` is unavailable, the same shape as the defect
+this round fixed but in a branch outside the section's subject. And under Git Bash the no-node
+fallback writes the shell's own path spelling where the node merge receives the MSYS-converted
+Windows form; that is HEAD's unchanged behaviour, observable only under a shell that is not
+`setup.sh`'s target, and the test pins the directory leaf rather than the spelling with the reason
+at the assertion. Standing Brief Amendment 2 was named rather than acted on: the doctor's
+`$signpostData` conflates absent with unparseable and drives a read-modify-write, but both
+conflated cases take the same wholesale template the approved spec explicitly sanctions, so
+discriminating them would change approved behaviour.
+
+ONE STALE CARRIER LEFT FOR THE FINISHING PASS RATHER THAN FIXED HERE. `docs/README.md:32`
+describes this plan as "five sections, two complete". It is the plan index that the docs curation
+step rewrites when the plan flips to Complete and moves to the archive, so correcting it now would
+be work the finishing pass redoes.
