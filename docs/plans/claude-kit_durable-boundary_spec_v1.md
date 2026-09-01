@@ -1618,3 +1618,103 @@ and round 8's review supplied it with a confirmed second instance.
 Commit model in effect: Commit-and-Push. This entry and the evidence added to the output-channel
 spec commit together; section 2's code stays unstaged until its whole gate has run, since under this
 model the section commit goes straight to main.
+
+### Interim board 12 - 2026-09-01
+
+IN-FLIGHT SECTION AND ITS STAGE. Section 2 is implemented and has had NINE implementer fix
+rounds. Round 9 is verified at the lines, its three-lens review is adjudicated, and round 10 is
+dispatched and in flight. Sections 3, 4 and 5 are not started.
+
+ROUND 9 HELD ON EVERY POINT THE CONTROLLER CHECKED. The tree bracket showed no delta. The
+sanitizer's ordering defect is fixed: it now strips non-ASCII, then elides, then caps, so the
+elision sees the same text the channel does. Exactly two descriptor writes remain in the file,
+both inside the emitters, both scrubbed. The lane ran 688 / 685 / 0 / 3 across eight files with
+exit 0 read from each file's own marker. And the round added a floor the controller had not
+asked for and should have: where no home directory is knowable at all, an empty elision list
+would otherwise be indistinguishable from nothing to elide, so the tool now says once, on
+whichever descriptor is written first, that nothing below is elided.
+
+ROUND 9 REFUSED TWO INSTRUCTIONS IN ITS BRIEF AND WAS RIGHT BOTH TIMES. The brief prescribed
+shortening a test's fixture home to fit under the print cap; the round refused on the ground
+that the machine's temporary directory is unbounded, so no fixture choice makes the arithmetic
+hold on an arbitrary box, and fixed the sanitizer's ordering instead, which removes the cap
+problem rather than dodging it. The brief also offered two spellings for the command the nudge
+prints; the round refused both and used a third, on the ground that the clause promises a line
+an operator can actually run.
+
+THE GUARD ROUND 9 BUILT LEAKED ON BOTH OF ITS OWN BOUNDARIES. The controller extracted the
+shipped pattern-builder's source text and executed it against this box's real home. The leading
+and trailing boundaries are ALLOW-LISTS of the surrounding character, so a home path sitting
+beside any character they do not name is not elided at all: eight leaking contexts, among them a
+path in parentheses, after an equals sign, after a colon, and before a comma. An independent
+review lens reached the same finding by the same route. The leading boundary was added in round 9
+to fix a real over-elision bug, and the instrument was wrong for it: FOR A PRIVACY GUARD THE TWO
+FAILURE DIRECTIONS ARE NOT EQUALLY COSTLY, since over-elision prints a wrong path while
+under-elision prints the account name, so the boundary has to be a deny-list of what would make
+the match a different token rather than an allow-list of what may surround it.
+
+A REVIEW MAJOR WAS REFUTED BY RUNNING THE THING IT WAS ABOUT. A lens rated as Major that the
+command the nudge composes does not run under this platform's Bash tool, with precise evidence:
+the shell's own home variable spells a POSIX path that Node cannot resolve on Windows. The
+controller ran the real command in both shells and it succeeded in both, printing the correct
+Windows path, because the shell layer converts the argument before the child process sees it.
+The lens had tested the resolution INSIDE Node, which is one layer off from the real invocation
+and bypasses that conversion. Recorded because the finding was confident, specific and wrong, and
+because the round's brief now carries the refutation explicitly: a fix round handed an unmarked
+false finding repairs working code.
+
+WHAT THE THREE LENSES FOUND THAT SURVIVED. No Critical from any lens. The account name still
+reaches the channel on both boundary directions above. On an account name that is wholly
+non-ASCII the guard collapses to an ancestor of the home and elides EVERY account's paths into
+paths that are nowhere on disk, reproduced by a lens running the shipped tool under a CJK home.
+The new catch-all that was added to stop Node printing a home-anchored stack trace does not cover
+the module-scope requires, so the one failure it was written for still leaks, and its own comment
+claims otherwise; two lenses found this independently. The network-share screen that exists so
+this hook can never block on an unreachable share is applied to the project directory and not to
+the home-anchored path the coordinator seat's own project resolves to, which is the seat this
+section serves. A pin assertion cannot fail, its needle spelled with a different separator than
+the text it searches. The collision note reports a replacement for a declaration that had already
+lapsed. And future-dated hold stamps are dropped with no skew allowance where every sibling
+comparison in the same file allows one, which under a read-modify-write erases every peer's stamp
+on a backwards clock step rather than skipping one.
+
+A BOUND IS STATED RATHER THAN FIXED, WHICH IS WHAT THIS SECTION ALREADY DOES ONCE. The blind lens
+found that the context floor this section ships is compared against a figure bounded above by the
+seat's own context window, so on a seat whose window is smaller than the floor the directive can
+never fire at all. Confirmed by reading the summing function. The value is not changing in round
+10: it is what the approved Approach names, section 2 already handles a bound of exactly this
+shape by stating it rather than repairing it, and making the floor window-relative is a design
+change to an approved knob. What changes is the justification comment, which argues the value
+against the wrong ceiling. If that call is wrong it is reversible in one line.
+
+TWO REVIEW FINDINGS ARE SECTIONS OF THIS PLAN AND ARE ROUTED THERE, AGAIN. The installers
+rewriting this section's only operator knob out of existence is section 5's whole subject, and it
+has now been re-found by an independent lens for the second time. Nothing in round 10 touches it.
+
+THE SECURITY DOCUMENT IS STILL DELIBERATELY NOT TOUCHED. A lens raised that its paragraph now
+under-claims, which is correct and is the state this plan chose one boundary ago: the property
+does not hold yet, so the wider text is not yet writable. It is written once, by the main thread,
+after round 10 settles the code, and before the section's commit, so the document does not trail
+the code it describes onto the trunk.
+
+THE ROUND. Three reviewers via the Workflow route at model opus and effort max, which the Agent
+tool cannot set; all three resolved to claude-opus-5 read from the run record, so no substitution
+and no compensation notch is owed. First-turn readings were taken on every dispatch with controls
+that spoke. Workflow parallelism caps at two on this host, so the blind lens started as the first
+finished, which is expected rather than a never-started dispatch. The tree-state bracket around
+the round returned NO delta, so all three lenses held read-only.
+
+CURRENT GATE BASELINE. 688 / 685 / 0 / 3, exit 0, over the eight files the round's lane names,
+each file's code read from its own marker. The whole gate is still OWED at the section close,
+three times over, and it is what settles the section.
+
+NEXT ACTION PER SECTION. Section 2: adjudicate round 10, whose eleven items are the behavioural
+defects above plus three claim corrections that ride along rather than earning a round of their
+own. Then the security document written once against the settled code, then the whole gate under
+a fresh baseline, then Chapter 2 and the commit. Section 3: not started, scope widened three
+times. Section 4: not started, the marker-collision repair. Section 5: not started, and now
+carrying two independently confirmed instances.
+
+Commit model in effect: Commit-and-Push. This entry commits alone; section 2's code stays
+unstaged until round 10 is adjudicated and its whole gate has run, since under this model the
+section commit goes straight to main.
