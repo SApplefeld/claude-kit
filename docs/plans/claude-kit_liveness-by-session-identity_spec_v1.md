@@ -8,7 +8,7 @@ Session model: any executor session in the kit repo; four sections, tiers per se
 
 ## Dispatch Authorization
 
-None recorded. This plan was authored by the Expert seat under the kaizen skill's standing adjudication authority, which reaches the authoring and not the arming: it enters the worker's queue only on the operator's word, given on a warranted channel and recorded here by a session that will not be the one citing it.
+Authorized 2026-09-02 by the operator, first-hand on the allowlisted relay thread, to be appended to the kit worker's armed queue: the four sections rekeying the registry prune and the heavy-slot release on session identity as designed here, ninth in the queue. The operator's word was the answer to a decision batch the KIT: Expert seat put on the relay, choosing the recommended option of appending the pass's four code-and-design specs to the worker's queue in the order code batch, liveness, claim writer, provenance; that seat recorded it here and ran the append. Per the peer-sessions trace rule this section is a warrant only for a citing session that did not author it, and the receiving session performs its own trace: the grant is the operator's message on the Expert session's relay thread, and the plan arms only by the operator's word or the Expert seat's append under it.
 
 ## Goal
 

@@ -4,11 +4,11 @@ Status: Ready
 Commit Model: Commit-and-Push
 Created: 2026-09-02
 
-Session model: any executor session in the kit repo, or the corpus audit's adjudication lane as an input set; eleven sections, tiers per section, every one a wording change to behavior-shaping prose and so under the writing-skills skill's RED and GREEN discipline in a fresh session. Authored by the KIT: Expert seat as the prose slate of the 2026-09-02 kaizen pass. Anchors are authoring-time; re-locate every hit by content.
+Session model: the corpus audit's adjudication lane, which takes this plan as an input set on the operator's routing recorded under Dispatch Authorization; eleven sections, tiers per section, every one a wording change to behavior-shaping prose and so under the writing-skills skill's RED and GREEN discipline in a fresh session. Authored by the KIT: Expert seat as the prose slate of the 2026-09-02 kaizen pass. Anchors are authoring-time; re-locate every hit by content.
 
 ## Dispatch Authorization
 
-None recorded. Authored under the kaizen skill's standing adjudication authority, which reaches the authoring and not the arming. Two routes are open and the operator picks: appended to the worker's queue on his word, or handed to the corpus audit (`claude-kit_corpus-audit_spec_v1.md`) as an input to its adjudication lane, so the same warm judge that rules on the audit's findings rules on these and the corpus is edited once rather than twice. The Expert seat's recommendation is the second route, recorded in the pass's close-out.
+Routed 2026-09-02 by the operator, first-hand on the allowlisted relay thread, to the corpus audit (`claude-kit_corpus-audit_spec_v1.md`) as an input set to its adjudication lane rather than to the worker's queue, so the same warm judge that rules on the audit's findings rules on these and the corpus is edited once rather than twice. This plan is therefore never armed on its own: the audit session reads it at its adjudication pass under the audit's own authorization, rules each section, and applies what it upholds through the audit's follow-on plan, with this plan's sections and their RED and GREEN discipline as the input. The operator's routing answered a decision batch the KIT: Expert seat put on the relay; that seat recorded it here.
 
 ## Goal
 
@@ -24,7 +24,7 @@ Decided 2026-09-02 by the Expert seat under standing adjudication; reversible at
 
 1. **Every section runs RED then GREEN in a fresh session**, per the writing-skills skill, and the Chapter records both readings. A clause whose RED reading already reaches the right answer is not added; the section records that and closes.
 2. **The doctrine's two hand-edited copies land byte-identical**, per the existing parity pin, and every doctrine section names both paths.
-3. **The em-dash rescope is applied on the operator's 2026-08-30 keyboard ruling as the note reports it**, and the close-out names it so the operator can overrule from the recap; it is the one section whose subject is his own preference.
+3. **The em-dash rescope is applied on the operator's 2026-08-30 keyboard ruling as the note reports it**, confirmed by the operator on the relay on 2026-09-02 from the pass's close-out recap; it is the one section whose subject is his own preference.
 
 ## Sections of Work
 
@@ -101,6 +101,6 @@ Acceptance: an enumeration of the steps found, each with its clause; RED and GRE
 
 ## Related
 
-- `claude-kit_corpus-audit_spec_v1.md`: the adjudication lane this plan is recommended to ride.
+- `claude-kit_corpus-audit_spec_v1.md`: the adjudication lane this plan rides, on the operator's routing of 2026-09-02.
 - `claude-kit_kaizen-code-batch_spec_v1.md`, `claude-kit_liveness-by-session-identity_spec_v1.md`.
 - Kaizen triage record `kaizen/archive/2026-09-02-pass-triage.md`.

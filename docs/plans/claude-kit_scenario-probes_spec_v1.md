@@ -23,7 +23,7 @@ The kit tests its hooks mechanically and its prose by review, and review by a se
 
 ## Decisions
 
-To be ruled by the operator at arming; each carries a recommendation.
+Ruled 2026-09-02 by the operator, first-hand on the allowlisted relay thread, from the kaizen pass's close-out recap: all three stand at their recommendations.
 
 1. **Tier per probe.** Recommended: Sonnet by default, Opus for probes on moments only an orchestrator meets (dispatch, review roster, compaction boundary), matching the corpus-audit plan's representative-reader ruling. Alternative: Opus everywhere, which costs more and under-reports the confusion that bites Sonnet seats.
 2. **What a mismatch does.** Recommended: reports, never blocks, in the first version; the runner's exit code is the mismatch count and the finishing pass reads it as a gate reading in the Chapter. Alternative: a pre-commit block on prose files, declined for now because a probe's reading is itself model output and a flaky block on doctrine edits would train authors to skip the runner.
