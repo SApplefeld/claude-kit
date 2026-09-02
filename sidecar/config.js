@@ -2,7 +2,8 @@
 // and the state root it owns.
 //
 // The endpoint config is `~/.claude/kit-endpoint.json`, operator-authored per
-// machine, holding `{ "url", "model" }` and an optional `"timeoutMs"`. Its
+// machine, holding `{ "url", "model" }`, an optional `"timeoutMs"`, and an optional
+// `"api"` naming the wire protocol (`ollama`, the default, or `openai`). Its
 // ABSENCE is the normal case on most machines and means "no endpoint here":
 // every component treats that as a reason to stand down quietly, never as an
 // error. Nothing in this repository holds the address; it exists only in that
