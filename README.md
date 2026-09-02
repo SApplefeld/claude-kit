@@ -34,7 +34,7 @@ claude-kit/                          (repo = the marketplace)
         kit-doctor/                  Validate and repair the machine's kit install (runs the payload doctor)
         branch-hygiene/              Clean up branches and worktrees after Branch-and-PR; reap merged, recover stranded
         curating-docs/               docs/ taxonomy: plan archival, backlog pruning, indexes and cross-references
-        memory-system/               The memq store: recall at effort start, outcome journal, applied stamps, tags, decay and pinning, type and operator tiers, shared-tier repair and delete
+        memory-system/               The memq store: recall at effort start and at a seat takeover, outcome journal, applied stamps, tags, decay and pinning, type and operator tiers, shared-tier repair and delete
         csharp-style/                C# house style + detailed reference
         sql-style/                   T-SQL house style + detailed reference
         scott-writing-style/         Document/prose style guide
