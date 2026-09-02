@@ -1650,3 +1650,57 @@ the memory-recognition plan was reopened in the 2026-08-30 design dialog, or whe
 amended there was a slip.
 
 Commit model in effect: Commit-and-Push.
+
+### Interim board 12 - 2026-09-02
+
+All three sections are closed and the whole-effort finishing pass is under way. This entry is the
+boundary the compaction gate is holding for, taken between finishing steps rather than at a section
+close, since no section closes during finishing.
+
+Stage. Section 3 shipped and pushed at 653faed. The finishing pass has run its opening move and its
+first step, and steps 2 and 3 are in flight.
+
+The base ref, established before step 1 as the pass requires. This effort's changeset is defined
+against 2ec35f70d8fc42b8ee22200ffbf75da873e016c8, derived by the commit model's own rule: the earliest
+commit whose diff against this plan doc added a Chapter line is 72ddd3e, and the base is its parent,
+resolved to a sha rather than left as a caret expression. The check that follows the derivation found
+the expected surfacing rather than a wrong base. A second session committed into this same working tree
+inside the window, so the raw listing runs to 52 files while this plan's own work is 31 of them,
+attributed by walking the window's commits and taking the file lists of the MEMORY-READ-SIDE ones. The
+other session's sidecar tree, its kaizen note and its four sidecar test files are named out of scope in
+every dispatch this pass makes, because a reviewer handed the raw listing would spend its budget judging
+work this plan never did.
+
+Step 1, QA verification, returned PASS. The build exits 0 at 93 files and 1253.3 KB. The whole gate reads
+2970 tests, 2960 passing, 1 failing, 9 skipped at exit 1, a delta of exactly zero against the baseline
+Chapter 3 recorded, with the single failure identified by name and by mechanism as the permanent
+box-local red in a file this effort never touched. The repository defines no contention lane, and the
+dispatch was told so in terms rather than left to answer NONE DEFINED, since that answer reads the same
+whether a lane is absent or merely unfound; the basis is that the only test-tree matches for the phrase
+are prose assertions in the doctrine-parity suite, no test declares itself a lane member, and the repo
+has no package.json and no lane script. One acceptance leg is classified UNVERIFIABLE and operator-only:
+a live session cannot demonstrate the new prompt-time pointer while this machine's plugin install trails
+the checkout, and only the operator can run the update that closes that gap.
+
+Live dispatches. The security review and the final adversarial review are both in flight over the whole
+changeset, dispatched through the Agent tool at the fable override with the reviewers' own frontmatter
+effort, which is the finishing pass's default for a session running below fable. Both carry the
+per-section coverage in their briefs, so they spend their budget on cross-section cohesion and on what
+only becomes visible now that all three sections have landed, rather than re-reviewing code the
+per-section rounds already cleared. Their first-turn readings were taken at the five-minute window, which
+a dispatch carrying a model override earns whatever its re-block shape: both controls speak, both hold
+zero synthetic placeholder lines, and every assistant turn in both resolved at claude-fable-5, so neither
+round is running below the tier it was assigned. That reading is diagnostic rather than the recorded
+figure, both runs being still in flight when it was taken.
+
+The box. The pass opened by finding the heavy-process claim held by another session on this machine, with
+its whole gate live, and waited it out rather than contending; a second gate of that session's started
+while the wait ran and was waited out too. The claim was taken under this session's own id only once the
+peer released it, held for the QA build and gate, and released after its Session line was read. The
+review round that follows runs read-only and holds no claim.
+
+Next action. Adjudicate both reviews against the tree bracket, fix what they find, then step 4's docs
+curation with its pre-change reads, then step 5: the plan's terminal state, the archive, the backlog
+prune, the index refresh, and the handoff whole gate that fills the final Chapter's open Gate line.
+
+Commit model in effect: Commit-and-Push.
