@@ -1,10 +1,10 @@
-# Kaizen prose batch, 2026-09-02: eleven clauses the corpus owes its readers
+# Kaizen prose batch, 2026-09-02: twelve clauses the corpus owes its readers
 
 Status: Ready
 Commit Model: Commit-and-Push
 Created: 2026-09-02
 
-Session model: the corpus audit's adjudication lane, which takes this plan as an input set on the operator's routing recorded under Dispatch Authorization; eleven sections, tiers per section, every one a wording change to behavior-shaping prose and so under the writing-skills skill's RED and GREEN discipline in a fresh session. Authored by the KIT: Expert seat as the prose slate of the 2026-09-02 kaizen pass. Anchors are authoring-time; re-locate every hit by content.
+Session model: the corpus audit's adjudication lane, which takes this plan as an input set on the operator's routing recorded under Dispatch Authorization; twelve sections, tiers per section, every one a wording change to behavior-shaping prose and so under the writing-skills skill's RED and GREEN discipline in a fresh session. Authored by the KIT: Expert seat as the prose slate of the 2026-09-02 kaizen pass. Anchors are authoring-time; re-locate every hit by content.
 
 ## Dispatch Authorization
 
@@ -93,6 +93,12 @@ Acceptance: RED and GREEN for each of the three; the goal-machinery pin over the
 Wherever a shipped skill's step says "read the file at this path" for a location an operator-tier record may relocate (the coordinator's board read, the role skill's launch-invocation resolution, the kaizen signpost), the step names the operator tier before its not-found branch, so an absence is reported as absence only after the override layer was queried. 2026-08-29, coordinator seat, and the ASR-CLAUDE sibling note. The coordinator's instance lands in `claude-kit_liveness-by-session-identity_spec_v1.md` section 2; this section covers the rest and records which steps it found.
 
 Acceptance: an enumeration of the steps found, each with its clause; RED and GREEN on one representative.
+
+### 12. A pass clears the lines it dispositioned and reconciles the count before it commits. Model: opus
+
+`plugins/claude-kit/skills/kaizen/SKILL.md` step 3 already says "clear the note lines you handled", and the 2026-09-02 pass cleared three whole files instead, dropping two NEO-CLAUDE notes that stood in the file at the pass's own base commit and appear nowhere in its triage record (`kaizen/notes-NEO-CLAUDE.md` at `d09d099` held sixteen, `ade15e9` removed sixteen, the record covers fourteen; NEO-CLAUDE re-captured both at `8229041`). The rule was right and nothing enforced it. Add to step 3, beside the clear: the removal is by the dispositioned lines' own text and never by truncating the file, so a line the pass did not read survives by construction; and before the clearing commit the pass reconciles, reading the staged diff's removed note lines against the triage record, so that every removed line is named in the record and the two counts agree, with any line the record does not name restored to the inbox rather than committed away. Add to step 1 one sentence on the read: each note file is read on its own and its note count is taken before triage and compared to the record's count after, because a loop that prints every file through one tool call can overrun the harness's output cap and lose a file's tail without a mark. The general lesson rides in the sentence rather than as a warning: where producers append at any time and the consumer finishes by rewriting the whole surface, the only safe clear is one that names what it removes.
+
+Acceptance: both sentences present, no em dashes; RED and GREEN on the step-3 reading; the kaizen README's structure bullet unchanged.
 
 ## Out of Scope
 

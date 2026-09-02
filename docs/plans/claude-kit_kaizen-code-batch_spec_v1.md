@@ -1,10 +1,10 @@
-# Kaizen code batch, 2026-09-02: nine instruments stop lying or start existing
+# Kaizen code batch, 2026-09-02: ten instruments stop lying or start existing
 
 Status: Ready
 Commit Model: Commit-and-Push
 Created: 2026-09-02
 
-Session model: any executor session in the kit repo; nine sections, tiers per section, each independent of the others so they may run in any order or in parallel where the box allows. Authored by the KIT: Expert seat as the apply-now slate of the 2026-09-02 kaizen pass, restricted to code and tests; the prose slate is `claude-kit_kaizen-prose-batch_spec_v1.md`. Anchors are authoring-time; re-locate every hit by content.
+Session model: any executor session in the kit repo; ten sections, tiers per section, each independent of the others so they may run in any order or in parallel where the box allows. Authored by the KIT: Expert seat as the apply-now slate of the 2026-09-02 kaizen pass, restricted to code and tests; the prose slate is `claude-kit_kaizen-prose-batch_spec_v1.md`. Anchors are authoring-time; re-locate every hit by content.
 
 ## Dispatch Authorization
 
@@ -12,7 +12,7 @@ Authorized 2026-09-02 by the operator, first-hand on the allowlisted relay threa
 
 ## Goal
 
-Nine inbox notes describe a code surface that either reports something false with confidence or lacks a check whose absence is silent. Each is small, each has a test that can be watched red first, and none touches behavior-shaping prose, so they ride together as one plan the worker can clear quickly. When this plan is done: the goal CLI's status render hides no queue row; an arm run from a directory the session does not work in is refused or loudly warned; the doctrine refresh hook cannot write an older payload's text over a newer one and the file it writes says who owns it; the session-start backlog scanner reads an item as the record it is; the judgment sidecar stops reading the harness's own cwd-reset footer as a failed command; the doctor grades a history-only hit on a lock-file path as the untrack-and-move-on it is and places its declined-prompt line under the check that asked; three pins exist that the docs and the payload have needed (markdown marker parity, the archive index chain, and line-ending-normalized prose pins); the docs-curator charter names the guard its output lands behind; and a Chapter whose `Completed:` line registers nothing is named at the stop that reads it.
+Ten inbox notes describe a code surface that either reports something false with confidence or lacks a check whose absence is silent. Each is small, each has a test that can be watched red first, and none touches behavior-shaping prose, so they ride together as one plan the worker can clear quickly. When this plan is done: the goal CLI's status render hides no queue row; an arm run from a directory the session does not work in is refused or loudly warned; the doctrine refresh hook cannot write an older payload's text over a newer one and the file it writes says who owns it; the session-start backlog scanner reads an item as the record it is; the judgment sidecar stops reading the harness's own cwd-reset footer as a failed command; the doctor grades a history-only hit on a lock-file path as the untrack-and-move-on it is and places its declined-prompt line under the check that asked; three pins exist that the docs and the payload have needed (markdown marker parity, the archive index chain, and line-ending-normalized prose pins); the docs-curator charter names the guard its output lands behind; and a Chapter whose `Completed:` line registers nothing is named at the stop that reads it.
 
 ## Evidence
 
@@ -22,7 +22,7 @@ Each section cites its note in `kaizen/notes-*.md` at the pass's capture commit 
 
 Decided 2026-09-02 by the Expert seat under standing adjudication; reversible at arming.
 
-1. **One plan, nine independent sections.** Grouped for queue economy; nothing in one section is a precondition for another.
+1. **One plan, ten independent sections.** Grouped for queue economy; nothing in one section is a precondition for another.
 2. **Every section carries a red-first test.** A section whose test cannot be watched red against the pre-section code is not done, whatever the diff looks like.
 3. **The sidecar's truncated-input direction is not in this plan.** That decision (tell the judge its input is partial) went to the operator on 2026-09-01 and waits on his word; section 5 touches only the footer class.
 
@@ -81,6 +81,12 @@ Acceptance: the paragraph present; the gate green; no em dashes.
 A Chapter's first `Completed:` line registers a section only in two exact forms (project memory `chapter-completed-line-is-machine-read`), and a line that registers nothing leaves its section permanently open with no warning on any surface the writer watches (`kaizen/notes-NEO-CLAUDE.md` 2026-08-29; eight non-registering Chapters in one leashed run). In `kit-goal-stop.js`, at a stop under a leash, read the armed plan's newest Chapter; where it carries a `Completed:` line that registers no section of the plan's own list, ride one sentence on the stop's block reason (or on the allow, where the stop is otherwise allowed) naming the line and the two forms it takes. Never block on it. Test: a Chapter closing `Completed: Section 1 (title)` produces the sentence; `Completed: 1. title` does not.
 
 Acceptance: tests green, watched red first; `node --test test/kit-goal*.test.js` green with delta named.
+
+### 10. The stamp audit resolves the board where a seat does, and names an unscanned leg. Model: opus
+
+`plugins/claude-kit/hooks/kit-registry-stamp.js audit` reads the board at the directory contract's literal `board.md` and, where nothing is there, reports the board absent (`kaizen/notes-NEO-CLAUDE.md` 2026-09-02, re-captured at `8229041`). A machine whose operator sited the board elsewhere by an operator-tier location record gets no board leg at all, and the summary's phrase is the same one the coordinator runbook's no-board rule makes a decision state, under which a seat stands itself down; two seats on that machine have already concluded no-board from the literal path and the audit is a third instrument producing the sentence from the same cause. Resolve the board through the same operator-tier location record a seat resolves it through, falling back to the contract path; where neither yields a file, report "no board at <path>, board leg not run" and count the leg as unscanned in the coverage line rather than folding it into a clean scan. Tests: a board at a relocated path recorded in a fixture operator tier is scanned; a missing board produces the unscanned wording and never the word absent; the contract path still works with no record.
+
+Acceptance: tests green, watched red first; `node --test test/kit-registry-stamp*.test.js` green with delta named.
 
 ## Out of Scope
 

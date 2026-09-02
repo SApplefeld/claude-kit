@@ -75,6 +75,10 @@ Dispositions: **spec** (promoted into a plan under `docs/plans/`), **fixed** (al
 - 09-01, the one-heavy-process bullet's unnamed third act: **spec**, prose batch s5 and liveness s2.
 - 09-02, the doctor's history probe grading, and the declined-prompt line placement: **spec**, code batch s6.
 
+- 09-02, the registry-stamp audit reports the board absent on a machine whose board is sited elsewhere: **dropped by this pass** (the note stood in the file at the base commit and this record did not cover it; NEO-CLAUDE re-captured it at `8229041`), then **spec**, code batch s10, dispositioned 2026-09-02 in the same seat.
+- 09-02, the judgment sidecar alerts on divergence-seeking checks, with NEO-CLAUDE's later qualifier that the fair alerts land inside that same class: **dropped by this pass** on the same terms, re-captured at `8229041`; **held in the inbox for the operator's attended pass**, since the remedy (score the route independently of the match) is a sidecar design direction that sits beside the partial-input direction already pending with the operator.
+- 09-02, a pass that clears whole files drops what it never read: **spec**, prose batch s12, captured by NEO-CLAUDE at `8229041` after this pass's clear. Errata for this record: the pass removed sixteen NEO-CLAUDE notes and covered fourteen; the mechanism was not a note landing mid-pass (no commit touched the file between `d09d099` and `ade15e9`) but a whole-file clear with no reconciliation against this record.
+
 ## notes-ASR-CLAUDE.md
 
 - 08-30, a re-derivation source list excluding record-sourced facts: **in flight**, board-routing-and-homing s4 (the operator tier joins the source list), with the general clause in prose batch s11.
