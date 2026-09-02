@@ -5819,12 +5819,15 @@ function withheldLine(w) {
 // has to cost less than the fact it establishes is worth.
 const JUDGED_PROBE_TIMEOUT_MS = 400;
 
-// How long the ranking call waits. Three orders of magnitude below the judge
-// daemon's, and deliberately so: the daemon is a batch pass behind a serial
-// contended lane where a minute's queue is normal, while this is a command
-// typed at a prompt. A call that outruns this budget degrades to the store's
-// own ranking rather than making a person wait for the endpoint's queue.
-const JUDGED_CALL_TIMEOUT_MS = 2000;
+// How long the ranking call waits. Sized to a cold call on an idle slot: a
+// ranking answer runs to a few hundred tokens behind a prompt of a few thousand,
+// and a prompt-cache miss on the fleet's endpoint puts that at two to three
+// seconds, so the budget admits that case with room and nothing more. It stays
+// far below the judge daemon's, and deliberately so: the daemon is a batch
+// pass where a minute's queue is normal, while this is a command typed at a
+// prompt. A call that outruns this budget degrades to the store's own ranking
+// rather than making a person wait for a wedged lane.
+const JUDGED_CALL_TIMEOUT_MS = 5000;
 
 // The generation ceiling, sized above the schema's own worst case rather than
 // near it. Five entries, each carrying a number, a name at this store's naming
