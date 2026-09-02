@@ -100,7 +100,7 @@ Acceptance: the coordinator's two-way experiment re-run on a machine-scoped seat
 
 ### 3. Recognition meets the moment: the prompt and the dispatch. Model: opus
 
-Two new hook registrations in the kit's established nudge idiom, both dormant-tolerant and fail-open like every kit nudge. On `UserPromptSubmit`: the prompt text is matched against the recognition surface (all tiers, per section 1), and hits inject as `additionalContext` in pointer-not-body discipline, the record name, one clause of why, and the `memq get` spelling, capped (at most 3 pointers, bounded bytes, the sidecar valve's caps are the precedent) and deduplicated per session with the existing nudge's dedup. On `SubagentStart`: the dispatch's input is matched the same way and hits inject as `additionalContext` so the orchestrator's brief gains what the store knows; `updatedInput` is not used, a suggestion being this machinery's whole authority, and that restraint is stated in the hook's header. Semantic matching rides only where the machine's endpoint config exists, degrading to trigger-and-lexical matching exactly as the sidecar contract degrades, never erroring. The probe rule from Evidence binds the section: before building on either event, a trivial probe hook is registered and its injection watched to arrive in a real session, because the docs pass that mapped this surface was wrong about events the kit already uses; the probe result for each event is recorded in the chapter. Version reality is handled by construction: a machine whose harness lacks an event never fires it, and the hooks must load without error on such a machine. Tests red-first: a prompt carrying a known trigger's text yields the capped pointer block; a dispatch input carrying one yields the same at `SubagentStart`; a session with no matches injects nothing and no bytes; caps hold under a fixture with many matches.
+Two new hook registrations in the kit's established nudge idiom, both dormant-tolerant and fail-open like every kit nudge. On `UserPromptSubmit`: the prompt text is matched against the recognition surface (all tiers, per section 1), and hits inject as `additionalContext` in pointer-not-body discipline, the record name, one clause of why, and the `memq get` spelling, capped (at most 3 pointers, bounded bytes, the sidecar valve's caps are the precedent) and deduplicated per session with the existing nudge's dedup. On `SubagentStart`: the dispatch's input is matched the same way and hits inject as `additionalContext` so the orchestrator's brief gains what the store knows; `updatedInput` is not used, a suggestion being this machinery's whole authority, and that restraint is stated in the hook's header. Matching at both boundaries is trigger-and-lexical, with no model in the loop and no network call. Semantic matching against the store's embeddings is Tier 2, which decision 2 of the memory-recognition plan (`docs/archive/claude-kit_memory-recognition_spec_v1.md:29`) defers until the stamp-rate reading shows nudges are acted on at all, and that gate has not been read. This sentence replaces one written at authoring time that gated semantic matching on the machine's endpoint config; that gate named the judged channel's switch rather than the semantic channel's, and it reopened a decision the operator had already closed. The probe rule from Evidence binds the section: before building on either event, a trivial probe hook is registered and its injection watched to arrive in a real session, because the docs pass that mapped this surface was wrong about events the kit already uses; the probe result for each event is recorded in the chapter. Version reality is handled by construction: a machine whose harness lacks an event never fires it, and the hooks must load without error on such a machine. Tests red-first: a prompt carrying a known trigger's text yields the capped pointer block; a dispatch input carrying one yields the same at `SubagentStart`; a session with no matches injects nothing and no bytes; caps hold under a fixture with many matches.
 
 Acceptance: both probes watched firing before implementation and recorded; a live session demonstrates a prompt-time pointer from a shared-tier record end to end (the full read-side path this plan exists for); no-match sessions inject zero bytes; whole gate delta against the baseline.
 
@@ -1126,6 +1126,79 @@ seventh review round; its one behavior change is a predicate correction with a r
 withheld control, so the presumption is weaker than last round's but not zero. Then the eight
 `docs/security-model.md` corrections, then the whole gate with the contention lane beside it, then
 Chapter 2, the commit and the push.
+
+### Interim board 9 - 2026-09-01
+
+Not a Chapter: section 3 is still open. Written at the compaction gate's signal, which had held
+thirteen offers over thirty-five minutes, with section 3's first review round adjudicated and its
+consult ruled.
+
+Section 3, "Recognition meets the moment", stage: implemented, independently re-gated, reviewed by
+three lenses, one consult ruled, fix round not yet dispatched.
+
+The probe rule is discharged, and both of its results are recorded here because the section's own
+spec requires it. Both events were watched firing in real sessions on harness v2.1.252, by
+registering a probe hook and reading its marker rather than by trusting any table.
+`UserPromptSubmit` fires and its `additionalContext` reaches the orchestrator's own context,
+carrying `session_id, transcript_path, cwd, prompt_id, permission_mode, hook_event_name, prompt`.
+`SubagentStart` fires once per dispatch and its `additionalContext` reaches the subagent's context
+rather than the orchestrator's, carrying `session_id, transcript_path, cwd, prompt_id, agent_id,
+agent_type, hook_event_name` and no dispatch prompt text at all. The probe cost two wasted readings
+first: a mid-session edit to hooks.json is inert because the harness snapshots its hook
+registrations at session start, so the first silence measured the instrument rather than the events.
+A control armed on `PreToolUse`, which the kit demonstrably uses, stayed silent too and is what
+disambiguated it. The working route is a headless `claude -p` run, which starts a genuine session
+that reads the current install's registrations.
+
+Two spec deviations follow from those measurements and are settled rather than open. The dispatch
+boundary matches `agent:` triggers against `agent_type`, the payload carrying no dispatch input for
+the spec's stated matching to run against. And the dispatch injection reaches the subagent, which is
+better rather than worse than the spec's stated intent, since a subagent inherits no memory context
+by any other route.
+
+Live dispatches, all returned: one `implementer-opus` on the section's code; a three-lens round at
+opus and `max` effort through the Workflow route, being the adversarial, blind and security
+reviewers, dispatched together under one tree-state bracket; and one consultant at the same tier on
+the semantic-matching question. No dispatch is in flight as this is written.
+
+Rulings adopted since the last boundary. The round's single Critical, that spec-required semantic
+matching was refused, is rejected with receipts: decision 2 of the memory-recognition plan
+(`docs/archive/claude-kit_memory-recognition_spec_v1.md:29`, a plan whose Status is Complete, carried
+into the shipped skill at `plugins/claude-kit/skills/memory-system/SKILL.md:233`) defers Tier 2
+semantic matching until the stamp-rate gate is read. The implementation complies with that standing
+operator decision and the spec's own sentence was the deviation, so the sentence is amended above
+rather than the code. The orchestrator's stated reasoning for the refusal was nonetheless wrong and
+is not what the record now rests on: it priced "semantic matching" at the sidecar's endpoint call
+when this repo's architecture separates the semantic channel, a local in-process embedder, from the
+judged channel, the endpoint. That false equation shipped into the hook's header and the fix round
+corrects it.
+
+Gate baseline for the section, on the targeted lane and read from the run's own exit code:
+`node --test test/memory-recognition-nudge.test.js test/hook-canary.test.js` at 146 tests, 146
+passing, 0 failing, exit 0, run by the orchestrator rather than accepted from the implementer's
+report. The whole-gate baseline this section will be measured against remains Chapter 2's, 2932 /
+2922 / 1 / 9 at exit 1.
+
+Next action: one fix round covering the surviving findings, whose generator is single. The dedup key
+omits the boundary and the nudge window is one shared counter, both correct while the two tool
+boundaries partitioned the trigger vocabulary and both wrong now that the new boundaries deliberately
+overlap it. Confirmed at the code by the orchestrator: `agent` sits in both `PRE_TYPES` and
+`DISPATCH_TYPES`, `dedupKey` hashes tier, name, type and pattern with no boundary, and the marker is
+keyed on a session id a subagent shares with its parent, so the parent's own pre-boundary nudge on an
+Agent dispatch spends the key before `SubagentStart` can use it and the new boundary is dead on its
+primary path.
+
+One acceptance risk is named now so its resolution cannot arrive unexplained: the section's
+acceptance asks for a live prompt-time pointer from a shared-tier record, and no shared-tier record
+on this machine carries a trigger at all. Seven records store-wide carry one and all seven belong to
+two other projects. Authoring a shared-tier trigger is therefore part of the section rather than a
+fixture.
+
+One question is batched for the operator at the section close rather than raised as a blocker, since
+the work proceeds either way: whether decision 2 was reopened in the design dialog that authored this
+plan, or whether the sentence amended above was a slip.
+
+Commit model in effect: Commit-and-Push.
 
 ### Chapter 2 - One resolution contract, and the stranded tier dispositioned - 2026-09-01
 
