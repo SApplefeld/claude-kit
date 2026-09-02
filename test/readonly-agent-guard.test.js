@@ -21,7 +21,10 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const { spawnSync } = require('node:child_process');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
+
+const agentLib = require('../plugins/claude-kit/hooks/kit-agent-identity-lib.js');
 
 const GUARD = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'readonly-agent-guard.js');
 const AGENTS = path.join(__dirname, '..', 'plugins', 'claude-kit', 'agents');
@@ -1721,4 +1724,87 @@ test('a piped destructive cmdlet is the bulk idiom whatever its upstream, with n
     // allows, so the grant survives in the form that names its own target.
     allowAll(GATE, ['Remove-Item obj -Recurse -Force', 'ri bin -Recurse -Force']);
     allowAll(STRICT, ['Remove-Item .kit/x -Recurse']);
+});
+
+// The read-only seats are enumerated in one place, the shared classifier, and an
+// enumeration says nothing about a member nobody named. The agent definitions
+// carry a machine-readable marker of the same class: a `tools:` frontmatter line
+// granting no file-writing tool. Deriving the set from that marker is the
+// structural pin over the class's shape, and it is what catches a read-only
+// reviewer added to agents/ that the classifier does not know: that seat would
+// receive store-authored text at its dispatch AND be allowed to mutate the tree
+// it is reviewing.
+//
+// The derivation asserts membership of the GOVERNED set rather than equality
+// with the strict one. qa-verifier is read-only by its tools and is deliberately
+// classed `gate`: it runs the build and the suite, which is a wider grant than a
+// judgment seat's, so the boundary is real rather than an omission.
+test('every read-only agent definition is a governed seat, derived from the definitions themselves', () => {
+    const WRITERS = ['Write', 'Edit', 'MultiEdit', 'NotebookEdit'];
+    const derived = [];
+    for (const file of fs.readdirSync(AGENTS).filter((n) => n.endsWith('.md'))) {
+        const text = fs.readFileSync(path.join(AGENTS, file), 'utf8');
+        const fm = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
+        assert.ok(fm, `${file} has no frontmatter`);
+        const line = /^tools:[ \t]*(.+)$/m.exec(fm[1]);
+        if (!line) continue;                       // a definition granting the session's own tools
+        const granted = line[1].split(',').map((s) => s.trim());
+        if (WRITERS.some((t) => granted.includes(t))) continue;
+        derived.push(path.basename(file, '.md'));
+    }
+    assert.ok(derived.length >= 8,
+        'the derivation must find the read-only definitions, got: ' + derived.join(', '));
+    for (const name of derived) {
+        const cls = agentLib.reviewAgentClass('claude-kit:' + name);
+        assert.ok(cls !== null, `${name}.md grants no file-writing tool, so it is a read-only seat, `
+            + 'and no policy class governs it: add it to reviewAgentClass');
+        if (name !== 'qa-verifier') {
+            assert.strictEqual(cls, 'strict', `${name}.md is a read-only judgment seat and must `
+                + 'classify strict, not ' + cls);
+        }
+    }
+    // The two positive controls on the other side of the line, so the derivation
+    // above cannot pass by classifying everything.
+    assert.strictEqual(agentLib.reviewAgentClass('claude-kit:qa-verifier'), 'gate');
+    assert.strictEqual(agentLib.reviewAgentClass('claude-kit:implementer-opus'), null);
+});
+
+// The guard reads its policy class out of a shared library at the deny path, and
+// a plugin cache can supply a library that loads while exporting nothing the
+// caller wants: a partially updated or rolled-back cache is that shape. Allowing
+// is the contract there, the guard failing open in front of every command a
+// governed seat runs, so what a screen has to add is VISIBILITY: without it the
+// call through an undefined export throws into the file-level catch and every
+// tree-mutating command for every read-only seat is allowed in silence.
+test('a classifier library missing its export allows the command and names the gap on stderr', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'readonly-guard-lib-'));
+    try {
+        fs.copyFileSync(GUARD, path.join(dir, 'readonly-agent-guard.js'));
+        // The library loads and exports its other readings, which is what makes
+        // this the skew case rather than the absent-library one the require's
+        // own catch already answers.
+        fs.writeFileSync(path.join(dir, 'kit-agent-identity-lib.js'),
+            "'use strict';\nmodule.exports = { agentIdentity: () => null };\n", 'utf8');
+        const res = spawnSync(process.execPath, [path.join(dir, 'readonly-agent-guard.js')], {
+            input: JSON.stringify({
+                tool_name: 'Bash',
+                tool_input: { command: 'git commit -m x' },
+                cwd: CWD,
+                agent_type: STRICT
+            }),
+            encoding: 'utf8'
+        });
+        assert.strictEqual(res.status, 0,
+            'a guard that cannot classify allows, which is this guard\'s documented contract');
+        assert.match(res.stderr, /reviewAgentClass/,
+            'the degraded state names the export it could not find, got: ' + JSON.stringify(res.stderr));
+        assert.strictEqual(res.stderr.trim().split(/\r?\n/).length, 1,
+            'the degraded state is one line, not a stack trace: ' + JSON.stringify(res.stderr));
+    } finally {
+        try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* best effort */ }
+    }
+    // The control, withheld from the stub above: the same payload against the
+    // library as shipped denies, so the allow is the missing export rather than
+    // a payload the guard was never going to judge.
+    assertDenied(STRICT, 'git commit -m x', GIT);
 });

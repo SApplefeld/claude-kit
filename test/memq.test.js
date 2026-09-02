@@ -22473,7 +22473,7 @@ test('a CRLF record with no frontmatter block gains a CRLF block', () => {
 //
 // What they do not assert on is any matching: this field's grammar and its
 // storage are the whole of what exists here, and what a pattern means against
-// a running session's tool stream belongs to the surface that matches.
+// a running session's own work belongs to the surface that matches.
 
 // Entries used across these cases, each clearing both specificity bars, and
 // spelled here so a case reads as being about the merge or the refusal rather

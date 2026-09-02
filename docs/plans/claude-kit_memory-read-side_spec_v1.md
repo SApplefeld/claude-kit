@@ -100,9 +100,9 @@ Acceptance: the coordinator's two-way experiment re-run on a machine-scoped seat
 
 ### 3. Recognition meets the moment: the prompt and the dispatch. Model: opus
 
-Two new hook registrations in the kit's established nudge idiom, both dormant-tolerant and fail-open like every kit nudge. On `UserPromptSubmit`: the prompt text is matched against the recognition surface (all tiers, per section 1), and hits inject as `additionalContext` in pointer-not-body discipline, the record name, one clause of why, and the `memq get` spelling, capped (at most 3 pointers, bounded bytes, the sidecar valve's caps are the precedent) and deduplicated per recipient per session, the dispatch boundary keying on the dispatched agent's own id so that a parent's earlier nudge on the same record cannot spend it. On `SubagentStart`: the payload carries no dispatch prompt text at all, so what is matched is the dispatched agent's type against `agent:` triggers, and hits inject as `additionalContext` into the subagent being started rather than into the orchestrator that dispatched it, which is the better half of the deviation, a subagent inheriting no memory context by any other route; the event offers no `updatedInput` channel at all, so the restraint stated in the hook's header is that this machinery does not rewrite a dispatcher's brief on the channel the event does give, a suggestion being its whole authority. Matching at both boundaries is trigger-and-lexical, with no model in the loop and no network call. Semantic matching against the store's embeddings is Tier 2, which decision 2 of the memory-recognition plan (`docs/archive/claude-kit_memory-recognition_spec_v1.md:29`) defers until the stamp-rate reading shows nudges are acted on at all, and that gate has not been read. This sentence replaces one written at authoring time that gated semantic matching on the machine's endpoint config; that gate named the judged channel's switch rather than the semantic channel's, and it reopened a decision the operator had already closed. The probe rule from Evidence binds the section: before building on either event, a trivial probe hook is registered and its injection watched to arrive in a real session, because the docs pass that mapped this surface was wrong about events the kit already uses; the probe result for each event is recorded in the chapter. Version reality is handled by construction: a machine whose harness lacks an event never fires it, and the hooks must load without error on such a machine. Tests red-first: a prompt carrying a known trigger's text yields the capped pointer block; a dispatch input carrying one yields the same at `SubagentStart`; a session with no matches injects nothing and no bytes; caps hold under a fixture with many matches.
+Two new hook registrations in the kit's established nudge idiom, both dormant-tolerant and fail-open like every kit nudge. On `UserPromptSubmit`: the prompt text is matched against the project tier alone, and against no tier at all while a store pin is in effect, and hits inject as `additionalContext` in pointer-not-body discipline, the record name, one clause of why, and the `memq get` spelling, capped (at most 3 pointers, bounded bytes, the sidecar valve's caps are the precedent) and deduplicated per recipient per session, the dispatch boundary keying on the dispatched agent's own id so that a parent's earlier nudge on the same record cannot spend it. On `SubagentStart`: the payload carries no dispatch prompt text at all, so what is matched is the dispatched agent's type against `agent:` triggers, and hits inject as `additionalContext` into the subagent being started rather than into the orchestrator that dispatched it, which is the better half of the deviation, a subagent inheriting no memory context by any other route; the event offers no `updatedInput` channel at all, so the restraint stated in the hook's header is that this machinery does not rewrite a dispatcher's brief on the channel the event does give, a suggestion being its whole authority. Matching at both boundaries is trigger-and-lexical, with no model in the loop and no network call. Semantic matching against the store's embeddings is Tier 2, which decision 2 of the memory-recognition plan (`docs/archive/claude-kit_memory-recognition_spec_v1.md:29`) defers until the stamp-rate reading shows nudges are acted on at all, and that gate has not been read. This sentence replaces one written at authoring time that gated semantic matching on the machine's endpoint config; that gate named the judged channel's switch rather than the semantic channel's, and it reopened a decision the operator had already closed. The probe rule from Evidence binds the section: before building on either event, a trivial probe hook is registered and its injection watched to arrive in a real session, because the docs pass that mapped this surface was wrong about events the kit already uses; the probe result for each event is recorded in the chapter. Version reality is handled by construction: a machine whose harness lacks an event never fires it, and the hooks must load without error on such a machine. Tests red-first: a prompt carrying a known trigger's text yields the capped pointer block; a dispatch input carrying one yields the same at `SubagentStart`; a session with no matches injects nothing and no bytes; caps hold under a fixture with many matches.
 
-Acceptance: both probes watched firing before implementation and recorded; a live session demonstrates a prompt-time pointer from a shared-tier record end to end (the full read-side path this plan exists for); no-match sessions inject zero bytes; whole gate delta against the baseline.
+Acceptance: both probes watched firing before implementation and recorded; a live session demonstrates a prompt-time pointer from a project-tier record and a shared-tier pointer at a tool boundary, which together are the read-side path this plan exists for, the prompt leg having been confined to the project tier by the security finding Chapter 3 records; no-match sessions inject zero bytes; whole gate delta against the baseline.
 
 ## Out of Scope
 
@@ -1524,5 +1524,129 @@ Two items still stand for the operator and neither is a blocker. Section 3's liv
 install trails the checkout. And the question batched at board 9 is unanswered: whether decision 2 of the
 memory-recognition plan was reopened in the 2026-08-30 design dialog, or whether the spec sentence amended
 there was a slip.
+
+Commit model in effect: Commit-and-Push.
+
+### Chapter 3 - Recognition meets the moment: the prompt and the dispatch - 2026-09-02
+
+Completed: 3
+
+What shipped. The recognition nudge now rides four boundaries rather than two. A prompt arriving is
+matched against the memory store's declared triggers, and a subagent being dispatched is matched on the
+type of agent starting, with the pointer landing in that subagent's own context rather than in the
+orchestrator's, which is the one delivery in this hook that crosses into a context inheriting nothing by
+any other route. Both registrations are dormant-tolerant and fail open like every kit nudge, and matching
+stays trigger-and-lexical with no model in the loop and no network call.
+
+The section took four fix rounds and four review rounds, and the generator of the largest finding was the
+design input rather than the implementer in three of them. That is the section's real story and it is worth
+stating plainly rather than burying in the round log.
+
+The design fault, and the two attempts it took to close it. Widening the matcher to read prompts moved the
+trigger types onto a subject none of them was designed for. A tool call carries an identifier in a field, so
+matching it is a statement about the call; a prompt carries prose, so matching anything against it is a guess
+about what words mean. The store's only authoring screen is memq's specificity bars, which ask whether a
+pattern is a bare command name, the right property for the old subject and silent about English. Round 3's
+security lens proved it by running that screen: `cmd:that`, `err:this`, `cmd:with` and `err:from` are all
+patterns the store admits. On a shared tier, which syncs to every machine and every person sharing the kit,
+one such record is a pointer injected into the opening prompt of every session in every project, aimed by an
+author who can see none of them.
+
+A consult was convened rather than ruled alone, because the orchestrator's own brief had generated the
+largest finding in two consecutive rounds and the obvious repair does not work: whole-token matching does
+not close the hole, since a common English word is already a whole token. The consultant refused the framing
+and was right to. Every option on the table was a predicate over the pattern, which is an attempt to answer
+"does this string occur in ordinary English" without a word list, and no such predicate exists: a length
+floor admitting `ENOENT` admits "should", and a punctuation rule admits every prose bigram. The variable
+nobody had varied was reach. The precedent was one line above the code about to be edited, where `glob:`
+triggers are already confined to the project tier because a glob names a place and the same path under a
+shared tier names a different file in every project.
+
+The consult's ruling was adopted and was itself half a fix, which round 4 caught. It gated the two fragment
+types and left the three identifier types matching prose from every tier, and those are the types memq
+screens least: the bare-common-token bar reaches fragments alone, so `tool:edit`, `agent:when` and
+`skill:from` pass on the four-character floor and whole-token-match ordinary English. Two lenses found it
+independently. Confirmed at the code before adjudication: `matchesToken('edit', 'please edit the file')` is
+true, with `matchesToken('read', 'readme and threading')` false as the control that says the matcher is fine
+and the reach is the problem. The final rule is simpler than either attempt and is one condition with no
+type list at all: at the prompt boundary, the project tier alone, and no tier while a store pin is in effect.
+Nothing true was lost, because each shared-tier trigger keeps the channel where its match is a statement
+rather than a guess.
+
+The pin half is the project's own standard applied, not a new idea. Keying the gate on the tier's name fails
+under a store pin, where one directory serves every repository the instance works in while still resolving as
+the project tier. `docs/security-model.md` states the rule already: the decision is keyed on whether a pin is
+in effect, never on the tier's name, because the name is precisely what stops being a reliable signal.
+
+The contamination channel, found by the adversarial lens and fixed rather than parked. The dispatch boundary
+delivered store-authored text into every dispatched agent, the kit's own blind reviewers among them, which is
+a channel into the review machinery this plan relies on. It now stands down entirely for the read-only
+judgment seats. The classifier that names those seats moved out of the write guard into the shared identity
+library, because a second consumer is what turns a private predicate into a shared one, and it is now pinned
+against its own source of truth: a test derives the read-only set from each agent definition's `tools:`
+frontmatter, so a reviewer added later cannot silently receive store text and silently gain write access at
+the same time. That move had a cost the orchestrator accepted deliberately and recorded here: it put the
+shared library on a deny-emitting guard's path for the first time, which is what made a fourth review round
+owed rather than optional. Round 4's security lens then found the fault that move introduced, a require with
+no export-contract screen, so a library present but skewed made the guard allow every read-only seat's
+tree-mutating command with nothing on stderr. The fix keeps the guard's fail-open contract and removes the
+silence, and the session-start canary now probes the library's export shape.
+
+Two deviations from the section as specified, both deliberate, both recorded here with their reversal cost,
+and the spec text above amended to state what shipped.
+
+The first is the one that matters. The section specified the prompt boundary matching "the recognition
+surface (all tiers, per section 1)", and its acceptance named a live prompt-time pointer from a shared-tier
+record as the full read-side path this plan exists for. That is what the security finding closed. The plan's
+goal is still delivered, since shared-tier triggers do reach recognition and section 1 is what made them
+author at all: they fire at the two tool boundaries and at the dispatch, where the match is a field
+comparison rather than a reading of prose. What is given up is the prompt leg for shared-tier records
+specifically, which means an operator-tier memory about a machine-wide failure signature no longer surfaces
+when the operator describes or pastes that error in a prompt, and still surfaces when the session itself
+produces the failing call. Reversal is one condition in `collectHits` and the tests that pin it, so this is
+cheap to revisit if the semantic tier later gives the prompt boundary a subject it can match honestly.
+
+The second is the read-only seat stand-down at the dispatch boundary, which the section did not contemplate
+because the contamination channel was not seen at authoring. Reversal is one condition and one test.
+
+Gates, read from the runs' own exit codes. The build exits 0 at 93 files and 1253.3 KB. The section's
+targeted lane over thirteen test files, the changed files plus the whole-tree pins whose subject they are,
+reads 1437 tests, 1433 passing, 0 failing, 4 skipped, exit 0, against 1430 / 1426 / 0 / 4 on the identical
+lane definition after fix round 3, so the round is +7 and +7 with nothing failing on either side. The whole
+gate this plan's push to main owes reads 2970 tests, 2960 passing, 1 failing, 9 skipped, exit 1, against
+Chapter 2's baseline of 2932 / 2922 / 1 / 9 at exit 1: +38 tests, +38 passing, the same single red and the
+same nine skips. That red is identified rather than assumed. It is
+`test/memory-session.test.js` > "a pinned directory too long to name faithfully stands the session down",
+the permanent failure the project memory record `suite-baseline-is-not-zero-fail` describes and explains
+mechanically: the test pads a fixture path and relies on the host temp prefix to carry it past a 260-character
+guard, and this box's `D:\Temp` lands it at 254, so the guard is never exercised. It is in a file this
+section never touched, confirmed by the changed-file list carrying no match for it. The box was claimed under
+this session's own id for each build and each lane and released after its `Session:` line was read.
+
+Every fix in both rounds was watched red first, with the failure text quoted per fix, and the two rounds that
+needed a tree-mutating probe took one against a pre-probe file copy and verified the restore by byte
+comparison against that copy rather than accepting it from a report. The two probe files round 4 planted to
+earn a silent check's silence, a read-only agent definition and a second key-set definition, were removed and
+their absence confirmed.
+
+Both review rounds ran three lenses at `claude-opus-5` with `max` effort through the Workflow route, and the
+resolved model was read from each transcript's own assistant lines rather than assumed: 54 of 54 for the
+consult, and every lens of round 4 resolved at `claude-opus-5` with no synthetic placeholder anywhere. No
+round of this section produced a Critical, so no tier escalation is owed; the finding class did repeat across
+rounds, and what repeated was the brief and the ruling rather than the implementation, which is why the lever
+spent was a consult and then a fourth review round rather than a stronger implementer.
+
+Files in scope widened twice more since the last boundary, both recorded as the approval drift they are:
+`plugins/claude-kit/hooks/readonly-agent-guard.js` for the classifier move, and
+`plugins/claude-kit/hooks/hook-canary.js` for the export-shape probe, each with its own test file.
+
+Next: the whole-effort finishing pass, this being the plan's last section. QA verification first, then the
+finishing reviews and docs curation, then the plan's terminal state.
+
+Two items stand for the operator and neither is a blocker. Section 3's live end-to-end acceptance needs
+`claude plugin update`, since the nudge that fires in a live session is the installed one and this machine's
+install trails the checkout. And the question batched at board 9 is still unanswered: whether decision 2 of
+the memory-recognition plan was reopened in the 2026-08-30 design dialog, or whether the spec sentence
+amended there was a slip.
 
 Commit model in effect: Commit-and-Push.

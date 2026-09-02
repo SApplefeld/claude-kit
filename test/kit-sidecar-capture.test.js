@@ -2234,7 +2234,31 @@ test('the agent-identity key set has exactly one definition and every detector r
     const hooksDir = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks');
     const LIB = 'kit-agent-identity-lib.js';
     const SET_RE = /'agent_id'\s*,\s*'agent_type'/;
-    const CHAIN_RE = /\.agent_id\s*\|\|/;
+
+    // The predicate is the READING rather than a spelling of the set: any hook
+    // that takes one of these keys off a payload directly, as a member access,
+    // as a bracketed key or as a quoted literal in a list of its own, is a
+    // second reader of a set this module exists to hold. A key spelled as a
+    // bare word in prose is not a reading, which is what keeps this over source
+    // comments and over a fixture payload that WRITES the key rather than
+    // reading it. The generic spelling `type`, which the type-only list carries,
+    // is not pinnable this way and is not pinned: `.type` is a member of half
+    // the objects in this tree.
+    const spellings = Array.from(new Set(agentLib.AGENT_KEYS.concat(agentLib.AGENT_TYPE_KEYS)))
+        .filter((key) => key !== 'type');
+    const readsKey = (src, key) => new RegExp('\\.' + key + '\\b').test(src)
+        || new RegExp('\\[\\s*[\'"]' + key + '[\'"]\\s*\\]').test(src)
+        || new RegExp('[\'"]' + key + '[\'"]').test(src);
+
+    // Two hooks read the type spellings off a payload for a guard's own
+    // allow-or-deny decision rather than for identity, and both predate the
+    // shared module. What they are exempted from is the PER-KEY scan alone,
+    // because closing that means giving the shared module the reading they need,
+    // which is a change to two files this case's own effort does not own. The
+    // whole-key-set assertion below still binds on them: a routed reading is one
+    // hand-copied chain of four type spellings, never a second copy of the
+    // identity set this module is the one definition of.
+    const ROUTED = ['docs-write-guard.js', 'readonly-agent-guard.js'];
 
     for (const name of fs.readdirSync(hooksDir).filter((n) => n.endsWith('.js'))) {
         const src = fs.readFileSync(path.join(hooksDir, name), 'utf8');
@@ -2242,8 +2266,12 @@ test('the agent-identity key set has exactly one definition and every detector r
             assert.ok(SET_RE.test(src), 'the one definition lives here');
             continue;
         }
-        assert.ok(!SET_RE.test(src), name + ' carries a second copy of the identity key set');
-        assert.ok(!CHAIN_RE.test(src), name + ' carries the same set spelled as an inline chain');
+        assert.ok(!SET_RE.test(src), name + ' carries a second copy of the key set');
+        if (ROUTED.includes(name)) continue;
+        for (const key of spellings) {
+            assert.ok(!readsKey(src, key),
+                name + ' reads ' + key + ' off a payload itself rather than through ' + LIB);
+        }
     }
 
     for (const name of ['kit-sidecar-capture.js', 'memory-recognition-nudge.js',
@@ -2263,6 +2291,87 @@ test('the agent-identity key set has exactly one definition and every detector r
     assert.strictEqual(agentLib.carriesAgentKey({ session_id: 's' }), false);
     assert.strictEqual(agentLib.agentIdentity(null), null);
     assert.strictEqual(agentLib.carriesAgentKey('not a payload'), false);
+
+    // The two readings the recognition boundaries need, which the three above
+    // cannot serve. The type-only list is the subject side: what agent is being
+    // dispatched, where AGENT_KEYS mixes in agent_id, which names an instance
+    // rather than a type, and omits the bare `type` a dispatch payload may
+    // spell. The id-only reading is the identity side, deliberately narrower
+    // than the truthiness one: agent_type rides on the MAIN thread of a session
+    // started with --agent, so the wider reading would stand a prompt boundary
+    // down on every turn of such a session and retire it silently.
+    assert.deepStrictEqual(agentLib.AGENT_TYPE_KEYS,
+        ['subagent_type', 'subagentType', 'agent_type', 'agentType', 'type'],
+        'the type-only list is the dispatch subject\'s spellings');
+    assert.ok(!agentLib.AGENT_TYPE_KEYS.includes('agent_id'),
+        'an agent id is an instance and never a type');
+    assert.strictEqual(agentLib.dispatchedAgentId({ agent_id: 'agt-1' }), 'agt-1');
+    assert.strictEqual(agentLib.dispatchedAgentId({ agent_type: 'general-purpose' }), '',
+        'an agent type is not evidence that the payload belongs to a dispatched agent');
+    assert.strictEqual(agentLib.dispatchedAgentId({ agent_id: '' }), '');
+    assert.strictEqual(agentLib.dispatchedAgentId({ agent_id: 7 }), '');
+    assert.strictEqual(agentLib.dispatchedAgentId(null), '');
+});
+
+test('the review-seat classifier has exactly one definition and both consumers reach it', () => {
+    // Two hooks ask which policy class an agent type belongs to: the guard that
+    // refuses a read-only seat's tree-mutating command, and the recognition
+    // nudge that stands down rather than injecting store text into a seat
+    // dispatched to hold a context that inherited nothing. A hand-copied
+    // classifier that gains a seat in one place and not the other leaks
+    // silently, the copy that kept the old list simply continuing to answer, so
+    // the pin is that no second definition exists.
+    const hooksDir = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks');
+    const agentsDir = path.join(__dirname, '..', 'plugins', 'claude-kit', 'agents');
+    const LIB = 'kit-agent-identity-lib.js';
+
+    // The seats are read off the agent definitions rather than spelled here, so
+    // the pin below is over the class rather than over one author's list of it.
+    const seats = fs.readdirSync(agentsDir).filter((n) => n.endsWith('.md'))
+        .map((n) => path.basename(n, '.md'))
+        .filter((n) => agentLib.reviewAgentClass(n) !== null);
+    assert.ok(seats.length >= 8, 'the governed seats are read from the definitions: ' + seats.join(', '));
+
+    // Code, with the comments taken out: a header that ENUMERATES the seats in
+    // prose is documentation, which answers no call and leaks nothing, while a
+    // second executable enumeration answers alongside the lib's and drifts from
+    // it silently. The count is what the pin is drawn on rather than one
+    // alternation's spelling: a definition written as an array, or with two of
+    // the names transposed, carries the same class in another order, and a
+    // pattern pinned to one order reads that as absence.
+    const codeOf = (text) => text.replace(/\/\*[\s\S]*?\*\//g, ' ')
+        .split(/\r?\n/).map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+    const seatsNamed = (text) => seats.filter((s) => codeOf(text).includes(s));
+
+    const carriers = fs.readdirSync(hooksDir).filter((n) => n.endsWith('.js'))
+        .filter((n) => seatsNamed(fs.readFileSync(path.join(hooksDir, n), 'utf8')).length > 1);
+    assert.deepStrictEqual(carriers, [LIB],
+        'the read-only seat list has one definition, and these files carry it: ' + carriers.join(', '));
+    assert.deepStrictEqual(seatsNamed(fs.readFileSync(path.join(hooksDir, LIB), 'utf8')).sort(),
+        seats.slice().sort(), 'the one definition names every governed seat');
+
+    // The instrument, on an instance withheld from the tree and shaped rather
+    // than spelled: a second definition as an array, with the names in an order
+    // no file uses. The reading has to speak on it, or the silence above is the
+    // reading rather than the tree.
+    const transposed = 'const SEATS = [' + seats.slice().reverse().map((s) => `'${s}'`).join(', ') + '];';
+    assert.deepStrictEqual(seatsNamed(transposed).sort(), seats.slice().sort(),
+        'a second definition spelled as an array is one this reading names');
+    assert.deepStrictEqual(seatsNamed('// ' + transposed), [],
+        'a prose or commented enumeration is documentation and is not a second definition');
+
+    for (const name of ['readonly-agent-guard.js', 'memory-recognition-nudge.js']) {
+        assert.ok(fs.readFileSync(path.join(hooksDir, name), 'utf8').includes(`require('./${LIB}')`),
+            name + ' must reach the shared classifier rather than its own');
+    }
+
+    // The classification itself, matched by suffix so a plugin-namespaced id
+    // resolves and anchored so a longer name that merely contains one does not.
+    assert.strictEqual(agentLib.reviewAgentClass('claude-kit:blind-reviewer'), 'strict');
+    assert.strictEqual(agentLib.reviewAgentClass('consultant'), 'strict');
+    assert.strictEqual(agentLib.reviewAgentClass('claude-kit:qa-verifier'), 'gate');
+    assert.strictEqual(agentLib.reviewAgentClass('claude-kit:implementer-opus'), null);
+    assert.strictEqual(agentLib.reviewAgentClass('blind-reviewer-helper'), null);
 });
 
 test('a damaged agent-identity library stands the valve down and leaves capture running', () => {

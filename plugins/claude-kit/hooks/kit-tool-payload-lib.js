@@ -3,13 +3,13 @@
 // shape the harness has been seen to produce.
 //
 // This is its own module, holding nothing else, because two hooks need the one
-// answer and hooks/memory-recognition-nudge.js is 1,600 lines. A hot hook path
+// answer and hooks/memory-recognition-nudge.js is 2,700 lines. A hot hook path
 // that required that file for this predicate alone would pay the whole module
 // load on every covered tool return, the cost hooks/kit-network-lib.js exists
 // to keep off the same paths (8.7 to 11.4 ms measured there for a warm require
 // of the file it replaced). The second cost is worse than the first: a sibling
 // hook that fails to load takes its borrower down with it, so a damaged plugin
-// cache anywhere in that 1,600 lines would silently disable a caller that has
+// cache anywhere in that 2,700 lines would silently disable a caller that has
 // nothing to do with recognition nudges.
 //
 // hooks/memory-recognition-nudge.js requires this module and re-exports the

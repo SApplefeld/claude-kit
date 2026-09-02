@@ -75,10 +75,11 @@ claude-kit/                          (repo = the marketplace)
                                      holds auto-compaction offers and names the boundary steps that
                                      land one; and above a context floor, tells a session holding no leash
                                      to judge its own state durable and declare it, each once per 30 minutes
-        memory-recognition-nudge.js  PreToolUse and PostToolUse nudge that names a stored memory when the
-                                     tool stream touches what it is about, deduplicated per session and
-                                     capped per rolling window, pointing at memq get and never carrying
-                                     the record itself
+        memory-recognition-nudge.js  Nudge on four boundaries, both tool ones plus a prompt arriving and a
+                                     subagent dispatching, naming a memory the session's own work touches,
+                                     deduplicated per trigger per recipient per boundary class per session, capped per
+                                     rolling window at the session's own boundaries and per injection at a dispatch,
+                                     pointing at memq get and never carrying the record itself
         docs-write-guard.js          Denies non-curator subagent writes into docs/
         stop-docs-hygiene.js         Stop-time docs-library backstop
         seat-stop.js                 Stop hook for a registered seat: stamps its registry heartbeat and,

@@ -1276,3 +1276,52 @@ test('a memq-grant that grants a withheld verb fails the withheld-verb probe', (
         rmDir(cache);
     }
 });
+
+// The shared agent-identity library is required by two guards on a per-tool-call
+// boundary and is wired in no hooks.json command, so nothing above load-checks
+// it. A cache one version behind, or one rolled back mid-update, can hold a copy
+// that loads while exporting nothing its callers want, and both callers then
+// fail open: the read-only seats lose their tree guard and the recognition nudge
+// stops standing down at their dispatch. That is a cache the canary can see is
+// broken, so it says so.
+test('a shared library missing an export its callers need is reported by name', () => {
+    const cache = makeCache();
+    try {
+        // Present, loadable, and exporting one of the module's other readings:
+        // the skew case, which is what a stat or a require alone reads as
+        // healthy.
+        fs.writeFileSync(hookFile(cache, 'kit-agent-identity-lib.js'),
+            "'use strict';\nmodule.exports = { agentIdentity: () => null };\n", 'utf8');
+        const res = runCanary(cache);
+        assert.strictEqual(res.status, 0, 'the canary always exits 0');
+        const text = warning(res);
+        assert.ok(text, 'a library the guards cannot use must not be silent');
+        assert.match(text, /reviewAgentClass/,
+            'the report names the export that is missing, got:\n' + text);
+        // The guard that reads it is named too, and honestly: it now allows a
+        // command it would have denied, which is its own deny probe failing.
+        assertOnlyFlagged(text, [
+            { hook: 'kit-agent-identity-lib.js', probe: 'export contract' },
+            { hook: 'readonly-agent-guard.js', probe: 'deny probe' }
+        ]);
+    } finally {
+        rmDir(cache);
+    }
+});
+
+test('a shared library the cache cannot load at all is reported the same way', () => {
+    const cache = makeCache();
+    try {
+        fs.rmSync(hookFile(cache, 'kit-agent-identity-lib.js'));
+        const res = runCanary(cache);
+        assert.strictEqual(res.status, 0);
+        const text = warning(res);
+        assert.ok(text, 'a library the guards cannot load must not be silent');
+        assertOnlyFlagged(text, [
+            { hook: 'kit-agent-identity-lib.js', probe: 'export contract' },
+            { hook: 'readonly-agent-guard.js', probe: 'deny probe' }
+        ]);
+    } finally {
+        rmDir(cache);
+    }
+});

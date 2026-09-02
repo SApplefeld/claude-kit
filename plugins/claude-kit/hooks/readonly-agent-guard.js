@@ -89,18 +89,6 @@ function subagentType(p) {
     return (typeof cand === 'string' && cand.trim().length) ? cand.trim() : null;
 }
 
-// The policy class of an agent type: 'strict', 'gate', or null for every type
-// the guard does not govern (implementers, docs-curator, general-purpose,
-// Explore, the bare "claude" a background job's main session presents, and any
-// unknown type). Matched by suffix so a plugin-namespaced id
-// ("claude-kit:blind-reviewer") resolves, and anchored at the end so a longer
-// name that merely contains one ("blind-reviewer-helper") does not.
-function agentClass(t) {
-    if (/(^|[:/])qa-verifier$/i.test(t)) return 'gate';
-    if (/(^|[:/])(?:adversarial-reviewer|blind-reviewer|security-reviewer|council-member|design-facilitator|consultant|blind-reader|prose-reviewer)$/i.test(t)) return 'strict';
-    return null;
-}
-
 // The index just past a command or process substitution opening at `start` (a
 // `$(` or `<(`, or a backtick), matching parentheses across nested substitutions
 // and stepping over inner quoted spans so a `)` inside a string does not close
@@ -1765,13 +1753,48 @@ function denyReason(cmd, cwd, strict, depth) {
     return null;
 }
 
+// The shared agent-identity module's exports this guard calls, each with the
+// typeof its caller needs. One entry today, stated as a list because the shape
+// is the kit's own screen for a skewed plugin cache and a second reading added
+// here is then screened by being named rather than by a second branch.
+const AGENT_LIB_SYMBOLS = [['reviewAgentClass', 'function']];
+
 function main() {
     let p = {};
     try { p = JSON.parse(readStdin() || '{}'); } catch { return; } // parse fail: allow
 
     const t = subagentType(p);
     if (!t) return;                    // main session or undetermined: allow
-    const cls = agentClass(t);
+
+    // The policy class is the shared module's, so a seat added for one consumer
+    // cannot go missing from the other. The require sits inside main under the
+    // guard's own fail-open posture: a plugin cache too damaged to supply the
+    // module leaves the call allowed rather than ending this process on a
+    // require that runs in front of every command.
+    //
+    // The export contract is screened before it is called, in the kit's own
+    // name-and-kind form, because a cache one version behind or rolled back
+    // mid-update can supply a module that requires cleanly while lacking this
+    // reading. The screen changes no verdict: the failure still allows, which is
+    // the contract. What it changes is the SILENCE, since calling through an
+    // undefined export throws into the file-level catch, and every read-only
+    // seat's tree-mutating command is then allowed with nothing on either
+    // channel to say the guard has stopped judging.
+    let lib;
+    try {
+        lib = require('./kit-agent-identity-lib.js');
+    } catch { return; }                // the classifier is unreadable: allow
+    const missing = AGENT_LIB_SYMBOLS.filter(([name, kind]) => typeof lib[name] !== kind)
+        .map(([name]) => name);
+    if (missing.length) {
+        process.stderr.write('readonly-agent-guard: kit-agent-identity-lib.js exports no '
+            + missing.join(', ') + ', so this guard cannot classify the agent type and is allowing '
+            + 'every command it would otherwise judge; the installed kit is skewed, so reinstall or '
+            + 'update it.\n');
+        return;                        // the classifier is skewed: allow, out loud
+    }
+    const reviewAgentClass = lib.reviewAgentClass;
+    const cls = reviewAgentClass(t);
     if (!cls) return;                  // an agent type the guard does not govern: allow
 
     const input = p.tool_input || p.toolInput || (p.tool && p.tool.input) || {};

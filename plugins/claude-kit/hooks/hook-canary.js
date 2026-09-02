@@ -8,8 +8,8 @@
 // (CLAUDE_PLUGIN_ROOT) at every startup and resume, and speaks only when
 // something about it is positively broken.
 //
-// Three probe classes. The first two spawn children, serially and each under a
-// bounded timeout; the third only reads files:
+// Four probe classes. The first three spawn children, serially and each under a
+// bounded timeout; the fourth only reads files:
 //   - Load checks for every hook wired in hooks.json: the file is present in
 //     the cache and `node --check` parses it. Enumerating hooks.json means a
 //     hook added later is covered without touching this file. `node --check`
@@ -20,6 +20,11 @@
 //     known allow, so a guard that answers everything the same way cannot read
 //     as healthy), for the hooks whose verdict is deterministic from a
 //     fabricated payload with no repo, git, or network state.
+//   - Export-contract probes of the shared libraries hooks require but
+//     hooks.json never names, so the load checks above never reach them: the
+//     module is required in a child and asked for the readings its callers
+//     destructure, because a cache one version behind can hold one that loads
+//     and exports the wrong set, which every caller answers by failing open.
 //   - An integrity check of the cache against the hash manifest the build
 //     stamps into .claude-plugin/build-info.json: a hook whose bytes are not the
 //     ones that were packaged is reported even when it parses and answers every
@@ -687,6 +692,60 @@ function cacheSuppliesMemq(root) {
     return memqLoads;
 }
 
+// A shared library two guards require, and the exports each of them calls, with
+// the typeof the caller needs. It is wired in no hooks.json command, so the load
+// checks above never reach it, and both callers fail open when it cannot answer:
+// the read-only agent guard stops classifying a seat and allows every command it
+// would have denied, and the recognition nudge stops standing down at a
+// read-only seat's dispatch. A cache one version behind, or one rolled back
+// mid-update, supplies exactly that: a module that loads and exports the wrong
+// set.
+const SHARED_LIBS = [
+    { file: 'kit-agent-identity-lib.js', exports: [['reviewAgentClass', 'function']] }
+];
+
+// Each shared library required in a child and asked for its exports, which is
+// how its callers ask: a stat says a file is there and a require says it loads,
+// and neither says the reading the caller destructures is on it. The child
+// prints the names that are missing, so the report can name them; a child that
+// cannot load the file at all answers nonzero, which is the same finding at the
+// coarser end and is reported as one line rather than two.
+function sharedLibProbe(root, failures) {
+    for (const lib of SHARED_LIBS) {
+        const file = path.join(root, 'hooks', lib.file);
+        const res = spawnSync(process.execPath, [
+            '-e',
+            'const m = require(process.argv[1]);'
+            + ' const want = JSON.parse(process.argv[2]);'
+            + ' const missing = want.filter(([n, k]) => typeof m[n] !== k).map(([n]) => n);'
+            + ' if (missing.length) process.stdout.write(missing.join(", "));',
+            file,
+            JSON.stringify(lib.exports)
+        ], { encoding: 'utf8', timeout: PROBE_TIMEOUT_MS });
+        const wanted = lib.exports.map(([name]) => name).join(', ');
+        if (res.status !== 0) {
+            failures.push({
+                hook: lib.file,
+                label: 'export contract',
+                expected: 'a loadable ' + lib.file + ' exporting ' + wanted,
+                got: 'nothing this cache can load at ' + sanitize(file)
+                    + ', so the guards that require it fail open'
+            });
+            continue;
+        }
+        if (res.stdout) {
+            failures.push({
+                hook: lib.file,
+                label: 'export contract',
+                expected: lib.file + ' exporting ' + wanted,
+                got: 'it loads but exports no ' + sanitize(res.stdout)
+                    + ', so the guards that require it fail open; the installed kit is skewed, '
+                    + 'so reinstall or update it'
+            });
+        }
+    }
+}
+
 // The <filename>: <sha256> map the build stamped for the hooks directory, or
 // null when the stamp is absent, unreadable, or carries no map. Null is the
 // silent case: a build that hashed nothing gives this check no basis to speak,
@@ -867,6 +926,10 @@ function main() {
 
     if (loadable.has('kit-goal-stop.js')) goalStopProbe(root, failures);
     if (loadable.has('memq-grant.js')) memqGrantProbes(root, failures);
+
+    // Unconditional: a shared library is named by no hooks.json command, so
+    // nothing above has established that it is present or that it loads.
+    sharedLibProbe(root, failures);
 
     // Last, so that a cache whose files are wholesale different (a partial or
     // interrupted install) cannot fill the report's line cap ahead of a guard

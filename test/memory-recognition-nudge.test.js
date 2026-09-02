@@ -1,8 +1,9 @@
-// Tests for plugins/claude-kit/hooks/memory-recognition-nudge.js (the
-// PreToolUse and PostToolUse memory recognition nudge).
+// Tests for plugins/claude-kit/hooks/memory-recognition-nudge.js (the memory
+// recognition nudge, on its four boundaries: PreToolUse, PostToolUse,
+// UserPromptSubmit and SubagentStart).
 //
 // Node's built-in test runner, no framework (Node v24). The hook is spawned as
-// a real child process, fed a tool-event payload on stdin, and asserted on by
+// a real child process, fed a boundary's own payload on stdin, and asserted on by
 // its EXIT CODE (always 0; this hook has no deny path) and its stdout: a fire
 // emits exactly the nested hookSpecificOutput form carrying the boundary's own
 // hookEventName, and every silent path emits the empty string, because a
@@ -52,6 +53,35 @@ const SHA = 'a'.repeat(40);
 // derived from a temp path passes on a machine whose TEMP is short and reds
 // everywhere else.
 const PIN_SEGMENT = 'recognition-network-fixture';
+
+// The pin the prompt-boundary case uses, held apart from the one above so
+// neither case's records can land in the other's segment. Same length rule.
+const PROMPT_PIN_SEGMENT = 'recognition-prompt-fixture';
+
+// memq reads a pin only alongside the two store signals, so a self-check that
+// the segment is one memq accepts sets the same three variables the child is
+// given and puts the process environment back exactly as it found it. A pin
+// past memq's 40-character cap throws, which the hook's entry catch would turn
+// into the same silence a case is trying to tell apart.
+function assertPinAccepted(store, segment) {
+    const before = {
+        KIT_MEMORY_PROJECT: process.env.KIT_MEMORY_PROJECT,
+        KIT_MEMORY_ROOT: process.env.KIT_MEMORY_ROOT,
+        KIT_MEMORY_ROOT_ALLOW_DATA: process.env.KIT_MEMORY_ROOT_ALLOW_DATA
+    };
+    try {
+        process.env.KIT_MEMORY_PROJECT = segment;
+        process.env.KIT_MEMORY_ROOT = store.root;
+        process.env.KIT_MEMORY_ROOT_ALLOW_DATA = '1';
+        assert.strictEqual(memq.pinnedProjectSegment(), segment,
+            'test setup: the pin segment must be one memq accepts, whatever this machine\'s TEMP is');
+    } finally {
+        for (const [key, value] of Object.entries(before)) {
+            if (value === undefined) delete process.env[key];
+            else process.env[key] = value;
+        }
+    }
+}
 
 let sessions = 0;
 function nextSession() {
@@ -183,6 +213,41 @@ function postPayload(store, overrides) {
     };
 }
 
+// The two lifecycle payloads, on the exact key sets the harness sends. Neither
+// carries a tool name or a tool input, which is the whole reason each needs
+// its own subject extractor: a helper that padded them out with tool keys
+// would test a payload the harness never produces.
+//
+// The dispatch payload carries `agent_id` because a real one does, and that
+// key is what the subagent stand-down reads on a tool call. Leaving it in is
+// deliberate: it is what makes the SubagentStart cases evidence that the
+// stand-down is exempted here rather than evidence that it never fired.
+function promptPayload(store, overrides) {
+    return {
+        session_id: store.session,
+        cwd: store.cwd,
+        transcript_path: path.join(store.cwd, 'transcript.jsonl'),
+        prompt_id: 'prompt-' + process.pid,
+        permission_mode: 'default',
+        hook_event_name: 'UserPromptSubmit',
+        prompt: 'nothing in particular is being asked for here',
+        ...overrides
+    };
+}
+
+function dispatchPayload(store, overrides) {
+    return {
+        session_id: store.session,
+        cwd: store.cwd,
+        transcript_path: path.join(store.cwd, 'transcript.jsonl'),
+        prompt_id: 'prompt-' + process.pid,
+        agent_id: 'agent-' + process.pid,
+        agent_type: 'general-purpose',
+        hook_event_name: 'SubagentStart',
+        ...overrides
+    };
+}
+
 function assertSilent(res, label) {
     assert.strictEqual(res.status, 0, label + ': exit code must be 0');
     assert.strictEqual(res.stderr, '', label + ': stderr must be empty');
@@ -199,6 +264,14 @@ function assertNudge(res, boundary, label) {
         label + ': stdout must be JSON, got: ' + JSON.stringify(res.stdout.slice(0, 300)));
     assert.deepStrictEqual(Object.keys(parsed), ['hookSpecificOutput'],
         label + ': a top-level additionalContext key is inert on this harness and must not be emitted');
+    // The INNER key set is pinned too, and exactly. The installed CLI's
+    // SubagentStart output shape admits `additionalContext` and nothing else, so
+    // a second nested key would be a key the harness has no reading for, and a
+    // suggestion is this machinery's whole authority in any case. Asserting only
+    // the outer key set would pass a change that added one.
+    assert.deepStrictEqual(Object.keys(parsed.hookSpecificOutput).slice().sort(),
+        ['additionalContext', 'hookEventName'],
+        label + ': the answer carries the event name and the injected context and nothing else');
     assert.strictEqual(parsed.hookSpecificOutput.hookEventName, boundary,
         label + ': the event name must be the boundary the payload arrived on');
     const text = parsed.hookSpecificOutput.additionalContext;
@@ -433,7 +506,9 @@ test('a file anchor fires at PostToolUse on its path, whatever sha it carries', 
     } finally { rmStore(store); }
 });
 
-// --- The boundary split: nothing is matched on both boundaries.
+// --- The TOOL boundary split: nothing is matched at both of those two. The
+// lifecycle lists deliberately overlap them, which the vocabulary case below
+// states; what this pair is about is one tool call firing one trigger twice.
 
 test('a cmd: trigger does not fire at PostToolUse and an err: trigger does not fire at PreToolUse', () => {
     const store = makeStore();
@@ -621,6 +696,53 @@ test('one call spends at most MATCH_OPS_MAX trigger comparisons across the whole
     } finally { rmStore(store); }
 });
 
+// The budget bounds the whole per-candidate cost and not the comparison alone.
+// Every candidate the walk reaches is hashed into a dedup key before anything
+// knows whether its trigger has already fired, so a walk that charged only the
+// comparisons would leave a store full of already-nudged triggers paying one
+// sha256 per candidate with nothing bounding the total. The walk is exercised
+// directly here: filling a marker with thousands of fired keys through the hook
+// itself is not reachable, a session claiming at most two nudges a turn.
+test('a candidate the dedup skips is still charged against the match budget', () => {
+    const dir = path.join('C:', 'store', 'memory');
+    const trigger = { type: 'cmd', pattern: 'git stash' };
+    const index = [{
+        name: 'already-nudged.md',
+        dir,
+        tier: hook.PROJECT_TIER,
+        triggers: [trigger],
+        anchors: []
+    }];
+    const subjects = {
+        boundary: 'PreToolUse',
+        boundaryClass: 'tool',
+        recipient: '',
+        command: 'git stash push -m wip',
+        failure: '',
+        prompt: '',
+        skills: [],
+        agents: [],
+        tool: 'bash',
+        paths: []
+    };
+    const hit = { name: 'already-nudged.md', type: trigger.type, pattern: trigger.pattern,
+        tier: hook.PROJECT_TIER, dir };
+    const fired = {};
+    fired[hook.dedupKey(hit, subjects.recipient, subjects.boundaryClass)] = true;
+
+    const ops = { left: 8 };
+    const hits = hook.collectHits(index, subjects, 'PreToolUse', fired, ops, false);
+    assert.deepStrictEqual(hits, [], 'a trigger already nudged this session emits nothing');
+    assert.strictEqual(ops.left, 7, 'the skipped candidate still cost the key it was hashed into');
+
+    // The control, that the accounting is the skip rather than the walk: the
+    // same candidate with an empty fired set matches, and costs the same one.
+    const freshOps = { left: 8 };
+    const freshHits = hook.collectHits(index, subjects, 'PreToolUse', {}, freshOps, false);
+    assert.strictEqual(freshHits.length, 1, 'the same candidate matches when nothing has fired');
+    assert.strictEqual(freshOps.left, 7, 'a candidate costs one whether it is skipped or compared');
+});
+
 // --- Fail-open: every failure is silence, exit 0, nothing on either channel.
 
 test('an absent memory directory is silence, not an error', () => {
@@ -769,16 +891,53 @@ test('a network-shaped store root stands the hook down', () => {
     } finally { rmStore(store); }
 });
 
-test('a subagent\'s call is silence, so it cannot spend the parent session\'s dedup budget', () => {
-    const store = makeStore();
-    try {
-        writeRecord(store, 'test-suite-invocation.md', { triggers: 'cmd:node --test' });
-        for (const key of ['agent_id', 'agent_type', 'agentType', 'subagent_type', 'subagentType']) {
-            const payload = prePayload(store, { tool_input: { command: 'node --test "test/*.test.js"' } });
-            payload[key] = 'claude-kit:implementer';
-            assertSilent(runHook(store, payload), 'a subagent payload carrying ' + key);
+// The tool boundaries read the dispatched agent's own id, which is the same
+// narrow reading the prompt boundary takes. A subagent's call is silence there,
+// so it cannot spend the parent session's dedup budget on triggers the parent
+// never saw. The wider truthiness reading over every identity spelling would
+// take a main thread with it: `agent_type` rides on the MAIN thread of a session
+// started with --agent, so every tool call such a session makes would stand the
+// hook down, silently.
+test('a tool call in an --agent session still nudges, and a real subagent\'s call stands down', () => {
+    const arms = [
+        {
+            boundary: 'PreToolUse',
+            trigger: 'cmd:node --test',
+            payload: (s, extra) => prePayload(s, {
+                tool_input: { command: 'node --test "test/*.test.js"' }, ...extra
+            })
+        },
+        {
+            boundary: 'PostToolUse',
+            trigger: 'err:ENOENT no such file',
+            payload: (s, extra) => postPayload(s, {
+                tool_response: { stderr: 'Error: ENOENT no such file or directory', exit_code: 1 },
+                ...extra
+            })
         }
-    } finally { rmStore(store); }
+    ];
+    for (const arm of arms) {
+        const store = makeStore();
+        try {
+            writeRecord(store, 'agent-session.md', { triggers: arm.trigger });
+            assertNames(assertNudge(runHook(store, arm.payload(store, {
+                agent_type: 'general-purpose'
+            })), arm.boundary, 'a main thread carrying an agent_type at ' + arm.boundary),
+            'agent-session.md', arm.trigger,
+            'a main thread carrying an agent_type at ' + arm.boundary);
+        } finally { rmStore(store); }
+        // The control that withholds the discriminating key rather than the
+        // match: the same record and the same call, with an agent id on it, is a
+        // real subagent's and stands down.
+        const control = makeStore();
+        try {
+            writeRecord(control, 'agent-session.md', { triggers: arm.trigger });
+            assertSilent(runHook(control, arm.payload(control, {
+                agent_id: 'agent-inside-a-dispatch',
+                agent_type: 'general-purpose'
+            })), 'a call carrying an agent id at ' + arm.boundary);
+        } finally { rmStore(control); }
+    }
 });
 
 test('the external-engine marker stands the hook down', () => {
@@ -803,7 +962,8 @@ test('a payload from a boundary this hook is not wired on is silence', () => {
 });
 
 // memq notes an ignored KIT_MEMORY_ROOT on stderr once per process, and this
-// hook runs at both boundaries of every tool call. Nothing loaded here may
+// hook runs at both boundaries of every tool call, in front of every prompt
+// and at every dispatch. Nothing loaded here may
 // reach either channel: a note on stderr repeats on every call, and a byte on
 // stdout turns the JSON answer into no answer at all.
 test('an ignored store override reaches neither channel and costs no answer', () => {
@@ -1200,8 +1360,9 @@ test('a call that did not fail has no failure output at all', () => {
 
 test('hooks.json wires the recognition nudge on both tool boundaries, matching every tool', () => {
     // The installed CLI answers a hook matcher of '*' before it compiles
-    // anything (`if (!matcher || matcher === "*") return true`), and treats an
-    // absent matcher and '.*' the same way. Asserting membership in that set
+    // anything, and treats an absent matcher and '.*' the same way: its
+    // dispatch tests all three before it builds a RegExp from the matcher
+    // text. Asserting membership in that set
     // rather than the literal is what makes a later narrowing to an
     // alternation fail here: an alternation would decide in hooks.json which
     // memories can ever fire, and a `tool:` trigger may name any tool.
@@ -1215,6 +1376,22 @@ test('hooks.json wires the recognition nudge on both tool boundaries, matching e
         assert.strictEqual(wired.length, 1, boundary + ' wires the recognition nudge exactly once');
         assert.ok(MATCH_ALL.includes(wired[0].matcher),
             boundary + ' wires it on every tool; got matcher ' + JSON.stringify(wired[0].matcher));
+    }
+    // The two lifecycle boundaries, wired once each and carrying no matcher,
+    // neither event having anything to match on. An unwired boundary is a
+    // handler in this file that no session ever reaches, which nothing else
+    // here would catch: every case above feeds the hook its payload directly.
+    for (const boundary of ['UserPromptSubmit', 'SubagentStart']) {
+        const entries = wiring.hooks[boundary] || [];
+        const wired = entries.filter((entry) => (entry.hooks || [])
+            .some((h) => typeof h.command === 'string' && h.command.includes('memory-recognition-nudge.js')));
+        assert.strictEqual(wired.length, 1, boundary + ' wires the recognition nudge exactly once');
+        // Asserted as an ABSENT matcher rather than as membership in the
+        // match-all set: the set contains '*' and '.*', so a membership test
+        // here could not fail for the reason it names, a matcher having been
+        // added to an event that has nothing to match on.
+        assert.strictEqual(wired[0].matcher, undefined,
+            boundary + ' takes no matcher; got ' + JSON.stringify(wired[0].matcher));
     }
 });
 
@@ -1243,12 +1420,222 @@ test('a nudge names the record and the read command and carries no record conten
 // --- The type split is the store's own, so a type added to memq's vocabulary
 // cannot go unmatched at both boundaries without this failing.
 
-test('every trigger type memq admits is matched at exactly one boundary', () => {
+test('every trigger type memq admits is matched at exactly one tool boundary', () => {
     const covered = hook.PRE_TYPES.concat(hook.POST_TYPES);
     assert.deepStrictEqual(covered.slice().sort(), memq.TRIGGER_TYPES.slice().sort(),
-        'the two boundary lists together are memq\'s trigger vocabulary');
+        'the two tool boundary lists together are memq\'s trigger vocabulary');
     assert.strictEqual(new Set(covered).size, covered.length,
-        'no type is matched on both boundaries, which would fire one trigger twice per call');
+        'no type is matched on both tool boundaries, which would fire one trigger twice per call');
+});
+
+// The lifecycle lists are derived from the same vocabulary rather than
+// partitioning with the tool lists: they deliberately overlap, a prompt and
+// the tool call it leads to being two moments with two different subjects.
+// What they may not do is name a type memq does not admit, which would be a
+// pattern nothing can ever be authored as.
+test('the lifecycle boundaries match a subset of memq\'s vocabulary, glob excluded from the prompt', () => {
+    for (const type of hook.PROMPT_TYPES.concat(hook.DISPATCH_TYPES)) {
+        assert.ok(memq.TRIGGER_TYPES.includes(type),
+            type + ' is matched at a lifecycle boundary and must be a type memq admits');
+    }
+    assert.deepStrictEqual(hook.PROMPT_TYPES.slice().sort(),
+        memq.TRIGGER_TYPES.filter((t) => t !== 'glob').sort(),
+        'the prompt matches every text-matchable type, which is the vocabulary less glob');
+    assert.ok(!hook.PROMPT_TYPES.includes('glob'),
+        'a glob is matched against paths a call touched, and a prompt has touched none');
+    assert.deepStrictEqual(hook.DISPATCH_TYPES, ['agent'],
+        'a dispatch payload carries no subject but the agent type');
+    // Which of the prompt's types match on a whole token is the STORE's split
+    // rather than this file's: memq asks its bare-common-token bar of the
+    // fragment types alone, on the stated reason that an identifier pattern is
+    // the whole of what there is, which is a bar calibrated for whole-value
+    // comparison. Derived here from memq's own list so the two cannot drift.
+    assert.deepStrictEqual(hook.PROMPT_TOKEN_TYPES.slice().sort(),
+        hook.PROMPT_TYPES.filter((t) => !memq.TRIGGER_FRAGMENT_TYPES.includes(t)).sort(),
+        'the types matched on a whole token are the prompt\'s types less memq\'s fragment types');
+});
+
+// The token matcher itself, in-process: it is a pure function, and the shapes
+// it has to get right are cheaper to state here than to spawn a hook for.
+test('the whole-token matcher answers on token boundaries and refuses sub-word hits', () => {
+    const yes = [
+        ['read', 'use the read tool'],
+        ['read', 'read this'],
+        ['read', 'do the read'],
+        ['read', 'read'],
+        ['implementer-opus', 'dispatch claude-kit:implementer-opus now'],
+        ['memory-system', 'load memory-system, then go'],
+        ['multiedit', 'use MultiEdit here'.toLowerCase()],
+        // The same three characters as punctuation rather than as joiners: a
+        // sentence ends on a dot far more often than a compound is built on one,
+        // and a rule that read every dot as a token character would refuse the
+        // true match to buy the false one it exists to refuse.
+        ['read', 'use the read.'],
+        ['memory-system', 'load memory-system.'],
+        ['implementer-opus', 'dispatch claude-kit:implementer-opus.'],
+        ['read', 'the read/ helper'],
+        ['read', 'read- this'],
+        // The slash is a boundary rather than a joiner, wherever it stands. A
+        // pair written over one is two identifiers named at once, which is how a
+        // prompt spells a choice between two tools, and the cost model here
+        // prices a missed nudge above a loose one.
+        ['read', 'use read/write here'],
+        ['read', 'the src/read/ helper is where it lives'],
+        ['edit', 'an Edit/MultiEdit pass'.toLowerCase()],
+        ['bash', 'run it under Bash/PowerShell'.toLowerCase()]
+    ];
+    // The instrument check: the five spellings the hook's own header enumerates.
+    // These are the pattern's own literals, so they prove the matcher runs and
+    // say nothing about its reach.
+    const instrument = [
+        ['read', 'thread'],
+        ['read', 'already'],
+        ['read', 'readme'],
+        ['read', 'spread'],
+        ['edit', 'credit'],
+        ['edit', 'editor']
+    ];
+    // The coverage check, and every instance here is WITHHELD from that
+    // enumeration and chosen on the class's shape rather than on a string
+    // anybody wrote the rule against: an identifier sitting inside a longer
+    // compound, where the character joining it is a hyphen, a dot, or a letter
+    // outside ASCII. Each of those is a character that reads as a word
+    // boundary to a rule built for English prose and does not read as one to a
+    // person: "read-only" is not the Read tool, and neither is `notes.bash.md`
+    // the Bash one. The hyphen case is the one this repository's own prose
+    // produces constantly, which is what makes a once-per-session trigger
+    // spendable on it.
+    const no = [
+        ['read', 'dispatch a read-only reviewer for the round'],
+        ['edit', 'a multi-edit pass over the file'],
+        ['bash', 'see notes.bash.md for the invocation'],
+        ['read', 'préread the section before you start'],
+        ['read', '読read the section before you start'],
+        ['read', ''],
+        ['', 'read']
+    ];
+    for (const [pattern, text] of yes) {
+        assert.strictEqual(hook.matchesToken(pattern, text), true,
+            JSON.stringify(pattern) + ' stands as its own token in ' + JSON.stringify(text));
+    }
+    for (const [pattern, text] of instrument.concat(no)) {
+        assert.strictEqual(hook.matchesToken(pattern, text), false,
+            JSON.stringify(pattern) + ' is not a token of ' + JSON.stringify(text));
+    }
+    // The qualifier case the token rule exists to keep matching, stated beside
+    // the hyphen refusal above because the two are one rule: the colon is the
+    // boundary, so a bare identifier still answers a scoped spelling of itself.
+    assert.strictEqual(hook.matchesToken('implementer-opus', 'dispatch claude-kit:implementer-opus'), true,
+        'a colon is a boundary, so a scoped spelling still answers the bare identifier');
+    // Every occurrence is examined, not the first: a text carrying the pattern
+    // inside a longer word BEFORE it carries it as a token still matches.
+    assert.strictEqual(hook.matchesToken('read', 'the readme says to read it'), true,
+        'a later token hit is found past an earlier sub-word occurrence');
+});
+
+// The per-pair matcher is what MATCH_OPS_MAX assumes is linear, and the
+// occurrence walk is where that assumption is spent: the matcher examines every
+// occurrence rather than the first, so a text carrying the pattern inside a
+// longer word many times costs one scan per occurrence. The walk carries its own
+// bound for that reason, and the priced side is a missed match on a text that
+// buried the true token past it.
+test('the token walk is bounded in occurrences, and a hit past the bound is the priced side', () => {
+    assert.strictEqual(typeof hook.TOKEN_SCANS_MAX, 'number',
+        'the occurrence walk declares the bound it stops at');
+    // The true token stands one occurrence past the bound, every occurrence
+    // ahead of it being the pattern inside a longer word.
+    const past = 'xread '.repeat(hook.TOKEN_SCANS_MAX) + 'read here';
+    assert.strictEqual(hook.matchesToken('read', past), false,
+        'a token hit past the occurrence bound is not searched for');
+    // The control, one occurrence inside it: the same shape, one filler fewer,
+    // and the matcher still answers, so the silence above is the bound rather
+    // than the shape.
+    const inside = 'xread '.repeat(hook.TOKEN_SCANS_MAX - 1) + 'read here';
+    assert.strictEqual(hook.matchesToken('read', inside), true,
+        'the last occurrence inside the bound is still examined');
+});
+
+// The above-ASCII range is admitted as word characters for the letters in it, so
+// an accented or CJK neighbour joins rather than bounds. The punctuation and
+// separators in that range are the other half, and reading one of those as a
+// letter refuses a true match: autocorrected prose fences an identifier in curly
+// quotes, and a session's own em dash, ellipsis or non-breaking space sits
+// against one just as often.
+test('typographic punctuation bounds a token where an above-ASCII letter joins it', () => {
+    // The regression, at the boundary rather than in the matcher alone: a prompt
+    // writing the identifier fenced in curly quotes still names it.
+    const store = makeStore();
+    try {
+        writeRecord(store, 'read-tool-lore.md', { triggers: 'tool:Read' });
+        assertNames(assertNudge(runHook(store, promptPayload(store, {
+            prompt: 'make the “Read” call on that file rather than a shell cat'
+        })), 'UserPromptSubmit', 'an identifier fenced in curly quotes'),
+        'read-tool-lore.md', 'tool:Read', 'an identifier fenced in curly quotes');
+
+        // The control that keeps the defect the token rule closed closed: the
+        // same record against a prompt carrying the identifier inside a longer
+        // word says nothing.
+        const control = makeStore();
+        try {
+            writeRecord(control, 'read-tool-lore.md', { triggers: 'tool:Read' });
+            assertSilent(runHook(control, promptPayload(control, {
+                prompt: 'skim the readme before you start'
+            })), 'the identifier inside a longer word');
+        } finally { rmStore(control); }
+
+        // The second control, that the letters half of the range still joins: an
+        // accented letter against the identifier is a longer word rather than a
+        // boundary, which is the whole reason the range is admitted.
+        const accented = makeStore();
+        try {
+            writeRecord(accented, 'read-tool-lore.md', { triggers: 'tool:Read' });
+            assertSilent(runHook(accented, promptPayload(accented, {
+                prompt: 'readé the section before you start'
+            })), 'the identifier against an accented letter');
+        } finally { rmStore(accented); }
+
+        // The surrogate half, at the boundary: an emoji written straight against
+        // the identifier is two surrogate code units, both above ASCII and
+        // neither a letter, so the identifier still stands as its own token.
+        const emoji = makeStore();
+        try {
+            writeRecord(emoji, 'read-tool-lore.md', { triggers: 'tool:Read' });
+            assertNames(assertNudge(runHook(emoji, promptPayload(emoji, {
+                prompt: 'make the \u{1f642}Read\u{1f642} call on that file'
+            })), 'UserPromptSubmit', 'an identifier abutted by an emoji'),
+            'read-tool-lore.md', 'tool:Read', 'an identifier abutted by an emoji');
+        } finally { rmStore(emoji); }
+    } finally { rmStore(store); }
+
+    // The rest of the excluded blocks, each fencing the identifier on both
+    // sides, read through the matcher itself. Every instance here is withheld
+    // from the hook's own enumeration and chosen on the class's shape, which is
+    // the punctuation, separator and surrogate blocks of the above-ASCII range:
+    // General Punctuation (the curly quotes, the dashes down to the typographic
+    // and non-breaking hyphens, the ellipsis, the bullet, the Unicode spaces,
+    // the zero-width space and the line and paragraph separators), CJK Symbols
+    // and Punctuation (the ideographic comma and full stop and the corner
+    // brackets, beside the ideographic space), Halfwidth and Fullwidth Forms,
+    // the surrogate halves an astral character arrives as, and the singleton
+    // no-break space, soft hyphen, guillemets and byte-order mark.
+    for (const [open, close] of [['\u2018', '\u2019'], ['\u201c', '\u201d'],
+        ['\u2013', '\u2013'], ['\u2014', '\u2014'], ['\u2015', '\u2015'],
+        ['\u2026', '\u2026'], ['\u00a0', '\u00a0'], ['\u2007', '\u2007'],
+        ['\u202f', '\u202f'], ['\u2009', '\u2009'], ['\u2022', '\u2022'],
+        ['\u200b', '\u200b'], ['\u2010', '\u2011'], ['\u2012', '\u2012'],
+        ['\u2028', '\u2029'], ['\u205f', '\u205f'],
+        ['\u3000', '\u3000'], ['\u3001', '\u3002'], ['\u300c', '\u300d'],
+        ['\uff08', '\uff09'], ['\uff01', '\uff1a'],
+        ['\u00ad', '\u00ad'], ['\u00ab', '\u00bb'], ['\ufeff', '\ufeff'],
+        ['\u{1f642}', '\u{1f642}'], ['\u4e00\u{1f642}', '\u{1f642}\u4e00']]) {
+        assert.strictEqual(hook.matchesToken('read', 'the ' + open + 'read' + close + ' call'), true,
+            'U+' + open.codePointAt(0).toString(16) + ' bounds a token rather than joining it');
+    }
+    // And the letters, which is what the range is admitted for.
+    for (const letter of ['\u00e9', '\u8aad', '\u0430']) {
+        assert.strictEqual(hook.matchesToken('read', 'the ' + letter + 'read call'), false,
+            'U+' + letter.codePointAt(0).toString(16) + ' joins a token rather than bounding it');
+    }
 });
 
 test('two project stores never share an index cache', () => {
@@ -1258,6 +1645,604 @@ test('two project stores never share an index cache', () => {
     assert.notStrictEqual(hook.cacheFile(dir, a), hook.cacheFile(dir, b));
     assert.strictEqual(hook.cacheFile(dir, a), hook.cacheFile(dir, a));
     assert.ok(path.basename(hook.cacheFile(dir, a)).length < 80, 'the cache filename is bounded');
+});
+
+// --- The two lifecycle boundaries: the prompt arriving and the subagent
+// starting. Each fire is pinned beside a control that must not fire, on the
+// same rule the tool boundaries take, and each exclusion is pinned against a
+// control that DOES fire on the same record, so a silence is evidence of the
+// exclusion rather than of a fixture nothing could ever have matched.
+
+test('a prompt carrying a trigger\'s text nudges at UserPromptSubmit, and one carrying none is silent', () => {
+    const store = makeStore();
+    try {
+        writeRecord(store, 'test-suite-invocation.md', { triggers: 'cmd:node --test' });
+        const fired = runHook(store, promptPayload(store, {
+            prompt: 'please run node --test over the recognition suite and report the delta'
+        }));
+        assertNames(assertNudge(fired, 'UserPromptSubmit', 'prompt fire'),
+            'test-suite-invocation.md', 'cmd:node --test', 'prompt fire');
+        const control = makeStore();
+        try {
+            writeRecord(control, 'test-suite-invocation.md', { triggers: 'cmd:node --test' });
+            assertSilent(runHook(control, promptPayload(control, {
+                prompt: 'please read the architecture document and summarize it'
+            })), 'prompt control');
+        } finally { rmStore(control); }
+    } finally { rmStore(store); }
+});
+
+// A prompt has no typed fields, so each type is matched against its text: the
+// fragment types by containment and the three identifier types on a whole
+// token, neither of them by the equality a tool call's own field admits. Each
+// of the five is exercised, because the boundary's type list is what decides
+// this and a list that lost a member would still pass a case that only tried
+// one. The token rule has its own case below; what this one pins is that every
+// member of the list reaches the prompt's text at all.
+test('every type UserPromptSubmit matches is matched against the prompt text', () => {
+    const cases = [
+        ['cmd:node --test', 'run node --test now'],
+        ['err:ENOTEMPTY', 'the build died with ENOTEMPTY again'],
+        ['skill:memory-system', 'load the memory-system skill first'],
+        ['agent:claude-kit:implementer-opus', 'dispatch claude-kit:implementer-opus for this'],
+        ['tool:MultiEdit', 'use MultiEdit rather than one Edit per hunk']
+    ];
+    for (const [trigger, prompt] of cases) {
+        const type = trigger.slice(0, trigger.indexOf(':'));
+        assert.ok(hook.PROMPT_TYPES.includes(type),
+            'test setup: ' + type + ' must be one the prompt boundary matches');
+        assert.ok(memq.isTriggerEntry(trigger),
+            'test setup: ' + trigger + ' must be an entry the store admits');
+        const store = makeStore();
+        try {
+            writeRecord(store, 'prompt-typed.md', { triggers: trigger });
+            assertNames(assertNudge(runHook(store, promptPayload(store, { prompt })),
+                'UserPromptSubmit', trigger + ' fire'), 'prompt-typed.md', trigger, trigger + ' fire');
+        } finally { rmStore(store); }
+    }
+});
+
+// The one type the prompt boundary excludes, with the control that makes the
+// silence mean something: the same record, the same glob, fires at PostToolUse
+// on a path a call actually touched. A glob at the prompt boundary would be
+// matched against prose, since a prompt has touched no paths.
+test('a glob: trigger never fires at UserPromptSubmit, and the same record fires on a touched path', () => {
+    assert.ok(!hook.PROMPT_TYPES.includes('glob'),
+        'the prompt boundary excludes glob, which is what this case is about');
+    const store = makeStore();
+    try {
+        writeRecord(store, 'hook-family.md', { triggers: 'glob:plugins/*/hooks/*' });
+        assertSilent(runHook(store, promptPayload(store, {
+            prompt: 'edit plugins/claude-kit/hooks/memory-recognition-nudge.js please'
+        })), 'a glob against prompt prose');
+        // The control: the same fixture, matched at the boundary that carries
+        // paths, so the silence above is the exclusion and not a glob nothing
+        // could ever match.
+        const control = makeStore();
+        try {
+            writeRecord(control, 'hook-family.md', { triggers: 'glob:plugins/*/hooks/*' });
+            assertNames(assertNudge(runHook(control, postPayload(control, {
+                tool_input: { file_path: path.join(control.cwd, 'plugins', 'claude-kit', 'hooks', 'x.js') }
+            })), 'PostToolUse', 'glob control'), 'hook-family.md', 'glob:plugins/*/hooks/*', 'glob control');
+        } finally { rmStore(control); }
+    } finally { rmStore(store); }
+});
+
+// The prompt is the least bounded subject any boundary hands over, so it is
+// folded through the same head-and-tail cap a failed call's output takes. The
+// pair is the evidence the cap is applied: a token in the head matches, and
+// the same token buried past the cap's reach does not.
+test('a prompt is capped before matching, with its head still matched', () => {
+    const store = makeStore();
+    try {
+        writeRecord(store, 'capped-prompt.md', { triggers: 'cmd:node --test' });
+        const filler = 'z'.repeat(200000);
+        assertNames(assertNudge(runHook(store, promptPayload(store, {
+            prompt: 'node --test ' + filler
+        })), 'UserPromptSubmit', 'prompt head'), 'capped-prompt.md', 'cmd:node --test', 'prompt head');
+        const middle = makeStore();
+        try {
+            writeRecord(middle, 'capped-prompt.md', { triggers: 'cmd:node --test' });
+            assertSilent(runHook(middle, promptPayload(middle, {
+                prompt: filler + 'node --test' + filler
+            })), 'a prompt whose only match sits past the cap');
+        } finally { rmStore(middle); }
+    } finally { rmStore(store); }
+});
+
+// The identifier types are matched at the prompt on a WHOLE TOKEN, because
+// bare containment turns `tool:Read` into a matcher for "thread", "readme",
+// "already" and "spread", and each of those false positives then spends the
+// trigger for the whole session and disarms the true firing. The fragment
+// types keep containment, which is what they are at their own boundaries and
+// what memq's authoring gate classifies them as.
+test('an identifier trigger matches a prompt on a whole token, and a fragment trigger still matches mid-word', () => {
+    assert.ok(memq.isTriggerEntry('tool:Read'), 'test setup: tool:Read is an entry the store admits');
+    const store = makeStore();
+    try {
+        writeRecord(store, 'read-tool-lore.md', { triggers: 'tool:Read' });
+        assertSilent(runHook(store, promptPayload(store, {
+            prompt: 'skim the readme, then spread that work across a second thread; it is already late'
+        })), 'a prompt carrying the identifier only inside longer words');
+        // The control: the same record and the same pattern, named as its own
+        // token, so the silence above is the token rule rather than a fixture
+        // nothing could match.
+        const control = makeStore();
+        try {
+            writeRecord(control, 'read-tool-lore.md', { triggers: 'tool:Read' });
+            assertNames(assertNudge(runHook(control, promptPayload(control, {
+                prompt: 'use the Read tool on that file rather than a shell cat'
+            })), 'UserPromptSubmit', 'the identifier as its own token'),
+            'read-tool-lore.md', 'tool:Read', 'the identifier as its own token');
+        } finally { rmStore(control); }
+        // A qualified spelling still answers a bare identifier, because the
+        // colon a scope is joined on is a boundary. It is the one separator that
+        // is: a hyphen, a dot and a slash are token characters, since the
+        // compounds they build (read-only, notes.bash.md) are not the identifier
+        // inside them.
+        const scoped = makeStore();
+        try {
+            writeRecord(scoped, 'implementer-lore.md', { triggers: 'agent:implementer-opus' });
+            assertNudge(runHook(scoped, promptPayload(scoped, {
+                prompt: 'dispatch claude-kit:implementer-opus for the fix round'
+            })), 'UserPromptSubmit', 'a bare identifier inside a qualified spelling');
+        } finally { rmStore(scoped); }
+        // And the fragment types are unchanged: a cmd: pattern is a fragment of
+        // a longer command line by construction, so it still matches without a
+        // token boundary on either side.
+        const fragment = makeStore();
+        try {
+            writeRecord(fragment, 'stash-lore.md', { triggers: 'cmd:git stash' });
+            assertNudge(runHook(fragment, promptPayload(fragment, {
+                prompt: 'thengit stashthen carry on'
+            })), 'UserPromptSubmit', 'a fragment trigger mid-word');
+        } finally { rmStore(fragment); }
+    } finally { rmStore(store); }
+});
+
+// The subagent stand-down at the prompt boundary keys on the agent id alone.
+// `agent_type` is documented as present on the MAIN thread of a session started
+// with --agent, so reading the wider five-key truthiness there would make this
+// boundary dead from the first prompt onward in every such session, silently.
+test('a prompt in an --agent session still nudges, and a real subagent\'s prompt stands down', () => {
+    const store = makeStore();
+    try {
+        writeRecord(store, 'agent-session.md', { triggers: 'cmd:node --test' });
+        assertNames(assertNudge(runHook(store, promptPayload(store, {
+            agent_type: 'general-purpose',
+            prompt: 'run node --test over the suite'
+        })), 'UserPromptSubmit', 'a main thread carrying an agent_type'),
+        'agent-session.md', 'cmd:node --test', 'a main thread carrying an agent_type');
+        // The control that withholds the discriminating key rather than the
+        // match: the same prompt and the same record, with an agent id on it,
+        // is a real subagent's turn and stands down.
+        const control = makeStore();
+        try {
+            writeRecord(control, 'agent-session.md', { triggers: 'cmd:node --test' });
+            assertSilent(runHook(control, promptPayload(control, {
+                agent_id: 'agent-inside-a-dispatch',
+                agent_type: 'general-purpose',
+                prompt: 'run node --test over the suite'
+            })), 'a prompt carrying an agent id');
+        } finally { rmStore(control); }
+    } finally { rmStore(store); }
+});
+
+// UserPromptSubmit fires for machine-injected turns too, and the payload says
+// which through `source`. A wakeup or a poll turn may never be delivered, and a
+// nudge spent against one is spent for the whole session, so those stand down.
+// Everything else is answered, an absent or unknown source included: a silently
+// dead boundary is the worse of the two errors, which is the same failure the
+// agent-id gate above exists to avoid.
+test('a wakeup or poll prompt turn stands the nudge down, and a real turn nudges', () => {
+    const IGNORED = ['loop_wakeup', 'schedule_wakeup', 'poll_event'];
+    for (const source of IGNORED) {
+        const store = makeStore();
+        try {
+            writeRecord(store, 'source-gate.md', { triggers: 'cmd:node --test' });
+            assertSilent(runHook(store, promptPayload(store, {
+                source, prompt: 'run node --test over the suite'
+            })), 'a prompt whose source is ' + source);
+        } finally { rmStore(store); }
+    }
+    // The controls: the same fixture and the same prompt on every source that
+    // IS answered, so the silences above are the gate rather than the fixture.
+    for (const source of ['user', 'sdk', 'system', 'a-source-this-harness-does-not-have-yet', undefined]) {
+        const store = makeStore();
+        try {
+            writeRecord(store, 'source-gate.md', { triggers: 'cmd:node --test' });
+            const payload = promptPayload(store, { prompt: 'run node --test over the suite' });
+            if (source !== undefined) payload.source = source;
+            assertNudge(runHook(store, payload), 'UserPromptSubmit',
+                'a prompt whose source is ' + String(source));
+        } finally { rmStore(store); }
+    }
+    assert.deepStrictEqual(hook.PROMPT_SOURCES_IGNORED, IGNORED,
+        'the stood-down source list is the hook\'s own, so this case cannot drift from it');
+});
+
+test('a dispatch whose agent_type carries an agent: trigger nudges at SubagentStart', () => {
+    const store = makeStore();
+    try {
+        writeRecord(store, 'reviewer-conventions.md', { triggers: 'agent:general-purpose' });
+        const payload = dispatchPayload(store);
+        assert.ok(typeof payload.agent_id === 'string' && payload.agent_id !== '',
+            'test setup: the payload carries the agent id the tool-call stand-down reads, '
+            + 'so a fire here is that stand-down exempted rather than absent');
+        assertNames(assertNudge(runHook(store, payload), 'SubagentStart', 'dispatch fire'),
+            'reviewer-conventions.md', 'agent:general-purpose', 'dispatch fire');
+        const control = makeStore();
+        try {
+            writeRecord(control, 'reviewer-conventions.md', { triggers: 'agent:general-purpose' });
+            assertSilent(runHook(control, dispatchPayload(control, {
+                agent_type: 'claude-kit:explorer'
+            })), 'dispatch control');
+        } finally { rmStore(control); }
+    } finally { rmStore(store); }
+});
+
+test('a scoped agent_type answers a trigger naming its bare last segment', () => {
+    const store = makeStore();
+    try {
+        writeRecord(store, 'implementer-conventions.md', { triggers: 'agent:implementer-opus' });
+        assertNames(assertNudge(runHook(store, dispatchPayload(store, {
+            agent_type: 'claude-kit:implementer-opus'
+        })), 'SubagentStart', 'scoped dispatch'), 'implementer-conventions.md',
+        'agent:implementer-opus', 'scoped dispatch');
+    } finally { rmStore(store); }
+});
+
+// SubagentStart matches `agent:` and nothing else, its payload carrying no
+// subject but the agent type. The control withholds the type rather than the
+// text: the same string is the pattern in both arms, so a fire in one and
+// silence in the other can only be the type list.
+test('SubagentStart matches agent: alone, on a payload carrying no other subject', () => {
+    assert.deepStrictEqual(hook.DISPATCH_TYPES, ['agent'],
+        'the dispatch boundary matches agent and nothing else');
+    const store = makeStore();
+    try {
+        writeRecord(store, 'same-string-wrong-type.md', { triggers: 'tool:general-purpose' });
+        assertSilent(runHook(store, dispatchPayload(store)), 'a tool: trigger at a dispatch');
+        const control = makeStore();
+        try {
+            writeRecord(control, 'same-string-right-type.md', { triggers: 'agent:general-purpose' });
+            assertNudge(runHook(control, dispatchPayload(control)), 'SubagentStart',
+                'the same string as an agent: trigger');
+        } finally { rmStore(control); }
+    } finally { rmStore(store); }
+});
+
+// The read-only judgment seats are dispatched to hold a context that inherited
+// nothing, and a pointer the store authored is exactly the intent story a blind
+// review is dispatched without. The `gate` class and every ungoverned type still
+// receive pointers, a QA verifier and an implementer both benefiting from what
+// the store knows.
+test('a dispatch of a read-only judgment seat receives no pointer, where a gate and an implementer do', () => {
+    for (const type of ['blind-reviewer', 'adversarial-reviewer', 'security-reviewer',
+        'consultant', 'blind-reader', 'prose-reviewer', 'council-member',
+        'design-facilitator']) {
+        const store = makeStore();
+        try {
+            writeRecord(store, 'seat-lore.md', { triggers: 'agent:' + type });
+            assertSilent(runHook(store, dispatchPayload(store, {
+                agent_type: 'claude-kit:' + type
+            })), 'a dispatch of ' + type);
+        } finally { rmStore(store); }
+    }
+    // The controls, matched on the class's shape rather than on the list above:
+    // a type the guard governs as a gate, and one it does not govern at all.
+    for (const type of ['qa-verifier', 'implementer-opus']) {
+        const store = makeStore();
+        try {
+            writeRecord(store, 'seat-lore.md', { triggers: 'agent:' + type });
+            assertNames(assertNudge(runHook(store, dispatchPayload(store, {
+                agent_type: 'claude-kit:' + type
+            })), 'SubagentStart', 'a dispatch of ' + type),
+            'seat-lore.md', 'agent:' + type, 'a dispatch of ' + type);
+        } finally { rmStore(store); }
+    }
+});
+
+test('the lifecycle cap holds a prompt that would over-fire to NUDGE_CAP_LIFECYCLE records', () => {
+    const store = makeStore();
+    const names = ['lifecycle-one.md', 'lifecycle-two.md', 'lifecycle-three.md',
+        'lifecycle-four.md', 'lifecycle-five.md'];
+    try {
+        assert.ok(hook.NUDGE_CAP_LIFECYCLE > hook.NUDGE_CAP_PER_TURN,
+            'the lifecycle cap is its own knob and is the wider of the two');
+        for (const n of names) writeRecord(store, n, { triggers: 'cmd:node --test' });
+        const text = assertNudge(runHook(store, promptPayload(store, {
+            prompt: 'run node --test and tell me what broke'
+        })), 'UserPromptSubmit', 'over-firing prompt');
+        const named = names.filter((n) => text.includes(n));
+        assert.strictEqual(named.length, hook.NUDGE_CAP_LIFECYCLE,
+            'the lifecycle cap is ' + hook.NUDGE_CAP_LIFECYCLE + ', got ' + named.length + ': ' + text);
+    } finally { rmStore(store); }
+});
+
+// The tool cap is untouched by the lifecycle cap's arrival: a tool call still
+// claims two out of the same over-firing fixture.
+test('the tool-call cap stays at NUDGE_CAP_PER_TURN beside the wider lifecycle cap', () => {
+    const store = makeStore();
+    const names = ['tool-cap-one.md', 'tool-cap-two.md', 'tool-cap-three.md', 'tool-cap-four.md'];
+    try {
+        assert.strictEqual(hook.NUDGE_CAP_PER_TURN, 2, 'the tool-call cap is two');
+        for (const n of names) writeRecord(store, n, { triggers: 'cmd:node --test' });
+        const text = assertNudge(runHook(store, prePayload(store, {
+            tool_input: { command: 'node --test "test/*.test.js"' }
+        })), 'PreToolUse', 'over-firing call beside the lifecycle cap');
+        assert.strictEqual(names.filter((n) => text.includes(n)).length, hook.NUDGE_CAP_PER_TURN,
+            'the tool cap is ' + hook.NUDGE_CAP_PER_TURN + ': ' + text);
+    } finally { rmStore(store); }
+});
+
+// A session nothing matches injects zero bytes at either new boundary, not a
+// short line and not an empty JSON object: the harness reads this channel as
+// JSON, and an empty string is the only output that costs a turn nothing at
+// all. The store here is non-empty and its record is nudgeable, so the silence
+// is the matcher declining rather than a store with nothing in it.
+test('a no-match prompt and a no-match dispatch each inject zero bytes', () => {
+    const store = makeStore();
+    try {
+        writeRecord(store, 'unmatched-record.md', { triggers: 'cmd:node --test' });
+        const prompt = runHook(store, promptPayload(store, {
+            prompt: 'write me a limerick about the weather'
+        }));
+        assertSilent(prompt, 'a no-match prompt');
+        assert.strictEqual(prompt.stdout.length, 0, 'a no-match prompt injects zero bytes');
+        const dispatch = runHook(store, dispatchPayload(store, { agent_type: 'nothing-matches-this' }));
+        assertSilent(dispatch, 'a no-match dispatch');
+        assert.strictEqual(dispatch.stdout.length, 0, 'a no-match dispatch injects zero bytes');
+        // The control: the same store, the same session, a prompt that does
+        // match, so the two silences above are the matcher and not a fixture
+        // this hook could never have fired on.
+        assertNudge(runHook(store, promptPayload(store, { prompt: 'run node --test please' })),
+            'UserPromptSubmit', 'the matching control');
+    } finally { rmStore(store); }
+});
+
+// --- Two boundaries inside ONE session, which is where the dedup identity and
+// the window budgets actually decide anything. Every case above mints a fresh
+// store and a fresh session, so none of them can see either of the couplings
+// below: these are the mainline production orderings.
+
+// The orchestrator's Agent call fires at PreToolUse and the subagent it starts
+// fires again at SubagentStart, on the same session id and the same record. The
+// two are not a repeat: the first injection lands in the orchestrator's window
+// and the second lands in the subagent's own context, which inherits no memory
+// context by any other route, so suppressing the second would suppress a
+// pointer nobody in that context has seen.
+test('a dispatch nudged at PreToolUse nudges the subagent again at SubagentStart, the two landing in different contexts', () => {
+    const store = makeStore();
+    try {
+        writeRecord(store, 'dispatch-conventions.md', { triggers: 'agent:general-purpose' });
+        assertNames(assertNudge(runHook(store, prePayload(store, {
+            tool_name: 'Agent',
+            tool_input: { subagent_type: 'general-purpose' }
+        })), 'PreToolUse', 'the orchestrator\'s dispatch'),
+        'dispatch-conventions.md', 'agent:general-purpose', 'the orchestrator\'s dispatch');
+        // The same session id, byte for byte, which is what a real subagent
+        // carries: the payload helper reads store.session exactly as the tool
+        // payload above did.
+        assertNames(assertNudge(runHook(store, dispatchPayload(store)),
+            'SubagentStart', 'the subagent itself'),
+        'dispatch-conventions.md', 'agent:general-purpose', 'the subagent itself');
+        // The control that makes the fire above mean recipient-scoped rather
+        // than un-deduplicated: the SAME agent id, starting again, is silent,
+        // and a DIFFERENT one fires. A dedup switched off would speak on both.
+        assertSilent(runHook(store, dispatchPayload(store)),
+            'the same subagent, started twice');
+        assertNudge(runHook(store, dispatchPayload(store, { agent_id: 'agent-second-recipient' })),
+            'SubagentStart', 'a second subagent of the same type');
+    } finally { rmStore(store); }
+});
+
+// The prompt and the two tool boundaries hold separate window budgets, so a
+// prompt burst cannot silence the tool call that follows it a
+// second later. A prompt arrives at the START of a turn and the tool burst
+// follows immediately, which makes one shared counter the normal path rather
+// than an edge case, and what it silences is the pre-boundary the header calls
+// the place a memory about a destructive command can still be acted on.
+test('a prompt that spends the lifecycle window leaves the tool boundary its own room, in the same session', () => {
+    const store = makeStore();
+    const names = ['prompt-burst-one.md', 'prompt-burst-two.md', 'prompt-burst-three.md',
+        'prompt-burst-four.md'];
+    try {
+        assert.ok(memq.isTriggerEntry('cmd:rm -rf'), 'test setup: the tool-call trigger is admissible');
+        for (const n of names) writeRecord(store, n, { triggers: 'cmd:node --test' });
+        writeRecord(store, 'destructive-command.md', { triggers: 'cmd:rm -rf' });
+        const text = assertNudge(runHook(store, promptPayload(store, {
+            prompt: 'run node --test and then clear the build directory'
+        })), 'UserPromptSubmit', 'the prompt that opens the turn');
+        assert.strictEqual(names.filter((n) => text.includes(n)).length, hook.NUDGE_CAP_LIFECYCLE,
+            'test setup: the prompt spends the whole lifecycle allowance, got: ' + text);
+        // The tool call the prompt led to, in the same session and inside the
+        // same two-minute window.
+        assertNames(assertNudge(runHook(store, prePayload(store, {
+            tool_input: { command: 'rm -rf build' }
+        })), 'PreToolUse', 'the tool call the prompt led to'),
+        'destructive-command.md', 'cmd:rm -rf', 'the tool call the prompt led to');
+        // The control: the tool window is its own and still capped. A second
+        // tool call in the same window gets the one nudge left, and a third
+        // gets none, so the room above is a separate budget rather than an
+        // absent one.
+        writeRecord(store, 'second-command.md', { triggers: 'cmd:git stash' });
+        writeRecord(store, 'third-command.md', { triggers: 'cmd:git bisect' });
+        assertNudge(runHook(store, prePayload(store, { tool_input: { command: 'git stash push' } })),
+            'PreToolUse', 'the second tool call, taking the last of the tool window');
+        assertSilent(runHook(store, prePayload(store, { tool_input: { command: 'git bisect run' } })),
+            'the third tool call, with the tool window spent');
+    } finally { rmStore(store); }
+});
+
+// The frame names the moment rather than the record: a prompt's pointers are
+// not about a call the session has not made yet.
+test('a lifecycle nudge names its own moment in the frame', () => {
+    const store = makeStore();
+    try {
+        writeRecord(store, 'prompt-frame.md', { triggers: 'cmd:node --test' });
+        const text = assertNudge(runHook(store, promptPayload(store, {
+            prompt: 'run node --test for me'
+        })), 'UserPromptSubmit', 'prompt frame');
+        assert.ok(text.includes('what this prompt is asking for'),
+            'the prompt frame names the prompt: ' + text);
+        assert.ok(!text.includes('what this call is doing'),
+            'the prompt frame does not claim to be about a tool call: ' + text);
+        const dispatch = makeStore();
+        try {
+            writeRecord(dispatch, 'dispatch-frame.md', { triggers: 'agent:general-purpose' });
+            const dtext = assertNudge(runHook(dispatch, dispatchPayload(dispatch)),
+                'SubagentStart', 'dispatch frame');
+            assert.ok(dtext.includes('the agent this dispatch is starting'),
+                'the dispatch frame names the dispatch: ' + dtext);
+        } finally { rmStore(dispatch); }
+    } finally { rmStore(store); }
+});
+
+// A rolling window bounds a burst into ONE context. A dispatch delivers into a
+// distinct, freshly created context that receives exactly one such event in its
+// life, so a window spanning dispatches protects no context and starves every
+// one of them: a three-lens review round would spend a shared allowance and the
+// fourth dispatch, plus the operator's next prompt inside the same two minutes,
+// would get nothing.
+test('every dispatch of a round nudges its own subagent, and a prompt in the same session keeps its own room', () => {
+    const store = makeStore();
+    try {
+        writeRecord(store, 'reviewer-lore.md', { triggers: 'agent:general-purpose' });
+        writeRecord(store, 'suite-lore.md', { triggers: 'cmd:node --test' });
+        // One more dispatch than the lifecycle allowance, all inside one
+        // two-minute window and all on the one session id a subagent shares
+        // with its parent byte for byte.
+        for (let round = 1; round <= hook.NUDGE_CAP_LIFECYCLE + 1; round += 1) {
+            assertNames(assertNudge(runHook(store, dispatchPayload(store, {
+                agent_id: 'agent-of-round-' + round
+            })), 'SubagentStart', 'dispatch ' + round),
+            'reviewer-lore.md', 'agent:general-purpose', 'dispatch ' + round);
+        }
+        assertNames(assertNudge(runHook(store, promptPayload(store, {
+            prompt: 'run node --test and tell me what the round found'
+        })), 'UserPromptSubmit', 'the prompt after the round'),
+        'suite-lore.md', 'cmd:node --test', 'the prompt after the round');
+    } finally { rmStore(store); }
+});
+
+// What bounds a dispatch instead is its own per-call pointer cap: one dispatch
+// context receives one event, so the whole question there is how many pointers
+// that one injection may carry.
+test('one dispatch carries at most its own pointer cap, however many records match', () => {
+    const store = makeStore();
+    const names = ['dispatch-cap-one.md', 'dispatch-cap-two.md', 'dispatch-cap-three.md',
+        'dispatch-cap-four.md', 'dispatch-cap-five.md'];
+    try {
+        for (const n of names) writeRecord(store, n, { triggers: 'agent:general-purpose' });
+        const text = assertNudge(runHook(store, dispatchPayload(store)),
+            'SubagentStart', 'an over-firing dispatch');
+        assert.strictEqual(names.filter((n) => text.includes(n)).length, hook.NUDGE_CAP_LIFECYCLE,
+            'the dispatch pointer cap is ' + hook.NUDGE_CAP_LIFECYCLE + ': ' + text);
+    } finally { rmStore(store); }
+});
+
+// The dedup identity carries the boundary class, so the looser subject arriving
+// first cannot spend the stricter one's budget. A prompt saying "do not use rm
+// -rf here" claims the pattern by containment at the top of the turn; the real
+// call later in the same session is the moment the pre-boundary exists for, and
+// a key without the boundary would have that call read as a repeat.
+test('a prompt naming a command does not spend the pre-call boundary\'s trigger in the same session', () => {
+    const store = makeStore();
+    try {
+        writeRecord(store, 'destructive-command.md', { triggers: 'cmd:rm -rf' });
+        assertNames(assertNudge(runHook(store, promptPayload(store, {
+            prompt: 'do not use rm -rf here; clear the build directory some other way'
+        })), 'UserPromptSubmit', 'the prompt naming the command'),
+        'destructive-command.md', 'cmd:rm -rf', 'the prompt naming the command');
+        assertNames(assertNudge(runHook(store, prePayload(store, {
+            tool_input: { command: 'rm -rf build' }
+        })), 'PreToolUse', 'the call that really runs it'),
+        'destructive-command.md', 'cmd:rm -rf', 'the call that really runs it');
+        // The controls that keep the two fires above meaning "the boundary is in
+        // the key" rather than "the dedup is off": inside one boundary class the
+        // trigger is still spent, at both of the boundaries that just fired.
+        assertSilent(runHook(store, prePayload(store, { tool_input: { command: 'rm -rf dist' } })),
+            'a second call at the same boundary class');
+        assertSilent(runHook(store, promptPayload(store, {
+            prompt: 'and still no rm -rf anywhere in this repository'
+        })), 'a second prompt at the same boundary class');
+    } finally { rmStore(store); }
+});
+
+// The identifier half of the same key, where the second delivery is the price of
+// the fragment half's protection rather than an oversight. A prompt naming an
+// agent type and the call that dispatches it are the same fact matched twice, so
+// the record's pointer lands twice in one turn, and that is what buys the
+// prompt-time warning its own arrival before the call runs.
+test('an identifier named by a prompt and then dispatched nudges once at each boundary class', () => {
+    const store = makeStore();
+    try {
+        writeRecord(store, 'implementer-lore.md', { triggers: 'agent:implementer-opus' });
+        assertNames(assertNudge(runHook(store, promptPayload(store, {
+            prompt: 'dispatch claude-kit:implementer-opus for the fix round'
+        })), 'UserPromptSubmit', 'the prompt naming the agent type'),
+        'implementer-lore.md', 'agent:implementer-opus', 'the prompt naming the agent type');
+        assertNames(assertNudge(runHook(store, prePayload(store, {
+            tool_name: 'Agent',
+            tool_input: { subagent_type: 'claude-kit:implementer-opus', prompt: 'go' }
+        })), 'PreToolUse', 'the call that dispatches it'),
+        'implementer-lore.md', 'agent:implementer-opus', 'the call that dispatches it');
+        // The control that keeps the two fires above meaning "the boundary is in
+        // the key" rather than "the dedup is off": a second call at the same
+        // boundary class finds the trigger spent.
+        assertSilent(runHook(store, prePayload(store, {
+            tool_name: 'Agent',
+            tool_input: { subagent_type: 'claude-kit:implementer-opus', prompt: 'again' }
+        })), 'a second dispatch call at the same boundary class');
+    } finally { rmStore(store); }
+});
+
+// The agent id is payload text like every other subject the matcher folds, and
+// it reaches a hash update once per candidate trigger. Bounded, two ids sharing
+// a bounded prefix are one recipient; unbounded, the marker's key set is
+// something a payload sets the size of.
+test('a dispatch\'s agent id is bounded before it keys the dedup, like every other subject', () => {
+    const store = makeStore();
+    try {
+        writeRecord(store, 'dispatch-lore.md', { triggers: 'agent:general-purpose' });
+        const shared = 'agent-' + 'x'.repeat(4000);
+        assertNudge(runHook(store, dispatchPayload(store, { agent_id: shared + '-first' })),
+            'SubagentStart', 'the first oversized agent id');
+        assertSilent(runHook(store, dispatchPayload(store, { agent_id: shared + '-second' })),
+            'a second oversized id sharing the bounded prefix');
+        // The control that withholds the length rather than the match: a short
+        // distinct id is a distinct recipient and fires, so the silence above is
+        // the bound rather than the dedup answering every dispatch.
+        assertNudge(runHook(store, dispatchPayload(store, { agent_id: 'agent-short-and-distinct' })),
+            'SubagentStart', 'a distinct bounded id');
+    } finally { rmStore(store); }
+});
+
+// The dispatch-keyed class is the first whose growth tracks session activity
+// rather than store size, so it holds its own key budget: reaching that ceiling
+// must never retire the pre-call channel a memory about a destructive command
+// is delivered on.
+test('a marker whose dispatch keys have reached their ceiling still nudges before a destructive call', () => {
+    const store = makeStore();
+    try {
+        writeRecord(store, 'destructive-command.md', { triggers: 'cmd:rm -rf' });
+        writeRecord(store, 'dispatch-lore.md', { triggers: 'agent:general-purpose' });
+        fs.mkdirSync(stateDir(store), { recursive: true });
+        const firedDispatch = {};
+        for (let i = 0; i < hook.MARKER_DISPATCH_KEYS_MAX; i += 1) firedDispatch['dispatch-key-' + i] = 1;
+        assert.strictEqual(Object.keys(firedDispatch).length, hook.MARKER_DISPATCH_KEYS_MAX,
+            'test setup: the dispatch key set is planted at exactly its ceiling');
+        fs.writeFileSync(markerPath(store),
+            JSON.stringify({ fired: {}, firedDispatch }), 'utf8');
+        assertNames(assertNudge(runHook(store, prePayload(store, {
+            tool_input: { command: 'rm -rf build' }
+        })), 'PreToolUse', 'the pre-call channel at the dispatch ceiling'),
+        'destructive-command.md', 'cmd:rm -rf', 'the pre-call channel at the dispatch ceiling');
+        // And the ceiling does bind the class it is about, so the fire above is
+        // the two key sets being separate rather than the ceiling being absent.
+        assertSilent(runHook(store, dispatchPayload(store)), 'a dispatch at its own ceiling');
+    } finally { rmStore(store); }
 });
 
 // --- The nudge log: what makes the stamp-rate experiment readable.
@@ -1305,8 +2290,14 @@ test('a nudge appends one line per record to the project\'s nudge log, carrying 
         // `tier` rides beside the record's name because the name alone is
         // unique inside a tier and not across them, and the stamp-rate report
         // that reads this log joins against one tier's applied stamps.
+        // `boundary` rides beside both because a pointer delivered into a
+        // short-lived subagent's context is far less likely to earn an applied
+        // stamp than one delivered into the session, and a reading that cannot
+        // tell them apart grows its denominator with a population that cannot
+        // realistically stamp.
         assert.deepStrictEqual(Object.keys(entry).sort(),
-            ['name', 'pattern', 'tier', 'ts', 'type']);
+            ['boundary', 'name', 'pattern', 'tier', 'ts', 'type']);
+        assert.strictEqual(entry.boundary, 'PreToolUse');
         assert.strictEqual(entry.name, 'test-suite-invocation.md');
         assert.strictEqual(entry.tier, 'project');
         assert.strictEqual(entry.type, 'cmd');
@@ -1765,6 +2756,54 @@ test('a record the log names that declares neither trigger nor anchor is in neit
     } finally { rmStore(store); }
 });
 
+// A pointer landing in a dispatched agent's context reaches a reader that ends
+// with the dispatch, so it is far less likely to earn an applied stamp than one
+// landing in the session. Folded into one arm it grows the denominator with a
+// population that cannot realistically stamp, and that arm is the evidence gate
+// a future semantic tier depends on.
+test('a record nudged only into a dispatched agent\'s context is its own arm, neither a session '
+    + 'nudge nor a control', () => {
+    const store = makeStore();
+    try {
+        writeRecord(store, 'dispatch-only.md', { triggers: 'agent:general-purpose' });
+        writeRecord(store, 'session-nudged.md', { triggers: 'cmd:node --test' });
+        writeRecord(store, 'logged-before-the-boundary-was.md', { triggers: 'cmd:git bisect' });
+        writeRecord(store, 'never-nudged.md', { triggers: 'cmd:zpool status' });
+
+        // The dispatch line is written by a real dispatch rather than planted,
+        // so the boundary the report splits on is the one the hook writes.
+        assertNudge(runHook(store, dispatchPayload(store)), 'SubagentStart', 'a dispatch that nudges');
+        const logFile = hook.nudgeLogPath(store.cwd);
+        const written = readLogLines(logFile).map((l) => JSON.parse(l));
+        assert.strictEqual(written.length, 1, 'the dispatch logged one line: ' + JSON.stringify(written));
+        assert.strictEqual(written[0].boundary, 'SubagentStart',
+            'a dispatch-delivered nudge says so on its own line');
+
+        const since = Date.now() - 60 * 60 * 1000;
+        const insideWindow = new Date(since + 60000).toISOString();
+        fs.appendFileSync(logFile, JSON.stringify({
+            ts: insideWindow, name: 'session-nudged.md', tier: 'project',
+            type: 'cmd', pattern: 'node --test', boundary: 'UserPromptSubmit'
+        }) + '\n' + JSON.stringify({
+            // A line carrying no boundary at all, which is every line written
+            // before the boundary was logged: read as session-delivered, the
+            // same default the tier field takes.
+            ts: insideWindow, name: 'logged-before-the-boundary-was.md', tier: 'project',
+            type: 'cmd', pattern: 'git bisect'
+        }) + '\n', 'utf8');
+
+        const report = withStoreEnv(store, () => hook.nudgeStampRate(store.cwd, since));
+        assert.strictEqual(report.error, undefined, 'the report resolves cleanly: ' + JSON.stringify(report));
+        assert.deepStrictEqual(report.nudged.total, 2,
+            'the session-delivered arm holds the prompt line and the boundary-less one: '
+            + JSON.stringify(report));
+        assert.strictEqual(report.dispatched.total, 1,
+            'the dispatch-delivered record is counted on its own: ' + JSON.stringify(report));
+        assert.strictEqual(report.unnudged.total, 1,
+            'and the control arm is the record nothing nudged: ' + JSON.stringify(report));
+    } finally { rmStore(store); }
+});
+
 test('a tier listing cut short by this hook\'s own per-call cap refuses the report rather than '
     + 'understating the population', () => {
     const store = makeStore();
@@ -2037,6 +3076,123 @@ test('a glob on a shared tier never fires, because a glob is a path and the tier
             tool_response: { stderr: 'Error: ENOENT no such file or directory', exit_code: 1 }
         })), 'PostToolUse', 'tier still heard'), 'operator-still-heard.md',
         'err:ENOENT no such file', 'tier still heard');
+    } finally { rmStore(store); }
+});
+
+// The prompt boundary is the project tier's alone, whatever the trigger type. A
+// prompt is prose rather than a field, so every type matched against it is a
+// guess about what the words mean, and memq's authoring bars screen a pattern
+// against a command line or a failure's output rather than against English: the
+// bare-common-token bar reaches the fragment types alone, so `tool:edit` and
+// `agent:when` are patterns the store admits. On a shared tier that guess is a
+// pointer in the opening prompt of every session, in every project, on every
+// machine the store reaches, aimed by an author who sees none of them.
+//
+// The case is stated over the class by shape rather than over one member: both
+// fragment types and two identifier types, each silent at the prompt from a
+// shared tier, each with a project-tier twin that fires on the same prompt, and
+// each firing from the shared tier at the boundary where its match is a true
+// statement about the session rather than a guess about prose.
+test('no shared-tier trigger fires at the prompt, whatever its type, and each is untouched at its own boundary', () => {
+    // The cases below are entries the store admits, so the silence is the tier
+    // and the boundary rather than a pattern nothing would have accepted.
+    const cases = [
+        {
+            trigger: 'err:not found',
+            prompt: 'the branch you named is not found in this checkout',
+            boundary: 'PostToolUse',
+            own: (store) => postPayload(store, {
+                tool_response: { stderr: 'fatal: pathspec not found in this checkout', exit_code: 1 }
+            })
+        },
+        {
+            trigger: 'cmd:the file',
+            prompt: 'read the file before you start',
+            boundary: 'PreToolUse',
+            own: (store) => prePayload(store, { tool_input: { command: 'cat the file.txt' } })
+        },
+        {
+            trigger: 'tool:Bash',
+            prompt: 'use Bash for this',
+            boundary: 'PreToolUse',
+            own: (store) => prePayload(store, { tool_name: 'Bash' })
+        },
+        {
+            trigger: 'agent:general-purpose',
+            prompt: 'dispatch a general-purpose agent for the sweep',
+            boundary: 'SubagentStart',
+            own: (store) => dispatchPayload(store, { agent_type: 'general-purpose' })
+        }
+    ];
+    for (const c of cases) {
+        assert.ok(memq.isTriggerEntry(c.trigger),
+            'test setup: ' + c.trigger + ' is an entry the store admits');
+        const shared = makeStore();
+        try {
+            writeRecordIn(operatorTierDir(shared), 'operator-lore.md', { triggers: c.trigger });
+            assertSilent(runHook(shared, promptPayload(shared, { prompt: c.prompt })),
+                'a shared-tier ' + c.trigger + ' at the prompt');
+
+            // The twin that says the tier is the cause: the same entry against
+            // the same prompt on the project tier, whose confinement to one
+            // checkout is what the shared tiers have none of.
+            const project = makeStore();
+            try {
+                writeRecord(project, 'project-lore.md', { triggers: c.trigger });
+                assertNames(assertNudge(runHook(project, promptPayload(project, { prompt: c.prompt })),
+                    'UserPromptSubmit', 'the same entry on the project tier'),
+                'project-lore.md', c.trigger, 'the same entry on the project tier');
+            } finally { rmStore(project); }
+
+            // And the control that says the scope is the boundary rather than
+            // the tier going quiet: the same shared-tier record fires at the
+            // moment its type is a field rather than prose.
+            const fresh = { ...shared, session: nextSession() };
+            assertNames(assertNudge(runHook(fresh, c.own(fresh)), c.boundary,
+                'the same shared-tier record at its own boundary'),
+            'operator-lore.md', c.trigger, 'the same shared-tier record at its own boundary');
+        } finally { rmStore(shared); }
+    }
+});
+
+// The prompt door is keyed on whether a store pin is in effect as well as on the
+// tier, because under a pin the tier's name stops being the signal it is
+// without one: KIT_MEMORY_PROJECT names one project segment for every working
+// directory the instance runs in, so a record there is shared across every
+// repository that instance works in while still resolving as the project tier.
+// That is the same standard the store's other pin-aware surfaces hold.
+test('under a store pin the prompt takes no tier at all, and the tool boundaries are untouched', () => {
+    const store = makeStore();
+    assertPinAccepted(store, PROMPT_PIN_SEGMENT);
+    try {
+        const pinnedDir = path.join(store.root, 'projects', PROMPT_PIN_SEGMENT, 'memory');
+        writeRecordIn(pinnedDir, 'pinned-lore.md', { triggers: 'cmd:the file' });
+        assertSilent(runHook(store, promptPayload(store, {
+            prompt: 'read the file before you start'
+        }), { KIT_MEMORY_PROJECT: PROMPT_PIN_SEGMENT }),
+        'a pinned project tier at the prompt');
+
+        // Control A, that the pin is the cause: the identical record and the
+        // identical prompt with no pin in effect, where the project tier is one
+        // checkout's own and fires.
+        const unpinned = makeStore();
+        try {
+            writeRecord(unpinned, 'pinned-lore.md', { triggers: 'cmd:the file' });
+            assertNames(assertNudge(runHook(unpinned, promptPayload(unpinned, {
+                prompt: 'read the file before you start'
+            })), 'UserPromptSubmit', 'the same record with no pin in effect'),
+            'pinned-lore.md', 'cmd:the file', 'the same record with no pin in effect');
+        } finally { rmStore(unpinned); }
+
+        // Control B, that the door is the prompt's alone: the same pinned record
+        // fires on a call whose command text carries the pattern, the pin
+        // changing nothing about a match against a field.
+        const fresh = { ...store, session: nextSession() };
+        assertNames(assertNudge(runHook(fresh, prePayload(fresh, {
+            tool_input: { command: 'cat the file.txt' }
+        }), { KIT_MEMORY_PROJECT: PROMPT_PIN_SEGMENT }), 'PreToolUse',
+        'the same pinned record at a tool boundary'),
+        'pinned-lore.md', 'cmd:the file', 'the same pinned record at a tool boundary');
     } finally { rmStore(store); }
 });
 

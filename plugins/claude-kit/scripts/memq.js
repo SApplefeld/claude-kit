@@ -403,10 +403,13 @@ const TRIGGER_VALUE_CAP = (TRIGGER_ENTRY_CAP + 2) * TRIGGER_ENTRIES_MAX;
 // reader, and folding the two would make one of them worse.
 const TRIGGER_TRUNCATED_TEXT = 'the rest of the line is unread past '
     + TRIGGER_ENTRIES_MAX + ' entries';
-// The specificity floor, in characters of the pattern. A trigger fires on a
-// match against a session's own tool stream, so a pattern short enough to
-// appear inside unrelated work nudges on everything and is read as noise
-// within an hour, which costs more than the memory it was pointing at.
+// The specificity floor, in characters of the pattern. A fragment pattern is
+// screened against a command line or a failure's output, which is what these
+// bars are calibrated for and the whole of what they can screen; what keeps one
+// off a prompt's prose is the reader's project-tier confinement rather than
+// anything here. A pattern short enough to appear inside unrelated work nudges
+// on everything and is read as noise within an hour, costing more than the
+// memory it named.
 const TRIGGER_PATTERN_MIN = 4;
 // Which types the bare-token bar below is true of, and it is true of exactly
 // these three. A `cmd:`, `err:` or `glob:` pattern is a fragment of something
@@ -1877,7 +1880,7 @@ function projectType(cwd) {
     const indexPath = path.join(projectMemoryDir(cwd), INDEX_FILE);
     // A bounded, kind-checked head rather than a whole-file read, because this
     // answer sits on paths that run per tool call: the recognition nudge asks
-    // it through typedTierOrNull on every PreToolUse and PostToolUse, and the
+    // it through typedTierOrNull at each of its four boundaries, and the
     // session hook asks it too. readHead settles the kind on the open
     // descriptor and opens non-blocking off win32, so a FIFO planted at the
     // index's path answers instead of parking the caller for as long as the
@@ -9626,7 +9629,7 @@ function triggerRecord(memPath, name, where, wanted, deleteCommand) {
 // An entry is `<type>:<pattern>`, the type one of TRIGGER_TYPES and the
 // pattern stored verbatim. Nothing here matches anything: what this verb
 // fixes is the grammar and the storage, and what a pattern means against a
-// running session's tool stream belongs to the surface that does the
+// running session's own work belongs to the surface that does the
 // matching.
 //
 // Any tier the caller can name, on `touch`'s flag shape. With neither flag it
@@ -9955,9 +9958,9 @@ function triggerFaultWords(fault, entry) {
                 + ' this short matches files all over the tree and its nudge is read as noise;'
                 + ' name a directory or an extension with it, the way docs/plans/*.md does';
         }
-        return fault + '. A trigger fires against the session\'s own tool stream, so a pattern'
-            + ' this short matches unrelated work and its nudge is read as noise; name enough'
-            + ' of the command or the error to be about this memory';
+        return fault + '. A trigger of this type is matched against a command line or a failed'
+            + ' call\'s output, so a pattern this short matches unrelated work and its nudge is'
+            + ' read as noise; name enough of the command or the error to be about this memory';
     }
     // The identifier types get their own words because the remedy above is
     // one their author cannot act on: a skill, an agent type and a tool are

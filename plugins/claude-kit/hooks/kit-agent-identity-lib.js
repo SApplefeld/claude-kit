@@ -8,7 +8,8 @@
 // harness that never sends it, and the cost of reading one too few is a whole
 // class of subagent calls invisible to every detector at once.
 //
-// This is its own module, holding nothing else, for the reason
+// This is its own module, holding that question and the policy class of an agent
+// type and nothing else, for the reason
 // hooks/kit-network-lib.js states for its own predicate: a hot hook path cannot
 // pay a large module's load to answer one question, and a hook that reached into
 // a sibling hook for the answer would be taken down silently by any failure
@@ -16,15 +17,41 @@
 // and one hand-copied set that gains a spelling in three places out of four is a
 // leak nothing detects: the sites that kept the old set simply keep answering.
 //
-// THREE READINGS, because the four call sites genuinely need three and this
-// module exists to unify the key set rather than to flatten behaviour that
-// differs on purpose:
+// FOUR READINGS, because the call sites genuinely need four and this module
+// exists to unify the key set rather than to flatten behaviour that differs on
+// purpose:
 //
 //   agentIdentity      the first truthy value, or null. The caller that wants
 //                      to know WHICH identity it saw.
 //   isSubagentCall     the same reading as a boolean.
 //   carriesAgentKey    presence rather than truthiness, for the caller whose
 //                      stand-down is deliberately the wider one.
+//   dispatchedAgentId  the agent id alone, as a string, deliberately narrower
+//                      than all three. `agent_type` rides on the MAIN thread of
+//                      a session started with --agent, so a boundary that stood
+//                      down on the wider reading would be dead from that
+//                      session's first prompt onward with nothing reporting it.
+//                      An agent id is the one key present when and only when the
+//                      payload belongs to a dispatched agent.
+//
+//                      It reads ONE spelling, `agent_id`, and the breadth this
+//                      module exists for is dropped here on purpose rather than
+//                      omitted. The CLI's payload schema documents `agent_id` as
+//                      the key absent on the main thread even in an --agent
+//                      session, which is precisely the distinction being drawn,
+//                      so a second spelling folded in would have to carry that
+//                      same property to be an answer to the same question, and a
+//                      type spelling does not. Where the key set above is broad
+//                      because a missed spelling costs a whole class of
+//                      subagent calls, a wrong spelling here costs the feature
+//                      the caller is standing down from.
+//
+// TWO KEY LISTS, because identity and subject are two questions. AGENT_KEYS
+// answers "was this payload produced by an agent", which is what an id or a type
+// spelling on it says. AGENT_TYPE_KEYS answers "what type of agent is this
+// payload about", which is the dispatch subject a recognition trigger is matched
+// against: it drops `agent_id`, an instance rather than a type, and carries the
+// bare `type` a dispatch payload may spell.
 //
 // Truthiness is the reading most callers take. A harness emitting a null or
 // empty `agent_id` on every main-session payload would otherwise stand those
@@ -39,6 +66,13 @@
 'use strict';
 
 const AGENT_KEYS = ['agent_id', 'agent_type', 'agentType', 'subagent_type', 'subagentType'];
+
+// The spellings a payload names an agent TYPE under, read where the type is the
+// subject: the input of a dispatch call, and the payload of the dispatch event
+// itself. The breadth is AGENT_KEYS' own, for its reason: a harness spelling the
+// field one way this list does not carry is a whole class of dispatch invisible
+// to every reader at once.
+const AGENT_TYPE_KEYS = ['subagent_type', 'subagentType', 'agent_type', 'agentType', 'type'];
 
 function agentIdentity(payload) {
     if (payload === null || typeof payload !== 'object') return null;
@@ -60,4 +94,44 @@ function carriesAgentKey(payload) {
     return false;
 }
 
-module.exports = { AGENT_KEYS, agentIdentity, isSubagentCall, carriesAgentKey };
+// The agent id a payload carries, or ''. Read off the one key rather than the
+// whole set, and never folding in a type spelling: a type is a subject, and a
+// caller asking this question is asking whose context the payload belongs to.
+function dispatchedAgentId(payload) {
+    if (payload === null || typeof payload !== 'object') return '';
+    const id = payload.agent_id;
+    return (typeof id === 'string' && id !== '') ? id : '';
+}
+
+// The policy class of an agent type: 'strict' for the read-only judgment seats,
+// 'gate' for the QA verifier, and null for every type nothing governs
+// (implementers, docs-curator, general-purpose, Explore, the bare "claude" a
+// background job's main session presents, and any unknown type). Matched by
+// suffix so a plugin-namespaced id ("claude-kit:blind-reviewer") resolves, and
+// anchored at the end so a longer name that merely contains one
+// ("blind-reviewer-helper") does not.
+//
+// It lives beside the identity readings above for their reason rather than
+// because it answers the same question: two hooks classify a type on a
+// per-tool-call boundary, the guard that refuses a read-only seat's
+// tree-mutating command and the recognition nudge that stands down rather than
+// injecting store text into a seat dispatched to hold a context that inherited
+// nothing, and a hand-copied list that gains a seat in one place and not the
+// other leaks silently, the copy that kept the old list simply continuing to
+// answer.
+function reviewAgentClass(type) {
+    if (typeof type !== 'string' || type === '') return null;
+    if (/(^|[:/])qa-verifier$/i.test(type)) return 'gate';
+    if (/(^|[:/])(?:adversarial-reviewer|blind-reviewer|security-reviewer|council-member|design-facilitator|consultant|blind-reader|prose-reviewer)$/i.test(type)) return 'strict';
+    return null;
+}
+
+module.exports = {
+    AGENT_KEYS,
+    AGENT_TYPE_KEYS,
+    agentIdentity,
+    isSubagentCall,
+    carriesAgentKey,
+    dispatchedAgentId,
+    reviewAgentClass
+};
