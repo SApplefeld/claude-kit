@@ -138,8 +138,9 @@ printed, credentials and tokens among it. Each judged field travels at up to 6,0
 (a 16,384-byte line bound over the record), and a field past the cap keeps its head and its
 tail around an in-band cut marker, so the end of a long output, where a build or a stack
 trace often prints its most sensitive lines, is part of what the spool and the egress below
-carry; under the earlier head-only cut that tail region never left the machine, and this
-paragraph is where that surface's current size is stated. It is the same single principal as every other surface
+carry. The three identity fields, `sessionId`, `cwd` and `tool`, are cut to 512 characters on
+a plain head slice instead, because the whole-line pass cannot shorten them and a skeleton
+over the line cap drops the record. It is the same single principal as every other surface
 here: no privilege boundary separates the sessions being observed from the file observing them.
 
 The hook is dormant unless the spool root already exists, and it never creates it. The judge
@@ -184,6 +185,11 @@ whatever transport the configured URL names, which for the usual local-inference
 plain HTTP with no authentication, and it serves other tenants besides the sidecar. Nothing on
 that path redacts, and no section of the sidecar plan screens what goes. A command that echoed a
 secret therefore puts that secret in a prompt on another machine.
+
+The 6,000-character figure above bounds what the hook writes rather than what this path can
+carry. The daemon reads a judged field back under its own defensive cap of 12,000 characters
+(`sidecar/spool.js`), twice the write side, so a line the hook wrote is never touched by it and
+a line something else appended to the spool can put twice as much of a field on the wire.
 
 The daemon writes its own records beside the spool, and they are a second copy of the
 same material rather than a summary of it. `~/.claude/kit-sidecar/logs/` holds one
@@ -233,12 +239,14 @@ whole reason the fence exists, and the sidecar holds no authority either way.
 
 The prompt also marks partial input, and the marking is condition-bounded rather than
 authenticated, which is a deliberate posture with a named residual. A triple built from
-an entry whose capture-time `truncated` flag is set opens with a capture-cut notice
+an entry whose `truncated` flag is set opens with a capture-cut notice
 above the fences, and a command cut at prompt-build time carries the cut in its ACTION
 label; the prompt pairs each marking with the reading it licenses, that absent text is
 unknown rather than evidence, scoped to the marking's own field where it names one. The
-flag is written by the capture hook running inside the judged session, so the judged
-party controls whether the notice appears. What that control buys is bounded by the
+flag is raised by the capture hook running inside the judged session, and again by the
+daemon's own read-side cap when that cap cuts a judged field, so a defensive cut is
+never judged as if it were whole text. The judged party therefore controls whether the
+notice appears on its own lines. What that control buys is bounded by the
 grant: the leniency is absence-leniency only, a visible contradiction still convicts in
 a cut input exactly as in a whole one, so a false flag cannot launder evidence that is
 present, and a suppressed flag buys only the unmarked reading, under which the prompt

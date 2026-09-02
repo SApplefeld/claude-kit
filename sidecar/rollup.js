@@ -238,11 +238,6 @@ function emptySessionStats() {
     };
 }
 
-// The id a verdict record was produced under, as this report will print it.
-// Neutralized and capped like every other log-derived field, because a
-// hand-written record can put anything at all in this position, and collapsed
-// to a single name for a record that carries none so an absent id cannot mint
-// a bucket per record.
 // The id a verdict record was produced under, AS THE RECORD CARRIES IT. The
 // tally is keyed on this raw value and never on the rendered one: two distinct
 // ids that neutralize or truncate to the same string are two instruments, and

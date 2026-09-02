@@ -1,6 +1,6 @@
 # Judge partial-input honesty
 
-Status: In Progress
+Status: Complete
 Author: SCOTT-CLAUDE Expert seat, from operator rulings over the relay, 2026-09-01
 Commit Model: Commit-and-Push
 
@@ -8,7 +8,11 @@ Commit Model: Commit-and-Push
 
 Extends the judge shipped by `claude-kit_judgment-sidecar_spec_v1.md` and the
 pipe fixed by `claude-kit_sidecar-staleness-and-liveness_spec_v1.md` (both
-archived).
+archived). Ran concurrently with `claude-kit_memory-read-side_spec_v1.md` on
+one checkout: the two efforts co-held `docs/security-model.md` and
+`docs/backlog.md` under a recorded commit-ordering agreement (this plan's
+Decisions and that plan's Chapters both carry it), and that plan names this
+one at several of its own decision points.
 
 ## What this is about
 
@@ -211,6 +215,44 @@ head-and-tail improvement rides along.
   cites v2 as its exemplar: all three go to the backlog at this section's
   close, the worktree-is-production item flagged as a candidate spec. The
   rollup promptId finding restates what is already ruled to section 3.
+- Decided 2026-09-02 (expert, adversarial finishing round): the fable
+  adversarial review returned CHANGES_REQUIRED on the record rather than
+  the code ("the pipeline code itself is sound and matches the plan as
+  ruled"). Its headline finding was this orchestrator's own: seven
+  Decisions entries were decapitated, their attribution head lines
+  swallowed by an insertion pattern that anchored on the next entry's head
+  without re-emitting it; all seven heads are restored from this session's
+  own records in this same edit, and the lesson (an insertion anchored on
+  a neighbor must re-emit the neighbor) goes to the kaizen inbox. Its
+  other findings, all accepted and landed: the watchdog's pre-existing
+  state directory now has its DACL tightened on every run (the owner check
+  alone left the b66584e-created directory's permissive inherited DACL
+  live on the upgrade path); the watchdog probe's budget rises to 24
+  tokens with the live verification of the bare shape recorded in its
+  comment (think:false honored on the current build, 2 eval tokens) and
+  the restart-loop-on-a-healthy-service residual named; CONTRACT's
+  surrogate bullet now states the uncut-field trailing-orphan trim rather
+  than overclaiming that nothing rewrites uncut text; Chapter 2 records
+  the build-stamp refreshes its gates ran under; and the watchdog's
+  untested state logic goes to the backlog as its own rider. The stale
+  rollup comment it re-confirmed was already deleted in the worktree.
+- Decided 2026-09-02 (expert, finishing pass): QA returned PASS (whole
+  suite at the box baseline; battery on the final v4 text 12/13 x 3,
+  median at the floor, per-case identical to section 1's pattern), with
+  one finding adjudicated as a real contract gap: CONTRACT.md gained the
+  daemon read-side cap bullet (12,000, plain trimmed slice, no marker,
+  flag carried). The fable security finishing review cleared the sidecar
+  changeset whole ("declared residuals accurately priced on every
+  surface") and returned two Majors on the watchdog, both accepted and
+  fixed by the main thread: the SYSTEM-run state directory now takes an
+  explicit SYSTEM+Administrators DACL and refuses a pre-existing
+  directory with a foreign owner, and the install guidance moved from a
+  drive-root path to Program Files with the reason stated. Its Minors
+  landed too: a corrupt strike file degrades to strike zero instead of
+  silently disabling the watchdog, rollup's stale pre-correction comment
+  paragraph is deleted, and the backlogged num_ctx item now sizes its
+  worst case against ENTRY_FIELD_CAP rather than the hook's field cap.
+  These fixes plus the CONTRACT bullet ride the plan-close commit.
 - Decided 2026-09-01 (expert, fix round two complete): all eight items
   landed with red-side evidence per changed pin, verified by the
   orchestrator's own reads (harvest.LINE_CAP_BYTES exported and pinned at
@@ -223,6 +265,7 @@ head-and-tail improvement rides along.
   the command never carried. Lane 476/472/0/4 -> 478/474/0/4, +2 adds
   named. No third review round: the delta is precision against defects two
   full rounds verified, and the orchestrator's verification closes it.
+- Decided 2026-09-01 (expert, fix-delta round): the round (same three
   lenses, opus/max) verified every fix-round-one item resolved, with deep
   controls (a 40,000-probe two-copy cutToCap sweep and a 4,000-case
   serialize fuzz, both clean, plus an independent re-derivation of the
@@ -254,6 +297,7 @@ head-and-tail improvement rides along.
   to v4, and docs/security-model.md's residual sentence extended the same
   way. The blind lens's identity-cap MAJOR is thereby accepted in its
   adversarial-suggested form; the 512 figure itself stands as ruled.
+- Decided 2026-09-01 (expert, sections 2+3 fix round one): all ten items
   landed and verified by the orchestrator's own reads (v3's diff against
   a36ee79 is empty; v4 is the sole required prompt in judge.js, daemon.js
   and battery.js; no judgment-v3 literal remains in the daemon test's live
@@ -268,6 +312,7 @@ head-and-tail improvement rides along.
   476/472/0/4, +5 adds named, red-side evidence for the new coverage pins
   shown against four one-at-a-time pre-fix probes, each restored
   byte-identical.
+- Decided 2026-09-01 (expert, sections 2+3 review round): the round
   (adversarial + blind + security at opus/max) returned two
   CHANGES_REQUIRED and one CONCERNS; adjudication follows. The blind lens's
   Critical stands and overturns this plan's earlier in-place-amendment
@@ -310,6 +355,7 @@ head-and-tail improvement rides along.
   instruction before fleet hooks emit markers; harm bounded by the
   accepted absence-leniency residual), and the recognition-v1 backlog
   item's extension (head-slices can bisect an in-band marker).
+- Decided 2026-09-01 (expert, sections 2+3 DONE adjudication): five
   implementer concerns dispositioned. `sidecar/text.js` joins the scope
   (the head-and-tail cutter is single-sourced there beside the shared trim,
   re-exported by judgment-v3, mirrored once into the hook across the
@@ -324,6 +370,7 @@ head-and-tail improvement rides along.
   "8192 bytes" spool-contract sentences (a daemon.js diagnostic literal and
   a daemon-test comment) were corrected to 16,384 by the main thread inline,
   daemon.js thereby joining the changeset with that one line.
+- Decided 2026-09-01 (expert, sections 2+3 NEEDS_CONTEXT adjudication):
   three rulings. (1) The caps and the field-cut shape are deliberately
   mirrored into `sidecar/battery.js` and `sidecar/harvest.js` and pinned
   equal to the hook's by strict equality; the mirrors move with the hook, so
@@ -345,6 +392,7 @@ head-and-tail improvement rides along.
   marker discipline rather than a raw tail slice that eats or bisects the
   marker; if that proves disproportionate in code, the fallback is
   escalation with the proposed shape, never a silent mangled marking.
+- Decided 2026-09-01 (expert, sections 2+3 dispatch): the battery re-runs on
   the final prompt text at the finishing pass, before rollout, under section
   1's same gate (three runs, median >= 12/13, none < 11/13). Sections 2 and 3
   amend judgment-v3's SYSTEM again (the marker paragraph, the fence-list
@@ -678,7 +726,10 @@ at 478 tests/474 pass/0 fail/4 skipped, run by the orchestrator (chain
 456 -> 471 -> 476 -> 478 across the rounds). Whole gate exit 1 at
 2934/2924/1 fail/9 skipped, sole fail the recorded box-permanent
 memory-session path-length red, fail count unchanged from the 2793 and
-2902 baselines. No contention lane exists in this repo. The battery
+2902 baselines. No contention lane exists in this repo. The build stamp
+was refreshed before every gated run (the implementer's build.ps1 runs,
+exit 0 each, and the pre-commit hook rebuilt the payload again at
+f5fdfbc), so no gate read a stale stamp. The battery
 deliberately did not run this section: the finishing pass re-runs it on
 the final v4 text, per the standing ruling.
 
@@ -700,3 +751,44 @@ ids. Every gate line, ruling and surprise is Chapter 2's; the two
 sections were built, reviewed and closed as one changeset.
 
 Next: the whole-effort finishing pass, then rollout.
+
+### Chapter 4 - 2026-09-02 (finishing pass and close)
+Commit Model: Commit-and-Push
+
+The finishing pass, in order. QA (sonnet, per its charter pin): PASS -
+whole suite 2934/2924/1 fail/9 skipped exit 1 with the sole fail the
+recorded box-permanent red, and the battery on the final v4 text at 12/13
+x 3, median at the floor, zero gap records, per-case identical to section
+1's pattern; its one finding (CONTRACT.md lacked the read-side cap row)
+adjudicated real and the row added. Fable security review: sidecar
+changeset clean, two watchdog Majors fixed (explicit SYSTEM+Administrators
+DACL with tighten-on-every-run for the upgrade path, install guidance off
+the drive-root path) plus three Minors (strike-file degrade to zero,
+rollup stale comment deleted, backlog num_ctx re-sized against
+ENTRY_FIELD_CAP). Fable adversarial review: pipeline sound, and its
+headline finding was the orchestrator's own record damage - seven
+Decisions entries decapitated by an insertion pattern that consumed the
+next entry's head line; all seven heads restored, the lesson banked in
+the kaizen inbox, and the remaining items (probe budget to 24 with the
+live think:false verification recorded, CONTRACT's surrogate bullet
+scoped truthfully, this Chapter's build-stamp lines) landed. Docs
+curation: seven drift items, six documented as-built by the curator
+(plan index entry, truncated-authorship exclusivity, the 12,000 egress
+ceiling, rollup's report enumeration, the watchdog in the component
+census, one change-narrative clause), D6 (the spec body's pre-ruling
+v3 naming) recorded as resolved by Decisions and Chapter 2 rather than
+rewritten, and the H1 cross-reference added below. Memory bank-in: the
+judgment-prompt-lineage record plus index line, three applied stamps,
+two kaizen notes, and the wedge/host-endpoint operator records earlier
+in the effort. Deviations carried deliberately: the watchdog ships
+without state-logic tests (backlogged rider with the sibling test
+pattern named); the whole gate ran at finishing BEFORE the review-round
+fix set, whose delta is prose and comments only, verified by the
+targeted rollup lane (0 fail) and two PowerShell parse checks rather
+than a gate re-run. Delivered in this changeset: the plan flipped
+Complete and archived per curating-docs in the same commit.
+
+Next: rollout (operator-gated): one daemon restart moves the fleet judge
+v2 -> v4; claude plugin update plus session restarts ship the capture
+hook; live acceptance is the truncated-input divergence rate converging
+per the Rollout section.

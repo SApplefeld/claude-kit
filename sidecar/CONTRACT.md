@@ -125,6 +125,14 @@ wrong thing.
   field's own tail. A cap with no room for the marker (a field cut almost to
   nothing by the line cap) takes a plain head slice and says nothing in band;
   `truncated` still carries it.
+- The daemon's read side carries its own defensive cap: a judged field past
+  12000 characters is cut to 12000 as the line is parsed back, the cut is a
+  plain trimmed slice with no in-band marker (the marker is capture's
+  vocabulary, and this cut is the daemon's own), and any cut this pass makes
+  sets the entry's `truncated` flag, so a defensively cut field is never
+  judged under a prompt that vouches for unmarked inputs. The bound sits at
+  twice the write-side field cap, so on lines the hook wrote it never fires;
+  it exists for a line something else wrote.
 - The whole serialized line is capped at 16384 bytes including its newline. A
   line over the cap is shortened by cutting `result` first, then `command`, then
   `intent`. The cut is scaled by what the field's own characters cost in the
@@ -140,9 +148,12 @@ wrong thing.
   between the halves of a surrogate pair drops the orphan rather than emitting
   it, at the end of a kept head and at the start of a kept tail alike, so a
   consumer never has to guess about a replacement character this pipeline
-  introduced. The claim is about the cuts and not about the fields: a payload
-  whose own text begins with an unpaired low half is spooled with it intact,
-  because nothing here rewrites text it did not cut.
+  introduced. The claim is about this pipeline's own edits and not about the
+  fields: a payload whose own text begins with an unpaired low half is
+  spooled with it intact. One edit happens without a cap firing: a field
+  ENDING in an unpaired high half has that trailing orphan dropped and the
+  loss carried in `truncated`, exactly as at a cut, because a field boundary
+  is a cut boundary to the trim whether or not the cap fired.
 - Any cut to `intent`, `command` or `result` sets `truncated`. The flag says
   something was lost; it does not say which field or how much, and the in-band
   marker is what names the field and the amount where there was room for it.
