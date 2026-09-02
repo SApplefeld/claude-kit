@@ -36,9 +36,10 @@
 //                    certain once it has touched them. Recognition lands the
 //                    moment the evidence exists rather than on a guess about
 //                    it.
-//   UserPromptSubmit skill, agent and tool from every tier, and cmd and err
-//                    from the project tier alone, against the prompt's own
-//                    text. This is the earliest moment in a turn at which
+//   UserPromptSubmit cmd, err, skill, agent and tool, from the project tier
+//                    alone, and from no tier at all while a store pin
+//                    (KIT_MEMORY_PROJECT) is in effect, against the prompt's
+//                    own text. This is the earliest moment in a turn at which
 //                    anything is known about what the session is being asked
 //                    to do, and it is before the first tool call rather than
 //                    inside it, so a memory about the whole task arrives while
@@ -46,11 +47,15 @@
 //                    outright: it is matched by globMatchesPath against the
 //                    paths a call actually touched, and a prompt has touched
 //                    nothing, so a glob here would be matched against prose
-//                    rather than against a path. The two fragment types are
-//                    excluded on the shared tiers, where memq's authoring bars
-//                    screen a pattern against a command line or a failure's
-//                    output and nothing screens it against English; see
-//                    collectHits.
+//                    rather than against a path. Every other type is confined
+//                    because a prompt is prose rather than a field, so any
+//                    match against it is a guess about what the words mean,
+//                    and memq's authoring bars screen a pattern against a
+//                    command line or a failure's output while nothing screens
+//                    one against English; the pin is read because confinement
+//                    to one checkout is the whole of what admits a tier here,
+//                    and a pinned tier serves every repository the instance
+//                    works in. See collectHits.
 //   SubagentStart    agent alone, and nothing at all into a read-only judgment
 //                    seat. The dispatch payload carries no dispatch
 //                    input at all: what it names is the session, the
@@ -151,11 +156,15 @@
 // HAS NO SUCH FIELDS: it is one blob of free text, so at UserPromptSubmit the
 // fragment types keep containment against that text and the three identifier
 // types match on a WHOLE TOKEN instead, the identifier having to stand as its
-// own word rather than merely appear somewhere in a sentence. Containment
-// against prose is why the two fragment types reach that boundary from the
-// project tier alone: what confines them there is the reader's tier, since
-// memq's authoring bars screen a pattern against a command line or a failure's
-// output and neither one says anything about English.
+// own word rather than merely appear somewhere in a sentence. Whichever
+// reading a type takes, it reaches that boundary from the project tier alone,
+// and from no tier at all while a store pin is in effect: a prompt is prose
+// rather than a field, so any match against it is a guess about what the
+// words mean, and memq's authoring bars screen a pattern against a command
+// line or a failure's output while neither one says anything about English.
+// What admits a tier there is confinement to one checkout, which a
+// KIT_MEMORY_PROJECT pin dissolves by serving every repository the instance
+// works in; see collectHits.
 //
 // Neither of the two obvious alternatives works there. Equality would make
 // `skill:`, `agent:` and `tool:` unmatchable at that boundary rather than
@@ -951,7 +960,7 @@ function touchedPaths(payload) {
 // The canonical definition lives in hooks/kit-tool-payload-lib.js rather than
 // here: a module of a few lines, required by this hook and by
 // hooks/kit-sidecar-capture.js, whose spool line records the same flag. That
-// hook would otherwise pay a require of this whole 1,600-line file on every
+// hook would otherwise pay a require of this whole 2,700-line file on every
 // captured call to ask one question, and would go silently dark whenever any
 // part of this file failed to load. Re-exported under this hook's own name so
 // its own suite and failureOutput below keep calling one function.
@@ -1640,8 +1649,9 @@ function boundaryTypes(boundary) {
 // decremented per candidate and checked before each: the per-pair matcher's
 // linearity bounds one comparison, and only this bounds their product.
 // `storePinned` is whether a KIT_MEMORY_PROJECT pin is in effect, read once by
-// the caller rather than per record: it decides the prompt door below, where the
-// tier's name alone is not enough to say a record belongs to this checkout.
+// the caller rather than per record: it decides the prompt door and both path
+// doors below (the glob exclusion and the anchor walk), where the tier's name
+// alone is not enough to say a record belongs to this checkout.
 function collectHits(index, subjects, boundary, fired, ops, storePinned) {
     const hits = [];
     const types = boundaryTypes(boundary);
@@ -1657,12 +1667,18 @@ function collectHits(index, subjects, boundary, fired, ops, storePinned) {
         // portable across the tiers and a glob not. `memq triggers` refuses a
         // glob on those tiers for the same reason, so nothing skipped here was
         // authored through the CLI; what this door answers for is a
-        // hand-written one and one that arrived through a sync.
+        // hand-written one and one that arrived through a sync. The pin is
+        // asked as well, here and at the anchor walk below: the prompt door's
+        // paragraph owns the reason, that under a KIT_MEMORY_PROJECT pin one
+        // segment serves every repository the instance works in, so a
+        // repo-relative path authored against one of them names a different
+        // file in each of the others, and a false fire also spends the
+        // record's dedup key for the session.
         const projectTier = tierOf(record) === PROJECT_TIER;
         for (const trigger of record.triggers) {
             if (ops.left <= 0) return hits;
             if (!types.includes(trigger.type)) continue;
-            if (trigger.type === 'glob' && !projectTier) continue;
+            if (trigger.type === 'glob' && (storePinned || !projectTier)) continue;
             // The prompt is the project tier's alone, whatever the type, and
             // this is the same rule shape as the glob exclusion above drawn at
             // tier-and-boundary rather than at tier-and-type. A prompt is prose
@@ -1725,8 +1741,10 @@ function collectHits(index, subjects, boundary, fired, ops, storePinned) {
         // project's file. `memq anchor` refuses the shared tiers for that
         // reason, so a shared-tier anchor is hand-written rather than authored,
         // and reading one here would be the one way that hand edit reaches a
-        // session.
-        if (tierOf(record) !== PROJECT_TIER) continue;
+        // session. The pin is asked as well, for the glob door's reason above:
+        // under one the tier's name stops saying which checkout a
+        // repo-relative path resolves against.
+        if (storePinned || tierOf(record) !== PROJECT_TIER) continue;
         for (const anchor of record.anchors) {
             if (ops.left <= 0) return hits;
             const hit = {

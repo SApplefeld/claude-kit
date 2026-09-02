@@ -58,6 +58,9 @@ const PIN_SEGMENT = 'recognition-network-fixture';
 // neither case's records can land in the other's segment. Same length rule.
 const PROMPT_PIN_SEGMENT = 'recognition-prompt-fixture';
 
+// The pin the two path-door cases use, held apart for the same reason.
+const PATH_PIN_SEGMENT = 'recognition-path-fixture';
+
 // memq reads a pin only alongside the two store signals, so a self-check that
 // the segment is one memq accepts sets the same three variables the child is
 // given and puts the process environment back exactly as it found it. A pin
@@ -3193,6 +3196,77 @@ test('under a store pin the prompt takes no tier at all, and the tool boundaries
         }), { KIT_MEMORY_PROJECT: PROMPT_PIN_SEGMENT }), 'PreToolUse',
         'the same pinned record at a tool boundary'),
         'pinned-lore.md', 'cmd:the file', 'the same pinned record at a tool boundary');
+    } finally { rmStore(store); }
+});
+
+// The two path doors, glob triggers and file anchors, are keyed on the pin for
+// the same reason the prompt door is: each matches a repo-relative path, so
+// under a pin one tier's record serves every repository the instance works in
+// and can fire on another repository's touched paths, and each false fire also
+// spends that record's dedup key for the session. Each case here holds the
+// pinned silence beside two fires: the identical record with no pin in effect,
+// which is the withheld control proving the matcher speaks at all, and the
+// pinned record at a door the pin does not close, proving the silence is the
+// door rather than the fixture.
+test('under a store pin a glob: trigger takes no tier at all, and fires with no pin in effect', () => {
+    const store = makeStore();
+    assertPinAccepted(store, PATH_PIN_SEGMENT);
+    try {
+        const pinnedDir = path.join(store.root, 'projects', PATH_PIN_SEGMENT, 'memory');
+        writeRecordIn(pinnedDir, 'pinned-glob.md',
+            { triggers: 'glob:plugins/claude-kit/hooks/*.js, cmd:zpool status' });
+        assertSilent(runHook(store, postPayload(store, {
+            tool_input: { file_path: path.join(store.cwd, 'plugins', 'claude-kit', 'hooks', 'x.js') }
+        }), { KIT_MEMORY_PROJECT: PATH_PIN_SEGMENT }), 'a pinned glob at the post boundary');
+
+        const unpinned = makeStore();
+        try {
+            writeRecord(unpinned, 'pinned-glob.md', { triggers: 'glob:plugins/claude-kit/hooks/*.js' });
+            assertNames(assertNudge(runHook(unpinned, postPayload(unpinned, {
+                tool_input: { file_path: path.join(unpinned.cwd, 'plugins', 'claude-kit', 'hooks', 'x.js') }
+            })), 'PostToolUse', 'the same glob with no pin in effect'),
+            'pinned-glob.md', 'glob:plugins/claude-kit/hooks/*.js', 'the same glob with no pin in effect');
+        } finally { rmStore(unpinned); }
+
+        // The pinned record's cmd: trigger still fires at a tool boundary,
+        // where the pin changes nothing about a match against a field.
+        const fresh = { ...store, session: nextSession() };
+        assertNames(assertNudge(runHook(fresh, prePayload(fresh, {
+            tool_input: { command: 'zpool status -v' }
+        }), { KIT_MEMORY_PROJECT: PATH_PIN_SEGMENT }), 'PreToolUse',
+        'the same pinned record at a tool boundary'),
+        'pinned-glob.md', 'cmd:zpool status', 'the same pinned record at a tool boundary');
+    } finally { rmStore(store); }
+});
+
+test('under a store pin a file anchor takes no tier at all, and fires with no pin in effect', () => {
+    const store = makeStore();
+    assertPinAccepted(store, PATH_PIN_SEGMENT);
+    try {
+        const pinnedDir = path.join(store.root, 'projects', PATH_PIN_SEGMENT, 'memory');
+        writeRecordIn(pinnedDir, 'pinned-anchor.md',
+            { anchors: 'src/app.js@' + SHA, triggers: 'cmd:zpool status' });
+        assertSilent(runHook(store, postPayload(store, {
+            tool_input: { file_path: path.join(store.cwd, 'src', 'app.js') }
+        }), { KIT_MEMORY_PROJECT: PATH_PIN_SEGMENT }), 'a pinned anchor at the post boundary');
+
+        const unpinned = makeStore();
+        try {
+            writeRecord(unpinned, 'pinned-anchor.md', { anchors: 'src/app.js@' + SHA });
+            assertNames(assertNudge(runHook(unpinned, postPayload(unpinned, {
+                tool_input: { file_path: path.join(unpinned.cwd, 'src', 'app.js') }
+            })), 'PostToolUse', 'the same anchor with no pin in effect'),
+            'pinned-anchor.md', 'src/app.js', 'the same anchor with no pin in effect');
+        } finally { rmStore(unpinned); }
+
+        // The pinned record's cmd: trigger still fires at a tool boundary,
+        // where the pin changes nothing about a match against a field.
+        const fresh = { ...store, session: nextSession() };
+        assertNames(assertNudge(runHook(fresh, prePayload(fresh, {
+            tool_input: { command: 'zpool status -v' }
+        }), { KIT_MEMORY_PROJECT: PATH_PIN_SEGMENT }), 'PreToolUse',
+        'the same pinned record at a tool boundary'),
+        'pinned-anchor.md', 'cmd:zpool status', 'the same pinned record at a tool boundary');
     } finally { rmStore(store); }
 });
 

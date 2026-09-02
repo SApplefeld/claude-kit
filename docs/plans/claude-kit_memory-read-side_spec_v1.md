@@ -1704,3 +1704,51 @@ curation with its pre-change reads, then step 5: the plan's terminal state, the 
 prune, the index refresh, and the handoff whole gate that fills the final Chapter's open Gate line.
 
 Commit model in effect: Commit-and-Push.
+
+### Interim board 13 - 2026-09-02
+
+The finishing pass has closed its review adjudication and its docs curation. This entry is the second
+boundary the compaction gate is holding for, taken between finishing steps rather than at a section close.
+
+The fix round. The four findings the two reviews raised were dispatched as one implementer round and
+returned complete, and every one was re-verified at the code by the orchestrator rather than accepted from
+the report. The hook's own FOUR BOUNDARIES header table and the paragraph restating it now state the
+shipped prompt rule instead of the superseded intermediate one, which is the defect class Standing Brief
+Amendment 1 exists for, landed in the very file that amendment governs. The glob door and the file-anchor
+door are now keyed on whether a store pin is in effect rather than on the tier's name, which is the same
+correction the prompt door already carried, with two tests watched red first and each holding the pinned
+silence beside two fires so the silence is the door rather than an unreachable fixture. The memory-system
+skill's stamp-rate sentence gained the dispatched arm's floor its two siblings already stated. Both
+carriers of a falsified line count were corrected to the file's measured size. The orchestrator re-ran the
+targeted lane itself: 1002 tests, 1000 passing, 0 failing, 2 skipped, exit 0 read from the run's own
+status, a delta of exactly the round's two new tests against the 1000 / 998 / 0 / 2 baseline it recorded
+before editing.
+
+The two-way experiment, and the control that finally spoke. Section 2's acceptance names a re-run of the
+coordinator's two-way experiment on a machine-scoped seat, finding one tier written and read by the same
+name. The first probe asked the resolver for the same absolute path twice, so it could reproduce nothing,
+and the base-ref control stayed silent, which is exactly the withheld-control bar refusing to certify a
+green that could have been trivially true. The discriminating shape is a difference in the working
+directory's spelling rather than a difference in derivation: swept across nine spellings against both the
+base-ref resolver and the shipped one, a relative working directory and an empty one each resolve at the
+base ref to a second tier under one seat, silently, and the shipped resolver refuses both by spelling
+before resolving anything. That is the state known to hold the defect, it spoke, and neither spelling was
+picked for being suspicious. So the shipped code's one-tier-per-seat result is earned rather than trivial,
+and the structural half stands beside it: the session-start hook holds no memory-directory derivation of
+its own and imports the resolver's, so the two cannot drift apart again.
+
+The docs curation. The curator ran over this plan's own 32 files, with the peer session's work named out of
+scope, and returned eight drift items, every one a case of documentation stale against correct code and
+none a suspected mistake in the code. All eight were adjudicated at the code by the orchestrator before
+being applied, and two of its claims did not survive that check. Its account of one edit rested on a grep
+rather than a read: the two names it took for hand-maintained roster enumerations are single string
+constants naming one agent each, so that clause was dropped from the text applied. And one item was worse
+than it reported rather than pre-existing: the archive entry crediting the earlier memory-recognition
+effort with this effort's two lifecycle boundaries is absent at the base ref and present today, so this
+effort wrote that misattribution into the history record and the correction removes its own error. The
+eight edits landed as one all-or-nothing application in which every anchor had to match exactly once.
+
+Next action. Step 5: the plan's terminal state, the close-out Chapter, the archive, the backlog prune, the
+index refresh, and the handoff whole gate that fills the final Chapter's open Gate line.
+
+Commit model in effect: Commit-and-Push.

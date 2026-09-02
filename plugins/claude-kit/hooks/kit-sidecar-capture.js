@@ -127,7 +127,7 @@ const crypto = require('crypto');
 
 // The harness error flag's normalization, the one this hook records in every
 // line. Its canonical definition is a small shared library rather than the
-// recognition nudge that also uses it: requiring that 1,600-line sibling for
+// recognition nudge that also uses it: requiring that 2,700-line sibling for
 // one predicate would pay its whole load on every captured call, and any
 // failure inside it would silently disable capture fleet-wide.
 //
