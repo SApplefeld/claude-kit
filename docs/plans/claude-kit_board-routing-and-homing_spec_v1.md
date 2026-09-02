@@ -165,3 +165,35 @@ While this plan was between rounds, a separate session merged `batch/skill-fixes
 - Whole-gate baseline on the merged trunk, measured at 286ed41 by the merge session: 2994 tests, 2984 passing, 1 failing (the memory-session path-length test this box makes permanent), 9 skipped, exit 1 read from the run itself. The Chapter 1 baseline of 2972 tests predates the merge and is no longer the comparator. The targeted lane `node --test test/doctrine-parity.test.js` alone runs 62 tests on the merged trunk.
 
 Next action is unchanged: round 7 over the round-6 repair, then the section's close gate, Chapter 2, and section 3.
+
+### Interim board 3 - 2026-09-02
+
+Round 7 ran and was adjudicated, its repair is in the worktree, and section 2 still has not closed. This entry is that boundary; the compaction gate was holding two offers when it was written.
+
+Stage: section 2 implemented by implementer-opus (DONE, first draft accepted), then seven review rounds with three independent lenses each, one consult, and six orchestrator repair rounds in the main thread. Sections 3, 4 and 5 have not started. No dispatch is live; round 7 returned before this entry was written and round 8 has not been dispatched.
+
+This session is a new leash holder. The operator re-armed the queue at 14:02Z after the predecessor binding (f9ce7952) died; the arm named five plans, the first of which (memory-read-side) is Complete and archived, so the all-or-nothing CLI refused it and the queue was re-armed on the four that exist. Section 2's work was inherited from the dead session as uncommitted edits, confirmed untouched by the live KIT: Expert on its own reading.
+
+Round 7's returns, all three lenses at opus/max through the Workflow route: adversarial CHANGES_REQUIRED (4 Majors, 5 Minors), blind CHANGES_REQUIRED (7 Majors, 6 Minors), security BLOCK (1 Critical, 6 Majors, 2 Minors). No finding was accepted on report; every mechanism one turned on was read at its own source before the repair.
+
+The adjudication that matters: round 7's findings are the class the consult already ruled on, arriving at new sites, rather than new ground. The consult located the generator as the passage asserting a requirement where an owning surface already decides the case, and ruled the repair is deletion rather than qualification. Each convergent finding fits that shape, so no second consult was spent and no tier bump was taken. What the repair did instead was apply the existing ruling properly: eight surgical cuts, every one replacing an assertion with a pointer.
+
+Findings confirmed at source rather than from the reports:
+- `memq log <key> pass|fail "<summary>"` requires a verdict (`plugins/claude-kit/scripts/memq.js:6`), so a pre-write intent entry had no honest one. The repair names the verdict as the entry's own landing rather than a verdict on the round.
+- An over-cap journal entry lands truncated, announces the cut on its success line, and exits 0 (`memq.js:283`, `:4992`). The shipped claim that exit status confirms a landing was wrong; the repair confirms on the success line too and points at the memory-system skill's re-log.
+- The seat-git bar ("this seat does not make that commit") contradicted this file's own durability override, the ownership map, and the kaizen skill's capture rule, and three lenses converged on it independently. Deleted; who commits is left to whatever governs the seat in that repository.
+
+Rulings adopted at this round:
+- The security Critical is repaired by a pointer, not a requirement: the round's routing now carries the pass rule's own disposition of what a source carries, so board content of unknown authorship is a claim rather than the seat's own and is not laundered into the store or the kaizen inbox by being homed.
+- The hold on an unhomeable line is stated in the operation's own words, because the displacement rule it pointed at is scoped to what the ledger's list admits and a refused standing line is by construction not on it.
+- The journal is no longer called the cut's only record, that claim being false against the decay pass's 30-day rollup; retention joins the caps and verbs deferred to the memory-system skill.
+- A round is reported to the operator through the Etiquette report already below, rather than through a new gate this operation invents.
+
+Routed rather than fixed here: the blind lens's Major that no reader in this file ever looks at the round's journal (it is in neither the pass source list nor the cold-start read). That is section 4's own subject, the reconciliation pass reading the store as a source, so it belongs to that section rather than to a fold here, and section 4 is charged with it.
+
+Gate: targeted lane over the section's files, `node --test test/doctrine-parity.test.js test/output-style-parity.test.js`, green at 73 tests, 73 passing, 0 failing, 0 skipped, exit 0 read from the run itself, measured at 14:31Z on this session's own tree. Baseline for this session recorded first-hand on the same lane before any edit, also 73/73/0 exit 0, so the delta is exactly zero. That 73 supersedes the 64 recorded on Interim boards 1 and 2 and the 62 in the Resume note: the trunk merge added tests to this lane, so the older figures are not comparators. Whole-gate baseline on the merged trunk remains 2994/2984/1/9 exit 1, which is the merge session's reported figure and not verified from here; the permanent box-local red is `test/memory-session.test.js`. Amendment 5 verified after the edit: 103 CR against 103 lines. Em-dash sweep zero with a control that spoke.
+
+Machine state: the heavy-process slot was claimed and released by session-scoped delete for each lane run. A peer held it 14:08Z to roughly 14:38Z for an ai-os job; no lane of this session's overlapped it.
+
+Next action: round 8 over the round-7 repair, which is owed under the fix-delta rule because the delta reaches the security lens's surfaces, then the section's close gate, the whole gate before the push to main, Chapter 2, and section 3.
+Commit Model: Commit-and-Push
