@@ -3017,4 +3017,13 @@ function emitGoalEvent(details) {
 // A value the classifier learns reaches all three at once, which is the whole
 // point of naming them here: a fourth surface spelling its own regex is the
 // drift this export exists to prevent.
-module.exports = { goalPath, goalRoot, goalPathKind, goalStateAbsent, readGoal, armGoal, appendGoal, advanceGoal, bindSession, clearGoal, composeCondition, planArmedBy, armingSession, armingSessionClaims, sessionHoldsLeash, planHead, planStatusReadings, classifyPlanStatus, emitGoalEvent, normalizePlanArg, lastActivePhrase, isSessionIdShaped, planFileSize, planHeadText, planPathState, planDisplayRoot, recordExecutionTree, pathErrnoClass, safeForAuthorization, queuePosition, GOAL_STATE_MAX_BYTES };
+// Four path primitives are exported for the same single-source reason: a
+// path comparison and a path screen are properties of the boundary a value
+// crosses rather than of the caller that first needed them. session-start.js
+// reads a sibling worktree's goal state through a path git's own
+// administrative data supplies, which is the same untrusted-path channel
+// storablePathValue guards here, and it compares that path against the
+// caller's own tree, which is the comparison fsEq and nativeSpelling answer
+// here. A hand copy in the caller would match this file's comparison the day
+// it was written and drift from it silently after.
+module.exports = { goalPath, goalRoot, goalPathKind, goalStateAbsent, readGoal, armGoal, appendGoal, advanceGoal, bindSession, clearGoal, composeCondition, planArmedBy, armingSession, armingSessionClaims, sessionHoldsLeash, planHead, planStatusReadings, classifyPlanStatus, emitGoalEvent, normalizePlanArg, lastActivePhrase, isSessionIdShaped, planFileSize, planHeadText, planPathState, planDisplayRoot, recordExecutionTree, pathErrnoClass, safeForAuthorization, queuePosition, fsEq, nativeSpelling, storablePathValue, GIT_POINTER_PATH_CAP, GOAL_STATE_MAX_BYTES };

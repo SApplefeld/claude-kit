@@ -3711,8 +3711,8 @@ test('session-start.js\'s block count is stated the same by the code, its header
     const hook = fs.readFileSync(hookPath, 'utf8');
 
     const emitters = (hook.match(/\bblocks\.push\(/g) || []).length;
-    assert.strictEqual(emitters, 14,
-        'session-start.js now holds ' + emitters + ' blocks.push sites rather than 14. '
+    assert.strictEqual(emitters, 15,
+        'session-start.js now holds ' + emitters + ' blocks.push sites rather than 15. '
         + 'Re-derive how many distinct blocks that is (an emitter pair that is the '
         + 'if/else of one block counts once), then move this pin, the hook\'s file '
         + 'header, and docs/architecture.md\'s SessionStart bullet together');
@@ -3724,8 +3724,8 @@ test('session-start.js\'s block count is stated the same by the code, its header
     // over the count the source actually derives is what each surface is
     // searched for, so a surface that fails is one stating a different count
     // rather than one this pin cannot read.
-    assert.strictEqual(word, NUMBER_WORDS[12],
-        'the derived count is no longer twelve, so the two prose surfaces below '
+    assert.strictEqual(word, NUMBER_WORDS[13],
+        'the derived count is no longer thirteen, so the two prose surfaces below '
         + 'state a stale figure until they are moved with it');
 
     // The header is a comment block, so it is read with its line markers
