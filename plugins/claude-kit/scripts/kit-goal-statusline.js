@@ -19,7 +19,7 @@
 // JSON. The goal state, the .kit/goal-state.json the kit-goal CLI and Stop
 // hook maintain, is read through that library's own reader
 // (hooks/kit-goal-lib.js), which also resolves where the file lives: under
-// the project root, with a linked worktree resolving to its main checkout. So
+// the working tree this widget renders for, a linked worktree included. So
 // this widget reads the same file the hooks read wherever it renders, and
 // applies the same kind check, size cap and plan-path re-validation. The
 // Plans segment appears only when a queue of more than one plan is armed, and
@@ -72,30 +72,26 @@
 // section. A plan doc that is missing, unreadable, not a regular file, or past
 // the read cap drops the Sections segment and keeps the rest.
 //
-// WHICH copy of the plan doc the SECTIONS segment counts from follows the
-// goal state. When it records an execution tree (the worktree a chapter
-// boundary was last opened from, judged by the library's planDisplayRoot rule
-// before anything under it is opened), both the count and its render-cache
-// key come from that tree's copy, because the live doc sits on the executing
-// branch while this cwd's copy may be a stale one from whatever branch it has
-// checked out. Otherwise, and whenever the recorded tree cannot be trusted,
-// lacks the doc, or holds a copy past this widget's read cap, both come from
-// the cwd's own copy: the cap rides into the root election itself, so an
-// oversized tree copy falls back rather than electing a root whose doc the
-// read then refuses. A render resolves that root once and hands it to both
-// readers, so the key and the text cannot come from different copies.
+// WHICH copy of the plan doc the SECTIONS segment counts from is elected
+// through the library's planDisplayRoot rule, and that election has one
+// possible answer: this cwd's own copy. Goal state is co-located with the
+// tree that holds it, so the executionTree field the election reads has no
+// producer, and the library drops the field from every read besides. What
+// the election still buys is its shape: a render resolves the root once and
+// hands it to both the count and its render-cache key, so the key and the
+// text cannot come from different copies, and this widget's read cap rides
+// into the election itself, so a doc past the cap falls back rather than
+// electing a root whose doc the read then refuses.
 //
 // The PLANS segment's walk follows a different rule, deliberately: it hands
 // this widget's bare cwd to queuePositionFor, and queueEntryState inside it
-// reads cwd and goalRoot(cwd) (the main checkout, for a worktree session),
-// never the recorded execution tree. The direction is the safe one: a branch
-// whose plan doc reads Complete is invisible to a walk that never opens that
-// branch's copy, so main's still-pending copy is what the walk reads instead,
-// and the reported position under-reports rather than jumping ahead of work
-// only the execution tree has finished. The widget still agrees with the
-// SessionStart advisory and `kit-goal.js status` about where the queue
-// stands, because both of those resolve the position through the same
-// goalRoot/cwd rule rather than through planDisplayRoot.
+// reads that cwd alone, never the recorded execution tree. The direction is
+// the safe one: a plan doc that reads Complete somewhere the leash does not
+// live is invisible to the walk, so this tree's own copy is what it reads and
+// the reported position under-reports rather than jumping ahead. The widget
+// still agrees with the SessionStart advisory and `kit-goal.js status` about
+// where the queue stands, because both of those resolve the position against
+// the same cwd rather than through planDisplayRoot.
 //
 // Loaded as a module (the launcher and the test suite) this only exports its
 // internals, among them the render entry scripts/kit-statusline.js calls
@@ -239,9 +235,9 @@ function queuePositionFor(cwd, state) {
 // no key built from those two files can ever notice changing.
 //
 // The walk's own record is what is read (queuePosition's consulted), never a
-// list of the symptoms a wider walk produces: a healed position, an
-// unresolvable one and a cross-tree vote are three of those symptoms, and
-// enumerating them leaves the next input the walk learns to read uncovered.
+// list of the symptoms a wider walk produces: a healed position and an
+// unresolvable one are two of those symptoms, and enumerating them leaves the
+// next input the walk learns to read uncovered.
 //
 // A record that is missing or not the shape this reader recognizes answers no.
 // That is the safe direction here and the opposite of the launcher's own
@@ -249,13 +245,12 @@ function queuePositionFor(cwd, state) {
 // older WIDGET, which never derived a position from a second file at all,
 // while this reader is holding an answer from a library it cannot vouch for.
 //
-// The roots are compared as written, the same strict compare queueEntryState
-// makes between the walk's two trees. The keyed root is planDisplayRoot's
-// answer, which is either this cwd verbatim or the recorded execution tree
-// verbatim, and the walk's roots are this cwd and goalRoot(cwd), so the
-// healthy case matches exactly and a doc counted from a recorded tree the walk
-// never opened does not. Two spellings of one directory read as different and
-// cost a re-render, which is the direction that cannot serve a stale line.
+// The roots are compared as written. The keyed root is planDisplayRoot's
+// answer, which is either this cwd verbatim or a recorded execution tree
+// verbatim, and the walk's root is this cwd, so the healthy case matches
+// exactly and a doc counted from a recorded tree the walk never opened does
+// not. Two spellings of one directory read as different and cost a re-render,
+// which is the direction that cannot serve a stale line.
 function walkStayedOnKeyedDoc(pos, root, planRel) {
     if (!Array.isArray(pos.consulted) || pos.consulted.length !== 1) return false;
     const only = pos.consulted[0];
@@ -625,15 +620,15 @@ function sectionProgress(text) {
 // read anything other than the single plan doc the launcher's key stats. That
 // key holds one plan path and one modification time, taken at one root
 // (planKeyMtime, above), while the position walk behind the segment reads as
-// many files as the queue and the trees give it: both this cwd and the main
-// checkout for a worktree session, a plan's archived copy when nothing stands
-// at its plans path, and every entry it advances through. A line built from
-// any of those could go stale with the keyed file untouched, and the launcher
-// would then serve it forever, so the walk's own record of what it read
-// (queuePosition's consulted) is compared against the keyed pair and anything
-// wider is refused. The comparison is on the pairs the walk reports rather
-// than on the symptoms a wider walk happens to produce, because the symptom
-// list goes out of date the moment the walk learns to read another input.
+// many files as the queue gives it: a plan's archived copy when nothing
+// stands at its plans path, and every entry it advances through. A line built
+// from any of those could go stale with the keyed file untouched, and the
+// launcher would then serve it forever, so the walk's own record of what it
+// read (queuePosition's consulted) is compared against the keyed pair and
+// anything wider is refused. The comparison is on the pairs the walk reports
+// rather than on the symptoms a wider walk happens to produce, because the
+// symptom list goes out of date the moment the walk learns to read another
+// input.
 //
 // The healthy case still caches, and is the common one: a single tree whose
 // armed plan stands live at its own plans path is one file read, at the root

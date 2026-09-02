@@ -1,11 +1,12 @@
 // Shared library for the kit-native goal continuity mechanism.
 //
-// Goal state is a small project-scoped JSON file (.kit/goal-state.json,
+// Goal state is a small working-tree-scoped JSON file (.kit/goal-state.json,
 // gitignored) that survives a session swap because it lives in the repo, not
-// in any one session's transcript. It belongs to the repository rather than to
-// any one checkout of it, so a linked git worktree reads and writes the main
-// checkout's file (goalPath below owns the resolution). This module is the
-// single owner of the
+// in any one session's transcript. It belongs to the working tree it sits in:
+// a leash names an execution stream, and git makes a working tree the unit of
+// one (HEAD, index and branch are per-worktree), so a linked worktree holds a
+// leash of its own and the main checkout's is untouched by it (goalPath below
+// owns the resolution). This module is the single owner of the
 // canonical condition text (composeCondition) and the read/write/clear
 // operations on that file, and of the machine-readable event stream
 // (emitGoalEvent), which carries the releases the Stop hook itself observes; a
@@ -29,28 +30,20 @@ const crypto = require('crypto');
 // The main checkout a git worktree belongs to, or null when the working
 // directory is not a worktree of one.
 //
-// A goal armed in the main checkout must hold a session working in one of its
-// worktrees: the leash is the repository's, and a worktree that resolves goal
-// state against its own directory mints a second, unread .kit/goal-state.json
-// the main checkout's sessions never see, so its checkpoints cannot open and
-// its gate defers to the ceiling. The resolver follows the link git itself
-// maintains: the worktree's .git pointer file out to
+// Goal state does not resolve through here: a leash belongs to the working
+// tree it was armed in (goalRoot below). What this answers is the one
+// question a display reader still asks about a worktree, whether a directory
+// recorded in the state file is a linked worktree of the checkout doing the
+// reading (planDisplayRoot), and it is the only caller. The resolver follows
+// the link git itself maintains: the worktree's .git pointer file out to
 // <main>/.git/worktrees/<name>, and that directory's own gitdir file back.
 //
-// This is a second spelling of worktreeMainRoot in ../scripts/memq.js, which
-// files a worktree's memories under its main checkout for the same reason. It
-// is spelled here rather than imported because readGoal runs where a require
-// must not be able to fail or cost anything (the PreCompact gate before any
-// verdict, the Stop hook while holding a stop), and pulling the whole CLI
-// module onto those paths for three functions is neither minimal nor safe
-// against a damaged copy. The two implementations are pinned together by
-// test/kit-goal-worktree.test.js over shared fixtures, benign and refused
-// alike (ordinary checkout, closing handshake, bare-repo worktree, submodule,
-// a non-pointer .git file, pointers past the read and path caps, and on win32
-// a network-spelled pointer), so a change that moves one spelling and not the
-// other fails the pin. The win32 spelling fold is the one shared behavior
-// outside it: the pin's fixtures are already canonical, so no mintable fixture
-// can catch a resolver that dropped the fold.
+// ../scripts/memq.js carries a second spelling of this handshake, which it
+// uses for a different subject: a memory is about the repository, so a
+// worktree's memories are filed under its main checkout. That difference of
+// answer over one on-disk shape is pinned by test/kit-goal-worktree.test.js,
+// which asserts both sides over shared fixtures so the two subjects cannot
+// drift into one answer.
 //
 // The two-way handshake is the security boundary, not a validity check. The
 // .git pointer file is on-disk data in a directory the session cd'd into, so a
@@ -65,48 +58,36 @@ const crypto = require('crypto');
 // include .git, so the far half has to be planted by something with write
 // access there, not by content that merely arrived.
 //
-// Only <cwd>/.git is consulted, never an upward walk: a subdirectory of a
-// checkout resolves its own goal state today and stays that way. Submodules
+// Only <cwd>/.git is consulted, never an upward walk. Submodules
 // are excluded by construction rather than by a test of their own, since their
 // gitdir names .git/modules/<name> and only the worktrees form is accepted. A
 // bare repository's worktree fails the same shape check (the segment above
 // worktrees is not a .git directory), which is right: there is no main
 // checkout to resolve to.
 //
-// Every failure answers null and the working directory stands, because a
-// worktree pointer is ambient filesystem state: an unreadable or unrecognized
-// one means an ordinary checkout far more often than it means a problem. The
-// one failure worth saying out loud is a worktree-shaped pointer whose
-// handshake does not close, since there the operator meant to share the main
-// checkout's leash and is silently getting a second one.
+// Every failure answers null in silence, and the caller falls back to the
+// working directory. A worktree pointer is ambient filesystem state, an
+// unreadable or unrecognized one means an ordinary checkout far more often
+// than it means a problem, and nothing here decides where a leash lives, so
+// there is no failure a session needs told about.
 //
-// Memoized per working directory: every goal-state read and write resolves the
-// root, and each resolution would otherwise stat and read several files.
+// Memoized per working directory, which saves the repeat resolutions inside
+// one process: a resolution stats and reads several files, and a reader that
+// asks twice for one directory in a single run pays for one. Nothing carries
+// across runs, a status-line refresh being a fresh process with an empty map.
 const worktreeMainRoots = new Map();
-let worktreeHandshakeNoted = false;
-let worktreeOrphanNoted = false;
 
-// forDisplay marks a resolution asked for display trust rather than for
-// goal-state resolution: planDisplayRoot probing a recorded execution tree,
-// where a failed handshake is the ordinary, silent fallback and the operator
-// notes below would be false (they assert where goal state is read, which a
-// display probe never decides) and would recur at every status-line refresh,
-// since each refresh is a fresh process. A display probe therefore resolves
-// in silence. The suppression rides only on the resolving call: a memoized
-// answer carries no note either way, and in every consumer the goal-state
-// resolution of a directory precedes any display probe of it, so a note owed
-// for the working directory itself is never spent by the quiet path.
-function worktreeMainRoot(cwd, forDisplay) {
+function worktreeMainRoot(cwd) {
     const key = String(cwd);
     if (worktreeMainRoots.has(key)) return worktreeMainRoots.get(key);
-    const main = resolveWorktreeMainRoot(key, forDisplay);
+    const main = resolveWorktreeMainRoot(key);
     worktreeMainRoots.set(key, main);
     return main;
 }
 
 // A .git pointer file is one line git writes, so a fixed-size prefix reads all
 // of one; the cap keeps a directory whose .git happens to be some arbitrary
-// large file from being pulled into memory on a path every goal read crosses.
+// large file from being pulled into memory.
 const GIT_POINTER_READ_CAP = 4096;
 
 // Characters of a path a .git pointer file may name. A working directory is
@@ -119,8 +100,8 @@ const GIT_POINTER_PATH_CAP = 2048;
 // then swapped for something else between the check and the open is the
 // classic way a read is steered somewhere it was never meant to go. Off win32
 // the open itself is non-blocking, because opening a fifo for reading
-// otherwise waits for a writer that a planted one will never provide, and this
-// call sits on the path every goal read crosses. Throws on an unopenable path;
+// otherwise waits for a writer that a planted one will never provide, and a
+// status-line refresh cannot be left hanging on one. Throws on an unopenable path;
 // the resolver's own try is the catch.
 function readGitPointer(file) {
     const flags = process.platform === 'win32'
@@ -150,7 +131,7 @@ function fsEq(a, b) {
         : a === b;
 }
 
-function resolveWorktreeMainRoot(cwd, forDisplay) {
+function resolveWorktreeMainRoot(cwd) {
     const dotGit = path.join(cwd, '.git');
     let gitdir;
     try {
@@ -174,12 +155,14 @@ function resolveWorktreeMainRoot(cwd, forDisplay) {
     // A pointer naming a UNC or device path from a checkout that is not itself
     // on that share is refused outright: opening a path under \\host\share is
     // an outbound SMB connection that authenticates automatically as the
-    // logged-in account, so a single planted file in any directory a session
-    // cd's into would hand an attacker-named host a credential exchange, and
-    // hooks resolve this on their own at every session start and stop. Reading
-    // the target to find out whether the pointer is honest is exactly the
-    // operation being guarded against, so the shape is judged first and never
-    // opened.
+    // logged-in account, so a single planted file in the directory being
+    // resolved would hand an attacker-named host a credential exchange. Which
+    // directory that is comes from data rather than from the session:
+    // planDisplayRoot, the only caller, resolves the tree a goal state names,
+    // and it does so on a status-line refresh, where nobody is watching either
+    // the target or the cadence. Reading the target to find out whether the
+    // pointer is honest is exactly the operation being guarded against, so the
+    // shape is judged first and never opened.
     if (process.platform === 'win32' && path.parse(gitdir).root.startsWith('\\\\')
         && !fsEq(path.parse(gitdir).root, path.parse(path.resolve(cwd)).root)) {
         return null;
@@ -204,30 +187,18 @@ function resolveWorktreeMainRoot(cwd, forDisplay) {
         if (!fs.statSync(path.join(gitdir, 'commondir')).isFile()) throw new Error('no commondir');
         const back = readGitPointer(path.join(gitdir, 'gitdir')).replace(/\s+$/, '');
         if (back !== '' && fsEq(path.resolve(gitdir, back), path.resolve(dotGit))) {
-            return acceptedWorktreeMain(cwd, main, forDisplay);
+            // On win32 the accepted root is folded to the volume's own
+            // spelling (nativeSpelling below), so it reads the same however
+            // the pointer spelled it; the filesystem would land every spelling
+            // on one file regardless, but the path is compared against a
+            // caller's own root and surfaced by tests. A fold that fails keeps
+            // the lexical spelling: the handshake already closed, so the
+            // resolution stands either way.
+            return nativeSpelling(main);
         }
     } catch {
         // An unreadable or absent half is a handshake that did not close, the
         // same answer as one naming somewhere else.
-    }
-    // The note names the handshake generically rather than any one half of it,
-    // because every failed leg lands here: a missing or unreadable commondir, a
-    // claimed main whose .git is not a directory, and a back-pointer naming
-    // somewhere else all read the same from this side. It fires once per
-    // process, and every hook consumer is a fresh process, so across a session
-    // it recurs by design; the flag only keeps one process from repeating it.
-    // A display probe stays silent instead: fired over a recorded execution
-    // tree, the sentence below would be false (that probe never decides where
-    // goal state is read) and would repaint at every status-line refresh.
-    if (!forDisplay && !worktreeHandshakeNoted) {
-        worktreeHandshakeNoted = true;
-        try {
-            process.stderr.write('kit-goal: the .git file in the working directory points at a worktree '
-                + 'whose handshake with the main checkout it names does not close (a missing or '
-                + 'unreadable administrative file, or a back-pointer naming somewhere else), so goal '
-                + 'state is read from the working directory rather than the main checkout (git '
-                + 'worktree repair is the usual remedy)\n');
-        } catch { /* the note is best-effort; a failed write changes nothing */ }
     }
     return null;
 }
@@ -237,9 +208,10 @@ function resolveWorktreeMainRoot(cwd, forDisplay) {
 // and the path unchanged off win32, where resolving the real path would
 // silently follow symlinks. A path the fold cannot resolve keeps its lexical
 // spelling, which errs toward whatever the caller's comparison already did
-// with the unfolded form. One spelling of the fold serves both places a root
-// is compared: acceptedWorktreeMain folds the accepted main, and
-// planDisplayRoot folds the caller's own root before comparing the two.
+// with the unfolded form. One spelling of the fold serves both sides of the
+// one comparison a root enters: resolveWorktreeMainRoot folds the accepted
+// main, and planDisplayRoot folds the caller's own root before comparing the
+// two.
 function nativeSpelling(p) {
     if (process.platform !== 'win32') return p;
     try {
@@ -249,67 +221,33 @@ function nativeSpelling(p) {
     }
 }
 
-// The accepted main checkout, plus the one note a successful resolution can
-// owe the operator.
+// The directory .kit/ resolves against: the working directory itself, for a
+// linked worktree exactly as for an ordinary checkout. A leash names an
+// execution stream and git makes a working tree the unit of one, so the tree
+// a session runs in is the tree whose leash it holds, and two trees of one
+// repository can carry two leashes at once without either reaching the other.
 //
-// On win32 the spelling is folded to the volume's own (nativeSpelling above),
-// so the resolved root reads the same however the pointer spelled it; the
-// filesystem would land every spelling on one file regardless, but the path
-// is compared and surfaced by tests and reports, and the memq resolver folds
-// the same way (an agreement the pin's fixtures, already canonical, cannot
-// themselves exercise). A fold that fails keeps the lexical spelling: the
-// handshake already closed, so the resolution stands either way.
-//
-// A goal-state file already standing at the worktree's own .kit/ is worth a
-// stderr note, because it is now unread: nothing here moves or merges a leash
-// armed before the resolution existed, and a file that quietly stops being
-// consulted is the kind of loss that is noticed months later. The note fires
-// once per process, and every hook consumer is a fresh process, so it recurs
-// across a session for as long as the orphan stands. A display probe stays
-// silent for worktreeMainRoot's reasons: its subject is a recorded execution
-// tree, about which the sentence would be false.
-function acceptedWorktreeMain(cwd, main, forDisplay) {
-    const root = nativeSpelling(main);
-    if (!forDisplay && !worktreeOrphanNoted) {
-        try {
-            if (fs.statSync(path.join(cwd, '.kit', 'goal-state.json')).isFile()) {
-                worktreeOrphanNoted = true;
-                process.stderr.write('kit-goal: this worktree reads and writes the main checkout\'s '
-                    + 'goal state, and a goal-state file left under the worktree\'s own .kit/ is '
-                    + 'no longer read; clear it by hand if it is stale\n');
-            }
-        } catch {
-            // No such file is the ordinary case and the quiet one.
-        }
-    }
-    return root;
-}
-
-// The directory .kit/ resolves against: the main checkout when cwd is a linked
-// worktree, and cwd itself otherwise. Reaching for worktreeMainRoot directly
-// is the mistake this exists to prevent, since that function answers null for
-// an ordinary checkout, which is most of them, and null is not a root.
+// The identity function that answer makes it. It is kept, and kept named,
+// because it is the one spelling of where a tree's kit state lives: goalPath,
+// planDisplayRoot and recordExecutionTree all ask it rather than each writing
+// the derivation out, so the rule has one place to be read and one place to
+// change. No caller outside this file asks it today; the export holds the
+// seam open for a reader that needs the directory rather than the state file.
 function goalRoot(cwd) {
-    const main = worktreeMainRoot(cwd);
-    return main === null ? cwd : main;
+    return cwd;
 }
 
 // Path to the goal-state file for a given working directory. Every read/write
 // helper in this file resolves through here, so every consumer of this module
-// inherits the worktree resolution without an edit of its own. What resolves
-// is only where the STATE file lives: plan docs stay resolved against the
-// caller's own cwd, because the live plan doc belongs to the execution tree's
-// branch while the leash belongs to the repository. Three readers reach past
-// that cwd for a plan doc, and none replaces it. planDisplayRoot runs the
-// other way, letting a progress-rendering surface prefer the recorded
-// execution tree's copy; nothing that decides a hold or a release resolves
-// through it. queueEntryState and the Stop hook's 'gone' cross-check are the
-// other two: each takes the same shape over goalRoot, asking BOTH trees and
-// acting only where they agree, which is a second opinion rather than a second
-// resolution. Where the two disagree, the answer is the conservative one and no
-// position moves. The pair ask different underlying questions (whether an entry
-// reads finished, and whether an armed plan's doc is gone) and so stay two
-// predicates rather than one.
+// inherits the resolution without an edit of its own.
+//
+// State and plan docs are co-located: both resolve against the caller's own
+// cwd, so a reading of a queued plan's doc and the leash that queued it come
+// from one tree, and no reader of either needs a second opinion from a
+// checkout elsewhere. One reader still reaches past cwd for a plan doc, and it
+// decides nothing: planDisplayRoot lets a progress-rendering surface prefer
+// the copy in a tree recorded in the state file, and states at its definition
+// why nothing writes that record any more.
 function goalPath(cwd) {
     return path.join(goalRoot(cwd), '.kit', 'goal-state.json');
 }
@@ -360,18 +298,19 @@ function validTranscript(value) {
 }
 
 // Whether a value is storable and followable as executionTree: the absolute
-// path of the linked worktree a chapter boundary was last opened from
-// (recordExecutionTree below is the field's one writer), judged by
-// storablePathValue at the pointer-path cap with absoluteness required. The
-// shared legs matter here for validTranscript's reasons: the value sits in a
-// hand-editable state file, a display reader stats under it at every
-// status-line refresh, and a network-shaped path would turn each of those
-// stats into an outbound connection with an SMB timeout on it. Absoluteness
-// is required on top, because the value's whole meaning is a tree somewhere
-// else: a relative one would silently resolve against whichever directory the
-// reader happens to run in. The cap is the pointer-path cap rather than the
-// transcript's, since this is the same kind of value a .git pointer names, a
-// working directory.
+// path of the linked worktree a chapter boundary was last opened from, judged
+// by storablePathValue at the pointer-path cap with absoluteness required.
+// The field has no producer under co-located goal state (recordExecutionTree
+// below states why), and normalizeState drops it from every read, so this
+// screen guards only a value a caller composes in memory and hands to
+// planDisplayRoot. The shared legs matter there for validTranscript's
+// reasons: planDisplayRoot stats under the value, and a network-shaped path
+// would turn that stat into an outbound connection with an SMB timeout on it.
+// Absoluteness is required on top, because the value's whole meaning is a
+// tree somewhere else: a relative one would silently resolve against
+// whichever directory the reader happens to run in. The cap is the
+// pointer-path cap rather than the transcript's, since this is the same kind
+// of value a .git pointer names, a working directory.
 //
 // This screen is lexical only. Whether the path really is a worktree of the
 // repository whose state carries it is planDisplayRoot's question, answered by
@@ -495,6 +434,19 @@ function sessionHoldsLeash(state, sessionId) {
 // [plan] at index 0. Applied inside readGoal, so no caller sees the
 // un-normalized shape.
 function normalizeState(cwd, state) {
+    // executionTree is dropped outright rather than screened, and dropped
+    // ahead of every shape test below so that no state carries one out of a
+    // read, whatever else it holds or fails to hold. The field has no
+    // producer: recordExecutionTree writes a tree only where the goal state
+    // resolves to a checkout other than the caller's own, and co-located
+    // state makes that impossible, so every value the field could carry into
+    // a read is a hand edit of the state file. A dropped field is absent,
+    // which is the field's ordinary state and the reading every consumer
+    // already applies, so no consumer sees a difference. What the drop buys
+    // is planDisplayRoot: a hand-edited value naming a genuine linked
+    // worktree of this checkout passes that reader's trust legs and would be
+    // followed onto the tree it names.
+    if (state && typeof state === 'object') delete state.executionTree;
     if (!state || typeof state !== 'object' || typeof state.plan !== 'string' || state.plan === '') {
         return state;
     }
@@ -519,11 +471,6 @@ function normalizeState(cwd, state) {
     // read. A state predating the field reads back with none, which is the same
     // reading an arm that could read no session id from its environment writes.
     if (!isSessionIdShaped(state.armingSession)) state.armingSession = null;
-    // executionTree is optional and display-trust only (recordExecutionTree
-    // states the whole contract), so a value the screen refuses is removed
-    // rather than nulled: absent is the field's ordinary state, and no reader
-    // tells the two apart.
-    if (!validExecutionTree(state.executionTree)) delete state.executionTree;
     // Who made the arming invocation each queued plan was armed by, repaired
     // one entry at a time. A state predating the map reads as the operator's
     // arming throughout, which is the reading its own stored condition sentence
@@ -860,29 +807,37 @@ function planPathState(cwd, planRel) {
 
 // The directory a DISPLAY of the armed plan doc resolves planRel against: the
 // recorded execution tree when the goal state names one this reader can
-// trust, and the caller's own cwd otherwise, which is the resolution every
-// display reader applies where no tree is recorded.
+// trust, and the caller's own cwd otherwise.
+//
+// The answer is always cwd for a caller that reads its state through
+// readGoal. The executionTree field this reads has no writer left:
+// recordExecutionTree records a tree only where the goal state resolves to a
+// checkout other than the caller's own, and co-located state makes that
+// impossible. The field is dropped at normalizeState on every read, so an
+// ordinary read hands this function a state that carries none and the first
+// leg below answers cwd.
+//
+// The legs stand for the other caller: one that hands in a state built by
+// means other than a read. They are a trust test rather than a refusal of
+// every hand edit, and they do not stand in for the drop above: a value
+// naming a genuine linked worktree of this checkout, holding planRel within
+// the caller's cap, passes all of them and is followed onto the tree it
+// names. That is what the field is for, and it is why the value may not
+// arrive off disk.
 //
 // DISPLAY TRUST ONLY, like the field it reads: this answers where to render
-// progress from, and nothing gate-deciding or leash-deciding may call it. The
-// asymmetry is deliberate and is the reason the answer is not goalPath's: the
-// STATE belongs to the repository and resolves worktree-to-main, while the
-// live PLAN DOC belongs to the executing branch and so may sit in the
-// worktree the state's own checkout cannot see.
+// progress from, and nothing gate-deciding or leash-deciding may call it.
 //
 // The trust test runs three legs, plus the caller's optional cap below,
 // judged before anything under the tree is opened. The value must pass the
-// lexical screen (validExecutionTree) even
-// though readGoal already applied it, because this is the one leg the
-// ordinary read does not guarantee: normalizeState returns early for a state
-// whose plan is absent or non-string, so a caller handing this function such
-// a state, or a state built by other means, could otherwise make the
-// resolver below touch a network-shaped path. The tree must then prove it is
+// lexical screen (validExecutionTree), which is this function's own guard
+// rather than a re-application of the reader's: a state built by other means
+// carries whatever its builder put there, and without the screen a
+// network-shaped value would reach the resolver below and turn a display
+// refresh into an outbound connection. The tree must then prove it is
 // what it claims to be, a linked worktree of the repository whose state
 // carries it: worktreeMainRoot's two-way handshake must close FROM the tree
-// (probed as a display resolution, so a broken handshake falls back in
-// silence rather than firing the goal-state repair note at every status-line
-// refresh) and land on the same root this cwd's goal state resolves to, so a
+// and land on the same root this cwd's goal state resolves to, so a
 // hand-edited field naming an arbitrary directory, or a worktree of some
 // other repository, falls back rather than being followed. The accepted main
 // arrives folded to the volume's own spelling on win32, while goalRoot
@@ -915,7 +870,7 @@ function planDisplayRoot(cwd, planRel, state, capBytes) {
         if (!goal || !validExecutionTree(goal.executionTree)) return cwd;
         if (typeof planRel !== 'string' || normalizePlanArg(cwd, planRel) !== planRel) return cwd;
         const tree = goal.executionTree;
-        const main = worktreeMainRoot(tree, true);
+        const main = worktreeMainRoot(tree);
         if (main === null || !fsEq(main, nativeSpelling(goalRoot(cwd)))) return cwd;
         const size = planFileSize(tree, planRel);
         if (size === null || size === 0) return cwd;
@@ -1436,18 +1391,19 @@ function planReadsTerminal(head) {
 //
 // The record exists for a caller that caches a render keyed on ONE plan doc
 // and must know whether the position in it came from anywhere else: the walk
-// crosses two trees for a worktree session, falls through to a plan's archived
-// copy, and advances through finished entries, and none of those other files
-// is in such a key. Reported rather than re-derived, because a caller that
+// falls through to a plan's archived copy and advances through finished
+// entries, and none of those other files is in such a key. Reported rather
+// than re-derived, because a caller that
 // re-derived it would be spelling this file's branch rules a second time and
 // the two spellings would part at the next input this walk learns to read.
 //
 // A pair is recorded where the read happens rather than where a branch is
 // chosen, so a path a branch considered and never opened is not in the record.
 // The list is bounded by the walk itself: each scanned queue entry reads at
-// most two paths, the plans path and the archived copy, in at most two trees,
-// so QUEUE_POSITION_MAX_SCAN x 2 x 2 pairs. It is one pair long for the
-// healthy single-tree case that dominates.
+// most two paths in the one tree the leash lives in, the plans path and the
+// archived copy, so QUEUE_POSITION_MAX_SCAN x 2 pairs. It is one pair long
+// for the healthy case that dominates, an armed plan standing live at its own
+// plans path.
 function recordConsulted(consulted, root, rel) {
     if (Array.isArray(consulted)) consulted.push({ root, rel });
 }
@@ -1503,9 +1459,9 @@ function treeEntryState(root, planRel, consulted) {
         // evidence, because the two paths carry the same name and nothing ties
         // the file under docs/archive/ to this plan beyond that name. A plan doc
         // DELETED rather than filed, with a same-named doc from an earlier
-        // effort already in the archive, would otherwise read finished in every
-        // tree and move the reported position past live work in silence, which
-        // is the one outcome this function's agreement rule exists to prevent.
+        // effort already in the archive, would otherwise read finished here and
+        // move the reported position past live work in silence, which is the
+        // one outcome the archived copy's own header check exists to prevent.
         const filedHead = planHeadText(root, filed);
         if (!filedHead.exists || filedHead.text === null) return 'unknown';
         // Present and not terminal is the same answer a live doc at the plans
@@ -1517,53 +1473,44 @@ function treeEntryState(root, planRel, consulted) {
     }
 }
 
-// Whether a queue entry is finished, asked of every tree that has a say, as
+// Whether a queue entry is finished, asked of the tree the leash lives in, as
 // { state, cause }. state is 'complete', 'pending', or 'unresolvable' (nothing
 // can be read about the entry at all), and cause names WHY an unresolvable one
 // is unresolvable, so a reporting surface can say something true about it:
 //
 //   'unreadable-path'  the entry does not round-trip the plan-path normalizer,
-//                      so no reader here will resolve it against any tree
+//                      so no reader here will resolve it against the tree
 //   'unarchivable'     the entry is not armed from docs/plans/, so its own path
 //                      is the only place it could be, and nothing is there
-//   'neither'          its doc is in neither docs/plans/ nor docs/archive/ of
-//                      any tree
+//   'neither'          its doc is in neither docs/plans/ nor docs/archive/
 //
 // cause is null for the two resolvable states. Naming it here rather than at
 // each surface is what keeps a message from describing the wrong directories:
 // the sentence "in neither docs/plans/ nor docs/archive/" is false of an entry
 // that was never armed from either.
 //
-// The entry is re-validated against the normalizer before any tree is asked,
+// The entry is re-validated against the normalizer before the tree is asked,
 // the same round-trip readGoal applies, kept here so this function is safe on
 // its own terms whatever calls it: the entries arrive from a JSON file, and a
 // caller that passed a raw state rather than a normalized one would otherwise
 // have this walk stat and open paths outside the repository.
 //
-// A worktree session reads goal state from the main checkout while plan docs
-// resolve against its own cwd, so the two trees can genuinely disagree about
-// whether an entry's doc exists or reads terminal: a plan finished on a branch
-// is Complete in the worktree and In Progress on main until the merge lands.
-// An entry counts as finished only where every tree agrees, and a disagreement
-// reports it pending. That asymmetry is deliberate and matches the one the
-// Stop hook's 'gone' branch already takes: a wrongly-finished entry moves the
-// reported position PAST live work, silently, while a wrongly-unfinished one
-// only under-reports progress, where an operator can see it. Unresolvable
-// takes the same agreement rule, so an entry standing in either tree is
-// reported from that tree rather than as missing. Never throws.
+// One tree answers, and it is the caller's own: the leash and the plan docs
+// it queued live in the same working tree, so a sibling checkout's copy of the
+// same plan is another execution stream's business and says nothing about this
+// queue. A branch that has not merged, or a plan archived in one tree and live
+// in another, moves this reading not at all. Never throws.
 //
 // consulted is the walk's optional record of the paths actually read, passed
-// through to the per-tree readings that do the reading. The early return above
-// it opens nothing and so records nothing.
+// through to the reading that does the reading. The early return above it
+// opens nothing and so records nothing.
 function queueEntryState(cwd, planRel, consulted) {
     if (normalizePlanArg(cwd, planRel) !== planRel) {
         return { state: 'unresolvable', cause: 'unreadable-path' };
     }
-    const root = goalRoot(cwd);
     const here = treeEntryState(cwd, planRel, consulted);
-    const votes = root === cwd ? [here] : [here, treeEntryState(root, planRel, consulted)];
-    if (votes.every((v) => v === 'complete')) return { state: 'complete', cause: null };
-    if (votes.every((v) => v === 'absent')) {
+    if (here === 'complete') return { state: 'complete', cause: null };
+    if (here === 'absent') {
         return {
             state: 'unresolvable',
             cause: archivePathFor(cwd, planRel) === null ? 'unarchivable' : 'neither'
@@ -2610,12 +2557,11 @@ function advanceGoal(cwd, outcomeEntry) {
     // than re-reading it from a snapshot taken before the advance.
     const movedArmedBy = planArmedBy(state, state.plan);
     state.condition = composeCondition(state.plan, state.queue, next, movedArmedBy);
-    // The execution tree recorded for the finished plan (recordExecutionTree)
-    // says where THAT plan's chapter boundaries were opened, which is no claim
-    // about the plan the leash moves to, so it does not survive the advance: a
-    // stale tree path must not outlive the plan it described, and the
-    // checkpoint CLI re-records one at the new plan's first boundary if the
-    // run is still in a worktree.
+    // The field has no producer under co-located goal state, and no ordinary
+    // read carries one, since normalizeState drops it unconditionally. The
+    // delete stays as this writer's own guarantee rather than as a live path:
+    // a value that reached the file by some other route does not outlive the
+    // plan it claimed to describe.
     delete state.executionTree;
     if (typeof entry.leadKey === 'string' && entry.leadKey !== '' && entry.leadKey.length <= 128
         && !/[^\x20-\x7E]/.test(entry.leadKey)) {
@@ -2700,10 +2646,20 @@ function bindSession(cwd, sessionId, transcriptPath) {
 }
 
 // Record in the goal state the execution tree a chapter boundary was opened
-// from, or drop the record when the boundary shows execution back in the
-// checkout that holds the state. cwd is the caller's literal working
-// directory; the field is written only where goalRoot resolves that directory
-// to a main checkout elsewhere, and what it holds is the worktree itself.
+// from. cwd is the caller's literal working directory; the field is written
+// only where goalRoot resolves that directory to a checkout elsewhere, and
+// what it holds is the worktree itself.
+//
+// Goal state is co-located with the tree that holds it, so goalRoot resolves
+// every working directory to itself and that condition never holds: this
+// records nothing, and the field it owns is absent from every state file the
+// kit writes. Nothing is ever dropped here either, because the re-read this
+// decides on comes through readGoal and normalizeState drops the field there:
+// the field is never present in `now`, so this answers recorded:false and
+// writes nothing, which is the right answer for a boundary that observed
+// execution in the checkout holding the state. What stands is the
+// compare-and-swap around both legs, which keeps the answer a claim about the
+// state on disk.
 //
 // The compaction checkpoint CLI's `open` is this function's ONLY caller, and
 // stays so deliberately: chapter boundaries are where a worktree run already
@@ -2711,17 +2667,18 @@ function bindSession(cwd, sessionId, transcriptPath) {
 // Every other goal-family surface only reads the field, and reads it for
 // DISPLAY TRUST ONLY: it steers which copy of a plan doc a progress-rendering
 // surface opens (planDisplayRoot), and nothing gate-deciding or leash-deciding
-// may ever read it, because it is a hand-editable on-disk value asserting
-// where work happens, not evidence that it does.
+// may ever read it, because the field asserts where work happens rather than
+// evidencing that it does. It is also the reason normalizeState drops the
+// field: a stored assertion of that kind is a hand edit away from steering a
+// reader, so no read carries one.
 //
 // Lifetime: the field dies with the state file when a clear unlinks it
 // (clearGoal deletes rather than rewrites, so no drop is needed there), a
 // re-arm never carries it (armGoal builds its state from nothing), and an
 // advance drops it explicitly (advanceGoal), so a stale tree path cannot
-// outlive the plan it described. A boundary opened from the resolved checkout
-// itself drops a standing record for the same reason: the field holds the
-// latest boundary's observation, and keeping an older tree past it is exactly
-// the staleness the drops exist to prevent.
+// outlive the plan it described. A value hand-edited into the file outlives
+// all of that and reaches no reader while it sits there, since every read
+// drops it, and the next state write removes it from the file.
 //
 // Best-effort by design: a failed record costs a possibly stale Sections
 // count on a status line, never the checkpoint that occasioned it. Returns
@@ -2746,9 +2703,8 @@ function recordExecutionTree(cwd) {
         }
         const root = goalRoot(cwd);
         const resolved = root === cwd ? null : path.resolve(cwd);
-        // A tree the read-time screen would drop is not worth writing: the
-        // record degrades to none rather than to a field every later read
-        // erases.
+        // A tree the lexical screen refuses is not worth writing: the record
+        // degrades to none rather than to a field no reader could follow.
         const tree = resolved !== null && validExecutionTree(resolved) ? resolved : null;
         const now = readGoal(cwd);
         if (!now || typeof now.plan !== 'string' || now.plan === '') {
@@ -3027,10 +2983,11 @@ function emitGoalEvent(details) {
 // safeForAuthorization rides along for the same single-rule reason: the CLI
 // prints the stored sentence, and a printer applying a shorter cap than the store
 // hands a reader half a claim and presents it as the whole recorded one.
-// goalRoot rides along for the Stop hook's release clauses: a plan path that
-// reads as gone from the working directory releases or advances the leash only
-// when it is gone from the checkout the goal state lives in too, and that
-// checkout is this resolution's answer, never a second spelling of it.
+// goalRoot rides along as the one spelling of the directory a tree's kit
+// state lives under, so a reader that needs the directory rather than the
+// state file asks for it here rather than deriving a second answer. No
+// consumer asks it today, this file's own readers being its callers; the
+// export is the seam held open rather than a live dependency.
 // planDisplayRoot rides along for the display readers of the executionTree
 // field, so no surface judges that field by a spelling of its own, and
 // recordExecutionTree for the checkpoint CLI, the field's one writer; both
@@ -3060,9 +3017,4 @@ function emitGoalEvent(details) {
 // A value the classifier learns reaches all three at once, which is the whole
 // point of naming them here: a fourth surface spelling its own regex is the
 // drift this export exists to prevent.
-// treeEntryState rides along for the same single-rule reason at the tree
-// level: the CLI's queue rendering must read the same per-tree state the
-// position walk itself votes on, so the note explaining a [missing] token and
-// the position it sits beside cannot drift apart from reading two spellings
-// of the same archive check.
-module.exports = { goalPath, goalRoot, goalPathKind, goalStateAbsent, readGoal, armGoal, appendGoal, advanceGoal, bindSession, clearGoal, composeCondition, planArmedBy, armingSession, armingSessionClaims, sessionHoldsLeash, planHead, planStatusReadings, classifyPlanStatus, emitGoalEvent, normalizePlanArg, lastActivePhrase, isSessionIdShaped, planFileSize, planHeadText, planPathState, planDisplayRoot, recordExecutionTree, pathErrnoClass, safeForAuthorization, queuePosition, treeEntryState, GOAL_STATE_MAX_BYTES };
+module.exports = { goalPath, goalRoot, goalPathKind, goalStateAbsent, readGoal, armGoal, appendGoal, advanceGoal, bindSession, clearGoal, composeCondition, planArmedBy, armingSession, armingSessionClaims, sessionHoldsLeash, planHead, planStatusReadings, classifyPlanStatus, emitGoalEvent, normalizePlanArg, lastActivePhrase, isSessionIdShaped, planFileSize, planHeadText, planPathState, planDisplayRoot, recordExecutionTree, pathErrnoClass, safeForAuthorization, queuePosition, GOAL_STATE_MAX_BYTES };

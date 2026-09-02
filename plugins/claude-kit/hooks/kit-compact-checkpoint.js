@@ -182,17 +182,15 @@ function cmdOpen() {
     const goal = readGoal(process.cwd());
     if (!goal || typeof goal.plan !== 'string' || goal.plan === '') {
         process.stderr.write('kit-compact-checkpoint: no kit goal is armed, so a checkpoint would never match; nothing written\n');
-        // The goal family resolves its state from the current directory, with
-        // a linked worktree resolving to its main checkout, so a goal armed in
-        // a checkout this directory does not resolve to (a separate clone, a
-        // worktree of a bare repository, or a worktree whose .git pointer no
-        // longer closes the handshake, which the lib notes on stderr) is
-        // invisible here however live it is. Naming that makes the refusal
+        // The goal family resolves its state from the current directory, and a
+        // linked worktree is a directory of its own, so a goal armed in
+        // another checkout or another worktree of this repository is invisible
+        // here however live it is. Naming that makes the refusal
         // self-explaining, since from such a tree the goal looks armed and
         // this looks like a defect.
         process.stderr.write('kit-compact-checkpoint: the goal may be armed in another checkout: this CLI reads'
-            + ' the goal state from the current directory (a linked worktree resolves to its main'
-            + ' checkout), so arm where you run\n');
+            + ' the goal state from the current directory (a linked worktree holds its own), so arm'
+            + ' where you run\n');
         process.exitCode = 1;
         return;
     }
@@ -239,14 +237,15 @@ function cmdOpen() {
             process.stdout.write('the compaction gate state could not be read, so this checkpoint records no'
                 + ' pending offer and keeps the ' + ORDINARY_MINUTES + '-minute bound\n');
         }
-        // A boundary opened from a linked worktree records that tree in the
-        // goal state, and one opened from the resolved checkout drops any
-        // standing record (recordExecutionTree is the field's ONLY writer, and
-        // this is its one call site): display surfaces then prefer the
-        // executing tree's copy of the plan doc for progress. The field is
-        // display-trust only and the record is best-effort, so a failure here
-        // costs a possibly stale Sections count, never the checkpoint just
-        // opened.
+        // The goal state's executionTree record, kept as this call for the
+        // checkpoint boundary that would own it. It records nothing: goal
+        // state is co-located with the tree that holds it, so the tree a
+        // boundary is opened from is always the tree whose state it would be
+        // written to, which is the one case the field was never for
+        // (kit-goal-lib.js's recordExecutionTree states the whole contract,
+        // and this is its one call site). The call is best-effort and
+        // display-trust only either way, so nothing here can cost the
+        // checkpoint just opened.
         recordExecutionTree(process.cwd());
         process.exitCode = 0;
     } else {

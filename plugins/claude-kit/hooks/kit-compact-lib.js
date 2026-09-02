@@ -649,14 +649,18 @@ function adoptCheckpoint(cwd, goal, sessionId) {
 // auto-compaction offer on the machine, including in repositories that have
 // nothing to do with the kit, and creating an untracked directory of session
 // ids and token readings in someone's unrelated checkout is a cost the
-// diagnostic does not earn. The one .kit/ these writers do create is a
-// directory an armed goal resolves for that has none of its own, and only
-// then: goal state lives in the main checkout, so a leashed run in a linked
-// worktree arrives with no local .kit/ at all, and refusing there would take
-// every deny unrecorded and silence the deferral nudge in exactly the place
-// the record exists for. An armed goal is the same already-governed evidence
-// an existing .kit/ is, so a stranger's checkout still gets nothing. Only
-// .kit itself is ever created, never its parents.
+// diagnostic does not earn. The one scratch directory these writers do create
+// is one an armed goal resolves for that has none of its own, and only then.
+// What keeps that branch live is the store-backed resolution above: goal
+// state sits at <cwd>/.kit beside the project, so an ordinary project with an
+// armed goal already has the directory, while a project lying inside the
+// store writes its scratch to ~/.kit/store/<rel> instead, somewhere else
+// entirely and under a root that need not exist yet. Refusing there would
+// take every deny unrecorded and silence the deferral nudge in exactly the
+// place the record exists for. An armed goal is the same already-governed
+// evidence an existing directory is, so a stranger's checkout still gets
+// nothing. The creation is recursive, which the store-backed shape requires,
+// and it reaches no further than the scratch directory the resolver named.
 //
 // Both files must be regular files, and .kit/ itself must be a real directory
 // rather than a link to one. A symlink, junction, or FIFO planted at any of the
@@ -1417,12 +1421,14 @@ function gateStateTarget(cwd) {
         try {
             dir = fs.lstatSync(kit);
         } catch (err) {
-            // An absent .kit/ refuses unless an armed goal resolves for this
-            // directory, which is the one case the section header licenses
-            // creating it: a leashed worktree run has no local .kit/ of its
-            // own. Only ENOENT reads as absent; any other failure is an
-            // unknown answer and stays a refusal. The mkdir is recursive
-            // because the store-backed branch of the resolver names a
+            // An absent scratch directory refuses unless an armed goal
+            // resolves for this directory, which is the one case the section
+            // header licenses creating it. The case it reaches is the
+            // store-backed one, where the scratch directory is
+            // ~/.kit/store/<rel> rather than the project's own .kit/ that an
+            // armed goal already implies. Only ENOENT reads as absent; any
+            // other failure is an unknown answer and stays a refusal. The
+            // mkdir is recursive because that branch of the resolver names a
             // directory several levels below a root that need not exist yet,
             // and the armed-goal condition above is what bounds it: a goal
             // resolves only for a directory that is already there. A failure
