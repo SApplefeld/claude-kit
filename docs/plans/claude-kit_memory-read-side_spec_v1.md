@@ -1419,3 +1419,110 @@ decision 2 of the memory-recognition plan was reopened in the 2026-08-30 design 
 spec sentence amended in board 9 was a slip.
 
 Commit model in effect: Commit-and-Push.
+
+### Interim board 11 - 2026-09-01
+
+Not a Chapter: section 3 is still open. Written at the closure-drought trigger, a second review round
+adjudicated with no section closing, with the compaction gate holding offers behind it.
+
+Section 3, "Recognition meets the moment", stage: implemented, two fix rounds landed and independently
+gated, three review rounds run, the third adjudicated, and one consult in flight on the single design
+fork the third round opened.
+
+The second fix round returned fourteen fixes with red-first failure text quoted per fix, and its gate was
+re-run by the orchestrator rather than accepted: build exit 0 at 93 files, then a targeted lane over the
+changed files and the whole-tree pins whose subject they are reading 1380 tests, 1376 passing, 0 failing,
+4 skipped, exit 0 taken from the run itself. That reconciles against the previous 1183 / 1181 / 0 / 2
+exactly: the three files added to the lane contribute 191 and the round added 6 cases, and the two new
+skips are kit-sidecar-capture's own. Both axes of the dedup identity are in place, confirmed at the code:
+`dedupKey` folds recipient and boundary class, and `windowFields` returns null for `SubagentStart`, taking
+the dispatch boundary out of the rolling window rather than giving it a third counter.
+
+A third review round was owed rather than optional. The fix delta changes the format of state persisted
+outside the repository tree, the dedup marker gaining a second bounded key set and the nudge log line a
+`boundary` field, which is the shape a suite routes around because every test plants its own marker. The
+three triggers were checked at the code rather than by feel: the four consumers of the widened identity
+library emit `additionalContext` rather than permission decisions, and the two deny-emitting guards import
+that library zero times, so the security-reviewer surface did not fire on that ground; the library was
+already a dependency, so no new module fired it; the outward-write trigger is what fired.
+
+Round 3 returned three changes-required verdicts, no Critical anywhere, five Majors and roughly eighteen
+Minors, each lens resolved at `claude-opus-5` across every assistant turn with no substitution and no
+synthetic placeholder. Every Major was confirmed by the orchestrator at the code before adjudication.
+
+The security lens found the round's most serious defect, and the orchestrator generated half of it. At the
+prompt boundary the two fragment types match by bare containment against prose, while the three identifier
+types were given a whole-token rule. The only authoring-side specificity screen is memq's four-character
+floor and its common-token set, and that set enumerates shell verbs, which is a property of the old subject
+rather than of ordinary English. The lens proved it by running memq's own gate, and the orchestrator
+reproduced the probe: `cmd:that`, `err:this`, `cmd:with`, `err:from` and `cmd:when` are all admitted while
+the control pair `cmd:node` and `cmd:git` is refused, so the instrument works and simply does not cover the
+new subject. One operator-tier record carrying such a pattern would fire on essentially every prompt in
+every project on the machine, and each false fire spends that record's prompt-class dedup key and a slot of
+the prompt window besides. The orchestrator's own half is that three carriers were edited in this changeset
+to assert the bars cover prompt matching while the predicate was left unchanged, so a guard now documents
+coverage it does not have.
+
+The adversarial lens found two more. The boundary class the second fix round added lets one record's pointer
+land twice in the same context in one turn for the three identifier types, since a prompt naming an agent
+and the tool call that carries it are the same fact matched twice, and the rationale written into the dedup
+key covers only the fragment case; the trade is neither recorded nor pinned in either direction. And
+`SubagentStart` delivers store-authored text into every dispatched agent's context with no stand-down, the
+kit's own blind reviewers included, which is a contamination channel in the review machinery this plan
+itself relies on. The lens confirmed the delivery target at the installed CLI rather than from a document.
+It is latent rather than live, no `agent:` trigger on a reviewer type existing in any store.
+
+The blind lens found the remaining two. The token predicate treats every code point above ASCII as a word
+character, which the comment justifies for accented and CJK letters but which also swallows curly quotes,
+non-breaking space, dashes and ellipsis, so one smart quote from autocorrected prose silently refuses a true
+match. And the fix round applied the narrow agent-id reading to the prompt boundary while leaving the two
+tool boundaries on the wide reading the same comment argues is dead in any --agent session, so the delta
+documents a defect and declines to fix it one line away.
+
+One finding is answered rather than fixed, as its equivalent was in round 1: both the blind and the
+adversarial lens noted that nothing in the tree pins the harness contract for the two new events. They are
+right about the suite and did not know the observation exists; board 9 records both events watched firing on
+harness v2.1.252 with their payload key sets and delivery targets measured.
+
+The consult in flight is on the one fork the orchestrator will not rule alone. Its own brief has now been
+the generator of the largest finding in two consecutive rounds, and the fragment-trigger repair has a real
+design fork: whole-token matching does not close it, since a common English word is already a whole token,
+and a reader-side repair protects records that already exist where an authoring screen gates only new ones.
+The consultant is asked to attack the framing rather than ratify it.
+
+Routed out of the plan since the last boundary. The two payload-reading guards each hand-copy a four-spelling
+agent-type chain omitting the fifth spelling the shared module carries, at `docs-write-guard.js:46` and
+`readonly-agent-guard.js:88`. It is not a live bypass, the bare `type` arm being defensive breadth rather
+than a measured spelling and the one payload measured on this harness spelling `agent_type`, so it parks
+rather than blocking; it leaves the plan because closing it serves guard hardening rather than this plan's
+goal. The entry is written and verified at `docs/backlog.md:379`, and the section's own widened single-source
+pin names both files as routed exemptions rather than skipping them silently. Two lenses independently raised
+the same pair, and both asked that the exemption be narrowed to the per-key scan rather than dropping the
+whole-key-set assertion; that narrowing rides the next fix round.
+
+Gate baseline. The targeted lane above, 1380 / 1376 / 0 / 4 at exit 0, is the baseline the next fix round
+reports its delta against. The whole-gate baseline this section will be measured against remains Chapter 2's,
+2932 / 2922 / 1 / 9 at exit 1. The box was claimed under this session's own id for the build and the lane and
+released after its `Session:` line was read; the poll before claiming found no foreign test runner and one
+unrelated long-running process, which licenses nothing on its own.
+
+The round's tree-state bracket came back clean but for one path, `docs/backlog.md`, which is the
+orchestrator's own routed entry written mid-round and recognised by its content rather than by its path.
+
+No tier escalation is owed and the comparison is recorded rather than assumed. The ladder keys on a Critical
+surviving adjudication in two rounds, and no round of this section has produced one. The finding classes do
+not repeat across rounds 2 and 3 either: round 2's Majors were the dedup identity, and round 3's are the
+token predicate, the boundary-class trade and the injection surface, which is new ground reached because the
+previous round's fixes held. That is the branch where the brief rather than the implementer is the generator,
+and the consult is the lever spent instead of the tier.
+
+Next action: adopt the consult's ruling, then one fix round covering all five Majors and the in-scope Minors,
+then the section's close gate, Chapter 3, the whole gate this plan's push to main owes, and the commit.
+
+Two items still stand for the operator and neither is a blocker. Section 3's live end-to-end acceptance needs
+`claude plugin update`, since the nudge that fires in a live session is the installed one and this machine's
+install trails the checkout. And the question batched at board 9 is unanswered: whether decision 2 of the
+memory-recognition plan was reopened in the 2026-08-30 design dialog, or whether the spec sentence amended
+there was a slip.
+
+Commit model in effect: Commit-and-Push.
