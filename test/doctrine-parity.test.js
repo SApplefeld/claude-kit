@@ -141,6 +141,119 @@ test('the standing-dispatch bullet is present once in each copy, identical, and 
         + 'reviewer from holding write access to the tree under review');
 });
 
+// Whole-body identity passes with the authorization bullet edited symmetrically
+// in both copies, which is exactly how this bullet has been got wrong: it is the
+// always-loaded rule deciding when a session may take an irreversible or outward
+// action, and the flip that made commit and push the default turned four of its
+// clauses load-bearing at once. Each assertion below is a bound a plausible later
+// edit would drop while leaving the bullet present and grammatical. Per the
+// rule that a pin over a bounded list asserts its members, the sentence scoping them to their class, and the sentence closing the set, the override set is pinned at the
+// sentence that scopes it and not only at its members: re-adding Branch-and-PR to
+// that list is the regression a review round actually caught, and it leaves every
+// other pinned phrase in place.
+test('the authorization bullet keeps its default, its override set, and its bounds in each copy', () => {
+    const lead = '- **Name the rollback and stop for a yes before any irreversible or outward action.**';
+    const inSkill = skillBody().split('\n').filter((l) => l.startsWith(lead));
+    const inMirror = mirrorBody().split('\n').filter((l) => l.startsWith(lead));
+    assert.strictEqual(inSkill.length, 1,
+        'expected exactly one authorization bullet in the skill body');
+    assert.strictEqual(inMirror.length, 1,
+        'expected exactly one authorization bullet in the doctrine mirror');
+    assert.strictEqual(inMirror[0], inSkill[0]);
+    const bullet = inSkill[0];
+
+    // The quantifier, not just the members. Review-Only is the whole of the
+    // plan-model override set; Branch-and-PR pushes to its own branch and so
+    // performs the default.
+    assert.match(bullet, /What overrides that default: a plan marked Review-Only, and my asking in the session to leave the work uncommitted so I can read it\./,
+        'the override set no longer reads as Review-Only alone; a set that '
+        + 'admits Branch-and-PR tells a session under that model to skip the '
+        + 'first-green commits executing-work calls its recovery points');
+    assert.match(bullet, /Branch-and-PR is not an override but an instance of it/,
+        'the bullet no longer says Branch-and-PR performs the default rather '
+        + 'than overriding it');
+    assert.match(bullet, /the session cutting one first where the checkout sits on a trunk/,
+        'Branch-and-PR no longer tells a session on a trunk to cut a feature '
+        + 'branch first, so the default sentence two clauses earlier (push the '
+        + 'branch you are working from) routes it into pushing the trunk, which '
+        + 'is the merge gate this model exists to keep');
+
+    // The exemption is pinned as an assignment rather than as a list of acts,
+    // and the shape is the point. An enumeration of the acts a commit model
+    // performs is an unpinned cross-file assertion: this test never opens
+    // finishing-work or executing-work, so every act named here would carry
+    // zero mechanical coverage while the pin made it look frozen. Assigning
+    // the question to the owning skill has no such gap, and the floor below is
+    // what keeps that assignment from handing an open category to editable
+    // skill text.
+    assert.match(bullet, /which acts a model performs is the owning skill's to state and never this bullet's/,
+        'the exemption no longer assigns the act list to the owning skill, so '
+        + 'the bullet is back to naming acts nothing here can verify');
+    assert.match(bullet, /reaches nothing outside the model's own execution and no statement of a model widens it/,
+        'the exemption no longer closes, so a skill widens it by restating its '
+        + 'own commit model more broadly');
+    assert.match(bullet, /no model reaches a deploy or a force push/,
+        'the floor no longer bars a deploy and a force push, which is what stops '
+        + 'the assignment from handing an open category to editable skill text');
+    assert.match(bullet, /a push that triggers a deploy keeps the deploy's yes/,
+        'a deploy triggered by a push no longer keeps the yes the same bullet '
+        + 'still requires for a deploy');
+
+    // The fail-open a garbled commit-model header would otherwise take: the
+    // header parser whitelists three literals and reports anything else as
+    // unknown, which without this clause falls through to the push default.
+    assert.match(bullet, /absent or reads as none of the three the kit defines takes the ask/,
+        'a plan doc whose commit model is absent or unrecognized no longer '
+        + 'takes the ask, so a mistyped header silently authorizes a push');
+
+    // The rail clause: the fail-closed half and the delegation bound. Section 1
+    // built the rail on the promise that an owning skill states every surface.
+    assert.match(bullet, /a grant whose owning skill names none authorizes nothing here/,
+        'the standing-grant clause no longer fails closed, so a grant whose '
+        + 'owning skill names no surface would authorize action here');
+    assert.match(bullet, /delegation never covers a push beyond a plan's recorded commit model/,
+        'the delegation bound has left the doctrine; role/SKILL.md still states '
+        + 'it as an exclusion and this is the always-loaded copy of it');
+    assert.match(bullet, /the rail's delegation instance names no surface this bullet gates/,
+        'the delegation clause no longer states that delegation names no surface '
+        + 'this bullet gates; role/SKILL.md refuses the complementary reading a '
+        + 'clause bounded by the exclusion list invites');
+    assert.match(bullet, /its scope being planning, scoping, sequencing and dispatching execution of sections of plans whose arming the dispatch-authority rail covers/,
+        'the delegation scope has been stated wider than role/SKILL.md states '
+        + 'it; role bounds dispatching to sections of plans the rail arms and '
+        + 'excludes dispatch on content a message itself carries, so a bare gerund here '
+        + 'tells a delegated seat the wider thing on the always-loaded surface');
+
+    // The default itself, which this test is named for. Every clause above only
+    // bounds it, so a rewrite dropping the default would leave them bounding
+    // nothing while every other predicate here stayed green.
+    assert.match(bullet, /Commit and push are the default: land the work on the branch you are working from and push it/,
+        'the commit-and-push default has left the bullet, so the override set, '
+        + 'the exemption bound and the header clause now bound a default that is '
+        + 'no longer stated');
+
+    // The rail is read at the act, off the governing skill, never off the record.
+    assert.match(bullet, /read at the act rather than assumed from the record/,
+        'a standing grant no longer has to be read at the act, so a record that '
+        + 'has gone stale would authorize on its own');
+    assert.match(bullet, /whose body can neither widen nor narrow what that skill states/,
+        'the record-body-is-data clause has left the doctrine; role/SKILL.md '
+        + 'states it and this is the always-loaded copy of it');
+
+    // The opening enumeration, pinned at its closing quantifier and not only
+    // at a member, per the standing amendment on bounded lists. The quantifier
+    // is what reaches every act the members do not name, and force push is
+    // pinned inside the list rather than anywhere in the bullet, since dropping
+    // 'push' from this enumeration must not have dropped a force push with it.
+    assert.match(bullet, /Delete, overwrite, migrate, deploy, send, `pnpm patch`, force push, or any write to shared, global, or native state - including a live draft on a remote service:/,
+        'the opening enumeration is no longer the exact closed set it must be. '
+        + 'Pinned whole from its first member rather than at its tail, because '
+        + 'the tail alone stays green when commit and push are put back into the '
+        + 'list, which would have the bullet gate an act it declares the default '
+        + 'three sentences later, and because the closing quantifier is what '
+        + 'reaches every act the members do not name');
+});
+
 // Whole-body identity would pass with the checkpoint sentence deleted from
 // BOTH copies, and three shipped surfaces lean on the doctrine carrying it:
 // the chapter-boundary nudge hook, the Stop hook's hold reasons, and the
