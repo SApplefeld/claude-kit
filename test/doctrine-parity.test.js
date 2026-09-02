@@ -241,7 +241,7 @@ test('the authorization bullet keeps its default, its override set, and its boun
         + 'states it and this is the always-loaded copy of it');
 
     // The opening enumeration, pinned at its closing quantifier and not only
-    // at a member, per the standing amendment on bounded lists. The quantifier
+    // at a member, on the rule that a pin over a bounded list asserts its members, the sentence scoping them, and the sentence closing the set. The quantifier
     // is what reaches every act the members do not name, and force push is
     // pinned inside the list rather than anywhere in the bullet, since dropping
     // 'push' from this enumeration must not have dropped a force push with it.
