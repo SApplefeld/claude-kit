@@ -80,6 +80,16 @@ function assertTrackedInIndex(relPath) {
         { cwd: path.join(__dirname, '..'), stdio: 'pipe' });
 }
 
+// One field-set derivation, shared by the claim-file pin and the
+// registry-entry pin over docs/architecture.md. The token class admits a
+// digit and a lowercase tail after the leading letter, wider than today's
+// field names on purpose: a derivation narrower than the tokens it must
+// see is how a future field such as `Retry2:` goes invisible to BOTH
+// sides at once, a one-sided addition of it then passing green, which is
+// the class both comparisons exist to catch.
+const backtickedFieldSet = (text) => [...new Set(
+    text.match(/`[A-Za-z][A-Za-z0-9-]*:`/g) || [])].sort();
+
 test('the two doctrine copies are byte-identical (skill body vs mirror)', () => {
     assert.strictEqual(mirrorBody(), skillBody(),
         'home/claude-kit-doctrine.md has drifted from the operating-instructions '
@@ -129,6 +139,119 @@ test('the standing-dispatch bullet is present once in each copy, identical, and 
         'the Workflow grant no longer requires an agentType the read-only guard '
         + 'governs, which is the condition that keeps a Workflow-dispatched '
         + 'reviewer from holding write access to the tree under review');
+});
+
+// Whole-body identity passes with the authorization bullet edited symmetrically
+// in both copies, which is exactly how this bullet has been got wrong: it is the
+// always-loaded rule deciding when a session may take an irreversible or outward
+// action, and the flip that made commit and push the default turned four of its
+// clauses load-bearing at once. Each assertion below is a bound a plausible later
+// edit would drop while leaving the bullet present and grammatical. Per the
+// rule that a pin over a bounded list asserts its members, the sentence scoping them to their class, and the sentence closing the set, the override set is pinned at the
+// sentence that scopes it and not only at its members: re-adding Branch-and-PR to
+// that list is the regression a review round actually caught, and it leaves every
+// other pinned phrase in place.
+test('the authorization bullet keeps its default, its override set, and its bounds in each copy', () => {
+    const lead = '- **Name the rollback and stop for a yes before any irreversible or outward action.**';
+    const inSkill = skillBody().split('\n').filter((l) => l.startsWith(lead));
+    const inMirror = mirrorBody().split('\n').filter((l) => l.startsWith(lead));
+    assert.strictEqual(inSkill.length, 1,
+        'expected exactly one authorization bullet in the skill body');
+    assert.strictEqual(inMirror.length, 1,
+        'expected exactly one authorization bullet in the doctrine mirror');
+    assert.strictEqual(inMirror[0], inSkill[0]);
+    const bullet = inSkill[0];
+
+    // The quantifier, not just the members. Review-Only is the whole of the
+    // plan-model override set; Branch-and-PR pushes to its own branch and so
+    // performs the default.
+    assert.match(bullet, /What overrides that default: a plan marked Review-Only, and my asking in the session to leave the work uncommitted so I can read it\./,
+        'the override set no longer reads as Review-Only alone; a set that '
+        + 'admits Branch-and-PR tells a session under that model to skip the '
+        + 'first-green commits executing-work calls its recovery points');
+    assert.match(bullet, /Branch-and-PR is not an override but an instance of it/,
+        'the bullet no longer says Branch-and-PR performs the default rather '
+        + 'than overriding it');
+    assert.match(bullet, /the session cutting one first where the checkout sits on a trunk/,
+        'Branch-and-PR no longer tells a session on a trunk to cut a feature '
+        + 'branch first, so the default sentence two clauses earlier (push the '
+        + 'branch you are working from) routes it into pushing the trunk, which '
+        + 'is the merge gate this model exists to keep');
+
+    // The exemption is pinned as an assignment rather than as a list of acts,
+    // and the shape is the point. An enumeration of the acts a commit model
+    // performs is an unpinned cross-file assertion: this test never opens
+    // finishing-work or executing-work, so every act named here would carry
+    // zero mechanical coverage while the pin made it look frozen. Assigning
+    // the question to the owning skill has no such gap, and the floor below is
+    // what keeps that assignment from handing an open category to editable
+    // skill text.
+    assert.match(bullet, /which acts a model performs is the owning skill's to state and never this bullet's/,
+        'the exemption no longer assigns the act list to the owning skill, so '
+        + 'the bullet is back to naming acts nothing here can verify');
+    assert.match(bullet, /reaches nothing outside the model's own execution and no statement of a model widens it/,
+        'the exemption no longer closes, so a skill widens it by restating its '
+        + 'own commit model more broadly');
+    assert.match(bullet, /no model reaches a deploy or a force push/,
+        'the floor no longer bars a deploy and a force push, which is what stops '
+        + 'the assignment from handing an open category to editable skill text');
+    assert.match(bullet, /a push that triggers a deploy keeps the deploy's yes/,
+        'a deploy triggered by a push no longer keeps the yes the same bullet '
+        + 'still requires for a deploy');
+
+    // The fail-open a garbled commit-model header would otherwise take: the
+    // header parser whitelists three literals and reports anything else as
+    // unknown, which without this clause falls through to the push default.
+    assert.match(bullet, /absent or reads as none of the three the kit defines takes the ask/,
+        'a plan doc whose commit model is absent or unrecognized no longer '
+        + 'takes the ask, so a mistyped header silently authorizes a push');
+
+    // The rail clause: the fail-closed half and the delegation bound. Section 1
+    // built the rail on the promise that an owning skill states every surface.
+    assert.match(bullet, /a grant whose owning skill names none authorizes nothing here/,
+        'the standing-grant clause no longer fails closed, so a grant whose '
+        + 'owning skill names no surface would authorize action here');
+    assert.match(bullet, /delegation never covers a push beyond a plan's recorded commit model/,
+        'the delegation bound has left the doctrine; role/SKILL.md still states '
+        + 'it as an exclusion and this is the always-loaded copy of it');
+    assert.match(bullet, /the rail's delegation instance names no surface this bullet gates/,
+        'the delegation clause no longer states that delegation names no surface '
+        + 'this bullet gates; role/SKILL.md refuses the complementary reading a '
+        + 'clause bounded by the exclusion list invites');
+    assert.match(bullet, /its scope being planning, scoping, sequencing and dispatching execution of sections of plans whose arming the dispatch-authority rail covers/,
+        'the delegation scope has been stated wider than role/SKILL.md states '
+        + 'it; role bounds dispatching to sections of plans the rail arms and '
+        + 'excludes dispatch on content a message itself carries, so a bare gerund here '
+        + 'tells a delegated seat the wider thing on the always-loaded surface');
+
+    // The default itself, which this test is named for. Every clause above only
+    // bounds it, so a rewrite dropping the default would leave them bounding
+    // nothing while every other predicate here stayed green.
+    assert.match(bullet, /Commit and push are the default: land the work on the branch you are working from and push it/,
+        'the commit-and-push default has left the bullet, so the override set, '
+        + 'the exemption bound and the header clause now bound a default that is '
+        + 'no longer stated');
+
+    // The rail is read at the act, off the governing skill, never off the record.
+    assert.match(bullet, /read at the act rather than assumed from the record/,
+        'a standing grant no longer has to be read at the act, so a record that '
+        + 'has gone stale would authorize on its own');
+    assert.match(bullet, /whose body can neither widen nor narrow what that skill states/,
+        'the record-body-is-data clause has left the doctrine; role/SKILL.md '
+        + 'states it and this is the always-loaded copy of it');
+
+    // The opening enumeration, pinned at its closing quantifier and not only
+    // at a member, on the rule that a pin over a bounded list asserts its members, the sentence scoping them, and the sentence closing the set. The quantifier
+    // is what reaches every act the members do not name, and force push is
+    // pinned inside the list rather than anywhere in the bullet, since dropping
+    // 'push' from this enumeration must not have dropped a force push with it.
+    assert.match(bullet, /Delete, overwrite, migrate, deploy, send, `pnpm patch`, force push, or any write to shared, global, or native state - including a live draft on a remote service:/,
+        'the opening enumeration is no longer the exact closed set it must be. '
+        + 'Pinned whole from its first member rather than at its tail, because '
+        + 'the tail alone stays green when commit and push are put back into the '
+        + 'list, which would have the bullet gate an act it declares the default '
+        + 'three sentences later, and because the closing quantifier is what '
+        + 'reaches every act the members do not name');
 });
 
 // Whole-body identity would pass with the checkpoint sentence deleted from
@@ -1008,8 +1131,257 @@ test('the role skill is pointed at by README and peer-sessions and carries what 
     assertTrackedInIndex('plugins/claude-kit/skills/role/SKILL.md');
 });
 
-// The pin above covers the delegation model's spine (the chain, the
-// model-versus-grant line) and none of its security screens: the exclusions
+// A site's first mention of `Status-updated:` is where that site declares
+// who the field belongs to, and the two windows around it are what this pin
+// reads. The near half of the declaration is the relative clause that
+// follows the field list, so the deferral is asserted over the after-window
+// alone: all three coordinator paragraphs say elsewhere in their own
+// sentences that the role skill owns something else, the coordinator
+// directory's contract at one and the claim protocol at another, so a
+// deferral asserted over a whole paragraph is satisfied at two of the three
+// with no deferral to this field's owner present at all. The windows are
+// character counts around the field rather than a quoted field list,
+// because the list's wording is free to change and a pin that quotes its
+// far end fails on every honest rewording.
+const STAMP_BEFORE = 80;
+const STAMP_AFTER = 120;
+function stampWindows(text, where) {
+    const at = text.indexOf('`Status-updated:`');
+    assert.ok(at !== -1, where + ' no longer names `Status-updated:`, so the '
+        + 'field this pin follows has left the sentence and there is no '
+        + 'declaration left to read');
+    return {
+        before: text.slice(Math.max(0, at - STAMP_BEFORE), at),
+        after: text.slice(at, at + STAMP_AFTER),
+    };
+}
+
+// A session or a seat named as what acts on the field. The stems span the
+// verb's inflections and carry the `hand-` and `re-` compounds, because the
+// class is "this site says a session writes this field" and a pattern
+// spelling one member of that class goes quiet on every other while reading
+// exactly like a clean result: `hand-write` is this plan's own word for the
+// defect, so a pattern that cannot match it is not reading its own subject.
+// The one compound excluded is `registry-stamp`, which names the instrument
+// the rule requires rather than an act a session performs.
+const STAMP_STEM = [
+    'rewrit(?:e|es|ing|ten)', 'rewrote',
+    'writ(?:e|es|ing|ten)', 'wrote',
+    'stamp(?:s|ing|ed)?',
+    'updat(?:e|es|ing|ed)',
+    'set(?:s|ting)?',
+    'fill(?:s|ing|ed)?',
+    'refresh(?:es|ing|ed)?',
+    'advanc(?:e|es|ing|ed)',
+    'compos(?:e|es|ing|ed)',
+    'record(?:s|ing|ed)?',
+].join('|');
+const STAMP_ACT = '\\b(?<!registry-)(?:hand-|re-)?(?:' + STAMP_STEM + ')\\b';
+const STAMP_PASSIVE = '\\b(?:rewritten|written|stamped|updated|set|filled'
+    + '|refreshed|advanced|composed|recorded)\\b';
+
+// Both directions, because a reinstatement arrives in either voice. The gap
+// between subject and verb is tempered to exclude `CLI`: the role skill's
+// own declaration reads "a seat takeover or handoff, with the registry-stamp
+// CLI stamping", where the seat is a noun of the push-moment list and the
+// CLI is what stamps, so an untempered window between the two reads that
+// legitimate sentence as a hand-write. Tempering rather than a shorter
+// window, because a window short enough to miss it is also short enough to
+// miss a real reinstatement one clause longer than the ones seen so far.
+// It is applied to the declaration windows rather than to a paragraph: the
+// role skill's own paragraph legitimately says later that a session's push
+// writes both time fields while the stamping CLI reads the clock.
+const HAND_WRITTEN_STAMP = new RegExp([
+    '(session|seat)s?\\b(?:(?!CLI)[^.]){0,60}' + STAMP_ACT,
+    STAMP_PASSIVE + '(?:(?!CLI)[^.]){0,40}\\bby\\b[^.]{0,30}(session|seat)s?\\b',
+].join('|'));
+
+// The role skill's push-moments paragraph (opening "The push moments, closed
+// with their class") is the sole owner of which registry-entry lines a
+// session hand-writes and which the registry-stamp CLI stamps instead. Six
+// surfaces depend on that ownership without restating it: the park ritual's
+// push step, the peer-sessions banking paragraph, the coordinator skill's
+// three registry-reading sites, and the coordinator skill's own banked-pass
+// paragraph, which is the one dependent that writes the field rather than
+// reading it. Six is this pin's reach and not the class's size: the shipped
+// tree names `Status-updated:` in more files than these, so a green here is
+// evidence about the surfaces named and never a swept class. docs/architecture.md's
+// registry-entry paragraph is a further dependent, pointing at this
+// paragraph rather than restating it, and held by its own pin over that
+// document rather than by this one. That pin carries the entry's field
+// set, the writer-axis count and the pointer; it deliberately does not
+// apply the shape below, which matches that document's repaired text as
+// readily as its retired text, the subject there being writers rather
+// than a declaration of who stamps. Every slice below runs through
+// sliceBetween, whose near-edge assertion is what carries the scope here:
+// these skill files carry one paragraph per line, so a lead plus a newline
+// is the paragraph, and a lead that no longer opens the paragraph fails
+// loudly rather than sliding the slice onto whichever paragraph happens to
+// carry the lead next. Each assertion keys on a shape over the rule's
+// substance rather than on a quoted clause, so an honest rewording of
+// either end stays green while a reinstated hand-write does not, whatever
+// words it is reinstated in.
+test('the push-moments paragraph still owns the stamp and its six dependents still point at it', () => {
+    const role = readRepoFile('plugins/claude-kit/skills/role/SKILL.md');
+    const paragraph = sliceBetween(role,
+        'The push moments, closed with their class', '\n',
+        'the role skill\'s push-moments paragraph');
+
+    const roleStamp = stampWindows(paragraph,
+        'the role skill\'s push-moments paragraph');
+    for (const [half, window] of Object.entries(roleStamp)) {
+        assert.ok(!HAND_WRITTEN_STAMP.test(window),
+            'the push-moments paragraph once again puts `Status-updated:` in '
+            + 'a session\'s own hands, ' + half + ' its first mention of the '
+            + 'field, which contradicts the registry entry\'s own shape a few '
+            + 'lines above it, where the field reads "never written by hand"');
+    }
+    assert.match(paragraph, /(session|seat)[^.]{0,40}(rewrites?|writes?)[^.]{0,60}`Remaining:`/,
+        'the push-moments paragraph no longer states that a session hand-'
+        + 'writes `Remaining:` at a push moment, so the lines a session does '
+        + 'still write by hand have lost their owner');
+    assert.match(paragraph, /CLI[^.]{0,40}stamp(s|ing)[^.]{0,40}`Status-updated:`/,
+        'the push-moments paragraph no longer states that the registry-'
+        + 'stamp CLI, rather than the session, stamps `Status-updated:` at '
+        + 'a push moment');
+    assert.match(paragraph, /read from the clock at the (moment|time) of the write/,
+        'the push-moments paragraph no longer states that the moment is read '
+        + 'from the clock at the write, so the value it describes may be '
+        + 'composed beforehand and carried in, which is the defect the field '
+        + 'was taken out of a writer\'s hands to remove');
+    assert.match(paragraph, /read from the clock[^.]{0,80}(stamping|registry-stamp) CLI/,
+        'the push-moments paragraph no longer attributes the clock read to '
+        + 'the stamping CLI, so the sentence reads again as though the '
+        + 'session itself measures the moment it writes');
+    // The clock-read rule covers exactly the two fields a session's own push
+    // writes. Stated over every field the entry carries it is false, because
+    // `Heartbeat:` comes from the seat-stop hook and `Banked:` from the
+    // compaction checkpoint CLI, and a universal here also strands the audit
+    // paragraph's session-written category with no members. Both halves are
+    // asserted: which fields the sentence names, and that it does not reach
+    // for a quantifier over the entry's fields as a class.
+    const clockAt = paragraph.indexOf('read from the clock at the');
+    const clockSentence = paragraph.slice(Math.max(0, clockAt - 220), clockAt + 120);
+    for (const field of ['`Started:`', '`Status-updated:`']) {
+        assert.ok(clockSentence.includes(field),
+            'the push-moments paragraph\'s clock-read rule no longer names '
+            + field + ', so one of the two fields a session\'s own push '
+            + 'writes has fallen out of the rule that governs where its '
+            + 'value comes from');
+    }
+    for (const field of ['`Heartbeat:`', '`Banked:`']) {
+        assert.ok(!clockSentence.includes(field),
+            'the push-moments paragraph\'s clock-read rule now reaches '
+            + field + ', which no session\'s push writes: it is stamped by '
+            + 'the seat-stop hook or the compaction checkpoint CLI, and the '
+            + 'directory contract above names it as such');
+    }
+    assert.ok(!/\b(every|each|all)\b[^.]{0,40}\btime fields?\b/i.test(clockSentence),
+        'the push-moments paragraph states the clock-read rule over the '
+        + 'entry\'s time fields as a class, which is false for `Heartbeat:` '
+        + 'and `Banked:` and strands the audit paragraph\'s session-written '
+        + 'category with no members');
+
+    // The far end of the same contradiction. The entry shape a few lines
+    // above is where the field is declared machine-stamped, so a pin holding
+    // only the push-moments paragraph would go green on a drift that moved
+    // the hand-write invitation back up into the shape itself.
+    const entryShape = sliceBetween(role,
+        'Status-updated: <', '\n', 'the registry entry shape\'s '
+        + '`Status-updated:` line');
+    assert.match(entryShape, /(stamp|CLI)/,
+        'the registry entry shape no longer names a stamp or the CLI as '
+        + 'where `Status-updated:` comes from, so the push-moments '
+        + 'paragraph\'s owner has lost the declaration it is read against');
+    assert.ok(!HAND_WRITTEN_STAMP.test(entryShape),
+        'the registry entry shape once again describes a session as writing '
+        + '`Status-updated:` itself, which reinstates at the declaration the '
+        + 'invitation every prose site has had removed');
+
+    const park = readRepoFile('plugins/claude-kit/skills/park/SKILL.md');
+    const parkStep = sliceBetween(park,
+        '5. **Rewrite the registry entry\'s `Status:` line to parked', '\n',
+        'the park ritual\'s drain step 5');
+    assert.match(parkStep, /push moment/,
+        'the park ritual\'s push step no longer names the push moment, so '
+        + 'its dependence on the role skill\'s push-moments paragraph has '
+        + 'no anchor left to point from');
+    assert.match(parkStep, /role skill[^.]{0,80}writer rule/,
+        'the park ritual\'s push step no longer points at the role skill for '
+        + 'the entry\'s writer rule, so it either restates the rule it defers '
+        + 'or defers to nothing');
+
+    const peerSessions = readRepoFile('plugins/claude-kit/skills/peer-sessions/SKILL.md');
+    const banking = sliceBetween(peerSessions,
+        '**Each seat banks at its own moments', '\n',
+        'the peer-sessions banking paragraph');
+    assert.match(banking, /(writer|writes|written)[^.]{0,60}role skill|role skill[^.]{0,60}(writer|writes|written)/,
+        'the peer-sessions banking paragraph no longer points at the role '
+        + 'skill for the registry entry\'s writer rule and stamped fields');
+    assert.match(banking, /stamp[^.]{0,60}(advanc|writ|stamp)[a-z]*[^.]{0,40}`Status-updated:`/,
+        'the peer-sessions banking paragraph no longer names the stamp run, '
+        + 'rather than a session\'s own prose edit, as what advances '
+        + '`Status-updated:`');
+
+    // All three coordinator sites read a registry entry's state, and all
+    // three were repaired together: a pin covering one of them leaves a
+    // regression at either of the others green, which is the miss this
+    // plan has already recorded twice.
+    const coordinator = readRepoFile('plugins/claude-kit/skills/coordinator/SKILL.md');
+    const coordinatorSites = [
+        ['- **Operator interface.** One voice toward the operator',
+            'the coordinator skill\'s operator-interface bullet'],
+        ['Each pass re-derives the board from durable state',
+            'the coordinator skill\'s board-derivation sources'],
+        ['Each of the three outcomes has its own disposition.',
+            'the coordinator skill\'s live-session disposition'],
+    ];
+    for (const [lead, where] of coordinatorSites) {
+        const site = sliceBetween(coordinator, lead, '\n', where);
+        const stamp = stampWindows(site, where);
+        assert.match(stamp.after, /role skill[^.]{0,60}(governs|owns)/,
+            where + ' no longer defers to the role skill in the clause that '
+            + 'follows the field, so it either restates the writer rule it '
+            + 'defers or defers to nothing. A deferral elsewhere in the '
+            + 'paragraph does not answer this: two of these paragraphs name '
+            + 'the role skill as owning something else entirely');
+        for (const [half, window] of Object.entries(stamp)) {
+            assert.ok(!HAND_WRITTEN_STAMP.test(window),
+                where + ' once again describes a session as writing '
+                + '`Status-updated:` itself, ' + half + ' the field, which '
+                + 're-issues from the read side the invitation every write '
+                + 'site has had removed');
+        }
+    }
+
+    // The sixth dependent is the one that writes the field rather than
+    // reading it, and its failure is silent: `seat-stop.js` opens the
+    // boundary marker only where `Status-updated:` is fresh, and only the
+    // registry-stamp CLI advances that field, so a runbook naming a prose
+    // push as the declaration sends a seat through a boundary that never
+    // opens with nothing to say so.
+    const bankedPass = sliceBetween(coordinator,
+        'The last act of a pass', '\n',
+        'the coordinator skill\'s banked-pass paragraph');
+    assert.match(bankedPass, /stamp run/,
+        'the coordinator skill\'s banked-pass paragraph no longer names the '
+        + 'stamp run as part of its status push, so a coordinator seat is '
+        + 'told to declare a boundary by an act that advances nothing the '
+        + '`seat-stop.js` hook reads');
+    assert.match(bankedPass, /`Status-updated:`/,
+        'the coordinator skill\'s banked-pass paragraph no longer names the '
+        + 'field the boundary marker is gated on, so the reason its prose '
+        + 'lines are not the declaration has left the sentence');
+
+    for (const skill of ['coordinator', 'park', 'peer-sessions', 'role']) {
+        assertTrackedInIndex('plugins/claude-kit/skills/' + skill + '/SKILL.md');
+    }
+});
+
+// The pointers pin ("the role skill is pointed at by README and
+// peer-sessions and carries what the pointers promise") covers the
+// delegation model's spine (the chain, the model-versus-grant line) and none
+// of its security screens: the exclusions
 // list and the three refusal rules bound what the model can be read to
 // license, so a later pass deleting either paragraph would leave the spine
 // pinned and the suite green while the model kept its power and lost its
@@ -1123,6 +1495,406 @@ test('the role skill still carries the standing-grant rail\'s exclusions and the
         + 'single act is authorized by the existence of its own switch');
 });
 
+// The coordinator seat carries no git prohibition of its own and no exception
+// to one: it runs under whatever governs every other session on this machine,
+// and what stands where the prohibition stood is the working principle it
+// hardened around, stated in the never-tasks-directly rule's own verbs: the
+// seat dispatches nothing, it produces artifacts and asks. Both
+// halves are pinned, because either alone passes on the wrong tree: a file
+// that reinstated the bar would still carry the principle, and one that
+// dropped the principle would still be silent under the sweep.
+//
+// The absence half is structural rather than a list of the sentences that
+// once shipped, since a bar rewritten in vocabulary this file never carried
+// would clear a literal list while binding the seat exactly as the retired
+// one did. What the predicate selects is a prohibition ABOUT GIT IN THE
+// STORE: a negation, an interdiction word, a nothing-as-object clause, a
+// possessive assignment away from the seat, an exclusivity or belonging claim
+// naming the sync as the actor, a passive-agent clause excluding the seat, an
+// unscoped routing claim, a deference or remit clause, or a bare-noun list,
+// each of them required to carry one of the store's own objects inside the
+// same window.
+// That object requirement is what keeps the predicate off prohibitions about
+// the seat generally, which are ordinary prose all over this kit: "the seat
+// does not touch a peer registry entry" and "the seat may not run the suite
+// while another session holds the slot" are sentences the seat's contracts
+// need, and a predicate that reads them as a reinstated git bar reds on
+// healthy text and gets weakened by whoever hits it. The board counts as such
+// an object only beside a publishing verb, because touching or reading a
+// board is not a git act.
+//
+// What the controls below demonstrate, stated at their real strength. There
+// are nine of them, and none of them demonstrates reach. Every alternative
+// this predicate carries enumerates the trigger words of the form it selects,
+// so any sentence the predicate matches spells at least one phrasing the
+// predicate was handed, and each control below is therefore a literal control:
+// it proves the instrument still executes over the form it exercises, and it
+// proves nothing about what the predicate would catch beyond that form. Reach
+// is OPEN and unmeasured here rather than enumerated, and the honest reading
+// of the sweep below is that the enumerated forms are swept and the class of
+// seat-git bars is not. A list of the forms that escape cannot be written
+// either, since the forms that escape are exactly the ones nobody thought to
+// enumerate, so the alternatives grow whenever a live escape is found and the
+// coverage claim never grows with them. The sweep reports what its own
+// predicate matched over the class it walks, and it is never a clean-class
+// result.
+const SEAT_STORE_OBJECT = '(?:git|the store|the memory store)';
+// The board is a git object only where a publishing verb governs it.
+const SEAT_PUBLISH_OBJECT = '(?:git|the store|the memory store|the board)';
+const SEAT_GIT_VERB = '(?:runs?|running|ran|touch(?:es|ing)?|assembles?|commits?'
+    + '|committing|stages?|staging|push(?:es)?|pushing)';
+const SEAT_PUBLISH_VERB = '(?:commits?|committing|stages?|staging|push(?:es)?|pushing)';
+const SEAT_NEGATION = '(?:may|must|does|do|can|could|will|would|shall|is|are)'
+    + '\\s+not\\s+(?:to\\s+)?';
+const SEAT_BAR_NOUN = '(?:staging|committing|pushing|commit|push)';
+const SEAT_GIT_BAR = new RegExp([
+    '\\b(?:runs?|running|ran)\\s+no\\s+git\\b',
+    '\\bno\\s+git\\s+(?:in the store|of its own|at all|to check)\\b',
+    '\\bgit\\b[^.]{0,60}?\\bbeing closed to\\b',
+    // A negated verb carrying one of the store's objects, which is what
+    // catches a bar whose subject is a pronoun ("it may not run git here").
+    SEAT_NEGATION + SEAT_GIT_VERB + '\\b[^.]{0,60}?\\b' + SEAT_STORE_OBJECT + '\\b',
+    SEAT_NEGATION + SEAT_PUBLISH_VERB + '\\b[^.]{0,60}?\\b' + SEAT_PUBLISH_OBJECT + '\\b',
+    '\\bis not the one\\b[^.]{0,60}?\\b' + SEAT_GIT_VERB + '\\b[^.]{0,40}?\\b'
+        + SEAT_PUBLISH_OBJECT + '\\b',
+    '\\bnever\\s+' + SEAT_GIT_VERB + '\\b[^.`]{0,40}?\\b' + SEAT_STORE_OBJECT + '\\b',
+    '\\bnever\\s+' + SEAT_PUBLISH_VERB + '\\b[^.`]{0,40}?\\b' + SEAT_PUBLISH_OBJECT + '\\b',
+    '\\bneither\\s+' + SEAT_GIT_VERB + '\\b[^.]{0,40}?\\bnor\\s+' + SEAT_GIT_VERB
+        + '\\b[^.]{0,40}?\\b' + SEAT_PUBLISH_OBJECT + '\\b',
+    '\\bwithout\\s+(?:ever\\s+)?(?:running|committing|staging|pushing|touching)\\b'
+        + '[^.]{0,60}?\\b' + SEAT_STORE_OBJECT + '\\b',
+    '\\bleaves?\\b[^.]{0,30}?\\b' + SEAT_STORE_OBJECT + '\\b[^.]{0,40}?'
+        + '\\bto\\s+the\\s+sync\\b',
+    // The possessive assignment, which is this corpus's own idiom for the bar
+    // and carries no negated verb at all ("git in the store is the sync's job
+    // and not the seat's").
+    '\\b' + SEAT_PUBLISH_OBJECT + '\\b[^.]{0,80}?\\b(?:not|never|rather than)\\s+the\\s+'
+        + '(?:seat|coordinator)\'s\\b',
+    '\\b' + SEAT_PUBLISH_OBJECT + '\\b[^.]{0,60}?\\b(?:is|are|stays?|remains?)'
+        + '\\s+the\\s+sync\'s\\b',
+    '\\b(?:barred|forbidden|prohibited|off[- ]limits|bars|forbids?|prohibits?|refrains?)'
+        + '\\b[^.]{0,60}?\\b' + SEAT_PUBLISH_OBJECT + '\\b',
+    '\\b(?:git|the store)\\b[^.]{0,60}?\\b(?:is|are|stays?|remains?)\\s+'
+        + '(?:off[- ]limits|barred|forbidden|prohibited|closed|reserved)\\b',
+    // The nothing-as-object form, which carries no negation word at all
+    // ("it stages nothing and commits nothing in the store").
+    '\\b(?:stages?|commits?|pushes)\\s+nothing\\b[^.]{0,60}?\\b'
+        + SEAT_PUBLISH_OBJECT + '\\b',
+    '\\b' + SEAT_PUBLISH_OBJECT + '\\b[^.]{0,60}?\\b(?:stages?|commits?|pushes)'
+        + '\\s+nothing\\b',
+    '\\bruns\\s+none\\b[^.]{0,60}?\\b' + SEAT_PUBLISH_OBJECT + '\\b',
+    '\\b' + SEAT_PUBLISH_OBJECT + '\\b[^.]{0,60}?\\bruns\\s+none\\b',
+    // The exclusivity form, which bars the seat by naming the sync as the only
+    // actor and need not name the seat at all ("only the sync commits and
+    // pushes the store", "the store's committer is the sync, and only the
+    // sync").
+    '\\bonly\\s+the\\s+sync\\b[^.]{0,80}?\\b' + SEAT_PUBLISH_OBJECT + '\\b',
+    '\\b' + SEAT_PUBLISH_OBJECT + '\\b[^.]{0,80}?\\bonly\\s+the\\s+sync\\b',
+    // The belonging form ("git in the store belongs to the sync"). Its sibling
+    // spelling, "the store is the sync's to commit", is already carried by the
+    // possessive alternative above.
+    '\\b' + SEAT_PUBLISH_OBJECT + '\\b[^.]{0,60}?\\b(?:belongs?|belonging)\\s+to\\s+the\\s+sync\\b',
+    // The passive-agent form, which names the actor after the verb and the
+    // seat only in the exclusion ("the store is committed by the sync rather
+    // than by the seat"), in both orders, since the object reads as the agent
+    // in the half of them that spells "committed by the store".
+    '\\b' + SEAT_PUBLISH_OBJECT + '\\b[^.]{0,60}?\\b(?:committed|pushed|staged)\\s+by\\b'
+        + '[^.]{0,60}?\\b(?:rather\\s+than|not)\\s+by\\s+the\\s+(?:seat|coordinator)\\b',
+    '\\b(?:committed|pushed|staged)\\s+by\\s+' + SEAT_PUBLISH_OBJECT
+        + '\\b[^.]{0,60}?\\b(?:rather\\s+than|not)\\s+by\\s+the\\s+(?:seat|coordinator)\\b',
+    // The routing form with nothing scoping it to a read. Routing stated over
+    // a git or store object at large is the retired bar under another name,
+    // where routing a read of the store's own configuration and history is the
+    // shipped standing sentence, so the window is tempered against that
+    // qualifier rather than left to select both.
+    '\\b' + SEAT_PUBLISH_OBJECT + '\\b(?:(?!history)[^.]){0,80}?'
+        + '\\broutes?\\s+rather\\s+than\\s+performs\\b',
+    // Deference and remit, which bar by naming where the work belongs or how
+    // far the seat reaches rather than by negating any verb.
+    '\\bdefers?\\s+to\\s+the\\s+sync\\b[^.]{0,60}?\\b' + SEAT_STORE_OBJECT + '\\b',
+    '\\bno\\s+business\\b[^.]{0,60}?\\b' + SEAT_STORE_OBJECT + '\\b',
+    '\\b' + SEAT_STORE_OBJECT + '\\b[^.]{0,60}?\\b(?:is|are)\\s+beyond\\s+the\\s+'
+        + '(?:seat|coordinator)\'s\\b',
+    // The bare-noun list, which is the retired bar's own shape with the verbs
+    // dropped ("no staging, no commit, no push").
+    '\\bno\\s+' + SEAT_BAR_NOUN + '\\b[^.]{0,40}?\\bno\\s+' + SEAT_BAR_NOUN
+        + '\\b[^.]{0,60}?\\b' + SEAT_PUBLISH_OBJECT + '\\b',
+    '\\b' + SEAT_PUBLISH_OBJECT + '\\b[^.]{0,60}?\\bno\\s+' + SEAT_BAR_NOUN
+        + '\\b[^.]{0,40}?\\bno\\s+' + SEAT_BAR_NOUN + '\\b',
+    '\\bno\\s+(?:staging|committing|pushing)\\b[^.]{0,60}?\\b'
+        + SEAT_PUBLISH_OBJECT + '\\b',
+    '\\b' + SEAT_PUBLISH_OBJECT + '\\b[^.]{0,60}?\\bno\\s+(?:staging|committing|pushing)\\b',
+].join('|'), 'i');
+
+test('the coordinator skill states no git prohibition and carries the workload principle in its place', () => {
+    const body = readRepoFile('plugins/claude-kit/skills/coordinator/SKILL.md');
+    // Nine literal controls, one per enumerated form, each spelling a phrasing
+    // the predicate was handed. Each proves the instrument still executes over
+    // the form it names; none of them establishes reach, per the accounting
+    // above.
+    for (const [control, what] of [
+        ['The seat writes the file and runs no git in the store, the sync being '
+            + 'the store\'s only committer.', 'the negated-verb form'],
+        ['Committing and pushing the store is the sync\'s alone, never the '
+            + 'seat\'s.', 'the possessive assignment away from the seat'],
+        ['The coordinator neither commits nor pushes the store.',
+            'the neither/nor pair'],
+        ['The coordinator may not push the board it wrote.',
+            'a negated publishing verb over the board'],
+        // The mutation a later editor of the coordinator's own durability
+        // override would most plausibly write: its positive standing sentence
+        // turned back into a bar, present and grammatical where it would land.
+        ['The seat is not to run git in the store, reading the store\'s own '
+            + 'history being work this seat routes rather than performs.',
+            'the standing sentence turned back into a bar'],
+        ['Only the sync commits and pushes the store.', 'the exclusivity form'],
+        ['Git in the store belongs to the sync.', 'the belonging form'],
+        ['The store is committed by the sync rather than by the seat.',
+            'the passive-agent form'],
+        // The routing claim stated over git at large rather than over a read,
+        // which is the retired bar under another name and the mutation the
+        // durability override's own standing sentence is nearest to.
+        ['Every git act in the store is work this seat routes rather than performs.',
+            'the routing form with no read scoping it'],
+    ]) {
+        assert.ok(SEAT_GIT_BAR.test(control), 'the sweep\'s predicate no longer '
+            + 'selects a reinstated seat-git prohibition in ' + what + ' ("'
+            + control + '"), so its silence over the shipped kit means nothing');
+    }
+    // Prohibitions about the seat that are not about git in the store, which
+    // the seat's own contracts need and which a predicate reading them as a
+    // git bar would red on. The first is read from the shipped file rather
+    // than copied here, so it cannot drift from the sentence it is about.
+    const standingSentence = sentenceStartingWith(body,
+        'The seat may run git in the store exactly as any other session',
+        'the coordinator skill\'s statement of the seat\'s git standing');
+    for (const negative of [
+        standingSentence,
+        'The seat does not touch a peer registry entry.',
+        'The seat may not run the suite while another session holds the slot.',
+        'The seat never touches the board of another machine.',
+    ]) {
+        assert.ok(!SEAT_GIT_BAR.test(negative), 'the sweep\'s predicate now '
+            + 'selects a sentence that bars the seat from nothing in the store '
+            + '("' + negative + '"), so its hits are prohibitions about the seat '
+            + 'at large rather than prohibitions about git in the store');
+    }
+
+    // The scope is the class, every shipped kit markdown file the walker
+    // enumerates, because a sweep over one file goes green over the bar
+    // reinstated in the file nobody listed.
+    const barred = [];
+    for (const full of shippedKitMarkdown()) {
+        const shipped = path.relative(path.join(__dirname, '..', 'plugins',
+            'claude-kit'), full).split(path.sep).join('/');
+        fs.readFileSync(full, 'utf8').split(/\r?\n/).forEach((line, i) => {
+            if (SEAT_GIT_BAR.test(line)) {
+                barred.push(shipped + ':' + (i + 1) + ' ' + line.trim().slice(0, 160));
+            }
+        });
+    }
+    assert.deepStrictEqual(barred, [], 'a shipped kit surface bars the seat from '
+        + 'git, or from staging, committing or pushing the store, again. The seat '
+        + 'holds no such bar: it runs under whatever governs every other session '
+        + 'on this machine, and the working shape the retired bar hardened around '
+        + 'is carried by the board-write rule\'s workload principle instead:\n'
+        + barred.join('\n'));
+
+    // The exception the prohibition carried goes with the prohibition, and it
+    // goes from every shipped kit surface rather than from the two files that
+    // stated the rule: an exception keyed on a record and left standing over a
+    // rule no skill states reads as a grant of its own wherever it sits, and
+    // the rail's own fail-closed clause leaves an instance whose owning
+    // contract states no path resolving to nothing. The operator-tier record
+    // these phrases name is the operator's to delete and is in the store, so a
+    // seat that meets one of them and resolves it finds a live switch whose
+    // bounds live nowhere. The scope is therefore the class, every shipped kit
+    // markdown file the walker enumerates, because a sweep over named files
+    // goes green over the copy in the file nobody listed.
+    //
+    // This is an absence check twice over, so both silences are earned before
+    // either is read. The walker's enumeration carries a floor, because a
+    // walker returning an empty list passes this loop vacuously and reads
+    // exactly like a clean tree; and the phrase test is run against a surface
+    // that does hold one of the phrases, so a test that had stopped answering
+    // speaks here rather than at the tree. Its residue is the phrases
+    // themselves: the three are the exception's shipped spellings, and an
+    // exception reinstated in words none of them carries, "the operator-tier
+    // record the role skill's rail names" among them, passes this loop.
+    const exceptionPhrases = ['memory-store-pushes-need-no-permission',
+        'store-push', 'sanctioned store path'];
+    const carriesException = (surface) => exceptionPhrases
+        .filter((phrase) => surface.includes(phrase));
+    assert.deepStrictEqual(carriesException('The seat publishes by the '
+        + 'sanctioned store path this exception names.'),
+        ['sanctioned store path'], 'the retired-exception test '
+        + 'no longer answers on a surface that does hold the exception, so its '
+        + 'silence over the shipped kit means nothing');
+    const surfaces = shippedKitMarkdown();
+    // The floor is set near the population rather than far below it, since a
+    // floor a walker can meet while dropping half the class reads exactly like
+    // a clean sweep. It sits a little under the real count so that retiring one
+    // surface is not a red, and the structural check beside it is what catches
+    // a walker that lost a whole directory while still clearing the number:
+    // every skill directory ships a SKILL.md, so every one of them has to
+    // appear in what the walker returned.
+    assert.ok(surfaces.length >= 40, 'the shipped-kit-markdown walker enumerated '
+        + 'only ' + surfaces.length + ' files, which is fewer than this kit '
+        + 'ships, so the sweeps that read its silence swept next to nothing');
+    const skillsDir = path.join(__dirname, '..', 'plugins', 'claude-kit', 'skills');
+    const missedSkillDirs = fs.readdirSync(skillsDir, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => entry.name)
+        .filter((name) => !surfaces.some((full) => full
+            === path.join(skillsDir, name, 'SKILL.md')));
+    assert.deepStrictEqual(missedSkillDirs, [], 'the shipped-kit-markdown walker '
+        + 'returned no SKILL.md for a directory that ships one, so the sweeps '
+        + 'that read its silence are silent about those skills rather than '
+        + 'clean over them:\n' + missedSkillDirs.join('\n'));
+    const carryingException = [];
+    for (const full of surfaces) {
+        const shipped = path.relative(path.join(__dirname, '..', 'plugins',
+            'claude-kit'), full).split(path.sep).join('/');
+        for (const phrase of carriesException(fs.readFileSync(full, 'utf8'))) {
+            carryingException.push(shipped + ' ("' + phrase + '")');
+        }
+    }
+    assert.deepStrictEqual(carryingException, [], 'a shipped kit surface '
+        + 'carries the retired store-git exception again, keying a grant on a '
+        + 'memory record against a prohibition no skill states. The record is '
+        + 'in the store, so a seat that resolves one of these finds a live '
+        + 'switch whose bounds live nowhere:\n' + carryingException.join('\n'));
+
+    // The principle, read in the paragraph the prohibition stood in rather
+    // than anywhere in the file: a sentence that drifted out of the
+    // board-write rule satisfies a whole-file match while the pass reading
+    // that rule never reaches it.
+    const boardWrite = sliceBetween(body, '**The board write.**', '\n',
+        'the coordinator skill\'s board-write rule');
+    assert.ok(boardWrite.includes('the never-tasks-directly rule\'s own shape '
+        + 'and no second rule beside it: the seat dispatches nothing, it '
+        + 'produces artifacts and asks'),
+        'the coordinator skill\'s board-write rule no longer states the '
+        + 'workload principle the retired git prohibition hardened around, in '
+        + 'the verbs the never-tasks-directly rule itself uses, so the rule '
+        + 'either reads as a bare description of a file write or restates that '
+        + 'rule loosely enough to stand beside it as a second, weaker one');
+
+    // The hand-publish route, pinned as the route plus the sentence that
+    // scopes the three guards to it. The route is the screened one: the sync
+    // script by hand keeps the single-flight lock, the outbound leak probes
+    // and the inbound tree screen, where the bare pair keeps none of the
+    // three. All three belong to that one run rather than to the store's
+    // channel, since the channel supplies none of them and the bare pair goes
+    // through the same channel carrying none, so the scoping sentence is what
+    // stops a reader taking them for a protection any hand publish inherits.
+    // Widen that sentence back to the channel and every named guard stays in
+    // place while the rule states a protection nothing supplies. The hook's
+    // own two protections are pinned beside it for the inverse edit, the one
+    // that reads the hand run as equivalent to the unattended spawn.
+    for (const [phrase, what] of [
+        ['`doctor/sync-store.ps1` with an explicit `-StoreRoot`',
+            'the screened path a seat closes the lag by'],
+        ['the same script the session-start hook spawns, though not the same run',
+            'the hand run stated as the same script rather than the same path'],
+        ['Two protections the hook puts around that spawn do not come with a '
+            + 'hand run', 'the two protections a hand run does not inherit'],
+        ['it takes no lock, runs no leak probe, and runs no inbound screen at all',
+            'what the bare git pair skips'],
+        ['is the outbound half', 'the memory-system gate stated at what it covers'],
+        ['None of the three is a privilege of this seat, and none is a property '
+            + 'of the store\'s channel either: each belongs to that one run',
+            'the sentence scoping those guards to the run that performs them '
+            + 'rather than to this seat or to the channel'],
+        ['Off Windows the screened run is not on offer at all',
+            'the off-Windows case, where the screened run has no runner'],
+    ]) {
+        assert.ok(boardWrite.includes(phrase), 'the coordinator skill\'s '
+            + 'board-write rule no longer carries ' + what + ' ("' + phrase
+            + '"), so a seat closing its own visibility lag is pointed at a '
+            + 'hand path that holds no lock and screens neither direction, or '
+            + 'reads guards that one run performs as protections the channel '
+            + 'supplies to every hand publish');
+    }
+
+    // The seat's git standing, which is the sentence the removal installed and
+    // the one a later editor would most plausibly walk back. Pinned with the
+    // clause that scopes the routing to reads, since routing stated over the
+    // whole of git is the retired bar under another name.
+    const durability = sliceBetween(body,
+        '- **Durable, and committed by the store\'s own sync as the automatic '
+        + 'committer.**', '\n',
+        'the coordinator skill\'s durability override');
+    for (const [phrase, what] of [
+        ['The seat may run git in the store exactly as any other session on '
+            + 'this machine may', 'the seat\'s git standing'],
+        ['reading the store\'s own configuration and history is work it routes '
+            + 'rather than performs', 'the routing choice at the one scope the '
+            + 'file states it in, which the cold-start step and the '
+            + 'state-file read both cite rather than restate'],
+        ['Publishing its own board by hand is the separate case, open to this '
+            + 'seat as to any other session', 'the hand publish left open to '
+            + 'this seat'],
+    ]) {
+        assert.ok(durability.includes(phrase), 'the coordinator skill\'s '
+            + 'durability override no longer states ' + what + ' ("' + phrase
+            + '"), so the seat either reads as barred from git in the store '
+            + 'again or cannot tell from the shipped text whether it may '
+            + 'publish its own board');
+    }
+
+    // The contested-seat anchor's premise. The freeze covers the write half
+    // alone, so the two reasons that reach the read half are pinned beside it:
+    // a seat that may read the store's history and is told only that the
+    // freeze forbids a board act has been given a reason that does not reach
+    // what it is about to do.
+    const contested = sliceBetween(body, '**A contested seat freezes the board.**',
+        '\n', 'the coordinator skill\'s contested-seat rule');
+    for (const [phrase, what] of [
+        ['Handing over either of them is out for three reasons rather than one',
+            'the sentence scoping the reasons to both versions'],
+        ['is a change to the board, which the freeze forbids while the contest '
+            + 'stands', 'the freeze, which reaches the write half'],
+        // Anchored on the handing-over premise rather than on the routing
+        // rule alone, which this paragraph also cites where it explains the
+        // freeze's own fail-open direction.
+        ['naming one of two versions authoritative is settling the contest, '
+            + 'which is the seat ruling on its own collision', 'the routing '
+            + 'rule, which reaches the read half'],
+        ['reading the store\'s own history is work this seat routes rather '
+            + 'than performs under the durability override above',
+            'the routes-rather-than-performs choice, which reaches the read half'],
+    ]) {
+        assert.ok(contested.includes(phrase), 'the coordinator skill\'s '
+            + 'contested-seat rule no longer carries ' + what + ' ("' + phrase
+            + '"), so handing the operator a version rests on a freeze that '
+            + 'reaches a restore and not a read, and the seat may read');
+    }
+
+    // The rail's instance list on the other side of the removal. Delegation
+    // stays the first instance, and the rail's own lead-in stays with it,
+    // since an instance left standing under a rewritten lead-in is an
+    // instance of nothing; the loop above is what asserts that no dead second
+    // one was left behind.
+    const role = readRepoFile('plugins/claude-kit/skills/role/SKILL.md');
+    for (const [phrase, what] of [
+        ['The delegation model is the rail\'s first instance rather than a one-off',
+            'delegation read as the rail\'s first instance'],
+        ['A standing operational grant is a mechanism whose entire scope, '
+            + 'exclusions, and procedure a shipped skill states',
+            'the rail\'s own lead-in, which is what an instance is an instance of'],
+    ]) {
+        assert.ok(role.includes(phrase), 'the role skill no longer carries '
+            + what + ' ("' + phrase + '"), so the rail either names an instance '
+            + 'of nothing or has lost the one instance it still owns');
+    }
+
+    for (const rel of ['plugins/claude-kit/skills/coordinator/SKILL.md',
+        'plugins/claude-kit/skills/role/SKILL.md']) {
+        assertTrackedInIndex(rel);
+    }
+});
+
 // The box-budget brief clause in executing-work's Dispatch Brief template is
 // a deliberate second copy of the role skill's claim contract: the clause is
 // the only copy a dispatched subagent receives, since an agent inherits no
@@ -1192,14 +1964,11 @@ test('the box-budget brief clause agrees with the role skill\'s claim contract a
         + 'sentence ("write the claim with its ... fields" through the '
         + 'completion delete), so the clause side of the field-set '
         + 'comparison has no sentence to derive from');
-    // The token class admits a digit and a lowercase tail after the leading
-    // letter, wider than today's field names on purpose: a derivation
-    // narrower than the tokens it must see is how a future field such as
-    // `Retry2:` goes invisible to BOTH sides at once, a one-sided addition
-    // of it then passing green, which is the class this comparison exists
-    // to catch.
-    const claimFieldSet = (text) => [...new Set(
-        text.match(/`[A-Za-z][A-Za-z0-9-]*:`/g) || [])].sort();
+    // The shared derivation, hoisted to module scope so this pin and the
+    // registry-entry pin over docs/architecture.md read a field name the
+    // same way; the token class and the reason for its width are stated
+    // there.
+    const claimFieldSet = backtickedFieldSet;
     const roleFields = claimFieldSet(
         roleSection.slice(roleShapeStart, roleShapeEnd));
     const clauseFields = claimFieldSet(
@@ -1292,6 +2061,49 @@ test('the box-budget brief clause agrees with the role skill\'s claim contract a
         + 'protocol retired as a verdict: the clause instructs on claims and '
         + 'contention naming only, and a process-list instruction in the '
         + 'brief is a poll-as-clearance reading arriving by another name');
+});
+
+// The pin above derives the claim's field set and so stays green whatever
+// either surface says about where a field's value comes from, which is the
+// half this one covers: a writer and a reader sharing one value, held to
+// each other rather than each to its own literal. The write side is that
+// `Started:` is resolved from the clock at the moment of the write, and the
+// read side is that a live claim is aged by the file rather than by that
+// line, and the two are one rule, since aging by the line is what makes a
+// composed value worth composing. Each side is asserted on both surfaces,
+// because a rule stated in the contract and dropped from the brief clause
+// is a rule no dispatched subagent ever receives.
+test('the write-time resolution of a claim\'s Started and the read side\'s aging by the file are on both surfaces', () => {
+    const executingWork = fs.readFileSync(path.join(__dirname, '..', 'plugins',
+        'claude-kit', 'skills', 'executing-work', 'SKILL.md'), 'utf8');
+    const start = executingWork.indexOf('The standing box-budget clause');
+    const end = executingWork.indexOf('The two-question grant audit');
+    assert.ok(start !== -1 && end > start, 'the box-budget clause slice has no '
+        + 'edges, so this pin would read a region that is not the brief clause');
+    const clause = collapseWhitespace(executingWork.slice(start, end));
+    // The role side is the claim-file section, not the whole file. The
+    // registry entry's own paragraphs state a clock-at-the-write rule for a
+    // different field on a different artifact, so a pin reading the whole
+    // body is satisfied by a sentence that has nothing to do with the claim
+    // and stays green through the claim rule's removal.
+    const roleBody = sliceBetween(
+        fs.readFileSync(path.join(__dirname, '..', 'plugins', 'claude-kit',
+            'skills', 'role', 'SKILL.md'), 'utf8'),
+        '## The claim file', '\n## The takeover ritual',
+        'the role skill\'s claim-file section');
+
+    for (const [name, text] of [['the brief clause', clause], ['the role contract', roleBody]]) {
+        assert.ok(/`Started:`[^.]{0,140}\bclock\b[^.]{0,80}\bat the moment\b[^.]{0,30}\bwrit/.test(text)
+            || /`Started:`[^.]{0,140}\bat the moment\b[^.]{0,80}\bclock\b/.test(text),
+            name + ' no longer states that a claim\'s Started is read from the '
+            + 'clock at the write, so the value it describes may be composed '
+            + 'before the write and carried in, which is the defect the field '
+            + 'was taken out of a writer\'s hands to remove');
+        assert.ok(/modification time/.test(text),
+            name + ' no longer names the file\'s modification time, so the read '
+            + 'side has no machine-written comparator and ages a live claim by '
+            + 'a line the claim\'s own writer chose');
+    }
 });
 
 // The hostile-boundary reuse step in executing-work's Dispatch Brief template
@@ -2632,6 +3444,18 @@ function sliceBetween(body, startMark, endMark, where) {
     return collapseWhitespace(body.slice(start, end));
 }
 
+// One sentence of a shipped file, read from the file rather than copied into
+// a test, so a control built on it cannot drift from the prose it is about.
+function sentenceStartingWith(body, opening, where) {
+    const start = body.indexOf(opening);
+    assert.ok(start !== -1, where + ' no longer opens with the wording this pin '
+        + 'reads ("' + opening + '"), so the sentence it controls on is gone');
+    const end = body.indexOf('.', start + opening.length);
+    assert.ok(end > start, where + ' runs past the end of its own paragraph, so '
+        + 'the sentence has no far edge');
+    return collapseWhitespace(body.slice(start, end + 1));
+}
+
 function executingWorkBody() {
     return fs.readFileSync(path.join(__dirname, '..', 'plugins', 'claude-kit',
         'skills', 'executing-work', 'SKILL.md'), 'utf8');
@@ -3000,8 +3824,8 @@ test('session-start.js\'s block count is stated the same by the code, its header
     const hook = fs.readFileSync(hookPath, 'utf8');
 
     const emitters = (hook.match(/\bblocks\.push\(/g) || []).length;
-    assert.strictEqual(emitters, 13,
-        'session-start.js now holds ' + emitters + ' blocks.push sites rather than 13. '
+    assert.strictEqual(emitters, 15,
+        'session-start.js now holds ' + emitters + ' blocks.push sites rather than 15. '
         + 'Re-derive how many distinct blocks that is (an emitter pair that is the '
         + 'if/else of one block counts once), then move this pin, the hook\'s file '
         + 'header, and docs/architecture.md\'s SessionStart bullet together');
@@ -3013,8 +3837,8 @@ test('session-start.js\'s block count is stated the same by the code, its header
     // over the count the source actually derives is what each surface is
     // searched for, so a surface that fails is one stating a different count
     // rather than one this pin cannot read.
-    assert.strictEqual(word, NUMBER_WORDS[11],
-        'the derived count is no longer eleven, so the two prose surfaces below '
+    assert.strictEqual(word, NUMBER_WORDS[13],
+        'the derived count is no longer thirteen, so the two prose surfaces below '
         + 'state a stale figure until they are moved with it');
 
     // The header is a comment block, so it is read with its line markers
@@ -3440,5 +4264,553 @@ test('every kit procedure performing a git integration names that action\'s lane
         assert.ok(count > 0, 'the exemption for ' + key + ' matches nothing in '
             + 'the tree, so it is a stale entry silently widening what this '
             + 'sweep skips. Remove it, or point it at the paragraph it means');
+    }
+});
+
+// The moment-pin convention has one owning site, the moment-pin bullet of the
+// testing-discipline skill, and every other surface points at it. This pin is
+// what makes that stick, because a restatement drifts silently: two copies of
+// one convention are never read together, so each is internally coherent while
+// the pair disagrees, and the disagreement surfaces only when a reader happens
+// to hold both.
+//
+// Two halves, covering different failures. The restatement half is a structural
+// sweep for the pin form's own tail phrase, so a new surface that copies the
+// convention reddens here without anyone adding it to a list. Two limits on its
+// reach. It sweeps the shipped markdown under plugins/claude-kit and nothing
+// else, so a copy in a memory record, under docs/, or anywhere outside that
+// root is unswept and this check is silent about it. And its reach is the copy
+// class rather than the paraphrase class: a surface restating the convention in
+// words of its own carries no phrase this predicate can see. The pointer half
+// is an enumeration of the surfaces that carry the duty at their own point of
+// action, counted per duty site, so a pointer rewritten back into a restatement
+// fails the first half and a pointer deleted fails the second.
+const MOMENT_PIN_PHRASE = 'under what contention';
+const MOMENT_PIN_OWNER = 'skills/testing-discipline/SKILL.md';
+const MOMENT_PIN_EXPIRY_OWNER = 'skills/memory-system/SKILL.md';
+const MOMENT_PIN_POINTER = 'moment-pin bullet';
+
+function momentPinPhraseHits(body) {
+    return body.split(MOMENT_PIN_PHRASE).length - 1;
+}
+
+test('the moment-pin convention has one owning site and its other surfaces point at it', () => {
+    // The instrument speaks before its silence is read. The control is a body
+    // holding a restatement in the shape one takes here, the convention's own
+    // prose lifted into another surface's sentence. It is a function control
+    // rather than a coverage one, since it carries the phrase the predicate was
+    // handed, so it proves the sweep counts and says nothing about a paraphrase,
+    // which is the reach named above.
+    assert.strictEqual(momentPinPhraseHits('A measured figure carries what '
+        + 'produced it, when, on which machine, and under what contention, so a '
+        + 'later reader can place it.'), 1,
+        'the moment-pin sweep does not see a restatement it is pointed straight '
+        + 'at, so its silence over the tree would mean nothing');
+
+    // The pointers name a moment-pin bullet, so the owner has to carry that
+    // term or every pointer aims at a name its target does not answer to.
+    assert.match(fs.readFileSync(path.join(__dirname, '..', 'plugins',
+        'claude-kit', ...MOMENT_PIN_OWNER.split('/')), 'utf8'), /moment-pin/,
+        MOMENT_PIN_OWNER + ' does not use the term its pointers name it by, so '
+        + 'a reader following one arrives at a file that answers to no such '
+        + 'bullet');
+
+    // The same far-end reach for the expiry rule, which the owning bullet and
+    // both reviewer charters defer their machine comparison to: the epoch
+    // record and the rule that reads a figure against it both have to still be
+    // there, or three pointers aim at nothing and stay green doing it.
+    const expiryOwner = fs.readFileSync(path.join(__dirname, '..', 'plugins',
+        'claude-kit', ...MOMENT_PIN_EXPIRY_OWNER.split('/')), 'utf8');
+    for (const [pattern, what] of [
+        [/machine configuration epoch/i, 'the machine configuration epoch record'],
+        [/read against that date before it is leaned on/i, 'the rule that reads a '
+            + 'recorded measurement against that epoch'],
+    ]) {
+        assert.match(expiryOwner, pattern, MOMENT_PIN_EXPIRY_OWNER + ' no longer '
+            + 'states ' + what + ', which the moment-pin bullet and both reviewer '
+            + 'charters send their readers to, so the expiry comparison is '
+            + 'delegated to a rule that is not there');
+    }
+
+    const carriers = [];
+    for (const full of shippedKitMarkdown()) {
+        const rel = path.relative(path.join(__dirname, '..', 'plugins', 'claude-kit'),
+            full).split(path.sep).join('/');
+        const hits = momentPinPhraseHits(fs.readFileSync(full, 'utf8'));
+        if (hits > 0) carriers.push(rel + ' (' + hits + ')');
+    }
+    assert.deepStrictEqual(carriers, [MOMENT_PIN_OWNER + ' (1)'],
+        'the moment-pin convention is stated in full at a surface other than its '
+        + 'owner, or at the owner more than once. Every mention outside the '
+        + 'moment-pin bullet of the testing-discipline skill is a pointer at it '
+        + 'and never a restatement, because two copies of one convention are '
+        + 'never read together and so drift without anyone seeing it. This sweep '
+        + 'reads the shipped markdown under plugins/claude-kit only, so its '
+        + 'silence means no restatement under that root rather than none '
+        + 'anywhere. Carriers found: ' + carriers.join(', '));
+
+    // One hit per duty site, not one per file: a file-wide includes() lets two
+    // of executing-work's three sites be deleted with the check still green.
+    for (const [parts, sites, why] of [
+        [['skills', 'executing-work', 'SKILL.md'], 3, 'its gate-reporting step, '
+            + 'its interim board entry and its Chapter format each record '
+            + 'measured figures, so each of the three names the owner rather '
+            + 'than stating the form'],
+        [['agents', 'adversarial-reviewer.md'], 1, 'the code reviewer checks this '
+            + 'convention and reads its form from the owner'],
+        [['agents', 'prose-reviewer.md'], 1, 'the document reviewer checks this '
+            + 'convention and reads its form from the owner'],
+    ]) {
+        const rel = ['plugins', 'claude-kit', ...parts].join('/');
+        const body = collapseWhitespace(fs.readFileSync(path.join(__dirname, '..',
+            'plugins', 'claude-kit', ...parts), 'utf8'));
+        const pointers = body.split(MOMENT_PIN_POINTER).length - 1;
+        assert.strictEqual(pointers, sites, rel + ' names the moment-pin bullet '
+            + 'of the testing-discipline skill ' + pointers + ' times where '
+            + sites + ' duty sites carry it. Fewer means a site has lost the duty '
+            + 'or taken the convention back onto its own authority; more means a '
+            + 'new site legitimately carries it and this expected count is what '
+            + 'to raise: ' + why);
+    }
+
+    // The charters' two directions are one clause on purpose, so neither reads
+    // as the whole, and the journey-ban direction has to carry the doctrine's
+    // own exemption or it convicts every append-only Chapter and archive in the
+    // tree. The epoch leg is pinned beside them because the convention delegates
+    // that comparison to these charters and to nothing else, so a charter that
+    // drops it leaves the duty stated in one skill and enforced nowhere.
+    for (const parts of [['agents', 'adversarial-reviewer.md'],
+        ['agents', 'prose-reviewer.md']]) {
+        const rel = ['plugins', 'claude-kit', ...parts].join('/');
+        const body = collapseWhitespace(fs.readFileSync(path.join(__dirname, '..',
+            'plugins', 'claude-kit', ...parts), 'utf8'));
+        assert.match(body, /append-only history is exempt/i, rel + ' states the '
+            + 'journey-ban direction without the exemption the doctrine states, so a '
+            + 'Chapter, an archive and a changelog, which are the journey by '
+            + 'design, are findings under it');
+        assert.match(body, /configuration epoch of the machine it was measured on/i,
+            rel + ' does not check a figure against the configuration epoch of the '
+            + 'machine it was measured on, so the expiry comparison the '
+            + 'memory-system skill states is delegated to a review that never '
+            + 'performs it');
+    }
+});
+
+// The recap skill's leash reading is a cross-surface claim in two directions.
+// The bullet states how many binding forms `kit-goal.js` composes, and it
+// ships a runnable invocation naming four exports of `kit-goal-lib.js`. Each
+// side is otherwise tested only against its own literal, which is the shape
+// the testing discipline names as earning a cross-component pin.
+//
+// The count leg is keyed on the binding ternary's own outcome literals rather
+// than on their full wording, because the testing-discipline skill's "What
+// never earns one" clause puts an exact-wording assert on stdout text out of
+// scope: the sentence is free to improve, so such an assert would redden on an
+// improvement and teach nobody anything. Its reach is therefore bounded and
+// worth stating: it counts the outcome literals that open with "bound to
+// session" or "unbound", so a fourth form spelled either way reddens it, and a
+// fourth form worded outside both stems does not.
+//
+// The export leg carries the rest of the weight. A skill telling a session to
+// call a function is asserting a mechanism, so the names are checked against
+// the module's live export table rather than against a substring of its
+// source, and a rename leaves a red here instead of a shipped instruction that
+// throws for whoever runs it.
+test('the recap skill\'s leash reading still matches the goal CLI it counts and the exports it calls', () => {
+    const recap = readRepoFile('plugins/claude-kit/skills/recap/SKILL.md');
+    // Bounded on the next bullet's lead rather than on the newline, so the
+    // absence assertion below cannot be defeated by rewrapping the bullet.
+    const bullet = sliceBetween(recap, '- **The leash**, read with',
+        '- **Any background run', 'the recap skill\'s leash-reading bullet');
+
+    // The writer side, counted at the CLI's own ternary.
+    const goalCli = readRepoFile('plugins/claude-kit/hooks/kit-goal.js');
+    const at = goalCli.indexOf('const binding = state.boundSession');
+    assert.ok(at !== -1, 'hooks/kit-goal.js no longer composes its status '
+        + 'binding in a `const binding = state.boundSession` ternary, so this '
+        + 'pin has nothing to count the recap skill\'s figure against');
+    const ternary = goalCli.slice(at,
+        at + goalCli.slice(at).search(/;\r?\n/) + 1);
+    const forms = ternary.match(/'(?:bound to session|unbound)[^']*'/g) || [];
+    assert.equal(forms.length, 3, 'hooks/kit-goal.js now composes '
+        + forms.length + ' binding forms, not three, while the recap skill '
+        + 'still tells a session the status prints one of three; the skill\'s '
+        + 'figure and the enumeration it feeds both move with this count');
+    assert.match(bullet, /one of three forms/,
+        'the recap skill no longer states the goal CLI\'s binding forms at '
+        + 'three, while hooks/kit-goal.js still composes exactly that many');
+
+    // The reader side. The bullet ships an invocation a session is told to
+    // run, so every name in it is checked against the live export table.
+    const lib = require(path.join(__dirname, '..', 'plugins', 'claude-kit',
+        'hooks', 'kit-goal-lib.js'));
+    for (const name of ['sessionHoldsLeash', 'isSessionIdShaped', 'readGoal',
+        'goalStateAbsent']) {
+        assert.ok(bullet.includes(name), 'the recap skill\'s leash bullet no '
+            + 'longer names ' + name + ', which its shipped invocation calls');
+        assert.equal(typeof lib[name], 'function', 'hooks/kit-goal-lib.js no '
+            + 'longer exports ' + name + ' as a function, so the invocation the '
+            + 'recap skill ships would throw for the session that ran it');
+    }
+
+    // The legs above read the invocation as text, and a text leg ships green
+    // on a command that throws: an unbalanced paren, a swapped argument order
+    // and a mis-spelled branch word are each invisible to a match and each
+    // fatal to the session told to run it. So this leg runs the shipped
+    // payload, lifted from the bullet's own backticks.
+    //
+    // What is stubbed is stated exactly, because a leg that overstates its own
+    // reach is worse than one that admits a gap: `readGoal` and
+    // `goalStateAbsent` are both replaced, so the branch ORDER is what these
+    // rows prove and not either predicate's own reading of the disk. The two
+    // filesystem-backed rows further down are what exercise the predicates,
+    // and between them they cover the one distinction the delivery rule binds
+    // on. Real here are the branch structure, `isSessionIdShaped` and
+    // `sessionHoldsLeash`.
+    const payload = (bullet.match(/node -e "(.*?)"`/) || [])[1];
+    assert.ok(payload, 'the recap skill\'s leash bullet no longer ships a '
+        + 'node -e invocation this pin can run');
+
+    // The module path is checked rather than assumed. A stub that ignores its
+    // argument would let a renamed or mistyped path ship green while every
+    // session running the command falls into the catch and reads `unknown`,
+    // which is the damaged-state reading and forces the leashed delivery in
+    // every project. So the specifier is captured, matched, and resolved
+    // against the real tree with the placeholder substituted.
+    const required = [];
+    const placement = (state, sessionId, absent = false) => {
+        let printed = null;
+        new Function('require', 'process', 'console', payload)(
+            (spec) => {
+                required.push(spec);
+                return Object.assign({}, lib, {
+                    readGoal: () => state,
+                    goalStateAbsent: () => absent,
+                });
+            },
+            { env: { CLAUDE_CODE_SESSION_ID: sessionId }, cwd: () => '.' },
+            { log: (v) => { printed = v; } });
+        return printed;
+    };
+    // Fabricated rather than live: a session id is a disclosure the recap
+    // bullet itself bars from a report, so the fixture does not carry a real
+    // one from whatever machine authored this.
+    const ME = '5f3a91c2-7d4e-4b18-9a06-2c8e5d1f0b73';
+    const OTHER = '11111111-2222-3333-4444-555555555555';
+    const PLAN = 'docs/plans/a_spec_v1.md';
+
+    // Absence first, because it is the reading the delivery paragraph exempts
+    // and the ordinary state of most projects. Folding it into unknown would
+    // put every unleashed project under the never-end-the-turn rule, so this
+    // leg is the one holding the two apart.
+    assert.equal(placement(null, ME, true), 'none armed', 'the recap skill\'s '
+        + 'shipped invocation no longer reports none armed for a project with '
+        + 'no goal state at all, so an unleashed project reads as a damaged '
+        + 'one and takes the delivery rule written for an armed leash');
+
+    // The specifier the invocation actually requires, checked now that a call
+    // has been made through the stub.
+    assert.match(required[0], /\/hooks\/kit-goal-lib\.js$/, 'the recap skill\'s '
+        + 'shipped invocation requires ' + required[0] + ', not the '
+        + 'hooks/kit-goal-lib.js it names its exports from; the command would '
+        + 'throw into its own catch and every project would read unknown');
+    const rootedSpec = required[0].replace('<plugin-root>',
+        path.join(__dirname, '..', 'plugins', 'claude-kit').split(path.sep)
+            .join('/'));
+    assert.doesNotThrow(() => require.resolve(rootedSpec), 'the module path in '
+        + 'the recap skill\'s shipped invocation does not resolve against this '
+        + 'tree once <plugin-root> is substituted, so the command throws for '
+        + 'whoever runs it and the catch reports unknown');
+
+    // Then the damaged states, which are not absence: a goal file that exists
+    // and cannot be read is unknown, and readGoal alone cannot tell the two
+    // apart because it returns null for both. The list shape is
+    // the plausible hand edit, `queue` beside it being a list, and it is what
+    // the goal CLI itself reads as unarmed at its own `typeof plan` guard.
+    for (const damaged of [null, {}, { plan: '' }, { plan: 5 },
+        { plan: [PLAN] }]) {
+        assert.equal(placement(damaged, ME), 'unknown', 'the recap skill\'s '
+            + 'shipped invocation reports a definite placement for a goal '
+            + 'state of ' + JSON.stringify(damaged) + ', which hooks/kit-goal.js '
+            + 'reads as unarmed; the two instruments the same bullet tells a '
+            + 'session to run would disagree, and the reader would act on the '
+            + 'placement');
+    }
+
+    // Then the id axis and the two placements, over both routes the predicate
+    // composes. The arming-route rows are why the bullet defers to
+    // sessionHoldsLeash rather than naming a bare id comparison.
+    for (const [state, sessionId, want, why] of [
+        [{ plan: PLAN, boundSession: ME }, '', 'unplaceable',
+            'this session\'s own id is absent'],
+        [{ plan: PLAN, boundSession: ME }, 'not-a-uuid', 'unplaceable',
+            'this session\'s own id is not session-shaped'],
+        [{ plan: PLAN, boundSession: ME }, ME, 'this session',
+            'the goal is bound to this session'],
+        [{ plan: PLAN, boundSession: OTHER }, ME, 'not this session',
+            'the goal is bound to another session'],
+        [{ plan: PLAN, armingSession: ME }, ME, 'this session',
+            'this session armed the goal and holds it by that route'],
+        [{ plan: PLAN, armingSession: OTHER }, ME, 'not this session',
+            'another session armed the goal'],
+    ]) {
+        assert.equal(placement(state, sessionId), want, 'the recap skill\'s '
+            + 'shipped invocation no longer reports ' + want + ' where ' + why
+            + ', so the recap delivers the wrong placement');
+    }
+
+    // Every row above stubs both state predicates, so it proves the branch
+    // ORDER and nothing about either predicate's own reading. These two rows
+    // run the real ones against a temporary tree, and they are what earns the
+    // absent-versus-damaged split: `readGoal` returns null for both states, so
+    // the distinction the delivery paragraph binds on rests entirely on
+    // `goalStateAbsent` telling them apart on disk.
+    const probeRoot = fs.mkdtempSync(path.join(require('os').tmpdir(),
+        'recap-leash-'));
+    try {
+        const unarmed = path.join(probeRoot, 'unarmed');
+        fs.mkdirSync(unarmed, { recursive: true });
+        const damagedDir = path.join(probeRoot, 'damaged');
+        fs.mkdirSync(path.join(damagedDir, '.kit'), { recursive: true });
+        fs.writeFileSync(path.join(damagedDir, '.kit', 'goal-state.json'),
+            '{ not json at all');
+
+        assert.equal(lib.readGoal(unarmed), null, 'hooks/kit-goal-lib.js '
+            + 'readGoal no longer returns null for a project with no goal '
+            + 'state, so the premise these two rows rest on has moved');
+        assert.equal(lib.readGoal(damagedDir), null, 'hooks/kit-goal-lib.js '
+            + 'readGoal no longer returns null for an unparseable goal state, '
+            + 'so it now separates absence from damage on its own and the '
+            + 'invocation\'s second predicate may be redundant');
+        assert.equal(lib.goalStateAbsent(unarmed), true, 'hooks/kit-goal-lib.js '
+            + 'goalStateAbsent no longer reports a project with no goal state '
+            + 'as absent, so the recap\'s none-armed reading collapses into '
+            + 'unknown and every unleashed project takes the leashed delivery');
+        assert.equal(lib.goalStateAbsent(damagedDir), false,
+            'hooks/kit-goal-lib.js goalStateAbsent reports an unparseable goal '
+            + 'state as absent, so a damaged leash reads as none armed and the '
+            + 'recap drops the delivery rule for a project that has one');
+    } finally {
+        fs.rmSync(probeRoot, { recursive: true, force: true });
+    }
+
+    // The placement defers rather than restating: sessionHoldsLeash composes
+    // the comparison, and the kit-goal skill owns what claims an unbound leash.
+    assert.match(bullet, /kit-goal skill's claim signals/,
+        'the recap skill\'s leash bullet no longer points at the kit-goal skill '
+        + 'for the claim signals, so a session holding the leash by the arming '
+        + 'route is reported unbound and freely claimable');
+    assert.ok(!/sameSessionId/.test(bullet),
+        'the recap skill\'s leash bullet names the id comparison helper '
+        + 'directly; sessionHoldsLeash is the composed answer over both the '
+        + 'bound-id and the recorded-arming-id routes, so an invocation built '
+        + 'on the bare comparison reports a session that holds the leash by '
+        + 'the arming route as not holding it');
+
+    assertTrackedInIndex('plugins/claude-kit/skills/recap/SKILL.md');
+});
+
+// The registry entry's shape is stated twice: the role skill's directory
+// contract owns it, and docs/architecture.md describes it for a reader who
+// never opens the skill. A shape restated on a sibling surface is an
+// invariant nothing checks, which a clean merge preserves and no
+// diff-reading review catches. This pin holds the document to the contract
+// on four axes: the set of lines a writer other than the session stamps,
+// the two the stamping CLI writes without adding a writer, the entry's
+// field set, and the one-owner rule over the push moments.
+//
+// The document's paragraphs are sliced rather than matched whole. A count
+// can sit in one paragraph while the field enumeration in the next omits the
+// very field that count left out, and a whole-file match is satisfied by
+// either paragraph naming the field, so it cannot see the two disagreeing.
+// What slicing buys in precision it gives up in reach: a stale count or a
+// push-moments restatement written into some other section of the document
+// is invisible here.
+//
+// Every field set on both sides is extracted from the role skill at run time
+// rather than transcribed, so they move when the contract moves, and each is
+// compared as a set rather than by containment, so a field either surface
+// adds, renames, or retires while the other keeps it reddens. The one count
+// this pin reads off a sentence is the writer-axis one, which has no
+// machine-readable form on the document's side; it is keyed on the shape of
+// the clause rather than on the clause verbatim, so an honest rewording
+// stays green while a reversion to the machine-stamped axis does not.
+//
+// The push-moments leg is deliberately not a restatement detector, two
+// rounds of review having established that no pattern over prose separates a
+// paraphrase of a rule from ordinary writing about the same subject without
+// either overclaiming or being satisfied by construction. Its reach is two
+// named things and nothing wider: the document must point at the paragraph
+// that owns the rule, and neither the five push moments the role skill
+// enumerates nor the retired stamped-set count may appear verbatim in
+// either slice. The HAND_WRITTEN_STAMP shape the six-surface pin above
+// applies to its own dependents is deliberately not applied here. Run
+// against these two paragraphs it matches the repaired text ("session
+// writing" in one, "session's own push rewrites" in the other) exactly as
+// it matches the text this section replaced, because that shape is tempered
+// for the role skill's own declaration windows while this document's
+// subject is writers, so it would redden on correct prose. A restatement
+// that paraphrases every one of the five moments is not caught, and
+// nothing here claims otherwise.
+test("docs/architecture.md's registry-entry description holds to the role skill's contract", () => {
+    assertTrackedInIndex('docs/architecture.md');
+    assertTrackedInIndex('plugins/claude-kit/skills/role/SKILL.md');
+    const role = fs.readFileSync(path.join(__dirname, '..', 'plugins',
+        'claude-kit', 'skills', 'role', 'SKILL.md'), 'utf8');
+    const architecture = fs.readFileSync(path.join(__dirname, '..', 'docs',
+        'architecture.md'), 'utf8');
+    const namesOf = (body) => backtickedFieldSet(body)
+        .map((token) => token.slice(1, -2)).sort();
+
+    // The writer count lives in the directory contract, which is a different
+    // section from the entry's own shape.
+    const contract = sliceBetween(role,
+        'The writer rule is per file rather than one rule over the four',
+        '## The registry entry',
+        "the role skill's directory-contract writer rule");
+    assert.ok(contract.includes('three writers and no more'),
+        "the role skill's directory contract no longer closes the registry"
+        + " entry's writer set at three, so the composition"
+        + ' docs/architecture.md states has no owner left to agree with');
+    assert.ok(sliceBetween(role, 'The push moments, closed with their class',
+        'The rule is on where the value comes from',
+        "the role skill's push-moments paragraph").includes('and no third'),
+        "the role skill's push-moments paragraph no longer closes the"
+        + ' registry entry\'s stamped set, so the count'
+        + ' docs/architecture.md states is unbounded at its owner');
+
+    const writerRule = sliceBetween(architecture,
+        'The writer rule is stated per file',
+        "A registry entry is a session's own account of itself",
+        "docs/architecture.md's writer-rule paragraph");
+    const entryShape = sliceBetween(architecture,
+        "A registry entry is a session's own account of itself",
+        '`claims/heavy-process.md` models the one-heavy-process-per-machine',
+        "docs/architecture.md's registry-entry paragraph");
+    const slices = [['writer-rule', writerRule],
+        ['registry-entry', entryShape]];
+
+    // The document spells the contract's three writers as one plus two: a
+    // single-writer registry entry, and the two lines another writer stamps.
+    // The single-writer leg names the entry rather than matching the word
+    // alone, which the paragraph's board half satisfies on its own.
+    assert.match(writerRule, /registry entr(?:y|ies)[^.]{0,40}single-writer/,
+        "docs/architecture.md's writer-rule paragraph no longer states the"
+        + ' registry entry itself as single-writer, so the session half of'
+        + " the role skill's three-writer composition is gone from the"
+        + ' document while the board half may still read as covering it');
+
+    // The count is asserted on its own text rather than on the slice anchor
+    // below, which would make it true by construction: that anchor opens
+    // after the count, so this match can fail while the slice still resolves.
+    // It is keyed on the writer axis deliberately. Four of the entry's lines
+    // are machine-stamped and only two are stamped by a writer other than
+    // the session, so a paragraph that counts two on the machine-stamped
+    // axis is stating a falsehood that reads exactly like the truth.
+    assert.match(writerRule, /two lines[^.]{0,60}other than the session/,
+        "docs/architecture.md's writer-rule paragraph no longer states the"
+        + ' stamped set as two lines written by someone other than the'
+        + " session, so a reader is given either a count the role skill's"
+        + ' contract does not hold or one stated on the machine-stamped axis'
+        + ' rather than on the writer axis the contract closes');
+
+    // The stamped set, as a set on both sides.
+    const contractStamped = namesOf(sliceBetween(contract,
+        'three writers and no more',
+        "so another session's registry file is never yours to write",
+        "the role skill's stamped-line enumeration"));
+    assert.strictEqual(contractStamped.length, 2, "the role skill's"
+        + ' stamped-line enumeration parsed to ' + contractStamped.length
+        + ' field names rather than two, which is a parse failure rather'
+        + " than a contract this shape; the comparison below would report"
+        + " it as the document's drift");
+    const stampedClause = sliceBetween(writerRule,
+        'which is where the role skill', 'Two more lines are machine-stamped',
+        "docs/architecture.md's stamped-line clause");
+    assert.deepStrictEqual(namesOf(stampedClause), contractStamped,
+        "docs/architecture.md's writer-rule paragraph and the role skill's"
+        + ' contract no longer name the same set of lines stamped by a writer'
+        + ' other than the session, so one surface counts a stamped set the'
+        + ' other does not hold');
+
+    // The other two machine-stamped lines, which add no writer. The expected
+    // set is lifted from the role skill's own sentence about them rather
+    // than transcribed here, so the document is held to the owner and not to
+    // this file's memory of it.
+    const timeFields = namesOf(sliceBetween(role,
+        'Both time fields the session', 'are read from the clock',
+        "the role skill's stamped-time-field sentence"));
+    assert.strictEqual(timeFields.length, 2, "the role skill's sentence"
+        + ' naming the two time fields the stamping CLI writes parsed to '
+        + timeFields.length + ' field names rather than two, which is a'
+        + ' parse failure rather than a contract this shape');
+    const machineClause = sliceBetween(writerRule,
+        'Two more lines are machine-stamped', 'The claim file and the inbox',
+        "docs/architecture.md's machine-stamped clause");
+    assert.deepStrictEqual(namesOf(machineClause), timeFields,
+        "docs/architecture.md's writer-rule paragraph names a different pair"
+        + ' of machine-stamped lines than the role skill does, so the'
+        + ' sentence that keeps the writer axis honest is itself wrong about'
+        + ' which lines it is excusing from that axis');
+
+    // The entry's field set, lifted from the contract's own fenced block.
+    // The heading index is checked before the fence is sought, because
+    // indexOf returning -1 is clamped to zero and would silently parse the
+    // first fenced block anywhere in the file. The section bound excludes a
+    // fence added after this section; a fence added between the heading and
+    // the entry block would be parsed instead, and what catches that is the
+    // line-count check below rather than the bound.
+    const headingAt = role.indexOf('## The registry entry');
+    assert.notStrictEqual(headingAt, -1, 'the role skill no longer carries a'
+        + ' `## The registry entry` heading, so the fenced block this pin'
+        + ' reads the field set from cannot be located');
+    const sectionEnd = role.indexOf('\n## ', headingAt + 1);
+    const section = role.slice(headingAt,
+        sectionEnd === -1 ? role.length : sectionEnd);
+    const fenceOpen = section.indexOf('```');
+    const fenceClose = section.indexOf('```', fenceOpen + 3);
+    assert.ok(fenceOpen !== -1 && fenceClose > fenceOpen,
+        "the role skill's registry-entry section no longer carries a fenced"
+        + ' entry block, so the field set this pin holds the document to'
+        + ' cannot be read from its owner');
+    // A field line carries a name, a colon, a space, and a value, so a
+    // wrapped continuation line is not promoted to a field the document
+    // would then be blamed for not carrying. Every non-blank line in the
+    // block has to parse: a floor would let a one-field parse loss through
+    // and the comparison below would then report it as the document's drift.
+    const fenceLines = section.slice(fenceOpen + 3, fenceClose)
+        .split('\n').map((line) => line.trim()).filter(Boolean);
+    const contractFields = [...new Set(fenceLines
+        .map((line) => (/^([A-Za-z][A-Za-z0-9-]*): \S/.exec(line) || [])[1])
+        .filter(Boolean))].sort();
+    assert.strictEqual(contractFields.length, fenceLines.length,
+        'the fenced entry block in the role skill\'s contract holds '
+        + fenceLines.length + ' non-blank lines but parsed to '
+        + contractFields.length + ' field names, so either a line is not a'
+        + ' field line or two fields share a name; the comparison below'
+        + " would otherwise report the shortfall as the document's drift");
+    assert.deepStrictEqual(namesOf(entryShape), contractFields,
+        "docs/architecture.md's registry-entry paragraph and the role skill's"
+        + ' fenced entry block no longer name the same field set, so one'
+        + ' surface describes an entry the other does not write');
+
+    // The push-moments rule is the role skill's to state; this surface
+    // points at it. The bans below are the retired stamped-set count and the
+    // rule's own five moments, all held verbatim.
+    assert.match(entryShape, /role skill's push-moments paragraph/,
+        "docs/architecture.md's registry-entry paragraph no longer points at"
+        + " the role skill's push-moments paragraph, so the rule's owner is"
+        + ' sourced nowhere and a reader takes this surface for it');
+    const RETIRED = ['the one `Heartbeat:` line', 'a Chapter close',
+        'a BLOCKED declaration', 'a suite or gate baseline change',
+        'a claim write or release', 'a seat takeover or handoff'];
+    for (const [label, body] of slices) {
+        for (const retired of RETIRED) {
+            assert.ok(!body.includes(retired), "docs/architecture.md's "
+                + label + ' paragraph carries "' + retired + '", which is the'
+                + ' retired wording: either a stamped set stated at one, or'
+                + " the push-moments enumeration restated here rather than"
+                + ' sourced to the role skill that owns it');
+        }
     }
 });

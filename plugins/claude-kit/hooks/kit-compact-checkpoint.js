@@ -71,7 +71,7 @@ const path = require('path');
 // inside the try is what puts that failure back on this file's own channel. The
 // sibling hook compact-deferral-nudge.js defers its kit requires into the guards
 // that use them for the same failure mode.
-let readGoal, recordExecutionTree, sessionHoldsLeash;
+let readGoal, sessionHoldsLeash;
 let readCheckpointResult, writeCheckpoint, clearCheckpoint, checkpointMatches,
     checkpointAdoptable, storableCheckpointOwner,
     readGateStateResult, gateStatePath, gateEpisodeOpen, pendingOfferCorroborated, checkpointOwner,
@@ -98,7 +98,7 @@ let readCheckpointResult, writeCheckpoint, clearCheckpoint, checkpointMatches,
 let ORDINARY_MINUTES, PENDING_HOURS, BOUNDARY_HOURS, CONSENT_HOURS;
 
 function loadKitLibraries() {
-    ({ readGoal, recordExecutionTree, sessionHoldsLeash } = require('./kit-goal-lib.js'));
+    ({ readGoal, sessionHoldsLeash } = require('./kit-goal-lib.js'));
     ({
         readCheckpointResult, writeCheckpoint, clearCheckpoint, checkpointMatches,
         checkpointAdoptable, storableCheckpointOwner,
@@ -460,17 +460,15 @@ function cmdOpen() {
     const goal = readGoal(process.cwd());
     if (!goal || typeof goal.plan !== 'string' || goal.plan === '') {
         emitErr('kit-compact-checkpoint: no kit goal is armed, so a checkpoint would never match; nothing written\n');
-        // The goal family resolves its state from the current directory, with
-        // a linked worktree resolving to its main checkout, so a goal armed in
-        // a checkout this directory does not resolve to (a separate clone, a
-        // worktree of a bare repository, or a worktree whose .git pointer no
-        // longer closes the handshake, which the lib notes on stderr) is
-        // invisible here however live it is. Naming that makes the refusal
+        // The goal family resolves its state from the current directory, and a
+        // linked worktree is a directory of its own, so a goal armed in
+        // another checkout or another worktree of this repository is invisible
+        // here however live it is. Naming that makes the refusal
         // self-explaining, since from such a tree the goal looks armed and
         // this looks like a defect.
         emitErr('kit-compact-checkpoint: the goal may be armed in another checkout: this CLI reads'
-            + ' the goal state from the current directory (a linked worktree resolves to its main'
-            + ' checkout), so arm where you run\n');
+            + ' the goal state from the current directory (a linked worktree holds its own), so arm'
+            + ' where you run\n');
         process.exitCode = 1;
         return;
     }
@@ -523,15 +521,6 @@ function cmdOpen() {
             emitOut('the compaction gate state could not be read, so this checkpoint records no'
                 + ' pending offer and keeps the ' + ORDINARY_MINUTES + '-minute bound\n');
         }
-        // A boundary opened from a linked worktree records that tree in the
-        // goal state, and one opened from the resolved checkout drops any
-        // standing record (recordExecutionTree is the field's ONLY writer, and
-        // this is its one call site): display surfaces then prefer the
-        // executing tree's copy of the plan doc for progress. The field is
-        // display-trust only and the record is best-effort, so a failure here
-        // costs a possibly stale Sections count, never the checkpoint just
-        // opened.
-        recordExecutionTree(process.cwd());
         process.exitCode = 0;
     } else {
         emitErr('kit-compact-checkpoint: ' + sanitize(result.reason) + '\n');

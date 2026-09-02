@@ -32,16 +32,16 @@
 //
 // Not every render is written there. The widget's Plans segment names a
 // position walked over the plan docs themselves, and that walk reads whatever
-// the queue and the checkouts give it: a second tree's copy of an entry for a
-// worktree session, an entry's archived copy, and every entry it advances
-// through. None of those files is one of the two this key stats, so a line
-// built from one would leave both stats unchanged while going stale, and this
-// launcher would serve it forever. The widget answers whether a render is safe
-// to cache (renderState's cacheable field, which compares what the walk
-// reports it read against the one doc this key covers), and this launcher
-// honors that answer at every write, so only a render the widget itself
-// vouches for reaches this file. A payload whose renderState predates the
-// field is read as cacheable, the two-mtime behavior this cache always had.
+// the queue gives it: an entry's archived copy when nothing stands at its
+// plans path, and every entry it advances through. None of those files is one
+// of the two this key stats, so a line built from one would leave both stats
+// unchanged while going stale, and this launcher would serve it forever. The
+// widget answers whether a render is safe to cache (renderState's cacheable
+// field, which compares what the walk reports it read against the one doc
+// this key covers), and this launcher honors that answer at every write, so
+// only a render the widget itself vouches for reaches this file. A payload
+// whose renderState predates the field is read as cacheable, the two-mtime
+// behavior this cache always had.
 //
 // Blank output is the widget's answer for having no reading at all rather than
 // a reading that nothing is armed: a project with nothing armed draws an
@@ -261,10 +261,10 @@ function cacheIsCurrent(widget, cwd, cached, goalMtimeMs) {
 // cannot detect the change the key exists for.
 //
 // state.cacheable false is the same rule reaching the other plan docs a
-// render can read: a Plans position walked over a second tree's copy, over an
-// archived copy, or over a further queue entry rests on a doc the two stat
-// targets above do not cover, so no key built from them can ever notice that
-// doc changing, and the line must not be stored under one that cannot. Which
+// render can read: a Plans position walked over an archived copy, or over
+// a further queue entry, rests on a doc the two stat targets above do not
+// cover, so no key built from them can ever notice that doc changing, and
+// the line must not be stored under one that cannot. Which
 // docs a render actually read is the widget's own answer, taken from the
 // walk's report rather than guessed at from the line here. A payload whose
 // renderState predates the field carries no cacheable property at all, and a

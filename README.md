@@ -27,7 +27,7 @@ claude-kit/                          (repo = the marketplace)
         consult/                     Fresh-context single-judge ruling on a question a stuck run cannot settle
         peer-sessions/               Discover and message live peer sessions: tool contracts, sanctioned patterns, etiquette
         coordinator/                 The machine-coordinator seat's runbook: operator interface, cross-repo sequencing, resource arbitration, kaizen capture and dispatch, a board in the memory store
-        role/                        The /role <Seat> takeover ritual: the coordinator-directory contract, the session registry, the heavy-process claim, the operator's standing delegation
+        role/                        The /role <Seat> takeover ritual: the coordinator-directory contract, the session registry, the heavy-process claim, the standing-grant rail whose first instance is the operator's standing delegation
         standing-watch/              Repeating watch loop over a live system you do not own: runbook, ledger, wake and sleep
         recap/                       /recap reports where one session stands without disturbing it: restate from memory, refresh, report, diff the drift
         kit-goal/                    /kit-goal <plan> arms a deterministic project-scoped completion leash
@@ -157,7 +157,7 @@ The catalog at `.claude-plugin/marketplace.json` points to the plugin with `"sou
    - Windows: `.\doctor.cmd -Fix` (setup and verification in one pass; the wrapper works on a fresh box, where the default execution policy blocks `.ps1` files)
    - WSL/macOS/Linux: `./setup.sh`
 
-5. Merge `settings/settings.recommended.json` into `~/.claude/settings.json` (review the allow-list first - it includes `git push` for the Commit-and-Push model; remove it if you want pushes gated).
+5. Merge `settings/settings.recommended.json` into `~/.claude/settings.json` (review the allow-list first - it includes `git push`, which every commit model but Review-Only relies on; remove it if you want pushes gated).
 
 6. Operating doctrine (single-sourced as the `operating-instructions` skill, which rides plugin auto-update):
    - Claude Code (once per machine): add `@claude-kit-doctrine.md` to `~/.claude/CLAUDE.md`. The `doctrine-refresh` hook rewrites that imported file from the installed skill each session, so the doctrine loads always-on and stays current; the hook offers to add the line if it is missing.
