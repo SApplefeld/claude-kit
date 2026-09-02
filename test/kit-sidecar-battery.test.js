@@ -878,7 +878,87 @@ test('harvest extracts a Bash pair as one judgeable triple, numbered by transcri
     assert.strictEqual(pairs.length, 1);
     assert.strictEqual(unparsed, 0);
     assert.strictEqual(unpaired, 0);
-    assert.deepStrictEqual(pairs[0], { n: 1, intent: 'list the files', command: 'ls -la', result: 'total 0', isError: false });
+    assert.deepStrictEqual(pairs[0], {
+        n: 1, intent: 'list the files', command: 'ls -la', result: 'total 0',
+        harvestCut: { intent: false, command: false, result: false },
+        isError: false
+    });
+});
+
+// A field this command cuts is frozen WITH its marker in it, so its stored
+// length is inside the cap and no later reader can measure that a cut happened.
+// The case therefore carries the state, and sidecar/battery.js flags the
+// replayed line from it. Both directions in one transcript, so a recorder that
+// always said true would fail on the short pair beside it.
+test('harvest records which fields its own cap cut, so a frozen marker never replays unflagged', async (t) => {
+    const { file } = writeTranscript(t, [
+        bashLine('t1', 'short one', 'ls'),
+        resultLine('t1', 'small output', false),
+        bashLine('t2', 'long one', 'c'.repeat(harvest.FIELD_CAP + 500)),
+        resultLine('t2', 'r'.repeat(harvest.FIELD_CAP + 500), false)
+    ]);
+    const { pairs } = await harvest.extractPairs(file);
+    assert.strictEqual(pairs.length, 2);
+    assert.deepStrictEqual(pairs[0].harvestCut, { intent: false, command: false, result: false },
+        'nothing was cut in the short pair');
+    assert.deepStrictEqual(pairs[1].harvestCut, { intent: false, command: true, result: true },
+        'the cut fields are named, and the intent that was not cut is not');
+    assert.ok(/characters cut at capture/.test(pairs[1].result),
+        'the frozen field carries the marker, which is why the state has to ride beside it');
+
+    // End to end into the replayed line: the recorded state is what sets the
+    // flag, since the stored field's own length is inside the cap.
+    const line = JSON.parse(battery.spoolLine({
+        callId: 'f'.repeat(16), sessionId: 's', cwd: 'c', tool: 'Bash',
+        intent: pairs[1].intent, command: pairs[1].command, result: pairs[1].result,
+        harvestCut: pairs[1].harvestCut, isError: false
+    }));
+    assert.ok(line.result.length <= harvest.FIELD_CAP, 'the stored field is inside the cap');
+    assert.strictEqual(line.truncated, true, 'and the replayed line still opens the triple with a notice');
+});
+
+// Three fields at the field cap are 18,000 characters against a 16,384-byte
+// line, so a triple that is legal field by field can be impossible as a spool
+// line. The fixture writer's answer to one is to throw, which kills a whole
+// battery run; the harvester's is to leave it out and say so.
+test('harvest leaves out a pair too large to replay as one spool line, and counts it', async (t) => {
+    const wide = 'w'.repeat(harvest.FIELD_CAP);
+    const { file } = writeTranscript(t, [
+        bashLine('t1', wide, wide),
+        resultLine('t1', wide, false),
+        bashLine('t2', 'ordinary', 'ls'),
+        resultLine('t2', 'fine', false)
+    ]);
+    const { pairs, unreplayable } = await harvest.extractPairs(file);
+    assert.strictEqual(unreplayable, 1, 'the oversized pair is counted, never silently dropped');
+    assert.strictEqual(pairs.length, 1, 'and it is not frozen');
+    assert.strictEqual(pairs[0].command, 'ls');
+    assert.strictEqual(pairs[0].n, 1, 'the surviving pair keeps a contiguous number');
+
+    // The control on the bound: what was left out is what the fixture writer
+    // would have refused, and what came through is what it accepts.
+    assert.doesNotThrow(() => battery.spoolLine({
+        callId: 'a'.repeat(16), sessionId: 's', cwd: 'c', tool: 'Bash',
+        intent: pairs[0].intent, command: pairs[0].command, result: pairs[0].result, isError: false
+    }));
+    assert.throws(() => battery.spoolLine({
+        callId: 'a'.repeat(16), sessionId: 's', cwd: 'c', tool: 'Bash',
+        intent: wide, command: wide, result: wide, isError: false
+    }), /spool line cap/, 'the case this harvest refused is the case that would abort a run');
+
+    // And the summary distinguishes a pair that was FOUND and refused from a
+    // line that was never a pair. Reported inside the not-a-pair list, "1 found
+    // (... 1 too large ...)" leaves a reader unable to tell whether the
+    // transcript held one pair or two.
+    const run = await runHarvest([file]);
+    assert.strictEqual(run.code, 0, run.stderr);
+    const summary = run.stderr.split('\n').find((l) => l.includes('Bash pair(s) found'));
+    assert.ok(summary, `no summary line was printed:\n${run.stderr}`);
+    assert.match(summary, /2 Bash pair\(s\) found/, 'the found count covers both pairs');
+    assert.match(summary, /1 of them refused as too large to replay as one spool line/);
+    assert.match(summary, /so 1 kept/);
+    assert.ok(summary.indexOf('refused') < summary.indexOf('unparsed line(s) skipped'),
+        'the refusal is reported before the list of things that were never pairs');
 });
 
 // MAJOR 7's control: a line that is not JSON must be counted, not silently
@@ -2369,6 +2449,25 @@ test('the battery spool writer and the capture hook agree on every cap and cut t
     for (const probe of probes) {
         assert.strictEqual(battery.trimLoneSurrogate(probe), hook.trimLoneSurrogate(probe),
             `trimLoneSurrogate drifted on a ${probe.length}-character probe`);
+        assert.strictEqual(text.trimLeadLoneSurrogate(probe), hook.trimLeadLoneSurrogate(probe),
+            `trimLeadLoneSurrogate drifted on a ${probe.length}-character probe`);
+        // The whole cut, not only its trims: the hook writes head, marker and
+        // tail, and a fixture replayed with a head-only cut would measure the
+        // judge against a shape production never writes.
+        //
+        // Both `given` branches. Passing probe.length on every probe compares
+        // only the branch where nothing was lost upstream, and the other one,
+        // where a multi-part response was bounded before the join, is precisely
+        // where the two copies could diverge in behaviour rather than in
+        // spelling: it is the branch with the clamp in it.
+        for (const given of [probe.length, probe.length + 1, probe.length + 5000, 1000000]) {
+            assert.deepStrictEqual(text.cutToCap(probe, given, hook.FIELD_CAP),
+                hook.cutToCap(probe, given, hook.FIELD_CAP),
+                `cutToCap drifted on a ${probe.length}-character probe at given ${given}`);
+            assert.deepStrictEqual(text.cutToCap(probe, given, 120),
+                hook.cutToCap(probe, given, 120),
+                `cutToCap drifted at a small cap on a ${probe.length}-character probe, given ${given}`);
+        }
         assert.strictEqual(battery.textField(probe, battery.FIELD_CAP), hook.textField(probe),
             `textField drifted on a ${probe.length}-character probe`);
         // The third producer on the same channel. harvest.js cuts a transcript
@@ -2383,6 +2482,90 @@ test('the battery spool writer and the capture hook agree on every cap and cut t
     assert.strictEqual(battery.textField(42, battery.FIELD_CAP), hook.textField(42), 'a non-string drifted');
     assert.strictEqual(harvest.cut(42), hook.textField(42), 'a non-string drifted in the harvest cutter');
     assert.strictEqual(harvest.FIELD_CAP, hook.FIELD_CAP, 'the harvest field cap drifted');
+    // The harvester's own copy of the LINE cap, which is what its refusal is
+    // measured against. A copy left stale high freezes a case the fixture
+    // writer then throws on, aborting a whole battery run, and the existing
+    // oversized-pair case only catches an upward drift of the hook's number.
+    assert.strictEqual(harvest.LINE_CAP_BYTES, hook.LINE_CAP_BYTES, 'the harvest line cap drifted');
+
+    // The FLAG rule, which is the other half of "the same shape a real capture
+    // would have produced" and used to be two rules: this writer measured
+    // whether the cap fired while the hook measures whether the cut LOST
+    // anything, so a field ending in a surrogate orphan inside the cap set the
+    // flag on one side and not the other. Driven through both writers on the
+    // probe that separates them.
+    const orphanInsideCap = `${'a'.repeat(hook.FIELD_CAP - 1)}\ud800`;
+    const hookFlag = hook.composeRecord(hook.draftOf({
+        intent: 'i', command: 'm', result: orphanInsideCap,
+        sessionId: 's', cwd: 'c', tool: 'Bash'
+    })).truncated;
+    const fixtureFlag = JSON.parse(battery.spoolLine({
+        callId: 'b'.repeat(16), sessionId: 's', cwd: 'c', tool: 'Bash',
+        intent: 'i', command: 'm', result: orphanInsideCap, isError: false
+    })).truncated;
+    assert.strictEqual(fixtureFlag, hookFlag,
+        'the fixture writer and the capture hook disagree on truncated for a field whose '
+            + 'cut lost a surrogate half inside the cap');
+});
+
+// A frozen field can already carry a genuine marker: sidecar/harvest.js cuts as
+// it reads a transcript, so the marker is IN the stored text while the stored
+// length is inside the cap. Nothing downstream can rediscover that by measuring
+// it, so the case records it and the fixture writer reads it. Both directions,
+// because a writer that simply always set the flag would pass the first half.
+test('a case the harvester cut replays as a marked line, and one it did not does not', () => {
+    const marked = JSON.parse(battery.spoolLine({
+        callId: 'c'.repeat(16), sessionId: 's', cwd: 'c', tool: 'Bash',
+        intent: 'i', command: 'm', result: 'short text carrying a frozen marker',
+        harvestCut: { intent: false, command: false, result: true },
+        isError: false
+    }));
+    assert.strictEqual(marked.truncated, true,
+        'a field the harvester cut must replay under a capture-cut notice, or the judge is '
+            + 'told to read its marker as ordinary data');
+
+    const whole = JSON.parse(battery.spoolLine({
+        callId: 'd'.repeat(16), sessionId: 's', cwd: 'c', tool: 'Bash',
+        intent: 'i', command: 'm', result: 'short text', isError: false,
+        harvestCut: { intent: false, command: false, result: false }
+    }));
+    assert.strictEqual(whole.truncated, false, 'nothing was cut, so nothing is claimed');
+
+    // And a case predating the field (today's frozen thirteen carry no
+    // harvestCut at all) is read as uncut rather than as unknown.
+    const legacy = JSON.parse(battery.spoolLine({
+        callId: 'e'.repeat(16), sessionId: 's', cwd: 'c', tool: 'Bash',
+        intent: 'i', command: 'm', result: 'short text', isError: false
+    }));
+    assert.strictEqual(legacy.truncated, false);
+});
+
+// The same discipline for the marking itself. The capture hook writes the
+// marker into a spool field and sidecar/prompts/judgment-v4.js tells the judge
+// how to read one, across the process boundary neither side can require over,
+// so the two spellings are pinned equal here beside the trim that set the
+// precedent. THE FRAMING IS PART OF THE CONTRACT: the prompt describes a line of
+// its own, so the pin covers the newlines the emitter puts around it and not
+// only the literal.
+test('the capture hook and the judgment prompt spell the cut marker the same way', () => {
+    const hook = require('../plugins/claude-kit/hooks/kit-sidecar-capture.js');
+    const judgePrompt = require('../sidecar/prompts/judgment-v4.js');
+    for (const count of [0, 1, 7, 412, 1000000, 'N']) {
+        assert.strictEqual(hook.captureCutMarker(count), judgePrompt.captureCutMarker(count),
+            `the marker literal drifted at count ${count}`);
+    }
+    // The framing, read off a real cut field rather than composed here: the
+    // marker the prompt describes occupies a line of its own, so the emitter
+    // must put a newline on each side of it.
+    const field = hook.textField('h'.repeat(hook.FIELD_CAP * 2));
+    const marker = /\[\.\.\.\d+ characters cut at capture\.\.\.\]/.exec(field);
+    assert.ok(marker !== null, `the emitter wrote no marker at all: ${field.slice(0, 60)}`);
+    assert.strictEqual(field[marker.index - 1], '\n', 'the marker opens its own line');
+    assert.strictEqual(field[marker.index + marker[0].length], '\n', 'and closes it');
+    // And the judge is told to read that same shape, so neither side can move
+    // alone: the prompt's own rendering of the marker is a substring of SYSTEM.
+    assert.ok(judgePrompt.SYSTEM.includes(judgePrompt.captureCutMarker('N')),
+        'SYSTEM must carry the shape the emitter writes');
 });
 
 // MAJOR 4's cross-component pin: the battery writes the frozen index and the
@@ -2495,7 +2678,7 @@ test('a fixture case too large for the whole-line byte cap is refused rather tha
     assert.throws(() => battery.spoolLine({
         callId: 'a'.repeat(16), sessionId: 's', cwd: 'c', tool: 'Bash',
         intent: wide, command: wide, result: wide, isError: false
-    }), /over the 8192-byte spool line cap/);
+    }), new RegExp(`over the ${battery.LINE_CAP_BYTES}-byte spool line cap`));
     assert.doesNotThrow(() => battery.spoolLine({
         callId: 'a'.repeat(16), sessionId: 's', cwd: 'c', tool: 'Bash',
         intent: 'small', command: 'ls', result: 'ok', isError: false
@@ -2505,12 +2688,26 @@ test('a fixture case too large for the whole-line byte cap is refused rather tha
 // MINOR 5's control: a field that never reached the cap but ends in an
 // unpaired surrogate comes back one character shorter, so a truncated flag
 // derived from the returned length says the cut fired when it did not.
-test('the truncated flag records whether the cap fired, not whether a surrogate was trimmed', () => {
-    const short = JSON.parse(battery.spoolLine({
+// The flag records whether the cut LOST anything, which is the capture hook's
+// own rule and now this writer's too. It used to be "whether the cap fired",
+// and the difference is a field whose trailing surrogate half is trimmed inside
+// the cap: one character goes, the cap never fires. Two rules meant a fixture
+// line and a real capture of the same call disagreed on the flag while this
+// file's whole claim is to write the shape a real capture would; the pin that
+// holds them together across the process boundary is in the shared-spellings
+// section above.
+test('the truncated flag records whether the cut lost anything, the capture hook\'s own rule', () => {
+    const trimmed = JSON.parse(battery.spoolLine({
         callId: 'a'.repeat(16), sessionId: 's', cwd: 'c', tool: 'Bash',
         intent: 'ends in a lone high half\ud800', command: 'ls', result: 'ok', isError: false
     }));
-    assert.strictEqual(short.truncated, false, 'a surrogate trim below the cap is not a truncation');
+    assert.strictEqual(trimmed.truncated, true,
+        'a surrogate half dropped at the cut is a character lost, and the hook flags it');
+    const whole = JSON.parse(battery.spoolLine({
+        callId: 'a'.repeat(16), sessionId: 's', cwd: 'c', tool: 'Bash',
+        intent: 'nothing to trim here', command: 'ls', result: 'ok', isError: false
+    }));
+    assert.strictEqual(whole.truncated, false, 'a field nothing was taken from is not flagged');
     const long = JSON.parse(battery.spoolLine({
         callId: 'a'.repeat(16), sessionId: 's', cwd: 'c', tool: 'Bash',
         intent: 'x'.repeat(battery.FIELD_CAP + 1), command: 'ls', result: 'ok', isError: false
@@ -2561,7 +2758,7 @@ test('the default target runs both batteries and the report names both prompt ve
     assert.ok(result.stdout.includes('== judgment battery =='), result.stdout);
     assert.ok(result.stdout.includes('== recognition battery =='), result.stdout);
     assert.ok(result.stdout.includes('OVERALL: PASS'), result.stdout);
-    assert.ok(result.stdout.includes('judgment-v3'), `the judgment prompt id is missing:\n${result.stdout}`);
+    assert.ok(result.stdout.includes('judgment-v4'), `the judgment prompt id is missing:\n${result.stdout}`);
     assert.ok(result.stdout.includes('recognition-v1'), `the recognition prompt id is missing:\n${result.stdout}`);
 });
 
@@ -2893,15 +3090,24 @@ test('a replay hands the daemon a horizon no fixture line of its own can cross',
 
 // ------------------------------------------------- a frozen field cut at replay --
 
-// MAJOR 2's control. Case 9's command is longer than the field cap, so the
-// judge sees a cut version of it; that is exactly what a real capture of the
-// same call would have written, and it is still named, because four cases in
-// this fixture carry a corrected verdict precisely because a cut removed the
-// evidence the first adjudication turned on.
+// MAJOR 2's control, at the caps this pipeline carries today.
+//
+// THE FROZEN FIXTURE IS NOW INSIDE BOTH CAPS. The field cap is 6000 characters
+// and the judgment prompt's command cap is equal to it rather than below it, so
+// no frozen judgment case is cut at replay any more: case 9's 3,478-character
+// command used to be cut twice and now reaches the judge whole. That coverage
+// loss was accepted with the cap raise rather than repaired here, because the
+// cases are frozen for comparability and a case wide enough to exercise the
+// capture cut is owed to the fixture through the project backlog. What is
+// asserted end to end is therefore the control (a within-cap fixture names no
+// cut), and each branch of the cut sentence is driven directly below, which is
+// the shape this case already used for the branch the fixture could not reach.
 test('the run names every frozen field it cut at replay, and a within-cap battery names none', async (t) => {
     const cases = battery.loadJudgmentCases();
     const overCap = cases.filter((c) => [c.intent, c.command, c.result].some((f) => f.length > battery.FIELD_CAP));
-    assert.ok(overCap.length > 0, 'this control needs at least one frozen field past the cap, or it proves nothing');
+    assert.strictEqual(overCap.length, 0,
+        'a frozen field is past the field cap again, so the end-to-end half of this case '
+            + 'can be restored rather than left to the direct drives below');
 
     const server = await startServer(t, (body) => {
         if (isRecognitionBody(body)) {
@@ -2916,58 +3122,51 @@ test('the run names every frozen field it cut at replay, and a within-cap batter
 
     const judgment = await runBattery(['judgment', '--config', configPath, '--state-dir', freshStateDir(t)]);
     assert.strictEqual(judgment.code, 0, judgment.stdout + judgment.stderr);
-    for (const c of overCap) {
-        const line = judgment.stdout.split('\n').find((l) => l.startsWith(`frozen field cut at replay: judgment #${c.n} `));
-        assert.ok(line, `case ${c.n} was cut at replay and the report does not say so:\n${judgment.stdout}`);
-        assert.ok(line.includes(`${battery.FIELD_CAP}-character field cap`), line);
-        const cut = battery.fieldCuts('judgment', c)[0];
-        assert.ok(line.includes(`${cut.from} characters cut to ${cut.to}`), line);
-    }
+    assert.ok(!judgment.stdout.includes('frozen field cut at replay'),
+        `no frozen judgment field is past either cap, and the report names a cut:\n${judgment.stdout}`);
+    // The control on that silence: the reporting path is live, and it is the
+    // fixture that is inside the caps rather than the report that has gone
+    // quiet. A field past the cap, put through the same function the run's
+    // report renders from, still produces an entry.
+    assert.strictEqual(battery.fieldCuts('judgment', { result: 'r'.repeat(battery.FIELD_CAP + 25) }).length, 1,
+        'the cut list itself has stopped reporting, which is not what the silence above should mean');
 
-    // MAJOR 1 (round 4): the judgment prompt cuts ACTION again below the field
-    // cap, so for a command field the line must state the number of characters
-    // the judge actually saw, derived here from the prompt module exactly as
-    // the report must derive it rather than duplicated as a literal.
-    const judgePrompt = require('../sidecar/prompts/judgment-v3.js');
-    const commandCuts = overCap.flatMap((c) => battery.fieldCuts('judgment', c)
-        .filter((f) => f.field === 'command').map((f) => ({ n: c.n, ...f })));
-    assert.ok(commandCuts.length > 0, 'this control needs a frozen command past the field cap, or it proves nothing');
-    for (const cut of commandCuts) {
-        const line = judgment.stdout.split('\n').find((l) => l.startsWith(`frozen field cut at replay: judgment #${cut.n} command`));
-        assert.ok(line, judgment.stdout);
-        const seen = Math.min(cut.to, judgePrompt.COMMAND_PROMPT_CAP);
-        assert.ok(seen < cut.to, 'this control needs the prompt cap below the replay cut, or it proves nothing');
-        assert.ok(line.includes(`the model sees the first ${seen}`),
-            `the report does not state the evidence the judge actually saw (${seen} characters):\n${line}`);
-    }
+    // The judgment prompt's command cap is the field cap now, so on this battery
+    // it re-cuts nothing. The recognition prompt's caps are still below the
+    // field cap, which is where the both-caps branch of the sentence lives.
+    const judgePrompt = require('../sidecar/prompts/judgment-v4.js');
+    assert.strictEqual(judgePrompt.COMMAND_PROMPT_CAP, battery.FIELD_CAP,
+        'this case reads the judgment prompt as re-cutting nothing, and that is now false');
+    const bothCaps = battery.fieldCuts('recognition', { command: 'c'.repeat(battery.FIELD_CAP + 25) });
+    assert.strictEqual(bothCaps.length, 1, JSON.stringify(bothCaps));
+    assert.strictEqual(bothCaps[0].fieldCapFired, true);
+    assert.ok(bothCaps[0].seen < bothCaps[0].to,
+        'this branch needs a prompt cap below the replay cut, or it proves nothing');
+    const bothSentence = battery.cutSentence({ battery: 'recognition', n: 3, ...bothCaps[0] });
+    assert.ok(bothSentence.includes(`cut to ${bothCaps[0].to} at the ${battery.FIELD_CAP}-character field cap`),
+        bothSentence);
+    assert.ok(bothSentence.includes('in-band marker naming what went'),
+        `the sentence must say what shape the replayed field is in:\n${bothSentence}`);
+    assert.ok(bothSentence.includes(
+        `the model sees the first ${bothCaps[0].seen} characters of the replayed field`),
+        `the sentence must state the evidence the model actually saw:\n${bothSentence}`);
 
     // The regression pin for a field BETWEEN the two caps, which is the half of
-    // this report that said nothing at all. A frozen command of 1,555
-    // characters is under the 2,000-character field cap, so the replayed spool
-    // line holds it whole and a cut list keyed on the field cap emits no entry
-    // for it; the judgment prompt then cuts it at 1,500 and the judge scores a
-    // case on evidence 55 characters shorter than the fixture, with the run
-    // report silent, while sidecar/batteries/README.md states that every such
-    // cut is named per case. The assertion is on the report TEXT rather than on
-    // the cut record, because the defect is that the report says nothing.
-    const betweenCaps = cases.flatMap((c) => battery.fieldCuts('judgment', c)
-        .filter((f) => f.from <= battery.FIELD_CAP && f.seen < f.from)
-        .map((f) => ({ n: c.n, ...f })));
-    assert.ok(betweenCaps.length > 0,
-        'this pin needs a frozen field under the field cap and over the prompt cap, or it proves nothing');
-    for (const cut of betweenCaps) {
-        const line = judgment.stdout.split('\n')
-            .find((l) => l.startsWith(`frozen field cut at replay: judgment #${cut.n} ${cut.field}`));
-        assert.ok(line, `case ${cut.n}'s ${cut.field} is cut by the prompt and the report does not say so:\n`
-            + judgment.stdout);
-        assert.ok(line.includes(`${cut.from} characters cut to ${cut.seen}`), line);
-        assert.ok(line.includes(`${cut.promptCap}-character cap`),
-            `the line must name the cap that actually fired:\n${line}`);
-        // And it must not claim the field cap did it, which for this field
-        // would be a number nothing in the run produced.
-        assert.ok(!line.includes(`cut to ${cut.to} at the ${battery.FIELD_CAP}-character field cap`),
-            `the field cap did not fire on this field and the line says it did:\n${line}`);
-    }
+    // this report that once said nothing at all: the replayed spool line holds
+    // it whole, so a cut list keyed on the field cap emits no entry for it,
+    // while the prompt cuts it and the model scores on shorter evidence than
+    // the fixture carries. Driven on the recognition battery, whose prompt caps
+    // are still below the field cap.
+    const betweenCaps = battery.fieldCuts('recognition', { command: 'c'.repeat(1000) });
+    assert.strictEqual(betweenCaps.length, 1, JSON.stringify(betweenCaps));
+    assert.strictEqual(betweenCaps[0].fieldCapFired, false, 'the field cap must not fire on this one');
+    assert.ok(betweenCaps[0].seen < betweenCaps[0].from, 'the prompt cap must fire, or this proves nothing');
+    const betweenSentence = battery.cutSentence({ battery: 'recognition', n: 5, ...betweenCaps[0] });
+    assert.ok(betweenSentence.includes(`1000 characters cut to ${betweenCaps[0].seen}`), betweenSentence);
+    assert.ok(betweenSentence.includes(`${betweenCaps[0].promptCap}-character cap`),
+        `the line must name the cap that actually fired:\n${betweenSentence}`);
+    assert.ok(!betweenSentence.includes(`cut to ${betweenCaps[0].to} at the ${battery.FIELD_CAP}-character field cap`),
+        `the field cap did not fire on this field and the line says it did:\n${betweenSentence}`);
 
     // The third branch of the cut sentence, driven directly because the frozen
     // fixture cannot reach it: promptEvidenceCap is Infinity for a judgment
@@ -2980,7 +3179,14 @@ test('the run names every frozen field it cut at replay, and a within-cap batter
     const only = overFieldCapOnly[0];
     assert.strictEqual(only.fieldCapFired, true);
     assert.strictEqual(only.seen, only.to, 'this branch needs no prompt cap below the field cap');
-    assert.strictEqual(only.to, battery.FIELD_CAP);
+    // What the replayed line holds is the cut field's own length, marker
+    // included, which lands at or just under the cap rather than exactly on it:
+    // the marker's room is reserved against the field's whole size and rendered
+    // from the true count.
+    assert.strictEqual(only.to,
+        battery.textField('r'.repeat(battery.FIELD_CAP + 25), battery.FIELD_CAP).length);
+    assert.ok(only.to <= battery.FIELD_CAP && only.to > battery.FIELD_CAP - 10,
+        'the cut field fills the cap but never exceeds it, was ' + only.to);
     assert.strictEqual(only.from, battery.FIELD_CAP + 25);
     // The sentence itself, since the record is not what a reader of the report
     // sees. It must name the field cap as the cause, say how many characters
@@ -2988,8 +3194,10 @@ test('the run names every frozen field it cut at replay, and a within-cap batter
     const onlySentence = battery.cutSentence({ battery: 'judgment', n: 4, ...only });
     assert.ok(onlySentence.includes(`judgment #4 result, ${battery.FIELD_CAP + 25} characters`),
         onlySentence);
-    assert.ok(onlySentence.includes(`cut to ${battery.FIELD_CAP} at the ${battery.FIELD_CAP}-character field cap`),
+    assert.ok(onlySentence.includes(`cut to ${only.to} at the ${battery.FIELD_CAP}-character field cap`),
         onlySentence);
+    assert.ok(onlySentence.includes('in-band marker naming what went'),
+        `the sentence must say what shape the replayed field is in:\n${onlySentence}`);
     assert.ok(onlySentence.includes('the cut the capture hook itself would have made on this call'),
         onlySentence);
     assert.ok(!onlySentence.includes("prompt's own"), onlySentence);
@@ -3012,22 +3220,25 @@ test('the run names every frozen field it cut at replay, and a within-cap batter
     // fact ("the replayed spool line holds it whole") is false anyway, because
     // the trim dropped a character. The clause is read off the two lengths now,
     // and this is the case that can only pass if it is.
-    const trimmedAtCap = battery.fieldCuts('judgment', { command: loneHalf });
+    // Driven on the recognition battery, whose prompt caps are still below the
+    // field cap: an entry is emitted only where some cap fired, and on the
+    // judgment battery neither does to a field of exactly the field cap.
+    const trimmedAtCap = battery.fieldCuts('recognition', { command: loneHalf });
     assert.strictEqual(trimmedAtCap.length, 1, JSON.stringify(trimmedAtCap));
     assert.strictEqual(trimmedAtCap[0].fieldCapFired, false);
     assert.strictEqual(trimmedAtCap[0].from, battery.FIELD_CAP);
     assert.strictEqual(trimmedAtCap[0].to, battery.FIELD_CAP - 1,
         'this case needs the surrogate trim to have shortened the field, or it measures nothing');
-    const trimmedSentence = battery.cutSentence({ battery: 'judgment', n: 7, ...trimmedAtCap[0] });
+    const trimmedSentence = battery.cutSentence({ battery: 'recognition', n: 7, ...trimmedAtCap[0] });
     assert.ok(!trimmedSentence.includes('holds it whole'),
         `the replayed line is a character short and the sentence says it is whole:\n${trimmedSentence}`);
     assert.ok(trimmedSentence.includes(`holds ${battery.FIELD_CAP - 1} of them`), trimmedSentence);
     // The control on the other side of the same clause: a field the trim did
     // not shorten still reads as held whole, so the assertion above is the
     // length compare and not the clause having been dropped.
-    const wholeAtPromptCap = battery.fieldCuts('judgment', { command: 'c'.repeat(battery.FIELD_CAP) });
+    const wholeAtPromptCap = battery.fieldCuts('recognition', { command: 'c'.repeat(battery.FIELD_CAP) });
     assert.strictEqual(wholeAtPromptCap.length, 1, JSON.stringify(wholeAtPromptCap));
-    assert.ok(battery.cutSentence({ battery: 'judgment', n: 7, ...wholeAtPromptCap[0] })
+    assert.ok(battery.cutSentence({ battery: 'recognition', n: 7, ...wholeAtPromptCap[0] })
         .includes('holds it whole'), 'the whole-line clause no longer renders at all');
 
     // The control: the recognition fixture holds no field past either cap, so
@@ -3427,15 +3638,21 @@ test('a recognition record carrying another run provenance is a cannot-measure, 
 // This is red if the prompt's own slice ever drifts from the constant the
 // report reads.
 test('the judgment prompt embeds exactly COMMAND_PROMPT_CAP characters of an over-cap command', () => {
-    const judgePrompt = require('../sidecar/prompts/judgment-v3.js');
+    const judgePrompt = require('../sidecar/prompts/judgment-v4.js');
     const long = 'c'.repeat(battery.FIELD_CAP + 100);
     const triple = judgePrompt.formatTriple({ intent: 'i', command: long, result: 'r', isError: false });
     const fenced = /<<<ACTION ([0-9a-f]+)>>>\n([\s\S]*?)\n<<<END ACTION \1>>>/.exec(triple);
     assert.ok(fenced, `no fenced ACTION block found:\n${triple.slice(0, 200)}`);
     assert.strictEqual(fenced[2].length, judgePrompt.COMMAND_PROMPT_CAP,
         'the ACTION the judge sees is not the length the exported constant claims');
-    assert.ok(judgePrompt.COMMAND_PROMPT_CAP < battery.FIELD_CAP,
-        'this pin matters because the prompt cap sits below the field cap; if that flips, the report clause must move too');
+    // The prompt cap now EQUALS the field cap rather than sitting below it, so
+    // the prompt re-cuts nothing a real capture already bounded and this branch
+    // is the defence-in-depth one: it fires on text that reached the module some
+    // other way, which is what the fixture above is. The relation is pinned
+    // either way, because the report's evidence clause is written against it.
+    assert.ok(judgePrompt.COMMAND_PROMPT_CAP <= battery.FIELD_CAP,
+        'the prompt cap must never exceed the field cap, or the report would state '
+            + 'an evidence number larger than the spool line holds');
 });
 
 // ---------------------------------------- disclosure survives a failed start --

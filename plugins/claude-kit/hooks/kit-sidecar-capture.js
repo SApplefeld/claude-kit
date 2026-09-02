@@ -33,7 +33,7 @@
 //   command    the command text
 //   result     the response's text channels joined, stdout then stderr then
 //              error text then content blocks
-//   truncated  true when any text field was cut by either cap
+//   truncated  true when intent, command or result was cut by either cap
 //   isError    the harness error flag, normalized across response shapes
 //
 // Dormant by default. The hook stats the spool root and exits having written
@@ -57,11 +57,21 @@
 //
 // Two caps, both about the interleave. Several sessions on one machine append
 // to the same day file and Node offers no cross-process atomic-append guarantee,
-// so every line is written with ONE appendFileSync of a small buffer: 2000
-// characters per text field (cwd, tool and sessionId included, so an oversized
-// one shortens rather than dropping a record CUT_ORDER cannot reach), 8192
-// bytes per whole line, cutting result first, then command, then intent. A
-// record that still will not fit is dropped rather than written long. Small writes are the whole mitigation, and no lock is taken
+// so every line is written with ONE appendFileSync of a small buffer: 6000
+// characters per judged field, 512 per identity field (cwd, tool and sessionId,
+// capped tighter because CUT_ORDER cannot reach them, so their combined weight
+// has to fit the line on its own), 16384 bytes per whole line, cutting result
+// first, then command, then intent. A record that still will not fit is dropped
+// rather than written long, which the identity cap is what keeps unreachable
+// from any payload.
+//
+// A field past its cap keeps its HEAD AND ITS TAIL, with a marker line between
+// them naming how many characters went. A head-only cut throws away the part of
+// a tool's output a verdict most needs: the exit summary, the error text and the
+// FAIL lines are all at the bottom. Every cut here removes a middle for that
+// reason, so what is missing always sits where the marker says it is, and the
+// judge is told to read the marker only inside a triple its entry-level flag
+// already opened as cut. Small writes are the whole mitigation, and no lock is taken
 // or ever should be: a lock puts the observed session on a critical path, which
 // is the one thing this hook may not do. The consumer's half of that bargain is
 // in the contract document: skip and COUNT malformed lines, never abort.
@@ -140,14 +150,56 @@ try {
 // that cannot tell.
 const SCHEMA_VERSION = 1;
 
-// Per-field character cap. Two thousand characters is far past any real
-// description and holds enough of a command's output for a verdict; the judge
-// reads a triple, not a transcript.
-const FIELD_CAP = 2000;
+// Per-field character cap for the three fields the judge reads. Six thousand
+// characters is far past any real description and holds enough of a command's
+// output for a verdict; the judge reads a triple, not a transcript.
+//
+// The number is sized to fit the endpoint window the operator runs the judge
+// against, 16K tokens: three fields at this cap plus the system text is roughly
+// 7.5K tokens of prompt evaluation, which leaves the window room to spare and
+// keeps a burst of calls inside the daemon's freshness horizon. Nothing in this
+// repository sets or reads that window, so the fit is a property of the
+// deployment rather than of the code, and an explicit context setting on the
+// judge's own request is a backlog item rather than a thing to infer from here.
+const FIELD_CAP = 6000;
+
+// Per-field character cap for the three fields that identify the call rather
+// than evidence it: the session id, the working directory and the tool name.
+//
+// They are capped far tighter than the judged fields for a structural reason.
+// CUT_ORDER cannot reach any of them, so whatever they hold is uncuttable
+// weight in the serialized line, and a line whose skeleton alone exceeds the
+// byte cap is DROPPED with no signal anywhere. At the judged fields' cap three
+// oversized identity fields would be 18,000 characters against a 16,384-byte
+// line, which makes that silent drop reachable from a payload.
+//
+// The number is set by the BYTES those characters can cost, not by the
+// characters: JSON.stringify emits a control character as a six-byte \uXXXX
+// escape, and every one of these three fields comes from the payload, so the
+// worst case is three capped fields of escape-heavy text. At this cap that is
+// 3 x 512 x 6 = 9,216 bytes, which leaves the skeleton inside the line cap with
+// room for the rest of the record, and a test pins the arithmetic rather than
+// leaving it to a reader. Five hundred characters is still far past any real
+// session id, tool name or working directory, a Windows long path included.
+//
+// These three take a PLAIN head slice, surrogate-trimmed, with no in-band
+// marker. The marker is a statement about evidence the judge reads, and these
+// fields are not evidence: `truncated` deliberately does not cover them, so a
+// marker here would be a marking nothing claims and would put a newline and the
+// marker vocabulary into a field that could never hold either.
+//
+// The price is stated rather than hidden: the daemon resolves a call's project
+// from `cwd` to find the memory index for recognition, so a working directory
+// past this cap resolves to no project and that session's recognition calls
+// become recognition gaps, silently, since the flag does not cover this field.
+// The paths that reach it are pathological (512 characters of path), and a
+// plain slice at least leaves a prefix that a person reading the spool can
+// recognize, where a marked one would not be a path at all.
+const IDENTITY_FIELD_CAP = 512;
 
 // Whole-line byte cap, newline included. See the header: this is the interleave
 // mitigation, and the contract lets a consumer rely on it.
-const LINE_CAP_BYTES = 8192;
+const LINE_CAP_BYTES = 16384;
 
 // The order fields are cut in when a line is over the byte cap. Result first
 // because it is the least dense (a verdict needs the tail of an output far less
@@ -164,12 +216,16 @@ const FILE_MODE = 0o600;
 // outlives the process that made it, so a machine whose daemon died in March
 // would otherwise append to an unread file for as long as the root exists.
 //
-// Sized against the volume the spec states, a few thousand calls a day. At the
-// 8192-byte line cap, five thousand calls is 41 MB of worst-case day file, and
-// real lines run far under the cap, so 64 MiB clears an honest heavy day with
-// room to spare while still bounding what an unconsumed spool can take from the
-// disk. Reaching it means the consumer is gone, not that the day was busy.
-const DAY_FILE_MAX_BYTES = 64 * 1024 * 1024;
+// Sized against the volume the spec states, a few thousand calls a day, and
+// re-derived whenever the line cap moves. At the 16384-byte line cap, five
+// thousand calls is 81.9 MB of worst-case day file, so 128 MiB (134.2 MB)
+// clears an honest heavy day of at-cap lines with about half again in hand,
+// while still bounding what an unconsumed spool can take from the disk. Real
+// lines run far under the cap, so the headroom in practice is much larger.
+// Reaching this bound means the consumer is gone, not that the day was busy,
+// and that has to stay true: capture goes silent for the rest of the day here,
+// so a bound a busy day could reach would read as a dead daemon.
+const DAY_FILE_MAX_BYTES = 128 * 1024 * 1024;
 
 // The response keys carrying output text, in the order they are joined. Stdout
 // first because it is what the session read; a bare-string response and an
@@ -235,13 +291,109 @@ function callId() {
 // in place it costs twice: JSON.stringify emits it as a six-byte \udXXX escape
 // where the whole pair was four UTF-8 bytes, so a cut can make a line LONGER,
 // and a consumer decoding the line gets a replacement character at the end of
-// the field. Only the tail can be orphaned here, since every slice keeps a
-// prefix.
+// the field. This is the guard for the end of a kept prefix, where only a HIGH
+// half can be left behind.
 function trimLoneSurrogate(text) {
     if (text === '') return text;
     const last = text.charCodeAt(text.length - 1);
     if (last >= 0xd800 && last <= 0xdbff) return text.slice(0, text.length - 1);
     return text;
+}
+
+// The same guard at the other end of a slice. A head-and-tail cut takes its
+// tail out of the middle of a string, so that slice can begin with the LOW half
+// of a pair whose high half stayed behind in the discarded middle. The two
+// halves of the guard are separate functions because a cut point has only one
+// of the two hazards: a prefix can orphan a high half and a suffix a low one.
+function trimLeadLoneSurrogate(text) {
+    if (text === '') return text;
+    const first = text.charCodeAt(0);
+    if (first >= 0xdc00 && first <= 0xdfff) return text.slice(1);
+    return text;
+}
+
+// The in-band marker naming a capture cut at the point it fell, carrying the
+// number of characters that went there.
+//
+// This literal is written here and read by the judgment prompt in the daemon,
+// two processes that cannot share a module across the packaging boundary. The
+// sidecar's own definition is sidecar/text.js's, re-exported by the LIVE
+// judgment prompt (sidecar/prompts/judgment-v4.js; the numbered files beside it
+// are frozen instruments and carry their own copies), and a test pins the two
+// spellings equal; the framing is part of what is pinned, since the prompt
+// describes a marker that occupies a line of its own and the emitter below is
+// what puts it on one.
+function captureCutMarker(count) {
+    return `[...${count} characters cut at capture...]`;
+}
+
+// The share of a cut field's kept text that comes from its head. A cut field is
+// read for two things: what the call was doing, which is stated at the top, and
+// how it came out, which is at the bottom. The head takes the majority because
+// an intent and a command are front-loaded; the tail is what a head-only cut
+// threw away, and for tool output the exit summary, the error text and the FAIL
+// lines all live there.
+const HEAD_SHARE = 0.6;
+
+// A field cut to `cap` characters, keeping its head and its tail with the
+// marker between them, plus whether anything was lost.
+//
+// `given` is how many characters the field held before ANY cut on its way here,
+// which is not always `text.length`: resultText bounds each part of a
+// multi-part response before joining them, so the joined text can already be
+// short of what the call printed. The count in the marker is `given` minus what
+// survives, so it names the whole of what is missing from that field rather
+// than only what this cut took. Every cut in this file removes a MIDDLE, that
+// part bound included, so everything missing really does sit between the kept
+// head and the kept tail: the marker's position is a claim this file keeps, not
+// an approximation.
+//
+// The marker's room is reserved against `given`, whose digit count can never be
+// smaller than the count's, and the marker is then rendered from the true
+// count. A count one digit narrower leaves the field a character or two under
+// the cap, which is the direction to be wrong in: the cap is a promise made to
+// every reader of the line and the count is a fact about this field, so neither
+// is traded for the other.
+//
+// A cap too small to hold the marker has no room to say anything, so it takes a
+// plain head slice and the cut goes unmarked in the field. Nothing untrue is
+// written there; what carries the loss is the entry-level `truncated` flag.
+//
+// This is sidecar/text.js's cutToCap, in the same shape and for the same
+// reasons, and pinned equal to it across the process boundary by a test.
+function cutToCap(text, given, cap) {
+    if (typeof text !== 'string' || text === '') {
+        return { text: '', lost: Number.isFinite(given) && given > 0 };
+    }
+    const total = (Number.isFinite(given) && given > text.length) ? given : text.length;
+    const room = cap - captureCutMarker(total).length - 2;
+    if (total <= cap) {
+        const whole = trimLoneSurrogate(text);
+        return { text: whole, lost: whole.length < total };
+    }
+    if (room < 2) {
+        const head = trimLoneSurrogate(text.slice(0, Math.max(0, cap)));
+        return { text: head, lost: head.length < total };
+    }
+    // The head and the tail are held to DISJOINT ranges of the text, and the
+    // tail's start is clamped at zero. Neither is defensive dressing: `given`
+    // is a free parameter, so a caller naming a loss larger than the text it
+    // hands over (a field bounded to almost nothing before it got here) makes
+    // room exceed the text's own length, and an unclamped slice takes a
+    // negative start, which JavaScript counts from the END. That returns the
+    // whole string as the tail beside the whole string as the head, so the
+    // field carries its content twice around a marker whose count then
+    // understates the loss by everything it duplicated.
+    const headRoom = Math.ceil(room * HEAD_SHARE);
+    const head = trimLoneSurrogate(text.slice(0, Math.min(headRoom, text.length)));
+    const tailRoom = Math.min(room - headRoom, Math.max(0, text.length - head.length));
+    const tail = tailRoom === 0
+        ? ''
+        : trimLoneSurrogate(trimLeadLoneSurrogate(text.slice(text.length - tailRoom)));
+    return {
+        text: `${head}\n${captureCutMarker(total - head.length - tail.length)}\n${tail}`,
+        lost: true
+    };
 }
 
 // The observed session's id, read one way for both duties. Two readings of one
@@ -260,9 +412,14 @@ function sessionIdOf(payload) {
 // A payload value as the string the line carries, capped. Anything that is not
 // a string reads as absent rather than as its own JSON rendering: a field whose
 // type the harness changed is better empty than misreported.
+//
+// The one-argument shape is what the fixture writer and the transcript
+// harvester in the sidecar are pinned equal to, so it stays a function of the
+// value alone. A field that lost characters before this hook saw it goes
+// through cutToCap directly, where its true size can be stated.
 function textField(value) {
     if (typeof value !== 'string' || value === '') return '';
-    return trimLoneSurrogate(value.slice(0, FIELD_CAP));
+    return cutToCap(value, value.length, FIELD_CAP).text;
 }
 
 // The call's output as one string, across the three response shapes the harness
@@ -272,24 +429,54 @@ function textField(value) {
 // much, since the defect class it exists for exits 0.
 //
 // Every part is bounded BEFORE it is collected. The caller cuts the joined
-// result to the field cap, so nothing here changes what is kept; what it
-// changes is the peak. A multi-megabyte stdout would otherwise be held whole,
-// joined into a second copy, and then thrown away to keep two thousand
-// characters, all of it allocated on the observed session's turn. Bounded this
-// way, the intermediate is a small multiple of the cap however large the
-// response was.
+// result to the field cap, so what this changes is the peak: a multi-megabyte
+// stdout would otherwise be held whole, joined into a second copy, and then
+// thrown away to keep a few thousand characters, all of it allocated on the
+// observed session's turn. Bounded this way, the intermediate is a small
+// multiple of the cap however large the response was. What the bound does NOT
+// do is decide where the loss falls; see boundPart.
 //
-// The bound is one character PAST the cap, deliberately. Truncation is decided
-// in exactly one place, the caller's own cut, by comparing what it kept against
-// what it was given; a part cut to the cap exactly would arrive looking
-// uncut and a call that lost megabytes would spool with truncated false.
+// The bound is one character PAST the cap, and what it buys now is margin
+// rather than detection. The given size travels beside the text, so a part
+// bounded to exactly the cap would still be marked and flagged: cutToCap reads
+// the loss off `given`, not off the length. What the extra character keeps is
+// the guarantee the marker's placement rests on, that a bounded part is always
+// longer than the room the field cut has to spend, so the field's head and tail
+// come out of the part's own head and tail and every hole stays between them.
 const PART_CAP = FIELD_CAP + 1;
 
+// One part of a response, bounded to PART_CAP by removing its MIDDLE rather
+// than its tail, and unmarked.
+//
+// Unmarked because the marker belongs at the field's own cut and there is
+// exactly one of those: the field cut below takes its head out of this head and
+// its tail out of this tail, so the hole this bound opens is inside the hole
+// that marker names, and one true marking covers both. Removing the middle is
+// what makes that so. A part bounded to its head would put the field's tail in
+// the middle of the output and the marker would name a hole that is really at
+// the end, which is the false-placement reading the marking exists to prevent.
+function boundPart(text) {
+    if (text.length <= PART_CAP) return text;
+    const headRoom = Math.ceil(PART_CAP * HEAD_SHARE);
+    return trimLoneSurrogate(text.slice(0, headRoom))
+        + trimLoneSurrogate(trimLeadLoneSurrogate(text.slice(text.length - (PART_CAP - headRoom))));
+}
+
+// The call's output as one string, and how many characters the response held
+// before the part bound above touched it. `resultText` is this function's text
+// alone, for every caller that needs no size.
 function resultText(payload) {
+    return resultParts(payload).text;
+}
+
+function resultParts(payload) {
     const response = payload.tool_response;
-    if (typeof response === 'string') return response.slice(0, PART_CAP);
+    if (typeof response === 'string') {
+        return { text: boundPart(response), given: response.length };
+    }
     const parts = [];
-    const push = (text) => { parts.push(text.slice(0, PART_CAP)); };
+    let given = 0;
+    const push = (text) => { given += text.length; parts.push(boundPart(text)); };
     const pushBlocks = (blocks) => {
         for (const block of blocks) {
             if (typeof block === 'string') push(block);
@@ -309,13 +496,21 @@ function resultText(payload) {
             && typeof response.error.message === 'string') push(response.error.message);
         if (Array.isArray(response.content)) pushBlocks(response.content);
     }
-    return parts.filter((part) => part !== '').join('\n');
+    // The separators count toward what the field was given, since they are part
+    // of the joined text a whole response would have produced. An empty part
+    // contributes neither text nor separator, and a part is empty after the
+    // bound only if it was empty before it.
+    const kept = parts.filter((part) => part !== '');
+    return {
+        text: kept.join('\n'),
+        given: kept.length === 0 ? 0 : given + kept.length - 1
+    };
 }
 
-// The record for a payload, or null when the payload carries no call this hook
-// can describe. The requirement is a command string rather than a tool-name
-// allowlist: the judgment triple needs an ACTION, and a payload without one has
-// nothing to judge whatever the matcher let through.
+// The draft line for a payload, or null when the payload carries no call this
+// hook can describe. The requirement is a command string rather than a
+// tool-name allowlist: the judgment triple needs an ACTION, and a payload
+// without one has nothing to judge whatever the matcher let through.
 //
 // isError comes from kit-tool-payload-lib.js's callFailed, which normalizes the
 // error indicator across every response shape the harness has been seen to
@@ -325,10 +520,43 @@ function resultText(payload) {
 // shared function exists to prevent, and a line whose isError is wrong is worse
 // than a line that was never written.
 //
-// cwd and tool go through the same cap as the text fields. CUT_ORDER cannot
-// reach either of them, so an oversized one (a Windows long path reaches this)
-// would make serialize drop the whole record with no signal anywhere.
-function buildRecord(payload, nowMs) {
+// The identity fields take IDENTITY_FIELD_CAP rather than the judged fields'
+// cap, because CUT_ORDER cannot reach any of them: see that constant for why
+// their combined size has to fit the line on its own.
+//
+// `truncated` keys on the three JUDGED fields alone. A cut to sessionId, cwd or
+// tool does not set it, because the judge never sees those fields and the flag
+// exists to tell the judge that what it is reading is partial: a notice raised
+// over a shortened working directory buys a triple-wide leniency about nothing
+// that is missing from the triple. The residual is recorded rather than closed:
+// the judged party writes its own intent, so it can raise its own flag with a
+// long one. What that buys is absence-reasoning leniency only, a visible
+// contradiction still diverges, and the long field is itself in the spool.
+const FIELD_CAPS = {
+    intent: FIELD_CAP,
+    command: FIELD_CAP,
+    result: FIELD_CAP,
+    sessionId: IDENTITY_FIELD_CAP,
+    cwd: IDENTITY_FIELD_CAP,
+    tool: IDENTITY_FIELD_CAP
+};
+
+// The three fields the judge is shown, and the whole of what raises `truncated`.
+const JUDGED_FIELDS = ['intent', 'command', 'result'];
+
+// A DRAFT of one line: the call's identity, and every field as the text this
+// hook holds plus how many characters that field had before anything cut it.
+//
+// The draft rather than the record is what serialize takes, and that is the
+// whole of what makes the marker discipline structural. A cut field carries a
+// marker line, so a second cut taken off the FIELD would slice through that
+// marker or leave a stale one beside a new one; every cut is therefore taken
+// from the draft's own text, which is the same text the counts are derived
+// from, so a field ends up with exactly one whole marker naming one true count
+// however many times the caps cut it. There is no argument to omit and no
+// shorter path to reach: a caller that has only field text builds a draft with
+// draftOf, where each field is by definition its own source.
+function buildLine(payload, nowMs) {
     if (payload === null || typeof payload !== 'object' || Array.isArray(payload)) return null;
     const input = payload.tool_input;
     if (input === null || typeof input !== 'object' || Array.isArray(input)) return null;
@@ -336,40 +564,83 @@ function buildRecord(payload, nowMs) {
     if (typeof payload.tool_name !== 'string' || payload.tool_name === '') return null;
     if (payloadLib === null || typeof payloadLib.callFailed !== 'function') return null;
 
-    const raw = {
+    const result = resultParts(payload);
+    return draftOf({
         intent: typeof input.description === 'string' ? input.description : '',
         command: input.command,
-        result: resultText(payload),
+        result: { text: result.text, given: result.given },
         sessionId: sessionIdOf(payload),
         cwd: typeof payload.cwd === 'string' ? payload.cwd : '',
         tool: payload.tool_name
-    };
-    const intent = textField(raw.intent);
-    const command = textField(raw.command);
-    const result = textField(raw.result);
-    const sessionId = textField(raw.sessionId);
-    const cwd = textField(raw.cwd);
-    const tool = textField(raw.tool);
-    const truncated = intent.length < raw.intent.length
-        || command.length < raw.command.length
-        || result.length < raw.result.length
-        || sessionId.length < raw.sessionId.length
-        || cwd.length < raw.cwd.length
-        || tool.length < raw.tool.length;
-
-    return {
-        v: SCHEMA_VERSION,
+    }, {
         callId: callId(),
         ts: new Date(nowMs).toISOString(),
-        sessionId,
-        cwd,
-        tool,
-        intent,
-        command,
-        result,
-        truncated,
         isError: payloadLib.callFailed(payload) === true
+    });
+}
+
+// A draft from field text. A field given as a bare string is its own source and
+// nothing was lost before this hook saw it; a field given as `{ text, given }`
+// names a loss that happened upstream, which is how a multi-part response
+// bounded before the join carries its true size here.
+function draftOf(fields, meta) {
+    const m = meta || {};
+    const out = {};
+    for (const name of Object.keys(FIELD_CAPS)) {
+        const value = fields[name];
+        const source = (value !== null && typeof value === 'object')
+            ? { text: typeof value.text === 'string' ? value.text : '', given: value.given }
+            : { text: typeof value === 'string' ? value : '', given: undefined };
+        const given = Number.isFinite(source.given) ? source.given : source.text.length;
+        out[name] = { text: source.text, given, cap: FIELD_CAPS[name] };
+    }
+    return {
+        meta: {
+            callId: typeof m.callId === 'string' ? m.callId : callId(),
+            ts: typeof m.ts === 'string' ? m.ts : new Date(0).toISOString(),
+            isError: m.isError === true
+        },
+        fields: out
     };
+}
+
+// The draft's fields cut to their caps, as the record a line is written from.
+//
+// Two cuts, because the two kinds of field are read differently. A judged field
+// takes the head-and-tail cut with its in-band marker, since the judge reasons
+// about what is missing from it. An identity field takes a plain head slice,
+// surrogate-trimmed: nothing marks it because nothing claims it, and see
+// IDENTITY_FIELD_CAP for what that costs and why it is still the honest shape.
+function composeRecord(draft) {
+    const cut = {};
+    for (const name of JUDGED_FIELDS) {
+        const field = draft.fields[name];
+        cut[name] = cutToCap(field.text, field.given, field.cap);
+    }
+    const identity = (name) => {
+        const field = draft.fields[name];
+        return trimLoneSurrogate(field.text.slice(0, field.cap));
+    };
+    return {
+        v: SCHEMA_VERSION,
+        callId: draft.meta.callId,
+        ts: draft.meta.ts,
+        sessionId: identity('sessionId'),
+        cwd: identity('cwd'),
+        tool: identity('tool'),
+        intent: cut.intent.text,
+        command: cut.command.text,
+        result: cut.result.text,
+        truncated: JUDGED_FIELDS.some((name) => cut[name].lost),
+        isError: draft.meta.isError
+    };
+}
+
+// The record for a payload, or null when the payload carries no call this hook
+// can describe.
+function buildRecord(payload, nowMs) {
+    const draft = buildLine(payload, nowMs);
+    return draft === null ? null : composeRecord(draft);
 }
 
 // The bytes a line occupies in the spool, its terminating newline included.
@@ -377,9 +648,32 @@ function lineBytes(line) {
     return Buffer.byteLength(line, 'utf8') + 1;
 }
 
-// The record serialized under the byte cap, or null when it cannot fit. Fields
-// are cut in CUT_ORDER, each one down to empty before the next is touched, and
-// any cut sets truncated.
+// Whether a draft holds everything composing a record reads. Every part is
+// checked rather than the outermost one alone, because a partial draft is
+// exactly what reads as "close enough" and then throws two calls deeper, inside
+// composeRecord, on a field or a meta key nobody looked at. The contract this
+// protects is that serialize ANSWERS rather than throws: the entry point's
+// catch would swallow a throw here, but it would also swallow the line, and a
+// hook that drops a record for a reason no one can see is the shape this file
+// exists not to have.
+function readableDraft(draft) {
+    if (draft === null || typeof draft !== 'object' || Array.isArray(draft)) return false;
+    const meta = draft.meta;
+    if (meta === null || typeof meta !== 'object') return false;
+    if (typeof meta.callId !== 'string' || typeof meta.ts !== 'string') return false;
+    const fields = draft.fields;
+    if (fields === null || typeof fields !== 'object') return false;
+    for (const name of Object.keys(FIELD_CAPS)) {
+        const field = fields[name];
+        if (field === null || typeof field !== 'object') return false;
+        if (typeof field.text !== 'string' || !Number.isFinite(field.cap)) return false;
+    }
+    return true;
+}
+
+// A draft serialized under the byte cap, or null when it cannot fit. Fields are
+// cut in CUT_ORDER, each one down to empty before the next is touched, and any
+// cut sets truncated.
 //
 // The deficit is in BYTES and a slice takes CHARACTERS, so the cut is scaled by
 // what this field's own characters actually cost in the serialized line. One
@@ -399,21 +693,41 @@ function lineBytes(line) {
 // from repeating.
 //
 // Null is a dropped record, which now needs a serialized skeleton (identity,
-// timestamp, and the capped cwd, tool and session id together) past 8192 bytes
+// timestamp, and the capped cwd, tool and session id together) past the byte cap
 // to reach. Dropping is deliberate: the cap is a promise the contract makes to
 // the consumer about the interleave, and a line written long would break it for
 // every reader at once.
-function serialize(record) {
-    const out = { ...record };
+//
+// EVERY CUT IS TAKEN FROM THE DRAFT'S OWN TEXT, never from the field as it
+// currently stands, and that is why this takes a draft rather than a record. A
+// field already at the character cap carries a marker line naming what it lost,
+// and re-cutting that text would slice through the marker or leave a second one
+// beside it, putting a mangled or a stale marking in front of the judge.
+// Cutting the draft's text to a smaller cap instead re-derives one whole marker
+// whose count is the whole of what the field is missing. There is no second
+// shape to call this with and no argument to leave out, so the guarantee is a
+// property of the signature rather than of the call site.
+//
+// The loop still terminates on the length guard: cutToCap never returns more
+// than the cap it is given, and each pass lowers that cap by at least one from
+// the field's current length, so length strictly decreases to empty.
+//
+// A draft this cannot read at all answers null, the same as a record that will
+// not fit: this hook's contract is that it never throws on the observed
+// session's turn, and a dropped line is the failure it is allowed to have.
+function serialize(draft) {
+    if (!readableDraft(draft)) return null;
+    const out = composeRecord(draft);
     let line = JSON.stringify(out);
     if (lineBytes(line) <= LINE_CAP_BYTES) return line;
     for (const field of CUT_ORDER) {
+        const source = draft.fields[field];
         while (out[field].length > 0 && lineBytes(line) > LINE_CAP_BYTES) {
             const over = lineBytes(line) - LINE_CAP_BYTES;
             const bytesPerChar = Buffer.byteLength(JSON.stringify(out[field]), 'utf8') / out[field].length;
             const wanted = Math.ceil(over / Math.max(1, bytesPerChar));
             const cut = Math.min(out[field].length, Math.max(1, wanted));
-            out[field] = trimLoneSurrogate(out[field].slice(0, out[field].length - cut));
+            out[field] = cutToCap(source.text, source.given, out[field].length - cut).text;
             out.truncated = true;
             line = JSON.stringify(out);
         }
@@ -444,9 +758,9 @@ function main(payload, nowMs) {
     const dir = spoolDir();
     if (!spoolActive(dir)) return false;
 
-    const record = buildRecord(payload, now);
-    if (record === null) return false;
-    const line = serialize(record);
+    const draft = buildLine(payload, now);
+    if (draft === null) return false;
+    const line = serialize(draft);
     if (line === null) return false;
 
     const file = dayFile(dir, now);
@@ -1172,8 +1486,13 @@ if (require.main === module) {
 module.exports = {
     main,
     buildRecord,
+    buildLine,
+    draftOf,
+    composeRecord,
     serialize,
     resultText,
+    resultParts,
+    boundPart,
     spoolDir,
     spoolActive,
     dayFile,
@@ -1181,6 +1500,9 @@ module.exports = {
     callId,
     textField,
     trimLoneSurrogate,
+    trimLeadLoneSurrogate,
+    captureCutMarker,
+    cutToCap,
     deliver,
     inboxDir,
     inboxActive,
@@ -1200,6 +1522,10 @@ module.exports = {
     cutBytes,
     SCHEMA_VERSION,
     FIELD_CAP,
+    IDENTITY_FIELD_CAP,
+    JUDGED_FIELDS,
+    PART_CAP,
+    HEAD_SHARE,
     LINE_CAP_BYTES,
     DAY_FILE_MAX_BYTES,
     CUT_ORDER,

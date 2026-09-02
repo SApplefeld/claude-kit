@@ -44,7 +44,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const { neutralize } = require('./text.js');
+const { neutralize, trimLoneSurrogate } = require('./text.js');
 
 // The line schema version this daemon understands. A line carrying anything
 // else is skipped and counted separately from a malformed one: an unrecognized
@@ -62,11 +62,18 @@ const DAY_FILE_RE = /^(\d{4})-(\d{2})-(\d{2})\.jsonl$/;
 // however far behind it has fallen.
 const MAX_READ_BYTES = 4 * 1024 * 1024;
 
-// The defensive cap on a text field taken off a parsed line. The hook caps at
-// 2000 characters, so no honest line is touched by this; it bounds a line
-// written by hand or by something other than the hook before its content
-// becomes a prompt.
-const ENTRY_FIELD_CAP = 4000;
+// The defensive cap on a text field taken off a parsed line. The hook caps a
+// field at 6000 characters, so this sits at twice that and no honest line is
+// touched by it; what it bounds is a line written by hand or by something other
+// than the hook, before its content becomes a prompt.
+//
+// It stays above the hook's cap on purpose, and a cut it does make is marked.
+// The judgment prompt now vouches for an unmarked input, telling the judge that
+// text carrying no marking was not cut on its way there, so a silent cut here
+// would make this daemon the one party in the pipeline able to falsify that
+// sentence. Defensive-only is a property of the number, and the marking is what
+// holds when the number is wrong.
+const ENTRY_FIELD_CAP = 12000;
 
 // How much of an unrecognized version value a skip diagnostic may echo. A
 // version field is a small number in every honest line, and this is the only
@@ -214,9 +221,32 @@ function readFrom(file, offset, maxBytes) {
     return { status: 'ok', lines, lineEnds, startOffset: start, nextOffset: start + lastNewline + 1, reset, oversized: false };
 }
 
+// A field off a parsed line, bounded and surrogate-safe.
+//
+// The trim, because this cut can put text on the wire: a hand-written line
+// whose 12,000th code unit splits a surrogate pair would otherwise reach the
+// model with an orphan half in a field the judge reads, and every other
+// producer on this channel takes the same guard from the same module.
+//
+// NOT the head-and-tail cutter, deliberately. That cutter writes the capture
+// marker, and this cut is the daemon's, made while reading a line the capture
+// hook may never have written. Emitting the marker here would put a claim about
+// what happened at CAPTURE into a field this process cut itself, which is a
+// forgery of the pipeline's own vocabulary, and the judge is told to read that
+// vocabulary as a marking inside a notice-opened triple. What this cut does
+// instead is set the entry's `truncated` flag, which is a claim it can make
+// honestly: the triple opens with the notice, and no marker names a position
+// nobody here can vouch for.
 function textOf(value) {
     if (typeof value !== 'string') return '';
-    return value.slice(0, ENTRY_FIELD_CAP);
+    return trimLoneSurrogate(value.slice(0, ENTRY_FIELD_CAP));
+}
+
+// Whether this cap fell on a field, which is what the entry has to carry
+// forward: a cut made here reaches the judge as text with no marking on it
+// unless the entry says otherwise.
+function wasCut(value) {
+    return typeof value === 'string' && value.length > ENTRY_FIELD_CAP;
 }
 
 // One spool line as an entry to judge, or a described skip. Skip reasons:
@@ -270,7 +300,13 @@ function parseLine(raw) {
             intent: textOf(obj.intent),
             command: textOf(obj.command),
             result: textOf(obj.result),
-            truncated: obj.truncated === true,
+            // The line's own flag, plus any cut this parse just made to a field
+            // the judge reads. The three judged fields are the whole of what
+            // sets it, matching the capture hook's own rule: a notice raised
+            // over a shortened `cwd` would grant a triple-wide leniency about
+            // nothing that is in the triple.
+            truncated: obj.truncated === true
+                || wasCut(obj.intent) || wasCut(obj.command) || wasCut(obj.result),
             isError: obj.isError === true
         }
     };

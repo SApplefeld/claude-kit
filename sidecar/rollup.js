@@ -153,6 +153,11 @@ const OFFSET_FILE_MAX_BYTES = 64;
 // a bound.
 const MAX_LIST_ROWS = 200;
 
+// How much of a record's prompt id this report prints. An id is a short slug in
+// every record this fleet writes; the bound is here because a hand-written line
+// is not one this command trusts to be short.
+const PROMPT_ID_CAP = 60;
+
 const TOOL_SCOPE_LINE = 'tool scope: Bash only. The capture hook registers on '
     + 'PostToolUse with the matcher "Bash" alone, while the sibling shell-facing '
     + 'hooks in hooks.json match "Bash|PowerShell", so a call this fleet makes '
@@ -233,9 +238,43 @@ function emptySessionStats() {
     };
 }
 
+// The id a verdict record was produced under, as this report will print it.
+// Neutralized and capped like every other log-derived field, because a
+// hand-written record can put anything at all in this position, and collapsed
+// to a single name for a record that carries none so an absent id cannot mint
+// a bucket per record.
+// The id a verdict record was produced under, AS THE RECORD CARRIES IT. The
+// tally is keyed on this raw value and never on the rendered one: two distinct
+// ids that neutralize or truncate to the same string are two instruments, and
+// keying on the rendered form merges them into one bucket, which drops
+// `promptIds.size` back to 1 and suppresses the very split block this feature
+// exists to print. Rendering happens once, at the report, where the collision
+// is visible and said out loud.
+function promptIdOf(record) {
+    return typeof record.promptId === 'string' ? record.promptId : '';
+}
+
+// One raw id as the report prints it: neutralized, capped, and trimmed of a
+// lone surrogate half the cap may have left, the same three steps in the same
+// order every other log-derived field on this channel takes.
+function renderPromptId(raw) {
+    const rendered = trimLoneSurrogate(neutralize(raw).slice(0, PROMPT_ID_CAP));
+    return rendered === '' ? '(no prompt id)' : rendered;
+}
+
 function emptyTotals() {
     return {
         verdict: { achieved: 0, failed: 0, diverged: 0, other: 0 },
+        // Verdict counts per prompt id, rendered only when the window holds
+        // more than one. CONTRACT.md says a verdict is comparable only to
+        // another verdict produced by the same prompt, and a rollup over a
+        // transition window sums several instruments into one column unless it
+        // can say so: this is that sentence's enforcing surface. What the list
+        // cap bounds is the RENDERING, not this map, which gains an entry per
+        // distinct id exactly as the gap lists gain a row per gap; each key is
+        // neutralized and capped on the way in, and the map lives no longer
+        // than the records already held in memory.
+        promptIds: new Map(),
         gaps: 0,
         gappedCalls: 0,
         staleStretches: 0,
@@ -376,6 +415,11 @@ function tallyVerdictFile(name, records, sessions, days, gapRanges, staleRanges,
             sessionStats.verdict[v] += 1;
             dayStats.verdict[v] += 1;
             totals.verdict[v] += 1;
+            const promptId = promptIdOf(record);
+            if (!totals.promptIds.has(promptId)) {
+                totals.promptIds.set(promptId, { achieved: 0, failed: 0, diverged: 0, other: 0 });
+            }
+            totals.promptIds.get(promptId)[v] += 1;
         } else if (record.type === 'gap') {
             const day = writeDay(record);
             if (!days.has(day)) days.set(day, emptySessionStats());
@@ -810,6 +854,34 @@ function render(result) {
     const t = result.totals;
     const otherPart = t.verdict.other > 0 ? `, other ${t.verdict.other}` : '';
     lines.push(`verdicts: achieved ${t.verdict.achieved}, failed ${t.verdict.failed}, diverged ${t.verdict.diverged}${otherPart}`);
+    // Only when the window holds more than one prompt. One id is the ordinary
+    // state and its per-prompt line would repeat the totals above verbatim;
+    // two or more mean the column above sums verdicts from two instruments,
+    // which is the one case a reader must not take at face value.
+    if (t.promptIds.size > 1) {
+        lines.push('verdicts by prompt (a verdict is comparable only to one produced by the same prompt, '
+            + `so the line above sums ${t.promptIds.size} instruments across this window):`);
+        const ids = Array.from(t.promptIds.keys()).sort();
+        // How many raw ids each rendered label stands for. A label covering
+        // more than one is two instruments a reader cannot tell apart on this
+        // page, which is a fact about the report rather than about the window:
+        // the counts stay apart, one row each, and the row says why two rows
+        // read alike.
+        const perLabel = new Map();
+        for (const raw of ids) {
+            const label = renderPromptId(raw);
+            perLabel.set(label, (perLabel.get(label) || 0) + 1);
+        }
+        renderCappedList(lines, ids, '(none)', (raw) => {
+            const c = t.promptIds.get(raw);
+            const label = renderPromptId(raw);
+            const other = c.other > 0 ? `, other ${c.other}` : '';
+            const collision = perLabel.get(label) > 1
+                ? ' (another id in this window renders identically here; these counts are that id\'s alone)'
+                : '';
+            return `  ${label}: achieved ${c.achieved}, failed ${c.failed}, diverged ${c.diverged}${other}${collision}`;
+        });
+    }
     lines.push(`judgment gaps: ${t.gaps} gap record(s) covering ${t.gappedCalls} call(s)`);
     // On its own line and never added to the gaps above: these calls have no
     // verdict because the daemon declined to judge them for age, which is the

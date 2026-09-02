@@ -25,7 +25,7 @@
 // see in the fixture, never on a verdict's say-so. This command never
 // regenerates one: a case whose expected value it cannot read is a reason to
 // stop, never a reason to invent one. (The 350-character cap was the scratch
-// harvester's, .kit/harvest-cases.mjs; sidecar/harvest.js cuts at 2000.)
+// harvester's, .kit/harvest-cases.mjs; sidecar/harvest.js cuts at 6000.)
 //
 // FIXTURE STATE ONLY. Every run uses a state root and a memory root this
 // command creates under the OS temp directory; neither ever falls back to
@@ -122,22 +122,24 @@
 //
 // SYNTHETIC SPOOL LINES. The lines this command writes into its own fixture
 // spool are not the capture hook's output, but they carry the same per-field
-// 2000-character cap and the same lone-surrogate trim as a real capture would
-// (mirrored here rather than required from plugins/claude-kit/hooks/
-// kit-sidecar-capture.js, since this tree does not depend on hooks/ as a
-// library), and `truncated` is set from whether that cut actually fired rather
-// than hardcoded, so a fixture line never claims a shape the daemon could not
-// have captured for real. A frozen field longer than the field cap is
-// therefore CUT at replay rather than refused: the cut reproduces exactly what
-// a real capture of that call would have written, and refusing would refuse
-// correct behaviour. It is named per case in the run report, with the length
-// before and after, because this instrument's own corrected cases exist
-// precisely because a cut removed the evidence a verdict turned on, and a cut
-// nobody is told about is the same defect one layer down. What is NOT
-// reproduced is the capture hook's
-// whole-line 8192-byte scaled cut: none of this battery's frozen cases needs
-// it, and a fixture line that would need it is refused outright (loud) rather
-// than silently shortened by an algorithm this file does not carry a copy of.
+// 6000-character cap and the same cut as a real capture would: head and tail
+// kept, the in-band cut marker between them naming what went, and the
+// lone-surrogate trim at both cut points (mirrored here rather than required
+// from plugins/claude-kit/hooks/kit-sidecar-capture.js, since this tree does
+// not depend on hooks/ as a library, and pinned equal to it by a test).
+// `truncated` is set from whether that cut actually fired rather than
+// hardcoded, so a fixture line never claims a shape the daemon could not have
+// captured for real. A frozen field longer than the field cap is therefore CUT
+// at replay rather than refused: the cut reproduces exactly what a real capture
+// of that call would have written, and refusing would refuse correct
+// behaviour. It is named per case in the run report, with the length before and
+// after, because this instrument's own corrected cases exist precisely because
+// a cut removed the evidence a verdict turned on, and a cut nobody is told
+// about is the same defect one layer down. What is NOT reproduced is the
+// capture hook's whole-line 16384-byte scaled cut: none of this battery's
+// frozen cases needs it, and a fixture line that would need it is refused
+// outright (loud) rather than silently shortened by an algorithm this file does
+// not carry a copy of.
 //
 // WHERE THE DATA GOES, SAID BEFORE IT GOES. A run POSTs every fixture command
 // and its output, and the whole frozen memory index, over the network to the
@@ -183,11 +185,11 @@ const daemon = require('./daemon.js');
 const config = require('./config.js');
 const logs = require('./logs.js');
 const memoryIndex = require('./memory-index.js');
-const judgmentPrompt = require('./prompts/judgment-v3.js');
+const judgmentPrompt = require('./prompts/judgment-v4.js');
 const recognitionPrompt = require('./prompts/recognition-v1.js');
 const recordName = require('./record-name.js');
 const { screenStateDir } = require('./state-screen.js');
-const { neutralize, TEXT_MAX_CHARS, trimLoneSurrogate } = require('./text.js');
+const { neutralize, TEXT_MAX_CHARS, trimLoneSurrogate, cutToCap } = require('./text.js');
 
 const BATTERIES_DIR = path.join(__dirname, 'batteries');
 
@@ -226,8 +228,8 @@ function fixtureDay() {
 
 // The same field cap and whole-line cap sidecar/CONTRACT.md states for a real
 // captured spool line, mirrored (not imported) into this fixture writer.
-const FIELD_CAP = 2000;
-const LINE_CAP_BYTES = 8192;
+const FIELD_CAP = 6000;
+const LINE_CAP_BYTES = 16384;
 
 // The freshness horizon this command hands the daemon for a replay: a hundred
 // days, which is far past the fourteen-day retention window that deletes a
@@ -284,12 +286,13 @@ const USAGE = [
 ].join('\n');
 
 // One field, capped and surrogate-safe, the same shape a real capture would
-// have produced. The trim itself is sidecar/text.js's, shared with
-// sidecar/harvest.js rather than copied, and pinned equal to the capture
+// have produced: past the cap it keeps the field's head and its tail with the
+// in-band cut marker between them. The cut itself is sidecar/text.js's, shared
+// with sidecar/harvest.js rather than copied, and pinned equal to the capture
 // hook's own copy across the process boundary by a test.
 function textField(value, cap) {
     if (typeof value !== 'string' || value === '') return '';
-    return trimLoneSurrogate(value.slice(0, cap));
+    return cutToCap(value, value.length, cap).text;
 }
 
 // Which frozen fields this run cuts, and by how much. A cut here is CORRECT
@@ -298,14 +301,17 @@ function textField(value, cap) {
 // been written; what would not be correct is making it silently. The caller
 // names every entry of this in the run report.
 //
-// EITHER CAP COUNTS, which is why this needs the battery name. A field is cut
-// twice on its way to the model: once by the spool writer at FIELD_CAP, and
-// again by the prompt at its own per-field cap, which is BELOW the field cap
-// for every field the prompts cut. A field between the two caps (the judgment
-// battery's 1,555-character command, against the judgment prompt's own 1,500)
-// is therefore cut with nothing over 2,000 characters anywhere in sight, and a
-// cut list keyed on the field cap alone emits no entry for it at all, while
-// sidecar/batteries/README.md states that every such cut is named per case.
+// EITHER CAP COUNTS, which is why this needs the battery name. A field can be
+// cut twice on its way to the model: once by the spool writer at FIELD_CAP, and
+// again by the prompt at its own per-field cap where that cap is lower. The
+// recognition prompt's caps are all below the field cap, so a recognition field
+// between the two is cut with nothing over the field cap anywhere in sight, and
+// a cut list keyed on the field cap alone would emit no entry for it at all,
+// while sidecar/batteries/README.md states that every such cut is named per
+// case. The judgment prompt's command cap is equal to the field cap rather than
+// below it, so on that battery the prompt re-cuts nothing the spool writer left
+// whole; the branch is kept because the relation between two caps is not this
+// function's to assume.
 // `to` is what the replayed spool line holds and `seen` is what the model is
 // actually given; the report says which cap produced which.
 function fieldCuts(batteryName, fields) {
@@ -318,14 +324,26 @@ function fieldCuts(batteryName, fields) {
         const seen = Math.min(to, promptCap);
         // WHETHER THE FIELD CAP FIRED IS A QUESTION ABOUT THE CAP, NOT ABOUT
         // THE RESULTING LENGTH. textField also drops a lone surrogate half left
-        // at the cut, so a 1,999-character field ending in an unpaired high
-        // half comes back at 1,998 with the cap never reached; reading the
-        // shortening as a cut would print "cut to 1998 at the 2000-character
+        // at the cut, so a 5,999-character field ending in an unpaired high
+        // half comes back at 5,998 with the cap never reached; reading the
+        // shortening as a cut would print "cut to 5998 at the 6000-character
         // field cap, which is the cut the capture hook itself would have made",
         // a false cause in the one line whose job is saying how much evidence
-        // the judge saw. spoolLine computes its own `truncated` flag from the
-        // raw length for this reason, and these two lines of one run must not
-        // contradict each other.
+        // the judge saw.
+        //
+        // THE FLAG AND THIS REPORT KEY ON DIFFERENT THINGS, deliberately, and
+        // the divergence is stated here rather than left for a reader to
+        // discover. spoolLine's `truncated` fires on anything the cut LOST,
+        // because that is the capture hook's rule and the flag's whole job is
+        // telling the judge its input is partial, a trimmed surrogate half
+        // included. This report keys on the CAP, because its job is naming a
+        // cut a reader can act on: "the 6000-character field cap cut this
+        // 8,000-character field" is a fact about the fixture, while "one code
+        // unit went because the field ended in half a pair" is a fact about
+        // the encoding and would print a cut line for a field nobody cut. So a
+        // trim-only loss opens the replayed triple with the capture-cut notice
+        // and appears in no cut line, and that is the intended pair of
+        // behaviours rather than two rules disagreeing.
         const fieldCapFired = value.length > FIELD_CAP;
         if (fieldCapFired || to > seen) {
             cuts.push({ field, from: value.length, to, seen, promptCap, fieldCapFired });
@@ -336,21 +354,30 @@ function fieldCuts(batteryName, fields) {
 
 // One cut, said as the sentence the run report prints. A function of the cut
 // record alone, so each of its three branches can be put in front of a case
-// directly: the frozen fixture can only reach two of them, since
-// promptEvidenceCap is Infinity for a judgment intent and result and no frozen
-// field of those kinds comes near the field cap, and a branch with no case that
-// can only pass if it works is not tested.
+// directly: the frozen fixtures reach NONE of them today, since no frozen field
+// exceeds the field cap and the judgment prompt's command cap is equal to that
+// cap rather than below it, so both batteries produce zero cut entries and the
+// whole cut-report path is exercised by unit drives alone. A branch with no
+// case that can only pass if it works is not tested, which is why all three are
+// put in front of this function directly.
 function cutSentence(cut) {
     const fieldCapFired = cut.fieldCapFired === true;
     const promptCapFired = cut.seen < cut.to;
     let sentence = `frozen field cut at replay: ${cut.battery} #${cut.n} ${cut.field}, `
         + `${cut.from} characters`;
     if (fieldCapFired) {
-        sentence += ` cut to ${cut.to} at the ${FIELD_CAP}-character field cap, `
+        sentence += ` cut to ${cut.to} at the ${FIELD_CAP}-character field cap, kept as the `
+            + 'field\'s head and tail around an in-band marker naming what went, '
             + 'which is the cut the capture hook itself would have made on this call';
         if (promptCapFired) {
+            // What the model sees is a prefix of the REPLAYED field, which after
+            // a head-and-tail cut is not a prefix of the original: saying "the
+            // first N of them", where "them" is the frozen field's own
+            // characters, would state a false shape in the one line whose job is
+            // saying how much evidence the model got.
             sentence += `; the ${cut.battery} prompt cuts this field again at its own `
-                + `${cut.promptCap}-character cap, so the model sees the first ${cut.seen} of them`;
+                + `${cut.promptCap}-character cap, so the model sees the first ${cut.seen} `
+                + 'characters of the replayed field';
         }
         return sentence;
     }
@@ -371,10 +398,13 @@ function cutSentence(cut) {
 
 // The prompt's own per-field cut, on top of the spool's. The spool cap is not
 // the last cut a frozen field takes: the judgment prompt cuts ACTION at its
-// COMMAND_PROMPT_CAP and the recognition prompt cuts all three sides at its
-// own caps, each BELOW the field cap, so a cut report that named only the
-// field cap would state a number false by the difference, in the one line
-// whose purpose is to say how much evidence the model actually saw. Read from
+// COMMAND_PROMPT_CAP, which is equal to the field cap today so it re-cuts
+// nothing, and the recognition prompt cuts all three sides at its own caps,
+// which are below the field cap and do. A cut report that named only the field
+// cap would state a number false by the difference on the recognition side, in
+// the one line whose purpose is to say how much evidence the model actually
+// saw, and the relation between two caps is not this function's to assume in
+// either direction. Read from
 // the prompt modules rather than duplicated as literals, so this report cannot
 // drift from the prompts it describes; Infinity where the prompt embeds the
 // field whole.
@@ -589,13 +619,26 @@ function spoolLine(fields) {
     const intent = textField(fields.intent, FIELD_CAP);
     const command = textField(fields.command, FIELD_CAP);
     const result = textField(fields.result, FIELD_CAP);
-    // Whether the CAP fired, measured against the cap rather than against the
-    // returned length. textField also drops a trailing unpaired surrogate, and
-    // it does so whether or not the slice cut anything, so comparing lengths
-    // would set `truncated` on a short field that merely ended in an orphan
-    // half and make this flag say something it does not mean.
-    const overCap = (value) => (typeof value === 'string' ? value.length : 0) > FIELD_CAP;
-    const truncated = overCap(fields.intent) || overCap(fields.command) || overCap(fields.result);
+    // The capture hook's own rule, not a second one: `truncated` is true when
+    // the cut LOST something, which is what `cutToCap` reports and what the
+    // hook writes into a real line. A surrogate orphan trimmed off a field
+    // inside the cap counts on both sides for the same reason, so a fixture
+    // line and a real capture of the same call can no longer disagree on the
+    // flag while this file claims to write the shape a real capture would.
+    //
+    // THE FROZEN FIELD MAY ALREADY BE CUT. sidecar/harvest.js caps a field as
+    // it reads it out of a transcript, marker and all, so a frozen field can
+    // carry a genuine in-band marker while its own length is inside the cap and
+    // nothing here would fire. A case that records what the harvester cut is
+    // taken at its word, which is what keeps a marked field from replaying into
+    // a triple that opens with no capture-cut notice, where the judge is
+    // instructed to read that marker as ordinary data.
+    const lost = (value) => cutToCap(typeof value === 'string' ? value : '',
+        typeof value === 'string' ? value.length : 0, FIELD_CAP).lost;
+    const harvestCut = fields.harvestCut && typeof fields.harvestCut === 'object'
+        ? fields.harvestCut : {};
+    const truncated = lost(fields.intent) || lost(fields.command) || lost(fields.result)
+        || harvestCut.intent === true || harvestCut.command === true || harvestCut.result === true;
     const record = {
         v: 1,
         ts: new Date().toISOString(),
@@ -725,6 +768,10 @@ function buildFixture(stateDir, target, sessions) {
                 intent: c.intent,
                 command: c.command,
                 result: c.result,
+                // What the harvester cut as it froze this case, where the case
+                // records it. A frozen field can hold a genuine in-band marker
+                // with its own length inside the cap, and only the case knows.
+                harvestCut: c.harvestCut,
                 isError: c.isError === true
             }));
         }
@@ -1500,11 +1547,12 @@ async function main(argv, deps) {
     // adjudication turned on, and a reader scoring one of them is owed the
     // number the judge saw.
     //
-    // Both caps are named because either can fire alone. A field over 2,000
-    // characters is cut by the spool writer and then again by the prompt; a
-    // field between the prompt's cap and the field cap is cut only by the
-    // prompt, and a sentence that named the field cap for it would state a
-    // number nothing in this run produced. Every cap here is read from the
+    // Both caps are named because either can fire alone. A field over the field
+    // cap is cut by the spool writer, and again by the prompt wherever the
+    // prompt's own cap is the lower of the two; a field between a prompt's cap
+    // and the field cap is cut only by the prompt, and a sentence that named
+    // the field cap for it would state a number nothing in this run produced.
+    // Every cap here is read from the
     // prompt modules rather than restated, so this report cannot drift from the
     // prompts it describes.
     for (const cut of fixture.cuts) write(`${cutSentence(cut)}\n`);

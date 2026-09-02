@@ -171,7 +171,7 @@ const inbox = require('./inbox.js');
 const judge = require('./judge.js');
 const recognize = require('./recognize.js');
 const memoryIndex = require('./memory-index.js');
-const prompt = require('./prompts/judgment-v3.js');
+const prompt = require('./prompts/judgment-v4.js');
 const recognitionPrompt = require('./prompts/recognition-v1.js');
 
 // The idle poll interval in the watch loop. The fleet produces a few thousand
@@ -1312,7 +1312,7 @@ async function drainFile(ctx, pass, fileName) {
         ctx.reportedUnreadable.delete(fileName);
         if (read.oversized) {
             pass.counters.oversized += 1;
-            ctx.deps.report(`skipped ${read.nextOffset - read.startOffset} bytes of ${fileName} holding no complete line; the spool contract caps a line at 8192 bytes, so those bytes are not from the capture hook`);
+            ctx.deps.report(`skipped ${read.nextOffset - read.startOffset} bytes of ${fileName} holding no complete line; the spool contract caps a line at 16384 bytes, so those bytes are not from the capture hook`);
         }
         if (read.lines.length === 0) {
             // Either a partial line is in flight, in which case nextOffset is

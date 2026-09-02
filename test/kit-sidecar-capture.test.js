@@ -168,24 +168,25 @@ function bashPayload(overrides) {
     };
 }
 
-// A record shaped like buildRecord's output, for the cases that assert on the
+// A draft shaped like buildLine's output, for the cases that assert on the
 // serializer directly. The byte-cap arithmetic is exact this way, where an
 // end-to-end case would have to guess at the skeleton's own size.
+//
+// The serializer takes a draft rather than a record because every cut it makes
+// is re-derived from the draft's own text; there is no record-shaped call to
+// make, which is what keeps a second cut off already-marked text unreachable
+// from any caller. A field may be given as a string (its own source) or as
+// `{ text, given }` (something upstream cut it first).
 function record(fields) {
-    return {
-        v: 1,
-        callId: 'a'.repeat(16),
-        ts: '2026-08-30T00:00:00.000Z',
+    return hook.draftOf({
         sessionId: 's',
         cwd: 'c',
         tool: 'Bash',
         intent: 'i',
         command: 'm',
         result: 'r',
-        truncated: false,
-        isError: false,
         ...fields
-    };
+    }, { callId: 'a'.repeat(16), ts: '2026-08-30T00:00:00.000Z', isError: false });
 }
 
 // Does the string carry a surrogate code unit that is not part of a pair? A
@@ -193,6 +194,26 @@ function record(fields) {
 // to a replacement character in whatever reads the spool.
 function hasLoneSurrogate(text) {
     return /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?:^|[^\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(text);
+}
+
+// A field carrying the in-band cut marker, split into what it kept and what it
+// says went, or null when it carries no marker. The marker is matched
+// non-greedily so a field holding more than one is caught by markerCount below
+// rather than silently read as its last.
+function markedField(text) {
+    const m = /^([\s\S]*?)\n\[\.\.\.(\d+) characters cut at capture\.\.\.\]\n([\s\S]*)$/.exec(text);
+    return m === null ? null : { head: m[1], count: Number(m[2]), tail: m[3] };
+}
+
+// How many whole markers a string carries, and how many marker openings. A
+// bisected marker leaves an opening with no whole marker around it, which is
+// the shape a cut taken off already-marked text produces.
+function markerCount(text) {
+    return (text.match(/\[\.\.\.\d+ characters cut at capture\.\.\.\]/g) || []).length;
+}
+
+function markerOpenings(text) {
+    return (text.match(/\[\.\.\./g) || []).length;
 }
 
 test('a realistic Bash call produces one schema-complete spool line', () => {
@@ -342,8 +363,8 @@ test('a huge response is bounded before it is joined', () => {
             tool_response: { stdout: huge, stderr: '', exit_code: 0 }
         })), 'huge stdout');
         const rec = readSpool(home)[0];
-        assert.strictEqual(rec.result.length, hook.FIELD_CAP, 'the field cap still holds');
-        assert.strictEqual(rec.truncated, true, 'a response cut in resultText still reads as truncated');
+        assert.ok(rec.result.length <= hook.FIELD_CAP, 'the field cap still holds, was ' + rec.result.length);
+        assert.strictEqual(rec.truncated, true, 'a response bounded in resultParts still reads as truncated');
     } finally {
         rmDir(home);
     }
@@ -528,8 +549,8 @@ test('a failed write exits 0 and disturbs nothing', () => {
 test('oversized command and result are cut and the flag is set', () => {
     const home = makeHome();
     try {
-        const command = 'echo ' + 'c'.repeat(5000);
-        const stdout = 'r'.repeat(9000);
+        const command = 'echo ' + 'c'.repeat(hook.FIELD_CAP + 3000);
+        const stdout = 'r'.repeat(hook.FIELD_CAP + 3000);
         assertSilent(runHook(home, bashPayload({
             tool_input: { command, description: 'Print a lot' },
             tool_response: { stdout, stderr: '', exit_code: 0 }
@@ -537,13 +558,226 @@ test('oversized command and result are cut and the flag is set', () => {
 
         const rec = readSpool(home)[0];
         assert.strictEqual(rec.truncated, true, 'a cut sets the flag');
-        assert.strictEqual(rec.command.length, hook.FIELD_CAP, 'command is cut to the field cap');
-        assert.strictEqual(rec.result.length, hook.FIELD_CAP, 'result is cut to the field cap');
+        assert.ok(rec.command.length <= hook.FIELD_CAP, 'command is within the field cap');
+        assert.ok(rec.result.length <= hook.FIELD_CAP, 'result is within the field cap');
         assert.ok(rec.command.startsWith('echo ccc'), 'the head of the command is kept');
         assert.ok(rec.result.startsWith('rrr'), 'the head of the result is kept');
+        assert.ok(rec.command.endsWith('ccc'), 'and so is its tail');
+        assert.strictEqual(markerCount(rec.command), 1, 'the cut is named in band');
+        assert.strictEqual(markerCount(rec.result), 1, 'the cut is named in band');
     } finally {
         rmDir(home);
     }
+});
+
+// --- Head-and-tail slicing: what a cut field keeps, and what it says about
+// what it lost. Both directions throughout, because a marking carries
+// information only while an uncut field carries none.
+
+test('the caps are the ones the contract states', () => {
+    assert.strictEqual(hook.FIELD_CAP, 6000, 'the per-field character cap');
+    assert.strictEqual(hook.LINE_CAP_BYTES, 16384, 'the whole-line byte cap');
+    assert.strictEqual(hook.PART_CAP, hook.FIELD_CAP + 1,
+        'the part bound stays one past the field cap, so a part cut to the cap exactly '
+            + 'cannot arrive looking uncut');
+});
+
+test('a field under the cap is byte-identical to its input and carries no marker', () => {
+    const home = makeHome();
+    const command = 'echo ' + 'c'.repeat(hook.FIELD_CAP - 100);
+    const stdout = 'r'.repeat(hook.FIELD_CAP - 1);
+    try {
+        assertSilent(runHook(home, bashPayload({
+            tool_input: { command, description: 'Under the cap' },
+            tool_response: { stdout, stderr: '', exit_code: 0 }
+        })), 'under the cap');
+
+        const rec = readSpool(home)[0];
+        assert.strictEqual(rec.command, command, 'the command is its input, byte for byte');
+        assert.strictEqual(rec.result, stdout, 'the result is its input, byte for byte');
+        assert.strictEqual(markerCount(rec.command) + markerCount(rec.result), 0,
+            'nothing was cut, so nothing is marked');
+        assert.strictEqual(rec.truncated, false);
+    } finally {
+        rmDir(home);
+    }
+});
+
+test('a field past the cap keeps its head and its tail, with a marker naming the true count', () => {
+    const home = makeHome();
+    // Distinctive ends, so the assertion is that the kept pieces are the real
+    // head and the real tail rather than merely the right lengths.
+    const command = 'HEAD-MARK ' + 'c'.repeat(hook.FIELD_CAP * 2) + ' TAIL-MARK';
+    try {
+        assertSilent(runHook(home, bashPayload({
+            tool_input: { command, description: 'Past the cap' },
+            tool_response: { stdout: 'small', stderr: '', exit_code: 0 }
+        })), 'past the cap');
+
+        const rec = readSpool(home)[0];
+        assert.ok(rec.command.length <= hook.FIELD_CAP,
+            'the whole field, marker included, is within the cap, was ' + rec.command.length);
+        const marked = markedField(rec.command);
+        assert.ok(marked !== null, 'the field carries the marker: ' + rec.command.slice(0, 60));
+        assert.strictEqual(markerCount(rec.command), 1, 'exactly one marker');
+        assert.ok(command.startsWith(marked.head), 'what is kept first is the field\'s own head');
+        assert.ok(command.endsWith(marked.tail), 'what is kept last is the field\'s own tail');
+        assert.ok(marked.head.startsWith('HEAD-MARK '), 'the head reaches the start of the input');
+        assert.ok(marked.tail.endsWith(' TAIL-MARK'), 'the tail reaches the end of the input');
+        assert.strictEqual(marked.count, command.length - marked.head.length - marked.tail.length,
+            'the marker names exactly the characters that went');
+        // Roughly 60/40, which is what the head share is for: an intent and a
+        // command are front-loaded, and the tail is where a result ends.
+        const kept = marked.head.length + marked.tail.length;
+        const share = marked.head.length / kept;
+        assert.ok(share > 0.55 && share < 0.65, 'the head takes about 60 per cent of what is kept, was ' + share);
+        // The framing the judge's own instruction describes: the marker is a
+        // line of its own, so a reader can never mistake it for the field's text
+        // running on.
+        assert.ok(rec.command.includes('\n[...' + marked.count + ' characters cut at capture...]\n'),
+            'the marker occupies a line of its own');
+        assert.strictEqual(rec.truncated, true);
+    } finally {
+        rmDir(home);
+    }
+});
+
+test('a field between the old cap and the new one now spools whole', () => {
+    // The cap raise, both directions in one case: 2,500 characters is past the
+    // 2,000-character cap this hook used to carry and inside the 6,000 it
+    // carries now, so it spools whole and unmarked; 6,500 is past the new cap
+    // and is cut.
+    const home = makeHome();
+    const between = 'b'.repeat(2500);
+    const past = 'p'.repeat(hook.FIELD_CAP + 500);
+    try {
+        assertSilent(runHook(home, bashPayload({
+            tool_response: { stdout: between, stderr: '', exit_code: 0 }
+        })), 'between the caps');
+        assertSilent(runHook(home, bashPayload({
+            tool_response: { stdout: past, stderr: '', exit_code: 0 }
+        })), 'past the new cap');
+
+        const lines = readSpool(home);
+        assert.strictEqual(lines[0].result, between, 'a field the old cap would have cut is now whole');
+        assert.strictEqual(lines[0].truncated, false);
+        assert.strictEqual(markerCount(lines[0].result), 0);
+        assert.strictEqual(lines[1].truncated, true, 'the new cap still cuts what is past it');
+        assert.strictEqual(markerCount(lines[1].result), 1);
+    } finally {
+        rmDir(home);
+    }
+});
+
+test('a multi-part result takes the discipline in both response shapes, and its tail is the real end', () => {
+    // The whole point of keeping a tail: for tool output the exit summary, the
+    // error and the FAIL lines are at the bottom, and a head-only cut threw
+    // exactly those away. Each shape is bounded per part before the join, so
+    // this also pins that the count is true across BOTH cuts and that the part
+    // bound did not quietly move the field's end.
+    const home = makeHome();
+    // NON-UNIFORM filler, so containment is actually testable. With a uniform
+    // run, a splice landing inside the kept head or tail is invisible: every
+    // character equals every other, so the assertions below would hold over
+    // text the pipeline had quietly spliced. Numbering each line makes the kept
+    // pieces provable prefixes and suffixes of the raw input.
+    const bulk = Array.from({ length: 60000 }, (_, i) => `line ${i} of filler`).join('\n');
+    assert.ok(bulk.length > 4 * hook.FIELD_CAP, 'the filler must dwarf the cap');
+    const bare = 'START-OF-OUTPUT ' + bulk + ' FAIL: at the very end';
+    const blockA = 'FIRST-BLOCK ' + bulk;
+    const blockB = bulk + ' LAST-BLOCK-END';
+    try {
+        assertSilent(runHook(home, bashPayload({ tool_response: bare })), 'bare string shape');
+        assertSilent(runHook(home, bashPayload({
+            tool_response: { content: [{ type: 'text', text: blockA }, { type: 'text', text: blockB }] }
+        })), 'content block shape');
+
+        const [string, blocks] = readSpool(home);
+
+        const one = markedField(string.result);
+        assert.ok(one !== null, 'the bare-string result is marked');
+        assert.ok(string.result.length <= hook.FIELD_CAP);
+        assert.ok(one.head.startsWith('START-OF-OUTPUT '), 'the head is the output\'s own start');
+        assert.ok(one.tail.endsWith(' FAIL: at the very end'),
+            'the tail is the output\'s own end, which is what a head-only cut lost');
+        // Containment: everything the field kept is contiguous with the raw
+        // output at both ends, so the per-part bound's own splice fell INSIDE
+        // the hole this marker names. Without this, a splice landing in the
+        // kept text would pass every other assertion here while the prompt tells
+        // the judge that what follows the marker is the field's own tail.
+        assert.ok(bare.startsWith(one.head), 'the kept head is a prefix of the raw output');
+        assert.ok(bare.endsWith(one.tail), 'the kept tail is a suffix of the raw output');
+        assert.strictEqual(one.count, bare.length - one.head.length - one.tail.length,
+            'the count spans the part bound and the field cut together');
+        assert.strictEqual(string.truncated, true);
+
+        const two = markedField(blocks.result);
+        assert.ok(two !== null, 'the block-shaped result is marked');
+        assert.ok(blocks.result.length <= hook.FIELD_CAP);
+        assert.strictEqual(markerCount(blocks.result), 1, 'one marker for the field, not one per part');
+        assert.ok(two.head.startsWith('FIRST-BLOCK '), 'the head is the first block\'s start');
+        assert.ok(two.tail.endsWith(' LAST-BLOCK-END'), 'the tail is the last block\'s end');
+        // The same containment against the joined text the field would have
+        // carried whole, which is what the count is measured against.
+        const joined = blockA + '\n' + blockB;
+        assert.ok(joined.startsWith(two.head), 'the kept head is a prefix of the joined result');
+        assert.ok(joined.endsWith(two.tail), 'the kept tail is a suffix of the joined result');
+        // The joined text the field would have carried: both blocks and the
+        // newline between them.
+        assert.strictEqual(two.count,
+            (blockA.length + 1 + blockB.length) - two.head.length - two.tail.length,
+            'the count names every character the joined result lost');
+        assert.strictEqual(blocks.truncated, true);
+    } finally {
+        rmDir(home);
+    }
+});
+
+test('both cut points of a head-and-tail cut are surrogate-safe', () => {
+    // A pair is two code units, so whether a cut splits one is a matter of
+    // parity, and a single fixture is a coin toss that reports nothing when it
+    // lands even. The two cut points need their own pad: a LEADING pad alone
+    // moves the run's start and the field's end together, which leaves the
+    // tail's alignment against the pair grid invariant, so the sweep would
+    // land on one parity at that cut forever. The leading pad shifts the head
+    // cut and the trailing one shifts the tail cut.
+    const heads = new Set();
+    const tails = new Set();
+    for (let pad = 0; pad < 12; pad += 1) {
+        const text = 'a'.repeat(pad) + '😀'.repeat(hook.FIELD_CAP) + 'z'.repeat(pad * 3);
+        const field = hook.textField(text);
+        assert.ok(field.length <= hook.FIELD_CAP, 'the cap holds at pad ' + pad);
+        assert.ok(!hasLoneSurrogate(field),
+            'a cut field carries no lone surrogate at pad ' + pad + ': '
+                + JSON.stringify(field.slice(0, 8) + '...' + field.slice(-8)));
+        const marked = markedField(field);
+        assert.ok(marked !== null, 'the field is marked at pad ' + pad);
+        assert.strictEqual(marked.count, text.length - marked.head.length - marked.tail.length,
+            'the count stays true after a trim at pad ' + pad);
+        assert.ok(text.startsWith(marked.head) && text.endsWith(marked.tail),
+            'the kept pieces are still the input\'s own ends at pad ' + pad);
+        heads.add(marked.head.length);
+        tails.add(marked.tail.length);
+    }
+    // The control on the sweep itself: if every pad had landed on the same
+    // parity, each cut point would have produced one length and this case would
+    // prove nothing about the trim.
+    assert.ok(heads.size > 1, 'the sweep never landed mid-pair at the head cut, so it proves nothing there');
+    assert.ok(tails.size > 1, 'the sweep never landed mid-pair at the tail cut, so it proves nothing there');
+});
+
+test('a cap with no room for the marker cuts plainly rather than writing a broken one', () => {
+    // The degenerate end of the same function, reached by the byte-cap pass on
+    // a field it has to cut almost to nothing. What must not happen is a
+    // fragment of the marker in the field; what may happen is a plain head
+    // slice, which says nothing untrue and leaves the entry-level flag to carry
+    // the loss.
+    const tiny = hook.cutToCap('z'.repeat(500), 500, 12);
+    assert.strictEqual(tiny.text, 'z'.repeat(12));
+    assert.strictEqual(tiny.lost, true);
+    assert.strictEqual(markerOpenings(tiny.text), 0,
+        'no marker fragment where there was no room for a marker (this shape only; the class is not swept)');
+    assert.strictEqual(hook.cutToCap('z'.repeat(500), 500, 0).text, '', 'a zero cap empties the field');
 });
 
 test('an under-cap call sets the flag false', () => {
@@ -563,10 +797,15 @@ test('an under-cap call sets the flag false', () => {
     }
 });
 
-test('an oversized cwd and tool name are cut rather than dropping the record', () => {
+test('an oversized cwd and tool name are cut rather than dropping the record, and do not raise the flag', () => {
     // CUT_ORDER cannot reach either field, so an uncapped one makes serialize
     // return null and the whole call goes unrecorded with no signal anywhere.
     // A Windows long path reaches this in ordinary use.
+    //
+    // The flag stays false because the judge never reads cwd or tool: raising
+    // it there would open a triple with a notice about text that is not in the
+    // triple, and buy the call a triple-wide leniency for a shortened working
+    // directory. The other direction is the case below.
     const home = makeHome();
     try {
         assertSilent(runHook(home, bashPayload({
@@ -576,9 +815,10 @@ test('an oversized cwd and tool name are cut rather than dropping the record', (
 
         const lines = readSpool(home);
         assert.strictEqual(lines.length, 1, 'the record is kept');
-        assert.strictEqual(lines[0].cwd.length, hook.FIELD_CAP, 'cwd is cut to the field cap');
-        assert.strictEqual(lines[0].tool.length, hook.FIELD_CAP, 'tool is cut to the field cap');
-        assert.strictEqual(lines[0].truncated, true, 'cutting either one sets the flag');
+        assert.ok(lines[0].cwd.length <= hook.FIELD_CAP, 'cwd is within the field cap');
+        assert.ok(lines[0].tool.length <= hook.FIELD_CAP, 'tool is within the field cap');
+        assert.strictEqual(lines[0].truncated, false,
+            'cutting a field the judge never sees does not raise the flag');
         assert.strictEqual(lines[0].command, 'git status --porcelain',
             'the fields CUT_ORDER does reach are untouched');
     } finally {
@@ -586,15 +826,38 @@ test('an oversized cwd and tool name are cut rather than dropping the record', (
     }
 });
 
-test('the line byte cap holds when every field is enormous', () => {
+test('a cut to any of the three judged fields does raise the flag', () => {
+    // The other direction of the narrowing above, one judged field at a time, so
+    // a flag wired to only one of the three cannot pass this.
+    for (const [label, overrides] of [
+        ['intent', { tool_input: { command: 'ls', description: 'd'.repeat(hook.FIELD_CAP + 1) } }],
+        ['command', { tool_input: { command: 'c'.repeat(hook.FIELD_CAP + 1), description: 'x' } }],
+        ['result', { tool_response: { stdout: 'r'.repeat(hook.FIELD_CAP + 1), stderr: '', exit_code: 0 } }]
+    ]) {
+        const home = makeHome();
+        try {
+            assertSilent(runHook(home, bashPayload(overrides)), label);
+            assert.strictEqual(readSpool(home)[0].truncated, true,
+                `a cut to ${label} must set the flag the judge reads`);
+        } finally {
+            rmDir(home);
+        }
+    }
+});
+
+test('the line byte cap holds, and result gives up only what the deficit needs', () => {
+    // Sized against the byte cap rather than the character cap: command and
+    // intent are held well under the field cap so the deficit can be met out of
+    // result alone, which is what makes "cut result first, and only as far as
+    // needed" the thing this case measures. Three fields at the character cap
+    // would run the cut into command too, which is the case below.
     const home = makeHome();
+    const command = '\u00e9'.repeat(3000);
+    const intent = 'd'.repeat(3000);
     try {
         assertSilent(runHook(home, bashPayload({
-            tool_input: {
-                command: '\u00e9'.repeat(60000),
-                description: 'd'.repeat(60000)
-            },
-            tool_response: { stdout: '"\\\n'.repeat(30000), stderr: 's'.repeat(30000), exit_code: 0 }
+            tool_input: { command, description: intent },
+            tool_response: { stdout: '"\\\n'.repeat(30000), stderr: '', exit_code: 0 }
         })), 'enormous');
 
         const raw = fs.readFileSync(dayFile(home), 'utf8');
@@ -605,14 +868,86 @@ test('the line byte cap holds when every field is enormous', () => {
         assert.strictEqual(rec.truncated, true);
         assert.ok(rec.result.length > 0 && rec.result.length < hook.FIELD_CAP,
             'result is cut first, and only as far as the byte cap needs: its characters '
-                + 'cost two bytes each escaped, so emptying it is six times the cut this '
-                + 'line called for. Kept ' + rec.result.length);
-        assert.strictEqual(rec.command.length, hook.FIELD_CAP,
+                + 'cost two bytes each escaped, so emptying it is far more than this line '
+                + 'called for. Kept ' + rec.result.length);
+        assert.strictEqual(rec.command, command,
             'command is untouched while result still has room to give');
-        assert.strictEqual(rec.intent.length, hook.FIELD_CAP,
+        assert.strictEqual(rec.intent, intent,
             'intent is cut last and is not reached here');
+
+        // THE PRODUCTION PATH's own marker integrity, which is what the draft
+        // plumbing exists for and what a direct serialize call cannot prove:
+        // this result was already cut once at the field cap, marker and all, and
+        // then cut again for the byte cap. One whole marker survives, and its
+        // count is the whole of what the field lost, measured against the
+        // response the call actually produced rather than against the field's
+        // state between the two cuts.
+        const stdout = '"\\\n'.repeat(30000);
+        const marked = markedField(rec.result);
+        assert.ok(marked !== null, 'the twice-cut field carries a marker: ' + rec.result.slice(0, 60));
+        assert.strictEqual(markerCount(rec.result), 1, 'exactly one marker after two cuts');
+        assert.strictEqual(markerOpenings(rec.result), 1,
+            'and no fragment of a second (this shape only; the class is not swept)');
+        assert.ok(stdout.startsWith(marked.head) && stdout.endsWith(marked.tail),
+            'the kept pieces are still the output\'s own ends after the second cut');
+        assert.strictEqual(marked.count, stdout.length - marked.head.length - marked.tail.length,
+            'the count names every character missing from the field, not the second cut\'s own delta');
     } finally {
         rmDir(home);
+    }
+});
+
+test('a second cut is re-derived from the draft, never taken off the marked field', () => {
+    // The security reviewer's drive, kept as the pin. A field cut at the
+    // character cap carries a marker; the byte-cap pass then has to shorten it
+    // again. Cutting the FIELD would slice through that marker or leave a stale
+    // one whose count describes an earlier state, and the judge is instructed to
+    // trust that count inside a notice-opened triple.
+    const source = 'S'.repeat(100) + String.fromCharCode(1).repeat(200000) + 'E'.repeat(100);
+    const line = hook.serialize(record({
+        intent: 'i', command: 'm', result: source
+    }));
+    assert.ok(line !== null, 'the record still serializes');
+    const rec = JSON.parse(line);
+    const marked = markedField(rec.result);
+    assert.ok(marked !== null, 'the twice-cut field is marked');
+    assert.strictEqual(markerCount(rec.result), 1);
+    assert.strictEqual(marked.count, source.length - marked.head.length - marked.tail.length,
+        'the count is measured against the draft\'s own text, so it names the whole loss');
+    // The number the count must NOT be: what a re-cut of the already-marked
+    // field would have reported, which is only the second cut's own delta.
+    const firstCut = hook.cutToCap(source, source.length, hook.FIELD_CAP).text;
+    const reCutDelta = firstCut.length - rec.result.length;
+    assert.ok(marked.count > reCutDelta * 10,
+        `the count reads ${marked.count} and a field-derived re-cut would have read about `
+            + `${reCutDelta}: this is the miscount the draft plumbing exists to prevent`);
+    assert.ok(source.startsWith(marked.head) && source.endsWith(marked.tail),
+        'and the kept pieces come from the source\'s own ends');
+});
+
+test('cutToCap holds its cap and its count when the loss is larger than the text it is given', () => {
+    // `given` is a free parameter, so a caller can name a loss larger than the
+    // text it hands over. Unclamped, the tail slice takes a negative start,
+    // which JavaScript counts from the END: the field then carries its whole
+    // content twice around a marker whose count understates the loss by
+    // everything it duplicated. Both copies of the cutter are driven, since
+    // this is the one branch the cross-boundary probe could not see.
+    const text = require('../sidecar/text.js');
+    for (const cut of [hook.cutToCap, text.cutToCap]) {
+        const tiny = cut('z'.repeat(10), 1000000, 6000);
+        assert.strictEqual(tiny.lost, true);
+        assert.strictEqual(markerCount(tiny.text), 1, 'one marker');
+        const marked = markedField(tiny.text);
+        assert.strictEqual(marked.head + marked.tail, 'z'.repeat(10),
+            'the text appears once, not twice: ' + JSON.stringify(tiny.text.slice(0, 40)));
+        assert.strictEqual(marked.count, 1000000 - 10, 'the count is the whole loss');
+
+        // The narrower case, where room exceeds the text by a little.
+        const near = cut('y'.repeat(100), 160, 150);
+        const nearMarked = markedField(near.text);
+        assert.strictEqual(nearMarked.head + nearMarked.tail, 'y'.repeat(100));
+        assert.strictEqual(nearMarked.count, 60);
+        assert.ok(near.text.length <= 150, 'the cap holds, was ' + near.text.length);
     }
 });
 
@@ -665,8 +1000,18 @@ test('the cut is scaled by what the field\'s characters cost in bytes', () => {
     assert.ok(rec.result.length >= 500,
         'most of a six-byte-per-character field survives a cut it only needed a '
             + 'fraction of, kept ' + rec.result.length);
-    assert.strictEqual(rec.result, '\u0001'.repeat(rec.result.length),
-        'what survives is the head of the field');
+    const marked = markedField(rec.result);
+    assert.strictEqual(marked === null ? rec.result : marked.head + marked.tail,
+        '\u0001'.repeat(marked === null
+            ? rec.result.length : marked.head.length + marked.tail.length),
+        'what survives is the field\'s own head and tail, and nothing else');
+    assert.ok(marked !== null,
+        'a byte-cap cut names itself in band: ' + JSON.stringify(rec.result.slice(0, 80)));
+    assert.strictEqual(marked.count, hook.FIELD_CAP - marked.head.length - marked.tail.length,
+        'the marker names every character missing from the field');
+    assert.strictEqual(markerOpenings(rec.result), 1,
+        'exactly one marker, whole: a byte-cap cut taken off already-marked text '
+            + 'would leave a second one or a bisected one (this shape only; the class is not swept)');
     assert.strictEqual(rec.command.length, hook.FIELD_CAP, 'stage 2 was not needed');
     assert.strictEqual(rec.truncated, true);
 });
@@ -680,10 +1025,15 @@ test('no cut leaves a lone surrogate behind', () => {
     assert.strictEqual(hook.trimLoneSurrogate('ok\ud83d\ude00'), 'ok\ud83d\ude00');
     assert.strictEqual(hook.trimLoneSurrogate(''), '');
 
-    // The field cap landing mid-pair.
-    const capped = hook.textField('a'.repeat(hook.FIELD_CAP - 1) + '\ud83d\ude00' + 'b');
-    assert.strictEqual(capped.length, hook.FIELD_CAP - 1, 'the half pair is dropped, not kept');
+    // A field past the cap, made of pairs, so both of the cut points the field
+    // cap opens land inside the run. Which of them lands mid-pair is a matter of
+    // parity, so the case that sweeps both parities at both cut points is
+    // 'both cut points of a head-and-tail cut are surrogate-safe' below; this is
+    // the one shape asserted here.
+    const capped = hook.textField('\ud83d\ude00'.repeat(hook.FIELD_CAP));
+    assert.ok(capped.length <= hook.FIELD_CAP, 'the cap holds, was ' + capped.length);
     assert.ok(!hasLoneSurrogate(capped), 'the capped field carries no lone surrogate');
+    assert.strictEqual(markerCount(capped), 1, 'the cut is named');
 
     // The byte-cap loop landing mid-pair. The pair is two code units, so
     // whether a cut splits one is a matter of parity, and the parity is set by
@@ -710,14 +1060,77 @@ test('no cut leaves a lone surrogate behind', () => {
     assert.strictEqual(cut, 12, 'every pad above must actually reach a cut');
 });
 
-test('a record that cannot fit the byte cap is dropped rather than written long', () => {
-    // Reached only through the serializer now: buildRecord caps cwd, tool and
-    // the session id, so no payload produces a skeleton this large.
-    const dropped = hook.serialize(record({
-        sessionId: 's'.repeat(20000), cwd: 'c'.repeat(20000)
-    }));
-    assert.strictEqual(dropped, null);
+test('the uncuttable skeleton always fits the line, so no payload can drop a record silently', () => {
+    // CUT_ORDER reaches the three judged fields and nothing else, so sessionId,
+    // cwd and tool are dead weight in the line: if the three of them can exceed
+    // the byte cap between them, serialize returns null, main drops the call,
+    // and nothing anywhere says so. The identity cap is what keeps that
+    // unreachable, and the arithmetic is asserted rather than described.
+    //
+    // In BYTES, not characters. JSON.stringify emits a control character as a
+    // six-byte \uXXXX escape and all three fields come from the payload, so the
+    // bound has to hold against escape-heavy text at the cap.
+    const WORST_BYTES_PER_CHAR = 6;
+    const SKELETON_OVERHEAD = 256; // keys, v, callId, ts, the two booleans, braces
+    assert.ok(3 * hook.IDENTITY_FIELD_CAP * WORST_BYTES_PER_CHAR + SKELETON_OVERHEAD
+        <= hook.LINE_CAP_BYTES,
+    `three identity fields at ${hook.IDENTITY_FIELD_CAP} characters can cost `
+        + `${3 * hook.IDENTITY_FIELD_CAP * WORST_BYTES_PER_CHAR} bytes against a `
+        + `${hook.LINE_CAP_BYTES}-byte line: a payload can now drop its own record silently`);
 
+    // And driven, at the worst case the arithmetic describes: three identity
+    // fields of control characters, every judged field enormous. A line comes
+    // out, the judged fields having given way instead.
+    const control = String.fromCharCode(1).repeat(20000);
+    const line = hook.serialize(record({
+        sessionId: control, cwd: control, tool: control,
+        intent: 'i'.repeat(hook.FIELD_CAP),
+        command: 'm'.repeat(hook.FIELD_CAP),
+        result: 'r'.repeat(hook.FIELD_CAP)
+    }));
+    assert.ok(line !== null, 'the worst-case skeleton must still serialize');
+    assert.ok(Buffer.byteLength(line, 'utf8') + 1 <= hook.LINE_CAP_BYTES, 'and stay inside the cap');
+    const rec = JSON.parse(line);
+    assert.strictEqual(rec.sessionId.length, hook.IDENTITY_FIELD_CAP, 'the identity field is capped');
+    assert.strictEqual(rec.cwd.length, hook.IDENTITY_FIELD_CAP);
+    assert.strictEqual(rec.tool.length, hook.IDENTITY_FIELD_CAP);
+    // A PLAIN head slice, with no marker and no newline. These fields are not
+    // evidence, `truncated` does not cover them, and a marker in one would be a
+    // claim nothing else in the line makes; a newline and the marker vocabulary
+    // in a working directory are also two things a cwd could never hold before.
+    for (const field of ['sessionId', 'cwd', 'tool']) {
+        assert.strictEqual(markerOpenings(rec[field]), 0,
+            `${field} must carry no marker (this shape only; the class is not swept)`);
+        assert.ok(!rec[field].includes('\n'), `${field} must carry no newline`);
+        assert.strictEqual(rec[field], control.slice(0, hook.IDENTITY_FIELD_CAP),
+            `${field} is the head of its input, byte for byte`);
+    }
+    // Cutting an identity field still does not raise the flag: that rule is
+    // about which fields the judge reads, and this change moved a cap, not the
+    // flag's meaning. The judged fields here were cut too, so the flag is true
+    // for its own reason; the pin on the identity fields alone is the case
+    // above ('an oversized cwd and tool name ...').
+    assert.strictEqual(rec.truncated, true, 'the judged fields were cut, so the flag is set');
+
+    // The one null left: a draft this cannot read at all. It answers null
+    // rather than throwing, because a throw on the observed session's turn is
+    // the one failure this hook may not have, and a draft that is partway
+    // right is exactly the one that reads as close enough and throws two calls
+    // deeper. Every shape a reader might hand it, including the two the
+    // reviewers drove.
+    for (const shape of [
+        null, undefined, 'a string', 42, [],
+        {},
+        { fields: {} },
+        { fields: { intent: { text: 'i', given: 1, cap: 10 } } },
+        { meta: { callId: 'a', ts: 't', isError: false }, fields: {} },
+        { meta: {}, fields: hook.draftOf({}).fields },
+        { meta: { callId: 5, ts: 't' }, fields: hook.draftOf({}).fields },
+        { meta: hook.draftOf({}).meta, fields: { ...hook.draftOf({}).fields, cwd: undefined } }
+    ]) {
+        assert.strictEqual(hook.serialize(shape), null,
+            `an unreadable draft must answer null rather than throw: ${JSON.stringify(shape)}`);
+    }
     const kept = hook.serialize(record({}));
     assert.ok(typeof kept === 'string' && JSON.parse(kept).command === 'm');
 });

@@ -27,6 +27,22 @@
 // case's callId width from the largest one in the set, so a triple set
 // harvested at a --limit below the transcript's own pair count freezes into a
 // fixture exactly as it came out of here, gaps in the numbering included.
+// A triple also carries `harvestCut`, a per-field record of whether THIS
+// command's own cap cut that field. It has to, because the cut is frozen INTO
+// the field: a cut field keeps its head and its tail around an in-band marker,
+// so its stored length is inside the cap and no later reader can rediscover
+// that anything was lost by measuring it. sidecar/battery.js sets a replayed
+// line's `truncated` from this, and without it a genuine marker would replay
+// into a triple that opens with no capture-cut notice, where the judgment
+// prompt tells the judge to read a line of that shape as ordinary data.
+//
+// A pair too large to replay as ONE spool line is not frozen at all, and the
+// count of those rides in the summary. Three fields at the field cap exceed the
+// whole-line byte cap, so a triple that is legal field by field can be
+// impossible as a line, and the fixture writer's answer to one is to abort the
+// whole battery run. A transcript is an unbounded supply of pairs, so the
+// cheapest place to refuse is here, where the next pair simply takes its slot.
+//
 // This is the shape sidecar/CONTRACT.md's line schema names, and it is what
 // makes a harvested triple "judgeable end to end": handed to sidecar/judge.js
 // or fed into a spool line for the real daemon, it needs no further
@@ -87,7 +103,7 @@ const path = require('path');
 const readline = require('readline');
 
 const logs = require('./logs.js');
-const { UNSAFE_PATTERN, trimLoneSurrogate } = require('./text.js');
+const { UNSAFE_PATTERN, cutToCap } = require('./text.js');
 const { screenStateDir } = require('./state-screen.js');
 
 // `exit code 127` and `exit code 130` are failure shapes exactly as `exit code
@@ -101,11 +117,11 @@ const MAX_LIMIT = 500;
 
 // The same per-field cap sidecar/CONTRACT.md states for a real captured spool
 // line. This is a field cap only: a harvested triple is a JSON array entry,
-// not a spool line, so the contract's separate 8192-byte whole-line cap (a
+// not a spool line, so the contract's separate 16384-byte whole-line cap (a
 // property of one serialized spool record) has no triple-shaped analogue
 // here. sidecar/battery.js is what turns a frozen case into an actual spool
 // line, and it carries and enforces that cap itself when it does.
-const FIELD_CAP = 2000;
+const FIELD_CAP = 6000;
 
 function parseArgs(argv) {
     const options = { transcript: null, limit: DEFAULT_LIMIT, outPath: null, help: false };
@@ -161,13 +177,63 @@ const UNSAFE_RE = new RegExp(UNSAFE_PATTERN, 'gu');
 
 // Stripped, capped and surrogate-safe: the three duties every field crossing
 // out of this transcript reader carries, in that order, matching judge.js's and
-// recognize.js's own order of screen-then-cap on model output. The trim is
+// recognize.js's own order of screen-then-cap on model output. The cut is
 // sidecar/text.js's own, the same spelling sidecar/battery.js's fixture writer
-// cuts with, because a cut landing between the halves of a surrogate pair
-// leaves an orphan half whatever the producer, and a trim copied per producer
-// is one the next producer gets wrong by omission.
+// cuts with and pinned equal to the capture hook's: past the cap it keeps the
+// field's head and its tail with the in-band marker between them, and it trims
+// a surrogate orphan at either cut point. A cut copied per producer is one the
+// next producer gets wrong by omission, and a harvested field is replayed into
+// a real spool line later, so a shape that differs here is a shape the battery
+// measures the judge against and production never writes.
 function cut(s) {
-    return trimLoneSurrogate((typeof s === 'string' ? s : '').replace(UNSAFE_RE, '').slice(0, FIELD_CAP));
+    const stripped = (typeof s === 'string' ? s : '').replace(UNSAFE_RE, '');
+    return cutToCap(stripped, stripped.length, FIELD_CAP).text;
+}
+
+// Whether that cut LOST anything, which is the state a frozen case has to carry
+// beside the text. A field this command cuts is frozen WITH its in-band marker
+// in it, and its stored length is then inside the cap, so nothing downstream
+// can rediscover that a cut happened by measuring it. sidecar/battery.js reads
+// this to set a replayed line's `truncated`, and without it a genuine marker
+// replays into a triple that opens with no capture-cut notice, where the judge
+// is told to read a line of that shape as ordinary data.
+function cutLost(s) {
+    const stripped = (typeof s === 'string' ? s : '').replace(UNSAFE_RE, '');
+    return cutToCap(stripped, stripped.length, FIELD_CAP).lost;
+}
+
+// The whole-line byte cap the fixture writer replays under, mirrored here for
+// the same reason FIELD_CAP is and pinned equal to the capture hook's by the
+// same test, which is why it is exported. A triple is not a spool line, so this
+// file does not serialize one; what it needs the number for is the refusal
+// below. The pin has to be a strict equality in both directions: a copy left
+// stale HIGH would freeze a case the fixture writer then throws on, aborting a
+// whole battery run, which is the failure the refusal exists to prevent.
+const LINE_CAP_BYTES = 16384;
+
+// What sidecar/battery.js's own record costs around the three fields when it
+// turns a case into a spool line: the schema version, the call id, a timestamp,
+// the session id, the fixture cwd, the tool name, the two booleans and every
+// key. Measured generously rather than derived, because this file cannot
+// require the fixture writer and a bound that is a little tight only ever
+// refuses a case that would have fitted, while one that is too loose lets
+// through the case that aborts a whole run.
+const SPOOL_SKELETON_BYTES = 1024;
+
+// Whether a harvested triple can be replayed as one spool line at all.
+//
+// Three fields at the field cap are 18,000 characters against a 16,384-byte
+// line, so a triple that is legal field by field can be impossible as a line;
+// the fixture writer refuses such a case by throwing, which kills the whole
+// battery run rather than the one case. The refusal belongs here, where a
+// candidate can simply not be selected: a transcript is an unbounded supply of
+// pairs and there is nothing to lose by taking the next one.
+function fitsSpoolLine(triple) {
+    const fields = Buffer.byteLength(
+        JSON.stringify({ intent: triple.intent, command: triple.command, result: triple.result }),
+        'utf8'
+    );
+    return fields + SPOOL_SKELETON_BYTES <= LINE_CAP_BYTES;
 }
 
 // The tool_result's text channels, joined the way sidecar/CONTRACT.md states
@@ -232,6 +298,7 @@ async function extractPairs(file) {
     let commandless = 0;
     let unrecognized = 0;
     let collidingIds = 0;
+    let unreplayable = 0;
     // Every tool_use id this file showed, whatever the tool. It is what tells a
     // result belonging to some other tool (the ordinary case, and not an
     // orphan) from a result whose call is not in this file at all.
@@ -265,13 +332,28 @@ async function extractPairs(file) {
                 } else if (item && item.type === 'tool_result' && pending.has(item.tool_use_id)) {
                     const p = pending.get(item.tool_use_id);
                     pending.delete(item.tool_use_id);
-                    pairs.push({
+                    const rawResult = resultTextOf(item.content);
+                    const triple = {
                         n: pairs.length + 1,
                         intent: cut(p.intent),
                         command: cut(p.command),
-                        result: cut(resultTextOf(item.content)),
+                        result: cut(rawResult),
+                        // What this command's own cut lost, per field, so the
+                        // fixture writer can flag a replayed line the way a real
+                        // capture of the same call would have been flagged.
+                        harvestCut: {
+                            intent: cutLost(p.intent),
+                            command: cutLost(p.command),
+                            result: cutLost(rawResult)
+                        },
                         isError: item.is_error === true
-                    });
+                    };
+                    // A triple no spool line can carry is not frozen at all. The
+                    // count is reported beside the other skips, because a
+                    // transcript whose long pairs all dropped out here and one
+                    // that held none look identical from the summary otherwise.
+                    if (fitsSpoolLine(triple)) pairs.push(triple);
+                    else unreplayable += 1;
                 } else if (item && item.type === 'tool_result' && !seenCallIds.has(item.tool_use_id)) {
                     orphanResults += 1;
                 }
@@ -281,14 +363,23 @@ async function extractPairs(file) {
         rl.close();
         input.destroy();
     }
-    return { pairs, unparsed, unpaired: pending.size, orphanResults, commandless, unrecognized, collidingIds };
+    return { pairs, unparsed, unpaired: pending.size, orphanResults, commandless, unrecognized, collidingIds, unreplayable };
 }
 
-// Up to `limit` triples, `n` untouched: each carries the position
-// extractPairs gave it, so a triple's identity is stable across two runs at
-// different --limit values, which matters because `n` is what
-// sidecar/battery.js derives a case's callId from when a harvested set is
-// later frozen into a fixture.
+// Up to `limit` triples, `n` untouched: each carries the position extractPairs
+// gave it, so a triple's identity is stable across two runs at different
+// --limit values, which matters because `n` is what sidecar/battery.js derives
+// a case's callId from when a harvested set is later frozen into a fixture.
+//
+// What `n` counts, precisely, because two readings are available and only one
+// is true: it is the position among the pairs this command KEPT, contiguous
+// from 1, and it is not the transcript's own ordinal for that call. A pair
+// refused as unreplayable consumes no number, so a reader counting Bash pairs
+// in the source transcript to find `judgment #9` lands on the ninth kept pair
+// rather than the ninth pair in the file. Contiguity is what the stability
+// claim above needs (--limit changes what is SELECTED, never what was
+// extracted), and it is what a fixture's callId derivation needs; transcript
+// position is a different property this command has never carried.
 //
 // At most half the budget is failure-shaped (`interestingBudget`), rounded
 // down so the bound holds at an odd limit too, so a transcript with more
@@ -425,12 +516,20 @@ async function main(argv, deps) {
         process.stderr.write(`kit-sidecar-harvest: cannot read ${file}: ${(err && err.message) ? err.message : String(err)}\n`);
         return 1;
     }
-    const { pairs, unparsed, unpaired, orphanResults, commandless, unrecognized, collidingIds } = extracted;
+    const { pairs, unparsed, unpaired, orphanResults, commandless, unrecognized, collidingIds, unreplayable } = extracted;
 
     const selected = selectTriples(pairs, parsed.options.limit);
     const payload = JSON.stringify(selected.triples, null, 2) + '\n';
 
-    const summary = `kit-sidecar-harvest: ${pairs.length} Bash pair(s) found in ${file} `
+    // The refused pairs are counted OUTSIDE the parenthetical, and before it.
+    // Everything in that list is a thing that never became a pair; a pair too
+    // large to replay was found and then turned down, and `pairs.length`
+    // excludes it. Reported inside the same list, "7 found (... 3 too large
+    // ...)" leaves a reader unable to tell whether the transcript held seven
+    // pairs or ten.
+    const summary = `kit-sidecar-harvest: ${pairs.length + unreplayable} Bash pair(s) found in ${file}, `
+        + `${unreplayable} of them refused as too large to replay as one spool line, `
+        + `so ${pairs.length} kept `
         + `(${unparsed} unparsed line(s) skipped, ${unpaired} tool_use(s) left unpaired at end of file, `
         + `${orphanResults} tool_result(s) whose call is not in this file, `
         + `${commandless} Bash tool_use(s) carrying no string command, `
@@ -569,6 +668,7 @@ module.exports = {
     DEFAULT_LIMIT,
     MAX_LIMIT,
     FIELD_CAP,
+    LINE_CAP_BYTES,
     FAILURE_RE,
     USAGE,
     parseArgs,

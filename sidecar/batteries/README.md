@@ -19,8 +19,9 @@ and needs no model to re-check: all four were scored `achieved` on a result the
 scratch harvester's 350-character cap (`.kit/harvest-cases.mjs`, the script
 that produced these cases) had cut before the adjudicator read it, and the cut
 is visible in the frozen `result`, which ends mid-line. The shipped harvest
-command, `sidecar/harvest.js`, cuts at 2,000 characters, so a refreshed set it
-produces cannot reproduce this evidence shape at the same lengths. That is the whole bound
+command, `sidecar/harvest.js`, cuts at 6,000 characters and keeps a cut field's
+head and tail around an in-band marker, so a refreshed set it produces cannot
+reproduce this evidence shape at the same lengths or in the same shape. That is the whole bound
 on the exception. An expected value is revisable on evidence a reader can see in
 the fixture; it is never revisable on a verdict's say-so, which is what
 regenerating one from a run would be.
@@ -29,9 +30,9 @@ regenerating one from a run would be.
 
 The `v1` in this directory name is the battery's own version, not a prompt
 version. It does not track `sidecar/prompts/`: these thirteen cases are scored
-against `judgment-v3.js` today and were scored against `judgment-v2.js` and
-`judgment-v1.js` before that, and the fixture did not change when the prompt
-did. `recognition-v1/` happens to share a number with `recognition-v1.js` and
+against `judgment-v4.js` today and were scored against `judgment-v3.js`,
+`judgment-v2.js` and `judgment-v1.js` before that, and the fixture did not
+change when the prompt did. `recognition-v1/` happens to share a number with `recognition-v1.js` and
 that coincidence means nothing either. A battery directory is renumbered when
 its CASES change; the run report names the prompt id it actually used, which is
 the value to compare two runs on.
@@ -60,16 +61,31 @@ output lives in gitignored scratch, so the standing check is the screening
 procedure below rather than a diff anyone can re-run from the repository.
 
 A frozen field may legitimately be longer than any real spool line would carry.
-`sidecar/battery.js` cuts each field at its 2000-character field cap when it
-writes the replay spool, which is exactly the cut the capture hook itself makes,
-so a longer frozen field is replayed as a real capture of that call would have
-been written rather than refused. What the judge then sees of a cut field is
-the tighter of that field cap and the judgment prompt's own per-field cap:
-`sidecar/prompts/judgment-v3.js` cuts ACTION at its 1,500-character
-`COMMAND_PROMPT_CAP`, so case 9's 3,478-character `command` reaches the judge
-as its first 1,500 characters. Every such cut is named per case in the run
-report, with the length before and after. What IS refused is a case that would
-still exceed the 8192-byte whole-line cap after the per-field cut, since
+`sidecar/battery.js` cuts each field at its 6000-character field cap when it
+writes the replay spool, keeping the field's head and its tail around an in-band
+marker naming how many characters went, which is exactly the cut the capture
+hook itself makes, so a longer frozen field is replayed as a real capture of
+that call would have been written rather than refused. What the judge then sees
+of a cut field is the tighter of that field cap and the prompt's own per-field
+cap. `sidecar/prompts/judgment-v4.js` cuts ACTION at a `COMMAND_PROMPT_CAP`
+equal to the field cap, so on this battery the judgment prompt re-cuts nothing
+and case 9's 3,478-character `command` reaches the judge whole. Under
+`judgment-v3.js`, the frozen instrument that stands beside it, the same command
+reaches the judge as its first 1,500 characters, which is why a score is
+comparable only within one prompt id. No frozen judgment case exceeds the
+field cap, so none of the thirteen exercises the capture cut or its marker
+today; a case that does is owed to this fixture and is tracked in the project
+backlog rather than added here, since the cases are frozen for comparability.
+The recognition prompt's own caps remain below the field cap, so a recognition
+case long enough would be cut at the prompt, and none of the frozen situations
+is: the longest is 171 characters against a 1000-character intent cap. So **no
+case in either battery exercises a cut today** and a run report names none.
+Every cut that does happen is named per case in the run report, with the length
+before and after, with one stated exception: a field shortened only because the
+cut dropped an unpaired surrogate half sets the replayed line's `truncated`
+flag, since a character was lost, and is named in no cut line, since no cap
+fired on it. What IS refused is a case that would
+still exceed the 16384-byte whole-line cap after the per-field cut, since
 reproducing that needs the hook's scaled multi-field algorithm, which
 `battery.js` does not carry a copy of.
 

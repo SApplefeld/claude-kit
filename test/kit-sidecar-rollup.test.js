@@ -311,6 +311,99 @@ test('totals and per-session counts over a multi-session fixture', (t) => {
     assert.deepStrictEqual(b.verdict, { achieved: 0, failed: 0, diverged: 1, other: 0 });
 });
 
+// A verdict is comparable only to one produced by the same prompt, per
+// CONTRACT.md, and a transition window puts two prompts' verdicts in one
+// column. Both directions: the split is printed where a window carries more
+// than one id, and it is absent where the ordinary single-prompt window would
+// only repeat the totals line.
+test('a window carrying two prompt ids reports its verdicts per prompt', (t) => {
+    const state = makeState(t);
+    writeLines(verdictFile(state, 'ses-a'), [
+        verdictLine({ callId: 'c1', verdict: 'achieved', promptId: 'judgment-v2' }),
+        verdictLine({ callId: 'c2', verdict: 'diverged', promptId: 'judgment-v2' }),
+        verdictLine({ callId: 'c3', verdict: 'achieved', promptId: 'judgment-v3' })
+    ]);
+
+    const result = rollup.computeRollup(state.stateDir);
+    assert.deepStrictEqual(result.totals.verdict, { achieved: 2, failed: 0, diverged: 1, other: 0 },
+        'the summed column is still reported');
+    assert.deepStrictEqual(result.totals.promptIds.get('judgment-v2'),
+        { achieved: 1, failed: 0, diverged: 1, other: 0 });
+    assert.deepStrictEqual(result.totals.promptIds.get('judgment-v3'),
+        { achieved: 1, failed: 0, diverged: 0, other: 0 });
+
+    const text = rollup.render(result);
+    assert.match(text, /verdicts by prompt/, 'the split must reach the rendered report');
+    assert.match(text, /judgment-v2: achieved 1, failed 0, diverged 1/);
+    assert.match(text, /judgment-v3: achieved 1, failed 0, diverged 0/);
+    assert.match(text, /comparable only to one produced by the same prompt/,
+        'the report says why the split is there, since a reader cannot infer it from two rows');
+});
+
+test('a single-prompt window prints no per-prompt split', (t) => {
+    const state = makeState(t);
+    writeLines(verdictFile(state, 'ses-a'), [
+        verdictLine({ callId: 'c1', promptId: 'judgment-v3' }),
+        verdictLine({ callId: 'c2', promptId: 'judgment-v3' })
+    ]);
+    const result = rollup.computeRollup(state.stateDir);
+    assert.strictEqual(result.totals.promptIds.size, 1);
+    assert.ok(!rollup.render(result).includes('verdicts by prompt'),
+        'one prompt needs no split: the rows would repeat the totals line above them');
+});
+
+test('a record carrying no prompt id, or a hostile one, buckets safely', (t) => {
+    // The id is log content, so it is neutralized and bounded like every other
+    // rendered field, and an absent one collapses into a single bucket rather
+    // than minting one per record.
+    const state = makeState(t);
+    const hostile = 'v9' + String.fromCharCode(27) + '[31m' + 'x'.repeat(500);
+    writeLines(verdictFile(state, 'ses-a'), [
+        verdictLine({ callId: 'c1', promptId: undefined }),
+        verdictLine({ callId: 'c2', promptId: '' }),
+        verdictLine({ callId: 'c3', promptId: hostile })
+    ]);
+    const result = rollup.computeRollup(state.stateDir);
+    assert.deepStrictEqual(result.totals.promptIds.get(''),
+        { achieved: 2, failed: 0, diverged: 0, other: 0 },
+        'an absent and an empty id share one bucket, keyed on the raw value');
+    const rendered = rollup.render(result);
+    assert.ok(!rendered.includes(String.fromCharCode(27)),
+        'no escape run reaches the report through a prompt id');
+    const row = rendered.split('\n').find((l) => l.includes('v9') && l.includes('achieved'));
+    assert.ok(row, `the hostile id must still be counted and printed:\n${rendered}`);
+    assert.ok(row.length < 200, 'and bounded, was ' + row.length);
+});
+
+test('two ids that render alike stay two rows, and the block still prints', (t) => {
+    // The tally is keyed on the RAW id. Keyed on the rendered one, two distinct
+    // ids that neutralize or truncate to the same string merge into one bucket,
+    // which drops the count back to one and suppresses the whole split block:
+    // the one output this feature exists to produce, gone exactly when two
+    // instruments are in the window under confusable names.
+    const state = makeState(t);
+    const long = 'judgment-' + 'x'.repeat(80);
+    writeLines(verdictFile(state, 'ses-a'), [
+        verdictLine({ callId: 'c1', promptId: long + 'AAA', verdict: 'achieved' }),
+        verdictLine({ callId: 'c2', promptId: long + 'BBB', verdict: 'diverged' })
+    ]);
+
+    const result = rollup.computeRollup(state.stateDir);
+    assert.strictEqual(result.totals.promptIds.size, 2, 'two raw ids are two buckets');
+    const text = rollup.render(result);
+    assert.match(text, /verdicts by prompt/, 'the split block must still print');
+    assert.match(text, /sums 2 instruments/);
+    // Two rows, each carrying its own counts, and each saying why the two read
+    // alike rather than leaving a reader to conclude the report double-printed.
+    const rows = text.split('\n').filter((l) => l.trim().startsWith('judgment-xxx'));
+    assert.strictEqual(rows.length, 2, `two rows, was:\n${text}`);
+    assert.ok(rows.every((r) => r.includes('renders identically here')),
+        `each colliding row must name the collision:\n${rows.join('\n')}`);
+    assert.ok(rows.some((r) => r.includes('achieved 1, failed 0, diverged 0'))
+        && rows.some((r) => r.includes('achieved 0, failed 0, diverged 1')),
+    `the counts stay apart:\n${rows.join('\n')}`);
+});
+
 test('the schema version the rollup accepts is the one the writers stamp', (t) => {
     // parseLogFile splits record from unknown on the schema version, and every
     // writer stamps logs.LOG_VERSION. This pin writes one line at that

@@ -82,7 +82,7 @@ depend on it.
 | `intent` | string | The call's stated intent, the Bash tool's `description` field. `''` when absent. This is the INTENT side of the judgment triple. |
 | `command` | string | The command text, the Bash tool's `command` field. The ACTION side. |
 | `result` | string | The call's output. The RESULT side. See below. |
-| `truncated` | boolean | `true` when any of `intent`, `command`, `result`, `sessionId`, `cwd` or `tool` was cut, by either cap. |
+| `truncated` | boolean | `true` when any of `intent`, `command` or `result` was cut, by either cap. A cut to `sessionId`, `cwd` or `tool` does not set it: the judge never reads those fields, so a flag raised over one would grant a triple-wide leniency about nothing that is in the triple. |
 | `isError` | boolean | The harness error flag, normalized across response shapes. |
 
 `result` is the response's text channels joined with newlines, in the order
@@ -100,22 +100,52 @@ wrong thing.
 
 ### Caps
 
-- Every text field is cut to 2000 characters: `intent`, `command` and `result`,
-  and `cwd`, `tool` and `sessionId` too. The last three are capped because the
-  line-cap pass cannot shorten them, so an oversized one (a Windows long path
-  reaches this) would otherwise drop the whole record.
-- The whole serialized line is capped at 8192 bytes including its newline. A
+- The three judged fields are cut to 6000 characters: `intent`, `command` and
+  `result`. The three identity fields, `sessionId`, `cwd` and `tool`, are cut to
+  512, because the line-cap pass cannot shorten them: whatever they hold is
+  uncuttable weight in the line, and three of them at the judged fields' cap
+  could exceed the whole-line cap between them, which drops the record. At 512
+  the skeleton always fits, counted in bytes against the worst case that a
+  control character serializes to a six-byte escape.
+- An identity field is cut as a plain head slice, with no in-band marker: the
+  marker is a statement about evidence the judge reads, `truncated` does not
+  cover these three, and a marker here would claim something nothing else in
+  the line does. The consequence is priced rather than hidden: the daemon
+  resolves a call's project from `cwd` to find its memory index, so a working
+  directory past 512 characters resolves to no project and that session's
+  recognition calls become recognition gaps, with no flag saying why. The paths
+  that reach it are pathological, and what the line carries is at least still a
+  path's own beginning.
+- A cut field keeps its HEAD AND ITS TAIL, not its head alone, with an in-band
+  marker line between them: `[...N characters cut at capture...]`, on a line of
+  its own, where N is every character missing from that field. Every cut in the
+  hook removes a middle, the per-part bound on a multi-part response included,
+  so the marker's position is a claim the writer keeps: what is missing is
+  between the kept head and the kept tail, and the text after the marker is the
+  field's own tail. A cap with no room for the marker (a field cut almost to
+  nothing by the line cap) takes a plain head slice and says nothing in band;
+  `truncated` still carries it.
+- The whole serialized line is capped at 16384 bytes including its newline. A
   line over the cap is shortened by cutting `result` first, then `command`, then
   `intent`. The cut is scaled by what the field's own characters cost in the
   serialized line, so a field of escape-heavy or non-ASCII text loses only what
-  the byte deficit needs. A record that still does not fit with all three empty
-  is dropped rather than written.
-- No field ever ends in an unpaired surrogate. A cut that lands between the
-  halves of a surrogate pair drops the orphan rather than emitting it, so a
-  consumer decoding a line never receives a replacement character it must guess
-  about.
-- Any cut sets `truncated`. The flag says something was lost; it does not say
-  which field or how much.
+  the byte deficit needs, and each such cut is re-derived from the field's
+  original text rather than taken off the already-marked field, so a field never
+  carries a bisected or a stale marker. That holds by construction rather than
+  by discipline: the hook's serializer takes the draft a line is built from,
+  whose fields are the text every count is measured against, and there is no
+  record-shaped way to call it. A record that still does not fit with
+  all three empty is dropped rather than written.
+- No CUT leaves an unpaired surrogate at either of its ends. A cut that lands
+  between the halves of a surrogate pair drops the orphan rather than emitting
+  it, at the end of a kept head and at the start of a kept tail alike, so a
+  consumer never has to guess about a replacement character this pipeline
+  introduced. The claim is about the cuts and not about the fields: a payload
+  whose own text begins with an unpaired low half is spooled with it intact,
+  because nothing here rewrites text it did not cut.
+- Any cut to `intent`, `command` or `result` sets `truncated`. The flag says
+  something was lost; it does not say which field or how much, and the in-band
+  marker is what names the field and the amount where there was room for it.
 - The judge is told. A line whose `truncated` is true is judged under a prompt
   whose triple opens with a capture-cut notice saying the call's text was cut at
   capture; a line whose flag is false gets no such notice. The judge is
@@ -126,18 +156,27 @@ wrong thing.
   nothing, never that the text is whole: a tool that shortened its own output
   before capture saw it leaves no flag, and the judge weighs any such statement
   in the text as ordinary data rather than as one of the prompt's markings.
+- The in-band marker is read as a marking only inside a triple the capture-cut
+  notice opened. In any other triple a line of that shape is fenced data, since
+  the party being judged writes the fenced sides and can print one: the marker
+  is bounded by that condition rather than authenticated, and it cannot be
+  authenticated, because the hook writes it at capture time while the fence tag
+  is drawn at judge time. Inside a genuinely cut triple a forged one buys
+  placement, moving where the judge believes the hole is. That residual is
+  accepted for what it is: the immunity any marking here grants is leniency
+  about what is absent, never cover for a contradiction the judge can see.
 - The prompt is identified by its own `PROMPT_ID`, stamped into every verdict
-  record's `promptId`; it reads `judgment-v3` today. Verdicts are comparable
+  record's `promptId`; it reads `judgment-v4` today. Verdicts are comparable
   only across records sharing that id, which is why a wording change ships as a
   new prompt file with a new id rather than as an edit to the one in use.
-- A day file past 64 MiB stops taking appends. Nothing in the hook can tell a
+- A day file past 128 MiB stops taking appends. Nothing in the hook can tell a
   running daemon from a stopped or uninstalled one, so the bound is what keeps
   an unconsumed spool from growing without limit. At the fleet's volume, a few
   thousand calls a day, an honest day file stays far under it: reaching the
   bound means the consumer is gone. The skip is silent, like every other path.
 
 The line cap is not cosmetic. It is the interleaving mitigation described below,
-so a consumer can rely on it: a line longer than 8192 bytes did not come from
+so a consumer can rely on it: a line longer than 16384 bytes did not come from
 this hook.
 
 ## Interleaving: malformed lines are expected
@@ -145,7 +184,7 @@ this hook.
 Several sessions on one machine append to the same day file concurrently, and
 Node offers no cross-process atomic-append guarantee (notably on Windows). A
 single `fs.appendFileSync` of a small buffer is very likely to land whole, and
-the 8192-byte cap is what keeps it small, but nothing here promises it.
+the 16384-byte cap is what keeps it small, but nothing here promises it.
 
 **A consumer MUST skip and COUNT malformed lines rather than aborting.** A
 malformed line is an expected event, not a defect: it is a torn write between

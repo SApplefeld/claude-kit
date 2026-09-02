@@ -211,6 +211,148 @@ head-and-tail improvement rides along.
   cites v2 as its exemplar: all three go to the backlog at this section's
   close, the worktree-is-production item flagged as a candidate spec. The
   rollup promptId finding restates what is already ruled to section 3.
+- Decided 2026-09-01 (expert, fix round two complete): all eight items
+  landed with red-side evidence per changed pin, verified by the
+  orchestrator's own reads (harvest.LINE_CAP_BYTES exported and pinned at
+  the battery test; identity fields on the plain trimmed slice; spool's
+  textOf trimmed without marker vocabulary; rollup keyed on raw ids with
+  render-time neutralization). The n-ordinal dispute settled on the
+  security lens's reading: selectTriples' stated claim is stability across
+  --limit values, which holds; the comment now states n as the contiguous
+  position among kept pairs and names transcript position as a property
+  the command never carried. Lane 476/472/0/4 -> 478/474/0/4, +2 adds
+  named. No third review round: the delta is precision against defects two
+  full rounds verified, and the orchestrator's verification closes it.
+  lenses, opus/max) verified every fix-round-one item resolved, with deep
+  controls (a 40,000-probe two-copy cutToCap sweep and a 4,000-case
+  serialize fuzz, both clean, plus an independent re-derivation of the
+  multi-part containment margins). Accepted for fix round two: harvest's
+  LINE_CAP_BYTES exported and strict-pinned as its own comment already
+  claims (the one ruled pin that was claimed but absent); identity fields
+  switch from cutToCap to a plain surrogate-trimmed head slice at
+  IDENTITY_FIELD_CAP, so a cut cwd carries no marker or newline, with the
+  recognition consequence (a cwd past the cap resolves no memory index)
+  stated in the constant's comment and CONTRACT's bullet; the serialize
+  guard widened to validate meta and the field keys so its answers-null
+  comment is true; rollup's per-prompt map keyed on the raw id with
+  neutralization at render and a collision note; spool's textOf gains the
+  lone-surrogate trim (deliberately not cutToCap, which would forge a
+  capture marker the daemon cannot honestly claim); the harvest summary
+  names found-then-refused pairs distinctly and the n-ordinal claim is
+  reconciled with the code (two lenses read it oppositely; the implementer
+  settles it against selectTriples' stated claim and reports which way);
+  the stale-prose stragglers (the hook's v3-as-re-exporter pointers,
+  battery's 2000 figure, its fieldCuts/spoolLine divergence comment and
+  README sentence, the two reachability comments, batteries/README's
+  recognition-cut sentence, CONTRACT's orphan-at-either-end overclaim)
+  corrected; and v4's header residual description extended to name the
+  adjoining-evidence width of the forged-marker grant, with
+  commandForPrompt's defence-in-depth branch recorded as
+  fragment-tolerant rather than rerouted (a prompt-time cut wearing
+  capture-marker vocabulary would state a falsehood). Routed to the main
+  thread and landed the same turn: docs/README.md's plan entry re-worded
+  to v4, and docs/security-model.md's residual sentence extended the same
+  way. The blind lens's identity-cap MAJOR is thereby accepted in its
+  adversarial-suggested form; the 512 figure itself stands as ruled.
+  landed and verified by the orchestrator's own reads (v3's diff against
+  a36ee79 is empty; v4 is the sole required prompt in judge.js, daemon.js
+  and battery.js; no judgment-v3 literal remains in the daemon test's live
+  pins). One deviation accepted with the implementer's arithmetic:
+  IDENTITY_FIELD_CAP is 512 rather than the ruled ~1,024, because the
+  skeleton invariant holds in bytes and JSON escapes a control character at
+  six bytes, so 3 x 1,024 x 6 = 18,432 overruns the 16,384-byte line while
+  3 x 512 x 6 + overhead fits; the ruled figure was character-thinking.
+  serialize's optional sources argument is gone entirely (it takes the
+  draft and every cut re-derives from the draft's own text), which is the
+  stronger shape than the ruling's minimum. Lane 471/467/0/4 ->
+  476/472/0/4, +5 adds named, red-side evidence for the new coverage pins
+  shown against four one-at-a-time pre-fix probes, each restored
+  byte-identical.
+  (adversarial + blind + security at opus/max) returned two
+  CHANGES_REQUIRED and one CONCERNS; adjudication follows. The blind lens's
+  Critical stands and overturns this plan's earlier in-place-amendment
+  posture: the new prompt text ships as `sidecar/prompts/judgment-v4.js`
+  with PROMPT_ID 'judgment-v4', v3 restored to its a36ee79 state as the
+  frozen instrument Chapter 1's 12/13 was measured on, requires and live
+  pins repointed, because a36ee79 published v3 and the id's comparability
+  contract binds from commit, not from fleet rollout ("unreleased" was the
+  wrong boundary). Accepted for the fix round: the day-file bound
+  re-derived upward with corrected arithmetic; identity fields (sessionId,
+  cwd, tool) take their own small cap with a pinned
+  skeleton-always-fits-the-line invariant, closing the newly reachable
+  silent record drop; harvest bounds its combined triple and records
+  per-field cut state so a frozen marker never replays under truncated
+  false and an oversized fixture cannot abort a whole run; serialize's
+  re-derive-from-source guarantee stops resting on an optional argument and
+  CONTRACT's sentence becomes true by construction; the marker-integrity
+  and multi-part-containment pins move from function-proving to
+  coverage-proving (production path asserts one whole marker with a true
+  count; non-uniform filler; the given-greater-than-text branch pinned
+  across the boundary; the negative-slice overlap clamped in both cutToCap
+  copies); the :107 "Only in a triple..." sentence is scoped to in-band
+  text, curing the contradiction with the ACTION label's unconditional
+  reading; rollup's promptId slice takes the surrogate trim, the
+  hardcoded "two instruments" names the real count, and the map-bounded
+  comment says what is actually bounded (the rendering); and the stale
+  prose set (day-file arithmetic, skeleton comment, PART_CAP rationale,
+  orphaned captureCutMarker comment, the fourth unretired marker
+  statement, the 1,501-example, battery's "first N of them" line) is
+  corrected. Declined as written: judge.js sending num_ctx, because the
+  4K-default failure scenario does not hold on this deployment (endpoint
+  configured at 16K, worst triple ~7.5K tokens) while a per-request
+  num_ctx differing from the server's forces model reloads on the shared
+  serial lane; the hook's false sized-against-the-judge's-window comment
+  is corrected to the truth and the explicit context knob goes to the
+  backlog with that analysis. Routed to the main thread's close: the
+  security-model.md marker-vocabulary paragraph (ruled to this section's
+  commit), the egress-surface size note (tripled caps and the tail region
+  now travel), the Rollout window note (the daemon can hold the marker
+  instruction before fleet hooks emit markers; harm bounded by the
+  accepted absence-leniency residual), and the recognition-v1 backlog
+  item's extension (head-slices can bisect an in-band marker).
+  implementer concerns dispositioned. `sidecar/text.js` joins the scope
+  (the head-and-tail cutter is single-sourced there beside the shared trim,
+  re-exported by judgment-v3, mirrored once into the hook across the
+  packaging boundary under the cross-boundary pin), accepted on the same
+  ground as the fix-round-two trim ruling. The multi-part result bound now
+  removes a middle rather than a tail so the marker's count is true and the
+  kept tail is the output's real end, accepted as the direct reading of the
+  true-count ruling. The frozen battery's cut coverage moved to unit drives
+  plus a within-cap control (cases.json untouched), per the standing
+  acceptance. ENTRY_FIELD_CAP lands at 12,000, twice the field cap,
+  mirroring the prior 4,000 = 2 x 2,000 relation. And the stale
+  "8192 bytes" spool-contract sentences (a daemon.js diagnostic literal and
+  a daemon-test comment) were corrected to 16,384 by the main thread inline,
+  daemon.js thereby joining the changeset with that one line.
+  three rulings. (1) The caps and the field-cut shape are deliberately
+  mirrored into `sidecar/battery.js` and `sidecar/harvest.js` and pinned
+  equal to the hook's by strict equality; the mirrors move with the hook, so
+  those two files plus `sidecar/batteries/README.md` join sections 2+3's
+  files in scope, and every pin stays a strict equality. The frozen
+  battery's ACTION-cut coverage loss at COMMAND_PROMPT_CAP 6,000 (no frozen
+  command exceeds the new cap) is accepted: `cases.json` stays frozen for
+  comparability, unit pins keep the path exercised, and the backlogged
+  battery-extension item now owes a command case past 6,000 characters.
+  Fixture-shape comparability is already covered by the finishing-pass
+  battery re-run ruling. (2) Multi-part results plumb the true given length
+  through the hook (a `resultParts`-style internal returning text plus
+  given), so the marker's count and the kept-vs-given comparison are exact;
+  PART_CAP stays as the peak bound, the caller still decides truncation,
+  which is the design the plan preserves. (3) The serialize byte-cap pass
+  stays at the operator's 16,384 as the durability bound, and the
+  implementer's arithmetic exposed that it now fires routinely (three
+  near-cap fields exceed it), so its cut takes the same head-and-tail
+  marker discipline rather than a raw tail slice that eats or bisects the
+  marker; if that proves disproportionate in code, the fallback is
+  escalation with the proposed shape, never a silent mangled marking.
+  the final prompt text at the finishing pass, before rollout, under section
+  1's same gate (three runs, median >= 12/13, none < 11/13). Sections 2 and 3
+  amend judgment-v3's SYSTEM again (the marker paragraph, the fence-list
+  marker entry) and raise COMMAND_PROMPT_CAP, and the #13 flip demonstrated
+  that wording changes move verdicts, so the text that rolls out must be the
+  text that was measured. The sections' own dispatch runs no battery (the
+  implementer is barred from the endpoint entirely); the finishing pass owns
+  the re-run.
 - Decided 2026-09-01 (expert, battery adjudication): section 1 closes on
   12/13. The battery gate is met (three runs at 12/13, median 12, floor 12,
   zero gap records) and the two v2 misses this plan targeted (#1 and #5,
@@ -366,7 +508,10 @@ through the transition window.
 
 Files in scope: within sections 2 and 3's combined set (the capture hook, its
 test, judgment-v3, the daemon test), plus `sidecar/spool.js` and
-`sidecar/rollup.js` with their tests.
+`sidecar/rollup.js` with their tests, plus `sidecar/battery.js`,
+`sidecar/harvest.js` and `sidecar/batteries/README.md` (the cap/cut mirrors
+move with the hook under strict-equality pins, per the NEEDS_CONTEXT
+adjudication in Decisions).
 
 Tests: cap pins updated to the new constants, not deleted; a both-directions
 pin that a field between the old and new caps now spools whole; the spool's
@@ -386,17 +531,23 @@ with truncated true; one under it parses with the line's own flag).
 ## Rollout
 
 - One rollout moment, per the review-round ruling in Decisions: the daemon
-  restart that activates v3 happens once, after sections 2 and 3 land. The
-  operator stops the daemon or waits for a box reboot; the scheduled task
-  relaunches it within 15 minutes. No production verdict carries the v3 id
-  before that restart, so the prompt text stays editable under the id-mint
-  discipline until then.
+  restart that activates the new prompt (judgment-v4, per the sections 2+3
+  review ruling that overturned in-place amendment) happens once, after
+  sections 2 and 3 land. The operator stops the daemon or waits for a box
+  reboot; the scheduled task relaunches it within 15 minutes.
 - The capture hook's changes (sections 2 and 3) ship with the plugin:
   `claude plugin update` plus session restarts, the same standing
   fleet-update act already queued. Until a session restarts, its old hook
   spools under the old caps with the any-field truncated trigger, which the
   judge reads correctly either way (the flag is the flag; only its trigger
-  narrowed).
+  narrowed). One window rides this skew, named by the sections 2+3 security
+  review: a restarted daemon can hold v4's marker-reading instruction while
+  not-yet-restarted sessions run hooks that emit no marker, so in that
+  window the only party able to put the marker shape into a fence is the
+  judged party itself. Accepted: the harm is bounded by the marker's
+  condition (it reads as a marking only in a notice-opened triple) and by
+  the already-priced absence-leniency residual, and the window closes as
+  sessions restart.
 - Live acceptance, operator-observable weeks out: the truncated-input
   divergence rate in fresh verdict logs converging toward the whole-input
   rate (36.6% -> ~10% is the direction; exact convergence is not promised).
@@ -494,3 +645,58 @@ efforts). This repo has no contention lane (docs/architecture.md).
 
 Next: sections 2 and 3 in one dispatch (head-and-tail slicing + marker
 instruction + cap raise), per the section texts above.
+
+### Chapter 2 - 2026-09-02
+Completed: 2. Head-and-tail capture slicing
+Commit Model: Commit-and-Push
+
+Shipped (with section 3, one dispatch as planned): the capture hook's
+head-and-tail cut with the in-band marker (~60% head, marker naming the
+true count, tail, surrogate-safe at both points, every byte-cap cut
+re-derived from the field's own source via the draft-based serialize);
+the marker's judge-side instruction in `sidecar/prompts/judgment-v4.js`, a
+NEW prompt id minted by review ruling with judgment-v3 byte-restored as
+the frozen measured instrument; the cross-boundary marker pin (literal and
+framing); CONTRACT.md's marker bullet and narrowed three-field truncated
+row; the cap/cut mirrors in battery.js and harvest.js moved with the hook
+under strict-equality pins (scope widened by the NEEDS_CONTEXT
+adjudication), with harvest recording per-field cut state and refusing
+unreplayable triples.
+
+Decisions and surprises: one NEEDS_CONTEXT round (mirrored-caps coupling,
+multi-part true counts, the serialize byte-cap marker interaction, all
+ruled in Decisions), two review rounds (adversarial + blind + security at
+opus/max, then a fix-delta round), two fix rounds, every ruling recorded.
+The blind lens's Critical overturned the in-place-amendment posture and
+minted v4. The identity fields took their own 512-character plain slice
+(byte-arithmetic deviation accepted over the ruled figure). A stale
+heavy-process claim of this session's own blocked the box ~11 minutes
+mid-effort, released on discovery and captured as a kaizen lesson.
+
+Gate: targeted lane (capture, battery, daemon, rollup test files) exit 0
+at 478 tests/474 pass/0 fail/4 skipped, run by the orchestrator (chain
+456 -> 471 -> 476 -> 478 across the rounds). Whole gate exit 1 at
+2934/2924/1 fail/9 skipped, sole fail the recorded box-permanent
+memory-session path-length red, fail count unchanged from the 2793 and
+2902 baselines. No contention lane exists in this repo. The battery
+deliberately did not run this section: the finishing pass re-runs it on
+the final v4 text, per the standing ruling.
+
+Next: section 3's Chapter below; then the finishing pass (QA verifier,
+fable-tier security + adversarial reviews, battery re-run on v4, docs
+curation), then the single rollout moment.
+
+### Chapter 3 - 2026-09-02
+Completed: 3. The moderate cap raise
+Commit Model: Commit-and-Push
+
+Shipped in the same dispatch, commit and gates as Chapter 2 above, per the
+plan's own one-pass note: FIELD_CAP 6,000, LINE_CAP_BYTES 16,384,
+COMMAND_PROMPT_CAP 6,000 (in v4), IDENTITY_FIELD_CAP 512 with the pinned
+skeleton-always-fits byte invariant, DAY_FILE_MAX_BYTES 128 MiB with
+corrected arithmetic, spool's ENTRY_FIELD_CAP at 12,000 self-marking with
+the surrogate trim, and rollup's per-promptId verdict counts keyed on raw
+ids. Every gate line, ruling and surprise is Chapter 2's; the two
+sections were built, reviewed and closed as one changeset.
+
+Next: the whole-effort finishing pass, then rollout.
