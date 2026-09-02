@@ -60,7 +60,7 @@
 'use strict';
 
 const os = require('os');
-const { readGoal, recordExecutionTree, sessionHoldsLeash } = require('./kit-goal-lib.js');
+const { readGoal, sessionHoldsLeash } = require('./kit-goal-lib.js');
 const {
     readCheckpointResult, writeCheckpoint, clearCheckpoint, checkpointMatches,
     checkpointAdoptable, storableCheckpointOwner,
@@ -237,16 +237,6 @@ function cmdOpen() {
             process.stdout.write('the compaction gate state could not be read, so this checkpoint records no'
                 + ' pending offer and keeps the ' + ORDINARY_MINUTES + '-minute bound\n');
         }
-        // The goal state's executionTree record, kept as this call for the
-        // checkpoint boundary that would own it. It records nothing: goal
-        // state is co-located with the tree that holds it, so the tree a
-        // boundary is opened from is always the tree whose state it would be
-        // written to, which is the one case the field was never for
-        // (kit-goal-lib.js's recordExecutionTree states the whole contract,
-        // and this is its one call site). The call is best-effort and
-        // display-trust only either way, so nothing here can cost the
-        // checkpoint just opened.
-        recordExecutionTree(process.cwd());
         process.exitCode = 0;
     } else {
         process.stderr.write('kit-compact-checkpoint: ' + sanitize(result.reason) + '\n');

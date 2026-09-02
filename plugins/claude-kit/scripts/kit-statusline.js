@@ -261,10 +261,10 @@ function cacheIsCurrent(widget, cwd, cached, goalMtimeMs) {
 // cannot detect the change the key exists for.
 //
 // state.cacheable false is the same rule reaching the other plan docs a
-// render can read: a Plans position walked over a second tree's copy, over an
-// archived copy, or over a further queue entry rests on a doc the two stat
-// targets above do not cover, so no key built from them can ever notice that
-// doc changing, and the line must not be stored under one that cannot. Which
+// render can read: a Plans position walked over an archived copy, or over
+// a further queue entry, rests on a doc the two stat targets above do not
+// cover, so no key built from them can ever notice that doc changing, and
+// the line must not be stored under one that cannot. Which
 // docs a render actually read is the widget's own answer, taken from the
 // walk's report rather than guessed at from the line here. A payload whose
 // renderState predates the field carries no cacheable property at all, and a

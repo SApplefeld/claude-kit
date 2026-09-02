@@ -978,6 +978,40 @@ test('a network-shaped worktree entry is refused rather than read', {
     } finally { pair.clean(); rmDir(plantedParent); }
 });
 
+test('a worktree entry naming no absolute place is refused rather than read', {
+    skip: GIT_ON_PATH ? false : 'git is not on PATH'
+}, () => {
+    // The absoluteness leg of the same screen, which is the one the network
+    // leg above does not cover: a path that names a place only relative to
+    // wherever the reading process happens to be. On win32 that is a rooted
+    // spelling carrying no drive, which resolves against whichever drive the
+    // process is on; elsewhere it is a plainly relative path. Either way the
+    // directory the hook would read is not the directory the listing meant,
+    // and the refusal is decided on the path text before anything opens it.
+    const pair = makeGitWorktreePair();
+    const plantedParent = fs.mkdtempSync(path.join(os.tmpdir(), 'session-start-wt-rootless-'));
+    try {
+        const local = makeArmedTree(plantedParent, 'planted-local', 'docs/plans/planted_spec_v1.md');
+        const rootless = makeArmedTree(plantedParent, 'planted-rootless', 'docs/plans/rootless_spec_v1.md');
+        const spelling = process.platform === 'win32'
+            ? rootless.replace(/^[A-Za-z]:/, '')
+            : path.relative(pair.main, rootless);
+        assert.ok(!/^[A-Za-z]:[\/]/.test(spelling),
+            'setup: the spelling must name no absolute place, or its refusal proves nothing: ' + spelling);
+        plantWorktreeEntry(pair.main, 'plantedlocal', local);
+        plantWorktreeEntry(pair.main, 'plantedrootless', spelling);
+        const text = context(runHook(pair.main, 'sess-A'));
+        // The withheld control: an entry planted the same way, differing only
+        // in whether the path it names is absolute, does reach a line.
+        assert.ok(hasHint(text), 'the planted local entry reports: ' + text);
+        assert.match(text, /docs\/plans\/planted_spec_v1\.md/);
+        assert.doesNotMatch(text, /docs\/plans\/rootless_spec_v1\.md/,
+            'the rootless entry goal state is not read: ' + text);
+        assert.doesNotMatch(text, /planted-rootless/,
+            'the rootless entry names nothing in the hint: ' + text);
+    } finally { pair.clean(); rmDir(plantedParent); }
+});
+
 test('the worktree walk is capped and says so when the cap binds', {
     skip: GIT_ON_PATH ? false : 'git is not on PATH'
 }, () => {

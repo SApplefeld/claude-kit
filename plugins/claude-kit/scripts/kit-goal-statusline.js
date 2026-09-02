@@ -72,26 +72,12 @@
 // section. A plan doc that is missing, unreadable, not a regular file, or past
 // the read cap drops the Sections segment and keeps the rest.
 //
-// WHICH copy of the plan doc the SECTIONS segment counts from is elected
-// through the library's planDisplayRoot rule, and that election has one
-// possible answer: this cwd's own copy. Goal state is co-located with the
-// tree that holds it, so the executionTree field the election reads has no
-// producer, and the library drops the field from every read besides. What
-// the election still buys is its shape: a render resolves the root once and
-// hands it to both the count and its render-cache key, so the key and the
-// text cannot come from different copies, and this widget's read cap rides
-// into the election itself, so a doc past the cap falls back rather than
-// electing a root whose doc the read then refuses.
-//
-// The PLANS segment's walk follows a different rule, deliberately: it hands
-// this widget's bare cwd to queuePositionFor, and queueEntryState inside it
-// reads that cwd alone, never the recorded execution tree. The direction is
-// the safe one: a plan doc that reads Complete somewhere the leash does not
-// live is invisible to the walk, so this tree's own copy is what it reads and
-// the reported position under-reports rather than jumping ahead. The widget
-// still agrees with the SessionStart advisory and `kit-goal.js status` about
-// where the queue stands, because both of those resolve the position against
-// the same cwd rather than through planDisplayRoot.
+// Both derived segments read one tree, this widget's own cwd. Goal state is
+// co-located with the tree that holds it, so the plan doc the SECTIONS
+// segment counts and the docs the PLANS segment's walk reads are this
+// checkout's copies, and the widget agrees with the SessionStart advisory and
+// `kit-goal.js status` about where the queue stands because all three resolve
+// against that same directory.
 //
 // Loaded as a module (the launcher and the test suite) this only exports its
 // internals, among them the render entry scripts/kit-statusline.js calls
@@ -187,8 +173,8 @@ function goalStateAbsent(cwd) {
 // validation below). queuePosition never throws and always returns that shape
 // by its own contract, but this widget prints to the operator's prompt on
 // every refresh, so this call alone is wrapped rather than trusted to keep
-// that contract, unlike the reads above it (readGoalState, planDocRoot,
-// planText, planKeyMtime), which rely on main()'s outer catch: a payload that
+// that contract, unlike the reads above it (readGoalState, planText,
+// planKeyMtime), which rely on main()'s outer catch: a payload that
 // cannot answer here, or answers with something this reader does not
 // recognize, renders the Plans segment exactly as it did before this segment
 // read a derived position at all.
@@ -230,9 +216,9 @@ function queuePositionFor(cwd, state) {
 // Whether a position walk read exactly the one plan doc the launcher's cache
 // key stats, and so whether a line carrying that position may be stored under
 // that key. The key is the modification time of planRel under root (see
-// planKeyMtime), so a walk that read a second tree's copy, a plan's archived
-// copy, or any entry other than that one has put something into the line that
-// no key built from those two files can ever notice changing.
+// planKeyMtime), so a walk that read a plan's archived copy, or any entry
+// other than that one, has put something into the line that no key built from
+// those two files can ever notice changing.
 //
 // The walk's own record is what is read (queuePosition's consulted), never a
 // list of the symptoms a wider walk produces: a healed position and an
@@ -245,12 +231,12 @@ function queuePositionFor(cwd, state) {
 // older WIDGET, which never derived a position from a second file at all,
 // while this reader is holding an answer from a library it cannot vouch for.
 //
-// The roots are compared as written. The keyed root is planDisplayRoot's
-// answer, which is either this cwd verbatim or a recorded execution tree
-// verbatim, and the walk's root is this cwd, so the healthy case matches
-// exactly and a doc counted from a recorded tree the walk never opened does
-// not. Two spellings of one directory read as different and cost a re-render,
-// which is the direction that cannot serve a stale line.
+// The roots are compared as written, and both sides are this cwd verbatim:
+// the key is taken there and the walk reads there, so the healthy case
+// matches exactly. The comparison stays because the record is the walk's own
+// and a root it reports is the walk's claim rather than this reader's
+// assumption. Two spellings of one directory read as different and cost a
+// re-render, which is the direction that cannot serve a stale line.
 function walkStayedOnKeyedDoc(pos, root, planRel) {
     if (!Array.isArray(pos.consulted) || pos.consulted.length !== 1) return false;
     const only = pos.consulted[0];
@@ -385,35 +371,16 @@ function safeLine(value) {
 // time.
 const PLAN_MAX_BYTES = 1024 * 1024;
 
-// The directory the plan doc is read from, for both the text and its cache
-// key: the library's display-root answer, which is the recorded execution
-// tree when the goal state names one it can trust, and the cwd otherwise.
-// Asked through the library so this widget and any other display reader
-// cannot judge that field by a spelling of their own; a payload whose library
-// does not answer resolves to the cwd, the same answer the library gives with
-// no tree recorded. state passes through when the caller holds one, so a
-// render spends no second read of the goal state. The widget's own read cap
-// rides into the election, so a tree copy planText below could never read is
-// a tree that is not elected, and the fallback is the cwd's readable copy
-// rather than a dropped segment.
-function planDocRoot(cwd, planRel, state) {
-    const lib = goalLib();
-    if (!lib || typeof lib.planDisplayRoot !== 'function') return cwd;
-    return lib.planDisplayRoot(cwd, planRel, state, PLAN_MAX_BYTES);
-}
-
 // The armed plan doc's text, or null when it is absent, refused, or oversized.
-// root is the caller's resolved doc directory (planDocRoot's answer, which
-// renderState resolves once and hands to this read and the cache key both, so
-// the two cannot come from different copies). The size check here is against
-// whichever copy that root holds; for a recorded tree the election already
-// refused an oversized copy, so this leg is what bounds the cwd's own. The
-// kind check is the library's own planFileSize, imported rather than
-// respelled: the plan path is a stored value, so a FIFO at an otherwise
-// well-formed in-repo path would block this process, which the harness
-// respawns at every refresh, and a link resolving to an in-repo plan doc is a
-// plan doc every other reader of that path opens, so this widget must not be
-// the one surface that drops its Sections segment over one.
+// root is the directory the doc is read from, which is the caller's own cwd:
+// goal state is co-located with the tree that holds it, so the copy this
+// widget counts is the copy in the tree it runs in. The size check here is
+// what bounds that read. The kind check is the library's own planFileSize,
+// imported rather than respelled: the plan path is a stored value, so a FIFO
+// at an otherwise well-formed in-repo path would block this process, which the
+// harness respawns at every refresh, and a link resolving to an in-repo plan
+// doc is a plan doc every other reader of that path opens, so this widget must
+// not be the one surface that drops its Sections segment over one.
 //
 // The check narrows rather than closes, the same residual readGoal and
 // readCheckpoint state of their own: the open below re-resolves the path, so
@@ -421,13 +388,13 @@ function planDocRoot(cwd, planRel, state) {
 // at lstat time rather than at the read. What this guard buys is that the
 // ordinary case, and every case a planted kind produces, is refused before any
 // open happens.
-function planText(root, planRel) {
+function planText(cwd, planRel) {
     const lib = goalLib();
     if (!lib || typeof lib.planFileSize !== 'function') return null;
-    const size = lib.planFileSize(root, planRel);
+    const size = lib.planFileSize(cwd, planRel);
     if (size === null || size > PLAN_MAX_BYTES) return null;
     try {
-        return fs.readFileSync(path.join(root, planRel), 'utf8');
+        return fs.readFileSync(path.join(cwd, planRel), 'utf8');
     } catch {
         return null;
     }
@@ -445,17 +412,10 @@ function planText(root, planRel) {
 // same race stores a time older than the text, the key misses at the next
 // refresh, and the cost is one re-render.
 //
-// It resolves the doc's directory through planDocRoot, the same answer the
-// read takes, because this number is the freshness key FOR that read: a key
-// taken from the checkout's copy while the text came from the execution
-// tree's would hold whatever line was cached until the checkout's copy moved,
-// and for a doc living on the executing branch that copy may never move.
-// root is that directory when the caller already resolved it: renderState
-// resolves once per render and passes it to this key and the text read both,
-// so a tree doc appearing or vanishing mid-render cannot pair a key from one
-// root with text from the other. The launcher reaches this with neither
-// state nor root in hand, so both parameters are optional and are derived
-// here when absent.
+// It stats the doc under the caller's own cwd, the directory the read below
+// takes, because this number is the freshness key FOR that read: a key taken
+// from one copy of the doc while the text came from another would hold
+// whatever line was cached until the keyed copy moved.
 //
 // It also applies the containment rule every reader of a stored plan path in
 // this codebase applies, through the library's own normalizer rather than a
@@ -468,13 +428,12 @@ function planText(root, planRel) {
 // file inside the project rather than refusing it, so keying on the link's own
 // time would hold a stale count while the doc it names moved. Nothing is opened
 // through this stat: what it produces is a number for a cache key.
-function planKeyMtime(cwd, planRel, state, root) {
+function planKeyMtime(cwd, planRel) {
     const lib = goalLib();
     if (!lib || typeof lib.normalizePlanArg !== 'function') return null;
     if (typeof planRel !== 'string' || lib.normalizePlanArg(cwd, planRel) === null) return null;
-    const docRoot = root === undefined ? planDocRoot(cwd, planRel, state) : root;
     try {
-        const st = fs.statSync(path.join(docRoot, planRel));
+        const st = fs.statSync(path.join(cwd, planRel));
         return st.isFile() ? st.mtimeMs : null;
     } catch {
         return null;
@@ -653,13 +612,9 @@ function renderState(cwd) {
     }
     const parts = [MARKER + ' ' + safeSegment(planBaseName(state.plan))];
 
-    // The doc's directory is resolved once and handed to both readers, so the
-    // key and the text come from one election rather than two that a tree doc
-    // appearing or vanishing mid-render could split. The key is taken before
-    // the read, never after it: see planKeyMtime.
-    const docRoot = planDocRoot(cwd, state.plan, state);
-    const planMtimeMs = planKeyMtime(cwd, state.plan, state, docRoot);
-    const text = planText(docRoot, state.plan);
+    // The key is taken before the read, never after it: see planKeyMtime.
+    const planMtimeMs = planKeyMtime(cwd, state.plan);
+    const text = planText(cwd, state.plan);
     const progress = text === null ? null : sectionProgress(text);
     if (progress) {
         // The whole segment goes through the sanitizer, not just the plan name
@@ -693,7 +648,7 @@ function renderState(cwd) {
     if (pos) {
         if (pos.positional) {
             parts.push(safeSegment(plansSegmentText(state, pos)));
-            if (!walkStayedOnKeyedDoc(pos, docRoot, state.plan)) cacheable = false;
+            if (!walkStayedOnKeyedDoc(pos, cwd, state.plan)) cacheable = false;
         }
     } else if (Array.isArray(state.queue) && state.queue.length > 1 && Number.isInteger(state.queueIndex)) {
         parts.push(safeSegment(LABEL_PLANS + ': ' + (state.queueIndex + 1) + '/' + state.queue.length));

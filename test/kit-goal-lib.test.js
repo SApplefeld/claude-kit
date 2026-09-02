@@ -36,7 +36,6 @@ const {
     emitGoalEvent,
     lastActivePhrase,
     safeForAuthorization,
-    recordExecutionTree,
     queuePosition,
     sessionHoldsLeash
 } = require('../plugins/claude-kit/hooks/kit-goal-lib.js');
@@ -1960,13 +1959,12 @@ test('CLI status renders a legacy single-plan state as a queue of one', () => {
 
 // This is what makes 'run the goal CLI instead of reading the state file'
 // a disclosure control rather than just a rerouted read: the raw state file
-// carries the bound transcript's and the execution tree's absolute paths,
-// both under the user profile, and status must print the blocker note
-// without printing either. Nothing else enforces that property, so a later
-// change to status's rendering could start leaking one of the two paths
-// while the skill kept telling a coordinator seat to rely on this command
-// for exactly the guarantee that had just gone quiet.
-test('CLI status prints the blocked note but never the bound transcript or execution tree path', () => {
+// carries the bound transcript's absolute path, under the user profile, and
+// status must print the blocker note without printing it. Nothing else
+// enforces that property, so a later change to status's rendering could
+// start leaking the path while the skill kept telling a coordinator seat to
+// rely on this command for exactly the guarantee that had just gone quiet.
+test('CLI status prints the blocked note but never the bound transcript path', () => {
     const repo = makeRepo();
     try {
         writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
@@ -1980,16 +1978,6 @@ test('CLI status prints the blocked note but never the bound transcript or execu
         const note = 'waiting on the operator to pick a database vendor';
         advanceGoal(repo, { outcome: 'blocked', note });
 
-        // recordExecutionTree derives the tree from goalRoot(cwd) against cwd
-        // itself, which needs a real .git boundary this fixture repo does not
-        // have. The field is written directly instead, the same way
-        // writeLegacyState above builds a state the normal write path never
-        // produces.
-        const executionTree = path.join(repo, 'execution-tree-should-not-leak');
-        const state = JSON.parse(fs.readFileSync(goalPath(repo), 'utf8'));
-        state.executionTree = executionTree;
-        fs.writeFileSync(goalPath(repo), JSON.stringify(state, null, 2) + '\n', 'utf8');
-
         const res = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
         assert.strictEqual(res.status, 0, res.stderr);
 
@@ -1999,23 +1987,18 @@ test('CLI status prints the blocked note but never the bound transcript or execu
         // stdout would.
         const shown = res.stdout + '\n' + res.stderr;
 
-        // Prove the absence checks below can actually see a leak before
-        // trusting them passing: run the same shape of check against a copy
-        // of the real output with each path spliced in, and require it to
+        // Prove the absence check below can actually see a leak before
+        // trusting it passing: run the same shape of check against a copy
+        // of the real output with the path spliced in, and require it to
         // fail. A check that never goes red here would pass for the wrong
         // reason against the real command too.
-        const leakingTranscript = shown + '\n' + transcript;
-        assert.throws(() => assert.strictEqual(leakingTranscript.includes(transcript), false),
+        const leaking = shown + '\n' + transcript;
+        assert.throws(() => assert.strictEqual(leaking.includes(transcript), false),
             'the transcript-absence check must be able to fail, or it proves nothing');
-        const leakingTree = shown + '\n' + executionTree;
-        assert.throws(() => assert.strictEqual(leakingTree.includes(executionTree), false),
-            'the execution-tree-absence check must be able to fail, or it proves nothing');
 
         assert.ok(res.stdout.includes(note), 'the blocked note is what the seat reads status for: ' + res.stdout);
         assert.strictEqual(shown.includes(transcript), false,
             'the bound transcript path must never reach this output: ' + shown);
-        assert.strictEqual(shown.includes(executionTree), false,
-            'the execution tree path must never reach this output: ' + shown);
     } finally {
         rmRepo(repo);
     }
@@ -4507,158 +4490,6 @@ test('a terminator-less section closed by a heading inside the window still reco
         assert.strictEqual(readGoal(repo).authorizations['docs/plans/closed.md'],
             'Authorized by the operator with no full stop',
             'the section ended inside the window, so its line is the whole claim rather than a fragment');
-    } finally {
-        rmRepo(repo);
-    }
-});
-
-// ---------------------------------------------------------------------------
-// The execution tree: a goal-state field naming the worktree a chapter
-// boundary was last opened from, read for display trust only. Co-located goal
-// state leaves it with no producer, so every value it can carry is a hand
-// edit of the state file, and readGoal drops it from every read. These cases
-// pin that drop against the shapes such an edit reaches for and against each
-// state writer's rewrite. That the drop is what keeps a followable value away
-// from the display redirect is pinned over real worktree fixtures in
-// kit-goal-worktree.test.js, which plants a genuine linked worktree of the
-// reading checkout and holds planDisplayRoot on the reading checkout.
-// ---------------------------------------------------------------------------
-
-// Plant an execution tree in the state file by hand, which is the only way
-// one gets there: the field has no writer left, so a planted value is the
-// whole threat model and the read-time drop is the whole answer to it.
-function injectExecutionTree(repo, value) {
-    const raw = JSON.parse(fs.readFileSync(goalPath(repo), 'utf8'));
-    raw.executionTree = value;
-    fs.writeFileSync(goalPath(repo), JSON.stringify(raw), 'utf8');
-}
-
-test('advanceGoal leaves no execution tree behind in the state file', () => {
-    const repo = makeRepo();
-    try {
-        writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
-        writePlan(repo, 'docs/plans/b.md', 'Status: In Progress\n');
-        assert.strictEqual(armGoal(repo, ['docs/plans/a.md', 'docs/plans/b.md']).ok, true);
-        injectExecutionTree(repo, repo);
-        assert.ok(!('executionTree' in readGoal(repo)),
-            'setup: a planted field reaches no reader, whatever the file holds');
-
-        const result = advanceGoal(repo, { outcome: 'complete' });
-        assert.strictEqual(result.advanced, true);
-        assert.ok(!('executionTree' in readGoal(repo)),
-            'the tree named for the finished plan says nothing about the next one');
-        assert.ok(!fs.readFileSync(goalPath(repo), 'utf8').includes('executionTree'),
-            'the advance rewrites from a dropped read, so the file loses the field too');
-    } finally {
-        rmRepo(repo);
-    }
-});
-
-test('a re-arm never carries a prior execution tree', () => {
-    const repo = makeRepo();
-    try {
-        writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
-        writePlan(repo, 'docs/plans/b.md', 'Status: In Progress\n');
-        assert.strictEqual(armGoal(repo, 'docs/plans/a.md').ok, true);
-        injectExecutionTree(repo, repo);
-        assert.strictEqual(armGoal(repo, 'docs/plans/b.md').ok, true);
-        assert.ok(!('executionTree' in readGoal(repo)),
-            'the replacing arm built its state from nothing');
-        assert.ok(!fs.readFileSync(goalPath(repo), 'utf8').includes('executionTree'));
-    } finally {
-        rmRepo(repo);
-    }
-});
-
-test('readGoal drops a planted execution tree whatever its shape', () => {
-    const repo = makeRepo();
-    try {
-        writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
-        assert.strictEqual(armGoal(repo, 'docs/plans/a.md').ok, true);
-        // The drop is unconditional rather than a screen, so the followable
-        // shape at the head of the list falls with the malformed ones. That
-        // first value is the one that matters, since it is the shape
-        // planDisplayRoot's trust legs would accept and follow; the rest ride
-        // along so a reader can see the drop is not standing in for a screen
-        // that catches only the obviously wrong. The screen itself still
-        // lives at validExecutionTree in the lib, where it guards a state a
-        // caller composes in memory rather than one read off disk;
-        // test/kit-goal-worktree.test.js exercises it there through
-        // planDisplayRoot, leg by leg and beside a benign tree that is
-        // followed.
-        //
-        // Each value is asserted present in the file before the read is
-        // asserted free of it, so a fixture that failed to plant one cannot
-        // read as a drop.
-        const values = [
-            repo,
-            'docs/plans',
-            '\\team-tree',
-            repo + '\u0007sub',
-            '//host/share/tree',
-            path.join(repo, 'deep').padEnd(3000, 'x')
-        ];
-        for (const value of values) {
-            injectExecutionTree(repo, value);
-            const label = JSON.stringify(value.slice(0, 60));
-            assert.strictEqual(
-                JSON.parse(fs.readFileSync(goalPath(repo), 'utf8')).executionTree, value,
-                'setup: the file on disk carries ' + label);
-            assert.ok(!('executionTree' in readGoal(repo)), 'dropped: ' + label);
-        }
-    } finally {
-        rmRepo(repo);
-    }
-});
-
-test('bindSession and appendGoal rewrite a planted execution tree out of the file', () => {
-    const repo = makeRepo();
-    try {
-        writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
-        writePlan(repo, 'docs/plans/b.md', 'Status: In Progress\n');
-        writePlan(repo, 'docs/plans/c.md', 'Status: In Progress\n');
-        assert.strictEqual(armGoal(repo, ['docs/plans/a.md', 'docs/plans/b.md']).ok, true);
-        injectExecutionTree(repo, repo);
-        // Both writers rebase on a read before their own rewrite, and that
-        // read carries no execution tree, so what they write back carries
-        // none either: a planted value survives only until the next state
-        // write touches the file.
-        assert.strictEqual(bindSession(repo, 'sess-1', '/tmp/t.jsonl').ok, true);
-        assert.ok(!fs.readFileSync(goalPath(repo), 'utf8').includes('executionTree'),
-            'the bind wrote the state back without the planted field');
-        injectExecutionTree(repo, repo);
-        assert.strictEqual(appendGoal(repo, 'docs/plans/c.md').ok, true);
-        assert.ok(!fs.readFileSync(goalPath(repo), 'utf8').includes('executionTree'),
-            'the append wrote the state back without the planted field');
-    } finally {
-        rmRepo(repo);
-    }
-});
-
-test('recordExecutionTree records nothing and writes nothing', () => {
-    const repo = makeRepo();
-    try {
-        writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
-        assert.strictEqual(armGoal(repo, 'docs/plans/a.md').ok, true);
-        const before = fs.readFileSync(goalPath(repo), 'utf8');
-        assert.deepStrictEqual(recordExecutionTree(repo), { ok: true, recorded: false });
-        assert.strictEqual(fs.readFileSync(goalPath(repo), 'utf8'), before,
-            'nothing to record and nothing to drop is not a write');
-        // Goal state is co-located with the tree that holds it, so there is
-        // never a tree to record, and this function's re-read comes through
-        // readGoal, which carries no execution tree into the decision. A value
-        // sitting in the file is therefore not a record to drop: it is left
-        // where it is, which costs nothing, because no reader can see it and
-        // the next state write removes it.
-        injectExecutionTree(repo, os.tmpdir());
-        const planted = fs.readFileSync(goalPath(repo), 'utf8');
-        assert.deepStrictEqual(recordExecutionTree(repo), { ok: true, recorded: false });
-        assert.strictEqual(fs.readFileSync(goalPath(repo), 'utf8'), planted,
-            'a planted value is not a record to drop, so this still writes nothing');
-        assert.ok(!('executionTree' in readGoal(repo)),
-            'and it reaches no reader while it sits there');
-        assert.strictEqual(clearGoal(repo).cleared, true);
-        assert.strictEqual(recordExecutionTree(repo).ok, false, 'no goal, nothing to record');
     } finally {
         rmRepo(repo);
     }

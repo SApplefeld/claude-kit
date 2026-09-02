@@ -10,8 +10,8 @@
 // inside SessionStart and Stop hooks that block a session, in whatever directory
 // the session opened, including a clone of this public repository nobody has
 // read, so a FIFO named docs/backlog.md would hold every session start in that
-// checkout open forever. Two things close it together, the pair readGitPointer
-// in kit-goal-lib.js carries for the goal pointer's read: off win32 the open
+// checkout open forever. Two things close it together, the pair every reader here
+// carries for a path opened for its contents: off win32 the open
 // itself is non-blocking, which is what makes opening a FIFO return rather than
 // wait, and the kind verdict is then taken from an fstat on the open
 // descriptor. Judging a name and then opening that name leaves the window a

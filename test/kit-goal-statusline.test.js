@@ -530,7 +530,7 @@ test('a payload whose library does not export queuePosition renders the stored i
 });
 
 // A hooks directory whose kit-goal-lib.js re-exports the real library
-// (everything readGoalState, planDocRoot, planText and planKeyMtime need to
+// (everything readGoalState, planText and planKeyMtime need to
 // answer normally) with queuePosition alone replaced by a stub answering a
 // fixed, possibly malformed, shape. Real GOAL_LIB is required by absolute
 // path from the stub, so only queuePosition itself is under test.

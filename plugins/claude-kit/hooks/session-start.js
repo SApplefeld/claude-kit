@@ -671,7 +671,7 @@ function withinTree(treeRoot, dir) {
 
 // One hint line per sibling git worktree carrying an armed kit goal, plus
 // whether the walk stopped at its cap, or null when there is nothing to read.
-// Per-worktree goal resolution (kit-goal-lib's goalRoot) means a linked
+// Per-worktree goal resolution (kit-goal-lib's goalPath) means a linked
 // worktree's leash lives beside its own docs rather than in a file every
 // checkout of the repository shares, so a session in one tree has no way to
 // see that a leash is armed in another short of asking. `git worktree list
@@ -695,7 +695,7 @@ function withinTree(treeRoot, dir) {
 // storablePathValue this repository's goal-state fields route through, and
 // judged again after the fold, since a local spelling can resolve onto a
 // share. A network-shaped path is refused outright for the reason
-// kit-goal-lib's resolver states at its own UNC screen: opening a path under
+// kit-goal-lib's validTranscript states at its own network-path leg: opening a path under
 // \\host\share is an outbound SMB connection that authenticates as the
 // logged-in account, and the non-hostile half needs no attacker at all, since
 // one legitimate worktree on a disconnected share would hold every session
@@ -715,8 +715,8 @@ function siblingLeashReadings(cwd) {
         { timeoutMs: WORKTREE_LIST_GIT_TIMEOUT_MS });
     if (out === null) return null;
 
-    // The trailing carriage return is tolerated the way kit-goal-lib's own
-    // pointer parser tolerates it: git emits LF here, and a parser that only
+    // The trailing carriage return is tolerated the way memq's own git-pointer
+    // parser tolerates it: git emits LF here, and a parser that only
     // holds under one of the two spellings is one platform change from going
     // silent.
     const listed = [];
