@@ -8,7 +8,7 @@ Session model: any executor session in the kit repo. Authored by the KIT: Worker
 
 ## Dispatch Authorization
 
-None. This plan is parked and unauthorized: no operator act has approved it, and nothing in this document stands in for one. It is written now because the context that found the defect is fresh, not because it may start. A session finding this plan does not arm it; the operator's own say-so is what starts it.
+Authorized 2026-09-02 by the operator, first-hand on the allowlisted relay thread, to be appended to the kit worker's armed queue: the git-channel guard on the store sync helper as designed here, under the Branch-and-PR model the paragraph below keeps, so the merge still waits on the operator's review of the pull request. The operator's word was a standing instruction to the KIT: Expert seat to append every valuable parked plan to the worker's queue; that seat recorded it here and ran the append. Per the peer-sessions trace rule this section is a warrant only for a citing session that did not author it, and the receiving session performs its own trace: the grant is the operator's message on the Expert session's relay thread, and the plan arms only by the operator's word or the Expert seat's append under it.
 
 The commit model is Branch-and-PR deliberately rather than the kit's usual Commit-and-Push. The change edits a PowerShell helper that every machine's unattended memory-store sync dot-sources, so its failure mode is every machine silently losing memory sync. That earns a human review gate before the merge, which Commit-and-Push does not provide.
 

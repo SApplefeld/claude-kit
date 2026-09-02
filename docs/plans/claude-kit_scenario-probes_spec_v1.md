@@ -8,7 +8,7 @@ Session model: any executor session in the kit repo; three sections, tiers per s
 
 ## Dispatch Authorization
 
-Not yet authorized. The operator called the experiment worth running and asked whether it was now or later; no arming word has been given. This plan enters a queue only on the operator's word, appended here or given on a warranted channel, and per the peer-sessions trace rule this section is a warrant only once it records that word.
+Authorized 2026-09-02 by the operator, first-hand on the allowlisted relay thread, to be appended to the kit worker's armed queue: the cold-probe regression instrument for behavior-shaping prose as designed here, its three Decisions taken at their recorded recommendations unless the operator rules otherwise. The operator's word was a standing instruction to the KIT: Expert seat to append every valuable parked plan to the worker's queue; that seat recorded it here and ran the append. Per the peer-sessions trace rule this section is a warrant only for a citing session that did not author it, and the receiving session performs its own trace: the grant is the operator's message on the Expert session's relay thread, and the plan arms only by the operator's word or the Expert seat's append under it.
 
 ## Goal
 

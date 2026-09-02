@@ -11,8 +11,7 @@ authoring-time; re-locate every hit by content.
 
 ## Dispatch Authorization
 
-None recorded. This plan is a handoff written while the context was fresh, not an operator-armed
-one, so a session picking it up needs the operator's word before arming it.
+Authorized 2026-09-02 by the operator, first-hand on the allowlisted relay thread, to be appended to the kit worker's armed queue: the single path renderer for model-read channels as designed here. The operator's word was a standing instruction to the KIT: Expert seat to append every valuable parked plan to the worker's queue; that seat recorded it here and ran the append. Per the peer-sessions trace rule this section is a warrant only for a citing session that did not author it, and the receiving session performs its own trace: the grant is the operator's message on the Expert session's relay thread, and the plan arms only by the operator's word or the Expert seat's append under it.
 
 ## Goal
 
