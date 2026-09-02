@@ -466,3 +466,18 @@ Gate: no lane run since 21:05Z and no code delta since, this entry being prose i
 
 Next action: unchanged, the operator's decision on the fork, now read against this entry. Whichever way it goes, what follows is one repair round over the chosen form, the section's close gate, the whole gate, Chapter 4, then section 6 and then section 5.
 Commit Model: Commit-and-Push
+
+### Interim board 12 - 2026-09-02
+
+Two updates on the blocked section 4 fork, one of which upgrades a claim from reported to confirmed. Nothing was built and nothing in the worktree moved; the section still waits on the operator, who is now in dialogue with the expert seat about it at his own request, relayed from this session.
+
+The coordinator seat's fifth-shape observation is confirmed at source rather than reported. That seat had said the memory recognition surface put a homed board record in front of it unprompted during a pass, with no source-list entry involved. This session read the nudge log directly and it carries exactly that: a nudge fired at the PreToolUse boundary on 2026-09-02 at 20:53:05.531Z, naming the record a-coordination-ledger-holds-current-state-not-its-own-journey in the operator tier, matched on a skill trigger. The log holds two lines in total, the other being a positive control from 2026-08-30. So the mechanism that would make the section unnecessary is not a claim from another session any more; it has fired once, on the exact record the governing note's first incident is about. What that does not establish is reach, since one firing on one triggered record says nothing about the tier's other records, none of which declared a trigger at the time the queued recognition-reach plan was authored.
+
+The expert seat's brief to the operator recommends a fourth shape, D, which is neither of the two the declaration named: no source-list entry at all, and one sentence stating that the pass re-measures no memory tier because a record is not a board line, that the store reaches the seat at takeover through recall and at the moment of use through the nudge, both of them stamping routes, and that a record failing to arrive by either is a missing trigger to declare rather than a missing source. That is reported from the expert and not verified here, though its two mechanism legs now both exist: the takeover recall shipped in this repo at commit 5b7dba3 as the first section of the recognition-reach plan, and the nudge route is the firing confirmed above.
+
+The expert also answered the axis question this session put to it. Its position is that the third leg it proposed is an extension of the split's wording rather than a restatement of what the split always meant, so it is a small contract change and not a correction. Recorded as the expert's own characterisation; it is the distinction the operator's discomfort may turn on, and it means option B remains a contract change even in its one-sentence form.
+
+Standing state, unchanged: the section's candidate entry and the security model's one-word count correction are still uncommitted in the worktree, deliberately. The coordinator skill now carries two efforts at once, this section's entry and the recognition-reach plan's takeover pointer, and the pointer was landed in 5b7dba3 by staging a blob the worktree does not hold, so that file reads as modified against its own commit until this section resolves. That is expected and is not to be cleaned up.
+
+Next action: unchanged, the operator's decision, now against four shapes rather than two.
+Commit Model: Commit-and-Push
