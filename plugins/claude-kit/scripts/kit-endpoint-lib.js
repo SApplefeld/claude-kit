@@ -17,6 +17,16 @@
 // with other tenants of that host including the operator's own agent harness.
 // Nothing here redacts. Each caller's own header states what it sends.
 //
+// TWO WIRE PROTOCOLS, ONE REQUEST SHAPE. Callers build an Ollama-style
+// generate request (`system`, `prompt`, `format`, `think`, `options`) and
+// read an Ollama-style answer (`response`, `done_reason`). The config's `api`
+// key names what the endpoint actually speaks: `ollama` posts that request as
+// it stands to `/api/generate`; `openai` translates it to a chat-completions
+// request for `/v1/chat/completions` (which llama-server and most other local
+// servers serve) and translates the answer back, so no caller knows which
+// server it is talking to. The translation is the whole of the difference,
+// and it lives here so that the three callers cannot drift apart on it.
+//
 // THE ADDRESS IS NOT IN THIS REPOSITORY, which is public. It exists only in
 // that config file and in the operator's own memory tier, is read at run time,
 // and lands in no comment, log line, record or test. What travels instead is a
@@ -123,6 +133,25 @@ const MAX_TIMEOUT_MS = 600000;
 // the caller cannot see.
 const TIMEOUT_WARNING_PREFIX = 'timeoutMs ignored';
 
+// The wire protocols a config may name in its optional `api` key, and the
+// generation path each one posts to. `ollama` is the default because every
+// config written before the key existed meant it.
+const API_FLAVORS = ['ollama', 'openai'];
+const DEFAULT_API = 'ollama';
+const GENERATE_PATHS = {
+    ollama: '/api/generate',
+    openai: '/v1/chat/completions'
+};
+
+// How the config read opens its complaint about an unusable `api`. Same
+// reasoning as the timeout prefix: a caller recognises the warning by this
+// constant, not by a spelling copied out of a sentence.
+const API_WARNING_PREFIX = 'api ignored';
+
+function generatePath(api) {
+    return GENERATE_PATHS[api] || GENERATE_PATHS[DEFAULT_API];
+}
+
 // The characters of the host hash kept as the endpoint's fingerprint. Enough to
 // tell one endpoint from another across a startup line and a log full of
 // records; far too little to be a reversible copy of the address.
@@ -220,8 +249,9 @@ function loadEndpointConfig(file, defaultTimeoutMs) {
         return { ok: false, reason: 'malformed', path: target, detail: 'not a JSON object' };
     }
 
-    // Trailing slashes are stripped so the caller's `${url}/api/generate` never
-    // doubles one. A doubled slash is accepted by most servers and by no rule.
+    // Trailing slashes are stripped so the generation path appended to the url
+    // never doubles one. A doubled slash is accepted by most servers and by no
+    // rule.
     const url = typeof parsed.url === 'string' ? parsed.url.trim().replace(/\/+$/, '') : '';
     if (!/^https?:\/\/[^\s/]+/.test(url)) {
         return { ok: false, reason: 'invalid', path: target, detail: 'url must be an http or https address' };
@@ -243,6 +273,19 @@ function loadEndpointConfig(file, defaultTimeoutMs) {
         }
     }
 
+    // An unknown `api` is ignored with a warning rather than refused, for the
+    // reason a bad timeout is: the endpoint is still there, and the default
+    // protocol is a better guess than no call at all.
+    let api = DEFAULT_API;
+    if (parsed.api !== undefined) {
+        const wanted = typeof parsed.api === 'string' ? parsed.api.trim().toLowerCase() : '';
+        if (API_FLAVORS.includes(wanted)) {
+            api = wanted;
+        } else {
+            warnings.push(`${API_WARNING_PREFIX}: expected one of ${API_FLAVORS.join(', ')}`);
+        }
+    }
+
     // The host is parsed off the url rather than taken from a separate key, so
     // the fingerprint and the locality reading are both about the address the
     // caller will actually post to.
@@ -258,6 +301,7 @@ function loadEndpointConfig(file, defaultTimeoutMs) {
         path: target,
         url,
         model,
+        api,
         timeoutMs,
         warnings,
         endpointFingerprint: hostFingerprint(host),
@@ -442,21 +486,78 @@ async function readBoundedBody(res) {
     }
 }
 
+// The caller's generate request as a chat-completions request.
+//
+// `system` and `prompt` become the two messages the chat template renders,
+// which is what an Ollama server does with them internally. `format` as an
+// object is a JSON schema and becomes a `json_schema` response format, so the
+// answer stays grammar-constrained; the string `json` becomes `json_object`.
+// `think` becomes the template's `enable_thinking` switch, sent only when the
+// caller stated it, so a server default is left alone otherwise. Streaming is
+// always off: this module reads whole bodies.
+function toChatCompletionsRequest(request) {
+    const src = (request !== null && typeof request === 'object') ? request : {};
+    const messages = [];
+    if (typeof src.system === 'string' && src.system !== '') {
+        messages.push({ role: 'system', content: src.system });
+    }
+    messages.push({ role: 'user', content: typeof src.prompt === 'string' ? src.prompt : '' });
+    const out = { model: src.model, messages, stream: false };
+    const options = (src.options !== null && typeof src.options === 'object') ? src.options : {};
+    if (Number.isFinite(options.temperature)) out.temperature = options.temperature;
+    if (Number.isFinite(options.num_predict) && options.num_predict > 0) {
+        out.max_tokens = Math.round(options.num_predict);
+    }
+    if (src.format !== null && typeof src.format === 'object') {
+        out.response_format = { type: 'json_schema', json_schema: { name: 'answer', schema: src.format } };
+    } else if (src.format === 'json') {
+        out.response_format = { type: 'json_object' };
+    }
+    if (typeof src.think === 'boolean') out.chat_template_kwargs = { enable_thinking: src.think };
+    return out;
+}
+
+// A chat-completions answer in the shape the callers read.
+//
+// The first choice's text is the `response`; a `length` finish reason is the
+// one that callers act on (an answer cut off at the caller's own ceiling), so
+// it is kept and every other reason reads as `stop`. An OpenAI-style error
+// object collapses to the string `error` the transport already classifies. A
+// body that is neither is handed back untouched: whether it is usable is the
+// caller's question, as it is for any other answer.
+function fromChatCompletionsResponse(body) {
+    if (body === null || typeof body !== 'object') return body;
+    if (body.error !== null && typeof body.error === 'object' && typeof body.error.message === 'string') {
+        return { error: body.error.message };
+    }
+    const choice = Array.isArray(body.choices) ? body.choices[0] : undefined;
+    if (choice === null || typeof choice !== 'object') return body;
+    const message = (choice.message !== null && typeof choice.message === 'object') ? choice.message : {};
+    return {
+        model: body.model,
+        response: typeof message.content === 'string' ? message.content : '',
+        done: true,
+        done_reason: choice.finish_reason === 'length' ? 'length' : 'stop'
+    };
+}
+
 // POST one generation request. Exactly one attempt: the retry policy is the
 // caller's, because whether a failure earns a retry depends on the run's
 // history and not on this call. Never throws.
 async function postGenerate(request, config, deps) {
     const fetchImpl = (deps && typeof deps.fetchImpl === 'function') ? deps.fetchImpl : fetch;
+    const api = (config && API_FLAVORS.includes(config.api)) ? config.api : DEFAULT_API;
+    const wire = api === 'openai' ? toChatCompletionsRequest(request) : request;
     const started = Date.now();
     const controller = new AbortController();
     const timer = setTimeout(() => { controller.abort(); }, abortDelay(config.timeoutMs));
 
     let res = null;
     try {
-        res = await fetchImpl(`${config.url}/api/generate`, {
+        res = await fetchImpl(`${config.url}${generatePath(api)}`, {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify(request),
+            body: JSON.stringify(wire),
             signal: controller.signal
         });
     } catch (err) {
@@ -483,7 +584,7 @@ async function postGenerate(request, config, deps) {
             }
             return { status: 'refused', detail: read.detail || 'response body could not be read', latencyMs: Date.now() - started };
         }
-        const body = read.body;
+        const body = api === 'openai' ? fromChatCompletionsResponse(read.body) : read.body;
         if (body !== null && typeof body === 'object' && typeof body.error === 'string' && body.error !== '') {
             // The error text comes from an off-machine multi-tenant service and
             // reaches a report line unescaped, so it is neutralized before it
@@ -548,6 +649,12 @@ module.exports = {
     loadEndpointConfig,
     remoteEndpointWarning,
     TIMEOUT_WARNING_PREFIX,
+    API_FLAVORS,
+    DEFAULT_API,
+    API_WARNING_PREFIX,
+    generatePath,
+    toChatCompletionsRequest,
+    fromChatCompletionsResponse,
     MAX_BODY_BYTES,
     MAX_DETAIL_CHARS,
     TEMPERATURE,
