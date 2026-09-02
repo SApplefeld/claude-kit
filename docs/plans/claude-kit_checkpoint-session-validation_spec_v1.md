@@ -43,6 +43,17 @@ The operator ruled (relay, 2026-09-01): the checkpoint carries a session id
 that is validated at the acting moment, so a checkpoint affects only the
 session it belongs to.
 
+A second observation, routed here by the 2026-09-02 kaizen pass from the
+NEO-CLAUDE inbox (note of 2026-08-31, reported and not reproduced here): a
+chapter checkpoint opened at a clean point closed again within minutes with no
+compaction landing, the gate's status reading no-checkpoint and its last
+decision deny-boundary with reason no-checkpoint, so the deferral nudge
+repeated and the run re-opened the checkpoint in a loop. On that machine several
+sessions shared the checkout, which is the shape this plan's bystander `clear`
+produces; the implementer confirms or refutes that reading against the gate
+journal before treating it as this plan's instance, and records the answer
+either way, since a loop with a different cause is a separate defect.
+
 ## Decisions
 
 - Decided 2026-09-01 (operator, relay): checkpoints validate a session id, so
