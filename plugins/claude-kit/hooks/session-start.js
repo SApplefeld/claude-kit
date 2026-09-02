@@ -755,7 +755,16 @@ function siblingLeashReadings(cwd) {
         // answers the same mtime differently. A leash with no bound
         // transcript gets its line with the clause simply absent rather than
         // a fabricated reading.
-        const phrase = typeof goal.boundTranscript === 'string' && goal.boundTranscript !== ''
+        // The absoluteness screen is this reader's own, and it sits here
+        // rather than inside lastActivePhrase because the two callers differ
+        // in whose path they hold. The local armed-goal notice renders a
+        // transcript path this machine's own arm wrote and validated; this
+        // value comes out of another tree's hand-editable state file, and a
+        // relative spelling resolves against this process's working
+        // directory rather than the sibling's, so it would stat a file in
+        // the reader's own tree and report its age as the sibling session's.
+        // Refusing it costs the clause and never the line.
+        const phrase = storablePathValue(goal.boundTranscript, GIT_POINTER_PATH_CAP, true)
             ? lastActivePhrase(goal.boundTranscript)
             : null;
         const liveness = phrase ? `, that session was last active ${phrase}` : '';
@@ -1248,10 +1257,10 @@ function main() {
 
     // Sibling-worktree leash visibility is additive and must never affect
     // plan recovery. Per-worktree goal resolution costs a repository-wide
-    // reading the old shared-file resolution gave for free: a session
-    // anywhere in the repo used to see a leash live somewhere, and this
-    // restores that by enumerating linked worktrees rather than by sharing
-    // state. Fires whether or not this tree's own goal is armed, which is why
+    // reading that per-worktree resolution does not give on its own: a leash
+    // is visible only in the tree that holds it, so the repository-wide
+    // reading is supplied by enumerating linked worktrees rather than by
+    // sharing state. Fires whether or not this tree's own goal is armed, which is why
     // it is read apart from goalBlock above.
     //
     // It stands down for an external engine's worker, alongside the unleashed

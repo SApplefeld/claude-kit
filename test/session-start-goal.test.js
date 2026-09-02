@@ -1012,6 +1012,36 @@ test('a worktree entry naming no absolute place is refused rather than read', {
     } finally { pair.clean(); rmDir(plantedParent); }
 });
 
+test('a sibling naming a relative transcript gets no liveness clause from the reader\'s own tree', {
+    skip: GIT_ON_PATH ? false : 'git is not on PATH'
+}, () => {
+    const pair = makeGitWorktreePair();
+    const plantedParent = fs.mkdtempSync(path.join(os.tmpdir(), 'session-start-wt-reltx-'));
+    try {
+        // A relative spelling resolves against this process's own working
+        // directory, not the sibling's, so the file it would stat belongs to
+        // the reader rather than to the tree being reported on. The setup
+        // asserts the path really does resolve from here: without that, a
+        // green could mean the guard held or merely that nothing was there,
+        // and those are the two readings this test exists to separate.
+        const relative = 'README.md';
+        assert.ok(fs.existsSync(path.resolve(process.cwd(), relative)),
+            'setup: the relative spelling must resolve from the reader cwd, or its refusal proves nothing');
+
+        const tree = path.join(plantedParent, 'planted-reltx');
+        fs.mkdirSync(tree, { recursive: true });
+        writeGoal(tree, siblingGoalState('docs/plans/reltx_spec_v1.md', null, relative));
+        plantWorktreeEntry(pair.main, 'plantedreltx', tree);
+
+        const text = context(runHook(pair.main, 'sess-A'));
+        assert.match(text, /docs\/plans\/reltx_spec_v1\.md/,
+            'the sibling itself still reports: ' + text);
+        assert.doesNotMatch(text, /last active/,
+            'a relative transcript spelling must not produce a liveness reading: ' + text);
+    } finally { pair.clean(); rmDir(plantedParent); }
+});
+
+
 test('the worktree walk is capped and says so when the cap binds', {
     skip: GIT_ON_PATH ? false : 'git is not on PATH'
 }, () => {
