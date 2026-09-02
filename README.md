@@ -13,7 +13,7 @@ claude-kit/                          (repo = the marketplace)
       .claude-plugin/plugin.json     Plugin manifest (no version field - every
                                      commit counts as a new version)
       skills/
-        operating-instructions/      Always-apply operating doctrine; canonical single source, delivered per surface
+        operating-instructions/      Always-apply operating doctrine; canonical single source, delivered per surface; references/ownership-map.md maps each governed moment to its owning document
         brainstorming/               Design conversation, spec in docs/plans/, scope-check, commit model
         executing-work/              Autonomous section loop with the completion contract: implement, verify, review, Chapter
         finishing-work/              QA, security, docs curation, final review, close-out, integration per commit model
