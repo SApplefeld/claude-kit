@@ -1,6 +1,6 @@
 # The store learns to speak up: triggers reach the shared tiers, resolution obeys one contract, and recognition meets the moment
 
-Status: In Progress
+Status: Complete
 Commit Model: Commit-and-Push
 Created: 2026-08-30
 
@@ -1750,5 +1750,74 @@ eight edits landed as one all-or-nothing application in which every anchor had t
 
 Next action. Step 5: the plan's terminal state, the close-out Chapter, the archive, the backlog prune, the
 index refresh, and the handoff whole gate that fills the final Chapter's open Gate line.
+
+Commit model in effect: Commit-and-Push.
+
+### Chapter 4 - The whole-effort finishing pass, and the plan closes - 2026-09-02
+
+Completed: 3. Recognition meets the moment: the prompt and the dispatch. This Chapter closes the
+whole-effort finishing pass rather than a new section, and it is the plan's terminal entry.
+
+What the effort delivered, stated as the state it leaves behind. The kit's memory store had a write side
+that could author a record and a read side that could only be asked. It can now volunteer. A record
+declares what it is about, and the store surfaces it at the moments a session is processing something new:
+a tool call about to run, a tool call that just ran, a prompt arriving, and a subagent being dispatched.
+Three things had to be true for that to work, and each was a section. Triggers can be authored on the
+tiers shared across machines, and recognition reads them there, so a lesson learned on one box can nudge a
+session on another. One resolution contract now governs where a session's memory lives, stated once and
+imported rather than restated, which closes the split where a machine-scoped seat wrote to a tier nothing
+read. And recognition fires at the two lifecycle moments as well as the two tool ones, in pointer-not-body
+discipline throughout: what crosses into context is a record's name and the trigger text that fired,
+never a body.
+
+The two deviations from the plan as written, both deliberate, both recorded with their reversal cost. A
+prompt is matched against the project tier alone rather than against every tier, and against no tier at
+all while a store pin is in effect. The plan asked for every tier; a security finding during section 3
+established why that is wrong, and the reasoning generalized past the prompt during the finishing pass:
+containment to one checkout is the whole of what admits a tier at a door matched against something other
+than a declared field, and a store pin dissolves that containment by serving one directory to every
+repository the instance works in. The same reasoning now keys the path-glob door and the file-anchor door,
+which the finishing pass corrected from deciding on the tier's name to deciding on the pin. The cost is
+that a shared-tier record no longer produces a prompt-time pointer, which is a real narrowing of what this
+plan set out to deliver and is the one deviation worth the operator's attention. And the kit's read-only
+judgment seats receive no pointer at dispatch at all, those seats being dispatched precisely to hold a
+context that inherited nothing.
+
+The surprises worth carrying forward. Two of them were about evidence rather than about code. The
+withheld-control bar caught a green that would otherwise have shipped unearned: the two-way experiment
+section 2's acceptance names was first re-run in a shape that asked the resolver the same question twice,
+and the control against the pre-fix resolver stayed silent, which is exactly what that bar exists to
+produce. The discriminating shape turned out to be a difference in the working directory's spelling rather
+than in derivation, and against it the control speaks: a relative working directory and an empty one each
+resolve at the base ref to a second tier under one seat, silently, where the shipped resolver refuses both
+by spelling before resolving anything. The second surprise is that this effort wrote a falsehood into the
+project's own history, crediting an earlier archived plan with the two lifecycle boundaries this plan
+added; the base ref does not contain that claim and the finishing pass removed it. Both are instances of
+the same lesson: a claim nobody exercises drifts, and the exercise has to be capable of failing.
+
+Review findings addressed. The per-section rounds cleared each section as it landed. The finishing pass
+ran a security review and an adversarial review over the whole changeset, then a docs curation. Their
+findings produced one implementer fix round (the hook's own header table restated to the shipped rule, the
+two path doors keyed on the pin with tests watched red first, a skill sentence given its missing third
+arm, and two carriers of a falsified line count corrected) and eight documentation corrections, every one
+adjudicated at the code before being applied. Two claims in the curator's own report did not survive that
+adjudication and were corrected rather than applied. Two findings were routed out of this plan with their
+reasons recorded in the backlog rather than folded in: the two payload-reading guards' hand-copied
+agent-type chains, and the per-call match-op budget charging one op per trigger where a glob op is a sweep
+and a containment op is a single test.
+
+Gate: the handoff whole gate reads 2972 tests, 2962 passing, 1 failing, 9 skipped, at exit 1 read from the
+run's own exit code. Against the 2970 / 2960 / 1 / 9 baseline Chapter 3 recorded on the same lane, the
+delta is exactly the finishing fix round's two new tests, both passing, with the failure count unchanged.
+The single red is the documented box-local one in `test/memory-session.test.js`: its fixture pads a path
+expecting a long host temp prefix, and this machine's `D:\Temp` leaves the total at 254 characters, short
+of the 260-character guard the test means to exercise, so the red says the guard went unexercised rather
+than that it broke. The targeted lane that gated the fix round read 1002 / 1000 / 0 / 2 at exit 0, a delta
+of exactly its own two new tests against a 1000 / 998 / 0 / 2 baseline taken on that lane before any edit.
+The repository defines no contention lane.
+
+Next: none. This plan is Complete and archived to `docs/archive/`. The armed queue advances to
+`docs/plans/claude-kit_board-routing-and-homing_spec_v1.md`, the board-routing-and-homing plan, whose
+homing writes become trigger-capable because this plan ran first.
 
 Commit model in effect: Commit-and-Push.

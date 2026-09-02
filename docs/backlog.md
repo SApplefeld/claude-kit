@@ -164,8 +164,6 @@ Per-plan history does not live here. A plan's Chapters are its own append-only r
 
 - **Kaizen scoping companion against over-generalization (deferred 2026-07-26).** The kaizen skill's "State the lesson, not the incident" rule generalizes captured notes; the symmetric failure (Twain's cat: over-generalizing to "never touch stoves") has a pre-written fix, a companion line "Generalize to the cause, not the scene. The lesson covers everything hot, and nothing that's merely a stove." Deliberately left out per writing-skills' observed-failure bar. Add it only when an actually over-generalized kaizen note or memory is observed; the "one level more general" phrasing already bounds the swing, which is why this is expected to stay parked.
 
-- **Give the read-only guard's agent roster a directory-driven parity check (2026-08-18, from the document-review-battery reviews).** The check this item asked for now ships: `test/readonly-agent-guard.test.js` derives the read-only set from each definition's `tools:` frontmatter under `plugins/claude-kit/agents/` and asserts every member resolves to a governed class under the shared classifier (`reviewAgentClass` in `hooks/kit-agent-identity-lib.js`, read by the guard and by the recognition nudge's dispatch stand-down alike), so an ungoverned read-only addition is a red rather than a gap. What stays open is only the adjacent candidate below. Adjacent candidate from the 2026-08-19 kaizen note on ungoverned scouts: consider governing the harness's `Explore` type as strict too; its tool list already excludes Edit and Write, so Bash is its only mutation channel and strict-governing it should break no legitimate use, while `general-purpose` can never join (it legitimately mutates), which is why executing-work brackets read-only-intent dispatches under ungoverned types rather than leaning on the guard for them. If Explore joins the roster, the parity test's read-only predicate must special-case a type that lives in the harness rather than in `agents/`.
-
 - **Decide whether the read-only guard should deny outbound-network commands (2026-08-18, from the document-review-battery security review).** The guard's strict class denies write-shaped commands and says nothing about `curl`, `wget`, `Invoke-WebRequest`, `Invoke-RestMethod`, or `nslookup`, and the tree-state capture that backstops a review round sees only worktree deltas, which a network call never leaves. So the sole control against a read-only reviewer being talked into exfiltrating by a document it was told to review is the charter sentence telling it not to. Both new document agents state that prohibition with its rationale, which is the strongest form the kit's model currently offers, and the exposure predates them; what the effort changed is that two agents now exist whose entire job is reading documents that may come from outside. The candidate is naming the outbound-network commands in the strict-class denylist, which is cheap and mechanical. The argument against is that a read-only reviewer sometimes has a legitimate reason to fetch (a version, a published doc), so the denial would need an escape and the escape is where this gets expensive. Judge it the next time a reviewer agent is given a document from a source the operator does not control.
 
 - **Decide whether the disclosure sweep needs a section-time trigger (2026-08-18, from the document-review-battery adversarial review).** The disclosure sweep runs at finishing, because that is where the audience predicate lives. Under Commit-and-Push, a section closes by committing and pushing, so an outward-facing document carrying a leak is already on the remote before the sweep that would catch it ever runs. The executing-work security-reviewer trigger list (input handling, auth, SQL construction, secrets or configuration, an external boundary) does not name a section whose spec carries a `Disclosure:` list, so nothing pulls the sweep earlier. This matches what the spec designed rather than drifting from it, which is why it was recorded rather than fixed at close-out; the proof runs are the counter-evidence, since they exercised the sweep at what was effectively section scope and it fit naturally there. The fix, if taken, is one entry on that trigger list. Judge it on the first real effort that ships an outward-facing document under Commit-and-Push.
@@ -271,48 +269,11 @@ Per-plan history does not live here. A plan's Chapters are its own append-only r
   expectations (a temp-prefix path-length red, zip sizes differing by PowerShell host), so a
   runner-green suite definition has to exist before any of this becomes a required check. Signal:
   the branch-protections item is picked up, or any further work on filesystem-semantics code.
-- **The judgment sidecar's transcript distiller is parked by design, waiting on a field trial and an
-  operator call (parked 2026-08-31, from the judgment sidecar plan's section 8).** This is a designed
-  deferral rather than work left undone, and the distinction is load-bearing: the plan reached Complete
-  at section 7 deliberately, because section 8's own acceptance reads "deferred to the design pass", so
-  there is no buildable acceptance a run could have reached. What it would build: end-of-session
-  transcript extraction, chunked map-reduce distillation sized well inside the standing context,
-  candidate memory drafts and contradiction flags written to a pending file for session or operator
-  adjudication, with budget stated in the prompt plus validate-and-re-ask, since the model composes past
-  schema caps and constrained decoding then truncates mid-sentence. Two things get decided at the design
-  pass rather than now: how it interacts with the shipped memory-recognition hook, which did not exist
-  when section 8 was written, and whether a distiller earns its keep at all once recognition is running
-  in the field. The pass itself is specified as fable-tier. Signal: the field trial of sections 1 through
-  7 has elapsed and the operator calls for it.
+- **The judgment sidecar's transcript distiller is parked by design, waiting on a field trial and an operator call (parked 2026-08-31, from the judgment sidecar plan's section 8).** This is a designed deferral rather than work left undone, and the distinction is load-bearing: the plan reached Complete at section 7 deliberately, because section 8's own acceptance reads "deferred to the design pass", so there is no buildable acceptance a run could have reached. What it would build: end-of-session transcript extraction, chunked map-reduce distillation sized well inside the standing context, candidate memory drafts and contradiction flags written to a pending file for session or operator adjudication, with budget stated in the prompt plus validate-and-re-ask, since the model composes past schema caps and constrained decoding then truncates mid-sentence. Two things get decided at the design pass rather than now: how it interacts with the shipped memory-recognition hook, which did not exist when section 8 was written, and whether a distiller earns its keep at all once recognition is running in the field. The pass itself is specified as fable-tier. Signal: the field trial of sections 1 through 7 has elapsed and the operator calls for it.
 
-- **Two of the judgment sidecar's acceptance criteria are operator-only and remain unrun (parked
-  2026-08-31, from the judgment sidecar's finishing pass; recorded open in Chapters 1 and 3 rather than
-  discovered at the close).** Neither is a failure and neither held the plan open, because both need an
-  act no session in that effort was permitted to perform: every run of that plan was constrained to
-  fixture stores and fixture homes, and both criteria require the daemon running against the real store.
-  The first, from section 1: a manual session on this VM produces schema-valid spool lines for real tool
-  calls. The second, from section 3: a live session receives a diverged-verdict pointer at its next tool
-  call after a deliberately trapped command, which is the end-to-end proof that the valve delivers. Both
-  are the field trial the distiller item above is also waiting on, so one activation serves both. What
-  reopens the work: either criterion failing when run. Signal: the operator starts the daemon against the
-  real store.
+- **Two of the judgment sidecar's acceptance criteria are operator-only and remain unrun (parked 2026-08-31, from the judgment sidecar's finishing pass; recorded open in Chapters 1 and 3 rather than discovered at the close).** Neither is a failure and neither held the plan open, because both need an act no session in that effort was permitted to perform: every run of that plan was constrained to fixture stores and fixture homes, and both criteria require the daemon running against the real store. The first, from section 1: a manual session on this VM produces schema-valid spool lines for real tool calls. The second, from section 3: a live session receives a diverged-verdict pointer at its next tool call after a deliberately trapped command, which is the end-to-end proof that the valve delivers. Both are the field trial the distiller item above is also waiting on, so one activation serves both. What reopens the work: either criterion failing when run. Signal: the operator starts the daemon against the real store.
 
-- **The invisible-character neutralizer is shared by four consumers that each compile it with their own
-  flags, and the fourth was found by breakage rather than by a check (2026-08-31, from the judgment
-  sidecar's finishing fix round).** `UNSAFE_PATTERN` in
-  `plugins/claude-kit/scripts/kit-endpoint-lib.js` is a joined list of escape strings rather than a
-  literal character class, deliberately, so the source file does not contain the bytes it screens for and
-  does not drop out of the repository's own hygiene sweeps. The cost of that shape is that each consumer
-  calls `new RegExp` itself and chooses its own flags. When the class gained a supplementary-plane range
-  and the `u` flag with it, `sidecar/harvest.js` was still compiling the shared pattern with `g` alone and
-  became a load-time `SyntaxError`, taking a whole suite down. That was caught because it was loud; a
-  future consumer whose flag mismatch is merely wrong rather than fatal would not be. There is also a
-  spelling pin asserting the hook's copy and the library's copy are byte-identical, and it is worth
-  knowing what that pin cannot do: it pins the two equal, so when the class was too narrow it propagated
-  the gap to both surfaces faithfully and reported green. Fix shape: export a compiled regular expression,
-  or a `neutralize` helper, from the library so no consumer chooses flags, and keep the byte-identity pin
-  for the hook copy that cannot require the library. Signal: a fifth consumer, or the next change to the
-  character class.
+- **The invisible-character neutralizer is shared by four consumers that each compile it with their own flags, and the fourth was found by breakage rather than by a check (2026-08-31, from the judgment sidecar's finishing fix round).** `UNSAFE_PATTERN` in `plugins/claude-kit/scripts/kit-endpoint-lib.js` is a joined list of escape strings rather than a literal character class, deliberately, so the source file does not contain the bytes it screens for and does not drop out of the repository's own hygiene sweeps. The cost of that shape is that each consumer calls `new RegExp` itself and chooses its own flags. When the class gained a supplementary-plane range and the `u` flag with it, `sidecar/harvest.js` was still compiling the shared pattern with `g` alone and became a load-time `SyntaxError`, taking a whole suite down. That was caught because it was loud; a future consumer whose flag mismatch is merely wrong rather than fatal would not be. There is also a spelling pin asserting the hook's copy and the library's copy are byte-identical, and it is worth knowing what that pin cannot do: it pins the two equal, so when the class was too narrow it propagated the gap to both surfaces faithfully and reported green. Fix shape: export a compiled regular expression, or a `neutralize` helper, from the library so no consumer chooses flags, and keep the byte-identity pin for the hook copy that cannot require the library. Signal: a fifth consumer, or the next change to the character class.
 
 - **Stripping the variation-selector range degrades emoji in the sidecar's advisory text (2026-08-31,
   from the judgment sidecar's finishing fix round; accepted rather than fixed).** The neutralizer now
@@ -325,19 +286,7 @@ Per-plan history does not live here. A plan's Chapters are its own append-only r
   emoji" is met with a decision rather than a bug hunt. Signal: a consumer of the neutralizer whose output
   is user-facing prose rather than advisory pointers.
 
-- **`test/kit-sidecar-capture.test.js` closes the live-store class by per-call-site discipline where its
-  two sibling suites close it by structure (2026-08-31, from the judgment sidecar's finishing fix
-  round).** The live-store class reached ten instances in that effort, and the thing that finally held was
-  structural rather than behavioural: one spawn helper naming the interpreter at a single site, so a later
-  call site cannot be written without a fixture home. `test/kit-sidecar-battery.test.js`,
-  `test/kit-sidecar-daemon.test.js` and `test/kit-sidecar-rollup.test.js` all carry that shape and a pin
-  asserting the interpreter token appears exactly once. The capture suite does not: it has three separate
-  `process.execPath` sites, and all three pin `HOME` and `USERPROFILE` to a fixture home correctly today.
-  That is per-call-site discipline, which is precisely the discipline that failed eight consecutive times
-  in the battery file, once under a file header asserting the opposite. Nothing is wrong today and this is
-  a guard item, not a defect. Fix shape: give the capture suite the same single-site spawn helper and the
-  same structural pin. Signal: a fourth spawn site added to that file, which is the moment discipline has
-  to be remembered rather than enforced.
+- **`test/kit-sidecar-capture.test.js` closes the live-store class by per-call-site discipline where its two sibling suites close it by structure (2026-08-31, from the judgment sidecar's finishing fix round).** The live-store class reached ten instances in that effort, and the thing that finally held was structural rather than behavioural: one spawn helper naming the interpreter at a single site, so a later call site cannot be written without a fixture home. `test/kit-sidecar-battery.test.js`, `test/kit-sidecar-daemon.test.js` and `test/kit-sidecar-rollup.test.js` all carry that shape and a pin asserting the interpreter token appears exactly once. The capture suite does not: it has three separate `process.execPath` sites, and all three pin `HOME` and `USERPROFILE` to a fixture home correctly today. That is per-call-site discipline, which is precisely the discipline that failed eight consecutive times in the battery file, once under a file header asserting the opposite. Nothing is wrong today and this is a guard item, not a defect. Fix shape: give the capture suite the same single-site spawn helper and the same structural pin. Signal: a fourth spawn site added to that file, which is the moment discipline has to be remembered rather than enforced.
 
 - **The sidecar inbox lock's stale-reap has a race that duplicates advisory text (2026-08-31, from the
   judgment sidecar's finishing adversarial review; real, inferred rather than reproduced, and
