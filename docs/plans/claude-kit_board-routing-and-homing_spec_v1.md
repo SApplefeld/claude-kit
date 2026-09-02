@@ -44,6 +44,8 @@ Written 2026-09-02 from section 1's consult ruling and its two review rounds. Ev
 - **This file is CRLF and the Git Bash `sed -i` silently strips every CR from it, invisibly to `git diff` under autocrlf.** Use the Edit tool or `perl -pi -e`, and verify with `tr -cd '\r' < <path> | wc -c` equal to `wc -l < <path>`.
 - **A negative grep proves nothing until its own predicate has matched something.** Section 2 concluded the kaizen skill states no public-board cap, on a grep for `public board`; the skill spells it `public-board cap` at its line 21, so the zero was the predicate's spelling rather than the file's content. That false absence rode into a shipped citation and into this block as a binding instruction before the next review round caught it. Before any absence is reported or acted on, run the predicate against text known to hold the thing and watch it speak; where the term could be spelled more than one way, the predicate covers the variants or the check is not evidence.
 - **Section 3 folds rather than adds.** The homing passage states the one-read readability property inline as its trigger. Section 3 lands that property as a named test, so it folds the homing passage's statement into a pointer at that test rather than leaving two statements of one rule standing.
+- **A new requirement is something the next round finds defects in; a pointer is not.** Three of section 2's five review rounds produced a Critical inside a requirement the previous repair had just written, each one a clause restating or narrowing a rule the file's line 72 already carries. The consult that ended the cascade ruled the repair is deletion rather than qualification. Before adding any requirement to this file, find the committed sentence that already decides the case and point at it; write a new one only where no committed sentence reaches the case at all.
+- **Do not describe another skill's mechanism you have not read this turn.** Section 2 shipped a claim that the store's shared tiers surface into a session at its start, which the memory-system skill's line 141 says is false of the operator tier by design, and a confirmation rule keyed on a tier pin for a tier that has no CLI write verb at all and is authored with the Write tool. Both read as right and were wrong. Where a passage's reasoning depends on how another skill's surface behaves, read that skill's own sentence in the same turn or drop the clause.
 
 ## Sections of Work
 
@@ -127,4 +129,27 @@ A correction of my own, recorded because it shipped before it was caught: round 
 Gate baseline: targeted lane over the section's files, `node --test test/doctrine-parity.test.js test/output-style-parity.test.js`, green at 64 tests, 64 passing, 0 failing, exit 0, at every fix round. The whole-gate baseline this plan reads against remains 2972 tests, 2962 passing, 1 failing, 9 skipped, exit 1, recorded on Chapter 1.
 
 Next action: round 4 over the third repair, then the section's close gate, Chapter 2, and section 3.
+Commit Model: Commit-and-Push
+
+### Interim board 2 - 2026-09-02
+Section 2 has now run six review rounds and a consult, and no section has closed since Chapter 1. This entry is that boundary.
+
+Stage: section 2 implemented by implementer-opus (DONE, first draft accepted), then six review rounds with three independent lenses each, one consult, and five orchestrator repair rounds in the main thread. Sections 3, 4 and 5 have not started. No dispatch is live; round 6 returned before this entry was written and round 7 has not been dispatched.
+
+The consult is the event that matters here. Rounds 3, 4 and 5 each returned a Critical, and each time the Critical was inside a requirement the previous repair had just written. Under the tier-escalation rule the discriminator is whether a finding class repeats: round 4's three Criticals were confirmed closed by round 5's own lenses and round 5's two landed on new ground, so no class repeated, which reads as the spec generating the defects rather than the writer being too weak. That rules out spending a tier bump and calls for a consult on the premise, which is what ran.
+
+The consult ruled the premise holds and that every standing Critical was a drafting defect whose repair is deletion rather than qualification. It located the generator exactly: the passage kept writing new requirements where the file's line 72 already decided the case, and each new requirement handed the next round something to find a defect in. It also overturned half my own framing, showing that the project tier has no CLI write verb at all and is authored with the Write tool, so the tier-pin unsatisfiability I had accepted as a Critical rested on a mechanism the destination does not use.
+
+Rulings adopted since Interim board 1:
+- The seat's-own-statement rule is not re-keyed onto content provenance. That widening was mine, it generated the sourcing dilemma, and line 72's travel rule already reaches every destination because its bars are on what a line carries rather than on where it lands.
+- The confirmation rule names no CLI flag. It states what a confirming read must establish and defers how to the memory-system skill, exactly as line 72 defers tier selection.
+- The journal's first moment now precedes the destination writes rather than following them, so a round that dies partway leaves a record of what it was doing rather than content on a wider surface that nothing accounts for.
+- An entry's key names the machine and the round rather than the machine alone, since the journal folds entries into per-key rollups that keep the tally and discard the prose.
+- The commit that confirms a repository-landing leg is not this seat's to make, the seat's verb set closing at the artifact it produces, so the line stays until that commit lands.
+
+Two amendments were added to the Standing Brief Amendments block from the consult, numbered 8 and 9, binding sections 3 through 5: that a new requirement is something the next round finds defects in where a pointer is not, and that a mechanism belonging to another skill is not described from memory.
+
+Gate baseline: targeted lane over the section's files, `node --test test/doctrine-parity.test.js test/output-style-parity.test.js`, green at 64 tests, 64 passing, 0 failing, 0 skipped, exit 0 read from the run itself, at every repair round including the latest. The whole-gate baseline this plan reads against remains 2972 tests, 2962 passing, 1 failing, 9 skipped, exit 1, recorded on Chapter 1.
+
+Next action: round 7 over the round-6 repair, which is owed because the delta touches the security lens's surfaces, then the section's close gate, Chapter 2, and section 3.
 Commit Model: Commit-and-Push
