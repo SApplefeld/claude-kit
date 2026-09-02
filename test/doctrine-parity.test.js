@@ -4864,7 +4864,7 @@ test('the ownership map is tracked and names every shipped skill as an owner', (
     assert.ok(fs.existsSync(target),
         'the doctrine points at an ownership map that is not on disk: ' + parts.join('/'));
     assertTrackedInIndex(parts.join('/'));
-    const map = fs.readFileSync(target, 'utf8');
+    const map = fs.readFileSync(target, 'utf8').replace(/\r\n/g, '\n');
     assert.ok(map.includes('\n## Unowned or contested\n'),
         'the ownership map has lost its "Unowned or contested" section, which is '
         + 'where the doctrine sends a session that meets a moment with no owner');

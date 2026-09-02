@@ -75,8 +75,10 @@ How to amend: a row changes when ownership moves, and the move lands in the same
 | Taking a seat with `/role`, the registry entry, the coordinator-directory contract | `role` | `peer-sessions`, `coordinator`, README |
 | A standing operational grant: the rail, its on-switch record, its exclusions, and each grant's owning skill | `role` | doctrine (Which text governs), `coordinator` |
 | The machine coordinator's runbook, the board, and every bar on what a board line may carry | `coordinator` | `role`, `peer-sessions`, `standing-watch` |
+| A seat running git in the memory store: exactly as any other session on this machine may, with a read of the store's own history routed rather than performed | `coordinator` (the seat's git standing) | `role` (the standing-grant rail's exclusions), `memory-system` (the sync path) |
 | A repeating watch over a live system: the tick order, the ledger, the wake prompt | `standing-watch` | `coordinator` (its named overrides) |
 | Reporting where a long-running session stands without disturbing it | `recap` | doctrine (Close with the board) |
+| Parking a session at its next safe point when the operator or a relayed drain window asks, with everything durable committed and a resume path recorded | `park` | `coordinator` (the update window), `recap` (safe to park, parks nothing), `executing-work`, `kit-goal`, `peer-sessions`, `hooks/session-start.js` (what a stopped session left behind) |
 | Arming a completion leash, the canonical condition, and the Stop hook that enforces it | `kit-goal` | `executing-work`, `peer-sessions`, `hooks/kit-goal-stop.js` |
 | Dispatching this session's own subagents, and the standing request that covers it | doctrine (Dispatch is requested standing) | `executing-work`, `finishing-work`, `consult` (where and how, never wider) |
 
@@ -100,6 +102,5 @@ A moment listed here has two documents speaking to it with no stated precedence,
 |---|---|
 | When a pull request opens under Branch-and-PR, and who opens it | `executing-work` places the PR in the finishing pass; `curating-docs` describes a draft opened at the first section close and refreshed each section; `finishing-work` opens it via host detection with no draft to flip |
 | Whether a plan header reading Branch-and-PR authorizes the pushes that model directs | The doctrine's authorization sentence names Commit-and-Push alone; `executing-work` directs the first-green push and the close push under Branch-and-PR |
-| Deleting a stranded branch once its commits are recovered | `branch-hygiene`'s recovery steps license the delete; its auto-delete rule forbids `git branch -D` on any branch outside the merged set |
+| Deleting a stranded branch once its commits are recovered | `branch-hygiene`'s recovery steps license the delete; its auto-delete rule rules out `git branch -D` on any branch outside the merged set |
 | A commit model that commits locally and never pushes | No such value exists; Review-Only forbids the commit as well as the push, so a session asked to commit without pushing has no header to stand on |
-| A seat running git in the memory store | `coordinator` states the seat runs no git in the store and that board writes involve no staging, commit, or push, unconditionally; `role`'s standing-grant rail names the store-push grant with `coordinator` as its owning contract, and `coordinator` does not yet state the sanctioned path or its bounds. The action is settled, not open: the rail fails closed, so the seat does not push until `coordinator` states the path. The texts still disagree, and the row leaves when `coordinator` is brought current |
