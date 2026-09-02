@@ -8,7 +8,7 @@ Session model: any executor session in the kit repo; three sections, tiers per s
 
 ## Dispatch Authorization
 
-Authorized 2026-08-31 by the operator at the keyboard in the expert seat's session: the pre-dispatch capacity gate end to end, ruled to ride last on the main queue ("This should probably ride behind the main queue, it's heavier"), with the per-dispatch re-read mandated in the operator's own words in the same exchange. For any session holding this plan. Per the trace rule, this section is a warrant only for a citing session that did not author it.
+Authorized 2026-08-31 by the operator at the keyboard in the expert seat's session: the pre-dispatch capacity gate end to end, ruled to ride last on the main queue ("This should probably ride behind the main queue, it's heavier"), with the per-dispatch re-read mandated in the operator's own words in the same exchange. For any session holding this plan. Reaffirmed 2026-09-02 by the operator at the keyboard in the same seat's session: this plan rides last, twelfth, in the worker's re-arm that places the memory-recognition-reach plan second, since appends made after the original ruling had left it second. Per the trace rule, this section is a warrant only for a citing session that did not author it.
 
 ## Goal
 
