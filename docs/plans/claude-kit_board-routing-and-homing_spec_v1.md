@@ -153,3 +153,15 @@ Gate baseline: targeted lane over the section's files, `node --test test/doctrin
 
 Next action: round 7 over the round-6 repair, which is owed because the delta touches the security lens's surfaces, then the section's close gate, Chapter 2, and section 3.
 Commit Model: Commit-and-Push
+
+### Resume note - 2026-09-02 (written by a merge session, not the leash holder)
+
+While this plan was between rounds, a separate session merged `batch/skill-fixes` and the doctrine precedence-and-ownership branch into main and pushed. The tree this plan resumes in is that merged trunk, and this note is what changed under the in-flight work.
+
+- The base moved from acde802 to 286ed41 (origin/main, pushed). The three homing paragraphs section 2 added to `plugins/claude-kit/skills/coordinator/SKILL.md` are intact in the working tree, unstaged, byte-identical to before the merge, sitting on the merged text; nothing is left to merge. The kaizen appends and the untracked `test/kit-sidecar-memory-index.test.js` are likewise untouched.
+- One sentence of the coordinator skill's board-write override was reworded by the merge's seam fix: "the bars are on what a line carries" became "the limits are on what a line carries", because the skills batch shipped a sweep (`test/doctrine-parity.test.js`, the seat-git-prohibition pin) that reads "bars ... the board" as a git prohibition. The same sweep runs over every shipped skill markdown, so a homing paragraph that says the seat bars, forbids, or never commits anything near "the board" or "the store" reds it; the three paragraphs as they stand are clean under it (swept by hand at the merge).
+- The ownership map now exists at `plugins/claude-kit/skills/operating-instructions/references/ownership-map.md`, and a pin requires every shipped skill to own a row in it. Section 5's security-model work should read it: it names `coordinator` as owner of the board and of the seat's git standing.
+- Both plan indexes (`docs/README.md`, `docs/plans/README.md`) list this plan as Ready and describe an armed queue whose first two entries are archived; the header says In Progress. Left for this plan's close-out or docs curation.
+- Whole-gate baseline on the merged trunk, measured at 286ed41 by the merge session: 2994 tests, 2984 passing, 1 failing (the memory-session path-length test this box makes permanent), 9 skipped, exit 1 read from the run itself. The Chapter 1 baseline of 2972 tests predates the merge and is no longer the comparator. The targeted lane `node --test test/doctrine-parity.test.js` alone runs 62 tests on the merged trunk.
+
+Next action is unchanged: round 7 over the round-6 repair, then the section's close gate, Chapter 2, and section 3.
