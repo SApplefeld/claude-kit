@@ -1,6 +1,6 @@
 # A definition that gates a bounded artifact states what it excludes
 
-Status: Ready
+Status: In Progress
 Commit Model: Commit-and-Push
 Created: 2026-08-31
 
@@ -60,3 +60,19 @@ Acceptance: no text in either skill sends an unplaceable line inward; the admiss
 - `docs/archive/` holds the plans this pattern's review pair grew up in; the pre-spec blind-reader dispatch this plan widens is recorded in `docs/architecture.md`.
 
 ## Chapters
+
+### Interim board 1 - 2026-09-03
+
+Section 1 is written and twice reviewed and is not closed; section 2 has had its approach read and no edits. The boundary is a closure drought: two review-round adjudications with no section closing, and the compaction gate holding an offer.
+
+Section 1, stage: the prose is in the worktree unstaged across `plugins/claude-kit/skills/brainstorming/SKILL.md` (steps 9 and 10), `plugins/claude-kit/agents/blind-reader.md` (frontmatter description, the reach section's bound count, and a fifth output part), `docs/architecture.md` (two passages), and both doc indexes' status for this plan. Round 1 returned CHANGES_REQUIRED from both lenses on six convergent Majors and the prose was rewritten whole rather than patched. Round 2 returned CHANGES_REQUIRED from both lenses again, on new ground rather than on round 1's classes.
+
+Live dispatches: none. Four have completed, all at `claude-opus-5` confirmed on their own transcripts, all at effort max via the Workflow route because the Agent tool sets no effort. Round 1 asked `adversarial-reviewer` for spec compliance then quality over the four changed files read whole, and asked `blind-reviewer` for correctness over the two payload files with every `docs/` path withheld. Round 2 asked the same pair the same way over the rewritten text, with the sighted brief additionally asking whether the new rule passes its own test, and with round 1's findings deliberately not enumerated to either lens so both judged the final wording fresh.
+
+Gate baseline: 3035 tests, 3025 passing, 1 failing, 0 cancelled, 9 skipped, exit code 1, on SCOTT-CLAUDE at HEAD 4bbe459, the run completing 2026-09-03T15:24Z and recorded in the preceding plan's closing Chapter. The single failure is the box-local `a pinned directory too long to name faithfully stands the session down` at `test/memory-session.test.js`. A second whole run this session, 15:42Z to 15:52Z, returned those same five counts and the same exit code, but this section's edits landed while it was running, so its tree state is indeterminate and it is recorded as consistent with zero delta rather than as a reading. The targeted lane over the changed files' test subjects, `doctrine-parity`, `readonly-agent-guard`, `memory-recognition-nudge` and `kit-sidecar-capture`, ran green at 383 tests, 381 passing, 0 failing, 2 skipped, exit code 0, after the round 1 fixes. The whole gate section 1 owes runs at its close.
+
+Rulings adopted since the last boundary, all three from round findings verified at the file rather than accepted from the report. The litmus is not carried as a dispatch field: three surfaces declare the blind-reader dispatch closed to anything past the document paths and the `Reader:` line, and the agent charter already produces the part standing, so the dispatch copy bought nothing and risked being returned as a contamination note. The reader derives a definition's exclusions from what its rule does rather than copying an exclusion list printed beside it, because the neighbouring authoring rule requires that list to be printed and a reader reading it back would make agreement automatic. And the author writes its own list before the dispatch goes out rather than after the report returns.
+
+The open question, and it is the section's blocker rather than a finding: both round 2 lenses independently hold that a disjoint pair of exclusion lists is not evidence of divergent readings at all, because what a definition excludes is the unbounded complement of what it admits, so two readers who agree perfectly still draw disjoint three-item samples from it. The plan's founding incident is one sample where disjointness coincided with real divergence. That objection is aimed at this plan's own premise rather than at the prose, so the section takes the consult the executing-work fix-the-generator rule prescribes rather than a third implementation attempt.
+
+Next action, section 1: convene the consult on the premise, then implement its ruling, re-review, and close. Next action, section 2: unblocked and independent of that ruling, its target confirmed as `plugins/claude-kit/skills/standing-watch/SKILL.md` line 26. Two findings from its approach read are recorded now because they correct the spec. The plan places the admission test above the placement default and the file has it below, so the flipped default is written to follow the test rather than to integrate with something above it. And the coordinator carries no restatement of the inward default to amend: its own override already states the outward rule, so the chassis is the surface lagging behind its consumer rather than the two disagreeing. The sibling at line 53 of the same file uses the same unplaceable phrasing for board pacing with the opposite and correct resolution, and is deliberately not flipped.
