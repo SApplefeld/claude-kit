@@ -638,8 +638,9 @@ function memqGrantProbes(root, failures) {
     // Without this direction a hook that lost its argument screen entirely
     // still passes both probes above. The deletes are the contrast, each
     // refused a second time by deleteRefusedByStoreSignals, which is the stated
-    // ground for leaving a withheld shape unprobed. That ground reaches two of
-    // the five withheld verbs: cmdAnchor carries no store-signals refusal of
+    // ground for leaving a withheld shape unprobed. That ground reaches only the
+    // two deletes among the five withheld verbs, and not the other two of
+    // the five: cmdAnchor carries no store-signals refusal of
     // its own at all, and cmdTriggers carries one for a single shape, a
     // --replace reaching a shared tier or a pinned project store, so both sit
     // in find's class for

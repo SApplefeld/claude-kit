@@ -101,10 +101,12 @@ claude-kit/                          (repo = the marketplace)
                                      memory write destination for a pinned or run-scoped session
       scripts/
         memq.js                      The memory-store CLI: recall (the whole store as one bounded digest, no
-                                     search term), find, get, log, touch, recent, unstamped, add-type, add-operator, delete-type, delete-operator, and the decay pass
-                                     (scan, prune, done) with use-extended thresholds and pinning. Inside a
-                                     run an external engine spawned, reads and writes also span that run's
-                                     own pending tier, which the engine adjudicates before promotion
+                                     search term), find, get, log, touch, recent, unstamped, anchor,
+                                     triggers, add-type, add-operator, delete-type, delete-operator, and the
+                                     decay pass (scan, prune, done) with use-extended thresholds and
+                                     pinning. Inside a run an external engine spawned, reads and writes also
+                                     span that run's own pending tier, which the engine adjudicates before
+                                     promotion
         memq-shim.js                 Resolves the installed payload's memq.js so the PATH wrappers stay stable
         kit-goal-statusline.js       Status-line widget: the armed /kit-goal plan, sections complete of
                                      total with the last Chapter's Next pointer, and queue position
