@@ -4881,3 +4881,34 @@ test('the ownership map is tracked and names every shipped skill as an owner', (
         + 'ownership map, so a session that reaches its moment finds no owner to '
         + 'read: add a row naming it in the owner column, or retire the skill');
 });
+
+// The bounded-artifact class sentence is a deliberate two-surface copy, and both
+// surfaces need it self-contained. The authoring rule in brainstorming states what
+// an author must write; the charter in blind-reader is read by an agent barred from
+// resolving the term against this repository, so neither surface can point at the
+// other. Divergence here is the one failure the gating litmus cannot survive: the
+// check reads a disagreement between the reader's classification and the author's
+// as evidence about the spec, so two sides handed different class texts manufacture
+// that disagreement themselves and the loudest bucket fills with noise. Compared on
+// collapsed whitespace, since the sentence wraps differently on the two surfaces.
+test('the bounded-artifact class sentence reads the same on both gating surfaces', () => {
+    const classSentence = 'a phrase deciding what a bounded artifact admits, '
+        + 'where a bounded artifact is a thing that holds content, keeps other '
+        + 'content out, and cannot grow without limit, so a class of actions or '
+        + 'of conditions is not one however cleanly it divides';
+    const surfaces = [
+        ['skills', 'brainstorming', 'SKILL.md'],
+        ['agents', 'blind-reader.md'],
+    ];
+    for (const parts of surfaces) {
+        const rel = ['plugins', 'claude-kit', ...parts].join('/');
+        const body = collapseWhitespace(fs.readFileSync(path.join(
+            __dirname, '..', 'plugins', 'claude-kit', ...parts), 'utf8'));
+        const hits = body.split(classSentence).length - 1;
+        assert.strictEqual(hits, 1, rel + ' states the bounded-artifact class '
+            + 'sentence ' + hits + ' times, not once; both surfaces carry it '
+            + 'verbatim so the gating litmus hands one class to its two sides, '
+            + 'and a divergence manufactures the disagreement the check reads '
+            + 'as evidence about the spec');
+    }
+});
