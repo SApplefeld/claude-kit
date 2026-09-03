@@ -47,7 +47,7 @@
 //     claim every drift surface reads about which files that memory is still
 //     true of; and triggers, which rewrites a record of any tier the same way
 //     at the record's other half, the line that decides when that memory is
-//     put in front of a session. Six flag shapes are refused wherever in the
+//     put in front of a session. Seven flag shapes are refused wherever in the
 //     command they sit, since that is where a flag can appear:
 //     --body-file, which reads a caller-named path into the store; --update
 //     carrying --body, which replaces a shared record's body whole;
@@ -56,11 +56,17 @@
 //     birth and so would reach through a granted verb what the triggers verb
 //     is withheld for; --rollup, which folds every expired journal entry's
 //     prose into a tally and keeps the text in a single local .bak the sync
-//     never carries; and --drop-malformed, which deletes the sidecar lines
-//     the rollup rewrite preserves. memq refuses the deletes, the
-//     body-file, the body-carrying update, the supersedes pointer and the
-//     trigger under the store signals as well, so those six are a second
-//     lock rather than the only one; find, anchor, triggers and --rollup
+//     never carries; --drop-malformed, which deletes the sidecar lines
+//     the rollup rewrite preserves; and --type=<type>, the attached spelling
+//     alone, which points a granted read or applied stamp at any type tier
+//     the store holds rather than at the one the calling project declared,
+//     the bare --type spelling keeping its grant for exactly that reason.
+//     memq refuses the deletes, the body-file, the body-carrying update, the
+//     supersedes pointer, the trigger and the named type spelling under the
+//     store signals as well, so those seven are a second lock rather than the
+//     only one, and it refuses one shape of an eighth, a `triggers --replace`
+//     reaching a shared tier or a pinned project store;
+//     find, anchor, the rest of triggers and --rollup
 //     are withheld here alone, and --drop-malformed's other lock is the
 //     CLI's own coupling (an argument error without --rollup) rather than a
 //     store-signal refusal, so its screen here is what holds if that
@@ -248,11 +254,20 @@ const PRELOAD_ENV = ['NODE_OPTIONS', 'NODE_PATH', 'NODE_REPL_EXTERNAL_MODULE'];
 // put in front of a session. A worker could aim a record's recognition at
 // whatever it liked, or crowd the line to the entry cap so the triggers the
 // operator wrote go unread, with nothing on any surface saying the declaration
-// changed. The tier flags are what make the blast radius wider than anchor's:
-// the same rewrite on a machine-wide tier aims recognition for every project
-// on the box and every machine the store syncs to, rather than for the one
-// project a worker was pointed at. It has no second refusal in the CLI either,
-// for anchor's reason, so this screen is again the only one.
+// changed. Its --replace reaches further than either: it states the line
+// whole, so a run naming a single entry takes every other declaration off the
+// record and one naming none takes the line away, which is erasure rather than
+// aiming and leaves the record with no recognition at all. The tier flags are
+// what make the blast radius wider than anchor's: the same rewrite on a
+// machine-wide tier aims or erases recognition for every project on the box
+// and every machine the store syncs to, rather than for the one project a
+// worker was pointed at. The --confirm-shared the CLI asks for that replace is
+// no second lock, being a flag rather than a person on this vector. What does
+// stand behind this screen, for that one shape alone, is memq's own refusal of
+// a replace reaching a shared tier or a pinned project store under the store
+// signals; the aiming half of the verb and its unpinned project-tier replace
+// have no such refusal, for anchor's reason, so for those this screen is again
+// the only one.
 //
 // An allowlist rather than a denylist, because the two fail in opposite
 // directions: a verb added to the CLI later is not covered until this list
@@ -301,8 +316,8 @@ const GRANTED_VERBS = new Set(['log', 'get', 'recall', 'recent', 'unstamped', 't
 // character, and the expansion keeps everything before the tilde, so such a
 // word can become neither the verb word, which is judged whole against the
 // allowlist, nor one of the screened flags (--body-file, --update, --body,
-// --supersedes, --trigger, --rollup, --drop-malformed), each matched whole
-// or up to an = and so opening with a hyphen where an assignment-shaped
+// --supersedes, --trigger, --rollup, --drop-malformed, --type=), each matched
+// whole or up to an = and so opening with a hyphen where an assignment-shaped
 // word opens with an identifier character, nor the script path, which is
 // matched by path equality. What it can become is a longer argument of
 // memq's own, which memq validates. A screen that ever matched a word's
@@ -387,15 +402,33 @@ function interpreterIsSelf() {
 // attached after '='. The '=' is part of the match rather than a bare prefix
 // test, so --body screens --body= and never some later --bodyguard, and for
 // the same reason --body does not screen --body-file: those two are
-// independent screens and each answers for its own spellings. memq's parser
-// answers 'unknown option' to every attached-value spelling today, so this
-// costs no working invocation; what it buys is that the reason a caller-named
-// path or a body-carrying repair gets no prompt-free allow is this hook's own
-// rule rather than the next layer's parser. The widening can only ever refuse
-// more, which is why it needs no audit of what the grant still covers: a word
-// this test matches was already a word the grant had no business covering.
+// independent screens and each answers for its own spellings.
+//
+// The attached spelling is a working one in this CLI rather than a
+// hypothetical, `get --type=<type>` being how a caller names a tier outright,
+// and screensValuedFlag below is the screen written for exactly that shape.
+// None of the flags this function is asked about parses an attached value in
+// memq today, so covering the spelling here is a widening rather than a live
+// hole closed: what it buys is that the reason a caller-named path or a
+// body-carrying repair gets no prompt-free allow is this hook's own rule
+// rather than the next layer's parser, should one of them gain the spelling.
+// The widening can only ever refuse more, which is why it needs no audit of
+// what the grant still covers: a word this test matches was already a word the
+// grant had no business covering.
 function screensFlag(argv, flag) {
     return argv.some((word) => word === flag || word.startsWith(flag + '='));
+}
+
+// The attached-value spelling alone, for a flag whose bare word means
+// something the grant keeps. `--type` by itself resolves the calling project's
+// own declared Project-Type and nothing else, which is a read of the tier that
+// project already opted into; `--type=<type>` names any tier in the store. So
+// what is withheld is the naming of a foreign tier rather than the flag, and a
+// screen matching the word whole would take the granted reading with it.
+// `--type=` with nothing after it is matched too: it is a whole word here and
+// memq refuses it as a type name of its own accord.
+function screensValuedFlag(argv, flag) {
+    return argv.some((word) => word.startsWith(flag + '='));
 }
 
 function grantable(p) {
@@ -449,15 +482,19 @@ function grantable(p) {
     if (!samePath(path.resolve(target), MEMQ)) return false;
 
     // The grant covers what a fleet worker needs, which is not everything the
-    // CLI can do. Six of the shapes it withholds are ones memq itself also
+    // CLI can do. Seven of the shapes it withholds are ones memq itself also
     // refuses under the store signals, so for those this screen is a second
     // lock: the two delete verbs, which remove a shared-tier record outright;
     // an --update carrying a body, which replaces one whole and keeps the text
     // it replaces only in a local .bak the sync never carries; --body-file
     // anywhere, which reads a caller-named path into the store; --supersedes,
-    // which demotes and labels a record no pin protects from it; and
+    // which demotes and labels a record no pin protects from it;
     // --trigger, which writes at a record's birth the same recognition line
-    // the triggers verb below is withheld for.
+    // the triggers verb below is withheld for; and --type=<type>, which points
+    // a read or an applied stamp at any type tier the store holds rather than
+    // at the one the calling project declared, the reach the bare --type
+    // spelling is granted for, which cmdGet and cmdTouch refuse under those
+    // same signals.
     // Four more are withheld here alone, with no second layer behind them:
     // find, which loads an embedder out of a directory the command line does
     // not name; --rollup, which discards prose no copy survives; anchor,
@@ -466,11 +503,17 @@ function grantable(p) {
     // of; and triggers, which rewrites a record of any tier in place at the
     // half that decides when the memory is put in front of a session, so a
     // worker could aim recognition on a tier every project on the machine
-    // reads. The eleventh, --drop-malformed, deletes sidecar lines behind one
+    // reads. One shape of that fourth does have a second lock, which is why
+    // the group is named by verb rather than by capability: memq refuses a
+    // --replace reaching a shared tier or a pinned project store under the
+    // store signals, that being the shape that takes every declaration off a
+    // record rather than aiming one, so what is withheld here alone is the
+    // aiming and the unpinned project-tier replace. The
+    // twelfth, --drop-malformed, deletes sidecar lines behind one
     // .bak generation; what stands behind its screen is the CLI's requirement
     // that the flag ride --rollup, a coupling rather than a store-signal
     // refusal, so this screen is what keeps the delete withheld if that
-    // coupling is ever loosened for ergonomics. None of the eleven belongs in
+    // coupling is ever loosened for ergonomics. None of the twelve belongs in
     // a prompt-free allow with no operator in the loop, and the four with no
     // second lock are the ones a later edit here would silently free.
     //
@@ -578,6 +621,26 @@ function grantable(p) {
     // whose only bar is an ergonomic coupling in another file is one a
     // later decoupling would silently free with nothing here saying so.
     if (screensFlag(w, '--drop-malformed')) return false;
+    // --type=<type> is withheld on which tier it reaches, not on what it does
+    // there. `get` and `touch` are granted verbs, so a fleet worker runs them
+    // with nobody in the loop, and the bare --type spelling they were granted
+    // with resolves one tier only: the one the calling project's own index
+    // declares, which is that project's own opt-in. The attached spelling
+    // names any type tier the store holds. `get --type=<x>` reads an arbitrary
+    // type-tier body into an unattended model's context and stamps the read
+    // clock of a tier the project never opted into, and
+    // `touch --applied --type=<x>` writes an applied stamp there, which the
+    // decay pass reads as a sign of life and which no attended session put
+    // there. So what this withholds is the naming of a foreign tier rather
+    // than the flag: bare --type keeps its grant on both verbs, and the
+    // invariant kept is the one the store held before the spelling existed,
+    // that a stamp cannot land in a type the project has not opted into. Both
+    // verbs refuse the spelling under those same signals, so this screen is a
+    // second lock rather than the only one, and it is the half that binds
+    // where the hook and the child read their environments differently; the
+    // `triggers` verb that shares the spelling is withheld at the verb word
+    // above, whichever way its tier is named.
+    if (screensValuedFlag(w, '--type')) return false;
 
     // Last, because it stats the filesystem: only a command that already
     // matches everything else pays for the PATH walk.

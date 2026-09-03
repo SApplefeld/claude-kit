@@ -986,6 +986,13 @@ test('the shared-tier deny names the create form, and the body form only where m
                 'the create form is named in both environments: ' + res.stderr);
             assert.match(res.stderr, /--update, which never opens the record file/,
                 'and so is the description form: ' + res.stderr);
+            // The fourth form is named in both environments as a form, the
+            // deny counting four things a blocked write could have been, and
+            // only one of the two carries a command for it. That fork is the
+            // body form's and it is pinned below.
+            assert.match(res.stderr,
+                /To change the recognition triggers an existing record declares:/,
+                'the trigger form is one of the four in both environments: ' + res.stderr);
         }
 
         // Under the signals the body repair is refused by memq itself, so the
@@ -998,6 +1005,20 @@ test('the shared-tier deny names the create form, and the body form only where m
         assert.match(under.stderr, /refuses a shared-tier body repair under them/);
         assert.ok(!/--confirm-shared/.test(under.stderr),
             'and names no command that would exit 1 here: ' + under.stderr);
+        // The trigger form closes under the same signals, and on the vector
+        // rather than on the CLI: the standing grant a fleet worker runs under
+        // withholds the `triggers` verb whichever way its tier is named, so on
+        // the one process that reads this branch the command gets no
+        // prompt-free allow and nobody is there to approve it. Naming it would
+        // be naming a command that cannot run, which is what the body form's
+        // own fork exists to avoid.
+        assert.match(under.stderr,
+            /To change the recognition triggers an existing record declares: there is no route from this process/,
+            'the trigger form says so rather than naming a withheld verb: ' + under.stderr);
+        assert.match(under.stderr, /withholds the `triggers` verb/,
+            'and says which layer withholds it: ' + under.stderr);
+        assert.ok(!/memq triggers/.test(under.stderr),
+            'and never spells a command the grant does not cover here: ' + under.stderr);
 
         // Without them the body repair runs, and the line names it with what
         // it keeps and the one shape that defeats that.
@@ -1007,6 +1028,12 @@ test('the shared-tier deny names the create form, and the body form only where m
             /--update --body "<text>" --confirm-shared, which replaces the body/,
             'the body form is named where it runs: ' + without.stderr);
         assert.match(without.stderr, /keeps every pinned:, tags: and supersedes: line/);
+        // And where the replace runs, the trigger form names it whole,
+        // consent included, with the merge and the withdrawal beside it.
+        assert.match(without.stderr,
+            /memq triggers <name> <type>:<pattern> --type=webapp --replace --confirm-shared, which states the triggers: line whole/,
+            'the trigger form is named where it runs: ' + without.stderr);
+        assert.match(without.stderr, /a --replace naming no entry at all takes the line off/);
         // The exception, in wording true of both shapes of an unread block.
         // 'never closes' would be false of a record whose fence stands past
         // the bound, and that record's author, reading it as not about them,

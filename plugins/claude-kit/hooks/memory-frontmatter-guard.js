@@ -526,6 +526,16 @@ function sharedTierFix(memq, tier, dir) {
     return 'memq add-type ' + named + ' <name> "<description>"';
 }
 
+// How `memq triggers` names this tier, which is not how the add verbs name it:
+// that verb takes a type as --type=<type> where add-type takes it as its first
+// positional, so the create form's stem cannot carry the trigger form. The
+// unusable segment reads as the same placeholder either way.
+function sharedTierTriggerFlag(memq, tier, dir) {
+    if (tier === 'operator') return '--operator';
+    const segment = path.basename(dir);
+    return '--type=' + (memq.isTypeName(segment) ? quoted(memq, segment) : '<type>');
+}
+
 // Store text on its way onto a line, reduced to what a line can carry with
 // every reduction named: memq.sanitize keeps printable ASCII and drops the
 // double quote, so the characters it removed are marked when any were, and a
@@ -1317,11 +1327,14 @@ function main() {
     placedTier = tier;
 
     if (tier !== 'project') {
-        // Three forms rather than one, because the write this refuses could
-        // have been any of three things and each takes a different command:
+        // Four forms rather than one, because the write this refuses could
+        // have been any of four things and each takes a different command:
         // creating a record, changing an existing record's index
-        // description, and changing an existing record's body. Naming one
-        // of them sends the other two authors to a command that refuses or,
+        // description, changing an existing record's body, and changing the
+        // `triggers:` line it declares, which is a shape this same guard
+        // screens at triggersFault and which the `triggers` verb corrects
+        // without touching the body. Naming one
+        // of them sends the other authors to a command that refuses or,
         // worse, to one that exits 0 having never opened the record: a bare
         // --update against a record that is not there refuses and says to
         // drop the flag, and against one that is there it rewrites the index
@@ -1334,9 +1347,31 @@ function main() {
         // environment a fleet worker runs in and the one where this guard's
         // shared tiers are the redirected store. Under them that operation
         // has no route at all, and the line says so rather than naming a
-        // command that exits 1: the other two forms still run there, so the
-        // deny always names a way to do what can be done.
+        // command that exits 1: the create and description forms still run
+        // there, so the deny always names a way to do what can be done.
+        //
+        // The trigger form closes under those signals rather than forking,
+        // and it closes on the vector rather than on the CLI: the standing
+        // grant a fleet worker runs under (hooks/memq-grant.js) withholds the
+        // `triggers` verb whichever way its tier is named, so on the one
+        // process that reads this branch the command gets no prompt-free
+        // allow and there is nobody in the loop to approve it. Naming it there
+        // would be naming a command that cannot run, which is what the body
+        // form's own fork exists to avoid, and memq says the same thing in the
+        // same place: its no-trigger note names the state rather than the verb
+        // under these signals. The merge is no answer either, being that same
+        // withheld verb.
         const fix = sharedTierFix(memq, tier, site.dir);
+        const triggerFlag = sharedTierTriggerFlag(memq, tier, site.dir);
+        const triggerRoute = memq.storeSignalsPresent()
+            ? 'there is no route from this process: it carries the engine store signals, and the '
+                + 'standing grant an unattended worker runs under withholds the `triggers` verb '
+                + 'that writes that line, so the declaration waits for an attended session.'
+            : 'memq triggers <name> <type>:<pattern> ' + triggerFlag + ' --replace '
+                + '--confirm-shared, which states the triggers: line whole in place of the one '
+                + 'the record carries and leaves its body and its other fields where they are. '
+                + 'Without --replace it merges into that line instead, and a --replace naming no '
+                + 'entry at all takes the line off.';
         const bodyRoute = memq.storeSignalsPresent()
             ? 'there is no route from this process: it carries the engine store signals, and '
                 + 'memq refuses a shared-tier body repair under them, because the .bak such a '
@@ -1350,12 +1385,13 @@ function main() {
                 + 'go with it.';
         say('Blocked: the ' + tier + ' memory tier is authored by memq, never by the Write, Edit '
             + 'or MultiEdit tools, whoever is writing. A hand-written record there misses the '
-            + 'CLI\'s refusals and its index line. Three forms author it, one per thing a write '
+            + 'CLI\'s refusals and its index line. Four forms author it, one per thing a write '
             + 'can be doing. To create a record that does not exist yet: ' + fix + ' with no '
             + '--update, and --body "<text>" for its body. To change an existing record\'s '
             + 'index description: ' + fix + ' --update, which never opens the record file, so '
             + 'its body and its frontmatter stay byte for byte as they are. To change an '
-            + 'existing record\'s body: ' + bodyRoute + ' The memory-system skill\'s pinning '
+            + 'existing record\'s body: ' + bodyRoute + ' To change the recognition triggers an '
+            + 'existing record declares: ' + triggerRoute + ' The memory-system skill\'s pinning '
             + 'section says how a pin is set and revoked.');
         process.exit(2);       // deny
     }

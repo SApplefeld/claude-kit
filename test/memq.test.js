@@ -3737,11 +3737,17 @@ test('the network-share stand-down check is spelled once per gated verb, at exac
         }
         return null;
     };
-    // Three gates carry one extra clause excluding the one branch that does
-    // not depend on cwd: `touch` and `triggers` spell it !toOperator and `get`
-    // spells it !fromOperator, each naming that verb's own flag. Every other
-    // gate is the bare form.
-    const gateLine = /^\s*if \((?:!(?:toOperator|fromOperator) && )?pinnedProjectSegment\(\) === null && namesNetworkShare\((?:process\.cwd\(\)|cwd)\)\)/;
+    // Three gates carry two extra clauses, excluding the two branches that do
+    // not depend on cwd. The first names the verb's own operator flag, which
+    // `touch` and `triggers` spell !toOperator and `get` spells !fromOperator;
+    // the second is `namedType === null`, the same spelling at all three,
+    // excluding `--type=<type>`, which resolves through typeDir -> memoryRoot
+    // and reads the environment and the home directory rather than a working
+    // directory. Both clauses are present or neither is: a verb that admits a
+    // tier-naming flag admits both spellings of one, and a gate carrying one
+    // clause and not the other would be a door that refuses a call for a walk
+    // that call never takes. Every other gate is the bare form.
+    const gateLine = /^\s*if \((?:!(?:toOperator|fromOperator) && namedType === null && )?pinnedProjectSegment\(\) === null && namesNetworkShare\((?:process\.cwd\(\)|cwd)\)\)/;
     const gates = [];
     source.forEach((line, i) => {
         if (gateLine.test(line)) gates.push({ line: i + 1, fn: enclosing(i + 1) });
@@ -6351,7 +6357,7 @@ test('touch --type stamps the type tier usage sidecar, and fails loudly without 
         assert.strictEqual(run(store, ['add-type', 'webapp', 'shared-fact', 'body']).status, 0);
         const res = run(store, ['touch', 'shared-fact', '--applied', '--type']);
         assert.strictEqual(res.status, 0, res.stderr);
-        assert.match(res.stdout, /^touched shared-fact applied in the type tier\n$/);
+        assert.match(res.stdout, /^touched shared-fact applied in the webapp type tier\n$/);
         const entries = fs.readFileSync(path.join(typeDirPath(store, 'webapp'), 'usage.jsonl'), 'utf8')
             .split('\n').filter((l) => l !== '').map((l) => JSON.parse(l));
         assert.strictEqual(entries.length, 1);
@@ -6363,7 +6369,7 @@ test('touch --type stamps the type tier usage sidecar, and fails loudly without 
         // A name that lives only in the project tier is not stampable there.
         const wrongTier = run(store, ['touch', 'a-local', '--applied', '--type']);
         assert.strictEqual(wrongTier.status, 1);
-        assert.match(wrongTier.stderr, /no memory file named 'a-local' in the type tier/);
+        assert.match(wrongTier.stderr, /no memory file named 'a-local' in the webapp type tier/);
     } finally {
         rmStore(store);
     }
@@ -7135,7 +7141,7 @@ test('a retired type-tier memory is reachable too: fenced body, type label, type
         assert.match(got.stdout, /^memq: from type 'webapp'/, 'the fence still frames a retired shared body');
         assert.ok(got.stdout.includes('  # done-fact'), 'and its lines are still indented data');
         assert.strictEqual(got.stderr,
-            'memq: \'done-fact\' is archived: this body comes from the type tier\'s archive/,'
+            'memq: \'done-fact\' is archived: this body comes from the webapp type tier\'s archive/,'
             + ' where a decay pass retired it\n');
 
         // The stamp belongs to the tier the search started from, which for a
@@ -12009,6 +12015,31 @@ test('a delete of a name that is not a live record is a named refusal, never a c
         assert.strictEqual(ghostTier.status, 1);
         assert.match(ghostTier.stderr, /no type 'ptypo' in this store/);
         assert.ok(!fs.existsSync(typeDirPath(store, 'ptypo')), 'a refusal mints no tier directory');
+
+        // A type spelled in another case than the store holds it, refused with
+        // nothing deleted, on the gate the reading verbs and add-type carry.
+        // This filesystem folds case, so without it the existence check passes,
+        // the removal comes out of the tier the store actually holds, and every
+        // line printed names the caller's spelling: a destructive verb
+        // operating on a tier the caller did not name. Where the filesystem is
+        // case-sensitive the variant is a type the store simply does not hold,
+        // which is the other message and the true one there.
+        assert.strictEqual(runHome(store,
+            ['add-type', 'ptype', 'case-check', 'a description']).status, 0);
+        const heldFile = path.join(typeDirPath(store, 'ptype'), 'case-check.md');
+        const variant = runHome(store, ['delete-type', 'PTYPE', 'case-check', '--confirm-shared']);
+        assert.strictEqual(variant.status, 1, variant.stdout);
+        assert.match(variant.stderr, process.platform === 'win32'
+            ? /this store spells that type 'ptype', and delete-type PTYPE differs from it in case/
+            : /no type 'PTYPE' in this store/,
+        'the variant is refused by name: ' + variant.stderr);
+        assert.ok(fs.existsSync(heldFile),
+            'the record in the tier the store does hold is still there');
+        // The control: the store's own spelling removes that same record, so
+        // what the refusal read is the spelling rather than the command.
+        const exact = runHome(store, ['delete-type', 'ptype', 'case-check', '--confirm-shared']);
+        assert.strictEqual(exact.status, 0, exact.stderr);
+        assert.ok(!fs.existsSync(heldFile), 'the store\'s own spelling deleted it');
 
         // A name that cannot be a memory file is an argument error, answered
         // before any tier is looked at.
@@ -21583,6 +21614,13 @@ test('anchor refuses the shared tiers and an arity it cannot answer, before any 
         const cases = [
             [['anchor', 'fact', 'src/a.js', '--type'],
                 /anchor writes the project tier only: an anchor needs a project root/],
+            // Both spellings of the type flag, because a caller who learned
+            // --type=<type> on the three verbs that take it meets this one
+            // next, and the reason is the same whichever way the tier was
+            // named: matching the bare word alone answered that caller with
+            // 'unknown option' instead.
+            [['anchor', 'fact', 'src/a.js', '--type=webapp'],
+                /anchor writes the project tier only: an anchor needs a project root/],
             [['anchor', 'fact', 'src/a.js', '--operator'],
                 /anchor writes the project tier only: an anchor needs a project root/],
             [['anchor', 'fact'], /anchor needs at least one <path> to anchor/],
@@ -22721,8 +22759,12 @@ test('triggers refuses two destinations and an arity it cannot answer, before an
                 args.join(' ') + ' left the record changed');
         }
         const both = run(store, ['triggers', 'fact', T_CMD, '--type', '--operator']);
-        assert.match(both.stderr, /memq triggers <name> <type>:<pattern>\.\.\. \[--type\|--operator\]/,
+        assert.match(both.stderr,
+            /memq triggers <name> <type>:<pattern>\.\.\. \[--type\|--type=<type>\|--operator\]/,
             'the option list names the verb and the flags the tree implements');
+        assert.match(both.stderr,
+            /memq triggers <name> \[<type>:<pattern>\.\.\.\] --replace/,
+            'and the correction form, which is the one that takes no entry');
         // The refusal states its own reason and not the anchor verb's: a
         // trigger needs no project root and no tree, which is exactly why the
         // shared tiers are reachable here at all, so a reader sent to fix a
@@ -22764,8 +22806,8 @@ test('triggers authors on the type and operator tiers, and each refuses what the
         fs.mkdirSync(operatorDir, { recursive: true });
         const body = '---\nname: ""\ntags: a\n---\n\n# shared\n\nbody text\n';
         const tiers = [
-            { flag: '--type', dir: typeDir, label: 'type' },
-            { flag: '--operator', dir: operatorDir, label: 'operator' }
+            { flag: '--type', dir: typeDir, label: 'type', printed: 'webapp type' },
+            { flag: '--operator', dir: operatorDir, label: 'operator', printed: 'operator' }
         ];
         for (const tier of tiers) {
             const file = path.join(tier.dir, 'shared.md');
@@ -22775,7 +22817,7 @@ test('triggers authors on the type and operator tiers, and each refuses what the
             assert.strictEqual(wrote.status, 0, tier.label + ': ' + wrote.stderr);
             assert.strictEqual(wrote.stdout, 'triggers: cmd:git stash, tool:Bash\n',
                 tier.label + ' prints the line it wrote');
-            assert.match(wrote.stderr, new RegExp('\\(' + tier.label + ' tier\\)'),
+            assert.match(wrote.stderr, new RegExp('\\(' + tier.printed + ' tier\\)'),
                 tier.label + ' names the tier it wrote to: ' + wrote.stderr);
             const after = fs.readFileSync(file, 'utf8');
             assert.ok(after.includes('\ntriggers: cmd:git stash, tool:Bash\n'),
@@ -22831,7 +22873,7 @@ test('triggers authors on the type and operator tiers, and each refuses what the
             const filled = run(store, ['triggers', 'over-cap', tier.flag].concat(filling));
             assert.strictEqual(filled.status, 1, tier.label + ': a name no record holds');
             assert.match(filled.stderr,
-                new RegExp('no memory file named \'over-cap\' in the ' + tier.label + ' tier'),
+                new RegExp('no memory file named \'over-cap\' in the ' + tier.printed + ' tier'),
                 tier.label + ' names the tier the name was looked for in: ' + filled.stderr);
 
             fs.writeFileSync(path.join(tier.dir, 'over-cap.md'),
@@ -22877,6 +22919,22 @@ test('triggers authors on the type and operator tiers, and each refuses what the
             const nested = run(store, ['triggers', 'nested', tier.flag, 'cmd:git stash']);
             assert.strictEqual(nested.status, 1, tier.label + ': ' + nested.stdout);
             assert.match(nested.stderr, /under a key other than/, tier.label + ': ' + nested.stderr);
+            // And this refusal forks on the tier like its two neighbours: the
+            // hand edit it names on the project tier is a tool the frontmatter
+            // guard denies here, and no route in this CLI moves the field,
+            // --replace least of all, since the splice rewrites the line where
+            // it sits. Under these signals the line names the state rather
+            // than a delete verb whose whole answer here is a refusal.
+            assert.match(nested.stderr, /a shared tier has no hand-edit path/,
+                tier.label + ' says why the hand edit is not the route: ' + nested.stderr);
+            assert.match(nested.stderr, /--replace does not move it either/,
+                tier.label + ' rules out the one rewrite this verb has: ' + nested.stderr);
+            assert.match(nested.stderr,
+                /while this process carries the engine store signals nothing here removes the record/,
+                tier.label + ' names no command that would refuse here: ' + nested.stderr);
+            assert.doesNotMatch(nested.stderr, /move it to the frontmatter block's top level/,
+                tier.label + ' does not hand a shared tier the project tier\'s advice: '
+                    + nested.stderr);
 
             fs.writeFileSync(path.join(tier.dir, 'unreadable-entry.md'),
                 '---\nname: ""\ntriggers: not-an-entry\n---\n\n# u\n', 'utf8');
@@ -22895,50 +22953,1185 @@ test('triggers authors on the type and operator tiers, and each refuses what the
     }
 });
 
+// `--type=<type>` names the type tier outright, the way add-type's positional
+// does. The equals form is what the verb's positional grammar leaves room for:
+// a lookahead `--type <type>` would read the existing spelling
+// `triggers rec --type cmd:x` as a type named rec and an entry named as the
+// record, so the value rides on the flag word instead.
+test('triggers --type=<type> names the tier, and the bare flag still reads the project\'s own', () => {
+    const store = makeStore();
+    try {
+        const webapp = typeDirPath(store, 'webapp');
+        const infra = typeDirPath(store, 'infra');
+        for (const dir of [webapp, infra]) fs.mkdirSync(dir, { recursive: true });
+        const body = '---\nname: ""\ntags: a\n---\n\n# shared\n\nbody text\n';
+        const webappFile = path.join(webapp, 'shared.md');
+        const infraFile = path.join(infra, 'shared.md');
+        for (const file of [webappFile, infraFile]) fs.writeFileSync(file, body, 'utf8');
+
+        // This project declares no Project-Type, which is the state every
+        // checkout on this machine is in and the one the bare flag cannot
+        // write from: the record is reachable by name and by nothing else.
+        const bare = run(store, ['triggers', 'shared', '--type', T_CMD]);
+        assert.strictEqual(bare.status, 1, bare.stdout);
+        assert.match(bare.stderr, /this project declares no Project-Type/,
+            'the bare flag still resolves from the project: ' + bare.stderr);
+        assert.strictEqual(fs.readFileSync(webappFile, 'utf8'), body, 'the refusal wrote nothing');
+
+        const named = run(store, ['triggers', 'shared', '--type=webapp', T_CMD]);
+        assert.strictEqual(named.status, 0, named.stderr);
+        assert.strictEqual(named.stdout, 'triggers: ' + T_CMD + '\n',
+            'the named tier prints the line it wrote');
+        assert.match(named.stderr, /\(webapp type tier\)/, 'it names which type it wrote to: ' + named.stderr);
+        const after = fs.readFileSync(webappFile, 'utf8');
+        assert.ok(after.includes('\ntriggers: ' + T_CMD + '\n'), 'spliced the line: ' + after);
+        assert.ok(after.includes('# shared\n\nbody text\n'), 'left the body: ' + after);
+        assert.ok(after.includes('tags: a\n'), 'left the other fields: ' + after);
+        assert.strictEqual(fs.readFileSync(infraFile, 'utf8'), body,
+            'a named type reaches that type and no other');
+
+        // The regression pin: with a declaration in place the bare flag reads
+        // it, which is the spelling every existing caller uses, and the named
+        // form still names its own tier from that same project.
+        writeMemoryFile(store, 'MEMORY.md', 'Project-Type: webapp\n');
+        const declared = run(store, ['triggers', 'shared', '--type', 'tool:Bash']);
+        assert.strictEqual(declared.status, 0, declared.stderr);
+        assert.strictEqual(declared.stdout, 'triggers: ' + T_CMD + ', tool:Bash\n',
+            'the bare flag resolved the declared type: ' + declared.stdout);
+        const elsewhere = run(store, ['triggers', 'shared', '--type=infra', 'skill:memory-system']);
+        assert.strictEqual(elsewhere.status, 0, elsewhere.stderr);
+        assert.strictEqual(elsewhere.stdout, 'triggers: skill:memory-system\n',
+            'the named type beats the declaration: ' + elsewhere.stdout);
+    } finally {
+        rmStore(store);
+    }
+});
+
+// Which refusal answers a type spelled in another case than the store holds
+// it, which is the platform's question rather than memq's: fsEq folds case
+// only where the filesystem does, so on NTFS the stat finds the directory and
+// the listing catches the spelling, while on a case-sensitive filesystem
+// `webapp/` is simply not the tier `--type=WebApp` names and the absent-tier
+// refusal is the true one. Branching keeps the case covered on both, each
+// asserting the rule that actually decides there; a single expectation would
+// pass on this machine and fail on the peer this store syncs to.
+function caseRefusal(asked, held) {
+    return process.platform === 'win32'
+        ? new RegExp('this store spells that type \'' + held + '\', and --type=' + asked
+            + ' differs from it in case')
+        : new RegExp('no type \'' + asked + '\' in this store');
+}
+
+// What a named type is refused for, each refusal named by its own rule and
+// each leaving the store as it was. The name is joined onto a path under the
+// type-tier root, so it answers the store's own type-name gate before
+// anything is resolved from it.
+test('triggers refuses a type name no tier answers to, and one that could leave the tier root', () => {
+    const store = makeStore();
+    try {
+        const webapp = typeDirPath(store, 'webapp');
+        fs.mkdirSync(webapp, { recursive: true });
+        const file = path.join(webapp, 'shared.md');
+        const body = '---\nname: ""\n---\n\n# shared\n';
+        fs.writeFileSync(file, body, 'utf8');
+        const operatorDir = operatorDirPath(store);
+        fs.mkdirSync(operatorDir, { recursive: true });
+        const operatorFile = path.join(operatorDir, 'shared.md');
+        fs.writeFileSync(operatorFile, body, 'utf8');
+
+        const cases = [
+            [['triggers', 'shared', '--type=nosuch', T_CMD],
+                /no type 'nosuch' in this store/, 'a type the store does not hold'],
+            [['triggers', 'shared', '--type=../elsewhere', T_CMD],
+                /type must be characters from/, 'a name that could leave the tier root'],
+            [['triggers', 'shared', '--type=', T_CMD],
+                /type must be characters from/, 'an empty name'],
+            [['triggers', 'shared', '--type=webapp', '--operator', T_CMD],
+                /triggers writes one tier: give --type or --operator, not both/,
+                'two tiers named at once'],
+            [['triggers', 'shared', '--type=webapp', '--type=infra', T_CMD],
+                /--type is given once/, 'two types named at once'],
+            [['triggers', 'shared', '--type=WebApp', T_CMD],
+                caseRefusal('WebApp', 'webapp'),
+                'a type spelled in another case than the store holds it']
+        ];
+        for (const [args, reason, rule] of cases) {
+            const res = run(store, args);
+            assert.strictEqual(res.status, 1, rule + ': ' + res.stdout);
+            assert.strictEqual(res.stdout, '', rule + ' printed a line');
+            assert.match(res.stderr, reason, rule + ': ' + res.stderr);
+            // Both candidate records, because two of these cases name two
+            // tiers: a claim that nothing was written is half-checked when it
+            // reads only the record of the tier the refusal happened to name.
+            assert.strictEqual(fs.readFileSync(file, 'utf8'), body, rule + ' wrote into a record');
+            assert.strictEqual(fs.readFileSync(operatorFile, 'utf8'), body,
+                rule + ' wrote into the operator-tier record of that name');
+        }
+        assert.ok(!fs.existsSync(typeDirPath(store, 'nosuch')),
+            'a refused type name mints no tier directory');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// An unlistable type-tier root and an absent one are opposite answers, and the
+// boundary that resolves a named type has to say which it met: a root it could
+// not read says nothing about whether the store holds the type, while an
+// absent one says the store holds no types at all. Reading the first as the
+// second refuses every named type for a reason that is about the store rather
+// than about the name, which is the conflation both messages exist to keep
+// apart.
+//
+// The state is produced by making the type-tier root a regular file, which
+// fails the listing with ENOTDIR rather than ENOENT and fails the type
+// directory's own stat with it. A permission bit would produce the same pair
+// and does not do so reliably under libuv on this platform, which is the
+// reason this suite gives elsewhere for shaping unreadable states this way.
+test('a type-tier root that could not be listed is refused rather than read as holding no types',
+    () => {
+    const store = makeStore();
+    try {
+        writeMemoryFile(store, 'shared.md', '---\nname: ""\n---\n\n# s\n');
+        fs.mkdirSync(path.join(store.root, 'projects'), { recursive: true });
+        fs.writeFileSync(path.join(store.root, 'memory-types'), 'not a directory\n', 'utf8');
+
+        const res = run(store, ['triggers', 'shared', '--type=webapp', T_CMD]);
+        assert.strictEqual(res.status, 1, res.stdout);
+        assert.strictEqual(res.stdout, '', 'a refusal printed a line');
+        assert.match(res.stderr,
+            /the type tiers could not be listed, so whether this store spells the type 'webapp' that way is unknown and nothing was done/,
+            'the unreadable root is refused as unknown: ' + res.stderr);
+        assert.doesNotMatch(res.stderr, /no type 'webapp' in this store/,
+            'and never as an absence: ' + res.stderr);
+
+        // The control, which is the state this one must not be reported as: a
+        // store whose type-tier root is simply not there holds no such type,
+        // and that is an absence with a different message.
+        fs.rmSync(path.join(store.root, 'memory-types'));
+        const absent = run(store, ['triggers', 'shared', '--type=webapp', T_CMD]);
+        assert.strictEqual(absent.status, 1, absent.stdout);
+        assert.match(absent.stderr, /no type 'webapp' in this store/,
+            'an absent root is an absence: ' + absent.stderr);
+    } finally {
+        rmStore(store);
+    }
+});
+
+// A home-redirected store for the shared-tier replace cases, which cannot run
+// in this suite's usual harness at all: that one redirects the store with
+// KIT_MEMORY_ROOT and KIT_MEMORY_ROOT_ALLOW_DATA=1, which is the engine store
+// signal pair, and memq refuses a shared-tier replace under those signals for
+// the reason it refuses a shared-tier body repair. So these cases take the
+// harness the delete verbs and the body repair already take, the home
+// redirect, which keeps the writes out of the real ~/.claude by the route the
+// KIT_MEMORY_ROOT gate test uses. memDir is carried under the name this
+// file's own writers read, so the fixtures below are the ones every other
+// case uses. The refusal itself is pinned in the signalled harness, in the
+// store-signals case further down.
+function makeReplaceStore() {
+    const store = makeHomeStore();
+    store.memDir = homeMemDir(store);
+    return store;
+}
+
+// The correction path. Without it a declaration is one-way: the merge cannot
+// narrow, respell or withdraw an entry, and a shared tier has no hand-edit
+// route to fall back on.
+test('triggers --replace rewrites the line to exactly what the run names', (t) => {
+    const store = makeReplaceStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        const operatorDir = operatorDirPath(store);
+        fs.mkdirSync(operatorDir, { recursive: true });
+        const file = path.join(operatorDir, 'shared.md');
+        const body = '---\nname: ""\ntriggers: ' + T_CMD + ', ' + T_ERR
+            + '\ntags: a\n---\n\n# s\n\nbody text\n';
+        fs.writeFileSync(file, body, 'utf8');
+
+        const res = runHome(store, ['triggers', 'shared', '--operator', '--replace',
+            '--confirm-shared', T_ERR, 'skill:memory-system']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout, 'triggers: ' + T_ERR + ', skill:memory-system\n',
+            'the line is what the run named, not a merge: ' + res.stdout);
+        const after = fs.readFileSync(file, 'utf8');
+        assert.ok(after.includes('\ntriggers: ' + T_ERR + ', skill:memory-system\n'),
+            'the record carries the replaced line: ' + after);
+        assert.ok(!after.includes(T_CMD), 'the withdrawn entry is gone: ' + after);
+        assert.ok(after.includes('tags: a\n') && after.includes('# s\n\nbody text\n'),
+            'every other byte is where it was: ' + after);
+        assert.match(res.stderr, new RegExp('removed: ' + T_CMD),
+            'stderr names what it withdrew: ' + res.stderr);
+        assert.match(res.stderr, /added: skill:memory-system/,
+            'stderr names what it added: ' + res.stderr);
+        assert.ok(fs.existsSync(file + '.bak'), 'the previous text is kept in a .bak');
+
+        // A run whose resulting line is the line the record already carries
+        // writes nothing at all: it would spend the record's one backup
+        // generation on a byte-identical copy and move the mtime the decay
+        // pass reads as a sign of life. The line is still reported.
+        const bakBefore = fs.readFileSync(file + '.bak', 'utf8');
+        const unchanged = fs.readFileSync(file);
+        const mtimeBefore = fs.statSync(file).mtimeMs;
+        const same = runHome(store, ['triggers', 'shared', '--operator', '--replace',
+            '--confirm-shared', T_ERR, 'skill:memory-system']);
+        assert.strictEqual(same.status, 0, same.stderr);
+        assert.strictEqual(same.stdout, 'triggers: ' + T_ERR + ', skill:memory-system\n',
+            'the identical run still reports the line: ' + same.stdout);
+        assert.ok(fs.readFileSync(file).equals(unchanged), 'an identical replace wrote nothing');
+        assert.strictEqual(fs.statSync(file).mtimeMs, mtimeBefore,
+            'an identical replace left the decay clock alone');
+        assert.strictEqual(fs.readFileSync(file + '.bak', 'utf8'), bakBefore,
+            'an identical replace spent no backup generation');
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+// A --replace naming no entry takes the line out rather than leaving an empty
+// one behind: an empty value is a declaration of nothing that every reader
+// then needs an answer for, where an absent line is the state the record was
+// born in.
+test('triggers --replace naming no entry removes the line and leaves every other byte', (t) => {
+    const store = makeReplaceStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        const operatorDir = operatorDirPath(store);
+        fs.mkdirSync(operatorDir, { recursive: true });
+        const file = path.join(operatorDir, 'shared.md');
+        const without = '---\r\nname: ""\r\ntags: a\r\n---\r\n\r\n# s\r\n\r\nbody text\r\n';
+        const withLine = without.replace('tags: a\r\n',
+            'triggers: ' + T_CMD + '\r\ntags: a\r\n');
+        fs.writeFileSync(file, withLine, 'utf8');
+
+        const res = runHome(store, ['triggers', 'shared', '--operator', '--replace',
+            '--confirm-shared']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout, '',
+            'a record left carrying no line has no line to print: ' + res.stdout);
+        assert.match(res.stderr, /removed the triggers: line/,
+            'stderr says what it did: ' + res.stderr);
+        assert.strictEqual(fs.readFileSync(file, 'utf8'), without,
+            'the line went and its line endings and body stayed');
+        // Read back through a reader that reads the field, so the record is
+        // one that declares nothing rather than one that reads as broken.
+        const shown = runHome(store, ['get', 'shared', '--operator']);
+        assert.strictEqual(shown.status, 0, shown.stderr);
+        assert.ok(!/triggers:/.test(shown.stdout), 'the record declares none: ' + shown.stdout);
+
+        // Nothing to remove is nothing written, on the identical-line rule.
+        const mtimeBefore = fs.statSync(file).mtimeMs;
+        const again = runHome(store, ['triggers', 'shared', '--operator', '--replace',
+            '--confirm-shared']);
+        assert.strictEqual(again.status, 0, again.stderr);
+        assert.strictEqual(fs.readFileSync(file, 'utf8'), without, 'a second removal wrote nothing');
+        assert.strictEqual(fs.statSync(file).mtimeMs, mtimeBefore,
+            'a second removal left the decay clock alone');
+
+        // A line the harness moved under its metadata: map is removed where it
+        // sits, its indentation going with it, so the map is left holding the
+        // members it had and no blank member line where this one was.
+        const mapped = path.join(operatorDir, 'mapped.md');
+        const bare = harnessShaped([], '\nbody\n');
+        fs.writeFileSync(mapped, harnessShaped(['triggers: "' + T_CMD + '"'], '\nbody\n'), 'utf8');
+        const nested = runHome(store, ['triggers', 'mapped', '--operator', '--replace',
+            '--confirm-shared']);
+        assert.strictEqual(nested.status, 0, nested.stderr);
+        assert.strictEqual(fs.readFileSync(mapped, 'utf8'), bare,
+            'the mapped line came out whole, indentation included');
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+// --replace refuses on every bar the merge refuses on, and refuses whole: a
+// caller correcting a line names the whole of it, so one entry the grammar
+// will not take is a command that cannot be carried out rather than one to
+// carry out in part.
+test('triggers --replace refuses whole, and the refused record is byte-identical', (t) => {
+    const store = makeReplaceStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        const operatorDir = operatorDirPath(store);
+        fs.mkdirSync(operatorDir, { recursive: true });
+        const file = path.join(operatorDir, 'shared.md');
+        const body = '---\nname: ""\ntriggers: ' + T_CMD + '\n---\n\n# s\n\nbody text\n';
+        fs.writeFileSync(file, body, 'utf8');
+        const before = fs.readFileSync(file);
+
+        const cases = [
+            [[T_ERR, 'nope:whatever'], /not <type>:<pattern>, where <type> is one of/,
+                'the type vocabulary'],
+            [[T_ERR, 'cmd:zfs'],
+                new RegExp('the pattern is shorter than ' + memq.TRIGGER_PATTERN_MIN),
+                'the length floor'],
+            [[T_ERR, 'cmd:node'], /a bare token common enough to match unrelated work/,
+                'the bare-token bar'],
+            [[T_ERR, T_GLOB], /a glob names a path/, 'the shared-tier glob bar']
+        ];
+        for (const [entries, reason, rule] of cases) {
+            const res = runHome(store,
+                ['triggers', 'shared', '--operator', '--replace', '--confirm-shared']
+                    .concat(entries));
+            assert.strictEqual(res.status, 1, rule + ': ' + res.stdout);
+            assert.strictEqual(res.stdout, '', rule + ' printed a line');
+            assert.match(res.stderr, reason, rule + ': ' + res.stderr);
+            assert.ok(fs.readFileSync(file).equals(before), rule + ' wrote into the record');
+            assert.ok(!fs.existsSync(file + '.bak'), rule + ' spent a backup generation');
+        }
+
+        // The cap is asked of the replacing line too, so a correction cannot
+        // write past what a reader reads.
+        const over = [];
+        for (let i = 0; i <= memq.TRIGGER_ENTRIES_MAX; i += 1) over.push('cmd:pattern-' + i);
+        const capped = runHome(store,
+            ['triggers', 'shared', '--operator', '--replace', '--confirm-shared'].concat(over));
+        assert.strictEqual(capped.status, 1, capped.stdout);
+        assert.match(capped.stderr,
+            new RegExp('would carry ' + (memq.TRIGGER_ENTRIES_MAX + 1) + ' triggers'),
+            'the cap refuses the replacement: ' + capped.stderr);
+        assert.ok(fs.readFileSync(file).equals(before), 'the cap refusal wrote nothing');
+
+        // A line cut at the reader's bound is still refused under --replace,
+        // and it is the one of the two that stays refused: the tail past the
+        // bound is text nothing here has read, so no report could name what
+        // came off, where an unreadable entry is shown to the caller by text
+        // in the refusal itself. The record is left byte for byte as it was.
+        const overValue = 'cmd:' + 'x'.repeat(memq.TRIGGER_VALUE_CAP) + ', cmd:git rebase';
+        const cutPath = path.join(operatorDir, 'cut.md');
+        fs.writeFileSync(cutPath, '---\nname: ""\ntriggers: ' + overValue + '\n---\n\n# c\n',
+            'utf8');
+        const cutBefore = fs.readFileSync(cutPath);
+        const cut = runHome(store,
+            ['triggers', 'cut', '--operator', '--replace', '--confirm-shared', T_ERR]);
+        assert.strictEqual(cut.status, 1, cut.stdout);
+        assert.strictEqual(cut.stdout, '', 'a refusal printed a line');
+        assert.match(cut.stderr, /carries a triggers: line past what a reader reads/,
+            'the cut line is refused under --replace too: ' + cut.stderr);
+        assert.ok(fs.readFileSync(cutPath).equals(cutBefore),
+            'the record with the cut line is byte-identical');
+        assert.ok(!fs.existsSync(cutPath + '.bak'), 'and no backup generation was spent');
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+// The other half of that pair, and it parts from the merge: an entry no reader
+// can read is dropped by a --replace rather than refused, because the caller
+// has seen it. The merge's refusal prints each such entry by text, and the
+// replace that carries out the correction prints it again as it comes off, so
+// nothing leaves the record unseen. Refusing here would leave a record whose
+// line is unreadable, which is exactly the wrong declaration this flag exists
+// to correct, reachable only by a delete that costs the record its body and
+// its applied history.
+test('triggers --replace drops an unreadable entry and names it, where the merge refuses', (t) => {
+    const store = makeReplaceStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        const operatorDir = operatorDirPath(store);
+        fs.mkdirSync(operatorDir, { recursive: true });
+        const file = path.join(operatorDir, 'unreadable.md');
+        const body = '---\nname: ""\ntriggers: not-an-entry, ' + T_CMD
+            + '\ntags: a\n---\n\n# u\n\nbody text\n';
+        fs.writeFileSync(file, body, 'utf8');
+        const before = fs.readFileSync(file);
+
+        // The merge still refuses, and its refusal is where the caller reads
+        // what the line says: the entry is printed by text, annotated with the
+        // rule it fails, which is what makes the replace below a correction
+        // made with open eyes rather than a blind rewrite.
+        const merged = runHome(store, ['triggers', 'unreadable', '--operator', T_ERR]);
+        assert.strictEqual(merged.status, 1, merged.stdout);
+        assert.match(merged.stderr, /already carries a triggers: entry this cannot read/,
+            'the merge refuses: ' + merged.stderr);
+        assert.match(merged.stderr, /not-an-entry \[not <type>:<pattern>/,
+            'and shows the caller the entry by text: ' + merged.stderr);
+        assert.match(merged.stderr, /--replace --confirm-shared/,
+            'and names the replace as the shared tier\'s route: ' + merged.stderr);
+        assert.doesNotMatch(merged.stderr, /delete-operator/,
+            'rather than the delete it used to name: ' + merged.stderr);
+        assert.ok(fs.readFileSync(file).equals(before), 'the merge wrote nothing');
+
+        const replaced = runHome(store, ['triggers', 'unreadable', '--operator', '--replace',
+            '--confirm-shared', T_ERR]);
+        assert.strictEqual(replaced.status, 0, replaced.stderr);
+        assert.strictEqual(replaced.stdout, 'triggers: ' + T_ERR + '\n',
+            'the line is what the run named: ' + replaced.stdout);
+        assert.match(replaced.stderr, /dropped, no reader could read it: not-an-entry \[/,
+            'stderr names what came off unseen by any reader: ' + replaced.stderr);
+        assert.match(replaced.stderr, new RegExp('removed: ' + T_CMD),
+            'and names the readable entry it withdrew: ' + replaced.stderr);
+        const after = fs.readFileSync(file, 'utf8');
+        assert.ok(after.includes('\ntriggers: ' + T_ERR + '\n'), 'the line was rewritten: ' + after);
+        assert.ok(!after.includes('not-an-entry'), 'the unreadable entry is gone: ' + after);
+        assert.ok(after.includes('tags: a\n') && after.includes('# u\n\nbody text\n'),
+            'and every other byte is where it was: ' + after);
+
+        // The project tier keeps its own two routes, the hand edit it has a
+        // writer for and the same replace, so what forks above is the tier.
+        writeMemoryFile(store, 'unreadable.md', body);
+        const project = runHome(store, ['triggers', 'unreadable', T_ERR]);
+        assert.strictEqual(project.status, 1, project.stdout);
+        assert.match(project.stderr,
+            /Correct the line by hand and rerun, or name the whole line with --replace/,
+            'the project tier names both of its routes: ' + project.stderr);
+        const projectReplace = runHome(store, ['triggers', 'unreadable', '--replace', T_ERR]);
+        assert.strictEqual(projectReplace.status, 0, projectReplace.stderr);
+        assert.match(projectReplace.stderr, /dropped, no reader could read it: not-an-entry \[/,
+            'and the project tier drops and names it too: ' + projectReplace.stderr);
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+// The consent a shared tier takes for a write that removes what was there.
+// The plain form only adds, so what it risks is a trigger too many; a replace
+// states the line whole, so every declaration the invocation does not name
+// comes off a record every project on the machine reads and every machine the
+// store syncs to. The bar is on the flag reaching a shared tier at all rather
+// than on a run that provably drops something, because which entries the
+// record carries is exactly what a caller correcting it cannot be assumed to
+// know before they run it.
+test('triggers --replace takes --confirm-shared on a shared tier and none on the project tier',
+    (t) => {
+    const store = makeReplaceStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        const webapp = typeDirPath(store, 'webapp');
+        const operatorDir = operatorDirPath(store);
+        for (const dir of [webapp, operatorDir]) fs.mkdirSync(dir, { recursive: true });
+        const body = '---\nname: ""\ntriggers: ' + T_CMD + ', ' + T_ERR + '\n---\n\n# s\n';
+        const files = [path.join(webapp, 'shared.md'), path.join(operatorDir, 'shared.md')];
+        for (const file of files) fs.writeFileSync(file, body, 'utf8');
+        writeMemoryFile(store, 'shared.md', body);
+
+        // Both shared spellings refuse, and a replace naming no entry at all
+        // refuses with them: the withdrawal is the widest of the three, taking
+        // every declaration the record has.
+        const bars = [
+            [['triggers', 'shared', '--type=webapp', '--replace', T_ERR], 'a named type'],
+            [['triggers', 'shared', '--operator', '--replace', T_ERR], 'the operator tier'],
+            [['triggers', 'shared', '--operator', '--replace'], 'a withdrawal']
+        ];
+        for (const [args, rule] of bars) {
+            const res = runHome(store, args);
+            assert.strictEqual(res.status, 1, rule + ': ' + res.stdout);
+            assert.strictEqual(res.stdout, '', rule + ' printed a line');
+            assert.match(res.stderr, /re-run with --confirm-shared to proceed \(nothing written\)/,
+                rule + ' names the consent it wants: ' + res.stderr);
+            for (const file of files) {
+                assert.strictEqual(fs.readFileSync(file, 'utf8'), body,
+                    rule + ' wrote into a shared record');
+            }
+        }
+
+        // The declared-type spelling of the same bar, so what is gated is the
+        // tier the write lands in rather than the spelling that named it.
+        writeMemoryFile(store, 'MEMORY.md', 'Project-Type: webapp\n');
+        const bare = runHome(store, ['triggers', 'shared', '--type', '--replace', T_ERR]);
+        assert.strictEqual(bare.status, 1, bare.stdout);
+        assert.match(bare.stderr, /re-run with --confirm-shared to proceed/, bare.stderr);
+
+        // With the consent the same command lands, which is what keeps the
+        // three refusals above a bar rather than a broken path.
+        const done = runHome(store, ['triggers', 'shared', '--operator', '--replace',
+            '--confirm-shared', T_ERR]);
+        assert.strictEqual(done.status, 0, done.stderr);
+        assert.strictEqual(done.stdout, 'triggers: ' + T_ERR + '\n', done.stdout);
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+// The project tier's half of the consent rule, in the harness that needs no
+// home redirect: an unpinned project tier takes no consent flag and refuses
+// one where it would confirm nothing. It is separated from the shared-tier
+// cases above deliberately, those needing a store the engine signals are
+// absent from and these needing nothing of the sort, so a box where that
+// redirect does not take still gates the project tier's own rule.
+test('triggers refuses --confirm-shared where it confirms nothing, and the project tier '
+    + 'replaces without it', () => {
+    const store = makeStore();
+    try {
+        const operatorDir = operatorDirPath(store);
+        fs.mkdirSync(operatorDir, { recursive: true });
+        const body = '---\nname: ""\ntriggers: ' + T_CMD + ', ' + T_ERR + '\n---\n\n# s\n';
+        fs.writeFileSync(path.join(operatorDir, 'shared.md'), body, 'utf8');
+        writeMemoryFile(store, 'shared.md', body);
+
+        const project = run(store, ['triggers', 'shared', '--replace', T_ERR]);
+        assert.strictEqual(project.status, 0, project.stderr);
+        assert.strictEqual(project.stdout, 'triggers: ' + T_ERR + '\n', project.stdout);
+        assert.ok(fs.readFileSync(path.join(store.memDir, 'shared.md'), 'utf8')
+            .includes('\ntriggers: ' + T_ERR + '\n'), 'the project-tier line was replaced');
+
+        const stray = run(store, ['triggers', 'shared', '--replace', '--confirm-shared', T_ERR]);
+        assert.strictEqual(stray.status, 1, stray.stdout);
+        assert.match(stray.stderr,
+            /--confirm-shared confirms a shared-tier replace, so it needs --type/,
+            'the flag is refused where there is no shared tier to confirm: ' + stray.stderr);
+        const noReplace = run(store, ['triggers', 'shared', '--operator', '--confirm-shared',
+            T_ERR]);
+        assert.strictEqual(noReplace.status, 1, noReplace.stdout);
+        assert.match(noReplace.stderr, /--confirm-shared confirms a shared-tier replace, so it/,
+            'and where there is no replace to confirm: ' + noReplace.stderr);
+    } finally {
+        rmStore(store);
+    }
+});
+
+// A pin makes one project directory serve every working directory the instance
+// runs in, which is the writer-is-not-the-reader condition the shared tiers are
+// fenced for, arriving on the project tier. So both replace bars reach it. The
+// signals bar is the one a pin actually meets, a pin being honored only
+// alongside those same signals, and the consent flag is admitted rather than
+// refused as confirming nothing, which is what a caller has to be able to
+// spell before the bar above it can be the answer.
+test('a pinned project store answers to the replace bars beside the shared tiers', () => {
+    const store = makeStore();
+    const pinnedDir = pinnedMemDir(store, PIN);
+    try {
+        fs.mkdirSync(pinnedDir, { recursive: true });
+        const body = '---\nname: ""\ntriggers: ' + T_CMD + ', ' + T_ERR + '\n---\n\n# s\n';
+        const file = path.join(pinnedDir, 'shared.md');
+        fs.writeFileSync(file, body, 'utf8');
+
+        for (const [args, rule] of [
+            [['triggers', 'shared', '--replace', T_ERR], 'a pinned replace'],
+            [['triggers', 'shared', '--replace', '--confirm-shared', T_ERR],
+                'a pinned replace that consented'],
+            [['triggers', 'shared', '--replace', '--confirm-shared'],
+                'a pinned withdrawal, the widest shape of all']
+        ]) {
+            const res = run(store, args, { KIT_MEMORY_PROJECT: PIN });
+            assert.strictEqual(res.status, 1, rule + ': ' + res.stdout);
+            assert.strictEqual(res.stdout, '', rule + ' printed a line');
+            assert.match(res.stderr,
+                /a replace states the record's triggers: line whole, which is refused/,
+                rule + ' is refused by the store-signals rule: ' + res.stderr);
+            assert.match(res.stderr, /for a shared tier and for a pinned project store alike/,
+                rule + ' names the pin in that rule: ' + res.stderr);
+            assert.strictEqual(fs.readFileSync(file, 'utf8'), body, rule + ' wrote to the record');
+            assert.ok(!fs.existsSync(file + '.bak'), rule + ' spent a backup generation');
+        }
+
+        // The consent flag is no longer refused as confirming nothing under a
+        // pin, which is what makes the bar above the answer a pinned caller
+        // gets rather than an arity error standing in front of it.
+        const consented = run(store, ['triggers', 'shared', '--replace', '--confirm-shared', T_ERR],
+            { KIT_MEMORY_PROJECT: PIN });
+        assert.doesNotMatch(consented.stderr, /--confirm-shared confirms a shared-tier replace/,
+            'a pinned caller may spell the consent: ' + consented.stderr);
+
+        // Two controls, because a refusal reading the environment rather than
+        // the pin would look the same from outside. The merge still declares a
+        // trigger against the pinned record, and the identical replace lands
+        // against the same store with no pin set, where the project tier is
+        // the reading session's own.
+        const merged = run(store, ['triggers', 'shared', 'skill:memory-system'],
+            { KIT_MEMORY_PROJECT: PIN });
+        assert.strictEqual(merged.status, 0, merged.stderr);
+        assert.ok(fs.readFileSync(file, 'utf8').includes('skill:memory-system'),
+            'the merge reached the pinned record');
+        writeMemoryFile(store, 'shared.md', body);
+        const unpinned = run(store, ['triggers', 'shared', '--replace', T_ERR]);
+        assert.strictEqual(unpinned.status, 0, unpinned.stderr);
+        assert.strictEqual(unpinned.stdout, 'triggers: ' + T_ERR + '\n', unpinned.stdout);
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The invocation this plan's own backfill runs next: a correction against a
+// type tier named on the command line, from a checkout that declares no type.
+// Every other replace case here runs against --operator, so without this one
+// the two flags are pinned only apart.
+test('triggers --replace corrects a record of a tier named by --type=<type>', (t) => {
+    const store = makeReplaceStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        const webapp = typeDirPath(store, 'webapp');
+        const infra = typeDirPath(store, 'infra');
+        for (const dir of [webapp, infra]) fs.mkdirSync(dir, { recursive: true });
+        const body = '---\nname: ""\ntriggers: cmd:node --test, ' + T_ERR
+            + '\ntags: a\n---\n\n# s\n\nbody text\n';
+        const file = path.join(webapp, 'shared.md');
+        const other = path.join(infra, 'shared.md');
+        fs.writeFileSync(file, body, 'utf8');
+        fs.writeFileSync(other, body, 'utf8');
+
+        const res = runHome(store, ['triggers', 'shared', '--type=webapp', '--replace',
+            '--confirm-shared', 'skill:memory-system']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout, 'triggers: skill:memory-system\n', res.stdout);
+        assert.match(res.stderr, /replaced the triggers: line/, res.stderr);
+        assert.match(res.stderr, /removed: cmd:node --test, err:module not found/,
+            'stderr names every entry the correction withdrew: ' + res.stderr);
+        assert.match(res.stderr, /\(webapp type tier\)/,
+            'and which type tier it was: ' + res.stderr);
+        const after = fs.readFileSync(file, 'utf8');
+        assert.ok(after.includes('\ntriggers: skill:memory-system\n'), after);
+        assert.ok(after.includes('tags: a\n') && after.includes('# s\n\nbody text\n'),
+            'every other byte is where it was: ' + after);
+        assert.strictEqual(fs.readFileSync(other, 'utf8'), body,
+            'a named type reaches that type and no other');
+
+        // The withdrawal against the same spelling, which is what takes a
+        // wholly wrong declaration off a type-tier record.
+        const gone = runHome(store, ['triggers', 'shared', '--type=webapp', '--replace',
+            '--confirm-shared']);
+        assert.strictEqual(gone.status, 0, gone.stderr);
+        assert.strictEqual(gone.stdout, '', 'a record declaring nothing prints no line');
+        assert.match(gone.stderr, /removed the triggers: line.*\(webapp type tier\)/, gone.stderr);
+        assert.ok(!fs.readFileSync(file, 'utf8').includes('triggers:'),
+            'the line is off the record');
+
+        // A replace against a record that carried no line reports a write
+        // rather than a replacement: the two are one mistyped record name
+        // apart, and 'replaced' would read as a correction that landed.
+        const first = runHome(store, ['triggers', 'shared', '--type=webapp', '--replace',
+            '--confirm-shared', T_CMD]);
+        assert.strictEqual(first.status, 0, first.stderr);
+        assert.match(first.stderr, /wrote a triggers: line, the record carried none/,
+            'a first declaration is not reported as a replacement: ' + first.stderr);
+        assert.doesNotMatch(first.stderr, /replaced the triggers: line/, first.stderr);
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+// The refusal that decides which harness every case above runs in, pinned in
+// both directions here because neither half is evidence for the other. A
+// replace states a shared-tier record's triggers: line whole, so what it does
+// not name is destroyed, and the .bak the rewrite leaves is local and never
+// syncs, which is the bargain add-type's body repair is refused on: on a fleet
+// store the correction is as final as a deletion. The grant hook withholds the
+// verb outright on that vector, so this is the second lock rather than the
+// only one, and it is the half that binds where the two processes read their
+// environment differently.
+test('a shared-tier replace is refused under the engine store signals, and lands without them',
+    (t) => {
+    const signalled = makeStore();
+    const unsignalled = makeReplaceStore();
+    const body = '---\nname: ""\ntriggers: ' + T_CMD + ', ' + T_ERR + '\n---\n\n# s\n\nbody\n';
+    try {
+        // The signalled half runs and asserts above the skip, because it needs
+        // no home redirect: its store is the KIT_MEMORY_ROOT pair this suite's
+        // ordinary harness sets, which is the very environment under test. On a
+        // box where the redirect does not take, this half is what still gates
+        // the refusal, and the project-tier control below it is the only
+        // successful replace write the suite then exercises at all.
+        const webapp = typeDirPath(signalled, 'webapp');
+        const operatorDir = operatorDirPath(signalled);
+        for (const dir of [webapp, operatorDir]) fs.mkdirSync(dir, { recursive: true });
+        for (const dir of [webapp, operatorDir]) {
+            fs.writeFileSync(path.join(dir, 'shared.md'), body, 'utf8');
+        }
+        writeMemoryFile(signalled, 'shared.md', body);
+        const operatorFile = path.join(operatorDirPath(signalled), 'shared.md');
+        const typeFile = path.join(typeDirPath(signalled, 'webapp'), 'shared.md');
+
+        // Both tier spellings, with the consent and without it: the bar is on
+        // the shape reaching a shared tier, so a caller who has consented
+        // hears the same refusal rather than being sent round again.
+        const barred = [
+            [['triggers', 'shared', '--operator', '--replace', '--confirm-shared', T_ERR],
+                'the operator tier, consented'],
+            [['triggers', 'shared', '--operator', '--replace', T_ERR],
+                'the operator tier, unconsented'],
+            [['triggers', 'shared', '--type=webapp', '--replace', '--confirm-shared', T_ERR],
+                'a named type tier'],
+            [['triggers', 'shared', '--operator', '--replace', '--confirm-shared'],
+                'the withdrawal, which is the widest shape of all']
+        ];
+        for (const [args, rule] of barred) {
+            const res = run(signalled, args);
+            assert.strictEqual(res.status, 1, rule + ': ' + res.stdout);
+            assert.strictEqual(res.stdout, '', rule + ' printed a line');
+            assert.match(res.stderr,
+                /a replace states the record's triggers: line whole, which is refused/,
+                rule + ' is refused by its own rule: ' + res.stderr);
+            assert.match(res.stderr, /KIT_MEMORY_ROOT_ALLOW_DATA=1/,
+                rule + ' names the environment it is refused in: ' + res.stderr);
+            for (const file of [operatorFile, typeFile]) {
+                assert.strictEqual(fs.readFileSync(file, 'utf8'), body,
+                    rule + ' wrote into a shared record');
+                assert.ok(!fs.existsSync(file + '.bak'), rule + ' spent a backup generation');
+            }
+        }
+
+        // Three controls, because a refusal that fired on the environment
+        // rather than on the shape would look exactly like this from outside.
+        // The merge still declares a trigger on the same tier under the same
+        // signals, which is what the refusal's own remedy names.
+        const merged = run(signalled, ['triggers', 'shared', '--operator', 'skill:memory-system']);
+        assert.strictEqual(merged.status, 0, merged.stderr);
+        assert.strictEqual(merged.stdout,
+            'triggers: ' + T_CMD + ', ' + T_ERR + ', skill:memory-system\n', merged.stdout);
+        // The project tier's replace is untouched: what the signals refuse is
+        // a write to a tier every project and every synced machine reads.
+        const project = run(signalled, ['triggers', 'shared', '--replace', T_ERR]);
+        assert.strictEqual(project.status, 0, project.stderr);
+        assert.strictEqual(project.stdout, 'triggers: ' + T_ERR + '\n', project.stdout);
+        // And the identical shared-tier command lands where the signals are
+        // absent, so what the refusal reads is the environment and not the
+        // command. This is the half that needs the home redirect, so the skip
+        // sits here rather than above the assertions that do not.
+        if (!homeRedirected(unsignalled)) return t.skip(HOME_REDIRECT_SKIP);
+        for (const dir of [typeDirPath(unsignalled, 'webapp'), operatorDirPath(unsignalled)]) {
+            fs.mkdirSync(dir, { recursive: true });
+            fs.writeFileSync(path.join(dir, 'shared.md'), body, 'utf8');
+        }
+        writeMemoryFile(unsignalled, 'shared.md', body);
+        const landed = runHome(unsignalled,
+            ['triggers', 'shared', '--operator', '--replace', '--confirm-shared', T_ERR]);
+        assert.strictEqual(landed.status, 0, landed.stderr);
+        assert.strictEqual(landed.stdout, 'triggers: ' + T_ERR + '\n', landed.stdout);
+    } finally {
+        rmStore(signalled);
+        rmHomeStore(unsignalled);
+    }
+});
+
+// The gate the reading doors carry, at the door that mints a tier. A stat
+// answers case-insensitively on NTFS, so without it `add-type WebApp` against
+// an existing `webapp/` writes into that directory and reports `WebApp`
+// everywhere, minting a record no door that takes a named type can reach and
+// handing the caller a follow-up command every one of them refuses.
+// Win32 only, and for the reason caseRefusal above states: where the
+// filesystem is case-sensitive, `WebApp` and `webapp` are two directories the
+// store can hold at once, so a create naming the second is an ordinary create
+// rather than a variant of the first, and there is nothing to refuse.
+test('add-type refuses a type the store already holds in another case, and mints no second tier',
+    { skip: process.platform === 'win32' ? false
+        : 'a case-folding filesystem is what makes two spellings one tier' }, () => {
+    const store = makeStore();
+    try {
+        const webapp = typeDirPath(store, 'webapp');
+        fs.mkdirSync(webapp, { recursive: true });
+
+        const res = run(store, ['add-type', 'WebApp', 'fact', 'a description']);
+        assert.strictEqual(res.status, 1, res.stdout);
+        assert.strictEqual(res.stdout, '', 'a refusal printed a success line');
+        assert.match(res.stderr,
+            /this store spells that type 'webapp', and add-type WebApp differs from it in case/,
+            'the create is refused in the reading doors\' own words: ' + res.stderr);
+        assert.deepStrictEqual(fs.readdirSync(path.join(store.root, 'memory-types')), ['webapp'],
+            'no second spelling of the type was minted');
+        assert.deepStrictEqual(fs.readdirSync(webapp), [],
+            'and nothing was written into the tier the store does hold');
+
+        // The controls: the store's own spelling still creates, and a type no
+        // variant of which exists still mints its tier, so what the refusal
+        // reads is the variant rather than the create.
+        const exact = run(store, ['add-type', 'webapp', 'fact', 'a description']);
+        assert.strictEqual(exact.status, 0, exact.stderr);
+        assert.ok(fs.existsSync(path.join(webapp, 'fact.md')), 'the exact spelling wrote');
+        const fresh = run(store, ['add-type', 'infra', 'fact', 'a description']);
+        assert.strictEqual(fresh.status, 0, fresh.stderr);
+        assert.ok(fs.existsSync(path.join(typeDirPath(store, 'infra'), 'fact.md')),
+            'a type the store holds no variant of mints its own tier');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// Which refusal answers first when a command is wrong in two ways at once.
+// The consent checks answer below the record-name and type-name gates, on
+// add-type's own rule at its consent refusal: being sent to re-run with a flag
+// that then fails on a name is two rounds for one mistake, and the caller
+// fixes the name either way.
+test('triggers names a bad record or type before it asks for consent', () => {
+    const store = makeStore();
+    try {
+        fs.mkdirSync(operatorDirPath(store), { recursive: true });
+        const cases = [
+            [['triggers', 'not a name', '--operator', '--replace', T_ERR],
+                /name must be characters from/, 'a record name outside the grammar'],
+            [['triggers', 'MEMORY', '--operator', '--replace', T_ERR],
+                /name must be characters from/, 'the index, which is no record'],
+            [['triggers', 'shared', '--type=../elsewhere', '--replace', T_ERR],
+                /type must be characters from/, 'a type name that could leave the tier root'],
+            [['triggers', 'not a name', '--operator', '--confirm-shared', T_ERR],
+                /name must be characters from/, 'a bad name beside a flag that confirms nothing']
+        ];
+        for (const [args, reason, rule] of cases) {
+            const res = run(store, args);
+            assert.strictEqual(res.status, 1, rule + ': ' + res.stdout);
+            assert.match(res.stderr, reason, rule + ': ' + res.stderr);
+            assert.doesNotMatch(res.stderr, /re-run with --confirm-shared/,
+                rule + ' was sent for consent it would then be refused for: ' + res.stderr);
+        }
+        // The control: with both names good, a bar below the two gates is the
+        // one that answers, so the four above are the ordering rather than
+        // everything under the gates having gone missing. This harness carries
+        // the engine store signals, where the bar that answers a shared-tier
+        // replace is the store-signals refusal standing in front of the consent
+        // demand; the consent demand itself is pinned in the home-redirected
+        // harness, which runs the same command with no signals.
+        fs.writeFileSync(path.join(operatorDirPath(store), 'shared.md'),
+            '---\nname: ""\n---\n\n# s\n', 'utf8');
+        const lower = run(store, ['triggers', 'shared', '--operator', '--replace', T_ERR]);
+        assert.strictEqual(lower.status, 1, lower.stdout);
+        assert.match(lower.stderr, /refused under the engine store signals/, lower.stderr);
+    } finally {
+        rmStore(store);
+    }
+});
+
+// An archived hit says which type answered, on every spelling that can reach
+// one. A store holds a tier per type, so "the type tier" names a record only to
+// a reader who already knows which one was asked for, and the caller who
+// spelled the bare flag is the one least able to supply the missing word,
+// having named no type at all. It is the rule `touch` and `triggers` state at
+// their own success and refusal lines, so the three verbs answer alike.
+test('get names which type tier an archived record came from, on either spelling', (t) => {
+    const store = makeStore();
+    const unsignalled = makeReplaceStore();
+    const record = '---\nname: ""\n---\n\n# retired-fact\n\nbody text\n';
+    const named = /'retired-fact' is archived: this body comes from the webapp type tier's archive\//;
+    try {
+        const archive = path.join(typeDirPath(store, 'webapp'), 'archive');
+        fs.mkdirSync(archive, { recursive: true });
+        fs.writeFileSync(path.join(archive, 'retired-fact.md'), record, 'utf8');
+        writeMemoryFile(store, 'MEMORY.md', 'Project-Type: webapp\n');
+
+        // The bare flag, which resolves the project's own declaration and
+        // needs no home redirect: the type is named there too, where the
+        // walked precedence and the flag once said only 'the type tier'.
+        const bare = run(store, ['get', 'retired-fact', '--type']);
+        assert.strictEqual(bare.status, 0, bare.stderr);
+        assert.ok(bare.stdout.includes('body text'), 'the archived body answered: ' + bare.stdout);
+        assert.match(bare.stderr, named,
+            'the bare spelling names the type as well: ' + bare.stderr);
+
+        // The walked precedence, with no flag at all, which reaches the same
+        // archive rung through the project's declaration.
+        const walked = run(store, ['get', 'retired-fact']);
+        assert.strictEqual(walked.status, 0, walked.stderr);
+        assert.match(walked.stderr, named, 'and so does the walk: ' + walked.stderr);
+
+        // The named spelling, which memq refuses under the engine store
+        // signals this suite's ordinary harness carries, so it answers in the
+        // home-redirected store the replace cases use.
+        if (!homeRedirected(unsignalled)) return t.skip(HOME_REDIRECT_SKIP);
+        const otherArchive = path.join(typeDirPath(unsignalled, 'webapp'), 'archive');
+        fs.mkdirSync(otherArchive, { recursive: true });
+        fs.writeFileSync(path.join(otherArchive, 'retired-fact.md'), record, 'utf8');
+        const res = runHome(unsignalled, ['get', 'retired-fact', '--type=webapp']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.ok(res.stdout.includes('body text'), 'the archived body answered: ' + res.stdout);
+        assert.match(res.stderr, named,
+            'and the line names which type tier it came from: ' + res.stderr);
+    } finally {
+        rmStore(store);
+        rmHomeStore(unsignalled);
+    }
+});
+
+// The type-name gate sits at the crossing as well as at every door. Each verb
+// that takes a named type asks isTypeName in its own words first, and today
+// no caller reaches namedTypeDirOrNote without having done so, which is
+// exactly why the guard cannot be reached from outside and has to be read
+// here: it is the boundary's own, so a door added later without the check
+// still cannot join a path token onto the type-tier root.
+test('the named-type boundary carries its own type-name gate, not only its callers\'', () => {
+    const src = fs.readFileSync(MEMQ, 'utf8');
+    const start = src.indexOf('function namedTypeDirOrNote(');
+    assert.ok(start > 0, 'the boundary is still spelled that way');
+    const body = src.slice(start, src.indexOf('\n}\n', start));
+    assert.match(body, /if \(!isTypeName\(namedType\)\)/,
+        'the boundary asks the type-name gate itself: ' + body);
+    assert.match(body, /TYPE_NAME_RULE/,
+        'and refuses in the same words its callers use: ' + body);
+    // The control: the doors keep their own checks, so the boundary's is
+    // defense in depth rather than a move that left a verb answering a
+    // path-shaped name with a stat.
+    assert.strictEqual((src.match(/usage\(TYPE_NAME_RULE\)/g) || []).length, 5,
+        'the five doors that read a type off the command line still gate it themselves');
+});
+
+// A record that can be written and not read back is a record nobody can check.
+// `triggers --type=<type>` declares one from a checkout that declares no type,
+// which is every checkout on this machine, so `get` and `touch` take the same
+// spelling: the write door and the two read-side doors answer for the same
+// tier or the declaration is unverifiable through the CLI that made it.
+// It runs in the home-redirected store rather than this suite's ordinary one,
+// because memq refuses the named spelling on these two verbs under the engine
+// store signals that harness sets: a granted read or applied stamp in a tier
+// the calling project never declared is what the grant hook withholds, and the
+// CLI states the same refusal in the process that would do the work. The
+// signalled half is its own case below.
+test('get and touch reach a named type tier with --type=<type>, from a project declaring none',
+    (t) => {
+    const store = makeReplaceStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        const webapp = typeDirPath(store, 'webapp');
+        fs.mkdirSync(webapp, { recursive: true });
+        const file = path.join(webapp, 'shared.md');
+        fs.writeFileSync(file, '---\nname: ""\ntags: a\n---\n\n# shared\n\nbody text\n', 'utf8');
+
+        // Declared through the spelling that needs no declaration, then read
+        // back through it: the pass this section exists for is exactly this
+        // sequence, and without the read the write is unverified.
+        const declared = runHome(store, ['triggers', 'shared', '--type=webapp', T_CMD]);
+        assert.strictEqual(declared.status, 0, declared.stderr);
+
+        const bareGet = runHome(store, ['get', 'shared', '--type']);
+        assert.strictEqual(bareGet.status, 1, bareGet.stdout);
+        assert.match(bareGet.stderr, /this project declares no Project-Type/,
+            'the bare flag still resolves from the project: ' + bareGet.stderr);
+
+        const got = runHome(store, ['get', 'shared', '--type=webapp']);
+        assert.strictEqual(got.status, 0, got.stderr);
+        assert.ok(got.stdout.includes('body text'), 'the record answered: ' + got.stdout);
+        assert.ok(got.stdout.includes('triggers: ' + T_CMD),
+            'and its declaration reads back: ' + got.stdout);
+        assert.ok(got.stdout.includes('from type \'webapp\''),
+            'under the named tier\'s own provenance fence: ' + got.stdout);
+        const readStamps = fs.readFileSync(path.join(webapp, 'usage.jsonl'), 'utf8')
+            .split('\n').filter((l) => l !== '').map((l) => JSON.parse(l));
+        assert.deepStrictEqual(readStamps.map((e) => e.kind), ['read'],
+            'the read stamp landed in the pinned tier');
+
+        const bareTouch = runHome(store, ['touch', 'shared', '--applied', '--type']);
+        assert.strictEqual(bareTouch.status, 1, bareTouch.stdout);
+        assert.match(bareTouch.stderr, /this project declares no Project-Type/, bareTouch.stderr);
+
+        const touched = runHome(store, ['touch', 'shared', '--applied', '--type=webapp']);
+        assert.strictEqual(touched.status, 0, touched.stderr);
+        assert.strictEqual(touched.stdout, 'touched shared applied in the webapp type tier\n',
+            'the success line names which type answered: ' + touched.stdout);
+        const stamps = fs.readFileSync(path.join(webapp, 'usage.jsonl'), 'utf8')
+            .split('\n').filter((l) => l !== '').map((l) => JSON.parse(l));
+        assert.deepStrictEqual(stamps.map((e) => e.kind), ['read', 'applied'],
+            'the applied stamp landed in the named tier: ' + JSON.stringify(stamps));
+        assert.ok(!fs.existsSync(usagePath(store)), 'and the project sidecar is untouched');
+
+        // Every bar the write door applies, at both read doors, each refusal
+        // named by its own rule and none of them stamping anything.
+        const before = fs.readFileSync(path.join(webapp, 'usage.jsonl'), 'utf8');
+        const cases = [
+            [['get', 'shared', '--type=nosuch'], /no type 'nosuch' in this store/,
+                'a type the store does not hold'],
+            [['get', 'shared', '--type=WebApp'], caseRefusal('WebApp', 'webapp'),
+                'a type spelled in another case than the store holds it'],
+            [['get', 'shared', '--type=../elsewhere'], /type must be characters from/,
+                'a name that could leave the tier root'],
+            [['get', 'shared', '--type=webapp', '--operator'],
+                /get reads one tier: give --type or --operator, not both/, 'two tiers at once'],
+            [['get', 'shared', '--type=webapp', '--type=infra'], /--type is given once/,
+                'two types at once'],
+            [['touch', 'shared', '--applied', '--type=nosuch'], /no type 'nosuch' in this store/,
+                'a stamp at a type the store does not hold'],
+            [['touch', 'shared', '--applied', '--type=WEBAPP'], caseRefusal('WEBAPP', 'webapp'),
+                'a stamp at a case-variant spelling'],
+            [['touch', 'shared', '--applied', '--type=webapp', '--operator'],
+                /touch stamps one tier: give --type or --operator, not both/,
+                'a stamp at two tiers at once'],
+            [['touch', 'shared', '--applied', '--type', '--type=webapp'],
+                /--type is given once/, 'a stamp naming two types']
+        ];
+        for (const [args, reason, rule] of cases) {
+            const res = runHome(store, args);
+            assert.strictEqual(res.status, 1, rule + ': ' + res.stdout);
+            assert.strictEqual(res.stdout, '', rule + ' answered from a tier');
+            assert.match(res.stderr, reason, rule + ': ' + res.stderr);
+        }
+        assert.strictEqual(fs.readFileSync(path.join(webapp, 'usage.jsonl'), 'utf8'), before,
+            'no refusal above stamped the tier');
+        assert.ok(!fs.existsSync(typeDirPath(store, 'nosuch')),
+            'and no refused type name minted a tier directory');
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+// The CLI half of the screen the grant hook states over the same spelling.
+// Every other store-mutating screened flag carries one, the hook judging its
+// own environment and memq the child's, and where the two read differently
+// this is the half that binds. It costs a fleet worker nothing: the bare
+// spelling still answers from the project's own declared type, so what is
+// refused is the naming of a foreign tier and not the flag.
+test('get and touch refuse a named type tier under the engine store signals', () => {
+    const store = makeStore();
+    try {
+        const webapp = typeDirPath(store, 'webapp');
+        fs.mkdirSync(webapp, { recursive: true });
+        const body = '---\nname: ""\ntriggers: ' + T_CMD + '\n---\n\n# shared\n\nbody text\n';
+        fs.writeFileSync(path.join(webapp, 'shared.md'), body, 'utf8');
+
+        const barred = [
+            [['get', 'shared', '--type=webapp'], 'a read of a tier this project never declared'],
+            [['touch', 'shared', '--applied', '--type=webapp'], 'an applied stamp in that tier'],
+            // A type the store does not hold, which answers here rather than
+            // at the resolution: the refusal sits ahead of every read, so a
+            // refused command touches no filesystem and tells a fleet worker
+            // nothing about which tiers the store holds.
+            [['get', 'shared', '--type=nosuch'], 'a read of a tier the store does not hold']
+        ];
+        for (const [args, rule] of barred) {
+            const res = run(store, args);
+            assert.strictEqual(res.status, 1, rule + ': ' + res.stdout);
+            assert.strictEqual(res.stdout, '', rule + ' answered from a tier');
+            assert.match(res.stderr,
+                /--type=<type> names a tier the calling project never declared, which is refused/,
+                rule + ' is refused by its own rule: ' + res.stderr);
+            assert.match(res.stderr, /KIT_MEMORY_ROOT_ALLOW_DATA=1/,
+                rule + ' names the environment it is refused in: ' + res.stderr);
+        }
+        assert.ok(!fs.existsSync(path.join(webapp, 'usage.jsonl')),
+            'no refusal above stamped the tier, read clock or applied');
+
+        // The controls. The bare spelling keeps both doors under the same
+        // signals, which is the whole of what makes this a screen on naming a
+        // foreign tier; and `triggers` still takes the named spelling here,
+        // its own grant being withheld at the verb word instead, so what the
+        // two refusals above read is the verb and the spelling rather than the
+        // environment alone.
+        writeMemoryFile(store, 'MEMORY.md', 'Project-Type: webapp\n');
+        const bareGet = run(store, ['get', 'shared', '--type']);
+        assert.strictEqual(bareGet.status, 0, bareGet.stderr);
+        assert.ok(bareGet.stdout.includes('body text'), 'the declared tier answered: ' + bareGet.stdout);
+        const bareTouch = run(store, ['touch', 'shared', '--applied', '--type']);
+        assert.strictEqual(bareTouch.status, 0, bareTouch.stderr);
+        assert.strictEqual(bareTouch.stdout, 'touched shared applied in the webapp type tier\n',
+            bareTouch.stdout);
+        const declared = run(store, ['triggers', 'shared', '--type=webapp', T_ERR]);
+        assert.strictEqual(declared.status, 0, declared.stderr);
+        assert.strictEqual(declared.stdout, 'triggers: ' + T_CMD + ', ' + T_ERR + '\n',
+            declared.stdout);
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The gate a named type is exempt from, and the exemption's own bounds. The
+// spelling resolves through typeDir -> memoryRoot, which reads the environment
+// and the home directory and no working directory at all, so the walk the
+// stand-down exists to prevent is not on its path, exactly as it is not on
+// --operator's. Bare --type is the control: it resolves the tier through the
+// project's own index and rides the walk, so it still refuses from the same
+// cwd, which is what makes the exemption the spelling's rather than the flag's.
+test('a network working directory does not stand down the --type=<type> spelling, '
+    + 'and still stands down the bare one', NETWORK_SKIP, () => {
+    const store = makeStore();
+    try {
+        const webapp = typeDirPath(store, 'webapp');
+        fs.mkdirSync(webapp, { recursive: true });
+        const file = path.join(webapp, 'shared.md');
+        fs.writeFileSync(file, '---\nname: ""\n---\n\n# s\n\nbody text\n', 'utf8');
+        const unc = localUncPath(store.proj);
+
+        const declared = runFrom(store, unc, ['triggers', 'shared', '--type=webapp', T_CMD], {});
+        assert.strictEqual(declared.status, 0, declared.stderr);
+        assert.strictEqual(declared.stdout, 'triggers: ' + T_CMD + '\n', declared.stdout);
+        assert.ok(fs.readFileSync(file, 'utf8').includes('triggers: ' + T_CMD),
+            'the write landed from a network working directory');
+
+        // The two read doors refuse the named spelling under the engine store
+        // signals this harness carries, so what they show here is which
+        // refusal answered: the one about the spelling, never the one about
+        // the working directory. A hoist that had failed to exempt them would
+        // stand them down for the share instead, and that is the reading this
+        // case is for.
+        for (const args of [['get', 'shared', '--type=webapp'],
+            ['touch', 'shared', '--applied', '--type=webapp']]) {
+            const res = runFrom(store, unc, args, {});
+            assert.doesNotMatch(res.stderr, /names a network share/,
+                args.join(' ') + ' was not stood down for the share: ' + res.stderr);
+            assert.match(res.stderr, /which is refused under the engine store signals/,
+                args.join(' ') + ' answered on the spelling instead: ' + res.stderr);
+        }
+
+        // The control at each of the three doors: the spelling that does
+        // resolve a project memory directory from this same cwd still refuses,
+        // so the exemption above is about the path the spelling takes rather
+        // than about the gate having gone.
+        for (const args of [['triggers', 'shared', '--type', T_CMD],
+            ['get', 'shared', '--type'], ['touch', 'shared', '--applied', '--type']]) {
+            const res = runFrom(store, unc, args, {});
+            assert.match(res.stderr, /names a network share/,
+                args.join(' ') + ' still stands down: ' + res.stderr);
+        }
+    } finally {
+        rmStore(store);
+    }
+});
+
 // The other two refusals that hand a caller an instruction: a triggers: line
 // carrying an entry no reader reads, and one past the cap. On the project tier
 // the instruction is a hand edit, which is the writer that tier has. On a
 // shared tier there is no hand-edit path (the frontmatter guard denies Write,
-// Edit and MultiEdit there for every writer) and no verb that rewrites a line
-// a record already carries, so the instruction names what does change it:
-// replacing the record whole, or, under the engine store signals that refuse
-// the shared deletes, the state that leaves.
+// Edit and MultiEdit there for every writer), and the two shapes then part
+// company. An unreadable entry is text the refusal itself prints, so a replace
+// can drop it and name what it dropped, and that is the route the line gives.
+// A tail past the reader's bound is text nothing here has read, so no replace
+// can name it and the route is replacing the record whole, or, under the
+// engine store signals that refuse the shared deletes, the state that leaves.
 test('a shared-tier triggers refusal names a route that tier has, and the project tier keeps its hand edit',
     () => {
     const store = makeStore();
     const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'memq-home-'));
+    // One entry past what a reader reads, so the line as it stands is already
+    // truncated and a merge into it would drop the tail.
+    const overCap = Array.from({ length: memq.TRIGGER_ENTRIES_MAX + 1 },
+        (_, i) => 'cmd:pattern-' + i).join(', ');
+    const overCapBody = '---\nname: ""\ntriggers: ' + overCap + '\n---\n\n# c\n';
     try {
         const operatorDir = operatorDirPath(store);
         fs.mkdirSync(operatorDir, { recursive: true });
-        // One entry past what a reader reads, so the line as it stands is
-        // already truncated and a merge into it would drop the tail.
-        const overCap = Array.from({ length: memq.TRIGGER_ENTRIES_MAX + 1 },
-            (_, i) => 'cmd:pattern-' + i).join(', ');
         const shapes = [
-            ['bad-entry', '---\nname: ""\ntriggers: not-an-entry\n---\n\n# b\n',
-                /already carries a triggers: entry this cannot read/,
-                /Correct the line by hand and rerun/],
-            ['over-cap', '---\nname: ""\ntriggers: ' + overCap + '\n---\n\n# c\n',
-                /carries a triggers: line past what a reader reads/,
-                /shorten the line by hand and rerun/]
+            {
+                name: 'bad-entry',
+                contents: '---\nname: ""\ntriggers: not-an-entry\n---\n\n# b\n',
+                reason: /already carries a triggers: entry this cannot read/,
+                byHand: /Correct the line by hand and rerun/,
+                sharedRoute: /a shared tier has no hand-edit path, so what corrects the line is a replace: while this process carries the engine store signals nothing here writes the entries it names in place of the whole line and says on stderr which unreadable entry it dropped, because those signals refuse a shared-tier replace/,
+                namesTheDeleteFork: false
+            },
+            {
+                name: 'over-cap',
+                contents: overCapBody,
+                reason: /carries a triggers: line past what a reader reads/,
+                byHand: /shorten the line by hand and rerun/,
+                sharedRoute: /a shared tier has no hand-edit path, and the tail past that bound is text nothing here has read, so --replace cannot name it either/,
+                namesTheDeleteFork: true
+            }
         ];
-        for (const [name, contents, reason, byHand] of shapes) {
+        for (const shape of shapes) {
+            const { name, contents, reason, byHand } = shape;
             fs.writeFileSync(path.join(operatorDir, name + '.md'), contents, 'utf8');
             const shared = run(store, ['triggers', name, '--operator', T_CMD]);
             assert.strictEqual(shared.status, 1, name + ': ' + shared.stdout);
             assert.match(shared.stderr, reason, name + ': ' + shared.stderr);
-            assert.match(shared.stderr,
-                /a shared tier has no hand-edit path and no verb here rewrites a line a record already carries/,
-                name + ' says why the hand edit is not the route: ' + shared.stderr);
+            assert.match(shared.stderr, shape.sharedRoute,
+                name + ' names the route that tier has: ' + shared.stderr);
             assert.doesNotMatch(shared.stderr, byHand,
                 name + ' does not send a shared-tier caller to a tool that denies them: '
                     + shared.stderr);
+            // The delete fork belongs to the shape a replace cannot correct.
             // This child carries the engine store signals, which refuse the
-            // shared deletes, so the line names the state rather than a verb
-            // that would answer with a refusal.
-            assert.match(shared.stderr,
-                /while this process carries the engine store signals nothing here removes the record/,
-                name + ' names no command refused in this environment: ' + shared.stderr);
+            // shared deletes, so that line names the state rather than a verb
+            // that would answer with a refusal. The unreadable entry names no
+            // delete at all, its route being a verb this environment runs.
+            const deleteFork
+                = /while this process carries the engine store signals nothing here removes the record/;
+            if (shape.namesTheDeleteFork) {
+                assert.match(shared.stderr, deleteFork,
+                    name + ' names no command refused in this environment: ' + shared.stderr);
+            } else {
+                assert.doesNotMatch(shared.stderr, deleteFork,
+                    name + ' sends nobody to a delete when a replace corrects it: ' + shared.stderr);
+                assert.doesNotMatch(shared.stderr, /delete-operator/,
+                    name + ' names no delete at all: ' + shared.stderr);
+                // Its own route forks on the same signals and for the same
+                // reason: a shared-tier replace is refused under them too, so
+                // the line names the state rather than a command whose whole
+                // answer here is a refusal.
+                assert.doesNotMatch(shared.stderr, /--replace --confirm-shared/,
+                    name + ' names a command this environment refuses: ' + shared.stderr);
+            }
 
             // The project tier's control: the same record, the same verb, no
             // tier flag. The hand edit is the route there and still the words
@@ -22955,11 +24148,12 @@ test('a shared-tier triggers refusal names a route that tier has, and the projec
                     + project.stderr);
         }
 
-        // The other branch of the shared-tier line, in a child that carries no
-        // store signals: there the delete verbs run, so the line names the one
-        // that replaces this record. The child's home is a temp directory, so
-        // "the store this process really reads" is observable without touching
-        // ~/.claude, and the record is written into that store's operator tier.
+        // The other branch of the shared-tier line the truncated shape gives,
+        // in a child that carries no store signals: there the delete verbs
+        // run, so the line names the one that replaces this record. The
+        // child's home is a temp directory, so "the store this process really
+        // reads" is observable without touching ~/.claude, and the record is
+        // written into that store's operator tier.
         const env = scrubRunEnv({ ...process.env });
         delete env.KIT_MEMORY_ROOT;
         delete env.KIT_MEMORY_ROOT_ALLOW_DATA;
@@ -22971,16 +24165,30 @@ test('a shared-tier triggers refusal names a route that tier has, and the projec
         env.HOME = fakeHome;
         const homeOperator = path.join(fakeHome, '.claude', 'memory-operator');
         fs.mkdirSync(homeOperator, { recursive: true });
-        fs.writeFileSync(path.join(homeOperator, 'bad-entry.md'),
-            '---\nname: ""\ntriggers: not-an-entry\n---\n\n# b\n', 'utf8');
+        fs.writeFileSync(path.join(homeOperator, 'over-cap.md'), overCapBody, 'utf8');
         const ungated = spawnSync(process.execPath,
-            [MEMQ, 'triggers', 'bad-entry', '--operator', T_CMD],
+            [MEMQ, 'triggers', 'over-cap', '--operator', T_CMD],
             { cwd: store.proj, encoding: 'utf8', env });
         assert.strictEqual(ungated.status, 1, ungated.stdout);
         assert.match(ungated.stderr,
-            /`delete-operator bad-entry --confirm-shared` removes the record, and adding it again writes the/,
+            /`delete-operator over-cap --confirm-shared` removes the record, and adding it again writes the/,
             'without the signals the line names the verb that replaces the record: '
                 + ungated.stderr);
+
+        // The same branch of the unreadable entry's own line, in the same
+        // ungated child: there the replace runs, so the line names the command
+        // rather than the state, which is what makes the forked wording above
+        // the environment rather than the route having gone missing.
+        fs.writeFileSync(path.join(homeOperator, 'bad-entry.md'),
+            '---\nname: ""\ntriggers: not-an-entry\n---\n\n# b\n', 'utf8');
+        const ungatedBad = spawnSync(process.execPath,
+            [MEMQ, 'triggers', 'bad-entry', '--operator', T_CMD],
+            { cwd: store.proj, encoding: 'utf8', env });
+        assert.strictEqual(ungatedBad.status, 1, ungatedBad.stdout);
+        assert.match(ungatedBad.stderr,
+            /`memq triggers bad-entry <type>:<pattern>\.\.\. --operator --replace --confirm-shared` writes the entries it names in place of the whole line/,
+            'without the signals the line names the replace that corrects it: '
+                + ungatedBad.stderr);
     } finally {
         rmStore(store);
         try { fs.rmSync(fakeHome, { recursive: true, force: true }); } catch { /* best effort */ }
@@ -23205,7 +24413,7 @@ test('get --type and --operator pin the rung, reaching a record a nearer tier sh
         const both = run(store, ['get', 'same-name', '--type', '--operator']);
         assert.match(both.stderr, /get reads one tier: give --type or --operator, not both/,
             both.stderr);
-        assert.match(both.stderr, /memq get <key\|name> \[--type\|--operator\]/,
+        assert.match(both.stderr, /memq get <key\|name> \[--type\|--type=<type>\|--operator\]/,
             'the usage banner names the flags the tree implements: ' + both.stderr);
         assert.match(run(store, ['get', 'same-name', '--nope']).stderr,
             /unknown option --nope/, 'an option this verb does not take is named');
@@ -23316,7 +24524,7 @@ test('a record nothing could read takes no triggers rather than being written in
             ['misplaced.md', '---\nname: x\nprovenance:\n  triggers: ' + T_CMD + '\n---\n\nbody\n',
                 /has a triggers: field under a key other than the harness's metadata: map/],
             ['refused-entry.md', '---\nname: ""\ntriggers: not-an-entry\n---\n\nbody\n',
-                /already carries a triggers: entry this cannot read, and a rewrite would drop it/]
+                /already carries a triggers: entry this cannot read, and a merge would drop it/]
         ];
         for (const [file, contents, reason] of cases) {
             writeMemoryFile(store, file, contents);
@@ -23342,6 +24550,15 @@ test('a record nothing could read takes no triggers rather than being written in
         assert.doesNotMatch(projectUnclosed.stderr.split('usage: memq log')[0],
             /--confirm-shared|has no hand-edit path/,
             'and is not sent to a shared-tier authoring route');
+        // The misplaced field's repair forks the same way, and this is the
+        // branch a project-tier author can act on: move the field and rerun.
+        const projectNested = run(store, ['triggers', 'misplaced', T_CMD]);
+        assert.match(projectNested.stderr,
+            /move it to the frontmatter block's top level, where it reads whether or not the harness then moves it under metadata:, and rerun/,
+            'the project tier is told to move the field: ' + projectNested.stderr);
+        assert.doesNotMatch(projectNested.stderr.split('usage: memq log')[0],
+            /has no hand-edit path/,
+            'and is not sent to a shared-tier authoring route either');
         // The control the three refusals rest on: a record whose block reads
         // fine takes the same entry through the same door.
         writeMemoryFile(store, 'ok.md', '---\nname: ""\n---\n\nbody\n');

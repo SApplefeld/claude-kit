@@ -331,6 +331,20 @@ test('triggers gets no grant, in the shape that grants its neighbours', () => {
         'triggers with an entry');
     assertNoDecision(runHook('node "' + MEMQ + '" triggers fact'),
         'triggers short of its arity is refused the grant just the same');
+    // The two spellings this verb gained after the screen was written. The
+    // replace is withheld by the allowlist entry alone, which reads the verb
+    // word and never the flags, so it exercises no flag logic here; the
+    // attached type spelling now meets the flag screen as well, so it is
+    // withheld twice over and either screen alone would answer. Both are
+    // pinned because the security model names the change that would break the
+    // verb-word leg: a parser that later admits a flag ahead of the subcommand
+    // shifts the verb out of the position this screen reads, and a replace is
+    // the shape whose escape costs the most, since it removes a record's
+    // triggers: line outright on a tier every synced machine reads.
+    assertNoDecision(runHook('node "' + MEMQ + '" triggers fact --replace --operator --confirm-shared'),
+        'a shared-tier replace, which erases a declaration rather than aiming one, is withheld with the rest of the verb');
+    assertNoDecision(runHook('node "' + MEMQ + '" triggers fact cmd:git stash --type=webapp'),
+        'the attached-value type spelling is withheld too, the screen reading the verb word rather than the flag');
     // The control the deny rests on: the same harness, the same command
     // shape, a verb the allowlist does name. Without it a fixture broken in
     // any of the ways this file tests elsewhere would produce the same
@@ -479,6 +493,37 @@ test('--trigger gets no grant on either write verb, while the write itself keeps
         'the type-tier create');
     // A flag that merely starts the same is not the screened one.
     assertGrant(runHook('node "' + MEMQ + '" add-operator fact words --triggerwise x'),
+        'a longer flag the screen must not swallow');
+});
+
+test('--type=<type> gets no grant on the read verbs, while the bare flag keeps its grant', () => {
+    // The attached spelling names any type tier the store holds; the bare flag
+    // resolves the one the calling project's own index declares, which is that
+    // project's own opt-in. `get` and `touch` are granted verbs, so on this
+    // vector a worker runs them with nobody in the loop: without this screen
+    // `get --type=<x>` reads an arbitrary type tier's body into an unattended
+    // model's context and stamps that tier's read clock, and
+    // `touch --applied --type=<x>` writes an applied stamp the decay pass reads
+    // as a sign of life. Both verbs refuse the spelling under those same
+    // signals, so this screen is the second lock rather than the only one, and
+    // it is the half that binds where the hook and the child read their
+    // environments differently.
+    assertNoDecision(runHook('node "' + MEMQ + '" get fact --type=webapp'),
+        'a read of a tier the calling project never declared');
+    assertNoDecision(runHook('node "' + MEMQ + '" touch fact --applied --type=webapp'),
+        'an applied stamp in that same tier');
+    assertNoDecision(runHook('node "' + MEMQ + '" get fact --type='),
+        'the attached spelling carrying no value, which is a whole word here');
+    // What stays granted is the flag itself, which is the whole of what makes
+    // this a screen on the naming of a foreign tier rather than on the flag.
+    assertGrant(runHook('node "' + MEMQ + '" get fact --type'),
+        'the project\'s own declared type, read');
+    assertGrant(runHook('node "' + MEMQ + '" touch fact --applied --type'),
+        'the project\'s own declared type, stamped');
+    assertGrant(runHook('node "' + MEMQ + '" get fact --operator'),
+        'the operator tier, which every project reads unconditionally');
+    // A longer flag that merely starts the same is not this one.
+    assertGrant(runHook('node "' + MEMQ + '" get fact --typewise=webapp'),
         'a longer flag the screen must not swallow');
 });
 

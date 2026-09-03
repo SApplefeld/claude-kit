@@ -5,13 +5,15 @@
 // Subcommands:
 //   memq log <key> pass|fail "<summary>" [--tag t]... [--detail "..."]
 //   memq find <term> [--tag t] [--outcomes|--memories|--all] [--archived]
-//   memq get <key|name> [--type|--operator]
+//   memq get <key|name> [--type|--type=<type>|--operator]
 //   memq recall
 //   memq recent [--since <n>d|<n>h]
 //   memq unstamped [--since <n>d|<n>h]
-//   memq touch <name> --applied [--type|--operator]
+//   memq touch <name> --applied [--type|--type=<type>|--operator]
 //   memq anchor <name> <path>...
-//   memq triggers <name> <type>:<pattern>... [--type|--operator]
+//   memq triggers <name> <type>:<pattern>... [--type|--type=<type>|--operator]
+//   memq triggers <name> [<type>:<pattern>...] --replace
+//                 [(--type|--type=<type>|--operator) --confirm-shared]
 //   memq add-type <type> <name> "<description>" [--tag t]...
 //                 [--trigger <type>:<pattern>]... [--supersedes <name>]
 //                 [--body "..."|--body-file "<path>"]
@@ -288,6 +290,13 @@ const NAME_CAP = 80;       // characters of a key or memory name, at write and d
 const MEMORY_FILE_CAP = NAME_CAP + 3;   // the same cap over a memory filename, '.md' included
 const TAG_CAP = 40;        // characters of a tag, at write and display
 const TYPE_CAP = 40;       // characters of a project-type name, at write and display
+// What a type name may be, in the one wording every door that takes one
+// states: the five verbs that read a type off the command line and the
+// boundary they resolve it through (namedTypeDirOrNote). One string because a
+// caller reads this sentence from whichever door refused, and two spellings of
+// one rule read as two rules.
+const TYPE_NAME_RULE = 'type must be characters from [A-Za-z0-9_.-], at most ' + TYPE_CAP
+    + ', and not a path token';
 const FAILURE_TEXT_CAP = 400;   // characters of a failure's own message, in the line reporting it
 const BACKUP_LIST_CAP = 240;    // characters of the backup names a failure line offers
 // Characters of a machine name. A Windows NetBIOS name stops at 15, but the
@@ -1922,9 +1931,15 @@ function projectType(cwd) {
 }
 
 // The type tier this project has opted into, as {type, dir}, or null when the
-// project declares no type or the tier does not exist on disk yet. Every
-// consumer that spans tiers (`find`, `get`, `touch --type`, the decay pass)
-// resolves through this, so "which type tier is mine" has one answer.
+// project declares no type or the tier does not exist on disk yet.
+//
+// What it answers is the bare `--type` spelling's question and only that one:
+// which tier is this project's own. Every consumer that asks that question
+// (`find`, the bare `--type` of `get`, `touch` and `triggers`, the decay pass)
+// resolves through this, so it has one answer. The spelling that names a tier
+// outright asks a different question and resolves through namedTypeDirOrNote
+// below, which reads no project declaration at all, so three of those verbs
+// carry both routes and which one a call takes is decided at its own door.
 function typedTierOrNull(cwd) {
     const type = projectType(cwd);
     if (type === null) return null;
@@ -1932,6 +1947,133 @@ function typedTierOrNull(cwd) {
     let st = null;
     try { st = fs.statSync(dir); } catch { return null; }
     return st.isDirectory() ? { type, dir } : null;
+}
+
+// The type tier a caller named outright, as its directory, or null having
+// written the refusal that says why there is none. The counterpart of
+// typedTierOrNull for the `--type=<type>` spelling: that one asks the project
+// which tier is its own, this one takes the tier from the command line, so
+// nothing here reads a working directory or a project index at all. Every verb
+// that admits the spelling resolves through this, so an absent type, a
+// mis-cased one and an unlistable tier root read the same words whichever verb
+// was asked.
+//
+// The name is asked here rather than only at the caller's door: every caller
+// asks isTypeName first and keeps doing so, since a door refusing in its own
+// words is what a caller reads, but this is the one place a caller's string
+// becomes a path, so the guard belongs to the crossing rather than to the
+// verb that first needed it. The words are the doors' own (TYPE_NAME_RULE), so
+// a caller meets one rule whichever layer answered.
+//
+// The spelling is confirmed against the store's own listing rather than
+// against the stat alone, because a stat answers case-insensitively on NTFS:
+// `--type=WebApp` finds the `webapp` directory, writes into it, and then names
+// `WebApp` in everything it reports, which is a type that exists nowhere on
+// the case-sensitive peer this store syncs to. The refusal names both
+// spellings, the one asked for and the one the store holds, so the re-run is
+// the caller's own words with the store's casing. A listing that cannot be
+// read decides nothing, so it refuses rather than proceeding on the stat: the
+// question this answers is which directory the store holds, and a run that
+// could not look is not a run that found one.
+//
+// That refusal answers first, ahead of every absence this derives from the
+// stat, and the distinction it rests on is storeTypeSpelling's own: a root
+// that is simply not there is an absence and a root that could not be read is
+// not an answer at all. One permission error on the tier root fails the
+// listing and the type directory's stat together, so an unlistable root read
+// second would fall through to the absence branch and tell a caller the store
+// holds no such type when it may well hold it, which is the conflation this
+// pair of messages exists to keep apart.
+function namedTypeDirOrNote(namedType) {
+    const shown = sanitize(namedType, TYPE_CAP);
+    if (!isTypeName(namedType)) {
+        process.stderr.write('memq: ' + TYPE_NAME_RULE + ' (nothing was done)\n');
+        return null;
+    }
+    const spelling = storeTypeSpelling(namedType);
+    if (!spelling.listed && !spelling.rootAbsent) {
+        typeListingNote(shown, 'nothing was done');
+        return null;
+    }
+    const dir = typeDir(namedType);
+    let st = null;
+    try { st = fs.statSync(dir); } catch { st = null; }
+    const actual = spelling.actual;
+    if (st === null || !st.isDirectory() || actual === undefined) {
+        process.stderr.write('memq: no type \'' + shown + '\' in this store, so --type='
+            + shown + ' has no target\n');
+        return null;
+    }
+    if (actual !== namedType) {
+        typeCaseNote(actual, '--type=' + shown, 'nothing was done');
+        return null;
+    }
+    return dir;
+}
+
+// The store's own spelling of a type, as {listed, rootAbsent, actual}: whether
+// the type-tier root could be listed at all, whether it is simply not there
+// yet, and the entry the listing holds for this name, undefined where it holds
+// none. The doors that join a caller's type onto a path share it, so the
+// question "does this store hold this type, spelled this way" has one answer
+// whether the door is about to read a tier or mint one.
+//
+// A root that is not there is held apart from one that could not be read,
+// because the two mean opposite things to a create: the first is the state a
+// store's very first type tier is created in, and the second is a store this
+// process cannot see the shape of.
+function storeTypeSpelling(namedType) {
+    let entries = null;
+    let code = null;
+    try {
+        entries = fs.readdirSync(typesRootPath());
+    } catch (err) {
+        code = err && err.code ? err.code : String(err);
+    }
+    if (entries === null) {
+        return { listed: false, rootAbsent: code === 'ENOENT', actual: undefined };
+    }
+    return { listed: true, rootAbsent: false, actual: entries.find((e) => fsEq(e, namedType)) };
+}
+
+// The refusal `get` and `touch` answer a named type tier with under the
+// engine's store signals, in one wording for both, because a caller meets one
+// rule whichever verb they spelled it on.
+//
+// It is the screen the grant hook states over the same spelling, stated again
+// in the process that would do the work: the hook judges its own environment
+// and this judges the child's, and where the two disagree this is the half
+// that binds, which is why every other store-mutating screened flag carries
+// its pair here. What makes the pair cheap is the bare spelling: `--type`
+// still resolves the calling project's own declared type, so a fleet worker
+// loses the naming of a foreign tier and nothing else. `reach` is what the
+// verb would do in a tier the project never opted into, since the two verbs
+// are refused for different halves of the same invariant.
+function namedTypeRefusedBySignals(reach) {
+    return '--type=<type> names a tier the calling project never declared, which is refused'
+        + ' under the engine store signals (KIT_MEMORY_ROOT with KIT_MEMORY_ROOT_ALLOW_DATA=1):'
+        + ' the standing grant an unattended worker runs under withholds that spelling, and '
+        + reach + '. Bare --type still answers from the project\'s own declared type';
+}
+
+// The refusal for a spelling the store holds in another case, in one wording
+// for every door: the reader that resolves a named tier and the create that
+// would otherwise mint a second spelling of one. `given` is how the caller
+// named the type, since a flag and a positional are read back differently, and
+// `nothing` is that door's own words for what it did not do.
+function typeCaseNote(actual, given, nothing) {
+    process.stderr.write('memq: this store spells that type \'' + sanitize(actual, TYPE_CAP)
+        + '\', and ' + given + ' differs from it in case; a case-insensitive filesystem answers'
+        + ' for either spelling and a case-sensitive one that shares this store answers for'
+        + ' neither, so name the type the way the store holds it (' + nothing + ')\n');
+}
+
+// The refusal for a type-tier root that could not be listed, the counterpart
+// of the case note above: the store may or may not hold this type under some
+// spelling, and a run that could not look is not a run that found out.
+function typeListingNote(shown, nothing) {
+    process.stderr.write('memq: the type tiers could not be listed, so whether this store'
+        + ' spells the type \'' + shown + '\' that way is unknown and ' + nothing + '\n');
 }
 
 // Where the operator tier lives. It takes no argument because there is one
@@ -4801,13 +4943,15 @@ function usage(problem) {
     process.stderr.write(
         'usage: memq log <key> pass|fail "<summary>" [--tag t]... [--detail "..."]\n'
         + '       memq find <term> [--tag t] [--outcomes|--memories|--all] [--archived]\n'
-        + '       memq get <key|name> [--type|--operator]\n'
+        + '       memq get <key|name> [--type|--type=<type>|--operator]\n'
         + '       memq recall\n'
         + '       memq recent [--since <n>d|<n>h]\n'
         + '       memq unstamped [--since <n>d|<n>h]\n'
-        + '       memq touch <name> --applied [--type|--operator]\n'
+        + '       memq touch <name> --applied [--type|--type=<type>|--operator]\n'
         + '       memq anchor <name> <path>...\n'
-        + '       memq triggers <name> <type>:<pattern>... [--type|--operator]\n'
+        + '       memq triggers <name> <type>:<pattern>... [--type|--type=<type>|--operator]\n'
+        + '       memq triggers <name> [<type>:<pattern>...] --replace\n'
+        + '                     [(--type|--type=<type>|--operator) --confirm-shared]\n'
         + '       memq add-type <type> <name> "<description>" [--tag t]...\n'
         + '                     [--trigger <type>:<pattern>]... [--supersedes <name>]\n'
         + '                     [--body "..."|--body-file "<path>"]\n'
@@ -6598,13 +6742,19 @@ const ANCHOR_ROOTLESS_PIN = 'a store pin is in effect, so no root is derived'
 const ANCHOR_TIER_UNEXAMINED = 'this tier could not be examined';
 
 // A working directory naming a network share is not a distinct whole-tier
-// cause here, because it cannot reach this code without a store pin also
-// being in effect: cmdGet, cmdRecall, cmdDecayScan and cmdAnchor each hoist
-// a refusal above this point that fires whenever
-// pinnedProjectSegment() === null && namesNetworkShare(cwd), so a
-// network-shaped cwd reaching any of the four checks below the hoist is
-// always a pinned one, and anchorRoot(cwd) already answers null for a pin
-// before it ever touches cwd's filesystem shape. The pin cause
+// cause here, because no cell that names one is reached without a store pin
+// also being in effect. cmdGet, cmdRecall, cmdDecayScan and cmdAnchor each
+// hoist a refusal above this point that fires whenever
+// pinnedProjectSegment() === null && namesNetworkShare(cwd). That hoist is
+// per door rather than per verb, `get` excluding `--operator` and
+// `--type=<type>` from it because neither reads a working directory at all,
+// so what carries the invariant for those two rungs is not the hoist but the
+// shared-tier short-circuit in anchorReport below, which answers before
+// anchorRoot(cwd) is called on any shared tier. Every cell that does reach
+// anchorRoot(cwd) is therefore either past the hoist, where a network-shaped
+// cwd is always a pinned one, or on a tier the short-circuit already
+// answered for, and anchorRoot(cwd) answers null for a pin before it ever
+// touches cwd's filesystem shape. The pin cause
 // (ANCHOR_ROOTLESS_PIN) is the whole account of why no root is derived for
 // that cell; naming the network share there instead would tell a pinned
 // operator on a UNC path to move off the share and re-run, a remedy that
@@ -6727,10 +6877,17 @@ function anchorReport(file, raw, sharedTier) {
     }
     if (parsed.items.length === 0 && !parsed.truncated) return '';
     // This door calls anchorRoot(cwd) directly rather than checking
-    // namesNetworkShare(cwd) first, because cmdGet's own hoist above already
+    // namesNetworkShare(cwd) first, and what makes that safe is the
+    // shared-tier return above rather than cmdGet's hoist alone. The hoist
     // refuses whenever pinnedProjectSegment() === null &&
-    // namesNetworkShare(cwd), so this door is reached only when that refusal
-    // did not fire: a pin is set, or cwd is not network-shaped, or both.
+    // namesNetworkShare(cwd), but it exempts the two spellings that read no
+    // working directory (`--operator` and `--type=<type>`), and those are
+    // exactly the calls the shared-tier branch has already answered before
+    // this line: every call reaching here is on the project tier and so past
+    // the hoist, which leaves a pin set, a cwd that is not network-shaped, or
+    // both. A rung added under either exempt flag that is not a shared tier
+    // would land here unscreened and ride the walk, which is what this
+    // paragraph is here to prevent.
     // namesNetworkShare(cwd) can only be true here alongside a pin, and
     // under a pin anchorRoot(cwd) already returns null before it ever
     // touches cwd's filesystem shape (pinnedProjectSegment is checked
@@ -6833,6 +6990,15 @@ function triggerReport(file, raw, indented) {
 // the whole of what makes the flag worth having: a read credited to the tier
 // that was actually served is what advances that record's decay clock.
 //
+// `--type` has `triggers`'s two spellings and they answer that verb's two
+// questions: bare, the working project's own declared Project-Type, and
+// `--type=<type>` the tier named outright. The named spelling is what reads
+// back a record a checkout declaring no type can nonetheless write, which is
+// most checkouts, and a record that can be written and not read is a record
+// nobody can check. Given twice it is refused rather than resolved by
+// last-wins, and a name that is not a type name is refused before it is joined
+// onto a path.
+//
 // A record's own `anchors:` states follow its body on stdout, one line per
 // anchor, or one line naming why they could not be checked (anchorReport
 // above). The project and pending rungs are checked; a shared tier's rung is
@@ -6859,10 +7025,18 @@ function triggerReport(file, raw, indented) {
 function cmdGet(argv) {
     let target = null;
     let fromType = false;
+    let namedType = null;
     let fromOperator = false;
     for (const a of argv) {
-        if (a === '--type') fromType = true;
-        else if (a === '--operator') fromOperator = true;
+        if (a === '--type' || a.startsWith('--type=')) {
+            // `triggers`'s two spellings of the flag, read here the same way
+            // and refused the same way for a second of either: this verb's
+            // one positional is a key or a name, so a lookahead value would
+            // be read as the record to fetch.
+            if (fromType) return usage('--type is given once, as --type or --type=<type>');
+            fromType = true;
+            if (a !== '--type') namedType = a.slice('--type='.length);
+        } else if (a === '--operator') fromOperator = true;
         else if (a.startsWith('--')) return usage('unknown option ' + sanitize(a, 40));
         else if (target !== null) return usage('get needs one <key|name>');
         else target = a;
@@ -6889,6 +7063,23 @@ function cmdGet(argv) {
         return usage('name must be characters from [A-Za-z0-9_.-], at most '
             + (MEMORY_FILE_CAP - 3) + ', and not the memory index');
     }
+    // A named type is joined onto a path under the type-tier root, so it
+    // answers the store's own type-name gate here, before anything is
+    // resolved from it, which is where add-type, delete-type and `triggers`
+    // ask it too.
+    if (namedType !== null && !isTypeName(namedType)) {
+        return usage(TYPE_NAME_RULE);
+    }
+    // The named spelling is refused under the engine's store signals, the pair
+    // that says this process was pointed at a fleet store deliberately. It
+    // answers after the name gates above, so a command doomed by what it
+    // spelled hears that in every environment, and before anything is
+    // resolved, so a refused command touches no filesystem.
+    if (namedType !== null && storeSignalsPresent()) {
+        return usage(namedTypeRefusedBySignals('a read there puts that tier\'s record in front'
+            + ' of a model and stamps a read clock in a tier no project on this vector opted'
+            + ' into'));
+    }
     // This hoist sits ahead of readMemDirOrNote(): that call's own first
     // statement, projectMemoryDir(process.cwd()), reaches
     // worktreeMainRoot's fs.statSync(cwd/.git) whenever no pin is set, the
@@ -6903,9 +7094,12 @@ function cmdGet(argv) {
     // resolves through operatorTierOrNull(), which takes no cwd argument at
     // all, and it reads no journal, no pending tier and no project rung, so
     // nothing on its path reaches the walk. Gating it would refuse a read for
-    // a hazard that is not on its path. `--type` rides the gate with the plain
-    // form, reaching the same walk through typedTierOrNull(cwd).
-    if (!fromOperator && pinnedProjectSegment() === null && namesNetworkShare(process.cwd())) {
+    // a hazard that is not on its path. Bare `--type` rides the gate with the
+    // plain form, reaching the same walk through typedTierOrNull(cwd);
+    // `--type=<type>` is excluded beside `--operator` and for its reason,
+    // resolving through typeDir(type) -> memoryRoot(), which reads the
+    // environment and the home directory and no working directory at all.
+    if (!fromOperator && namedType === null && pinnedProjectSegment() === null && namesNetworkShare(process.cwd())) {
         process.stderr.write('memq: this call\'s working directory names a network share, so its '
             + 'project memory directory was not resolved (a synchronous walk under it risks '
             + 'hanging for the SMB timeout on an unreachable host); nothing to report\n');
@@ -6973,17 +7167,38 @@ function cmdGet(argv) {
         let dir = null;
         let fence = null;
         let retired = null;
-        if (fromType) {
+        if (fromType && namedType !== null) {
+            // The type the caller spelled, which is what reaches a type-tier
+            // record from a checkout that declares no type at all. It answers
+            // on the tier's own presence and nothing else, the project's
+            // declaration being a question this spelling never asks.
+            const named = namedTypeDirOrNote(namedType);
+            if (named === null) {
+                process.exitCode = 1;
+                return;
+            }
+            dir = named;
+            fence = typeFenceLine(namedType);
+            // The type is named with the tier, which is the one rule the three
+            // verbs that take this flag state at every door: `touch`'s success
+            // and refusal lines and `triggers`' own name it too, on either
+            // spelling. A store holds a tier per type, so the tier word alone
+            // no longer says which record a line is about, and the caller who
+            // spelled the bare flag is the one least able to supply the
+            // missing word, having named no type at all.
+            retired = 'the ' + sanitize(namedType, TYPE_CAP) + ' type tier';
+        } else if (fromType) {
             const typed = typedTierOrNull(process.cwd());
             if (typed === null) {
                 process.stderr.write('memq: this project declares no Project-Type'
-                    + ' (or its type directory does not exist), so --type has no target\n');
+                    + ' (or its type directory does not exist), so --type has no target'
+                    + ' (--type=<type> names one outright)\n');
                 process.exitCode = 1;
                 return;
             }
             dir = typed.dir;
             fence = typeFenceLine(typed.type);
-            retired = 'the type tier';
+            retired = 'the ' + sanitize(typed.type, TYPE_CAP) + ' type tier';
         } else {
             const operator = operatorTierOrNull();
             if (operator === null) {
@@ -7057,8 +7272,9 @@ function cmdGet(argv) {
             // change.
             rungs.push({
                 dir: path.join(typed.dir, ARCHIVE_DIR), fence: typeFenceLine(typed.type),
-                stampDir: typed.dir, retiredIn: 'the type tier', supersedesIn: typed.dir,
-                sharedTier: true
+                stampDir: typed.dir,
+                retiredIn: 'the ' + sanitize(typed.type, TYPE_CAP) + ' type tier',
+                supersedesIn: typed.dir, sharedTier: true
             });
         }
         if (operator !== null) {
@@ -8781,11 +8997,13 @@ function cmdUnstamped(argv) {
 // which is the signal the decay lifecycle keys on, so --applied is required
 // rather than defaulted. The write is a single append-mode write to
 // usage.jsonl in the project memory dir, the same posture as the journal.
-// With --type the stamp lands in the declared type tier's usage.jsonl
-// instead, the tier resolved through the project's own Project-Type line
-// rather than named on the command line, so a stamp can never land in a type
-// the project has not opted into; with --operator it lands in the operator
-// tier's, which needs no resolution at all because there is one operator. The
+// With --type the stamp lands in a type tier's usage.jsonl instead, on
+// `triggers`'s two spellings of the flag: bare, the tier is resolved through
+// the project's own Project-Type line, so a stamp can never land in a type
+// the project has not opted into, and `--type=<type>` names the tier outright,
+// which is what stamps the record a checkout declaring no type can still
+// write and read. With --operator it lands in the operator tier's, which
+// needs no resolution at all because there is one operator. The
 // stamp hook already writes `read`
 // stamps into every tier; these flags are what let the `applied` half reach
 // the shared ones, so a heavily used shared memory is not archived as idle.
@@ -8802,11 +9020,19 @@ function cmdTouch(argv) {
     let name = null;
     let applied = false;
     let toType = false;
+    let namedType = null;
     let toOperator = false;
     for (const a of argv) {
         if (a === '--applied') applied = true;
-        else if (a === '--type') toType = true;
-        else if (a === '--operator') toOperator = true;
+        else if (a === '--type' || a.startsWith('--type=')) {
+            // `triggers`'s two spellings of the flag, read here the same way
+            // and refused the same way for a second of either: this verb's
+            // one positional is the record name, so a lookahead value would
+            // be read as the record to stamp.
+            if (toType) return usage('--type is given once, as --type or --type=<type>');
+            toType = true;
+            if (a !== '--type') namedType = a.slice('--type='.length);
+        } else if (a === '--operator') toOperator = true;
         else if (a.startsWith('--')) return usage('unknown option ' + sanitize(a, 40));
         else if (name !== null) return usage('touch takes one <name>');
         else name = a;
@@ -8828,6 +9054,23 @@ function cmdTouch(argv) {
         return usage('name must be characters from [A-Za-z0-9_.-], at most '
             + (MEMORY_FILE_CAP - 3) + ', and not the memory index');
     }
+    // A named type is joined onto a path under the type-tier root, so it
+    // answers the store's own type-name gate here, before anything is
+    // resolved from it, which is where add-type, delete-type and `triggers`
+    // ask it too.
+    if (namedType !== null && !isTypeName(namedType)) {
+        return usage(TYPE_NAME_RULE);
+    }
+    // The named spelling is refused under the engine's store signals, `get`'s
+    // own screen at the verb that writes rather than reads: an applied stamp
+    // is what the decay pass reads as a sign of life, so one landing in a tier
+    // the project never opted into holds a record alive on evidence no
+    // attended session produced. It answers after the name gates above and
+    // before anything is resolved, for the reasons stated there.
+    if (namedType !== null && storeSignalsPresent()) {
+        return usage(namedTypeRefusedBySignals('a stamp there is the sign of life the decay'
+            + ' pass reads, written into a tier no project on this vector opted into'));
+    }
 
     // This hoist sits ahead of every branch below but --operator: --type
     // reaches typedTierOrNull(process.cwd()) -> projectType(cwd) ->
@@ -8840,7 +9083,11 @@ function cmdTouch(argv) {
     // it never reaches that walk and is excluded from this refusal: gating
     // it would refuse a shared-tier stamp for a reason that does not apply
     // to it, the same reason add-operator and delete-operator are not gated.
-    if (!toOperator && pinnedProjectSegment() === null && namesNetworkShare(process.cwd())) {
+    // `--type=<type>` is excluded beside it and for its reason, resolving
+    // through typeDir(type) -> memoryRoot(), which reads the environment and
+    // the home directory and no working directory at all; bare `--type` still
+    // rides the gate, its tier coming from the project's own index.
+    if (!toOperator && namedType === null && pinnedProjectSegment() === null && namesNetworkShare(process.cwd())) {
         process.stderr.write('memq: this call\'s working directory names a network share, so its '
             + 'project memory directory was not resolved (a synchronous walk under it risks '
             + 'hanging for the SMB timeout on an unreachable host); nothing was stamped\n');
@@ -8849,16 +9096,31 @@ function cmdTouch(argv) {
     }
 
     let stampDir;
+    let stampType = null;
     let inPending = false;
-    if (toType) {
+    if (toType && namedType !== null) {
+        // The type the caller spelled, which is what stamps a type-tier
+        // record from a checkout that declares no type at all: a record this
+        // store can be told about through `--type=<type>` is one it can be
+        // told was used.
+        const named = namedTypeDirOrNote(namedType);
+        if (named === null) {
+            process.exitCode = 1;
+            return;
+        }
+        stampDir = named;
+        stampType = namedType;
+    } else if (toType) {
         const typed = typedTierOrNull(process.cwd());
         if (typed === null) {
             process.stderr.write('memq: this project declares no Project-Type'
-                + ' (or its type directory does not exist), so --type has no target\n');
+                + ' (or its type directory does not exist), so --type has no target'
+                + ' (--type=<type> names one outright)\n');
             process.exitCode = 1;
             return;
         }
         stampDir = typed.dir;
+        stampType = typed.type;
     } else if (toOperator) {
         const operator = operatorTierOrNull();
         if (operator === null) {
@@ -8897,7 +9159,11 @@ function cmdTouch(argv) {
     // path that could not be examined is not that name, and says so: the stamp
     // is refused either way, and only one of the two is a name the caller can
     // fix by naming another.
-    const stampWhere = toType ? ' in the type tier' : toOperator ? ' in the operator tier' : '';
+    // The type is named with the tier, for the reason `triggers` names it: a
+    // store holds a tier per type, so with `--type=<type>` in play the tier
+    // word alone no longer says which record a line is about.
+    const stampWhere = toType ? ' in the ' + sanitize(stampType, TYPE_CAP) + ' type tier'
+        : toOperator ? ' in the operator tier' : '';
     let st = null;
     let stampCode = null;
     try {
@@ -8935,8 +9201,9 @@ function cmdTouch(argv) {
         return;
     }
     process.stdout.write('touched ' + sanitize(name, NAME_CAP) + ' applied'
-        + (toType ? ' in the type tier' : toOperator ? ' in the operator tier'
-            : inPending ? ' in the pending tier' : '') + '\n');
+        + (toType ? ' in the ' + sanitize(stampType, TYPE_CAP) + ' type tier'
+            : toOperator ? ' in the operator tier'
+                : inPending ? ' in the pending tier' : '') + '\n');
 }
 
 // One path argument judged and hashed, as `{sha}` or `{refusal}`.
@@ -9224,7 +9491,12 @@ function cmdAnchor(argv) {
     let name = null;
     const given = [];
     for (const a of argv) {
-        if (a === '--type' || a === '--operator') {
+        // Both spellings of the type flag, because a caller who learned
+        // `--type=<type>` on the three verbs that take it meets this verb
+        // next: matching the bare word alone would answer that caller with
+        // 'unknown option' where the tier flags have a purpose-built reason,
+        // and the reason is the same one whichever way the tier was named.
+        if (a === '--type' || a.startsWith('--type=') || a === '--operator') {
             return usage('anchor writes the project tier only: an anchor needs a project root to'
                 + ' resolve its paths against and a tree to hash, and the type and operator tiers'
                 + ' have neither');
@@ -9472,21 +9744,68 @@ function cmdAnchor(argv) {
         + (inPending ? ' (pending tier)' : '') + '\n');
 }
 
-// What a shared-tier caller is told about a triggers: line this verb refuses
-// to merge into, in place of the project tier's instruction to correct the
-// line by hand. The tools that would make that edit are denied on the type
-// and operator tiers for every writer, and no verb here rewrites a line a
-// record already carries: this one merges into it, and a body repair carries
-// a closed frontmatter block across verbatim, so the line a repair would fix
-// is the line it copies. What is left is replacing the record whole, which
-// costs the record its applied history, and under the engine store signals
-// not even that, which is the fork sharedDeleteRemedy makes.
+// What a shared-tier caller is told about a triggers: line cut at the reader's
+// bound, in place of the project tier's instruction to shorten it by hand. The
+// tools that would make that edit are denied on the type and operator tiers
+// for every writer, and nothing else here reaches the line either: a body
+// repair carries a closed frontmatter block across verbatim, so the line a
+// repair would fix is the line it copies. `--replace` does rewrite a line a
+// record carries, which is what it exists for, and it is not the route out of
+// this one: the property that refuses it is the line's rather than the run's,
+// a tail past the bound being text no reader here has read and so text no
+// rewrite can name. What is left is replacing the record whole, which costs
+// the record its applied history, and under the engine store signals not even
+// that, which is the fork sharedDeleteRemedy makes.
 function sharedTriggerLineRepair(deleteCommand) {
-    return 'a shared tier has no hand-edit path and no verb here rewrites a line a record'
-        + ' already carries, so what changes the line is replacing the record whole, at the cost'
-        + ' of the applied history the name held: '
+    return 'a shared tier has no hand-edit path, and the tail past that bound is text nothing'
+        + ' here has read, so --replace cannot name it either; what changes the line is'
+        + ' replacing the record whole, at the cost of the applied history the name held: '
         + sharedDeleteRemedy(deleteCommand, 'removes the record, and adding it again writes the'
             + ' line the record is to carry');
+}
+
+// The same for a line carrying an entry no reader can read, where the answer
+// is the opposite one: `--replace` is the route, because the caller is shown
+// each unreadable entry by text here and shown it again as this run drops it,
+// so what a rewrite would take off the line is never text nobody saw. It is
+// the shape `--replace` exists to correct, a declaration that is wrong in the
+// one way the record itself cannot state. The merge is what still refuses,
+// having no way to preserve an entry it cannot re-emit.
+// And the same for a triggers: field the record carries under some other key,
+// where a shared tier's answer is the line repair's rather than the bad
+// entry's. `--replace` is no route out of this one: the splice rewrites the
+// field where it sits, indentation kept, so a replace would restate an
+// unread line as another unread line. Nor is the body repair, which carries a
+// closed frontmatter block across verbatim and so carries the misplaced field
+// with it. What is left is replacing the record whole.
+function sharedTriggerIndentedRepair(deleteCommand) {
+    return 'a shared tier has no hand-edit path, and a rewrite here would restate the field'
+        + ' where it sits, under the key that keeps it unread, so --replace does not move it'
+        + ' either; what moves it is replacing the record whole, at the cost of the applied'
+        + ' history the name held: '
+        + sharedDeleteRemedy(deleteCommand, 'removes the record, and adding it again writes the'
+            + ' line at the frontmatter block\'s top level');
+}
+
+function sharedTriggerBadEntryRepair(replaceCommand) {
+    return 'a shared tier has no hand-edit path, so what corrects the line is a replace: '
+        + sharedReplaceRemedy(replaceCommand, 'writes the entries it names in place of the whole'
+            + ' line and says on stderr which unreadable entry it dropped');
+}
+
+// The clause a note ends with when the thing to do about the state it names is
+// a shared-tier replace. It is sharedDeleteRemedy's rule and its reason: that
+// shape refuses outright under the engine store signals, and this note is
+// written on a path that runs under them, so naming the command there sends a
+// reader to one whose whole answer is a refusal. What is named instead is why
+// nothing here does it, which is a state to act on rather than a command to
+// try. `does` completes both sentences, so the two cannot describe different
+// remedies for one state.
+function sharedReplaceRemedy(replaceCommand, does) {
+    return storeSignalsPresent()
+        ? 'while this process carries the engine store signals nothing here ' + does
+            + ', because those signals refuse a shared-tier replace'
+        : '`memq ' + replaceCommand + '` ' + does;
 }
 
 // The record's own half of `triggers`, run with the tier lock held: read the
@@ -9501,15 +9820,37 @@ function sharedTriggerLineRepair(deleteCommand) {
 // length change (`refuseGrowth`), because the splice is stale the moment the
 // file moves and a stop is the only answer that keeps the body promise.
 //
-// `deleteCommand` is the shared-tier delete verb for the record, or null when
-// the write lands in a project tier, and its whole job is the repair advice:
+// `deleteCommand` is the shared-tier delete verb for the record and
+// `replaceCommand` the replacing spelling of this verb for it, both null when
+// the write lands in a project tier, and their whole job is the repair advice:
 // a frontmatter block or a triggers: line this cannot read is repaired by hand
 // on the project tier and cannot be on a shared one, where the frontmatter
 // guard refuses Write, Edit and MultiEdit outright, so the two tiers name
 // different routes. A caller that got it wrong would send an operator to a
 // tool that denies them and leave the record unrepairable through the advice
 // it was given.
-function triggerRecord(memPath, name, where, wanted, deleteCommand) {
+//
+// `replace` writes the line the caller named in place of the one the record
+// carries rather than merging into it, which is the only way an entry comes
+// off a record: a shared tier admits no hand edit, and every other route out
+// of a wrong declaration removes the record and its applied history with it.
+// It changes what the line says and nothing about what may be said: every
+// entry answers the same grammar and the same bars, and the cap is asked of
+// the replacing line. Where it does part company with the merge is the two
+// refusals above that exist because a rewrite would drop text, and they part
+// in opposite directions, on what the caller can see rather than on how the
+// two writes differ. An unreadable entry is shown to the caller by text in the
+// refusal itself and again as this run drops it, so nothing leaves the record
+// unseen and a replace is exactly the correction that shape calls for, a wrong
+// declaration the record cannot state being what the flag exists for; the
+// merge still refuses it, having undertaken to preserve a line it cannot
+// re-emit. A tail past the reader's bound is the other case whole: it is text
+// nothing here has read, so no report can name what came off, and it refuses
+// under both. A replace naming no entry takes the line out rather than writing
+// an empty one, an absent line being the state a record is born in and an
+// empty value a declaration of nothing that every reader would need an answer
+// for.
+function triggerRecord(memPath, name, where, wanted, deleteCommand, replaceCommand, replace) {
     const sharedTier = deleteCommand !== null;
     const shown = '\'' + sanitize(name, NAME_CAP) + '\'' + where;
     let original;
@@ -9548,25 +9889,37 @@ function triggerRecord(memPath, name, where, wanted, deleteCommand) {
     }
     if (site.value === FRONTMATTER_INDENTED) {
         process.stderr.write('memq: ' + shown + ' has a triggers: field under a key other than'
-            + ' the harness\'s metadata: map, where no reader reads it; move it to the'
-            + ' frontmatter block\'s top level, where it reads whether or not the harness then'
-            + ' moves it under metadata:, and rerun (nothing written)\n');
+            + ' the harness\'s metadata: map, where no reader reads it; ' + (sharedTier
+                ? sharedTriggerIndentedRepair(deleteCommand)
+                : 'move it to the frontmatter block\'s top level, where it reads whether or not'
+                    + ' the harness then moves it under metadata:, and rerun')
+            + ' (nothing written)\n');
         process.exitCode = 1;
         return null;
     }
 
-    // What the record already says, which this verb adds to rather than
+    // What the record already says, which a merge adds to rather than
     // replaces. A line carrying an entry the grammar refuses, or more entries
     // than a reader reads, is refused instead of merged: the rewrite would
     // drop that text, and text dropped out of a record is the one outcome no
     // .bak beside it makes good in the store's own answers.
+    //
+    // A replace is the exception on the first of those and only the first. The
+    // entries are printed here by text, so a caller reading this refusal has
+    // seen each one, and the run that drops them names them again on stderr:
+    // what the merge cannot do is preserve them, which a replace never
+    // undertook. Refusing there would leave the record whose line is unreadable
+    // reachable only by delete-and-recreate, which is the one declaration a
+    // correction path most has to reach and the one that costs the record its
+    // body and its applied history to fix.
     const parsed = parseTriggers(typeof site.value === 'string' ? site.value : null);
-    if (parsed.bad.length > 0) {
+    const droppedBad = replace ? parsed.bad.slice() : [];
+    if (parsed.bad.length > 0 && !replace) {
         process.stderr.write('memq: ' + shown + ' already carries a triggers: entry this cannot'
-            + ' read, and a rewrite would drop it: ' + parsed.bad.join('; ') + '. '
+            + ' read, and a merge would drop it: ' + parsed.bad.join('; ') + '. '
             + (sharedTier
-                ? 'The line stays as it is: ' + sharedTriggerLineRepair(deleteCommand)
-                : 'Correct the line by hand and rerun')
+                ? 'The line stays as it is: ' + sharedTriggerBadEntryRepair(replaceCommand)
+                : 'Correct the line by hand and rerun, or name the whole line with --replace')
             + ' (nothing written)\n');
         process.exitCode = 1;
         return null;
@@ -9601,13 +9954,26 @@ function triggerRecord(memPath, name, where, wanted, deleteCommand) {
     // of which are case-bearing, so `cmd:Push-Location` and
     // `cmd:push-location` are two different patterns and folding them would
     // silently drop one of them.
-    const merged = parsed.entries.map((e) => e.text);
+    //
+    // Under `replace` the line the caller named is the line, so what the
+    // merge computes here is reported rather than written: which of the named
+    // entries the record did not already carry, and which of its own it no
+    // longer will. The report is the whole of what a caller can check a
+    // correction against, an entry silently kept and an entry silently
+    // dropped reading alike on the line that comes back.
+    const previous = parsed.entries.map((e) => e.text);
+    const merged = replace ? wanted.slice() : previous.slice();
     const added = [];
-    for (const entry of wanted) {
-        if (merged.includes(entry)) continue;
-        merged.push(entry);
-        added.push(entry);
+    if (replace) {
+        for (const entry of wanted) if (!previous.includes(entry)) added.push(entry);
+    } else {
+        for (const entry of wanted) {
+            if (merged.includes(entry)) continue;
+            merged.push(entry);
+            added.push(entry);
+        }
     }
+    const removed = previous.filter((e) => !merged.includes(e));
     if (merged.length > TRIGGER_ENTRIES_MAX) {
         process.stderr.write('memq: ' + shown + ' would carry ' + merged.length
             + ' triggers and a reader reads ' + TRIGGER_ENTRIES_MAX + ', so the rest would go'
@@ -9620,7 +9986,7 @@ function triggerRecord(memPath, name, where, wanted, deleteCommand) {
     // top level, where nothing unquotes, and equally what the map reads, where
     // the unquoting takes a pair off only when there is one.
     const value = merged.join(', ');
-    const line = 'triggers: ' + value;
+    const line = merged.length === 0 ? null : 'triggers: ' + value;
 
     // A call that adds nothing writes nothing. The merge above leaves an
     // entry the record already carries exactly where it was, so with nothing
@@ -9633,14 +9999,34 @@ function triggerRecord(memPath, name, where, wanted, deleteCommand) {
     // verification act with a result; a trigger is its own value whole and
     // has nothing to refresh. Nothing added is not nothing to say, so the
     // line and its carried entries are still reported.
-    if (added.length === 0) return { line, added, carried: merged };
+    if (!replace && added.length === 0) {
+        return triggerOutcome(line, added, removed, merged, droppedBad, site.line !== -1, false);
+    }
 
     // The splice. One line of the record changes and every other byte of it,
     // its line endings and its body included, is the byte that was there: a
     // rebuild from split lines would rewrite the record's line endings on any
     // checkout whose records are not the separator this file joins with.
     let rewritten;
-    if (site.line !== -1) {
+    if (line === null) {
+        // A replace naming no entry, which removes the line rather than
+        // writing an empty one. It is a removal by the same rule as the
+        // rewrites below, one line of the record and its own separator taken
+        // out with every other byte left where it was, so a record whose
+        // separator is not this file's keeps it. A record with no line to
+        // take out is already in the state the command asks for and falls to
+        // the identical-text answer below.
+        if (site.line === -1) {
+            rewritten = text;
+        } else {
+            const spans = frontmatterLineSpans(text, site.block);
+            const span = spans[site.line];
+            let cut = span.end;
+            if (text.startsWith('\r\n', cut)) cut += 2;
+            else if (text.startsWith('\n', cut)) cut += 1;
+            rewritten = text.slice(0, span.start) + text.slice(cut);
+        }
+    } else if (site.line !== -1) {
         const spans = frontmatterLineSpans(text, site.block);
         const span = spans[site.line];
         // The line's own indentation is kept. Under the harness's map the
@@ -9667,6 +10053,19 @@ function triggerRecord(memPath, name, where, wanted, deleteCommand) {
             + text.slice(site.block.bom.length);
     }
 
+    // A replace that changes no byte writes no byte, which is the merge's own
+    // no-op answer above reached from the other direction: there the question
+    // is whether anything was added, here it is whether the line the caller
+    // named is the line the record carries, ordering and spacing included.
+    // The cost of writing anyway is the same one, a byte-identical copy
+    // spending the record's single backup generation and an mtime moved for a
+    // decay pass that reads it as a sign of life. What was named is still
+    // reported: a caller correcting a line wants to know what it says now
+    // whether or not this run is what put it there.
+    if (rewritten === text) {
+        return triggerOutcome(line, added, removed, merged, droppedBad, site.line !== -1, false);
+    }
+
     // The post-condition, asked of the bytes about to be written and through
     // the reader that will read them back off disk. The failure it catches is
     // not that the record reports something wrong, it is that the record stops
@@ -9681,8 +10080,8 @@ function triggerRecord(memPath, name, where, wanted, deleteCommand) {
         ? null
         : readBack.entries.map((e) => e.text).join(', ');
     if (wroteValue !== value) {
-        process.stderr.write('memq: ' + shown + ' took no triggers, because the record with the'
-            + ' line added does not read back as the record this wrote: '
+        process.stderr.write('memq: ' + shown + ' took no triggers, because the record with its'
+            + ' line rewritten does not read back as the record this wrote: '
             + (readBack === null
                 ? 'its frontmatter block ends at the last line a reader reads ('
                     + FRONTMATTER_MAX_LINES + '), so one more line in it closes nothing and'
@@ -9708,11 +10107,38 @@ function triggerRecord(memPath, name, where, wanted, deleteCommand) {
         process.exitCode = 1;
         return null;
     }
-    // The line, and which of its entries this run put there. The line alone
-    // does not say: a record that already declared every entry the command
-    // named prints the same line as one that declared none of them, and the
-    // difference is the whole of what this run did.
-    return { line, added, carried: merged.filter((e) => !added.includes(e)) };
+    // The line, which of its entries this run put there, and which the record
+    // no longer carries. The line alone does not say: a record that already
+    // declared every entry the command named prints the same line as one that
+    // declared none of them, and under a replace the line says nothing at all
+    // about what came off it, the difference being the whole of what this run
+    // did.
+    return triggerOutcome(line, added, removed, merged, droppedBad, site.line !== -1, true);
+}
+
+// What `triggerRecord` answers with, built once so its three returns cannot
+// drift in what they mean by a field. Two of them report a write that did not
+// happen, and the difference between those two is the question each asked
+// rather than anything the caller reads back, so the same words have to come
+// out of all three: `carried` is what the record will hold that this run did
+// not put there, which on a no-op is every entry on it, `added` being empty on
+// both of those paths by the test that reached them.
+//
+// `hadLine` is whether the record carried a triggers: line before this run,
+// which is what separates a replace that corrected a declaration from one that
+// made the record's first, two outcomes a caller cannot otherwise tell apart:
+// a name typed onto the wrong record answers exactly like a correction unless
+// the report says which one happened.
+function triggerOutcome(line, added, removed, merged, dropped, hadLine, wrote) {
+    return {
+        line,
+        added,
+        removed,
+        carried: merged.filter((e) => !added.includes(e)),
+        dropped,
+        hadLine,
+        wrote
+    };
 }
 
 // memq triggers <name> <entry>...: record the deterministic recognition
@@ -9739,6 +10165,22 @@ function triggerRecord(memPath, name, where, wanted, deleteCommand) {
 // record, so two tier flags name two records for it and the same name can hold
 // a different fact in each.
 //
+// Which type tier `--type` means has two spellings and they answer different
+// questions. Bare, it is the working project's own declared Project-Type, the
+// reading every existing caller takes. `--type=<type>` names the tier the way
+// `add-type`'s positional does, which is what makes a type-tier record
+// declarable at all from a checkout that declares no type, and there are more
+// of those than not. The value rides on the flag word rather than on the next
+// argument because this verb's positionals are `<name> <entry>...`: a
+// lookahead `--type` would read the existing spelling
+// `triggers rec --type cmd:whatever` as a type named rec, silently writing a
+// tier nobody named. A type given twice is refused rather than resolved by
+// last-wins, two spellings naming two tiers being the same ambiguity both
+// flags together is refused for, and a name that is not a type name is
+// refused before it is joined onto a path, on `add-type`'s own gate. A name
+// that differs from the store's own spelling of the type in case alone is
+// refused too, for the reason namedTypeDirOrNote states.
+//
 // Two of `anchor`'s gates are deliberately absent, because both are about
 // resolving a path against a project root and this verb resolves none. A
 // store pin is not a refusal here: a pin says the records were chosen by the
@@ -9753,20 +10195,73 @@ function triggerRecord(memPath, name, where, wanted, deleteCommand) {
 // project a call is in, so a shared-tier one fires one project's record on
 // another project's files. The reading surface skips it there, so what the
 // refusal prevents is a declaration nothing would ever act on.
+//
+// `--replace` writes the entries the invocation names in place of the line the
+// record carries, where the plain form merges into it. It is the only way an
+// entry comes off a record: the frontmatter guard denies Write, Edit and
+// MultiEdit on a shared tier, so a wrong declaration there is otherwise
+// correctable only by removing the record, which takes its body and its
+// applied history with it. Every bar the plain form applies is applied here,
+// and a replace naming no entry at all removes the line rather than writing an
+// empty one, which is why the arity check below is the plain form's alone.
+//
+// On a shared tier it takes `--confirm-shared`, the consent flag every other
+// destructive shared write here takes. The plain form only ever adds to a
+// line, so what a caller risks there is a trigger too many; a replace states
+// the line whole, so every declaration the record carried and the invocation
+// did not name comes off it, on a tier every project on the machine reads and
+// every machine the store syncs to. The bar is on the flag reaching a shared
+// tier at all rather than on a run that provably drops something, because
+// which entries a record carries is what the caller is correcting and so
+// exactly what they cannot be assumed to know: a replace that turns out to
+// drop nothing is a fact about the record rather than about the intent, and
+// gating on it would ask for consent only where it was least needed. The
+// project and pending tiers take no such flag, which is the asymmetry the
+// shared tiers already carry everywhere else in this file.
+//
+// A pinned project tier answers to both bars beside the shared tiers, the pin
+// rather than the tier being what earns it: one project directory serves every
+// working directory the instance runs in, so the record a replace rewrites was
+// written by another of this instance's workers somewhere else, which is
+// pinClause's own reading of the same condition.
+//
+// Under the engine's store signals that shape is refused outright rather than
+// consented to, the delete verbs' and the body repair's bargain: the flag is a
+// flag rather than a person on that vector, and the .bak the rewrite leaves
+// does not sync. The merge is what answers there. That refusal is what a pin
+// actually meets, a pin being honored only alongside those same signals.
 function cmdTriggers(argv) {
     let name = null;
     let toType = false;
+    let namedType = null;
     let toOperator = false;
+    let replace = false;
+    let confirmShared = false;
     const given = [];
     for (const a of argv) {
-        if (a === '--type') toType = true;
-        else if (a === '--operator') toOperator = true;
+        if (a === '--type' || a.startsWith('--type=')) {
+            // Two spellings of one flag, so a second of either is refused
+            // rather than resolved: `--type --type=webapp` names the project's
+            // declaration and a type, and last-wins there writes a tier the
+            // caller half-named.
+            if (toType) return usage('--type is given once, as --type or --type=<type>');
+            toType = true;
+            if (a !== '--type') namedType = a.slice('--type='.length);
+        } else if (a === '--operator') toOperator = true;
+        else if (a === '--replace') replace = true;
+        else if (a === '--confirm-shared') confirmShared = true;
         else if (a.startsWith('--')) return usage('unknown option ' + sanitize(a, 40));
         else if (name === null) name = a;
         else given.push(a);
     }
     if (name === null) return usage('triggers needs a <name>');
-    if (given.length === 0) return usage('triggers needs at least one <type>:<pattern> entry');
+    // The arity the merge needs and the replace does not: a merge with nothing
+    // to merge is a command with no effect, while a replace with nothing to
+    // write is the withdrawal, the one spelling that takes the line off a
+    // record.
+    if (given.length === 0 && !replace) {
+        return usage('triggers needs at least one <type>:<pattern> entry');
+    }
     // One line is spliced into one record, so two tier flags name two records
     // for it and the command refuses rather than picking one. Silently
     // preferring a tier would declare the recognition triggers on a record the
@@ -9783,6 +10278,95 @@ function cmdTriggers(argv) {
         return usage('name must be characters from [A-Za-z0-9_.-], at most '
             + (MEMORY_FILE_CAP - 3) + ', and not the memory index');
     }
+    // A named type is joined onto a path under the type-tier root, so it
+    // answers the store's own type-name gate here, before anything is resolved
+    // from it, which is where `add-type` and `delete-type` ask it too. Sharing
+    // the gate is what keeps this verb from taking a name those verbs refuse.
+    if (namedType !== null && !isTypeName(namedType)) {
+        return usage(TYPE_NAME_RULE);
+    }
+    // The consent the shared tiers take for a write that removes what was
+    // there. It answers below the two name gates above and not beside the
+    // flag-set checks, on the rule cmdAddType states at its own consent
+    // refusal: being sent to re-run with a flag that then fails on the record
+    // name or the type name is two rounds for one mistake. It still answers
+    // before anything is resolved, so a caller who meant to correct a shared
+    // record learns what the command needs without a tier being read for it.
+    // The flag is refused where it confirms nothing, on add-type's and
+    // add-operator's own rule for a repair flag with no repair to consent to:
+    // a caller who spelled it believes they are authorising something, and a
+    // command that silently accepts it teaches a habit of spelling it.
+    if (confirmShared && !replace) {
+        return usage('--confirm-shared confirms a shared-tier replace, so it needs --replace');
+    }
+    // A pinned project store is the third destination the consent covers, so
+    // the flag is admitted there rather than refused as confirming nothing.
+    // The pin is what makes the project tier one directory shared by every
+    // working directory this instance runs in, which is the writer-is-not-the
+    // -reader condition the shared tiers are fenced for arriving on the
+    // project tier, and pinClause is where this file already says so.
+    //
+    // It is asked only where no tier flag answered, which is the same set of
+    // calls that reach pinnedProjectSegment() at the network-share hoist
+    // below: an unusable pin value throws out of that call, and asking it on a
+    // path that never asked before would turn a working --operator run into a
+    // failure over a variable it does not read.
+    const pinned = !toType && !toOperator && pinnedProjectSegment() !== null;
+    if (confirmShared && !toType && !toOperator && !pinned) {
+        return usage('--confirm-shared confirms a shared-tier replace, so it needs --type,'
+            + ' --type=<type> or --operator, or a pinned project store');
+    }
+    // A shared-tier replace is refused outright under the engine's store
+    // signals, the pair that says this process was pointed at a fleet store
+    // deliberately. It is the same bargain add-type's body repair is refused
+    // on, and word for word: a replace states the record's triggers: line
+    // whole, so every declaration it does not name is destroyed, and the .bak
+    // the rewrite leaves is local and unsynced (the store's sync refuses
+    // *.bak), so on a fleet worker the correction is as final as a deletion.
+    // The grant that environment carries for `node <abspath>/memq.js ...`
+    // (hooks/memq-grant.js) withholds this verb wholesale, so a replace
+    // reaching here in a fleet worker has already fallen through to the
+    // ordinary permission flow. The two are not redundant: the hook judges its
+    // own environment and this check judges the child's, and where the two
+    // disagree this is the half that binds, which is why the refusal is
+    // stated in both places rather than moved to either. The asymmetry that
+    // makes it worth stating here is that a hook regression on the delete
+    // verbs or the body repair still meets a CLI lock, where one on this shape
+    // would meet nothing. Nothing is lost by refusing: the merge still answers
+    // there, and no worker was correcting declarations before this flag
+    // existed. It answers ahead of the consent demand below, so a caller is
+    // never sent to re-run with a flag that cannot help, and before the
+    // resolution, so a refused command touches no filesystem.
+    //
+    // A pinned project tier is inside the bar and not beside it. The pin is
+    // honored only alongside these same signals (pinnedProjectSegment), so the
+    // shape exists only in the environment this refusal was written for, and
+    // what it writes is the fleet store whose backup the refusal correctly
+    // says does not sync. That the record sits under projects/ rather than
+    // under a shared tier changes nothing the refusal rests on.
+    if (replace && (toType || toOperator || pinned) && storeSignalsPresent()) {
+        return usage('a replace states the record\'s triggers: line whole, which is refused'
+            + ' under the engine store signals (KIT_MEMORY_ROOT with'
+            + ' KIT_MEMORY_ROOT_ALLOW_DATA=1) for a shared tier and for a pinned project store'
+            + ' alike: the local backup it leaves does not sync, so there is no recovery from a'
+            + ' fleet store. The merge still declares a trigger here');
+    }
+    // The consent demand reaches the pin too, and on the other of the two
+    // grounds: a caller cannot see what a replace takes off, and under a pin
+    // the record they are correcting was written by another of this instance's
+    // workers in another repository, which is pinClause's own condition. It is
+    // unreachable while a pin is honored only under the signals the bar above
+    // refuses on, and it is stated all the same, so that a pin admitted on any
+    // other footing arrives consent-gated rather than silently ungated.
+    if (replace && (toType || toOperator || pinned) && !confirmShared) {
+        process.stderr.write('memq: a replace states the record\'s triggers: line whole, so every'
+            + ' entry it does not name comes off a record every ' + (pinned && !toType
+                && !toOperator ? 'working directory this instance runs in reads'
+                : 'project reading this store reads')
+            + '; re-run with --confirm-shared to proceed (nothing written)\n');
+        process.exitCode = 1;
+        return;
+    }
 
     // This hoist sits ahead of memDirOrNote(): that call's own first statement
     // is projectMemoryDir(process.cwd()), which reaches worktreeMainRoot's
@@ -9796,15 +10380,23 @@ function cmdTriggers(argv) {
     // specifically an unpinned network cwd that rides the walk, and under a
     // pin this verb runs through to the end, having no root to want.
     //
-    // `--type` rides the gate with the plain form, reaching that same walk
+    // Bare `--type` rides the gate with the plain form, reaching that same walk
     // through typedTierOrNull(cwd) -> projectType(cwd) -> projectMemoryDir(cwd);
     // `--operator` is excluded from it, resolving through operatorTierOrNull(),
     // which takes no cwd argument at all and so never reaches the walk. Gating
     // the operator tier here would refuse a write for a hazard that is not on
     // its path, which is `touch`'s own asymmetry and the reason add-operator
     // and delete-operator carry no such gate either.
+    //
+    // `--type=<type>` is excluded for `--operator`'s reason and no other: it
+    // resolves through typeDir(type) -> memoryRoot(), which reads the
+    // environment and the home directory and takes no working directory at
+    // all, so the walk this gate exists to prevent is not on its path either.
+    // The gate is per door rather than per verb, which is what the whole-tree
+    // pin over these gates reads and what keeps a spelling that never reaches
+    // the walk from being refused for it.
     const cwd = process.cwd();
-    if (!toOperator && pinnedProjectSegment() === null && namesNetworkShare(cwd)) {
+    if (!toOperator && namedType === null && pinnedProjectSegment() === null && namesNetworkShare(cwd)) {
         process.stderr.write('memq: this call\'s working directory names a network share, so the '
             + 'project memory directory this would write into was not resolved from it (a '
             + 'synchronous walk under it risks hanging for the SMB timeout on an unreachable '
@@ -9823,11 +10415,25 @@ function cmdTriggers(argv) {
     let recordDir;
     let inPending = false;
     let declaredType = null;
-    if (toType) {
+    if (toType && namedType !== null) {
+        // A named type answers on the tier's own presence and nothing else,
+        // the caller having spelled which tier they mean. An absent one is
+        // refused by name rather than created: `acquireLock` below mints the
+        // directory it locks, so a mistyped type that reached it would leave a
+        // tier directory behind in a store every project on the machine reads.
+        const dir = namedTypeDirOrNote(namedType);
+        if (dir === null) {
+            process.exitCode = 1;
+            return;
+        }
+        recordDir = dir;
+        declaredType = namedType;
+    } else if (toType) {
         const typed = typedTierOrNull(cwd);
         if (typed === null) {
             process.stderr.write('memq: this project declares no Project-Type'
-                + ' (or its type directory does not exist), so --type has no target\n');
+                + ' (or its type directory does not exist), so --type has no target'
+                + ' (--type=<type> names one outright)\n');
             process.exitCode = 1;
             return;
         }
@@ -9883,7 +10489,13 @@ function cmdTriggers(argv) {
             }
         }
     }
-    const where = toType ? ' in the type tier'
+    // Which record every line about this run means, the type named in it
+    // rather than the tier alone: with `--type=<type>` the tier is one of
+    // several a store holds, so "in the type tier" names a record only to a
+    // reader who already knows which type answered, and a refusal is read by
+    // exactly the caller who does not. It is add-type's success line's rule,
+    // that a shared write says which shared tier it landed in.
+    const where = toType ? ' in the ' + sanitize(declaredType, TYPE_CAP) + ' type tier'
         : toOperator ? ' in the operator tier'
             : inPending ? ' in the pending tier' : ' in the project tier';
     const memPath = path.join(recordDir, file);
@@ -10004,7 +10616,20 @@ function cmdTriggers(argv) {
                 : toOperator
                     ? 'delete-operator ' + sanitize(name, NAME_CAP) + ' --confirm-shared'
                     : null;
-            written = triggerRecord(memPath, name, where, wanted, deleteCommand);
+            // The replacing spelling of this same verb for this same record,
+            // which is what the unreadable-entry refusal names on a shared
+            // tier: the tier is spelled the way the caller would have to spell
+            // it, a named type included, so the advice is a command to run
+            // rather than a shape to work out. The entries are left as a
+            // placeholder because they are the caller's to state: a replace
+            // writes the line whole, and the whole line is what they are
+            // deciding.
+            const replaceCommand = deleteCommand === null ? null
+                : 'triggers ' + sanitize(name, NAME_CAP) + ' <type>:<pattern>... '
+                    + (toType ? '--type=' + sanitize(declaredType, TYPE_CAP) : '--operator')
+                    + ' --replace --confirm-shared';
+            written = triggerRecord(memPath, name, where, wanted, deleteCommand,
+                replaceCommand, replace);
         } finally {
             lock.release();
         }
@@ -10013,23 +10638,60 @@ function cmdTriggers(argv) {
     }
     // Null is a refusal that has already said what it was, in its own line.
     if (!written) return;
+    // Which tier the line landed in, the type named with it for `where`'s own
+    // reason: a store holds as many type tiers as it has types, so the tier
+    // word alone tells a caller which store they wrote and not which record.
+    const tier = toType ? ' (' + sanitize(declaredType, TYPE_CAP) + ' type tier)'
+        : toOperator ? ' (operator tier)'
+            : inPending ? ' (pending tier)' : '';
     // Printed as written. Every entry on it passed the grammar, which bars
     // the invisible characters and the quote a display gate exists to remove,
     // and `sanitize` would strip the non-ASCII characters the grammar
     // deliberately admits, naming a different pattern than the one declared.
-    process.stdout.write(written.line + '\n');
-    // What this run actually added, on stderr, where this file puts a fact
-    // about a result rather than the result. The line on stdout is the
-    // record's whole declaration and says nothing about which part of it
-    // arrived just now.
+    // A withdrawal has no line to print, the record now declaring nothing, so
+    // stdout carries nothing rather than a line with no value on it, which is
+    // a shape no record ever holds.
+    if (written.line !== null) process.stdout.write(written.line + '\n');
+    // What this run actually did, on stderr, where this file puts a fact about
+    // a result rather than the result. The line on stdout is the record's
+    // whole declaration and says nothing about which part of it arrived just
+    // now, and under a replace it says nothing at all about what came off.
+    //
+    // A replace that found no line to replace says so rather than reporting a
+    // replacement: the two outcomes are one command away from each other, a
+    // record name mistyped onto a real record that happens to declare nothing
+    // answering exactly like the correction that was meant, and the word
+    // 'replaced' is what a caller would read as confirmation that the
+    // declaration they were fixing is fixed.
+    //
+    // An entry no reader could read is named as it comes off, in the words the
+    // merge refuses with, because it is the one thing a replace drops that the
+    // caller did not name and could not have named: every other removal is an
+    // entry they read on the record and chose to leave out of this command.
+    if (replace) {
+        process.stderr.write('memq: ' + (written.wrote
+            ? (written.line === null ? 'removed the triggers: line'
+                : written.hadLine ? 'replaced the triggers: line'
+                    : 'wrote a triggers: line, the record carried none')
+            : (written.line === null
+                ? 'nothing removed, the record carried no triggers: line'
+                : 'nothing changed, the record already carried this line'))
+            + (written.added.length > 0 ? '; added: ' + written.added.join(', ') : '')
+            + (written.removed.length > 0 ? '; removed: ' + written.removed.join(', ') : '')
+            + (written.dropped.length > 0
+                ? '; dropped, no reader could read it: ' + written.dropped.join('; ')
+                : '')
+            + (written.carried.length > 0 ? '; kept: ' + written.carried.join(', ') : '')
+            + tier + '\n');
+        return;
+    }
     process.stderr.write('memq: added: ' + (written.added.length > 0
         ? written.added.join(', ')
         : 'nothing new, every entry was already on the record')
         + (written.carried.length > 0
             ? '; already on the record: ' + written.carried.join(', ')
             : '')
-        + (toType ? ' (type tier)' : toOperator ? ' (operator tier)'
-            : inPending ? ' (pending tier)' : '') + '\n');
+        + tier + '\n');
 }
 
 // A refused entry's fault in the words a caller can act on, built from the
@@ -10202,29 +10864,24 @@ function addTriggerEntries(given) {
 // answer is the Bash refusal the grant exists to route around. What is named
 // instead is the state: the debt is real, and closing it is an attended
 // session's to do. The types ride on either branch, being what the
-// declaration will need whoever makes it, and `where` does not: it is advice
-// about running the command, which is what the signalled branch has none of.
+// declaration will need whoever makes it.
 //
-// `where` is the clause the type tier needs and the operator tier does not,
-// and it is here because a spelling that lands on a different record is worse
-// advice than none. `memq triggers --operator` resolves through
-// operatorTierOrNull(), which takes no working directory and so answers for
-// the one tier the record was written to. `memq triggers --type` resolves
-// through the working directory's own declared Project-Type, not through any
-// type argument, the verb having none: run from a project declaring some
-// other type it either reports no such record or, where that other tier
-// happens to hold the name, rewrites a record the caller never named and
-// moves its mtime for every project and machine reading that tier. So the
-// type side's note names the declaration the spelling needs rather than
-// handing over a command whose target depends on where it is run.
-function noTriggerNote(name, tierFlag, where) {
+// `tierFlag` is the spelling that names the record this note is about, and
+// each tier's is the one whose target does not depend on where the command is
+// run. `memq triggers --operator` resolves through operatorTierOrNull(),
+// which takes no working directory. `memq triggers --type=<type>` names the
+// tier this record was written to, where bare `--type` would resolve the
+// working directory's own declared Project-Type instead and, from a project
+// declaring some other type, either report no such record or rewrite a record
+// the caller never named on the tier that happens to hold the name.
+function noTriggerNote(name, tierFlag) {
     const shown = sanitize(name, NAME_CAP);
     const remedy = storeSignalsPresent()
         ? 'while this process carries the engine store signals nothing here declares one,'
             + ' because the standing grant an unattended worker runs under withholds the'
             + ' `triggers` verb, so the declaration waits for an attended session'
         : 'declare one later with `memq triggers ' + shown + ' <type>:<pattern> '
-            + tierFlag + '`' + where;
+            + tierFlag + '`';
     process.stderr.write('memq: \'' + shown + '\' declares no recognition triggers, so nothing'
         + ' puts it in front of a session at the moment it applies; ' + remedy
         + ' (types: ' + SHARED_TRIGGER_TYPES.join(', ') + ')\n');
@@ -13146,8 +13803,7 @@ function cmdAddType(argv) {
     const type = positionals[0];
     const name = positionals[1];
     if (!isTypeName(type)) {
-        return usage('type must be characters from [A-Za-z0-9_.-], at most ' + TYPE_CAP
-            + ', and not a path token');
+        return usage(TYPE_NAME_RULE);
     }
     const file = name + '.md';
     if (!isMemoryFilename(file)) {
@@ -13200,9 +13856,9 @@ function cmdAddType(argv) {
             + ' --tag, --supersedes and --trigger are set at creation (--update replaces the'
             + ' index description, and with --body or --body-file the record body). A record'
             + ' that already exists takes its triggers from `memq triggers <name>'
-            + ' <type>:<pattern> --type`, run from a project declaring this record\'s'
-            + ' Project-Type, which is the declaration that verb resolves its type tier from;'
-            + ' it merges into the line the record already carries rather than replacing it');
+            + ' <type>:<pattern> --type=' + sanitize(type, TYPE_CAP) + '`, which merges into'
+            + ' the line the record already carries, or writes that line whole in place of it'
+            + ' with --replace');
     }
     if (confirmShared && !repair) {
         return usage('--confirm-shared confirms a shared-tier body repair, so it needs'
@@ -13288,9 +13944,11 @@ function cmdAddType(argv) {
     // flag on a granted verb would hand that reach back through the grant.
     //
     // What this refusal is, exactly: the grant vector's second lock rather
-    // than a CLI-layer bound on the capability. `cmdTriggers` carries no
-    // store-signal refusal of its own, so a process holding these signals and
-    // free to run memq is one command away from writing the identical line.
+    // than a CLI-layer bound on the capability. The only store-signal refusal
+    // `cmdTriggers` carries is over a replace reaching a shared tier or a
+    // pinned project store, which is the erasure rather than the declaration,
+    // so a process holding these signals and free to run memq is one merge
+    // away from writing the identical line.
     // What withholds that line on the vector this is written for is the hook's
     // verb allowlist, which omits `triggers`, together with its `--trigger`
     // screen; this check is what still holds when the two layers read their
@@ -13325,6 +13983,42 @@ function cmdAddType(argv) {
     // so a reviewer of the shared tier can tell an attended session's fact
     // from a spawned run's.
     const dir = typeDir(type);
+    // The store's own spelling of the type, asked before the tier is read or
+    // minted and on the reading doors' own rule. A stat answers
+    // case-insensitively on NTFS, so `add-type WebApp <name>` against an
+    // existing `webapp/` would write into that directory and report `WebApp`
+    // everywhere, minting a record that is reachable through none of the three
+    // doors that take a named type, each of which refuses the case variant,
+    // and handing the caller a follow-up command those doors refuse. So a
+    // variant the store already holds is refused by name and only a type no
+    // variant of which exists is created. A store with no type-tier root at
+    // all is the first create's own state and passes; a root that could not be
+    // listed decides nothing and refuses, since minting a second spelling of a
+    // type this store may already hold is the outcome the listing exists to
+    // prevent.
+    //
+    // It is an advisory early exit, like the --update checks below it, and
+    // unlike them it has no authoritative check under the lock to defer to,
+    // because no lock this command can take would make one authoritative. The
+    // lock is the type directory's own store.lock and acquireLock mints that
+    // directory to place it, so two creates naming two spellings of one type
+    // take two different locks in two different directories and exclude each
+    // other nowhere. Re-reading the listing under the lock would narrow the
+    // window and still leave the second spelling minted, the mint being what
+    // taking the lock did. What holds the invariant is that a variant landing
+    // between this check and the write is refused at every door that reads a
+    // named type afterwards, in this same wording.
+    const spelling = storeTypeSpelling(type);
+    if (!spelling.listed && !spelling.rootAbsent) {
+        typeListingNote(sanitize(type, TYPE_CAP), 'nothing was written');
+        process.exitCode = 1;
+        return;
+    }
+    if (spelling.actual !== undefined && spelling.actual !== type) {
+        typeCaseNote(spelling.actual, 'add-type ' + sanitize(type, TYPE_CAP), 'nothing was written');
+        process.exitCode = 1;
+        return;
+    }
     // An --update naming a record the tier does not hold is refused here,
     // before the consent refusal and before the lock. Before the lock because
     // acquireLock mints the tier directory as a side effect of placing the
@@ -13667,9 +14361,7 @@ function cmdAddType(argv) {
     // is not a repair's to judge, and a note there would nag on every
     // description fix for a declaration the author was not writing.
     if (wantedTriggers.length === 0) {
-        noTriggerNote(name, '--type', ', run from a project declaring Project-Type \''
-            + sanitize(type, TYPE_CAP) + '\', which is the declaration that verb resolves its'
-            + ' type tier from, having no type argument of its own');
+        noTriggerNote(name, '--type=' + sanitize(type, TYPE_CAP));
     }
     if (shadowed) {
         archiveShadowNote(name, ' in type \'' + sanitize(type, TYPE_CAP) + '\'',
@@ -13839,7 +14531,8 @@ function cmdAddOperator(argv) {
             + ' creation (--update replaces the index description, and with --body or'
             + ' --body-file the record body). A record that already exists takes its triggers'
             + ' from `memq triggers <name> <type>:<pattern> --operator`, which merges into the'
-            + ' line it already carries rather than replacing it');
+            + ' line it already carries, or writes that line whole in place of it with'
+            + ' --replace');
     }
     if (confirmShared && !repair) {
         return usage('--confirm-shared confirms a shared-tier body repair, so it needs'
@@ -13883,9 +14576,10 @@ function cmdAddOperator(argv) {
     // at a record's birth reaches that same surface, so admitting the flag on
     // a granted verb would hand that reach back through the grant. It is the
     // grant vector's second lock rather than a CLI-layer bound, add-type's
-    // paragraph owning the reason: `cmdTriggers` refuses nothing on these
-    // signals, so what withholds the line on that vector is the hook's verb
-    // allowlist and its `--trigger` screen. The record still lands, and the
+    // paragraph owning the reason: what `cmdTriggers` refuses on these signals
+    // is a replace, never a declaration, so what withholds the line on that
+    // vector is the hook's verb allowlist and its `--trigger` screen. The
+    // record still lands, and the
     // note below names the debt on whichever branch the environment puts it
     // on.
     if (triggers.length > 0 && storeSignalsPresent()) {
@@ -14215,7 +14909,7 @@ function cmdAddOperator(argv) {
     // No clause beside the flag, the operator tier needing none: `--operator`
     // resolves without a working directory, so the spelling lands on this
     // record wherever it is run.
-    if (wantedTriggers.length === 0) noTriggerNote(name, '--operator', '');
+    if (wantedTriggers.length === 0) noTriggerNote(name, '--operator');
     if (shadowed) {
         archiveShadowNote(name, ' in the operator tier',
             'delete-operator ' + sanitize(name, NAME_CAP) + ' --confirm-shared');
@@ -14271,14 +14965,37 @@ function cmdDeleteType(argv) {
     const type = positionals[0];
     const name = positionals[1];
     if (!isTypeName(type)) {
-        return usage('type must be characters from [A-Za-z0-9_.-], at most ' + TYPE_CAP
-            + ', and not a path token');
+        return usage(TYPE_NAME_RULE);
     }
     if (!isMemoryFilename(name + '.md')) {
         return usage('name must be characters from [A-Za-z0-9_.-], at most '
             + (MEMORY_FILE_CAP - 3) + ', and not the memory index');
     }
     if (deleteRefusedByStoreSignals('delete-type')) return;
+    // The store's own spelling of the type, on the reading doors' and
+    // add-type's gate and for a sharper reason than either. A stat and an
+    // existence check answer case-insensitively on NTFS, so without this
+    // `delete-type WebApp <name> --confirm-shared` passes the existence check
+    // below, removes the record out of the `webapp` tier the store actually
+    // holds, and reports `WebApp` on every line it prints: a destructive verb
+    // operating on a tier the caller did not name and saying it operated on
+    // one the store has never held. A root that could not be listed decides
+    // nothing and refuses, since an unlistable root and an empty one are the
+    // same answer to a caller who cannot tell them apart, and a root that is
+    // simply absent falls through to the absent-tier refusal below, which is
+    // the answer for it.
+    const spelling = storeTypeSpelling(type);
+    if (!spelling.listed && !spelling.rootAbsent) {
+        typeListingNote(sanitize(type, TYPE_CAP), 'nothing was deleted');
+        process.exitCode = 1;
+        return;
+    }
+    if (spelling.actual !== undefined && spelling.actual !== type) {
+        typeCaseNote(spelling.actual, 'delete-type ' + sanitize(type, TYPE_CAP),
+            'nothing was deleted');
+        process.exitCode = 1;
+        return;
+    }
     // An absent tier answers before the confirmation and before the lock, for
     // add-type's reason: acquireLock mints the directory as a side effect, and
     // a typo'd type name must not leave a shared-store directory behind.
