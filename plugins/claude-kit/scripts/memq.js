@@ -13,11 +13,13 @@
 //   memq anchor <name> <path>...
 //   memq triggers <name> <type>:<pattern>... [--type|--operator]
 //   memq add-type <type> <name> "<description>" [--tag t]...
-//                 [--supersedes <name>] [--body "..."|--body-file "<path>"]
+//                 [--trigger <type>:<pattern>]... [--supersedes <name>]
+//                 [--body "..."|--body-file "<path>"]
 //   memq add-type <type> <name> "<description>" --update
 //                 [(--body "..."|--body-file "<path>") --confirm-shared]
 //   memq add-operator <name> "<description>" [--tag t]... [--machine <name>]
-//                     [--supersedes <name>] [--body "..."|--body-file "<path>"]
+//                     [--trigger <type>:<pattern>]... [--supersedes <name>]
+//                     [--body "..."|--body-file "<path>"]
 //   memq add-operator <name> "<description>" --update
 //                     [(--body "..."|--body-file "<path>") --confirm-shared]
 //   memq delete-type <type> <name> --confirm-shared
@@ -436,6 +438,29 @@ const TRIGGER_FRAGMENT_TYPES = ['cmd', 'err', 'glob'];
 const TRIGGER_COMMON_TOKENS = new Set(['git', 'npm', 'node', 'cd', 'ls', 'cat', 'echo', 'sed',
     'grep', 'find', 'rm', 'cp', 'mv', 'pwsh', 'bash', 'sh', 'dotnet', 'python', 'curl', 'test',
     'run', 'build']);
+// The types a shared-tier record may declare, which is every type but `glob:`,
+// derived from the vocabulary rather than spelled again so the two cannot
+// drift as the list grows. It is what a shared-tier surface offers a caller
+// in place of the whole vocabulary: the note an add verb prints under a
+// record born with no trigger. Every other surface that would otherwise offer
+// `glob:` to a shared-tier caller answers with the refusal below instead of a
+// shortened list, because there the caller has already named the type and the
+// question is why it was refused rather than which types there are.
+const SHARED_TRIGGER_TYPES = TRIGGER_TYPES.filter((t) => t !== 'glob');
+// Why a `glob:` entry is refused on a shared tier, in one sentence shared by
+// every writer that refuses one. A glob is the single type whose pattern is a
+// path, matched relative to the project root the matching session stands in,
+// so the same entry under a tier every project on the machine reads names a
+// different file in each of them. The reading surface skips a shared-tier
+// glob for that reason, which is what makes an admitted one a declaration
+// nothing would ever act on. It is a constant rather than a sentence per
+// writer because two verbs now refuse the same entry for the same reason, and
+// a caller who meets it from one of them and then the other is meeting one
+// rule.
+const SHARED_TIER_GLOB_REFUSAL = 'a glob names a path under a project root and the shared'
+    + ' tiers have none, so it would fire one project\'s record on another project\'s files;'
+    + ' the recognition surface skips it for that reason, which is what makes it a trigger'
+    + ' nothing would act on';
 const DAY_MS = 86400000;
 const HOUR_MS = 3600000;
 const MAX_DATE_MS = 8.64e15;   // the widest moment Date can render, either side of the epoch
@@ -4656,11 +4681,10 @@ function supersededNaming(successors, render) {
 
 // The file-per-fact memories in a memory dir, the entries isMemoryFilename
 // admits. Name is the filename without extension, description comes from the
-// index line for that file, and the tags, the supersedes pointer and the
-// anchors parse from the file's own frontmatter, read once for all three.
-// Sorted
-// ascending by name in codepoint order, so output never depends on filesystem
-// enumeration order.
+// index line for that file, and the tags, the supersedes pointer, the anchors
+// and the recognition triggers parse from the file's own frontmatter, read
+// once for all four. Sorted ascending by name in codepoint order, so output
+// never depends on filesystem enumeration order.
 function listMemories(memDir) {
     let files;
     try {
@@ -4717,7 +4741,15 @@ function listMemories(memDir) {
             // tier needs the entries and nothing else, and carrying the
             // bodies instead would hold every record of the tier in memory
             // for a field that is one bounded line.
-            anchors: raw === null ? null : frontmatterAnchors(raw)
+            anchors: raw === null ? null : frontmatterAnchors(raw),
+            // The record's recognition triggers as this one read saw them,
+            // null for a record whose frontmatter block no reader can read.
+            // It rides here for the anchors field's reason and to hold the
+            // per-record cost at one head read: the digest's triggerless
+            // count is asked of a whole shared tier, and reading each record
+            // a second time for one bounded line would make a verb every
+            // seat takeover runs pay twice for the same bytes.
+            triggers: raw === null ? null : frontmatterTriggers(raw)
         });
     }
     memories.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
@@ -4777,11 +4809,13 @@ function usage(problem) {
         + '       memq anchor <name> <path>...\n'
         + '       memq triggers <name> <type>:<pattern>... [--type|--operator]\n'
         + '       memq add-type <type> <name> "<description>" [--tag t]...\n'
-        + '                     [--supersedes <name>] [--body "..."|--body-file "<path>"]\n'
+        + '                     [--trigger <type>:<pattern>]... [--supersedes <name>]\n'
+        + '                     [--body "..."|--body-file "<path>"]\n'
         + '       memq add-type <type> <name> "<description>" --update\n'
         + '                     [(--body "..."|--body-file "<path>") --confirm-shared]\n'
         + '       memq add-operator <name> "<description>" [--tag t]... [--machine <name>]\n'
-        + '                         [--supersedes <name>] [--body "..."|--body-file "<path>"]\n'
+        + '                         [--trigger <type>:<pattern>]... [--supersedes <name>]\n'
+        + '                         [--body "..."|--body-file "<path>"]\n'
         + '       memq add-operator <name> "<description>" --update\n'
         + '                         [(--body "..."|--body-file "<path>") --confirm-shared]\n'
         + '       memq delete-type <type> <name> --confirm-shared\n'
@@ -7224,11 +7258,48 @@ function recallTierRecords(dir, tally, memories) {
             name: m.name,
             description: m.description,
             applied,
-            aliveMs: lastAliveMs(st.mtimeMs, readFrontmatterCreated(memPath), applied)
+            aliveMs: lastAliveMs(st.mtimeMs, readFrontmatterCreated(memPath), applied),
+            // Carried from the listing's own head read rather than read
+            // again here, so a caller asking what a tier declares pays
+            // nothing beyond what the listing already spent.
+            triggers: m.triggers
         });
     }
     records.sort(byLastAlive);
     return records;
+}
+
+// How many of a tier's records declare no recognition trigger that reaches
+// them, which is the debt a shared tier's coverage line names. Four states
+// count the same here, because what the number is about is how many records
+// nothing puts in front of a session at the moment they apply: a record with
+// no `triggers:` line at all, one whose frontmatter no reader can read, one
+// whose line parses to no admitted entry, and one whose every admitted entry
+// is a `glob:`. Splitting them would be a different report, and the one a
+// reader acts on is the same in all four cases.
+//
+// The glob case is the one that is not about the record's own text. A glob's
+// pattern is a path resolved against the project root the matching session
+// stands in, and a shared tier has none, so the recognition surface skips
+// every shared-tier glob and a record declaring nothing else is surfaced by
+// nothing. Both add verbs and the `triggers` verb refuse such an entry, so
+// the only way a tier holds one is a hand-edited record or one that arrived
+// through a sync from a store written before that refusal; counting it as
+// covered would report the debt closed on exactly the records the backfill
+// exists to reach.
+//
+// It costs no read of its own: the parse rides on the listing that already
+// read each record's head, which is what keeps a verb every seat takeover
+// runs at one head read per record. It is asked of the two shared tiers
+// alone, those being the tiers a trigger reaches from every project on the
+// machine, and the ones the debt accumulated in unseen.
+function triggerlessCount(records) {
+    let count = 0;
+    for (const r of records) {
+        if (r.triggers === null
+            || !r.triggers.entries.some((e) => e.type !== 'glob')) count += 1;
+    }
+    return count;
 }
 
 // One archive directory's records for the digest: the retired files beside
@@ -7375,8 +7446,8 @@ function recallDigest(surfaces, maxLines) {
 //
 //   outcomes journal: <n> keys
 //   archive: <n> records
-//   type tier (<type>): <n> records
-//   operator tier: <n> records
+//   type tier (<type>): <n> records, <n> without a recognition trigger
+//   operator tier: <n> records, <n> without a recognition trigger
 //   project tier: <n> records
 //     (pinned, ", the pinned tier this instance shares" appended)
 //   pending tier (<run-id>): <n> records, awaiting adjudication
@@ -7448,11 +7519,17 @@ const ARCHIVE_ANCHOR_CLAUSE = ', anchors not checked (this digest does not check
 // records labeled <tier>/<name>: `find` never reaches retired records, so a
 // tier this digest skipped would hold memories nothing could resurface. The
 // type coverage line is a claim about the store, so it tells its three
-// states apart: a tier with records ("type tier (<type>): <n> records"), no
-// declaration at all ("type tier: none declared"), and a declaration whose
-// tier directory does not exist ("type tier (<type>): declared, but its
-// tier directory does not exist"), which routing callers merge into one
-// null and a stated fact must not.
+// states apart: a tier with records ("type tier (<type>): <n> records, <n>
+// without a recognition trigger"), no declaration at all ("type tier: none
+// declared"), and a declaration whose tier directory does not exist ("type
+// tier (<type>): declared, but its tier directory does not exist"), which
+// routing callers merge into one null and a stated fact must not. The
+// trigger count and the anchors clause both ride on the first state alone:
+// a tier holding no records owes no count, and a zero there would read as a
+// claim about records that do not exist. The operator line carries the same
+// count under the same gate, and the project tier carries none, its records
+// being reachable by the session index and its globs by the surface that
+// skips a shared tier's.
 //
 // This digest is the reader's own sight of the project tier; it does not
 // lean on anything outside itself to have put a project record in front of
@@ -7618,14 +7695,26 @@ function cmdRecall(argv) {
         const typeMemories = listMemories(typed.dir);
         typeSupersedes = supersededSuccessors(typeMemories);
         const typeUnread = typeUsage.status === 'unreadable' || typeUsage.skipped > 0;
-        typeLines = recallTierRecords(typed.dir, typeTally, typeMemories)
+        const typeRecords = recallTierRecords(typed.dir, typeTally, typeMemories);
+        typeLines = typeRecords
             .map((r) => '  type  ' + sanitize(r.name, NAME_CAP)
                 + '  ' + recallAppliedColumn(r.applied, typeUnread)
                 + '  alive ' + recallAgeColumn(r.aliveMs, now)
                 + supersededLabel(typeSupersedes, r.name, false));
+        // The trigger count rides beside the record count, on the tier's own
+        // coverage line, because that line is where a reader learns what this
+        // digest spans and the recognition debt is a property of the span: a
+        // tier of records no moment surfaces is reachable by search and by
+        // this digest and by nothing else. It is gated on the tier holding
+        // records, the anchor clause's own rule, since an empty tier owes no
+        // count and a zero there would read as a claim about records that do
+        // not exist.
         typeCoverage = 'type tier (' + sanitize(typed.type, TYPE_CAP) + '): '
             + typeLines.length + ' record' + (typeLines.length === 1 ? '' : 's')
-            + (typeLines.length > 0 ? SHARED_TIER_ANCHOR_CLAUSE : '');
+            + (typeLines.length > 0
+                ? ', ' + triggerlessCount(typeRecords)
+                    + ' without a recognition trigger' + SHARED_TIER_ANCHOR_CLAUSE
+                : '');
     } else {
         // The coverage line is a claim, so the two states typedTierOrNull
         // merges for routing are told apart here: a project that declared a
@@ -7654,14 +7743,19 @@ function cmdRecall(argv) {
         const operatorMemories = listMemories(operator);
         operatorSupersedes = supersededSuccessors(operatorMemories);
         const operatorUnread = operatorUsage.status === 'unreadable' || operatorUsage.skipped > 0;
-        operatorLines = recallTierRecords(operator, operatorTally, operatorMemories)
+        const operatorRecords = recallTierRecords(operator, operatorTally, operatorMemories);
+        operatorLines = operatorRecords
             .map((r) => '  operator  ' + sanitize(r.name, NAME_CAP)
                 + '  ' + recallAppliedColumn(r.applied, operatorUnread)
                 + '  alive ' + recallAgeColumn(r.aliveMs, now)
                 + supersededLabel(operatorSupersedes, r.name, false));
+        // The trigger count, on the type tier's rule and gated the same way.
         operatorCoverage = 'operator tier: ' + operatorLines.length + ' record'
             + (operatorLines.length === 1 ? '' : 's')
-            + (operatorLines.length > 0 ? SHARED_TIER_ANCHOR_CLAUSE : '');
+            + (operatorLines.length > 0
+                ? ', ' + triggerlessCount(operatorRecords)
+                    + ' without a recognition trigger' + SHARED_TIER_ANCHOR_CLAUSE
+                : '');
     }
 
     // Both tiers' retirements, ordered as one surface. Descriptions are
@@ -9826,7 +9920,8 @@ function cmdTriggers(argv) {
     for (const one of given) {
         const fault = triggerEntryFault(one);
         if (fault !== null) {
-            refusals.push(triggerRefusalText(one, triggerFaultWords(fault, one)));
+            refusals.push(triggerRefusalText(one,
+                triggerFaultWords(fault, one, toType || toOperator)));
             continue;
         }
         // A glob is the one type a shared tier cannot carry, and it is refused
@@ -9843,10 +9938,7 @@ function cmdTriggers(argv) {
         // a caller who named four entries and got two wrong fixes both on one
         // re-run.
         if ((toType || toOperator) && one.startsWith('glob:')) {
-            refusals.push(triggerRefusalText(one, 'a glob names a path under a project root and'
-                + ' the shared tiers have none, so it would fire one project\'s record on'
-                + ' another project\'s files; the recognition surface skips it for that reason,'
-                + ' which is what makes it a trigger nothing would act on'));
+            refusals.push(triggerRefusalText(one, SHARED_TIER_GLOB_REFUSAL));
             continue;
         }
         // The same entry named twice is one mention at its first position,
@@ -9952,9 +10044,21 @@ function cmdTriggers(argv) {
 // they are given to: a remedy naming the command or the error is one a glob
 // author cannot follow, the glob grammar barring the space that a longer
 // command fragment is written with.
-function triggerFaultWords(fault, entry) {
+//
+// `sharedTier` says the entry was bound for the type or operator tier, and
+// what it changes is which advice is true there. Every remedy below is a way
+// to write an entry the caller's destination will take, so on a shared tier
+// the two that speak about `glob:` are advice nobody can follow: no glob of
+// any spelling reaches those tiers. A glob fault is answered with the tier's
+// own reason instead, and the vocabulary the type list offers is the tier's
+// own, so a caller is never sent to fix a pattern whose type is refused
+// whatever it says.
+function triggerFaultWords(fault, entry, sharedTier) {
     const at = typeof entry === 'string' ? entry.indexOf(':') : -1;
     const type = at === -1 ? null : entry.slice(0, at);
+    if (sharedTier && type === 'glob') {
+        return fault + '. The pattern is not what to fix, though: ' + SHARED_TIER_GLOB_REFUSAL;
+    }
     if (fault.startsWith('the pattern is shorter')) {
         if (type === 'glob') {
             return fault + '. A glob fires on the paths the session reads and writes, so one'
@@ -10010,9 +10114,120 @@ function triggerFaultWords(fault, entry) {
     if (fault.startsWith('not <type>')) {
         return fault + '. An entry names what to recognize and what kind of thing it is: a'
             + ' Bash command (cmd), a failed call\'s output (err), a skill (skill), an agent'
-            + ' type (agent), a tool name (tool), or a path glob (glob)';
+            + ' type (agent), a tool name (tool)'
+            + (sharedTier ? '. A path glob (glob) is the sixth type and reaches no shared'
+                + ' tier: ' + SHARED_TIER_GLOB_REFUSAL : ', or a path glob (glob)');
     }
     return fault;
+}
+
+// The `--trigger` entries a shared-tier add verb was given, as the list its
+// create path writes, or null having already written the refusal. It is
+// `cmdTriggers`'s entry loop, member for member, because birth and a later
+// declaration are the same judgement at two moments and a record's line has
+// to read the same whichever wrote it: every refusal collected rather than
+// the first returned, so a caller who mistyped two entries of four fixes both
+// on one re-run; a `glob:` entry refused outright, both add verbs writing a
+// shared tier; the same entry given twice reduced to one mention at its first
+// position; and every refused entry shown through triggerRefusalText, so
+// store-bound text never rides back out raw.
+//
+// The whole command is refused on any bad entry rather than the entry
+// dropped, which is `triggers`'s rule and the reason it is: what a create
+// writes is the whole line, so a command that quietly wrote fewer entries
+// than were typed would mint a record whose recognition is narrower than its
+// author believes, with nothing on either channel saying so.
+//
+// One rule differs, and only in where it is measured. `triggers` counts the
+// entry cap against a line already on disk, since it merges; a create carries
+// no such line, so the count here is the given entries themselves. Over the
+// cap it refuses rather than cutting, this file's rule for shared-tier text.
+// The count is asked after the entries are judged, so a command that is over
+// the cap and also malformed hears about the shape first, which is what its
+// author has to fix before the count means anything.
+function addTriggerEntries(given) {
+    const wanted = [];
+    const seen = new Set();
+    const refusals = [];
+    for (const one of given) {
+        const fault = triggerEntryFault(one);
+        if (fault !== null) {
+            refusals.push(triggerRefusalText(one, triggerFaultWords(fault, one, true)));
+            continue;
+        }
+        if (one.startsWith('glob:')) {
+            refusals.push(triggerRefusalText(one, SHARED_TIER_GLOB_REFUSAL));
+            continue;
+        }
+        if (seen.has(one)) continue;
+        seen.add(one);
+        wanted.push(one);
+    }
+    if (refusals.length > 0) {
+        process.stderr.write('memq: nothing was written; '
+            + (refusals.length === 1 ? 'this entry was refused' : 'these entries were refused')
+            + ': ' + refusals.join('; ') + '\n');
+        process.exitCode = 1;
+        return null;
+    }
+    if (wanted.length > TRIGGER_ENTRIES_MAX) {
+        process.stderr.write('memq: nothing was written; the record would carry '
+            + wanted.length + ' triggers and a reader reads ' + TRIGGER_ENTRIES_MAX
+            + ', so the rest would go unread; declare fewer triggers\n');
+        process.exitCode = 1;
+        return null;
+    }
+    return wanted;
+}
+
+// The note an add verb prints under a record born declaring no recognition
+// trigger: the record is written and the line says what it is missing, per
+// the store's own rule that a record with no handle is still worth keeping.
+// A trigger is what puts a memory in front of a session at the moment it
+// applies, so a shared-tier record without one is reachable by search and by
+// the digest and by nothing else, and the debt is cheapest to see at the
+// moment it is incurred rather than a tier of records later. It names the
+// record and the exact command that declares one later, because the verb, the
+// name and the tier flag are three things a caller would otherwise look up.
+// `glob:` is left out of the types it offers for the reason the shared tiers
+// refuse it.
+//
+// The command is named on the vector that can run it and named as withheld on
+// the one that cannot, which is `sharedDeleteRemedy`'s fork above and its
+// reason: a note is read on the path that printed it, and this note's
+// guaranteed path is the one where the command is refused. Under the engine
+// store signals `--trigger` is refused, so every record written there reaches
+// this note, and the standing grant an unattended worker runs under withholds
+// the `triggers` verb outright, so the spelling would be a command whose whole
+// answer is the Bash refusal the grant exists to route around. What is named
+// instead is the state: the debt is real, and closing it is an attended
+// session's to do. The types ride on either branch, being what the
+// declaration will need whoever makes it, and `where` does not: it is advice
+// about running the command, which is what the signalled branch has none of.
+//
+// `where` is the clause the type tier needs and the operator tier does not,
+// and it is here because a spelling that lands on a different record is worse
+// advice than none. `memq triggers --operator` resolves through
+// operatorTierOrNull(), which takes no working directory and so answers for
+// the one tier the record was written to. `memq triggers --type` resolves
+// through the working directory's own declared Project-Type, not through any
+// type argument, the verb having none: run from a project declaring some
+// other type it either reports no such record or, where that other tier
+// happens to hold the name, rewrites a record the caller never named and
+// moves its mtime for every project and machine reading that tier. So the
+// type side's note names the declaration the spelling needs rather than
+// handing over a command whose target depends on where it is run.
+function noTriggerNote(name, tierFlag, where) {
+    const shown = sanitize(name, NAME_CAP);
+    const remedy = storeSignalsPresent()
+        ? 'while this process carries the engine store signals nothing here declares one,'
+            + ' because the standing grant an unattended worker runs under withholds the'
+            + ' `triggers` verb, so the declaration waits for an attended session'
+        : 'declare one later with `memq triggers ' + shown + ' <type>:<pattern> '
+            + tierFlag + '`' + where;
+    process.stderr.write('memq: \'' + shown + '\' declares no recognition triggers, so nothing'
+        + ' puts it in front of a session at the moment it applies; ' + remedy
+        + ' (types: ' + SHARED_TRIGGER_TYPES.join(', ') + ')\n');
 }
 
 // memq decay-scan: report the store's decay candidates, one deterministic
@@ -12857,9 +13072,23 @@ function removeUsageStamps(dir, file, options) {
 // next decay pass. The name has to be one the tier holds live, checked while
 // the author is still here, because a pointer naming nothing is inert at
 // read time and so costs a silent miss rather than an error.
+//
+// --trigger names a moment that recognizes this record, writing the
+// `triggers: <entry>, <entry>` line the recognition surface reads. It is
+// repeatable, unlike every other flag here, a record having as many moments
+// as it has, and it is judged by the `triggers` verb's own grammar and bars
+// so that a record's line reads the same whichever door wrote it. A refused
+// entry refuses the whole command with nothing written, that verb's rule and
+// for its reason: what a create writes is the whole line, so dropping a bad
+// entry would mint a record whose recognition is narrower than its author
+// believes. A record written with no trigger still lands, and stderr names
+// the debt as it is incurred rather than a tier of records later. The flag
+// is refused under the engine store signals, on what the line reaches rather
+// than on what this record holds; the check below owns that reasoning.
 function cmdAddType(argv) {
     const positionals = [];
     const tags = [];
+    const triggers = [];
     let body;
     let bodyFile;
     let supersedes;
@@ -12885,6 +13114,16 @@ function cmdAddType(argv) {
             if (v === undefined || v.startsWith('--')) return usage('--body-file needs a value');
             if (bodyFile !== undefined) return usage('--body-file is given once');
             bodyFile = v;
+        } else if (a === '--trigger') {
+            const v = argv[++i];
+            if (v === undefined || v.startsWith('--')) return usage('--trigger needs a value');
+            // Repeatable rather than given once, unlike every other flag
+            // here: a record declares as many recognition triggers as it has
+            // moments, so each one is its own entry on one line and a second
+            // flag adds to the first rather than replacing it. What bounds
+            // the repetition is the entry cap the reader reads to, checked
+            // once over the whole list below.
+            triggers.push(v);
         } else if (a === '--supersedes') {
             const v = argv[++i];
             if (v === undefined || v.startsWith('--')) return usage('--supersedes needs a value');
@@ -12956,10 +13195,14 @@ function cmdAddType(argv) {
     // never write: a cap error first would send the author to shorten a body
     // the command was going to refuse regardless.
     const repair = update && (body !== undefined || bodyFile !== undefined);
-    if (update && (tags.length > 0 || supersedes !== undefined)) {
-        return usage('--update sets no tags and no supersedes pointer; --tag and --supersedes'
-            + ' are set at creation (--update replaces the index description, and with --body'
-            + ' or --body-file the record body)');
+    if (update && (tags.length > 0 || supersedes !== undefined || triggers.length > 0)) {
+        return usage('--update sets no tags, no supersedes pointer and no recognition triggers;'
+            + ' --tag, --supersedes and --trigger are set at creation (--update replaces the'
+            + ' index description, and with --body or --body-file the record body). A record'
+            + ' that already exists takes its triggers from `memq triggers <name>'
+            + ' <type>:<pattern> --type`, run from a project declaring this record\'s'
+            + ' Project-Type, which is the declaration that verb resolves its type tier from;'
+            + ' it merges into the line the record already carries rather than replacing it');
     }
     if (confirmShared && !repair) {
         return usage('--confirm-shared confirms a shared-tier body repair, so it needs'
@@ -13034,6 +13277,46 @@ function cmdAddType(argv) {
             + ' so the retirement flags\' pin exemption does not bound this one. The record'
             + ' still lands without it');
     }
+    // A recognition trigger is refused under the same signals, and on what
+    // the line reaches rather than on what the record holds. The store's
+    // standing grant for a fleet worker (hooks/memq-grant.js) withholds the
+    // `triggers` verb outright, on the ground that the line it writes is what
+    // decides when a memory is put in front of a session, so a worker could
+    // aim recognition on a tier every project on the machine reads and every
+    // machine the store syncs to. A record born carrying that line reaches
+    // exactly the same surface as one given it afterwards, so admitting the
+    // flag on a granted verb would hand that reach back through the grant.
+    //
+    // What this refusal is, exactly: the grant vector's second lock rather
+    // than a CLI-layer bound on the capability. `cmdTriggers` carries no
+    // store-signal refusal of its own, so a process holding these signals and
+    // free to run memq is one command away from writing the identical line.
+    // What withholds that line on the vector this is written for is the hook's
+    // verb allowlist, which omits `triggers`, together with its `--trigger`
+    // screen; this check is what still holds when the two layers read their
+    // environment differently, the hook judging its own process and memq the
+    // child. What the flag does not reach is the other half of the verb's
+    // account: a create writes its own record's line and cannot touch one the
+    // operator wrote, so nothing here can crowd an existing declaration out of
+    // a reader's view. Refusing on the half it does reach is the conservative
+    // direction for a grant surface, and the cost is one attended command: the
+    // record still lands with every other field, and the note below names the
+    // debt so the attended session that can close it sees it. It answers after
+    // the flag-set checks above, so a command doomed by its flags hears that
+    // in every environment, and before the entries are judged, so a refused
+    // command's entries cost no reading.
+    if (triggers.length > 0 && storeSignalsPresent()) {
+        return usage('--trigger declares when a record is put in front of a session, which is'
+            + ' refused under the engine store signals (KIT_MEMORY_ROOT with'
+            + ' KIT_MEMORY_ROOT_ALLOW_DATA=1): the standing grant an unattended worker runs'
+            + ' under withholds the `triggers` verb for that reach, and a line written at the'
+            + ' record\'s birth reaches the same surface. The record still lands without it');
+    }
+    // Every entry judged before anything is read or written, so a mistyped
+    // trigger costs no store access and leaves nothing behind: the refusal is
+    // the whole command, this file's rule for a shared-tier write.
+    const wantedTriggers = addTriggerEntries(triggers);
+    if (wantedTriggers === null) return;
     // The type tier is not the pending tier and this write is not routed
     // into one: the tier a project shares with every other project of its
     // type has its own directory, its own lock, and an index this command
@@ -13152,6 +13435,14 @@ function cmdAddType(argv) {
         // this record's predecessor, which is a fact about the tier that
         // outlives the session that noticed it.
         if (supersedes !== undefined) front.push('supersedes: ' + supersedes);
+        // `triggers:` sits with the fields above rather than with the
+        // provenance lines below because it describes how the record is
+        // recognized, not who wrote it. It is written at the block's top
+        // level, unquoted, comma-space separated, which is the one form
+        // `triggerRecord` reads back: a later declaration through the
+        // `triggers` verb merges into this line, so a create that wrote it
+        // any other way would mint a record that verb refuses to add to.
+        if (wantedTriggers.length > 0) front.push('triggers: ' + wantedTriggers.join(', '));
         for (const line of provenanceLines()) front.push(line);
         if (front.length > 0) content += '---\n' + front.join('\n') + '\n---\n';
         content += '# ' + name + '\n\n' + stored + '\n';
@@ -13370,6 +13661,16 @@ function cmdAddType(argv) {
         + ' (body ' + stored.length + ' chars'
         + (supersedes === undefined ? '' : ', superseding ' + sanitize(supersedes, NAME_CAP))
         + ')\n');
+    // The record landed either way; what the note says is what it landed
+    // without. It prints on the create path alone, `--update` having reached
+    // its own return well above this line: an existing record's trigger state
+    // is not a repair's to judge, and a note there would nag on every
+    // description fix for a declaration the author was not writing.
+    if (wantedTriggers.length === 0) {
+        noTriggerNote(name, '--type', ', run from a project declaring Project-Type \''
+            + sanitize(type, TYPE_CAP) + '\', which is the declaration that verb resolves its'
+            + ' type tier from, having no type argument of its own');
+    }
     if (shadowed) {
         archiveShadowNote(name, ' in type \'' + sanitize(type, TYPE_CAP) + '\'',
             'delete-type ' + sanitize(type, TYPE_CAP) + ' ' + sanitize(name, NAME_CAP)
@@ -13409,9 +13710,19 @@ function cmdAddType(argv) {
 //
 // --supersedes names the live record of this tier that this one replaces,
 // add-type's flag under add-type's rule and for add-type's reasons.
+//
+// --trigger names a moment that recognizes this record, add-type's flag under
+// add-type's rule and for add-type's reasons: repeatable, judged by the
+// `triggers` verb's grammar and bars, refusing the whole command on any bad
+// entry, noted on stderr where a record lands without one, and refused under
+// the engine store signals. What differs is only the reach the refusal is
+// about, and it is wider here: this tier is read by every project on the
+// machine and by every machine the store syncs to, where the type tier is
+// read by the projects of one type.
 function cmdAddOperator(argv) {
     const positionals = [];
     const tags = [];
+    const triggers = [];
     let body;
     let bodyFile;
     let machine;
@@ -13445,6 +13756,14 @@ function cmdAddOperator(argv) {
             // and say nothing about the one they did.
             if (machine !== undefined) return usage('--machine is given once');
             machine = v;
+        } else if (a === '--trigger') {
+            const v = argv[++i];
+            if (v === undefined || v.startsWith('--')) return usage('--trigger needs a value');
+            // Repeatable, add-type's rule and its reason: a record declares as
+            // many recognition triggers as it has moments, each its own entry
+            // on one line, bounded by the entry cap checked over the whole
+            // list below rather than by a one-value rule here.
+            triggers.push(v);
         } else if (a === '--supersedes') {
             const v = argv[++i];
             if (v === undefined || v.startsWith('--')) return usage('--supersedes needs a value');
@@ -13513,10 +13832,14 @@ function cmdAddOperator(argv) {
     // on the same reading, add-type's reason: it says which of two records
     // the store answers with, which a description repair says nothing of.
     const repair = update && (body !== undefined || bodyFile !== undefined);
-    if (update && (tags.length > 0 || machine !== undefined || supersedes !== undefined)) {
-        return usage('--update sets no tags, no machine scope and no supersedes pointer;'
-            + ' --tag, --machine and --supersedes are set at creation (--update replaces the'
-            + ' index description, and with --body or --body-file the record body)');
+    if (update && (tags.length > 0 || machine !== undefined || supersedes !== undefined
+        || triggers.length > 0)) {
+        return usage('--update sets no tags, no machine scope, no supersedes pointer and no'
+            + ' recognition triggers; --tag, --machine, --supersedes and --trigger are set at'
+            + ' creation (--update replaces the index description, and with --body or'
+            + ' --body-file the record body). A record that already exists takes its triggers'
+            + ' from `memq triggers <name> <type>:<pattern> --operator`, which merges into the'
+            + ' line it already carries rather than replacing it');
     }
     if (confirmShared && !repair) {
         return usage('--confirm-shared confirms a shared-tier body repair, so it needs'
@@ -13554,6 +13877,29 @@ function cmdAddOperator(argv) {
             + ' so the retirement flags\' pin exemption does not bound this one. The record'
             + ' still lands without it');
     }
+    // A recognition trigger is refused under the same signals for add-type's
+    // reason: the standing grant a fleet worker runs under withholds the
+    // `triggers` verb on the reach of the line it writes, and a line written
+    // at a record's birth reaches that same surface, so admitting the flag on
+    // a granted verb would hand that reach back through the grant. It is the
+    // grant vector's second lock rather than a CLI-layer bound, add-type's
+    // paragraph owning the reason: `cmdTriggers` refuses nothing on these
+    // signals, so what withholds the line on that vector is the hook's verb
+    // allowlist and its `--trigger` screen. The record still lands, and the
+    // note below names the debt on whichever branch the environment puts it
+    // on.
+    if (triggers.length > 0 && storeSignalsPresent()) {
+        return usage('--trigger declares when a record is put in front of a session, which is'
+            + ' refused under the engine store signals (KIT_MEMORY_ROOT with'
+            + ' KIT_MEMORY_ROOT_ALLOW_DATA=1): the standing grant an unattended worker runs'
+            + ' under withholds the `triggers` verb for that reach, and a line written at the'
+            + ' record\'s birth reaches the same surface. The record still lands without it');
+    }
+    // Every entry judged before anything is read or written, add-type's rule:
+    // a mistyped trigger costs no store access and the refusal is the whole
+    // command.
+    const wantedTriggers = addTriggerEntries(triggers);
+    if (wantedTriggers === null) return;
     // A run's write lands in the shared tier like any other, carrying the
     // provenance that says which run authored it, add-type's rule: the
     // operator tier has its own directory, its own lock, and an index this
@@ -13662,6 +14008,11 @@ function cmdAddOperator(argv) {
         // predecessor, which stays true of the tier long after the session
         // that wrote it.
         if (supersedes !== undefined) front.push('supersedes: ' + supersedes);
+        // `triggers:` sits here for add-type's reason and is written in
+        // add-type's form: the block's top level, unquoted, comma-space
+        // separated, which is the one shape `triggerRecord` reads back when
+        // the `triggers` verb later merges into this line.
+        if (wantedTriggers.length > 0) front.push('triggers: ' + wantedTriggers.join(', '));
         for (const line of provenanceLines()) front.push(line);
         if (front.length > 0) content += '---\n' + front.join('\n') + '\n---\n';
         content += '# ' + name + '\n\n' + stored + '\n';
@@ -13858,6 +14209,13 @@ function cmdAddOperator(argv) {
         + ' (body ' + stored.length + ' chars'
         + (supersedes === undefined ? '' : ', superseding ' + sanitize(supersedes, NAME_CAP))
         + ')\n');
+    // The note add-type prints for the same reason and on the same path: the
+    // create path alone, an `--update` having returned well above this line,
+    // since an existing record's trigger state is not a repair's to judge.
+    // No clause beside the flag, the operator tier needing none: `--operator`
+    // resolves without a working directory, so the spelling lands on this
+    // record wherever it is run.
+    if (wantedTriggers.length === 0) noTriggerNote(name, '--operator', '');
     if (shadowed) {
         archiveShadowNote(name, ' in the operator tier',
             'delete-operator ' + sanitize(name, NAME_CAP) + ' --confirm-shared');

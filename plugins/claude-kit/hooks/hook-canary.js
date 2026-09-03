@@ -566,20 +566,20 @@ function memqGrantProbes(root, failures) {
         });
     }
     // A screened flag, in a command whose verb and shape are otherwise
-    // granted. Five independent screens withhold five flag shapes there,
-    // and two directions are probed because they fail differently.
-    // --body-file reads a caller-named path into the store and memq refuses
-    // it under the store signals as well, so a hook that lost that screen is
-    // one lock short. --rollup discards the prose of every journal entry it
-    // folds and no other layer refuses it, so a hook that lost that one is
-    // wide open, and nothing else here would say so. The third shape, a
-    // body-carrying --update, has the same second lock in the CLI that
-    // --body-file has, and so does the fourth, --supersedes, while the
-    // fifth, --drop-malformed, degrades to the CLI's requirement that it
-    // ride the --rollup this same hook screens, which is why none of the
-    // three is probed here: a hook regression on any of them degrades to
-    // another lock rather than to nothing, which is the property the two
-    // probed shapes divide on.
+    // granted. Six independent screens withhold six flag shapes there, and
+    // two directions are probed because they fail differently. --body-file
+    // reads a caller-named path into the store and memq refuses it under the
+    // store signals as well, so a hook that lost that screen is one lock
+    // short. --rollup discards the prose of every journal entry it folds and
+    // no other layer refuses it, so a hook that lost that one is wide open,
+    // and nothing else here would say so. The other four each have a second
+    // lock behind them: a body-carrying --update, --supersedes and --trigger
+    // all carry the same store-signals refusal in the CLI that --body-file
+    // carries, both add verbs refusing --trigger under those signals, while
+    // --drop-malformed degrades to the CLI's requirement that it ride the
+    // --rollup this same hook screens. That is why none of the four is probed
+    // here: a hook regression on any of them degrades to another lock rather
+    // than to nothing, which is the property the two probed shapes divide on.
     const flagged = runHook(file, {
         tool_name: 'Bash',
         tool_input: { command: 'node "' + memq + '" add-operator fact words'
@@ -639,8 +639,8 @@ function memqGrantProbes(root, failures) {
     // ground for leaving a withheld shape unprobed. That ground reaches two of
     // the five withheld verbs: cmdAnchor and cmdTriggers carry no store-signals
     // refusal of their own, so both sit in find's class and neither is probed.
-    // docs/security-model.md tabulates all ten withheld shapes against it,
-    // and docs/backlog.md carries the missing anchor probe as an item.
+    // docs/security-model.md tabulates all eleven withheld shapes against
+    // it, and docs/backlog.md carries the missing anchor probe as an item.
     const withheld = runHook(file, {
         tool_name: 'Bash',
         tool_input: { command: 'node "' + memq + '" find a term' }

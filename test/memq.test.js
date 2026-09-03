@@ -7411,7 +7411,7 @@ test('recall digests all four surfaces with correct counts, newest sign of life 
         assert.strictEqual(res.stdout,
             'outcomes journal: 2 keys\n'
             + 'archive: 1 record' + ARCHIVE_ANCHORS + '\n'
-            + 'type tier (webapp): 1 record' + SHARED_ANCHORS + '\n'
+            + 'type tier (webapp): 1 record, 1 without a recognition trigger' + SHARED_ANCHORS + '\n'
             + 'operator tier: no memory-operator/ directory\n'
             + 'project tier: 3 records\n'
             + 'journal  beta.key  0/1  last 3d  newer outcome\n'
@@ -10568,14 +10568,14 @@ test('--update refuses the fields it does not repair, and refuses a body without
         // table for that field set, so a field added to the create path
         // without a refusal here fails on the entry it is missing.
         for (const extra of [['--tag', 'sql'], ['--machine', 'BOX'],
-            ['--supersedes', 'a-fact']]) {
+            ['--supersedes', 'a-fact'], ['--trigger', 'skill:memory-system']]) {
             for (const consent of [[], ['--confirm-shared']]) {
                 const args = ['add-operator', 'a-fact', 'new words', '--update']
                     .concat(extra, consent);
                 const res = run(store, args);
                 assert.strictEqual(res.status, 1, extra[0] + ' alongside --update is refused');
                 assert.match(res.stderr,
-                    /--update sets no tags, no machine scope and no supersedes pointer/);
+                    /--update sets no tags, no machine scope, no supersedes pointer and no recognition triggers/);
             }
         }
         for (const consent of [[], ['--confirm-shared']]) {
@@ -10583,7 +10583,7 @@ test('--update refuses the fields it does not repair, and refuses a body without
                 ['add-type', 'ptype', 'a-fact', 'words', '--update', '--tag', 'sql'].concat(consent));
             assert.strictEqual(typeSide.status, 1, '--tag alongside --update is refused on add-type');
             assert.match(typeSide.stderr,
-                /--update sets no tags and no supersedes pointer; --tag and --supersedes are set/);
+                /--update sets no tags, no supersedes pointer and no recognition triggers; --tag, --supersedes and --trigger are set/);
         }
 
         // A doomed command is refused for its flag set rather than for the
@@ -14002,7 +14002,7 @@ test('recall covers the operator tier live and archived, and states its zero eve
             'outcomes journal: 0 keys\n'
             + 'archive: 1 record' + ARCHIVE_ANCHORS + '\n'
             + 'type tier: none declared\n'
-            + 'operator tier: 1 record' + SHARED_ANCHORS + '\n'
+            + 'operator tier: 1 record, 1 without a recognition trigger' + SHARED_ANCHORS + '\n'
             + 'project tier: 0 records\n'
             + OPERATOR_FENCE + '\n'
             + '  archive  operator/op-retired  [sql]  a retired operator fact  alive 15d\n'
@@ -14438,7 +14438,7 @@ test('every read surface reaches the operator tier in a project with no memory d
             'outcomes journal: 0 keys\n'
             + 'archive: 1 record' + ARCHIVE_ANCHORS + '\n'
             + 'type tier: none declared\n'
-            + 'operator tier: 1 record' + SHARED_ANCHORS + '\n'
+            + 'operator tier: 1 record, 1 without a recognition trigger' + SHARED_ANCHORS + '\n'
             + 'project tier: 0 records\n'
             + OPERATOR_FENCE + '\n'
             + '  archive  operator/op-retired  []  a retired operator fact  alive 15d\n'
@@ -20615,7 +20615,7 @@ test('the same name in two tiers is two records: the label lands where the succe
         assert.strictEqual(res.stdout,
             'outcomes journal: 0 keys\n'
             + 'archive: 0 records\n'
-            + 'type tier (webapp): 2 records' + SHARED_ANCHORS + '\n'
+            + 'type tier (webapp): 2 records, 2 without a recognition trigger' + SHARED_ANCHORS + '\n'
             + 'operator tier: no memory-operator/ directory\n'
             + 'project tier: 1 record\n'
             + 'memq: from type \'webapp\', the shared tier every project of this type'
@@ -20854,12 +20854,12 @@ test('--update refuses a supersedes pointer on both verbs, with nothing written'
                 '--supersedes', 'ghost-name'].concat(consent));
             assert.strictEqual(op.status, 1, '--supersedes alongside --update is refused');
             assert.match(op.stderr,
-                /--update sets no tags, no machine scope and no supersedes pointer/);
+                /--update sets no tags, no machine scope, no supersedes pointer and no recognition triggers/);
             assert.ok(!/ghost-name/.test(op.stderr), 'the flag set is judged before the tier');
             const ty = run(store, ['add-type', 'ptype', 'a-fact', 'new words', '--update',
                 '--supersedes', 'ghost-name'].concat(consent));
             assert.strictEqual(ty.status, 1, '--supersedes alongside --update is refused');
-            assert.match(ty.stderr, /--update sets no tags and no supersedes pointer/);
+            assert.match(ty.stderr, /--update sets no tags, no supersedes pointer and no recognition triggers/);
             assert.ok(!/ghost-name/.test(ty.stderr), 'the flag set is judged before the tier');
         }
 
@@ -23052,6 +23052,81 @@ test('triggers refuses a glob on a shared tier, collected with the other entry r
     }
 });
 
+// A refusal's remedy words are advice, so they have to be advice the caller's
+// destination can take. On a shared tier every sentence about `glob:` is
+// advice nobody can follow, no glob of any spelling reaching those tiers, so
+// the remedy for a malformed glob is the tier's own reason instead of a
+// better pattern, and the vocabulary a type fault offers is the tier's five
+// rather than all six.
+test('a shared tier answers a trigger fault with advice its own tier can take', () => {
+    const store = makeStore();
+    try {
+        writeMemoryFile(store, 'MEMORY.md', 'Project-Type: webapp\n');
+        const typeDir = typeDirPath(store, 'webapp');
+        const operatorDir = operatorDirPath(store);
+        fs.mkdirSync(typeDir, { recursive: true });
+        fs.mkdirSync(operatorDir, { recursive: true });
+        const body = '---\nname: ""\n---\n\n# g\n';
+        const tiers = [
+            { flag: '--type', dir: typeDir, label: 'type' },
+            { flag: '--operator', dir: operatorDir, label: 'operator' }
+        ];
+        for (const tier of tiers) {
+            fs.writeFileSync(path.join(tier.dir, 'shared.md'), body, 'utf8');
+
+            // A malformed glob. The length floor is what refuses it, the
+            // pattern being two characters against a floor of four, and the
+            // shared tier is what decides the words: lengthening the pattern
+            // is a remedy this tier would refuse the result of, so the answer
+            // names why no glob reaches here at all.
+            const badGlob = run(store, ['triggers', 'shared', tier.flag, 'glob:a*']);
+            assert.strictEqual(badGlob.status, 1, tier.label + ': ' + badGlob.stdout);
+            assert.match(badGlob.stderr,
+                new RegExp('the pattern is shorter than ' + memq.TRIGGER_PATTERN_MIN),
+                tier.label + ' names the rule that refused it: ' + badGlob.stderr);
+            assert.match(badGlob.stderr, /The pattern is not what to fix, though/,
+                tier.label + ' does not send the caller to lengthen it: ' + badGlob.stderr);
+            assert.match(badGlob.stderr,
+                /a glob names a path under a project root and the shared tiers have none/,
+                tier.label + ' gives the tier\'s own reason: ' + badGlob.stderr);
+            assert.ok(!/name a directory or an extension with it/.test(badGlob.stderr),
+                tier.label + ' drops the project-tier lengthening advice: ' + badGlob.stderr);
+
+            // A type outside the vocabulary. The type bar is what refuses it,
+            // and the shared tier is what shortens the list the remedy
+            // offers: `glob:` is named as the type this tier does not take
+            // rather than as a sixth choice.
+            const badType = run(store, ['triggers', 'shared', tier.flag, 'sh:whatever']);
+            assert.strictEqual(badType.status, 1, tier.label + ': ' + badType.stdout);
+            assert.match(badType.stderr, /not <type>:<pattern>, where <type> is one of/,
+                tier.label + ' names the rule that refused it: ' + badType.stderr);
+            assert.match(badType.stderr,
+                /A path glob \(glob\) is the sixth type and reaches no shared tier/,
+                tier.label + ' offers the tier\'s own vocabulary: ' + badType.stderr);
+            assert.ok(!/tool\), or a path glob/.test(badType.stderr),
+                tier.label + ' does not offer a type it refuses: ' + badType.stderr);
+        }
+
+        // The project tier is the control on both, and it is the same two
+        // entries: what changes the words is the destination, not the fault.
+        writeMemoryFile(store, 'local.md', body);
+        const localGlob = run(store, ['triggers', 'local', 'glob:a*']);
+        assert.strictEqual(localGlob.status, 1, localGlob.stdout);
+        assert.match(localGlob.stderr, /name a directory or an extension with it/,
+            'the project tier keeps the lengthening advice: ' + localGlob.stderr);
+        assert.ok(!/The pattern is not what to fix/.test(localGlob.stderr),
+            'the project tier takes globs: ' + localGlob.stderr);
+        const localType = run(store, ['triggers', 'local', 'sh:whatever']);
+        assert.strictEqual(localType.status, 1, localType.stdout);
+        assert.match(localType.stderr, /tool\), or a path glob \(glob\)/,
+            'the project tier offers all six: ' + localType.stderr);
+        assert.ok(!/reaches no shared tier/.test(localType.stderr),
+            'the project tier says nothing about a shared one: ' + localType.stderr);
+    } finally {
+        rmStore(store);
+    }
+});
+
 // The read side of the same tier question: a flag pins the rung so a caller
 // told which tier a record is in can actually open it, and the read is
 // credited to the tier that served the body.
@@ -23865,6 +23940,354 @@ test('get says a triggers line was cut rather than printing its head as the whol
             'a line at the bound is listed whole with no cut row');
     } finally {
         rmStore(store);
+    }
+});
+
+// --- a shared-tier record's triggers at its birth ---------------------------
+//
+// `add-type` and `add-operator` take `--trigger <type>:<pattern>`, repeatable,
+// so a record is born declaring how it is recognized rather than acquiring it
+// a tier of records later. Every case below that passes the flag runs on the
+// home-redirected harness, because the flag is refused outright under the
+// engine store signals every `run()` child carries: a case on the wrong
+// harness would meet that refusal and read as the feature being broken. The
+// two cases that are about the refusal itself run on the signalled harness
+// deliberately, which is the only place it can fire.
+
+test('a shared-tier record is born with the triggers it declares, and one born without says so', (t) => {
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        // `get --type` and `triggers --type` resolve the tier through the
+        // project's own declaration, so the project has to declare one for
+        // the type half of this case to have a target at all.
+        fs.mkdirSync(homeMemDir(store), { recursive: true });
+        fs.writeFileSync(path.join(homeMemDir(store), 'MEMORY.md'),
+            'Project-Type: ptype\n', 'utf8');
+        const tiers = [
+            { args: ['add-operator', 'declared'], dir: operatorDirPath(store),
+                get: ['get', 'declared', '--operator'], flag: '--operator', label: 'operator' },
+            { args: ['add-type', 'ptype', 'declared'], dir: typeDirPath(store, 'ptype'),
+                get: ['get', 'declared', '--type'], flag: '--type', label: 'type' }
+        ];
+        for (const tier of tiers) {
+            const wrote = runHome(store, tier.args.concat(['a description',
+                '--trigger', 'skill:memory-system', '--trigger', 'cmd:git stash']));
+            assert.strictEqual(wrote.status, 0, tier.label + ': ' + wrote.stderr);
+            // The line the nudge reads: the frontmatter block's top level,
+            // unquoted, comma-space separated, which is the one form the
+            // `triggers` verb merges into afterwards.
+            const text = fs.readFileSync(path.join(tier.dir, 'declared.md'), 'utf8');
+            assert.ok(text.includes('\ntriggers: skill:memory-system, cmd:git stash\n'),
+                tier.label + ' wrote the line the merge path reads: ' + text);
+            assert.ok(!/no recognition triggers/.test(wrote.stderr),
+                tier.label + ' does not warn about a record that declared some: ' + wrote.stderr);
+
+            // The shape `get` prints, which is the surface a reader meets the
+            // declaration on.
+            const shown = runHome(store, tier.get);
+            assert.strictEqual(shown.status, 0, tier.label + ': ' + shown.stderr);
+            assert.ok(shown.stdout.includes('  triggers: skill:memory-system\n'
+                + '  triggers: cmd:git stash\n'),
+                tier.label + ' lists both entries: ' + shown.stdout);
+
+            // The verb still merges into a line written at birth, which is
+            // what the two writers agreeing on one form buys.
+            const merged = runHome(store, ['triggers', 'declared', tier.flag, 'tool:Bash']);
+            assert.strictEqual(merged.status, 0, tier.label + ': ' + merged.stderr);
+            assert.strictEqual(merged.stdout,
+                'triggers: skill:memory-system, cmd:git stash, tool:Bash\n',
+                tier.label + ' merged into the line the create wrote');
+
+            // A record born with none: written, and the note names the record
+            // and the command that declares one later.
+            const bare = runHome(store, tier.args.slice(0, -1)
+                .concat(['undeclared', 'a description']));
+            assert.strictEqual(bare.status, 0, tier.label + ': ' + bare.stderr);
+            assert.ok(fs.existsSync(path.join(tier.dir, 'undeclared.md')),
+                tier.label + ' still wrote the record');
+            assert.match(bare.stderr, /'undeclared' declares no recognition triggers/,
+                tier.label + ' names the record: ' + bare.stderr);
+            assert.match(bare.stderr,
+                new RegExp('memq triggers undeclared <type>:<pattern> ' + tier.flag),
+                tier.label + ' names the command that declares one later: ' + bare.stderr);
+            assert.strictEqual(bare.stderr.split('declares no recognition triggers').length - 1, 1,
+                tier.label + ' says it once: ' + bare.stderr);
+            // The other direction of the note's fork: off the engine store
+            // signals the command is one this session can run, so it is named
+            // rather than described. The signalled branch is pinned on the
+            // signalled harness, where it is the only one that can fire.
+            assert.ok(!/engine store signals/.test(bare.stderr),
+                tier.label + ' names the command rather than the state: ' + bare.stderr);
+            // A glob is not offered, the shared tiers refusing that type.
+            assert.ok(!/glob/.test(bare.stderr),
+                tier.label + ' offers no type its tier refuses: ' + bare.stderr);
+
+            // `--update` never warns: the record already exists and its
+            // trigger state is not this write's to judge.
+            const repaired = runHome(store, tier.args.slice(0, -1)
+                .concat(['undeclared', 'better words', '--update']));
+            assert.strictEqual(repaired.status, 0, tier.label + ': ' + repaired.stderr);
+            assert.strictEqual(repaired.stderr, '',
+                tier.label + ' says nothing on an update: ' + repaired.stderr);
+        }
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+test('an add verb refuses every trigger the triggers verb refuses, and writes nothing at all', (t) => {
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        const tiers = [
+            { args: ['add-operator'], dir: operatorDirPath(store),
+                index: path.join(operatorDirPath(store), 'MEMORY.md'), label: 'operator' },
+            { args: ['add-type', 'ptype'], dir: typeDirPath(store, 'ptype'),
+                index: path.join(typeDirPath(store, 'ptype'), 'MEMORY.md'), label: 'type' }
+        ];
+        // Each refusal named by the rule that refuses it, so a green here says
+        // the rule meant to fire is the one that fired rather than that
+        // something refused the command.
+        const refusals = [
+            [['sh:whatever'], /not <type>:<pattern>, where <type> is one of/,
+                'the type vocabulary'],
+            [['cmd:a,b'], /no comma, which is the line's own separator/, 'the pattern charset'],
+            [['cmd:zfs'], new RegExp('the pattern is shorter than ' + memq.TRIGGER_PATTERN_MIN),
+                'the length floor'],
+            [['cmd:node'], /a bare token common enough to match unrelated work/,
+                'the bare-token bar on a fragment type'],
+            [['glob:docs/plans/*.md'], /a glob names a path under a project root/,
+                'the shared tiers have no project root a glob resolves against']
+        ];
+        for (const tier of tiers) {
+            // One record lands first, so the tier's index exists and the
+            // index-line assertion below is a test rather than a guard that
+            // is never entered: on a tier whose first command is the refusal
+            // there is no index file to read, and an assertion behind
+            // existsSync would pass without ever executing.
+            const landed = runHome(store, tier.args.concat(['landed', 'a description',
+                '--trigger', 'skill:memory-system']));
+            assert.strictEqual(landed.status, 0, tier.label + ': ' + landed.stderr);
+            assert.ok(fs.existsSync(tier.index),
+                tier.label + ' has an index for the refusals below to be absent from');
+            for (const [entries, reason, rule] of refusals) {
+                const args = tier.args.concat(['refused', 'a description']);
+                for (const e of entries) args.push('--trigger', e);
+                const res = runHome(store, args);
+                assert.strictEqual(res.status, 1, tier.label + '/' + rule + ': ' + res.stdout);
+                assert.strictEqual(res.stdout, '', tier.label + '/' + rule + ' printed a line');
+                assert.match(res.stderr, reason, tier.label + '/' + rule + ': ' + res.stderr);
+                assert.match(res.stderr, /nothing was written/,
+                    tier.label + '/' + rule + ': ' + res.stderr);
+                assert.ok(!fs.existsSync(path.join(tier.dir, 'refused.md')),
+                    tier.label + '/' + rule + ' left a record behind');
+                // Nor an index line in the index the landed record made.
+                assert.ok(!fs.readFileSync(tier.index, 'utf8').includes('refused'),
+                    tier.label + '/' + rule + ' left an index line behind');
+            }
+
+            // Every refusal collected rather than the first returned, so a
+            // caller who mistyped two of three fixes both on one re-run.
+            const several = runHome(store, tier.args.concat(['refused', 'a description',
+                '--trigger', 'skill:memory-system', '--trigger', 'cmd:node',
+                '--trigger', 'sh:whatever']));
+            assert.strictEqual(several.status, 1, tier.label + ': ' + several.stdout);
+            assert.match(several.stderr, /a bare token common enough/, several.stderr);
+            assert.match(several.stderr, /not <type>:<pattern>/, several.stderr);
+            assert.match(several.stderr, /these entries were refused/, several.stderr);
+
+            // The entry cap is refused rather than cut, this file's rule for
+            // every shared-tier bound.
+            const filling = [];
+            for (let i = 0; i <= memq.TRIGGER_ENTRIES_MAX; i += 1) {
+                filling.push('--trigger', 'cmd:pattern-' + i);
+            }
+            const over = runHome(store,
+                tier.args.concat(['refused', 'a description'], filling));
+            assert.strictEqual(over.status, 1, tier.label + ': ' + over.stdout);
+            assert.match(over.stderr,
+                new RegExp('would carry ' + (memq.TRIGGER_ENTRIES_MAX + 1) + ' triggers'),
+                tier.label + ' refuses the cap: ' + over.stderr);
+            assert.ok(!fs.existsSync(path.join(tier.dir, 'refused.md')),
+                tier.label + ' wrote a record over the cap');
+
+            // The same entry twice is one mention at its first position, the
+            // merge path's own rule.
+            const twice = runHome(store, tier.args.concat(['deduped', 'a description',
+                '--trigger', 'tool:Bash', '--trigger', 'skill:memory-system',
+                '--trigger', 'tool:Bash']));
+            assert.strictEqual(twice.status, 0, tier.label + ': ' + twice.stderr);
+            assert.ok(fs.readFileSync(path.join(tier.dir, 'deduped.md'), 'utf8')
+                .includes('\ntriggers: tool:Bash, skill:memory-system\n'),
+                tier.label + ' collapsed the repeat to its first position');
+
+            // And the flag is set at creation, like every other field an
+            // --update does not repair.
+            const onUpdate = runHome(store, tier.args.concat(['deduped', 'better words',
+                '--update', '--trigger', 'tool:Grep']));
+            assert.strictEqual(onUpdate.status, 1, tier.label + ': ' + onUpdate.stdout);
+            assert.match(onUpdate.stderr, /--update sets no tags/,
+                tier.label + ': ' + onUpdate.stderr);
+            assert.match(onUpdate.stderr, /no recognition triggers/,
+                tier.label + ': ' + onUpdate.stderr);
+        }
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+// The engine store signals, which is the environment an unattended fleet
+// worker runs in. The standing grant there withholds the `triggers` verb on
+// the reach of the line it writes, and a line written at a record's birth
+// reaches the same surface, so the flag is refused rather than handing that
+// capability back through a granted verb. This case runs on the signalled
+// harness because that is the only place the refusal can fire.
+test('--trigger is refused under the engine store signals, and the record still lands without it', () => {
+    const store = makeStore();
+    try {
+        writeMemoryFile(store, 'MEMORY.md', 'Project-Type: webapp\n');
+        const tiers = [
+            { args: ['add-operator'], dir: operatorDirPath(store), label: 'operator' },
+            { args: ['add-type', 'webapp'], dir: typeDirPath(store, 'webapp'), label: 'type' }
+        ];
+        for (const tier of tiers) {
+            const gated = run(store, tier.args.concat(['gated', 'a description',
+                '--trigger', 'skill:memory-system']));
+            assert.strictEqual(gated.status, 1, tier.label + ': ' + gated.stdout);
+            assert.match(gated.stderr, /--trigger declares when a record is put in front of a session/,
+                tier.label + ': ' + gated.stderr);
+            assert.match(gated.stderr, /KIT_MEMORY_ROOT_ALLOW_DATA=1/, tier.label + ': ' + gated.stderr);
+            assert.ok(!fs.existsSync(path.join(tier.dir, 'gated.md')),
+                tier.label + ' wrote a record the flag was refused on');
+
+            // The record still lands without the flag, which is what the
+            // refusal claims, and it lands carrying the note instead. The
+            // note names the debt and not a command, because this is the one
+            // vector where it is guaranteed to fire and the `triggers` verb is
+            // off the standing grant's allowlist there: a spelling handed over
+            // here sends a fleet worker to a command whose whole answer is the
+            // Bash refusal the grant exists to route around.
+            const landed = run(store, tier.args.concat(['gated', 'a description']));
+            assert.strictEqual(landed.status, 0, tier.label + ': ' + landed.stderr);
+            assert.match(landed.stderr, /'gated' declares no recognition triggers/,
+                tier.label + ': ' + landed.stderr);
+            assert.match(landed.stderr,
+                /while this process carries the engine store signals nothing here declares one/,
+                tier.label + ' names the state rather than a command: ' + landed.stderr);
+            assert.match(landed.stderr, /waits for an attended session/,
+                tier.label + ': ' + landed.stderr);
+            assert.ok(!/memq triggers/.test(landed.stderr),
+                tier.label + ' hands over no command this vector cannot run: ' + landed.stderr);
+            // The types still ride, being what the declaration needs whoever
+            // makes it, and `glob:` is still not among them.
+            assert.match(landed.stderr, /\(types: cmd, err, skill, agent, tool\)/,
+                tier.label + ': ' + landed.stderr);
+
+            // The flag set is judged before these signals, so a doomed
+            // --update hears about the flag set rather than about the store.
+            const onUpdate = run(store, tier.args.concat(['gated', 'better words',
+                '--update', '--trigger', 'skill:memory-system']));
+            assert.strictEqual(onUpdate.status, 1, tier.label + ': ' + onUpdate.stdout);
+            assert.match(onUpdate.stderr, /--update sets no tags/, tier.label + ': ' + onUpdate.stderr);
+        }
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('recall counts the shared-tier records that declare no recognition trigger', (t) => {
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        fs.mkdirSync(homeMemDir(store), { recursive: true });
+        fs.writeFileSync(path.join(homeMemDir(store), 'MEMORY.md'),
+            'Project-Type: ptype\n', 'utf8');
+        for (const args of [
+            ['add-operator', 'op-with', 'a description', '--trigger', 'skill:memory-system'],
+            ['add-operator', 'op-without-one', 'a description'],
+            ['add-operator', 'op-without-two', 'a description'],
+            ['add-type', 'ptype', 'ty-with', 'a description', '--trigger', 'tool:Bash'],
+            ['add-type', 'ptype', 'ty-without', 'a description']
+        ]) {
+            const res = runHome(store, args);
+            assert.strictEqual(res.status, 0, args.join(' ') + ': ' + res.stderr);
+        }
+        const digest = runHome(store, ['recall']);
+        assert.strictEqual(digest.status, 0, digest.stderr);
+        assert.ok(digest.stdout.includes('operator tier: 3 records, 2 without a recognition trigger'),
+            'the operator tier carries the count: ' + digest.stdout);
+        assert.ok(digest.stdout.includes('type tier (ptype): 2 records, 1 without a recognition trigger'),
+            'the type tier carries the count: ' + digest.stdout);
+
+        // Zero on a tier whose every record declares one, which is the reading
+        // that says the count is measuring the records rather than printing
+        // the tier's size again.
+        for (const args of [['triggers', 'op-without-one', '--operator', 'skill:role'],
+            ['triggers', 'op-without-two', '--operator', 'skill:role'],
+            ['triggers', 'ty-without', '--type', 'skill:role']]) {
+            const res = runHome(store, args);
+            assert.strictEqual(res.status, 0, args.join(' ') + ': ' + res.stderr);
+        }
+        const declared = runHome(store, ['recall']);
+        assert.strictEqual(declared.status, 0, declared.stderr);
+        assert.ok(declared.stdout.includes('operator tier: 3 records, 0 without a recognition trigger'),
+            'the operator tier reads zero: ' + declared.stdout);
+        assert.ok(declared.stdout.includes('type tier (ptype): 2 records, 0 without a recognition trigger'),
+            'the type tier reads zero: ' + declared.stdout);
+
+        // A record whose line carries no entry a reader admits counts as one
+        // without: what the number is about is how many records nothing
+        // surfaces, and a line nobody reads surfaces nothing.
+        fs.writeFileSync(path.join(operatorDirPath(store), 'op-unreadable.md'),
+            '---\ntriggers: not-an-entry\n---\n\n# op-unreadable\n\nbody\n', 'utf8');
+        const unreadable = runHome(store, ['recall']);
+        assert.strictEqual(unreadable.status, 0, unreadable.stderr);
+        assert.ok(unreadable.stdout.includes('operator tier: 4 records, 1 without a recognition trigger'),
+            'a line no reader admits counts as no trigger: ' + unreadable.stdout);
+
+        // A record whose every admitted entry is a `glob:` counts as one
+        // without, because the recognition surface skips every shared-tier
+        // glob: the pattern is a path resolved against a project root and a
+        // shared tier has none, so nothing ever surfaces the record. Both
+        // writers refuse such an entry, so the only way a tier holds one is a
+        // hand-edited record or one synced from a store written before that
+        // refusal, which is what this file is. Counting it as covered would
+        // report the debt closed on exactly the records the backfill exists
+        // to reach.
+        fs.writeFileSync(path.join(operatorDirPath(store), 'op-glob-only.md'),
+            '---\ntriggers: glob:docs/plans/*.md, glob:test/*.js\n---\n\n'
+            + '# op-glob-only\n\nbody\n', 'utf8');
+        const globOnly = runHome(store, ['recall']);
+        assert.strictEqual(globOnly.status, 0, globOnly.stderr);
+        assert.ok(globOnly.stdout.includes('operator tier: 5 records, 2 without a recognition trigger'),
+            'a shared-tier glob is no trigger the surface reads: ' + globOnly.stdout);
+
+        // And one non-glob entry beside the globs is a trigger, so the count
+        // is about what reaches the record rather than about the type of the
+        // first entry on its line.
+        fs.writeFileSync(path.join(operatorDirPath(store), 'op-glob-and-more.md'),
+            '---\ntriggers: glob:docs/plans/*.md, skill:role\n---\n\n'
+            + '# op-glob-and-more\n\nbody\n', 'utf8');
+        const mixed = runHome(store, ['recall']);
+        assert.strictEqual(mixed.status, 0, mixed.stderr);
+        assert.ok(mixed.stdout.includes('operator tier: 6 records, 2 without a recognition trigger'),
+            'an entry beside the globs still counts as covered: ' + mixed.stdout);
+
+        // A record whose frontmatter block opens and never closes: no reader
+        // can say what it declares, so nothing can be counted as surfacing
+        // it. This is the state a silent miscount would look exactly like a
+        // clean read in, since the record does carry a `triggers:` line and
+        // only the missing fence puts it out of reach, so counting it as
+        // covered would report a debt closed on a record nothing surfaces.
+        fs.writeFileSync(path.join(operatorDirPath(store), 'op-unclosed.md'),
+            '---\ntriggers: skill:role\n\n# op-unclosed\n\nbody\n', 'utf8');
+        const unclosed = runHome(store, ['recall']);
+        assert.strictEqual(unclosed.status, 0, unclosed.stderr);
+        assert.ok(unclosed.stdout.includes('operator tier: 7 records, 3 without a recognition trigger'),
+            'a block no reader can read counts as no trigger: ' + unclosed.stdout);
+    } finally {
+        rmHomeStore(store);
     }
 });
 

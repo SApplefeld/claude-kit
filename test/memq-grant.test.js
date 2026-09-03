@@ -449,6 +449,39 @@ test('--supersedes gets no grant on either write verb, while the write itself ke
         'a longer flag the screen must not swallow');
 });
 
+test('--trigger gets no grant on either write verb, while the write itself keeps one', () => {
+    // The flag writes at a record's birth the same `triggers:` line the
+    // `triggers` verb splices in afterwards, and that line decides when a
+    // memory is put in front of a session. The verb is off GRANTED_VERBS for
+    // exactly that reach, so leaving the flag unscreened would hand the
+    // capability back through a verb the grant does cover, and on the operator
+    // tier the reach is every project on the box and every machine the store
+    // syncs to. memq refuses the flag under the store signals too; this screen
+    // is the second lock, and it is the one that holds in the divergence case
+    // where the two processes read their environment differently.
+    assertNoDecision(runHook('node "' + MEMQ
+        + '" add-type webapp fact words --trigger skill:memory-system'),
+        'a type-tier declaration');
+    assertNoDecision(runHook('node "' + MEMQ
+        + '" add-operator fact words --trigger skill:memory-system'), 'the operator twin');
+    assertNoDecision(runHook('node "' + MEMQ
+        + '" add-operator fact words --trigger=skill:memory-system'),
+        'the attached-value spelling, which the CLI answers as an unknown option');
+    // Repeatable, so a second entry must not be the way past the screen.
+    assertNoDecision(runHook('node "' + MEMQ
+        + '" add-operator fact words --tag gotcha --trigger tool:Bash --trigger agent:explore'),
+        'a repeated flag among other granted ones');
+    // What stays granted is the write: a record still lands from a fleet
+    // worker, carrying every field but the recognition line.
+    assertGrant(runHook('node "' + MEMQ + '" add-operator fact "words" --tag gotcha'),
+        'an ordinary create');
+    assertGrant(runHook('node "' + MEMQ + '" add-type webapp fact "words"'),
+        'the type-tier create');
+    // A flag that merely starts the same is not the screened one.
+    assertGrant(runHook('node "' + MEMQ + '" add-operator fact words --triggerwise x'),
+        'a longer flag the screen must not swallow');
+});
+
 test('--body-file gets no grant anywhere, not only beside --update', () => {
     // It reads a path the caller names into the store, and under a signal
     // divergence that store is the operator's own, which syncs to a private
@@ -1026,7 +1059,7 @@ test('the granted verbs are memq\'s own dispatch minus the five withheld', () =>
     // stops being granted and nobody is watching that session to notice. Both
     // sides are read from source here, so the mirror is checked rather than
     // restated: every verb memq dispatches is either granted or one of the
-    // four this grant withholds by name, and every granted verb is a verb
+    // five this grant withholds by name, and every granted verb is a verb
     // memq dispatches.
     const dispatched = new Set();
     for (const m of fs.readFileSync(MEMQ, 'utf8').matchAll(/\bcmd === '([^']+)'/g)) {
@@ -1075,7 +1108,8 @@ test('an attached-value flag is refused by both layers, each on its own account'
     // consulting what the CLI would do with them. Either one alone would
     // stop the command; what the pair buys is that a parser change on one
     // side cannot quietly make the other side's silence load-bearing.
-    for (const spelling of ['--body-file=/etc/hosts', '--body=a body', '--update=1']) {
+    for (const spelling of ['--body-file=/etc/hosts', '--body=a body', '--update=1',
+        '--trigger=skill:memory-system']) {
         const res = runMemq(['add-operator', 'fact', 'words', spelling]);
         assert.strictEqual(res.status, 1, spelling + ': ' + res.stdout);
         assert.match(res.stderr, /unknown option/, spelling + ': ' + res.stderr);

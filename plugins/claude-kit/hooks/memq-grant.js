@@ -42,28 +42,33 @@
 //     of the verbs this grant is meant to cover, and every other word there
 //     withholds it. Left out of that list are delete-type and delete-operator,
 //     which remove a shared-tier record outright; find, which is the only
-//     verb that loads an embedder; and anchor, which rewrites a project-tier
+//     verb that loads an embedder; anchor, which rewrites a project-tier
 //     record in place at a name the command line gives it, and with it the
 //     claim every drift surface reads about which files that memory is still
-//     true of. Five flag shapes are refused wherever in the command they
-//     sit, since that is where a flag can appear:
+//     true of; and triggers, which rewrites a record of any tier the same way
+//     at the record's other half, the line that decides when that memory is
+//     put in front of a session. Six flag shapes are refused wherever in the
+//     command they sit, since that is where a flag can appear:
 //     --body-file, which reads a caller-named path into the store; --update
 //     carrying --body, which replaces a shared record's body whole;
 //     --supersedes, which demotes and labels a record no pin protects from
-//     it; --rollup, which folds every expired journal entry's prose into
-//     a tally and keeps the text in a single local .bak the sync never
-//     carries; and --drop-malformed, which deletes the sidecar lines the
-//     rollup rewrite preserves. memq refuses the deletes, the body-file, the
-//     body-carrying update and the supersedes pointer under the store
-//     signals as well, so those five are a second lock rather than the only
-//     one; find, anchor and --rollup are withheld here alone, and
-//     --drop-malformed's other lock is the CLI's own coupling (an argument
-//     error without --rollup) rather than a store-signal refusal, so its
-//     screen here is what holds if that coupling is ever loosened. What a
-//     withheld grant costs on this vector is the capability itself: no
-//     operator is watching a fleet worker's session, so the command does not
-//     run rather than waiting for an approval. Each withholding below is
-//     chosen against that price, not against a prompt.
+//     it; --trigger, which writes that same recognition line at a record's
+//     birth and so would reach through a granted verb what the triggers verb
+//     is withheld for; --rollup, which folds every expired journal entry's
+//     prose into a tally and keeps the text in a single local .bak the sync
+//     never carries; and --drop-malformed, which deletes the sidecar lines
+//     the rollup rewrite preserves. memq refuses the deletes, the
+//     body-file, the body-carrying update, the supersedes pointer and the
+//     trigger under the store signals as well, so those six are a second
+//     lock rather than the only one; find, anchor, triggers and --rollup
+//     are withheld here alone, and --drop-malformed's other lock is the
+//     CLI's own coupling (an argument error without --rollup) rather than a
+//     store-signal refusal, so its screen here is what holds if that
+//     coupling is ever loosened. What a withheld grant costs on this vector
+//     is the capability itself: no operator is watching a fleet worker's
+//     session, so the command does not run rather than waiting for an
+//     approval. Each withholding below is chosen against that price, not
+//     against a prompt.
 //   - The interpreter is positively identified, not accepted by name. The
 //     word `node` resolves through PATH in the child's shell, and this hook
 //     inherits the same environment that child would get, so it walks that
@@ -290,15 +295,18 @@ const GRANTED_VERBS = new Set(['log', 'get', 'recall', 'recent', 'unstamped', 't
 // is: a description, not a path.
 //
 // One word shape is not literal and is admitted anyway: bash also expands a
-// tilde after the = of an assignment-shaped word and after each : within one,
-// so FOO=~ reaches the child as FOO=/home/you and A=x:~ as A=x:/home/you. An
-// assignment-shaped word begins with an identifier character, and the
-// expansion keeps everything before the tilde, so such a word can become
-// neither one of the screened tokens (delete-type, delete-operator,
-// --body-file, --update, --body), which are matched whole, nor the script
-// path, which is matched by path equality. What it can become is a longer
-// argument of memq's own, which memq validates. A screen that ever matched a
-// word's interior rather than the whole of it would have to revisit this.
+// tilde after the = of an assignment-shaped word and after each : within
+// one, so FOO=~ reaches the child as FOO=/home/you and A=x:~ as
+// A=x:/home/you. An assignment-shaped word begins with an identifier
+// character, and the expansion keeps everything before the tilde, so such a
+// word can become neither the verb word, which is judged whole against the
+// allowlist, nor one of the screened flags (--body-file, --update, --body,
+// --supersedes, --trigger, --rollup, --drop-malformed), each matched whole
+// or up to an = and so opening with a hyphen where an assignment-shaped
+// word opens with an identifier character, nor the script path, which is
+// matched by path equality. What it can become is a longer argument of
+// memq's own, which memq validates. A screen that ever matched a word's
+// interior rather than the whole of it would have to revisit this.
 function words(cmd) {
     const out = [];
     let cur = null;
@@ -441,13 +449,15 @@ function grantable(p) {
     if (!samePath(path.resolve(target), MEMQ)) return false;
 
     // The grant covers what a fleet worker needs, which is not everything the
-    // CLI can do. Five of the shapes it withholds are ones memq itself also
+    // CLI can do. Six of the shapes it withholds are ones memq itself also
     // refuses under the store signals, so for those this screen is a second
     // lock: the two delete verbs, which remove a shared-tier record outright;
     // an --update carrying a body, which replaces one whole and keeps the text
     // it replaces only in a local .bak the sync never carries; --body-file
-    // anywhere, which reads a caller-named path into the store; and
-    // --supersedes, which demotes and labels a record no pin protects from it.
+    // anywhere, which reads a caller-named path into the store; --supersedes,
+    // which demotes and labels a record no pin protects from it; and
+    // --trigger, which writes at a record's birth the same recognition line
+    // the triggers verb below is withheld for.
     // Four more are withheld here alone, with no second layer behind them:
     // find, which loads an embedder out of a directory the command line does
     // not name; --rollup, which discards prose no copy survives; anchor,
@@ -456,12 +466,12 @@ function grantable(p) {
     // of; and triggers, which rewrites a record of any tier in place at the
     // half that decides when the memory is put in front of a session, so a
     // worker could aim recognition on a tier every project on the machine
-    // reads. The tenth, --drop-malformed, deletes sidecar lines behind one
+    // reads. The eleventh, --drop-malformed, deletes sidecar lines behind one
     // .bak generation; what stands behind its screen is the CLI's requirement
     // that the flag ride --rollup, a coupling rather than a store-signal
     // refusal, so this screen is what keeps the delete withheld if that
-    // coupling is ever loosened for ergonomics. None of the ten belongs in a
-    // prompt-free allow with no operator in the loop, and the four with no
+    // coupling is ever loosened for ergonomics. None of the eleven belongs in
+    // a prompt-free allow with no operator in the loop, and the four with no
     // second lock are the ones a later edit here would silently free.
     //
     // This screen is the second lock rather than a move of the first: the CLI
@@ -512,6 +522,31 @@ function grantable(p) {
     // residual the security model records against the destination block
     // rather than one a command screen can close.
     if (screensFlag(w, '--supersedes')) return false;
+    // --trigger is the `triggers` verb's capability arriving through a granted
+    // one. Both add verbs take it at creation, and the line it writes is the
+    // same `triggers:` line that verb splices in afterwards: what decides when
+    // a memory is put in front of a session. The verb is withheld above for
+    // exactly that reach, and a record born carrying the line reaches it
+    // identically, so leaving the flag unscreened would hand back through
+    // add-operator the capability the verb list withholds from `triggers`. The
+    // tier is what makes the reach the widest of the ones screened here, the
+    // verb's own paragraph above owning the reason: a machine-wide record aims
+    // recognition for every project on the box and every machine the store
+    // syncs to.
+    //
+    // What the flag does not reach is the verb's other half. A create writes
+    // its own new record's line and can neither re-aim a record the operator
+    // wrote nor crowd one to the entry cap, so the half withheld here is the
+    // aiming rather than the crowding. memq refuses the flag under the store
+    // signals for the same reason, which makes this the second lock rather
+    // than the only one, and the second lock is worth its place because the
+    // two layers read their environment in separate processes: the divergence
+    // case is the one where the CLI's own refusal does not fire and
+    // memoryRoot() still resolves to the operator's real synced store. The
+    // cost is one attended command, the record still landing from a fleet
+    // worker with every other field and stderr naming the verb that declares
+    // its triggers later.
+    if (screensFlag(w, '--trigger')) return false;
     // --rollup is withheld on how much it destroys, not on where the copy
     // goes: it replaces each expired journal group with one synthetic tally
     // line and drops the prose of every entry in that group, which is the
