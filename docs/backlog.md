@@ -318,3 +318,5 @@ Completed items are archived to `archive/backlog-YYYY-QN.md`. An item retired be
 - `archive/backlog-retired-2026-07-24.md` (retired by the compaction-automation unwind)
 - `archive/backlog-2026-Q3.md`
 - `archive/backlog-2026-Q2.md`
+
+- **The PIANO substrate: loops on mixed timers outside the main thinking loop (direction recorded 2026-09-03 by the operator in the design dialog; note at `docs/plans/claude-kit_piano-substrate_notes_v1.md`).** Fast loops that cancel or redirect a running task and slow loops for goal-setting, measurement and memory curation, hosted outside the harness, with the judgment sidecar as the first organ and the Claude Agent SDK as the candidate host. The note carries the inventory of loops the kit already runs and the five questions to settle first, authority and SDK billing ahead of mechanics. Signal: the armed queue and the subtraction cycle (bars, test audit, corpus audit and its cut) drain; then a brainstorm, with the design council offered on the authority fork.

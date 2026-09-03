@@ -54,7 +54,7 @@ Files in scope: none written outside `.kit/` scratch.
 
 Model: opus readers, dispatched; orchestration is the session.
 
-Same clusters, second charter: candidates for over-verbosity, redundancy, or prose a mechanical guard now supersedes, each finding naming the exact passage and what the reader believes it could become. The brief states plainly that findings are candidates for a provenance judge and over-reporting is expected and priced in, so readers flag freely rather than self-censoring.
+Same clusters, second charter: candidates for over-verbosity, redundancy, or prose a mechanical guard now supersedes, each finding naming the exact passage and what the reader believes it could become. The brief states plainly that findings are candidates for a provenance judge and over-reporting is expected and priced in, so readers flag freely rather than self-censoring. Each reader is briefed with the prose bar in `writing-skills/SKILL.md` as amended by the subtraction-bars plan, and a finding names the sentence and the clause of the bar it fails.
 
 Tests: none mechanical; same dispatch-discipline gate as Section 1.
 
@@ -122,5 +122,7 @@ Files in scope: the follow-on spec under `docs/plans/`, the committed brief besi
 - Project memory `warden-ai-evaluated-and-declined`: the banked-verdict idiom Section 5 adopts.
 - The blind-reader and blind-reviewer charters under `plugins/claude-kit/agents/`: the no-intent-story dispatch discipline Sections 1 and 2 inherit.
 - `docs/plans/claude-kit_recap_spec_v1.md`: the read-only-bar idiom decision 4 borrows.
+- `docs/plans/claude-kit_subtraction-bars_spec_v1.md`: the prose bar in writing-skills that Section 2 readers are briefed with, so a bloat finding names the sentence and the bar it fails rather than a feeling of length; runs first in the cycle.
+- `docs/plans/claude-kit_test-audit_spec_v1.md`: retires the wording pins over prose that is not a pinned copy, which the follow-on cut plan from Section 7 needs before it can cut a sentence without a red.
 
 ## Chapters
