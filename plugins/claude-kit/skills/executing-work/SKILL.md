@@ -109,9 +109,11 @@ For each Section of Work, in order (sections run concurrently only where the dis
      - Rich references: the section's References: line when the spec has one,
        plus any mockup, rubric, or reference implementation its acceptance
        leans on, by path
-     - Tests: the section's Tests: line verbatim when the spec has one (a floor:
-       extend with what implementation reveals, never shrink, flag amendments);
-       else the test-worthiness call per the testing-discipline skill's litmus,
+     - Tests: the section's Tests: line verbatim when the spec has one (a floor
+       over the named contracts, extended with what implementation reveals and
+       never shrunk, with any extension flagged in your report, which the
+       Chapter then carries); else the test-worthiness call per the
+       testing-discipline skill's litmus,
        its absolute path resolved by the same ladder as the Style-skill file
        paths bullet below, and what a test should lock
      - Sibling pattern to mirror, when one exists: name it AND require mirrored

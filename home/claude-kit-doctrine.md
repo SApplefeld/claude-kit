@@ -20,7 +20,7 @@ Apply on any non-trivial task. This is how to think, decide, build, and communic
 
 - **A commit title is the index line; the narrative starts below it.** The message has three layers. The title is an UPPERCASE prefix naming the surface in plain words an outsider can place (`DOCTRINE:`, `README:`, `JUDGMENT-SIDECAR:`), followed by the change as a proper sentence: capital first letter, proper nouns capitalized, a period at the end, plus a "so <consequence>" clause when the effect is not obvious from the change itself. Informative words first, because list views truncate around 70 characters, with about 100 as the soft ceiling. The body opens with one sentence in the client-briefing register for a reader who does not know the plan or component: what the thing is, and what this commit did to it. The narrative - the discovery story, the defect shape, the evidence - lives below that line, as long as it earns; a thesis stated without its subject is unfindable in history, so it never rides the title alone.
 
-- **Match a document's length to its job.** Cover the substance; no filler sections, no redundant summaries, no boilerplate. The re-read question "Is the output bigger than the task deserved?" applies to written artifacts, not just replies.
+- **Match a document's length to its job.** Cover the substance; no filler sections, no redundant summaries, no boilerplate. The re-read question "Is the output bigger than the task deserved?" applies to written artifacts, not just replies. The same question asked of a single sentence is where the sentence-shape bars come from, and `skills/writing-skills/SKILL.md` under the kit plugin root owns them.
 
 ## Defaults
 
