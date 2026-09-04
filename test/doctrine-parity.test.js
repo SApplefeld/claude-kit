@@ -1170,6 +1170,221 @@ test('the coordinator board default faces outward at both forks', () => {
         + 'rewording updates this pattern in the same edit');
 });
 
+// The coordinator skill states four counted, drift-prone claims in prose with
+// nothing else exercising them: the four-kinds routing's destinations, homing's
+// no-residue rule with the cut invariant that bounds it, the readability test
+// standing where a size figure would, and the reconciliation paragraph's
+// deliberate exclusion of every memory tier. A claim nothing reads is a claim
+// nothing contradicts, so it rots while keeping its authoritative tone, and an
+// edit dropping the kaizen destination or the memory-system pointer reddens
+// nothing on its own.
+//
+// This is the counted-claim class the four-functions pin above covers for the
+// seat's function count, and the breadth here is that pin's for the same reason:
+// a claim restated on a sibling surface is an invariant nothing checks, which git
+// merges clean and no diff-reading review catches. Three restating surfaces are
+// read here: docs/README.md and docs/plans/README.md, the two curated indexes,
+// both of which described a memory tier as a reconciliation source while the
+// skill stated the opposite; and docs/security-model.md, whose coordinator
+// section restates the routing's two off-board destinations. A fourth restating
+// surface is left out deliberately rather than missed: docs/backlog.md carries
+// the cut invariant and the two-moment journal record in items of its own, and it
+// is pruned live, so a leg over it would redden this test on an ordinary backlog
+// prune. The docs surfaces are read, never written by this test.
+//
+// Each claim's load-bearing words are bound to a contiguous span that includes
+// the words carrying its direction or its condition, because a span starting
+// after them is satisfied by a sentence that reverses the rule: pinning "the
+// round establishes that its own first entry landed" without "before any
+// destination write begins" passes a rewrite that moves the check after the
+// write. A pin here is verbatim by convention: a rewording that keeps the
+// meaning still fails it, and updating the pin belongs to that same edit.
+//
+// The legs that prove an absence each state what they cover rather than
+// reporting a clean sweep. The number of them is deliberately not stated: a
+// count over this block's own legs is the closed-enumeration shape the plan
+// that landed these claims bars everywhere else, and retiring a leg is
+// exactly the edit that falsifies one.
+//   The size-figure leg reads a digit-led figure in one of eight named units. The
+//   units are a hand-written list, so the named spellings are swept and the class
+//   is not: "1 gigabyte", "8 MiB", "90 kilobytes" and "two hundred lines" all
+//   pass it. It runs over the whole file with no subject window, which is
+//   deliberate: a window naming the board scopes almost nothing here (the word
+//   occurs over two hundred times), so the honest form is the wider sweep plus
+//   this note that a legitimate size figure added anywhere in this file reddens
+//   the leg. That direction is accepted, since the file states no board size figure
+//   today; the one size figure it does state is a 40-character cap on a hostname,
+//   which is not a board ceiling and is why this note reads board rather than any.
+//   The tier-locator leg names one spelling, the memory index filename, and it
+//   does not reach the class of every way a locator could be spelled; the
+//   exclusion sentence pinned beside it is what carries that claim.
+//   The two curated indexes carry no leg here, and that is a statement of
+//   coverage rather than an omission. Neither index restates this claim: the
+//   subject both legs read was each index's entry for the plan that landed the
+//   claims, and that plan is archived, so a positive leg would redden on an
+//   absence that is now correct and an absence leg would pass over a file with
+//   nothing in it to drift, reporting coverage it does not have. What carries
+//   the claim is the pair of skill-side legs below, which read the exclusion
+//   sentence and its route in the coordinator skill itself. A future index that
+//   restates the claim again is a restating surface with no pin, and earns one.
+test('the coordinator skill\'s four counted routing and homing claims are each pinned', () => {
+    const body = fs.readFileSync(path.join(__dirname, '..', 'plugins',
+        'claude-kit', 'skills', 'coordinator', 'SKILL.md'), 'utf8');
+
+    // A digit-led figure in one of eight named size units, over the whole file.
+    // Returned rather than asserted so the predicate can be run against a
+    // control string in the same test.
+    const sizeFigures = (text) => text.match(
+        /\b\d[\d,]*\s*(?:bytes|characters|chars|KB|MB|GB|lines|words)\b/gi) || [];
+
+    // Claim 1, section 1: the routing tests a candidate at the moment of
+    // writing, states four kinds, names each off-board destination, and points
+    // at the memory-system skill for tier mechanics instead of restating them.
+    assert.ok(body.includes('Four kinds of candidate, and the board is where two of them go.'),
+        'the coordinator skill no longer states the routing at four kinds with two of them '
+        + 'boarding; this is the counted claim section 1 of the board-routing effort shipped, and '
+        + 'the count and the two-of-four split are one claim that must move together');
+    assert.ok(body.includes('a candidate is routed at the moment of writing rather than pruned at '
+        + 'a cleanup later'),
+        'the coordinator skill no longer routes a candidate at the moment of writing; deferring '
+        + 'the question to a cleanup pass is the state section 1 shipped against, since a pruning '
+        + 'pass then finds content it cannot delete without destroying the only copy');
+    assert.ok(body.includes('a memory-store record written in the same pass that produced it and '
+        + 'never also a board line'),
+        'the coordinator skill no longer sends a durable lesson to a memory-store record in the '
+        + 'same pass and off the board; this is one of the routing\'s two off-board destinations');
+    assert.ok(body.includes('a kaizen note under the standing capture authorization the kaizen '
+        + 'skill owns, never a board line'),
+        'the coordinator skill no longer sends kit friction to a kaizen note under the kaizen '
+        + 'skill\'s standing authorization and off the board; this is the routing\'s other '
+        + 'off-board destination, and it is the one an edit drops most quietly, since the board '
+        + 'reads as complete without it');
+    assert.ok(body.includes('are all the memory-system skill\'s to state, and none of it is '
+        + 'restated here'),
+        'the coordinator skill no longer defers tier selection and authoring to the memory-system '
+        + 'skill; section 1 shipped a pointer rather than a second copy of that contract, and a '
+        + 'restatement here is a second contract a month later');
+    assert.ok(body.includes('What no kind claims is written nowhere'),
+        'the coordinator skill no longer states the routing\'s residual outcome, that a candidate '
+        + 'no kind claims is written nowhere; without it the four-way test has no answer for a '
+        + 'candidate that answers to none of its kinds');
+    assert.ok(body.includes('The two board kinds are permissions and the two off-board ones are '
+        + 'refusals'),
+        'the coordinator skill no longer resolves a candidate answering to both a board kind and '
+        + 'an off-board one; section 1 shipped this as a refusal winning over a permission rather '
+        + 'than as a tiebreak, and an enumeration asserted exhaustive and mutually exclusive is '
+        + 'what it replaced');
+
+    // Claim 2, section 2: homing is named, distinct from pruning, leaves no
+    // residue, and every cut is bounded by a confirmed landing elsewhere. The
+    // no-residue rule's span runs from its verb through both of its objects,
+    // since binding the clause alone is satisfied by a negating prefix.
+    assert.ok(body.includes('**Homing returns a grown board\'s content to where it belonged, and '
+        + 'it is not a prune.**'),
+        'the coordinator skill no longer names homing as its own operation distinct from a prune; '
+        + 'the prune-versus-home distinction is the claim section 2 shipped, and collapsing the '
+        + 'two is what leaves a pruning pass destroying the only copy of a line');
+    assert.ok(body.includes('the content then comes off the board outright, with no pointer to the '
+        + 'record now holding it and no tombstone marking that it was ever there'),
+        'the coordinator skill\'s no-residue rule is no longer present verbatim: homed content '
+        + 'comes off the board with no pointer and no tombstone. A board that swapped each homed '
+        + 'line for a pointer would keep a change log where the content had been and accrete at '
+        + 'the rate it homed, which is what the rule refuses. Either the rule was inverted or the '
+        + 'sentence was reworded; a rewording updates this pin in the same edit');
+    assert.ok(body.includes('a round cuts only a line whose content it has confirmed landed '
+        + 'somewhere else'),
+        'the coordinator skill no longer bounds a homing cut on a confirmed landing elsewhere; '
+        + 'this is the one invariant that makes the operation safe, and without it a round that '
+        + 'fails at its destination write still cuts the board\'s only copy');
+    assert.ok(body.includes('A round writes at two moments')
+        && body.includes('The first moment\'s entry carries `fail` and the second `pass`'),
+        'the coordinator skill no longer states the homing round\'s audit as two journal moments '
+        + 'with the first carrying fail and the second pass; the two-moment shape is the audit '
+        + 'record section 2 shipped, and a single moment cannot distinguish a round that died '
+        + 'partway from one that never started');
+    assert.ok(body.includes('Pruning is the other operation and is untouched by this one'),
+        'the coordinator skill no longer holds pruning separate from homing; superseded history '
+        + 'stays pruning\'s business, and merging the two operations is what section 2 shipped '
+        + 'against');
+    // The span opens at "before any destination write begins" because that is
+    // where the safety lives: a rewrite moving the check after the write leaves
+    // every later word intact.
+    assert.ok(body.includes('before any destination write begins, the round establishes that its '
+        + 'own first entry landed, and whether it landed cut'),
+        'the coordinator skill no longer requires a round to confirm, before any destination write '
+        + 'begins, that its own first journal entry landed and whether it landed cut; without it a '
+        + 'round publishes and cuts on the strength of an account that may not exist, while the '
+        + 'confirming read below covers only the destination write. The span deliberately opens on '
+        + 'the ordering words, since a check moved to after the write keeps every later word');
+    assert.ok(body.includes('An entry the round cannot establish landed, which includes one it '
+        + 'establishes did not, leaves the round performing neither a destination write nor the '
+        + 'cut'),
+        'the coordinator skill no longer states what a round does when it cannot establish that its '
+        + 'own first entry landed. The span includes the condition on purpose, and the condition is '
+        + 'the unknown rather than an observed failure: a clause covering only an entry known not to '
+        + 'have landed lets a round publish and cut on a landing it never established, which is the '
+        + 'direction every other reading in this file takes the other way');
+
+    // Claim 3, section 3: the readability test is the board's health rule and a
+    // size figure is not. The absence leg's coverage is stated in the header.
+    assert.ok(body.includes('**The board\'s readability test is that a cold successor takes the '
+        + 'seat from one read of it.**'),
+        'the coordinator skill no longer states the board\'s readability test as a cold successor '
+        + 'taking the seat from one read; this is the property section 3 shipped in place of a '
+        + 'byte figure, and it is the test a pass checks and acts on');
+    assert.ok(body.includes('that failure earns a homing round rather than a harder prune'),
+        'the coordinator skill no longer names a homing round as what a readability failure earns; '
+        + 'the test without its action is the recorded-and-ignored proxy section 3 replaced');
+    assert.deepStrictEqual(sizeFigures(body), [],
+        'the coordinator skill states a size figure, which section 3 replaced with the readability '
+        + 'test above: a byte figure is a proxy that gets recorded and ignored, the reporting seat '
+        + 'having carried one through twelve prunes with no behaviour change. This leg reads eight '
+        + 'named units over the whole file, so a figure in a unit it does not name passes it and a '
+        + 'legitimate figure on any subject reddens it; the header states both directions');
+    assert.deepStrictEqual(sizeFigures('the board is homed whenever it passes 8,000 bytes on disk'),
+        ['8,000 bytes'],
+        'the size-figure predicate above no longer speaks at all; this control runs against a '
+        + 'spelling the predicate\'s own literals name, so it proves the instrument functions and '
+        + 'says nothing about its coverage of the class');
+
+    // Claim 4: the reconciliation paragraph excludes every memory tier from the
+    // sources the board is re-derived from, states that exclusion as deliberate,
+    // and routes how a record reaches a session to the memory-system skill. The
+    // pin is what stops a later editor re-adding a tier as a helpful omission
+    // fix, which is the one such edit that reads as an improvement.
+    assert.ok(body.includes('No memory tier is a source the board is re-derived from, and the '
+        + 'source list above omits no tier by oversight'),
+        'the coordinator skill\'s reconciliation paragraph no longer states that no memory tier is '
+        + 'a source and that the omission is deliberate; this sentence is what lets a seat reading '
+        + 'the runbook tell a considered exclusion from an oversight, and it stands in place of a '
+        + 'source-list entry for the tier');
+    assert.ok(body.includes('how a memory-tier record reaches a session is the memory-system '
+        + 'skill\'s to state'),
+        'the coordinator skill no longer routes the question of how a memory-tier record reaches a '
+        + 'session to the memory-system skill; the exclusion without its route reads as a gap '
+        + 'rather than as a category with a home elsewhere');
+    assert.ok(!body.includes('MEMORY.md'),
+        'the coordinator skill names the memory index file, which is a locator this file refuses: '
+        + 'a locator here resolves a store location out of a machine-local signpost and widens the '
+        + 'very source list the exclusion above closes. This leg names one spelling and does not '
+        + 'reach every way a locator could be spelled; the exclusion sentence above is what carries '
+        + 'the claim');
+
+    // The two curated indexes restate nothing from this claim, so no leg reads
+    // them. The header above states why they are unpinned and what carries the
+    // claim in their place.
+
+    const securityModel = fs.readFileSync(path.join(__dirname, '..', 'docs',
+        'security-model.md'), 'utf8');
+    assert.ok(securityModel.includes('a memory-store record on the tier the memory-system skill '
+        + 'assigns it')
+        && securityModel.includes('a note appended to a `kaizen/notes-*.md` file in the kit '
+            + 'checkout'),
+        'docs/security-model.md no longer names the routing\'s two off-board destinations in its '
+        + 'coordinator section; it is a restating surface for claim 1, and an audit artifact that '
+        + 'drops a destination understates what the seat writes outside its own directory');
+});
+
 // README's payload map and two peer-sessions clauses point at the role skill:
 // the map entry promises the takeover ritual, the directory contract, the
 // claim, and the standing delegation, and the peer-sessions Roles section

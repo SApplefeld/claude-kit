@@ -103,7 +103,7 @@ Acceptance: both sentences present, no em dashes; RED and GREEN on the step-3 re
 ## Out of Scope
 
 - Any code; the code slate is `claude-kit_kaizen-code-batch_spec_v1.md`.
-- The board-content routing rules, which `claude-kit_board-routing-and-homing_spec_v1.md` owns.
+- The board-content routing rules, which `../archive/claude-kit_board-routing-and-homing_spec_v1.md` owns.
 
 ## Related
 
