@@ -1010,9 +1010,11 @@ test('the coordinator holds four functions, kaizen among them, and no surface st
 // one word, which a rewording flips with nothing else in the diff to notice
 // it by, and an inward default on a loop that never terminates is drift by
 // construction rather than a risk of it. So the inward spelling is pinned
-// absent, and each fork is pinned on its own load-bearing words rather than
-// on a sentence, since the sentence is prose and the direction is the
-// contract.
+// absent, and each fork's direction is pinned on the fork's own sentence
+// rather than on the clause alone, because the bare clause is satisfied by
+// its own negation and by a qualifier appended to it, so it discriminates
+// nothing. A pin here is verbatim by convention: a rewording that keeps the
+// direction still fails it, and updating the pin belongs to that same edit.
 test('the standing-watch admission default faces outward at both forks and the named inward spellings are absent', () => {
     const body = fs.readFileSync(path.join(__dirname, '..', 'plugins',
         'claude-kit', 'skills', 'standing-watch', 'SKILL.md'), 'utf8');
@@ -1042,10 +1044,16 @@ test('the standing-watch admission default faces outward at both forks and the n
         'standing-watch no longer opens its admission-default paragraph with '
         + '"Doubt falls to the cheap side"; this pin reads that paragraph for '
         + 'the direction the default faces');
-    assert.match(admission, /cannot confidently say a successor needs stays off/,
-        'the admission default no longer states that a line the keeper cannot '
-        + 'confidently say a successor needs stays off; doubt at admission '
-        + 'falls off the ledger, never in');
+    assert.match(admission,
+        /(?:^|\. )At admission, a line the keeper cannot confidently say a successor needs stays off\./,
+        'the admission default\'s sentence is no longer present verbatim: '
+        + 'doubt at admission sends a line off the ledger, never onto it. '
+        + 'Either the direction was inverted, which is the defect this pins, '
+        + 'or the sentence was reworded, in which case update this pattern in '
+        + 'the same edit. The whole sentence is pinned rather than the clause '
+        + 'because the clause alone is satisfied by its own negation ("it is '
+        + 'never true that a line the keeper cannot confidently say a '
+        + 'successor needs stays off") and so discriminates nothing');
     assert.ok(admission.includes('tie-break for doubt'),
         'the admission default is no longer stated as the admission test\'s '
         + 'tie-break for doubt, which is what keeps it residual to the rules '
@@ -1058,15 +1066,43 @@ test('the standing-watch admission default faces outward at both forks and the n
         'the residual paragraph no longer states that having no other record '
         + 'neither admits a line nor rescues one, which is the load-bearing '
         + 'half: the founding incident\'s content had no other record either');
+    // The default's doubt branch must not reach a recognised prohibition or
+    // trap. Unreached, such a line is kept off and then dropped, since the
+    // destination rule holds no leg for one, and a prohibition off the
+    // standing list leaves the wake prompt and stops binding with no pass
+    // able to notice. The exemption is pinned with the property that earns
+    // it, because an exemption stated on the two members' names alone gives
+    // a consuming skill's equivalent member nothing.
+    assert.ok(residual.includes(
+        "The third shape does not reach two of the standing kind's members"),
+        'the residual paragraph no longer exempts two of the standing kind\'s '
+        + 'members from the default\'s third doubt shape; a recognised '
+        + 'prohibition or trap reached by that shape is kept off the ledger '
+        + 'and dropped, and a prohibition off the standing list stops binding '
+        + 'before any pass reads the ledger');
+    assert.ok(residual.includes(
+        'What earns those two members their exemption is the property rather '
+        + 'than their names'),
+        'the residual paragraph no longer states the exemption on the property '
+        + 'that earns it rather than on the two members\' names, which is what '
+        + 'a consuming skill naming an equivalent member of its own reads to '
+        + 'know the exemption reaches it');
     const fork = lines.find((l) => l.startsWith('**The kind fork'));
     assert.ok(fork,
         'standing-watch no longer carries the kind-fork paragraph; an admitted '
         + 'line whose kind the keeper cannot call needs a stated rule');
-    assert.match(fork, /doubt therefore falls to situational/,
-        'the kind fork no longer sends doubt about an admitted line\'s kind to '
-        + 'situational, the kind whose misfiling costs a re-measurement; the '
-        + 'direction is bound to the fork\'s own subject, so the inverse fork '
-        + 'fails here rather than passing on the words appearing elsewhere');
+    assert.match(fork,
+        /(?:^|\. )On the two kinds above, doubt therefore falls to situational, with one class carved out/,
+        'the kind fork\'s sentence is no longer present verbatim through its '
+        + 'carve-out clause: doubt about an admitted line\'s kind falls to '
+        + 'situational, the kind whose misfiling costs a re-measurement. The '
+        + 'pattern runs through "with one class carved out" on purpose, since '
+        + 'stopping at "situational," leaves the qualifier position open and a '
+        + 'clause appended there can reverse the rule while still matching '
+        + '("falls to situational, except where the keeper is in doubt, where '
+        + 'it falls to standing"). Either the direction was inverted, which is '
+        + 'the defect this pins, or the sentence was reworded, in which case '
+        + 'update this pattern in the same edit');
     assert.ok(fork.includes('no probe of the watched system reproduces'),
         'the kind fork no longer carves out the standing members no probe of '
         + 'the watched system reproduces, which is the class whose '
@@ -1101,8 +1137,10 @@ test('the coordinator board default faces outward at both forks', () => {
     // and the board-side objects. The named spellings are swept and the
     // class is not: an inward sentence spelled outside the list ("doubt
     // keeps the candidate on the board") passes it, and the two direction
-    // assertions below, bound to each fork's own subject, are what pin the
-    // default's words.
+    // assertions below are what pin the default's words. Each is bound to a
+    // contiguous span of its own sentence rather than to a subject and an
+    // object with a wildcard between them, because such a span leaves the
+    // polarity free and matches the negation of the rule it pins.
     const inward = /cannot (?:confidently )?place (?:is|goes|belongs|stays|lands) (?:on the board|boarded|one-record|re-derivable|situational)\b/;
     const inwardHit = body.match(inward);
     assert.ok(!inwardHit,
@@ -1110,14 +1148,26 @@ test('the coordinator board default faces outward at both forks', () => {
         + (inwardHit ? inwardHit[0] : '') + '"); an unplaceable candidate '
         + 'stays off the board, and any spelling placing it on the board '
         + 'crosses the admission default');
-    assert.match(body, /whether a candidate belongs on the board at all[^.]*?\bthe candidate stays off\b/,
-        'the coordinator no longer states that doubt over whether a candidate '
-        + 'belongs on the board at all keeps the candidate off; doubt at the '
-        + 'admission test falls off the board, never onto it');
-    assert.match(body, /Doubt between those two kinds[^.]*?\bfalls to the one-record kind\b/,
-        'the coordinator no longer sends doubt between its two board kinds to '
-        + 'the one-record kind, the kind whose misfiling costs a stale duplicate '
-        + 'rather than a discounted commitment the board was the only record of');
+    assert.match(body,
+        /whether a candidate belongs on the board at all, is the chassis's admission default unchanged: the candidate stays off,/,
+        'the coordinator\'s admission-doubt sentence is no longer present '
+        + 'verbatim: doubt over whether a candidate belongs on the board at '
+        + 'all keeps the candidate off, never onto it. The span is contiguous '
+        + 'on purpose, since a subject and an object with a wildcard between '
+        + 'them also match the negation ("doubt over whether a candidate '
+        + 'belongs on the board at all never means the candidate stays off"). '
+        + 'Either the direction was inverted or the sentence was reworded; a '
+        + 'rewording updates this pattern in the same edit');
+    assert.match(body,
+        /Doubt between those two kinds, for a line the test admits, falls to the one-record kind,/,
+        'the coordinator\'s kind-doubt sentence is no longer present verbatim: '
+        + 'doubt between its two board kinds falls to the one-record kind, '
+        + 'whose misfiling costs a stale duplicate rather than a discounted '
+        + 'commitment the board was the only record of. The span is contiguous '
+        + 'for the same reason as the assertion above, a wildcard between '
+        + 'subject and object matching the negation as readily as the rule. '
+        + 'Either the direction was inverted or the sentence was reworded; a '
+        + 'rewording updates this pattern in the same edit');
 });
 
 // README's payload map and two peer-sessions clauses point at the role skill:
