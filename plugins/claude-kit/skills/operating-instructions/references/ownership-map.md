@@ -37,7 +37,7 @@ How to amend: a row changes when ownership moves, and the move lands in the same
 | A reasoning dead end or a decision the spec does not cover: the consult triggers and mechanics | `consult` | doctrine (Orchestration mechanics live in the skills), `executing-work`, `finishing-work` |
 | Weighing a review finding or an operator correction before acting on it | `responding-to-review` | reviewer charters |
 | Root-causing a failure before proposing a fix | `systematic-debugging` | doctrine (Root-cause from the real state) |
-| Whether a change earns a test, the shape it takes, the cost it spawns, the lane mechanics, and the red protocol | `testing-discipline` | doctrine (Write tests independent by construction; After each step, run the lane) |
+| Whether a change earns a test, what retires one already in the tree, the shape it takes, the cost it spawns, the lane mechanics, and the red protocol | `testing-discipline` | doctrine (Write tests independent by construction; Make the test earn its green; After each step, run the lane) |
 | Which lane each gate moment takes and how the delta is reported against its baseline | doctrine (After each step, run the lane the moment calls for) | `testing-discipline`, `executing-work` |
 | Starting a heavy process on a shared machine: the poll, the claim, and the box budget | `role` (the claim protocol) | doctrine (One heavy process at a time is a per-machine budget), `testing-discipline`, `executing-work` (brief clause) |
 | Reading a large file to find one thing: the outline principle | doctrine (When you are hunting for something in a large file) | `csharp-style`, `sql-style` (the recipes) |

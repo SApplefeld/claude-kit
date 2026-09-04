@@ -1,6 +1,6 @@
 ---
 name: testing-discipline
-description: "Use when writing a test, deciding whether a change earns one, choosing which tests to run after a fix, or reading a red or a wall-clock figure. Triggers: a new test or test file, a fix round tempting a full-suite re-run, a suite that reds only beside a busy neighbor, a wall clock that grew, a test reaching for a port, a spawn, or shared state."
+description: "Use when writing a test, deciding whether a change earns one or whether a test already in the tree still earns its keep, choosing which tests to run after a fix, or reading a red or a wall-clock figure. Triggers: a new test or test file, a test whose subject moved or was deleted, a suite audit, a test that reds on every intentional edit, a fix round tempting a full-suite re-run, a suite that reds only beside a busy neighbor, a wall clock that grew, a test reaching for a port, a spawn, or shared state."
 ---
 
 # Testing Discipline
@@ -18,9 +18,23 @@ A test is written for one of these:
 
 The list is instances of one class: a contract whose break no gate short of a test reliably catches, whether because nothing renders the break to a human or because the human who would notice is not in its path. A candidate that pins such a contract earns its test even though no item names it.
 
-What never earns one: an implementation mirror (a test restating a function's body, which breaks on every intentional edit and sleeps through defects), and an exact-wording assert on stderr or stdout text (pin the exit code, a stable token, or a machine-read field; the sentence is free to improve). The pair is instances, not the boundary: any assert that moves when the code is edited and holds when the behavior breaks belongs with them.
-
 **Prefer one whole-tree pin to a test per function.** The shape that catches real defects is an invariant pinned across the whole tree: a roster or reflection pin over every member of a family, a derived pin that scans a source file, a cross-surface count assertion, a region-extraction test over real code, a fixture self-check. Those are instances of one class, an assertion that visits every member of a family and fails when any one drifts, and a new shape that does that is in the class. When a family gains a member, extend the family's pin, or write the family's first, rather than giving the member a private suite of function mirrors.
+
+## What retires a test
+
+A test in the tree retires when it falls in one of these classes, and a candidate at authoring that falls in one is not written. Where the contract still needs cover, a class that names a repair takes the repair rather than the deletion: a wording pin re-pinned on a stable form, a moved contract's test repointed at its new home.
+
+- **An implementation mirror**: a test restating a function's body, which breaks on every intentional edit and sleeps through defects.
+- **A count pin a sibling leg already covers**: an assert that a family has seven members where nothing derives the seven and another leg catches the same drift. A count each side derives independently stays, and so does a hardcoded count that is the only detector of a symmetric removal.
+- **An exact-wording pin on prose no identity contract covers**: an assert on stderr or stdout text, or on a curated sentence, where pinning the exit code, a stable token, or a machine-read field leaves the wording free to improve. Where two or more surfaces carry one text by design, byte-identity is that text's contract and the pin over it stays, whether or not a registry names them.
+- **A duplicate**: a test whose failure implies another's and which catches nothing the other misses.
+- **An orphan**: a test whose contract no longer exists; one whose contract merely moved earns a repointed test.
+
+A leg whose job is to prove the comparison beside it had something to compare is none of these, whatever its shape, since a control that cannot fail alone is what keeps its neighbour's silence honest.
+
+The five are instances of one class: a test whose maintenance cost is not paid for. That happens when its redness does not indicate a defect, when it stays green while the behavior it pins breaks, when the defect it would catch is already caught elsewhere, or when the contract it pinned is gone. A candidate in that class is not written and a test in it retires, even though no item names it.
+
+**The shape bar:** one focused test per stated behavior, sized like its neighbours, beyond the further tests whose subject is what an earlier test cannot see. A shared-setup control, a flag proved in both directions and a withheld control are instances of that class rather than surplus. Where a section adds tests and retires none, the reason belongs in its Chapter, whose contents executing-work owns. The doctrine's "Make the test earn its green" bullet governs a scratch check.
 
 ## The shared-setup blind spot
 
