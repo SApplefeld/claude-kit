@@ -382,7 +382,7 @@ test('executing-work runs the section close gate after the review fixes', () => 
 
 // The two liveness bullets defer their whole operative content to
 // finishing-work: the wedge hallmark, the cadence, and the windows all live
-// there, and standing-watch:69 makes a committed pointer back at the doctrine
+// there, and standing-watch:75 makes a committed pointer back at the doctrine
 // for the probe habit. Whole-body identity would pass with either bullet
 // deleted from BOTH copies, leaving that pointer aimed at nothing and the
 // always-on layer silent on the one rule that keeps a session from killing a
@@ -1001,6 +1001,123 @@ test('the coordinator holds four functions, kaizen among them, and no surface st
             }
         }
     }
+});
+
+// The standing-watch chassis's admission default faces outward: doubt about
+// whether a line belongs on the ledger at all keeps it off, and doubt about
+// which kind an admitted line is falls to situational, carved out for the
+// standing members no probe of the watched system reproduces. A direction is
+// one word, which a rewording flips with nothing else in the diff to notice
+// it by, and an inward default on a loop that never terminates is drift by
+// construction rather than a risk of it. So the inward spelling is pinned
+// absent, and each fork is pinned on its own load-bearing words rather than
+// on a sentence, since the sentence is prose and the direction is the
+// contract.
+test('the standing-watch admission default faces outward at both forks and the named inward spellings are absent', () => {
+    const body = fs.readFileSync(path.join(__dirname, '..', 'plugins',
+        'claude-kit', 'skills', 'standing-watch', 'SKILL.md'), 'utf8');
+    const founding = 'A line you cannot confidently place is situational';
+    assert.ok(!body.includes(founding),
+        'standing-watch still carries the retired inward default sentence "'
+        + founding + '"; an unplaceable line stays off the ledger, and any '
+        + 'sentence sending it in crosses the admission default');
+    // Direction-bearing rather than a bare substring: the pacing rule's "a
+    // board you cannot confidently place is active" is not a ledger
+    // placement and passes. The sweep is a named list of five verbs and
+    // four objects, so the spellings it names are swept and the class is
+    // not: an inward sentence spelled outside the list ("a line whose
+    // placement the keeper cannot call is situational") passes it, and the
+    // direction assertions below, bound to each fork's own subject, are
+    // what pin the default's words.
+    const inward = /cannot confidently place (?:is|goes|belongs|stays|lands) (?:situational|standing|on the ledger|placed)\b/;
+    const inwardHit = body.match(inward);
+    assert.ok(!inwardHit,
+        'standing-watch sends a line the keeper cannot confidently place '
+        + 'inward ("' + (inwardHit ? inwardHit[0] : '') + '"); an unplaceable '
+        + 'line stays off the ledger, and any spelling placing it on the '
+        + 'ledger crosses the admission default');
+    const lines = body.split(/\r?\n/);
+    const admission = lines.find((l) => l.startsWith('**Doubt falls to the cheap side'));
+    assert.ok(admission,
+        'standing-watch no longer opens its admission-default paragraph with '
+        + '"Doubt falls to the cheap side"; this pin reads that paragraph for '
+        + 'the direction the default faces');
+    assert.match(admission, /cannot confidently say a successor needs stays off/,
+        'the admission default no longer states that a line the keeper cannot '
+        + 'confidently say a successor needs stays off; doubt at admission '
+        + 'falls off the ledger, never in');
+    assert.ok(admission.includes('tie-break for doubt'),
+        'the admission default is no longer stated as the admission test\'s '
+        + 'tie-break for doubt, which is what keeps it residual to the rules '
+        + 'that already place content rather than a stage every line passes');
+    const residual = lines.find((l) => l.startsWith('**The admission default is residual'));
+    assert.ok(residual,
+        'standing-watch no longer carries the residual-default paragraph; the '
+        + 'default decides only what no rule has already placed');
+    assert.ok(residual.includes('Having no other record neither admits a line nor rescues one'),
+        'the residual paragraph no longer states that having no other record '
+        + 'neither admits a line nor rescues one, which is the load-bearing '
+        + 'half: the founding incident\'s content had no other record either');
+    const fork = lines.find((l) => l.startsWith('**The kind fork'));
+    assert.ok(fork,
+        'standing-watch no longer carries the kind-fork paragraph; an admitted '
+        + 'line whose kind the keeper cannot call needs a stated rule');
+    assert.match(fork, /doubt therefore falls to situational/,
+        'the kind fork no longer sends doubt about an admitted line\'s kind to '
+        + 'situational, the kind whose misfiling costs a re-measurement; the '
+        + 'direction is bound to the fork\'s own subject, so the inverse fork '
+        + 'fails here rather than passing on the words appearing elsewhere');
+    assert.ok(fork.includes('no probe of the watched system reproduces'),
+        'the kind fork no longer carves out the standing members no probe of '
+        + 'the watched system reproduces, which is the class whose '
+        + 're-measurement cannot be had and whose doubt falls to standing');
+    assert.match(fork, /such a member falls to standing/,
+        'the kind fork\'s carve-out no longer sends doubt about a standing '
+        + 'member no probe reproduces to standing; the direction is bound to '
+        + 'the carve-out\'s own subject, so the inverse carve-out fails here');
+    assert.ok(fork.includes('reaches only the doubt'),
+        'the kind fork\'s carve-out is no longer bounded to doubt; a line the '
+        + 'keeper recognises as a prohibition or a trap is standing under the '
+        + 'two-kinds rule already, and an unbounded carve-out readmits by name');
+});
+
+// The coordinator restates both forks for its own board, and the section's
+// acceptance reads "no text in either skill sends an unplaceable line
+// inward", so the coordinator's direction is pinned beside the chassis's
+// rather than inferred from it, and the named inward spellings are swept
+// beside it, since a rewording of one file leaves the other unchanged.
+// Each direction assertion is bound to its fork's own subject phrase, so
+// the inverse spelling ("stays on", "falls to the re-derivable kind")
+// fails on that assertion rather than passing on the words appearing
+// elsewhere in a file that legitimately says "stays on the board" of a
+// line already boarded.
+test('the coordinator board default faces outward at both forks', () => {
+    const body = fs.readFileSync(path.join(__dirname, '..', 'plugins',
+        'claude-kit', 'skills', 'coordinator', 'SKILL.md'), 'utf8');
+    // The acceptance's "no text in either skill sends an unplaceable line
+    // inward" is swept here as it is for the chassis, as a named list
+    // rather than a class: the coordinator spells an unplaceable line as
+    // one the seat cannot place, so the list is that phrase, five verbs,
+    // and the board-side objects. The named spellings are swept and the
+    // class is not: an inward sentence spelled outside the list ("doubt
+    // keeps the candidate on the board") passes it, and the two direction
+    // assertions below, bound to each fork's own subject, are what pin the
+    // default's words.
+    const inward = /cannot (?:confidently )?place (?:is|goes|belongs|stays|lands) (?:on the board|boarded|one-record|re-derivable|situational)\b/;
+    const inwardHit = body.match(inward);
+    assert.ok(!inwardHit,
+        'the coordinator sends a candidate the seat cannot place inward ("'
+        + (inwardHit ? inwardHit[0] : '') + '"); an unplaceable candidate '
+        + 'stays off the board, and any spelling placing it on the board '
+        + 'crosses the admission default');
+    assert.match(body, /whether a candidate belongs on the board at all[^.]*?\bthe candidate stays off\b/,
+        'the coordinator no longer states that doubt over whether a candidate '
+        + 'belongs on the board at all keeps the candidate off; doubt at the '
+        + 'admission test falls off the board, never onto it');
+    assert.match(body, /Doubt between those two kinds[^.]*?\bfalls to the one-record kind\b/,
+        'the coordinator no longer sends doubt between its two board kinds to '
+        + 'the one-record kind, the kind whose misfiling costs a stale duplicate '
+        + 'rather than a discounted commitment the board was the only record of');
 });
 
 // README's payload map and two peer-sessions clauses point at the role skill:
