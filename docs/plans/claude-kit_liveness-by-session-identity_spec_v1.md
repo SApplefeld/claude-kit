@@ -71,6 +71,6 @@ Acceptance: the security model's coordinator read-surface enumeration carries th
 
 - `claude-kit_claim-protocol-writer-side_spec_v1.md`: the same protocol's other half.
 - `claude-kit_kaizen-prose-batch_spec_v1.md`: carries the doctrine half of decision 5.
-- `claude-kit_board-routing-and-homing_spec_v1.md`: rewrites the coordinator skill ahead of section 2; anchors re-derive.
+- `../archive/claude-kit_board-routing-and-homing_spec_v1.md`: rewrites the coordinator skill ahead of section 2; anchors re-derive.
 - Operator memory `a-self-stamped-liveness-field-cannot-establish-exit`: the measurement and the general rule.
 - Kaizen triage record `kaizen/archive/2026-09-02-pass-triage.md`: the notes this plan dispositions.

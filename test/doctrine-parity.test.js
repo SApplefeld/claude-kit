@@ -1200,9 +1200,11 @@ test('the coordinator board default faces outward at both forks', () => {
 // write. A pin here is verbatim by convention: a rewording that keeps the
 // meaning still fails it, and updating the pin belongs to that same edit.
 //
-// Three legs prove an absence, and each states what it covers rather than
-// reporting a clean sweep. One further leg is positive and owes no absence
-// control, its acceptance being a match rather than an emptiness.
+// The legs that prove an absence each state what they cover rather than
+// reporting a clean sweep. The number of them is deliberately not stated: a
+// count over this block's own legs is the closed-enumeration shape the plan
+// that landed these claims bars everywhere else, and retiring a leg is
+// exactly the edit that falsifies one.
 //   The size-figure leg reads a digit-led figure in one of eight named units. The
 //   units are a hand-written list, so the named spellings are swept and the class
 //   is not: "1 gigabyte", "8 MiB", "90 kilobytes" and "two hundred lines" all
@@ -1216,23 +1218,15 @@ test('the coordinator board default faces outward at both forks', () => {
 //   The tier-locator leg names one spelling, the memory index filename, and it
 //   does not reach the class of every way a locator could be spelled; the
 //   exclusion sentence pinned beside it is what carries that claim.
-//   The retired-spelling leg over the two indexes reads one wording, a tier named
-//   as added to the reconciliation sources, which is what both indexes held, and
-//   its control runs against that wording so it speaks. Its coverage is that one
-//   spelling and not the class of every way a source list could be described. It
-//   reads no negator, so a correct sentence in that word order would match it and
-//   a regression in another would not, which is why it is not what guards the
-//   claim.
-//   The positive leg is. It asserts each index still states the exclusion, with
-//   the negator inside the bound span, so deleting the single word "no" fails it
-//   where a ban aimed at word order alone reads that deletion as clean. Its
-//   subject is each index's live entry for the plan that landed these claims, so
-//   the archival edit that moves that entry reddens this leg. The retired-spelling
-//   leg below does not: it asserts an absence over the whole index file, so it
-//   passes before that edit and after it alike and goes quietly vacuous rather
-//   than red, which is why the archival edit retires it by hand and restates this
-//   block's coverage in the same change. Left in place it would keep reporting
-//   coverage it no longer has.
+//   The two curated indexes carry no leg here, and that is a statement of
+//   coverage rather than an omission. Neither index restates this claim: the
+//   subject both legs read was each index's entry for the plan that landed the
+//   claims, and that plan is archived, so a positive leg would redden on an
+//   absence that is now correct and an absence leg would pass over a file with
+//   nothing in it to drift, reporting coverage it does not have. What carries
+//   the claim is the pair of skill-side legs below, which read the exclusion
+//   sentence and its route in the coordinator skill itself. A future index that
+//   restates the claim again is a restating surface with no pin, and earns one.
 test('the coordinator skill\'s four counted routing and homing claims are each pinned', () => {
     const body = fs.readFileSync(path.join(__dirname, '..', 'plugins',
         'claude-kit', 'skills', 'coordinator', 'SKILL.md'), 'utf8');
@@ -1242,15 +1236,6 @@ test('the coordinator skill\'s four counted routing and homing claims are each p
     // control string in the same test.
     const sizeFigures = (text) => text.match(
         /\b\d[\d,]*\s*(?:bytes|characters|chars|KB|MB|GB|lines|words)\b/gi) || [];
-    // The one retired wording that named a memory tier as added to the
-    // reconciliation sources, which is what both indexes carried. It bans a
-    // spelling and not a claim, reading no negator of its own.
-    const retiredTierAsSource = (text) =>
-        /(?:operator|memory)(?: memory)? tier (?:added to|to) the reconciliation/i.test(text);
-    // The exclusion as both indexes state it, with the negator inside the span so
-    // that deleting it fails the leg.
-    const statesExclusion = (text) =>
-        /no memory tier is one of its sources[^.]{0,40}the omission is by design/i.test(text);
 
     // Claim 1, section 1: the routing tests a candidate at the moment of
     // writing, states four kinds, names each off-board destination, and points
@@ -1385,34 +1370,9 @@ test('the coordinator skill\'s four counted routing and homing claims are each p
         + 'reach every way a locator could be spelled; the exclusion sentence above is what carries '
         + 'the claim');
 
-    // The restating surfaces. A count or a category restated on a sibling
-    // surface is an invariant nothing checks, and both indexes described a memory
-    // tier as a reconciliation source while the skill states the opposite, which
-    // is exactly the drift the four-functions pin reads its siblings for. Each
-    // index takes both legs: the positive one carries the claim, and the ban
-    // catches the one retired wording returning by name.
-    for (const rel of [['README.md'], ['plans', 'README.md']]) {
-        const label = 'docs/' + rel.join('/');
-        const index = fs.readFileSync(path.join(__dirname, '..', 'docs', ...rel), 'utf8');
-        assert.ok(statesExclusion(index),
-            label + ' no longer states that no memory tier is one of the reconciliation pass\'s '
-            + 'sources and that the omission is by design. The negator sits inside this leg\'s span '
-            + 'on purpose: deleting the single word "no" inverts the claim while leaving every other '
-            + 'word of the sentence in place, and a leg matched on word order alone reads that '
-            + 'deletion as clean. This leg\'s subject is this index\'s live entry for the plan that '
-            + 'landed the claim, so the archival edit moving that entry retires it');
-        assert.ok(!retiredTierAsSource(index),
-            label + ' describes a memory tier as added to the reconciliation sources, which is the '
-            + 'wording this index held before it was corrected and the direct negation of what the '
-            + 'coordinator skill states. This leg reads that one spelling, does not reach every way '
-            + 'a source list could be described, and reads no negator, so the positive leg above is '
-            + 'what guards the claim');
-    }
-    assert.ok(retiredTierAsSource('and adds the operator tier to the reconciliation sources.'),
-        'the retired-spelling predicate above no longer speaks; this control runs against a spelling '
-        + 'the predicate\'s own literals name, so it proves the instrument functions and says '
-        + 'nothing about its coverage, and without it the clean result over those files would read '
-        + 'the same whether they are clean or the predicate has stopped matching');
+    // The two curated indexes restate nothing from this claim, so no leg reads
+    // them. The header above states why they are unpinned and what carries the
+    // claim in their place.
 
     const securityModel = fs.readFileSync(path.join(__dirname, '..', 'docs',
         'security-model.md'), 'utf8');
