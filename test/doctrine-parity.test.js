@@ -1210,8 +1210,9 @@ test('the coordinator board default faces outward at both forks', () => {
 //   deliberate: a window naming the board scopes almost nothing here (the word
 //   occurs over two hundred times), so the honest form is the wider sweep plus
 //   this note that a legitimate size figure added anywhere in this file reddens
-//   the leg. That direction is accepted, since the file states no size figure at
-//   all today.
+//   the leg. That direction is accepted, since the file states no board size figure
+//   today; the one size figure it does state is a 40-character cap on a hostname,
+//   which is not a board ceiling and is why this note reads board rather than any.
 //   The tier-locator leg names one spelling, the memory index filename, and it
 //   does not reach the class of every way a locator could be spelled; the
 //   exclusion sentence pinned beside it is what carries that claim.
@@ -1226,10 +1227,12 @@ test('the coordinator board default faces outward at both forks', () => {
 //   the negator inside the bound span, so deleting the single word "no" fails it
 //   where a ban aimed at word order alone reads that deletion as clean. Its
 //   subject is each index's live entry for the plan that landed these claims, so
-//   the archival edit that moves that entry retires this leg and the
-//   retired-spelling leg with it. Both reddening at archival is the intended
-//   signal rather than a defect: a leg that instead went quietly vacuous would
-//   keep reporting coverage it no longer has.
+//   the archival edit that moves that entry reddens this leg. The retired-spelling
+//   leg below does not: it asserts an absence over the whole index file, so it
+//   passes before that edit and after it alike and goes quietly vacuous rather
+//   than red, which is why the archival edit retires it by hand and restates this
+//   block's coverage in the same change. Left in place it would keep reporting
+//   coverage it no longer has.
 test('the coordinator skill\'s four counted routing and homing claims are each pinned', () => {
     const body = fs.readFileSync(path.join(__dirname, '..', 'plugins',
         'claude-kit', 'skills', 'coordinator', 'SKILL.md'), 'utf8');
@@ -1247,7 +1250,7 @@ test('the coordinator skill\'s four counted routing and homing claims are each p
     // The exclusion as both indexes state it, with the negator inside the span so
     // that deleting it fails the leg.
     const statesExclusion = (text) =>
-        /no memory tier is one of its sources[^.]{0,80}by design/i.test(text);
+        /no memory tier is one of its sources[^.]{0,40}the omission is by design/i.test(text);
 
     // Claim 1, section 1: the routing tests a candidate at the moment of
     // writing, states four kinds, names each off-board destination, and points
