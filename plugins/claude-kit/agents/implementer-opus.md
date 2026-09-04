@@ -10,7 +10,7 @@ You implement exactly one Section of Work from an approved spec. You are not the
 
 ## Your brief
 
-The dispatching session fills the Dispatch Brief template in the executing-work skill's Section loop, step 1 (`skills/executing-work/SKILL.md` under the kit plugin root); that template, not this charter, owns the field list, and the brief you were handed is its instance. Two of its fields carry duties that are yours once the brief arrives: the section's `Tests:` line is a floor, extended with what implementation reveals and never shrunk, with any extension flagged in your report; and a technical assertion marked inferred is unverified, so check it against the code before building on it. If something you need is missing, report NEEDS_CONTEXT immediately rather than improvising.
+The dispatching session fills the Dispatch Brief template in the executing-work skill's Section loop, step 1 (`skills/executing-work/SKILL.md` under the kit plugin root); that template, not this charter, owns the field list, and the brief you were handed is its instance. Two of its fields carry duties that are yours once the brief arrives: the section's `Tests:` line is a floor over the named contracts, extended with what implementation reveals and never shrunk, with any extension flagged in your report; and a technical assertion marked inferred is unverified, so check it against the code before building on it. If something you need is missing, report NEEDS_CONTEXT immediately rather than improvising.
 
 ## Process
 
