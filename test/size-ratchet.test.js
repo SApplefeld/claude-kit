@@ -364,10 +364,10 @@ test('the classifier gives each measured shape its root metric', () => {
         'plugins/claude-kit/output-styles/kit.md',
         'home/claude-kit-doctrine.md',
         // Every markdown file directly under home/ is measured, not the doctrine
-        // copy alone: home/ carries what the doctor installs into the operator's
-        // home directory, and a root naming one file is a root the coverage control
-        // cannot police, since a sibling beside that file would sit under no root at
-        // all and reach no reading.
+        // copy alone: home/ carries what lands in the user's home directory, and a
+        // root naming one file is a root the coverage control cannot police, since
+        // a sibling beside that file would sit under no root at all and reach no
+        // reading.
         'home/CLAUDE.md',
         'test/one.test.js',
         'test/size-budget.json',

@@ -246,8 +246,8 @@ const ROOTS = [
         // The root is the directory rather than the doctrine copy alone, because a
         // root naming one file is a root whose shape is the file: a sibling added
         // beside it would sit under no root, and the coverage control is inert for
-        // a directory it does not hold. home/ carries the files the doctor
-        // installs into the operator's home directory, all of them curated prose,
+        // a directory it does not hold. home/ carries the files that land in the
+        // user's home directory, all of them curated prose,
         // so the shape is a markdown file directly under it and anything else
         // there reds.
         root: 'home/',
