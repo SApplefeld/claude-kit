@@ -131,3 +131,7 @@ recorded baseline.
 - `docs/archive/claude-kit_durable-boundary_spec_v1.md`: section 2 and its Standing Brief Amendment 4,
   which is where the channel-versus-caller lesson behind this plan was ruled and recorded.
 - `docs/security-model.md`: the accepted-risk paragraph stating the property and its residuals.
+- `docs/archive/claude-kit_endpoint-dialect-key_spec_v1.md`: the plan that started writing the
+  configured model endpoint's own URL pathname onto four channels a model or an operator reads,
+  memq's degrade line, the daemon's two gap records and the operator-pasteable rollup, so this
+  plan's site enumeration meets a path that is a URL component rather than a filesystem one.

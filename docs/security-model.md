@@ -225,19 +225,24 @@ address is the host and its port, and the path is not screened beside it: a refu
 endpoint answered with a non-2xx status carries the pathname the request reached, so a
 configured URL bearing its own path contributes those segments to that detail, and the daemon
 carries that detail onto the surfaces named here, on both of its legs: the judgment leg's
-durable gap record from the first refusal of a pass, the recognition leg's own gap record for
-every gapped call with no coalescing at all, the operator-pasteable rollup over both, and
-stderr wherever either leg stands down on a streak of refusals. Neither of those daemon
-surfaces reduces the text the way the relevance channel's printed line does. The relevance
-channel section below states the same residual for its own surface. The daemon and `memq find`
-alike report loudly when the configured host is neither loopback nor a private address, the
-daemon at startup and the search on the call it is about to make. The reading is one
-implementation in the shared endpoint client rather than a check each producer remembers to
-make, because a warning the second producer forgets is one that covers whichever path happened
-to be written first. That is a detection control and not a prevention one: anything running as
-this user can rewrite the config, which is the same single principal the rest of this document
-assumes, so what the warning buys is that a redirected endpoint is visible on a surface
-someone reads rather than invisible on every surface at once.
+durable gap record for every pass whose run of refusals opens on a live one, up to the third
+consecutive refusal, past which a latch writes a fixed sentence in the transport's place, the
+recognition leg's own gap record for every gapped call with no coalescing at all, the
+operator-pasteable rollup over both, and stderr wherever either leg stands down on a streak of
+refusals. Those surfaces do not reduce the text the way the relevance channel's printed line
+does, and they do not all treat it alike: the two gap records and stderr carry it as the
+transport worded it, while the rollup strips the control, bidirectional and zero-width
+characters and cuts it at 2000 characters, which is neither the printable-ASCII reduction nor
+the 120 characters that channel prints. The relevance channel section below states the same
+residual for its own surface. The daemon and `memq find` alike report loudly when the
+configured host is neither loopback nor a private address, the daemon at startup and the
+search on the call it is about to make. The reading is one implementation in the shared
+endpoint client rather than a check each producer remembers to make, because a warning the
+second producer forgets is one that covers whichever path happened to be written first. That
+is a detection control and not a prevention one: anything running as this user can rewrite the
+config, which is the same single principal the rest of this document assumes, so what the
+warning buys is that a redirected endpoint is visible on a surface someone reads rather than
+invisible on every surface at once.
 
 The judgment prompt (`sidecar/prompts/`, the judgment line) fences the judged call's
 three sides with a per-call nonce drawn from a cryptographic source after the content it
