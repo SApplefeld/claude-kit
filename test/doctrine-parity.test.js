@@ -30,7 +30,40 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { execFileSync } = require('child_process');
+
+// Every git call in this file goes through the kit's own guarded runner rather
+// than a bare spawn, and the cross-surface retire-class sweep reads the files it
+// walks through the bounded reader rather than a bare readFileSync. Neither claim
+// reaches further than the call it is about, and each guard is used at exactly one
+// site: readFileBounded and containedRealPath are called inside that sweep and
+// nowhere else in this file. Every other read here goes to fs.readFileSync
+// unbounded and uncontained, whether the path is named outright or walked by a
+// sweep of its own, a few of them through the readRepoFile helper and most of them
+// directly, and this comment says nothing about any of those.
+//
+// A checkout is the hostile surface for both boundaries. The runner spawns from
+// the hooks directory, so a git binary sitting in the repository under
+// measurement is never the one that runs; it hands the child an environment
+// with every GIT_* key stripped, so an ambient GIT_DIR cannot redirect a
+// listing at another repository; and it bounds the call with a timeout and an
+// output ceiling. The reader bounds what one file may pull into the process, and
+// containedRealPath refuses a path that resolves outside this checkout.
+const { gitRun } = require(path.join(__dirname, '..', 'plugins', 'claude-kit',
+    'hooks', 'kit-git-lib.js'));
+const { readFileBounded, containedRealPath } = require(path.join(__dirname, '..',
+    'plugins', 'claude-kit', 'hooks', 'kit-read-lib.js'));
+
+// The bound every git call in this file passes explicitly, wider than the shared
+// runner's 4 s default for the reason the repository's size reader states at its
+// own reader-wide figure: a question about a whole repository outlasts the
+// per-file question a hook asks, and both calls here are that kind of question.
+// The index listing runs `ls-files --error-unmatch` over one path and the sweep
+// runs `ls-files` over the tracked tree, and neither reads a file: what each one
+// waits on is git loading the index of a repository whose size nothing here
+// bounds, on a machine whose one heavy-process slot a suite shares with whatever
+// else holds it. A bind on the default is a red about git under contention rather
+// than about the tree, which is the one failure neither call can report usefully.
+const SWEEP_GIT_TIMEOUT_MS = 20000;
 
 const SKILL = path.join(__dirname, '..', 'plugins', 'claude-kit', 'skills',
     'operating-instructions', 'SKILL.md');
@@ -75,9 +108,20 @@ function mirrorBody() {
 // that gap but would also redden during the section that creates the file,
 // before its commit lands, which is the normal shape of every skill-adding
 // section in this repo, so the check stays scoped to the index.
+// The call runs through the shared runner named at its require above, which
+// answers with a status rather than throwing, so the throw this helper's callers
+// rely on is raised here: an untracked path and a git that could not answer at
+// all are both failures, since a reading nobody took is no evidence that the
+// path sits in the index.
 function assertTrackedInIndex(relPath) {
-    execFileSync('git', ['ls-files', '--error-unmatch', '--', relPath],
-        { cwd: path.join(__dirname, '..'), stdio: 'pipe' });
+    const res = gitRun(path.join(__dirname, '..'),
+        ['ls-files', '--error-unmatch', '--', relPath],
+        { timeoutMs: SWEEP_GIT_TIMEOUT_MS });
+    assert.ok(res, 'git could not be asked whether ' + relPath + ' sits in the '
+        + 'index, so this check is silent for a reason that is not a tracked path');
+    assert.strictEqual(res.status, 0, relPath + ' is not in the git index: a file '
+        + 'created and never added is present for whoever wrote it and absent from '
+        + 'every other checkout, and this repo runs no CI to be that checkout');
 }
 
 // One field-set derivation, shared by the claim-file pin and the
@@ -675,19 +719,49 @@ test('the box-check bullet states the class in each copy and in the skill', () =
 // contention figure beside it), and deleting any one of those leaves its
 // heading standing and this pin green while the doctrine promises what the
 // skill no longer carries. So the leads are pinned beside the headings.
+// The test-earning bullet is the third doctrine pointer at this skill and it
+// carries its own near end, which the far-end pin below cannot stand in for:
+// with only that pin, deleting the pointer from both copies passes whole-body
+// identity, leaves the skill's retire section standing and reddens nothing, so
+// the always-loaded layer would name no owner for the retire classes with the
+// suite green. The bullet's own content (write the failing test first, prove a
+// flag both directions) stays its own, which is why only the deferred half is
+// pinned here.
+//
+// One copy is read rather than two. The mirror is covered by the whole-body
+// identity pin at the top of this file, which already fails on a bullet present
+// in one copy and not the other, so a count over the mirror's own copies of this
+// lead could only fail after that pin had already failed, which is the duplicate
+// class the testing-discipline skill states.
+test('the test-earning bullet routes its retire classes to the testing-discipline skill', () => {
+    const lead = '- **Make the test earn its green.**';
+    const inSkill = skillBody().split('\n').filter((l) => l.startsWith(lead));
+    assert.strictEqual(inSkill.length, 1,
+        'expected exactly one test-earning bullet in the skill body');
+    assert.ok(inSkill[0].includes('skills/testing-discipline/SKILL.md'),
+        'the test-earning bullet must route to testing-discipline by path: it '
+        + 'states what a new test has to earn and defers the mirror question of '
+        + 'what retires one already in the tree, so without the path the '
+        + 'always-loaded layer names no owner for the retire classes');
+    assert.match(inSkill[0], /retire/,
+        'the test-earning bullet must still say what it defers: a bullet naming '
+        + 'the skill by path while dropping the retirement question routes a '
+        + 'reader to a section they have no reason to open');
+});
+
 test('the testing-discipline skill still carries what the doctrine routes to it', () => {
     const parts = ['plugins', 'claude-kit', 'skills', 'testing-discipline', 'SKILL.md'];
     const target = path.join(__dirname, '..', ...parts);
     assert.ok(fs.existsSync(target),
-        'the doctrine\'s gate and test-authoring bullets both route to a skill '
-        + 'that is not on disk: ' + parts.join('/'));
+        'the doctrine\'s gate, test-authoring and test-earning bullets all route '
+        + 'to a skill that is not on disk: ' + parts.join('/'));
     const body = fs.readFileSync(target, 'utf8');
     for (const heading of [/^## Price the shape at authoring$/m, /^## The lanes$/m,
-        /^## The clock and the box$/m]) {
+        /^## The clock and the box$/m, /^## What retires a test$/m]) {
         assert.match(body, heading, 'the doctrine bullets route their lane '
-            + 'mechanics, cost shapes, wall-clock capture, and contention rule '
-            + 'here and carry none of that content themselves, so deleting this '
-            + 'section leaves the pointer aimed at nothing: ' + heading);
+            + 'mechanics, cost shapes, wall-clock capture, contention rule and '
+            + 'retire classes here and carry none of that content themselves, so '
+            + 'deleting this section leaves the pointer aimed at nothing: ' + heading);
     }
     for (const [lead, promised] of [
         ['- **The contention lane**', 'the contention lane the gate bullet runs '
@@ -696,6 +770,9 @@ test('the testing-discipline skill still carries what the doctrine routes to it'
             + 'the test-authoring bullet defers here'],
         ['- **Record the contention beside the clock.**', 'the '
             + 'comparable-contention rule the test-authoring bullet defers here'],
+        ['- **An implementation mirror**', 'the retire classes the '
+            + 'test-earning bullet defers here, whose heading can stand with '
+            + 'every class under it deleted'],
     ]) {
         assert.ok(body.split(/\r?\n/).some((l) => l.startsWith(lead)),
             'the testing-discipline skill no longer carries ' + promised
@@ -703,6 +780,777 @@ test('the testing-discipline skill still carries what the doctrine routes to it'
             + 'section heading still stands: ' + lead);
     }
     assertTrackedInIndex(parts.join('/'));
+});
+
+// The document-length bullet is the same deferral shape a third time, and it
+// is pinned for the same reason: the bullet keeps the principle it owns (cover
+// the substance, no filler) and routes the sentence-shape bars to
+// `writing-skills`, so a symmetric deletion of the pointer and of the section
+// it aims at passes whole-body identity while the bars stop being stated
+// anywhere. Both ends are asserted here because a near-end-only pin greens on
+// a pointer aimed at nothing and a far-end-only pin greens on a section
+// nothing points at. Both ends means the near end and the far end of the
+// pointer, and one doctrine copy is read for the near end: the mirror is
+// covered by the whole-body identity pin at the top of this file, so a count
+// over the mirror's own copies of this lead could only fail after that pin had
+// already failed.
+test('the document-length bullet routes its sentence-shape bars to writing-skills at both ends', () => {
+    const lead = '- **Match a document\'s length to its job.**';
+    const inSkill = skillBody().split('\n').filter((l) => l.startsWith(lead));
+    assert.strictEqual(inSkill.length, 1,
+        'expected exactly one document-length bullet in the skill body');
+    assert.ok(inSkill[0].includes('skills/writing-skills/SKILL.md'),
+        'the document-length bullet must route to writing-skills by path: it '
+        + 'asks the length question of a document and defers the same question '
+        + 'asked of a single sentence, so without the path the always-loaded '
+        + 'layer names no owner for the sentence-shape bars');
+    assert.match(inSkill[0], /sentence-shape bars/,
+        'the document-length bullet must still say what it defers: a bullet '
+        + 'naming the skill by path while dropping the sentence-shape bars routes '
+        + 'a reader to a section they have no reason to open');
+
+    const parts = ['plugins', 'claude-kit', 'skills', 'writing-skills', 'SKILL.md'];
+    const target = path.join(__dirname, '..', ...parts);
+    assert.ok(fs.existsSync(target),
+        'the document-length bullet routes to a skill that is not on disk: '
+        + parts.join('/'));
+    const body = fs.readFileSync(target, 'utf8');
+    assert.match(body, /^## What a sentence has to earn$/m,
+        'writing-skills must carry the sentence-shape section the doctrine '
+        + 'points at, since the doctrine carries no bar of its own: deleting '
+        + 'the section leaves that pointer aimed at nothing');
+    // The heading alone is too coarse for the same reason it is on the testing
+    // pointer: the bar is three named parts, and deleting any one of them
+    // leaves the heading standing while the doctrine promises what the skill
+    // no longer carries.
+    for (const [bar, promised] of [
+        ['- **One idea.**', 'the one-idea bar with its forty-word diagnostic'],
+        ['- **The literal phrase.**', 'the literal-phrase bar and its '
+            + 'definition of mannered prose'],
+        ['- **A pointer where another site owns the rule.**', 'the pointing bar'],
+    ]) {
+        assert.ok(body.split(/\r?\n/).some((l) => l.startsWith(bar)),
+            'writing-skills no longer carries ' + promised + ', so the doctrine '
+            + 'promises a bar the skill has dropped while its section heading '
+            + 'still stands: ' + bar);
+    }
+    assertTrackedInIndex(parts.join('/'));
+});
+
+// The Chapter template's Delta: field is a pointer with the same far-end gap,
+// one surface out from the doctrine: it tells a session to run a script by
+// path and quote what it prints, so deleting or renaming the script leaves a
+// shipped instruction that throws for whoever follows it, with the suite green
+// and the field still promising a reading. The field is the near end and the
+// script is the far end, and the verb and the flags are pinned beside the path
+// because a script that exists while the verb or a flag it is handed does not
+// fails exactly the same way for the session following the field. Both are
+// checked against the script's own module rather than against a substring of
+// its source: the verb has to name something callable, and each flag has to
+// survive the parser the script actually runs, which refuses an unknown flag
+// outright instead of falling back to a default.
+test('the Chapter template\'s Delta field still points at a size reader that exists', () => {
+    const skillRel = 'plugins/claude-kit/skills/executing-work/SKILL.md';
+    const skill = readRepoFile(skillRel);
+    const field = skill.split(/\r?\n/).filter((l) => l.startsWith('Delta:'));
+    assert.strictEqual(field.length, 1,
+        'expected exactly one Delta: field in the Chapter template');
+    const scriptRel = 'plugins/claude-kit/scripts/kit-size.js';
+    assert.ok(field[0].includes('scripts/kit-size.js'),
+        'the Delta: field must name the size reader by path, since a session '
+        + 'reading the template has no other way to find the verb it is told '
+        + 'to run');
+    const verb = /kit-size\.js\s+([a-z-]+)/.exec(field[0]);
+    assert.ok(verb, 'the Delta: field must name the verb it runs beside the '
+        + 'script path, not the script alone');
+    const target = path.join(__dirname, '..', ...scriptRel.split('/'));
+    assert.ok(fs.existsSync(target),
+        'the Delta: field names a script that is not on disk: ' + scriptRel);
+    const reader = require(target);
+    // An own property rather than any readable member: `typeof` alone accepts a
+    // function inherited from Object.prototype, so a field naming `toString` as
+    // its verb would satisfy a leg whose whole job is to establish that the
+    // script exports that reading.
+    assert.ok(Object.prototype.hasOwnProperty.call(reader, verb[1]),
+        'the size reader has no own ' + verb[1] + ' member, so the Delta: field '
+        + 'names a verb the script does not export; a member reached through '
+        + 'Object.prototype is not a reading this script ships');
+    assert.strictEqual(typeof reader[verb[1]], 'function',
+        'the size reader exports no ' + verb[1] + ' reading, which is the verb the '
+        + 'Delta: field tells a session to run, so the field ships an invocation '
+        + 'that fails for whoever follows it');
+    // Every flag the field's own invocation passes, put through the parser the
+    // script runs on its command line. The token count is derived without the
+    // flag pattern, by splitting the field on whitespace and keeping what still
+    // begins with a hyphen once its surrounding backticks come off: a count taken
+    // from the same pattern the loop reads would match at the same positions for
+    // every input, so the comparison could not fail and a flag spelled in a form
+    // the pattern misses would leave the loop short and the check silent. The
+    // parser is handed each hyphen-led token verbatim, so a form the pattern
+    // misses is either caught by the count or refused by the parser: the parser
+    // refuses an unknown flag outright rather than ignoring it, and an
+    // equals-joined flag is an unknown flag to it.
+    // A token counts as hyphen-led on a leading dash followed by a letter or a
+    // second dash rather than on the dash alone. The field is prose around a
+    // backticked invocation, and house style puts a spaced hyphen where an em
+    // dash would go, so a bare `-` token from an ordinary prose edit would
+    // otherwise enter this count and red the comparison with a message about a
+    // flag outside the pattern's reach. Both live flag forms still land here,
+    // a single-letter flag and an equals-joined one included.
+    const hyphenTokens = field[0].split(/\s+/)
+        .map((token) => token.replace(/^`+/, '').replace(/`+$/, ''))
+        .filter((token) => /^-[A-Za-z-]/.test(token));
+    const flags = [...field[0].matchAll(/(?<![\w-])--[a-z][a-z-]*/g)].map((m) => m[0]);
+    assert.strictEqual(flags.length, hyphenTokens.length, 'the Delta: field '
+        + 'carries ' + hyphenTokens.length + ' hyphen-led tokens ('
+        + hyphenTokens.join(', ') + ') and the flag pattern reads ' + flags.length
+        + ' of them (' + flags.join(', ') + '), so a flag the field passes sits '
+        + 'outside the pattern\'s reach');
+    for (const flag of hyphenTokens) {
+        const parsed = reader.parseArgs([verb[1], flag, 'x']);
+        assert.strictEqual(parsed.invalid, null, 'the size reader\'s argument '
+            + 'parser refuses ' + flag + ' (' + parsed.invalidReason + '), which '
+            + 'the Delta: field\'s own invocation passes: the parser refuses an '
+            + 'unknown flag outright rather than ignoring it, so the field ships '
+            + 'a call the script exits on');
+    }
+    assertTrackedInIndex(scriptRel);
+});
+
+// The cross-surface agreement pin over the retire classes. The failure it exists
+// for is a class amended at the owner and left standing in a carrier nobody
+// thought to re-read, which is a claims defect, and the closure for one of those
+// is a predicate over the class rather than more prose, so this is that
+// predicate.
+//
+// It is matched on the class's shape and not on a file list, because a list
+// cannot reach a carrier nobody named: a carrier is any paragraph in the
+// tracked tree naming CARRIER_FLOOR or more of the class heads, which is what
+// separates an enumeration of the classes from prose that happens to use one of
+// the heads that are also ordinary English.
+//
+// The heads and the definitions are derived from the owner's own class bullets
+// rather than typed here, so this instrument holds no copy of the vocabulary it
+// is policing: a hand-written head list is itself a carrier of the classes,
+// which makes the pin flag its own text and, worse, gives the owner's wording a
+// second home that can go stale exactly the way the carriers can.
+//
+// Each class's own derived pattern is asserted against the owner's enumeration
+// below, per class rather than over the set: with one head's pattern degraded
+// the remaining ones still select every paragraph the sweep reads, so that class
+// would drop out of the judgment with every leg green.
+//
+// What the sweep does not reach, stated because a silent check that never speaks
+// reads exactly like a clean one:
+//
+//   - a carrier restating a class in a paraphrase using none of the heads, which
+//     no structural pattern over the class's shape reaches, since the shape is
+//     the naming;
+//   - a carrier naming fewer heads than CARRIER_FLOOR, which sits below the
+//     floor unjudged, and a surface quoting one class verbatim is the ordinary
+//     shape of a targeted pointer, so this is the widest class the pin leaves
+//     alone;
+//   - a class renamed or deleted at the owner while a carrier goes on spelling it
+//     the old way and still clears CARRIER_FLOOR on the heads that did not
+//     change. The carrier stays selected on those heads, and the renamed class is
+//     no longer one of its hits, so the stale text is compared against nothing and
+//     every leg passes. Requiring a selected carrier to name every class the owner
+//     states is not the repair: CARRIER_FLOOR admits a paragraph that names enough
+//     of the classes on purpose, so that requirement would red on a legitimate
+//     subset carrier. What catches this class is the amendment at the owner
+//     carrying its carriers with it;
+//   - a definition of a tailless class reworded while still carrying every word
+//     of the owner's own definition clause, since that comparison is over the
+//     words the clause uses rather than over its wording;
+//   - a carrier naming a class the owner qualifies with a tail exactly as the
+//     owner states it, while the prose beside that name states a stale
+//     qualification or drops a carve-out the owner holds. The leg for such a
+//     class compares the name and stops, so what it covers is the qualifier
+//     itself, the qualifier being part of the name the comparison reads; a
+//     drifted sentence next to a correctly spelled name is outside the
+//     judgment. Extending the definition comparison to a tailed class is not
+//     the repair: the owner's name IS its qualifier, so the comparison already
+//     reads it, and a wider one would red on the ordinary shape of a pointer;
+//   - the Chapters region of a document under `docs/plans/`, cut below with its
+//     reason and so judged nowhere: append-only history quotes a retired wording
+//     as its subject, and a Chapter naming three class heads would be a red with
+//     no repair in scope, since history is not rewritten. The region above that
+//     heading is judged like any other document, which is what keeps a live plan's
+//     own body in reach;
+//   - every document under `docs/archive/`, exempt whole below with its reason
+//     rather than cut at a heading. An archived document is append-only in the
+//     same way a Chapter is, its body as much as its history: a red in an archived
+//     spec's own prose has no repair in scope either, and the root also holds
+//     documents carrying no `## Chapters` heading to cut at;
+//   - an enumeration spread across the items of one list. Where no single item
+//     clears CARRIER_FLOOR the judged unit falls back to the whole block, and a
+//     pointer in any item then satisfies the owner-naming leg for all of them;
+//     where some unrelated item clears the floor on its own, the units are
+//     per-item and a pair of sibling items naming fewer than CARRIER_FLOOR heads
+//     each escapes the judgment entirely. An ordered-list enumeration (`1.`, `2.`)
+//     is one block whichever way it falls, since the per-item split reads a `-` or
+//     a `*` lead and no numeral;
+//   - a run that judges far fewer files than the tree holds while recording a
+//     cause for every one it dropped. The partition sum holds over such a run
+//     by construction, since it is satisfied by any complete accounting, and
+//     the witness below establishes that one named path was judged rather than
+//     that the population was: a sparse checkout, or a tree whose files bind on
+//     the ceiling, passes both legs. What the two do catch is a path leaving the
+//     loop with no record at all, which is the shape a future exit added here
+//     would take. A bound on the population would be a threshold nothing
+//     derives, which is the count pin this plan retires;
+//   - a carrier written into a file that is not yet in the index, the swept
+//     population being `git ls-files`: a stale carrier in a new file is unjudged
+//     until the file is added, and no assertion here reads the worktree;
+//   - a tracked file larger than SWEEP_FILE_MAX_BYTES, which is a counted skip
+//     below rather than a red. The counted form is what keeps a future image or
+//     captured corpus from redding this pin for something it does not own, and its
+//     residue is a document over the ceiling whose prose is genuinely this sweep's
+//     subject: such a file leaves the judgment as a named skip. Nothing tracked is
+//     near the ceiling today;
+//   - and the file this pin lives in, exempt below on its tracked path with its
+//     reason and skipped a second time on this module's own resolved path, because
+//     a sweep for a text pattern otherwise always finds the fixture it sweeps
+//     with; a stale carrier written into this file is outside the pin's reach. The
+//     two removals are not redundant and are not the same kind: the tracked path
+//     is the named exemption the closed list is compared against, and the resolved
+//     path is a counted skip that catches this file reached under a link the
+//     listing does not carry, which is a link alias rather than an exemption and
+//     so is reported as its own skip cause.
+const RETIRE_OWNER = 'plugins/claude-kit/skills/testing-discipline/SKILL.md';
+
+// The owner's own directory segment, which is the token a carrier names it by.
+// Derived from the path above rather than spelled a second time, so this
+// instrument holds no copy of the vocabulary it polices and a rename of the
+// owning skill moves both the read and the pointer test with one edit.
+const RETIRE_OWNER_SEGMENT = RETIRE_OWNER.split('/').slice(-2)[0];
+
+// A ceiling on what one file contributes to the sweep, which is what keeps a
+// tracked file of any size from pulling an unbounded buffer into this process. A
+// read that binds on it leaves the file out of the judgment, so it is a counted
+// skip named with its cause rather than a red: the ceiling is a property of this
+// process rather than a rule about the tree, and the first tracked file of any
+// kind over it would otherwise red this pin for something it does not own. The
+// tail nobody read is what the skip records.
+const SWEEP_FILE_MAX_BYTES = 4 * 1024 * 1024;
+
+// Three is what separates an enumeration of the classes from prose that happens
+// to use one of the heads that is also ordinary English, and it is the number
+// the owner's own enumeration is measured against below rather than a figure
+// restated anywhere else. It is declared above its first reader rather than
+// below it: the readers run inside test callbacks today, so a later module-scope
+// call would be the thing that turned a hoisting order into a ReferenceError.
+const CARRIER_FLOOR = 3;
+
+// The sweep's reach evidence is the partition below rather than a floor on how
+// many files it read. Every judgment it makes lives inside the loop over the
+// listing, so a path leaving that loop unrecorded is a file the sweep is silent
+// about while reporting the same clean result as a tree with no carrier in it,
+// and a floor loose enough not to red when a few files are retired cannot see
+// one: a floor set a hundred paths under the tracked population lets a third of
+// the tree drop out with every leg green. What stands in its place is an exact
+// partition. Every listed path lands in exactly one of judged, exempted or
+// skipped, the three counts are asserted to sum to the listing's own length, and
+// each skip is named with its cause in that assertion's message, so a branch
+// added later that removes a path without recording it breaks the sum.
+//
+// The one thing the partition cannot establish is that anything was read at all,
+// since the sum holds equally over a run whose every path was skipped. A witness
+// path is what says the loop reached a real file: this one is tracked, sits under
+// no exempt root and no journal root, and is already a path this file names
+// outright, so it is derived from the tree rather than being a second figure to
+// keep in step with it.
+const SWEEP_JUDGED_WITNESS = 'home/claude-kit-doctrine.md';
+
+// A crude stem, so an inflection is not a disagreement: the trailing plural,
+// past or participle ending comes off any word long enough to still be a word
+// without it. It is applied to both sides of every comparison below, so the two
+// sides agree about what a word is even where this reduces one to something no
+// dictionary holds.
+function stemWord(word) {
+    const w = word.toLowerCase().replace(/[^a-z]/g, '');
+    return w.length < 5 ? w : w.replace(/(?:ing|es|ed|s)$/, '');
+}
+
+function stemsOf(text) {
+    return new Set(text.split(/[^A-Za-z'-]+/).filter(Boolean).map(stemWord));
+}
+
+// Regex metacharacters in text read out of the owner. The class names carry none
+// of them, and the escape is what keeps that from being the reason this works: the
+// owner's file is edited by every amendment to these classes, and a name gaining
+// a dot or a star would otherwise widen or narrow the pattern silently, which is
+// the same silence the coverage statement above exists to prevent.
+function escapeForPattern(text) {
+    return text.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&');
+}
+
+// A class is its full name as the owner states it, its head is the first two
+// words of that name, and its definition is the clause the owner states after
+// it. All three are read off the owner, so the vocabulary lives in one place and
+// this file names none of it. `tail` says whether the name carries anything past
+// its head: where it does not, matching the head is matching the name, and the
+// definition clause is the only thing left to compare a carrier against.
+function ownerRetireClasses() {
+    const body = readRepoFile(RETIRE_OWNER);
+    const section = body.split(/^## /m).find((s) => s.startsWith('What retires a test'));
+    assert.ok(section, RETIRE_OWNER + ' no longer carries a '
+        + '"What retires a test" section for the classes to be read from');
+    const stated = [...section.matchAll(/^- \*\*(?:An?|The)\s+([^*]+?)\*\*:\s*([^\r\n]*)$/gm)]
+        .map((m) => ({ name: m[1].trim(), def: m[2].trim() }));
+    assert.ok(stated.length >= CARRIER_FLOOR, 'the owner states ' + stated.length
+        + ' retire classes, fewer than the ' + CARRIER_FLOOR + ' a paragraph '
+        + 'must name for this predicate to select it, so the predicate can no '
+        + 'longer select even the owner and its silence would mean nothing');
+    // The derivation above reads a class bullet in one shape, an article and a
+    // bold name and a colon, and a bullet outside that shape is dropped in
+    // silence. The floor alone cannot see one drop: five classes minus one still
+    // clears three, and every carrier of the dropped class then goes unjudged,
+    // which is the amend-the-owner-and-leave-a-stale-carrier defect this whole
+    // pin exists for. So the derived count is held to the section's own list
+    // items, counted on the class shape's own outer form rather than on the
+    // parse: an article and a bold open. Counting every list item instead would
+    // put a non-class bullet into the comparison, so promoting the section's
+    // shape-bar paragraph to a bullet, or adding any other bullet under the
+    // heading, would red with a message asserting that a class bullet had fallen
+    // outside the derivation.
+    const bullets = section.split(/\r?\n/)
+        .filter((l) => /^- \*\*(?:An?|The)\s/.test(l)).length;
+    assert.strictEqual(stated.length, bullets, 'the owner\'s retire section holds '
+        + bullets + ' list items and ' + stated.length + ' of them parse as retire '
+        + 'classes, so a class bullet sits outside the shape this derivation reads '
+        + '(an article, a bold name, a colon) and every carrier of that class is '
+        + 'unjudged below while every other leg stays green');
+    return stated.map(({ name, def }) => {
+        const words = name.split(/\s+/);
+        const head = words.slice(0, 2).join(' ');
+        const escaped = escapeForPattern(head);
+        return {
+            name,
+            head,
+            def,
+            tail: name.toLowerCase() !== head.toLowerCase(),
+            // The words of the definition clause that carry a subject of their
+            // own, taken as every word of five letters or more. Shorter ones are
+            // dropped rather than listed as stopwords: nothing this comparison
+            // needs turns on "a", "the" or "is", and a stopword list is one more
+            // thing that would have to be kept in step with the owner.
+            defWords: [...new Set(def.split(/[^A-Za-z'-]+/)
+                .filter((w) => w.length >= 5).map(stemWord))],
+            // Bounded at both ends in either form. A multi-word head left
+            // unbounded matches inside a longer word at either edge, so a head
+            // of "count pin" selects "discount pinning" and the carrier reds for
+            // naming a class it never mentions.
+            re: words.length === 1
+                ? new RegExp('\\b' + escaped + '(s|d|ed|es)?\\b', 'i')
+                : new RegExp('\\b' + escaped.replace(/ /g, '\\s+') + '\\b', 'i'),
+            every: words.length === 1
+                ? new RegExp('\\b' + escaped + '(s|d|ed|es)?\\b', 'gi')
+                : new RegExp('\\b' + escaped.replace(/ /g, '\\s+') + '\\b', 'gi'),
+        };
+    });
+}
+
+// The carrier predicate, applied to the tracked tree, to the owner as its own
+// instrument check, and to the withheld controls below. Keeping it one function
+// is what makes the controls evidence about this predicate rather than about a
+// second one written to resemble it.
+function retireClassCarriers(text, classes) {
+    return text.split(/\r?\n\s*\r?\n/)
+        .map((para) => ({ para, hits: classes.filter((c) => c.re.test(para)) }))
+        .filter((c) => c.hits.length >= CARRIER_FLOOR);
+}
+
+// The unit a selected block is judged as. A blank-line block in this tree spans
+// a whole bullet list, so where one item of the list carries the enumeration
+// that item is the unit: judged as a block, an item naming no owner is covered
+// by an unrelated neighbour that names one. Where no single item carries the
+// enumeration the block is the unit, which is what keeps an enumeration spread
+// across items in reach at all.
+function judgedUnits(para, classes) {
+    const perItem = para.split(/\r?\n(?=\s*[-*] )/)
+        .map((unit) => ({ unit, hits: classes.filter((c) => c.re.test(unit)) }))
+        .filter((u) => u.hits.length >= CARRIER_FLOOR);
+    return perItem.length > 0
+        ? perItem
+        : [{ unit: para, hits: classes.filter((c) => c.re.test(para)) }];
+}
+
+// The judgment itself, as one function so the sweep and the withheld controls
+// below run the same legs: a control exercising a second function written to
+// resemble this one is evidence about that second function.
+//
+// Two legs, and the second takes one of two forms per class. A class whose name
+// carries a tail past its head is compared on that name, which is what a stale
+// copy of it loses. A class the owner names in one or two words has no tail to
+// compare, so what is compared is its definition clause: a unit reaching a third
+// of the clause's words within twice the clause's own length of the head is
+// restating the class rather than naming it, and a restatement that reaches a
+// third of the words and not all of them states something the owner does not.
+// The window is what separates the two, since a long unit naming the class and
+// pointing at its owner holds some of those words incidentally, scattered rather
+// than beside the head.
+//
+// That window is symmetric, running the clause's own length twice in each
+// direction from the head and taking the greater reach of the two, because a
+// restatement is as readily written before the name as after it ("a test whose
+// failure implies another's, which is a duplicate"): a forward-only window reads
+// the same carrier as clean when its prose runs the other way, which is a
+// silence produced by word order rather than by agreement.
+function assertCarrierAgrees(where, unit, hits) {
+    assert.ok(unit.includes(RETIRE_OWNER_SEGMENT), where + ' enumerates the retire '
+        + 'classes (' + hits.map((c) => c.head).join(', ') + ') without naming '
+        + 'their owner, so it reads as a second definition rather than a pointer, '
+        + 'and the two drift apart the next time the owner is amended');
+    const present = stemsOf(unit);
+    for (const cls of hits) {
+        if (cls.tail) {
+            assert.ok(unit.toLowerCase().includes(cls.name.toLowerCase()),
+                where + ' spells the "' + cls.head + '" retire class '
+                + 'differently from its owner, which states it as "' + cls.name
+                + '"; a reworded copy of a class is how an amendment at the owner '
+                + 'leaves a stale definition standing here');
+            continue;
+        }
+        let beside = 0;
+        const span = cls.def.length * 2;
+        for (const at of unit.matchAll(cls.every)) {
+            const after = unit.slice(at.index, at.index + at[0].length + span);
+            const before = unit.slice(Math.max(0, at.index - span),
+                at.index + at[0].length);
+            for (const window of [after, before]) {
+                // Stemmed once per window rather than inside the filter, which
+                // would rebuild the whole window's stem set for every word of
+                // the clause, for every match, in both directions.
+                const stems = stemsOf(window);
+                const reach = cls.defWords.filter((w) => stems.has(w)).length;
+                if (reach > beside) beside = reach;
+            }
+        }
+        if (beside * 3 < cls.defWords.length) continue;
+        const missing = cls.defWords.filter((w) => !present.has(w));
+        assert.deepStrictEqual(missing, [], where + ' states its own definition of '
+            + 'the "' + cls.head + '" retire class, which the owner states as "'
+            + cls.def + '", and drops ' + missing.join(', ') + ' from it. A class '
+            + 'the owner names without a qualifying tail is compared on the words '
+            + 'of its definition, so a restatement carrying part of them is a '
+            + 'second definition that has already drifted; point at the owner '
+            + 'rather than restating it');
+    }
+}
+
+// What this sweep exempts, each entry with the reason it is exempt and the form
+// it matches, a whole path or a root prefix. The set is closed: the entries the
+// partition below actually used are compared against this list, so an exemption
+// cannot be added in code without moving it, and an entry that matches nothing
+// reds rather than silently widening what the sweep skips. Every member is exempt
+// because a carrier there is legitimate rather than because nothing was expected
+// to be found, which is why none of them is asserted clean.
+const RETIRE_SWEEP_EXEMPT = [
+    ['path', RETIRE_OWNER, 'the owner itself, whose enumeration is the text every '
+        + 'other surface is judged against and which is read above as this '
+        + 'sweep\'s own control that the predicate still selects a carrier'],
+    ['path', 'test/doctrine-parity.test.js', 'the file this pin lives in: a sweep '
+        + 'for a text pattern otherwise always finds the fixtures it sweeps with, '
+        + 'so a stale carrier written into this file is outside the pin\'s reach'],
+    ['root', 'docs/archive/', 'the archive, which is append-only in its whole '
+        + 'body rather than below a heading: an archived document\'s own prose '
+        + 'quotes the wording of the moment it was archived at, a red there has '
+        + 'no repair in scope any more than a red in a Chapter does, and the root '
+        + 'holds documents carrying no `## Chapters` heading to cut at'],
+];
+
+// The region of a tracked document this sweep judges, which is all of it except
+// under the journal roots. There a document is judged only above its own
+// `## Chapters` heading, because everything below that heading is append-only
+// history: a Chapter or an interim board quotes a retired wording as its subject,
+// and a red there would have no repair in scope, history not being rewritten. The
+// carve-out is at the region rather than at the path, so a live plan's own body,
+// which is a carrier this pin exists to catch, stays judged, and that is the whole
+// reason the root here is the live one: an archived document has no editable body
+// to repair either, so it is exempt whole above rather than cut. A document under
+// this root with no such heading is judged whole.
+const RETIRE_SWEEP_JOURNAL_ROOTS = ['docs/plans/'];
+
+function retireJudgedRegion(rel, text) {
+    if (!RETIRE_SWEEP_JOURNAL_ROOTS.some((root) => rel.startsWith(root))) {
+        return { text, carved: false };
+    }
+    const at = text.search(/^## Chapters[ \t]*$/m);
+    return at === -1 ? { text, carved: false } : { text: text.slice(0, at), carved: true };
+}
+
+test('every tracked surface naming the retire classes agrees with their owner', () => {
+    const classes = ownerRetireClasses();
+    // The instrument check, and it is a control rather than a formality: the
+    // predicate must select the owner's own enumeration, so a rename or a
+    // reformat at the owner that puts the classes out of the predicate's reach
+    // reddens here instead of emptying the carrier set and reading as clean.
+    const ownerCarriers = retireClassCarriers(readRepoFile(RETIRE_OWNER), classes);
+    assert.strictEqual(ownerCarriers.length, 1,
+        'the carrier predicate no longer selects exactly the owner\'s own '
+        + 'enumeration of the retire classes, so it has stopped describing the '
+        + 'class it sweeps for and its silence over every other surface says '
+        + 'nothing at all');
+    for (const cls of classes) {
+        assert.ok(cls.re.test(ownerCarriers[0].para), 'the pattern derived for the '
+            + '"' + cls.head + '" retire class no longer selects the owner\'s own '
+            + 'enumeration of the classes, so that class is out of the judgment '
+            + 'below while the heads that still match keep every carrier selected '
+            + 'and every leg green');
+    }
+
+    // The region carve-out's own control, run before its silence is read: it cuts
+    // at the heading and only under the journal roots, so an over-wide cut, which
+    // would take a live document's body out of the sweep while every leg below
+    // stayed green, speaks here. The instance is built from the classes at run
+    // time for the same reason every control below is.
+    const journalBody = 'Judged: the ' + classes.map((c) => c.name).join(', ') + '.';
+    const journalText = journalBody + '\r\n\r\n## Chapters\r\n\r\nHistory: the '
+        + classes.map((c) => c.name).join(', ') + ' as this section left them.';
+    const carvedRegion = retireJudgedRegion('docs/plans/a_spec_v1.md', journalText);
+    assert.ok(carvedRegion.carved && carvedRegion.text.includes(journalBody)
+        && !carvedRegion.text.includes('History:'),
+        'the journal carve-out no longer cuts a plan document at its `## Chapters` '
+        + 'heading, keeping the body above it and dropping the history below: it '
+        + 'either reaches past the heading, which takes a live plan\'s own body out '
+        + 'of this sweep, or reaches nothing, which puts append-only history back '
+        + 'in reach of a judgment that has no repair for it');
+    assert.ok(!retireJudgedRegion('docs/architecture.md', journalText).carved,
+        'the journal carve-out reaches a document outside '
+        + RETIRE_SWEEP_JOURNAL_ROOTS.join(' and ') + ', so a curated document is '
+        + 'judged only down to a heading it happens to share with a plan doc');
+
+    // The whole tracked tree, with no pathspec at all, and the exemptions taken
+    // out of the result rather than out of the input. A pathspec is an inclusion
+    // list, which is a claim about what exists refreshed by hand: it reports every
+    // kind nobody thought to name as clean by construction, and no control catches
+    // that, since a control runs inside the scope. It also matches case
+    // sensitively, so a differently-cased extension would sit outside the sweep
+    // entirely. Listing the tree and partitioning it in code covers a kind, a case
+    // and a top-level directory added later by default.
+    const root = path.join(__dirname, '..');
+    const listing = gitRun(root, ['ls-files', '-z'],
+        { timeoutMs: SWEEP_GIT_TIMEOUT_MS });
+    assert.ok(listing && listing.status === 0, 'git could not list the tracked '
+        + 'tree, so this sweep read nothing and its silence is about git rather '
+        + 'than about the tree');
+    // -z and a NUL split rather than newlines: git C-quotes any path holding a
+    // non-ASCII or special byte in its default listing, which would put a name
+    // no file answers to into the sweep.
+    const tracked = listing.stdout.split('\0').filter(Boolean);
+    // The listing reached a path known to be tracked, which the guard above
+    // cannot establish: `ls-files` exits 0 over an empty stdout, so a listing
+    // emptied by a wrong argument or a wrong repository leaves every judgment
+    // below with nothing to run on and reads exactly like a tree with no carrier
+    // in it. The owner is the path asserted because it is the one carrier this
+    // pin knows is there.
+    assert.ok(tracked.includes(RETIRE_OWNER), 'the tracked listing does not hold '
+        + RETIRE_OWNER + ', which git tracks, so the listing this sweep reads is '
+        + 'not this repository\'s tracked tree and its silence over every other '
+        + 'path means nothing');
+    // The partition. Every listed path leaves this loop into exactly one of three
+    // recorded sets, and each branch that removes one records it with its cause,
+    // so the sum asserted below is what a fourth exit added later breaks.
+    const self = fs.realpathSync(__filename);
+    const judged = [];
+    const exempted = [];
+    const exemptionsUsed = new Set();
+    const skipped = [];
+    let journalCarved = 0;
+    for (const rel of tracked) {
+        const exemption = RETIRE_SWEEP_EXEMPT.find(([kind, p]) => (kind === 'root'
+            ? rel.startsWith(p) : rel === p));
+        if (exemption) {
+            exempted.push(rel);
+            exemptionsUsed.add(exemption[1]);
+            continue;
+        }
+        // A path the index holds and the worktree does not, a tracked file
+        // deleted or a sparse checkout, is nothing to read rather than a failure;
+        // so is one resolving outside this checkout, and so is one whose name
+        // carries a control character, which the containment rule this helper
+        // borrows refuses outright. Each of those is a counted skip rather than a
+        // silent one: the file leaves the judgment either way, and the count plus
+        // the cause is what separates that from a clean read.
+        const real = containedRealPath(root, path.join(root, ...rel.split('/')));
+        if (real === null) {
+            skipped.push([rel, 'the worktree holds no file at this tracked path, '
+                + 'or it resolves outside this checkout, or its name carries a '
+                + 'control character']);
+            continue;
+        }
+        // The resolved-path self check, which catches this file reached under a
+        // link whose name the listing does not carry. It is a skip rather than an
+        // exemption on purpose: the path it would push into the exempt set is by
+        // construction not the one RETIRE_SWEEP_EXEMPT names, so exempting it
+        // would break the closed-set comparison below at exactly the moment this
+        // branch did the thing it exists for, turning a link alias into a red
+        // about an exemption with no reason recorded.
+        if (real === self) {
+            skipped.push([rel, 'resolves to this pin\'s own file under a name the '
+                + 'tracked listing does not carry']);
+            continue;
+        }
+        const read = readFileBounded(real, SWEEP_FILE_MAX_BYTES);
+        assert.ok(read, rel + ' is tracked and could not be read, so this sweep is '
+            + 'silent about it for a reason that is not a clean result');
+        if (read.bounded) {
+            skipped.push([rel, 'is larger than the ' + SWEEP_FILE_MAX_BYTES
+                + ' bytes this sweep reads of one file, so its tail went unread '
+                + 'and it is left out of the judgment rather than judged on its '
+                + 'head alone']);
+            continue;
+        }
+        const region = retireJudgedRegion(rel, read.text);
+        if (region.carved) journalCarved += 1;
+        judged.push(rel);
+        for (const carrier of retireClassCarriers(region.text, classes)) {
+            for (const unit of judgedUnits(carrier.para, classes)) {
+                assertCarrierAgrees(rel, unit.unit, unit.hits);
+            }
+        }
+    }
+    // The partition itself, which is this sweep's reach evidence: a path that
+    // left the loop without being recorded shows up here as a shortfall, and the
+    // skips are named with their causes so the reading is what dropped out rather
+    // than how many did.
+    const namedSkips = skipped.map(([rel, why]) => rel + ': ' + why);
+    assert.strictEqual(judged.length + exempted.length + skipped.length,
+        tracked.length, 'this sweep listed ' + tracked.length + ' tracked paths '
+        + 'and accounted for ' + (judged.length + exempted.length + skipped.length)
+        + ' of them (' + judged.length + ' judged, ' + exempted.length
+        + ' exempt, ' + skipped.length + ' skipped), so a path leaves the loop '
+        + 'unrecorded and the sweep is silent about it while reading as a clean '
+        + 'result. Skips recorded this run:\n' + namedSkips.join('\n'));
+    // The witness, which the sum cannot supply: the sum holds over a run that
+    // skipped everything, so one tracked path known to be judged is what says the
+    // loop reached a file and read it.
+    assert.ok(judged.includes(SWEEP_JUDGED_WITNESS), 'this sweep judged '
+        + judged.length + ' tracked paths and ' + SWEEP_JUDGED_WITNESS + ' is not '
+        + 'among them, so the loop either read nothing or removed a path it has no '
+        + 'exemption and no skip cause for. Skips recorded this run:\n'
+        + namedSkips.join('\n'));
+    // The exempt half, held to the closed list above: the comparison is over the
+    // entries the loop actually used, so an exemption added in code moves it and
+    // an entry that has stopped matching anything reds rather than widening what
+    // the sweep skips in silence.
+    assert.deepStrictEqual([...exemptionsUsed].sort(),
+        RETIRE_SWEEP_EXEMPT.map(([, p]) => p).slice().sort(),
+        'the exemptions this sweep applied are not the ones RETIRE_SWEEP_EXEMPT '
+        + 'names with their reasons, so either a surface is exempt with no reason '
+        + 'recorded or a named exemption no longer matches anything in the tree');
+    assert.ok(journalCarved > 0, 'no tracked document under '
+        + RETIRE_SWEEP_JOURNAL_ROOTS.join(' or ') + ' carries a `## Chapters` '
+        + 'heading, so the journal carve-out removed nothing and the coverage '
+        + 'statement above describes a cut this run never applied');
+});
+
+// The withheld controls, one per way a carrier disagrees, and each runs the
+// judgment the sweep above runs rather than asserting a property of its own
+// input: what a control has to show is that the judgment speaks, so it calls it
+// and requires a throw. One instance per leg is what makes that evidence
+// specific, since an instance failing two legs stays caught with either of them
+// inverted.
+//
+// The instances are authored here rather than taken from the tree, because an
+// instance the tree already holds would prove the predicate functions and say
+// nothing about whether the judgment catches a stale carrier, which is the only
+// thing the pin is for. What cannot be withheld is the class vocabulary itself,
+// since a class is its name, so every instance is built from the owner's own
+// classes at run time and this file types none of it.
+test('the retire-class agreement judgment speaks on each carrier that disagrees', () => {
+    const classes = ownerRetireClasses();
+    const tailed = classes.find((c) => c.tail);
+    const tailless = classes.find((c) => !c.tail);
+    assert.ok(tailed, 'no retire class the owner states carries a qualifying tail '
+        + 'past its head, so the name leg has nothing to compare and its control '
+        + 'cannot be built: that leg is inert rather than passing');
+    assert.ok(tailless, 'every retire class the owner states carries a qualifying '
+        + 'tail, so the definition leg has nothing to compare and its control '
+        + 'cannot be built: that leg is inert rather than passing');
+    const owner = 'skills/testing-discipline/SKILL.md';
+    const faithfully = (except) => classes.filter((c) => c !== except)
+        .map((c) => 'the ' + c.name).join(', ');
+
+    // The opening of the owner's own definition clause, cut at the point where it
+    // reaches the third of its words the judgment reads as a restatement, so what
+    // the instance drops is the rest of the clause.
+    const need = Math.ceil(tailless.defWords.length / 3);
+    const partial = [];
+    const reached = new Set();
+    for (const word of tailless.def.split(/\s+/)) {
+        partial.push(word);
+        const stem = stemWord(word);
+        if (tailless.defWords.includes(stem)) reached.add(stem);
+        if (reached.size >= need) break;
+    }
+    assert.ok(reached.size >= need && reached.size < tailless.defWords.length,
+        'the owner\'s definition of the "' + tailless.head + '" class cannot be cut '
+        + 'to an opening that reads as a restatement and is less than the whole '
+        + 'clause, so the definition leg has no control and is inert rather than '
+        + 'passing');
+
+    // Each instance carries the leg it was built for, as a fragment of that
+    // leg's own assertion message. A bare description in the matcher position is
+    // what these rows read as before: a string second argument to assert.throws
+    // is the message parameter rather than a matcher, so every row accepted any
+    // throw at all and recorded that something refused rather than that the leg
+    // it exercises refused. The classes are iterated in the owner's order, so a
+    // later widening of the first class's own window would otherwise have a row
+    // throw on the wrong leg with its intended leg silently untested.
+    const ownerLeg = /without naming their owner/;
+    const nameLeg = /differently from its owner/;
+    const definitionLeg = /states its own definition of the/;
+    for (const [why, leg, text] of [
+        ['a carrier naming no owner', ownerLeg,
+            'Retiring a check here follows the house classes: ' + faithfully(null)
+            + ', each judged by whatever the file it sits in happens to say.'],
+        // The one tailed class this instance names is the one it rewords, and
+        // every other class it names is tailless: an instance naming a second
+        // tailed class faithfully still throws with the name leg inverted, on
+        // that second class, which would make the leg look covered while its
+        // control says nothing.
+        ['a carrier rewording a class the owner states with a qualifying tail',
+            nameLeg,
+            'Retiring a check here follows the classes ' + owner + ' states: a '
+            + tailed.head + ' over any tally at all, '
+            + classes.filter((c) => !c.tail).map((c) => 'the ' + c.name).join(', ')
+            + ' beside it.'],
+        ['a carrier restating part of a definition the owner states whole',
+            definitionLeg,
+            'Retiring a check here follows the classes ' + owner + ' states: a '
+            + tailless.head + ' is ' + partial.join(' ') + ', with '
+            + faithfully(tailless) + ' beside it.'],
+        // The same restatement written before the head rather than after it,
+        // which is the direction a forward-only definition window reads as
+        // clean. It is one instance per leg like its neighbours: the leg it
+        // exercises is the definition comparison's window, not the comparison.
+        ['a carrier restating a definition ahead of the class it defines',
+            definitionLeg,
+            'Retiring a check here follows the classes ' + owner + ' states: '
+            + partial.join(' ') + ' is what makes a ' + tailless.head + ', with '
+            + faithfully(tailless) + ' beside it.'],
+        ['an enumeration in a list item whose neighbour is what names the owner',
+            ownerLeg,
+            '- A bullet naming ' + owner + ' and nothing else.\r\n'
+            + '- Retiring a check here follows the house classes: '
+            + faithfully(null) + ', each judged where it sits.'],
+    ]) {
+        const found = retireClassCarriers(text, classes);
+        assert.strictEqual(found.length, 1, 'the carrier predicate did not select '
+            + 'the control instance for ' + why + ', so that instance names fewer '
+            + 'than ' + CARRIER_FLOOR + ' heads and says nothing about the '
+            + 'judgment it was built for');
+        assert.throws(() => {
+            for (const unit of judgedUnits(found[0].para, classes)) {
+                assertCarrierAgrees('a scratch copy', unit.unit, unit.hits);
+            }
+        }, leg, 'the agreement judgment passed ' + why + ', so its silence over '
+            + 'the tracked tree is silence for an unknown reason. The matcher is '
+            + 'the leg this instance was built for (' + leg + '), so a throw from '
+            + 'another leg fails here rather than standing in for the untested one');
+    }
 });
 
 // The far end of the box-check bullet's claim-protocol pointer, pinned on the
@@ -2961,8 +3809,9 @@ test('the five Section 3 pointers to testing-discipline are still present', () =
     const mapLine = readme.split(/\r?\n/).find((l) => /^\s*testing-discipline\//.test(l));
     assert.ok(mapLine, 'README\'s payload map no longer carries a '
         + 'testing-discipline/ entry');
-    for (const phrase of ['Litmus for what earns a test', 'priced at authoring',
-        'gate\'s lanes', 'red protocol', 'contention rule']) {
+    for (const phrase of ['Litmus for what earns a test', 'what retires one',
+        'priced at authoring', 'gate\'s lanes', 'red protocol',
+        'contention rule']) {
         assert.ok(mapLine.includes(phrase), 'README\'s testing-discipline/ map '
             + 'entry no longer mentions "' + phrase + '", one of the things it '
             + 'promises the skill owns');
@@ -4785,13 +5634,13 @@ test('the moment-pin convention has one owning site and its other surfaces point
 // the testing discipline names as earning a cross-component pin.
 //
 // The count leg is keyed on the binding ternary's own outcome literals rather
-// than on their full wording, because the testing-discipline skill's "What
-// never earns one" clause puts an exact-wording assert on stdout text out of
-// scope: the sentence is free to improve, so such an assert would redden on an
-// improvement and teach nobody anything. Its reach is therefore bounded and
-// worth stating: it counts the outcome literals that open with "bound to
-// session" or "unbound", so a fourth form spelled either way reddens it, and a
-// fourth form worded outside both stems does not.
+// than on their full wording, under the retire class that bounds an assert on
+// printed text: the "What retires a test" section of
+// plugins/claude-kit/skills/testing-discipline/SKILL.md states that class whole,
+// with the carve-out that decides when such a pin stays. Its reach here is
+// bounded and worth stating: it counts the outcome literals that
+// open with "bound to session" or "unbound", so a fourth form spelled either
+// way reddens it, and a fourth form worded outside both stems does not.
 //
 // The export leg carries the rest of the weight. A skill telling a session to
 // call a function is asserting a mechanism, so the names are checked against

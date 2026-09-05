@@ -90,7 +90,7 @@ How to amend: a row changes when ownership moves, and the move lands in the same
 | Project-tier memory frontmatter | `memory-system`, enforced by `hooks/memory-frontmatter-guard.js` | `finishing-work` |
 | Capturing kit friction, the capture bar, the weekly pass, briefs | `kaizen` | doctrine (When the kit itself creates friction, capture it), `coordinator`, `role` |
 | Validating and repairing the machine's kit install | `kit-doctor` | `memory-system`, README |
-| Writing or amending a skill, a charter, the output style, or any curated prose the kit ships, and proving a wording change moves behavior | `writing-skills` | `kaizen`, `docs/architecture.md` |
+| Writing or amending a skill, a charter, the output style, or any curated prose the kit ships, and proving a wording change moves behavior | `writing-skills` | doctrine (Match a document's length to its job), `kaizen`, `docs/architecture.md` |
 | The communication register: decision asks, the close-out status, the board recap | doctrine (Craft and communication; Write every decision ask to the client-briefing register) | the output style (a pinned copy of the register core) |
 | Shell encoding, background-run markers, readiness waits, and the harness's isolation screen | doctrine (Environment and tooling discipline) | the active shell's tool description (the specifics) |
 

@@ -18,9 +18,9 @@ claude-kit/                          (repo = the marketplace)
         executing-work/              Autonomous section loop with the completion contract: implement, verify, review, Chapter
         finishing-work/              QA, security, docs curation, final review, close-out, integration per commit model
         systematic-debugging/        Root-cause discipline before any fix
-        testing-discipline/          Litmus for what earns a test, the shape priced at authoring, the gate's lanes, red protocol, contention rule
+        testing-discipline/          Litmus for what earns a test and what retires one, the shape priced at authoring, the gate's lanes, red protocol, contention rule
         responding-to-review/        How to weigh and answer review findings; no performative agreement
-        writing-skills/              Authoring and testing skills, and amending curated prose the kit ships
+        writing-skills/              Authoring and testing skills, amending curated prose the kit ships, and what a sentence has to earn to stay
         kaizen/                      Capture kit friction, reflect into briefs, apply improvements
         design-council/              Opt-in multi-lens pressure-test for a hard-to-reverse design fork
         cold/                        Neutral evidence-first lens for non-code judgment calls
@@ -113,6 +113,12 @@ claude-kit/                          (repo = the marketplace)
         kit-statusline.js            Launcher for the widget, installed to ~/.claude/bin by the doctor;
                                      resolves the payload through memq-shim.js so the status-line
                                      setting survives kit updates
+        kit-size.js                  The size reader, and a repo-only tool despite shipping here: it
+                                     measures the payload's curated prose, the home/ files the doctor
+                                     installs, and every test/*.test.js in lines. check is the ratchet's
+                                     own gate, report reads the worktree against HEAD and prints one line
+                                     per file whose size moved, with its cap and delta, init writes a budget at
+                                     current sizes
       doctor/
         install-memq-shim.ps1        Installs the per-shell memq wrappers onto PATH and the status-line
                                      launcher (run by the doctor)
