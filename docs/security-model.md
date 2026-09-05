@@ -221,14 +221,23 @@ The endpoint the daemon sends to is named only by the machine-local config file,
 component writes the address to a log line, a record, or a report. What the records and the
 startup line carry instead is a truncated hash of the host, which is enough to tell two runs
 apart or to notice that an endpoint changed between them, and not enough to name it. The
-daemon and `memq find` alike report loudly when the configured host is neither loopback nor a
-private address, the daemon at startup and the search on the call it is about to make. The
-reading is one implementation in the shared endpoint client rather than a check each producer
-remembers to make, because a warning the second producer forgets is one that covers whichever
-path happened to be written first. That is a detection control and not a prevention one:
-anything running as this user can rewrite the config, which is the same single principal the
-rest of this document assumes, so what the warning buys is that a redirected endpoint is
-visible on a surface someone reads rather than invisible on every surface at once.
+address is the host and its port, and the path is not screened beside it: a refusal the
+endpoint answered with a non-2xx status carries the pathname the request reached, so a
+configured URL bearing its own path contributes those segments to that detail, and the daemon
+carries that detail onto the surfaces named here, on both of its legs: the judgment leg's
+durable gap record from the first refusal of a pass, the recognition leg's own gap record for
+every gapped call with no coalescing at all, the operator-pasteable rollup over both, and
+stderr wherever either leg stands down on a streak of refusals. Neither of those daemon
+surfaces reduces the text the way the relevance channel's printed line does. The relevance
+channel section below states the same residual for its own surface. The daemon and `memq find`
+alike report loudly when the configured host is neither loopback nor a private address, the
+daemon at startup and the search on the call it is about to make. The reading is one
+implementation in the shared endpoint client rather than a check each producer remembers to
+make, because a warning the second producer forgets is one that covers whichever path happened
+to be written first. That is a detection control and not a prevention one: anything running as
+this user can rewrite the config, which is the same single principal the rest of this document
+assumes, so what the warning buys is that a redirected endpoint is visible on a surface
+someone reads rather than invisible on every surface at once.
 
 The judgment prompt (`sidecar/prompts/`, the judgment line) fences the judged call's
 three sides with a per-call nonce drawn from a cryptographic source after the content it
@@ -402,11 +411,12 @@ machine is further than the reach that policy refuses rather than nearer, so the
 deliberately unsearchable locally is not a tier this channel exports. They still print in the
 lexical block, which is the session reading back its own drafts.
 
-The address itself is named only by the machine-local config file. No code path writes it to
-a line: the transport's error classifier returns a fixed sentence for the one failure shape
+The address itself is named only by the machine-local config file. No code path writes it to a
+line: the transport's error classifier returns a fixed sentence for the one failure shape
 whose message would otherwise spell the URL back out, which is a credential embedded in the
-configured address. The same client serves the judge daemon, so that screen is one
-implementation rather than two.
+configured address. That screen covers the address. What a refusal puts on a line, the
+configured URL's own path among it, is inventoried with the degrade lines below. The same
+client serves the judge daemon, so that screen is one implementation rather than two.
 
 The model's answer is constrained rather than trusted, because it reaches a terminal and
 anything quoting it. An entry must carry both an index into the candidate list it was sent
@@ -431,8 +441,26 @@ without a word, because a line every find printed would be noise about a channel
 configured. A config that exists and cannot be used, a probe nothing answers, a call that
 outruns its budget, an answer cut off at its generation ceiling, and an answer that is not a
 ranking each cost one line naming that condition, and in every case the lexical and semantic
-blocks print exactly as they would have. The endpoint is never a dependency of a store
-operation, and nothing on this path writes to the memory store.
+blocks print exactly as they would have. What a refusal puts on that line varies by its shape,
+so the shapes are named here rather than summarized. A non-2xx answer carries the status, the
+path the request reached and the dialect it posted in, which is what makes a dialect mismatch
+legible, bounded in practice by the 120 characters this surface prints. An error object inside
+an otherwise readable answer carries the endpoint's own message, which is text chosen off this
+machine rather than by this code. Two screens stand between it and the line, and they are not
+one screen: the transport neutralizes it, stripping the control, bidirectional and zero-width
+characters and collapsing runs of whitespace, and cuts it at 200 characters, and this surface
+then reduces what it prints to short printable ASCII with the double quote barred, at the same
+120. Every other shape, an unreadable or oversized body and a missing response among them,
+carries its own condition and nothing further. The probe ahead of the call stays blind to the
+dialect throughout, because it answers liveness alone and any answer counts. The path that
+refusal names is the URL's path component and never its host or its port, so the screen above
+holds for the address as that screen means it. What rides into the printed path beyond the
+dialect's own suffix is whatever path the configured URL itself carries, so a secret kept in
+that path prints there, and so does an address, a proxy-style URL nesting one inside its own
+path being the shape where the two claims meet. Both are residuals rather than closed holes,
+and both are empty on a config naming a bare host and port with no path at all. The endpoint
+is never a dependency of a store operation, and nothing on this path writes to the memory
+store.
 
 ## The evaluation batteries and the harvest command
 
