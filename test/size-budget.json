@@ -69,6 +69,7 @@
     "test/kit-sidecar-battery.test.js": 4932,
     "test/kit-sidecar-capture.test.js": 2552,
     "test/kit-sidecar-daemon.test.js": 4390,
+    "test/kit-sidecar-memory-index.test.js": 69,
     "test/kit-sidecar-rollup.test.js": 1376,
     "test/kit-statusline.test.js": 765,
     "test/kit-tool-payload-lib.test.js": 106,
