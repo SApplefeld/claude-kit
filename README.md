@@ -114,11 +114,12 @@ claude-kit/                          (repo = the marketplace)
                                      resolves the payload through memq-shim.js so the status-line
                                      setting survives kit updates
         kit-size.js                  The size reader, and a repo-only tool despite shipping here: it
-                                     measures the payload's curated prose, the home/ files the doctor
-                                     installs, and every test/*.test.js in lines. check is the ratchet's
-                                     own gate, report reads the worktree against HEAD and prints one line
-                                     per file whose size moved, with its cap and delta, init writes a budget at
-                                     current sizes
+                                     measures the payload's curated prose, the home/ files that land in the
+                                     user's home directory, and every test/*.test.js in lines. check is the
+                                     ratchet's own gate; report opens with a subject line naming the repository,
+                                     then reads the worktree against HEAD and prints one line per file whose size
+                                     moved with its cap and delta, its totals, and any untracked file sitting
+                                     under a measured root; init writes a budget at current sizes
       doctor/
         install-memq-shim.ps1        Installs the per-shell memq wrappers onto PATH and the status-line
                                      launcher (run by the doctor)

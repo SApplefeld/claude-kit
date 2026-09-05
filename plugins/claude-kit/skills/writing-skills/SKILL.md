@@ -57,10 +57,10 @@ Those two are instances rather than the boundary. The class is any fact a rule r
 
 Whether a sentence belongs at all is the doctrine's call rather than this skill's. Its "Documents ship the current state; the journey lives in git" bullet (`skills/operating-instructions/SKILL.md` under the kit plugin root) sorts state from journey and states its own exemptions, append-only history among them. This section adds the shape the surviving sentences take, at authoring rather than only at review.
 
-A sentence in the kit's own voice, in any curated prose it ships, is one idea, in the literal phrase, pointing where another site owns the rule. Those three parts in order:
+A sentence in the kit's own voice, in any curated prose it ships, is one idea, in the literal phrase, pointing where another site owns the rule. Those three sentence-shape bars, the term the doctrine defers to this section by, in order:
 
 - **One idea.** A sentence carrying a rule together with the bound that limits it is one idea and stays whole, since splitting it lets the rule be read without its bound. Every other sentence is one idea too, and a word count past forty is the diagnostic that finds a second idea rather than the bar itself. Uniform sentence length is its own defect, so the count is read per sentence and never as a target. A paragraph makes one point, or says in the paragraph why its parts must be read together.
-- **The literal phrase.** Where a literal phrase for the thing exists, the sentence uses it. A metaphor stands where it is the established term for the thing and is mannered prose everywhere else: metaphor and flourish substituted for direct statement, dragging in connotations the writer did not choose. The fix for mannered prose is that literal phrase.
+- **The literal phrase.** Where a literal phrase for the thing exists, the sentence uses it. A metaphor stands where it is the established term for the thing and is mannered prose everywhere else: metaphor and flourish substituted for direct statement, written to display the writer, dragging in connotations the writer did not choose. The fix for mannered prose is that literal phrase.
 - **A pointer where another site owns the rule.** The one-owner rule under Anatomy above states which forms a mention may take; this bar adds no form to it and no exception.
 
 The three are instances of one class: prose that costs the reader more to read than it changes for them. A form of it none of them names is inside the bar.

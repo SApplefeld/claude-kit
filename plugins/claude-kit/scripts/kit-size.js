@@ -374,17 +374,16 @@ function defaultRepoDir() {
     return path.resolve(__dirname, '..', '..', '..');
 }
 
-// A root holds a path when the root names it outright (the doctrine copy) or
-// when the path sits anywhere beneath it (every directory root, whose trailing
-// slash is what makes the prefix test exact rather than a name-prefix match).
-// The comparison folds case so a path spelled with a differently-cased root
-// prefix is still this tool's subject: the shapes below stay case-sensitive, so
-// such a path lands unclassified and reds instead of being skipped as though it
-// sat under no root at all.
+// A root holds a path when the path sits anywhere beneath it. Every measured
+// root is a directory root, and its trailing slash is what makes the prefix test
+// exact rather than a name-prefix match; a root spelled as a single file would
+// hold nothing here and its file would leave the classified set, which the
+// coverage diff reds on. The comparison folds case so a path spelled with a
+// differently-cased root prefix is still this tool's subject: the shapes below
+// stay case-sensitive, so such a path lands unclassified and reds instead of
+// being skipped as though it sat under no root at all.
 function rootHolds(root, relPath) {
-    const r = root.toLowerCase();
-    const p = relPath.toLowerCase();
-    return r.endsWith('/') ? p.startsWith(r) : p === r;
+    return relPath.toLowerCase().startsWith(root.toLowerCase());
 }
 
 // Split a tracked path list into what is measured, what is excluded by name,

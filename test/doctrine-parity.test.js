@@ -950,15 +950,18 @@ test('the Chapter template\'s Delta field still points at a size reader that exi
 //     floor unjudged, and a surface quoting one class verbatim is the ordinary
 //     shape of a targeted pointer, so this is the widest class the pin leaves
 //     alone;
-//   - a class renamed or deleted at the owner while a carrier goes on spelling it
-//     the old way and still clears CARRIER_FLOOR on the heads that did not
-//     change. The carrier stays selected on those heads, and the renamed class is
-//     no longer one of its hits, so the stale text is compared against nothing and
-//     every leg passes. Requiring a selected carrier to name every class the owner
-//     states is not the repair: CARRIER_FLOOR admits a paragraph that names enough
-//     of the classes on purpose, so that requirement would red on a legitimate
-//     subset carrier. What catches this class is the amendment at the owner
-//     carrying its carriers with it;
+//   - a class deleted at the owner while a carrier goes on naming it beside every
+//     class that survived. A selected unit is held below to the owner's whole
+//     enumeration, so a class renamed at the owner leaves every carrier still
+//     spelling the old head one short and red, and a class added at the owner
+//     reds every carrier until it is brought up to date; a deletion is what that
+//     count cannot see, since the carrier's surviving heads still number the
+//     owner's classes and the deleted head is compared against nothing. What
+//     catches a deletion is the amendment at the owner carrying its carriers with
+//     it. And the whole-enumeration bar reaches only a unit the floor selects: a
+//     carrier left with fewer than CARRIER_FLOOR of the owner's current heads by a
+//     rename or a deletion drops out of the selection and is the bullet above,
+//     unjudged whichever way it spells the rest;
 //   - a definition of a tailless class reworded while still carrying every word
 //     of the owner's own definition clause, since that comparison is over the
 //     words the clause uses rather than over its wording;
@@ -993,12 +996,16 @@ test('the Chapter template\'s Delta field still points at a size reader that exi
 //   - a run that judges far fewer files than the tree holds while recording a
 //     cause for every one it dropped. The partition sum holds over such a run
 //     by construction, since it is satisfied by any complete accounting, and
-//     the witness below establishes that one named path was judged rather than
-//     that the population was: a sparse checkout, or a tree whose files bind on
-//     the ceiling, passes both legs. What the two do catch is a path leaving the
-//     loop with no record at all, which is the shape a future exit added here
-//     would take. A bound on the population would be a threshold nothing
-//     derives, which is the count pin this plan retires;
+//     the two witnesses below establish that one named path was judged and that
+//     the judgment selected a carrier at another, rather than that the
+//     population was judged: a sparse checkout, or a tree whose files bind on
+//     the ceiling, passes all three legs so long as it still holds the two
+//     witness paths. What the three do catch is a path leaving the loop with no
+//     record at all, which is the shape a future exit added here would take,
+//     and a judgment that selects nothing inside the loop, which is the shape
+//     an emptied read or a broken predicate takes. A bound on the population
+//     would be a threshold nothing derives, which is the count pin this plan
+//     retires;
 //   - a carrier written into a file that is not yet in the index, the swept
 //     population being `git ls-files`: a stale carrier in a new file is unjudged
 //     until the file is added, and no assertion here reads the worktree;
@@ -1061,6 +1068,19 @@ const CARRIER_FLOOR = 3;
 // outright, so it is derived from the tree rather than being a second figure to
 // keep in step with it.
 const SWEEP_JUDGED_WITNESS = 'home/claude-kit-doctrine.md';
+
+// A judged path says the loop read a file and says nothing about what the
+// judgment did with it: a path is recorded as judged before any carrier is
+// selected from it, so a run whose predicate selects nothing at all records
+// every path as judged and reads exactly like a clean tree. The second witness
+// is a path the judgment must select a carrier from, and it is a carrier by
+// contract rather than by observation: the adversarial reviewer's charter
+// carries the retire-class duty, which names every class the owner states and
+// points at the owner for their definitions, so a tree in which the predicate
+// selects nothing there is one in which either the charter has stopped
+// enumerating the classes or the predicate has stopped selecting an
+// enumeration, and both are this pin's own subject.
+const SWEEP_CARRIER_WITNESS = 'plugins/claude-kit/agents/adversarial-reviewer.md';
 
 // A crude stem, so an inflection is not a disagreement: the trailing plural,
 // past or participle ending comes off any word long enough to still be a word
@@ -1180,16 +1200,30 @@ function judgedUnits(para, classes) {
 // below run the same legs: a control exercising a second function written to
 // resemble this one is evidence about that second function.
 //
-// Two legs, and the second takes one of two forms per class. A class whose name
-// carries a tail past its head is compared on that name, which is what a stale
-// copy of it loses. A class the owner names in one or two words has no tail to
-// compare, so what is compared is its definition clause: a unit reaching a third
-// of the clause's words within twice the clause's own length of the head is
-// restating the class rather than naming it, and a restatement that reaches a
-// third of the words and not all of them states something the owner does not.
-// The window is what separates the two, since a long unit naming the class and
-// pointing at its owner holds some of those words incidentally, scattered rather
-// than beside the head.
+// Three legs. The first is the owner pointer. The second takes one of two forms
+// per class. A class whose name carries a tail past its head is compared on that
+// name, which is what a stale copy of it loses. A class the owner names in one
+// or two words has no tail to compare, so what is compared is its definition
+// clause: a unit reaching a third of the clause's words within twice the
+// clause's own length of the head is restating the class rather than naming it,
+// and a restatement that reaches a third of the words and not all of them states
+// something the owner does not. The window is what separates the two, since a
+// long unit naming the class and pointing at its owner holds some of those words
+// incidentally, scattered rather than beside the head.
+//
+// The third holds the unit to the owner's whole enumeration: the floor selects a
+// unit on CARRIER_FLOOR heads, and a selected unit then names every class the
+// owner states, because a class renamed at the owner is what leaves a stale
+// carrier one head short while the heads that did not change keep it selected,
+// and the per-class legs, which run over the hits, read that carrier as clean.
+// The bar sits at the judged unit rather than at the selected paragraph: the
+// other legs run per unit, and a paragraph's hits are the union over its items,
+// so a stale item beside a sibling that names the renamed class would clear a
+// paragraph-level count. In the whole-block fallback the unit is the block, so
+// an enumeration spread across items is held to the same bar on its combined
+// hits. It runs last so a unit is reported on what it spells wrong before on
+// what it leaves out, which is also what lets a control for a per-class leg
+// withhold a class without reaching this one.
 //
 // That window is symmetric, running the clause's own length twice in each
 // direction from the head and taking the greater reach of the two, because a
@@ -1197,7 +1231,7 @@ function judgedUnits(para, classes) {
 // failure implies another's, which is a duplicate"): a forward-only window reads
 // the same carrier as clean when its prose runs the other way, which is a
 // silence produced by word order rather than by agreement.
-function assertCarrierAgrees(where, unit, hits) {
+function assertCarrierAgrees(where, unit, hits, classes) {
     assert.ok(unit.includes(RETIRE_OWNER_SEGMENT), where + ' enumerates the retire '
         + 'classes (' + hits.map((c) => c.head).join(', ') + ') without naming '
         + 'their owner, so it reads as a second definition rather than a pointer, '
@@ -1237,6 +1271,14 @@ function assertCarrierAgrees(where, unit, hits) {
             + 'second definition that has already drifted; point at the owner '
             + 'rather than restating it');
     }
+    const unnamed = classes.filter((c) => !hits.includes(c)).map((c) => c.head);
+    assert.deepStrictEqual(unnamed, [], where + ' names ' + hits.length + ' of the '
+        + classes.length + ' retire classes the owner states and leaves out '
+        + unnamed.join(', ') + '. A unit that clears the floor is an enumeration, '
+        + 'and an enumeration is complete or stale: a class renamed or added at '
+        + 'the owner leaves a carrier short by exactly this head while the heads '
+        + 'that did not change keep it selected, and the stale head it still '
+        + 'spells is compared against nothing');
 }
 
 // What this sweep exempts, each entry with the reason it is exempt and the form
@@ -1358,6 +1400,12 @@ test('every tracked surface naming the retire classes agrees with their owner', 
     const exemptionsUsed = new Set();
     const skipped = [];
     let journalCarved = 0;
+    // What the judgment selected, recorded inside the loop beside the judged
+    // set rather than derived from it afterwards: the judged set says which
+    // paths were read, and these say which of them the predicate found a
+    // carrier in, which is the one thing the partition cannot.
+    let carriersSelected = 0;
+    const carrierPaths = new Set();
     for (const rel of tracked) {
         const exemption = RETIRE_SWEEP_EXEMPT.find(([kind, p]) => (kind === 'root'
             ? rel.startsWith(p) : rel === p));
@@ -1406,8 +1454,10 @@ test('every tracked surface naming the retire classes agrees with their owner', 
         if (region.carved) journalCarved += 1;
         judged.push(rel);
         for (const carrier of retireClassCarriers(region.text, classes)) {
+            carriersSelected += 1;
+            carrierPaths.add(rel);
             for (const unit of judgedUnits(carrier.para, classes)) {
-                assertCarrierAgrees(rel, unit.unit, unit.hits);
+                assertCarrierAgrees(rel, unit.unit, unit.hits, classes);
             }
         }
     }
@@ -1431,6 +1481,17 @@ test('every tracked surface naming the retire classes agrees with their owner', 
         + 'among them, so the loop either read nothing or removed a path it has no '
         + 'exemption and no skip cause for. Skips recorded this run:\n'
         + namedSkips.join('\n'));
+    // The judgment's own witness, which the judged witness cannot supply: a path
+    // is recorded as judged before any carrier is selected from it, so a
+    // predicate that selects nothing leaves every path judged and every leg
+    // above green. One path known to carry an enumeration is what says the
+    // judgment ran on what the loop read.
+    assert.ok(carrierPaths.has(SWEEP_CARRIER_WITNESS), 'the judgment selected '
+        + carriersSelected + ' carriers over ' + judged.length + ' judged paths '
+        + 'and ' + SWEEP_CARRIER_WITNESS + ' is not among the paths they came '
+        + 'from, so either that charter has stopped enumerating the retire '
+        + 'classes or the predicate has stopped selecting an enumeration, and '
+        + 'every clean leg above is silence over a judgment that ran on nothing');
     // The exempt half, held to the closed list above: the comparison is over the
     // entries the loop actually used, so an exemption added in code moves it and
     // an entry that has stopped matching anything reds rather than widening what
@@ -1500,12 +1561,20 @@ test('the retire-class agreement judgment speaks on each carrier that disagrees'
     // later widening of the first class's own window would otherwise have a row
     // throw on the wrong leg with its intended leg silently untested.
     const ownerLeg = /without naming their owner/;
+    const enumerationLeg = /retire classes the owner states and leaves out/;
     const nameLeg = /differently from its owner/;
     const definitionLeg = /states its own definition of the/;
     for (const [why, leg, text] of [
         ['a carrier naming no owner', ownerLeg,
             'Retiring a check here follows the house classes: ' + faithfully(null)
             + ', each judged by whatever the file it sits in happens to say.'],
+        // Every class but one, each spelled as the owner spells it, with the
+        // owner named: what this instance shares with a carrier left behind by
+        // a rename at the owner is the count and nothing else, so the leg it
+        // reaches is the whole-enumeration bar and not a spelling.
+        ['a carrier naming every retire class but one', enumerationLeg,
+            'Retiring a check here follows the classes ' + owner + ' states: '
+            + faithfully(tailless) + '.'],
         // The one tailed class this instance names is the one it rewords, and
         // every other class it names is tailless: an instance naming a second
         // tailed class faithfully still throws with the name leg inverted, on
@@ -1544,7 +1613,7 @@ test('the retire-class agreement judgment speaks on each carrier that disagrees'
             + 'judgment it was built for');
         assert.throws(() => {
             for (const unit of judgedUnits(found[0].para, classes)) {
-                assertCarrierAgrees('a scratch copy', unit.unit, unit.hits);
+                assertCarrierAgrees('a scratch copy', unit.unit, unit.hits, classes);
             }
         }, leg, 'the agreement judgment passed ' + why + ', so its silence over '
             + 'the tracked tree is silence for an unknown reason. The matcher is '
