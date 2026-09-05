@@ -6387,6 +6387,11 @@ async function judgedChannel(term, lexicalCandidates, semanticHits) {
             'this query and the name, tier and description of every candidate record');
         if (remoteWarning !== null) notes.push('memq: ' + remoteWarning);
 
+        // The probe's argument is named key by key rather than spread, which
+        // is the opposite of the judged call below and deliberate. The probe
+        // owes liveness and nothing else, so a dialect it never learns is the
+        // contract rather than a key gone missing: naming the two keys here is
+        // what keeps this call blind if the probe ever learns to read one.
         const probe = await client.probeEndpoint({
             url: config.url,
             timeoutMs: JUDGED_PROBE_TIMEOUT_MS
@@ -6415,6 +6420,13 @@ async function judgedChannel(term, lexicalCandidates, semanticHits) {
         // endpoint is fingerprinted rather than named.
         notes.push('memq: model-judged ranking calling the endpoint fingerprinted '
             + sanitize(config.endpointFingerprint, 32));
+        // The loaded config is handed to the transport whole, with this
+        // command's own call budget as its one override: the transport reads
+        // the endpoint's declared dialect off it, and a hand-built object
+        // carrying the keys one reader needs today drops whatever the next one
+        // reads. The probe above is the deliberate exception, for the reason
+        // stated there. The object is read for the call rather than sent: the
+        // request beside it is what is serialized.
         const sent = await client.postGenerate({
             model: config.model,
             system: prompt.SYSTEM,
@@ -6423,7 +6435,7 @@ async function judgedChannel(term, lexicalCandidates, semanticHits) {
             think: false,
             format: prompt.responseSchema(),
             options: { num_predict: JUDGED_NUM_PREDICT, temperature: client.TEMPERATURE }
-        }, { url: config.url, model: config.model, timeoutMs: JUDGED_CALL_TIMEOUT_MS });
+        }, { ...config, timeoutMs: JUDGED_CALL_TIMEOUT_MS });
         if (sent.status !== 'ok') {
             const condition = sent.status === 'timeout'
                 ? 'the ranking call outran its ' + JUDGED_CALL_TIMEOUT_MS + ' ms budget'

@@ -571,7 +571,46 @@ async function postGenerate(request, config, deps) {
         }
         if (res.status < 200 || res.status >= 300) {
             await discardBody(res);
-            return { status: 'refused', detail: `HTTP ${res.status}`, latencyMs: Date.now() - started };
+            // The path and the dialect ride in the detail because the status
+            // alone cannot be placed: a 404 from a gateway that serves the
+            // other dialect's generation path is a misconfiguration a reader
+            // can act on, where the same 404 reported bare reads as an
+            // endpoint that is down. A caller that probed first knows that
+            // something answers at the address, which is what makes a bare
+            // status unplaceable rather than a settled verdict; that is
+            // memq's shape rather than every caller's, the daemon making no
+            // probe.
+            //
+            // The path is the one the request reached rather than the
+            // dialect's own suffix, because a configured url may carry a path
+            // of its own: the OpenAI convention is a base url ending in /v1,
+            // which posts to /v1/v1/chat/completions, and a detail naming the
+            // suffix alone would report that misconfiguration as a path that
+            // reads correct, hiding the doubled prefix that is the fault. The
+            // pathname alone is taken so the address stays unprinted, which is
+            // the same reason the endpoint is fingerprinted elsewhere rather
+            // than named. A url this module cannot parse is one the fetch
+            // above already accepted, so the suffix fallback is unreachable on
+            // any real call and exists for a caller that hands over both a
+            // mock transport and an unparseable address.
+            //
+            // None of the three values takes the neutralizing an error string
+            // off the wire does, and they earn that for different reasons: the
+            // dialect is one of this module's own literals, the path is built
+            // from that literal and the operator's own configured url, and the
+            // status is the endpoint's own number held to a number by the
+            // guard above that refuses a response whose status is not one.
+            let postedPath = generatePath(api);
+            try {
+                postedPath = new URL(`${config.url}${postedPath}`).pathname;
+            } catch {
+                // The suffix stands, per the note above.
+            }
+            return {
+                status: 'refused',
+                detail: `HTTP ${res.status} from ${postedPath} (${api} dialect)`,
+                latencyMs: Date.now() - started
+            };
         }
         const read = await readBoundedBody(res);
         if (!read.ok) {

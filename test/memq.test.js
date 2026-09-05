@@ -25638,6 +25638,24 @@ function rankedAnswer(items, extra) {
     };
 }
 
+// The same ranking answer in the chat-completions dialect's envelope, for a
+// fixture whose config declares `api: openai`. The envelope and the JSON
+// serialization are what the function above supplies, so those cannot drift
+// between the two dialects' cases; the ranked tuples are spelled per case and
+// are free to differ, which is why each case asserts its own expected order.
+// The client translates the envelope back before `find` sees it.
+function chatRankedAnswer(items) {
+    return {
+        body: {
+            model: 'test-model',
+            choices: [{
+                finish_reason: 'stop',
+                message: { role: 'assistant', content: rankedAnswer(items).body.response }
+            }]
+        }
+    };
+}
+
 // An endpoint that answers the liveness probe and one ranking call. Anything
 // that is not the generation path is the probe, which is a bare GET.
 function rankingEndpoint(t, answerFor, host) {
@@ -26011,6 +26029,111 @@ test('a probe that passes and an answer that ranks puts the judged block above t
                 'no record body crosses the wire: ' + sent.prompt);
             assert.ok(!sent.prompt.includes('yellow-fruit'),
                 'and only the records the other channels found');
+        } finally {
+            rmHome(home);
+        }
+    } finally {
+        rmFakeEmbedder(emb);
+        rmStore(store);
+    }
+});
+
+test('a config declaring api: openai lands the ranking call on the chat path in the chat'
+    + ' dialect, and the block renders from the translated answer', async (t) => {
+    const store = makeStore();
+    const emb = makeFakeEmbedder();
+    try {
+        plantJudgedStore(store);
+        // A gateway that serves this dialect and nothing else is what both
+        // machines of this fleet run, so the config's `api` key is the whole of
+        // what decides whether the call is answered or 404s. Nothing here
+        // configures the client directly: the fixture config is the seam, which
+        // is the same seam the operator's own file sits on.
+        const server = await rankingEndpoint(t, () => chatRankedAnswer(
+            [[2, 'contraption-hum', 'it hums'], [1, 'zebra-handbook', 'the handbook']]));
+        const home = makeEndpointHome(server.url, { api: 'openai' });
+        try {
+            const res = await runServed(store, ['find', 'zebra quantum'],
+                { ...withEmbedder(emb), ...endpointEnv(home) });
+            assert.strictEqual(res.status, 0, res.stderr);
+            assert.doesNotMatch(res.stderr, /model-judged ranking off/, res.stderr);
+            assert.deepStrictEqual(judgedBlockLines(res.stdout), [
+                '  contraption-hum  (' + projectLabel(store) + ')  it hums',
+                '  zebra-handbook  (' + projectLabel(store) + ')  the handbook'
+            ], 'the model\'s order, off an answer in the chat dialect: ' + res.stdout);
+
+            assert.deepStrictEqual(server.requests.map((r) => r.method + ' ' + r.url),
+                ['GET /', 'POST /v1/chat/completions'],
+                'the probe passed at the base url and the ranking call reached the chat path');
+            const posted = server.requests.filter((r) => r.method === 'POST');
+            assert.strictEqual(posted.length, 1, 'one ranking call, not a retry');
+            assert.strictEqual(posted[0].url, '/v1/chat/completions',
+                'the dialect the config declares is the path the call reaches');
+            // The request memq builds is Ollama-shaped whatever the dialect, so
+            // a body carrying `messages` is proof the client was told which
+            // dialect to speak and translated on the way out.
+            const body = posted[0].body;
+            assert.strictEqual(body.messages.length, 2, 'system and prompt, folded into messages');
+            assert.strictEqual(body.messages[0].role, 'system');
+            assert.match(body.messages[0].content, /relevance/,
+                'the relevance instruction crossed, not merely some system text');
+            assert.strictEqual(body.messages[1].role, 'user');
+            assert.match(body.messages[1].content, /- \d+\. zebra-handbook \(project\) - zebra quantum notes/);
+            assert.match(body.messages[1].content, /- \d+\. contraption-hum \(project\) - a humming contraption/);
+            assert.strictEqual(body.model, 'test-model');
+            assert.deepStrictEqual(
+                body.response_format.json_schema.schema.properties.ranked.items.required,
+                ['n', 'name', 'why'], 'the ranking schema crosses the translation intact');
+            assert.deepStrictEqual(Object.keys(body).sort(),
+                ['chat_template_kwargs', 'max_tokens', 'messages', 'model',
+                    'response_format', 'stream', 'temperature'],
+                'and the posted body carries chat keys only, so a leaked Ollama key '
+                    + 'of any name fails here: ' + posted[0].raw);
+        } finally {
+            rmHome(home);
+        }
+    } finally {
+        rmFakeEmbedder(emb);
+        rmStore(store);
+    }
+});
+
+test('a 404 on the generation path degrades with a line naming the path and the dialect,'
+    + ' so a dialect mismatch reads as one', async (t) => {
+    const store = makeStore();
+    const emb = makeFakeEmbedder();
+    try {
+        plantJudgedStore(store);
+        const base = await runServed(store, ['find', 'zebra quantum'], withEmbedder(emb));
+        // The probe is a bare GET of the base url and is answered; only the
+        // generation path refuses. That is the shape a gateway speaking one
+        // dialect presents to a call in the other, and the shape a bare status
+        // code cannot be told apart from an endpoint that is down.
+        const server = await rankingEndpoint(t, () => ({ status: 404, body: { error: 'no such path' } }));
+        const home = makeEndpointHome(server.url);
+        try {
+            const res = await runServed(store, ['find', 'zebra quantum'],
+                { ...withEmbedder(emb), ...endpointEnv(home) });
+            assert.strictEqual(res.status, 0, res.stderr);
+            // Anchored rather than compared against another run of the same
+            // build, for the reason the sibling case above states: a
+            // self-comparison agrees with itself about a line neither run
+            // should carry.
+            assert.match(res.stdout, new RegExp('^zebra-handbook {2}\\[\\] {2}zebra quantum notes\n'
+                + escapeForRegExp(SEMANTIC_FENCE) + '\n'
+                + ' {2}contraption-hum {2}0\\.\\d\\d {2}\\(' + escapeForRegExp(projectLabel(store)) + '\\)\n'
+                + escapeForRegExp(REMINDER) + '\n$'),
+            'the two channels it always was: ' + JSON.stringify(res.stdout));
+            assert.ok(!res.stdout.includes(JUDGED_FENCE),
+                'and no judged block, the call having been refused');
+            // The config names no dialect, so the default is what the call
+            // spoke, and the line says which path that sent it to.
+            assert.match(res.stderr, new RegExp('^memq: model-judged ranking off \\(endpoint'
+                + ' refused the call: HTTP 404 from /api/generate \\(ollama dialect\\)\\);', 'm'),
+            res.stderr);
+            assert.deepStrictEqual(server.requests.map((r) => r.method + ' ' + r.url),
+                ['GET /', 'POST /api/generate'],
+                'the probe passed at the base url and the refused call went to the default path');
         } finally {
             rmHome(home);
         }

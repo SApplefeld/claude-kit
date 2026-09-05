@@ -202,9 +202,80 @@ test('a 2xx chat-completions error body is a refusal carrying the server\'s sent
     assert.strictEqual(sent.detail, 'Loading model');
 });
 
+test('a non-2xx refusal names the status, the path it posted to and the dialect it chose',
+    async (t) => {
+        // The default is in the table beside the two named dialects because the
+        // detail reports the dialect the transport resolved, and a config that
+        // names none resolves to the default: that is the reading a caller gets
+        // against a gateway serving the other dialect's path, and the one the
+        // bare status could not be placed by.
+        // The unrecognized row is here because the transport resolves the
+        // dialect and the path through two independent fallbacks, so a value
+        // outside the flavor list is the one input where they could disagree
+        // and name a dialect the transport never spoke.
+        for (const [api, posted, dialect] of [[undefined, '/api/generate', 'ollama'],
+            ['ollama', '/api/generate', 'ollama'],
+            ['openai', '/v1/chat/completions', 'openai'],
+            ['grpc', '/api/generate', 'ollama']]) {
+            const server = await startServer(t, () => ({ status: 404, body: { error: 'no such path' } }));
+            const sent = await lib.postGenerate(callerRequest(),
+                { url: server.url, model: 'm', api, timeoutMs: 5000 });
+            assert.strictEqual(sent.status, 'refused', JSON.stringify(sent));
+            assert.strictEqual(sent.detail, `HTTP 404 from ${posted} (${dialect} dialect)`);
+            assert.strictEqual(server.requests[0].url, posted,
+                'the detail names the path the request actually reached');
+            assert.ok(Number.isFinite(sent.latencyMs), 'a refusal is still timed');
+            assert.ok(!('body' in sent), 'and carries no body');
+        }
+    });
+
+test('a refusal names the doubled path a url carrying its own path produces', async (t) => {
+    // The OpenAI convention is a base url ending in /v1, and the config
+    // loader accepts one: its check is unanchored at the end. So the request
+    // reaches /v1/v1/chat/completions, and the detail has to say so, since a
+    // detail naming the dialect's suffix alone reports the exact
+    // misconfiguration it exists to expose as a path that reads correct.
+    const server = await startServer(t, () => ({ status: 404, body: { error: 'no such path' } }));
+    const sent = await lib.postGenerate(callerRequest(),
+        { url: server.url + '/v1', model: 'm', api: 'openai', timeoutMs: 5000 });
+    assert.strictEqual(sent.status, 'refused', JSON.stringify(sent));
+    assert.strictEqual(sent.detail, 'HTTP 404 from /v1/v1/chat/completions (openai dialect)');
+    assert.strictEqual(server.requests[0].url, '/v1/v1/chat/completions',
+        'and that is the path the request actually reached');
+});
+
 test('a length-cut chat answer keeps the reason memq acts on', async (t) => {
     const server = await startServer(t, () => ({ body: { choices: [{ finish_reason: 'length', message: { content: '{"ranking":[' } }] } }));
     const sent = await lib.postGenerate(callerRequest(), { url: server.url, model: 'm', api: 'openai', timeoutMs: 5000 });
     assert.strictEqual(sent.status, 'ok');
     assert.strictEqual(sent.body.done_reason, 'length');
+});
+
+// ----------------------------------------------------------------- the probe --
+
+test('the probe reads any answer as liveness, a non-2xx on the base url included', async (t) => {
+    // The probe answers whether a transport is there, which is why it fetches
+    // the base url and not a dialect's own path: a gateway that serves chat
+    // completions and no model listing is up, and a probe that read a status
+    // code as a verdict would stand a working endpoint down. The generation
+    // call is what reports a wrong dialect, in its refusal's own detail.
+    const server = await startServer(t, () => ({ status: 503, body: { error: 'busy' } }));
+    const probe = await lib.probeEndpoint({ url: server.url, timeoutMs: 5000 });
+    assert.strictEqual(probe.status, 'ok', JSON.stringify(probe));
+    assert.strictEqual(probe.httpStatus, 503, 'the status is reported rather than judged');
+    assert.strictEqual(server.requests[0].url, '/', 'the base url, no dialect path appended');
+    assert.ok(Number.isFinite(probe.latencyMs));
+});
+
+test('the probe stays blind to a dialect the config declares', async (t) => {
+    // A dialect-aware probe is barred rather than merely absent, so the
+    // config that would make one visible is what this pins: a probe handed
+    // `api: openai` still fetches the base url. Without the declaration in
+    // the argument the pin above would stay green if the probe ever learned
+    // to read one, which is the whole failure this forbids.
+    const server = await startServer(t, () => ({ body: { ok: true } }));
+    const probe = await lib.probeEndpoint({ url: server.url, api: 'openai', timeoutMs: 5000 });
+    assert.strictEqual(probe.status, 'ok', JSON.stringify(probe));
+    assert.deepStrictEqual(server.requests.map((r) => r.url), ['/'],
+        'one request, at the base url, whatever the config declares');
 });
