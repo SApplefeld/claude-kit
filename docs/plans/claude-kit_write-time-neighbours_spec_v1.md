@@ -8,7 +8,7 @@ Session model: any executor session in the kit repo; three sections in order, si
 
 ## Dispatch Authorization
 
-Authorized 2026-09-04 by the operator at the keyboard of the KIT: Expert session, as a spec to be drafted at the proposal's recorded shape and armed onto the kit worker's queue, the grant covering any session holding this plan. The Expert seat authored the spec and the operator's own typed arming is the arm, so author and citer are different parties.
+Authorized 2026-09-04 by the operator at the keyboard of the KIT: Expert session and placed 2026-09-05 by the operator on the allowlisted relay thread: armed onto the kit worker's queue third, behind the endpoint-dialect-key plan, the grant covering any session holding this plan. The keyboard instruction of 2026-09-04 also authorized drafting the spec at the proposal's recorded shape. The Expert seat authored the spec, and the arm rests on the operator's own two instructions rather than on this section, so author and warrant are different parties.
 
 ## Goal
 
