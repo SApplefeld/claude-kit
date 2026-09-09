@@ -429,3 +429,64 @@ Reader findings per reader, from `counts.tsv`:
 | K20 | plan-doc-shapes | 3 | 268 | 66 | 85 | 6 | 111 |
 | K21 | gates | 3 | 244 | 58 | 68 | 5 | 113 |
 | **TOTAL** | 23 readers | 84 | 7804 | 1445 | 2399 | 757 | 3203 |
+
+### Chapter 4 - 2026-09-09
+Completed: 4. The operator-gate census
+Implemented By: main session (the seed grep, the brief and its renderer, dispatch, the stall handling, the tally and this Chapter); 23 opus cold readers over the claims lists with the prose beside them and a seed file each, every one dispatched as a `general-purpose` agent with the model override named and told to use the Read and Write tools only
+Metrics: review rounds 0, closed clean; provenance 0 spec-traceable, 0 fix-introduced, 0 new-requirement, rulings (0 refused, 0 declared, 0 asked); NEEDS_CONTEXT 0; escalations 0; consults 0
+Decisions / Surprises:
+- The reader set is Section 3's 23 (`.kit/audit/s3/readers.tsv`), each holding its lists, the documents they were extracted from, and a seed file (`.kit/audit/s4/seeds/`) written by `seed.js`: every list record whose claim or bound matched the gate family, and every prose line that matched, as file:line with the terms matched. The family is the literal nod and its kin (the operator's yes, call, word, approval, confirmation; ask me, only I, escalate, decision ask, BLOCKED, stop for a yes, wait for my word, raise it to me) plus the exclusion vocabulary the section names (standing grant, per-session ask, told to proceed, positional, warranted channel, approval, confirmation, permission, authorization), so that a reader dispositions the exclusions rather than skipping them. The seed carried 2,180 list records and 1,106 prose lines across the 23 readers (`seed-counts.tsv`), and the briefs said in words that it seeds and does not bound.
+- The definition every brief reads against is the section's own paragraph, quoted whole into the brief at render time by `render.js` from the plan doc's Section 4 (276 words, from "The claims lists are swept for every claim whose bound names" to the rail's path), so the readers hold the gate test, the three exclusions and the three classes in the plan's words and no paraphrase. All 23 rendered briefs carried it, the files-only bar and the "No intent story accompanies them" sentence, checked by grep before dispatch, with no placeholder left unfilled.
+- Two record kinds (`.kit/audit/s4/BRIEF-census.md`): `gate`, for every claim or prose sentence that holds an act until the operator speaks, with `surface`, the exact words quoted, what it holds, one class of the three, and whether the seed found it; and `not-gate`, for every seed entry read as not a gate, with the reason (`informs`, `rollback-without-wait`, `positional-grant`, `not-a-gate`). Every seed entry takes exactly one record, so the seed's coverage is checkable, and a gate the grep missed is recorded with `seed: no`.
+- Dispatch record (`.kit/audit/s4/dispatch.tsv`): 20 readers at 12:25:50Z, K19 to K21 at 12:31Z into slots three fast readers freed. First-turn readings at the five-minute close showed every dispatch with 13 to 32 assistant turns and none synthetic-only; eleven transcripts carried one or two `<synthetic>` lines beside real turns, the transient fault shape, and all completed.
+- The stall (`.kit/audit/s4/incident.log`): every reader still running stopped writing between 12:30Z and 12:39Z, seven having completed first (K01, K04a, K04b, K05, K06, K10b, K17). The operator reported the readers locked on the session limit at about 14:29Z. The sixteen were TaskStopped at 14:31Z and resumed via SendMessage the same minute, each told the last finding id on disk and the path its next part takes, and told to write nothing where the census on disk was already complete. Nine of the sixteen (K03, K07, K08, K09, K14, K16, K20, K21, and K02 after a re-check) found their files complete and replied with the report inside a minute; the other seven wrote one further part each and finished by 14:35Z. Each is one dispatch continued over its own transcript rather than a second, and no reader ran twice.
+- Yield, from `.kit/audit/s4/counts.tsv` (the mechanical tally over the report files): 3,035 records in 39 parts; 847 `gate` records (436 blast-radius, 43 loop-maintenance, 368 operator-decision; 768 seeded, 79 the grep missed) and 2,188 `not-gate` records (1,606 not-a-gate, 317 informs, 264 positional-grant, 1 rollback-without-wait). The table below carries the per-reader figures.
+- Distinct gates, from `.kit/audit/s4/gates.tsv` (keyed by list and record, or by surface for the 54 prose sentences no record carries): 450, of which 245 are cited by more than one reader, 32 carry a split class vote, and 108 were read as a gate by one reader and as not a gate by another. By majority class: 228 blast-radius, 188 operator-decision, 34 loop-maintenance (37 with any loop-maintenance vote). The 34 retirement candidates sit in the coordinator skill (escalations and brokered handoffs confirmed with the operator before they retire, a friction that cannot be published going up as a decision ask, the kaizen bar not being the seat's to widen), the finishing skill (the kaizen-pass offer, the consolidate-memory offer, a `proposed` probe mismatch riding to the rulings batch), the kaizen skill (the attended retro's ask, the per-item real-or-not with the operator when attended, the one-line offer), the ownership map (a contested moment never silently assigned, since assigning an owner is the operator's ruling), responding-to-review (the Drift Report routed per finishing-work's step 4) and writing-skills (the intent test on a ruled probe). Section 5 adjudicates the class; Section 8 carries the survivors to the operator's batch ruling per the section's asymmetry.
+- The most-cited gates are the doctrine's, each named by ten readers: the positional-authorization rule (operating-instructions:46), the interrupt set (:52), decision batching (:56), the material gap that is mine to make (:58), the plan before building (:72) and the likely-mistake stop at finishing (:86). Agreement is a signal for Section 5 and never a vote.
+- Coverage and citation checks: every seed list record and every seed prose line is cited by at least one record of its reader (2,180 of 2,180 and 1,106 of 1,106, per reader in `counts.tsv`); numbering is continuous G001 to Gnnn across every reader's parts; every field carries a value from its closed set; every cited record id exists in the list it names (0 misses), against a control that refused a fabricated `C999` and a fabricated list name. The tally's own defect was caught before it rode here: its first gates table wrote the key with a tab, which shifted every column a reader of that table took, so the key is written with a space and the distribution above was re-read from the corrected table.
+- No probe pair ran and none was called for: the section changed no rule text and named no shape file. Recorded as not applicable rather than clean.
+- Tree-state brackets (`git status --porcelain`, zero lines) identical at 12:24:52Z before the first dispatch and at 14:36:07Z after the tally; the readers wrote only under `.kit/audit/s4/readers/`. The machine's claims directory was empty before dispatch and at 14:36Z held one claim by another session (KIT: Loop Worker, rewritten 14:35Z), foreign and untouched; the readers spawn no heavy process.
+Assumptions: (27) 2026-09-09, route b, section 4: the reader set is Section 3's 23, each holding lists, prose and seed, with the 82,000-word bound relaxed to about 88,000 for K07, K12 and K19 rather than splitting again, since each finished at that size in Section 3; (28) 2026-09-09, route a, section 4: the seed is a grep over the lists' claim and bound fields and the prose lines for the nod family and the exclusion vocabulary, per the section's "grep seeds the list but does not bound it", and readers add what the grep missed; (29) 2026-09-09, route b, section 4: every seed entry takes exactly one disposition, `gate` or `not-gate` with a reason from the section's three exclusions plus `not-a-gate`, so coverage is checkable and the exclusions are recorded rather than skipped; (30) 2026-09-09, route b, section 4: a gate is keyed at tally by list and record, or by surface where no record carries it, with class votes and contested readings kept for Section 5 rather than resolved here; (31) 2026-09-09, route b, section 4: a reader stopped and resumed over its own transcript is the same dispatch continued, as (26) set, recorded in `incident.log`.
+Review Findings: none. No tracked file changed but the plan doc, so no reviewer pair was dispatched and `blind: no code diff`; the section's gate is its Tests line, the dispatch discipline, with the definition quoted above and the checks over the rendered briefs and the report files.
+Stamps: adjudicated 5 (all operator tier: forward-resource-arrangements-into-dispatch-briefs, scott-claude-standing-delegation-granted, elevated-session-is-one-way-on-the-roster, a-heartbeat-stamp-measures-turn-end-not-liveness, a-seat-runs-the-installed-skill-not-the-committed-one), stamped 0, none having steered this section's work; window: `memq unstamped --since 2h` at 14:37Z returned nothing and the section opened 2h15m earlier, so the 3h window was read as well, which is what listed the five, all read at the section's open; the two Section 3 stamps sit inside that window as applied and were not re-read here.
+Gate: none mechanical, per the section's Tests line; no lane ran and no baseline exists on any lane; no contention from this run, the one live claim at 14:36Z being another session's and this run spawning no heavy process.
+Next: 5. The provenance adjudication and the ledgers
+Commit Model: Commit-and-Push, on the worktree branch `corpus-audit` per the Execution surface: the section commits to the branch and pushes it, and the merge to main lands at finishing.
+Delta: taken 2026-09-09T14:36:37Z on the linked worktree `.kit/scratch/audit` at `3016160`, clean, no contention of this run's; the reading below is the worktree against HEAD before this Chapter was appended, and the plan doc sits under no measured root.
+
+```
+repository: audit
+words: 224450 of cap 224450 across 62 curated files
+test lines: 114443 of cap 114443 across 59 test files
+tests: 3429
+changed paths under no measured root: none; named-exclusion paths in the changeset: none, so every path this changeset touches is measured above
+```
+
+Census records per reader, from `counts.tsv`:
+
+| reader | cluster | parts | records | gates | blast-radius | loop-maintenance | operator-decision | not-gates | unseeded gates |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| K01 | doctrine-and-copies | 1 | 107 | 34 | 15 | 5 | 14 | 73 | 8 |
+| K02 | doctrine-with-executing-work | 2 | 192 | 57 | 28 | 0 | 29 | 135 | 7 |
+| K03 | doctrine-with-finishing-work | 1 | 136 | 38 | 22 | 0 | 16 | 98 | 3 |
+| K04a | executing-work (of K04) | 1 | 119 | 37 | 14 | 0 | 23 | 82 | 2 |
+| K04b | finishing-work (of K04) | 1 | 68 | 23 | 14 | 4 | 5 | 45 | 4 |
+| K05 | doctrine-with-verify-git-debug | 1 | 81 | 29 | 17 | 0 | 12 | 52 | 7 |
+| K06 | doctrine-with-prose-skills | 1 | 55 | 17 | 9 | 1 | 7 | 38 | 4 |
+| K07 | doctrine-with-memory-system | 3 | 177 | 18 | 11 | 1 | 6 | 159 | 3 |
+| K08 | doctrine-with-record-skills | 2 | 133 | 41 | 17 | 5 | 19 | 92 | 6 |
+| K09 | doctrine-with-judgment-skills | 2 | 164 | 53 | 16 | 0 | 37 | 111 | 4 |
+| K10a | coordinator and peer-sessions (of K10) | 2 | 200 | 54 | 37 | 5 | 12 | 146 | 0 |
+| K10b | role (of K10) | 1 | 85 | 38 | 34 | 0 | 4 | 47 | 1 |
+| K11 | doctrine-with-authority-skills | 2 | 206 | 51 | 40 | 0 | 11 | 155 | 4 |
+| K12 | leash-and-stop-shapes | 3 | 212 | 66 | 32 | 0 | 34 | 146 | 5 |
+| K13 | section-review-dispatch | 2 | 171 | 47 | 12 | 2 | 33 | 124 | 2 |
+| K14 | implementer-dispatch | 1 | 97 | 23 | 6 | 0 | 17 | 74 | 0 |
+| K15 | finishing-dispatch | 2 | 119 | 21 | 12 | 0 | 9 | 98 | 1 |
+| K16 | design-time-dispatch | 1 | 71 | 26 | 8 | 0 | 18 | 45 | 2 |
+| K17 | doctrine-with-style-skills | 1 | 66 | 17 | 10 | 0 | 7 | 49 | 5 |
+| K18 | queue-park-coordinator | 4 | 236 | 84 | 46 | 11 | 27 | 152 | 0 |
+| K19 | store-writers | 3 | 170 | 21 | 12 | 4 | 5 | 149 | 3 |
+| K20 | plan-doc-shapes | 1 | 91 | 29 | 11 | 0 | 18 | 62 | 4 |
+| K21 | gates | 1 | 79 | 23 | 13 | 5 | 5 | 56 | 4 |
+| **TOTAL** | 23 readers | 39 | 3035 | 847 | 436 | 43 | 368 | 2188 | 79 |
