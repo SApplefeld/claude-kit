@@ -31,7 +31,7 @@ The other shape is shared evidence rather than a shared input: two lenses given 
 
 ## A claim finding's fix is a deletion or a check
 
-The class and its exceptions are executing-work's (`skills/executing-work/SKILL.md` under the kit plugin root), and so are the dispositions of a claim the exceptions do not hold, listed at its step 4: deletion of the false sentence, a mechanical check where the claim earns keeping and a check is cheap, a Chapter line naming the sentence left standing and why the finding does not hold, or the out-of-scope route where the sentence sits outside the section's files. A rewritten sentence re-enters the class it was written to leave, so a fix brief for such a finding never carries a replacement sentence. A claim either exception holds to the behavior bar is owed.
+The class and its exceptions are executing-work's (`skills/executing-work/SKILL.md` under the kit plugin root), and so are the dispositions of a claim the exceptions do not hold, listed at its step 4: deletion of the false sentence, a mechanical check where the claim earns keeping and a check is cheap, a Chapter line naming the sentence left standing and why the finding does not hold, or the out-of-scope route where the sentence sits outside the section's files. A rewritten sentence re-enters the class it was written to leave, so a fix brief for such a finding never carries a replacement sentence. A claim either exception holds to the behavior bar is owed. Every other claim finding's fix lands in the section's close pass with the other Minors.
 
 ## A clearance is a claim of the same standing as a finding
 
