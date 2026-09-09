@@ -192,3 +192,87 @@ Written by the successor session (06460dc5) at takeover, after reconciling the w
 - Rulings adopted since the last boundary: none.
 - Declared assumptions this session adds (route b, low-blast, section 1): (8) a critic that named the withheld claim on a neighbouring source line, or in words that cover it, passes the control, since the control tests coverage rather than line arithmetic; (9) a list whose critic failed the control twice is re-critiqued with a different withheld record (`withhold.js --lines` over a different range) rather than a third run on the same pick, since a pick the critic reads as not-a-claim tests nothing; (10) misses are appended to the accepted list as records marked `note: critic-added`, the miss that duplicates the withheld claim excluded and near-duplicates on one source line collapsed, with over-inclusion left to Section 5 per the plan's own pricing.
 - Next action: dispatch sonnet critics for the 16 charter lists and the 6 failed controls (22 dispatches, background with the TaskOutput loop, first-turn reading at five minutes); adjudicate each against its control; append misses; write Chapter 1 with the per-document counts by class.
+
+### Chapter 1 - 2026-09-09
+Completed: 1. The inventory and the claims extraction
+Implemented By: main session (orchestration, adjudication, the misses append and this Chapter); 65 opus cold readers dispatched by the predecessor session 418ff8ff as `general-purpose` agents with the `opus` override; sonnet completeness critics dispatched as `general-purpose` agents with the `sonnet` override, the predecessor's runs plus 32 by this session in three rounds of 22, 8 and 2
+Metrics: review rounds 0, closed clean; provenance 0 spec-traceable, 0 fix-introduced, 0 new-requirement, rulings (0 refused, 0 declared, 0 asked); NEEDS_CONTEXT 0; escalations 0; consults 0
+Decisions / Surprises:
+- Extraction commit `6bc07fb`. HEAD at this boundary is `63a17cb`, which differs from the extraction commit in the plan doc alone, so every list was read from the corpus at the extraction commit. The scratch lives under `.kit/audit/s1/`: `manifest.tsv` (65 rows, reader id, path, range, list file, inventory flag), one list per row, `counts.tsv` (the table below), `critic/withheld.tsv` (every withheld pick), `critic/<name>.misses.md` (accepted critic runs), `critic/<name>.misses.rN-failed.md` (runs whose critic did not name the control), `append.log`, and the two briefs `BRIEF-reader.md` and `BRIEF-critic.md`, each files-only with no intent story, as Interim board 2 records.
+- Chunk bounds are the ones Interim board 1's assumption (4) states, at the 8,000-word bound; the table below repeats each document's chunks. No chunk was lowered under the plan's Assumptions clause: where a critic's misses clustered, a fresh withheld pick over the half-range (`.h1`, `.h1b`) was run instead, and every half-range run that passed its control is appended beside its chunk's run.
+- Critic outcome: all 65 lists are accepted, each on at least one critic that named its withheld claim, on the source line or one line either side in words that cover it (assumption 8). Of this session's first 22 critics, 8 returned zero misses. On inspection, four of those controls were shadowed rather than missed: the withheld rule was restated by a sibling record on the same source line (cold at line 30, docs-curator at line 41, qa-verifier at line 21) or by a record elsewhere in the list (cold's second pick at line 35 by the short-form and full-form records; ai-tells' picks at lines 71 and 51 by the pivot-antecedent and catalog-only records), so a critic reading the list as covering the sentence was right and the control tested nothing. Re-picks on a record alone on its line passed first time for docs-curator and qa-verifier; cold and ai-tells passed only once the pick was a mechanic carrying a figure or a section name (cold line 60, ai-tells line 131), which no neighbouring rule can shadow. The unshadowed first-run failures (scope-adjudicator, plan-reviewer, design-facilitator, scott-writing-style pick b, and the predecessor's csharp-style, branch-hygiene picks) all passed on one re-run of the same pick. memory-system chunk 3: the predecessor's half-range pick at line 162 failed three critics with four line-162 misses that were rationale about supersession and never the `--supersedes` write itself; a fresh pick at line 157 passed, and the chunk is accepted on three passing critics (the chunk run, the `.h1b` half-range run, and the `.c` run), all three appended.
+- Misses appended before acceptance (assumption 10): 71 accepted critic files carried 301 misses; 68 were the control's own restatement and were excluded (54 by word overlap within one line of the withheld line, 14 by hand where the critic's wording differed, listed in `append.log`'s invocation); 1 same-line near duplicate collapsed; 232 records appended, each carrying `note: critic-added by <critic> Mnnn`, so Section 5 can tell a reader's record from a critic's. Critic-added records are 232 of 5,820, which is 4.0 percent; the heaviest are memory-system (82 of 619) and peer-sessions (25 of 263), the lightest zero across 22 documents, most of them charters and short skills.
+- The withheld control's own lesson is the doctrine's silent-check bullet read literally: a withheld instance the pattern still covers through a sibling is not withheld. `withhold.js` picks by list position and cannot see coverage; the re-pick rule below is the fix, kept in the scratch tooling. No kit friction captured: the doctrine already states the bar the tooling fell short of.
+- No probe pair ran and none was called for: the section changed no rule text and named no shape file, so the writing-skills RED and GREEN step had no subject. Recorded as not applicable rather than clean.
+- The stale `KIT: Loop Worker` heavy-process claim Interim board 2's session reported at takeover was gone by this boundary: `claims/` was empty at 2026-09-09T09:59:49Z. Not this seat's act; whoever released it is not recorded here.
+- Section span this session: 09:38Z takeover to this boundary; every dispatch of this session completed inside its first-turn window, so no first-turn reading, probe or TaskStop was taken. Tree-state brackets (`git status --porcelain`, zero lines) were identical before and after each of the three critic rounds, captured at 09:46:58Z, 09:53:11Z and 09:57:39Z.
+Assumptions: (1) to (7) as Interim board 1 records; (8) to (10) as Interim board 2 records; (11) 2026-09-09, route b, section 1: a withheld pick that shares its source line with sibling records, or that another record in the list restates, is shadowed and tests nothing, so a re-pick takes a record alone on its source line and, where a rule pick has failed twice unshadowed, a mechanic record carrying a figure, path or section name; (12) 2026-09-09, route b, section 1: the control's own restatement is excluded from the append by claim-word overlap of at least 0.35 on a miss within one line of the withheld line, plus a hand-adjudicated list where the critic's wording differed, both recorded in `append.log`; (13) 2026-09-09, route b, section 1: a miss the critic classed rationale-example is appended like any other class, so Section 3's candidate-by-construction rule sees it, and over-inclusion is priced to Section 5 as the plan states.
+Review Findings: none. No tracked file changed (Files in scope: none tracked), so no reviewer pair was dispatched and `blind: no code diff`; the section's gate is the one its Tests line names, the dispatch discipline (both briefs files-only with no intent story, quoted at Interim board 2) and the completeness pass, no list accepted before a critic named its control.
+Stamps: adjudicated 19 (1 project tier, 18 operator tier, `memq unstamped --since 8h` at 09:59Z), stamped 4: git-bash-sed-i-strips-cr, a-quote-the-outer-shell-owns-cannot-ride-inside-node-e, merge-count-carrying-docs-by-re-deriving, a-pinned-document-is-an-artifact-with-a-test; the other 15 were read at takeover or bear on readings this section never had to take.
+Gate: none mechanical, per the section's Tests line; no lane ran and no baseline exists on any lane; no contention, the machine's claims directory being empty at 09:59Z.
+Next: 2. The blind conflict sweep
+Commit Model: Commit-and-Push, on the worktree branch `corpus-audit` per the Execution surface: the section commits to the branch and pushes it, and the merge to main lands at finishing.
+Delta: taken 2026-09-09T09:59:49Z on the linked worktree `.kit/scratch/audit` at `63a17cb`, clean, no contention; the reading below is the worktree against HEAD before this Chapter was appended, and the plan doc sits under no measured root.
+
+```
+repository: audit
+words: 224450 of cap 224450 across 62 curated files
+test lines: 114443 of cap 114443 across 59 test files
+tests: 3429
+changed paths under no measured root: none; named-exclusion paths in the changeset: none, so every path this changeset touches is measured above
+```
+
+Per-document claim counts by class at acceptance, from `counts.tsv` (rule, mechanic, pointer, rationale-example, total, of which critic-added, chunks):
+
+| document | rule | mechanic | pointer | rationale | total | critic-added | chunks |
+|---|---:|---:|---:|---:|---:|---:|---|
+| `plugins/claude-kit/skills/executing-work/SKILL.md` | 332 | 166 | 21 | 73 | 592 | 21 | 1-96, 97-358, 359-445, 446-529 |
+| `plugins/claude-kit/skills/memory-system/SKILL.md` | 176 | 367 | 8 | 68 | 619 | 82 | 1-39, 40-146, 147-208, 209-255, 256-316 |
+| `plugins/claude-kit/skills/coordinator/SKILL.md` | 283 | 96 | 12 | 24 | 415 | 18 | 1-38, 39-66, 67-84, 85-103 |
+| `plugins/claude-kit/skills/finishing-work/SKILL.md` | 249 | 113 | 13 | 44 | 419 | 24 | 1-41, 42-65, 66-110 |
+| `plugins/claude-kit/skills/role/SKILL.md` | 128 | 67 | 8 | 26 | 229 | 21 | 1-47, 48-65, 66-99 |
+| `plugins/claude-kit/skills/peer-sessions/SKILL.md` | 171 | 58 | 12 | 22 | 263 | 25 | 1-73, 74-155 |
+| `plugins/claude-kit/skills/operating-instructions/SKILL.md` | 221 | 59 | 17 | 6 | 303 | 3 | 1-109, 110-205 |
+| `plugins/claude-kit/output-styles/kit.md` | 14 | 8 | 1 | 3 | 26 | 0 | whole |
+| `home/CLAUDE.md` | 5 | 1 | 1 | 1 | 8 | 0 | whole |
+| `plugins/claude-kit/skills/park/SKILL.md` | 65 | 27 | 3 | 3 | 98 | 1 | whole |
+| `plugins/claude-kit/skills/kit-goal/SKILL.md` | 29 | 54 | 1 | 6 | 90 | 4 | whole |
+| `plugins/claude-kit/skills/brainstorming/SKILL.md` | 89 | 50 | 6 | 28 | 173 | 0 | whole |
+| `plugins/claude-kit/skills/standing-watch/SKILL.md` | 67 | 17 | 3 | 6 | 93 | 2 | whole |
+| `plugins/claude-kit/skills/recap/SKILL.md` | 57 | 14 | 8 | 5 | 84 | 1 | whole |
+| `plugins/claude-kit/skills/writing-skills/SKILL.md` | 81 | 32 | 7 | 16 | 136 | 4 | whole |
+| `plugins/claude-kit/skills/testing-discipline/SKILL.md` | 60 | 9 | 4 | 5 | 78 | 0 | whole |
+| `plugins/claude-kit/skills/curating-docs/SKILL.md` | 41 | 20 | 1 | 3 | 65 | 5 | whole |
+| `plugins/claude-kit/skills/responding-to-review/SKILL.md` | 41 | 7 | 3 | 8 | 59 | 3 | whole |
+| `plugins/claude-kit/skills/kaizen/SKILL.md` | 49 | 17 | 2 | 8 | 76 | 2 | whole |
+| `plugins/claude-kit/skills/scott-writing-style/SKILL.md` | 54 | 23 | 2 | 5 | 84 | 1 | whole |
+| `plugins/claude-kit/skills/csharp-style/SKILL.md` | 36 | 16 | 1 | 11 | 64 | 1 | whole |
+| `plugins/claude-kit/skills/sql-style/SKILL.md` | 40 | 10 | 2 | 4 | 56 | 3 | whole |
+| `plugins/claude-kit/skills/design-council/SKILL.md` | 29 | 11 | 0 | 5 | 45 | 1 | whole |
+| `plugins/claude-kit/skills/kit-doctor/SKILL.md` | 21 | 18 | 0 | 4 | 43 | 0 | whole |
+| `plugins/claude-kit/skills/cold/SKILL.md` | 21 | 14 | 3 | 5 | 43 | 0 | whole |
+| `plugins/claude-kit/skills/consult/SKILL.md` | 21 | 11 | 1 | 10 | 43 | 0 | whole |
+| `plugins/claude-kit/skills/branch-hygiene/SKILL.md` | 16 | 16 | 0 | 3 | 35 | 1 | whole |
+| `plugins/claude-kit/skills/systematic-debugging/SKILL.md` | 29 | 6 | 1 | 5 | 41 | 0 | whole |
+| `plugins/claude-kit/skills/sql-style/references/sql-style.md` | 49 | 96 | 1 | 26 | 172 | 2 | whole |
+| `plugins/claude-kit/skills/csharp-style/references/csharp-style.md` | 45 | 62 | 0 | 12 | 119 | 0 | whole |
+| `plugins/claude-kit/skills/operating-instructions/references/ownership-map.md` | 12 | 3 | 58 | 1 | 74 | 1 | whole |
+| `plugins/claude-kit/skills/scott-writing-style/references/ai-tells.md` | 36 | 5 | 0 | 16 | 57 | 0 | whole |
+| `plugins/claude-kit/skills/curating-docs/references/templates.md` | 18 | 27 | 2 | 3 | 50 | 1 | whole |
+| `plugins/claude-kit/agents/prose-reviewer.md` | 58 | 31 | 3 | 20 | 112 | 2 | whole |
+| `plugins/claude-kit/agents/adversarial-reviewer.md` | 64 | 27 | 4 | 12 | 107 | 0 | whole |
+| `plugins/claude-kit/agents/docs-curator.md` | 45 | 46 | 1 | 28 | 120 | 2 | whole |
+| `plugins/claude-kit/agents/scope-adjudicator.md` | 31 | 34 | 0 | 12 | 77 | 0 | whole |
+| `plugins/claude-kit/agents/blind-reader.md` | 36 | 24 | 0 | 9 | 69 | 0 | whole |
+| `plugins/claude-kit/agents/security-reviewer.md` | 57 | 15 | 0 | 12 | 84 | 0 | whole |
+| `plugins/claude-kit/agents/blind-reviewer.md` | 34 | 21 | 0 | 6 | 61 | 0 | whole |
+| `plugins/claude-kit/agents/plan-reviewer.md` | 30 | 24 | 0 | 11 | 65 | 0 | whole |
+| `plugins/claude-kit/agents/implementer-fable.md` | 32 | 15 | 3 | 12 | 62 | 1 | whole |
+| `plugins/claude-kit/agents/implementer-opus.md` | 33 | 16 | 2 | 9 | 60 | 0 | whole |
+| `plugins/claude-kit/agents/implementer-sonnet.md` | 33 | 15 | 2 | 6 | 56 | 0 | whole |
+| `plugins/claude-kit/agents/implementer-haiku.md` | 32 | 15 | 1 | 6 | 54 | 0 | whole |
+| `plugins/claude-kit/agents/qa-verifier.md` | 27 | 18 | 0 | 6 | 51 | 0 | whole |
+| `plugins/claude-kit/agents/consultant.md` | 14 | 12 | 0 | 4 | 30 | 0 | whole |
+| `plugins/claude-kit/agents/council-member.md` | 17 | 11 | 0 | 3 | 31 | 0 | whole |
+| `plugins/claude-kit/agents/design-facilitator.md` | 19 | 9 | 0 | 1 | 29 | 0 | whole |
+| **TOTAL** | 3147 | 1833 | 218 | 622 | 5820 | 232 | 49 documents, 65 lists |
