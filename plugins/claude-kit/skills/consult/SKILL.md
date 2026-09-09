@@ -1,17 +1,17 @@
 ---
 name: consult
-description: "Convene one fresh-context judge (the consultant agent) to rule on a question this session cannot settle. Use mid-execution at the trigger floor - a second failed attempt at the same problem, any BLOCKED that turns on a decision, a debugging dead end, a weighty decision the spec does not cover - and when the operator asks to 'get a consult on X' or wants a 'second opinion on this problem'. The session that needs this rarely feels stuck; it feels almost done, so check the floor, not the feeling. Not a diff review (the adversarial and blind reviewers) and not design-time divergence (design-council)."
+description: "Convene one fresh-context judge to rule on a question this session cannot settle: the consultant agent at every shape the floor sends to a consult but the design stop, which executing-work convenes its own judge for instead. Use mid-execution at the trigger floor - a second failed attempt at the same problem, any BLOCKED that turns on a decision, a debugging dead end, a weighty decision the spec does not cover - and when the operator asks to 'get a consult on X' or wants a 'second opinion on this problem'. The session that needs this rarely feels stuck; it feels almost done, so check the floor, not the feeling. Not a diff review (the adversarial and blind reviewers) and not design-time divergence (design-council)."
 ---
 
 # The Consult
 
-One read-only fresh judge, the `consultant` agent, ruling on one question a stuck session could not settle. The consultant never saw this session's transcript, and that blindness is the value: the framing reaches it as text rather than as its own reasoning, so it can test the frame where the session can only extend it. It rules rather than surveys, tests the querent's framing rather than ratifying it, and ends implementable. The kit uses no in-context advisor; the consult is its escalation instrument.
+One read-only fresh judge ruling on one question a stuck session could not settle, the `consultant` agent at every shape the floor sends to a consult but the design stop, whose judge executing-work's step 4 names. The consultant never saw this session's transcript, and that blindness is the value: the framing reaches it as text rather than as its own reasoning, so it can test the frame where the session can only extend it. It rules rather than surveys, tests the querent's framing rather than ratifying it, and ends implementable. The kit uses no in-context advisor; the consult is its escalation instrument.
 
 ## The trigger floor
 
 Stuck sessions do not feel stuck - they feel almost done. So the triggers are a counted floor, recognizable by a re-reader rather than dependent on felt difficulty, plus a general license on top:
 
-- **(a) A second failed attempt at the same problem**, whatever its shape: an implementation round, a debugging hypothesis, a review round, a review seesaw (the second reversal of one passage's fix). Where executing-work's tier-escalation ladder already owns the moment, it governs: a second failed review round whose Criticals repeat a class is a tier problem rather than a framing one, and the consult is for the branch where no class repeats and the spec's own premise is the generator.
+- **(a) A second failed attempt at the same problem**, whatever its shape: an implementation round, a debugging hypothesis, a review round, a review seesaw (the second reversal of one passage's fix), or a design stop (the pair of consecutive rounds of fix-introduced Majors executing-work's step 4 defines, on the conditions that paragraph states). That last shape is a consult on this floor like the others and is the one whose seat is not the `consultant`: step 4 convenes the judge its provenance paragraph names instead, because that judge must never receive the querent's lean. It is not alone in routing elsewhere, the repeating-class Critical branch below going to the tier ladder, and it is listed here because a re-reader counting the second-attempt shapes has to find it. Where executing-work's tier-escalation ladder already owns the moment, it governs: a second failed review round whose Criticals repeat a class is a tier problem rather than a framing one, and the consult is for the branch where no class repeats and the spec's own premise is the generator. That sentence governs the consult this floor convenes and not the design stop, which keys on provenance where the ladder keys on Criticals and so fires beside it rather than deferring to it.
 - **(b) Any BLOCKED that turns on a decision.** Consult first; only the preference, cost, or risk-appetite fork that survives goes to the operator, with the ruling attached. An external dependency only the operator can satisfy, and a destructive action waiting on their yes, are not decisions to rule on: those go straight up.
 - **(c) A systematic-debugging dead end**, before the stop-and-report.
 - **(d) The general license:** a decision that is hard to reverse or load-bearing, not covered by the spec, where you would otherwise be guessing.
@@ -29,6 +29,8 @@ The brief carries:
 - What an implementable answer would look like.
 
 Bulky evidence goes to the gitignored `.kit/` scratch path and rides in the brief as a path, never pasted inline.
+
+This section and the three below it are the `consultant`'s, so none of them reaches the design stop, whose brief the scope adjudicator's charter fixes and which refuses the querent's lean this section requires, whose dispatch executing-work's step 4 states, and whose bucket that step's own rule adopts as a ruling rather than verifying as the hypothesis this skill's adjudication makes of a consultant's.
 
 Writing the brief is itself part of the mechanism, not overhead: the briefing cost is what forces the problem outside the session's own reasoning loop.
 
