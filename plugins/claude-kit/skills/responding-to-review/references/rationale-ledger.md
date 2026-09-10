@@ -545,7 +545,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - key: Read a finding's trace before you read its severity.
 - class: rule
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
-- provenance: f26619c 2026-09-08, review-loop-provenance plan section 2, from the NEO-CLAUDE twenty-round section of 2026-09-08 where a Major nobody asked for was built one repair per round (kaizen/notes-NEO-CLAUDE.md line 23).
+- provenance: f26619c 2026-09-08, review-loop-provenance plan section 2, from the twenty-round section of 2026-09-08 where a Major nobody asked for was built one repair per round (kaizen/notes-NEO-CLAUDE.md line 23).
 - verdict: retire
 - superseded-by: S006
 - reason: New at HEAD, no finding, no duplicate in this range; the one sentence the plan directed this skill to carry as the adjudication-time pointer at executing-work's provenance read. Superseded at `4b2e64c` by S006 (the Section 8 merge; the verdict before it was keep).
@@ -657,7 +657,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - key: Read a finding's trace before you read its severity.
 - class: rule
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
-- provenance: f26619c 2026-09-08, review-loop-provenance plan section 2, from the NEO-CLAUDE twenty-round section of 2026-09-08 where a Major nobody asked for was built one repair per round (kaizen/notes-NEO-CLAUDE.md line 23); 55c5abc 2026-09-09 changed only the step number beside it.
+- provenance: f26619c 2026-09-08, review-loop-provenance plan section 2, from the twenty-round section of 2026-09-08 where a Major nobody asked for was built one repair per round (kaizen/notes-NEO-CLAUDE.md line 23); 55c5abc 2026-09-09 changed only the step number beside it.
 - verdict: keep
 - reason: Incident-born and the one sentence the plan directed this skill to carry as the adjudication-time pointer at executing-work's provenance read; supersedes R005.
 

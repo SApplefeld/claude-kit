@@ -838,7 +838,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - key: Trust the five-minute first-turn window against measured first-turn latency of 2.1 s at p50, 4.3 s at p90, 6.3 s at p95 and 12 s at p99 across 1,988 transcripts, with a single 574 s outlier still inside the 600 s earliest kill point.
 - class: rationale-example
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:28
-- provenance: 8a2daa8 2026-08-26, verification-artifacts Evidence, measured over 1,999 transcripts under ~/.claude/projects on SCOTT-CLAUDE as of 2026-08-23.
+- provenance: 8a2daa8 2026-08-26, verification-artifacts Evidence, measured over 1,999 transcripts under ~/.claude/projects on one operator workstation as of 2026-08-23.
 - verdict: retire
 - reason: The window is obeyable as a number; the corpus lives here and in the archived plan, so a session retuning the window can find it, and five minutes at twenty-five times p99 with the 574 s outlier inside the 600 s kill point is the figure to beat.
 - proposed: Remove the p50/p90/p95/p99 and 574 s sentence from line 28; the ledger entry for C100 carries the figures and the archived plan holds the corpus.

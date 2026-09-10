@@ -1144,7 +1144,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - key: Skipping the mandatory post-compaction re-read causes a run to execute only the visible half of paired steps, such as the checkpoint clear without the later open, or a dispatch without the reviewer tier bump.
 - class: rationale-example
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:71
-- provenance: a9c8d14 2026-08-17, the 12-hour run on NEO-CLAUDE that executed a truncated copy of this skill for four sections (kaizen/archive/2026-08-17-post-compaction-reload.md).
+- provenance: a9c8d14 2026-08-17, the 12-hour run on a second operator workstation that executed a truncated copy of this skill for four sections (kaizen/archive/2026-08-17-post-compaction-reload.md).
 - verdict: retire
 - reason: The re-read, re-invoke and re-load are stated as mandatory and obeyable without the examples; the incident lives here: the summarized skill kept step 0 and step 1 and lost everything below the cut, so the run cleared checkpoints it never re-opened, reviewed a tier low, and ran no security pass on an external-boundary section.
 - proposed: Delete the sentence; the ledger entry for C135 carries the incident.
@@ -2753,7 +2753,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - key: Skip the blind dispatch, run the adversarial-reviewer alone, and record `blind: no code diff` on the Chapter's review line when omitting docs/ paths empties the changed-file list.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:361
-- provenance: a9c8d14 2026-08-17, folding a 2026-08-02 kaizen note from the NEO-CLAUDE box.
+- provenance: a9c8d14 2026-08-17, folding a 2026-08-02 kaizen note from a second workstation's inbox.
 - verdict: retire
 - superseded-by: R038
 - reason: List duplicate of R038 at HEAD :361; the sentence stands under R038 (keep), and A038 rules it a named carve-out of the pair rule rather than a conflict.

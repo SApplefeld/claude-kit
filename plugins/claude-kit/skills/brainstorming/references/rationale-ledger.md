@@ -422,7 +422,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - key: Authoring scope from memory is the anti-pattern: a contract change ships scoped to a fraction of the surfaces that speak it, the rest arriving one review round at a time.
 - class: rationale-example
 - source: plugins/claude-kit/skills/brainstorming/SKILL.md:24
-- provenance: 83b81ac 2026-08-19; the plan named this as the incident's evidence pattern (2026-08-18 kaizen note, SCOTT-CLAUDE).
+- provenance: 83b81ac 2026-08-19; the plan named this as the incident's evidence pattern (2026-08-18 kaizen note).
 - verdict: retire
 - reason: The incident behind C041 and C042: a contract change shipped to two of seven surfaces and the rest surfaced one review round at a time; the rules are obeyable without the shape, which now lives here.
 - proposed: Delete "Authoring scope from memory is the anti-pattern, and its shape is a contract change shipping scoped to a fraction of the surfaces that speak it, the rest arriving one review round at a time." from line 24.
