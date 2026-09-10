@@ -99,13 +99,14 @@ function denyAll(agentType, cases) {
     for (const [c, reason] of cases) assertDenied(agentType, c, reason);
 }
 
-test('all nine judgment agents resolve to the strict class, namespaced or bare', () => {
+test('all ten judgment agents resolve to the strict class, namespaced or bare', () => {
     for (const t of ['adversarial-reviewer', 'blind-reviewer', 'security-reviewer', 'council-member',
         'design-facilitator', 'consultant', 'blind-reader', 'prose-reviewer', 'plan-reviewer',
+        'scope-adjudicator',
         'claude-kit:adversarial-reviewer',
         'claude-kit:blind-reviewer', 'claude-kit:security-reviewer', 'claude-kit:council-member',
         'claude-kit:design-facilitator', 'claude-kit:consultant', 'claude-kit:blind-reader',
-        'claude-kit:prose-reviewer', 'claude-kit:plan-reviewer']) {
+        'claude-kit:prose-reviewer', 'claude-kit:plan-reviewer', 'claude-kit:scope-adjudicator']) {
         assertDenied(t, 'git commit -m x', GIT);
     }
 });
@@ -119,6 +120,7 @@ test('a type that merely contains a judgment agent name is not governed', () => 
     allowAll('blind-reader-helper', ['git commit -m x']);
     allowAll('my-prose-reviewer', ['git commit -m x']);
     allowAll('plan-reviewer-helper', ['git commit -m x']);
+    allowAll('scope-adjudicator-helper', ['git commit -m x']);
 });
 
 // The last case is the one that pins the *class* rather than merely pinning
@@ -885,7 +887,7 @@ test('cp reads its destination from -t when the invocation carries one', () => {
 test('the governed agents are granted no file-writing tool', () => {
     for (const name of ['adversarial-reviewer', 'blind-reviewer', 'security-reviewer',
         'council-member', 'design-facilitator', 'consultant', 'qa-verifier',
-        'blind-reader', 'prose-reviewer', 'plan-reviewer']) {
+        'blind-reader', 'prose-reviewer', 'plan-reviewer', 'scope-adjudicator']) {
         const text = fs.readFileSync(path.join(AGENTS, `${name}.md`), 'utf8');
         const fm = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
         assert.ok(fm, `${name}.md has no frontmatter`);
@@ -906,12 +908,13 @@ test('the governed agents are granted no file-writing tool', () => {
 // executing-work's reviewer-effort table names each per-section reviewer's
 // frontmatter effort as what keeps its fable dispatch off the Workflow route
 // (low for the code and document pairs, medium for the security reviewer),
-// and the consult skill says the same of the consultant at high. Reverting one
+// and the consult skill says the same of the consultant at high, as
+// finishing-work does of the scope adjudicator at high. Reverting one
 // of these lines would leave the whole suite green while the gate silently
 // moved a notch and the skills asserted a value no longer true, which is the
 // same gap the third doctrine-parity test closes for the doctrine's own grant.
-test('the reviewers and the consultant pin the effort the skills cite as their frontmatter default', () => {
-    const pinned = { 'adversarial-reviewer': 'low', 'blind-reviewer': 'low', 'blind-reader': 'low', 'prose-reviewer': 'low', 'plan-reviewer': 'low', 'security-reviewer': 'medium', consultant: 'high' };
+test('the reviewers, the consultant and the scope adjudicator pin the effort the skills cite as their frontmatter default', () => {
+    const pinned = { 'adversarial-reviewer': 'low', 'blind-reviewer': 'low', 'blind-reader': 'low', 'prose-reviewer': 'low', 'plan-reviewer': 'low', 'security-reviewer': 'medium', consultant: 'high', 'scope-adjudicator': 'high' };
     for (const [name, effort] of Object.entries(pinned)) {
         const text = fs.readFileSync(path.join(AGENTS, `${name}.md`), 'utf8');
         const fm = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
@@ -1758,7 +1761,7 @@ test('every read-only agent definition is a governed seat, derived from the defi
         if (WRITERS.some((t) => granted.includes(t))) continue;
         derived.push(path.basename(file, '.md'));
     }
-    assert.ok(derived.length >= 9,
+    assert.ok(derived.length >= 11,
         'the derivation must find the read-only definitions, got: ' + derived.join(', '));
     for (const name of derived) {
         const cls = agentLib.reviewAgentClass('claude-kit:' + name);
