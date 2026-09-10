@@ -956,6 +956,7 @@ Files in scope: `docs/plans/claude-kit_kaizen-prose-batch_spec_v1.md` (moved to 
 
 - `docs/plans/claude-kit_lean-kit_program_v1.md`: the program this plan is stage 3 of; its seven binding decisions govern every section here.
 - `docs/archive/claude-kit_corpus-audit_spec_v1.md` (stage 1, Complete): the audit that wrote the ledgers this plan rewrites from and the brief under Decisions; its Chapters carry the sweeps' yields and the judges' coverage.
+- `docs/plans/claude-kit_review-tier-decay_spec_v1.md` (stage 2): lands the later-rounds-at-one-lens rule in executing-work's review step before this plan arms; the executing-work section here compresses that paragraph once it is in the file.
 - `docs/plans/claude-kit_test-audit_spec_v1.md`: retires the wording pins this rewrite reds; each section names the test-audit section that retires its pins, and it runs before this plan arms.
 - `docs/plans/claude-kit_kaizen-prose-batch_spec_v1.md`: the twelve sections the audit ruled, folded into the sections above and closed by the last one.
 - `plugins/claude-kit/skills/*/references/rationale-ledger.md`: the 26 ledgers, each document's instruction set for its section.
