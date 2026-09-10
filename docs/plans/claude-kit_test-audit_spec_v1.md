@@ -127,8 +127,8 @@ Files in scope: `docs/backlog.md`, `docs/archive/backlog-2026-Q3.md`, `test/size
 
 ## Related
 
-- `docs/plans/claude-kit_subtraction-bars_spec_v1.md`: the retire classes and the ratchet this plan cuts against and re-baselines. Must be Complete first.
-- `docs/plans/claude-kit_corpus-audit_spec_v1.md`: the prose audit; runs beside this plan, and its follow-on cut waits on section 6.
+- `docs/archive/claude-kit_subtraction-bars_spec_v1.md`: the retire classes and the ratchet this plan cuts against and re-baselines; Complete and archived.
+- `docs/archive/claude-kit_corpus-audit_spec_v1.md`: the prose audit, Complete and archived. Its follow-on, `claude-kit_corpus-rewrite_spec_v1.md`, arms only after this plan has run whole (the rewrite's Decisions item 7, ruled 2026-09-10), so the pin retirements here land before any rewrite section reds them.
 - Backlog item of 2026-08-26, plan-private referents in test comments: covered by sections 3 and 7, retired at 8.
 - Backlog item of 2026-09-05, this plan's Goal figures outgrown by the tree: the census at section 1 is its receipt, retired at 8.
 - Backlog item of 2026-09-04, the two doctrine pointer pins' equality legs as duplicates of the whole-body identity pin: its classing stands at section 2 and the legs go at section 6.

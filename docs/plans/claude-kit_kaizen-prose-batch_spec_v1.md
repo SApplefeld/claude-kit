@@ -113,7 +113,8 @@ Acceptance: both sentences present at HEAD (step 1's per-file read with its coun
 
 ## Related
 
-- `claude-kit_corpus-audit_spec_v1.md`: the adjudication lane this plan rides, on the operator's routing of 2026-09-02.
+- `../archive/claude-kit_corpus-audit_spec_v1.md`: the adjudication lane this plan rode, on the operator's routing of 2026-09-02; Complete and archived, its judge having ruled these twelve sections under that routing.
+- `claude-kit_corpus-rewrite_spec_v1.md`: the plan that folds the upheld sections into the documents they touch and closes this plan in its last section.
 - `claude-kit_kaizen-code-batch_spec_v1.md`, `claude-kit_liveness-by-session-identity_spec_v1.md`.
 - `../archive/claude-kit_subtraction-bars_spec_v1.md`: the plan that wrote the size ratchet and the prose bar this plan's own edits are held to. Its section 4 added the `Delta:` field to the Chapter template in `plugins/claude-kit/skills/executing-work/SKILL.md`, which is the same template section 10 here rewrites the `Completed:` placeholder of, so the two touch one passage from opposite ends.
 - Kaizen triage record `kaizen/archive/2026-09-02-pass-triage.md`.

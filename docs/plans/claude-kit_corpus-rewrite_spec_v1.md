@@ -126,7 +126,7 @@ The eight items below are the rulings that are yours rather than the judge's. Ea
 
 **Evidence.**
 - The ledgers: `plugins/claude-kit/skills/*/references/rationale-ledger.md`, 26 files, 49 document headings plus the doctrine mirror's entry-free heading, 6,601 entries on branch `corpus-audit`.
-- The audit's Chapters: `docs/plans/claude-kit_corpus-audit_spec_v1.md`, Chapters 2 to 4 for the sweeps' yields, Chapter 5 and Interim boards 3 to 7 for the adjudication, the merges, the re-extractions and the ledger enrichment.
+- The audit's Chapters: `docs/archive/claude-kit_corpus-audit_spec_v1.md`, Chapters 2 to 4 for the sweeps' yields, Chapter 5 and Interim boards 3 to 7 for the adjudication, the merges, the re-extractions and the ledger enrichment.
 - Item 1: the audit worktree's `.kit/audit/s8/analysis/gates.md`; `docs/plans/claude-kit_lean-kit_program_v1.md` decision 4 for the copies; the census at `.kit/audit/s4/gates.tsv`; the coordinator gate's install commits 33c0bed and 2ec8971 (2026-08-26); the consolidate-memory offer at commit c289f91 (2026-07-12) against `plugins/claude-kit/skills/` holding no such skill.
 - Item 2: the plain-prose bullet's entries under the doctrine heading of `plugins/claude-kit/skills/operating-instructions/references/rationale-ledger.md` (c1.C015 to c1.C023, source line 20; c1.C023 is the retired duplicate pointer, c1.C039 the line 30 pointer it duplicates) and the bars' entries in `plugins/claude-kit/skills/writing-skills/references/rationale-ledger.md` (C055, C056, C061, C063, all keep).
 - Item 3: `.kit/audit/s8/analysis/contentions.md`; the ownership map's Unowned or contested list at `plugins/claude-kit/skills/operating-instructions/references/ownership-map.md`; the doctrine's Branch-and-PR sentence at `plugins/claude-kit/skills/operating-instructions/SKILL.md` (Scope and safety, the stop-for-a-yes bullet), landed ebd12d2 (2026-09-02); curating-docs's plan-header table, landed 3dc5d86 (2026-08-03), under its "The header is a machine contract" heading; the ownership map's exit rule, the sentence above its "Unowned or contested" table.
@@ -955,7 +955,7 @@ Files in scope: `docs/plans/claude-kit_kaizen-prose-batch_spec_v1.md` (moved to 
 ## Related
 
 - `docs/plans/claude-kit_lean-kit_program_v1.md`: the program this plan is stage 3 of; its seven binding decisions govern every section here.
-- `docs/plans/claude-kit_corpus-audit_spec_v1.md` (stage 1): the audit that wrote the ledgers this plan rewrites from and the brief under Decisions; its Chapters carry the sweeps' yields and the judges' coverage.
+- `docs/archive/claude-kit_corpus-audit_spec_v1.md` (stage 1, Complete): the audit that wrote the ledgers this plan rewrites from and the brief under Decisions; its Chapters carry the sweeps' yields and the judges' coverage.
 - `docs/plans/claude-kit_test-audit_spec_v1.md`: retires the wording pins this rewrite reds; each section names the test-audit section that retires its pins, and it runs before this plan arms.
 - `docs/plans/claude-kit_kaizen-prose-batch_spec_v1.md`: the twelve sections the audit ruled, folded into the sections above and closed by the last one.
 - `plugins/claude-kit/skills/*/references/rationale-ledger.md`: the 26 ledgers, each document's instruction set for its section.
