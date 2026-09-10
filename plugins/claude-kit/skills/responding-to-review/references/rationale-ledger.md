@@ -529,8 +529,8 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
 - provenance: 830ff28 2026-06-17; re-read after f26619c 2026-09-08 changed line 12 beside it.
 - verdict: retire
-- superseded-by: S002
-- reason: Duplicate ledger entry, no text change: held as C003, which keeps at HEAD line 12. C003 is superseded by S002, which carries the passage, so this record retires no passage of its own.
+- superseded-by: S004
+- reason: Duplicate ledger entry, no text change: held as C003, which keeps at HEAD line 12. C003 is superseded by S002 and the passage at the merged commit is S004's, so this record retires no passage of its own.
 
 ### R004
 - key: Do not rubber-stamp a finding and do not reflexively defer to one.
@@ -601,8 +601,8 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
 - provenance: dd5e568 2026-08-24; re-read after f26619c 2026-09-08 changed line 12 beside it.
 - verdict: retire
-- superseded-by: S011
-- reason: Duplicate ledger entry, no text change: held as C006, which keeps at HEAD line 12. C006 is superseded by S011, which carries the passage, so this record retires no passage of its own.
+- superseded-by: S012
+- reason: Duplicate ledger entry, no text change: held as C006, which keeps at HEAD line 12. C006 is superseded by S011 and the passage at the merged commit is S012's, so this record retires no passage of its own.
 
 ### R012
 - key: Record each such adjudication as finishing-work's step 4 directs.
@@ -610,8 +610,8 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
 - provenance: dd5e568 2026-08-24; re-read after f26619c 2026-09-08 changed line 12 beside it.
 - verdict: retire
-- superseded-by: S011
-- reason: Duplicate ledger entry, no text change: held as C006, which keeps at HEAD line 12. C006 is superseded by S011, which carries the passage, so this record retires no passage of its own.
+- superseded-by: S014
+- reason: Duplicate ledger entry, no text change: held as C006, which keeps at HEAD line 12. C006 is superseded by S011 and the passage at the merged commit is S014's, so this record retires no passage of its own.
 
 ### S001
 - key: Treat every review-agent finding as fallible, because it can be wrong, out of scope, or built on context the agent lacked.

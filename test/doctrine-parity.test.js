@@ -56,13 +56,14 @@ const { readFileBounded, containedRealPath } = require(path.join(__dirname, '..'
 // The bound every git call in this file passes explicitly, wider than the shared
 // runner's 4 s default for the reason the repository's size reader states at its
 // own reader-wide figure: a question about a whole repository outlasts the
-// per-file question a hook asks, and both calls here are that kind of question.
-// The index listing runs `ls-files --error-unmatch` over one path and the sweep
-// runs `ls-files` over the tracked tree, and neither reads a file: what each one
-// waits on is git loading the index of a repository whose size nothing here
-// bounds, on a machine whose one heavy-process slot a suite shares with whatever
-// else holds it. A bind on the default is a red about git under contention rather
-// than about the tree, which is the one failure neither call can report usefully.
+// per-file question a hook asks, and all three calls here are that kind of question.
+// The index listing runs `ls-files --error-unmatch` over one path, the sweep runs
+// `ls-files` over the tracked tree, and the ledger control runs `ls-files` over the
+// references glob, and none of them reads a file: what each one waits on is git
+// loading the index of a repository whose size nothing here bounds, on a machine
+// whose one heavy-process slot a suite shares with whatever else holds it. A bind
+// on the default is a red about git under contention rather than about the tree,
+// which is the one failure no call here can report usefully.
 const SWEEP_GIT_TIMEOUT_MS = 20000;
 
 const SKILL = path.join(__dirname, '..', 'plugins', 'claude-kit', 'skills',
