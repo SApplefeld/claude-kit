@@ -3,10 +3,10 @@
 // omits, the executing-work Chapter template's Metrics: line that reports
 // provenance, the "five review rounds" backstop lead's single occurrence,
 // the scope-adjudicator seat's classification and its consult trigger's
-// wording, and the five hand-copied rosters that must all know the new
-// seat. Each of the six checks below is a pure function over file text (or a
-// small text map), returning null on success or a string naming the file and
-// the defect; subject 4 is the one exception, taking the loaded identity
+// wording, the hand-copied rosters that must all know the new seat, and
+// the excluded-root set the judge must never read. Each of the checks below
+// is a pure function over file text (or a small text map), returning null on
+// success or a string naming the file and the defect; subject 4 is the one exception, taking the loaded identity
 // module rather than its text, since the class is what the module resolves.
 // Each has a mutation control that runs the same function over a copy, one
 // written under a temp directory or an in-memory copy of the real text, never
@@ -591,4 +591,61 @@ test('control: removing scope-adjudicator from the effort-pin map fails naming t
         assert.ok(result, 'an effort-pin map missing the seat must fail the check');
         assert.match(result, /effort-pin map/, 'the failure must name the map');
     });
+});
+
+// Subject 8: the excluded-root set the judge must never read is spelled in four
+// places, the charter's two git diff spellings, its by-hand hunk-skip list, and
+// executing-work's fix-round capture command; one drifting from the others is
+// how a root the others exclude reaches the judge, so the four are pinned equal.
+// Prose carriers of the same set (executing-work's "three excluded roots", the
+// charter's "Those three roots", finishing-work's named trio) are not swept here.
+const CHARTER_FILE = path.join(REPO, 'plugins', 'claude-kit', 'agents', 'scope-adjudicator.md');
+
+function rootsOfSpelling(spelling) {
+    return [...spelling.matchAll(/\(exclude\)([^'*]+)\*\*'/g)].map((m) => m[1]).sort();
+}
+
+function checkExcludedRootSets(charterText, executingText) {
+    const spellings = [...charterText.matchAll(/`git diff [^`]*\(exclude\)[^`]*`/g)].map((m) => m[0]);
+    if (spellings.length !== 2) return `scope-adjudicator.md: expected two git diff spellings carrying exclusions, found ${spellings.length}`;
+    const skipMatch = charterText.match(/skip any hunk under ([^\n]*?), and say in your report/);
+    if (!skipMatch) return 'scope-adjudicator.md: hunk-skip list not found';
+    const skipRoots = [...skipMatch[1].matchAll(/`([^`]+)`/g)].map((m) => m[1]).sort();
+    const capture = executingText.match(/`git diff <base> -- <the section's Files in scope>[^`]*`/);
+    if (!capture) return 'executing-work/SKILL.md: fix-round capture command not found';
+    const sets = [
+        ['scope-adjudicator.md two-ref spelling', rootsOfSpelling(spellings[0])],
+        ['scope-adjudicator.md whole-changeset spelling', rootsOfSpelling(spellings[1])],
+        ['scope-adjudicator.md hunk-skip list', skipRoots],
+        ['executing-work/SKILL.md capture command', rootsOfSpelling(capture[0])],
+    ];
+    const reference = sets[0][1].join(',');
+    if (!reference) return 'scope-adjudicator.md two-ref spelling: no excluded roots parsed';
+    for (const [label, roots] of sets) {
+        if (roots.join(',') !== reference) return `${label}: excluded roots [${roots.join(', ')}] differ from [${reference}]`;
+    }
+    return null;
+}
+
+test('the excluded-root set is one value across the charter\'s two spellings, its skip list, and the capture command', () => {
+    assert.strictEqual(checkExcludedRootSets(fs.readFileSync(CHARTER_FILE, 'utf8'), fs.readFileSync(EXECUTING_WORK_FILE, 'utf8')), null);
+});
+
+test('control: dropping kaizen from the charter\'s skip list fails, naming the skip list', () => {
+    const original = fs.readFileSync(CHARTER_FILE, 'utf8');
+    const mutated = original.replace('`docs/archive/` or `kaizen/`', '`docs/archive/`');
+    assert.notStrictEqual(mutated, original, 'test fixture assumption: the skip list named kaizen');
+    const result = checkExcludedRootSets(mutated, fs.readFileSync(EXECUTING_WORK_FILE, 'utf8'));
+    assert.ok(result, 'a skip list missing a root must fail');
+    assert.match(result, /hunk-skip list/, 'the failure must name the skip list');
+});
+
+test('control: dropping kaizen from the whole-changeset spelling fails, naming that spelling', () => {
+    const original = fs.readFileSync(CHARTER_FILE, 'utf8');
+    const needle = "`git diff <base> -- . ':(exclude)docs/plans/**' ':(exclude)docs/archive/**' ':(exclude)kaizen/**'`";
+    const mutated = original.replace(needle, "`git diff <base> -- . ':(exclude)docs/plans/**' ':(exclude)docs/archive/**'`");
+    assert.notStrictEqual(mutated, original, 'test fixture assumption: the whole-changeset spelling named kaizen');
+    const result = checkExcludedRootSets(mutated, fs.readFileSync(EXECUTING_WORK_FILE, 'utf8'));
+    assert.ok(result, 'a spelling missing a root must fail');
+    assert.match(result, /whole-changeset spelling/, 'the failure must name the spelling');
 });

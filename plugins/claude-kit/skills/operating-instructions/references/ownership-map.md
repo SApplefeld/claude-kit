@@ -49,7 +49,7 @@ How to amend: a row changes when ownership moves, and the move lands in the same
 
 | Moment | Owner | Points at it or copies it |
 |---|---|---|
-| The whole-effort finishing pass: QA verification, the finishing reviews, docs curation, memory close, drift routing, close-out | `finishing-work` | doctrine (Finish deliberately, then bank what you learned) |
+| The whole-effort finishing pass: QA verification, the finishing reviews, the goal read, docs curation, memory close, drift routing, close-out | `finishing-work` | doctrine (Finish deliberately, then bank what you learned) |
 | The pull request at finishing, and integration per commit model at the close | `finishing-work` | `executing-work` (points forward), `hooks/pr-docs-guard.js` (docs committed before the PR) |
 | A record that lives only on a frozen PR branch: the strand-check | `finishing-work` and `branch-hygiene` | doctrine (Pushed is not merged) |
 | Reaping merged branches, recovering stranded commits, what may be deleted without asking | `branch-hygiene` | `hooks/branch-reaper-nudge.js` |
