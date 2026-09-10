@@ -8,7 +8,7 @@ Each document sits under its own heading, which opens with its inventory line (w
 
 This document is the operating manual for the kit memory store's extension layer: the file-per-fact memories plus an outcome journal, used-tracking, tags, a decay lifecycle, a shared project-type tier, an operator tier, and the `memq` CLI that reaches all of them. It owns the moments where a session touches that store beyond reading a plain memory file: recalling the whole store at effort start or a seat takeover, reporting what the store recorded during a session, logging an action outcome, stamping a memory applied, tagging, running or reading the decay pass, pinning against decay, writing or repairing or deleting a shared-tier record, recording file anchors and recognition triggers on a record, and interpreting a refusal when a memory write is denied. It also owns how `memq` resolves which store answers from a given working directory, which verbs stand down on a network share, and how each verb's output and exit status must be read. Load class: `named-trigger` - the frontmatter description says to use it when working with the store beyond plain memory files and lists the specific verbs, fields and error states that trigger it, so it is loaded before one of those acts rather than at session start or at every plan run.
 
-Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 (`skills.memory-system.c2.md`); lines 147-208 (`skills.memory-system.c3.md`); lines 209-255 (`skills.memory-system.c4.md`); lines 256-316 (`skills.memory-system.c5.md`).
+Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 (`skills.memory-system.c2.md`); lines 147-208 (`skills.memory-system.c3.md`); lines 209-255 (`skills.memory-system.c4.md`); lines 256-316 (`skills.memory-system.c5.md`). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below).
 
 ### c1.C001
 - key: Load this skill before any work on the kit memory store that goes beyond plain memory files.
@@ -1343,16 +1343,18 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: rule
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:62
 - provenance: 31240d3 2026-08-01, the recap section that wired the run into close-out.
-- verdict: keep
-- reason: The section states the trigger with the carry-into-status obligation the command table row only summarises; nothing runs `recent` for a closing session (A077, A078).
+- verdict: retire
+- superseded-by: S001
+- reason: The section states the trigger with the carry-into-status obligation the command table row only summarises; nothing runs `recent` for a closing session (A077, A078). Superseded at `4b2e64c` by S001 (the Section 8 merge; the verdict before it was keep).
 
 ### c2.C043
 - key: Take the close-out recap trigger from `finishing-work` step 7, which also owns the decay pass.
 - class: pointer
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:62
 - provenance: 31240d3 2026-08-01, placed on the precedent the decay pointer had already set.
-- verdict: keep
-- reason: Two pointers at one owner are not two owners, and deleting this one would leave the recap section naming no trigger owner (A079, A080).
+- verdict: retire
+- superseded-by: S004
+- reason: Two pointers at one owner are not two owners, and deleting this one would leave the recap section naming no trigger owner (A079, A080). Superseded at `4b2e64c` by S004 (the Section 8 merge; the verdict before it was keep).
 
 ### c2.C044
 - key: Verify the store sync at close-out rather than driving it; the store syncs itself.
@@ -4607,48 +4609,54 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: pointer
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:296
 - provenance: 8e22ff4 2026-07-31, which had finishing-work step 7 run the scan when the decay stamp is older than 14 days; last touched ae2c70a 2026-08-22.
-- verdict: rewrite
-- reason: The ownership map assigns decay to memory-system with finishing-work calling it, while this sentence says the reverse and finishing-work points back here for the exact condition. Two owners cross-pointing is the defect the map names; the rewrite makes this section the owner and step 7 the caller.
+- verdict: retire
+- superseded-by: S005
+- reason: The ownership map assigns decay to memory-system with finishing-work calling it, while this sentence says the reverse and finishing-work points back here for the exact condition. Two owners cross-pointing is the defect the map names; the rewrite makes this section the owner and step 7 the caller. Superseded at `4b2e64c` by S005 (the Section 8 merge; the verdict before it was rewrite).
 
 ### c5.C063
 - key: Treat a decay stamp older than 14 days, or absent, as due for a pass.
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:296
 - provenance: 8e22ff4 2026-07-31; the "absent is due" clause was a review fix for a backstop inert on exactly its target population, a store that has never run a close-out.
-- verdict: keep
-- reason: Nothing in memq starts a pass; the 14-day predicate is a reading of the stamp the close-out performs, and the never-run case is the one the fix exists for.
+- verdict: retire
+- superseded-by: S006
+- reason: Nothing in memq starts a pass; the 14-day predicate is a reading of the stamp the close-out performs, and the never-run case is the one the fix exists for. Superseded at `4b2e64c` by S006 (the Section 8 merge; the verdict before it was keep).
 
 ### c5.C064
 - key: Run the pass in order: `decay-scan` reports, your judgment picks, `decay-prune --rollup` with archive flags mutates, `decay-done` stamps.
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:296
 - provenance: 8e22ff4 2026-07-31, the plan's Approach: decay is deterministically scanned, human-judged and close-out-triggered.
-- verdict: keep
-- reason: The verbs report, mutate and stamp, but no driver runs them in order and the judgment step between them is the session's.
+- verdict: retire
+- superseded-by: S007
+- reason: The verbs report, mutate and stamp, but no driver runs them in order and the judgment step between them is the session's. Superseded at `4b2e64c` by S007 (the Section 8 merge; the verdict before it was keep).
 
 ### c5.C065
 - key: Hand-edit only a project-tier summarize; summarize a shared-tier candidate through `add-type` or `add-operator` with `--update`, a body flag and `--confirm-shared`.
 - class: rule
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:296
 - provenance: ae2c70a 2026-08-22, the whole-file read that found finishing-work prescribing two hand edits the shared tiers bar.
-- verdict: rewrite
-- reason: The routing rule holds, because the summarize is the pass's only hand edit and the shared tiers refuse it. Only the wording compresses with the paragraph, in the order the calls are made.
+- verdict: retire
+- superseded-by: S008
+- reason: The routing rule holds, because the summarize is the pass's only hand edit and the shared tiers refuse it. Only the wording compresses with the paragraph, in the order the calls are made. Superseded at `4b2e64c` by S008 (the Section 8 merge; the verdict before it was rewrite).
 
 ### c5.C066
 - key: Treat `--confirm-shared` as one flag for the whole invocation rather than one per target.
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:296
 - provenance: ae2c70a 2026-08-22: the flag is consumed by two independent gates.
-- verdict: keep
-- reason: The flag's scope is the CLI's (memq.js:14238, :14268), but it is the fact every split-call rule follows from, and the verb tells a session only after it has silently waived the type tier's gate.
+- verdict: retire
+- superseded-by: S010
+- reason: The flag's scope is the CLI's (memq.js:14238, :14268), but it is the fact every split-call rule follows from, and the verb tells a session only after it has silently waived the type tier's gate. Superseded at `4b2e64c` by S010 (the Section 8 merge; the verdict before it was keep).
 
 ### c5.C067
 - key: Supply `--confirm-shared` for every `--archive-operator`, the operator tier having no unshared case.
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:296
 - provenance: ae2c70a 2026-08-22; the pass was designed at 8e22ff4 2026-07-31 as a close-out act made where the operator is near.
-- verdict: keep
-- reason: The requirement is a check in the verb (memq.js:14194-14195), but its point is the call shape: an unconditional gate earns its own call. The flag is the CLI's consent token rather than the operator's confirmation, and the archive it consents to is a demotion the store still serves, so the doctrine's irreversible bar does not bite.
+- verdict: retire
+- superseded-by: S011
+- reason: The requirement is a check in the verb (memq.js:14194-14195), but its point is the call shape: an unconditional gate earns its own call. The flag is the CLI's consent token rather than the operator's confirmation, and the archive it consents to is a demotion the store still serves, so the doctrine's irreversible bar does not bite. Superseded at `4b2e64c` by S011 (the Section 8 merge; the verdict before it was keep).
 
 ### c5.C068
 - key: Rely on the target check, which refuses the whole pass naming the memory it could not find, to catch a mistyped name.
@@ -4656,39 +4664,44 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:296
 - provenance: ae2c70a 2026-08-22.
 - verdict: retire
-- reason: The target check refuses the whole pass and names the memory (memq.js:14082-14124), so the sentence is reassurance about a failure the run reports itself.
+- superseded-by: S012
+- reason: The target check refuses the whole pass and names the memory (memq.js:14082-14124), so the sentence is reassurance about a failure the run reports itself. Superseded at `4b2e64c` by S012 (the Section 8 merge).
 
 ### c5.C069
 - key: Give any operator-tier archive its own `decay-prune` call and run the type-tier archive in a separate call without the flag.
 - class: rule
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:296
 - provenance: ae2c70a 2026-08-22, the whole-file read that found one boolean serving two gates.
-- verdict: rewrite
-- reason: The rule holds and nothing enforces it: the security model records the split as prose-enforced with no mechanical check, and combining the calls waives the type tier's cross-project gate silently. Only the paragraph's wording and order change.
+- verdict: retire
+- superseded-by: S014
+- reason: The rule holds and nothing enforces it: the security model records the split as prose-enforced with no mechanical check, and combining the calls waives the type tier's cross-project gate silently. Only the paragraph's wording and order change. Superseded at `4b2e64c` by S014 (the Section 8 merge; the verdict before it was rewrite).
 
 ### c5.C070
 - key: Put `--rollup` on exactly one call, the project tier's.
 - class: rule
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:296
 - provenance: ae2c70a 2026-08-22, installed with the split-call discipline.
-- verdict: rewrite
-- reason: The rule holds unenforced: a second rollup can rewrite a sidecar a lock-free stamp touched since the first and spend the file's only backup generation on the already-pruned copy. Wording compresses with the paragraph.
+- verdict: retire
+- superseded-by: S015
+- reason: The rule holds unenforced: a second rollup can rewrite a sidecar a lock-free stamp touched since the first and spend the file's only backup generation on the already-pruned copy. Wording compresses with the paragraph. Superseded at `4b2e64c` by S015 (the Section 8 merge; the verdict before it was rewrite).
 
 ### c5.C071
 - key: Add `--confirm-shared` to the type-tier call only after the refusal has named the projects the retirement would reach.
 - class: rule
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:296
 - provenance: ae2c70a 2026-08-22.
-- verdict: rewrite
-- reason: The rule holds: the refusal is the only surface that names the reach, and the flag once passed waives the gate for the whole invocation. Wording compresses with the paragraph.
+- verdict: retire
+- superseded-by: S017
+- reason: The rule holds: the refusal is the only surface that names the reach, and the flag once passed waives the gate for the whole invocation. Wording compresses with the paragraph. Superseded at `4b2e64c` by S017 (the Section 8 merge; the verdict before it was rewrite).
 
 ### c5.C072
 - key: Ask the operator rather than adding the flag when the refusal reports that the scan of declaring projects could not be established.
 - class: rule
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:296
 - provenance: ae2c70a 2026-08-22; `projectsDeclaringType` answers null with "could not scan ... for declaring projects" (memq.js:13866-13882).
-- verdict: keep
-- reason: The operator gate stands and guards blast radius: a type-tier retirement reaches every declaring project on every synced machine, and confirming past an unestablished scan buys exactly the retirement the gate asks about. Where line 35's row reads as telling a session to pass the flag in that state, this rule is the one history backs and the row gives way.
+- verdict: retire
+- superseded-by: S018
+- reason: The operator gate stands and guards blast radius: a type-tier retirement reaches every declaring project on every synced machine, and confirming past an unestablished scan buys exactly the retirement the gate asks about. Where line 35's row reads as telling a session to pass the flag in that state, this rule is the one history backs and the row gives way. Superseded at `4b2e64c` by S018 (the Section 8 merge; the verdict before it was keep).
 
 ### c5.C073
 - key: Expect a pass that needed `--confirm-shared` and omitted it to refuse having changed nothing, so a retry costs a round and no work.
@@ -4696,15 +4709,17 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:296
 - provenance: ae2c70a 2026-08-22; the verb acquires every lock before anything mutates (memq.js:14196-14200).
 - verdict: retire
-- reason: The split rule is obeyable without the reassurance, which restates the verb's validate-before-mutate posture. Recorded here: a refused pass changes nothing, so the cost of splitting a call wrongly is one round.
+- superseded-by: S020
+- reason: The split rule is obeyable without the reassurance, which restates the verb's validate-before-mutate posture. Recorded here: a refused pass changes nothing, so the cost of splitting a call wrongly is one round. Superseded at `4b2e64c` by S020 (the Section 8 merge).
 
 ### c5.C074
 - key: Under the engine store, archive what the pass names and leave the journal rollup to an attended session.
 - class: rule
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:296
 - provenance: 752dbce 2026-08-22, the shared-tier plan's grant list ("Six shapes get no prompt-free allow"); the denylist gained `--drop-malformed` at 5ac33f5 2026-08-25.
-- verdict: keep
-- reason: The gate guards an irreversible act and stays: a rollup rewrites every tier's sidecar and journal under a single `.bak` that never syncs, so on an unattended worker it is as final as a deletion. `hooks/memq-grant.js` withholds the flag mechanically; this sentence tells the pass what to do instead.
+- verdict: retire
+- superseded-by: S021
+- reason: The gate guards an irreversible act and stays: a rollup rewrites every tier's sidecar and journal under a single `.bak` that never syncs, so on an unattended worker it is as final as a deletion. `hooks/memq-grant.js` withholds the flag mechanically; this sentence tells the pass what to do instead. Superseded at `4b2e64c` by S021 (the Section 8 merge; the verdict before it was keep).
 
 ### c5.C075
 - key: Expect the SessionStart hook to nudge when the decay stamp is 30+ days overdue.
@@ -4712,15 +4727,17 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:296
 - provenance: 8e22ff4 2026-07-31, the SessionStart backstop.
 - verdict: retire
-- reason: The nudge is emitted by `hooks/memory-session.js` (`NUDGE_AFTER_DAYS = 30`, `decayNudge`, :213, :352-390) and names the pass itself when it fires.
+- superseded-by: S022
+- reason: The nudge is emitted by `hooks/memory-session.js` (`NUDGE_AFTER_DAYS = 30`, `decayNudge`, :213, :352-390) and names the pass itself when it fires. Superseded at `4b2e64c` by S022 (the Section 8 merge).
 
 ### c5.C076
 - key: Do not run `decay-prune` unprompted outside a close-out.
 - class: rule
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:296
 - provenance: ae2c70a 2026-08-22; the pass was designed at 8e22ff4 2026-07-31 as a close-out act made where a human is near.
-- verdict: rewrite
-- reason: The bar holds and nothing enforces it on an attended session. Only the wording compresses with the paragraph.
+- verdict: retire
+- superseded-by: S023
+- reason: The bar holds and nothing enforces it on an attended session. Only the wording compresses with the paragraph. Superseded at `4b2e64c` by S023 (the Section 8 merge; the verdict before it was rewrite).
 
 ### c5.C077
 - key: Run `memq find` in the words of the fact before writing a project-tier memory with the Write tool.
@@ -4961,3 +4978,187 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 945a75c 2026-08-19, which made both committers go through the same leak probes.
 - verdict: keep
 - reason: The ownership map assigns the store's own commits and pushes to memory-system, and the doctrine's staging rule governs a working repository rather than this. Both sanctioned paths pass the probes that refuse a path the allowlist does not admit; a bare `git add` passes none.
+
+### S001
+- key: Run the session-recap command over the session's whole span at close-out.
+- class: rule
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:62
+- provenance: 31240d3 2026-08-01, the recap section that wired the run into close-out; the line was re-extracted at 55c5abc 2026-09-09, which renumbered the finishing-work step named later on it.
+- verdict: keep
+- reason: Nothing runs `memq recent` for a closing session, and the ownership map puts what the store recorded during the effort under this document, so the trigger has to be stated here.
+
+### S002
+- key: Carry the recap digest into the close-out status, labeled by write surface.
+- class: rule
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:62
+- provenance: 31240d3 2026-08-01, the recap section that wired the run into close-out; split from S001 by the re-extraction at 55c5abc 2026-09-09 and sharing its supersession of c2.C042.
+- verdict: keep
+- reason: The carry-into-status obligation is what makes the run reportable, and the command table row only summarises it.
+
+### S003
+- key: Report what the store actually recorded instead of asserting that the effort banked something.
+- class: rationale-example
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:62
+- provenance: 31240d3 2026-08-01, the recap section, which wrote the run-and-carry rule with this clause as its reason.
+- verdict: retire
+- reason: S001 and S002 are obeyable without it, so the reason lives here: a close-out that asserts "learnings banked" without the digest is unverifiable, and the digest grouped by write surface is the store's own account of what landed.
+
+### S004
+- key: Take the close-out recap trigger from finishing-work step 8, which owns it as it owns the decay pass.
+- class: mechanic
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:62
+- provenance: 31240d3 2026-08-01, placed on the precedent the decay pointer had set; 55c5abc 2026-09-09 inserted the finishing goal read as step 4 and renumbered steps 5 to 9, moving this pointer from step 7 to step 8.
+- verdict: rewrite
+- reason: The number is right at HEAD (finishing-work step 8 carries the memory close, the decay pass and the recap), but the ownership map assigns this moment to memory-system with finishing-work calling it, so the safe change is to keep the pointer and make step 8 the caller rather than the owner, matching the S005 rewrite.
+
+### S005
+- key: Run the decay pass at close-out.
+- class: rule
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:296
+- provenance: 8e22ff4 2026-07-31, which had finishing-work run the scan when the decay stamp is older than 14 days; last reworked ae2c70a 2026-08-22; re-extracted at 55c5abc 2026-09-09, which renumbered the step on this line.
+- verdict: rewrite
+- reason: The rule holds because nothing in memq starts a pass; the safe change is merging it with S023 into one sentence, with this section owning the trigger and finishing-work step 8 calling it, which is the ownership map's assignment.
+
+### S006
+- key: Treat a decay stamp older than 14 days, or an absent one, as the trigger finishing-work step 8 owns.
+- class: mechanic
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:296
+- provenance: 8e22ff4 2026-07-31; the absent-is-due clause was a review fix for a backstop inert on a store that had never run a close-out; 55c5abc 2026-09-09 renumbered the owning step from 7 to 8, a change this claim shares with c5.C062's supersession.
+- verdict: rewrite
+- reason: The predicate stays verbatim, since the SessionStart hook's own threshold is 30 days and the 14-day reading lives only here; the safe change is rewording the owner clause so step 8 calls the pass rather than owning its trigger.
+
+### S007
+- key: Run the pass in order: `decay-scan` reports, your judgment picks, `decay-prune --rollup` with archive flags mutates, `decay-done` stamps.
+- class: mechanic
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:296
+- provenance: 8e22ff4 2026-07-31, the plan's Approach: decay is deterministically scanned, human-judged and close-out-triggered; re-extracted at 55c5abc 2026-09-09.
+- verdict: keep
+- reason: The verbs report, mutate and stamp separately and no driver runs them in order; the judgment step between scan and prune is the session's.
+
+### S008
+- key: Make the summarize edit the pass's only hand edit, and hand-edit the project tier alone.
+- class: rule
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:296
+- provenance: ae2c70a 2026-08-22, the whole-file read that found finishing-work prescribing two hand edits the shared tiers bar; re-extracted at 55c5abc 2026-09-09.
+- verdict: rewrite
+- reason: The routing holds because the frontmatter guard refuses every write tool on both shared tiers, so the project tier is the only place a hand edit can land; compressing the sentence out of its parenthetical loses no instruction.
+
+### S009
+- key: Summarize a shared-tier candidate through `add-type` or `add-operator` with `--update`, a body flag and `--confirm-shared`.
+- class: mechanic
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:296
+- provenance: ae2c70a 2026-08-22, installed with S008 as one sentence and sharing its supersession of c5.C065; re-extracted at 55c5abc 2026-09-09.
+- verdict: rewrite
+- reason: The guard's deny line names only the creation spelling, so the repair spelling stays prose, but the reference row at line 30 and the shared-tier repair paragraph already carry it; a pointer at that path here loses nothing.
+
+### S010
+- key: Treat `--confirm-shared` as one flag covering the whole invocation, never one flag per target.
+- class: mechanic
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:296
+- provenance: ae2c70a 2026-08-22: the flag is consumed by two independent gates; re-extracted at 55c5abc 2026-09-09.
+- verdict: keep
+- reason: The scope is the CLI's, but it is the fact every split-call rule follows from, and the verb reveals it only after the type tier's gate has been waived.
+
+### S011
+- key: Always pass `--confirm-shared` with `--archive-operator`.
+- class: mechanic
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:296
+- provenance: ae2c70a 2026-08-22; the pass was designed at 8e22ff4 2026-07-31 as a close-out act made where the operator is near; re-extracted at 55c5abc 2026-09-09.
+- verdict: rewrite
+- reason: The verb refuses an operator archive without the flag and the reference row at line 35 already states the requirement, so the standalone sentence is a duplicate; folding it into the split rule as its premise keeps the one thing it does here, which is to shape the call.
+
+### S012
+- key: Rely on the target check, which refuses the whole pass and names the memory it could not find, to catch a mistyped name.
+- class: rationale-example
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:296
+- provenance: ae2c70a 2026-08-22; re-extracted at 55c5abc 2026-09-09.
+- verdict: retire
+- reason: The target validator refuses the whole pass before anything mutates and names the tier and the memory, so the run reports the failure itself; recorded here so nobody re-adds the reassurance.
+
+### S013
+- key: The type tier's gate is the one moment a retirement reaching past this project stops for a second look, and pre-supplying the flag waives it.
+- class: rationale-example
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:296
+- provenance: ae2c70a 2026-08-22, the whole-file read that found one boolean serving two gates.
+- verdict: retire
+- reason: S014 and S017 are obeyable without it, so the reason lives here: a type-tier retirement reaches every declaring project on every synced machine, the refusal is the only surface that names that reach, and a flag supplied before the refusal answers a question nobody asked.
+
+### S014
+- key: Give any operator-tier archive its own `decay-prune` call and run the type-tier archive in a separate call without the flag.
+- class: rule
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:296
+- provenance: ae2c70a 2026-08-22, the whole-file read that found one boolean serving two gates; re-extracted at 55c5abc 2026-09-09.
+- verdict: rewrite
+- reason: The rule holds and nothing enforces it; the security model records the split as prose-enforced with no mechanical check, and one combined call waives the type tier's cross-project gate silently. Only wording and order change, with S011 folded in as the premise.
+
+### S015
+- key: Put `--rollup` on exactly one call, the project tier's.
+- class: rule
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:296
+- provenance: ae2c70a 2026-08-22, installed with the split-call discipline; re-extracted at 55c5abc 2026-09-09.
+- verdict: rewrite
+- reason: The rule holds unenforced, since nothing counts rollups across calls; wording compresses with the paragraph while S016 carries its cost here.
+
+### S016
+- key: A second `--rollup` run can rewrite a sidecar a lock-free stamp touched since the first and spend that file's only backup generation on the already-pruned copy.
+- class: rationale-example
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:296
+- provenance: ae2c70a 2026-08-22, installed as S015's reason.
+- verdict: retire
+- reason: S015 is obeyable without it, so the cost lives here: the read-stamp hook appends without a lock, a second rollup rewrites the sidecar it touched under the same single `.bak`, and the pre-prune copy is gone.
+
+### S017
+- key: Add `--confirm-shared` to the type-tier call only after the refusal has named the projects the retirement would reach.
+- class: rule
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:296
+- provenance: ae2c70a 2026-08-22; re-extracted at 55c5abc 2026-09-09.
+- verdict: rewrite
+- reason: The rule holds because the refusal is the only surface that names the reach and the flag once passed waives the gate for the whole invocation; only the wording compresses.
+
+### S018
+- key: Ask the operator rather than adding the flag where the refusal reports that the scan of declaring projects could not be established.
+- class: rule
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:296
+- provenance: ae2c70a 2026-08-22; `projectsDeclaringType` answers null with "could not scan ... for declaring projects" and the gate refuses on null exactly as on more than one; re-extracted at 55c5abc 2026-09-09.
+- verdict: keep
+- reason: The operator gate guards blast radius: the reach is genuinely unknown on that refusal shape, and confirming past it buys exactly the retirement the gate exists to ask about.
+
+### S019
+- key: Combining the two archives in one call waives the type tier's gate silently, which is the whole reason to split them.
+- class: rationale-example
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:296
+- provenance: ae2c70a 2026-08-22, installed as S014's reason beside S013.
+- verdict: retire
+- reason: S014 is obeyable without it, so the reason lives here with S013's: the flag is invocation-wide, so satisfying the operator gate on a combined call answers the type gate too, and the verb says nothing about it.
+
+### S020
+- key: A pass that needed the flag and omitted it refuses having changed nothing, so a retry costs a round and no work.
+- class: rationale-example
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:296
+- provenance: ae2c70a 2026-08-22; the verb acquires every lock and runs its validators before anything mutates; re-extracted at 55c5abc 2026-09-09.
+- verdict: retire
+- reason: The split rule is obeyable without the reassurance, which restates the verb's validate-before-mutate posture; recorded here that a refused pass changes nothing, so splitting a call wrongly costs one round.
+
+### S021
+- key: Under the engine store signals, archive what the pass names and leave the journal rollup to an attended session.
+- class: rule
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:296
+- provenance: 752dbce 2026-08-22, the shared-tier plan's grant list; the denylist gained `--drop-malformed` at 5ac33f5 2026-08-25; re-extracted at 55c5abc 2026-09-09.
+- verdict: keep
+- reason: The grant hook withholds `--rollup` mechanically on the unattended vector and this sentence is the only surface telling the pass what to do instead; the gate guards a rewrite of every tier's sidecar under a single backup the sync never carries.
+
+### S022
+- key: Expect the SessionStart hook to nudge once the decay stamp is 30 or more days overdue.
+- class: mechanic
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:296
+- provenance: 8e22ff4 2026-07-31, the SessionStart backstop; re-extracted at 55c5abc 2026-09-09.
+- verdict: retire
+- reason: The nudge is emitted by `hooks/memory-session.js` at its own 30-day constant and names the overdue pass when it fires, so the prose predicts what the environment already says.
+
+### S023
+- key: Do not run `decay-prune` unprompted outside a close-out.
+- class: rule
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:296
+- provenance: ae2c70a 2026-08-22; the pass was designed at 8e22ff4 2026-07-31 as a close-out act made where a human is near; re-extracted at 55c5abc 2026-09-09.
+- verdict: rewrite
+- reason: The bar holds and nothing enforces it on an attended session; merging it with S005 into the one sentence stating when the pass runs loses no instruction.

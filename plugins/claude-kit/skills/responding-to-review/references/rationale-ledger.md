@@ -8,7 +8,7 @@ Each document sits under its own heading, which opens with its inventory line (w
 
 This document governs how a session weighs and answers review output and operator feedback before acting on either. It owns the moments where a review agent returns findings, where the operator gives feedback or a correction, and where a session is about to implement a suggestion from either source, especially one that looks wrong, unclear, or larger than the problem; it also owns how a session counts corroboration across independent review lenses, how it treats a reviewer's clearance or a pair of contradicting verdicts, how it handles a claim finding's fix brief, and the tone of a review reply. It does not own severity triage itself, which it hands to executing-work's "Address findings" step, nor the claim-finding class and its dispositions, which it hands to executing-work, nor the docs-curator Drift Report route, which it hands to finishing-work. Load class: `named-trigger` - the skill is loaded before a specific act, when review output arrives to be adjudicated, when the operator gives feedback, or before implementing a suggestion from either.
 
-Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below).
+Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below).
 
 ### C001
 - key: Treat a review finding as an input to your judgment rather than an order, and evaluate it before you act on it.
@@ -31,32 +31,36 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - class: rule
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
 - provenance: 830ff28 2026-06-17, installed with the skill; the enumeration grew in 12ef61f (blind lens) and a5fce80 (document battery, recorded as a deviation because the adjudication rule must reach the new lenses).
-- verdict: keep
-- reason: Survives the merge at HEAD line 12 verbatim (f26619c inserted a trace sentence beside it). No hook makes a session adjudicate a finding, and the enumeration is what binds each new lens to the rule; R001 and R003 are this sentence re-read and are retired as duplicates of it.
+- verdict: retire
+- superseded-by: S002
+- reason: Survives the merge at HEAD line 12 verbatim (f26619c inserted a trace sentence beside it). No hook makes a session adjudicate a finding, and the enumeration is what binds each new lens to the rule; R001 and R003 are this sentence re-read and are retired as duplicates of it. Superseded at `4b2e64c` by S002 (the Section 8 merge; the verdict before it was keep).
 
 ### C004
 - key: Do not rubber-stamp a finding and do not reflexively defer to it.
 - class: rule
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
 - provenance: 830ff28 2026-06-17, installed with the skill; no incident narrated.
-- verdict: keep
-- reason: Survives at HEAD line 12 verbatim. The two failure modes are the anti-sycophancy pair this skill exists for and nothing mechanical catches either; R004 is its duplicate.
+- verdict: retire
+- superseded-by: S005
+- reason: Survives at HEAD line 12 verbatim. The two failure modes are the anti-sycophancy pair this skill exists for and nothing mechanical catches either; R004 is its duplicate. Superseded at `4b2e64c` by S005 (the Section 8 merge; the verdict before it was keep).
 
 ### C005
 - key: Push back on a wrong finding and give the reason, treating that as correct rather than insubordinate.
 - class: rule
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
 - provenance: 830ff28 2026-06-17, installed with the skill; no incident narrated.
-- verdict: keep
-- reason: Survives at HEAD line 12 verbatim. The "not insubordinate" clause is the license a session needs against the pull to defer; R002 is its duplicate.
+- verdict: retire
+- superseded-by: S003
+- reason: Survives at HEAD line 12 verbatim. The "not insubordinate" clause is the license a session needs against the pull to defer; R002 is its duplicate. Superseded at `4b2e64c` by S003 (the Section 8 merge; the verdict before it was keep).
 
 ### C006
 - key: Route the docs-curator Drift Report to the operator and read finishing-work's step 4 for the adjudications that are yours and how to record them.
 - class: pointer
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
 - provenance: 830ff28 2026-06-17 routed the report to the operator; dd5e568 2026-08-24 (verification-artifacts plan) replaced "exactly one" adjudication, which read as a cap and made an orchestrator refuse a required re-classification, with the class finishing-work step 4 defines.
-- verdict: keep
-- reason: Survives at HEAD line 12 verbatim. Finishing-work owns the stop on a `mistake` and this is the pointer a non-owner keeps; the gate is operator-decision class (A004, A005) because the resolution picks which of code, spec, or doc is the truth. R010 to R012 are this parenthetical re-read.
+- verdict: retire
+- superseded-by: S011
+- reason: Survives at HEAD line 12 verbatim. Finishing-work owns the stop on a `mistake` and this is the pointer a non-owner keeps; the gate is operator-decision class (A004, A005) because the resolution picks which of code, spec, or doc is the truth. R010 to R012 are this parenthetical re-read. Superseded at `4b2e64c` by S011 (the Section 8 merge; the verdict before it was keep).
 
 ### C007
 - key: Implement the operator's feedback once you understand it.
@@ -319,24 +323,27 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - class: pointer
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:34
 - provenance: 5620b2b 2026-09-07, review-loop-exit plan section 2: a false sentence could hold a section open because the loop had no class-keyed exit.
-- verdict: keep
-- reason: no finding. The pointer at the owner; A028 strips the enumeration that rides beside it.
+- verdict: retire
+- superseded-by: S015
+- reason: no finding. The pointer at the owner; A028 strips the enumeration that rides beside it. Superseded at `4b2e64c` by S015 (the Section 8 merge; the verdict before it was keep).
 
 ### C040
 - key: Never put a replacement sentence in a fix brief for a claim finding.
 - class: rule
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:34
 - provenance: 5620b2b 2026-09-07, review-loop-exit plan section 2, which placed this rule here deliberately.
-- verdict: rewrite
-- reason: The rule stands; it gains C041 as its exception clause and loses the copied disposition list beside it (A028 to A030). The why: a rewritten sentence re-enters the class it was written to leave, so a fix brief that carries one restarts the loop it was meant to close.
+- verdict: retire
+- superseded-by: S018
+- reason: The rule stands; it gains C041 as its exception clause and loses the copied disposition list beside it (A028 to A030). The why: a rewritten sentence re-enters the class it was written to leave, so a fix brief that carries one restarts the loop it was meant to close. Superseded at `4b2e64c` by S018 (the Section 8 merge; the verdict before it was rewrite).
 
 ### C041
 - key: Where a claim holds under either exception, owe it the behavior bar.
 - class: rule
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:34
 - provenance: 5620b2b 2026-09-07; the exceptions themselves live in executing-work's KIT-CLAIM-CLASS region, pinned by test/claim-class-parity.test.js.
-- verdict: rewrite
-- reason: A restatement of the owner's bar that survives only as the bound on C040, since without it a security-boundary claim would be barred from a replacement sentence (A029).
+- verdict: retire
+- superseded-by: S019
+- reason: A restatement of the owner's bar that survives only as the bound on C040, since without it a security-boundary claim would be barred from a replacement sentence (A029). Superseded at `4b2e64c` by S019 (the Section 8 merge; the verdict before it was rewrite).
 
 ### C042
 - key: Treat a reviewer's explicit clearance as a claim about the code, not a fact you inherit, and never adopt a load-bearing one on the agent's word alone.
@@ -519,40 +526,45 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - class: rule
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
 - provenance: f26619c 2026-09-08, review-loop-provenance plan section 2, from the NEO-CLAUDE twenty-round section of 2026-09-08 where a Major nobody asked for was built one repair per round (kaizen/notes-NEO-CLAUDE.md line 23).
-- verdict: keep
-- reason: New at HEAD, no finding, no duplicate in this range; the one sentence the plan directed this skill to carry as the adjudication-time pointer at executing-work's provenance read.
+- verdict: retire
+- superseded-by: S006
+- reason: New at HEAD, no finding, no duplicate in this range; the one sentence the plan directed this skill to carry as the adjudication-time pointer at executing-work's provenance read. Superseded at `4b2e64c` by S006 (the Section 8 merge; the verdict before it was keep).
 
 ### R006
 - key: Re-trace a Major finding marked `trace: none` against the trace target yourself before holding anything on it.
 - class: rule
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
 - provenance: f26619c 2026-09-08, review-loop-provenance plan section 2.
-- verdict: keep
-- reason: New at HEAD, no finding; a `trace: none` is the lens's claim about the plan and is verified like any other claim before it is acted on, consistent with C013.
+- verdict: retire
+- superseded-by: S007
+- reason: New at HEAD, no finding; a `trace: none` is the lens's claim about the plan and is verified like any other claim before it is acted on, consistent with C013. Superseded at `4b2e64c` by S007 (the Section 8 merge; the verdict before it was keep).
 
 ### R007
 - key: Send a re-traced `trace: none` Major to the provenance paragraph in executing-work's step 4 rather than into a fix.
 - class: rule
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
 - provenance: f26619c 2026-09-08, review-loop-provenance plan section 2.
-- verdict: keep
-- reason: New at HEAD, no finding; routes to the owner of the disposition, consistent with C023.
+- verdict: retire
+- superseded-by: S008
+- reason: New at HEAD, no finding; routes to the owner of the disposition, consistent with C023. Superseded at `4b2e64c` by S008 (the Section 8 merge; the verdict before it was keep).
 
 ### R008
 - key: Trace a blind lens's findings yourself at adjudication.
 - class: rule
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
 - provenance: f26619c 2026-09-08, review-loop-provenance plan section 2 (the orchestrator supplies the blind lens's trace, recorded as orchestrator-made).
-- verdict: keep
-- reason: New at HEAD, no finding; the blind lens carries no trace by design, which is the same structural fact C053 rests on.
+- verdict: retire
+- superseded-by: S009
+- reason: New at HEAD, no finding; the blind lens carries no trace by design, which is the same structural fact C053 rests on. Superseded at `4b2e64c` by S009 (the Section 8 merge; the verdict before it was keep).
 
 ### R009
 - key: Keep a Critical finding, and any security finding of Critical or Major weight, on its own route whatever its trace says.
 - class: rule
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
 - provenance: f26619c 2026-09-08, review-loop-provenance plan section 2 (the exemption executing-work's provenance paragraph states).
-- verdict: keep
-- reason: New at HEAD, no finding; the bound R006 and R007 need so the provenance route never delays a Critical or a security finding.
+- verdict: retire
+- superseded-by: S010
+- reason: New at HEAD, no finding; the bound R006 and R007 need so the provenance route never delays a Critical or a security finding. Superseded at `4b2e64c` by S010 (the Section 8 merge; the verdict before it was keep).
 
 ### R010
 - key: Route docs-curator's Drift Report to the operator per finishing-work instead of adjudicating it yourself.
@@ -577,3 +589,163 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: dd5e568 2026-08-24; re-read after f26619c 2026-09-08 changed line 12 beside it.
 - verdict: retire
 - reason: Duplicate ledger entry, no text change: held as C006, which keeps at HEAD line 12.
+
+### S001
+- key: Treat every review-agent finding as fallible, because it can be wrong, out of scope, or built on context the agent lacked.
+- class: rationale-example
+- source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
+- provenance: 830ff28 2026-06-17, installed with the skill as ported from Daren's fork and session mining; 55c5abc 2026-09-09 changed only the step number beside it.
+- verdict: keep
+- reason: The three named failure modes are the recognizer a session adjudicates a finding against, and C002's retirement of the line 8 motivation rests on this operative form staying here; nothing mechanical checks a finding for any of the three.
+
+### S002
+- key: Give every finding an honest verdict.
+- class: rule
+- source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
+- provenance: 830ff28 2026-06-17, installed with the skill; the enumeration grew in 12ef61f (blind lens) and a5fce80 (document battery); 55c5abc 2026-09-09 changed only the step number beside it.
+- verdict: keep
+- reason: No hook makes a session return a verdict on a finding, and the enumeration is what binds each new lens to the rule; supersedes C003, of which R001 was a retired duplicate.
+
+### S003
+- key: Push back on a wrong finding and state the reason; treat doing so as correct rather than insubordinate.
+- class: rule
+- source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
+- provenance: 830ff28 2026-06-17, installed with the skill; 55c5abc 2026-09-09 changed only the step number beside it.
+- verdict: keep
+- reason: The "not insubordinate" clause is the license a session needs against the pull to defer; supersedes C005, of which R002 was a retired duplicate.
+
+### S004
+- key: Adjudicate every finding.
+- class: rule
+- source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
+- provenance: 830ff28 2026-06-17, installed with the skill; 55c5abc 2026-09-09 changed only the step number beside it.
+- verdict: keep
+- reason: Shares the C003 -> S002 supersession, C003's key having merged the two sentences; R003 was its retired duplicate. Unenforced by machinery and the sentence the whole skill hangs on.
+
+### S005
+- key: Do not rubber-stamp a finding and do not reflexively defer to it.
+- class: rule
+- source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
+- provenance: 830ff28 2026-06-17, installed with the skill; 55c5abc 2026-09-09 changed only the step number beside it.
+- verdict: keep
+- reason: The two failure modes are the anti-sycophancy pair this skill exists for and nothing mechanical catches either; supersedes C004, of which R004 was a retired duplicate.
+
+### S006
+- key: Read a finding's trace before you read its severity.
+- class: rule
+- source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
+- provenance: f26619c 2026-09-08, review-loop-provenance plan section 2, from the NEO-CLAUDE twenty-round section of 2026-09-08 where a Major nobody asked for was built one repair per round (kaizen/notes-NEO-CLAUDE.md line 23); 55c5abc 2026-09-09 changed only the step number beside it.
+- verdict: keep
+- reason: Incident-born and the one sentence the plan directed this skill to carry as the adjudication-time pointer at executing-work's provenance read; supersedes R005.
+
+### S007
+- key: Re-trace a Major carrying `trace: none` against the trace target yourself before holding anything on it.
+- class: rule
+- source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
+- provenance: f26619c 2026-09-08, review-loop-provenance plan section 2; 55c5abc 2026-09-09 changed only the step number beside it.
+- verdict: keep
+- reason: A `trace: none` is the lens's claim about the plan and is verified like any other claim before it is acted on, consistent with C013; supersedes R006.
+
+### S008
+- key: Send such a finding to the provenance paragraph in executing-work's step 4 instead of into a fix.
+- class: rule
+- source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
+- provenance: f26619c 2026-09-08, review-loop-provenance plan section 2; 55c5abc 2026-09-09 changed only the step number beside it.
+- verdict: keep
+- reason: Routes to the owner of the disposition, consistent with C023, and the provenance paragraph still sits at executing-work's step 4 at HEAD (executing-work SKILL.md line 423); supersedes R007.
+
+### S009
+- key: Trace a blind lens's findings yourself at adjudication.
+- class: rule
+- source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
+- provenance: f26619c 2026-09-08, review-loop-provenance plan section 2 (the orchestrator supplies the blind lens's trace, recorded as orchestrator-made); 55c5abc 2026-09-09 changed only the step number beside it.
+- verdict: keep
+- reason: The blind lens carries no trace by design, the same structural fact C053 rests on; supersedes R008.
+
+### S010
+- key: Keep a Critical, and any security finding of Critical or Major weight, on its own route regardless of its trace.
+- class: rule
+- source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
+- provenance: f26619c 2026-09-08, review-loop-provenance plan section 2 (the exemption executing-work's provenance paragraph states); 55c5abc 2026-09-09 changed only the step number beside it.
+- verdict: keep
+- reason: The bound S007 and S008 need so the provenance route never delays a Critical or a security finding; supersedes R009.
+
+### S011
+- key: Route the docs-curator Drift Report to the operator, following finishing-work.
+- class: rule
+- source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
+- provenance: 830ff28 2026-06-17 routed the report to the operator; dd5e568 2026-08-24 (verification-artifacts plan) replaced the "exactly one" cap with the class finishing-work defines; 55c5abc 2026-09-09 renumbered the step the parenthetical names.
+- verdict: keep
+- reason: Finishing-work owns the stop on a `mistake` and this is the pointer a non-owner keeps, an operator-decision gate because the resolution picks which of code, spec or doc is the truth; supersedes C006, of which R010 was a retired duplicate.
+
+### S012
+- key: Read finishing-work's step 5 for the class of adjudications that are yours.
+- class: pointer
+- source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
+- provenance: dd5e568 2026-08-24 installed the pointer at finishing-work's step 4; 55c5abc 2026-09-09 (review-loop-provenance plan section 6) inserted the goal read as step 4 and renumbered steps 5 to 9, repointing this at step 5.
+- verdict: keep
+- reason: Finishing-work step 5 at HEAD is Documentation curation and defines the `mistake`/`deviation` class, the `Basis:` line and the pre-change read (finishing-work SKILL.md line 62), so the pointer is correct, and no test pins the step number in this file; shares the C006 -> S011 supersession, R011 having been C006's retired duplicate.
+
+### S013
+- key: Perform the pre-change read that a `mistake`'s `Basis:` line calls for.
+- class: rule
+- source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
+- provenance: dd5e568 2026-08-24, verification-artifacts plan; 55c5abc 2026-09-09 renumbered the step it is read from.
+- verdict: keep
+- reason: A named member of the class the S012 pointer names, still defined at the repointed step; shares the C006 -> S011 supersession.
+
+### S014
+- key: Record each of those adjudications the way finishing-work's step 5 directs.
+- class: mechanic
+- source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
+- provenance: dd5e568 2026-08-24, verification-artifacts plan; 55c5abc 2026-09-09 renumbered the step it points at.
+- verdict: keep
+- reason: Carries no mechanic of its own, only the owner's, so it is already the pointer form; shares the C006 -> S011 supersession, R012 having been C006's retired duplicate.
+
+### S015
+- key: Read `skills/executing-work/SKILL.md` under the kit plugin root for the claim class, its exceptions, and the dispositions at its step 4.
+- class: pointer
+- source: plugins/claude-kit/skills/responding-to-review/SKILL.md:34
+- provenance: 5620b2b 2026-09-07, review-loop-exit plan section 2: a false sentence could hold a section open because the loop had no class-keyed exit; abfa98d 2026-09-09 appended S020 beside it.
+- verdict: keep
+- reason: The pointer at the owner, which still holds the class, the exceptions and the four dispositions at its step 4 (executing-work SKILL.md line 435); supersedes C039.
+
+### S016
+- key: Dispose of such a claim by deleting the false sentence, adding a cheap mechanical check, writing a Chapter line, or routing it out of scope.
+- class: mechanic
+- source: plugins/claude-kit/skills/responding-to-review/SKILL.md:34
+- provenance: 5620b2b 2026-09-07, review-loop-exit plan section 2; untouched by the merge.
+- verdict: retire
+- reason: A duplicate whose owner already carries it: executing-work step 4 states the same four forms verbatim at line 435, and the S015 pointer beside it names that step, so dropping the copy loses no instruction. Baseline-test: yes.
+
+### S017
+- key: Do not rewrite the sentence, because a rewritten sentence re-enters the class it was written to leave.
+- class: rationale-example
+- source: plugins/claude-kit/skills/responding-to-review/SKILL.md:34
+- provenance: 5620b2b 2026-09-07, review-loop-exit plan section 2; untouched by the merge.
+- verdict: retire
+- reason: Rationale S018 is obeyable without, and its why now lives here: a rewritten sentence re-enters the claim class it was written to leave, so a fix brief carrying one restarts the loop it was meant to close. Baseline-test: yes.
+
+### S018
+- key: Never put a replacement sentence in a fix brief for a claim finding.
+- class: rule
+- source: plugins/claude-kit/skills/responding-to-review/SKILL.md:34
+- provenance: 5620b2b 2026-09-07, review-loop-exit plan section 2, which placed this rule here deliberately; abfa98d 2026-09-09 appended S020 beside it.
+- verdict: rewrite
+- reason: The rule stands and this skill owns it; the passage compresses to the S015 pointer plus one rule sentence carrying S019 as its exception clause and S020 as the other side of the class split, once S016 and S017 leave. Supersedes C040. Baseline-test: yes.
+
+### S019
+- key: Hold a claim to the behavior bar when either exception applies to it.
+- class: rule
+- source: plugins/claude-kit/skills/responding-to-review/SKILL.md:34
+- provenance: 5620b2b 2026-09-07; the exceptions themselves live in executing-work's KIT-CLAIM-CLASS region, pinned by test/claim-class-parity.test.js; abfa98d 2026-09-09 appended S020 beside it.
+- verdict: rewrite
+- reason: A restatement of the owner's bar that survives only as the bound on S018, since without it a security-boundary claim would be barred from a replacement sentence. Supersedes C041. Baseline-test: yes.
+
+### S020
+- key: Land every other claim finding's fix in the section's close pass along with the other Minors.
+- class: rule
+- source: plugins/claude-kit/skills/responding-to-review/SKILL.md:34
+- provenance: abfa98d 2026-09-09, review-loop-provenance plan section 5: per-round Minor fixes at the writer tier grew the diff the next lenses read and bred text findings, so Minors and unexcepted claim findings now take one close pass per section; the plan directed this skill to carry one sentence.
+- verdict: rewrite
+- reason: A disposition executing-work's step 4 owns and states in full (executing-work SKILL.md lines 423 and 435), which this skill's item 5 hands to that step, so it folds into S018's rule sentence as the "every other" half of the class split, naming the owner rather than restating the pass. Baseline-test: yes.

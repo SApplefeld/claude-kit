@@ -8,7 +8,7 @@ Each document sits under its own heading, which opens with its inventory line (w
 
 This document is the operating contract for autonomously executing an approved spec or plan held in docs/plans/. It owns the moments of a plan run: the completion contract that forbids ending a turn for progress, gates, context or dispatched agents; the closed blocker set and the expert ask, consult, and `BLOCKED:` declaration that a true blocker takes; the `WAITING:` stop shape for pending background dispatches and for a park; the arming and re-arming of the completion leash, including a plan arriving mid-run; the pre-start and post-compaction reads of the plan doc and this skill; the plan `Status:` header normalization; the intake gap check and its routing; the `memq recall` pass before the first section; the external-engine worker stand-down; workspace and sibling-session file ownership; and the section loop's boundary-closing checkpoint clear. Load class: `plan-run` - its own description says to use it when told to proceed, implement, build or continue an agreed plan, or when resuming a session with an In Progress plan doc, and it requires re-invocation through the Skill tool after any compaction during a run.
 
-Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358 (`skills.executing-work.c2.md`); lines 359-445 (`skills.executing-work.c3.md`); lines 446-529 (`skills.executing-work.c4.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below).
+Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358 (`skills.executing-work.c2.md`); lines 359-445 (`skills.executing-work.c3.md`); lines 446-529 (`skills.executing-work.c4.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below).
 
 ### c1.C001
 - key: Load and follow this skill when told to proceed, implement, build or continue an agreed plan, or when resuming a session with an In Progress plan doc.
@@ -4045,64 +4045,72 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:463
 - provenance: 830ff28 2026-06-17, the three commit models; the bullet's gate ordering came with the gate-cadence plan (cceff11 and 3380bf2 2026-08-31) and its index-window argument from Section 8 of the review-and-record plan (6b7b384 2026-08-29).
-- verdict: rewrite
-- reason: The acts stay in order; the four-sentence index-window argument restates the doctrine's index-window bullet, which names the kit's section loop as a declared window, and leaves the step for a pointer; what a red gate does to the push is the lane owners' answer, not this step's (A063 to A066).
+- verdict: retire
+- superseded-by: S094
+- reason: The acts stay in order; the four-sentence index-window argument restates the doctrine's index-window bullet, which names the kit's section loop as a declared window, and leaves the step for a pointer; what a red gate does to the push is the lane owners' answer, not this step's (A063 to A066). Superseded at `4b2e64c` by S094 (the Section 8 merge; the verdict before it was rewrite).
 
 ### c4.C038
 - key: Land the commit only at section close, never at first green, when going direct to main.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:463
 - provenance: 83b81ac 2026-08-19, Section 1 of the boundary-cadence plan, which confined the first-green commit to a branch.
-- verdict: keep
-- reason: Main must never carry an unreviewed section state; the rule and its one-clause bound ride unchanged in the compressed bullet (A065).
+- verdict: retire
+- superseded-by: S095
+- reason: Main must never carry an unreviewed section state; the rule and its one-clause bound ride unchanged in the compressed bullet (A065). Superseded at `4b2e64c` by S095 (the Section 8 merge; the verdict before it was keep).
 
 ### c4.C039
 - key: Where concurrency put you on a worktree branch, take Branch-and-PR's first-green commits and its lanes, and leave the merge to main and the teardown to finishing-work.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:463
 - provenance: 830ff28 2026-06-17 installed the worktree-branch case; the lanes clause came with the gate-cadence plan's close-out (3380bf2 2026-08-31).
-- verdict: keep
-- reason: One handoff stated from each end, finishing-work performing the merge this step defers; line 83 assigns the workspace and this assigns the commit shape on it (A067, A068, A069).
+- verdict: retire
+- superseded-by: S096
+- reason: One handoff stated from each end, finishing-work performing the merge this step defers; line 83 assigns the workspace and this assigns the commit shape on it (A067, A068, A069). Superseded at `4b2e64c` by S096 (the Section 8 merge; the verdict before it was keep).
 
 ### c4.C040
 - key: Run the whole gate with the contention lane beside it before a push that lands on main.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:463
 - provenance: cceff11 and 3380bf2 2026-08-31, the gate-cadence plan, whose pin enrolled executing-work's Commit-and-Push bullet as a carrier of the install-surface condition.
-- verdict: keep
-- reason: The install-surface condition here is a copy pinned by test/doctrine-parity.test.js (INSTALL_SURFACE_CARRIERS), so it keeps its copy; c4.C115 records what this orders (A070, A071, A072).
+- verdict: retire
+- superseded-by: S097
+- reason: The install-surface condition here is a copy pinned by test/doctrine-parity.test.js (INSTALL_SURFACE_CARRIERS), so it keeps its copy; c4.C115 records what this orders (A070, A071, A072). Superseded at `4b2e64c` by S097 (the Section 8 merge; the verdict before it was keep).
 
 ### c4.C041
 - key: Run that gate before the plan doc is staged with the Chapter.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:463
 - provenance: 3380bf2 2026-08-31, the gate-cadence plan's close-out, with the ordering's index-window ground from 6b7b384 2026-08-29.
-- verdict: rewrite
-- reason: The ordering rule stays with its reason folded in (the counts ride the commit that names the gate); the argument that this keeps the full-suite run out of the plan doc's add-to-commit window, leaving only the staged-list read between the add and the commit, moves here with a pointer at the doctrine's index-window bullet (A065).
+- verdict: retire
+- superseded-by: S098
+- reason: The ordering rule stays with its reason folded in (the counts ride the commit that names the gate); the argument that this keeps the full-suite run out of the plan doc's add-to-commit window, leaving only the staged-list read between the add and the commit, moves here with a pointer at the doctrine's index-window bullet (A065). Superseded at `4b2e64c` by S098 (the Section 8 merge; the verdict before it was rewrite).
 
 ### c4.C042
 - key: Put the gate's counts and exit code onto that Chapter's `Gate:` line beside the close gate's.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:463
 - provenance: cceff11 2026-08-31, Section 7 of the gate-cadence plan.
-- verdict: rewrite
-- reason: The template's Gate line owns the field's form and already names the whole gate at an install-surface push; the step's clause survives folded into the gate-before-staging sentence as its reason (A073, A074).
+- verdict: retire
+- superseded-by: S099
+- reason: The template's Gate line owns the field's form and already names the whole gate at an install-surface push; the step's clause survives folded into the gate-before-staging sentence as its reason (A073, A074). Superseded at `4b2e64c` by S099 (the Section 8 merge; the verdict before it was rewrite).
 
 ### c4.C043
 - key: Say on the coordination surface that the index window will stay open before the gate starts, where a peer session may commit on this checkout.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:463
 - provenance: 3380bf2 2026-08-31, the gate-cadence plan's close-out, applying Section 8 of the review-and-record plan (6b7b384 2026-08-29), which made the index a window and the section loop's a declared one.
-- verdict: keep
-- reason: Not a conflict with the doctrine's never-across-a-long-step rule: the same doctrine bullet says a window that will not close is declared rather than shrunk and names the section loop as one, and this is that declaration (A075).
+- verdict: retire
+- superseded-by: S101
+- reason: Not a conflict with the doctrine's never-across-a-long-step rule: the same doctrine bullet says a window that will not close is declared rather than shrunk and names the section loop as one, and this is that declaration (A075). Superseded at `4b2e64c` by S101 (the Section 8 merge; the verdict before it was keep).
 
 ### c4.C044
 - key: Stage the plan doc after the gate, with the gate's counts already on it.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:463
 - provenance: 3380bf2 2026-08-31, the gate-cadence plan's close-out.
-- verdict: rewrite
-- reason: The act stays; the surrounding argument about which window the gate spans and which it does not moves here: the section's own files' window opened at step 4's scope-check add and the gate runs inside it by design, the doc's window opens only after the gate (A065).
+- verdict: retire
+- superseded-by: S102
+- reason: The act stays; the surrounding argument about which window the gate spans and which it does not moves here: the section's own files' window opened at step 4's scope-check add and the gate runs inside it by design, the doc's window opens only after the gate (A065). Superseded at `4b2e64c` by S102 (the Section 8 merge; the verdict before it was rewrite).
 
 ### c4.C045
 - key: Make writing the gate-counts line the only edit performed after the gate.
@@ -4631,8 +4639,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:512
 - provenance: 5cfa68c 2026-09-08, the plain-language recap mandate (plan-review-and-recap section 1).
-- verdict: keep
-- reason: The field already names finishing-work's step 5 as the owner of the recap's parts and order, which is the pointer shape.
+- verdict: retire
+- superseded-by: S104
+- reason: The field already names finishing-work's step 5 as the owner of the recap's parts and order, which is the pointer shape. Superseded at `4b2e64c` by S104 (the Section 8 merge; the verdict before it was keep).
 
 ### c4.C111
 - key: Write a `Decisions / Surprises:` line with anything resolved or discovered, accepting "none", and in the kit's own repository add one line for the probe pair's reading or the state that replaced it, never recorded as clean, with its moment-pin where a pair ran.
@@ -4672,8 +4681,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:517
 - provenance: 9784239 2026-08-30, gate-cadence section 5: the doctrine required a Chapter to name its lane and nothing that defines a Chapter carried it; cceff11 pinned the field's phrases to the doctrine, e0ef09c added the probe legs.
-- verdict: keep
-- reason: The carrier at the point of writing, pinned by `test/doctrine-parity.test.js` on "the lane or lanes that ran" and "the exit code read from the run itself"; a reword there reddens the suite, which is the copy-under-a-pin shape the one-owner rule allows.
+- verdict: retire
+- superseded-by: S113
+- reason: The carrier at the point of writing, pinned by `test/doctrine-parity.test.js` on "the lane or lanes that ran" and "the exit code read from the run itself"; a reword there reddens the suite, which is the copy-under-a-pin shape the one-owner rule allows. Superseded at `4b2e64c` by S113 (the Section 8 merge; the verdict before it was keep).
 
 ### c4.C116
 - key: Write a `Next:` line naming the next section or "finishing-work".
@@ -4758,8 +4768,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: pointer
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:523
 - provenance: d2e2f37 2026-09-05, the subtraction-bars finishing pass replaced 277 words restating the script's contract with this pointer, because a copy could only go stale against the tool.
-- verdict: keep
-- reason: The pointer at the owner, sitting at HEAD line 530 unchanged; the parity test pins that the Delta field names the script.
+- verdict: retire
+- superseded-by: S139
+- reason: The pointer at the owner, sitting at HEAD line 530 unchanged; the parity test pins that the Delta field names the script. Superseded at `4b2e64c` by S139 (the Section 8 merge; the verdict before it was keep).
 
 ### c4.C126
 - key: Spell any path these fields carry relative to the project's root, or leave it out.
@@ -5491,352 +5502,396 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:423
 - provenance: f8c0649 2026-06-10, the initial commit; line touched by f26619c 2026-09-08 without changing this clause.
-- verdict: keep
-- reason: c3.C099's duplicate at HEAD and the loop's base triage line; c3.C134 closes the out-of-scope escape it leaves, which is a second moment (A023 to A027).
+- verdict: retire
+- superseded-by: S001
+- reason: c3.C099's duplicate at HEAD and the loop's base triage line; c3.C134 closes the out-of-scope escape it leaves, which is a second moment (A023 to A027). Superseded at `4b2e64c` by S001 (the Section 8 merge; the verdict before it was keep).
 
 ### R081
 - key: Read a Major's provenance per the paragraph below, then fix it, bucket it, or record the justification for not fixing in the Chapter.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:423
 - provenance: f26619c 2026-09-08, a reviewer's request for a new mechanism had become an unreviewed design built one repair per round.
-- verdict: keep
-- reason: Replaces c3.C100 through the merge; its pointer at the provenance paragraph carries the security carve-out keyed on the finding, which closes the real contention c3.C100 had with c3.C134 (A028).
+- verdict: retire
+- superseded-by: S002
+- reason: Replaces c3.C100 through the merge; its pointer at the provenance paragraph carries the security carve-out keyed on the finding, which closes the real contention c3.C100 had with c3.C134 (A028). Superseded at `4b2e64c` by S002 (the Section 8 merge; the verdict before it was keep).
 
 ### R082
 - key: Note a Minor in the Chapter and fix it only if trivial and in-scope.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:423
 - provenance: f8c0649 2026-06-10; the out-of-scope carve-out is 61b9f52 2026-08-19.
-- verdict: keep
-- reason: c3.C101's duplicate at HEAD, unchanged in substance by the merge.
+- verdict: retire
+- superseded-by: S004
+- reason: c3.C101's duplicate at HEAD, unchanged in substance by the merge. Superseded at `4b2e64c` by S004 (the Section 8 merge; the verdict before it was keep).
 
 ### R083
 - key: Enter a Major into a fix round on its provenance, never on its severity alone.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08, section 2 of the review-loop-provenance plan; last touched 9463de7 2026-09-09.
-- verdict: keep
-- reason: No finding; the paragraph landed after extraction and was not swept. It answers the probe gap S06.sonnet P002 (A024).
+- verdict: retire
+- superseded-by: S014
+- reason: No finding; the paragraph landed after extraction and was not swept. It answers the probe gap S06.sonnet P002 (A024). Superseded at `4b2e64c` by S014 (the Section 8 merge; the verdict before it was keep).
 
 ### R084
 - key: Read provenance at adjudication, before any fix exists, from the finding's trace and the diff rather than from the repair that follows.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S015
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S015 (the Section 8 merge; the verdict before it was keep).
 
 ### R085
 - key: Class a finding tracing to no acceptance bullet and no Goal sentence as new-requirement, wherever its lines sit.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08.
-- verdict: keep
-- reason: No finding; it answers the probe fork S06.sonnet P003 (A025).
+- verdict: retire
+- superseded-by: S016
+- reason: No finding; it answers the probe fork S06.sonnet P003 (A025). Superseded at `4b2e64c` by S016 (the Section 8 merge; the verdict before it was keep).
 
 ### R086
 - key: Class a finding that traces to a bullet and sits in lines a fix round of this section wrote as fix-introduced.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S016
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S016 (the Section 8 merge; the verdict before it was keep).
 
 ### R087
 - key: Class every other traced finding as spec-traceable.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S016
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S016 (the Section 8 merge; the verdict before it was keep).
 
 ### R088
 - key: The precedence runs that way because whether a mechanism nobody asked for should exist is the question that has to be answered first.
 - class: rationale-example
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept. A later pass may weigh it as ground the precedence is obeyable without.
+- verdict: retire
+- superseded-by: S017
+- reason: No finding; landed after extraction, not swept. A later pass may weigh it as ground the precedence is obeyable without. Superseded at `4b2e64c` by S017 (the Section 8 merge; the verdict before it was keep).
 
 ### R089
 - key: Class a Major reporting that the delta built something the plan's `## Out of Scope` list keeps out, or contradicts a recorded decision, as spec-traceable.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08; 9463de7 2026-09-09 last touched the line.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S018
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S018 (the Section 8 merge; the verdict before it was keep).
 
 ### R090
 - key: Routing scope creep as new-requirement would hold the one finding reporting it and send it to a judge whose refuse then leaves the creep built.
 - class: rationale-example
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S019
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S019 (the Section 8 merge; the verdict before it was keep).
 
 ### R091
 - key: Capture the section's delta before each fix round with `git diff <base> -- <Files in scope> ':(exclude)docs/plans/**' ':(exclude)docs/archive/**' ':(exclude)kaizen/**' > .kit/scratch/<plan-slug>/<section>/fix-round-<n>.diff`.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08; the pathspec and exclusions were shaped in that commit's three review rounds.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S020
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S020 (the Section 8 merge; the verdict before it was keep).
 
 ### R092
 - key: Read the fix-introduced value as the difference between consecutive captures, and name that pair in a judge's brief rather than one file.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: 9f1ed1b 2026-09-09 routed a charter mismatch on this pair to docs/backlog.md; the clause is f26619c 2026-09-08's.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept. The backlog carries the open mismatch with the scope adjudicator's charter.
+- verdict: retire
+- superseded-by: S028
+- reason: No finding; landed after extraction, not swept. The backlog carries the open mismatch with the scope adjudicator's charter. Superseded at `4b2e64c` by S028 (the Section 8 merge; the verdict before it was keep).
 
 ### R093
 - key: Keep the project's `.gitignore` covering `.kit/`.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08, pointing at the Delegating section's rule.
-- verdict: keep
-- reason: No finding; a pointer with the capture's own consequence stated.
+- verdict: retire
+- superseded-by: S030
+- reason: No finding; a pointer with the capture's own consequence stated. Superseded at `4b2e64c` by S030 (the Section 8 merge; the verdict before it was keep).
 
 ### R094
 - key: The exclusions and pathspec are load-bearing: a docs/plans capture hands a judge the Chapters, an unscoped one carries a sibling's work, an unkeyed path is overwritten.
 - class: rationale-example
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S031
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S031 (the Section 8 merge; the verdict before it was keep).
 
 ### R095
 - key: Take the trace from the adversarial and security lenses' `trace:` field on every Critical and Major, and trace the blind lens's findings yourself at adjudication.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08, which added the trace field to the sighted charters.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S032
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S032 (the Section 8 merge; the verdict before it was keep).
 
 ### R096
 - key: Read `trace: unsupplied` as no trace supplied, trace that finding yourself, and record it as orchestrator-made.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S034
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S034 (the Section 8 merge; the verdict before it was keep).
 
 ### R097
 - key: Ask no trace of the document pair and make none for its findings.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S035
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S035 (the Section 8 merge; the verdict before it was keep).
 
 ### R098
 - key: Confirm a cited bullet or Goal sentence exists in the `Trace target:` and covers the finding's subject before reading provenance off it.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08, the round that found an existence check passes any real bullet quoted at an unasked mechanism.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S036
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S036 (the Section 8 merge; the verdict before it was keep).
 
 ### R099
 - key: Re-trace every `trace: none` against the same target before holding anything on it.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S037
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S037 (the Section 8 merge; the verdict before it was keep).
 
 ### R100
 - key: Record either re-trace as orchestrator-made, like the blind lens's.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S038
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S038 (the Section 8 merge; the verdict before it was keep).
 
 ### R101
 - key: Fix a Critical, and any security finding of Critical or Major weight, before the section closes or raise it to the operator; never hold or bucket it.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08, keyed on the finding rather than the lens; the carve-out itself is 61b9f52 and a50abed 2026-08-19.
-- verdict: keep
-- reason: No finding of its own; it settles the lens half of S06.sonnet P001, and A064 names the content predicate at line 436 once so both sites read it.
+- verdict: retire
+- superseded-by: S039
+- reason: No finding of its own; it settles the lens half of S06.sonnet P001, and A064 names the content predicate at line 436 once so both sites read it. Superseded at `4b2e64c` by S039 (the Section 8 merge; the verdict before it was keep).
 
 ### R102
 - key: Send a spec-traceable or fix-introduced Major into the fix round as today.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08; the design-stop bound is 9f1ed1b 2026-09-09.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S040
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S040 (the Section 8 merge; the verdict before it was keep).
 
 ### R103
 - key: Never enter a new-requirement Major into a fix round: hold it and continue the section on every other finding.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S041
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S041 (the Section 8 merge; the verdict before it was keep).
 
 ### R104
 - key: Send the held finding to the repo's live Expert seat where the roster shows one, otherwise dispatch the scope-adjudicator via the Agent tool at the fable override and frontmatter effort.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08; the charter is b3ed504 2026-09-08.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S042
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S042 (the Section 8 merge; the verdict before it was keep).
 
 ### R105
 - key: Carry no `Amendments in effect:` line on the judge's brief; deliver a moved acceptance bullet by refreshing the what the brief quotes.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08, the charter refuses adopted rulings as inputs.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S044
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S044 (the Section 8 merge; the verdict before it was keep).
 
 ### R106
 - key: Adopt and record a bucket as a ruling rather than re-deriving the scope call on your own surface.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08, on the operator's recorded decision that a scope call is a ruling to adopt.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S045
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S045 (the Section 8 merge; the verdict before it was keep).
 
 ### R107
 - key: Check the ruling's `GROUNDS` on your own surface, reading a positive ground rather than an absence.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08, the round that found the check passed trivially on the missing bullet.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S046
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S046 (the Section 8 merge; the verdict before it was keep).
 
 ### R108
 - key: For a refuse, confirm the named Goal reading or `## Out of Scope` entry exists and reaches this finding, reading that list beside the `Trace target:`.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08; 9463de7 2026-09-09 last touched the line.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S047
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S047 (the Section 8 merge; the verdict before it was keep).
 
 ### R109
 - key: For an accept-and-declare, confirm the named Goal sentence exists and that the declared work adds no mechanism the trace target does not already carry.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S048
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S048 (the Section 8 merge; the verdict before it was keep).
 
 ### R110
 - key: Say plainly that this bound is wider than the expert paragraph's, since a refuse suppresses an escalation where an answer there only supplies a lead.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08, the round that refused to claim peer-sessions' bounds hold unchanged.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S050
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S050 (the Section 8 merge; the verdict before it was keep).
 
 ### R111
 - key: Treat a ruling whose `GROUNDS` will not check out as a lead rather than a ruling, and let the finding fall to the adjudicator as an unanswered ask does.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S051
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S051 (the Section 8 merge; the verdict before it was keep).
 
 ### R112
 - key: On a `NEEDS_CONTEXT` return, correct what the charter names missing or forbidden and re-dispatch once before the close gate.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S052
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S052 (the Section 8 merge; the verdict before it was keep).
 
 ### R113
 - key: On a second `NEEDS_CONTEXT`, take the ask route to the operator with both returns, under the fixed line `BLOCKED: section <n> holds a new-requirement Major; the judge returned NEEDS_CONTEXT twice`.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08; the Stop hook releasing on one leading line is plugins/claude-kit/hooks/kit-goal-stop.js.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S053
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S053 (the Section 8 merge; the verdict before it was keep).
 
 ### R114
 - key: Record the ruling in the Chapter with the seat that gave it.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S054
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S054 (the Section 8 merge; the verdict before it was keep).
 
 ### R115
 - key: Let an ask unanswered when the section's other work is ready for the close gate fall to the adjudicator, dispatched then and before that gate runs.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08, stating the answer window the expert paragraph lacks.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S055
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S055 (the Section 8 merge; the verdict before it was keep).
 
 ### R116
 - key: Record a held finding on the Chapter's `Review Findings:` field with what it waits on.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S057
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S057 (the Section 8 merge; the verdict before it was keep).
 
 ### R117
 - key: Record a refuse in the plan doc's `Standing Brief Amendments` block as its ground rather than its verdict, written as a rule the next round judges against.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08, since the block rides verbatim on every sighted amendments line and a rated finding there is pre-judging.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S059
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S059 (the Section 8 merge; the verdict before it was keep).
 
 ### R118
 - key: Re-enter an accept-and-declare finding as spec-traceable so it takes a fix round and the close gate like any other.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S060
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S060 (the Section 8 merge; the verdict before it was keep).
 
 ### R119
 - key: Record a declaration in the `Standing Brief Amendments` block at adoption as one appended acceptance bullet stating the declared behaviour and nothing else.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08, the round that found the declaration had two disagreeing homes and gave it one.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S061
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S061 (the Section 8 merge; the verdict before it was keep).
 
 ### R120
 - key: Send an ask to the operator on the BLOCKED path with the judge's recommendation folded into the brief's own recommendation.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S064
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S064 (the Section 8 merge; the verdict before it was keep).
 
 ### R121
 - key: Open that declaration with the fixed line `BLOCKED: section <n> holds a new-requirement Major; the judge recommends an ask`.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08; the precedence over the backstop's line is 9463de7 2026-09-09.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S065
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S065 (the Section 8 merge; the verdict before it was keep).
 
 ### R122
 - key: Hold the section at step 4 on an ask: the section does not close and steps 5 through 8 do not run until the answer arrives.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08, the round that found the ask bucket counted as a disposition though it disposes of nothing.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S067
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S067 (the Section 8 merge; the verdict before it was keep).
 
 ### R123
 - key: A loop keyed on severity alone builds an unasked mechanism one repair at a time and rates every repair correctly on the way.
 - class: rationale-example
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08, the paragraph's stated reason for existing.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S068
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S068 (the Section 8 merge; the verdict before it was keep).
 
 ### R124
 - key: Treat two consecutive rounds of fix-introduced Majors in one mechanism as a design stop rather than opening a third fix round.
@@ -6187,128 +6242,144 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:435
 - provenance: fb5d4fe 2026-09-07 for the terminal condition; 9f1ed1b 2026-09-09 last touched the line with the bucket dispositions.
-- verdict: keep
-- reason: c3.C105's duplicate at HEAD and the loop's terminal condition, incident-born and unenforced; its paragraph splits at the bold leads with no rule lost (A038).
+- verdict: retire
+- superseded-by: S069
+- reason: c3.C105's duplicate at HEAD and the loop's terminal condition, incident-born and unenforced; its paragraph splits at the bold leads with no rule lost (A038). Superseded at `4b2e64c` by S069 (the Section 8 merge; the verdict before it was keep).
 
 ### R168
 - key: Count as dispositions a fix, the out-of-scope route, a justified-not-fixed Chapter record, and a refuse bucketed with its record in the provenance paragraph's place.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:435
 - provenance: f26619c 2026-09-08 and 9f1ed1b 2026-09-09, the bucket dispositions folded into the terminal condition.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S070
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S070 (the Section 8 merge; the verdict before it was keep).
 
 ### R169
 - key: Let a finding still held when the section's other work reaches the close gate fall to the adjudicator then.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:435
 - provenance: f26619c 2026-09-08, the answer window's consequence for the loop end.
-- verdict: keep
-- reason: No finding; landed after extraction, not swept.
+- verdict: retire
+- superseded-by: S071
+- reason: No finding; landed after extraction, not swept. Superseded at `4b2e64c` by S071 (the Section 8 merge; the verdict before it was keep).
 
 ### R170
 - key: Read the class at adjudication from whether the finding states a failure scenario, and read whether the loop ends after the fix round.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:435
 - provenance: fb5d4fe 2026-09-07.
-- verdict: keep
-- reason: c3.C106's duplicate at HEAD; the surviving text.
+- verdict: retire
+- superseded-by: S072
+- reason: c3.C106's duplicate at HEAD; the surviving text. Superseded at `4b2e64c` by S072 (the Section 8 merge; the verdict before it was keep).
 
 ### R171
 - key: Let the fix follow the class, and record the choice in the Chapter where a finding could close either way.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:435
 - provenance: fb5d4fe 2026-09-07.
-- verdict: keep
-- reason: c3.C107's and c3.C108's duplicate at HEAD; the surviving text.
+- verdict: retire
+- superseded-by: S074
+- reason: c3.C107's and c3.C108's duplicate at HEAD; the surviving text. Superseded at `4b2e64c` by S074 (the Section 8 merge; the verdict before it was keep).
 
 ### R172
 - key: Disposition a round's claim findings in the same fix round: delete the false sentence, add a cheap mechanical check, write a Chapter line, or route it out of scope.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:435
 - provenance: fb5d4fe 2026-09-07; responding-to-review points here as the owner.
-- verdict: keep
-- reason: c3.C109's duplicate at HEAD; the surviving text.
+- verdict: retire
+- superseded-by: S076
+- reason: c3.C109's duplicate at HEAD; the surviving text. Superseded at `4b2e64c` by S076 (the Section 8 merge; the verdict before it was keep).
 
 ### R173
 - key: Treat a fix delta of prose deletions alone as owing no round, and any other delta as taking the fix-delta bar.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:435
 - provenance: fb5d4fe 2026-09-07.
-- verdict: keep
-- reason: c3.C110's and c3.C111's duplicate at HEAD; the surviving text.
+- verdict: retire
+- superseded-by: S078
+- reason: c3.C110's and c3.C111's duplicate at HEAD; the surviving text. Superseded at `4b2e64c` by S078 (the Section 8 merge; the verdict before it was keep).
 
 ### R174
 - key: Convene a consult on an owed Major's second reversal on one passage, whose adopted ruling closes the passage.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:435
 - provenance: fb5d4fe 2026-09-07; 9f1ed1b 2026-09-09 ordered it after the design stop where the reversing Majors are fix-introduced.
-- verdict: keep
-- reason: c3.C112's duplicate at HEAD; the surviving text.
+- verdict: retire
+- superseded-by: S080
+- reason: c3.C112's duplicate at HEAD; the surviving text. Superseded at `4b2e64c` by S080 (the Section 8 merge; the verdict before it was keep).
 
 ### R175
 - key: Weigh each finding per the responding-to-review skill before acting on it.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:435
 - provenance: fb5d4fe 2026-09-07 for the sentence.
-- verdict: keep
-- reason: c3.C113's duplicate at HEAD; a pointer at the owner of weighing a finding.
+- verdict: retire
+- superseded-by: S082
+- reason: c3.C113's duplicate at HEAD; a pointer at the owner of weighing a finding. Superseded at `4b2e64c` by S082 (the Section 8 merge; the verdict before it was keep).
 
 ### R176
 - key: Take the paragraph as the edit unit for a claim fix in curated prose and carry the claim's other carriers with it.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:435
 - provenance: ab3d766 2026-08-29.
-- verdict: keep
-- reason: c3.C114's duplicate at HEAD; writing-skills owns the unit and this is its pointer with the fix round's residue.
+- verdict: retire
+- superseded-by: S083
+- reason: c3.C114's duplicate at HEAD; writing-skills owns the unit and this is its pointer with the fix round's residue. Superseded at `4b2e64c` by S083 (the Section 8 merge; the verdict before it was keep).
 
 ### R177
 - key: Route a carrier sitting in a file the section's `Files in scope:` never listed through the out-of-scope route rather than editing it in place.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:435
 - provenance: ab3d766 2026-08-29.
-- verdict: keep
-- reason: c3.C115's duplicate at HEAD; a pointer at c3.C133 with the one fact the fix round needs (A039).
+- verdict: retire
+- superseded-by: S084
+- reason: c3.C115's duplicate at HEAD; a pointer at c3.C133 with the one fact the fix round needs (A039). Superseded at `4b2e64c` by S084 (the Section 8 merge; the verdict before it was keep).
 
 ### R178
 - key: When a review repeats a finding class an earlier section's review surfaced, amend the plan doc's `Standing Brief Amendments` block rather than only fixing the new instance.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:435
 - provenance: 12ef61f 2026-07-09 for the rule; fb5d4fe 2026-09-07 for the claims-class split.
-- verdict: rewrite
-- reason: c3.C116's and c3.C117's duplicate at HEAD; the rule and its split keep, and the "amendment steers the writer" ground moves to this ledger under c3.C118 (A043).
+- verdict: retire
+- superseded-by: S085
+- reason: c3.C116's and c3.C117's duplicate at HEAD; the rule and its split keep, and the "amendment steers the writer" ground moves to this ledger under c3.C118 (A043). Superseded at `4b2e64c` by S085 (the Section 8 merge; the verdict before it was rewrite).
 
 ### R179
 - key: Apply the amendment to a sibling already in flight at its next review round.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:435
 - provenance: db287e3 2026-08-23.
-- verdict: keep
-- reason: c3.C119's duplicate at HEAD; the surviving text.
+- verdict: retire
+- superseded-by: S087
+- reason: c3.C119's duplicate at HEAD; the surviving text. Superseded at `4b2e64c` by S087 (the Section 8 merge; the verdict before it was keep).
 
 ### R180
 - key: Create the `Standing Brief Amendments` block as its own `##` heading above `## Sections of Work`, never as a heading inside it.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:435
 - provenance: db287e3 2026-08-23.
-- verdict: rewrite
-- reason: c3.C120's duplicate at HEAD; the placement keeps and the parser ground moves to this ledger under c3.C121 (A044).
+- verdict: retire
+- superseded-by: S088
+- reason: c3.C120's duplicate at HEAD; the placement keeps and the parser ground moves to this ledger under c3.C121 (A044). Superseded at `4b2e64c` by S088 (the Section 8 merge; the verdict before it was rewrite).
 
 ### R181
 - key: Record the amendment in the Chapter as approval drift.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:435
 - provenance: e872098 2026-08-18.
-- verdict: keep
-- reason: c3.C122's duplicate at HEAD; the surviving text.
+- verdict: retire
+- superseded-by: S089
+- reason: c3.C122's duplicate at HEAD; the surviving text. Superseded at `4b2e64c` by S089 (the Section 8 merge; the verdict before it was keep).
 
 ### R182
 - key: Run the section's close gate at this step once the fixes and folds are in: the targeted lane over the section's files, with the contention lane where machine-shared state was touched.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:435
 - provenance: 9784239 2026-08-30.
-- verdict: rewrite
-- reason: c3.C123's and c3.C124's duplicate at HEAD; the placement and the counts-and-exit-code carry duty keep, and the lane names become a pointer at the doctrine's gate bullet, which the ownership map names as the lanes' owner and step 3 already cites (A045, A046).
+- verdict: retire
+- superseded-by: S090
+- reason: c3.C123's and c3.C124's duplicate at HEAD; the placement and the counts-and-exit-code carry duty keep, and the lane names become a pointer at the doctrine's gate bullet, which the ownership map names as the lanes' owner and step 3 already cites (A045, A046). Superseded at `4b2e64c` by S090 (the Section 8 merge; the verdict before it was rewrite).
 
 ### R183
 - key: Convene the `consultant` as the single read-only fresh-context consult agent at every shape but the design stop, whose judge step 4 names.
@@ -6339,128 +6410,144 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:522
 - provenance: 0faeb51 2026-09-06 for the dispatch-line form; f26619c and 9f1ed1b for the held and design-stop records, which exist because a hold living only in context dies at the next compaction.
-- verdict: keep
-- reason: The HEAD carrier of c4.C113; the held record is the durable half of the provenance read.
+- verdict: retire
+- superseded-by: S105
+- reason: The HEAD carrier of c4.C113; the held record is the durable half of the provenance read. Superseded at `4b2e64c` by S105 (the Section 8 merge; the verdict before it was keep).
 
 ### R187
 - key: Write Chapters so a compacted or fresh session can recover full working state from the plan doc alone.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:530
 - provenance: 656310e 2026-06-10 (as c4.C119).
-- verdict: keep
-- reason: The HEAD carrier of c4.C119; executing-work owns the Chapter and the doctrine's chapter-close bullet points here. The compress ruling on the paragraph keeps this sentence and moves the Delta placement reasons, the parser-tolerance and harmlessness sentences, the probe-prefix facts and the commit-model coverage sentences to this ledger: the Delta line sits last because its output is a multi-line fenced block and the heading with `Completed:` and `Next:` is parsed line by line; the fence is no barrier to that parser; no line the verb prints can open with `Completed:` or `Next:` and it strips a leading heading marker from any path; the runner's summary opens `probe-corpus:` and its warnings `- WARNING:`; and the size reading compares worktree to HEAD, so under a model whose HEAD does not move it accumulates every section's delta and under one whose section commit lands before the Chapter it covers only the delta since that commit.
+- verdict: retire
+- superseded-by: S123
+- reason: The HEAD carrier of c4.C119; executing-work owns the Chapter and the doctrine's chapter-close bullet points here. The compress ruling on the paragraph keeps this sentence and moves the Delta placement reasons, the parser-tolerance and harmlessness sentences, the probe-prefix facts and the commit-model coverage sentences to this ledger: the Delta line sits last because its output is a multi-line fenced block and the heading with `Completed:` and `Next:` is parsed line by line; the fence is no barrier to that parser; no line the verb prints can open with `Completed:` or `Next:` and it strips a leading heading marker from any path; the runner's summary opens `probe-corpus:` and its warnings `- WARNING:`; and the size reading compares worktree to HEAD, so under a model whose HEAD does not move it accumulates every section's delta and under one whose section commit lands before the Chapter it covers only the delta since that commit. Superseded at `4b2e64c` by S123 (the Section 8 merge; the verdict before it was keep).
 
 ### R188
 - key: Record the Metrics line even when every count is zero.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:530
 - provenance: c7e5f64 2026-07-09 (as c4.C120).
-- verdict: keep
-- reason: The HEAD carrier of c4.C120; a zero row is a data point for the experiments the line feeds.
+- verdict: retire
+- superseded-by: S124
+- reason: The HEAD carrier of c4.C120; a zero row is a data point for the experiments the line feeds. Superseded at `4b2e64c` by S124 (the Section 8 merge; the verdict before it was keep).
 
 ### R189
 - key: Read `closed` off the last round that carried findings: `major-closed` for an owed Major, `claim-exit` for a claim finding and no such Major, `clean` otherwise.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:530
 - provenance: fb5d4fe 2026-09-07 (as c4.C121).
-- verdict: keep
-- reason: The HEAD carrier of c4.C121; the reading rule is what makes the closed value comparable across sections.
+- verdict: retire
+- superseded-by: S125
+- reason: The HEAD carrier of c4.C121; the reading rule is what makes the closed value comparable across sections. Superseded at `4b2e64c` by S125 (the Section 8 merge; the verdict before it was keep).
 
 ### R190
 - key: Count only consultant dispatches under `consults <n>`, putting a judge's ruling under the provenance tokens instead.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:530
 - provenance: 9f1ed1b 2026-09-09, so the backlog's consult-adoption series keeps measuring what it always measured.
-- verdict: keep
-- reason: New at the merge with no C counterpart and no finding; a counting rule the experiment's continuity depends on.
+- verdict: retire
+- superseded-by: S126
+- reason: New at the merge with no C counterpart and no finding; a counting rule the experiment's continuity depends on. Superseded at `4b2e64c` by S126 (the Section 8 merge; the verdict before it was keep).
 
 ### R191
 - key: Count every Critical and Major that survived adjudication under the provenance tokens, the carve-out's Criticals and security findings included.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:530
 - provenance: f26619c 2026-09-08 and 9f1ed1b 2026-09-09.
-- verdict: keep
-- reason: New at the merge; no finding.
+- verdict: retire
+- superseded-by: S127
+- reason: New at the merge; no finding. Superseded at `4b2e64c` by S127 (the Section 8 merge; the verdict before it was keep).
 
 ### R192
 - key: Count every bucketed ruling in the `rulings` parenthetical, not only the new-requirement findings it sits beside.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:530
 - provenance: 9f1ed1b 2026-09-09; a design stop's ruling buckets fix-introduced Majors and has nowhere else on the line to go.
-- verdict: keep
-- reason: New at the merge; no finding.
+- verdict: retire
+- superseded-by: S128
+- reason: New at the merge; no finding. Superseded at `4b2e64c` by S128 (the Section 8 merge; the verdict before it was keep).
 
 ### R193
 - key: Count a double-`NEEDS_CONTEXT` exit under `<c>` on either paragraph's route.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:530
 - provenance: 9f1ed1b 2026-09-09.
-- verdict: keep
-- reason: New at the merge; no finding.
+- verdict: retire
+- superseded-by: S130
+- reason: New at the merge; no finding. Superseded at `4b2e64c` by S130 (the Section 8 merge; the verdict before it was keep).
 
 ### R194
 - key: Count a stop once as the single ruling it is, however many Majors its held unit carried, those Majors still counting individually under `<f>`.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:530
 - provenance: 9f1ed1b 2026-09-09.
-- verdict: keep
-- reason: New at the merge; no finding. The arithmetic note beside it (the ruling totals run short of `<r>` by carve-out findings and long by one per design stop) is the bound that stops a reader reporting the difference as a defect.
+- verdict: retire
+- superseded-by: S131
+- reason: New at the merge; no finding. The arithmetic note beside it (the ruling totals run short of `<r>` by carve-out findings and long by one per design stop) is the bound that stops a reader reporting the difference as a defect. Superseded at `4b2e64c` by S131 (the Section 8 merge; the verdict before it was keep).
 
 ### R195
 - key: Count a declared finding once, under `<b>`, and never again under `<s>` when its fix round comes.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:530
 - provenance: f26619c 2026-09-08.
-- verdict: keep
-- reason: New at the merge; no finding.
+- verdict: retire
+- superseded-by: S133
+- reason: New at the merge; no finding. Superseded at `4b2e64c` by S133 (the Section 8 merge; the verdict before it was keep).
 
 ### R196
 - key: Record an execution-time assumption on the Chapter's Assumptions line, leaving the plan doc's `## Assumptions` section frozen at approval.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:530
 - provenance: e872098 2026-08-18 and dff4ef9 2026-08-18 (as c4.C122).
-- verdict: rewrite
-- reason: The HEAD carrier of c4.C122; becomes a pointer at step 0's gap-check paragraph, which states the destination, the format and the reason (the plan's `## Assumptions` sits inside the external engine's approval fingerprint), while finishing-work owns that the close-out block is computed from the Chapters.
+- verdict: retire
+- superseded-by: S134
+- reason: The HEAD carrier of c4.C122; becomes a pointer at step 0's gap-check paragraph, which states the destination, the format and the reason (the plan's `## Assumptions` sits inside the external engine's approval fingerprint), while finishing-work owns that the close-out block is computed from the Chapters. Superseded at `4b2e64c` by S134 (the Section 8 merge; the verdict before it was rewrite).
 
 ### R197
 - key: On the Delta line, resolve `<plugin-root>` by the style-skill bullet's ladder, name the repository outright, and quote the verb with no condition of your own.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:530
 - provenance: 08808b3 2026-09-04 (as c4.C123 and c4.C124).
-- verdict: keep
-- reason: The HEAD carrier of c4.C123 and c4.C124; the name-the-repository rule and its reason are this site's own and the resolution clause is a pointer at the owning bullet.
+- verdict: retire
+- superseded-by: S136
+- reason: The HEAD carrier of c4.C123 and c4.C124; the name-the-repository rule and its reason are this site's own and the resolution clause is a pointer at the owning bullet. Superseded at `4b2e64c` by S136 (the Section 8 merge; the verdict before it was keep).
 
 ### R198
 - key: Spell any path those fields carry relative to the project's root, or leave it out.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:530
 - provenance: 08808b3 2026-09-04 and d2e2f37 2026-09-05 (as c4.C126).
-- verdict: keep
-- reason: The HEAD carrier of c4.C126; a pointer at the BLOCKED first-line rule with an applied scope over three tracked fields, keeping the disclosure reason.
+- verdict: retire
+- superseded-by: S140
+- reason: The HEAD carrier of c4.C126; a pointer at the BLOCKED first-line rule with an applied scope over three tracked fields, keeping the disclosure reason. Superseded at `4b2e64c` by S140 (the Section 8 merge; the verdict before it was keep).
 
 ### R199
 - key: Put the Delta line last on the template, after every line the machine contract reads.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:530
 - provenance: 08808b3 2026-09-04.
-- verdict: keep
-- reason: Not extracted as a C claim; it is the placement rule the compress ruling keeps while its two reasons move to R187's entry above.
+- verdict: retire
+- superseded-by: S142
+- reason: Not extracted as a C claim; it is the placement rule the compress ruling keeps while its two reasons move to R187's entry above. Superseded at `4b2e64c` by S142 (the Section 8 merge; the verdict before it was keep).
 
 ### R200
 - key: Never open a line you add to any Chapter field with `Completed:`, `Next:` or `#`; respell a recorded text that would and note the respelling.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:530
 - provenance: e0ef09c 2026-09-06 (as c4.C127).
-- verdict: keep
-- reason: The HEAD carrier of c4.C127; no kit hook enforces it because the parser is the external engine's, so the prose is the whole protection.
+- verdict: retire
+- superseded-by: S143
+- reason: The HEAD carrier of c4.C127; no kit hook enforces it because the parser is the external engine's, so the prose is the whole protection. Superseded at `4b2e64c` by S143 (the Section 8 merge; the verdict before it was keep).
 
 ### R201
 - key: Read the Delta output's row list rather than only its totals.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:530
 - provenance: 08808b3 2026-09-04 (as c4.C128).
-- verdict: keep
-- reason: The HEAD carrier of c4.C128; its bound (a shared checkout's reading carries other sessions' uncommitted edits) is what makes the totals unreadable alone.
+- verdict: retire
+- superseded-by: S145
+- reason: The HEAD carrier of c4.C128; its bound (a shared checkout's reading carries other sessions' uncommitted edits) is what makes the totals unreadable alone. Superseded at `4b2e64c` by S145 (the Section 8 merge; the verdict before it was keep).
 
 ### R202
 - key: Name the lanes that ran on the Chapter's Gate line.
@@ -6468,15 +6555,1201 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:530
 - provenance: 9784239 2026-08-30 (as c4.C129).
 - verdict: retire
-- reason: The HEAD carrier of c4.C129, retired with it: the duty is the pinned Gate field's and the doctrine's gate bullet's, and this sentence is their rationale, recorded under c4.C129 above.
+- superseded-by: S146
+- reason: The HEAD carrier of c4.C129, retired with it: the duty is the pinned Gate field's and the doctrine's gate bullet's, and this sentence is their rationale, recorded under c4.C129 above. Superseded at `4b2e64c` by S146 (the Section 8 merge).
 
 ### R203
 - key: Carry a moment-pin on every measured figure a Chapter records, and cite the deep evidence's own home rather than restating it.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:530
 - provenance: 7ef71e3 2026-09-01 (as c4.C130 and c4.C131).
+- verdict: retire
+- superseded-by: S147
+- reason: The HEAD carrier of c4.C130 and c4.C131; a pointer site the instruments-not-prose parity test counts, so a rewrite into a restatement or a deletion reddens the suite. Superseded at `4b2e64c` by S147 (the Section 8 merge; the verdict before it was keep).
+
+### S001
+- key: Fix every Critical finding before the section closes.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:423
+- provenance: f8c0649 2026-06-10, the initial commit's triage line; abfa98d 2026-09-09 rewrote the line's Minor clause and left this one.
 - verdict: keep
-- reason: The HEAD carrier of c4.C130 and c4.C131; a pointer site the instruments-not-prose parity test counts, so a rewrite into a restatement or a deletion reddens the suite.
+- reason: The loop's base triage line, unenforced and unowned elsewhere; the out-of-scope route's carve-out (S039) is the second moment that closes its escape.
+
+### S002
+- key: Read a Major finding's provenance per the provenance paragraph below, which decides what it enters.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:423
+- provenance: f26619c 2026-09-08, review-loop provenance plan section 2, after a reviewer's request for a new mechanism became an unreviewed design built one repair per round; line touched by abfa98d 2026-09-09.
+- verdict: keep
+- reason: The pointer that routes every Major through the provenance paragraph, which owns the read; changing the route means changing that paragraph.
+
+### S003
+- key: After reading its provenance, either fix a Major, bucket it, or record in the Chapter the justification for not fixing it.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:423
+- provenance: f26619c 2026-09-08, as S002's sentence; line touched by abfa98d 2026-09-09.
+- verdict: keep
+- reason: The three dispositions are the terminal condition's vocabulary (S070), so a fourth here would leave the loop unable to end on it.
+
+### S004
+- key: Read every Minor at adjudication and upgrade it where a consequence is stated.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:423
+- provenance: abfa98d 2026-09-09, review-loop provenance plan section 5: per-round Minor fixes at the writer tier grew the diff the next lenses read and bred text findings, so Minors defer to one close pass; four rounds, a design stop, an expert ask and a consult sit on that plan's Chapter 5.
+- verdict: keep
+- reason: The upgrade read is what keeps a misrated behavior finding out of the deferred list; no hook or test enforces the pass, so the prose is the mechanism.
+
+### S005
+- key: Record a Minor that was not upgraded in the section's Minor list and fix the list in one pass at section close.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:423
+- provenance: abfa98d 2026-09-09, as S004's sentence.
+- verdict: keep
+- reason: The deferral itself; its why (S013) lives here: a Minor fixed at the writer tier every round grows the diff the next three lenses read, and text edits breed text findings, so per-round fixing drives cost and churn without moving the loop toward its exit.
+
+### S006
+- key: Keep the Minor list at `.kit/scratch/<plan-slug>/minors-section-<n>.md`, created at the section's first Minor, one line per Minor as the lens printed it with the round number prefixed.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:423
+- provenance: abfa98d 2026-09-09; finishing-work names its own list path in the same commit.
+- verdict: keep
+- reason: The path is what a resumed session and the finishing pass key on; nothing creates or reads the file mechanically.
+
+### S007
+- key: Read that Minor file at the close pass and delete it at no point.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:423
+- provenance: abfa98d 2026-09-09.
+- verdict: keep
+- reason: A deleted list loses the Minors a compaction or a resume would otherwise recover; `.kit/` is gitignored so nothing needs to remove it.
+
+### S008
+- key: Run the Minor pass after the terminal condition is met and before the close gate, and open no review round after it.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:423
+- provenance: abfa98d 2026-09-09.
+- verdict: keep
+- reason: The ordering the deferral turns on: a pass before the terminal condition would feed the loop it exists to shorten, and a round after it would reopen a closed section.
+
+### S009
+- key: Leave a Minor whose fix would meet the fix-delta bar unfixed, recording the reason instead.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:423
+- provenance: abfa98d 2026-09-09.
+- verdict: keep
+- reason: The bound that keeps the pass from owing a round; it keys on the fix-delta bar the same step owns.
+
+### S010
+- key: Give the Minor pass's delta step 5's below-bar author re-read and record it in the Chapter as an author re-read rather than a round.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:423
+- provenance: abfa98d 2026-09-09; the below-bar re-read it points at is step 5's correction leg (6d2e6cc 2026-08-29).
+- verdict: keep
+- reason: A pointer at the read the delta takes, with its Chapter form; without it main could carry a close-pass delta nobody read.
+
+### S011
+- key: Accumulate a claim finding that no exception holds into the Minor list whatever rating it arrived with.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:423
+- provenance: abfa98d 2026-09-09, the consult-ruled class-keyed split.
+- verdict: rewrite
+- reason: The split's owner is the terminal-condition paragraph (S076), which this sentence names; it compresses to a pointer with the list-side clause and loses no instruction.
+
+### S012
+- key: Send a Minor outside the section's scope to the out-of-scope route.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:423
+- provenance: 61b9f52 2026-08-19, the out-of-scope carve-out on the Minor clause; reworded by abfa98d 2026-09-09.
+- verdict: keep
+- reason: A pointer at the route that owns the disposition; the Minor list holds in-scope Minors only.
+
+### S013
+- key: Defer Minors because fixing one at the writer tier every round grows the diff the next lenses read and text edits breed text findings.
+- class: rationale-example
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:423
+- provenance: abfa98d 2026-09-09, the commit's own incident statement.
+- verdict: retire
+- reason: The deferral (S005) is obeyable without its why, which this ledger now holds under S005.
+
+### S014
+- key: Enter a Major into a fix round on its provenance, never on its severity alone.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08, review-loop provenance plan section 2; last touched 9463de7 2026-09-09; line touched by 0103483 2026-09-09.
+- verdict: keep
+- reason: The paragraph's lead; its why (S068) lives here: a severity is a reviewer's reading of consequence and says nothing about whether anyone asked for the thing, so a loop keyed on severity alone builds an unasked mechanism one repair at a time and rates every repair correctly on the way.
+
+### S015
+- key: Read provenance at adjudication, before any fix exists, from the finding's trace and the diff rather than from the repair that follows.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08; line touched by 0103483 2026-09-09.
+- verdict: keep
+- reason: Reading off the repair would make every fix spec-traceable; the moment is the rule.
+
+### S016
+- key: Assign one of three exclusive values: new-requirement where nothing traces, fix-introduced where it traces and sits in this section's fix-round lines, spec-traceable otherwise.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08, the three values R085, R086 and R087 carried one each; test/review-loop-provenance.test.js (950723b 2026-09-09) pins the Metrics tokens they feed; line touched by 0103483 2026-09-09.
+- verdict: keep
+- reason: The pin covers the tokens, not the read, so the prose is the rule; its precedence ground (S017) lives here: a defect in a mechanism nobody asked for is both fix-introduced and unasked, and whether that mechanism should exist is the question that has to be answered first.
+
+### S017
+- key: Order the precedence that way because a defect in a mechanism nobody asked for is both fix-introduced and unasked, and whether it should exist comes first.
+- class: rationale-example
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08.
+- verdict: retire
+- reason: Ground S016 is obeyable without; held under S016.
+
+### S018
+- key: Read a Major reporting the delta built something `## Out of Scope` keeps out, or contradicting a recorded decision, as spec-traceable, whatever its trace.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08; 9463de7 2026-09-09 last touched the line; line touched by 0103483 2026-09-09.
+- verdict: keep
+- reason: The one exemption from new-requirement; its why (S019) lives here: the trace vocabulary cannot tell scope creep from a new requirement, both citing no bullet, and routing creep as new-requirement would hold the single finding that reports it and send it to a judge whose refuse leaves the creep built.
+
+### S019
+- key: Exempt that subject because the trace vocabulary cannot tell it apart, and holding it would send scope creep to a judge whose refuse leaves the creep built.
+- class: rationale-example
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08.
+- verdict: retire
+- reason: Ground S018 is obeyable without; held under S018.
+
+### S020
+- key: Capture the section's delta before each fix round with `git diff <base> -- <Files in scope>` excluding docs/plans, docs/archive and kaizen, into `.kit/scratch/<plan-slug>/<section>/fix-round-<n>.diff`.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08, the pathspec and exclusions shaped in that commit's three review rounds; 0103483 2026-09-09 appended the untracked-file group after it.
+- verdict: keep
+- reason: No hook produces the capture, so the command is the mechanism; its load-bearing ground (S031) lives here: a capture reaching `docs/plans/**` hands a later judge the plan's Chapters its charter refuses, one unscoped to the section's files carries a sibling's unstaged work as this section's lines, and a path unkeyed on the section is overwritten by whichever sibling reaches the same round number second.
+
+### S021
+- key: Append each in-scope path absent from the index with `git diff --no-index -- /dev/null <path> >> <capture>`, one call per path.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: 0103483 2026-09-09, review-loop provenance plan section 9 (surfaced by section 7's review, 950723b): the tracked-only diff left a file the section created invisible until the scope-check add, which sits after the last fix round; the operator memory a-fingerprints-coverage-is-its-query-not-its-hash records the class.
+- verdict: keep
+- reason: The only way a created file reaches the capture before something tracks it; its incident (S024) lives here: a created file is invisible to every capture until Branch-and-PR's first-green commit, which lands before the round, or step 4's scope-check `git add`, which sits after the loop's last fix round.
+
+### S022
+- key: Run that append from the repository root with the path spelled repo-relative and carrying no `..` segment.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: 0103483 2026-09-09, the unbounded path raised as a round-1 Major by the adversarial lens per the plan's Chapter 9.
+- verdict: keep
+- reason: `--no-index` reads any path it is handed, outside the worktree included; the bound is the whole security of the append.
+
+### S023
+- key: Skip a path under one of the three excluded roots rather than appending it.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: 0103483 2026-09-09, the exclusions bypass raised as a round-1 Major by both lenses per Chapter 9.
+- verdict: keep
+- reason: `--no-index` honors no exclusion pathspec, so without the skip the append carries exactly what S020's exclusions keep from a judge.
+
+### S024
+- key: A file the section created is invisible to every capture until Branch-and-PR's first-green commit or step 4's scope-check `git add` tracks it.
+- class: rationale-example
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: 0103483 2026-09-09.
+- verdict: retire
+- reason: The incident behind S021, whose trigger is `git ls-files` failing; held under S021.
+
+### S025
+- key: Read the append's result from whether the capture grew, never from the call's exit code, which is 1 either way.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: 0103483 2026-09-09; Chapter 9 records the orchestrator running the command on an empty and a non-empty file, both exiting 1, and both lenses raising the exit-code reading as a Major.
+- verdict: keep
+- reason: The doctrine's read-the-exit-code bullet meets a command whose exit code carries nothing, so the reading has to be named.
+
+### S026
+- key: Treat an append that grew the capture by nothing as naming a path the section did not create as spelled.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: 0103483 2026-09-09.
+- verdict: keep
+- reason: The reading's negative case; it turns a misspelled path into a visible defect rather than a silent empty append.
+
+### S027
+- key: Never use `git add -N <path>` to make an untracked in-scope path visible to the capture.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: 0103483 2026-09-09, intent-to-add refused because it puts the path in the index the staged-list read reads.
+- verdict: keep
+- reason: Names the obvious alternative and the two index rules it breaks, so the next author does not reach for it.
+
+### S028
+- key: Read the fix-introduced value as the difference between consecutive captures: round n's fix lines are what capture n+1 holds and capture n does not.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08 for the clause; 9f1ed1b 2026-09-09 routed a charter mismatch on the pair to docs/backlog.md; line touched by 0103483 2026-09-09.
+- verdict: keep
+- reason: The only derivation of fix-introduced that does not read off the repair; the backlog carries the open mismatch with the scope adjudicator's single-delta wording.
+
+### S029
+- key: Name that pair of captures in a judge's brief rather than one capture file.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08; 9f1ed1b 2026-09-09.
+- verdict: keep
+- reason: One file is the delta as a round found it, not the lines a fix wrote, so a brief naming one file misreads the value.
+
+### S030
+- key: Keep the project's `.gitignore` covering `.kit/`.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08, pointing at the Delegating section's rule; line touched by 0103483 2026-09-09.
+- verdict: keep
+- reason: A pointer with the capture's own consequence: an untracked capture is a tracked file carrying the fix narrative into the next commit.
+
+### S031
+- key: The exclusions and the pathspec are load-bearing: they keep the plan's Chapters from a judge, a sibling's unstaged work out of the delta, and siblings from overwriting each other's captures.
+- class: rationale-example
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08.
+- verdict: retire
+- reason: Ground S020's command is obeyable without; held under S020.
+
+### S032
+- key: Dispatch the adversarial and security lenses with the spec path so each carries a `trace:` field on the output line of every Critical and Major.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08, which added the trace field to the sighted charters; test/review-loop-provenance.test.js (950723b 2026-09-09) pins the field on their output lines; line touched by 0103483 2026-09-09.
+- verdict: keep
+- reason: The dispatch side of a pinned charter field; the pin catches a charter drift, not a dispatch that omits the spec.
+
+### S033
+- key: Trace the blind lens's Criticals and Majors yourself at adjudication and record that trace in the Chapter as orchestrator-made.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08.
+- verdict: keep
+- reason: The blind lens cites nothing by design, so the orchestrator's trace is the only one that can exist and the record says whose it is.
+
+### S034
+- key: Read a `trace: unsupplied` as no trace supplied, trace that finding yourself, and record it as orchestrator-made.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08; line touched by 0103483 2026-09-09.
+- verdict: keep
+- reason: A lens that never held the spec asserted nothing about the plan, so its token cannot be read as a trace of none.
+
+### S035
+- key: Ask no trace of the document pair's findings and make none for them.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08; line touched by 0103483 2026-09-09.
+- verdict: keep
+- reason: The consuming side of step 3's no-trace-target rule for the prose reviewer (R043); comprehension and prose findings sit outside the provenance read.
+
+### S036
+- key: Confirm a cited bullet or Goal sentence exists in the `Trace target:` and covers the finding's subject before reading provenance off it.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08, the round that found an existence check passes any real bullet quoted at an unasked mechanism; line touched by 0103483 2026-09-09.
+- verdict: keep
+- reason: A trace is a reviewer's assertion; the coverage half of the check is the review-caught defect.
+
+### S037
+- key: Re-trace every `trace: none` against the same `Trace target:` before holding anything on it.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08; line touched by 0103483 2026-09-09.
+- verdict: keep
+- reason: A lens that missed the bullet would otherwise cost a hold, a judge and a ruling on work the plan asked for.
+
+### S038
+- key: Record either re-trace as orchestrator-made, like the blind lens's.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08; line touched by 0103483 2026-09-09.
+- verdict: keep
+- reason: The record that lets a later reader tell a lens's trace from the orchestrator's.
+
+### S039
+- key: Fix a Critical, and any security finding of Critical or Major weight, before the section closes or raise it to the operator; never hold or bucket it.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08, keyed on the finding rather than the lens; the carve-out is 61b9f52 and a50abed 2026-08-19; line touched by 0103483 2026-09-09.
+- verdict: keep
+- reason: The carve-out that governs ahead of the read; the design stop and the backstop inherit it by name, and the out-of-scope route states its content predicate once.
+
+### S040
+- key: Send a spec-traceable or fix-introduced Major below that bar into the fix round.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08; the design-stop bound is 9f1ed1b 2026-09-09; line touched by 0103483 2026-09-09.
+- verdict: keep
+- reason: The fix-round default, bounded by the design stop.
+
+### S041
+- key: Never enter a new-requirement Major into a fix round; hold it and continue the section on every other finding.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08; line touched by 0103483 2026-09-09.
+- verdict: keep
+- reason: The hold is the paragraph's point; its bound (the disputed finding alone) keeps the section moving.
+
+### S042
+- key: Send the held finding to the repo's live Expert seat where the `ListAgents` roster shows one, and otherwise to the `scope-adjudicator`.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08; the charter is b3ed504 2026-09-08; line touched by 0103483 2026-09-09.
+- verdict: keep
+- reason: The Expert route runs through the completion contract's expert-ask paragraph, which owns it; the adjudicator is the fallback seat.
+
+### S043
+- key: Dispatch the `scope-adjudicator` through the Agent tool with the fable model override at that charter's own frontmatter effort, on the fixed brief the charter states.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08; b3ed504 2026-09-08 for the charter.
+- verdict: keep
+- reason: The dispatch form, pointing at the compensation route for the Workflow case and at the charter for the brief's contents.
+
+### S044
+- key: Put no `Amendments in effect:` line in the judge's brief; deliver a moved acceptance bullet by refreshing the what the brief quotes.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08, the charter refuses adopted rulings as inputs; line touched by 0103483 2026-09-09.
+- verdict: keep
+- reason: The block's contents are rulings the judge's charter refuses; refreshing the quoted what is the one channel a moved bullet has.
+
+### S045
+- key: Adopt and record the judge's bucket rather than going and re-deriving the scope call.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08, on the operator's recorded decision that a scope call is a ruling to adopt; line touched by 0103483 2026-09-09.
+- verdict: keep
+- reason: An operator decision; the GROUNDS check (S046) is the whole of what the adoption rests on.
+
+### S046
+- key: Check the ruling's `GROUNDS` on your own surface, reading a positive ground rather than an absence.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08, the round that found the check passed trivially on the missing bullet; line touched by 0103483 2026-09-09.
+- verdict: keep
+- reason: A refusal grounded only on the missing bullet quotes back the fact that put the finding before the judge and would pass every time.
+
+### S047
+- key: For a refuse, confirm the named Goal reading or `## Out of Scope` entry exists and reaches this finding, reading the plan's `## Out of Scope` list beside the `Trace target:`.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08; 9463de7 2026-09-09 last touched the line; line touched by 0103483 2026-09-09.
+- verdict: keep
+- reason: A refusal's ground routinely sits in the list rather than among the bullets, so the trace target alone cannot check it.
+
+### S048
+- key: For an accept-and-declare, confirm the named Goal sentence exists and that the declared work adds no mechanism the trace target does not already carry.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08; line touched by 0103483 2026-09-09.
+- verdict: keep
+- reason: The no-new-mechanism half is what separates a declare from an ask.
+
+### S049
+- key: Wherever the ruling quotes a bullet, confirm that bullet exists in the trace target and covers the finding's subject.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08, per `git log -S`; the re-extraction folded it under its neighbours.
+- verdict: keep
+- reason: The check's third leg, applying to any bucket; S036's coverage test at the ruling.
+
+### S050
+- key: Say plainly which bound this widens rather than claiming the expert paragraph's hold applies here unchanged.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08, the round that refused to claim peer-sessions' bounds hold unchanged; line touched by 0103483 2026-09-09.
+- verdict: keep
+- reason: A refuse here suppresses an escalation the expert paragraph never lets an answer suppress; the widening is stated so the two paragraphs cannot be read as one.
+
+### S051
+- key: Treat a ruling whose `GROUNDS` will not check out as a lead rather than a ruling, and let the finding fall to the adjudicator as an unanswered ask does.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08; line touched by 0103483 2026-09-09.
+- verdict: keep
+- reason: The failure route of the GROUNDS check; without it a bad ruling is adopted on S045.
+
+### S052
+- key: On a `NEEDS_CONTEXT` return, correct what the charter names missing or forbidden and re-dispatch once before the close gate.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08; line touched by 0103483 2026-09-09.
+- verdict: keep
+- reason: A brief defect rather than a ruling; one re-dispatch is the ladder's own retry shape.
+
+### S053
+- key: On a second `NEEDS_CONTEXT`, take the ask route to the operator with both returns in the brief under the fixed line `BLOCKED: section <n> holds a new-requirement Major; the judge returned NEEDS_CONTEXT twice`.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08; the one-leading-line release is plugins/claude-kit/hooks/kit-goal-stop.js; line touched by 0103483 2026-09-09.
+- verdict: keep
+- reason: The bucket literal would name a recommendation the judge never made; the Stop hook is why the line is fixed.
+
+### S054
+- key: Record the ruling in the Chapter with the seat that gave it.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08; line touched by 0103483 2026-09-09.
+- verdict: keep
+- reason: The template's `Review Findings:` form (S106) carries the seat; this is the duty that fills it.
+
+### S055
+- key: Where an expert ask is unanswered once the section's other work is ready for the close gate, dispatch the adjudicator then and before that gate; close no section with a finding still held.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08, stating the answer window the expert paragraph lacks; line touched by 0103483 2026-09-09.
+- verdict: keep
+- reason: The window the completion contract's expert paragraph omits; the design stop and the backstop inherit it whole.
+
+### S056
+- key: Treat a seat's answer arriving after that dispatch as late, hold the adjudicator's ruling in force, and record the late answer beside it.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08, as S055's sentence.
+- verdict: keep
+- reason: Settles which ruling is in force when two arrive, so a late seat answer cannot reopen a closed finding.
+
+### S057
+- key: Record a held finding on the Chapter's `Review Findings:` field with what it waits on.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08; line touched by 0103483 2026-09-09.
+- verdict: keep
+- reason: A hold that lives only in context dies at the next compaction; the field form is S105.
+
+### S058
+- key: Expect one of three buckets, a set closed at three, and read a finding meeting neither of the first two tests as an ask.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08, per `git log -S`; the scope-adjudicator charter (b3ed504 2026-09-08) states the same closure on the producing side.
+- verdict: keep
+- reason: The consuming side needs the closure to read a third form as an ask rather than as a fourth bucket.
+
+### S059
+- key: Record a refuse in the plan doc's `Standing Brief Amendments` block as its ground, written as a rule the next round judges against, never as a named and rated finding.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08, since the block rides verbatim on every sighted amendments line; line touched by 0103483 2026-09-09.
+- verdict: keep
+- reason: A rated finding in the block is the pre-judging step 3 bars; a refusal moves no bullet.
+
+### S060
+- key: Re-enter an accept-and-declare finding as spec-traceable so it takes a fix round and the close gate like any other.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08; line touched by 0103483 2026-09-09.
+- verdict: keep
+- reason: The re-entry is what makes a declare owe a fix under the terminal condition (S070).
+
+### S061
+- key: Give an accept-and-declare one record home, the `Standing Brief Amendments` block, written there at adoption.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08, the round that found the declaration had two disagreeing homes; line touched by 0103483 2026-09-09.
+- verdict: keep
+- reason: Step 3 rebuilds the trace target from that block; a declaration living only in the Chapter reaches no sibling section's dispatches.
+
+### S062
+- key: Write that record as one appended acceptance bullet stating the declared behaviour and nothing else, carrying no lens, round, seat, bucket or ruling provenance.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08, as S061's passage.
+- verdict: keep
+- reason: The block is quoted into a later judge's trace target, and a bullet carrying its ruling's history hands that judge a prior ruling its charter refuses.
+
+### S063
+- key: Treat the Chapter's approval-drift line and the next board recap's line as that adoption's record rather than a second home.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08, per `git log -S`.
+- verdict: keep
+- reason: Naming the two records that are not homes is what stops a session writing the declaration into the Chapter alone.
+
+### S064
+- key: Take an ask bucket to the operator on the BLOCKED path with the judge's recommendation folded into the brief's own recommendation.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08; line touched by 0103483 2026-09-09.
+- verdict: keep
+- reason: An operator-decision gate whose bound lists the four shapes that reach it.
+
+### S065
+- key: Open that declaration with the fixed line `BLOCKED: section <n> holds a new-requirement Major; the judge recommends an ask`.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08; the precedence under the backstop's line is 9463de7 2026-09-09; line touched by 0103483 2026-09-09.
+- verdict: keep
+- reason: The Stop hook releases on one leading line; its why (S066) lives here: the first line is recorded into the plan's outcome note and read onto a coordinator board while the body is addressed to the operator alone, so a line composed from a finding about the diff would carry reviewer-authored text about untrusted content onto both surfaces.
+
+### S066
+- key: Fix the literal because that first line reaches an outcome note and a coordinator board, where composed text about the diff would carry reviewer-authored content.
+- class: rationale-example
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08.
+- verdict: retire
+- reason: The completion contract's first-line paragraph owns the public-board reason; S065 is obeyable without it, and it is held under S065.
+
+### S067
+- key: On an ask, hold the section at this step: do not close it and do not run steps 5 through 8 until the answer arrives.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08, the round that found the ask bucket counted as a disposition though it disposes of nothing; line touched by 0103483 2026-09-09.
+- verdict: keep
+- reason: An ask is the one bucket that disposes of nothing; what the answer closes is the section rather than the round.
+
+### S068
+- key: Read provenance because severity is a reading of consequence alone, so a loop keyed on it builds an unasked mechanism one correctly-rated repair at a time.
+- class: rationale-example
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:429
+- provenance: f26619c 2026-09-08, the paragraph's stated reason for existing.
+- verdict: retire
+- reason: Ground S014 is obeyable without; held under S014.
+
+### S069
+- key: End the review loop at the first round whose adjudicated findings, each read at its class, carry no Critical and leave no owed Major undisposed.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:435
+- provenance: fb5d4fe 2026-09-07 for the terminal condition; 9f1ed1b 2026-09-09 last touched the line with the bucket dispositions; line touched by abfa98d 2026-09-09.
+- verdict: keep
+- reason: The loop's terminal condition, incident-born and unenforced; the paragraph splits at its bold leads with no rule lost.
+
+### S070
+- key: Count a Major disposed when fixed, routed out of scope, recorded justified-not-fixed, or bucketed refuse with its record placed; a design stop's refuse needs its removal fix round.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:435
+- provenance: f26619c 2026-09-08 and 9f1ed1b 2026-09-09, the bucket dispositions folded into the terminal condition; line touched by abfa98d 2026-09-09.
+- verdict: keep
+- reason: The disposition vocabulary the condition is read against; a declare re-enters and an ask holds, neither disposing.
+
+### S071
+- key: Let a finding still held when the section's other work reaches the close gate fall to the adjudicator then.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:435
+- provenance: f26619c 2026-09-08, the answer window's consequence for the loop end; line touched by abfa98d 2026-09-09.
+- verdict: keep
+- reason: A held new-requirement Major neither keeps the loop open nor rides into a closed section.
+
+### S072
+- key: Read a finding's class at adjudication, before any fix exists, from whether it states a failure scenario.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:435
+- provenance: fb5d4fe 2026-09-07; line touched by abfa98d 2026-09-09.
+- verdict: keep
+- reason: The read's moment keeps a fix from reclassifying its own finding; the class definitions sit in the pinned KIT-CLAIM-CLASS block.
+
+### S073
+- key: Read whether the loop ends after the fix round.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:435
+- provenance: fb5d4fe 2026-09-07, as S072's sentence.
+- verdict: keep
+- reason: The second read's moment; the two moments differ by design.
+
+### S074
+- key: Make the fix follow the class: a sentence-fix on a finding that stated a scenario leaves a Major justified-not-fixed or a Critical unfixed, never a claim dispositioned.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:435
+- provenance: fb5d4fe 2026-09-07; line touched by abfa98d 2026-09-09.
+- verdict: keep
+- reason: Closes the sentence-fix escape on a scenario finding.
+
+### S075
+- key: Record the choice in the Chapter where a finding could close either way.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:435
+- provenance: fb5d4fe 2026-09-07, as S074's sentence.
+- verdict: keep
+- reason: Bounded to findings that admit both readings; the record is what a later round judges the choice against.
+
+### S076
+- key: Disposition in the same fix round the round's claim findings an exception holds to the behavior bar, and accumulate every other with the Minors for the close pass.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:435
+- provenance: fb5d4fe 2026-09-07 for the same-fix-round rule; abfa98d 2026-09-09 split it by class after a consult ruled the class-keyed split, the rating-keyed wording having proved dead on a misrated security claim, with a Standing Brief Amendments entry stating the rule.
+- verdict: keep
+- reason: The owner of the claim split; S011 at line 423 points here, and a change to the split lands in this sentence first.
+
+### S077
+- key: Disposition a claim finding one of four ways: delete the false sentence, add a cheap mechanical check, write a Chapter line naming the sentence left standing, or take the out-of-scope route.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:435
+- provenance: fb5d4fe 2026-09-07; reattached to both branches of S076 by abfa98d 2026-09-09.
+- verdict: keep
+- reason: The four forms are what responding-to-review points at as the owner's; the close pass and the fix round use the same set.
+
+### S078
+- key: Owe no review round for a fix delta of prose deletions alone; any other delta takes the fix-delta bar.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:435
+- provenance: fb5d4fe 2026-09-07; line touched by abfa98d 2026-09-09.
+- verdict: keep
+- reason: The exemption with its exception-holds bound; the backstop's own exempt-fix clause keys on it.
+
+### S079
+- key: Treat a round the below-bar judgment adds by choice as one the delta did not owe, and hold its findings to the terminal condition like any round's.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:435
+- provenance: fb5d4fe 2026-09-07, per `git log -S`.
+- verdict: keep
+- reason: Keeps an optional round's findings under the terminal condition rather than outside it, so choosing a round cannot bypass the loop end.
+
+### S080
+- key: Convene a consult on an owed Major's second reversal on one passage and adopt its ruling to close that passage.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:435
+- provenance: fb5d4fe 2026-09-07; line touched by abfa98d 2026-09-09.
+- verdict: keep
+- reason: The consult skill's trigger (a) stated at the moment it fires; the seesaw otherwise has no exit.
+
+### S081
+- key: Where the reversing Majors are fix-introduced, convene the design stop first and run that consult after its ruling rather than beside it.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:435
+- provenance: 9f1ed1b 2026-09-09, the design stop's ordering ahead of the seesaw.
+- verdict: keep
+- reason: The judge must never receive the querent's lean, and a consultant dispatched beside it is that lean by another door.
+
+### S082
+- key: Weigh each finding per the responding-to-review skill before acting on it.
+- class: pointer
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:435
+- provenance: fb5d4fe 2026-09-07; line touched by abfa98d 2026-09-09.
+- verdict: keep
+- reason: A pointer at the owner of weighing a finding.
+
+### S083
+- key: Make a fix that corrects a claim in curated prose take the paragraph as its edit unit rather than the sentence, and carry the claim's other carriers with it.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:435
+- provenance: ab3d766 2026-08-29; line touched by abfa98d 2026-09-09.
+- verdict: keep
+- reason: A pointer at writing-skills with the fix round's residue.
+
+### S084
+- key: Send a carrier sitting in a file this section's `Files in scope:` never listed to the out-of-scope route rather than editing it in place.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:435
+- provenance: ab3d766 2026-08-29; line touched by abfa98d 2026-09-09.
+- verdict: keep
+- reason: A pointer at the out-of-scope route with the one fact the fix round needs: the scope check never sees an in-place edit there.
+
+### S085
+- key: When a review surfaces a finding class an earlier section already surfaced, amend the plan doc's `Standing Brief Amendments` block rather than only fixing the new instance.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:435
+- provenance: 12ef61f 2026-07-09, the review-tension plan; line touched by abfa98d 2026-09-09.
+- verdict: keep
+- reason: Every section opened after the amendment inherits the guard; the rule stands while S086's ground moves.
+
+### S086
+- key: Remedy a second instance of a claims class with a mechanical check or a deletion sweep, never with an amendment.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:435
+- provenance: fb5d4fe 2026-09-07, the claims-class split of the recurrence rule.
+- verdict: rewrite
+- reason: The split keeps and its "since an amendment steers the writer" clause moves here: an amendment steers the writer, and the writer is the one who cannot see the class in a sentence just written.
+
+### S087
+- key: Apply the amendment to a sibling section already in flight at its next review round.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:435
+- provenance: db287e3 2026-08-23; line touched by abfa98d 2026-09-09.
+- verdict: keep
+- reason: A sibling briefed before the amendment does not inherit it, so the next round is the moment.
+
+### S088
+- key: Where the plan carries no amendments block, create it as its own `##` heading above `## Sections of Work`, never as a heading inside that section.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:435
+- provenance: db287e3 2026-08-23.
+- verdict: rewrite
+- reason: The placement keeps and its parser ground moves here: a heading inside `## Sections of Work` ends that block early and silently drops every later section from the external engine's parse.
+
+### S089
+- key: Record the amendment in the Chapter as the approval drift it is.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:435
+- provenance: e872098 2026-08-18; line touched by abfa98d 2026-09-09.
+- verdict: keep
+- reason: The block sits above `## Chapters`, inside the approval-scoped fingerprint, which is what makes the amendment drift.
+
+### S090
+- key: Run the section's close gate at this step, once the fixes and the folds are in.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:435
+- provenance: 9784239 2026-08-30, gate-cadence section 5; line touched by abfa98d 2026-09-09.
+- verdict: keep
+- reason: A section's green covers the state it closes on, so the gate runs here rather than beside the review round.
+
+### S091
+- key: Run the Minor pass before that close gate so the gate covers its delta too.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:435
+- provenance: abfa98d 2026-09-09, the cross-reference at the gate site.
+- verdict: rewrite
+- reason: S008 owns the ordering; this folds into S090's sentence as a third item in "once the fixes, the folds and the Minor pass are in" and loses nothing.
+
+### S092
+- key: Run the targeted lane over the section's files as they now stand, with the contention lane beside it where the section's delta touched machine-shared state.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:435
+- provenance: 9784239 2026-08-30; the lane cadence is the doctrine's gate bullet (3380bf2 2026-08-31).
+- verdict: rewrite
+- reason: The ownership map gives the doctrine's gate bullet which lane each moment takes and step 3 already cites it, so the lane names become a pointer there; the pointer loses no instruction because the bullet states the same two lanes for a section close.
+
+### S093
+- key: Read the gate's counts and its exit code from the run itself and carry them to the Chapter's `Gate:` line at step 6.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:435
+- provenance: 9784239 2026-08-30; test/doctrine-parity.test.js pins the Gate field's phrase.
+- verdict: keep
+- reason: The carry duty that fills the pinned field.
+
+### S094
+- key: Under the Commit-and-Push model, commit the section and push it to origin.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:470
+- provenance: 830ff28 2026-06-17, the three commit models; the bullet's gate ordering came with cceff11 and 3380bf2 2026-08-31 and its index-window argument from 6b7b384 2026-08-29; 55c5abc 2026-09-09 repointed the bullet's finishing-work step reference.
+- verdict: keep
+- reason: The act, in order; the passage's compress rides on S100's retire and S102's rewrite.
+
+### S095
+- key: Direct to main, land the commit only here at close, never at first green.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:470
+- provenance: 83b81ac 2026-08-19, boundary-cadence section 1, which confined the first-green commit to a branch; line touched by 55c5abc 2026-09-09.
+- verdict: keep
+- reason: Main must never carry an unreviewed section state; the rule rides with its one-clause bound.
+
+### S096
+- key: On a worktree branch, take Branch-and-PR's first-green commits and its lanes, and leave the merge to main and the teardown to finishing-work.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:470
+- provenance: 830ff28 2026-06-17 installed the worktree-branch case; the lanes clause came with 3380bf2 2026-08-31; line touched by 55c5abc 2026-09-09.
+- verdict: keep
+- reason: One handoff stated from each end; finishing-work performs the merge this step defers.
+
+### S097
+- key: Where the push lands on main, run the whole gate with the contention lane beside it before pushing; step 4's close gate does not stand in for it.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:470
+- provenance: cceff11 and 3380bf2 2026-08-31, the gate-cadence plan, whose pin enrolled this bullet as a carrier of the install-surface condition; line touched by 55c5abc 2026-09-09.
+- verdict: keep
+- reason: A copy pinned by test/doctrine-parity.test.js (INSTALL_SURFACE_CARRIERS), the copy-under-a-pin shape the one-owner rule allows; a reword reddens the suite.
+
+### S098
+- key: Run that whole gate before the plan doc is staged with the Chapter.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:470
+- provenance: 3380bf2 2026-08-31, the gate-cadence close-out, with the ordering's index-window ground from 6b7b384 2026-08-29.
+- verdict: rewrite
+- reason: The ordering stays with its reason folded in (the counts ride the commit that names the gate); the window argument is held under S100.
+
+### S099
+- key: Put the whole gate's counts and exit code on that Chapter's `Gate:` line beside the close gate's.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:470
+- provenance: cceff11 2026-08-31, gate-cadence section 7.
+- verdict: rewrite
+- reason: The template's Gate line owns the field's form and already names the whole gate at an install-surface push; the clause survives folded into S098's sentence as its reason.
+
+### S100
+- key: Order it this way to keep the full-suite run out of the plan doc's own add-to-commit window, leaving only the staged-list read between the add and the commit.
+- class: rationale-example
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:470
+- provenance: 6b7b384 2026-08-29, review-and-record section 8, which made the index a window; applied here by 3380bf2 2026-08-31.
+- verdict: retire
+- reason: The ordering (S098) is obeyable without it; held here with a pointer at the doctrine's index-window bullet, which names the section loop as a declared window.
+
+### S101
+- key: Where a peer session may commit on this checkout, say so on the coordination surface before the gate starts.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:470
+- provenance: 3380bf2 2026-08-31, applying 6b7b384 2026-08-29; line touched by 55c5abc 2026-09-09.
+- verdict: keep
+- reason: The doctrine's index-window bullet says a window that will not close is declared rather than shrunk and names the section loop as one; this is that declaration, not a conflict with the never-across-a-long-step rule.
+
+### S102
+- key: Stage the plan doc after the gate with the counts on it, so the record this step commits names the gate that cleared the push.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:470
+- provenance: 3380bf2 2026-08-31.
+- verdict: rewrite
+- reason: The act stays and the which-window argument moves here: the section's own files' window opened at step 4's scope-check add and the gate runs inside it by design, while the doc's window opens only after the gate.
+
+### S103
+- key: Permit only that Gate-line edit after the gate has run.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:470
+- provenance: cceff11 2026-08-31, per `git log -S`; 55c5abc 2026-09-09 repointed finishing-work's step 5 to step 6.
+- verdict: keep
+- reason: A pointer at finishing-work's step 6 with the reason in one clause: the edit records a run that already happened and changes nothing that run read.
+
+### S104
+- key: Omit `Recap:` from a section Chapter and carry it on the finishing Chapter alone, in the plain-language form whose parts and order finishing-work's step 6 owns.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:519
+- provenance: 5cfa68c 2026-09-08, the plain-language recap mandate; 55c5abc 2026-09-09 repointed the owner from step 5 to step 6.
+- verdict: keep
+- reason: The field names finishing-work's step as the owner of the recap's parts and order, which is the pointer shape.
+
+### S105
+- key: Record a held finding on `Review Findings:` as `held: <finding> awaiting <seat>`.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:522
+- provenance: f26619c 2026-09-08, the held record; line touched by abfa98d and 55c5abc 2026-09-09.
+- verdict: keep
+- reason: The durable half of the provenance read's hold; a hold living only in context dies at the next compaction.
+
+### S106
+- key: Record a design stop as `design stop: <mechanism>, ruling <bucket> by <seat>`.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:522
+- provenance: 9f1ed1b 2026-09-09, the design stop's Chapter record.
+- verdict: keep
+- reason: The field S054 and S132 read the stop and its seat off.
+
+### S107
+- key: Record the review as `review: <pair or lens>[ (<n> readers)] at <model>, <route>[ (<chain>)]`, per dispatch where a pair split, or as `review: <pair or lens> ungated (<chain>)`.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:522
+- provenance: 0faeb51 2026-09-06, the reviewer-tier hybrid made the review line record each round's model and route.
+- verdict: keep
+- reason: The form step 3's re-aim and ungated-end records write into.
+
+### S108
+- key: Record `blind: no code diff` beside the review line where the blind lens was skipped.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:522
+- provenance: a9c8d14 2026-08-17, with the skip rule at step 3.
+- verdict: keep
+- reason: The recording side of step 3's skip carve-out.
+
+### S109
+- key: Record the Criticals and Majors addressed, naming as orchestrator-made a Major whose trace the orchestrator rather than a lens made.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:522
+- provenance: f26619c 2026-09-08 for the orchestrator-made marker on the older addressed record.
+- verdict: keep
+- reason: The field S033 and S038 write into.
+
+### S110
+- key: Record the Majors justified.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:522
+- provenance: 0faeb51 2026-09-06, as the field's older form.
+- verdict: keep
+- reason: One of S003's three dispositions, recorded where the terminal condition reads it.
+
+### S111
+- key: Record Minors as `<n> fixed in the close pass, <m> upgraded on a stated consequence, <k> left with the reason`.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:522
+- provenance: abfa98d 2026-09-09, replacing "Minors noted" with the counts the close pass produces.
+- verdict: keep
+- reason: The three counts are what S004, S005 and S009 leave behind, so the field mirrors the rules.
+
+### S112
+- key: On the finishing Chapter alone, record `goal read: <b> built-but-unasked (<a> refused, <d> declared, <c> asked), <u> asked-but-unbuilt`.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:522
+- provenance: 55c5abc 2026-09-09, review-loop provenance plan section 6, which inserted the goal read as finishing-work's step 4 and gave its record this field.
+- verdict: keep
+- reason: The only home of the finishing goal read's counts; S129 keeps them off the Metrics line.
+
+### S113
+- key: Name on the `Gate:` line the lane or lanes that ran: the targeted lane at every section close, the contention lane where the delta touched shared state, and the whole gate where step 7's push lands on an install-surface trunk.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:524
+- provenance: 9784239 2026-08-30, gate-cadence section 5; cceff11 2026-08-31 pinned the field's phrases to the doctrine; line touched by 55c5abc 2026-09-09.
+- verdict: keep
+- reason: Pinned by test/doctrine-parity.test.js on "the lane or lanes that ran"; a reword reddens the suite.
+
+### S114
+- key: Record each lane's counts as tests/pass/fail and its exit code read from the run itself, writing the code itself rather than a statement that it was read.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:524
+- provenance: cceff11 2026-08-31.
+- verdict: keep
+- reason: Pinned on "the exit code read from the run itself".
+
+### S115
+- key: Record the delta against the baseline recorded on that same lane, or record that no baseline exists on it.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:524
+- provenance: 9784239 2026-08-30.
+- verdict: keep
+- reason: The doctrine's same-lane baseline rule at its record.
+
+### S116
+- key: Record any contention the run carried.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:524
+- provenance: 9784239 2026-08-30.
+- verdict: keep
+- reason: The contention record the doctrine's process-budget bullet asks for.
+
+### S117
+- key: Record the probe set's reading per invocation of each leg: the runner's stdout summary line verbatim, the process exit code where the two differ, report.md warning lines, mismatched moments by name with each row's status, and its moment-pin.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:524
+- provenance: e0ef09c 2026-09-06, the probe legs; 55c5abc 2026-09-09 repointed finishing-work's step 5 to step 6, which test/doctrine-parity.test.js:6262 pins.
+- verdict: keep
+- reason: The slot finishing-work's step 6 points at, pinned on the step number and the word probe.
+
+### S118
+- key: Respell repo-relative, or leave out, any path the runner printed in full, in the summary line or in a quoted refusal reason.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:524
+- provenance: e0ef09c 2026-09-06.
+- verdict: keep
+- reason: A pointer at S140's path rule applied to the runner's own output.
+
+### S119
+- key: Record instead the state finishing-work's step 6 names, or that the changeset named no shape file so no run was called for.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:524
+- provenance: e0ef09c 2026-09-06; step number repointed by 55c5abc 2026-09-09.
+- verdict: keep
+- reason: The no-run states, pointing at finishing-work for the named one.
+
+### S120
+- key: Record none of those alternative states as clean, a before leg the after leg gave no moments for included.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:524
+- provenance: e0ef09c 2026-09-06.
+- verdict: keep
+- reason: The same never-clean rule the Decisions field carries for the section-time pair.
+
+### S121
+- key: Mark a `(partial)` line as the leg its re-run replaced, and mark the exit code unreadable where the doctrine's fallback path left none.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:524
+- provenance: e0ef09c 2026-09-06.
+- verdict: keep
+- reason: Two marking cases, the second pointing at the doctrine's background-marker fallback.
+
+### S122
+- key: Let the probe reading report and never block.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:524
+- provenance: e0ef09c 2026-09-06.
+- verdict: keep
+- reason: The bound on the whole probe reading; a blocking reading would make a scenario probe a gate.
+
+### S123
+- key: Write Chapters for a compacted or fresh session recovering full working state from the plan doc alone.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:530
+- provenance: 656310e 2026-06-10, the original Chapter-format paragraph; line touched by 55c5abc 2026-09-09.
+- verdict: keep
+- reason: Executing-work owns the Chapter and the doctrine's chapter-close bullet points here; R187's compress ruling on the paragraph is applied at S141 and S144 and its moved reasons stay recorded under R187.
+
+### S124
+- key: Record the Metrics line even when every count is zero.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:530
+- provenance: c7e5f64 2026-07-09, the Metrics line as the data feed for the kit's open experiments; line touched by 55c5abc 2026-09-09.
+- verdict: keep
+- reason: A zero row is a data point for the experiments the line feeds.
+
+### S125
+- key: Read `closed` off the last round that carried findings: `major-closed` where it carried an owed Major, `claim-exit` where it carried a claim finding and no such Major, `clean` otherwise.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:530
+- provenance: fb5d4fe 2026-09-07; line touched by 55c5abc 2026-09-09.
+- verdict: keep
+- reason: The reading rule that makes the closed value comparable across sections.
+
+### S126
+- key: Count only consultant dispatches under `consults <n>`, and count a judge's ruling under the provenance tokens instead.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:530
+- provenance: 9f1ed1b 2026-09-09; line touched by 55c5abc 2026-09-09.
+- verdict: keep
+- reason: The backlog's consult-adoption series keeps measuring the one thing it always measured.
+
+### S127
+- key: Count under the provenance tokens every Critical and Major that survived adjudication, the carve-out's Criticals and security findings included.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:530
+- provenance: f26619c 2026-09-08 and 9f1ed1b 2026-09-09; line touched by 55c5abc 2026-09-09.
+- verdict: keep
+- reason: The carve-out findings are read for this line though never held (S039).
+
+### S128
+- key: Count every bucketed ruling in the `rulings` parenthetical, not only the new-requirement findings it sits beside.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:530
+- provenance: 9f1ed1b 2026-09-09; line touched by 55c5abc 2026-09-09.
+- verdict: keep
+- reason: A design stop's ruling buckets fix-introduced Majors and has nowhere else on the line to go.
+
+### S129
+- key: Count a finishing goal read's buckets on its own `goal read:` field and never on the Metrics line.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:530
+- provenance: 55c5abc 2026-09-09, with the goal read's field.
+- verdict: keep
+- reason: Keeps the finishing read's four buckets from inflating a section-level `rulings` count.
+
+### S130
+- key: Count a double-`NEEDS_CONTEXT` exit under `<c>` on either paragraph's route.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:530
+- provenance: 9f1ed1b 2026-09-09; line touched by 55c5abc 2026-09-09.
+- verdict: keep
+- reason: The finding reached the operator whether or not a judge recommended it.
+
+### S131
+- key: Count a design stop once as the single ruling it is, however many Majors its held unit carried, and count those Majors individually under `<f>`.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:530
+- provenance: 9f1ed1b 2026-09-09; line touched by 55c5abc 2026-09-09.
+- verdict: keep
+- reason: One ruling, several Majors; the two counts answer different questions.
+
+### S132
+- key: The bucket totals run short of the provenance count by carve-out findings and long by one per design stop, and neither direction is a defect.
+- class: rationale-example
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:530
+- provenance: 9f1ed1b 2026-09-09.
+- verdict: keep
+- reason: R194 read it as the bound that stops a reader reporting the difference as a defect, and its bound names the `Review Findings:` field as the reconciliation surface, which is an instruction.
+
+### S133
+- key: Count a declared finding once, under `<b>`, and never again under `<s>` when its fix round comes.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:530
+- provenance: f26619c 2026-09-08; line touched by 55c5abc 2026-09-09.
+- verdict: keep
+- reason: The double-count guard for a declared finding's re-entry.
+
+### S134
+- key: Record every execution-time assumption on the Chapter's Assumptions line, so the close-out computes its block from the Chapters rather than re-reading the run.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:530
+- provenance: e872098 2026-08-18 installed the split; dff4ef9 2026-08-18 propagated it here after a finishing-review Critical found the surface still describing the append.
+- verdict: rewrite
+- reason: Step 0's gap-check paragraph states the destination, the format and the reason, so this becomes a pointer there; the propagation's purpose (no surface stating the superseded rule) is met by a pointer.
+
+### S135
+- key: Leave the plan doc's `## Assumptions` section frozen at approval, holding the design-time entries alone.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:530
+- provenance: e872098 2026-08-18.
+- verdict: rewrite
+- reason: The freeze rides in the same pointer as S134; its reason lives here: the plan's `## Assumptions` sits inside the external engine's approval fingerprint, so an execution-time append would mutate an approved plan.
+
+### S136
+- key: Resolve `<plugin-root>` on the Delta line the same way the Dispatch Brief template's style-skill bullet does.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:530
+- provenance: 08808b3 2026-09-04; line touched by 55c5abc 2026-09-09.
+- verdict: keep
+- reason: A pointer at the owning bullet for the resolution ladder.
+
+### S137
+- key: Name the project's repository root outright in the Delta line's command.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:530
+- provenance: 08808b3 2026-09-04.
+- verdict: keep
+- reason: This site's own rule with its bound: the reading's default root derives from where the script sits, which under a marketplace install is inside the plugin payload.
+
+### S138
+- key: Quote the verb on the Delta line and state no condition of your own on it.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:530
+- provenance: 08808b3 2026-09-04; test/doctrine-parity.test.js pins the Delta field to the script path, its verb and its flags.
+- verdict: keep
+- reason: A condition of the field's own would go stale against the tool.
+
+### S139
+- key: Read `scripts/kit-size.js` for which rows the output holds, which it omits, whether this project is measured, and what each of its three non-output lines means.
+- class: pointer
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:530
+- provenance: d2e2f37 2026-09-05, replacing 277 words that restated the script's contract; line touched by 55c5abc 2026-09-09.
+- verdict: keep
+- reason: The pointer at the owner; a copy could only go stale against the tool.
+
+### S140
+- key: Spell any path the Delta line's parts carry relative to the project's root, or leave it out.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:530
+- provenance: 08808b3 2026-09-04; d2e2f37 2026-09-05 added the cross-reference to the BLOCKED first-line rule; line touched by 55c5abc 2026-09-09.
+- verdict: keep
+- reason: A pointer at the first-line rule with an applied scope over three tracked fields, keeping the disclosure reason.
+
+### S141
+- key: The Delta line sits last because its output is a multi-line fenced block and the Chapter heading's `Completed:`/`Next:` contract must be read before it.
+- class: rationale-example
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:530
+- provenance: 08808b3 2026-09-04.
+- verdict: retire
+- reason: One of the two placement reasons R187 moved to this ledger; S142 is obeyable without it and the reasons stay recorded under R187.
+
+### S142
+- key: Place the Delta output after every line the Chapter heading's machine contract reads, never between them.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:530
+- provenance: 08808b3 2026-09-04; line touched by 55c5abc 2026-09-09.
+- verdict: keep
+- reason: The placement rule, kept while its reasons move.
+
+### S143
+- key: Never open a line you add to any Chapter field, quoted or free, with `Completed:`, `Next:` or `#`; respell a recorded text that would and note the respelling.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:530
+- provenance: e0ef09c 2026-09-06, the probe legs placed between the contract lines the external engine parses line by line; line touched by 55c5abc 2026-09-09.
+- verdict: keep
+- reason: No kit hook enforces it because the parser is the external engine's, so the prose is the whole protection.
+
+### S144
+- key: The runner's summary line opens `probe-corpus:` and the report's warnings open `- WARNING:`, which is what lets both be quoted verbatim.
+- class: rationale-example
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:530
+- provenance: e0ef09c 2026-09-06.
+- verdict: keep
+- reason: test/doctrine-parity.test.js:6257-6258 asserts executing-work names both prefixes, so the sentence is a pinned copy and a deletion reddens the suite; this departs from R187's move of the probe-prefix facts on that one sentence.
+
+### S145
+- key: Read the Delta reading's row list rather than only its totals.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:530
+- provenance: 08808b3 2026-09-04; line touched by 55c5abc 2026-09-09.
+- verdict: keep
+- reason: On a shared checkout the reading carries other sessions' uncommitted edits under the measured roots, so the totals are unreadable alone.
+
+### S146
+- key: Name the lanes on the Gate line because a section's green covers the lanes that ran rather than the tree, and a reader diagnosing a red otherwise cannot tell what it covered.
+- class: rationale-example
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:530
+- provenance: 9784239 2026-08-30, written with the Gate field as its reason.
+- verdict: retire
+- reason: The duty lives in the doctrine's gate bullet and the pinned Gate field (S113); this is their rationale, held here as R202 and c4.C129 record it.
+
+### S147
+- key: Carry a moment on every measured figure a Chapter records, in the form testing-discipline's moment-pin bullet states.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:530
+- provenance: 7ef71e3 2026-09-01, instruments-not-prose; line touched by 55c5abc 2026-09-09.
+- verdict: keep
+- reason: A pointer site the instruments-not-prose parity test counts, so a rewrite into a restatement or a deletion reddens the suite.
+
+### S148
+- key: Cite the analysis behind a figure rather than restating its deep evidence in the Chapter.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:530
+- provenance: 7ef71e3 2026-09-01.
+- verdict: keep
+- reason: The deep evidence keeps the home the moment-pin bullet gives it; the Chapter is a journal-layer artifact.
 
 ## plugins/claude-kit/agents/prose-reviewer.md
 
@@ -8394,7 +9667,7 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 
 This document is the agent charter for `docs-curator`, a documentation curator and drift detector. It owns the moment a dispatched agent reads as-built code fresh, updates a project's `docs/` tree, sweeps the curated library for claims the changeset falsified, and returns a Drift Report plus a library-hygiene list for the operator to adjudicate. It also owns the format of that report, the classification of each drift item as `mistake` or `deviation`, and the basis and pre-change-marker requirements each entry carries. Its load class is `named-trigger`: the charter states it is used during finishing-work after QA and reviews pass, or when someone asks for a codebase to be documented or a handoff prepared, and it loads at the dispatch of the agent itself.
 
-Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`).
+Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below).
 
 ### C001
 - key: Dispatch this agent under the name `docs-curator`.
@@ -9234,79 +10507,89 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`).
 - source: plugins/claude-kit/agents/docs-curator.md:80
 - provenance: dd5e568 2026-08-24.
 - verdict: retire
-- reason: Safe because the template's REQUIRED `Basis:` line carries the requirement as a structural slot, and the paragraph's substantive rules (the absent forms, the marker, the paths, the command bar) are untouched by this retirement.
+- superseded-by: S001
+- reason: Safe because the template's REQUIRED `Basis:` line carries the requirement as a structural slot, and the paragraph's substantive rules (the absent forms, the marker, the paths, the command bar) are untouched by this retirement. Superseded at `4b2e64c` by S001 (the Section 8 merge).
 
 ### C106
 - key: Where the spec or code leg genuinely does not exist, write the slot's absent form rather than a citation you did not read.
 - class: rule
 - source: plugins/claude-kit/agents/docs-curator.md:80
 - provenance: dd5e568 2026-08-24.
-- verdict: rewrite
-- reason: The rule survives with its absent forms; only the paragraph is split. finishing-work decides what a missing basis is, but the curator still needs to know what to write.
+- verdict: retire
+- superseded-by: S005
+- reason: The rule survives with its absent forms; only the paragraph is split. finishing-work decides what a missing basis is, but the curator still needs to know what to write. Superseded at `4b2e64c` by S005 (the Section 8 merge; the verdict before it was rewrite).
 
 ### C107
 - key: Write the absent form because an absent leg does not by itself stop the run while a fabricated one misleads the adjudicator who opens it.
 - class: rationale-example
 - source: plugins/claude-kit/agents/docs-curator.md:80
 - provenance: dd5e568 2026-08-24.
-- verdict: keep
-- reason: The rule asks for an absent form exactly where a writer is tempted to cite something, and this asymmetry is what tells the writer the absent form costs nothing.
+- verdict: retire
+- superseded-by: S006
+- reason: The rule asks for an absent form exactly where a writer is tempted to cite something, and this asymmetry is what tells the writer the absent form costs nothing. Superseded at `4b2e64c` by S006 (the Section 8 merge; the verdict before it was keep).
 
 ### C108
 - key: Write `docs absent` in the entry header where the docs never covered the area.
 - class: mechanic
 - source: plugins/claude-kit/agents/docs-curator.md:80
 - provenance: dd5e568 2026-08-24.
-- verdict: keep
-- reason: No finding. It is the header's own absent form, matching the basis legs'.
+- verdict: retire
+- superseded-by: S007
+- reason: No finding. It is the header's own absent form, matching the basis legs'. Superseded at `4b2e64c` by S007 (the Section 8 merge; the verdict before it was keep).
 
 ### C109
 - key: Where an item claims anything about the pre-changeset state, state the not-read marker verbatim.
 - class: rule
 - source: plugins/claude-kit/agents/docs-curator.md:80
 - provenance: dd5e568 2026-08-24.
-- verdict: rewrite
-- reason: The rule, its eight-verb instance list and the `Docs said:` exception all survive; only the paragraph is split. The exception is load-bearing, since without it every ordinary entry would carry an untrue not-read.
+- verdict: retire
+- superseded-by: S002
+- reason: The rule, its eight-verb instance list and the `Docs said:` exception all survive; only the paragraph is split. The exception is load-bearing, since without it every ordinary entry would carry an untrue not-read. Superseded at `4b2e64c` by S002 (the Section 8 merge; the verdict before it was rewrite).
 
 ### C110
 - key: Write the marker exactly as `pre-change state not read (this charter grants no Bash)`, never a paraphrase.
 - class: mechanic
 - source: plugins/claude-kit/agents/docs-curator.md:80
 - provenance: dd5e568 2026-08-24.
-- verdict: keep
-- reason: No machinery supersedes it: the string appears only in this charter and in finishing-work's prose, with no hook or test enforcing it, and finishing-work consumes the marker rather than writing it.
+- verdict: retire
+- superseded-by: S008
+- reason: No machinery supersedes it: the string appears only in this charter and in finishing-work's prose, with no hook or test enforcing it, and finishing-work consumes the marker rather than writing it. Superseded at `4b2e64c` by S008 (the Section 8 merge; the verdict before it was keep).
 
 ### C111
 - key: Use the exact string because finishing-work keys its verification on it, and a paraphrase skips the read silently and turns the stop back into an assumption.
 - class: rationale-example
 - source: plugins/claude-kit/agents/docs-curator.md:80
 - provenance: dd5e568 2026-08-24.
-- verdict: keep
-- reason: A verbatim-string rule is the first thing a writer paraphrases, and only the keyed-verification fact shows that a same-meaning paraphrase disables the check silently.
+- verdict: retire
+- superseded-by: S009
+- reason: A verbatim-string rule is the first thing a writer paraphrases, and only the keyed-verification fact shows that a same-meaning paraphrase disables the check silently. Superseded at `4b2e64c` by S009 (the Section 8 merge; the verdict before it was keep).
 
 ### C112
 - key: List the paths the claim is about under their own `Paths:` label as a whitespace-separated list, every one of them, repo-root-relative, with forward slashes.
 - class: mechanic
 - source: plugins/claude-kit/agents/docs-curator.md:80
 - provenance: dd5e568 2026-08-24.
-- verdict: keep
-- reason: The prose half of the label's contract, carrying why the delimiter and slash direction are fixed; the template half shows the label in place.
+- verdict: retire
+- superseded-by: S010
+- reason: The prose half of the label's contract, carrying why the delimiter and slash direction are fixed; the template half shows the label in place. Superseded at `4b2e64c` by S010 (the Section 8 merge; the verdict before it was keep).
 
 ### C113
 - key: Use forward slashes and the label because a backslashed path matches no entry of the listing finishing-work selects against, which stops the run, and the label lets the adjudicator tokenize the paths.
 - class: rationale-example
 - source: plugins/claude-kit/agents/docs-curator.md:80
 - provenance: dd5e568 2026-08-24.
-- verdict: keep
-- reason: Without it the slash rule reads as house style; with it the writer knows the token is a selector whose miss costs a stopped run.
+- verdict: retire
+- superseded-by: S011
+- reason: Without it the slash rule reads as house style; with it the writer knows the token is a selector whose miss costs a stopped run. Superseded at `4b2e64c` by S011 (the Section 8 merge; the verdict before it was keep).
 
 ### C114
 - key: Do not name, template, or compose a command in the basis line.
 - class: rule
 - source: plugins/claude-kit/agents/docs-curator.md:80
 - provenance: dd5e568 2026-08-24, the section whose subject was keeping report text off a command line.
-- verdict: rewrite
-- reason: The bar survives; only the paragraph splits. It is the writer's half of a boundary whose reader's half sits in finishing-work, so it cannot be replaced by a pointer.
+- verdict: retire
+- superseded-by: S012
+- reason: The bar survives; only the paragraph splits. It is the writer's half of a boundary whose reader's half sits in finishing-work, so it cannot be replaced by a pointer. Superseded at `4b2e64c` by S012 (the Section 8 merge; the verdict before it was rewrite).
 
 ### C115
 - key: Leave commands out because finishing-work's step 4 owns the read, and a basis line carrying a command string is an anomaly it reports rather than a read it runs.
@@ -9314,23 +10597,26 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`).
 - source: plugins/claude-kit/agents/docs-curator.md:80
 - provenance: dd5e568 2026-08-24.
 - verdict: retire
-- reason: The prohibition is absolute and complete; the ownership and anomaly-routing account is history the adjudicating skill states on its own surface.
+- superseded-by: S013
+- reason: The prohibition is absolute and complete; the ownership and anomaly-routing account is history the adjudicating skill states on its own surface. Superseded at `4b2e64c` by S013 (the Section 8 merge).
 
 ### C116
 - key: State the pre-change marker on a standalone dispatch too, such as documenting a codebase or preparing a handoff.
 - class: rule
 - source: plugins/claude-kit/agents/docs-curator.md:80
 - provenance: dd5e568 2026-08-24.
-- verdict: rewrite
-- reason: Kept as its own sentence. It is what stops the marker from reading as a finishing-work-only obligation, which is the charter's second declared trigger.
+- verdict: retire
+- superseded-by: S014
+- reason: Kept as its own sentence. It is what stops the marker from reading as a finishing-work-only obligation, which is the charter's second declared trigger. Superseded at `4b2e64c` by S014 (the Section 8 merge; the verdict before it was rewrite).
 
 ### C117
 - key: File a pre-change `mistake` only where the current-state evidence you actually read supports it.
 - class: rule
 - source: plugins/claude-kit/agents/docs-curator.md:80
 - provenance: dd5e568 2026-08-24, which added the refutation discriminator so a refuted premise retires only the pre-change leg.
-- verdict: rewrite
-- reason: The rule survives; only the paragraph splits. It is what keeps the orchestrator's pre-change read a check rather than the claim's only grounding.
+- verdict: retire
+- superseded-by: S015
+- reason: The rule survives; only the paragraph splits. It is what keeps the orchestrator's pre-change read a check rather than the claim's only grounding. Superseded at `4b2e64c` by S015 (the Section 8 merge; the verdict before it was rewrite).
 
 ### C118
 - key: Ground the claim yourself because the orchestrator's pre-change read is a check on it, never a substitute for grounding it here, and a `mistake` whose basis is missing stops the run, with "missing" defined in finishing-work's step 4.
@@ -9338,7 +10624,8 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`).
 - source: plugins/claude-kit/agents/docs-curator.md:80
 - provenance: dd5e568 2026-08-24.
 - verdict: retire
-- reason: The grounding rule stands alone. The bare pointer that finishing-work defines "missing" may survive; the reasoning around it does not need to.
+- superseded-by: S016
+- reason: The grounding rule stands alone. The bare pointer that finishing-work defines "missing" may survive; the reasoning around it does not need to. Superseded at `4b2e64c` by S016 (the Section 8 merge).
 
 ### C119
 - key: Do not create an absent about-doc because whether a project keeps that doc is the project's choice, not the curator's to make.
@@ -9355,6 +10642,142 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`).
 - provenance: dd5e568 2026-08-24.
 - verdict: keep
 - reason: The marker's own text says the charter grants no Bash but not what cannot be reached; this names the base-ref state, which sets the scope of the class the marker covers.
+
+### S001
+- key: State the basis for every entry you file.
+- class: rule
+- source: plugins/claude-kit/agents/docs-curator.md:80
+- provenance: dd5e568 2026-08-24, the section that built the basis and pre-change-marker regime over five review rounds; carried unchanged through 55c5abc 2026-09-09, which rewrote the line only to repoint two finishing-work step numbers.
+- verdict: retire
+- reason: Safe because the output template's `Basis:` slot is marked REQUIRED and carries the requirement as structure, which is the recorded fix for this failure class; the paragraph's substantive rules (absent forms, marker, paths, command bar) are separate entries and untouched.
+
+### S002
+- key: When an entry claims anything about the state before the changeset, say in the entry that you could not read that state.
+- class: rule
+- source: plugins/claude-kit/agents/docs-curator.md:80
+- provenance: dd5e568 2026-08-24, which made the not-read a stated claim finishing-work verifies instead of an assumption; carried unchanged through 55c5abc 2026-09-09.
+- verdict: rewrite
+- reason: The split must keep the class (any claim about the pre-changeset state), the instance list as instances rather than a boundary, and the `Docs said:` exception, since without the exception every ordinary entry would carry an untrue not-read and drag a git read onto the whole report.
+
+### S003
+- key: Put the spec passage and the code passage the class rests on on the `Basis:` line, each written as file:line.
+- class: mechanic
+- source: plugins/claude-kit/agents/docs-curator.md:80
+- provenance: dd5e568 2026-08-24 installed the sentence with the paragraph; no earlier ledger entry keyed it, and 55c5abc 2026-09-09 carried it unchanged.
+- verdict: retire
+- reason: A duplicate inside one document: the template slot at line 61 and the closing paragraph at line 78 (C085 and C094, both keep) state the same instruction, so the line-80 copy goes with nothing lost.
+
+### S004
+- key: Cite both passages so the adjudicator can open the spec and code sides of the disagreement; the entry header already carries the docs side.
+- class: rationale-example
+- source: plugins/claude-kit/agents/docs-curator.md:80
+- provenance: dd5e568 2026-08-24; no earlier ledger entry keyed it, and 55c5abc 2026-09-09 carried it unchanged.
+- verdict: retire
+- reason: The three-citation layout is obeyable without its purpose, and the same rationale at line 78 already retired as C095; the why lives here: the three file:line references are what adjudication opens, one per side of the disagreement.
+
+### S005
+- key: Where a basis passage genuinely does not exist, write that slot's absent form instead of a citation you did not read.
+- class: mechanic
+- source: plugins/claude-kit/agents/docs-curator.md:80
+- provenance: dd5e568 2026-08-24; carried unchanged through 55c5abc 2026-09-09.
+- verdict: rewrite
+- reason: The rule and its three cases (spec silent, docs-only effort, stale index count) survive whole; only the paragraph splits. finishing-work decides what a missing basis is, but the curator still needs to know what to write, so no pointer replaces this.
+
+### S006
+- key: Prefer an absent leg because it does not by itself stop the run, while a fabricated one misleads the moment the adjudicator opens it.
+- class: rationale-example
+- source: plugins/claude-kit/agents/docs-curator.md:80
+- provenance: dd5e568 2026-08-24; carried unchanged through 55c5abc 2026-09-09.
+- verdict: keep
+- reason: The template marks the `Basis:` slot REQUIRED, so without this sentence a writer reads the absent form as failing the slot and fabricates a citation; it is what tells the writer the absent form costs nothing and the fabricated one is the failure.
+
+### S007
+- key: Write `docs absent` in the entry header's docs file:line slot rather than inventing a citation.
+- class: mechanic
+- source: plugins/claude-kit/agents/docs-curator.md:80
+- provenance: dd5e568 2026-08-24; carried unchanged through 55c5abc 2026-09-09.
+- verdict: keep
+- reason: The header's own absent form, matching the basis legs'; nothing else names it and no machinery supplies it.
+
+### S008
+- key: State the not-read using the verbatim marker `pre-change state not read (this charter grants no Bash)`.
+- class: mechanic
+- source: plugins/claude-kit/agents/docs-curator.md:80
+- provenance: dd5e568 2026-08-24; carried unchanged through 55c5abc 2026-09-09.
+- verdict: keep
+- reason: No machinery supersedes it: the string is written only here and consumed by finishing-work's documentation-curation step (SKILL.md:64), with no hook or test enforcing it, so a change to the string must change both surfaces together.
+
+### S009
+- key: Use the exact string because finishing-work keys its verification on it, and a paraphrase silently skips the read and turns the stop into an assumption.
+- class: rationale-example
+- source: plugins/claude-kit/agents/docs-curator.md:80
+- provenance: dd5e568 2026-08-24; carried unchanged through 55c5abc 2026-09-09.
+- verdict: keep
+- reason: A verbatim-string rule is the first thing a writer paraphrases into the same meaning, and only the keyed-verification fact shows that a same-meaning paraphrase disables the check silently.
+
+### S010
+- key: List every path the claim is about under a `Paths:` label as a whitespace-separated list, each repo-root-relative and written with forward slashes.
+- class: mechanic
+- source: plugins/claude-kit/agents/docs-curator.md:80
+- provenance: dd5e568 2026-08-24, which made the path token a selector over the orchestrator's own changeset listing; carried unchanged through 55c5abc 2026-09-09.
+- verdict: keep
+- reason: The prose half of the label's contract; the template at line 63 shows the label but cannot carry the every-path, root-relative and slash rules, and a rename or split names more than one path.
+
+### S011
+- key: Use that form because a backslashed path matches no listing entry and stops the run, and because the label and delimiter let the adjudicator tokenize the paths.
+- class: rationale-example
+- source: plugins/claude-kit/agents/docs-curator.md:80
+- provenance: dd5e568 2026-08-24; carried unchanged through 55c5abc 2026-09-09.
+- verdict: keep
+- reason: Without it the slash rule reads as house style a Windows writer normalizes away; with it the writer knows the token is a selector whose miss costs a stopped run.
+
+### S012
+- key: Do not name, template, or compose a command in a basis line.
+- class: rule
+- source: plugins/claude-kit/agents/docs-curator.md:80
+- provenance: dd5e568 2026-08-24, the section whose subject was keeping report text off a command line; carried unchanged through 55c5abc 2026-09-09.
+- verdict: rewrite
+- reason: The bar survives as its own sentence; it is the writer's half of a boundary whose reader's half sits in finishing-work, so it cannot be replaced by a pointer.
+
+### S013
+- key: Leave the command out because finishing-work's step 5 owns the read, and a basis line carrying a command string is reported as an anomaly rather than run.
+- class: rationale-example
+- source: plugins/claude-kit/agents/docs-curator.md:80
+- provenance: dd5e568 2026-08-24 installed it against step 4; 55c5abc 2026-09-09 repointed it to step 5 when the goal read was inserted as step 4 and steps 5 to 9 renumbered.
+- verdict: retire
+- reason: The prohibition is complete without its why, and the clause is a numbered cross-reference that renumbers whenever finishing-work's step list does, as the renumber proved; the fact lives here: finishing-work's documentation-curation step owns the pre-change read, builds it from the curator's paths and the base ref, and reports a command string in a basis line as an anomaly.
+
+### S014
+- key: Include the not-read marker on a standalone dispatch too, not only within a finishing pass.
+- class: rule
+- source: plugins/claude-kit/agents/docs-curator.md:80
+- provenance: dd5e568 2026-08-24; carried unchanged through 55c5abc 2026-09-09.
+- verdict: rewrite
+- reason: Kept as its own sentence in the split; it is what stops the marker from reading as a finishing-work-only obligation, matching the charter's second load trigger.
+
+### S015
+- key: File a pre-change `mistake` only where the current-state evidence you actually read supports it.
+- class: rule
+- source: plugins/claude-kit/agents/docs-curator.md:80
+- provenance: dd5e568 2026-08-24, which added the refutation discriminator so a refuted premise retires only the pre-change leg; carried unchanged through 55c5abc 2026-09-09.
+- verdict: rewrite
+- reason: The rule survives as its own sentence; it is what keeps the orchestrator's pre-change read a check on the claim rather than the claim's only grounding.
+
+### S016
+- key: Ground the claim yourself, because the orchestrator's pre-change read only checks the claim and never substitutes for grounding it.
+- class: rationale-example
+- source: plugins/claude-kit/agents/docs-curator.md:80
+- provenance: dd5e568 2026-08-24; carried unchanged through 55c5abc 2026-09-09.
+- verdict: retire
+- reason: The grounding rule (S015) stands alone; what the orchestrator does with the read is finishing-work's account of its own step, and the why lives here.
+
+### S017
+- key: A `mistake` with a missing basis stops the run; finishing-work's step 5 defines missing, and the basis line lets a refuted claim avoid a stop rather than causing one.
+- class: rationale-example
+- source: plugins/claude-kit/agents/docs-curator.md:80
+- provenance: dd5e568 2026-08-24 installed it against step 4; 55c5abc 2026-09-09 repointed it to step 5. Shares C118's supersession with S016.
+- verdict: rewrite
+- reason: The stop and the definition of missing are finishing-work's under the ownership map's finishing-pass row, so the sentence becomes a bare pointer at that skill's documentation-curation step, named by name rather than by number so the next renumber does not strand it.
 
 ## plugins/claude-kit/agents/scope-adjudicator.md
 

@@ -164,7 +164,12 @@ test('control: a Metrics: line missing one provenance token fails, naming the to
 // */SKILL.md and every skills/*/references/*.md rather than executing-work
 // alone, since a restatement in a sibling skill or in a reference file is
 // exactly what the single-carrier contract forbids: kit-size.js classes
-// both as skill corpus.
+// both as skill corpus. One reference file per skill is left out: the
+// rationale ledger (references/rationale-ledger.md) is the journal layer,
+// which quotes every claim of the documents it covers verbatim as an entry
+// key, so a phrase stated once in a skill is restated there by construction
+// and nobody loads it as instruction. The doctrine-parity sweeps exclude it
+// on the same ground.
 
 const SKILLS_DIR = path.join(REPO, 'plugins', 'claude-kit', 'skills');
 const EXECUTING_WORK_KEY = 'executing-work/SKILL.md';
@@ -180,7 +185,7 @@ function readSkillTexts() {
         const refs = path.join(SKILLS_DIR, name, 'references');
         if (!fs.existsSync(refs)) continue;
         for (const ref of fs.readdirSync(refs)) {
-            if (!ref.endsWith('.md')) continue;
+            if (!ref.endsWith('.md') || ref === 'rationale-ledger.md') continue;
             texts[name + '/references/' + ref] = fs.readFileSync(path.join(refs, ref), 'utf8');
         }
     }

@@ -8,7 +8,7 @@ Each document sits under its own heading, which opens with its inventory line (w
 
 This document is the kit's escalation instrument: it tells a session how to convene one fresh-context judge, the `consultant` agent, to rule on a single question the session cannot settle on its own. It owns the moments where a session is stuck mid-execution and must decide whether and how to escalate: a second failed attempt at the same problem, a BLOCKED that turns on a decision, a systematic-debugging dead end, and a hard-to-reverse or load-bearing decision the spec does not cover. It also owns the shape of the consult brief, the model and dispatch route for the consultant, the adjudication of the returned ruling, and the choice between the consult and its siblings (design-council, cold, the diff reviewers). Load class: `named-trigger` - the frontmatter says to use it mid-execution at the trigger floor and when the operator asks for a consult or a second opinion on a problem, so it is loaded before convening a consult rather than at session or plan start.
 
-Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below).
+Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below).
 
 ### C001
 - key: Convene a consult when you hit the trigger floor mid-execution or when the operator asks for a consult or second opinion on a problem.
@@ -113,24 +113,27 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - class: rule
 - source: plugins/claude-kit/skills/consult/SKILL.md:15
 - provenance: 1d9c467 2026-08-15, trigger (b), narrowed in the same commit's review fix from "any BLOCKED" after it mandated a consult before credential and destructive BLOCKEDs.
-- verdict: keep
-- reason: The gate it states is the operator's own preference, cost or risk-appetite call (class operator-decision), not loop upkeep; executing-work line 53 restates it for the BLOCKED path and names this skill as the owner of the mechanics. Both readers' compressions were the same length as the passage.
+- verdict: retire
+- superseded-by: S001
+- reason: The gate it states is the operator's own preference, cost or risk-appetite call (class operator-decision), not loop upkeep; executing-work line 53 restates it for the BLOCKED path and names this skill as the owner of the mechanics. Both readers' compressions were the same length as the passage. Superseded at `4b2e64c` by S001 (the Section 8 merge; the verdict before it was keep).
 
 ### C013
 - key: After the consult, send the operator only the preference, cost, or risk-appetite fork that survives, with the ruling attached.
 - class: rule
 - source: plugins/claude-kit/skills/consult/SKILL.md:15
 - provenance: 1d9c467 2026-08-15, the plan's trigger (b) sentence.
-- verdict: keep
-- reason: At the trigger the routing promise is what makes "consult first" a filter rather than a delay before an inevitable escalation; C039 is the same routing at adjudication and both were kept apart deliberately. The gate is operator-decision class and stays.
+- verdict: retire
+- superseded-by: S002
+- reason: At the trigger the routing promise is what makes "consult first" a filter rather than a delay before an inevitable escalation; C039 is the same routing at adjudication and both were kept apart deliberately. The gate is operator-decision class and stays. Superseded at `4b2e64c` by S002 (the Section 8 merge; the verdict before it was keep).
 
 ### C014
 - key: Send an external dependency only the operator can satisfy, and a destructive action awaiting their yes, straight to the operator without a consult.
 - class: rule
 - source: plugins/claude-kit/skills/consult/SKILL.md:15
 - provenance: 1d9c467 2026-08-15, the review fix that exempted the two shapes after the pre-BLOCKED rule proved over-broad.
-- verdict: keep
-- reason: Class blast-radius: the destructive arm is the doctrine's stop-for-a-yes on an irreversible act, and the dependency arm waits on something only the operator can supply. A gate on an irreversible act stays.
+- verdict: retire
+- superseded-by: S003
+- reason: Class blast-radius: the destructive arm is the doctrine's stop-for-a-yes on an irreversible act, and the dependency arm waits on something only the operator can supply. A gate on an irreversible act stays. Superseded at `4b2e64c` by S003 (the Section 8 merge; the verdict before it was keep).
 
 ### C015
 - key: Convene a consult at a systematic-debugging dead end, before the stop-and-report.
@@ -491,3 +494,43 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - provenance: 9f1ed1b 2026-09-09, the design stop.
 - verdict: rewrite
 - reason: Executing-work step 4 owns the design stop's brief, dispatch and bucket, and this sentence restates three of its particulars where the ownership map allows a pointer. Safe because the owner's paragraph (executing-work line 431) carries every particular restated here; the pointer replaces them and is flagged for baseline-testing.
+
+### S001
+- key: Convene a consult on any BLOCKED that turns on a decision, before taking that BLOCKED to the operator.
+- class: rule
+- source: plugins/claude-kit/skills/consult/SKILL.md:15
+- provenance: 1d9c467 2026-08-15, trigger (b), narrowed in the same commit's review fix from "any BLOCKED" after it mandated a consult before credential and destructive BLOCKEDs; cf78ef5 2026-09-09 rewrote line 15 by appending the backstop-substitution pointer and left this clause verbatim.
+- verdict: keep
+- reason: The gate it states is the operator's own preference, cost or risk-appetite call, not loop upkeep; executing-work line 53 restates it for the BLOCKED path and names this skill as the owner of the mechanics, so the owner's copy holds.
+
+### S002
+- key: Send the operator only the preference, cost, or risk-appetite fork that survives the consult, and attach the ruling to it.
+- class: rule
+- source: plugins/claude-kit/skills/consult/SKILL.md:15
+- provenance: 1d9c467 2026-08-15, the plan's trigger (b) sentence; cf78ef5 2026-09-09 rewrote line 15 by appending the backstop-substitution pointer and left this clause verbatim.
+- verdict: keep
+- reason: At the trigger the routing promise is what makes "consult first" a filter rather than a delay before an inevitable escalation; C039 is the same routing at adjudication and both were kept apart deliberately. Operator-decision class with no machinery routing the fork.
+
+### S003
+- key: Take an external dependency only the operator can satisfy, or a destructive action awaiting their yes, straight to the operator without ruling on it.
+- class: rule
+- source: plugins/claude-kit/skills/consult/SKILL.md:15
+- provenance: 1d9c467 2026-08-15, the review fix that exempted the two shapes after the pre-BLOCKED rule proved over-broad; cf78ef5 2026-09-09 rewrote line 15 by appending the backstop-substitution pointer and left this clause verbatim.
+- verdict: keep
+- reason: Class blast-radius: the destructive arm is the doctrine's stop-for-a-yes on an irreversible act and the dependency arm waits on something only the operator can supply, so a gate on an irreversible act stays. Executing-work line 53 restates the two shapes from the BLOCKED side and this skill's copy is the owner's.
+
+### S004
+- key: Accept a design stop's own ruling in place of the consult this BLOCKED trigger orders.
+- class: rule
+- source: plugins/claude-kit/skills/consult/SKILL.md:15
+- provenance: cf78ef5 2026-09-09, Chapter 8 of the review-loop provenance plan: trigger (b) stated no carve-out, so a session that loaded this skill would dispatch a consultant beside the judge the review-round backstop had already convened.
+- verdict: keep
+- reason: The carve-out on this document's own trigger is the consult skill's to state, while the substitution's conditions stay with executing-work's step 4 backstop paragraph (line 433, restated at line 53), and the clause restates none of them, so it is already the pointer the ownership map asks for. test/review-loop-provenance.test.js subject 5b pins "review-round backstop", "step 4" and "substitution" inside the (b) bullet with a mutation control, so any edit must keep all three there.
+
+### S005
+- key: Read executing-work's step 4 backstop paragraph for the conditions under which a design stop's ruling substitutes for this consult.
+- class: pointer
+- source: plugins/claude-kit/skills/consult/SKILL.md:15
+- provenance: cf78ef5 2026-09-09, the same pointer clause, installed so the consult skill and executing-work agree on the one moment a judge stands in for the consultant.
+- verdict: keep
+- reason: The pointer at the owner of the conditions, in the form the ownership map asks a non-owner to carry (as C031 does for the dispatch template); it shares one sentence with S004 and the subject 5b pin requires "step 4" in the (b) bullet, so the pointer cannot move out of the bullet without a red.

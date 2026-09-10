@@ -8,7 +8,7 @@ Each document sits under its own heading, which opens with its inventory line (w
 
 This document is the kit's rulebook for authoring and amending behavior-shaping prose. It owns the moments where a session decides whether a new skill earns a file at all, how a SKILL.md is shaped (frontmatter, body, one owner per rule, size-budget caps), how a description states its trigger, which rule form fixes which observed failure, what facts a rule may rest on, the three sentence-shape bars for any prose the kit ships in its own voice, the paragraph-as-edit-unit rule for correcting a claim in curated prose and how carriers of that claim on other surfaces are routed, and the RED/GREEN/REFACTOR probe discipline (including the probe-corpus before-and-after pair, doctrine-probe staging, and the contaminated-RED case) that must run before a wording change is trusted. Its load class is `named-trigger`: the frontmatter says to use it when creating or editing a skill, when judging whether a wording change will change behavior, or when amending curated prose the kit ships, with triggers such as adding a new SKILL.md, reworking a skill's rules, correcting a claim a curated document states, or a kaizen change to the kit's own skills.
 
-Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`).
+Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below).
 
 ### C001
 - key: Name the specific failure a skill change is meant to fix before writing the change.
@@ -743,184 +743,207 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`).
 - class: rule
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
 - provenance: e0ef09c 2026-09-06, scenario-probes sections 3 and 5, fifteen review rounds.
-- verdict: keep
-- reason: The trigger rule holds as worded; the paragraph around it splits into one sentence per record (see C101, C103, C109 for the three that change).
+- verdict: retire
+- superseded-by: S001
+- reason: The trigger rule holds as worded; the paragraph around it splits into one sentence per record (see C101, C103, C109 for the three that change). Superseded at `4b2e64c` by S001 (the Section 8 merge; the verdict before it was keep).
 
 ### C093
 - key: Check the changed and untracked paths, read against the same `<sha>` the before leg takes, against the shapes' `files:` lists, then the changed hunks against those probes' scenarios; a hunk no scenario turns on runs nothing and is recorded as such.
 - class: mechanic
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
 - provenance: e0ef09c 2026-09-06.
-- verdict: keep
-- reason: No finding of its own; the check that derives the moment list, which the runner's `--touching` does at file grain only.
+- verdict: retire
+- superseded-by: S002
+- reason: No finding of its own; the check that derives the moment list, which the runner's `--touching` does at file grain only. Superseded at `4b2e64c` by S002 (the Section 8 merge; the verdict before it was keep).
 
 ### C094
 - key: Where the probe is `ruled`, let the pair stand in for the reps as the RED and GREEN.
 - class: mechanic
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
 - provenance: e0ef09c 2026-09-06, the plan's design that the pair is the RED and GREEN the skill already demands.
-- verdict: keep
-- reason: The observable predicate that reconciles C089 with C113.
+- verdict: retire
+- superseded-by: S004
+- reason: The observable predicate that reconciles C089 with C113. Superseded at `4b2e64c` by S004 (the Section 8 merge; the verdict before it was keep).
 
 ### C095
 - key: Where the probe is `proposed`, run the after leg alone, record it as evidence for the operator's rulings batch, and still run the reps.
 - class: mechanic
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
 - provenance: e0ef09c 2026-09-06, rewrite 9 of section 3 (a proposed reading is rulings evidence).
-- verdict: keep
-- reason: No finding. Every probe was proposed at the plan's close, so this branch is the one that runs today.
+- verdict: retire
+- superseded-by: S005
+- reason: No finding. Every probe was proposed at the plan's close, so this branch is the one that runs today. Superseded at `4b2e64c` by S005 (the Section 8 merge; the verdict before it was keep).
 
 ### C096
 - key: Do not read a matching before leg as step 1's nothing-to-fix case; the pair measures movement rather than failure.
 - class: mechanic
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
 - provenance: e0ef09c 2026-09-06.
-- verdict: keep
-- reason: No finding. The clause that keeps C085 from misfiring on a probe pair.
+- verdict: retire
+- superseded-by: S008
+- reason: No finding. The clause that keeps C085 from misfiring on a probe pair. Superseded at `4b2e64c` by S008 (the Section 8 merge; the verdict before it was keep).
 
 ### C097
 - key: Read a matching pair on a moment the change did not mean to move as a reading that held.
 - class: mechanic
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
 - provenance: e0ef09c 2026-09-06, the four closed readings.
-- verdict: keep
-- reason: One of the four readings this file owns (the plan's Chapter assigns them here); stays, as its own sentence.
+- verdict: retire
+- superseded-by: S011
+- reason: One of the four readings this file owns (the plan's Chapter assigns them here); stays, as its own sentence. Superseded at `4b2e64c` by S011 (the Section 8 merge; the verdict before it was keep).
 
 ### C098
 - key: Read a before-leg mismatch the after leg matches as the repair.
 - class: mechanic
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
 - provenance: e0ef09c 2026-09-06.
-- verdict: keep
-- reason: One of the four readings; stays.
+- verdict: retire
+- superseded-by: S012
+- reason: One of the four readings; stays. Superseded at `4b2e64c` by S012 (the Section 8 merge; the verdict before it was keep).
 
 ### C099
 - key: Record a mismatch both legs carry as the corpus's.
 - class: mechanic
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
 - provenance: e0ef09c 2026-09-06.
-- verdict: keep
-- reason: One of the four readings; stays.
+- verdict: retire
+- superseded-by: S013
+- reason: One of the four readings; stays. Superseded at `4b2e64c` by S013 (the Section 8 merge; the verdict before it was keep).
 
 ### C100
 - key: Take an after-leg mismatch the before leg lacks, and a matching pair on a moment the change meant to move, to the intent test; the latter is a finding rather than a reading that held.
 - class: mechanic
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
 - provenance: e0ef09c 2026-09-06.
-- verdict: keep
-- reason: One of the four readings; stays.
+- verdict: retire
+- superseded-by: S014
+- reason: One of the four readings; stays. Superseded at `4b2e64c` by S014 (the Section 8 merge; the verdict before it was keep).
 
 ### C101
 - key: Re-run an errored, unparsed, or leg-unavailable pair once as finishing-work's step 5 directs, and where it errors again run the reps, since it stands in for nothing.
 - class: mechanic
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
 - provenance: e0ef09c 2026-09-06.
-- verdict: rewrite
-- reason: Line 87 itself assigns re-run mechanics to finishing-work's step 5 (C110), so the sentence restates its owner; it becomes a pointer with the residue a writer needs (a pair that errors twice stands in for nothing, so the reps run).
+- verdict: retire
+- superseded-by: S016
+- reason: Line 87 itself assigns re-run mechanics to finishing-work's step 5 (C110), so the sentence restates its owner; it becomes a pointer with the residue a writer needs (a pair that errors twice stands in for nothing, so the reps run). Superseded at `4b2e64c` by S016 (the Section 8 merge; the verdict before it was rewrite).
 
 ### C102
 - key: Take a designed shape's rows and a designed-agreed row to finishing-work's step 5 dispositions rather than the four readings.
 - class: pointer
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
 - provenance: e0ef09c 2026-09-06.
-- verdict: keep
-- reason: Already a pointer; stays.
+- verdict: retire
+- superseded-by: S018
+- reason: Already a pointer; stays. Superseded at `4b2e64c` by S018 (the Section 8 merge; the verdict before it was keep).
 
 ### C103
 - key: Treat rows from a shape naming no changed file as no reading at all, since both legs read one corpus.
 - class: mechanic
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
 - provenance: e0ef09c 2026-09-06.
-- verdict: rewrite
-- reason: The README owns what each leg reads (C110), and this sentence restates a consequence of it; it becomes a pointer at tools/probe-corpus/README.md with the residue (such rows are no reading).
+- verdict: retire
+- superseded-by: S019
+- reason: The README owns what each leg reads (C110), and this sentence restates a consequence of it; it becomes a pointer at tools/probe-corpus/README.md with the residue (such rows are no reading). Superseded at `4b2e64c` by S019 (the Section 8 merge; the verdict before it was rewrite).
 
 ### C104
 - key: Run the before leg as `node tools/probe-corpus/run.mjs --only <moments> --before <sha>`.
 - class: mechanic
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
 - provenance: e0ef09c 2026-09-06, with the parity pin tying the flags to the runner's KNOWN_FLAGS.
-- verdict: keep
-- reason: A pinned copy: test/doctrine-parity.test.js requires writing-skills to spell `--only` and `--before` inside a run.mjs command span and refuses any flag the runner does not take. Keep verbatim.
+- verdict: retire
+- superseded-by: S020
+- reason: A pinned copy: test/doctrine-parity.test.js requires writing-skills to spell `--only` and `--before` inside a run.mjs command span and refuses any flag the runner does not take. Keep verbatim. Superseded at `4b2e64c` by S020 (the Section 8 merge; the verdict before it was keep).
 
 ### C105
 - key: Run the after leg as the same command with no `--before` and its own moment list.
 - class: mechanic
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
 - provenance: e0ef09c 2026-09-06.
-- verdict: keep
-- reason: The second half of the pinned command pair; stays.
+- verdict: retire
+- superseded-by: S021
+- reason: The second half of the pinned command pair; stays. Superseded at `4b2e64c` by S021 (the Section 8 merge; the verdict before it was keep).
 
 ### C106
 - key: Set the after leg's `<moments>` to the comma-joined list of every moment the check kept, and the before leg's to that list narrowed to the `ruled` moments.
 - class: mechanic
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
 - provenance: e0ef09c 2026-09-06, rewrite 12 of section 3, which corrected a copy of finishing-work's economy that had made the RED unobtainable exactly where a fix worked.
-- verdict: keep
-- reason: Incident-born within the plan's own rounds; the moment-list derivation is this file's, not finishing-work's, and stays.
+- verdict: retire
+- superseded-by: S022
+- reason: Incident-born within the plan's own rounds; the moment-list derivation is this file's, not finishing-work's, and stays. Superseded at `4b2e64c` by S022 (the Section 8 merge; the verdict before it was keep).
 
 ### C107
 - key: Set `<sha>` to the parent of the change's first commit resolved to a sha, or `HEAD` where the change is uncommitted.
 - class: mechanic
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
 - provenance: e0ef09c 2026-09-06.
-- verdict: keep
-- reason: No finding of its own; the section-time before ref, distinct from finishing-work's base-ref derivation which the bound points at.
+- verdict: retire
+- superseded-by: S025
+- reason: No finding of its own; the section-time before ref, distinct from finishing-work's base-ref derivation which the bound points at. Superseded at `4b2e64c` by S025 (the Section 8 merge; the verdict before it was keep).
 
 ### C108
 - key: Run the pair once at the section's close over the section's whole change, not at each fix round.
 - class: rule
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
 - provenance: e0ef09c 2026-09-06, the paid-reader economy.
-- verdict: keep
-- reason: Stands as worded in the split; a per-fix-round pair would spend about forty cents a pair per round (memory record the-probe-runner-is-a-paid-box-claimed-run).
+- verdict: retire
+- superseded-by: S027
+- reason: Stands as worded in the split; a per-fix-round pair would spend about forty cents a pair per round (memory record the-probe-runner-is-a-paid-box-claimed-run). Superseded at `4b2e64c` by S027 (the Section 8 merge; the verdict before it was keep).
 
 ### C109
 - key: Take the box claim step 5 names before the run, and run the section's lane once that claim is released.
 - class: rule
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
 - provenance: e0ef09c 2026-09-06 wrote the claim clause; ddcb28e 2026-09-07 rewrote finishing-work's step 5 to "takes no heavy-process claim" (one network-bound reader holds neither processors nor memory), which the memory record of the first full run agrees with.
-- verdict: rewrite
-- reason: The claim is stale and false: the step 5 it points at names no box claim, so a session following this line would claim a slot the owner says the runner does not take and hold its lane for nothing. Drop the claim clause and point at finishing-work for the run's process standing; the doctrine's memory rule would have this corrected in the same turn as found, and the rewrite plan is that turn.
+- verdict: retire
+- superseded-by: S029
+- reason: The claim is stale and false: the step 5 it points at names no box claim, so a session following this line would claim a slot the owner says the runner does not take and hold its lane for nothing. Drop the claim clause and point at finishing-work for the run's process standing; the doctrine's memory rule would have this corrected in the same turn as found, and the rewrite plan is that turn. Superseded at `4b2e64c` by S029 (the Section 8 merge; the verdict before it was rewrite).
 
 ### C110
 - key: Read `tools/probe-corpus/README.md` for what each leg reads and what each row status means, and finishing-work's step 5 for how the run is spawned, when a leg is re-run, and what each row counts for.
 - class: pointer
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
 - provenance: e0ef09c 2026-09-06, the ownership split the fifteen rounds settled on.
-- verdict: keep
-- reason: The ownership statement that C101 and C103 are rewritten to honour.
+- verdict: retire
+- superseded-by: S031
+- reason: The ownership statement that C101 and C103 are rewritten to honour. Superseded at `4b2e64c` by S031 (the Section 8 merge; the verdict before it was keep).
 
 ### C111
 - key: On a ruled probe's after-leg mismatch the before leg lacks, apply the intent test: a move the change intended is a re-ruling to ask the operator for, and any other is a finding.
 - class: rule
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
 - provenance: e0ef09c 2026-09-06, "what this bar adds"; the plan routes every proposed reading to the operator's rulings batch and treats a probe edit as a re-ruling by construction.
-- verdict: keep
-- reason: An operator-decision gate, not loop maintenance: the ruling is the operator's answer to what the prose should make a fresh session do, and a session re-ruling a probe its own change moved would grade its own change against a spec it just rewrote. Stays under the standing-grant precedent.
+- verdict: retire
+- superseded-by: S033
+- reason: An operator-decision gate, not loop maintenance: the ruling is the operator's answer to what the prose should make a fresh session do, and a session re-ruling a probe its own change moved would grade its own change against a spec it just rewrote. Stays under the standing-grant precedent. Superseded at `4b2e64c` by S033 (the Section 8 merge; the verdict before it was keep).
 
 ### C112
 - key: Where a change's only shape-named files are the repo's `home/*.md` files, run the reps with the cache staging instead, since neither leg sees it.
 - class: mechanic
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
 - provenance: e0ef09c 2026-09-06, kept over a reviewer's objection that it was anticipatory because the parser admits a home/ entry.
-- verdict: keep
-- reason: No finding. A conditional on an observable predicate (the runner reads home/ from the reader's home directory), which the plan chose to state.
+- verdict: retire
+- superseded-by: S035
+- reason: No finding. A conditional on an observable predicate (the runner reads home/ from the reader's home directory), which the plan chose to state. Superseded at `4b2e64c` by S035 (the Section 8 merge; the verdict before it was keep).
 
 ### C113
 - key: Accept a matching leg pair as one sample and read the raw replies the runner keeps as you read flagged results.
 - class: mechanic
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
 - provenance: e0ef09c 2026-09-06, the single-sample admission the rounds required (a match is single-sample evidence) with a cost ceiling declined.
-- verdict: keep
-- reason: Not in real conflict with C089; the sentence names the cost the reps rule is traded against and routes the reading through C090's read-it-yourself rule.
+- verdict: retire
+- superseded-by: S037
+- reason: Not in real conflict with C089; the sentence names the cost the reps rule is traded against and routes the reading through C090's read-it-yourself rule. Superseded at `4b2e64c` by S037 (the Section 8 merge; the verdict before it was keep).
 
 ### C114
 - key: Record the reading, or both readings where a pair ran, on the line executing-work's Chapter template holds for it in `Decisions / Surprises`, or in the turn's close-out status where no section Chapter exists.
 - class: rule
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
 - provenance: e0ef09c 2026-09-06, the Chapter slot added in the same commit.
-- verdict: keep
-- reason: Stands; the slot it names exists in executing-work's template and the pin checks the template names the summary prefix.
+- verdict: retire
+- superseded-by: S040
+- reason: Stands; the slot it names exists in executing-work's template and the pin checks the template names the summary prefix. Superseded at `4b2e64c` by S040 (the Section 8 merge; the verdict before it was keep).
 
 ### C115
 - key: Run a GREEN probe for a doctrine change in a fresh session such as a headless `claude -p`, never as a subagent of the session that made the edit.
@@ -1097,3 +1120,323 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`).
 - provenance: a5e184b 2026-08-25.
 - verdict: retire
 - reason: The open-list rule and its contract bound read without the account of how the writer is fooled; it now lives under C050.
+
+### S001
+- key: Run the probe runner's before-and-after pair for a moment whose probe shape names a file your change touched in a passage that probe's scenario turns on.
+- class: rule
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06, scenario-probes sections 3 and 5, fifteen review rounds; line rewritten by 55c5abc 2026-09-09, which inserted the finishing goal read as step 4 and renumbered finishing-work's step 5 to step 6, this claim's words unchanged.
+- verdict: keep
+- reason: The trigger rule for the pair; the merge touched only the step number elsewhere in the line, and the paragraph still splits into one sentence per record with this as the lead.
+
+### S002
+- key: Check the changed and untracked paths against the shapes' `files:` lists, then check the changed hunks against those probes' scenarios.
+- class: mechanic
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06, the check that derives the moment list; line rewritten by 55c5abc 2026-09-09 (step renumbering), the claim's words unchanged.
+- verdict: keep
+- reason: The runner's `--touching` selects at file grain only, so the hunk-against-scenario half has no mechanical substitute and stays with the writer.
+
+### S003
+- key: Run nothing for a hunk no scenario turns on, and record that it ran nothing.
+- class: mechanic
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06, the second half of the check sentence (shares C093's supersession with S002); line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
+- verdict: keep
+- reason: Nothing records a scenario-excluded hunk for the session, so the record-it clause is the writer's and stays as its own sentence in the split.
+
+### S004
+- key: Let the before-and-after pair stand in for the reps as the RED and the GREEN.
+- class: rule
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06, the plan's design that the pair is the RED and GREEN the skill already demands; line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
+- verdict: keep
+- reason: The observable predicate that reconciles the reps rule (line 85) with the one-sample admission (S037); every probe is still `proposed`, so this branch is unexercised rather than dead.
+
+### S005
+- key: Run only the after leg and record it as evidence for the operator's rulings batch.
+- class: rule
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06, rewrite 9 of section 3 (a proposed reading is rulings evidence); line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
+- verdict: keep
+- reason: The branch every probe takes today, and finishing-work's step 6 states the same routing for its own pass; two moments, one rule each.
+
+### S006
+- key: Skip the before leg on a proposed probe because it buys nothing for its paid readers.
+- class: rationale-example
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06, the reason clause of the proposed-probe sentence (shares C095's supersession with S005); line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
+- verdict: retire
+- reason: S005 is obeyed without the reason, and finishing-work's step 6 states the same clause, so the document carried it twice. The why: a proposed probe's mismatch goes to the operator's rulings batch whichever leg carries it, so a before leg over it spends a paid reader on a reading nobody acts on.
+
+### S007
+- key: Still run the reps described above when the probe is `proposed`.
+- class: rule
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06, the third clause of the proposed-probe sentence (shares C095's supersession with S005); line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
+- verdict: keep
+- reason: The bound that keeps a proposed probe's after leg from being read as the GREEN; unenforced.
+
+### S008
+- key: Do not treat a before leg that matches as step 1's nothing-to-fix case, and do not stop on it.
+- class: rule
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06; line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
+- verdict: keep
+- reason: The clause that keeps line 81's stop rule from misfiring on a probe pair; unenforced. The why (S009, moved here): the pair measures movement rather than failure, so a matching before leg says the moment sat where it was ruled to sit, not that there is nothing to fix.
+
+### S009
+- key: Read the pair as a measure of movement rather than of failure.
+- class: rationale-example
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06, the bound of the matching-before-leg sentence (shares C096's supersession with S008); line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
+- verdict: retire
+- reason: S008 is obeyed as a bare prohibition; the movement framing is why it holds rather than what to do, and now lives under S008.
+
+### S010
+- key: Sort every pair reading into exactly one of the four listed readings; the set is closed.
+- class: mechanic
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06, the closure written over the four readings when they were installed; line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
+- verdict: keep
+- reason: The class closure this file's own line 46 requires of every enumeration; its bound is what keeps errored, designed and no-changed-file rows from being forced into a reading.
+
+### S011
+- key: Read a matching pair on a moment the change did not mean to move as a reading that held.
+- class: mechanic
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06, the four closed readings; line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
+- verdict: keep
+- reason: One of the four readings the plan's Chapter assigns to this file; stays as its own sentence.
+
+### S012
+- key: Read a before-leg mismatch that the after leg matches as the repair.
+- class: mechanic
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06; line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
+- verdict: keep
+- reason: One of the four readings; stays.
+
+### S013
+- key: Read a mismatch both legs carry as the corpus's, and record it as such.
+- class: mechanic
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06; line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
+- verdict: keep
+- reason: One of the four readings; finishing-work's step 6 names the same row for its own pass, which is two moments rather than a duplicate.
+
+### S014
+- key: Take an after-leg mismatch that the before leg lacks to the intent test.
+- class: mechanic
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06; line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
+- verdict: keep
+- reason: The reading that feeds the intent test S033 and S034 own; stays.
+
+### S015
+- key: Take a matching pair on a moment the change meant to move to the intent test, and treat it as a finding rather than a reading that held.
+- class: mechanic
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06, the second half of the intent-test reading (shares C100's supersession with S014); line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
+- verdict: keep
+- reason: A matching pair on an intended move is the one reading a session would misread as success, so the finding label is load-bearing.
+
+### S016
+- key: Re-run an errored, unparsed, or unavailable-leg pair once, as finishing-work's step 6 directs.
+- class: rule
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06 wrote it against finishing-work's step 5; 55c5abc 2026-09-09 renumbered the pointer to step 6 when the finishing goal read became step 4.
+- verdict: rewrite
+- reason: Step 6 owns the re-run count and its triggers and states them, so the sentence restates its owner; it becomes a pointer, with S017 as the residue that follows. Baseline-test: yes.
+
+### S017
+- key: Where the re-run errors again, count the pair for nothing and run the reps above instead.
+- class: rule
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06, the residue of the re-run sentence (shares C101's supersession with S016); line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
+- verdict: keep
+- reason: This file's own consequence, which step 6 does not state: a pair that errors twice stands in for nothing, so the reps run.
+
+### S018
+- key: Take finishing-work's step 6 dispositions for a designed shape's rows and for a designed-agreed row.
+- class: pointer
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06 wrote it against step 5; 55c5abc 2026-09-09 renumbered the pointer to step 6.
+- verdict: keep
+- reason: Already a pointer, and step 6 carries the designed and designed-agreed dispositions under the new number.
+
+### S019
+- key: Count rows from a shape that names no changed file as no reading at all.
+- class: mechanic
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06; line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
+- verdict: rewrite
+- reason: The runner README's "What the runner reads" section owns what each leg reads, and this sentence restates a consequence of it; it becomes a pointer at tools/probe-corpus/README.md with the residue that such rows are no reading. Baseline-test: yes.
+
+### S020
+- key: Run the before leg as `node tools/probe-corpus/run.mjs --only <moments> --before <sha>`.
+- class: mechanic
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06, with the parity pin tying the flags to the runner's KNOWN_FLAGS; line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
+- verdict: keep
+- reason: A pinned copy: test/doctrine-parity.test.js requires writing-skills to spell `--only` and `--before` inside a run.mjs command span and refuses any flag the runner does not take. Keep verbatim.
+
+### S021
+- key: Run the after leg as the same command with no `--before` and with its own moment list.
+- class: mechanic
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06; line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
+- verdict: keep
+- reason: The second half of the pinned command pair; stays.
+
+### S022
+- key: Set the after leg's `<moments>` to the comma-joined list of every moment the check kept.
+- class: mechanic
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06, rewrite 12 of section 3, which corrected a copy of finishing-work's economy that had made the RED unobtainable exactly where a fix worked; line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
+- verdict: keep
+- reason: Incident-born within the plan's own rounds; the moment-list derivation is this file's, where finishing-work derives its own list with `--touching`.
+
+### S023
+- key: Set the before leg's `<moments>` to that same list narrowed to the `ruled` moments.
+- class: mechanic
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06, the second half of the moment-list sentence (shares C106's supersession with S022); line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
+- verdict: keep
+- reason: The narrowing is what keeps the before leg off a proposed probe's paid readers. The why (S024, moved here): a pair is a reading only where both legs ran the moment, and a proposed probe runs the after leg alone.
+
+### S024
+- key: Narrow the before leg because a pair is a reading only where both legs ran the moment.
+- class: rationale-example
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06, the reason clause of the moment-list sentence (shares C106's supersession with S022); line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
+- verdict: retire
+- reason: S023 is obeyed without it and S005 already states that a proposed probe runs the after leg alone; the why now lives under S023.
+
+### S025
+- key: Resolve `<sha>` to the parent of the change's first commit, or to `HEAD` where the change is uncommitted.
+- class: mechanic
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06; line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
+- verdict: keep
+- reason: The section-time before ref, distinct from finishing-work's base-ref derivation; nothing derives it for the session.
+
+### S026
+- key: For a root-commit change, take the `<sha>` from finishing-work's pre-step-1 derivation, which leaves the before leg unrun.
+- class: mechanic
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06, the bound of the before-ref sentence (shares C107's supersession with S025), written against step 5; 55c5abc 2026-09-09 renumbered the recording step to 6.
+- verdict: keep
+- reason: The pointer resolves: finishing-work's step 6 states that the empty-tree base ref a root-commit effort yields leaves the before leg unrun and recorded as such.
+
+### S027
+- key: Run the pair once at the section's close over the section's whole change, not at each fix round.
+- class: rule
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06, the paid-reader economy; line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
+- verdict: keep
+- reason: A per-fix-round pair would spend about forty cents a pair per round (memory record the-probe-runner-is-a-paid-box-claimed-run); nothing enforces the once.
+
+### S028
+- key: Inside a finishing pass, do not run the set yourself; only finishing-work's step 6 runs it.
+- class: rule
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06, the one-owner-per-moment split that gave the finishing pass its own run, written against step 5; 55c5abc 2026-09-09 renumbered it to step 6.
+- verdict: keep
+- reason: The bound that keeps a finishing pass from running the pair a second time beside step 6's run over the whole changeset, which that step states.
+
+### S029
+- key: Take the box claim that step 6 names before running the pair.
+- class: rule
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06 wrote the claim clause against step 5; ddcb28e 2026-09-07 rewrote that step to "takes no heavy-process claim" (one network-bound reader holds neither processors nor memory); 55c5abc 2026-09-09 renumbered the pointer to step 6 and left the clause as it was.
+- verdict: rewrite
+- reason: The clause is still false after the merge: step 6 names no box claim, so a session following it would claim a slot the owner says the runner does not take. Drop the clause and point at finishing-work's step 6 for the run's process standing; finishing-work's own post-gate re-run sentence says "under its own claim", a conflict inside that file for its unit to rule. Baseline-test: yes.
+
+### S030
+- key: Run the section's lane only once that box claim is released.
+- class: rule
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06, the second clause of the box-claim sentence (shares C109's supersession with S029); ddcb28e 2026-09-07 removed the claim the clause waits on; line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
+- verdict: retire
+- reason: With no claim taken there is nothing to release, and the owner says the whole gate may run beside the runner, so the sequencing instruction has no content left once S029 points at step 6. Baseline-test: yes.
+
+### S031
+- key: Read `tools/probe-corpus/README.md` for what each leg reads and what each row status means.
+- class: pointer
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06, the ownership split the fifteen rounds settled on; line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
+- verdict: keep
+- reason: The ownership statement S019 is rewritten to honour; the README exists at that path with a "What the runner reads" section and the pair-status list.
+
+### S032
+- key: Read finishing-work's step 6 for how the run is spawned, when a leg is re-run, and what each row counts for.
+- class: pointer
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06, the ownership split (shares C110's supersession with S031), written against step 5; 55c5abc 2026-09-09 renumbered the pointer to step 6.
+- verdict: keep
+- reason: Step 6 carries the spawn, re-run and row-count text under the new number; S016's rewrite folds into this pointer.
+
+### S033
+- key: Where the intended move produced a ruled probe's after-leg mismatch, ask the operator for a re-ruling.
+- class: rule
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06, "what this bar adds"; the plan routes every proposed reading to the operator's rulings batch and treats a probe edit as a re-ruling by construction; line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
+- verdict: keep
+- reason: An operator-decision gate rather than loop maintenance: a session re-ruling a probe its own change moved would grade its change against a spec it just rewrote.
+
+### S034
+- key: Treat any such mismatch the change did not intend as a finding.
+- class: rule
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06, the second half of the intent test (shares C111's supersession with S033); line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
+- verdict: keep
+- reason: The finding label is what routes an unintended move into a fix round; unenforced.
+
+### S035
+- key: Where a change's only shape-named files are the repo's `home/*.md` files, run the reps above with the cache staging described below.
+- class: rule
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06, kept over a reviewer's objection that it was anticipatory because the parser admits a home/ entry; line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
+- verdict: keep
+- reason: A conditional on an observable file-path predicate, and the case is live: the repo's `home/` holds CLAUDE.md and claude-kit-doctrine.md. The why (S036, moved here): the runner reads a `home/` entry from the reader's home directory rather than from the repo, so neither leg sees the change.
+
+### S036
+- key: Expect neither leg to see such a change, because the runner reads a `home/` entry from the reader's home directory rather than from the repo.
+- class: rationale-example
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06, the mechanism clause of the home-files sentence (shares C112's supersession with S035); line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
+- verdict: retire
+- reason: S035 is obeyed on its predicate alone, the runner README owns where a `home/` entry is read from, and finishing-work's step 6 carries this clause word for word; the why now lives under S035.
+
+### S037
+- key: Accept a matching leg pair as one sample, and do not run a second.
+- class: rule
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06, the single-sample admission the rounds required with a cost ceiling declined; line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
+- verdict: keep
+- reason: Reconciled with line 85's reps rule by S004's ruled-probe predicate. The why (S038, moved here): a second pair costs a paid reader per probe-and-shape pair, about forty cents each by the memory record, and buys a second sample of a reading the pair already gave.
+
+### S038
+- key: Do not take a second sample, because it costs a paid reader per probe-and-shape pair.
+- class: rationale-example
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06, the cost clause of the one-sample sentence (shares C113's supersession with S037); line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
+- verdict: retire
+- reason: S037 is obeyed without the price and S004 carries the predicate that keeps it from conflicting with the reps rule; the why now lives under S037 with the memory record's figure.
+
+### S039
+- key: Read the raw replies the runner keeps yourself, the same way you read the flagged results above.
+- class: rule
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06, the read-it-yourself residue (shares C113's supersession with S037); line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
+- verdict: keep
+- reason: Routes a pair's raw replies through line 85's read-every-flagged-result rule; nothing reads them for the session.
+
+### S040
+- key: Record the reading, or both readings where a pair ran, on the line executing-work's Chapter template holds for it in `Decisions / Surprises`.
+- class: mechanic
+- source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
+- provenance: e0ef09c 2026-09-06, the Chapter slot added in the same commit; line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
+- verdict: keep
+- reason: A pinned pointer: test/doctrine-parity.test.js asserts this file names "executing-work's Chapter template" and "`Decisions / Surprises`" and that executing-work's line names the writing-skills slot.
