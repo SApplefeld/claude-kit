@@ -4228,14 +4228,19 @@ function assertNamesEveryRoot(claim, extraRoots, where) {
 // A rationale ledger (`references/rationale-ledger.md` under a skill) is the
 // corpus audit's journal layer rather than a surface a session loads: nobody
 // loads it by default, and its entries quote rule wordings, retired ones
-// included, as their subject, with provenance narrative beside them. Every
-// walker in this file that enumerates shipped markdown as instruction surfaces
-// leaves it out through this one predicate, on the rule that keeps docs/plans/
-// and docs/archive/ out of shippedBoundaryFiles below, so a new walker has one
-// thing to reuse rather than a literal to copy.
+// included, as their subject, with provenance narrative beside them. The two
+// walkers that enumerate shipped markdown as instruction surfaces,
+// shippedBoundaryFiles below and shippedKitMarkdown, leave it out through this
+// one predicate, on the rule that keeps docs/plans/ and docs/archive/ out of
+// shippedBoundaryFiles, so a new walker has one thing to reuse rather than a
+// literal to copy. The tracked-tree retire sweep above reads every tracked
+// file and keeps the ledgers in its judged set, so a ledger paragraph naming
+// three of the five retire class heads would red there and would take an
+// exemption of its own.
 function isRationaleLedger(dir, name) {
     return name === 'rationale-ledger.md' && path.basename(dir) === 'references';
 }
+
 // The shipped surfaces this sweep reads: the repo-root and docs/ markdown,
 // and everything under the plugin payload. Two directories are deliberately
 // out, docs/plans/ and docs/archive/, which are the journal layer and quote
