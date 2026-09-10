@@ -8,7 +8,7 @@ Each document sits under its own heading, which opens with its inventory line (w
 
 This document is the operating contract for autonomously executing an approved spec or plan held in docs/plans/. It owns the moments of a plan run: the completion contract that forbids ending a turn for progress, gates, context or dispatched agents; the closed blocker set and the expert ask, consult, and `BLOCKED:` declaration that a true blocker takes; the `WAITING:` stop shape for pending background dispatches and for a park; the arming and re-arming of the completion leash, including a plan arriving mid-run; the pre-start and post-compaction reads of the plan doc and this skill; the plan `Status:` header normalization; the intake gap check and its routing; the `memq recall` pass before the first section; the external-engine worker stand-down; workspace and sibling-session file ownership; and the section loop's boundary-closing checkpoint clear. Load class: `plan-run` - its own description says to use it when told to proceed, implement, build or continue an agreed plan, or when resuming a session with an In Progress plan doc, and it requires re-invocation through the Skill tool after any compaction during a run.
 
-Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358 (`skills.executing-work.c2.md`); lines 359-445 (`skills.executing-work.c3.md`); lines 446-529 (`skills.executing-work.c4.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/plans/claude-kit_review-tier-decay_spec_v1.md` on 2026-09-10 (`U` entries below).
+Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358 (`skills.executing-work.c2.md`); lines 359-445 (`skills.executing-work.c3.md`); lines 446-529 (`skills.executing-work.c4.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/archive/claude-kit_review-tier-decay_spec_v1.md` on 2026-09-10 (`U` entries below).
 
 ### c1.C001
 - key: Load and follow this skill when told to proceed, implement, build or continue an agreed plan, or when resuming a session with an In Progress plan doc.
@@ -9437,7 +9437,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - key: Run round 1 as every reviewer one tier up from the section's writer tier, Fable the ceiling.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:361
-- provenance: docs/plans/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
+- provenance: docs/archive/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
 - verdict: keep
 - reason: Round 1 keeps the roster the pre-decay rule already ran, so the escalation the operator ruled for the whole roster still fires on the section's first round.
 
@@ -9445,7 +9445,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - key: Run every later round as one lens dispatched at the writer's own tier.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:361
-- provenance: docs/plans/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
+- provenance: docs/archive/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
 - verdict: keep
 - reason: A later round exists to re-check owed findings against the spec's trace target over a fix delta of a few lines, not to re-read a whole diff at a tier above the writer, so the program's decay measure (rounds per section rising past four while re-running three Fable lenses) is what the one-lens dispatch answers.
 
@@ -9453,7 +9453,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - key: Dispatch the later round's one lens as the adversarial-reviewer where the fix delta touched anything but a deliverable document the Audience rule names, and as the prose-reviewer where it touched those alone.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:361
-- provenance: docs/plans/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
+- provenance: docs/archive/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
 - verdict: keep
 - reason: A later round's job is the sighted, trace-target read a fix delta earns, which is the adversarial or prose lens's role rather than the blind lens's, since a blind read of an intent-free whole diff has little to read in a delta of a few lines.
 
@@ -9461,15 +9461,15 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - key: Join the security lens to no decayed round, a re-raised round running round 1's roster, since a fix delta that meets its trigger still owes its round under step 4's fix-delta bar, read by the one lens.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:361
-- provenance: docs/plans/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
+- provenance: docs/archive/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
 - verdict: keep
 - reason: A decayed round re-checks owed findings over a fix delta of a few lines, and the operator's ruling values the security lens for egregious flaws in well-designed code rather than for per-fix hardening. The delta still owes its round under the fix-delta bar, and the finishing security pass reads the whole changeset before the plan closes. Under Commit-and-Push that pass runs after the section has already pushed, so a trigger-meeting delta sits on the trunk unread for the plan's duration; that exposure is the accepted cost, carried on the plan's own assumption rather than hidden here.
 
 ### U005
-- key: Re-raise the round after a Critical to round 1's roster and tier, the tier re-read against the writer tier in force when the re-raised round dispatches.
+- key: Re-raise the round after a Critical that survives adjudication to round 1's roster and tier, the tier re-read against the writer tier in force when the re-raised round dispatches.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:361
-- provenance: docs/plans/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
+- provenance: docs/archive/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
 - verdict: keep
 - reason: A Critical breaks the decay so the decay stays a default rather than a cap on what a real defect can summon; a Critical any later round returns, a re-raised round included, does the same to the next round.
 
@@ -9477,7 +9477,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - key: Hand the round after a re-raised round that returns no Critical back to one lens, resuming the decay.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:361
-- provenance: docs/plans/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
+- provenance: docs/archive/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
 - verdict: keep
 - reason: The re-raise is a response to a live defect, not a standing reset, so once a full-strength round clears the section the decay resumes rather than staying at round 1's roster.
 
@@ -9485,15 +9485,15 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - key: Run a later round over a haiku writer at sonnet, the reviewer floor.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:361
-- provenance: docs/plans/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
+- provenance: docs/archive/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
 - verdict: keep
-- reason: Step 1's escalation fires only on a Critical or a second NEEDS_CONTEXT and no reviewer charter is written for the haiku tier, so a haiku writer's later round has nowhere to run but sonnet.
+- reason: Step 1's escalation fires only on a Critical or a second NEEDS_CONTEXT, so a haiku section whose round 1 returned Majors alone reaches a later round still at haiku, and no reviewer charter is written for that tier. The floor is a rule choice rather than a forced one: the charters carry `tools:` and `effort:` and no `model:` line, so nothing would refuse a haiku override.
 
 ### U008
 - key: Dispatch round 1's code pair and document pair over a section whose writer tier is opus or fable at model fable, effort `low` (frontmatter default), via the Agent tool.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:389
-- provenance: docs/plans/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
+- provenance: docs/archive/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
 - verdict: keep
 - reason: The row now names round 1 explicitly, since a later round no longer dispatches the pair, only the one sighted lens the fix delta earns.
 
@@ -9501,7 +9501,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - key: Dispatch round 1's security-reviewer over a section whose writer tier is opus or fable at model fable, effort `medium` (frontmatter default), via the Agent tool.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:390
-- provenance: docs/plans/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
+- provenance: docs/archive/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
 - verdict: keep
 - reason: The row now names round 1 explicitly, since the security lens never runs a decayed round, and a re-raised round takes round 1's rows rather than a row of its own.
 
@@ -9509,7 +9509,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - key: Dispatch round 1's reviewers one tier above a haiku- or sonnet-tier writer, whichever lens, at sonnet or opus, effort `high`, via `Workflow` on the dispatch template.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:392
-- provenance: docs/plans/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
+- provenance: docs/archive/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
 - verdict: keep
 - reason: The row now names round 1 explicitly, since a later round over that writer runs a different row (U012) at the writer's own tier.
 
@@ -9517,7 +9517,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - key: Dispatch a later round's one lens over a fable writer at model fable, effort `low` (frontmatter default), via the Agent tool.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:393
-- provenance: docs/plans/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
+- provenance: docs/archive/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
 - verdict: keep
 - reason: A later round over a Fable-tier writer stays cheap, since the writer's own tier is already the ceiling and the round is one lens rather than the round 1 roster.
 
@@ -9525,7 +9525,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - key: Dispatch a later round's one lens over a haiku, sonnet or opus writer at the writer's tier, sonnet the floor, effort `high`, via `Workflow` on the dispatch template.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:394
-- provenance: docs/plans/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
+- provenance: docs/archive/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
 - verdict: keep
 - reason: A later round no longer buys the round-1 escalation over a below-Fable writer; it runs at the writer's own tier, sonnet the floor, since no reviewer charter exists below sonnet.
 
@@ -9533,7 +9533,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - key: Count rounds rather than findings, a round being the roster step 3's round rule dispatched, the security lens included where it ran, and a fix-delta-owed round counting like any other.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:435
-- provenance: docs/plans/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
+- provenance: docs/archive/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
 - verdict: keep
 - reason: The bound counts rounds, and decay gives a round two shapes, so a unit stated as one shape stops counting the other. Naming the roster step 3 dispatched is what keeps the backstop and the tier ladder armed on the later rounds decay makes cheap to loop on.
 
@@ -9541,7 +9541,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - key: Count a round once that roster has returned; a lens stopped on the wedge hallmark and re-dispatched completes the set it belonged to rather than opening a second.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:435
-- provenance: docs/plans/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
+- provenance: docs/archive/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
 - verdict: keep
 - reason: Completion is read against whatever roster the round dispatched, so a later round's one lens returning completes it. A wedge stays an environment fault rather than a round, which is what keeps its re-dispatch from inflating the count toward the operator's bound.
 
@@ -9549,11 +9549,19 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - key: Dispatch round 1's two reviewers in parallel with each other, overlapping no run of your own.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:361
-- provenance: docs/plans/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
+- provenance: docs/archive/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
 - verdict: rewrite
 - reason: The step is re-entered per round, so its opening imperative is the first instruction a later round reads. Unqualified it orders two reviewers where the rule further down the step orders one, which is the reading a top-down orchestrator acts on. Inherits R029's pending ruling A039, which the round-1 qualifier leaves untouched.
-- proposed: State at step 2 that a delta a guard should have refused, found in a delegated diff, takes step 3's incident path; leave the writer-tier sentence as it stands.
+- proposed: (via A039) State at step 2 that a delta a guard should have refused, found in a delegated diff, takes step 3's incident path; leave the writer-tier sentence as it stands.
 - baseline-test: yes
+
+### U016
+- key: Dispatch a re-raised round on round 1's rows below rather than on a row of its own.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:361
+- provenance: docs/archive/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
+- verdict: keep
+- reason: A re-raised round runs round 1's roster, so it takes round 1's rows and the table needs no row of its own for it. Without the sentence a dispatcher reading the table top-down meets the later-round rows first and runs a re-raised round at the writer's tier, which is the tier the re-raise exists to leave.
 
 ## plugins/claude-kit/agents/prose-reviewer.md
 
