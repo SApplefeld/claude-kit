@@ -5303,8 +5303,8 @@ test('the finishing pass names the contention lane at the gates it runs', () => 
 // one carrier, and the final Chapter is it.
 test('the final Chapter records the handoff gate the way a section Chapter records its own', () => {
     const finishing = readRepoFile('plugins/claude-kit/skills/finishing-work/SKILL.md');
-    const step = sliceBetween(finishing, '5. **Close and archive the plan doc.**',
-        '6. **Apply the commit model.**', 'finishing-work\'s step 5');
+    const step = sliceBetween(finishing, '6. **Close and archive the plan doc.**',
+        '7. **Apply the commit model.**', 'finishing-work\'s step 6');
     assert.match(step, /carries a `Gate:` line/,
         'the step that writes the final Chapter no longer asks it for a Gate '
         + 'line, so the one gate covering the whole tree leaves no counts behind '
@@ -5314,7 +5314,7 @@ test('the final Chapter records the handoff gate the way a section Chapter recor
     // three qualifiers the template carries, the no-baseline-exists escape
     // among them, which is the one the handoff gate needs first.
     assert.match(step, /same shape a section Chapter's does[^.]{0,200}Chapter template/,
-        'finishing-work\'s step 5 no longer routes the final Chapter\'s Gate '
+        'finishing-work\'s step 6 no longer routes the final Chapter\'s Gate '
         + 'shape to executing-work\'s Chapter template. A restatement here is a '
         + 'second authority that drifts, and the drift lands as a shorter list '
         + 'than the template asks for');
@@ -5324,17 +5324,17 @@ test('the final Chapter records the handoff gate the way a section Chapter recor
     // edits reports a gate that never saw the shipped tree, and amending it
     // after the gate makes the tree one edit newer than its evidence.
     assert.match(step, /`Gate:` line left open/,
-        'finishing-work\'s step 5 no longer says the final Chapter is written '
+        'finishing-work\'s step 6 no longer says the final Chapter is written '
         + 'with its Gate line left open. Without that order the Chapter carries '
         + 'counts from a run that has not happened, since this step changes the '
         + 'tree after the Chapter is appended');
     assert.match(step, /one edit permitted after the gate/,
-        'finishing-work\'s step 5 no longer names filling the Gate line as the '
+        'finishing-work\'s step 6 no longer names filling the Gate line as the '
         + 'one edit permitted after the gate, so any other post-gate edit reads '
         + 'as equally allowed and the shipped tree ends up newer than the run '
         + 'that cleared it');
     assert.ok(step.includes('records a run that has already happened and changes nothing that run read'),
-        'finishing-work\'s step 5 no longer states why the Gate-line fill is '
+        'finishing-work\'s step 6 no longer states why the Gate-line fill is '
         + 'the safe exception. The reason is the rule: an edit that adds a '
         + 'record of the run is safe where one that changes what the run read '
         + 'is not, and without it the exception reads as an arbitrary carve-out');
@@ -5361,7 +5361,7 @@ test('the Chapter template still states the Gate shape both Chapters are written
     ]) {
         assert.ok(template.includes(phrase), 'the Chapter template\'s Gate line '
             + 'no longer asks for ' + why + ' ("' + phrase + '"). '
-            + 'finishing-work\'s step 5 points at this line for the final '
+            + 'finishing-work\'s step 6 points at this line for the final '
             + 'Chapter\'s shape, so what drops here drops from both');
     }
 });
@@ -6241,7 +6241,7 @@ test('the probe hook-ins quote the literals the runner actually emits and the fl
     // The pointer pairs are pinned on stable tokens rather than on curated sentences, so the wording stays free to move.
     const field = (name) => (ew.split(/\r?\n/).find((l) => l.startsWith(name + ': <')) || '');
     const gate = field('Gate');
-    assert.ok(/finishing-work's step 5/.test(gate) && /probe/.test(gate), 'executing-work\'s Gate line holds the slot finishing-work\'s step 5 points at');
+    assert.ok(/finishing-work's step 6/.test(gate) && /probe/.test(gate), 'executing-work\'s Gate line holds the slot finishing-work\'s step 6 points at');
     // The paragraph that spells the runner is the hook-in, so the pointer is read there and a sentence elsewhere in the file cannot satisfy it.
     const fwRunnerParas = skill('finishing-work').split(/\r?\n/).filter((l) => /run\.mjs/.test(l));
     assert.ok(fwRunnerParas.length > 0 && fwRunnerParas.some((l) => l.includes("executing-work's Chapter template")), 'finishing-work\'s runner paragraph points at executing-work\'s Chapter template');

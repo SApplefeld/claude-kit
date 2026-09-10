@@ -12,7 +12,7 @@
 //
 // The decay nudge: the decay stamp (memory/decay-stamp in the project's
 // memory directory) is touched by `memq decay-done` when a decay pass
-// completes; its mtime is the record. finishing-work step 7 owns the pass
+// completes; its mtime is the record. finishing-work step 8 owns the pass
 // itself on a 14-day cadence at close-out, so this hook is the backstop for a
 // project whose close-outs have not come around. Two overdue shapes fire it,
 // both at the same 30-day threshold: a stamp 30 or more days old, and a store
@@ -350,7 +350,7 @@ const DRIFT_ENTRIES_CAP = 500;
 // What an overdue project should do next; shared by both overdue shapes so
 // the instruction cannot drift between them.
 const PASS_INSTRUCTIONS = 'At the next close-out, run `memq decay-scan`, act on its '
-    + 'candidates per finishing-work step 7, then `memq decay-done`. Reminder, not a blocker.';
+    + 'candidates per finishing-work step 8, then `memq decay-done`. Reminder, not a blocker.';
 
 function readStdin() {
     try { return fs.readFileSync(0, 'utf8'); } catch { return ''; }
