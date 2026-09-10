@@ -361,6 +361,54 @@ test('control: replacing "design stop" inside trigger (a) fails', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Subject 5b: consult/SKILL.md's trigger (b) points at the review-round
+// backstop's substitution and at the step 4 paragraph that owns its
+// conditions, within its own bullet, so the two surfaces governing that
+// moment cannot fall out of step silently in either direction.
+
+function checkTriggerBPointsAtBackstop(text, label) {
+    const lines = text.split(/\r?\n/);
+    const idx = lines.findIndex((l) => l.trim().startsWith('- **(b)'));
+    if (idx === -1) return label + ': no "- **(b)" trigger bullet found';
+    if (!/review-round backstop/.test(lines[idx])) return label + ': trigger (b) does not name the review-round backstop';
+    if (!/step 4/.test(lines[idx])) return label + ': trigger (b) does not point at step 4';
+    if (!/substitution/.test(lines[idx])) return label + ': trigger (b) does not name the substitution';
+    return null;
+}
+
+test('consult/SKILL.md\'s trigger (b) points at the backstop substitution and its step 4 paragraph', () => {
+    assert.strictEqual(checkTriggerBPointsAtBackstop(fs.readFileSync(CONSULT_FILE, 'utf8'), 'consult/SKILL.md'), null);
+});
+
+test('control: dropping the backstop pointer from trigger (b) fails naming what went, and a pointer moved out of the bullet fails too', () => {
+    const original = fs.readFileSync(CONSULT_FILE, 'utf8');
+    const lines = original.split(/\r?\n/);
+    const idx = lines.findIndex((l) => l.trim().startsWith('- **(b)'));
+    assert.ok(idx >= 0, 'test fixture assumption: consult/SKILL.md carries the (b) trigger bullet');
+    for (const [needle, expect] of [['review-round backstop', /review-round backstop/], ['step 4', /step 4/], ['substitution', /substitution/]]) {
+        assert.ok(lines[idx].includes(needle), 'test fixture assumption: the (b) bullet carries ' + needle);
+        const mutated = lines.slice();
+        mutated[idx] = mutated[idx].split(needle).join('POINTER-MUTATED');
+        withTempCopy('SKILL.md', mutated.join('\r\n'), (file) => {
+            const result = checkTriggerBPointsAtBackstop(fs.readFileSync(file, 'utf8'), 'consult/SKILL.md');
+            assert.ok(result, 'a (b) bullet without "' + needle + '" must fail the check');
+            assert.match(result, expect, 'the failure must name what went');
+        });
+    }
+    // The pointer sitting in a neighbouring bullet rather than in (b) is the
+    // same failure: the check reads the (b) line alone.
+    const moved = lines.slice();
+    const clause = moved[idx].slice(moved[idx].indexOf(" Executing-work's review-round backstop"));
+    assert.ok(clause.length > 0, 'test fixture assumption: the pointer clause opens with the backstop');
+    moved[idx] = moved[idx].slice(0, moved[idx].length - clause.length);
+    moved[idx + 1] = moved[idx + 1] + clause;
+    withTempCopy('SKILL.md', moved.join('\r\n'), (file) => {
+        const result = checkTriggerBPointsAtBackstop(fs.readFileSync(file, 'utf8'), 'consult/SKILL.md');
+        assert.ok(result && /does not name the review-round backstop/.test(result), 'a pointer moved out of the (b) bullet must fail the check');
+    });
+});
+
+// ---------------------------------------------------------------------------
 // Subject 6: the hand-copied rosters know every strict seat. Five lists in
 // two test files enumerate the strict seats by name, and each is located by
 // the test title it sits under, never by line number. The roster is not a

@@ -215,8 +215,9 @@ Acceptance:
 - Trigger (b) in the consult skill carries one clause pointing at the backstop substitution executing-work's step 4 states, and states no condition of its own.
 - `grep -c "five review rounds" plugins/claude-kit/skills/consult/SKILL.md` prints 0, and the size-ratchet test is green.
 
-Files in scope: `plugins/claude-kit/skills/consult/SKILL.md`, `test/size-budget.json`.
+Files in scope: `plugins/claude-kit/skills/consult/SKILL.md`, `test/size-budget.json`, `test/review-loop-provenance.test.js` (folded 2026-09-09 at round 1 under the out-of-scope route's fold predicate, the pin gaining a subject over trigger (b)'s pointer).
 Tests: none new; the size-ratchet pin covers the cap.
+
 ### 9. The fix-round capture reaches the section's untracked files
 Model: sonnet
 Locus: inline
@@ -599,4 +600,25 @@ test lines: 114446 of cap 114446 across 59 test files
 tests: 3429
 changed paths under no measured root: 1 (1 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them
 excluded from those totals, untracked under a measured root: test/probes/major-traces-to-no-acceptance-bullet.md, test/probes/third-round-majors-sit-in-the-second-rounds-fix.md, test/review-loop-provenance.test.js
+```
+### Chapter 8 - 2026-09-09
+Completed: 8. The consult skill points at the backstop substitution
+Implemented By: main session (inline, sonnet tier at the session model), with fix round 1 applied by the main session
+Metrics: review rounds 1, closed major-closed; provenance 1 spec-traceable, 0 fix-introduced, 0 new-requirement, rulings (0 refused, 0 declared, 0 asked); NEEDS_CONTEXT count 0; escalations 0; consults 0
+Decisions / Surprises: One clause added to trigger (b), transposed from the completion contract's own substitution sentence. Round 1 ran the code pair at opus, effort high, through the Workflow route. The adversarial lens's one Major: the new pointer is the only surface tying trigger (b) to the substitution and no pin holds the pair, where the section 7 pin already holds trigger (a)'s wording; traced to the Goal's pin sentence and read as spec-traceable under the Tests line's floor rule (a floor over the named contracts, extended with what implementation reveals), so the pin gained subject 5b over the (b) bullet with a three-way control and a moved-pointer control, folded into this section's Files in scope (approval drift, recorded here). The blind lens's three Minors were all claim findings on the clause: an unpinned near-verbatim twin of executing-work's sentence carrying "the one ... and on no others", which the fix round cut to a bare pointer restating no count; a reading that the substituting ruling discharges the BLOCKED, which the trimmed clause now forecloses with "and for nothing else this trigger orders"; and a contradiction with lines 8 and 14's consultant-at-every-shape-but-the-design-stop statement, left with reason, since the substitution is the design stop's own ruling rather than a second shape. The adversarial lens's two Minors: the ledger file `test/size-budget.json` is LF in the worktree against a CRLF tree, which predates this section (git warned on it through section 7) and which autocrlf normalizes at commit, left as found; and the frontmatter description's absolute seat statement, the same contradiction the blind lens raised, left with the same reason. The two lenses disagreed on the ledger's line endings and the adversarial lens was right, read off `file`. The fix delta is a sentence trim and test code below the fix-delta bar, taken on the orchestrator's re-read rather than a second round. Probe pair: the change is skill text but the section 7 probes cite the executing-work paragraphs the pointer names rather than the consult skill, and no shape file names consult/SKILL.md, so no pair ran; that is the state, not a clean reading. No security lens ran: the delta is prose and test code. Caps under the ledger rule: consult 988 to 1023 words, pin 546 to 594 lines.
+Assumptions: (2026-09-09, section 8) The missing-pin Major reads as spec-traceable under the Tests line's floor rule rather than as new-requirement, so it took the fix round instead of a judge; route (a), executing-work's Dispatch Brief template. (2026-09-09, section 8) Fix round 1's delta took the orchestrator's re-read rather than a second round, being below the fix-delta bar; route (b), declared.
+Review Findings: review: code pair at opus, Workflow (effort high), round 1. Majors addressed: 1, fixed (the trigger (b) pin). Minors noted, 5: fixed the twin-sentence restatement and the discharge reading in one trim of the clause; left with reason the seat-statement contradiction (raised by both lenses) and the ledger's worktree line endings; the adversarial lens's scratch file under `.kit/` deleted at adjudication.
+Stamps: adjudicated 7 listed (0 project, 7 operator, all peer sessions' reads already adjudicated at Chapter 7), stamped 0. Window 2h, covering the section's span since Chapter 7.
+Gate: targeted lane (review-loop-provenance, size-ratchet, doctrine-parity, docs-write-guard, stop-docs-hygiene, output-style-parity), run 2026-09-09 on SCOTT-CLAUDE, main checkout, section 8's delta uncommitted, under this session's heavy-process claim: 263 tests, 263 pass, 0 fail, 0 skipped, exit 0 after fix round 1, two tests up on the 261/261/0/0 exit 0 baseline at the section's first cut on that lane (subject 5b and its control); one red between at the fix round's first cut (263/262/1/0 exit 1, the size-ratchet pin over a cap the sync had not yet raised, fixed by running the sync). Whole gate for the push to main (node --test test/*.test.js), run 2026-09-09 on SCOTT-CLAUDE, main checkout, section 8's delta uncommitted, under this session's claim: 3542 tests, 3529 pass, 1 fail, 12 skipped, exit 1, duration 414 s; the one fail is memory-session.test.js's known permanent box red (a pinned directory too long to name faithfully stands the session down), zero fail delta against Chapter 7's 3540/3527/1/12 exit 1 on that lane, the two added tests being this section's. No contention lane: the delta touched no machine-shared state. Probe set: no run, see Decisions / Surprises.
+Next: 9. The fix-round capture reaches the section's untracked files
+Commit Model: Commit-and-Push
+Delta: run 2026-09-09 on SCOTT-CLAUDE, main checkout, section 8's delta uncommitted against HEAD 950723b
+```
+repository: claude-kit
+plugins/claude-kit/skills/consult/SKILL.md: 1023 words, cap 1023, +35
+test/review-loop-provenance.test.js: 594 lines, cap 594, +48; tests 25, +2
+words: 234166 of cap 234166 across 64 curated files
+test lines: 115040 of cap 115040 across 60 test files
+tests: 3454
+changed paths under no measured root: 1 (1 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them
 ```
