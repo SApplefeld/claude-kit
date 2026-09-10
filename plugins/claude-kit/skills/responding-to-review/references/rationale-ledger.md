@@ -2,7 +2,7 @@
 
 This file is the rationale ledger for the documents the `responding-to-review` skill owns. Rule text says what happens; this ledger says why; git says when. Nobody loads it by default. A session about to change a rule in one of the documents below reads the entry for the claim it is changing first, so the reason a rule holds is not re-litigated at the next review.
 
-Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed is recorded in the corpus audit plan's scratch adjudication log (the plan is `claude-kit_corpus-audit_spec_v1.md` under `docs/`), which is that plan's transient scratch: its rewrite section consumes the log, and the rewrite plan it writes under `docs/plans/` is the durable home of any target wording once written. The baseline-test flag on a behavior-shaping rewrite rides in the entry's reason line.
+Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed rides on the entry's `proposed:` line, one line per distinct proposal, on rewrite and retire entries that retire a passage; a proposal that pointed at another ruling by id carries the resolved text marked `(via Annn)`. A rewrite or retire the judge flagged as behavior-shaping carries `baseline-test: yes`, which is what the rewrite plan's RED and GREEN step keys on. What a passage becomes is the rewrite plan's to decide (`claude-kit_corpus-rewrite_spec_v1.md` under `docs/plans/`), and where it and a proposal differ the rewrite plan governs.
 
 ## plugins/claude-kit/skills/responding-to-review/SKILL.md
 
@@ -17,6 +17,8 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 830ff28 2026-06-17, installed with the skill as ported from Daren's fork and session mining; no incident narrated.
 - verdict: rewrite
 - reason: The rule stands; the paragraph compresses to the rule and its imperative once C002 and C057 move here (A001, A002, A036). Nothing enforces it mechanically, so the rule itself is never a retirement candidate.
+- proposed: Reduce line 8 to the rule and its imperative, with the fallibility and operator-standing sentences moved to this ledger.
+- baseline-test: yes
 
 ### C002
 - key: Evaluate findings because the kit's fresh-context review agents catch what you missed yet are fallible and cannot see intent you never wrote down.
@@ -25,6 +27,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 830ff28 2026-06-17, installed with the skill; no incident narrated.
 - verdict: retire
 - reason: Motivation only; the operative form (a finding can be wrong, out of scope, or built on context the agent lacked) stays at line 12. The why now lives here: fresh-context lenses see the diff and not the intent, so a finding can be confidently wrong about what the code was for.
+- proposed: Move the sentence to this ledger under C002; line 12 keeps the operative fallibility statement.
 
 ### C003
 - key: Adjudicate every review-agent finding, giving each one an honest verdict.
@@ -69,6 +72,8 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 830ff28 2026-06-17, installed with the skill; a8770b3 reworded to first person.
 - verdict: rewrite
 - reason: The rule stands; the paragraph loses only its third sentence (C010), a doctrine copy, under A006.
+- proposed: Drop the third sentence of line 14 to this ledger; keep the implement, verify-scope, and say-so sentences unchanged.
+- baseline-test: yes
 
 ### C008
 - key: Verify the scope of operator feedback when that scope is unclear.
@@ -93,6 +98,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 830ff28 2026-06-17, installed with the skill; the same sentence sits in the doctrine's Disagree-up-front bullet, which owns it.
 - verdict: retire
 - reason: A verbatim doctrine copy; the doctrine keeps it and C009 is obeyable without it. The why: a session that says nothing has agreed in the operator's eyes, so an unvoiced objection is a shipped defect.
+- proposed: Move to this ledger under C010; the doctrine keeps the sentence.
 
 ### C011
 - key: Read the whole set of findings and understand it before you react or act.
@@ -101,6 +107,8 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 830ff28 2026-06-17, installed with the skill; no incident narrated.
 - verdict: rewrite
 - reason: The rule stands; the item folds its lead and its restatement into one sentence and its reason (C012) moves here (A009).
+- proposed: Fold item 1 to its lead plus one sentence naming the finding-by-finding failure, with the interrelation reason moved to this ledger.
+- baseline-test: yes
 
 ### C012
 - key: Read the set first because findings interrelate and fixing one can moot another.
@@ -109,6 +117,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 830ff28 2026-06-17, installed with the skill.
 - verdict: retire
 - reason: Motivation only. The why: findings interrelate, and a fix made finding-by-finding can moot or contradict a later one in the same set.
+- proposed: Move to this ledger under C012.
 
 ### C013
 - key: Confirm a finding is real in the actual code and on this stack before implementing it.
@@ -117,6 +126,8 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 830ff28 2026-06-17, installed with the skill; the doctrine's a-finding-is-a-hypothesis bullet is its authority.
 - verdict: rewrite
 - reason: The rule stands and this skill owns it (A011, A013); the item drops its reason sentence here (A012). The why: a reviewer reasoning from a diff can be wrong about code it could not see, and the blind lens sees only the diff by design.
+- proposed: Keep the lead and the confirm-in-the-actual-code sentence; move the diff-reasoning reason to this ledger under C013.
+- baseline-test: yes
 
 ### C014
 - key: Apply the YAGNI test to any push for configurability, an abstraction, or a "professional" feature: is it needed now?
@@ -352,6 +363,8 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: a738710 2026-08-28, review-and-record plan section 1: a security lens cleared "no model-writable input can produce a deny", the prose lens rated the line Critical, and the trace proved the prose lens right.
 - verdict: rewrite
 - reason: The rule, its examples and its step-2 parallel stand; the paragraph's motivating third sentence moves here (A031). The why: a clearance arrives looking like the settled state and costs nothing to adopt, which is why it is the harder half to remember.
+- proposed: Drop the paragraph's third sentence to this ledger under C042; keep the clearance definition, the examples, and the step-2 parallel.
+- baseline-test: yes
 
 ### C043
 - key: Verify a load-bearing clearance against the code before the section closes on it.
@@ -472,6 +485,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 830ff28 2026-06-17, installed with the skill; a8770b3 reworded to first person.
 - verdict: retire
 - reason: Line 14 carries the operative rule and the doctrine carries the standing. The why: the operator is trusted as a source and still wrong sometimes, so feedback is implemented once understood and questioned when a problem is seen.
+- proposed: Move to this ledger under C057 as part of the line 8 rewrite (A001).
 
 ### C058
 - key: Treat a severity rating and independent convergence as different kinds of evidence, not interchangeable.
@@ -480,6 +494,8 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: a5e184b 2026-08-25, kaizen-batch plan section 4.
 - verdict: retire
 - reason: Motivation for C024, which stands with its instance and its independence account. The why: a severity rating is one reviewer's judgment about a defect, while independent convergence is evidence about the defect itself.
+- proposed: Move the currency sentence to this ledger under C058; the rest of line 26 stands.
+- baseline-test: yes
 
 ### C059
 - key: Dispatch a round's review lenses together rather than feeding one lens's output into another.
@@ -717,6 +733,8 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 5620b2b 2026-09-07, review-loop-exit plan section 2; untouched by the merge.
 - verdict: retire
 - reason: A duplicate whose owner already carries it: executing-work step 4 states the same four forms verbatim at line 435, and the S015 pointer beside it names that step, so dropping the copy loses no instruction. Baseline-test: yes.
+- proposed: Drop the enumerated four forms from line 34 and leave the S015 pointer at executing-work's step 4 as the sole carrier.
+- baseline-test: yes
 
 ### S017
 - key: Do not rewrite the sentence, because a rewritten sentence re-enters the class it was written to leave.
@@ -725,6 +743,8 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 5620b2b 2026-09-07, review-loop-exit plan section 2; untouched by the merge.
 - verdict: retire
 - reason: Rationale S018 is obeyable without, and its why now lives here: a rewritten sentence re-enters the claim class it was written to leave, so a fix brief carrying one restarts the loop it was meant to close. Baseline-test: yes.
+- proposed: Drop the "A rewritten sentence re-enters the class" clause from line 34; the ledger entries for S017 and S018 carry the why.
+- baseline-test: yes
 
 ### S018
 - key: Never put a replacement sentence in a fix brief for a claim finding.
@@ -733,6 +753,8 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 5620b2b 2026-09-07, review-loop-exit plan section 2, which placed this rule here deliberately; abfa98d 2026-09-09 appended S020 beside it.
 - verdict: rewrite
 - reason: The rule stands and this skill owns it; the passage compresses to the S015 pointer plus one rule sentence carrying S019 as its exception clause and S020 as the other side of the class split, once S016 and S017 leave. Supersedes C040. Baseline-test: yes.
+- proposed: Compress line 34 to the S015 pointer plus one rule sentence: a claim finding's fix brief never carries a replacement sentence, a claim an exception holds is owed the behavior bar in the same fix round, and every other lands in the close pass executing-work's step 4 owns.
+- baseline-test: yes
 
 ### S019
 - key: Hold a claim to the behavior bar when either exception applies to it.
@@ -741,6 +763,8 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 5620b2b 2026-09-07; the exceptions themselves live in executing-work's KIT-CLAIM-CLASS region, pinned by test/claim-class-parity.test.js; abfa98d 2026-09-09 appended S020 beside it.
 - verdict: rewrite
 - reason: A restatement of the owner's bar that survives only as the bound on S018, since without it a security-boundary claim would be barred from a replacement sentence. Supersedes C041. Baseline-test: yes.
+- proposed: Fold into the single rule sentence A018 names as its exception clause.
+- baseline-test: yes
 
 ### S020
 - key: Land every other claim finding's fix in the section's close pass along with the other Minors.
@@ -749,3 +773,5 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: abfa98d 2026-09-09, review-loop-provenance plan section 5: per-round Minor fixes at the writer tier grew the diff the next lenses read and bred text findings, so Minors and unexcepted claim findings now take one close pass per section; the plan directed this skill to carry one sentence.
 - verdict: rewrite
 - reason: A disposition executing-work's step 4 owns and states in full (executing-work SKILL.md lines 423 and 435), which this skill's item 5 hands to that step, so it folds into S018's rule sentence as the "every other" half of the class split, naming the owner rather than restating the pass. Baseline-test: yes.
+- proposed: Merge into A018's rule sentence as the "every other" half of the class split, naming executing-work's step 4 as the owner of the close pass rather than restating the pass.
+- baseline-test: yes

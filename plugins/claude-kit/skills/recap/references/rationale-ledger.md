@@ -2,7 +2,7 @@
 
 This file is the rationale ledger for the documents the `recap` skill owns. Rule text says what happens; this ledger says why; git says when. Nobody loads it by default. A session about to change a rule in one of the documents below reads the entry for the claim it is changing first, so the reason a rule holds is not re-litigated at the next review.
 
-Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed is recorded in the corpus audit plan's scratch adjudication log (the plan is `claude-kit_corpus-audit_spec_v1.md` under `docs/`), which is that plan's transient scratch: its rewrite section consumes the log, and the rewrite plan it writes under `docs/plans/` is the durable home of any target wording once written. The baseline-test flag on a behavior-shaping rewrite rides in the entry's reason line.
+Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed rides on the entry's `proposed:` line, one line per distinct proposal, on rewrite and retire entries that retire a passage; a proposal that pointed at another ruling by id carries the resolved text marked `(via Annn)`. A rewrite or retire the judge flagged as behavior-shaping carries `baseline-test: yes`, which is what the rewrite plan's RED and GREEN step keys on. What a passage becomes is the rewrite plan's to decide (`claude-kit_corpus-rewrite_spec_v1.md` under `docs/plans/`), and where it and a proposal differ the rewrite plan governs.
 
 ## plugins/claude-kit/skills/recap/SKILL.md
 
@@ -17,6 +17,8 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - provenance: 5200f4e 2026-08-31, the recap spec's section 1 install; the two failure directions are the plan's Goal framing (a session drifting into new work, a session reporting nothing actionable).
 - verdict: rewrite
 - reason: Both failure directions stay because each names a real drift; only the gloss sentence and the second restatement of each direction go. No machinery calibrates a recap.
+- proposed: State each failure direction in one sentence and close on the rule; drop the "Both are miscalibrated" sentence.
+- baseline-test: yes
 
 ### C002
 - key: Read paths written `skills/` or `hooks/` as under the kit plugin root, and `docs/plans/` as under the project.
@@ -73,6 +75,8 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - provenance: 5200f4e 2026-08-31, the section 1 install.
 - verdict: rewrite
 - reason: Merged into C004's sentence as a clause; the case is real (the session that already read the doc skips the restatement) and stays, but as C004's bound rather than a second rule.
+- proposed: Compress the justification to two sentences keeping the paraphrase-agrees-by-construction argument; move the rule clause into C004.
+- baseline-test: yes
 
 ### C009
 - key: During the freshness pass, re-read the five named sources and never re-verify anything.
@@ -185,6 +189,8 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - provenance: f64247e 2026-09-01; the order was set after a weaker guard was found asserting a definite foreign placement over a damaged file, and the type test mirrors hooks/kit-goal.js line 380.
 - verdict: rewrite
 - reason: The shipped invocation embodies the order and the pin proves it across eleven stubbed branches and two real-filesystem rows (test/doctrine-parity.test.js:5760-5896), so the prose reduces to naming `sessionHoldsLeash` as the placement; the ordering account lives here: absent before damaged because `readGoal` returns null for both, damaged before id so an unreadable goal never lands as a placement, shape before the call so an unset id reads unplaceable rather than false.
+- proposed: Reduce to "Place it on `sessionHoldsLeash` in `hooks/kit-goal-lib.js`, which the invocation below does"; move the ordering account to this ledger.
+- baseline-test: yes
 
 ### C023
 - key: Spell `<plugin-root>` with forward slashes inside the JavaScript require string.
@@ -193,6 +199,9 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - provenance: f64247e 2026-09-01, INSTRUMENTS-NOT-PROSE §7.
 - verdict: rewrite
 - reason: The hazard is real and uncorrected by any program (a Windows-spelled root collapses in a JavaScript string and the catch reports unknown), so the clause stays beside the command; it compresses to the one clause memory-system uses because the reader is mid-command and the collapse narrative adds nothing they act on.
+- proposed: Compress to one clause: forward slashes, because the root sits inside a JavaScript string where a backslash reads as an escape.
+- proposed: (via A025) Compress to one clause: forward slashes, because the root sits inside a JavaScript string where a backslash reads as an escape.
+- baseline-test: yes
 
 ### C024
 - key: Read the leash placement with the given `node -e "try{const g=require('<plugin-root>/hooks/kit-goal-lib.js'),...}catch{console.log('unknown')}"` invocation, run from the project directory.
@@ -241,6 +250,8 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - provenance: f64247e 2026-09-01; both review lenses proposed the variable as the subagent discriminator and the remedy was rejected after running it in the main session and reading the CLI's environment builder, which sets it with no branch on agent-ness.
 - verdict: rewrite
 - reason: One clause stays because two independent reviewers reached for this fix and a third will; the verification account (set unconditionally in every session's tool shell, confirmed at the shell and at the CLI source) lives here.
+- proposed: Keep one clause naming the variable as not a discriminator; carry the verification account in this ledger.
+- baseline-test: yes
 
 ### C030
 - key: Never let the leash command's own error text, absolute paths, or stack traces enter the report.
@@ -273,6 +284,8 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - provenance: f64247e 2026-09-01, INSTRUMENTS-NOT-PROSE §7.
 - verdict: rewrite
 - reason: The read-from-the-kit's-answers clause stays as the rule; the `readGoal`-returns-null-for-both explanation is the invocation's design and the pin's two filesystem rows enforce it (test/doctrine-parity.test.js:5866-5896), so it lives here.
+- proposed: Keep the read-from-the-kit's-answers clause; move the `goalStateAbsent`/`readGoal` explanation to this ledger.
+- baseline-test: yes
 
 ### C034
 - key: Read every background run's result from the marker the run wrote, such as an exit-code file or a completion line in the log.
@@ -281,6 +294,9 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - provenance: 5200f4e 2026-08-31; this bullet was round 3's residue, having settled a run's death on the process list alone.
 - verdict: rewrite
 - reason: The doctrine owns background-run markers and the recap names it as owner, so the restated marker rule with its reason becomes a pointer; a paraphrase with no pin is the defect class the install's own amendment removes.
+- proposed: Replace the restated reason with a pointer at the doctrine's background-task bullet; keep the recap's own reporting rules (C035, C037, C038).
+- proposed: (via A031) Replace the restated reason with a pointer at the doctrine's background-task bullet; keep the recap's own reporting rules (C035, C037, C038).
+- baseline-test: yes
 
 ### C035
 - key: Never read an absent marker as meaning the run is in flight.
@@ -345,6 +361,8 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - provenance: 5200f4e 2026-08-31, the section 1 install.
 - verdict: retire
 - reason: C040 names suites as an instance and the slot in the bound, so the rule is obeyed without this sentence. The why, kept here: the operator asked for a recap precisely so nothing would be spent, and a suite spends the box's one heavy-process slot (the role skill's claim protocol) on a question a read answers.
+- proposed: Delete the sentence; the ledger entry for C042 carries the why.
+- baseline-test: yes
 
 ### C043
 - key: Write the report in five parts in the order (a) goal and focus, (b) where things stand, (c) waits, (d) next steps, (e) drift diff.
@@ -401,6 +419,9 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - provenance: 5200f4e 2026-08-31; the triad restatement was a Critical site in review rounds 1 and 2 (a restatement disagreeing with its owner) and survived round 3 with "per the doctrine" attached.
 - verdict: rewrite
 - reason: The doctrine owns the triad and the recap already names it, so the three evidence forms restated in full are a second copy with no pin; the rule reduces to the marking per the doctrine with evidence named.
+- proposed: Keep "every load-bearing claim marked confirmed, inferred, or reported per the doctrine (Verify before you claim), with its evidence named"; drop the three evidence forms.
+- proposed: (via A049) Keep "every load-bearing claim marked confirmed, inferred, or reported per the doctrine (Verify before you claim), with its evidence named"; drop the three evidence forms.
+- baseline-test: yes
 
 ### C050
 - key: Report a green suite as a suite result with the lane it ran and the baseline it is a delta against, never as proof of behavior the suite does not exercise.
@@ -505,6 +526,9 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - provenance: f64247e 2026-09-01; the lead was widened from "a session holding an armed leash" to "a project with a leash armed" so it reaches a session placing the leash elsewhere, and the bystander carve-out was added in the same rewrite.
 - verdict: rewrite
 - reason: The rule stands, but the lead admits no exception while the paragraph carves one for a bystander with no work, which the sweep read as a contradiction; the lead gains its carve-out beside it, per the doctrine's rule that a stop read without its exceptions is a pointer.
+- proposed: Restate the lead with its carve-out beside it, "save a session that holds no work in the project", so the bystander clauses read as the lead's exception rather than its contradiction.
+- proposed: Keep every rule sentence; reduce the hook clause enumeration to a pointer at `hooks/kit-goal-stop.js`; compress the arming-route argument to C065's sentence.
+- baseline-test: yes
 
 ### C063
 - key: Read the leash before composing the report.
@@ -521,6 +545,8 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - provenance: 5200f4e 2026-08-31; round 3's Minor corrected "only" to admit the indeterminate reads the hook allows on by design.
 - verdict: rewrite
 - reason: hooks/kit-goal-stop.js performs every clause enumerated and states them in its header, and kit-goal owns the hook per the ownership map; the recap keeps one sentence (the hook allows a stop only on a `BLOCKED:`/`WAITING:` lead) so the bounce consequence stays intelligible, and the enumeration becomes a pointer.
+- proposed: Replace the clause enumeration with "the Stop hook allows a stop only on a `BLOCKED:` or `WAITING:` lead (`hooks/kit-goal-stop.js` owns the clauses in its header)", keeping the bounce sentence.
+- baseline-test: yes
 
 ### C065
 - key: Never treat a placement of "not this session's" as evidence that a stop would in fact be allowed.
@@ -681,3 +707,5 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - provenance: f64247e 2026-09-01; the prior lead "A session holding an armed leash cannot end its turn on a recap" did not address a session that places the leash elsewhere, and the rewrite widened it to the project.
 - verdict: retire
 - reason: A document explaining its own phrasing is journey, and this entry is where it lives: the lead is stated over the project because the rule binds on all four armed placements, including not-this-session's, so a future edit narrowing it to the holder reopens the gap f64247e closed.
+- proposed: Delete the sentence; the ledger entry for C084 carries why the lead is stated over the project.
+- baseline-test: yes

@@ -2,7 +2,7 @@
 
 This file is the rationale ledger for the documents the `csharp-style` skill owns. Rule text says what happens; this ledger says why; git says when. Nobody loads it by default. A session about to change a rule in one of the documents below reads the entry for the claim it is changing first, so the reason a rule holds is not re-litigated at the next review.
 
-Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed is recorded in the corpus audit plan's scratch adjudication log (the plan is `claude-kit_corpus-audit_spec_v1.md` under `docs/`), which is that plan's transient scratch: its rewrite section consumes the log, and the rewrite plan it writes under `docs/plans/` is the durable home of any target wording once written. The baseline-test flag on a behavior-shaping rewrite rides in the entry's reason line.
+Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed rides on the entry's `proposed:` line, one line per distinct proposal, on rewrite and retire entries that retire a passage; a proposal that pointed at another ruling by id carries the resolved text marked `(via Annn)`. A rewrite or retire the judge flagged as behavior-shaping carries `baseline-test: yes`, which is what the rewrite plan's RED and GREEN step keys on. What a passage becomes is the rewrite plan's to decide (`claude-kit_corpus-rewrite_spec_v1.md` under `docs/plans/`), and where it and a proposal differ the rewrite plan governs.
 
 ## plugins/claude-kit/skills/csharp-style/SKILL.md
 
@@ -89,6 +89,9 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`).
 - provenance: f8c0649 2026-06-10, INIT.
 - verdict: retire
 - reason: Reference §3 carries the label list whole (five labels, this sentence names three) with a cited file example, and checklist C051 still names the `// Group.` form in SKILL.md, so the grouping rule loses nothing. The labels, for the record: `// Values.` static comparers and computed defaults; `// Mapper.` the AutoMapper instance; `// Services.` injected dependencies; `// Settings.` `IOptionsMonitor<T>`; `// State.` mutable state, rare.
+- proposed: Cut the second sentence of philosophy point 2, leaving the grouping rule; the canonical labels live in reference §3.
+- proposed: (via A022) Cut the second sentence of philosophy point 2, leaving the grouping rule; the canonical labels live in reference §3.
+- baseline-test: yes
 
 ### C011
 - key: Register DI services with `.AsImplementedInterfaces().PreserveExistingDefaults()`.
@@ -201,6 +204,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`).
 - provenance: ddd6c72 2026-08-23; the plan's review demanded each load-bearing detail be stated with what breaks without it, and c6f08c5 re-measured the figures with the shipped patterns.
 - verdict: rewrite
 - reason: The rule and its failure shape stay; only the measured counts in the paragraph move here (A050). Safe because the shapes, which are what stop a later session from simplifying the regex, remain in the document.
+- proposed: Keep each of the three rules with its failure shape (body-line collision, default-parameter destruction, modifier-less nested type dropped); move the measured counts and file sizes to this ledger.
+- baseline-test: yes
 
 ### C025
 - key: Without the `\b`, `^\s*(public).*\(` matches a body line reading `publicKey.Validate(id);` and neither filter removes it.
@@ -209,6 +214,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`).
 - provenance: ddd6c72 2026-08-23; c6f08c5 records that this illustrative line came from the author's probe file rather than the corpus.
 - verdict: rewrite
 - reason: The collision example stays as the shape; the clause moving here: the identifier has to open with a modifier's own letters for the collision to happen, so the shape is rarer than it looks rather than absent, and the boundary costs nothing to keep.
+- proposed: Keep the collision example; move the "rarer than it looks, costs nothing to keep" clause to the ledger.
+- baseline-test: yes
 
 ### C026
 - key: Anchor the member filter before the paren rather than using a bare `grep -v '= '`.
@@ -225,6 +232,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`).
 - provenance: ddd6c72 2026-08-23, measured on a real file; c6f08c5 confirmed the figures were re-measured with the shipped patterns.
 - verdict: rewrite
 - reason: The default-parameter clause stays as the failure shape; the measurement moves here: on a 4,347-line API client the bare filter removed 32 real signatures, every one carrying `= default` or a similar default value.
+- proposed: Keep the default-parameter failure shape; move the count and file size to the ledger.
+- baseline-test: yes
 
 ### C028
 - key: Keep the modifier group in the type pattern optional so modifier-less nested types are found.
@@ -241,6 +250,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`).
 - provenance: ddd6c72 2026-08-23, measured on a real file.
 - verdict: rewrite
 - reason: The nested-type failure shape stays; the instance moves here: with the modifier group required, `class RateLimitedClient` vanished from a 3,290-line service and the outline showed one owner for two types' members.
+- proposed: Keep the nested-type failure shape; move the class name and file size to the ledger.
+- baseline-test: yes
 
 ### C030
 - key: On an interface file, take members with `^[[:space:]]+[A-Za-z_][^;=]*[[:space:]]+[A-Za-z_][A-Za-z0-9_<>]*[[:space:]]*\(` instead of the modifier-anchored member grep.
@@ -257,6 +268,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`).
 - provenance: c6f08c5 2026-08-23, as C030.
 - verdict: rewrite
 - reason: The prohibition and its declaration-versus-call reason stay; the paragraph's two measurements move here (C032, C064). Safe because the hole statement, the pattern, the bound and the modifier-less-member note all remain.
+- proposed: Keep the hole, the interface pattern, the class-file prohibition with its declaration-versus-call reason, and the modifier-less-member note; move both measurements to the ledger.
+- baseline-test: yes
 
 ### C032
 - key: On a class file the interface pattern cannot tell a declaration from a call and returned 262 lines against 202 real members.
@@ -265,6 +278,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`).
 - provenance: c6f08c5 2026-08-23, measured.
 - verdict: rewrite
 - reason: The declaration-versus-call clause stays; the measurement moves here: on an ordinary class file the unanchored pattern returned 262 lines against 202 real members, the excess being call sites.
+- proposed: Keep the declaration-versus-call clause; move the count to the ledger.
+- baseline-test: yes
 
 ### C033
 - key: When a declaration appears in both the type and member lists, read the repeat as confirmation rather than as two separate things.
@@ -377,6 +392,9 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`).
 - provenance: f8c0649 2026-06-10, INIT.
 - verdict: retire
 - reason: The doctrine's Defaults bullet (operating-instructions/SKILL.md:36) states the EXECUTE-only fact whole and owns it; this copy is a duplicate. The why, for the record: the application connection principal holds EXECUTE only, so inline SQL fails at runtime under the intended grants and passes only where a developer widened them.
+- proposed: Cut the clause after the semicolon in the inline-SQL antipattern; the doctrine and this ledger carry the why.
+- proposed: (via A077) Cut the clause after the semicolon in the inline-SQL antipattern; the doctrine and this ledger carry the why.
+- baseline-test: yes
 
 ### C047
 - key: Resolve configuration options lazily at request time rather than once at startup.
@@ -393,6 +411,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`).
 - provenance: 6b3cbec 2026-07-26, as C047.
 - verdict: retire
 - reason: The rule and the mechanic stand without it. The why, for the record: a value read once at startup is fixed before a test's configuration override is applied, so the override is silently ignored and the test exercises the default.
+- proposed: Cut the clause after the dash in the configuration antipattern; the ledger carries the why.
+- baseline-test: yes
 
 ### C049
 - key: Order middleware by cost rather than convenience, putting cheap rejection such as rate limiting before expensive work such as authentication.
@@ -521,6 +541,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`).
 - provenance: c6f08c5 2026-08-23, measured in the finishing pass of the process-rule-repairs plan.
 - verdict: retire
 - reason: The hole statement (the anchored grep returns nothing on an interface file) stays as C030's bound; the measurement moves here: an 885-line service interface returned zero members under the anchored grep while carrying 67, all of which the interface pattern found.
+- proposed: Cut the "measured, an 885-line service interface returns zero members under it while carrying 67" clause; the ledger carries it.
+- baseline-test: yes
 
 ## plugins/claude-kit/skills/csharp-style/references/csharp-style.md
 
@@ -759,6 +781,9 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: 830ff28 2026-06-17 (em-dash replacement over the f8c0649 2026-06-10 original); no commit narrates an incident for the second specimen.
 - verdict: retire
 - reason: Safe because the §2 skeleton (lines 89-99) already shows the same Variables region with the same three group labels, differing by one comparer line; removing the §3 copy loses no form a session needs.
+- proposed: Drop the §3 "Example - Services/Build/FormService.cs:20-31" block; point at the §2 skeleton's Variables region if a cross-reference is wanted.
+- proposed: Same removal as A046.
+- baseline-test: yes
 
 ### C030
 - key: Give a class a single primary constructor only, with no overloads and no static factories.
@@ -863,6 +888,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: 830ff28 2026-06-17 (em-dash replacement over the f8c0649 2026-06-10 original); no commit narrates an incident for the second specimen.
 - verdict: retire
 - reason: Safe because the §6 full-method example repeats these four lines verbatim (lines 245-248), so the signature shape survives the removal.
+- proposed: Drop the §5 "Example - Services/Build/FormService.cs:54-57" block; the §6 example shows the same signature.
+- baseline-test: yes
 
 ### C043
 - key: Organize a method body as a sequence of named sections, each preceded by a `// Title.` comment naming what the next block does, not what it did or why.
@@ -943,6 +970,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10, lifted with its guard text from the source library, whose legacy code used `== null`.
 - verdict: rewrite
 - reason: The rule stands; only the worked guard changes to `is null`, which is what C054, the SKILL exemplar and the §16 template all already write, so the edit removes a contradiction without touching the rule.
+- proposed: Change the worked guard at line 233 and in the §6 example at line 251 to `if (document is null) return default;`, keeping the rule text unchanged.
+- baseline-test: yes
 
 ### C053
 - key: Return the `default` keyword rather than `null` for null returns on nullable types.
@@ -1175,6 +1204,9 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10, installed in the same commit as the §6 statement; no commit narrates a separate reason for the §10 repeat.
 - verdict: retire
 - reason: Safe because C055 states the same rule in §6 with a worked assignment; the §10 line is four words that add nothing.
+- proposed: Drop the `??=` bullet from §10; §6 keeps the rule with its example.
+- proposed: Same removal as A104.
+- baseline-test: yes
 
 ### C082
 - key: Use `??` chains for fallback values.
@@ -1231,6 +1263,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10, an observation of the source library's own inconsistency carried into the reference; no incident installed it, and 830ff28 2026-06-17 later added style precedence to both style skills, which contradicts it.
 - verdict: rewrite
 - reason: Safe because the doctrine's stay-in-scope rule already stops a session reformatting existing labels, so dropping the match-the-file licence changes only what a session writes new, and the period rule is the skill's own signature trait.
+- proposed: Replace the parenthetical at line 366 with one sentence: registration label comments end with a period like every other label comment; and make the `// HANDLERS` example at line 350 read `// HANDLERS.`.
+- baseline-test: yes
 
 ### C089
 - key: Leave `RegisterServices.cs` as a block-scoped namespace file when editing it.
@@ -1431,6 +1465,9 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10, installed in the same commit as the §6 statement; no commit narrates a separate reason for the §15 repeat.
 - verdict: retire
 - reason: Safe because C046 states the same blank line with the same "preferred rather than absolute" bound in §6, beside the section-comment conventions.
+- proposed: Drop the logical-phases bullet from §15; §6 keeps the blank-line convention with its "preferred" bound.
+- proposed: Same removal as A125.
+- baseline-test: yes
 
 ### C114
 - key: Put no blank line between using statements.

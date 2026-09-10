@@ -2,7 +2,7 @@
 
 This file is the rationale ledger for the documents the `kit-doctor` skill owns. Rule text says what happens; this ledger says why; git says when. Nobody loads it by default. A session about to change a rule in one of the documents below reads the entry for the claim it is changing first, so the reason a rule holds is not re-litigated at the next review.
 
-Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed is recorded in the corpus audit plan's scratch adjudication log (the plan is `claude-kit_corpus-audit_spec_v1.md` under `docs/`), which is that plan's transient scratch: its rewrite section consumes the log, and the rewrite plan it writes under `docs/plans/` is the durable home of any target wording once written. The baseline-test flag on a behavior-shaping rewrite rides in the entry's reason line.
+Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed rides on the entry's `proposed:` line, one line per distinct proposal, on rewrite and retire entries that retire a passage; a proposal that pointed at another ruling by id carries the resolved text marked `(via Annn)`. A rewrite or retire the judge flagged as behavior-shaping carries `baseline-test: yes`, which is what the rewrite plan's RED and GREEN step keys on. What a passage becomes is the rewrite plan's to decide (`claude-kit_corpus-rewrite_spec_v1.md` under `docs/plans/`), and where it and a proposal differ the rewrite plan governs.
 
 ## plugins/claude-kit/skills/kit-doctor/SKILL.md
 
@@ -17,6 +17,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 - provenance: 318d6bf 2026-07-10, the kit-doctor plan's design decision that the doctor ships in the payload so every plugin update delivers the current doctor (docs/archive/claude-kit_kit-doctor_spec_v1.md).
 - verdict: retire
 - reason: The locate rule at line 12 is obeyed without this clause; the why lives here. The doctor sits at `<plugin root>/doctor/` inside the payload, so a session never fetches or clones anything before locating it.
+- proposed: Drop the clause after the semicolon at line 8 ("there is nothing to fetch first"); the ledger entry for C001 carries the why.
 
 ### C002
 - key: Locate the doctor by taking the first of the three listed paths that exists.
@@ -65,6 +66,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 - provenance: f102d37 2026-08-23, the dormant-feature-removal plan's blind-reviewer Major: a restored cache-lag caution told the operator to prefer the clone, and since every doctor check resolves against its own root, a clone run would have produced a clean report about the wrong payload.
 - verdict: retire
 - reason: The two instructions it supports (C008, C009) are obeyed without it, so it moves here. The mechanism to remember before reinstalling "prefer the clone": every check resolves against the doctor's own root, so a clone run never inspects the stale cache the machine's sessions load.
+- proposed: Move "Every check resolves against the doctor's own root ..." to the ledger; the rewrite at A006 carries the surviving two instructions.
 
 ### C008
 - key: Treat path 1's report as the verdict on the machine, and run `claude plugin update` when the installed cache lags the clone.
@@ -73,6 +75,8 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 - provenance: f102d37 2026-08-23, the blind-reviewer Major above; the passage replaced a deleted "prefer the clone" bullet whose subject was a removal switch.
 - verdict: rewrite
 - reason: The instruction stays as written; only the divergence story around it compresses (A006), with its mechanism carried at C007 here. No real conflict with kit-goal's "no goal state from an installed payload": that is one section the installed copy does not run, not a different verdict on the install.
+- proposed: Replace line 18 with: path 1's report is the verdict on the machine, `claude plugin update` is the remedy when the installed cache lags the clone, and path 2 checks the clone, never the install; the C007 mechanism sentence moves to the ledger.
+- baseline-test: yes
 
 ### C009
 - key: Run path 2 to check the clone, never to get a better answer about the install.
@@ -121,6 +125,8 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 - provenance: 318d6bf 2026-07-10, installed with C013; the same reason is the wrapper's own header comment.
 - verdict: retire
 - reason: C013 is obeyed without the reason, and the reason lives in doctor.cmd's header beside the code. The why: a blocked script cannot fix the policy that blocks it, so the wrapper bypasses policy for this one file and nothing else.
+- proposed: Cut line 22 to "Always invoke the `.cmd` wrapper, not the `.ps1`."; the clause after the colon moves to the ledger.
+- baseline-test: yes
 
 ### C015
 - key: Run the doctor in check mode with no flags first, and show the operator the PASS/WARN/FAIL lines.
@@ -161,6 +167,9 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 - provenance: 318d6bf 2026-07-10, the kit-doctor plan's Chapter 2 ("`-Yes` named before use and required for tool shells").
 - verdict: rewrite
 - reason: The heading is narrower than the plan that installed it and than the tool-shell clause beside it: `-Yes` is required through a tool shell because the doctor declines every prompt on a redirected stdin, so the in-chat yes is the operator's word there. The rewrite states the bar as the operator's word in either form and loosens nothing.
+- proposed: Reword the bullet heading so `-Fix -Yes` is passed only on the operator's word, with the two forms that word takes named together: an unattended run, or an attended install through a tool shell after the in-chat ask.
+- proposed: One rewrite of line 28 carrying A012's heading, the "authorizes nothing by itself" statement, and the tool-shell chat-ask route with its one-clause reason; the prompt inventory moves per A015.
+- baseline-test: yes
 
 ### C020
 - key: Expect `-Yes` to pre-answer the consent prompts `-Fix` already asked for, such as an install or writing an absent `autoCompactWindow` value.
@@ -169,6 +178,8 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 - provenance: 318d6bf 2026-07-10 installed `-Yes` as "answer all prompts, for unattended runs"; the replacement-waits-for-a-person clause rides the doctor's `-Interactive` consent (doctor.ps1:75-95, :1741), reworded on this line at 97d306f 2026-08-23.
 - verdict: rewrite
 - reason: The pre-answer statement stays because it is what the session tells the operator; the prompt inventory leaves because the doctor prints each decline with its reason ("this one needs a person, since it replaces a value you chose"). Safe because the only behaviour the inventory described is reported by the run itself.
+- proposed: Keep "`-Yes` pre-answers the consent prompts `-Fix` already asked for" and drop the parenthetical; the doctor's own decline line names the interactive-only case.
+- baseline-test: yes
 
 ### C021
 - key: State before running `-Yes` that it authorizes nothing by itself.
@@ -321,6 +332,8 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 - provenance: ec46854 2026-08-03 ("the install runs behind the existing consent prompt, which states the disk cost so the consent is informed"; the npm guard is doctor.ps1:1218-1229).
 - verdict: rewrite
 - reason: The cost stays because through a tool shell the doctor's prompt never reaches the operator and the in-chat ask (C022) must carry it. The npm-not-on-PATH clause and the runtime aside leave safely because the doctor prints the npm case itself.
+- proposed: Keep "`-Fix` installs or repairs it after a consent prompt naming the real disk cost (about 400 MB)"; drop the platform-runtime parenthetical and the "never prompts when `npm` is not on PATH" clause.
+- baseline-test: yes
 
 ### C040
 - key: Read the index-health lines (record count, model identity, age) as describing the derived search index without rebuilding or touching it.

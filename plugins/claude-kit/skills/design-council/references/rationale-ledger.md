@@ -2,7 +2,7 @@
 
 This file is the rationale ledger for the documents the `design-council` skill owns. Rule text says what happens; this ledger says why; git says when. Nobody loads it by default. A session about to change a rule in one of the documents below reads the entry for the claim it is changing first, so the reason a rule holds is not re-litigated at the next review.
 
-Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed is recorded in the corpus audit plan's scratch adjudication log (the plan is `claude-kit_corpus-audit_spec_v1.md` under `docs/`), which is that plan's transient scratch: its rewrite section consumes the log, and the rewrite plan it writes under `docs/plans/` is the durable home of any target wording once written. The baseline-test flag on a behavior-shaping rewrite rides in the entry's reason line.
+Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed rides on the entry's `proposed:` line, one line per distinct proposal, on rewrite and retire entries that retire a passage; a proposal that pointed at another ruling by id carries the resolved text marked `(via Annn)`. A rewrite or retire the judge flagged as behavior-shaping carries `baseline-test: yes`, which is what the rewrite plan's RED and GREEN step keys on. What a passage becomes is the rewrite plan's to decide (`claude-kit_corpus-rewrite_spec_v1.md` under `docs/plans/`), and where it and a proposal differ the rewrite plan governs.
 
 ## plugins/claude-kit/skills/design-council/SKILL.md
 
@@ -41,6 +41,10 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: retire
 - reason: Step 2 (C018) states the same inherit-nothing contract with the fields enumerated, at the point the brief is composed; this Roles sentence is a forward restatement with no incident behind it.
+- proposed: Delete "They start blank: the brief carries the lens and everything they need." at line 15; C018 at line 28 carries the contract.
+- proposed: Line 15 keeps the first two sentences (agent type, one per lens, what members do) and drops the third.
+- proposed: (via A007) Delete "They start blank: the brief carries the lens and everything they need." at line 15; C018 at line 28 carries the contract.
+- baseline-test: yes
 
 ### C005
 - key: Use one neutral read-only `design-facilitator` agent that, after each round, maps agreement versus live disagreement, names each dispute's crux, classifies convergence as evidence-resolved or capitulation, and decides another round, converged, or deadlock.
@@ -49,6 +53,9 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: rewrite
 - reason: The seat definition stays; the return contract it carries is stated again at step 3 (C023), where the orchestrator receives and checks the output, so the contract clauses leave this bullet and live once at line 32.
+- proposed: Line 16 becomes the seat definition only ("one read-only design-facilitator agent, neutral, separate from the orchestrator"); line 32 carries the return contract and gains the soft-convergence flag from line 46; line 46 is deleted.
+- proposed: (via A011) Line 16 becomes the seat definition only ("one read-only design-facilitator agent, neutral, separate from the orchestrator"); line 32 carries the return contract and gains the soft-convergence flag from line 46; line 46 is deleted.
+- baseline-test: yes
 
 ### C006
 - key: Keep the facilitator separate from the orchestrator so the operator's design partner never declares the debate settled.
@@ -57,6 +64,8 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: retire
 - reason: The why of C001: the orchestrator is the operator's design partner and is agreeable by default, so a separate seat holds the verdict. The rule is obeyable without this clause and the facilitator charter carries the same reason to the seat that acts on it.
+- proposed: Drop "so my design partner never declares the debate settled" from line 16; the ledger entry for C006 carries it.
+- baseline-test: yes
 
 ### C007
 - key: Before dispatching anything, confirm the operator opted in, via the brainstorming offer or a direct request.
@@ -73,6 +82,8 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: retire
 - reason: Step 1 restates the fork and roster and takes the yes on every invocation (C016), so the cold clause adds no act; the gate survives whole in C016.
+- proposed: (via A016) Delete "If invoked cold, restate the fork and the roster and get my go first." at line 20; step 1 restates the fork and roster and takes the yes on every path.
+- baseline-test: yes
 
 ### C009
 - key: Never auto-run the council.
@@ -81,6 +92,8 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: retire
 - reason: Restates C007 in the same paragraph, and the description line carries "never runs without me present to adjudicate" from 1d9c467; two statements of the bar remain after this one goes. The consult's autonomous convening is a different instrument by design, not a conflict.
+- proposed: (via A015) Delete "Never auto-run." at line 20; C007 and the description carry the gate.
+- baseline-test: yes
 
 ### C010
 - key: Treat the council as a real spend because it runs agents and consumes tokens.
@@ -89,6 +102,8 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: retire
 - reason: The why of the opt-in gate: a run is token-intensive and slow (brainstorming step 6 says so at the offer). The gate is obeyable without the sentence.
+- proposed: Drop "This skill runs agents and spends tokens." from line 20.
+- baseline-test: yes
 
 ### C011
 - key: State the decision as an outcome (what is true when it is done) plus the 2 to N candidate approaches on the table.
@@ -169,6 +184,9 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: retire
 - reason: The why of C019: models anchor on whatever they see first, so divergence is only visible if captured before cross-talk. The orchestrator's rule is obeyable without it and the member charter states it to the seat that must hold it.
+- proposed: (via A040) Drop the clause after the dash at line 28; the ledger entry for C020 carries it.
+- proposed: Drop the clause after the dash at line 28; the ledger entry for C020 carries it.
+- baseline-test: yes
 
 ### C021
 - key: Require each member to return a position grounded in evidence it actually read plus its strongest objection to each alternative.
@@ -177,6 +195,9 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: rewrite
 - reason: Stays as the return contract and gains C041's one added clause, that an ungrounded assertion carries no weight, so the evidence bar is stated once at the step that receives the positions.
+- proposed: Line 28's last sentence gains "an ungrounded assertion carries no weight"; line 49 is deleted.
+- proposed: (via A042) Line 28's last sentence gains "an ungrounded assertion carries no weight"; line 49 is deleted.
+- baseline-test: yes
 
 ### C022
 - key: Hand the facilitator all member positions after the round.
@@ -193,6 +214,8 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: rewrite
 - reason: Becomes the single statement of the facilitator's return contract in this document, absorbing C038's soft-convergence flag; the orchestrator checks the output against this line and never loads the charter, so a pointer would drop it.
+- proposed: Line 32's contract sentence gains "with each resolved point classed as evidence-resolved or capitulation, and a member that caved without citing why flagged as soft convergence rather than agreement".
+- baseline-test: yes
 
 ### C024
 - key: Treat a CONVERGED verdict after one round as suspect and check it is not just correlated models agreeing.
@@ -225,6 +248,8 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: retire
 - reason: The why of C026: a stateless model given the full transcript is the same expert continuing, so re-dispatch loses nothing and there is no reason to hold a member agent open between rounds. The mechanic is obeyable without it.
+- proposed: (via A053) Line 36 reads "A re-dispatched member is a fresh agent handed the full transcript." and drops the clause after the dash.
+- baseline-test: yes
 
 ### C028
 - key: Put into each cross-examination brief the member's own prior position, the other positions, and the facilitator's targeted question for that member.
@@ -273,6 +298,9 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: rewrite
 - reason: Stays as the delivery act and absorbs C040's fixed return string "unresolved - standing positions follow", so the deadlock delivery is stated once where it is performed.
+- proposed: Line 40's deadlock sentence reads "If the council deadlocked or hit the cap, return "unresolved - standing positions follow" and show them; do not paper over it or force a consensus." and line 48 is deleted.
+- proposed: (via A066) Line 40's deadlock sentence reads "If the council deadlocked or hit the cap, return "unresolved - standing positions follow" and show them; do not paper over it or force a consensus." and line 48 is deleted.
+- baseline-test: yes
 
 ### C034
 - key: Record the operator's decision and its rationale in the plan doc per the kit.
@@ -313,6 +341,8 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: rewrite
 - reason: The classification clause restates C005 and C023; the soft-convergence flag is the one clause stated nowhere else in this document and folds into step 3 (C023), so the orchestrator refuses a synthesis that counted soft agreement.
+- proposed: (via A011) Line 16 becomes the seat definition only ("one read-only design-facilitator agent, neutral, separate from the orchestrator"); line 32 carries the return contract and gains the soft-convergence flag from line 46; line 46 is deleted.
+- baseline-test: yes
 
 ### C039
 - key: Escalate genuine value trade-offs to the operator and never auto-resolve them.
@@ -321,6 +351,9 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: retire
 - reason: The gate is real and survives whole: C032 presents every unresolved fork as the operator's decision, C035 bars the council deciding, and the facilitator charter routes a value crux up. This line adds no act to either seat.
+- proposed: Delete hard requirement 4 at line 47.
+- proposed: (via A077) Delete hard requirement 4 at line 47.
+- baseline-test: yes
 
 ### C040
 - key: When the round cap is hit without real convergence, return "unresolved - standing positions follow" instead of a forced consensus.
@@ -329,6 +362,8 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: rewrite
 - reason: Restates C033 and fixes the return string; the string folds into C033 at the delivery step and this list entry goes. The facilitator charter carries the seat-side bar on manufacturing convergence.
+- proposed: (via A066) Line 40's deadlock sentence reads "If the council deadlocked or hit the cap, return "unresolved - standing positions follow" and show them; do not paper over it or force a consensus." and line 48 is deleted.
+- baseline-test: yes
 
 ### C041
 - key: Require every load-bearing claim to cite evidence the member actually read, and give ungrounded assertions no weight.
@@ -337,6 +372,8 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: rewrite
 - reason: Restates C021's evidence bar, which the doctrine states for every session and the member charter states for the seat; the no-weight clause folds into C021 and this list entry goes.
+- proposed: (via A042) Line 28's last sentence gains "an ungrounded assertion carries no weight"; line 49 is deleted.
+- baseline-test: yes
 
 ### C042
 - key: Default the envelope to three seats and a maximum of three cross-examination rounds, with all members read-only.
@@ -345,6 +382,9 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: retire
 - reason: Every clause is stated where it is acted on (C013 seats, C031 rounds, C003 read-only) and the read-only property is enforced by plugins/claude-kit/hooks/readonly-agent-guard.js for both council agent types.
+- proposed: Delete "Default three seats, three cross-examination rounds maximum; members are read-only." at line 53.
+- proposed: (via A084) Delete "Default three seats, three cross-examination rounds maximum; members are read-only." at line 53.
+- baseline-test: yes
 
 ### C043
 - key: Offer the council only at genuine forks, and name the cost in the offer so the operator authorizes the spend.
@@ -353,6 +393,10 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install; overtaken on its first half by dc87c38 2026-06-28, which lowered brainstorming's offer bar ("lower the bar to offer, never the bar to run").
 - verdict: retire
 - reason: The offer trigger is brainstorming's per the ownership map and history says its lower bar is right, so "only at genuine forks" gives way; the cost half duplicates C015, which carries the formula. The run bar (C007, C016) is untouched.
+- proposed: Delete "Offered only at genuine forks, and the offer names the cost so I authorize the spend." at line 53.
+- proposed: (via A086) Delete "Offered only at genuine forks, and the offer names the cost so I authorize the spend." at line 53.
+- proposed: Line 53 reads "I can cut the roster, cap rounds, or decline at any point."
+- baseline-test: yes
 
 ### C044
 - key: Honor the operator cutting the roster, capping rounds, or declining at any point.

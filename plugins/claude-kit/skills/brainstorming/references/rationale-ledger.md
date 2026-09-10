@@ -2,7 +2,7 @@
 
 This file is the rationale ledger for the documents the `brainstorming` skill owns. Rule text says what happens; this ledger says why; git says when. Nobody loads it by default. A session about to change a rule in one of the documents below reads the entry for the claim it is changing first, so the reason a rule holds is not re-litigated at the next review.
 
-Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed is recorded in the corpus audit plan's scratch adjudication log (the plan is `claude-kit_corpus-audit_spec_v1.md` under `docs/`), which is that plan's transient scratch: its rewrite section consumes the log, and the rewrite plan it writes under `docs/plans/` is the durable home of any target wording once written. The baseline-test flag on a behavior-shaping rewrite rides in the entry's reason line.
+Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed rides on the entry's `proposed:` line, one line per distinct proposal, on rewrite and retire entries that retire a passage; a proposal that pointed at another ruling by id carries the resolved text marked `(via Annn)`. A rewrite or retire the judge flagged as behavior-shaping carries `baseline-test: yes`, which is what the rewrite plan's RED and GREEN step keys on. What a passage becomes is the rewrite plan's to decide (`claude-kit_corpus-rewrite_spec_v1.md` under `docs/plans/`), and where it and a proposal differ the rewrite plan governs.
 
 ## plugins/claude-kit/skills/brainstorming/SKILL.md
 
@@ -33,6 +33,8 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: f8c0649 2026-06-10, the founding commit; no incident narrated.
 - verdict: retire
 - reason: Why C001 and C002 exist: a design run as a gate produces a spec nobody explored, and the operator wants the corners felt out together; the rules are obeyable without this, so the reason lives here.
+- proposed: Delete "This is a conversation, not a gate. The value is the back-and-forth, feeling out all corners of the problem together." from line 8; the ledger entry for C003 carries the reason.
+- baseline-test: yes
 
 ### C004
 - key: Open the effort by running `memq recall`, which returns the whole memory store as one bounded digest.
@@ -65,6 +67,8 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: fa5df56 2026-08-09, the backlog-visibility plan, which fixed the order recall, backlog, code so parked solutions surface before a fresh design.
 - verdict: retire
 - reason: The order survives in C004's "Open with", C009's "next" and C013's "Then", so the standalone ordering sentence is a duplicate within the step and goes with C008's rationale in the same sentence.
+- proposed: Handled by A007's deletion; no further edit.
+- baseline-test: yes
 
 ### C008
 - key: Recall first because it names the prior attempt or gotcha the code reading should look for, and a record you would never search for surfaces only in a full digest.
@@ -73,6 +77,8 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: fa5df56 2026-08-09, written with the ordering it explains.
 - verdict: retire
 - reason: The why of recall-first: the digest tells the code read what to look for, and a keyword search never finds the record you did not think to search for; the order is obeyable from the step's sequence alone.
+- proposed: Delete the "because it is what tells you ... when the digest lists everything" clauses with A007's sentence; the ledger entry for C008 keeps the why.
+- baseline-test: yes
 
 ### C009
 - key: Read `docs/backlog.md` next where it exists.
@@ -97,6 +103,8 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: fa5df56 2026-08-09, the backlog-visibility plan.
 - verdict: retire
 - reason: The why of C010: a fresh design that ignores a parked solution rebuilds it; the duty is obeyable without the clause.
+- proposed: Delete ", since the parked solution may already exist" from line 12.
+- baseline-test: yes
 
 ### C012
 - key: Name in the spec any backlog item this effort will cover, so the close-out prune retires it.
@@ -169,6 +177,8 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: 830ff28 2026-06-18, the scope check.
 - verdict: retire
 - reason: The why of C018's ordering: detail refined on the wrong decomposition is thrown away; the split rule is obeyable without it.
+- proposed: Delete "Decomposing first beats refining the details of something that should have been three specs." from line 14.
+- baseline-test: yes
 
 ### C021
 - key: Ask the question whose answer most changes the design.
@@ -193,6 +203,8 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: f8c0649 2026-06-10, founding text.
 - verdict: retire
 - reason: C022 stated as a prohibition on the same line with no bound of its own; the questionnaire is the failure C022 already prevents.
+- proposed: Handled by A027.
+- baseline-test: yes
 
 ### C024
 - key: Ask route (c) intake gaps one at a time inside this conversation rather than in the batched form used mid-run and at close-out.
@@ -217,6 +229,9 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: e872098 2026-08-18, the intake-gap-check plan.
 - verdict: rewrite
 - reason: The doctrine owns the three routes; drop the route glosses so the clause points ("routes (a) and (b) are answered by the session and declared, not asked") rather than carrying a partial copy that can drift from the owner's definitions.
+- proposed: Reduce to "routes (a) and (b) are answered by the session and declared, not asked", dropping the route glosses; the doctrine's intake bullet defines them.
+- proposed: (via A034) Reduce to "routes (a) and (b) are answered by the session and declared, not asked", dropping the route glosses; the doctrine's intake bullet defines them.
+- baseline-test: yes
 
 ### C027
 - key: Feel out the corners: edge cases, failure modes, integration points, performance, consumers, re-run behavior, and existing solutions of a similar shape.
@@ -257,6 +272,9 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: 830ff28 2026-06-18, ported with the fork improvements.
 - verdict: retire
 - reason: A partial copy of the doctrine's "Disagree up front" rule, which is always loaded and carries the bare-challenge re-verification bound this copy omits; a partial copy of an owner's rule is what the one-owner rule removes.
+- proposed: Delete "Hold the position under pushback and move on a new fact, not on tone." from line 20; the doctrine carries it.
+- proposed: (via A043) Delete "Hold the position under pushback and move on a new fact, not on tone." from line 20; the doctrine carries it.
+- baseline-test: yes
 
 ### C032
 - key: Offer the `design-council` skill before settling a hard fork 1:1.
@@ -273,6 +291,8 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: dc87c38 2026-06-28, the reason given for lowering the offer bar.
 - verdict: retire
 - reason: The why of C034: the asymmetry between a one-line offer and a slow multi-agent run is what justifies erring toward the offer; C034 is obeyable without it.
+- proposed: Delete "Offering is cheap, running is not: the offer is one line and I decline in a word, while the run is token-intensive and slow." from line 22, keeping "So err toward offering" as a plain instruction.
+- baseline-test: yes
 
 ### C034
 - key: Err toward offering the council; lower the bar to offer, never the bar to run.
@@ -297,6 +317,8 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: dc87c38 2026-06-28.
 - verdict: retire
 - reason: The why of C035, with the excuse quoted; the same-turn rule is obeyable without the quote.
+- proposed: Delete ': "offer it later if the fork is still open" is precisely how it never gets offered' from line 22.
+- baseline-test: yes
 
 ### C037
 - key: Do not auto-run the design council; name its cost so the operator can authorize the spend.
@@ -321,6 +343,9 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the council's install; restated here at dc87c38 2026-06-28.
 - verdict: retire
 - reason: The council's return contract and inform-never-decide rule are stated whole at design-council step 5, the owner; this copy adds nothing and the operator-decision gate survives at the owner.
+- proposed: Delete "The council returns a converged recommendation or a cleanly-stated unresolved fork; it informs my call, never replaces it or the conversation." from line 22; design-council step 5 carries it.
+- proposed: (via A060) Delete "The council returns a converged recommendation or a cleanly-stated unresolved fork; it informs my call, never replaces it or the conversation." from line 22; design-council step 5 carries it.
+- baseline-test: yes
 
 ### C040
 - key: Treat the design council as offered, never as a default step.
@@ -329,6 +354,9 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: dc87c38 2026-06-28, the closing sentence of the rebuilt step.
 - verdict: retire
 - reason: Restates C037 three sentences earlier and the council's own opt-in check, with no bound of its own.
+- proposed: Delete "This is offered, not default." from line 22.
+- proposed: (via A064) Delete "This is offered, not default." from line 22.
+- baseline-test: yes
 
 ### C041
 - key: Run one scout sweep returning every surface that speaks the contract, before the sketch, where the design changes a contract or a shared surface.
@@ -401,6 +429,8 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: 83b81ac 2026-08-19; the plan named this as the incident's evidence pattern (2026-08-18 kaizen note, SCOTT-CLAUDE).
 - verdict: retire
 - reason: The incident behind C041 and C042: a contract change shipped to two of seven surfaces and the rest surfaced one review round at a time; the rules are obeyable without the shape, which now lives here.
+- proposed: Delete "Authoring scope from memory is the anti-pattern, and its shape is a contract change shipping scoped to a fraction of the surfaces that speak it, the rest arriving one review round at a time." from line 24.
+- baseline-test: yes
 
 ### C050
 - key: Present a short sketch first, covering goal, approach, and the sections of work, before writing the full spec.
@@ -417,6 +447,8 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: f8c0649 2026-06-10, founding text.
 - verdict: retire
 - reason: The why of C050; the sketch-first rule is obeyable without it.
+- proposed: Delete "Cheap to redirect here; expensive after the full write-up." from line 26.
+- baseline-test: yes
 
 ### C052
 - key: Iterate on the sketch until it is agreed.
@@ -457,6 +489,10 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: b49a47b 2026-06-19, Document Backlog Handling, which created curating-docs and this invocation.
 - verdict: rewrite
 - reason: Keep the invocation and drop the restated steps; curating-docs owns the create path, and the restatement is the partial copy that lost the owner's archived-plan carve-out.
+- proposed: Replace "Then invoke the `curating-docs` skill's create path: add the new plan to the `docs/README.md` index, and if it builds on or supersedes an existing plan, cross-reference both directions (a `## Related` section in the new plan, and a supersession note in the older plan's header)." with "Then run the `curating-docs` skill's create path (index entry, cross-references, backlog next-steps)."
+- proposed: Apply A086; leave the gating-definition sentences as written.
+- proposed: (via A086) Replace "Then invoke the `curating-docs` skill's create path: add the new plan to the `docs/README.md` index, and if it builds on or supersedes an existing plan, cross-reference both directions (a `## Related` section in the new plan, and a supersession note in the older plan's header)." with "Then run the `curating-docs` skill's create path (index entry, cross-references, backlog next-steps)."
+- baseline-test: yes
 
 ### C057
 - key: Cross-reference both directions where the plan builds on or supersedes another: a `## Related` section in the new plan and a supersession note in the older plan's header.
@@ -465,6 +501,9 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: b49a47b 2026-06-19; the archive became append-only with a one-way pointer at afc7790 2026-07-25, which this copy never absorbed.
 - verdict: rewrite
 - reason: Real conflict with curating-docs's append-only archive where the older plan is archived; the owner is right, so the mechanics leave this document and ride the create-path pointer.
+- proposed: Handled by A086; the cross-reference mechanics leave this document.
+- proposed: (via A086) Replace "Then invoke the `curating-docs` skill's create path: add the new plan to the `docs/README.md` index, and if it builds on or supersedes an existing plan, cross-reference both directions (a `## Related` section in the new plan, and a supersession note in the older plan's header)." with "Then run the `curating-docs` skill's create path (index entry, cross-references, backlog next-steps)."
+- baseline-test: yes
 
 ### C058
 - key: A plan unfindable from the index and pointing at nothing it extends is half-written.
@@ -473,6 +512,8 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: b49a47b 2026-06-19.
 - verdict: retire
 - reason: The why of indexing and cross-referencing, whose acts now point at curating-docs; a plan the index cannot reach is invisible to the next session.
+- proposed: Delete "A plan no one can find from the index, that does not point at the work it extends, is half-written." from line 28.
+- baseline-test: yes
 
 ### C059
 - key: Write a gating definition against its exclusions rather than its paraphrase.
@@ -545,6 +586,8 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: 83b81ac 2026-08-19.
 - verdict: retire
 - reason: The why of C066's timing: a per-section check cannot see a surface no section claims; the check is obeyable without it.
+- proposed: Reduce "Coverage is checked here, because this is where the whole spec is read at once and under-coverage is a property of the sections together: every surface" to "Coverage is checked here: every surface".
+- baseline-test: yes
 
 ### C068
 - key: Check that every claim the Goal paragraph makes is owned by some section's acceptance criteria, and give an unowned Goal sentence a section, record it under `## Operator Verification`, or strike it from the Goal.
@@ -561,6 +604,8 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: a5e184b 2026-08-25.
 - verdict: retire
 - reason: The why of C068's timing; its claim about a missing downstream check is the motivating-clause shape a5e184b's own review flagged as defect-prone, so it belongs in this ledger rather than in rule text.
+- proposed: Delete "The Goal check survives the surface one, because the sections can cover every swept file and still leave a promise in the Goal unbuilt, and nothing downstream reads the Goal against what shipped, so it happens here or it happens nowhere." from line 30.
+- baseline-test: yes
 
 ### C070
 - key: A defect caught at the self-review is a sentence to fix, while the same defect found mid-execution is rework.
@@ -569,6 +614,8 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: 830ff28 2026-06-18 installed the self-review step; this sentence's own install was not traced separately.
 - verdict: retire
 - reason: A cost comparison with no act; the self-review's acts stand without it.
+- proposed: Delete "A defect caught here is a sentence to fix; the same defect found mid-execution is rework." from line 30.
+- baseline-test: yes
 
 ### C071
 - key: Give the inline pass no second inline pass: fix and move on.
@@ -593,6 +640,8 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: e872098 2026-08-18.
 - verdict: retire
 - reason: The why of C072: a model cannot see the gaps it filled, so only a reader without the session's context finds them; C072 is obeyable without it.
+- proposed: Reduce "The blind read that follows is separate and is not optional, because the inline read cannot catch a gap this session already filled while reading." to "The blind read that follows is separate and is not optional."
+- baseline-test: yes
 
 ### C074
 - key: Before the blind-read dispatch goes out, record which phrases in the spec you count as gating definitions, their locations and nothing more.
@@ -609,6 +658,8 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: c18afce 2026-09-03 (archived plan line 98 and the consult that replaced disjoint lists with crossing).
 - verdict: retire
 - reason: The why of "and nothing more": an author's own exclusion list is neither independent of the definitions nor forgettable, and the crossing comparison needs only the reader's pairs; C074 is obeyable as written.
+- proposed: Delete "You wrote those definitions, so an exclusion list drafted now is neither independent of them nor forgettable, and the comparison below is built to need neither." from line 30.
+- baseline-test: yes
 
 ### C076
 - key: Dispatch the `blind-reader` agent with the spec itself as the document under review and `Reader: an implementer with no session context, engineer persona, may open the repository`.
@@ -681,6 +732,8 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: c18afce 2026-09-03.
 - verdict: retire
 - reason: The why of C082's clause requirement: an after-the-fact placement is unfalsifiable without the clause; the clause-less case is already classified in the Unplaced result, so the sentence's classification is not the only one.
+- proposed: Delete "The clause citation is what keeps this honest, since nothing mechanical stops you reading the reader's member into your rule after the fact, and a placement you cannot tie to a clause is a result rather than a pass." from line 30.
+- baseline-test: yes
 
 ### C085
 - key: On a crossed result, rewrite the definition before the spec ships.
@@ -697,6 +750,8 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: c18afce 2026-09-03.
 - verdict: retire
 - reason: The founding incident's description of what a crossing is; C085 names its trigger and act without it.
+- proposed: Reduce "Crossed, meaning any member you place on the side opposite the reader, or a separating feature your rule does not turn on: that is two rules wearing one sentence, which is the defect this whole check exists to catch, and the definition is rewritten before the spec ships." to "Crossed, meaning any member you place on the side opposite the reader, or a separating feature your rule does not turn on: the definition is rewritten before the spec ships."
+- baseline-test: yes
 
 ### C087
 - key: On an unplaced result, place the member by intent and rewrite the definition until its own text places it too, or, where the member is immaterial, record it as excluded under `## Assumptions` and in the recap in the fixed bullet form.
@@ -745,6 +800,9 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: c18afce 2026-09-03, the litmus's skip clause, tied to the trivial-spec skip e872098 installed for the blind read.
 - verdict: rewrite
 - reason: ead49db appended an identical skip clause for the plan review five days later; one sentence naming both dependents carries the same trigger and the same say-so duty without loss (A002).
+- proposed: Merge C092 and C103 into one sentence: a spec that skipped the blind read skips the gating litmus and the plan review with it, and says so.
+- proposed: (via A002) Merge C092 and C103 into one sentence: a spec that skipped the blind read skips the gating litmus and the plan review with it, and says so.
+- baseline-test: yes
 
 ### C093
 - key: The instrument's known residual is that the reader's pairs may fall elsewhere than where two readings differ, passing silently; the separating feature is the second net, and the pairs' coverage of the boundary is not measured.
@@ -753,6 +811,8 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: c18afce 2026-09-03, recording the consult's finding that exclusions are an unbounded complement, so sampled pairs can miss where two readings differ.
 - verdict: retire
 - reason: The separating-feature act it motivates is stated on its own (C083) and the litmus is obeyed without the note. The limit it records: the pairs are samples of a boundary, not a measurement of it, so a pass is evidence rather than proof, and the separating feature is what exposes a divergent reading when the samples happen to coincide.
+- proposed: Delete the residual sentence from step 10; this ledger carries the instrument's limit under C093.
+- baseline-test: yes
 
 ### C094
 - key: Run the plan review after the gating litmus and before the handoff recap.
@@ -777,6 +837,8 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: ead49db 2026-09-08, written to pre-empt a reader taking the Workflow route as a departure from executing-work's per-section effort table.
 - verdict: retire
 - reason: The doctrine's standing-dispatch bullet defines the covered class and C095 states the route outright, so the dispatch is obeyed without the argument. The why: the plan review sits in no per-section row, so lifting a Fable dispatch above its frontmatter effort through Workflow is the plan review's own rule rather than an exception to the table.
+- proposed: Delete the "the doctrine's standing Workflow grant covers it ... rather than a departure from that table" clause; the ledger entry for C096 carries why the route lifts the effort above the frontmatter value.
+- baseline-test: yes
 
 ### C097
 - key: Where Workflow is unavailable, dispatch the plan reviewer through the Agent tool at `model: 'fable'` and the charter's frontmatter effort `low`, and record the review as run at lower effort.
@@ -849,6 +911,9 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: no provenance found (the sentence dates from 656310e 2026-06-10, whose message states no reason; 83b81ac last touched the line).
 - verdict: rewrite
 - reason: ebd12d2 made Commit-and-Push the default with no ask and the header its record, so "agree" read as a separate question contradicts the history; the agreement is the sketch or recap approval that covers the header (A013). The three definitions beneath it stay because the author picks among them here.
+- proposed: Reword step 11's lead to "Record the commit model in the spec header: Commit-and-Push unless I name another, and the sketch approval covers it", keeping the three definitions beneath it.
+- proposed: (via A013) Reword step 11's lead to "Record the commit model in the spec header: Commit-and-Push unless I name another, and the sketch approval covers it", keeping the three definitions beneath it.
+- baseline-test: yes
 
 ### C106
 - key: Under Review-Only, accumulate changes staged as sections complete and let `git diff --staged` be the operator's review surface before anything is committed.
@@ -873,6 +938,9 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: ebd12d2 2026-09-02, the flip of the default to Commit-and-Push; the worktree clause is the finishing-work integration rule from 830ff28.
 - verdict: rewrite
 - reason: The worktree-merge clause is finishing-work's integration act, restated whole by executing-work at its step; a chooser does not need it (A023). The motto "land it on main and leave no mess" is referenced at test/doctrine-parity.test.js:5444 and stays.
+- proposed: Drop "if concurrency forced a worktree branch, finishing-work merges to main and tears it down" from the Commit-and-Push definition; keep the quoted motto and the commit-and-push-as-sections-complete clause, since test/doctrine-parity.test.js:5444 references the motto.
+- proposed: (via A023) Drop "if concurrency forced a worktree branch, finishing-work merges to main and tears it down" from the Commit-and-Push definition; keep the quoted motto and the commit-and-push-as-sections-complete clause, since test/doctrine-parity.test.js:5444 references the motto.
+- baseline-test: yes
 
 ### C109
 - key: Choose Commit-and-Push by default when authoring a plan, and record that choice in the header.
@@ -881,6 +949,8 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: ebd12d2 2026-09-02, the operator's ruling that commit and push are the default with no repository-ownership test, placed here because a header rule reaches an author only in the skill loaded at writing time (662e5e3).
 - verdict: rewrite
 - reason: The default stays as the authoring copy the doctrine's grant is written for; the closing sentence splits once C110's clause leaves it (A026).
+- proposed: End the Commit-and-Push bullet with "The default choice when authoring a plan, which the header then records; another model takes a header or a direction that names it."
+- baseline-test: yes
 
 ### C110
 - key: Ask the operator rather than assuming the default where a plan doc carries no commit model the kit defines.
@@ -889,6 +959,9 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: ebd12d2 2026-09-02, the ask that keeps a malformed header from licensing a push.
 - verdict: retire
 - reason: A missing model is a state a run meets, never one an author produces at step 11, and the doctrine states the ask whole with its no-plan-doc carve-out and pins it; the gate is blast-radius and stays in the doctrine (A028, A030).
+- proposed: Delete "a plan doc carrying no commit model the kit defines takes the ask rather than this default" from the Commit-and-Push bullet; the doctrine's push-authorization bullet carries it.
+- proposed: (via A028) Delete "a plan doc carrying no commit model the kit defines takes the ask rather than this default" from the Commit-and-Push bullet; the doctrine's push-authorization bullet carries it.
+- baseline-test: yes
 
 ### C111
 - key: Assign a model tier to each Section of Work.
@@ -905,6 +978,8 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: 9e124f7 2026-06-11, the founding reasoning of the tier scheme.
 - verdict: retire
 - reason: The tier duty and definitions are obeyed without it. The why: tiers exist because cost scales with model while quality is guarded by spec precision and by review one tier up, which is executing-work's reviewer rule.
+- proposed: Delete "Implementation cost scales with the model; quality is protected by spec precision plus strong-model review, not by using the strongest model for every keystroke."
+- baseline-test: yes
 
 ### C113
 - key: Let tier pick the model and briefability pick the locus (dispatch versus main thread).
@@ -977,6 +1052,8 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: c2114e9 2026-08-01, the line that replaced the decorated tier value.
 - verdict: rewrite
 - reason: Absorbs C129's "at any tier" so the briefability-decides-locus mechanic is stated once with its two failure cases (A035).
+- proposed: (via A035) Fold "at any tier" into C121's sentence at line 42 and delete C129's clause from line 46, leaving "Write to that standard or assign a higher tier" to follow the briefability test directly.
+- baseline-test: yes
 
 ### C122
 - key: Dispatch a section that carries no `Locus:` line.
@@ -993,6 +1070,9 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: dc128d8 2026-07-01, which tuned the kit for Fable as the session model and installed the dispatch default in the doctrine with the same reason; the escalation-ceiling fact is b510edc's.
 - verdict: rewrite
 - reason: The reason clause is the doctrine's "Orchestration mechanics" bullet verbatim and the doctrine owns it; the exception-and-ceiling rule is brainstorming's and stays (A049).
+- proposed: Reduce the sentence to "Inline is the deliberate exception and the escalation ceiling, never the comfortable default", dropping ": the main thread is the most expensive place to write code".
+- proposed: (via A049) Reduce the sentence to "Inline is the deliberate exception and the escalation ceiling, never the comfortable default", dropping ": the main thread is the most expensive place to write code".
+- baseline-test: yes
 
 ### C124
 - key: Write `Model:` as the model that will actually run, so an inline section on the Opus-led execution session is `Model: opus`.
@@ -1009,6 +1089,8 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: c2114e9 2026-08-01, the corollary of C124 and the Fable-led-session-is-for-design rule.
 - verdict: rewrite
 - reason: The paragraph recasts as its three rules once C126's parser rationale moves here (A051); the rule itself stands.
+- proposed: Recast line 44 as three rules: Model: names the model that will actually run, so an inline section on the execution session is Model: opus; fable plus inline is a combination to question rather than write, since a Fable main thread exists only on a design session; keep the value a bare token and put the reasoning in the section body.
+- baseline-test: yes
 
 ### C126
 - key: An external engine parses the `Model:` line and accepts only bare tokens, silently substituting a default, so a decorated value or trailing rationale downgrades the section with no error anywhere.
@@ -1017,6 +1099,8 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: 662e5e3 2026-08-01 found the engine downgrading decorated values to sonnet with no error, and c2114e9 2026-08-01 wrote the fact here as the bare-token rule's reason.
 - verdict: retire
 - reason: The bare-token rule is obeyed without it and curating-docs' section-model row, which brainstorming points at, states the failure mode as the owner. The why: the engine's parser accepts only the four bare tokens and substitutes sonnet silently for anything else.
+- proposed: Delete the "an external engine parses the Model: line ... with no error anywhere" clause; the ledger and the curating-docs row carry the failure mode.
+- baseline-test: yes
 
 ### C127
 - key: Keep the `Model:` value a bare token and put the reasoning in the section body.
@@ -1105,6 +1189,8 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: da1a895 2026-07-14, argued the line's value across the tiers; last reworded by d2e2f37.
 - verdict: retire
 - reason: The trigger and contents are stated above it and obeyed without it. The why: a cheaper implementer cannot re-derive which behaviors carry risk, so the line is where planning judgment reaches a tier that has none of its own.
+- proposed: Delete "The cheaper the tier, the more the line matters: ... planning-Fable orienting implementing-Fable."
+- baseline-test: yes
 
 ### C138
 - key: Where a section's deliverable is a document for a reader, carry the review inputs in its body: an `Audience:` line with each persona and knowledge level, the must-answer questions per persona, a `Voice:` line (`scott` | `company` | other), the fact-base paths, and a `Disclosure:` list.
@@ -1121,6 +1207,8 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: a5fce80 2026-08-18, the reason the review inputs were added to the section body.
 - verdict: retire
 - reason: The list is complete without the account of its purpose. The why: a blind reader reports what it was left asking, and whether answering that was the document's job is decidable only against the persona and its must-answer list.
+- proposed: Delete "These exist for adjudication: ... only shrugged at."
+- baseline-test: yes
 
 ### C140
 - key: Put all the document review inputs in the section body, never on the `Model:` line.
@@ -1129,6 +1217,8 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: a5fce80 2026-08-18, seventeen days after c2114e9's bare-token rule, which the sentence itself cites as already forbidding the decoration.
 - verdict: rewrite
 - reason: The operative content is that the inputs ride in the section body; the never-on-the-Model:-line clause is a self-declared copy of C127 and trims (A041).
+- proposed: (via A041) Reduce C140's sentence to "All of these ride in the section body", dropping "never on the Model: line, whose bare-token contract above already forbids decorating it"; C120 and C127 stay.
+- baseline-test: yes
 
 ### C141
 - key: Give none of the document review lines to a docs-only section that names no audience, such as a plan doc edit or an index refresh.
@@ -1161,6 +1251,9 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: d156f46 2026-07-31 installed the enumeration so the Fable Spend header could forecast spend; 53d9040 retired that header, and e181897, e00d1e3 and 0faeb51 each had to move this copy with the reviewer rule.
 - verdict: rewrite
 - reason: The header it served is gone and every reviewer-rule change since has had to carry this copy, which is the drift the one-owner decision exists to stop; it becomes a pointer at executing-work's reviewer rule, finishing-work's reviews and consult's model rule (A064).
+- proposed: Replace the enumeration with a pointer: a normal effort's Fable surface is standing and expected, and which dispatches draw it is stated by executing-work's reviewer rule, finishing-work's finishing reviews and the consult skill's model rule.
+- proposed: (via A064) Replace the enumeration with a pointer: a normal effort's Fable surface is standing and expected, and which dispatches draw it is stated by executing-work's reviewer rule, finishing-work's finishing reviews and the consult skill's model rule.
+- baseline-test: yes
 
 ### C145
 - key: Use a Fable-led session for design work: brainstorming, specs, adjudication, and the finishing pass of a high-stakes effort.
@@ -1185,6 +1278,8 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: dc128d8 2026-07-01; regrounded by 456ba81 2026-07-18 (plan-usage metering) and 53d9040 2026-08-15 (allotment model).
 - verdict: retire
 - reason: The rule is obeyed without it, and the reasoning has needed rewriting at every metering change. The why: a Fable-led session spends the shared allotment on execution keystrokes where cheaper tiers do the same work, and unlike a dispatch it cannot swap model mid-session.
+- proposed: Delete "because a Fable-led execution session burns the shared allotment fastest where it adds least, and it cannot fall back mid-session the way a dispatch can: the session model is the session".
+- baseline-test: yes
 
 ### C148
 - key: When a Fable-led session is asked to execute, hand off the spec to a fresh execution-model session rather than doing the work.
@@ -1201,6 +1296,9 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: 5854b9b 2026-07-26, carried over from the doctrine's session-mode guidance (dc128d8).
 - verdict: rewrite
 - reason: The doc-carries-state rule is the doctrine's and recover-from-the-doc-alone is executing-work's Chapter rule; the handoff mechanism folds into C148 and the recovery restatement leaves (A070).
+- proposed: Fold into C148: "the move is a handoff, the spec plus a fresh execution-model session, with the plan doc carrying the context", and drop "keep resting context lean (hand off via the plan doc rather than carrying context; a long stretch recovers from the doc alone)".
+- proposed: (via A070) Fold into C148: "the move is a handoff, the spec plus a fresh execution-model session, with the plan doc carrying the context", and drop "keep resting context lean (hand off via the plan doc rather than carrying context; a long stretch recovers from the doc alone)".
+- baseline-test: yes
 
 ### C150
 - key: Leave the review tiers as rostered.
@@ -1361,6 +1459,9 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: 897d921 2026-08-29, section 2 of the plan-lifecycle plan: Ready shipped with readers and no producer because the template still hardcoded In Progress, so two finished drafts on another machine went unseen.
 - verdict: rewrite
 - reason: The pick is the producer's instruction and stays; the trailing "the run that starts it moves to In Progress" clause is executing-work's instruction without its external-engine carve-out and leaves (A089, A090). No machinery writes the value at authoring (A091).
+- proposed: Drop "and which the run that starts it moves to In Progress" from line 116, keeping the pick and what Ready means at session start.
+- proposed: (via A090) Drop "and which the run that starts it moves to In Progress" from line 116, keeping the pick and what Ready means at session start.
+- baseline-test: yes
 
 ### C170
 - key: See `curating-docs/SKILL.md`'s machine contract section for the frozen header and structure shape and which values it accepts, including `Model:`.
@@ -1377,6 +1478,9 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: e872098 2026-08-18, written beside the pointer when the Assumptions section was added.
 - verdict: retire
 - reason: curating-docs states the placement rule whole with its reason, the same sentence already points there, and the template places the section correctly; the clause is a copy beside a pointer (A093).
+- proposed: Delete "and it must stay outside ## Sections of Work, whose block any foreign ## heading ends early" from line 118, leaving the pointer and the parser-inertness note.
+- proposed: (via A093) Delete "and it must stay outside ## Sections of Work, whose block any foreign ## heading ends early" from line 118, leaving the pointer and the parser-inertness note.
+- baseline-test: yes
 
 ### C172
 - key: Do not write a spec for a trivial fix or a small obvious change; just fix it under the global rules.

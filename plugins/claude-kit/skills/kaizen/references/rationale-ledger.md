@@ -2,7 +2,7 @@
 
 This file is the rationale ledger for the documents the `kaizen` skill owns. Rule text says what happens; this ledger says why; git says when. Nobody loads it by default. A session about to change a rule in one of the documents below reads the entry for the claim it is changing first, so the reason a rule holds is not re-litigated at the next review.
 
-Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed is recorded in the corpus audit plan's scratch adjudication log (the plan is `claude-kit_corpus-audit_spec_v1.md` under `docs/`), which is that plan's transient scratch: its rewrite section consumes the log, and the rewrite plan it writes under `docs/plans/` is the durable home of any target wording once written. The baseline-test flag on a behavior-shaping rewrite rides in the entry's reason line.
+Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed rides on the entry's `proposed:` line, one line per distinct proposal, on rewrite and retire entries that retire a passage; a proposal that pointed at another ruling by id carries the resolved text marked `(via Annn)`. A rewrite or retire the judge flagged as behavior-shaping carries `baseline-test: yes`, which is what the rewrite plan's RED and GREEN step keys on. What a passage becomes is the rewrite plan's to decide (`claude-kit_corpus-rewrite_spec_v1.md` under `docs/plans/`), and where it and a proposal differ the rewrite plan governs.
 
 ## plugins/claude-kit/skills/kaizen/SKILL.md
 
@@ -41,6 +41,8 @@ Extracted at `6bc07fb`: whole document (`skills.kaizen.SKILL.md`).
 - provenance: 830ff28 2026-06-17; the single-form field list predates the long note form `kaizen/README.md` admitted in the 2026-09-02 pass.
 - verdict: rewrite
 - reason: The file's identity and append-only shape hold, but the one-line field list is stale against `kaizen/README.md`, which states two valid forms a pass reads; the line keeps the file and points at the README for the forms, and the destination with its hostname resolution stays at line 23 (C024) where a capturing session acts on it.
+- proposed: Line 14 states that `kaizen/notes-<machine>.md` is per-machine and append-only with the note forms per `kaizen/README.md`, and drops the single-form field list; line 23 keeps the `<kitRepoPath>` destination and the hostname resolution.
+- proposed: (via A006) Line 14 states that `kaizen/notes-<machine>.md` is per-machine and append-only with the note forms per `kaizen/README.md`, and drops the single-form field list; line 23 keeps the `<kitRepoPath>` destination and the hostname resolution.
 
 ### C005
 - key: Use per-machine note files because they let several workstations push notes with zero merge conflicts and a pull merges them automatically.
@@ -49,6 +51,7 @@ Extracted at `6bc07fb`: whole document (`skills.kaizen.SKILL.md`).
 - provenance: 830ff28 2026-06-17; design rationale for the per-machine layout, no incident.
 - verdict: retire
 - reason: The why now lives here and in `kaizen/README.md`: one file per machine means concurrent pushes never conflict and a pull merges them. Deleting the sentence reddens the INTEGRATION_EXEMPT anchor `Per-machine files mean three workstations` at test/doctrine-parity.test.js:5464, so that entry is re-anchored or removed in the same commit.
+- proposed: Move the two sentences to this ledger; re-anchor or drop the `Per-machine files mean three workstations` entry at test/doctrine-parity.test.js:5464 in the same commit.
 
 ### C006
 - key: Put one file per reflect-pass brief in `kaizen/briefs/`.
@@ -129,6 +132,7 @@ Extracted at `6bc07fb`: whole document (`skills.kaizen.SKILL.md`).
 - provenance: cceff11 2026-08-31, the exemption's premise, verified at install (every test touching `kaizen/` builds its own fixture).
 - verdict: retire
 - reason: The premise is restated in the parity exemption entry and here: the exemption is honest only while no test reads the repo's real inbox and the capturing repo carries no lane over the kit; the day a test reads the real inbox the exemption lapses. The rule is obeyed without the sentence.
+- proposed: Move the sentence to this ledger; the exemption lapses the day a test reads the repo's real inbox.
 
 ### C016
 - key: Where the delta carries anything besides the note commit, run the lane that push's own surface earns.
@@ -169,6 +173,9 @@ Extracted at `6bc07fb`: whole document (`skills.kaizen.SKILL.md`).
 - provenance: c606b62 2026-08-29, with the cap.
 - verdict: rewrite
 - reason: The owner's bar covers a paraphrase exactly as a quotation and the kaizen clause leaves paraphrase open; the rewrite states the reach (quoted or paraphrased, ride as a pointer) so the copy matches the owner.
+- proposed: Reword the clause to "the operator's words stay off the artifact, quoted or paraphrased, and ride as a pointer to where they sit".
+- proposed: (via A037) Reword the clause to "the operator's words stay off the artifact, quoted or paraphrased, and ride as a pointer to where they sit".
+- baseline-test: yes
 
 ### C021
 - key: Take a friction that cannot be stated inside the public-board cap to the operator instead of writing it into the inbox.
@@ -281,6 +288,7 @@ Extracted at `6bc07fb`: whole document (`skills.kaizen.SKILL.md`).
 - provenance: 6b3cbec 2026-07-26, a relocated lesson given its point-of-action home in the capture rule.
 - verdict: rewrite
 - reason: The bold lead and the instruction with its evidence-versus-note gloss stay; only the burn metaphor (C035) leaves. The doctrine's prose bar (concrete words) and this rule (general lesson) are two axes a note satisfies at once, as the 2026-09-02 triage record's note leads show.
+- proposed: Keep the bold lead and the instruction with its gloss; drop the metaphor sentence.
 
 ### C035
 - key: One burn should teach you "hot," not "that stove."
@@ -289,6 +297,7 @@ Extracted at `6bc07fb`: whole document (`skills.kaizen.SKILL.md`).
 - provenance: 6b3cbec 2026-07-26, with the rule.
 - verdict: retire
 - reason: The rule is stated literally in the same paragraph; the metaphor adds no condition a session needs and the doctrine's copy of the rule never carried it.
+- proposed: Delete "One burn should teach you "hot," not "that stove."".
 
 ### C036
 - key: Leave out any note you have to talk yourself into; zero notes in a session is normal.
@@ -313,6 +322,7 @@ Extracted at `6bc07fb`: whole document (`skills.kaizen.SKILL.md`).
 - provenance: c606b62 2026-08-29, with the grant.
 - verdict: retire
 - reason: The why is c606b62's own title ("the loop stops asking permission to learn about itself"): without standing adjudication the inbox waits on the operator's attended pass and grows; the grant is obeyed without the sentence.
+- proposed: Delete "standing adjudication is what keeps the inbox moving between those moments".
 
 ### C039
 - key: Do not use the standing authority to widen or relax the capture bar.
@@ -321,6 +331,8 @@ Extracted at `6bc07fb`: whole document (`skills.kaizen.SKILL.md`).
 - provenance: fb0f194 2026-08-28 installed the narrowing for the coordinator carve-out; c606b62 2026-08-29 restated it for the standing authority.
 - verdict: rewrite
 - reason: The narrowing itself stays verbatim; the paragraph loses only its announcing sentence, which states no narrowing and no incident installed.
+- proposed: Drop the opening sentence; keep the three narrowing sentences as they stand.
+- baseline-test: yes
 
 ### C040
 - key: Take a materially consequential disposition to the operator as a decision ask.
@@ -345,6 +357,8 @@ Extracted at `6bc07fb`: whole document (`skills.kaizen.SKILL.md`).
 - provenance: 830ff28 2026-06-17 installed the pull; the step's later sentences are cceff11, 3380bf2 and 7701ec5.
 - verdict: rewrite
 - reason: The instruction stands; the Gather step is restructured into sub-bullets with no rule or reason dropped because its 120-word sentence fails the kit's own sentence bar, and the readers' compressions dropped content the baseline test at 7701ec5 proved necessary.
+- proposed: Restructure step 1 into sub-bullets (pull and lane; the scrolled-output fallback; reading the note files with their counts; this session's and the operator's friction) with every rule and reason retained.
+- baseline-test: yes
 
 ### C043
 - key: Read the pull's own output to decide which test lane the pass owes before pricing it.
@@ -417,6 +431,8 @@ Extracted at `6bc07fb`: whole document (`skills.kaizen.SKILL.md`).
 - provenance: 830ff28 2026-06-17; c606b62 2026-08-29 added the attended-versus-standing bound.
 - verdict: rewrite
 - reason: The two questions and the bound stay verbatim in two sentences instead of one, because the bound sits mid-sentence between the label and the questions; the attended-branch gate is loop-maintenance already resolved by c606b62's standing branch.
+- proposed: State the two questions and the four dispositions in one sentence and the attended-versus-standing bound in the next.
+- baseline-test: yes
 
 ### C052
 - key: Turn a small, clear item into a brief, or fix it directly since the pass already runs in the kit repo.
@@ -449,6 +465,7 @@ Extracted at `6bc07fb`: whole document (`skills.kaizen.SKILL.md`).
 - provenance: ae90fa5 2026-07-08, whose message narrates nothing about the disposition; no provenance found for its why beyond the commit.
 - verdict: rewrite
 - reason: The instruction stays verbatim; only the third sentence (C056's rationale) leaves for this ledger.
+- proposed: Drop the third sentence; keep the disposition's instruction verbatim.
 
 ### C056
 - key: Park items out of the inbox so it stays a friction-only signal and the pending-items nudge never cries wolf over a waiting experiment.
@@ -457,6 +474,7 @@ Extracted at `6bc07fb`: whole document (`skills.kaizen.SKILL.md`).
 - provenance: ae90fa5 2026-07-08, with the disposition.
 - verdict: retire
 - reason: The why now lives here: the pending predicate (C007) counts every note line, so an experiment left in the inbox nudges every kit-repo session start until its signal arrives; parking it in the backlog keeps the inbox a friction-only signal.
+- proposed: Delete "The inbox stays a friction-only signal, so the pending-items nudge never cries wolf over an experiment that is simply waiting."
 
 ### C057
 - key: Write a brief for each apply-now item using the brief format.
@@ -465,6 +483,8 @@ Extracted at `6bc07fb`: whole document (`skills.kaizen.SKILL.md`).
 - provenance: 830ff28 2026-06-17; step 3's later sentences are cceff11 and 7701ec5.
 - verdict: rewrite
 - reason: The instruction stands; step 3 is restructured into sub-bullets with no rule or reason dropped, keeping the pinned install-surface wording verbatim (test/doctrine-parity.test.js:3944) and the 7701ec5 clearing sentences that were baseline-tested as a unit.
+- proposed: Restructure step 3 into sub-bullets (write and apply; clear and reconcile; gate and push; promoted specs) with every rule and reason retained and the wording "a trunk consumers install from directly with no CI gating the merge" unchanged.
+- baseline-test: yes
 
 ### C058
 - key: Make the change per the writing-skills skill.
@@ -585,6 +605,10 @@ Extracted at `6bc07fb`: whole document (`skills.kaizen.SKILL.md`).
 - provenance: 830ff28 2026-06-17, written beside C073 on the same line.
 - verdict: retire
 - reason: C073 states the same bar with the predicate and the moments named, which is the decidable form; the five-word negative lead merges into it.
+- proposed: Drop the five-word lead sentence; C073's sentence carries the bar.
+- proposed: One paragraph: the merged offer bar, the one-line offer with its example, the operator's explicit start, and a pointer naming `hooks/session-start.js` as the nudge that applies the same predicate in the kit repo.
+- proposed: (via A102) Drop the five-word lead sentence; C073's sentence carries the bar.
+- baseline-test: yes
 
 ### C073
 - key: Offer a pass only when the inbox has pending items and only at a natural moment: finishing-work's close-out, or when the operator signals they are wrapping up.
@@ -617,6 +641,7 @@ Extracted at `6bc07fb`: whole document (`skills.kaizen.SKILL.md`).
 - provenance: 830ff28 2026-06-17, installed with the hook it describes.
 - verdict: rewrite
 - reason: The nudge is a program (`hooks/session-start.js` `countPendingKaizen` and the block at line 1505, pinned by test/session-start-kaizen.test.js), so the sentence asks nothing of a session; it becomes a pointer naming the hook so the shared predicate stays visible.
+- proposed: Replace the sentence with a pointer: the SessionStart nudge in `hooks/session-start.js` applies this predicate in the kit repo.
 
 ### C077
 - key: Inside a pass already running, after step 3, where `claude --version` differs from the version `docs/harness-assumptions.md` records as last diffed against, diff the Claude Code changelog from the release after that version against that inventory, advance the recorded version, and enter each belief the diff falsified in the inbox as an ordinary note for the next pass.

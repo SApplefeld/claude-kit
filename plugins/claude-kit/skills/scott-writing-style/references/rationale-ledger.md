@@ -2,7 +2,7 @@
 
 This file is the rationale ledger for the documents the `scott-writing-style` skill owns. Rule text says what happens; this ledger says why; git says when. Nobody loads it by default. A session about to change a rule in one of the documents below reads the entry for the claim it is changing first, so the reason a rule holds is not re-litigated at the next review.
 
-Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed is recorded in the corpus audit plan's scratch adjudication log (the plan is `claude-kit_corpus-audit_spec_v1.md` under `docs/`), which is that plan's transient scratch: its rewrite section consumes the log, and the rewrite plan it writes under `docs/plans/` is the durable home of any target wording once written. The baseline-test flag on a behavior-shaping rewrite rides in the entry's reason line.
+Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed rides on the entry's `proposed:` line, one line per distinct proposal, on rewrite and retire entries that retire a passage; a proposal that pointed at another ruling by id carries the resolved text marked `(via Annn)`. A rewrite or retire the judge flagged as behavior-shaping carries `baseline-test: yes`, which is what the rewrite plan's RED and GREEN step keys on. What a passage becomes is the rewrite plan's to decide (`claude-kit_corpus-rewrite_spec_v1.md` under `docs/plans/`), and where it and a proposal differ the rewrite plan governs.
 
 ## plugins/claude-kit/skills/scott-writing-style/SKILL.md
 
@@ -113,6 +113,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - provenance: f8c0649 2026-06-10 as concrete per-document counts; 0918893 2026-06-28 genericized them into this description.
 - verdict: retire
 - reason: The default and its hard bounds are obeyed without the sample breakdown, which has carried no document names since the genericization. For the record: the samples ran 4 to 6 top-level sections; proposals and benefit docs 5 to 6, architecture docs 4 major components plus sub-sections, email replies 4 (Goal, Approach, Cost, Timeframe).
+- proposed: Delete line 36; the ledger entry for C013 carries the sample range.
 
 ### C014
 - key: Treat 4 top-level sections as a hard floor and 6 as a hard ceiling.
@@ -129,6 +130,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: rewrite
 - reason: Merges with lines 35 and 37 into one sentence carrying the default, the floor and ceiling, and the collapse instruction; the numbers do not change, so the rewrite is safe, and it is flagged for baseline-testing because it is behavior-shaping wording.
+- proposed: Merge lines 35 and 37 into one sentence: default four to six top-level sections, four a hard floor and six a hard ceiling, collapse past six.
+- baseline-test: yes
 
 ### C016
 - key: Give most sections 2 to 3 nested sub-sections when the topic needs drill-down.
@@ -145,6 +148,10 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: rewrite
 - reason: Line 109's copy retires into this line, bringing the field-and-parameter-catalog carve-out with it, and the sentence names the numbered 1-a-i list for steps, components and ranked items as the one licensed three-level structure, which settles the apparent collision with C035 that a careful read already resolves.
+- proposed: Move the catalog carve-out from line 109 into line 38 and delete line 109.
+- proposed: In the merged nesting sentence, state that the numbered 1-a-i list for steps, components and ranked items is the one three-level structure allowed.
+- proposed: (via A015) Move the catalog carve-out from line 109 into line 38 and delete line 109.
+- baseline-test: yes
 
 ### C018
 - key: Write headers as short noun phrases of 2 to 4 words in Title Case or ALL CAPS.
@@ -161,6 +168,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: rewrite
 - reason: One specimen per case is enough to obey the rule; the full sample list for the record: INTEGRATION DESIGN, DEMILITARIZED ZONE, PROTECTING DATABASE, END RESULT, Improving Retention, Back Office Efficiencies, Driver Efficiencies, Safety Monitoring, GOAL, APPROACH, COST, TIMEFRAME.
+- proposed: Trim line 43 to one ALL CAPS and one Title Case example; the ledger entry for C019 carries the full list.
+- baseline-test: yes
 
 ### C020
 - key: Never use question-form headers.
@@ -193,6 +202,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: rewrite
 - reason: Its unconditional bound collides with contradictions item 1 on proposals, and history says item 1 is the intended resolution: at import the ALL CAPS proposal was the short goal-approach-cost-timeframe email, which the 0918893 genericization renamed "proposal-style enumerations". The rewrite states case by formality with that enumeration named, and item 1 (C075) retires into it.
+- proposed: Rewrite line 47 to case by formality, naming the short proposal-style enumeration (an email listing goal, approach, cost, timeframe) as ALL CAPS and longer client-facing proposals and benefit docs as Title Case; then delete contradictions item 1.
+- baseline-test: yes
 
 ### C024
 - key: Pick one header style per document and stay consistent with it.
@@ -201,6 +212,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: rewrite
 - reason: The rule itself is unchanged; it becomes the second sentence of the rewritten line 47 beside the case-by-formality sentence. This document owns it; ai-tells:121 restates it inside a pointer and that is the catalog's side.
+- proposed: Line 47 becomes the case-by-formality sentence from A026 followed by the pick-one-and-stay-consistent sentence.
+- baseline-test: yes
 
 ### C025
 - key: Write sub-section headers as short noun phrases, often 2 to 3 words, in Title Case.
@@ -265,6 +278,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: retire
 - reason: A duplicate of C027 inside the same document; its one addition ("the rest supports it") moves into line 53, so nothing is lost.
+- proposed: (via A030) Append "the rest of the section supports it" to line 53, delete line 61, and delete the STRONGEST PATTERNS section per A005.
+- baseline-test: yes
 
 ### C033
 - key: Build the case, then pivot with "However,", "By comparison,", or "Comparatively,".
@@ -281,6 +296,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - provenance: f8c0649 2026-06-10, the initial import of the skill; 830ff28 2026-06-17 changed an em dash on the line to a spaced hyphen.
 - verdict: rewrite
 - reason: The set-up clause is load-bearing: ai-tells distinguishes the licensed pivot (against a position a real reader holds) from the straw-position tell, and the writer needs the set-up instruction to stay on the licensed side. The frequency claim ("appears in every sample, the core rhetorical move") is sample evidence and lives here now.
+- proposed: Line 63 becomes one sentence: build the status quo the reader holds, then pivot with "However," or "By comparison," to why it is insufficient; the frequency sentence goes to the ledger.
+- baseline-test: yes
 
 ### C035
 - key: Use numbered lists with lettered sub-items (1 then a then i) when listing steps, components, or ranked items.
@@ -297,6 +314,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - provenance: f8c0649 2026-06-10, the initial import of the skill; 830ff28 2026-06-17 changed the bullet separator on the line from an em dash to a colon.
 - verdict: rewrite
 - reason: The heading and the sentence say one thing and merge; the bullet-format mechanic stays as its own sentence. Line 79 is the other half of the same division (reasoning in prose), not a duplicate. ai-tells:61 points at this licence by design.
+- proposed: Line 67 becomes two sentences: bullets for non-ranked items such as fields, data points and options; each bullet a bold term, a colon or line break, then the explanation.
+- baseline-test: yes
 
 ### C037
 - key: Format each bullet as a bold term plus a colon or line break plus the explanation.
@@ -329,6 +348,10 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - provenance: f8c0649 2026-06-10, the initial import of the skill; reworded at 0918893 2026-06-28 to replace the sample figures with kinds of number.
 - verdict: rewrite
 - reason: The four inline kinds of number were sample figures made generic and say nothing the rule does not; the rule plus its one instance (C041) is the whole passage. Line 141's copy (C080) retires.
+- proposed: Delete line 141 with the STRONGEST PATTERNS section; line 73 keeps its "significantly faster" instance.
+- proposed: Line 73 becomes: back every claim of impact with a concrete number rather than an adjective; never write "significantly faster" without the figure beside it.
+- proposed: (via A041) Delete line 141 with the STRONGEST PATTERNS section; line 73 keeps its "significantly faster" instance.
+- baseline-test: yes
 
 ### C041
 - key: Never write "significantly faster" without following it with the actual figure.
@@ -361,6 +384,10 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: rewrite
 - reason: The heading's "wall-of-bullets" figure gives way to the literal failure; the two rule sentences stay. Line 108's copy (C064) retires.
+- proposed: Delete line 108.
+- proposed: Line 79 becomes: carry the reasoning in prose paragraphs, even in technical docs; reserve bullets for catalogs and field lists.
+- proposed: (via A049) Delete line 108.
+- baseline-test: yes
 
 ### C045
 - key: Do not use em dashes; use commas, periods, parentheses, or colons instead.
@@ -369,6 +396,9 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - provenance: 830ff28 2026-06-17, replaced the samples' "em dashes used sparingly" pattern with the ban in the commit that put the no-em-dash rule into CLAUDE.md.
 - verdict: rewrite
 - reason: The doctrine owns the ban and its replacement list, and this copy is stale: the doctrine added the spaced hyphen at c800e05 (2026-06-26) after this line was written, and the skill's own title uses one. Becoming a pointer ends the drift; no hook or test enforces the ban, so it is not superseded.
+- proposed: Line 81 becomes a pointer: no em dashes, per the doctrine's style rule, which owns the replacement list.
+- proposed: (via A052) Line 81 becomes a pointer: no em dashes, per the doctrine's style rule, which owns the replacement list.
+- baseline-test: yes
 
 ### C046
 - key: Drop the samples' sparing em-dash use because em dashes now read as an AI-writing tell.
@@ -377,6 +407,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - provenance: 830ff28 2026-06-17, the same commit as C045.
 - verdict: retire
 - reason: The reason lives in the doctrine's own rule; the parenthetical is change narrative. For the record: the original samples used em dashes sparingly (0 to 2 per section) and the kit dropped them because they read as a machine-writing tell.
+- proposed: Delete the parenthetical on line 81.
+- proposed: (via A056) Delete the parenthetical on line 81.
 
 ### C047
 - key: Put scope-limiting caveats in parentheses rather than in a new sentence.
@@ -401,6 +433,9 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - provenance: f8c0649 2026-06-10, the initial import of the skill; reworded at 0918893 2026-06-28 to genericize a specimen.
 - verdict: rewrite
 - reason: Absorbs contradictions item 4's bound ("I" runs freely only in a direct one-to-one email; a company deliverable uses it only for subjective framing) and drops two of three quoted specimens. C068's "you" ban is a different pronoun and stays separate.
+- proposed: Line 87 becomes: default to "we" in technical and proposal writing; use "I" for subjective framing ("In my opinion") and freely only in a direct one-to-one email; then delete contradictions item 4.
+- proposed: (via A063) Line 87 becomes: default to "we" in technical and proposal writing; use "I" for subjective framing ("In my opinion") and freely only in a direct one-to-one email; then delete contradictions item 4.
+- baseline-test: yes
 
 ### C050
 - key: Close with a restatement of the end state or net result, not a gut punch, a rhetorical question, or a rallying cry.
@@ -433,6 +468,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: rewrite
 - reason: One pattern is enough beside C052's sentence count and tense. For the record, the three: "The ultimate result of this design is that we have...", "This creates a model where...", "That fixed the issue since the initial change, and for all punches moving forward."
+- proposed: Trim line 94 to one example pattern; the ledger entry for C053 carries the rest.
+- baseline-test: yes
 
 ### C054
 - key: Close an email with an invitation to respond plus a signoff, and place a call to action nowhere else.
@@ -577,6 +614,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: rewrite
 - reason: Three specimens of active construction reduce to one; the rule and its third-party-system passive carve-out are unchanged.
+- proposed: Line 115 becomes: write in active construction by default ("We create ..."); reserve passive voice for describing third-party system behavior.
+- baseline-test: yes
 
 ### C072
 - key: Use at most one hedge per claim, such as "typically", "usually", or "in most cases".
@@ -585,6 +624,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: rewrite
 - reason: The violation specimen ("it could potentially perhaps in some cases") is a second example and drops; the limit and its allowed-hedge examples stay. This document owns the limit; the ai-tells "already prohibited" list names it.
+- proposed: Line 116 becomes: use at most one hedge per claim, such as "typically" or "usually".
+- baseline-test: yes
 
 ### C073
 - key: Read references/ai-tells.md beside this skill before finishing a draft in this voice.
@@ -609,6 +650,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - provenance: f8c0649 2026-06-10 naming the KNX email as the ALL CAPS proposal; 0918893 2026-06-28 genericized it to "proposal-style emails".
 - verdict: rewrite
 - reason: The formality rule merges into line 47 (C023) with the short proposal-style enumeration named, and the three sample sentences before it live here: technical PDFs used ALL CAPS, benefit and integration docs Title Case, and the one proposal email ALL CAPS for its goal-approach-cost-timeframe headers.
+- proposed: (via A026) Rewrite line 47 to case by formality, naming the short proposal-style enumeration (an email listing goal, approach, cost, timeframe) as ALL CAPS and longer client-facing proposals and benefit docs as Title Case; then delete contradictions item 1.
+- baseline-test: yes
 
 ### C076
 - key: Give emails the one-line courtesy opener and open formal documents cold with the thesis.
@@ -617,6 +660,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - provenance: f8c0649 2026-06-10, the initial import of the skill; 0918893 2026-06-28 dropped the "three of five" sample counts.
 - verdict: retire
 - reason: Contradictions item 2 resolves to exactly Section 1's rule (C002) and its email exception (C007), which stay whole; for the record, the formal samples opened cold and the two email samples opened with a thank-you line.
+- proposed: (via A001) Delete contradictions item 2 (line 132); Section 1 already carries the rule and the email exception.
+- baseline-test: yes
 
 ### C077
 - key: Nest more in status and review writing and keep proposal or explanatory writing flatter.
@@ -633,6 +678,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - provenance: f8c0649 2026-06-10, the initial import of the skill; 0918893 2026-06-28 genericized the sample names.
 - verdict: retire
 - reason: Its one-to-one bound moves into line 87 (C049) so nothing is lost; for the record, the benefit analysis used "In my opinion" once, the direct 1:1 email used "I" freely, and the technical docs stayed in "we".
+- proposed: (via A063) Line 87 becomes: default to "we" in technical and proposal writing; use "I" for subjective framing ("In my opinion") and freely only in a direct one-to-one email; then delete contradictions item 4.
+- baseline-test: yes
 
 ### C079
 - key: Open every section with a one-sentence thesis, then support it.
@@ -735,6 +782,9 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18, the same one-line-and-point-back section, except that this item carried a copy of the word list rather than a pointer.
 - verdict: rewrite
 - reason: The copy has already drifted, six words here against eight at SKILL.md:105, and this line names no owning section while line 9 promises every item does. Making it a pointer removes the drift surface without losing the pattern name a reviewer hunts by.
+- proposed: Replace the shortened word list with a one-line pointer at Section 8's motivational-language ban, in the same form the em dash and rhetorical question items already take.
+- proposed: (via A011) Replace the shortened word list with a one-line pointer at Section 8's motivational-language ban, in the same form the em dash and rhetorical question items already take.
+- baseline-test: yes
 
 ### C007
 - key: Never stack more than one hedge on a single claim.
@@ -743,6 +793,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18, same section.
 - verdict: rewrite
 - reason: The limit matches SKILL.md:116 exactly, so nothing about the rule changes; only the missing Section 8 attribution that line 9 promises is added, which is what makes the checkable examples reachable.
+- proposed: Name Section 8 as the owner on the hedges line, as the other items in this section do.
+- proposed: (via A013) Name Section 8 as the owner on the hedges line, as the other items in this section do.
 
 ### C008
 - key: Do not signpost a closing section with "In conclusion" or "To summarize".
@@ -751,6 +803,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18, same section.
 - verdict: rewrite
 - reason: The two phrases are the pattern's own name and cannot drift, so they stay; only the missing Section 8 attribution is added.
+- proposed: Name Section 8 as the owner on the signposting-the-close line.
+- proposed: (via A015) Name Section 8 as the owner on the signposting-the-close line.
 
 ### C009
 - key: Do not let three-item lists and three-clause sentences become the document's default cadence.
@@ -943,6 +997,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18, the licensed exception for Section 2's scope statement.
 - verdict: rewrite
 - reason: Both the licence and the every-section threshold stay; only "That is a boundary, not a preview." goes, because it is an instance of the negation-then-correction construction this same file bars at line 31. A catalog that commits its own tell teaches the pattern it forbids.
+- proposed: Fold the boundary-versus-preview distinction into the licence sentence and delete "That is a boundary, not a preview.", keeping both the licence and the every-section tell.
+- baseline-test: yes
 
 ### C033
 - key: Do not close with a summary paragraph whose every sentence appeared earlier in different words.
@@ -951,6 +1007,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18, named in the spec's minimum pattern list.
 - verdict: rewrite
 - reason: The rule holds and does not conflict with SKILL.md:75, which governs a section close rather than the document close. The change is placement: the Section 6 licence sits at line 101 under a different tell, so a reviewer meeting this ban does not see its carve-out, and naming it here is what makes the stop readable with its exception.
+- proposed: Name Section 6's section-close summary as licensed beside the line 85 ban, so the stop is read with its exception rather than two sections apart from it.
+- baseline-test: yes
 
 ### C034
 - key: Close by stating the end state the reader now has after applying the design, which is new information arrived at by the body.
@@ -1015,6 +1073,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18, written as the bound on the vocabulary recognizer above it.
 - verdict: rewrite
 - reason: The note itself stays whole, counterexamples included, because they are what stops a correct use of robust or ensure being flagged. Only the "Two notes for a reviewer" opener goes, since it is this document's own instance of the structural-preview tell it bars at line 75.
+- proposed: Delete the "Two notes for a reviewer" opener and let the two notes stand as written, keeping the counterexamples and the assert-a-fact recipe whole.
+- baseline-test: yes
 
 ### C042
 - key: Fix a vocabulary tell by making the sentence assert a fact, not by swapping the word and keeping the empty sentence.

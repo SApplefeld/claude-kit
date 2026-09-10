@@ -2,7 +2,7 @@
 
 This file is the rationale ledger for the documents the `testing-discipline` skill owns. Rule text says what happens; this ledger says why; git says when. Nobody loads it by default. A session about to change a rule in one of the documents below reads the entry for the claim it is changing first, so the reason a rule holds is not re-litigated at the next review.
 
-Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed is recorded in the corpus audit plan's scratch adjudication log (the plan is `claude-kit_corpus-audit_spec_v1.md` under `docs/`), which is that plan's transient scratch: its rewrite section consumes the log, and the rewrite plan it writes under `docs/plans/` is the durable home of any target wording once written. The baseline-test flag on a behavior-shaping rewrite rides in the entry's reason line.
+Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed rides on the entry's `proposed:` line, one line per distinct proposal, on rewrite and retire entries that retire a passage; a proposal that pointed at another ruling by id carries the resolved text marked `(via Annn)`. A rewrite or retire the judge flagged as behavior-shaping carries `baseline-test: yes`, which is what the rewrite plan's RED and GREEN step keys on. What a passage becomes is the rewrite plan's to decide (`claude-kit_corpus-rewrite_spec_v1.md` under `docs/plans/`), and where it and a proposal differ the rewrite plan governs.
 
 ## plugins/claude-kit/skills/testing-discipline/SKILL.md
 
@@ -25,6 +25,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - provenance: 27ac5d7 2026-08-27, same install as C001.
 - verdict: rewrite
 - reason: The rule stays; the "two costs" framing before it is rationale (the skill's authoring and gate decisions are the two costs a suite pays) and the "This skill owns both, kit-wide" claim is the ownership map's row. Neither is obeyed, so dropping them changes no behavior.
+- proposed: Line 8 keeps "nothing in this file is a command to run" and the memory-tier pointer; the two-costs framing moves to this ledger and the ownership sentence is dropped as the map's.
 
 ### C003
 - key: Write a test for an implementer's acceptance criterion, the behavior the section was dispatched to produce.
@@ -193,6 +194,10 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - provenance: 27ac5d7 2026-08-27, from the memq network blind spot (the memory-anchors plan's Section 7 Critical: every pinned test routed around the cwd walk, so the suite went green over a hang every unpinned session hit); Chapter 1 records the rule shipped on point-of-action rationale, its RED probe not reproducing.
 - verdict: rewrite
 - reason: The paragraph states the act twice (opening and closing "So" sentence); merge them into one statement carrying the diagnostic question and the act. The incident class recurs wherever a fixture avoids a hazard uniformly, so the rule itself stays.
+- proposed: Merge C023 and C024 into one statement that carries the question ("ask what the uniformity avoids") and the act (one test without the setup).
+- proposed: The paragraph is the merged rule of A019 with the memq example retired to this ledger (A022).
+- proposed: (via A019) Merge C023 and C024 into one statement that carries the question ("ask what the uniformity avoids") and the act (one test without the setup).
+- baseline-test: yes
 
 ### C024
 - key: When an area's setup is uniform, ask what the uniformity avoids and give the area one test without it.
@@ -209,6 +214,8 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - provenance: 27ac5d7 2026-08-27; the incident is the memory-anchors plan's Section 7 Critical and the memq-network-cwd-resolver plan's control.
 - verdict: retire
 - reason: The rule stands without it, and the example's "the one test that can see it" is already stale: the cwd-resolver plan found four unpinned network cases at its base ref and added seven more, so `test/memq.test.js` now holds many. The worked instance lives here and in that archived plan: pinned memq tests return the pinned segment before the cwd walk, so only an unpinned case can see a hang in the walk.
+- proposed: Delete the worked-example sentence; the blind-spot rule stands on the merged statement of A019.
+- baseline-test: yes
 
 ### C026
 - key: Set the suite's wall clock and parallelism when each test is written, not when someone finally profiles the suite.
@@ -217,6 +224,8 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - provenance: efcfa16 2026-08-27, when the doctrine's authoring bullet shrank to this principle plus a pointer and the skill restated it as a sanctioned point-of-action copy (plan Chapter 2).
 - verdict: retire
 - reason: The doctrine keeps the principle always-loaded ("A suite's wall clock and its parallelism are set one test at a time, at authoring") and the four pricing bullets are obeyable without the restatement. Its why: a dependent test hides its dependence until the runner goes parallel, and a profiling pass finds the cost after every test has been shaped.
+- proposed: Delete the framing sentence; the section opens on "Each expensive shape has a cheaper form that sees the same defects".
+- baseline-test: yes
 
 ### C027
 - key: Replace a spawn per assertion with a spawn per batch: run the process once and assert many times against its output.
@@ -281,6 +290,9 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - provenance: 27ac5d7 2026-08-27, the section opener; the rule proper is C048's closing default from efcfa16.
 - verdict: retire
 - reason: The clause is the reason C048 exists: the suite's wall clock was spent at the cadence, not the test count (four whole gates on one section's fix rounds, 333 s quiet against 816 s beside a neighbor). The lead-in "Each gate moment names its lane" stays as the list's introduction.
+- proposed: Cut the wall-clock clause from line 56, leaving "Each gate moment names its lane:"; C048 carries the instruction.
+- proposed: (via A029) Cut the wall-clock clause from line 56, leaving "Each gate moment names its lane:"; C048 carries the instruction.
+- baseline-test: yes
 
 ### C035
 - key: Compose the targeted lane as the changed files' tests plus any whole-tree pin whose subject those files are.
@@ -297,6 +309,8 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - provenance: a321af3 2026-08-30, the gate-cadence plan's core sentence (operator decision 2026-08-30: the whole gate saved for the handoff; 25-plus-minute gates on the NEO box priced a ten-chapter plan at 250 added minutes), with the push forward-reference added against that plan's Section 2 Critical.
 - verdict: rewrite
 - reason: The rule, the push forward-reference and C037's act stay; the sentence explaining why the definition has a second half moves here: a family's pin usually lives in a file of its own, so a lane derived from filenames alone excludes the very shape this skill prefers.
+- proposed: Keep the definition, C036, C037's act, the push forward-reference and C038's duty (or its pointer per A040); move "a family's pin usually lives in a file of its own, so a lane derived from filenames alone excludes the very shape this skill prefers" to the ledger.
+- baseline-test: yes
 
 ### C037
 - key: Run a family's pin whatever file it sits in when a change touches a family member.
@@ -313,6 +327,9 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - provenance: 9784239 2026-08-30, the gate-cadence plan's Section 5: every Chapter satisfied the template and violated the doctrine because nothing that defines a Chapter carried the lane; the template gained its Gate field.
 - verdict: rewrite
 - reason: Executing-work owns Chapter contents and its Gate field carries the duty and the reason; this becomes a pointer at that field so three copies do not drift.
+- proposed: Replace the sentence with a pointer at the Chapter template's Gate field in executing-work.
+- proposed: (via A040) Replace the sentence with a pointer at the Chapter template's Gate field in executing-work.
+- baseline-test: yes
 
 ### C039
 - key: Run the whole gate at finishing, before the plan's handoff.
@@ -401,6 +418,8 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - provenance: a321af3 2026-08-30, operator decision 2026-08-30 accepting late discovery with its price named; the window-cutting clause is the fix for that plan's Section 2 Critical (the skill had claimed nothing between sections reads the tree, false for a Commit-and-Push push to main).
 - verdict: rewrite
 - reason: The pricing narrative moves here: reserving the whole gate for the handoff means a targeted lane reads the changed files' families and nothing further out, so an untouched consumer of a changed shared module can go red unseen until finishing, except where a push to an install-surface trunk or a mid-plan merge fires the whole gate. The clause naming those two moments stays in the skill.
+- proposed: Reduce the paragraph to the window-cutting clause and C050; the pricing sentences ("Reserving the whole gate for the handoff buys wall clock at a named price", "So the price is paid between the sections only...") move to the ledger.
+- baseline-test: yes
 
 ### C050
 - key: When your own baseline reddens, suspect the in-flight plan before your own change, and confirm by checking whether the red sits outside your diff.
@@ -417,6 +436,9 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - provenance: efcfa16 2026-08-27 review Critical: splitting the gate into lanes left the baseline unscoped, so a 12-test targeted run could be diffed against an 1853-test baseline and reported as no regressions.
 - verdict: rewrite
 - reason: The ownership map gives delta reporting to the doctrine's gate bullet, whose copy is pinned and carries the same reason; this line becomes a pointer at it.
+- proposed: Replace line 66 with a pointer at the doctrine's gate bullet for the same-lane baseline and the whole-gate baseline rules.
+- proposed: (via A065) Replace line 66 with a pointer at the doctrine's gate bullet for the same-lane baseline and the whole-gate baseline rules.
+- baseline-test: yes
 
 ### C052
 - key: Take a whole-gate baseline of its own before claiming no regressions across the suite.
@@ -425,6 +447,8 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - provenance: efcfa16 2026-08-27, as C051.
 - verdict: rewrite
 - reason: As C051; the doctrine's copy is the owner's.
+- proposed: (via A065) Replace line 66 with a pointer at the doctrine's gate bullet for the same-lane baseline and the whole-gate baseline rules.
+- baseline-test: yes
 
 ### C053
 - key: Read a repo's lane commands from that project's memory tier.
@@ -465,6 +489,9 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - provenance: 27ac5d7 2026-08-27, restating the doctrine's background-task bullet.
 - verdict: retire
 - reason: The doctrine's bullet title is this sentence, always loaded, and the map gives background-run markers to the doctrine; C056's "from the run itself" already excludes the wrapper.
+- proposed: Delete the sentence; C056's "from the run itself" and the pointer of A071 carry it.
+- proposed: (via A073) Delete the sentence; C056's "from the run itself" and the pointer of A071 carry it.
+- baseline-test: yes
 
 ### C058
 - key: Where an isolation screen refuses the marker compound, use a bare redirect plus the run's own summary output.
@@ -473,6 +500,9 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - provenance: 27ac5d7 2026-08-27, the same review Minor's isolation-screen half.
 - verdict: rewrite
 - reason: No hook performs the fallback, so it is not superseded, but the doctrine owns the isolation screen and states the fallback twice; a pointer keeps the rung from stranding a worktree-isolated reader.
+- proposed: Replace the sentence with a pointer at the doctrine's background-task bullet for the isolation-screen fallback.
+- proposed: (via A075) Replace the sentence with a pointer at the doctrine's background-task bullet for the isolation-screen fallback.
+- baseline-test: yes
 
 ### C059
 - key: Run the test solo, then its class, then a full re-run with no code change, then check a clean tree or the recorded baseline.
@@ -489,6 +519,8 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - provenance: 27ac5d7 2026-08-27, as C059.
 - verdict: retire
 - reason: The step already says what the rung separates; this repeats the consequence. Its why: the clean-tree or recorded-baseline read is the only rung that can exonerate the change in flight.
+- proposed: Delete "Skip that last rung and a deterministic pre-existing red gets named a regression of whatever change happens to be in flight."
+- baseline-test: yes
 
 ### C061
 - key: Name the red a flake or a regression, with a reason citing the discriminating output, before moving on.
@@ -505,6 +537,8 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - provenance: 27ac5d7 2026-08-27 (the wall-clock capture would have been orphaned when Section 2 shrank the authoring bullet, a review Major) and efcfa16 2026-08-27 (the lane name, from the unscoped-baseline Critical).
 - verdict: rewrite
 - reason: The two rules stay; the purpose clause moves here: a later run needs a figure to diff against rather than a recollection, and a lane to diff it on, because a targeted run's clock says nothing about a whole gate's.
+- proposed: Drop the purpose clause; the bullet reads as the two rules.
+- baseline-test: yes
 
 ### C063
 - key: Route wall-clock growth past a few minutes as a finding, such as a fast lane for day-to-day edits, rather than absorbing it.
@@ -513,6 +547,8 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - provenance: 27ac5d7 2026-08-27, designed with C072 as one rule; the operator-tier record on this box (three same-tree runs at 1,913 s to 2,607 s with the quiet box slowest) is why C072 must bound it.
 - verdict: rewrite
 - reason: Reads as an absolute threshold; state that the growth is first established under the contention rule, then routed.
+- proposed: C063 states its dependency: growth established under the contention rule, past a few minutes, is a finding to route.
+- baseline-test: yes
 
 ### C064
 - key: Give every measured figure recorded in a journal-layer artifact a moment-pin.
@@ -545,6 +581,9 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - provenance: 7ef71e3 2026-09-01, restating the doctrine's journey-ban bullet and its append-only exemption.
 - verdict: rewrite
 - reason: The doctrine owns the layer's definition and the sentence already names it as the doctrine's; it becomes a pointer, keeping only that Chapters carry pinned figures under the append-only exemption.
+- proposed: Replace the journal-layer sentence with a pointer at the doctrine's "Documents ship the current state" bullet, keeping only that Chapters carry pinned figures under its append-only exemption.
+- proposed: (via A090) Replace the journal-layer sentence with a pointer at the doctrine's "Documents ship the current state" bullet, keeping only that Chapters carry pinned figures under its append-only exemption.
+- baseline-test: yes
 
 ### C068
 - key: In a plan doc, put pinned figures and dated evidence only in its Chapters, its interim board entries, and its Evidence section.
@@ -553,6 +592,8 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - provenance: 7ef71e3 2026-09-01, Decision 1's sites ("a Chapter, a board line, an evidence entry").
 - verdict: rewrite
 - reason: "Dated evidence ... nowhere else" over-reaches the decision and bars the "decided YYYY-MM-DD" records the doctrine requires and the archived plans carry in Decisions sections; scope it to moment-pinned measured figures.
+- proposed: Scope the sentence to moment-pinned measured figures; a dated decision record is the doctrine's decision-batch rule and is untouched.
+- baseline-test: yes
 
 ### C069
 - key: Carry no dated-evidence annotation in a curated document, a code comment, or a skill body.
@@ -577,6 +618,8 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - provenance: 27ac5d7 2026-08-27, the comparable-contention rule (the suite at 333 s quiet and 816 s beside a neighbor at one commit).
 - verdict: rewrite
 - reason: The rule, its bound and the procedure stay; the closing consequence sentence moves here: without a comparable-contention baseline a raw cross-load reading manufactures a finding out of a busy box.
+- proposed: Drop "Without that comparison a raw cross-load reading manufactures a finding out of a busy box."; keep the rule, the bound and the procedure.
+- baseline-test: yes
 
 ### C072
 - key: Call wall-clock growth a finding only against a baseline at comparable contention or a same-conditions trend.

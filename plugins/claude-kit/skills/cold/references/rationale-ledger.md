@@ -2,7 +2,7 @@
 
 This file is the rationale ledger for the documents the `cold` skill owns. Rule text says what happens; this ledger says why; git says when. Nobody loads it by default. A session about to change a rule in one of the documents below reads the entry for the claim it is changing first, so the reason a rule holds is not re-litigated at the next review.
 
-Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed is recorded in the corpus audit plan's scratch adjudication log (the plan is `claude-kit_corpus-audit_spec_v1.md` under `docs/`), which is that plan's transient scratch: its rewrite section consumes the log, and the rewrite plan it writes under `docs/plans/` is the durable home of any target wording once written. The baseline-test flag on a behavior-shaping rewrite rides in the entry's reason line.
+Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed rides on the entry's `proposed:` line, one line per distinct proposal, on rewrite and retire entries that retire a passage; a proposal that pointed at another ruling by id carries the resolved text marked `(via Annn)`. A rewrite or retire the judge flagged as behavior-shaping carries `baseline-test: yes`, which is what the rewrite plan's RED and GREEN step keys on. What a passage becomes is the rewrite plan's to decide (`claude-kit_corpus-rewrite_spec_v1.md` under `docs/plans/`), and where it and a proposal differ the rewrite plan governs.
 
 ## plugins/claude-kit/skills/cold/SKILL.md
 
@@ -33,6 +33,8 @@ Extracted at `6bc07fb`: whole document (`skills.cold.SKILL.md`).
 - provenance: 6f848ad 2026-06-14, the skill's install; ba1060b 2026-08-18 reworded only the neighbouring roster clause (review agents pointed at artifacts, not code alone).
 - verdict: retire
 - reason: The why of the lens: on a judgment call nothing mechanical contradicts an agreeable answer, and the operator's investment is where agreement pulls hardest. The trigger and the job are obeyable without it, so it lives here; flagged for baseline-testing because it opens the skill's calibration paragraph.
+- proposed: Drop the "Sycophancy is most expensive exactly here..." sentence from line 8; the ledger entry for C003 carries the rationale.
+- baseline-test: yes
 
 ### C004
 - key: Make the answer track the evidence rather than the framing, instead of aiming to be critical.
@@ -65,6 +67,8 @@ Extracted at `6bc07fb`: whole document (`skills.cold.SKILL.md`).
 - provenance: 6f848ad 2026-06-14, the skill's install.
 - verdict: retire
 - reason: The why of C006: an objection manufactured to look rigorous miscalibrates the lens exactly as agreement does, and a reader who learns the objections are padding stops reading them. C006 is obeyable without it; retired to this ledger with the A008 rewrite.
+- proposed: Removed with the A008 rewrite of line 10; the ledger carries the why.
+- baseline-test: yes
 
 ### C008
 - key: Diagnose a turn as a Cold turn when the ask carries a baked-in answer or a personal stake, not merely a question.
@@ -113,6 +117,9 @@ Extracted at `6bc07fb`: whole document (`skills.cold.SKILL.md`).
 - provenance: 6f848ad 2026-06-14, the skill's install.
 - verdict: rewrite
 - reason: The "does not apply" branch stays at the end of the trigger list so a truncated read of that section meets it, but its example list duplicates the When-not-to-use section, which alone carries the destinations; line 20 keeps the branch and points at When-not-to-use. Safe because the destinations never lived on line 20.
+- proposed: Line 20 reads "If none is present, this skill does not apply; When not to use routes the ask. Don't wrap an ordinary question in ceremony." and the example list moves out; line 64 is unchanged.
+- proposed: (via A016) Line 20 reads "If none is present, this skill does not apply; When not to use routes the ask. Don't wrap an ordinary question in ceremony." and the example list moves out; line 64 is unchanged.
+- baseline-test: yes
 
 ### C014
 - key: Do not wrap an ordinary question in the ceremony of this procedure.
@@ -145,6 +152,7 @@ Extracted at `6bc07fb`: whole document (`skills.cold.SKILL.md`).
 - provenance: 6f848ad 2026-06-14, the skill's install; a8770b3 2026-06-28 changed voice only.
 - verdict: retire
 - reason: A metaphor restating C015 and C016, which are stated literally in the two sentences before it; retired to this ledger with the A020 rewrite.
+- proposed: Removed with the A020 rewrite of line 24.
 
 ### C018
 - key: Treat the operator's framing as context to understand, never as a reason to move the read.
@@ -185,6 +193,9 @@ Extracted at `6bc07fb`: whole document (`skills.cold.SKILL.md`).
 - provenance: b99a7fe 2026-08-09, kaizen/archive/2026-08-08-bare-challenge-triggers-recheck.md: three sites entrenched a confident wrong answer under pushback; RED 4/6 under combined pressure, GREEN 5/6 with the clause, control 1/3.
 - verdict: rewrite
 - reason: The doctrine's Disagree-up-front bullet states the whole protocol, is loaded in every session that loads cold, and is the wording the brief's GREEN probe measured; cold's copy is unpinned by any parity test. Cold keeps the trigger coupling in one sentence and points at the doctrine; baseline-test with cold loaded before shipping, and add the pushback moment to the ownership map naming the doctrine.
+- proposed: Replace the three re-check sentences on line 30 with one: "A bare challenge ('are you sure?' with no new fact) triggers this rule once more; the doctrine's Disagree-up-front bullet owns the re-check and what its result does to the read."
+- proposed: (via A037) Replace the three re-check sentences on line 30 with one: "A bare challenge ('are you sure?' with no new fact) triggers this rule once more; the doctrine's Disagree-up-front bullet owns the re-check and what its result does to the read."
+- baseline-test: yes
 
 ### C023
 - key: When the re-check reproduces the evidence, hold the read and say what you re-checked.
@@ -193,6 +204,9 @@ Extracted at `6bc07fb`: whole document (`skills.cold.SKILL.md`).
 - provenance: b99a7fe 2026-08-09, kaizen/archive/2026-08-08-bare-challenge-triggers-recheck.md.
 - verdict: retire
 - reason: Verbatim in substance with the doctrine's hold-and-say sentence, installed by the same commit from the same brief; the C022 pointer carries it and the doctrine is the owner.
+- proposed: Removed by the A037 rewrite; the doctrine's sentence is the rule.
+- proposed: (via A037) Replace the three re-check sentences on line 30 with one: "A bare challenge ('are you sure?' with no new fact) triggers this rule once more; the doctrine's Disagree-up-front bullet owns the re-check and what its result does to the read."
+- baseline-test: yes
 
 ### C024
 - key: When the re-check finds the evidence thinner than claimed, treat that as the new fact and downgrade the read out loud.
@@ -201,6 +215,9 @@ Extracted at `6bc07fb`: whole document (`skills.cold.SKILL.md`).
 - provenance: b99a7fe 2026-08-09, kaizen/archive/2026-08-08-bare-challenge-triggers-recheck.md.
 - verdict: retire
 - reason: Verbatim in substance with the doctrine's downgrade branch, including the "that finding is the new fact" bound; the C022 pointer carries it and C019 stays as the threshold rule it applies.
+- proposed: Removed by the A037 rewrite.
+- proposed: (via A037) Replace the three re-check sentences on line 30 with one: "A bare challenge ('are you sure?' with no new fact) triggers this rule once more; the doctrine's Disagree-up-front bullet owns the re-check and what its result does to the read."
+- baseline-test: yes
 
 ### C025
 - key: Separate bundled decisions and score the proposed action on its own merits when a grievance and a bet ride in one sentence.
@@ -217,6 +234,7 @@ Extracted at `6bc07fb`: whole document (`skills.cold.SKILL.md`).
 - provenance: 6f848ad 2026-06-14, the skill's install.
 - verdict: retire
 - reason: The why of C025: a grievance is a reason to leave, not evidence for the bet that rides with it. C025 is obeyable without it; retired to this ledger.
+- proposed: Drop " - a sound reason to leave is not evidence that the next thing is good" from line 31.
 
 ### C027
 - key: Scale the output to the stakes, giving a small call the short form rather than five headers.

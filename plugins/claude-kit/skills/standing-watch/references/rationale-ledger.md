@@ -2,7 +2,7 @@
 
 This file is the rationale ledger for the documents the `standing-watch` skill owns. Rule text says what happens; this ledger says why; git says when. Nobody loads it by default. A session about to change a rule in one of the documents below reads the entry for the claim it is changing first, so the reason a rule holds is not re-litigated at the next review.
 
-Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed is recorded in the corpus audit plan's scratch adjudication log (the plan is `claude-kit_corpus-audit_spec_v1.md` under `docs/`), which is that plan's transient scratch: its rewrite section consumes the log, and the rewrite plan it writes under `docs/plans/` is the durable home of any target wording once written. The baseline-test flag on a behavior-shaping rewrite rides in the entry's reason line.
+Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed rides on the entry's `proposed:` line, one line per distinct proposal, on rewrite and retire entries that retire a passage; a proposal that pointed at another ruling by id carries the resolved text marked `(via Annn)`. A rewrite or retire the judge flagged as behavior-shaping carries `baseline-test: yes`, which is what the rewrite plan's RED and GREEN step keys on. What a passage becomes is the rewrite plan's to decide (`claude-kit_corpus-rewrite_spec_v1.md` under `docs/plans/`), and where it and a proposal differ the rewrite plan governs.
 
 ## plugins/claude-kit/skills/standing-watch/SKILL.md
 
@@ -65,6 +65,9 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`).
 - provenance: 02980e2 2026-08-18, the adversarial review's second arming contradiction between this section and the tick order.
 - verdict: rewrite
 - reason: A008, A010, A011. The tick order at line 49 owns the sequence; two statements of one sequence is the class that produced both arming contradictions, so line 17 points and step 4 keeps.
+- proposed: Line 49 (C062) keeps the sequence; line 17 points at the tick order.
+- proposed: (via A010) Line 49 (C062) keeps the sequence; line 17 points at the tick order.
+- baseline-test: yes
 
 ### C008
 - key: Treat arming before writing as losing the pass, because the write may never happen.
@@ -89,6 +92,9 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`).
 - provenance: 02980e2 2026-08-18, arming repair; the restart rule itself is from 0ea17a9 2026-08-18 (tick order).
 - verdict: rewrite
 - reason: A014, A015. Tick step 1 at line 46 states it with the reason and the cadence ownership; line 17 keeps the safety-arm definition and drops the restatement of when it is armed.
+- proposed: Line 46 (C057) keeps; line 17's restart clause folds into the pointer at the tick order.
+- proposed: (via A014) Line 46 (C057) keeps; line 17's restart clause folds into the pointer at the tick order.
+- baseline-test: yes
 
 ### C011
 - key: Treat both arm steps as ensure rather than add: add no second heartbeat, and take no one-shot on a static board.
@@ -97,6 +103,9 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`).
 - provenance: 02980e2 2026-08-18, "reads both steps as ensure rather than add" was the repair's own wording.
 - verdict: rewrite
 - reason: A016, A017. Steps 1 and 4 each carry their own ensure reading; line 17 keeps the phrase only as the gloss on its pointer at the tick order.
+- proposed: Lines 46 (C058) and 49 (C063) keep; line 17 keeps only "both steps read as ensure rather than add" as the pointer's gloss.
+- proposed: (via A016) Lines 46 (C058) and 49 (C063) keep; line 17 keeps only "both steps read as ensure rather than add" as the pointer's gloss.
+- baseline-test: yes
 
 ### C012
 - key: Treat anything else a tick produces (a ping, a commit, an intervention) as an output of that tick, never as a loop artifact.
@@ -177,6 +186,8 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`).
 - provenance: 6c725a0 2026-09-03.
 - verdict: rewrite
 - reason: A027, A030. The one-sentence asymmetry stays because it is why the default faces outward; the trace it currently carries restates lines 36 and 40 and lives here: supersede fires on a changed fact, prune moves only what supersede retired, the per-pass write leaves an unrefreshed line as found, so no later rule asks whether a line belongs.
+- proposed: One sentence: a wrongly-admitted line survives every rewrite this file performs, since none asks again whether a line belongs; the three-rule trace lives in this ledger under C021.
+- baseline-test: yes
 
 ### C022
 - key: Fire supersede only when the fact a line holds changes.
@@ -185,6 +196,9 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`).
 - provenance: 6c725a0 2026-09-03 restated it; the rule was installed at 0ea17a9 2026-08-18 (line 36) and earned by probe B.
 - verdict: rewrite
 - reason: A031, A032. Line 36 owns supersede; this premise becomes a pointer at it.
+- proposed: Line 36 keeps; line 28's premise reads "supersede, under its own rule below, fires only on a changed fact"; line 30's C040 stays.
+- proposed: (via A031) Line 36 keeps; line 28's premise reads "supersede, under its own rule below, fires only on a changed fact"; line 30's C040 stays.
+- baseline-test: yes
 
 ### C023
 - key: Prune only what supersede has already retired.

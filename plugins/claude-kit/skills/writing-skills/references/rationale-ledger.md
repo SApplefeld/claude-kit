@@ -2,7 +2,7 @@
 
 This file is the rationale ledger for the documents the `writing-skills` skill owns. Rule text says what happens; this ledger says why; git says when. Nobody loads it by default. A session about to change a rule in one of the documents below reads the entry for the claim it is changing first, so the reason a rule holds is not re-litigated at the next review.
 
-Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed is recorded in the corpus audit plan's scratch adjudication log (the plan is `claude-kit_corpus-audit_spec_v1.md` under `docs/`), which is that plan's transient scratch: its rewrite section consumes the log, and the rewrite plan it writes under `docs/plans/` is the durable home of any target wording once written. The baseline-test flag on a behavior-shaping rewrite rides in the entry's reason line.
+Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed rides on the entry's `proposed:` line, one line per distinct proposal, on rewrite and retire entries that retire a passage; a proposal that pointed at another ruling by id carries the resolved text marked `(via Annn)`. A rewrite or retire the judge flagged as behavior-shaping carries `baseline-test: yes`, which is what the rewrite plan's RED and GREEN step keys on. What a passage becomes is the rewrite plan's to decide (`claude-kit_corpus-rewrite_spec_v1.md` under `docs/plans/`), and where it and a proposal differ the rewrite plan governs.
 
 ## plugins/claude-kit/skills/writing-skills/SKILL.md
 
@@ -17,6 +17,10 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: 830ff28 2026-06-17, the writing-skills skill ported from a fork with the session-mined completion contract; no incident beyond the port.
 - verdict: retire
 - reason: Line 33 (C036) owns the rule with the table that makes it actionable; line 8 is the opening summary, and the one-owner rule this file carries makes a summary restatement the copy. Safe because the owner sits in the same file and nothing loads line 8 without line 33.
+- proposed: Cut the three-clause summary from line 8, leaving the principle sentences; the sections below carry the three rules.
+- proposed: Line 8 keeps "A skill is behavior-shaping prose, not documentation" and the decoration sentence, and the treat-it-like-code sentence stops at "code change" or points at the three sections.
+- proposed: (via A001) Cut the three-clause summary from line 8, leaving the principle sentences; the sections below carry the three rules.
+- baseline-test: yes
 
 ### C002
 - key: Pick the rule form that fixes the named failure rather than any form you prefer.
@@ -25,6 +29,8 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: 830ff28 2026-06-17, the fork port; no incident beyond the port.
 - verdict: retire
 - reason: C036 owns the form-picking rule and the failure table; the line 8 clause is a restatement in the opening summary.
+- proposed: (via A001) Cut the three-clause summary from line 8, leaving the principle sentences; the sections below carry the three rules.
+- baseline-test: yes
 
 ### C003
 - key: Confirm the new wording actually works before trusting it.
@@ -33,6 +39,8 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: 830ff28 2026-06-17, the fork port; no incident beyond the port.
 - verdict: retire
 - reason: C083 at line 79 owns the rule with the method (watch an agent with and without the wording); the line 8 clause is the summary of it.
+- proposed: (via A001) Cut the three-clause summary from line 8, leaving the principle sentences; the sections below carry the three rules.
+- baseline-test: yes
 
 ### C004
 - key: Create a skill only where the technique is non-obvious, recurs across efforts, and is general.
@@ -89,6 +97,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: 830ff28 2026-06-17, the fork port; no incident beyond the port.
 - verdict: retire
 - reason: The lean bar (C008) is obeyed without the cost claim, so the why lives here: a skill's description sits in every session's skill list, so every skill costs every session context whether or not it loads.
+- proposed: Move "Every skill is paid for in every session's skill list" to the ledger entry for C008.
 
 ### C011
 - key: A curated file that grows raises its size cap in the same change, and one that shrinks lowers it.
@@ -97,6 +106,8 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: c591c49 2026-09-08, the operator's mid-run ruling that Subtraction Bars was meant to encourage cutting and never to forbid adding, which turned the ratchet from a ceiling into a ledger and gave kit-size a sync verb.
 - verdict: rewrite
 - reason: The rule holds; its sentence also carries the sync command and the shared-checkout reason at sixty words, which the file's own one-idea bar forbids. Split into rule, then command; the ratchet test (test/size-ratchet.test.js) reds a stale cap but nothing moves one for the session.
+- proposed: Split the sentence into the grow-and-shrink rule, then the command as its own sentence, with the shared-checkout reason (C013) moved to the ledger; keep C014, C016, C017, C018, C133, C134 as worded, and apply A017 to the bare-form sentence.
+- baseline-test: yes
 
 ### C012
 - key: Move caps with `node <plugin-root>/scripts/kit-size.js sync --repo <project root> <path>...`, naming the files the change touched.
@@ -113,6 +124,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: c591c49 2026-09-08, written on a shared checkout where a peer's kaizen inbox was mid-edit.
 - verdict: retire
 - reason: The instruction to name the touched paths is obeyed without the consequence, and the bare form's own refusal on a dirty tree covers the case mechanically; the why now lives under C012.
+- proposed: Move the shared-checkout consequence to the ledger entry for C012.
 
 ### C014
 - key: Give a new curated file its first cap through the same sync command, whether or not it is added to git yet.
@@ -129,6 +141,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: c591c49 2026-09-08, the bare form's clean-tree refusal designed in the same commit.
 - verdict: rewrite
 - reason: The refusal conditions are enforced by plugins/claude-kit/scripts/kit-size.js (usage text: sync runs "over a clean tree"; refusal at exit 2 on a file or the budget differing from HEAD, untracked or ignored), so the enumeration retires as superseded; the form-choice sentence stays because no program decides which form a writer reaches for.
+- proposed: Keep "The bare form with no paths moves every cap and belongs to an audit over a clean tree"; drop the enumerated refusal conditions, which the script reports itself.
 
 ### C016
 - key: Read the net size change on the Chapter's Delta line.
@@ -161,6 +174,9 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: 830ff28 2026-06-17, the port, which installed the no-em-dash rule in the doctrine and here in one commit.
 - verdict: rewrite
 - reason: The em-dash ban is the doctrine's Style bullet whole, with its scope; no test enforces it over the plugin payload, so it is a restatement rather than a superseded rule, and the doctrine owns it. Drop the item from the voice list; the rest of the line stands.
+- proposed: Line 19 drops "no em dashes" from the voice list, the doctrine's Style bullet being the owner; the rest of the line stands.
+- proposed: (via A021) Line 19 drops "no em dashes" from the voice list, the doctrine's Style bullet being the owner; the rest of the line stands.
+- baseline-test: yes
 
 ### C020
 - key: Add a reference file only when the body outgrows the size of the kit's other skills, and gate it as csharp-style and sql-style do.
@@ -185,6 +201,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: 830ff28 2026-06-17, the fork port.
 - verdict: retire
 - reason: The quote rule is mechanical and obeyed without the mechanism; the why now lives under C021.
+- proposed: Move the YAML-breakage sentence to the ledger entry for C021.
 
 ### C023
 - key: Treat `name` and `description` as the only frontmatter fields that matter.
@@ -225,6 +242,9 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: 73a485e 2026-07-15, the stabilization effort's authoring rule closing the drift generator it had reconciled (a dozen drifted copies, one in contradiction); the doctrine's "One owner per moment" bullet and the ownership map followed at 5cd8f22 2026-09-01.
 - verdict: rewrite
 - reason: The doctrine now owns the principle with its form list and carve-outs and ranks above the skill for principles, so line 22 points at the doctrine's bullet and the map, keeping the authoring residue (C030). The why (C029, moved here): a rule stated twice is two rules a week later; the 2026-07-14 audit found a dozen drifted copies, one in outright contradiction.
+- proposed: Line 22 opens with a pointer at the doctrine's one-owner bullet and the ownership map, keeps C030 as the authoring residue, and drops C029 to the ledger (A032).
+- proposed: (via A026) Line 22 opens with a pointer at the doctrine's one-owner bullet and the ownership map, keeps C030 as the authoring residue, and drops C029 to the ledger (A032).
+- baseline-test: yes
 
 ### C028
 - key: Make every other mention of a rule a pointer or an operational residue at its point of action, never a restatement.
@@ -233,6 +253,9 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: 73a485e 2026-07-15 installed the pointer form; ab3d766 2026-08-29 added the operational-residue form for the executing-work fix-round pointer.
 - verdict: rewrite
 - reason: Real conflict with the doctrine's form list, which licenses a whole copy under a parity pin or build step; d2e2f37 confirmed that carve-out lives in the doctrine and the map and not here, and line 73 already treats the pinned set as a disposition. Line 22 gives way to a pointer at the doctrine's forms; the doctrine's list lacks the residue form and should gain it in the same change (the operating-instructions unit's finding).
+- proposed: (via A030) Line 22 points at the doctrine's bullet for the forms a mention may take; the doctrine's list should gain the operational-residue form in the same change, which is a finding for the operating-instructions unit.
+- proposed: Line 22 points at the doctrine's bullet for the forms a mention may take; the doctrine's list should gain the operational-residue form in the same change, which is a finding for the operating-instructions unit.
+- baseline-test: yes
 
 ### C029
 - key: Treat a rule stated twice as two rules a week later, as the 2026-07-14 stabilization audit's dozen drifted copies showed, one in outright contradiction.
@@ -241,6 +264,8 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: 73a485e 2026-07-15, the stabilization audit's own finding.
 - verdict: retire
 - reason: The rule is obeyed without the date and count, and a dated finding in a shipped document is journey under the doctrine's state-versus-journey bullet; the why now lives under C027.
+- proposed: Move the 2026-07-14 audit sentence to the ledger entry for C027.
+- baseline-test: yes
 
 ### C030
 - key: When editing a rule, grep its key phrases across the kit and fix the owning site rather than the nearest copy.
@@ -281,6 +306,8 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: 830ff28 2026-06-17, the fork port.
 - verdict: retire
 - reason: The prohibition is obeyed without the mechanism; the why now lives under C033.
+- proposed: Move the acts-on-the-summary mechanism to the ledger entry for C033.
+- baseline-test: yes
 
 ### C035
 - key: Note that a description reading "code review between tasks" yields one review where the body specifies two.
@@ -289,6 +316,8 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: 830ff28 2026-06-17 as a live specimen naming executing-work's old description; fdd7b82 2026-07-15 collapsed it to this general example when the description changed.
 - verdict: retire
 - reason: A second illustration of the line 27 rule, which stands without either; the example now lives under C033.
+- proposed: Move line 29 to the ledger entry for C033.
+- baseline-test: yes
 
 ### C036
 - key: Name the failure first, then pick the form that fixes that failure.
@@ -361,6 +390,8 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: 830ff28 2026-06-17, the fork port.
 - verdict: retire
 - reason: The restructure rule is obeyed without the instance; the example now lives under C043.
+- proposed: Move the code-blocks example to the ledger entry for C043.
+- baseline-test: yes
 
 ### C045
 - key: Close every enumeration by stating, where the list ends, the class its instances belong to.
@@ -377,6 +408,8 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: 0605d85 2026-08-01, the capacity stop.
 - verdict: retire
 - reason: The close-the-list rule is obeyed without the licensing account; the why now lives under C045.
+- proposed: Move the exhaustive-on-shipping sentence to the ledger entry for C045.
+- baseline-test: yes
 
 ### C047
 - key: Where two framings of one fact are both true, ship the one the reader can verify from where they sit.
@@ -401,6 +434,8 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: a5e184b 2026-08-25, the same round.
 - verdict: retire
 - reason: The rule names what a verifiable framing is (C048), so the pair demonstrates rather than defines; it now lives under C047.
+- proposed: Move the memq pair to the ledger entry for C047.
+- baseline-test: yes
 
 ### C050
 - key: State a list drawn from observed instances as open unless a contract closes it.
@@ -409,6 +444,10 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: a5e184b 2026-08-25, the same round (a search key anchored on a set name the rule's own worked examples did not carry).
 - verdict: rewrite
 - reason: Merged with C052 into one rule, since the bullet's closing sentence restated its opening plus "say what would close it". The why (C136, moved here): an enumeration extracted from one fully-observed sample reads as exhaustive to its writer because every field was present and nothing contradicted it, so a reader branching on a field's absence is wrong for every instance the sample never contained.
+- proposed: One rule: state a list drawn from observed instances as open and say what would close it, or cite the contract that already does.
+- proposed: Line 53 keeps the bold rule, the closure-comes-from-the-contract sentence and the merged closing; the fact-layer framing and the fooled-writer sentences go to the ledger.
+- proposed: (via A051) One rule: state a list drawn from observed instances as open and say what would close it, or cite the contract that already does.
+- baseline-test: yes
 
 ### C051
 - key: Treat a list as closed only on a contract's authority: a schema, an enum, or a validated surface with a published shape, never a sample agreeing with itself.
@@ -585,6 +624,8 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: ab3d766 2026-08-29, section 9.
 - verdict: retire
 - reason: The paragraph rule is obeyed without the account of what a patch leaves; the why now lives under C067.
+- proposed: Move the sentence-patch consequence to the ledger entry for C067.
+- baseline-test: yes
 
 ### C073
 - key: Give an amendment that corrects no claim whatever edit it needs, a typo fix, an added bullet, or a label rename among them.
@@ -657,6 +698,8 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: 6d2e6cc 2026-08-29, the finishing pass of review-and-record, where the main thread's own corrections had no reviewer between edit and commit.
 - verdict: rewrite
 - reason: The rule holds; the origin story (an orchestrator's main thread making scattered corrections between rounds, which no brief reaches) is journey and moves here as the why the rule sits on the writer's side.
+- proposed: Line 75 becomes: the rule binds every writer amending curated prose; assume no downstream backstop, since which pass reads which surface is finishing-work's and executing-work's to state; the origin story goes to the ledger.
+- baseline-test: yes
 
 ### C082
 - key: Do not assume a downstream reviewer will catch the amendment; what stands downstream differs by surface.
@@ -960,6 +1003,8 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: b99a7fe 2026-08-09; eb7d29d 2026-08-09.
 - verdict: retire
 - reason: The fresh-session rule is obeyed without the inheritance account, and removing a harness-injection fact from the prose is what the line 96 antipattern asks; the why now lives under C115.
+- proposed: Move the inheritance account to the ledger entry for C115.
+- baseline-test: yes
 
 ### C117
 - key: Do not stage probe wording in `~/.claude/claude-kit-doctrine.md`.
@@ -976,6 +1021,8 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: b915f06 2026-08-09.
 - verdict: retire
 - reason: The ban is obeyed without the hook's behavior, which C119 replaces with the staging location; the why now lives under C117 naming the hook by path.
+- proposed: Move the hook account to the ledger entry for C117.
+- baseline-test: yes
 
 ### C119
 - key: Stage the candidate wording in the installed plugin cache's copy of the skill for the probe run and restore it afterwards.
@@ -1000,6 +1047,8 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: 12ef61f 2026-07-09 installed the contaminated-RED guidance from the review-tension plan; eb7d29d 2026-08-09 added the inheritance-setting conditional.
 - verdict: rewrite
 - reason: The complies-with-doctrine mechanism moves here; the setting-conditional in the bound (inheritance on: the RED is contaminated and production-faithful; off: a RED is genuine) stays as C122's bound, because C122 cannot be applied without knowing which state the harness is in.
+- proposed: Keep one sentence naming the inheritance setting and what each state means for a RED; move the complies-with-doctrine account to the ledger.
+- baseline-test: yes
 
 ### C122
 - key: Treat absence of failure in a doctrine-adjacent RED as weak evidence, not proof the rule is dead weight.
@@ -1112,6 +1161,8 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: a5e184b 2026-08-25.
 - verdict: retire
 - reason: The reason behind C047, which states its own instruction; it now lives under C047.
+- proposed: Move the taken-on-trust sentence to the ledger entry for C047.
+- baseline-test: yes
 
 ### C136
 - key: An enumeration built from one fully-observed sample looks exhaustive to its writer, so a reader who branches on an absent field will be wrong for instances the sample never covered.
@@ -1120,6 +1171,8 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: a5e184b 2026-08-25.
 - verdict: retire
 - reason: The open-list rule and its contract bound read without the account of how the writer is fooled; it now lives under C050.
+- proposed: Move the fooled-writer sentences to the ledger entry for C050.
+- baseline-test: yes
 
 ### S001
 - key: Run the probe runner's before-and-after pair for a moment whose probe shape names a file your change touched in a passage that probe's scenario turns on.
@@ -1168,6 +1221,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: e0ef09c 2026-09-06, the reason clause of the proposed-probe sentence (shares C095's supersession with S005); line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
 - verdict: retire
 - reason: S005 is obeyed without the reason, and finishing-work's step 6 states the same clause, so the document carried it twice. The why: a proposed probe's mismatch goes to the operator's rulings batch whichever leg carries it, so a before leg over it spends a paid reader on a reading nobody acts on.
+- proposed: Drop "since a before leg over a proposed probe buys nothing for its paid readers" from the S005 sentence; the reason lives under S006 in the ledger.
 
 ### S007
 - key: Still run the reps described above when the probe is `proposed`.
@@ -1192,6 +1246,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: e0ef09c 2026-09-06, the bound of the matching-before-leg sentence (shares C096's supersession with S008); line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
 - verdict: retire
 - reason: S008 is obeyed as a bare prohibition; the movement framing is why it holds rather than what to do, and now lives under S008.
+- proposed: Drop "the pair measures movement rather than failure, so" and leave S008 as its own sentence; the why lives under S009 in the ledger.
 
 ### S010
 - key: Sort every pair reading into exactly one of the four listed readings; the set is closed.
@@ -1248,6 +1303,8 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: e0ef09c 2026-09-06 wrote it against finishing-work's step 5; 55c5abc 2026-09-09 renumbered the pointer to step 6 when the finishing goal read became step 4.
 - verdict: rewrite
 - reason: Step 6 owns the re-run count and its triggers and states them, so the sentence restates its owner; it becomes a pointer, with S017 as the residue that follows. Baseline-test: yes.
+- proposed: Reduce to a pointer ("an errored or unparsed pair is re-run as finishing-work's step 6 directs"), keeping S017 as the residue sentence that follows it.
+- baseline-test: yes
 
 ### S017
 - key: Where the re-run errors again, count the pair for nothing and run the reps above instead.
@@ -1272,6 +1329,8 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: e0ef09c 2026-09-06; line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
 - verdict: rewrite
 - reason: The runner README's "What the runner reads" section owns what each leg reads, and this sentence restates a consequence of it; it becomes a pointer at tools/probe-corpus/README.md with the residue that such rows are no reading. Baseline-test: yes.
+- proposed: Point at tools/probe-corpus/README.md for what each leg reads and keep "such rows are no reading" as the residue.
+- baseline-test: yes
 
 ### S020
 - key: Run the before leg as `node tools/probe-corpus/run.mjs --only <moments> --before <sha>`.
@@ -1312,6 +1371,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: e0ef09c 2026-09-06, the reason clause of the moment-list sentence (shares C106's supersession with S022); line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
 - verdict: retire
 - reason: S023 is obeyed without it and S005 already states that a proposed probe runs the after leg alone; the why now lives under S023.
+- proposed: Drop "since a pair is a reading only where both legs ran the moment" from the S023 sentence; the reason lives under S024 in the ledger.
 
 ### S025
 - key: Resolve `<sha>` to the parent of the change's first commit, or to `HEAD` where the change is uncommitted.
@@ -1352,6 +1412,8 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: e0ef09c 2026-09-06 wrote the claim clause against step 5; ddcb28e 2026-09-07 rewrote that step to "takes no heavy-process claim" (one network-bound reader holds neither processors nor memory); 55c5abc 2026-09-09 renumbered the pointer to step 6 and left the clause as it was.
 - verdict: rewrite
 - reason: The clause is still false after the merge: step 6 names no box claim, so a session following it would claim a slot the owner says the runner does not take. Drop the clause and point at finishing-work's step 6 for the run's process standing; finishing-work's own post-gate re-run sentence says "under its own claim", a conflict inside that file for its unit to rule. Baseline-test: yes.
+- proposed: Drop the box-claim clause and point at finishing-work's step 6 for the run's process standing.
+- baseline-test: yes
 
 ### S030
 - key: Run the section's lane only once that box claim is released.
@@ -1360,6 +1422,8 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: e0ef09c 2026-09-06, the second clause of the box-claim sentence (shares C109's supersession with S029); ddcb28e 2026-09-07 removed the claim the clause waits on; line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
 - verdict: retire
 - reason: With no claim taken there is nothing to release, and the owner says the whole gate may run beside the runner, so the sequencing instruction has no content left once S029 points at step 6. Baseline-test: yes.
+- proposed: Delete "and the section's lane runs once that claim is released"; the lane's standing relative to the run is finishing-work's.
+- baseline-test: yes
 
 ### S031
 - key: Read `tools/probe-corpus/README.md` for what each leg reads and what each row status means.
@@ -1408,6 +1472,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: e0ef09c 2026-09-06, the mechanism clause of the home-files sentence (shares C112's supersession with S035); line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
 - verdict: retire
 - reason: S035 is obeyed on its predicate alone, the runner README owns where a `home/` entry is read from, and finishing-work's step 6 carries this clause word for word; the why now lives under S035.
+- proposed: Drop "since the runner reads a `home/` entry from the reader's home directory rather than from the repo"; the reason lives under S036 in the ledger.
 
 ### S037
 - key: Accept a matching leg pair as one sample, and do not run a second.
@@ -1424,6 +1489,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: e0ef09c 2026-09-06, the cost clause of the one-sample sentence (shares C113's supersession with S037); line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
 - verdict: retire
 - reason: S037 is obeyed without the price and S004 carries the predicate that keeps it from conflicting with the reps rule; the why now lives under S037 with the memory record's figure.
+- proposed: Drop "accepted as one because a second costs a paid reader per probe-and-shape pair"; the reason lives under S038 in the ledger.
 
 ### S039
 - key: Read the raw replies the runner keeps yourself, the same way you read the flagged results above.

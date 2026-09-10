@@ -2,7 +2,7 @@
 
 This file is the rationale ledger for the documents the `consult` skill owns. Rule text says what happens; this ledger says why; git says when. Nobody loads it by default. A session about to change a rule in one of the documents below reads the entry for the claim it is changing first, so the reason a rule holds is not re-litigated at the next review.
 
-Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed is recorded in the corpus audit plan's scratch adjudication log (the plan is `claude-kit_corpus-audit_spec_v1.md` under `docs/`), which is that plan's transient scratch: its rewrite section consumes the log, and the rewrite plan it writes under `docs/plans/` is the durable home of any target wording once written. The baseline-test flag on a behavior-shaping rewrite rides in the entry's reason line.
+Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed rides on the entry's `proposed:` line, one line per distinct proposal, on rewrite and retire entries that retire a passage; a proposal that pointed at another ruling by id carries the resolved text marked `(via Annn)`. A rewrite or retire the judge flagged as behavior-shaping carries `baseline-test: yes`, which is what the rewrite plan's RED and GREEN step keys on. What a passage becomes is the rewrite plan's to decide (`claude-kit_corpus-rewrite_spec_v1.md` under `docs/plans/`), and where it and a proposal differ the rewrite plan governs.
 
 ## plugins/claude-kit/skills/consult/SKILL.md
 
@@ -214,6 +214,9 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - provenance: 1d9c467 2026-08-15, the same plan sentence that produced line 8's mandate.
 - verdict: retire
 - reason: A within-document duplicate: line 8 states the test-not-ratify mandate for the session and the charter's Test the framing bullet states it for the agent, and the lean bullet's own label ("an instinct to test") already carries the meaning. Safe because both owners keep the rule whole; the edit ends the bullet at the label and is flagged for baseline-testing.
+- proposed: Same edit as A015: the lean bullet ends at "explicitly labeled as an instinct to test".
+- proposed: Same edit as A015.
+- baseline-test: yes
 
 ### C025
 - key: State in the brief what an implementable answer would look like.
@@ -238,6 +241,8 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - provenance: 1d9c467 2026-08-15, the plan's discriminator against the advisor ("zero briefing cost" versus "the briefing cost is the mechanism"); the advisor was retired in d6cd30d.
 - verdict: retire
 - reason: The contrast it drew lost its second term when the advisor left the kit, and the five brief fields plus the NEEDS_CONTEXT return are obeyable without it. The why is this: a brief written for a reader with no transcript forces the session to state the problem outside its own loop, which is where a wrong premise becomes visible.
+- proposed: Delete the line "Writing the brief is itself part of the mechanism..." from the brief section; the rationale lives in this ledger under C027.
+- baseline-test: yes
 
 ### C028
 - key: Dispatch the consult as a plain Agent-tool call to `consultant` with the fable model override, running Fable at `high`.
@@ -294,6 +299,8 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - provenance: 1d9c467 2026-08-15, the same decision paragraph.
 - verdict: retire
 - reason: C033 states the rule in the same sentence's opening clause and is obeyable without the reason. The why is this: the consult fires at the moment the session's judgment is compromised, so a rule that asks that session to choose a tier correctly fails precisely when it is needed.
+- proposed: Cut the sentence after "The model choice is static, never dynamic"; the why lives in this ledger under C034.
+- baseline-test: yes
 
 ### C035
 - key: Give the consultant the compensation notch because it is gate-shaped: a shallow ruling gets adopted and steers the section with nothing downstream re-asking.
@@ -302,6 +309,8 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - provenance: 1d9c467 2026-08-15, a review fix that recast the notch rule on gate-shaped versus plan-following ground in executing-work step 4 so it covers the consultant.
 - verdict: retire
 - reason: The ground is executing-work's (line 421) and this sentence is a copy applied to one seat; C028 names the tier outright. The why is this: the consultant is gate-shaped, so an under-powered ruling is adopted silently with nothing downstream re-asking the question, which is what the top tier compensates for.
+- proposed: Delete the sentence "And the consultant is gate-shaped, which is why it earns the compensation notch..."; the why lives in this ledger under C035 and in executing-work step 4.
+- baseline-test: yes
 
 ### C036
 - key: Have the consultant return a RULING with its EVIDENCE and CONFIDENCE, plus an OPERATOR FORK when one survives.
@@ -462,6 +471,8 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - provenance: 9f1ed1b 2026-09-09, the design stop paragraph.
 - verdict: retire
 - reason: R011 is obeyable without it and executing-work step 4 owns the design stop whole. The why is this: the design stop is listed on the floor, not only in executing-work, because a re-reader counting second-attempt shapes has to find it, and it is not the only shape that routes away from the consultant, the repeating-class Critical branch going to the tier ladder.
+- proposed: Delete "It is not alone in routing elsewhere, the repeating-class Critical branch below going to the tier ladder, and it is listed here because a re-reader counting the second-attempt shapes has to find it." from line 14.
+- baseline-test: yes
 
 ### R013
 - key: Where executing-work's tier-escalation ladder owns the moment, follow the ladder rather than convening a consult.
@@ -494,6 +505,8 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - provenance: 9f1ed1b 2026-09-09, the design stop.
 - verdict: rewrite
 - reason: Executing-work step 4 owns the design stop's brief, dispatch and bucket, and this sentence restates three of its particulars where the ownership map allows a pointer. Safe because the owner's paragraph (executing-work line 431) carries every particular restated here; the pointer replaces them and is flagged for baseline-testing.
+- proposed: Keep "This section and the three below it are the `consultant`'s, so none of them reaches the design stop" and replace the rest of the sentence with a pointer at executing-work step 4 as the owner of the design stop's brief, dispatch and ruling.
+- baseline-test: yes
 
 ### S001
 - key: Convene a consult on any BLOCKED that turns on a decision, before taking that BLOCKED to the operator.

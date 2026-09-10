@@ -2,7 +2,7 @@
 
 This file is the rationale ledger for the documents the `sql-style` skill owns. Rule text says what happens; this ledger says why; git says when. Nobody loads it by default. A session about to change a rule in one of the documents below reads the entry for the claim it is changing first, so the reason a rule holds is not re-litigated at the next review.
 
-Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed is recorded in the corpus audit plan's scratch adjudication log (the plan is `claude-kit_corpus-audit_spec_v1.md` under `docs/`), which is that plan's transient scratch: its rewrite section consumes the log, and the rewrite plan it writes under `docs/plans/` is the durable home of any target wording once written. The baseline-test flag on a behavior-shaping rewrite rides in the entry's reason line.
+Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed rides on the entry's `proposed:` line, one line per distinct proposal, on rewrite and retire entries that retire a passage; a proposal that pointed at another ruling by id carries the resolved text marked `(via Annn)`. A rewrite or retire the judge flagged as behavior-shaping carries `baseline-test: yes`, which is what the rewrite plan's RED and GREEN step keys on. What a passage becomes is the rewrite plan's to decide (`claude-kit_corpus-rewrite_spec_v1.md` under `docs/plans/`), and where it and a proposal differ the rewrite plan governs.
 
 ## plugins/claude-kit/skills/sql-style/SKILL.md
 
@@ -169,6 +169,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.SKILL.md`).
 - provenance: ddd6c72 2026-08-23, a deliberate decision to ship each piece with what breaks without it; c6f08c5 2026-08-23 corrected the figures in review.
 - verdict: retire
 - reason: The pattern is obeyed by using it as written, so the per-piece justifications and the 843-of-5,332 measurement are rationale that now lives in the C019 entry above; the change is safe because nothing a session does differs once the pattern is copied verbatim, and the C055 read-past instruction survives as a clause.
+- proposed: Replace the paragraph at :73 with one sentence saying every piece of the pattern is load-bearing and it is used as written, keeping the C055 read-past instruction as a clause (A092); the per-piece justifications and the measurement live in the ledger.
+- baseline-test: yes
 
 ### C021
 - key: Take the banner grep second, after the definitions grep.
@@ -177,6 +179,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.SKILL.md`).
 - provenance: ddd6c72 2026-08-23 installed the paragraph; c6f08c5 2026-08-23 repaired the ordering clause after review found it attributed a saving to ordering that ordering does not produce.
 - verdict: rewrite
 - reason: The rule and every sibling instruction in the paragraph survive verbatim; the rewrite removes only the two standalone rationale sentences retired under C024 and C056. The why for ordering, now here: on a 70,966-line vendor install script the banner grep returns 6,710 output lines where the definitions grep returns 820, and that volume is the price of true line numbers; taken second, only the banner hits near ranges already held are read.
+- proposed: Rewrite the paragraph at :75 keeping C021, C022, C023, C025, C026 and C027 verbatim with their bounds, and dropping the 6,710/70,966/820 measurement sentence and the dash-rule sentence, whose why now lives in the ledger.
+- baseline-test: yes
 
 ### C022
 - key: Read past banner hits outside the ranges the definitions grep narrowed to instead of scoping the grep.
@@ -201,6 +205,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.SKILL.md`).
 - provenance: ddd6c72 2026-08-23; the clause was repaired at c6f08c5 2026-08-23 after review caught a false attribution.
 - verdict: retire
 - reason: The ordering rule (C021) is obeyed without the measurement, and the figures already drifted once in review, which a ledger record does not suffer; the 6,710 / 70,966 / 820 measurement is recorded under C021.
+- proposed: Drop the measurement sentence from :75 as part of A047; the ledger entry for C021 records the figures.
+- baseline-test: yes
 
 ### C025
 - key: Never anchor an outline grep on `GO`.
@@ -449,6 +455,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.SKILL.md`).
 - provenance: ddd6c72 2026-08-23, as C019.
 - verdict: rewrite
 - reason: The instruction (read past, never filter) is a rule a session obeys and survives as one clause beside the pattern; the surrounding justification of the object-keyword requirement is rationale recorded under C019. Safe because the obeyed instruction is unchanged in substance.
+- proposed: Keep "a banner sentence opening with a real object keyword still matches and is read past rather than filtered" as a clause in the one-sentence replacement for :73; drop the surrounding justification.
+- baseline-test: yes
 
 ### C056
 - key: Do not expect or search for dash-rule comments as section banners; only the block-comment border marks section structure.
@@ -457,6 +465,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.SKILL.md`).
 - provenance: ddd6c72 2026-08-23, as C021.
 - verdict: retire
 - reason: The banner pattern (C023) is obeyed as written and this sentence explains what its anchor excludes; that why is recorded under C023, so nothing a session does changes when the sentence leaves the document.
+- proposed: Drop the dash-rule sentence from :75 as part of A047; the ledger entry for C023 records why the pattern anchors on the block-comment border alone.
+- baseline-test: yes
 
 ## plugins/claude-kit/skills/sql-style/references/sql-style.md
 
@@ -519,6 +529,9 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10; both copies came in together, no incident behind the duplicate.
 - verdict: retire
 - reason: §18's suffix list (lines 517 to 522) carries every suffix with its meaning and folder; line 51's list is a strict subset. Safe because the owner keeps the whole and line 51's second sentence (helper suffixes, C008) stays.
+- proposed: Drop the first sentence of line 51 and keep the helper sub-procedure sentence (C008), which §18 does not carry; point at §18 for variant suffixes.
+- proposed: (via A007) Drop the first sentence of line 51 and keep the helper sub-procedure sentence (C008), which §18 does not carry; point at §18 for variant suffixes.
+- baseline-test: yes
 
 ### C008
 - key: Name helper sub-procedures of a parent with the suffixes `_Data`, `_Sort`, `_Stops` or `_Trips`.
@@ -543,6 +556,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
 - reason: The why: CREATE OR ALTER re-creates the object's metadata on a drop path in some tooling and a DROP/CREATE loses GRANTs, while ALTER on an existing shell keeps every permission granted to the procedure across redeployment. The SKILL still carries "preserves GRANTs" at SKILL.md:12 and :80, so nothing leaves the corpus.
+- proposed: Drop the third sentence of line 55; the reason lives in this ledger under C010 and in the SKILL.
+- baseline-test: yes
 
 ### C011
 - key: Follow the shown shell-then-ALTER block: an `;IF OBJECT_ID(...) IS NULL` shell EXEC, `GO`, then `;ALTER PROCEDURE`, `WITH EXECUTE AS`, `AS`, `BEGIN`, `END`, `GO`.
@@ -551,6 +566,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
 - reason: The §19 template at lines 528 to 588 carries the identical shape, so the §2 block is a duplicate specimen; the §2 key details read against §19 unchanged.
+- proposed: Replace the §2 block with a pointer at §19.
+- baseline-test: yes
 
 ### C012
 - key: Indent the shell `EXEC` line by two spaces, not a tab.
@@ -567,6 +584,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: ce7b530 2026-06-28, a defect fix: the reference framed impersonation as universal and contradicted the SKILL, and two inline-TVF templates would not deploy; surfaced by comparing against a fork of the kit.
 - verdict: rewrite
 - reason: The condition, placement and drop case stay verbatim. Only the parenthetical "(as the project's codebase does, for a vendor-driven security constraint)" goes: it read "as the ELEOS codebase does" until a8770b3 swapped the name, and now refers to no project while implying the reader's does impersonate.
+- proposed: Drop the parenthetical; keep "appears before AS only where the project uses owner-impersonation; there the delegated security model runs every proc and scalar or multi-statement function as the schema owner. Drop the clause entirely where the codebase does not impersonate. It is invalid on inline table-valued functions ..., never put it there."
+- baseline-test: yes
 
 ### C014
 - key: Never put `WITH EXECUTE AS` on an inline table-valued function.
@@ -607,6 +626,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
 - reason: The why: the shell trick (`CREATE ... AS RETURN 0`) cannot stand in for a function whose return type the real definition sets, so a placeholder-then-ALTER path does not work for functions the way it does for procedures, and functions carry no GRANTs worth preserving in this library. Safe to drop from the document because C017 is obeyed without it.
+- proposed: Drop the parenthetical at line 84; the reason lives in this ledger under C018.
+- baseline-test: yes
 
 ### C019
 - key: Follow the shown function block: `;IF OBJECT_ID(...) IS NOT NULL` with a `DROP FUNCTION` EXEC, `GO`, then `;CREATE FUNCTION`, parameters, `RETURNS TABLE`, `AS`, `RETURN ( ... )`, `GO`.
@@ -615,6 +636,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10; ce7b530 2026-06-28 removed the invalid EXECUTE AS line.
 - verdict: retire
 - reason: The §21 template at lines 644 to 674 carries the identical shape; the §3 block is a duplicate specimen.
+- proposed: Replace the §3 block with a pointer at §21.
+- baseline-test: yes
 
 ### C020
 - key: For scalar functions put `RETURN` on its own line followed by the expression.
@@ -647,6 +670,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
 - reason: The why: the join form names schema and table on separate lines so a diff shows which changed, and it cannot match a same-named table in another schema. C022 is obeyed without it.
+- proposed: Drop the second sentence of line 108; the reasons live in this ledger under C023.
+- baseline-test: yes
 
 ### C024
 - key: Follow the shown ApiCalls table script: banner, `;IF NOT EXISTS` schema/table check, `BEGIN`, `;CREATE TABLE` with grouped tab-aligned columns and a trailing PK constraint, `END`, `GO`.
@@ -655,6 +680,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
 - reason: The §20 template at lines 594 to 638 carries the same shape end to end; the one construct only the ApiCalls script shows, a PERSISTED computed column, is stated in prose at line 163.
+- proposed: Replace the §4 block with a pointer at §20; keep the key-details list.
+- baseline-test: yes
 
 ### C025
 - key: Start a table file with the `/* TABLE: <Name> */` banner comment.
@@ -767,6 +794,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
 - reason: The §20 template ends with the identical index block at lines 627 to 637; the §5 block is a duplicate specimen and the §5 bullets read against §20.
+- proposed: Replace the §5 block with a pointer at §20's index block.
+- baseline-test: yes
 
 ### C039
 - key: Name indexes `IX_<TableName>_<ColumnList>`.
@@ -775,6 +804,9 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
 - reason: The §18 row at line 512 carries the same pattern and the same example; §18 owns naming. Safe because the SKILL checklist also carries the pattern.
+- proposed: Drop the naming bullet at line 184 or reduce it to "Naming: see §18".
+- proposed: (via A049) Drop the naming bullet at line 184 or reduce it to "Naming: see §18".
+- baseline-test: yes
 
 ### C040
 - key: Write each index existence check against `sys.indexes` using `OBJECT_ID(...)` and `[name] = '...'`.
@@ -807,6 +839,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: rewrite
 - reason: The contents and the never-skip fold into one sentence; the two emphasis sentences add no instruction. The doctrine's current-state rule does not conflict: the NOTES block is an append-only per-object changelog, which the doctrine exempts by name (A051).
+- proposed: One sentence: "Inside BEGIN -- PROCEDURE, every procedure has a metadata banner documenting its purpose, author, version and history; never skip it."
+- baseline-test: yes
 
 ### C044
 - key: Follow the shown banner: two asterisk rows, SCRIPT/AUTHOR/DATE/VERSION lines, an asterisk row, a NOTES entry, then two closing asterisk rows.
@@ -895,6 +929,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
 - reason: The §19 template at lines 535 to 545 carries the identical parameter block shape; the §7 block is a duplicate specimen and the §7 conventions read against §19.
+- proposed: Replace the §7 block with a pointer at §19; keep the conventions list.
+- baseline-test: yes
 
 ### C055
 - key: Prefix input parameter names with `@p_`.
@@ -903,6 +939,9 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
 - reason: The §18 row at line 508 carries the same pattern and example and the SKILL checklist carries the prefix; C076 still bars @p_ on locals. Nothing leaves the corpus.
+- proposed: Drop the bullet at line 242; §18 owns the parameter pattern and C076 still bars @p_ on locals.
+- proposed: (via A064) Drop the bullet at line 242; §18 owns the parameter pattern and C076 still bars @p_ on locals.
+- baseline-test: yes
 
 ### C056
 - key: Give the first parameter a leading space and every subsequent parameter a leading comma.
@@ -975,6 +1014,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
 - reason: The §19 template at lines 559 to 563 carries the block verbatim, banner wording included.
+- proposed: Replace the §8 block with a pointer at §19; keep the bullets.
+- baseline-test: yes
 
 ### C065
 - key: Always include `SET NOCOUNT ON`.
@@ -1031,6 +1072,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
 - reason: The §19 template at lines 565 to 569 carries the DECLARE block with the same banner and alignment.
+- proposed: Replace the §9 block with a pointer at §19; keep the conventions list.
+- baseline-test: yes
 
 ### C072
 - key: Introduce a declaration block with one `;DECLARE` keyword and continue subsequent variables with a leading comma.
@@ -1151,6 +1194,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
 - reason: The §19 template shows a sub-section comment above the statement it introduces at line 575; the §10 specimen duplicates it.
+- proposed: Drop the §10 specimen block; §19 shows the placement.
+- baseline-test: yes
 
 ### C087
 - key: Wrap the main logic of every non-trivial procedure in a `BEGIN TRY` / `BEGIN CATCH` block.
@@ -1199,6 +1244,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
 - reason: The why: procedures deploy in folder order and a partial or first deployment can run a procedure before usp_AuditError exists, and an unguarded EXECUTE of a missing procedure inside CATCH raises a second error that escapes to the caller. C091 is obeyed without it.
+- proposed: Reduce line 361 to the guard itself; the reason lives in this ledger under C092.
+- baseline-test: yes
 
 ### C093
 - key: Write `END ELSE BEGIN` on a single line with one space on each side of `ELSE`.
@@ -1271,6 +1318,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
 - reason: The §12 specimen fourteen lines earlier (C097) shows the identical shape with continuation rows; this two-line block adds nothing.
+- proposed: Drop the two-line block at 394 to 397; C100's bullet stands with the §12 specimen as its illustration.
+- baseline-test: yes
 
 ### C102
 - key: Alias tables in FROM and JOIN clauses with a short identifier and no `AS` keyword.
@@ -1407,6 +1456,9 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
 - reason: The §18 row at line 515 carries the same pattern and example; §18 owns naming.
+- proposed: Drop the naming bullet at line 460 or reduce it to "Naming: see §18"; keep the ;WITH, body and chaining bullets.
+- proposed: (via A132) Drop the naming bullet at line 460 or reduce it to "Naming: see §18"; keep the ;WITH, body and chaining bullets.
+- baseline-test: yes
 
 ### C119
 - key: Lead the `WITH` with a semicolon prefix.
@@ -1511,6 +1563,9 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10; a8770b3 2026-06-28 genericized one example name.
 - verdict: retire
 - reason: The §18 row at line 514 carries the same pattern with overlapping examples; §18 owns naming.
+- proposed: Drop the naming bullet at line 479 or reduce it to "Naming: see §18"; keep the existence-check, comment, scoping and SELECT INTO bullets.
+- proposed: (via A138) Drop the naming bullet at line 479 or reduce it to "Naming: see §18"; keep the existence-check, comment, scoping and SELECT INTO bullets.
+- baseline-test: yes
 
 ### C132
 - key: Always check `IF (OBJECT_ID('tempdb..#Name') IS NULL)` before creating a temp table.
@@ -1823,6 +1878,9 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10; the bound it lacks was installed by 830ff28 2026-06-17 in the SKILL's Precedence section and in line 3.
 - verdict: retire
 - reason: The third statement of the mimic rule and the only one without the foreign-repo bound; SKILL.md:16 with :20 owns it whole and line 3 restates it bounded. Safe because a session reaching this line has already loaded both.
+- proposed: Drop line 689; line 3 and the SKILL's philosophy point 5 with its Precedence bound carry the rule.
+- proposed: (via A169) Drop line 689; line 3 and the SKILL's philosophy point 5 with its Precedence bound carry the rule.
+- baseline-test: yes
 
 ### C171
 - key: Where the project impersonates the schema owner, apply WITH EXECUTE AS to every procedure and to scalar or multi-statement functions, not only procedures.
@@ -1839,3 +1897,5 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
 - reason: The why: deployment runs the folders in numeric order, so tables (3) must exist before functions (4) reference them, functions before procedures (5), and the system entry points (9) last against the full schema, with 0-Client first for environment values. C003's placement is obeyed from the Folder and Contents columns alone.
+- proposed: Drop the third column of the folder table at lines 35 to 42; the dependency reasoning lives in this ledger under C172.
+- baseline-test: yes

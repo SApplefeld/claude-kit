@@ -2,7 +2,7 @@
 
 This file is the rationale ledger for the documents the `systematic-debugging` skill owns. Rule text says what happens; this ledger says why; git says when. Nobody loads it by default. A session about to change a rule in one of the documents below reads the entry for the claim it is changing first, so the reason a rule holds is not re-litigated at the next review.
 
-Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed is recorded in the corpus audit plan's scratch adjudication log (the plan is `claude-kit_corpus-audit_spec_v1.md` under `docs/`), which is that plan's transient scratch: its rewrite section consumes the log, and the rewrite plan it writes under `docs/plans/` is the durable home of any target wording once written. The baseline-test flag on a behavior-shaping rewrite rides in the entry's reason line.
+Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed rides on the entry's `proposed:` line, one line per distinct proposal, on rewrite and retire entries that retire a passage; a proposal that pointed at another ruling by id carries the resolved text marked `(via Annn)`. A rewrite or retire the judge flagged as behavior-shaping carries `baseline-test: yes`, which is what the rewrite plan's RED and GREEN step keys on. What a passage becomes is the rewrite plan's to decide (`claude-kit_corpus-rewrite_spec_v1.md` under `docs/plans/`), and where it and a proposal differ the rewrite plan governs.
 
 ## plugins/claude-kit/skills/systematic-debugging/SKILL.md
 
@@ -33,6 +33,8 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, installed with the iron rule; no incident, memory record or kaizen note ties it to a case.
 - verdict: retire
 - reason: The why of the iron rule, held here: a fix proposed before the cause is a guess, and a guess that makes the symptom disappear is the most expensive outcome because the defect survives hidden. The rule is obeyable without it, so the document keeps the rule alone; re-run a baseline before shipping the cut since the wording shapes behavior.
+- proposed: Move the sentence to this ledger as C003's why; the document keeps the iron rule alone.
+- baseline-test: yes
 
 ### C004
 - key: Obtain a reliable reproduction of the failure before doing anything else.
@@ -57,6 +59,9 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, the skill's creation commit.
 - verdict: rewrite
 - reason: The cannot-reproduce carve-out is this skill's alone and stays; the change is that the next sentence's quoted offer ("I can't reproduce it but this change should help") folds into this one as the named antipattern, so the passage forbids the fix once rather than twice. Behavior-shaping wording, so baseline-test the merged sentence.
+- proposed: One sentence: the job is evidence-gathering rather than fixing, and "I can't reproduce it but this change should help" is the offer that sentence forbids.
+- proposed: (via A012) One sentence: the job is evidence-gathering rather than fixing, and "I can't reproduce it but this change should help" is the offer that sentence forbids.
+- baseline-test: yes
 
 ### C007
 - key: Never offer "I can't reproduce it but this change should help" as a debugging outcome.
@@ -97,6 +102,8 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, installed from the ELEOS stack's experience; no memory record or kaizen note pins it to a named incident.
 - verdict: retire
 - reason: The why of C010, held here: on a C#-over-SQL stack the exception the client sees and the error the server logged are often different facts, which is why the server-side log is read separately. C010 is obeyable without it; baseline-test the cut since it changes an investigation bullet.
+- proposed: Ledger entry for C011 carries the why; the document keeps C010's instruction.
+- baseline-test: yes
 
 ### C012
 - key: Check what changed by reading git log and diff around the onset and the deployment history.
@@ -113,6 +120,8 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, the skill's creation commit; no incident found.
 - verdict: retire
 - reason: The prior that motivates C012, held here: most bugs are regressions from a recent, findable change, so the history check is cheap and usually decisive. The check is obeyable without the prior; baseline-test the cut.
+- proposed: Ledger entry for C013; the document keeps C012.
+- baseline-test: yes
 
 ### C014
 - key: Trace the data flow backward from the symptom to the first point where reality diverges from expectation.
@@ -193,6 +202,8 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, the skill's creation commit; no incident found.
 - verdict: retire
 - reason: The why of C022, held here: if two things changed and the symptom moved, the result attributes to neither, so the test taught nothing. "Never bundle changes" is obeyable without it; baseline-test the cut.
+- proposed: Ledger entry for C023.
+- baseline-test: yes
 
 ### C024
 - key: Gather evidence first and write code second.
@@ -201,6 +212,9 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, the skill's creation commit; no incident found behind the repetition.
 - verdict: retire
 - reason: A within-document duplicate: the iron rule (C002) and the Phase 2 lead (C008) already order evidence before code inside this skill, and the doctrine's Root-cause bullet carries the principle. Safe to drop because both survivors are in the same document a session reads; baseline-test since it is a closing tag a reader may anchor on.
+- proposed: Delete "Evidence first, code second." from line 29.
+- proposed: (via A026) Delete "Evidence first, code second." from line 29.
+- baseline-test: yes
 
 ### C025
 - key: Fix the root cause, not the symptom.
@@ -225,6 +239,8 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11 wrote "surrounding tests"; the targeted lane was defined later, at 27ac5d7 2026-08-27 (testing-discipline skill) and efcfa16 2026-08-27 / a321af3 2026-08-30 (the doctrine's lane bullet).
 - verdict: rewrite
 - reason: A real conflict: "surrounding tests" is looser than the targeted lane (the changed files' tests plus any whole-tree pin whose subject those files are), so a session obeying this line can skip a family pin the doctrine requires at a fix round. The doctrine owns which lane each moment takes, so this line names the targeted lane and points at that bullet; baseline-test the reworded step.
+- proposed: Replace "run the surrounding tests to confirm nothing else moved" with "run the targeted lane the doctrine's After-each-step bullet names for a fix round".
+- baseline-test: yes
 
 ### C028
 - key: Delete the repro script after the fix.
@@ -233,6 +249,9 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, the skill's creation commit.
 - verdict: retire
 - reason: A copy of the doctrine's "Make the test earn its green" step and carve-out (delete it unless told to keep it), which testing-discipline names as the governor of a temporary repro and which C005 already points at; the doctrine is always loaded, so a Phase 4 session still meets the step. Baseline-test the cut.
+- proposed: Drop the "delete the repro script (unless told to keep it)" clause from line 33.
+- proposed: (via A032) Drop the "delete the repro script (unless told to keep it)" clause from line 33.
+- baseline-test: yes
 
 ### C029
 - key: Bank any durable learning to the kit memory store, recording the gotcha rather than the incident.
@@ -297,6 +316,8 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 1d9c467 2026-08-15, consult plan Section 5.
 - verdict: retire
 - reason: The why of C035, held here: a fresh-context judge never formed the mental model that failed twice, so it can test the frame where the stuck session can only extend it. C035 is obeyable without it; the sentence was tested whole, so re-run Scenario B after the cut.
+- proposed: Drop the "a fresh-context ruling never formed the mental model that just failed twice, so it can test the frame you can only extend" clause; the ledger carries it.
+- baseline-test: yes
 
 ### C037
 - key: Read the consult skill at `consult/SKILL.md` for the consult's triggers and mechanics.
