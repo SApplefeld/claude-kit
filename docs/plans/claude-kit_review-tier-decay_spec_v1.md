@@ -1,6 +1,6 @@
 # A section's later review rounds run one lens at the writer's tier
 
-Status: Ready
+Status: In Progress
 Commit Model: Commit-and-Push
 Created: 2026-09-10
 
@@ -84,7 +84,7 @@ Acceptance:
 - The finishing-work diff is edit 3b's one clause and nothing else.
 - The targeted lane is green: `size-ratchet`, `readonly-agent-guard`, `doctrine-parity`, `output-style-parity`, plus any test the corpus audit landed over the ledger.
 
-Files in scope: `plugins/claude-kit/skills/executing-work/SKILL.md`, `plugins/claude-kit/skills/brainstorming/SKILL.md`, `plugins/claude-kit/skills/finishing-work/SKILL.md`, `plugins/claude-kit/skills/executing-work/references/rationale-ledger.md`, `test/size-budget.json`.
+Files in scope: `plugins/claude-kit/skills/executing-work/SKILL.md`, `plugins/claude-kit/skills/brainstorming/SKILL.md`, `plugins/claude-kit/skills/finishing-work/SKILL.md`, `plugins/claude-kit/skills/executing-work/references/rationale-ledger.md`, `plugins/claude-kit/skills/finishing-work/references/rationale-ledger.md`, `test/size-budget.json`. The finishing-work ledger was folded in at section 1's round 2: the fix round rewrote the sentence `T008` keys, so that entry's pending rewrite ruling pointed at text no longer in the file.
 
 Tests: no new test, and no test file changes: none is in scope. Two existing pins are read before the first edit so the implementer knows what the lane will check: `test/readonly-agent-guard.test.js` from line 916, which keys on each agent's frontmatter `effort:` value and not on the table's wording (confirmed 2026-09-10), so the cited values `low` and `medium` not moving is what keeps it green; and `test/size-ratchet.test.js`, which is the check behind edit 5. A red in the lane after the edits is a stop, reported with the failing test's own output, never a test edit. The risk the lane guards is a silent downgrade: a row whose effort no longer matches an agent's frontmatter passes nothing and fails nothing at dispatch time, so the implementer runs the lane and reads its exit code rather than its summary.
 
@@ -94,7 +94,7 @@ Tests: no new test, and no test file changes: none is in scope. Two existing pin
 - The design stop, the five-round backstop and the loop's terminal condition: they count rounds and read classes, and a decayed round is a round like any other to them.
 - The security-reviewer's trigger list, which stays exactly as step 3 states it.
 - Compressing the new paragraph: the corpus rewrite's executing-work section does that (stage 3 of the program), and this plan writes for completeness.
-- `docs/architecture.md` line 31 and `docs/backlog.md` line 221: the finishing pass's docs curation brings both current; neither is a Section of Work.
+- `docs/architecture.md` line 31, `docs/backlog.md` line 221 and `README.md` lines 216 and 218: the finishing pass's docs curation brings all three current; none is a Section of Work. The README pair states the pre-decay rule unconditionally ("each reviewer runs one tier above the tier that built the section, with Fable as the ceiling" and "fresh-context adversarial review one tier above the writer with Fable at the top"), and it reached the plan through section 1's review rather than through the sweep, which read `docs/*.md` and not the repository root.
 - Every other entry in the rationale ledger.
 
 ## Assumptions
@@ -118,3 +118,29 @@ None. The one open fork, whether the security lens joins every round 1, was rule
 - `docs/archive/claude-kit_review-loop-provenance_spec_v1.md`: stage 0, whose rounds are the measurement decision 6 answers.
 
 ## Chapters
+
+### Interim board 1 - 2026-09-10
+
+Written at the closure-drought floor: two review-round adjudications with no section closing, and the compaction gate holding an offer.
+
+**Section 1, the only section.** Implemented, verified, and through two review rounds with two fix rounds. Not closed. Round 3 is in flight.
+
+**Header normalization.** `Status:` read `Ready` at run start and now reads `In Progress`, per executing-work's run-start step.
+
+**Live dispatches.** Two, both `fable`, both dispatched over the round 3 delta: the adversarial-reviewer, asked to judge the second fix round's lines against the spec's Goal and acceptance bullets and to say plainly if the repairs have converged; the blind-reviewer, asked for correctness over the changed-file list with no spec and no section name.
+
+**Gate baseline and current reading.** Targeted lane `size-ratchet`, `readonly-agent-guard`, `doctrine-parity`, `output-style-parity`: baseline 303 tests, 303 pass, 0 fail, 0 skipped, exit 0, 55.7 s, taken on the clean tree at `c533b2a`; re-run after the implementer's edits at 303/303/0/0, exit 0, 51.4 s, zero delta. Both readings on SCOTT-CLAUDE, no foreign heavy process live, the box claimed and released around each run. The lane has not been re-run since the two fix rounds; that run is owed before the section closes. `kit-size.js check` exits 0 at 848719 words of cap 848746.
+
+**Rulings adopted since the run started.**
+
+1. Round 1's five Majors: four fixed in executing-work (step 3's lead imperative qualified to round 1; the later-round lens split re-scoped to a deliverable document the Audience rule names; the security-lens contradiction on a re-raised round resolved; the round unit at step 1 and step 4 restated as the roster step 3's round rule dispatched). The fifth, a stale restatement of the pre-decay rule at `README.md` lines 216 and 218, was routed to the finishing pass's docs curation by extending the Out of Scope entry that already routes `docs/architecture.md` and `docs/backlog.md`. That extension is approval drift, made deliberately.
+
+2. The size-cap finding split the lenses, Major from the blind lens and Minor from the adversarial. Ruled: follow the spec. Acceptance bullet 6 states the caps move by exactly the declared amounts, and that flat-raise mechanism is the lean-kit program's decision 1. The cost is a few words of unratcheted headroom, reversible with one `kit-size.js sync`.
+
+3. Round 2's four Majors were all defects round 1's fix round introduced, and all four are fixed. The substantive one reverses the spec's **Assumption 4**: the security lens now joins a later round where its trigger holds, rather than joining none. Ground: Assumption 4 rested on "finishing catches the delta before it lands", which is false under this plan's own Commit-and-Push model, where a section pushes to main at close and finishing runs only after every section. The operator's recorded ruling, "trigger based rather than a global approach", points the same way, and the assumption named this exact reversal. This is approval drift on a written assumption, made deliberately, and it is named to the operator in the section's close-out.
+
+4. `plugins/claude-kit/skills/finishing-work/references/rationale-ledger.md` was folded into Files in scope. The second fix round rewrote the sentence its `T008` entry keys, leaving a live rewrite ruling pointed at text no longer in the file.
+
+**Ledger state.** Executing-work's ledger carries `U001` to `U015`; `R048`, `c3.C060`, `c3.C061`, `c3.C062`, `T122`, `T123` and `R029` are retired with `superseded-by` lines and unchanged keys. Finishing-work's ledger carries a new `U001`, with `T008` retired.
+
+**Next action.** Adjudicate round 3. If the terminal condition is met, run the Minor close pass from `.kit/scratch/review-tier-decay/minors-section-1.md`, re-run the targeted lane, write the Chapter, and commit and push. If round 3 returns fix-introduced Majors in the mechanism round 2's did, that is a design stop and the section goes to a judge before any further repair.
